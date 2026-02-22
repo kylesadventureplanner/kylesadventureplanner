@@ -29,19 +29,26 @@
         let accessToken = null;
 
         async function signIn() {
-            try {
-                const loginResponse = await msalInstance.loginPopup(loginRequest);
-                console.log("Logged in:", loginResponse.account);
+    try {
+        const loginResponse = await msalInstance.loginPopup(loginRequest);
+        console.log("Logged in:", loginResponse.account);
 
-                const tokenResponse = await msalInstance.acquireTokenSilent(loginRequest);
-                accessToken = tokenResponse.accessToken;
+        // ⭐ Tell MSAL which account to use
+        msalInstance.setActiveAccount(loginResponse.account);
 
-                console.log("Access token acquired");
-                loadTable(); // Load Excel data after login
-            } catch (error) {
-                console.error(error);
-            }
-        }
+        const tokenResponse = await msalInstance.acquireTokenSilent({
+            ...loginRequest,
+            account: loginResponse.account
+        });
+
+        accessToken = tokenResponse.accessToken;
+
+        console.log("Access token acquired");
+        loadTable(); // Load Excel data after login
+    } catch (error) {
+        console.error(error);
+    }
+}
 
         // ============================
         // 2. Load Excel Table Rows
