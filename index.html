@@ -28,27 +28,30 @@
 
         let accessToken = null;
 
+        // ============================
+        // 1. Sign In
+        // ============================
+
         async function signIn() {
-    try {
-        const loginResponse = await msalInstance.loginPopup(loginRequest);
-        console.log("Logged in:", loginResponse.account);
+            try {
+                const loginResponse = await msalInstance.loginPopup(loginRequest);
+                console.log("Logged in:", loginResponse.account);
 
-        // ⭐ Tell MSAL which account to use
-        msalInstance.setActiveAccount(loginResponse.account);
+                msalInstance.setActiveAccount(loginResponse.account);
 
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-            ...loginRequest,
-            account: loginResponse.account
-        });
+                const tokenResponse = await msalInstance.acquireTokenSilent({
+                    ...loginRequest,
+                    account: loginResponse.account
+                });
 
-        accessToken = tokenResponse.accessToken;
+                accessToken = tokenResponse.accessToken;
+                console.log("Access token acquired");
 
-        console.log("Access token acquired");
-        loadTable(); // Load Excel data after login
-    } catch (error) {
-        console.error(error);
-    }
-}
+                await loadTable();   // ⭐ FIXED: ensure token is ready
+            } catch (error) {
+                console.error(error);
+            }
+        }
 
         // ============================
         // 2. Load Excel Table Rows
@@ -57,10 +60,10 @@
         async function loadTable() {
             if (!accessToken) return;
 
-            const filePath = "/Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
+            const filePath = "Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
 
             const url =
-                `https://graph.microsoft.com/v1.0/me/drive/root:${filePath}:/workbook/tables/MyList/rows`;
+                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows`;
 
             const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${accessToken}` }
@@ -68,6 +71,12 @@
 
             const data = await response.json();
             console.log("Excel rows:", data);
+
+            // ⭐ Prevent crash if table is empty or error occurs
+            if (!data.value) {
+                console.log("Table is empty or returned no rows");
+                return;
+            }
 
             const tbody = document.querySelector("#places-table tbody");
             tbody.innerHTML = "";
@@ -92,10 +101,10 @@
         async function addRow() {
             if (!accessToken) return;
 
-            const filePath = "/Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
+            const filePath = "Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
 
             const url =
-                `https://graph.microsoft.com/v1.0/me/drive/root:${filePath}:/workbook/tables/MyList/rows/add`;
+                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows/add`;
 
             const newRow = [
                 document.getElementById("name").value,
@@ -116,9 +125,7 @@
                 document.getElementById("links2").value
             ];
 
-            const body = {
-                values: [newRow]
-            };
+            const body = { values: [newRow] };
 
             const response = await fetch(url, {
                 method: "POST",
@@ -131,7 +138,7 @@
 
             console.log("Row added:", await response.json());
 
-            loadTable(); // Refresh table
+            await loadTable(); // Refresh table
         }
     </script>
 
