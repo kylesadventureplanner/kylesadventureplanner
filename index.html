@@ -62,8 +62,9 @@
 
             const filePath = "Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
 
+            // ⭐ FINAL FIX: use special/personal drive
             const url =
-                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows`;
+                `https://graph.microsoft.com/v1.0/me/drive/special/personal:/${filePath}:/workbook/tables/MyList/rows`;
 
             const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${accessToken}` }
@@ -104,7 +105,7 @@
             const filePath = "Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
 
             const url =
-                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows/add`;
+                `https://graph.microsoft.com/v1.0/me/drive/special/personal:/${filePath}:/workbook/tables/MyList/rows/add`;
 
             const newRow = [
                 document.getElementById("name").value,
