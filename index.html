@@ -29,7 +29,7 @@
         let accessToken = null;
 
         // ============================
-        // 1. Sign In
+        // 2. Sign In
         // ============================
 
         async function signIn() {
@@ -47,10 +47,13 @@
                 accessToken = tokenResponse.accessToken;
                 console.log("Access token acquired");
 
-                // ⭐ TEMPORARY DEBUG: list root folders in personal OneDrive
+                // ⭐ DEBUG: List root folders
                 await debugListRoot();
 
-                // Load table after debug
+                // ⭐ DEBUG: List Copilot_Apps folder
+                await debugListCopilotApps();
+
+                // Try loading table (will fail until we plug in correct path)
                 await loadTable();
 
             } catch (error) {
@@ -59,31 +62,47 @@
         }
 
         // ============================
-        // ⭐ TEMPORARY DEBUG FUNCTION
+        // ⭐ DEBUG: List OneDrive Root
         // ============================
-async function debugListCopilotApps() {
-    const url = "https://graph.microsoft.com/v1.0/me/drive/root:/Documents/Copilot_Apps:/children";
 
-    const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-    });
+        async function debugListRoot() {
+            const url = "https://graph.microsoft.com/v1.0/me/drive/root/children";
 
-    const data = await response.json();
-    console.log("COPILOT_APPS CHILDREN:", data);
-}
+            const response = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+
+            const data = await response.json();
+            console.log("ROOT CHILDREN:", data);
+        }
 
         // ============================
-        // 2. Load Excel Table Rows
+        // ⭐ DEBUG: List Copilot_Apps Folder
+        // ============================
+
+        async function debugListCopilotApps() {
+            const url = "https://graph.microsoft.com/v1.0/me/drive/root:/Documents/Copilot_Apps:/children";
+
+            const response = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+
+            const data = await response.json();
+            console.log("COPILOT_APPS CHILDREN:", data);
+        }
+
+        // ============================
+        // 3. Load Excel Table Rows
         // ============================
 
         async function loadTable() {
             if (!accessToken) return;
 
-            // ⭐ This will be updated once we know the real path
-            const filePath = "Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
+            // ⭐ TEMPORARY PLACEHOLDER — we will replace this once debug output shows the real path
+            const filePath = "Documents/Copilot_Apps/Adventure_Finder_Excel_DB.xlsx";
 
             const url =
-                `https://graph.microsoft.com/v1.0/me/drive/special/personal:/${filePath}:/workbook/tables/MyList/rows`;
+                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows`;
 
             const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${accessToken}` }
@@ -114,16 +133,16 @@ async function debugListCopilotApps() {
         }
 
         // ============================
-        // 3. Add a New Row to Excel
+        // 4. Add a New Row to Excel
         // ============================
 
         async function addRow() {
             if (!accessToken) return;
 
-            const filePath = "Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
+            const filePath = "Documents/Copilot_Apps/Adventure_Finder_Excel_DB.xlsx";
 
             const url =
-                `https://graph.microsoft.com/v1.0/me/drive/special/personal:/${filePath}:/workbook/tables/MyList/rows/add`;
+                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows/add`;
 
             const newRow = [
                 document.getElementById("name").value,
