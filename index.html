@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Adventure Planner – Interesting Places</title>
+
+    <!-- MSAL Authentication -->
+    <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+    <script>
+        const msalConfig = {
+            auth: {
+                clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
+                authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
+                redirectUri: window.location.origin
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        const loginRequest = {
+            scopes: ["User.Read", "Files.ReadWrite", "Sites.ReadWrite.All"]
+        };
+
+        async function signIn() {
+            try {
+                const loginResponse = await msalInstance.loginPopup(loginRequest);
+                console.log("Logged in:", loginResponse.account);
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background: #f7f7f7;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+
+        #add-form {
+            margin-top: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+        }
+
+        #add-form input, #add-form textarea {
+            width: 100%;
+            padding: 6px;
+            margin-bottom: 10px;
+        }
+
+        #add-form button {
+            padding: 10px 15px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #add-form button:hover {
+            background: #005ea2;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Interesting Places to Visit</h1>
+
+    <button onclick="signIn()">Sign In</button>
+
+    <table id="places-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Website</th>
+                <th>Tags</th>
+                <th>Drive Time</th>
+                <th>Activity Duration</th>
+                <th>Difficulty</th>
+                <th>Trail Length</th>
+                <th>State</th>
+                <th>City</th>
+                <th>Cost</th>
+                <th>Directions</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div id="add-form">
+        <h2>Add a New Place</h2>
+        <input id="name" placeholder="Name">
+        <input id="website" placeholder="Website URL">
+        <input id="tags" placeholder="Tags (comma-separated)">
+        <input id="driveTime" placeholder="Drive Time">
+        <input id="duration" placeholder="Activity Duration">
+        <input id="difficulty" placeholder="Difficulty">
+        <input id="trailLength" placeholder="Trail Length">
+        <input id="state" placeholder="State">
+        <input id="city" placeholder="City">
+        <input id="cost" placeholder="Cost">
+        <textarea id="description" placeholder="Description"></textarea>
+        <button>Add Place</button>
+    </div>
+</body>
+</html>
