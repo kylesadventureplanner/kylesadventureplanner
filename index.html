@@ -47,10 +47,30 @@
                 accessToken = tokenResponse.accessToken;
                 console.log("Access token acquired");
 
-                await loadTable();   // ⭐ FIXED: ensure token is ready
+                // ⭐ TEMPORARY DEBUG: list root folders in personal OneDrive
+                await debugListRoot();
+
+                // Load table after debug
+                await loadTable();
+
             } catch (error) {
                 console.error(error);
             }
+        }
+
+        // ============================
+        // ⭐ TEMPORARY DEBUG FUNCTION
+        // ============================
+
+        async function debugListRoot() {
+            const url = "https://graph.microsoft.com/v1.0/me/drive/special/personal/root/children";
+
+            const response = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+
+            const data = await response.json();
+            console.log("ROOT CHILDREN:", data);
         }
 
         // ============================
@@ -60,9 +80,9 @@
         async function loadTable() {
             if (!accessToken) return;
 
+            // ⭐ This will be updated once we know the real path
             const filePath = "Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
 
-            // ⭐ FINAL FIX: use special/personal drive
             const url =
                 `https://graph.microsoft.com/v1.0/me/drive/special/personal:/${filePath}:/workbook/tables/MyList/rows`;
 
@@ -73,7 +93,6 @@
             const data = await response.json();
             console.log("Excel rows:", data);
 
-            // ⭐ Prevent crash if table is empty or error occurs
             if (!data.value) {
                 console.log("Table is empty or returned no rows");
                 return;
@@ -102,7 +121,7 @@
         async function addRow() {
             if (!accessToken) return;
 
-            const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+            const filePath = "Copilot Apps/Kyles Adventure Finder/Adventure_Finder_Excel_DB.xlsx";
 
             const url =
                 `https://graph.microsoft.com/v1.0/me/drive/special/personal:/${filePath}:/workbook/tables/MyList/rows/add`;
@@ -139,21 +158,8 @@
 
             console.log("Row added:", await response.json());
 
-            await loadTable(); // Refresh table
+            await loadTable();
         }
-
-        async function debugListRoot() {
-            const url = "https://graph.microsoft.com/v1.0/me/drive/special/personal/root/children";
-
-            const response = await fetch(url, {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            });
-
-            const data = await response.json();
-            console.log("ROOT CHILDREN:", data);
-        }
-
-
     </script>
 
     <style>
