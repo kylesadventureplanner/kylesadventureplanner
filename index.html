@@ -2,14 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Adventure Planner – Debug Mode</title>
+    <title>Adventure Planner – Debug Tables</title>
 
     <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
     <script>
-        // ============================
-        // MSAL CONFIG
-        // ============================
         const msalConfig = {
             auth: {
                 clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
@@ -26,9 +23,9 @@
 
         let accessToken = null;
 
-        // ============================
-        // SIGN IN
-        // ============================
+        // This is now 100% confirmed from your logs:
+        const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+
         async function signIn() {
             try {
                 const loginResponse = await msalInstance.loginPopup(loginRequest);
@@ -44,76 +41,62 @@
                 accessToken = tokenResponse.accessToken;
                 console.log("Access token acquired");
 
-                // ⭐ DEBUG 1 — List root folders
                 await debugListRoot();
-
-                // ⭐ DEBUG 2 — List Copilot_Apps
                 await debugListCopilotApps();
-
-                // ⭐ DEBUG 3 — List Kyles_Adventure_Finder
                 await debugListExcelFolder();
-
-                // ⭐ Attempt to load table (will work once we know exact file name)
-                await loadTable();
+                await debugListTables();   // ⭐ NEW: list tables in the workbook
+                await loadTable();         // will work once table name is correct
 
             } catch (error) {
                 console.error(error);
             }
         }
 
-        // ============================
-        // DEBUG: LIST ROOT
-        // ============================
         async function debugListRoot() {
             const url = "https://graph.microsoft.com/v1.0/me/drive/root/children";
-
             const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
-
             const data = await response.json();
             console.log("ROOT CHILDREN:", data);
         }
 
-        // ============================
-        // DEBUG: LIST Copilot_Apps
-        // ============================
         async function debugListCopilotApps() {
             const url = "https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps:/children";
-
             const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
-
             const data = await response.json();
             console.log("COPILOT_APPS CHILDREN:", data);
         }
 
-        // ============================
-        // DEBUG: LIST Kyles_Adventure_Finder
-        // ============================
         async function debugListExcelFolder() {
             const url = "https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps/Kyles_Adventure_Finder:/children";
-
             const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${accessToken}` }
             });
-
             const data = await response.json();
             console.log("EXCEL FOLDER CHILDREN:", data);
         }
 
-        // ============================
-        // LOAD TABLE (will fix path after debug)
-        // ============================
+        // ⭐ NEW: list tables in the workbook
+        async function debugListTables() {
+            const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables`;
+            const response = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const data = await response.json();
+            console.log("WORKBOOK TABLES:", data);
+        }
+
         async function loadTable() {
             if (!accessToken) return;
 
-            // TEMPORARY — will replace once we see the real file name
-            const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+            // 🔴 TEMP: replace "MyList" with the actual table name from WORKBOOK TABLES output
+            const tableName = "MyList";
 
             const url =
-                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows`;
+                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
 
             const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${accessToken}` }
@@ -131,7 +114,7 @@
 </head>
 
 <body>
-    <h1>Adventure Planner Debug Mode</h1>
+    <h1>Adventure Planner – Table Debug</h1>
     <button onclick="signIn()">Sign In</button>
 </body>
 </html>
