@@ -1,269 +1,930 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Adventure Planner</title>
+    <meta charset="UTF-8">
+    <title>Kyle's Adventure Finder</title>
 
-<style>
-    body {
-        font-family: system-ui, sans-serif;
-        margin: 0;
-        background: #f5f7fa;
-    }
+    <!-- MSAL -->
+    <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
-    /* ---------------------- CONTROL BAR ---------------------- */
-    #controlsBar {
-        display: flex;
-        gap: 20px;
-        padding: 16px;
-        background: white;
-        border-bottom: 1px solid #ddd;
-        position: sticky;
-        top: 0;
-        z-index: 20;
-    }
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            background: #f5f7fb;
+            color: #222;
+        }
 
-    .control-block {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
+        header {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
 
-    .control-block label {
-        font-size: 12px;
-        font-weight: 600;
-        color: #444;
-    }
+        header h1 {
+            margin: 0;
+            font-size: 20px;
+        }
 
-    select, input {
-        padding: 6px 8px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-    }
+        header .subtitle {
+            font-size: 13px;
+            opacity: 0.9;
+        }
 
-    button {
-        padding: 8px 12px;
-        background: #0078d4;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-    }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-    button:hover {
-        background: #005fa3;
-    }
+        button {
+            border-radius: 999px;
+            border: none;
+            padding: 8px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 500;
+        }
 
-    #resetFiltersBtn {
-        background: #666;
-    }
+        .btn-primary {
+            background: white;
+            color: #1d4ed8;
+        }
 
-    /* ---------------------- COLLAPSIBLE ADD SECTION ---------------------- */
-    #toggleAddSection {
-        width: 100%;
-        margin-top: 10px;
-        background: #0078d4;
-        color: white;
-        padding: 12px;
-        border-radius: 6px;
-        border: none;
-        cursor: pointer;
-    }
+        .btn-primary:hover {
+            background: #e5edff;
+        }
 
-    #addAdventureSection {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.35s ease;
-        background: white;
-        padding: 0 16px;
-        border-bottom: 1px solid #ddd;
-    }
+        .btn-ghost {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+        }
 
-    #addAdventureSection.expanded {
-        max-height: 600px;
-        padding: 16px;
-    }
+        .btn-ghost:hover {
+            background: rgba(255,255,255,0.1);
+        }
 
-    /* ---------------------- TABLE ---------------------- */
-    .table-container {
-        max-height: 70vh;
-        overflow-y: auto;
-        margin: 16px;
-        background: white;
-        border-radius: 8px;
-        border: 1px solid #ddd;
-    }
+        main {
+            padding: 20px 24px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #4b5563;
+        }
 
-    thead th {
-        position: sticky;
-        top: 0;
-        background: #f0f2f5;
-        padding: 10px;
-        border-bottom: 2px solid #ccc;
-        z-index: 10;
-        font-weight: 600;
-        cursor: pointer;
-        white-space: nowrap;
-    }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 12px;
+        }
 
-    thead th .sort-icon {
-        margin-left: 6px;
-        opacity: 0.5;
-    }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+        }
 
-    tbody td {
-        padding: 10px;
-        border-bottom: 1px solid #eee;
-    }
+        /* ============================
+           CONTROL BAR CARD
+        ============================ */
+        .control-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            padding: 16px 18px 18px;
+            margin-bottom: 18px;
+        }
 
-    /* ---------------------- GROUP SECTIONS ---------------------- */
-    .group-header {
-        background: #e8eef7;
-        padding: 10px;
-        font-weight: bold;
-        cursor: pointer;
-        border-bottom: 1px solid #ccc;
-    }
+        .control-card-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
 
-    .group-content {
-        display: none;
-    }
+        .control-card-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 14px;
+        }
 
-    .group-content.expanded {
-        display: table-row-group;
-    }
-</style>
+        #controlsBar {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-block {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 180px;
+        }
+
+        .control-block label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        select, input {
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        #resetFiltersBtn {
+            background: #6b7280;
+            color: white;
+        }
+
+        #resetFiltersBtn:hover {
+            background: #4b5563;
+        }
+
+        /* ============================
+           TABLE + STICKY HEADER FIX
+        ============================ */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead {
+            background: #eff3ff;
+        }
+
+        th, td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            font-weight: 600;
+            color: #374151;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            background: #eff3ff;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .sort-icon {
+            margin-left: 6px;
+            opacity: 0.5;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+
+        tbody tr:hover {
+            background: #eef2ff;
+        }
+
+        /* ============================
+           PILLS + TAGS
+        ============================ */
+        .tag-cell {
+            font-size: 12px;
+            color: #4b5563;
+        }
+
+        .link-cell a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .link-cell a:hover {
+            text-decoration: underline;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .pill-green {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .pill-blue {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .pill-amber {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .pill-red {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        /* ============================
+           FORM GRID + ADD SECTION
+        ============================ */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px 12px;
+            margin-top: 10px;
+        }
+
+        .form-grid label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #4b5563;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .form-grid input,
+        .form-grid textarea {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            padding: 6px 8px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+
+        .form-grid textarea {
+            min-height: 48px;
+            resize: vertical;
+        }
+
+        .form-footer {
+            margin-top: 12px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .muted {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        /* ============================
+           COLLAPSIBLE ADD SECTION
+        ============================ */
+        #toggleAddSection {
+            width: 100%;
+            margin-top: 10px;
+            background: #0078d4;
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #addAdventureSection {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease;
+            background: white;
+            padding: 0 16px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #addAdventureSection.expanded {
+            max-height: 600px;
+            padding: 16px;
+        }
+
+        /* ============================
+           RESPONSIVE
+        ============================ */
+        @media (max-width: 900px) {
+            .form-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 700px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .header-right {
+                align-self: stretch;
+                justify-content: space-between;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            main {
+                padding: 16px 14px 28px;
+            }
+
+            .control-block {
+                min-width: 100%;
+            }
+
+            th, td {
+                padding: 6px 6px;
+            }
+        }
+    </style>
+
+    <script>
+        // ============================
+        // MSAL CONFIG
+        // ============================
+        const msalConfig = {
+            auth: {
+                clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
+                authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
+                redirectUri: window.location.origin
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        const loginRequest = {
+            scopes: ["User.Read", "Files.ReadWrite", "Sites.ReadWrite.All"]
+        };
+
+        let accessToken = null;
+        let activeAccount = null;
+
+        // Confirmed from your debug:
+        const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+        const tableName = "MyList";
+
+        // ============================
+        // SIGN IN / OUT
+        // ============================
+        async function signIn() {
+            try {
+                const loginResponse = await msalInstance.loginPopup(loginRequest);
+                console.log("Logged in:", loginResponse.account);
+
+                activeAccount = loginResponse.account;
+                msalInstance.setActiveAccount(activeAccount);
+
+                const tokenResponse = await msalInstance.acquireTokenSilent({
+                    ...loginRequest,
+                    account: activeAccount
+                });
+
+                accessToken = tokenResponse.accessToken;
+                console.log("Access token acquired");
+
+                document.getElementById("user-label").textContent = activeAccount.username;
+                document.getElementById("auth-status").textContent = "Connected to Excel backend";
+                document.getElementById("auth-dot").style.background = "#22c55e";
+
+                await loadTable();
+            } catch (error) {
+                console.error(error);
+                alert("Sign-in failed. Check console for details.");
+            }
+        }
+
+        async function signOut() {
+            const account = msalInstance.getActiveAccount();
+            if (!account) return;
+
+            await msalInstance.logoutPopup({
+                account,
+                postLogoutRedirectUri: window.location.origin
+            });
+
+            accessToken = null;
+            activeAccount = null;
+            document.getElementById("user-label").textContent = "Not signed in";
+            document.getElementById("auth-status").textContent = "Not connected";
+            document.getElementById("auth-dot").style.background = "#f97316";
+            document.querySelector("#places-table tbody").innerHTML = "";
+        }
+        // ============================
+        // LOAD TABLE FROM EXCEL
+        // ============================
+        async function loadTable() {
+            if (!accessToken) return;
+
+            const url =
+                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
+
+            const response = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+
+            const data = await response.json();
+            console.log("Excel rows:", data);
+
+            if (!data.value) {
+                console.log("No rows returned.");
+                return;
+            }
+
+            const tbody = document.querySelector("#places-table tbody");
+            tbody.innerHTML = "";
+
+            data.value.forEach(row => {
+                const values = row.values[0]; // one row array
+
+                const tr = document.createElement("tr");
+
+                function cell(text, className) {
+                    const td = document.createElement("td");
+                    if (className) td.className = className;
+                    td.textContent = text ?? "";
+                    return td;
+                }
+
+                // Map columns by index (must match your table column order)
+                const [
+                    name,
+                    website,
+                    tags,
+                    driveTime,
+                    hours,
+                    duration,
+                    difficulty,
+                    trailLength,
+                    state,
+                    city,
+                    cost,
+                    directions,
+                    description,
+                    nearby,
+                    links,
+                    links2
+                ] = values;
+
+                // Name
+                const nameTd = document.createElement("td");
+                nameTd.innerHTML = name ? `<strong>${name}</strong>` : "";
+                tr.appendChild(nameTd);
+
+                // Website
+                const websiteTd = document.createElement("td");
+                websiteTd.className = "link-cell";
+                if (website) {
+                    websiteTd.innerHTML = `<a href="${website}" target="_blank" rel="noopener">Open</a>`;
+                }
+                tr.appendChild(websiteTd);
+
+                // Tags
+                tr.appendChild(cell(tags, "tag-cell"));
+
+                // Drive Time, Hours, Duration
+                tr.appendChild(cell(driveTime));
+                tr.appendChild(cell(hours));
+                tr.appendChild(cell(duration));
+
+                // Difficulty pill
+                const diffTd = document.createElement("td");
+                if (difficulty) {
+                    let cls = "pill";
+                    const d = (difficulty + "").toLowerCase();
+                    if (d.includes("easy")) cls += " pill-green";
+                    else if (d.includes("moderate") || d.includes("medium")) cls += " pill-amber";
+                    else if (d.includes("hard") || d.includes("difficult")) cls += " pill-red";
+                    diffTd.innerHTML = `<span class="${cls}">${difficulty}</span>`;
+                }
+                tr.appendChild(diffTd);
+
+                // Trail Length, State, City, Cost
+                tr.appendChild(cell(trailLength));
+                tr.appendChild(cell(state));
+                tr.appendChild(cell(city));
+                tr.appendChild(cell(cost));
+
+                // Directions
+                tr.appendChild(cell(directions));
+
+                // Description
+                tr.appendChild(cell(description));
+
+                // Nearby Things to Do
+                tr.appendChild(cell(nearby));
+
+                // Links
+                const linksTd = document.createElement("td");
+                linksTd.className = "link-cell";
+                if (links) {
+                    linksTd.innerHTML = `<a href="${links}" target="_blank" rel="noopener">Link</a>`;
+                }
+                tr.appendChild(linksTd);
+
+                // Links2
+                const links2Td = document.createElement("td");
+                links2Td.className = "link-cell";
+                if (links2) {
+                    links2Td.innerHTML = `<a href="${links2}" target="_blank" rel="noopener">Link</a>`;
+                }
+                tr.appendChild(links2Td);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ============================
+        // ADD ROW TO EXCEL
+        // ============================
+        async function addRow() {
+            if (!accessToken) {
+                alert("Please sign in first.");
+                return;
+            }
+
+            const newRow = [
+                document.getElementById("name").value,
+                document.getElementById("website").value,
+                document.getElementById("tags").value,
+                document.getElementById("driveTime").value,
+                document.getElementById("hours").value,
+                document.getElementById("duration").value,
+                document.getElementById("difficulty").value,
+                document.getElementById("trailLength").value,
+                document.getElementById("state").value,
+                document.getElementById("city").value,
+                document.getElementById("cost").value,
+                document.getElementById("directions").value,
+                document.getElementById("description").value,
+                document.getElementById("nearby").value,
+                document.getElementById("links").value,
+                document.getElementById("links2").value
+            ];
+
+            const url =
+                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/add`;
+
+            const body = { values: [newRow] };
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(body)
+            });
+
+            const result = await response.json();
+            console.log("Row added:", result);
+
+            document.getElementById("add-form").reset();
+            await loadTable();
+        }
+        // ============================
+        // CONTROL BAR: FILTERS, SORTING, GROUPING
+        // ============================
+
+        let currentSortColumn = null;
+        let currentSortDirection = "asc";
+
+        function resetFilters() {
+            document.getElementById("filterDifficulty").value = "";
+            document.getElementById("filterState").value = "";
+            document.getElementById("filterTags").value = "";
+            document.getElementById("filterCity").value = "";
+            document.getElementById("filterCost").value = "";
+            document.getElementById("groupBy").value = "";
+            loadTable();
+        }
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById("places-table");
+            const tbody = table.querySelector("tbody");
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+
+            if (currentSortColumn === columnIndex) {
+                currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
+            } else {
+                currentSortColumn = columnIndex;
+                currentSortDirection = "asc";
+            }
+
+            rows.sort((a, b) => {
+                const aText = a.children[columnIndex].innerText.toLowerCase();
+                const bText = b.children[columnIndex].innerText.toLowerCase();
+
+                if (aText < bText) return currentSortDirection === "asc" ? -1 : 1;
+                if (aText > bText) return currentSortDirection === "asc" ? 1 : -1;
+                return 0;
+            });
+
+            tbody.innerHTML = "";
+            rows.forEach(r => tbody.appendChild(r));
+        }
+
+        function applyFilters() {
+            const diff = document.getElementById("filterDifficulty").value.toLowerCase();
+            const state = document.getElementById("filterState").value.toLowerCase();
+            const tags = document.getElementById("filterTags").value.toLowerCase();
+            const city = document.getElementById("filterCity").value.toLowerCase();
+            const cost = document.getElementById("filterCost").value.toLowerCase();
+
+            const rows = document.querySelectorAll("#places-table tbody tr");
+
+            rows.forEach(row => {
+                const cells = row.children;
+
+                const rowDiff = cells[6].innerText.toLowerCase();
+                const rowState = cells[8].innerText.toLowerCase();
+                const rowTags = cells[2].innerText.toLowerCase();
+                const rowCity = cells[9].innerText.toLowerCase();
+                const rowCost = cells[10].innerText.toLowerCase();
+
+                const matches =
+                    (!diff || rowDiff.includes(diff)) &&
+                    (!state || rowState.includes(state)) &&
+                    (!tags || rowTags.includes(tags)) &&
+                    (!city || rowCity.includes(city)) &&
+                    (!cost || rowCost.includes(cost));
+
+                row.style.display = matches ? "" : "none";
+            });
+        }
+
+        function applyGrouping() {
+            const groupBy = document.getElementById("groupBy").value;
+            const tbody = document.querySelector("#places-table tbody");
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+
+            if (!groupBy) {
+                rows.forEach(r => r.style.display = "");
+                return;
+            }
+
+            const groups = {};
+
+            rows.forEach(row => {
+                const key = row.children[groupBy].innerText.trim() || "Other";
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(row);
+            });
+
+            tbody.innerHTML = "";
+
+            Object.keys(groups).sort().forEach(group => {
+                const headerRow = document.createElement("tr");
+                const headerCell = document.createElement("td");
+                headerCell.colSpan = 16;
+                headerCell.style.background = "#e0e7ff";
+                headerCell.style.fontWeight = "bold";
+                headerCell.style.padding = "10px";
+                headerCell.textContent = group;
+                headerRow.appendChild(headerCell);
+                tbody.appendChild(headerRow);
+
+                groups[group].forEach(r => tbody.appendChild(r));
+            });
+        }
+
+        function applyAllControls() {
+            applyFilters();
+            applyGrouping();
+            if (currentSortColumn !== null) {
+                sortTable(currentSortColumn);
+            }
+        }
+
+        // ============================
+        // COLLAPSIBLE ADD SECTION
+        // ============================
+        function toggleAddSection() {
+            const section = document.getElementById("addAdventureSection");
+            section.classList.toggle("expanded");
+        }
+    </script>
 </head>
 
 <body>
+    <header>
+        <div>
+            <h1>🌄 Kyle's Adventure Finder</h1>
+            <div class="subtitle">Shared adventure list powered by your Excel backend</div>
+        </div>
+        <div class="header-right">
+            <span id="user-label" style="font-size:12px; opacity:0.9;">Not signed in</span>
+            <button class="btn-ghost" onclick="signOut()">Sign out</button>
+            <button class="btn-primary" onclick="signIn()">Sign in</button>
+        </div>
+    </header>
 
-<!-- ---------------------- CONTROL BAR ---------------------- -->
-<div id="controlsBar">
-    <div class="control-block">
-        <label>Filter by</label>
-        <select id="filterField">
-            <option value="">— Select —</option>
-            <option value="Tags">Tags</option>
-            <option value="City">City</option>
-            <option value="Difficulty">Difficulty</option>
-            <option value="State">State</option>
-        </select>
-        <input id="filterValue" placeholder="Enter value">
-        <button onclick="applyFilter()">Apply</button>
-    </div>
+    <main>
+        <div class="status-bar">
+            <div class="status-pill">
+                <span id="auth-dot" class="status-dot" style="background:#f97316;"></span>
+                <span id="auth-status">Not connected</span>
+            </div>
+            <span class="muted">Data source: Adventure_Finder_Excel_DB.xlsx → table “MyList”</span>
+        </div>
 
-    <div class="control-block">
-        <label>Sort by</label>
-        <select id="sortField">
-            <option value="">— Select —</option>
-            <option value="Name">Name</option>
-            <option value="Activity Duration">Activity Duration</option>
-            <option value="Cost">Cost</option>
-            <option value="Drive Time">Drive Time</option>
-        </select>
-        <select id="sortDirection">
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-        </select>
-        <button onclick="applySort()">Sort</button>
-    </div>
+        <!-- ============================
+             CONTROL BAR CARD (Option 1)
+        ============================ -->
+        <section class="control-card">
+            <div class="control-card-title">Control Panel</div>
+            <div class="control-card-subtitle">Filter, sort, and group your adventures</div>
 
-    <div class="control-block">
-        <label>Group by</label>
-        <select id="groupField">
-            <option value="">— None —</option>
-            <option value="State">State</option>
-            <option value="City">City</option>
-            <option value="Difficulty">Difficulty</option>
-        </select>
-        <button onclick="applyGrouping()">Group</button>
-    </div>
+            <div id="controlsBar">
+                <div class="control-block">
+                    <label>Filter by Difficulty</label>
+                    <input id="filterDifficulty" placeholder="Easy, Moderate, Hard" oninput="applyAllControls()">
+                </div>
 
-    <div class="control-block">
-        <label>&nbsp;</label>
-        <button id="resetFiltersBtn" onclick="resetAllFilters()">Reset All</button>
-    </div>
-</div>
+                <div class="control-block">
+                    <label>Filter by State</label>
+                    <input id="filterState" placeholder="NC, SC, TN…" oninput="applyAllControls()">
+                </div>
 
-<!-- ---------------------- COLLAPSIBLE ADD SECTION ---------------------- -->
-<button id="toggleAddSection">Add a New Adventure</button>
+                <div class="control-block">
+                    <label>Filter by Tags</label>
+                    <input id="filterTags" placeholder="scenic, waterfall…" oninput="applyAllControls()">
+                </div>
 
-<div id="addAdventureSection">
-    <h3>Add a New Adventure</h3>
-    <!-- Your form fields go here -->
-</div>
+                <div class="control-block">
+                    <label>Filter by City</label>
+                    <input id="filterCity" placeholder="Asheville…" oninput="applyAllControls()">
+                </div>
 
-<!-- ---------------------- TABLE ---------------------- -->
-<div class="table-container">
-    <table id="places-table">
-        <thead>
-            <tr>
-                <th onclick="sortByHeader('Name')">Name <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Website')">Website <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Tags')">Tags <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Drive Time')">Drive Time <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Hours')">Hours <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Activity Duration')">Activity Duration <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Difficulty')">Difficulty <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Trail Length')">Trail Length <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('State')">State <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('City')">City <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Cost')">Cost <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Directions')">Directions <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Description')">Description <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Nearby Things to Do')">Nearby Things to Do <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Links')">Links <span class="sort-icon">↕</span></th>
-                <th onclick="sortByHeader('Links2')">Links2 <span class="sort-icon">↕</span></th>
-            </tr>
-        </thead>
-        <tbody id="tableBody">
-            <!-- JS will render rows here -->
-        </tbody>
-    </table>
-</div>
+                <div class="control-block">
+                    <label>Filter by Cost</label>
+                    <input id="filterCost" placeholder="Free, $, $$…" oninput="applyAllControls()">
+                </div>
 
-<script>
-/* ---------------------- COLLAPSIBLE ADD SECTION ---------------------- */
-document.getElementById("toggleAddSection").addEventListener("click", () => {
-    document.getElementById("addAdventureSection").classList.toggle("expanded");
-});
+                <div class="control-block">
+                    <label>Group By</label>
+                    <select id="groupBy" onchange="applyAllControls()">
+                        <option value="">None</option>
+                        <option value="8">State</option>
+                        <option value="9">City</option>
+                        <option value="6">Difficulty</option>
+                        <option value="2">Tags</option>
+                    </select>
+                </div>
 
-/* ---------------------- FILTERING ---------------------- */
-function applyFilter() {
-    console.log("Filter applied");
-}
+                <div class="control-block">
+                    <label>Reset</label>
+                    <button id="resetFiltersBtn" onclick="resetFilters()">Reset All Filters</button>
+                </div>
+            </div>
+        </section>
+        <!-- ============================
+             ADVENTURE LIST CARD
+        ============================ -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Adventure List</div>
+                    <div class="card-subtitle">All the places you’ve logged in your Excel planner</div>
+                </div>
+                <button class="btn-ghost" onclick="loadTable()">Refresh</button>
+            </div>
 
-/* ---------------------- SORTING ---------------------- */
-function applySort() {
-    console.log("Sort applied");
-}
+            <div style="max-height: 420px; overflow: auto; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <table id="places-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(0)">Name <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(1)">Website <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(2)">Tags <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(3)">Drive Time <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(4)">Hours <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(5)">Duration <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(6)">Difficulty <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(7)">Trail Length <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(8)">State <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(9)">City <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(10)">Cost <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(11)">Directions <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(12)">Description <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(13)">Nearby Things to Do <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(14)">Links <span class="sort-icon">↕</span></th>
+                            <th onclick="sortTable(15)">Links2 <span class="sort-icon">↕</span></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
 
-function sortByHeader(field) {
-    document.getElementById("sortField").value = field;
-    applySort();
-}
+        <!-- ============================
+             COLLAPSIBLE ADD SECTION
+        ============================ -->
+        <button id="toggleAddSection" onclick="toggleAddSection()">Add a New Adventure</button>
 
-/* ---------------------- GROUPING ---------------------- */
-function applyGrouping() {
-    console.log("Grouping applied");
-}
+        <section id="addAdventureSection">
+            <form id="add-form" onsubmit="event.preventDefault(); addRow();">
+                <div class="form-grid">
+                    <div>
+                        <label for="name">Name</label>
+                        <input id="name" placeholder="Blue Ridge Parkway Overlook">
+                    </div>
+                    <div>
+                        <label for="website">Website</label>
+                        <input id="website" placeholder="https://…">
+                    </div>
+                    <div>
+                        <label for="tags">Tags</label>
+                        <input id="tags" placeholder="scenic, easy, sunset">
+                    </div>
 
-/* ---------------------- RESET FILTERS ---------------------- */
-function resetAllFilters() {
-    document.getElementById("filterField").value = "";
-    document.getElementById("filterValue").value = "";
-    document.getElementById("sortField").value = "";
-    document.getElementById("sortDirection").value = "asc";
-    document.getElementById("groupField").value = "";
+                    <div>
+                        <label for="driveTime">Drive Time</label>
+                        <input id="driveTime" placeholder="45 min">
+                    </div>
+                    <div>
+                        <label for="hours">Hours</label>
+                        <input id="hours" placeholder="9am–5pm">
+                    </div>
+                    <div>
+                        <label for="duration">Activity Duration</label>
+                        <input id="duration" placeholder="2–3 hours">
+                    </div>
 
-    console.log("Filters reset");
-}
-</script>
+                    <div>
+                        <label for="difficulty">Difficulty</label>
+                        <input id="difficulty" placeholder="Easy / Moderate / Hard">
+                    </div>
+                    <div>
+                        <label for="trailLength">Trail Length</label>
+                        <input id="trailLength" placeholder="3.2 miles">
+                    </div>
+                    <div>
+                        <label for="state">State</label>
+                        <input id="state" placeholder="NC">
+                    </div>
 
+                    <div>
+                        <label for="city">City</label>
+                        <input id="city" placeholder="Asheville">
+                    </div>
+                    <div>
+                        <label for="cost">Cost</label>
+                        <input id="cost" placeholder="Free / $20">
+                    </div>
+                    <div>
+                        <label for="directions">Directions</label>
+                        <input id="directions" placeholder="Exit 13, follow signs…">
+                    </div>
+
+                    <div>
+                        <label for="description">Description</label>
+                        <textarea id="description" placeholder="Short summary of why this is fun."></textarea>
+                    </div>
+                    <div>
+                        <label for="nearby">Nearby Things to Do</label>
+                        <textarea id="nearby" placeholder="Coffee shop, second overlook, waterfall…"></textarea>
+                    </div>
+                    <div>
+                        <label for="links">Links</label>
+                        <input id="links" placeholder="AllTrails, Google Maps…">
+                    </div>
+
+                    <div>
+                        <label for="links2">Links2</label>
+                        <input id="links2" placeholder="Extra link (optional)">
+                    </div>
+                </div>
+
+                <div class="form-footer">
+                    <span class="muted">Changes are saved directly into your Excel file.</span>
+                    <button type="submit" class="btn-primary">Add Adventure</button>
+                </div>
+            </form>
+        </section>
+    </main>
 </body>
 </html>
