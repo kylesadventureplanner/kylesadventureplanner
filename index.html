@@ -47,8 +47,11 @@
                 // ⭐ DEBUG 1 — List root folders
                 await debugListRoot();
 
-                // ⭐ DEBUG 2 — List Copilot_Apps folder
+                // ⭐ DEBUG 2 — List Copilot_Apps
                 await debugListCopilotApps();
+
+                // ⭐ DEBUG 3 — List Kyles_Adventure_Finder
+                await debugListExcelFolder();
 
                 // ⭐ Attempt to load table (will work once we know exact file name)
                 await loadTable();
@@ -87,13 +90,27 @@
         }
 
         // ============================
+        // DEBUG: LIST Kyles_Adventure_Finder
+        // ============================
+        async function debugListExcelFolder() {
+            const url = "https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps/Kyles_Adventure_Finder:/children";
+
+            const response = await fetch(url, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+
+            const data = await response.json();
+            console.log("EXCEL FOLDER CHILDREN:", data);
+        }
+
+        // ============================
         // LOAD TABLE (will fix path after debug)
         // ============================
         async function loadTable() {
             if (!accessToken) return;
 
             // TEMPORARY — will replace once we see the real file name
-            const filePath = "Copilot_Apps/Adventure_Finder_Excel_DB.xlsx";
+            const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
 
             const url =
                 `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows`;
