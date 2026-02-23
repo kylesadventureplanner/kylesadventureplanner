@@ -101,145 +101,145 @@
             background: #22c55e;
         }
 
-/* ============================================================
-   CONTROL BAR: FILTERING, SORTING, GROUPING (FULLY FIXED)
-   ============================================================ */
+        /* ============================================================
+           CONTROL BAR: FILTERING, SORTING, GROUPING (FINAL FIXED VERSION)
+           ============================================================ */
 
-let currentSortColumn = null;
-let currentSortDirection = "asc";
+        let currentSortColumn = null;
+        let currentSortDirection = "asc";
 
-/* ---------------------------
-   RESET FILTERS
----------------------------- */
-function resetFilters() {
-    document.getElementById("filterDifficulty").value = "";
-    document.getElementById("filterState").value = "";
-    document.getElementById("filterTags").value = "";
-    document.getElementById("filterCity").value = "";
-    document.getElementById("filterCost").value = "";
-    document.getElementById("groupBy").value = "";
-    applyAllControls();
-}
+        /* ---------------------------
+           RESET FILTERS
+        ---------------------------- */
+        function resetFilters() {
+            document.getElementById("filterDifficulty").value = "";
+            document.getElementById("filterState").value = "";
+            document.getElementById("filterTags").value = "";
+            document.getElementById("filterCity").value = "";
+            document.getElementById("filterCost").value = "";
+            document.getElementById("groupBy").value = "";
+            applyAllControls();
+        }
 
-/* ---------------------------
-   SORTING
----------------------------- */
-function sortTable(columnIndex) {
-    const table = document.getElementById("places-table");
-    const tbody = table.querySelector("tbody");
-    const rows = Array.from(tbody.querySelectorAll("tr"))
-        .filter(r => !r.classList.contains("group-header"));
+        /* ---------------------------
+           SORTING
+        ---------------------------- */
+        function sortTable(columnIndex) {
+            const tbody = document.querySelector("#places-table tbody");
 
-    if (currentSortColumn === columnIndex) {
-        currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
-    } else {
-        currentSortColumn = columnIndex;
-        currentSortDirection = "asc";
-    }
+            // Only sort actual data rows, not group headers
+            const rows = Array.from(tbody.querySelectorAll("tr"))
+                .filter(r => !r.classList.contains("group-header"));
 
-    rows.sort((a, b) => {
-        const aText = (a.children[columnIndex].textContent || "").trim().toLowerCase();
-        const bText = (b.children[columnIndex].textContent || "").trim().toLowerCase();
+            if (currentSortColumn === columnIndex) {
+                currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
+            } else {
+                currentSortColumn = columnIndex;
+                currentSortDirection = "asc";
+            }
 
-        if (aText < bText) return currentSortDirection === "asc" ? -1 : 1;
-        if (aText > bText) return currentSortDirection === "asc" ? 1 : -1;
-        return 0;
-    });
+            rows.sort((a, b) => {
+                const aText = (a.children[columnIndex].textContent || "").trim().toLowerCase();
+                const bText = (b.children[columnIndex].textContent || "").trim().toLowerCase();
 
-    // Reinsert rows in sorted order (group headers stay untouched)
-    const allRows = Array.from(tbody.querySelectorAll("tr"));
-    const groupHeaders = allRows.filter(r => r.classList.contains("group-header"));
+                if (aText < bText) return currentSortDirection === "asc" ? -1 : 1;
+                if (aText > bText) return currentSortDirection === "asc" ? 1 : -1;
+                return 0;
+            });
 
-    tbody.innerHTML = "";
-    groupHeaders.forEach(h => tbody.appendChild(h));
-    rows.forEach(r => tbody.appendChild(r));
-}
+            // Rebuild table with sorted rows (group headers stay untouched)
+            const groupHeaders = Array.from(tbody.querySelectorAll(".group-header"));
 
-/* ---------------------------
-   FILTERING
----------------------------- */
-function applyFilters() {
-    const diff = document.getElementById("filterDifficulty").value.toLowerCase();
-    const state = document.getElementById("filterState").value.toLowerCase();
-    const tags = document.getElementById("filterTags").value.toLowerCase();
-    const city = document.getElementById("filterCity").value.toLowerCase();
-    const cost = document.getElementById("filterCost").value.toLowerCase();
+            tbody.innerHTML = "";
+            groupHeaders.forEach(h => tbody.appendChild(h));
+            rows.forEach(r => tbody.appendChild(r));
+        }
 
-    const rows = document.querySelectorAll("#places-table tbody tr:not(.group-header)");
+        /* ---------------------------
+           FILTERING
+        ---------------------------- */
+        function applyFilters() {
+            const diff = document.getElementById("filterDifficulty").value.toLowerCase();
+            const state = document.getElementById("filterState").value.toLowerCase();
+            const tags = document.getElementById("filterTags").value.toLowerCase();
+            const city = document.getElementById("filterCity").value.toLowerCase();
+            const cost = document.getElementById("filterCost").value.toLowerCase();
 
-    rows.forEach(row => {
-        const cells = row.children;
+            const rows = document.querySelectorAll("#places-table tbody tr:not(.group-header)");
 
-        const rowDiff = (cells[6].textContent || "").trim().toLowerCase();
-        const rowState = (cells[8].textContent || "").trim().toLowerCase();
-        const rowTags = (cells[2].textContent || "").trim().toLowerCase();
-        const rowCity = (cells[9].textContent || "").trim().toLowerCase();
-        const rowCost = (cells[10].textContent || "").trim().toLowerCase();
+            rows.forEach(row => {
+                const cells = row.children;
 
-        const matches =
-            (!diff || rowDiff.includes(diff)) &&
-            (!state || rowState.includes(state)) &&
-            (!tags || rowTags.includes(tags)) &&
-            (!city || rowCity.includes(city)) &&
-            (!cost || rowCost.includes(cost));
+                const rowDiff = (cells[6].textContent || "").trim().toLowerCase();
+                const rowState = (cells[8].textContent || "").trim().toLowerCase();
+                const rowTags = (cells[2].textContent || "").trim().toLowerCase();
+                const rowCity = (cells[9].textContent || "").trim().toLowerCase();
+                const rowCost = (cells[10].textContent || "").trim().toLowerCase();
 
-        row.style.display = matches ? "" : "none";
-    });
-}
+                const matches =
+                    (!diff || rowDiff.includes(diff)) &&
+                    (!state || rowState.includes(state)) &&
+                    (!tags || rowTags.includes(tags)) &&
+                    (!city || rowCity.includes(city)) &&
+                    (!cost || rowCost.includes(cost));
 
-/* ---------------------------
-   GROUPING (FULLY FIXED)
----------------------------- */
-function applyGrouping() {
-    const groupBy = document.getElementById("groupBy").value;
-    const tbody = document.querySelector("#places-table tbody");
-    const rows = Array.from(tbody.querySelectorAll("tr:not(.group-header)"));
+                row.style.display = matches ? "" : "none";
+            });
+        }
 
-    // If no grouping selected, do nothing
-    if (!groupBy) {
-        // Remove any existing group headers
-        tbody.querySelectorAll(".group-header").forEach(h => h.remove());
-        return;
-    }
+        /* ---------------------------
+           GROUPING (FINAL FIXED VERSION)
+        ---------------------------- */
+        function applyGrouping() {
+            const groupBy = document.getElementById("groupBy").value;
+            const tbody = document.querySelector("#places-table tbody");
 
-    const groups = {};
+            // Always remove old group headers first
+            tbody.querySelectorAll(".group-header").forEach(h => h.remove());
 
-    rows.forEach(row => {
-        const key = (row.children[groupBy].textContent || "").trim() || "Other";
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(row);
-    });
+            // If no grouping selected, stop here (do NOT rebuild table)
+            if (!groupBy) return;
 
-    tbody.innerHTML = "";
+            const rows = Array.from(tbody.querySelectorAll("tr:not(.group-header)"));
+            const groups = {};
 
-    Object.keys(groups).sort().forEach(group => {
-        const headerRow = document.createElement("tr");
-        headerRow.classList.add("group-header");
+            rows.forEach(row => {
+                const key = (row.children[groupBy].textContent || "").trim() || "Other";
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(row);
+            });
 
-        const headerCell = document.createElement("td");
-        headerCell.colSpan = 16;
-        headerCell.style.background = "#e0e7ff";
-        headerCell.style.fontWeight = "bold";
-        headerCell.style.padding = "10px";
-        headerCell.textContent = group;
+            tbody.innerHTML = "";
 
-        headerRow.appendChild(headerCell);
-        tbody.appendChild(headerRow);
+            Object.keys(groups).sort().forEach(group => {
+                const headerRow = document.createElement("tr");
+                headerRow.classList.add("group-header");
 
-        groups[group].forEach(r => tbody.appendChild(r));
-    });
-}
+                const headerCell = document.createElement("td");
+                headerCell.colSpan = 16;
+                headerCell.style.background = "#e0e7ff";
+                headerCell.style.fontWeight = "bold";
+                headerCell.style.padding = "10px";
+                headerCell.textContent = group;
 
-/* ---------------------------
-   MASTER PIPELINE
----------------------------- */
-function applyAllControls() {
-    applyGrouping();     // rebuilds table only if grouping is active
-    applyFilters();      // hides rows AFTER grouping
-    if (currentSortColumn !== null) {
-        sortTable(currentSortColumn);  // reapply sorting last
-    }
-}
+                headerRow.appendChild(headerCell);
+                tbody.appendChild(headerRow);
+
+                groups[group].forEach(r => tbody.appendChild(r));
+            });
+        }
+
+        /* ---------------------------
+           MASTER PIPELINE
+        ---------------------------- */
+        function applyAllControls() {
+            applyGrouping();     // rebuilds table only if grouping is active
+            applyFilters();      // hides rows AFTER grouping
+            if (currentSortColumn !== null) {
+                sortTable(currentSortColumn);  // reapply sorting last
+            }
+        }
+
 
 
         /* ============================
