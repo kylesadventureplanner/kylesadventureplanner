@@ -2,16 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Adventure Planner – Interesting Places</title>
+    <title>Adventure Planner – Debug Mode</title>
 
-    <!-- MSAL Authentication -->
     <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
     <script>
         // ============================
-        // 1. MSAL Setup
+        // MSAL CONFIG
         // ============================
-
         const msalConfig = {
             auth: {
                 clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
@@ -29,9 +27,8 @@
         let accessToken = null;
 
         // ============================
-        // 2. Sign In
+        // SIGN IN
         // ============================
-
         async function signIn() {
             try {
                 const loginResponse = await msalInstance.loginPopup(loginRequest);
@@ -47,13 +44,13 @@
                 accessToken = tokenResponse.accessToken;
                 console.log("Access token acquired");
 
-                // ⭐ DEBUG: List root folders
+                // ⭐ DEBUG 1 — List root folders
                 await debugListRoot();
 
-                // ⭐ DEBUG: List Copilot_Apps folder
+                // ⭐ DEBUG 2 — List Copilot_Apps folder
                 await debugListCopilotApps();
 
-                // Try loading table (will fail until we plug in correct path)
+                // ⭐ Attempt to load table (will work once we know exact file name)
                 await loadTable();
 
             } catch (error) {
@@ -62,9 +59,8 @@
         }
 
         // ============================
-        // ⭐ DEBUG: List OneDrive Root
+        // DEBUG: LIST ROOT
         // ============================
-
         async function debugListRoot() {
             const url = "https://graph.microsoft.com/v1.0/me/drive/root/children";
 
@@ -77,11 +73,10 @@
         }
 
         // ============================
-        // ⭐ DEBUG: List Copilot_Apps Folder
+        // DEBUG: LIST Copilot_Apps
         // ============================
-
         async function debugListCopilotApps() {
-            const url = "https://graph.microsoft.com/v1.0/me/drive/root:/Documents/Copilot_Apps:/children";
+            const url = "https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps:/children";
 
             const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${accessToken}` }
@@ -92,14 +87,13 @@
         }
 
         // ============================
-        // 3. Load Excel Table Rows
+        // LOAD TABLE (will fix path after debug)
         // ============================
-
         async function loadTable() {
             if (!accessToken) return;
 
-            // ⭐ TEMPORARY PLACEHOLDER — we will replace this once debug output shows the real path
-            const filePath = "Documents/Copilot_Apps/Adventure_Finder_Excel_DB.xlsx";
+            // TEMPORARY — will replace once we see the real file name
+            const filePath = "Copilot_Apps/Adventure_Finder_Excel_DB.xlsx";
 
             const url =
                 `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows`;
@@ -115,172 +109,12 @@
                 console.log("Table is empty or returned no rows");
                 return;
             }
-
-            const tbody = document.querySelector("#places-table tbody");
-            tbody.innerHTML = "";
-
-            data.value.forEach(row => {
-                const tr = document.createElement("tr");
-
-                row.values[0].forEach(cell => {
-                    const td = document.createElement("td");
-                    td.textContent = cell;
-                    tr.appendChild(td);
-                });
-
-                tbody.appendChild(tr);
-            });
-        }
-
-        // ============================
-        // 4. Add a New Row to Excel
-        // ============================
-
-        async function addRow() {
-            if (!accessToken) return;
-
-            const filePath = "Documents/Copilot_Apps/Adventure_Finder_Excel_DB.xlsx";
-
-            const url =
-                `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/MyList/rows/add`;
-
-            const newRow = [
-                document.getElementById("name").value,
-                document.getElementById("website").value,
-                document.getElementById("tags").value,
-                document.getElementById("driveTime").value,
-                document.getElementById("hours").value,
-                document.getElementById("duration").value,
-                document.getElementById("difficulty").value,
-                document.getElementById("trailLength").value,
-                document.getElementById("state").value,
-                document.getElementById("city").value,
-                document.getElementById("cost").value,
-                document.getElementById("directions").value,
-                document.getElementById("description").value,
-                document.getElementById("nearby").value,
-                document.getElementById("links").value,
-                document.getElementById("links2").value
-            ];
-
-            const body = { values: [newRow] };
-
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(body)
-            });
-
-            console.log("Row added:", await response.json());
-
-            await loadTable();
         }
     </script>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 30px;
-            background: #f7f7f7;
-        }
-
-        h1 {
-            margin-bottom: 10px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background: white;
-        }
-
-        th, td {
-            padding: 10px;
-            border: 1px solid #ddd;
-        }
-
-        #add-form {
-            margin-top: 30px;
-            background: white;
-            padding: 20px;
-            border-radius: 6px;
-        }
-
-        #add-form input, #add-form textarea {
-            width: 100%;
-            padding: 6px;
-            margin-bottom: 10px;
-        }
-
-        #add-form button {
-            padding: 10px 15px;
-            background: #0078d4;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        #add-form button:hover {
-            background: #005ea2;
-        }
-    </style>
 </head>
 
 <body>
-    <h1>Interesting Places to Visit</h1>
-
+    <h1>Adventure Planner Debug Mode</h1>
     <button onclick="signIn()">Sign In</button>
-
-    <table id="places-table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Website</th>
-                <th>Tags</th>
-                <th>Drive Time</th>
-                <th>Hours</th>
-                <th>Activity Duration</th>
-                <th>Difficulty</th>
-                <th>Trail Length</th>
-                <th>State</th>
-                <th>City</th>
-                <th>Cost</th>
-                <th>Directions</th>
-                <th>Description</th>
-                <th>Nearby Things to Do</th>
-                <th>Links</th>
-                <th>Links2</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-    <div id="add-form">
-        <h2>Add a New Place</h2>
-
-        <input id="name" placeholder="Name">
-        <input id="website" placeholder="Website URL">
-        <input id="tags" placeholder="Tags (comma-separated)">
-        <input id="driveTime" placeholder="Drive Time">
-        <input id="hours" placeholder="Hours">
-        <input id="duration" placeholder="Activity Duration">
-        <input id="difficulty" placeholder="Difficulty">
-        <input id="trailLength" placeholder="Trail Length">
-        <input id="state" placeholder="State">
-        <input id="city" placeholder="City">
-        <input id="cost" placeholder="Cost">
-        <input id="directions" placeholder="Directions">
-        <textarea id="description" placeholder="Description"></textarea>
-        <textarea id="nearby" placeholder="Nearby Things to Do"></textarea>
-        <input id="links" placeholder="Links">
-        <input id="links2" placeholder="Links2">
-
-        <button type="button" onclick="addRow()">Add Place</button>
-    </div>
-
 </body>
 </html>
