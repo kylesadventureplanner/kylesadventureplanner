@@ -648,11 +648,12 @@
         }
 
         function applyFilters() {
-            const diff = document.getElementById("filterDifficulty").value.toLowerCase();
-            const state = document.getElementById("filterState").value.toLowerCase();
-            const tags = document.getElementById("filterTags").value.toLowerCase();
-            const city = document.getElementById("filterCity").value.toLowerCase();
-            const cost = document.getElementById("filterCost").value.toLowerCase();
+            const rowDiff = (cells[6].textContent || "").trim().toLowerCase();
+            const rowState = (cells[8].textContent || "").trim().toLowerCase();
+            const rowTags = (cells[2].textContent || "").trim().toLowerCase();
+            const rowCity = (cells[9].textContent || "").trim().toLowerCase();
+            const rowCost = (cells[10].textContent || "").trim().toLowerCase();
+
 
             const rows = document.querySelectorAll("#places-table tbody tr");
 
