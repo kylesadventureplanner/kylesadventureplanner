@@ -109,15 +109,22 @@
             }
 
             .filters-active-badge {
-                font-size: 11px;
-                padding: 4px 8px;
+                font-size: 12px;
+                padding: 5px 10px;
                 border-radius: 999px;
-                background: #e5e7eb;
-                color: #6b7280;
+                background: #d1fae5; /* mint green */
+                color: #065f46; /* dark green text */
                 opacity: 0;
                 transform: translateY(-2px);
-                transition: opacity 0.2s ease, transform 0.2s ease;
+                transition: opacity 0.25s ease, transform 0.25s ease;
+                border: 1px solid #34d399;
             }
+
+            .filters-active-visible {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
 
             .filters-active-visible {
                 opacity: 1;
@@ -162,6 +169,11 @@
             .clear-filter-btn:hover {
                 color: #4b5563;
             }
+            .control-card.filters-active {
+                background: #ecfdf5; /* mint green background */
+                border: 1px solid #6ee7b7;
+                box-shadow: 0 0 0 2px #a7f3d0 inset;
+            }
 
             /* Animated filtering */
             #places-table tbody tr {
@@ -171,12 +183,13 @@
             #places-table tbody tr.hidden-row {
                 opacity: 0;
                 transform: translateY(2px);
-                height: 0;
-                margin: 0;
-                padding-top: 0;
-                padding-bottom: 0;
+                height: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
                 pointer-events: none;
             }
+
 
             /* ============================================================
                CONTROL BAR: FILTERING, SORTING, GROUPING (FINAL FIXED VERSION)
@@ -468,6 +481,9 @@
                 cursor: pointer;
                 font-size: 14px;
             }
+            /* ============================
+            CSS for the preview + expanded text
+            ============================ */
 
             #addAdventureSection {
                 max-height: 0;
@@ -482,6 +498,38 @@
                 max-height: 600px;
                 padding: 16px;
             }
+
+            .description-cell {
+                max-width: 280px;
+            }
+
+            .desc-preview {
+                color: #374151;
+            }
+
+            .hidden-desc {
+                display: none;
+                white-space: normal;
+            }
+
+            .desc-expanded {
+                display: block !important;
+            }
+
+            .desc-more-btn {
+                margin-top: 4px;
+                background: #e5e7eb;
+                border: none;
+                padding: 2px 6px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+
+            .desc-more-btn:hover {
+                background: #d1d5db;
+            }
+
 
             /* ============================
                RESPONSIVE
@@ -711,7 +759,21 @@
                     tr.appendChild(cell(directions));
 
                     // Description
-                    tr.appendChild(cell(description));
+                    const descTd = document.createElement("td");
+                    descTd.className = "description-cell";
+
+                    if (description) {
+                        const preview = description.slice(0, 120); // first 120 chars
+                        const isLong = description.length > 120;
+
+                        descTd.innerHTML = `
+                            <div class="desc-preview">${preview}${isLong ? "…" : ""}</div>
+                            ${isLong ? `<button class="desc-more-btn" onclick="toggleDescription(this)">More</button>` : ""}
+                            <div class="desc-full hidden-desc">${description}</div>
+                        `;
+                    }
+
+                    tr.appendChild(descTd);
 
                     // Nearby Things to Do
                     tr.appendChild(cell(nearby));
@@ -942,12 +1004,14 @@
                     diff || state || tags || city || cost || groupBy;
 
                 const badge = document.getElementById("filtersActiveBadge");
-                if (!badge) return;
+                const card = document.querySelector(".control-card");
 
                 if (anyActive) {
                     badge.classList.add("filters-active-visible");
+                    card.classList.add("filters-active");
                 } else {
                     badge.classList.remove("filters-active-visible");
+                    card.classList.remove("filters-active");
                 }
             }
 
@@ -956,6 +1020,24 @@
                 applyFilters();
                 if (currentSortColumn !== null) {
                     sortTable(currentSortColumn);
+                }
+            }
+
+            function toggleDescription(btn) {
+                const cell = btn.closest("td");
+                const full = cell.querySelector(".hidden-desc");
+                const preview = cell.querySelector(".desc-preview");
+
+                const expanded = full.classList.toggle("desc-expanded");
+
+                if (expanded) {
+                    preview.style.display = "none";
+                    full.style.display = "block";
+                    btn.textContent = "Less";
+                } else {
+                    preview.style.display = "block";
+                    full.style.display = "none";
+                    btn.textContent = "More";
                 }
             }
 
