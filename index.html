@@ -661,6 +661,49 @@
                     padding: 6px 6px;
                 }
             }
+            .quick-filters-card {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 20px;
+}
+
+.quick-filters-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #374151;
+}
+
+.quick-filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.quick-filter-btn {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    background: #f9fafb;
+    cursor: pointer;
+    font-size: 12px;
+    color: #374151;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.quick-filter-btn:hover {
+    background: #eef2ff;
+}
+
+.quick-filter-btn.active {
+    background: #d1fae5;
+    border-color: #34d399;
+    color: #065f46;
+    font-weight: 600;
+}
+
         </style>
 
         <script>
@@ -1177,6 +1220,35 @@
                 }
             }
 
+            // QUICK FILTER BUTTON LOGIC
+document.addEventListener("DOMContentLoaded", () => {
+    const quickButtons = document.querySelectorAll(".quick-filter-btn");
+
+    quickButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const tag = btn.dataset.filter.toLowerCase();
+
+            // Toggle active state
+            const isActive = btn.classList.contains("active");
+
+            // Clear all quick buttons
+            quickButtons.forEach(b => b.classList.remove("active"));
+
+            if (isActive) {
+                // Clear filter
+                document.getElementById("filterTags").value = "";
+            } else {
+                // Activate this button
+                btn.classList.add("active");
+                document.getElementById("filterTags").value = tag;
+            }
+
+            applyAllControls();
+        });
+    });
+});
+
+
             // COLLAPSIBLE ADD SECTION
             function toggleAddSection() {
                 const section = document.getElementById("addAdventureSection");
@@ -1326,6 +1398,22 @@
                     </div>
                 </div>
             </section>
+            <!-- QUICK FILTER BUTTONS -->
+<section class="quick-filters-card">
+    <div class="quick-filters-title">Common Filters</div>
+
+    <div class="quick-filters-row">
+        <button class="quick-filter-btn" data-filter="restaurant">Restaurant</button>
+        <button class="quick-filter-btn" data-filter="animals">Animals</button>
+        <button class="quick-filter-btn" data-filter="hiking">Hiking</button>
+        <button class="quick-filter-btn" data-filter="garden center">Garden Center</button>
+        <button class="quick-filter-btn" data-filter="orchards">Orchards</button>
+        <button class="quick-filter-btn" data-filter="ziplining">Ziplining</button>
+        <button class="quick-filter-btn" data-filter="market">Market</button>
+        <button class="quick-filter-btn" data-filter="scenic drive">Scenic Drive</button>
+    </div>
+</section>
+
 
             <!-- ADVENTURE LIST CARD -->
             <section class="card">
