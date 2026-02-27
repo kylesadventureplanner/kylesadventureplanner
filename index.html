@@ -158,6 +158,26 @@
             min-width: 160px;
         }
 
+        .filter-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .clear-filter-btn {
+            position: absolute;
+            right: 6px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            color: #9ca3af;
+        }
+
+        .clear-filter-btn:hover {
+            color: #4b5563;
+        }
+
         /* AUTOCOMPLETE */
         .autocomplete-wrapper {
             position: relative;
@@ -198,7 +218,7 @@
             background: #f3f4f6;
         }
 
-        /* TABLE */
+        /* TABLE CARD */
         .card {
             background: white;
             padding: 16px;
@@ -279,7 +299,7 @@
             text-decoration: underline;
         }
 
-        /* PILLS + TAGS */
+        /* DIFFICULTY PILLS */
         .pill {
             display: inline-flex;
             align-items: center;
@@ -305,6 +325,7 @@
             color: #b91c1c;
         }
 
+        /* TAG PILLS + CATEGORY COLORS */
         .tag-pill {
             display: inline-block;
             padding: 2px 6px;
@@ -312,24 +333,56 @@
             font-size: 11px;
             margin-right: 4px;
             color: white;
+            font-weight: 500;
         }
 
-        .tag-hiking { background: #2563eb; }
+        /* Nature / Outdoors */
         .tag-waterfalls { background: #0ea5e9; }
-        .tag-scenic { background: #10b981; }
-        .tag-family { background: #f59e0b; }
-        .tag-lake { background: #6366f1; }
-        .tag-forest { background: #16a34a; }
-        .tag-mountain { background: #7c3aed; }
+        .tag-overlook { background: #14b8a6; }
+        .tag-wildflower-seeds { background: #10b981; }
+        .tag-native-plants { background: #059669; }
 
-        /* DESCRIPTION PREVIEW */
+        /* Animals / Farms */
+        .tag-farms-petting-zoos { background: #f59e0b; }
+        .tag-goat-cheese-farm { background: #d97706; }
+        .tag-animal-special-events { background: #fbbf24; }
+
+        /* Adventure / Activities */
+        .tag-clibing-course { background: #7c3aed; }
+        .tag-rapelling { background: #6d28d9; }
+        .tag-trains { background: #4f46e5; }
+
+        /* Food & Drink */
+        .tag-turkish-coffee { background: #6d28d9; }
+        .tag-traditional-middle-eastern-food { background: #a855f7; }
+        .tag-german-pretzels { background: #b91c1c; }
+        .tag-german-pub { background: #7f1d1d; }
+        .tag-european-market-and-polish-deli { background: #dc2626; }
+        .tag-mexican-ice-cream { background: #ea580c; }
+        .tag-take-out-only { background: #9ca3af; }
+        .tag-na-beer-cider-sold-here { background: #475569; }
+        .tag-butcher-shop-and-na-beer-sold-here { background: #334155; }
+        .tag-cheese-shop { background: #facc15; }
+
+        /* Shopping / Markets */
+        .tag-flea-market { background: #6366f1; }
+
+        /* Music & Events */
+        .tag-music { background: #2563eb; }
+        .tag-live-music { background: #1d4ed8; }
+
+        /* Aquariums */
+        .tag-aquariums { background: #0284c7; }
+
+        /* DESCRIPTION + HOURS PREVIEW */
         .description-cell {
             max-width: 260px;
         }
 
-        .desc-preview {
+        .desc-preview,
+        .hours-preview {
             display: -webkit-box;
-            -webkit-line-clamp: 3;
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -428,8 +481,6 @@
         @media (max-width: 700px) {
             header {
                 flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
             }
 
             .header-right {
@@ -602,10 +653,12 @@
                     return td;
                 }
 
+                // Name
                 const nameTd = document.createElement("td");
                 nameTd.innerHTML = name ? `<strong>${name}</strong>` : "";
                 tr.appendChild(nameTd);
 
+                // Website
                 const websiteTd = document.createElement("td");
                 websiteTd.className = "link-cell";
                 if (website) {
@@ -613,6 +666,7 @@
                 }
                 tr.appendChild(websiteTd);
 
+                // Tags
                 const tagTd = document.createElement("td");
                 tagTd.className = "tag-cell";
                 if (tags) {
@@ -623,10 +677,18 @@
                 }
                 tr.appendChild(tagTd);
 
+                // Drive Time
                 tr.appendChild(cell(driveTime));
-                tr.appendChild(cell(hours));
+
+                // Hours (2-line preview)
+                const hoursTd = document.createElement("td");
+                hoursTd.innerHTML = `<div class="hours-preview">${hours || ""}</div>`;
+                tr.appendChild(hoursTd);
+
+                // Duration
                 tr.appendChild(cell(duration));
 
+                // Difficulty pill
                 const diffTd = document.createElement("td");
                 if (difficulty) {
                     let cls = "pill";
@@ -638,12 +700,16 @@
                 }
                 tr.appendChild(diffTd);
 
+                // Trail Length, State, City, Cost
                 tr.appendChild(cell(trailLength));
                 tr.appendChild(cell(state));
                 tr.appendChild(cell(city));
                 tr.appendChild(cell(cost));
+
+                // Directions
                 tr.appendChild(cell(directions));
 
+                // Description (2-line preview + toggle)
                 const descTd = document.createElement("td");
                 descTd.className = "description-cell";
                 if (description) {
@@ -655,8 +721,10 @@
                 }
                 tr.appendChild(descTd);
 
+                // Nearby
                 tr.appendChild(cell(nearby));
 
+                // Links
                 const linksTd = document.createElement("td");
                 linksTd.className = "link-cell";
                 if (links) {
@@ -664,6 +732,7 @@
                 }
                 tr.appendChild(linksTd);
 
+                // Links2
                 const links2Td = document.createElement("td");
                 links2Td.className = "link-cell";
                 if (links2) {
@@ -957,7 +1026,7 @@
                     <label>Filter by Tags</label>
                     <div class="autocomplete-wrapper">
                         <input id="filterTags"
-                               placeholder="scenic, waterfall…"
+                               placeholder="waterfalls, overlook…"
                                oninput="showSuggestions(this, 'tags'); applyAllControls()">
                         <div class="suggestions-box"></div>
                     </div>
@@ -1060,7 +1129,7 @@
                     </div>
                     <div>
                         <label for="tags">Tags</label>
-                        <input id="tags" placeholder="scenic, easy, sunset" />
+                        <input id="tags" placeholder="waterfalls, overlook, music…" />
                     </div>
 
                     <div>
