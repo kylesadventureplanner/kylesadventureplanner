@@ -1,1200 +1,1533 @@
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <title>Kyle's Adventure Finder</title>
-
-    <!-- MSAL -->
-    <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
-
-    <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            margin: 0;
-            background: #f5f7fb;
-            color: #222;
-        }
-
-        header {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            padding: 16px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 20px;
-        }
-
-        header .subtitle {
-            font-size: 13px;
-            opacity: 0.9;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        button {
-            border-radius: 999px;
-            border: none;
-            padding: 8px 14px;
-            font-size: 13px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .btn-primary {
-            background: white;
-            color: #1d4ed8;
-        }
-
-        .btn-primary:hover {
-            background: #e5edff;
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: white;
-            border: 1px solid rgba(255,255,255,0.4);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(255,255,255,0.1);
-        }
-
-        main {
-            padding: 20px 24px 40px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .status-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-            font-size: 13px;
-            color: #4b5563;
-        }
-
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: #e0f2fe;
-            color: #0369a1;
-            font-size: 12px;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
-            background: #22c55e;
-        }
-
-        .muted {
-            font-size: 11px;
-            color: #9ca3af;
-        }
-
-        /* CONTROL CARD */
-        .control-card {
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            margin-bottom: 20px;
-        }
-
-        .control-card.filters-active {
-            background: #ecfdf5;
-            border: 1px solid #6ee7b7;
-            box-shadow: 0 0 0 2px #a7f3d0 inset;
-        }
-
-        .control-card-header-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .filters-active-badge {
-            font-size: 12px;
-            padding: 5px 10px;
-            border-radius: 999px;
-            background: #d1fae5;
-            color: #065f46;
-            opacity: 0;
-            transform: translateY(-2px);
-            transition: opacity 0.25s ease, transform 0.25s ease;
-            border: 1px solid #34d399;
-        }
-
-        .filters-active-visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        #controlsBar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px 16px;
-            margin-top: 12px;
-        }
-
-        .control-block {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            min-width: 160px;
-        }
-
-        .filter-input-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .clear-filter-btn {
-            position: absolute;
-            right: 6px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 14px;
-            color: #9ca3af;
-        }
-
-        .clear-filter-btn:hover {
-            color: #4b5563;
-        }
-
-        /* AUTOCOMPLETE */
-        .autocomplete-wrapper {
-            position: relative;
-            width: 100%;
-        }
-
-        .autocomplete-wrapper input {
-            width: 100%;
-            padding: 6px 8px;
-            border-radius: 8px;
-            border: 1px solid #d1d5db;
-            font-size: 13px;
-        }
-
-        .suggestions-box {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            margin-top: 2px;
-            z-index: 50;
-            display: none;
-            max-height: 160px;
-            overflow-y: auto;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-        }
-
-        .suggestion-item {
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .suggestion-item:hover {
-            background: #f3f4f6;
-        }
-
-        /* TABLE CARD */
-        .card {
-            background: white;
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            margin-top: 16px;
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-
-        .card-title {
-            font-weight: 600;
-        }
-
-        .card-subtitle {
-            font-size: 12px;
-            color: #6b7280;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        thead {
-            background: #eff3ff;
-        }
-
-        th, td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #e5e7eb;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            font-weight: 600;
-            color: #374151;
-            position: sticky;
-            top: 0;
-            z-index: 5;
-            background: #eff3ff;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-
-        tbody tr:nth-child(even) {
-            background: #f9fafb;
-        }
-
-        tbody tr:hover {
-            background: #eef2ff;
-        }
-
-        #places-table tbody tr.hidden-row {
-            opacity: 0;
-            transform: translateY(2px);
-            display: none !important;
-        }
-
-        .sort-icon {
-            margin-left: 6px;
-            opacity: 0.5;
-        }
-
-        .link-cell a {
-            color: #2563eb;
-            text-decoration: none;
-        }
-
-        .link-cell a:hover {
-            text-decoration: underline;
-        }
-
-        /* DIFFICULTY PILLS */
-        .pill {
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 11px;
-            background: #e5e7eb;
-            color: #374151;
-        }
-
-        .pill-green {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .pill-amber {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .pill-red {
-            background: #fee2e2;
-            color: #b91c1c;
-        }
-
-        /* TAG PILLS + CATEGORY COLORS */
-        .tag-pill {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 6px;
-            font-size: 11px;
-            margin-right: 4px;
-            color: white;
-            font-weight: 500;
-        }
-
-        /* Nature / Outdoors */
-        .tag-waterfalls { background: #0ea5e9; }
-        .tag-overlook { background: #14b8a6; }
-        .tag-wildflower-seeds { background: #10b981; }
-        .tag-native-plants { background: #059669; }
-
-        /* Animals / Farms */
-        .tag-farms-petting-zoos { background: #f59e0b; }
-        .tag-goat-cheese-farm { background: #d97706; }
-        .tag-animal-special-events { background: #fbbf24; }
-
-        /* Adventure / Activities */
-        .tag-clibing-course { background: #7c3aed; }
-        .tag-rapelling { background: #6d28d9; }
-        .tag-trains { background: #4f46e5; }
-
-        /* Food & Drink */
-        .tag-turkish-coffee { background: #6d28d9; }
-        .tag-traditional-middle-eastern-food { background: #a855f7; }
-        .tag-german-pretzels { background: #b91c1c; }
-        .tag-german-pub { background: #7f1d1d; }
-        .tag-european-market-and-polish-deli { background: #dc2626; }
-        .tag-mexican-ice-cream { background: #ea580c; }
-        .tag-take-out-only { background: #9ca3af; }
-        .tag-na-beer-cider-sold-here { background: #475569; }
-        .tag-butcher-shop-and-na-beer-sold-here { background: #334155; }
-        .tag-cheese-shop { background: #facc15; }
-
-        /* Shopping / Markets */
-        .tag-flea-market { background: #6366f1; }
-
-        /* Music & Events */
-        .tag-music { background: #2563eb; }
-        .tag-live-music { background: #1d4ed8; }
-
-        /* Aquariums */
-        .tag-aquariums { background: #0284c7; }
-
-        /* DESCRIPTION + HOURS PREVIEW */
-        .description-cell {
-            max-width: 260px;
-        }
-
-        .desc-preview,
-        .hours-preview {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .hidden-desc {
-            display: none;
-            white-space: normal;
-        }
-
-        .desc-more-btn {
-            margin-top: 4px;
-            background: #e5e7eb;
-            border: none;
-            padding: 2px 6px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .desc-more-btn:hover {
-            background: #d1d5db;
-        }
-
-        /* ADD ADVENTURE SECTION */
-        #toggleAddSection {
-            width: 100%;
-            margin-top: 10px;
-            background: #0078d4;
-            color: white;
-            padding: 12px;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        #addAdventureSection {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.35s ease;
-            background: white;
-            padding: 0 16px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        #addAdventureSection.expanded {
-            max-height: 600px;
-            padding: 16px;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px 12px;
-            margin-top: 10px;
-        }
-
-        .form-grid label {
-            font-size: 11px;
-            font-weight: 600;
-            color: #4b5563;
-            display: block;
-            margin-bottom: 3px;
-        }
-
-        .form-grid input,
-        .form-grid textarea {
-            width: 100%;
-            border-radius: 8px;
-            border: 1px solid #d1d5db;
-            padding: 6px 8px;
-            font-size: 12px;
-            font-family: inherit;
-        }
-
-        .form-grid textarea {
-            min-height: 48px;
-            resize: vertical;
-        }
-
-        .form-footer {
-            margin-top: 12px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-
-        /* RESPONSIVE */
-        @media (max-width: 900px) {
-            .form-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+    <head>
+        <meta charset="UTF-8" />
+        <title>Kyle's Adventure Finder</title>
+
+        <!-- MSAL -->
+        <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+
+        <style>
+            body {
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+                margin: 0;
+                background: #f5f7fb;
+                color: #222;
             }
-        }
 
-        @media (max-width: 700px) {
             header {
-                flex-direction: column;
-            }
-
-            .header-right {
-                align-self: stretch;
+                background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                color: white;
+                padding: 16px 24px;
+                display: flex;
+                align-items: center;
                 justify-content: space-between;
             }
 
-            .form-grid {
-                grid-template-columns: 1fr;
+            header h1 {
+                margin: 0;
+                font-size: 20px;
+            }
+
+            header .subtitle {
+                font-size: 13px;
+                opacity: 0.9;
+            }
+
+            .header-right {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            button {
+                border-radius: 999px;
+                border: none;
+                padding: 8px 14px;
+                font-size: 13px;
+                cursor: pointer;
+                font-weight: 500;
+            }
+
+            .btn-primary {
+                background: white;
+                color: #1d4ed8;
+            }
+
+            .btn-primary:hover {
+                background: #e5edff;
+            }
+
+            .btn-ghost {
+                background: transparent;
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.4);
+            }
+
+            .btn-ghost:hover {
+                background: rgba(255, 255, 255, 0.1);
             }
 
             main {
-                padding: 16px 14px 28px;
+                padding: 20px 24px 40px;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+
+            .status-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 16px;
+                font-size: 13px;
+                color: #4b5563;
+            }
+
+            .status-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 10px;
+                border-radius: 999px;
+                background: #e0f2fe;
+                color: #0369a1;
+                font-size: 12px;
+            }
+
+            .status-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 999px;
+                background: #22c55e;
+            }
+
+            .muted {
+                font-size: 11px;
+                color: #9ca3af;
+            }
+
+            /* CONTROL CARD */
+            .control-card {
+                background: white;
+                padding: 16px;
+                border-radius: 8px;
+                border: 1px solid #e5e7eb;
+                margin-bottom: 20px;
+            }
+
+            .control-card.filters-active {
+                background: #ecfdf5;
+                border: 1px solid #6ee7b7;
+                box-shadow: 0 0 0 2px #a7f3d0 inset;
+            }
+
+            .control-card-header-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .filters-active-badge {
+                font-size: 12px;
+                padding: 5px 10px;
+                border-radius: 999px;
+                background: #d1fae5;
+                color: #065f46;
+                opacity: 0;
+                transform: translateY(-2px);
+                transition:
+                    opacity 0.25s ease,
+                    transform 0.25s ease;
+                border: 1px solid #34d399;
+            }
+
+            .filters-active-visible {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            #controlsBar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px 16px;
+                margin-top: 12px;
             }
 
             .control-block {
-                min-width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                min-width: 160px;
             }
 
-            th, td {
-                padding: 6px 6px;
+            .filter-input-wrapper {
+                position: relative;
+                display: flex;
+                align-items: center;
             }
-        }
-    </style>
 
-    <script>
-        // MSAL CONFIG
-        const msalConfig = {
-            auth: {
-                clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
-                authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
-                redirectUri: window.location.origin,
-            },
-        };
+            .clear-filter-btn {
+                position: absolute;
+                right: 6px;
+                border: none;
+                background: transparent;
+                cursor: pointer;
+                font-size: 14px;
+                color: #9ca3af;
+            }
 
-        const msalInstance = new msal.PublicClientApplication(msalConfig);
+            .clear-filter-btn:hover {
+                color: #4b5563;
+            }
 
-        const loginRequest = {
-            scopes: ["User.Read", "Files.ReadWrite", "Sites.ReadWrite.All"],
-        };
+            /* AUTOCOMPLETE */
+            .autocomplete-wrapper {
+                position: relative;
+                width: 100%;
+            }
 
-        let accessToken = null;
-        let activeAccount = null;
+            .autocomplete-wrapper input {
+                width: 100%;
+                padding: 6px 8px;
+                border-radius: 8px;
+                border: 1px solid #d1d5db;
+                font-size: 13px;
+            }
 
-        const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
-        const tableName = "MyList";
+            .suggestions-box {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                margin-top: 2px;
+                z-index: 50;
+                display: none;
+                max-height: 160px;
+                overflow-y: auto;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+            }
 
-        async function signIn() {
-            try {
-                const loginResponse = await msalInstance.loginPopup(loginRequest);
-                activeAccount = loginResponse.account;
-                msalInstance.setActiveAccount(activeAccount);
+            .suggestion-item {
+                padding: 6px 10px;
+                cursor: pointer;
+                font-size: 14px;
+            }
 
-                const tokenResponse = await msalInstance.acquireTokenSilent({
-                    ...loginRequest,
-                    account: activeAccount,
+            .suggestion-item:hover {
+                background: #f3f4f6;
+            }
+
+            /* TABLE CARD */
+            .card {
+                background: white;
+                padding: 16px;
+                border-radius: 8px;
+                border: 1px solid #e5e7eb;
+                margin-top: 16px;
+            }
+
+            .card-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+
+            .card-title {
+                font-weight: 600;
+            }
+
+            .card-subtitle {
+                font-size: 12px;
+                color: #6b7280;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+            }
+
+            thead {
+                background: #eff3ff;
+            }
+
+            th,
+            td {
+                padding: 8px 10px;
+                border-bottom: 1px solid #e5e7eb;
+                text-align: left;
+                vertical-align: top;
+            }
+
+            th {
+                font-weight: 600;
+                color: #374151;
+                position: sticky;
+                top: 0;
+                z-index: 5;
+                background: #eff3ff;
+                white-space: nowrap;
+                cursor: pointer;
+            }
+
+            tbody tr:nth-child(even) {
+                background: #f9fafb;
+            }
+
+            tbody tr:hover {
+                background: #eef2ff;
+            }
+
+            #places-table tbody tr.hidden-row {
+                opacity: 0;
+                transform: translateY(2px);
+                display: none !important;
+            }
+
+            .sort-icon {
+                margin-left: 6px;
+                opacity: 0.5;
+            }
+
+            .link-cell a {
+                color: #2563eb;
+                text-decoration: none;
+            }
+
+            .link-cell a:hover {
+                text-decoration: underline;
+            }
+
+            /* DIFFICULTY PILLS */
+            .pill {
+                display: inline-flex;
+                align-items: center;
+                padding: 2px 8px;
+                border-radius: 999px;
+                font-size: 11px;
+                background: #e5e7eb;
+                color: #374151;
+            }
+
+            .pill-green {
+                background: #dcfce7;
+                color: #166534;
+            }
+
+            .pill-amber {
+                background: #fef3c7;
+                color: #92400e;
+            }
+
+            .pill-red {
+                background: #fee2e2;
+                color: #b91c1c;
+            }
+
+            /* Base pill style */
+            .tag-pill {
+                display: inline-block;
+                padding: 2px 6px;
+                border-radius: 6px;
+                font-size: 11px;
+                margin-right: 4px;
+                color: white;
+                font-weight: 500;
+            }
+
+            /* -------------------------
+               NATURE / OUTDOORS
+            -------------------------- */
+            .tag-waterfalls {
+                background: #0ea5e9;
+            }
+            .tag-drive-up-waterfall {
+                background: #0284c7;
+            }
+            .tag-overlook {
+                background: #14b8a6;
+            }
+            .tag-scenic-drive {
+                background: #0d9488;
+            }
+            .tag-lake {
+                background: #38bdf8;
+            }
+            .tag-nature {
+                background: #10b981;
+            }
+            .tag-park {
+                background: #059669;
+            }
+            .tag-wildflower-seeds {
+                background: #16a34a;
+            }
+            .tag-native-plants {
+                background: #15803d;
+            }
+
+            /* -------------------------
+               ANIMALS / FARMS
+            -------------------------- */
+            .tag-animals {
+                background: #f59e0b;
+            }
+            .tag-farm {
+                background: #d97706;
+            }
+            .tag-farms-petting-zoos {
+                background: #fbbf24;
+            }
+            .tag-goat-cheese-farm {
+                background: #fcd34d;
+            }
+            .tag-animal-special-events {
+                background: #fde047;
+            }
+
+            /* -------------------------
+               ADVENTURE / ACTIVITIES
+            -------------------------- */
+            .tag-hiking {
+                background: #2563eb;
+            }
+            .tag-paddling {
+                background: #1d4ed8;
+            }
+            .tag-ziplining {
+                background: #4f46e5;
+            }
+            .tag-clibing-course {
+                background: #7c3aed;
+            }
+            .tag-rapelling {
+                background: #6d28d9;
+            }
+            .tag-train {
+                background: #4338ca;
+            }
+            .tag-trains {
+                background: #3730a3;
+            }
+            .tag-attractions {
+                background: #6366f1;
+            }
+            .tag-camping {
+                background: #3b82f6;
+            }
+
+            /* -------------------------
+               FOOD / DRINK
+            -------------------------- */
+            .tag-restaurant {
+                background: #dc2626;
+            }
+            .tag-restuarant {
+                background: #dc2626;
+            } /* misspelling included */
+            .tag-take-out-only {
+                background: #9ca3af;
+            }
+            .tag-turkish-coffee {
+                background: #6d28d9;
+            }
+            .tag-traditional-middle-eastern-food {
+                background: #a855f7;
+            }
+            .tag-german-pretzels {
+                background: #b91c1c;
+            }
+            .tag-german-pub {
+                background: #7f1d1d;
+            }
+            .tag-mexican-ice-cream {
+                background: #ea580c;
+            }
+            .tag-cheese-shop {
+                background: #facc15;
+            }
+            .tag-na-beer-cider-sold-here {
+                background: #475569;
+            }
+            .tag-butcher-shop-and-na-beer-sold-here {
+                background: #334155;
+            }
+
+            /* -------------------------
+               SHOPS / MARKETS
+            -------------------------- */
+            .tag-used-book-store {
+                background: #6b7280;
+            }
+            .tag-grocery {
+                background: #4b5563;
+            }
+            .tag-market {
+                background: #6366f1;
+            }
+            .tag-flea-market {
+                background: #818cf8;
+            }
+            .tag-online-shop {
+                background: #7dd3fc;
+            }
+            .tag-local-shop {
+                background: #60a5fa;
+            }
+            .tag-european-market-and-polish-deli {
+                background: #dc2626;
+            }
+
+            /* -------------------------
+               GARDEN / PLANTS
+            -------------------------- */
+            .tag-nursey {
+                background: #65a30d;
+            } /* keeping your spelling */
+            .tag-garden-center {
+                background: #4d7c0f;
+            }
+            .tag-orchards {
+                background: #84cc16;
+            }
+
+            /* -------------------------
+               ARTS / CRAFTS / MISC
+            -------------------------- */
+            .tag-arts-and-crafts {
+                background: #d946ef;
+            }
+            .tag-misc {
+                background: #9ca3af;
+            }
+
+            /* -------------------------
+               ENTERTAINMENT / MUSIC
+            -------------------------- */
+            .tag-entertainment {
+                background: #2563eb;
+            }
+            .tag-music {
+                background: #1d4ed8;
+            }
+            .tag-live-music {
+                background: #1e40af;
+            }
+
+            /* -------------------------
+               AQUARIUMS
+            -------------------------- */
+            .tag-aquariums {
+                background: #0284c7;
+            }
+
+            /* DESCRIPTION + HOURS PREVIEW */
+            .description-cell {
+                max-width: 260px;
+            }
+
+            .desc-preview,
+            .hours-preview {
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .hidden-desc {
+                display: none;
+                white-space: normal;
+            }
+
+            .desc-more-btn {
+                margin-top: 4px;
+                background: #e5e7eb;
+                border: none;
+                padding: 2px 6px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+
+            .desc-more-btn:hover {
+                background: #d1d5db;
+            }
+
+            /* ADD ADVENTURE SECTION */
+            #toggleAddSection {
+                width: 100%;
+                margin-top: 10px;
+                background: #0078d4;
+                color: white;
+                padding: 12px;
+                border-radius: 6px;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+            }
+
+            #addAdventureSection {
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.35s ease;
+                background: white;
+                padding: 0 16px;
+                border-bottom: 1px solid #ddd;
+            }
+
+            #addAdventureSection.expanded {
+                max-height: 600px;
+                padding: 16px;
+            }
+
+            .form-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px 12px;
+                margin-top: 10px;
+            }
+
+            .form-grid label {
+                font-size: 11px;
+                font-weight: 600;
+                color: #4b5563;
+                display: block;
+                margin-bottom: 3px;
+            }
+
+            .form-grid input,
+            .form-grid textarea {
+                width: 100%;
+                border-radius: 8px;
+                border: 1px solid #d1d5db;
+                padding: 6px 8px;
+                font-size: 12px;
+                font-family: inherit;
+            }
+
+            .form-grid textarea {
+                min-height: 48px;
+                resize: vertical;
+            }
+
+            .form-footer {
+                margin-top: 12px;
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+            }
+
+            /* RESPONSIVE */
+            @media (max-width: 900px) {
+                .form-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+            }
+
+            @media (max-width: 700px) {
+                header {
+                    flex-direction: column;
+                }
+
+                .header-right {
+                    align-self: stretch;
+                    justify-content: space-between;
+                }
+
+                .form-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                main {
+                    padding: 16px 14px 28px;
+                }
+
+                .control-block {
+                    min-width: 100%;
+                }
+
+                th,
+                td {
+                    padding: 6px 6px;
+                }
+            }
+        </style>
+
+        <script>
+            // MSAL CONFIG
+            const msalConfig = {
+                auth: {
+                    clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
+                    authority:
+                        "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
+                    redirectUri: window.location.origin,
+                },
+            };
+
+            const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+            const loginRequest = {
+                scopes: ["User.Read", "Files.ReadWrite", "Sites.ReadWrite.All"],
+            };
+
+            let accessToken = null;
+            let activeAccount = null;
+
+            const filePath =
+                "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+            const tableName = "MyList";
+
+            async function signIn() {
+                try {
+                    const loginResponse =
+                        await msalInstance.loginPopup(loginRequest);
+                    activeAccount = loginResponse.account;
+                    msalInstance.setActiveAccount(activeAccount);
+
+                    const tokenResponse = await msalInstance.acquireTokenSilent(
+                        {
+                            ...loginRequest,
+                            account: activeAccount,
+                        },
+                    );
+
+                    accessToken = tokenResponse.accessToken;
+
+                    document.getElementById("user-label").textContent =
+                        activeAccount.username;
+                    document.getElementById("auth-status").textContent =
+                        "Connected to Excel backend";
+                    document.getElementById("auth-dot").style.background =
+                        "#22c55e";
+
+                    await loadTable();
+                } catch (error) {
+                    console.error(error);
+                    alert("Sign-in failed. Check console for details.");
+                }
+            }
+
+            async function signOut() {
+                const account = msalInstance.getActiveAccount();
+                if (!account) return;
+
+                await msalInstance.logoutPopup({
+                    account,
+                    postLogoutRedirectUri: window.location.origin,
                 });
 
-                accessToken = tokenResponse.accessToken;
-
-                document.getElementById("user-label").textContent = activeAccount.username;
-                document.getElementById("auth-status").textContent = "Connected to Excel backend";
-                document.getElementById("auth-dot").style.background = "#22c55e";
-
-                await loadTable();
-            } catch (error) {
-                console.error(error);
-                alert("Sign-in failed. Check console for details.");
+                accessToken = null;
+                activeAccount = null;
+                document.getElementById("user-label").textContent =
+                    "Not signed in";
+                document.getElementById("auth-status").textContent =
+                    "Not connected";
+                document.getElementById("auth-dot").style.background =
+                    "#f97316";
+                document.querySelector("#places-table tbody").innerHTML = "";
             }
-        }
 
-        async function signOut() {
-            const account = msalInstance.getActiveAccount();
-            if (!account) return;
+            // AUTOCOMPLETE ENGINE
+            function getUniqueValues(field) {
+                const rows = document.querySelectorAll(
+                    "#places-table tbody tr:not(.group-header)",
+                );
+                const set = new Set();
 
-            await msalInstance.logoutPopup({
-                account,
-                postLogoutRedirectUri: window.location.origin,
-            });
+                rows.forEach((r) => {
+                    const val = r.dataset[field];
+                    if (val) {
+                        val.split(",").forEach((t) => set.add(t.trim()));
+                    }
+                });
 
-            accessToken = null;
-            activeAccount = null;
-            document.getElementById("user-label").textContent = "Not signed in";
-            document.getElementById("auth-status").textContent = "Not connected";
-            document.getElementById("auth-dot").style.background = "#f97316";
-            document.querySelector("#places-table tbody").innerHTML = "";
-        }
+                return [...set].sort();
+            }
 
-        // AUTOCOMPLETE ENGINE
-        function getUniqueValues(field) {
-            const rows = document.querySelectorAll("#places-table tbody tr:not(.group-header)");
-            const set = new Set();
+            function showSuggestions(inputEl, field) {
+                const container = inputEl.nextElementSibling;
+                const query = inputEl.value.toLowerCase();
 
-            rows.forEach(r => {
-                const val = r.dataset[field];
-                if (val) {
-                    val.split(",").forEach(t => set.add(t.trim()));
+                const allValues = getUniqueValues(field);
+                const matches = allValues.filter((v) => v.includes(query));
+
+                if (!query || matches.length === 0) {
+                    container.innerHTML = "";
+                    container.style.display = "none";
+                    return;
                 }
-            });
 
-            return [...set].sort();
-        }
+                container.innerHTML = matches
+                    .map(
+                        (v) =>
+                            `<div class="suggestion-item" onclick="selectSuggestion('${v.replace(/'/g, "\\'")}', '${inputEl.id}')">${v}</div>`,
+                    )
+                    .join("");
 
-        function showSuggestions(inputEl, field) {
-            const container = inputEl.nextElementSibling;
-            const query = inputEl.value.toLowerCase();
+                container.style.display = "block";
+            }
 
-            const allValues = getUniqueValues(field);
-            const matches = allValues.filter(v => v.includes(query));
+            function selectSuggestion(value, inputId) {
+                const input = document.getElementById(inputId);
+                input.value = value;
+                applyAllControls();
 
-            if (!query || matches.length === 0) {
+                const container = input.nextElementSibling;
                 container.innerHTML = "";
                 container.style.display = "none";
-                return;
             }
 
-            container.innerHTML = matches
-                .map(v => `<div class="suggestion-item" onclick="selectSuggestion('${v.replace(/'/g, "\\'")}', '${inputEl.id}')">${v}</div>`)
-                .join("");
+            // LOAD TABLE
+            async function loadTable() {
+                if (!accessToken) return;
 
-            container.style.display = "block";
-        }
+                const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
 
-        function selectSuggestion(value, inputId) {
-            const input = document.getElementById(inputId);
-            input.value = value;
-            applyAllControls();
+                const response = await fetch(url, {
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                });
 
-            const container = input.nextElementSibling;
-            container.innerHTML = "";
-            container.style.display = "none";
-        }
+                const data = await response.json();
+                if (!data.value) return;
 
-        // LOAD TABLE
-        async function loadTable() {
-            if (!accessToken) return;
+                const tbody = document.querySelector("#places-table tbody");
+                tbody.innerHTML = "";
 
-            const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
+                data.value.forEach((row) => {
+                    const values = row.values[0];
+                    const tr = document.createElement("tr");
 
-            const response = await fetch(url, {
-                headers: { Authorization: `Bearer ${accessToken}` },
-            });
+                    const [
+                        name,
+                        website,
+                        tags,
+                        driveTime,
+                        hours,
+                        duration,
+                        difficulty,
+                        trailLength,
+                        state,
+                        city,
+                        cost,
+                        directions,
+                        description,
+                        nearby,
+                        links,
+                        links2,
+                    ] = values;
 
-            const data = await response.json();
-            if (!data.value) return;
+                    tr.dataset.difficulty = (difficulty || "").toLowerCase();
+                    tr.dataset.state = (state || "").toLowerCase();
+                    tr.dataset.tags = (tags || "").toLowerCase();
+                    tr.dataset.city = (city || "").toLowerCase();
+                    tr.dataset.cost = (cost || "").toLowerCase();
 
-            const tbody = document.querySelector("#places-table tbody");
-            tbody.innerHTML = "";
+                    function cell(text, className) {
+                        const td = document.createElement("td");
+                        if (className) td.className = className;
+                        td.textContent = text ?? "";
+                        return td;
+                    }
 
-            data.value.forEach(row => {
-                const values = row.values[0];
-                const tr = document.createElement("tr");
+                    // Name
+                    const nameTd = document.createElement("td");
+                    nameTd.innerHTML = name ? `<strong>${name}</strong>` : "";
+                    tr.appendChild(nameTd);
 
-                const [
-                    name, website, tags, driveTime, hours, duration,
-                    difficulty, trailLength, state, city, cost,
-                    directions, description, nearby, links, links2
-                ] = values;
+                    // Website
+                    const websiteTd = document.createElement("td");
+                    websiteTd.className = "link-cell";
+                    if (website) {
+                        websiteTd.innerHTML = `<a href="${website}" target="_blank" rel="noopener">Open</a>`;
+                    }
+                    tr.appendChild(websiteTd);
 
-                tr.dataset.difficulty = (difficulty || "").toLowerCase();
-                tr.dataset.state = (state || "").toLowerCase();
-                tr.dataset.tags = (tags || "").toLowerCase();
-                tr.dataset.city = (city || "").toLowerCase();
-                tr.dataset.cost = (cost || "").toLowerCase();
+                    // Tags
+                    const tagTd = document.createElement("td");
+                    tagTd.className = "tag-cell";
+                    if (tags) {
+                        const tagList = tags.split(",").map((t) => t.trim());
+                        tagTd.innerHTML = tagList
+                            .map(
+                                (t) =>
+                                    `<span class="tag-pill tag-${t.toLowerCase().replace(/\s+/g, "-")}">${t}</span>`,
+                            )
+                            .join(" ");
+                    }
+                    tr.appendChild(tagTd);
 
-                function cell(text, className) {
-                    const td = document.createElement("td");
-                    if (className) td.className = className;
-                    td.textContent = text ?? "";
-                    return td;
-                }
+                    // Drive Time
+                    tr.appendChild(cell(driveTime));
 
-                // Name
-                const nameTd = document.createElement("td");
-                nameTd.innerHTML = name ? `<strong>${name}</strong>` : "";
-                tr.appendChild(nameTd);
+                    // Hours (2-line preview)
+                    const hoursTd = document.createElement("td");
+                    hoursTd.innerHTML = `<div class="hours-preview">${hours || ""}</div>`;
+                    tr.appendChild(hoursTd);
 
-                // Website
-                const websiteTd = document.createElement("td");
-                websiteTd.className = "link-cell";
-                if (website) {
-                    websiteTd.innerHTML = `<a href="${website}" target="_blank" rel="noopener">Open</a>`;
-                }
-                tr.appendChild(websiteTd);
+                    // Duration
+                    tr.appendChild(cell(duration));
 
-                // Tags
-                const tagTd = document.createElement("td");
-                tagTd.className = "tag-cell";
-                if (tags) {
-                    const tagList = tags.split(",").map(t => t.trim());
-                    tagTd.innerHTML = tagList
-                        .map(t => `<span class="tag-pill tag-${t.toLowerCase().replace(/\s+/g, "-")}">${t}</span>`)
-                        .join(" ");
-                }
-                tr.appendChild(tagTd);
+                    // Difficulty pill
+                    const diffTd = document.createElement("td");
+                    if (difficulty) {
+                        let cls = "pill";
+                        const d = difficulty.toLowerCase();
+                        if (d.includes("easy")) cls += " pill-green";
+                        else if (d.includes("moderate") || d.includes("medium"))
+                            cls += " pill-amber";
+                        else if (d.includes("hard") || d.includes("difficult"))
+                            cls += " pill-red";
+                        diffTd.innerHTML = `<span class="${cls}">${difficulty}</span>`;
+                    }
+                    tr.appendChild(diffTd);
 
-                // Drive Time
-                tr.appendChild(cell(driveTime));
+                    // Trail Length, State, City, Cost
+                    tr.appendChild(cell(trailLength));
+                    tr.appendChild(cell(state));
+                    tr.appendChild(cell(city));
+                    tr.appendChild(cell(cost));
 
-                // Hours (2-line preview)
-                const hoursTd = document.createElement("td");
-                hoursTd.innerHTML = `<div class="hours-preview">${hours || ""}</div>`;
-                tr.appendChild(hoursTd);
+                    // Directions
+                    tr.appendChild(cell(directions));
 
-                // Duration
-                tr.appendChild(cell(duration));
-
-                // Difficulty pill
-                const diffTd = document.createElement("td");
-                if (difficulty) {
-                    let cls = "pill";
-                    const d = difficulty.toLowerCase();
-                    if (d.includes("easy")) cls += " pill-green";
-                    else if (d.includes("moderate") || d.includes("medium")) cls += " pill-amber";
-                    else if (d.includes("hard") || d.includes("difficult")) cls += " pill-red";
-                    diffTd.innerHTML = `<span class="${cls}">${difficulty}</span>`;
-                }
-                tr.appendChild(diffTd);
-
-                // Trail Length, State, City, Cost
-                tr.appendChild(cell(trailLength));
-                tr.appendChild(cell(state));
-                tr.appendChild(cell(city));
-                tr.appendChild(cell(cost));
-
-                // Directions
-                tr.appendChild(cell(directions));
-
-                // Description (2-line preview + toggle)
-                const descTd = document.createElement("td");
-                descTd.className = "description-cell";
-                if (description) {
-                    descTd.innerHTML = `
+                    // Description (2-line preview + toggle)
+                    const descTd = document.createElement("td");
+                    descTd.className = "description-cell";
+                    if (description) {
+                        descTd.innerHTML = `
                         <div class="desc-preview">${description}</div>
                         <button class="desc-more-btn" onclick="toggleDescription(this)">More</button>
                         <div class="hidden-desc">${description}</div>
                     `;
-                }
-                tr.appendChild(descTd);
+                    }
+                    tr.appendChild(descTd);
 
-                // Nearby
-                tr.appendChild(cell(nearby));
+                    // Nearby
+                    tr.appendChild(cell(nearby));
 
-                // Links
-                const linksTd = document.createElement("td");
-                linksTd.className = "link-cell";
-                if (links) {
-                    linksTd.innerHTML = `<a href="${links}" target="_blank" rel="noopener">Link</a>`;
-                }
-                tr.appendChild(linksTd);
+                    // Links
+                    const linksTd = document.createElement("td");
+                    linksTd.className = "link-cell";
+                    if (links) {
+                        linksTd.innerHTML = `<a href="${links}" target="_blank" rel="noopener">Link</a>`;
+                    }
+                    tr.appendChild(linksTd);
 
-                // Links2
-                const links2Td = document.createElement("td");
-                links2Td.className = "link-cell";
-                if (links2) {
-                    links2Td.innerHTML = `<a href="${links2}" target="_blank" rel="noopener">Link</a>`;
-                }
-                tr.appendChild(links2Td);
+                    // Links2
+                    const links2Td = document.createElement("td");
+                    links2Td.className = "link-cell";
+                    if (links2) {
+                        links2Td.innerHTML = `<a href="${links2}" target="_blank" rel="noopener">Link</a>`;
+                    }
+                    tr.appendChild(links2Td);
 
-                tbody.appendChild(tr);
-            });
+                    tbody.appendChild(tr);
+                });
 
-            applyAllControls();
-        }
-
-        // ADD ROW
-        async function addRow() {
-            if (!accessToken) {
-                alert("Please sign in first.");
-                return;
+                applyAllControls();
             }
 
-            const newRow = [
-                document.getElementById("name").value,
-                document.getElementById("website").value,
-                document.getElementById("tags").value,
-                document.getElementById("driveTime").value,
-                document.getElementById("hours").value,
-                document.getElementById("duration").value,
-                document.getElementById("difficulty").value,
-                document.getElementById("trailLength").value,
-                document.getElementById("state").value,
-                document.getElementById("city").value,
-                document.getElementById("cost").value,
-                document.getElementById("directions").value,
-                document.getElementById("description").value,
-                document.getElementById("nearby").value,
-                document.getElementById("links").value,
-                document.getElementById("links2").value,
-            ];
+            // ADD ROW
+            async function addRow() {
+                if (!accessToken) {
+                    alert("Please sign in first.");
+                    return;
+                }
 
-            const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/add`;
+                const newRow = [
+                    document.getElementById("name").value,
+                    document.getElementById("website").value,
+                    document.getElementById("tags").value,
+                    document.getElementById("driveTime").value,
+                    document.getElementById("hours").value,
+                    document.getElementById("duration").value,
+                    document.getElementById("difficulty").value,
+                    document.getElementById("trailLength").value,
+                    document.getElementById("state").value,
+                    document.getElementById("city").value,
+                    document.getElementById("cost").value,
+                    document.getElementById("directions").value,
+                    document.getElementById("description").value,
+                    document.getElementById("nearby").value,
+                    document.getElementById("links").value,
+                    document.getElementById("links2").value,
+                ];
 
-            const body = { values: [newRow] };
+                const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/add`;
 
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(body),
-            });
+                const body = { values: [newRow] };
 
-            await response.json();
-            document.getElementById("add-form").reset();
-            await loadTable();
-        }
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(body),
+                });
 
-        // FILTERING / GROUPING / SORTING
-        let currentSortColumn = null;
-        let currentSortDirection = "asc";
-
-        function resetFilters() {
-            document.getElementById("filterDifficulty").value = "";
-            document.getElementById("filterState").value = "";
-            document.getElementById("filterTags").value = "";
-            document.getElementById("filterCity").value = "";
-            document.getElementById("filterCost").value = "";
-            document.getElementById("groupBy").value = "";
-            updateFiltersActiveIndicator();
-            applyAllControls();
-        }
-
-        function sortTable(columnIndex) {
-            const tbody = document.querySelector("#places-table tbody");
-
-            const rows = Array.from(tbody.querySelectorAll("tr"))
-                .filter(r => !r.classList.contains("group-header"));
-
-            if (currentSortColumn === columnIndex) {
-                currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
-            } else {
-                currentSortColumn = columnIndex;
-                currentSortDirection = "asc";
+                await response.json();
+                document.getElementById("add-form").reset();
+                await loadTable();
             }
 
-            rows.sort((a, b) => {
-                const aText = (a.children[columnIndex].textContent || "").trim().toLowerCase();
-                const bText = (b.children[columnIndex].textContent || "").trim().toLowerCase();
+            // FILTERING / GROUPING / SORTING
+            let currentSortColumn = null;
+            let currentSortDirection = "asc";
 
-                if (aText < bText) return currentSortDirection === "asc" ? -1 : 1;
-                if (aText > bText) return currentSortDirection === "asc" ? 1 : -1;
-                return 0;
-            });
+            function resetFilters() {
+                document.getElementById("filterDifficulty").value = "";
+                document.getElementById("filterState").value = "";
+                document.getElementById("filterTags").value = "";
+                document.getElementById("filterCity").value = "";
+                document.getElementById("filterCost").value = "";
+                document.getElementById("groupBy").value = "";
+                updateFiltersActiveIndicator();
+                applyAllControls();
+            }
 
-            const groupHeaders = Array.from(tbody.querySelectorAll(".group-header"));
+            function sortTable(columnIndex) {
+                const tbody = document.querySelector("#places-table tbody");
 
-            tbody.innerHTML = "";
-            groupHeaders.forEach(h => tbody.appendChild(h));
-            rows.forEach(r => tbody.appendChild(r));
-        }
+                const rows = Array.from(tbody.querySelectorAll("tr")).filter(
+                    (r) => !r.classList.contains("group-header"),
+                );
 
-        function applyFilters() {
-            const diff = document.getElementById("filterDifficulty").value.toLowerCase();
-            const state = document.getElementById("filterState").value.toLowerCase();
-            const tags = document.getElementById("filterTags").value.toLowerCase();
-            const city = document.getElementById("filterCity").value.toLowerCase();
-            const cost = document.getElementById("filterCost").value.toLowerCase();
-
-            updateFiltersActiveIndicator();
-
-            const rows = document.querySelectorAll("#places-table tbody tr:not(.group-header)");
-
-            rows.forEach(row => {
-                const rowDiff  = row.dataset.difficulty || "";
-                const rowState = row.dataset.state || "";
-                const rowTags  = row.dataset.tags || "";
-                const rowCity  = row.dataset.city || "";
-                const rowCost  = row.dataset.cost || "";
-
-                const matches =
-                    (!diff  || rowDiff.includes(diff)) &&
-                    (!state || rowState.includes(state)) &&
-                    (!tags  || rowTags.includes(tags)) &&
-                    (!city  || rowCity.includes(city)) &&
-                    (!cost  || rowCost.includes(cost));
-
-                if (matches) {
-                    row.classList.remove("hidden-row");
+                if (currentSortColumn === columnIndex) {
+                    currentSortDirection =
+                        currentSortDirection === "asc" ? "desc" : "asc";
                 } else {
-                    row.classList.add("hidden-row");
+                    currentSortColumn = columnIndex;
+                    currentSortDirection = "asc";
                 }
-            });
-        }
 
-        function applyGrouping() {
-            const groupBy = document.getElementById("groupBy").value;
-            const tbody = document.querySelector("#places-table tbody");
+                rows.sort((a, b) => {
+                    const aText = (a.children[columnIndex].textContent || "")
+                        .trim()
+                        .toLowerCase();
+                    const bText = (b.children[columnIndex].textContent || "")
+                        .trim()
+                        .toLowerCase();
 
-            tbody.querySelectorAll(".group-header").forEach(h => h.remove());
+                    if (aText < bText)
+                        return currentSortDirection === "asc" ? -1 : 1;
+                    if (aText > bText)
+                        return currentSortDirection === "asc" ? 1 : -1;
+                    return 0;
+                });
 
-            if (!groupBy) return;
+                const groupHeaders = Array.from(
+                    tbody.querySelectorAll(".group-header"),
+                );
 
-            const rows = Array.from(tbody.querySelectorAll("tr:not(.group-header)"));
-            const groups = {};
-
-            rows.forEach(row => {
-                let key = row.dataset[groupBy] || "";
-                key = key || "Other";
-
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(row);
-            });
-
-            tbody.innerHTML = "";
-
-            Object.keys(groups).sort().forEach(group => {
-                const headerRow = document.createElement("tr");
-                headerRow.classList.add("group-header");
-
-                const headerCell = document.createElement("td");
-                headerCell.colSpan = 16;
-                headerCell.textContent = group;
-                headerCell.style.background = "#e0e7ff";
-                headerCell.style.fontWeight = "bold";
-                headerCell.style.padding = "10px";
-
-                headerRow.appendChild(headerCell);
-                tbody.appendChild(headerRow);
-
-                groups[group].forEach(r => tbody.appendChild(r));
-            });
-        }
-
-        function updateFiltersActiveIndicator() {
-            const diff = document.getElementById("filterDifficulty").value;
-            const state = document.getElementById("filterState").value;
-            const tags = document.getElementById("filterTags").value;
-            const city = document.getElementById("filterCity").value;
-            const cost = document.getElementById("filterCost").value;
-            const groupBy = document.getElementById("groupBy").value;
-
-            const anyActive = diff || state || tags || city || cost || groupBy;
-
-            const badge = document.getElementById("filtersActiveBadge");
-            const card = document.querySelector(".control-card");
-
-            if (!badge || !card) return;
-
-            if (anyActive) {
-                badge.classList.add("filters-active-visible");
-                card.classList.add("filters-active");
-            } else {
-                badge.classList.remove("filters-active-visible");
-                card.classList.remove("filters-active");
+                tbody.innerHTML = "";
+                groupHeaders.forEach((h) => tbody.appendChild(h));
+                rows.forEach((r) => tbody.appendChild(r));
             }
-        }
 
-        function applyAllControls() {
-            applyGrouping();
-            applyFilters();
-            if (currentSortColumn !== null) {
-                sortTable(currentSortColumn);
+            function applyFilters() {
+                const diff = document
+                    .getElementById("filterDifficulty")
+                    .value.toLowerCase();
+                const state = document
+                    .getElementById("filterState")
+                    .value.toLowerCase();
+                const tags = document
+                    .getElementById("filterTags")
+                    .value.toLowerCase();
+                const city = document
+                    .getElementById("filterCity")
+                    .value.toLowerCase();
+                const cost = document
+                    .getElementById("filterCost")
+                    .value.toLowerCase();
+
+                updateFiltersActiveIndicator();
+
+                const rows = document.querySelectorAll(
+                    "#places-table tbody tr:not(.group-header)",
+                );
+
+                rows.forEach((row) => {
+                    const rowDiff = row.dataset.difficulty || "";
+                    const rowState = row.dataset.state || "";
+                    const rowTags = row.dataset.tags || "";
+                    const rowCity = row.dataset.city || "";
+                    const rowCost = row.dataset.cost || "";
+
+                    const matches =
+                        (!diff || rowDiff.includes(diff)) &&
+                        (!state || rowState.includes(state)) &&
+                        (!tags || rowTags.includes(tags)) &&
+                        (!city || rowCity.includes(city)) &&
+                        (!cost || rowCost.includes(cost));
+
+                    if (matches) {
+                        row.classList.remove("hidden-row");
+                    } else {
+                        row.classList.add("hidden-row");
+                    }
+                });
             }
-        }
 
-        // DESCRIPTION TOGGLE
-        function toggleDescription(btn) {
-            const cell = btn.closest("td");
-            const full = cell.querySelector(".hidden-desc");
-            const preview = cell.querySelector(".desc-preview");
+            function applyGrouping() {
+                const groupBy = document.getElementById("groupBy").value;
+                const tbody = document.querySelector("#places-table tbody");
 
-            const isHidden = full.style.display !== "block";
+                tbody
+                    .querySelectorAll(".group-header")
+                    .forEach((h) => h.remove());
 
-            if (isHidden) {
-                preview.style.display = "none";
-                full.style.display = "block";
-                btn.textContent = "Less";
-            } else {
-                preview.style.display = "-webkit-box";
-                full.style.display = "none";
-                btn.textContent = "More";
+                if (!groupBy) return;
+
+                const rows = Array.from(
+                    tbody.querySelectorAll("tr:not(.group-header)"),
+                );
+                const groups = {};
+
+                rows.forEach((row) => {
+                    let key = row.dataset[groupBy] || "";
+                    key = key || "Other";
+
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(row);
+                });
+
+                tbody.innerHTML = "";
+
+                Object.keys(groups)
+                    .sort()
+                    .forEach((group) => {
+                        const headerRow = document.createElement("tr");
+                        headerRow.classList.add("group-header");
+
+                        const headerCell = document.createElement("td");
+                        headerCell.colSpan = 16;
+                        headerCell.textContent = group;
+                        headerCell.style.background = "#e0e7ff";
+                        headerCell.style.fontWeight = "bold";
+                        headerCell.style.padding = "10px";
+
+                        headerRow.appendChild(headerCell);
+                        tbody.appendChild(headerRow);
+
+                        groups[group].forEach((r) => tbody.appendChild(r));
+                    });
             }
-        }
 
-        // COLLAPSIBLE ADD SECTION
-        function toggleAddSection() {
-            const section = document.getElementById("addAdventureSection");
-            section.classList.toggle("expanded");
-        }
-    </script>
-</head>
+            function updateFiltersActiveIndicator() {
+                const diff = document.getElementById("filterDifficulty").value;
+                const state = document.getElementById("filterState").value;
+                const tags = document.getElementById("filterTags").value;
+                const city = document.getElementById("filterCity").value;
+                const cost = document.getElementById("filterCost").value;
+                const groupBy = document.getElementById("groupBy").value;
 
-<body>
-    <header>
-        <div>
-            <h1>🌄 Kyle's Adventure Finder</h1>
-            <div class="subtitle">
-                Shared adventure list powered by your Excel backend
+                const anyActive =
+                    diff || state || tags || city || cost || groupBy;
+
+                const badge = document.getElementById("filtersActiveBadge");
+                const card = document.querySelector(".control-card");
+
+                if (!badge || !card) return;
+
+                if (anyActive) {
+                    badge.classList.add("filters-active-visible");
+                    card.classList.add("filters-active");
+                } else {
+                    badge.classList.remove("filters-active-visible");
+                    card.classList.remove("filters-active");
+                }
+            }
+
+            function applyAllControls() {
+                applyGrouping();
+                applyFilters();
+                if (currentSortColumn !== null) {
+                    sortTable(currentSortColumn);
+                }
+            }
+
+            // DESCRIPTION TOGGLE
+            function toggleDescription(btn) {
+                const cell = btn.closest("td");
+                const full = cell.querySelector(".hidden-desc");
+                const preview = cell.querySelector(".desc-preview");
+
+                const isHidden = full.style.display !== "block";
+
+                if (isHidden) {
+                    preview.style.display = "none";
+                    full.style.display = "block";
+                    btn.textContent = "Less";
+                } else {
+                    preview.style.display = "-webkit-box";
+                    full.style.display = "none";
+                    btn.textContent = "More";
+                }
+            }
+
+            // COLLAPSIBLE ADD SECTION
+            function toggleAddSection() {
+                const section = document.getElementById("addAdventureSection");
+                section.classList.toggle("expanded");
+            }
+        </script>
+    </head>
+
+    <body>
+        <header>
+            <div>
+                <h1>🌄 Kyle's Adventure Finder</h1>
+                <div class="subtitle">
+                    Shared adventure list powered by your Excel backend
+                </div>
             </div>
-        </div>
-        <div class="header-right">
-            <span id="user-label" style="font-size: 12px; opacity: 0.9">Not signed in</span>
-            <button class="btn-ghost" onclick="signOut()">Sign out</button>
-            <button class="btn-primary" onclick="signIn()">Sign in</button>
-        </div>
-    </header>
-
-    <main>
-        <div class="status-bar">
-            <div class="status-pill">
-                <span id="auth-dot" class="status-dot" style="background: #f97316"></span>
-                <span id="auth-status">Not connected</span>
+            <div class="header-right">
+                <span id="user-label" style="font-size: 12px; opacity: 0.9"
+                    >Not signed in</span
+                >
+                <button class="btn-ghost" onclick="signOut()">Sign out</button>
+                <button class="btn-primary" onclick="signIn()">Sign in</button>
             </div>
-            <span class="muted">
-                Data source: Adventure_Finder_Excel_DB.xlsx → table “MyList”
-            </span>
-        </div>
+        </header>
 
-        <!-- CONTROL BAR CARD -->
-        <section class="control-card">
-            <div class="control-card-header-row">
-                <div>
-                    <div class="card-title">Control Panel</div>
-                    <div class="card-subtitle">Filter, sort, and group your adventures</div>
+        <main>
+            <div class="status-bar">
+                <div class="status-pill">
+                    <span
+                        id="auth-dot"
+                        class="status-dot"
+                        style="background: #f97316"
+                    ></span>
+                    <span id="auth-status">Not connected</span>
                 </div>
-                <span id="filtersActiveBadge" class="filters-active-badge">Filters active</span>
+                <span class="muted">
+                    Data source: Adventure_Finder_Excel_DB.xlsx → table “MyList”
+                </span>
             </div>
 
-            <div id="controlsBar">
-                <div class="control-block">
-                    <label>Filter by Difficulty</label>
-                    <div class="autocomplete-wrapper">
-                        <input id="filterDifficulty"
-                               placeholder="Easy, Moderate, Hard"
-                               oninput="showSuggestions(this, 'difficulty'); applyAllControls()">
-                        <div class="suggestions-box"></div>
+            <!-- CONTROL BAR CARD -->
+            <section class="control-card">
+                <div class="control-card-header-row">
+                    <div>
+                        <div class="card-title">Control Panel</div>
+                        <div class="card-subtitle">
+                            Filter, sort, and group your adventures
+                        </div>
+                    </div>
+                    <span id="filtersActiveBadge" class="filters-active-badge"
+                        >Filters active</span
+                    >
+                </div>
+
+                <div id="controlsBar">
+                    <div class="control-block">
+                        <label>Filter by Difficulty</label>
+                        <div class="autocomplete-wrapper">
+                            <input
+                                id="filterDifficulty"
+                                placeholder="Easy, Moderate, Hard"
+                                oninput="
+                                    showSuggestions(this, 'difficulty');
+                                    applyAllControls();
+                                "
+                            />
+                            <div class="suggestions-box"></div>
+                        </div>
+                    </div>
+
+                    <div class="control-block">
+                        <label>Filter by State</label>
+                        <div class="autocomplete-wrapper">
+                            <input
+                                id="filterState"
+                                placeholder="NC, SC, TN…"
+                                oninput="
+                                    showSuggestions(this, 'state');
+                                    applyAllControls();
+                                "
+                            />
+                            <div class="suggestions-box"></div>
+                        </div>
+                    </div>
+
+                    <div class="control-block">
+                        <label>Filter by Tags</label>
+                        <div class="autocomplete-wrapper">
+                            <input
+                                id="filterTags"
+                                placeholder="waterfalls, overlook…"
+                                oninput="
+                                    showSuggestions(this, 'tags');
+                                    applyAllControls();
+                                "
+                            />
+                            <div class="suggestions-box"></div>
+                        </div>
+                    </div>
+
+                    <div class="control-block">
+                        <label>Filter by City</label>
+                        <div class="autocomplete-wrapper">
+                            <input
+                                id="filterCity"
+                                placeholder="Asheville…"
+                                oninput="
+                                    showSuggestions(this, 'city');
+                                    applyAllControls();
+                                "
+                            />
+                            <div class="suggestions-box"></div>
+                        </div>
+                    </div>
+
+                    <div class="control-block">
+                        <label>Filter by Cost</label>
+                        <div class="autocomplete-wrapper">
+                            <input
+                                id="filterCost"
+                                placeholder="Free, $, $$…"
+                                oninput="
+                                    showSuggestions(this, 'cost');
+                                    applyAllControls();
+                                "
+                            />
+                            <div class="suggestions-box"></div>
+                        </div>
+                    </div>
+
+                    <div class="control-block">
+                        <label>Group By</label>
+                        <select id="groupBy" onchange="applyAllControls()">
+                            <option value="">None</option>
+                            <option value="state">State</option>
+                            <option value="city">City</option>
+                            <option value="difficulty">Difficulty</option>
+                            <option value="tags">Tags</option>
+                        </select>
+                    </div>
+
+                    <div class="control-block">
+                        <label>Reset</label>
+                        <button id="resetFiltersBtn" onclick="resetFilters()">
+                            Reset All Filters
+                        </button>
                     </div>
                 </div>
+            </section>
 
-                <div class="control-block">
-                    <label>Filter by State</label>
-                    <div class="autocomplete-wrapper">
-                        <input id="filterState"
-                               placeholder="NC, SC, TN…"
-                               oninput="showSuggestions(this, 'state'); applyAllControls()">
-                        <div class="suggestions-box"></div>
+            <!-- ADVENTURE LIST CARD -->
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Adventure List</div>
+                        <div class="card-subtitle">
+                            All the places you’ve logged in your Excel planner
+                        </div>
                     </div>
-                </div>
-
-                <div class="control-block">
-                    <label>Filter by Tags</label>
-                    <div class="autocomplete-wrapper">
-                        <input id="filterTags"
-                               placeholder="waterfalls, overlook…"
-                               oninput="showSuggestions(this, 'tags'); applyAllControls()">
-                        <div class="suggestions-box"></div>
-                    </div>
-                </div>
-
-                <div class="control-block">
-                    <label>Filter by City</label>
-                    <div class="autocomplete-wrapper">
-                        <input id="filterCity"
-                               placeholder="Asheville…"
-                               oninput="showSuggestions(this, 'city'); applyAllControls()">
-                        <div class="suggestions-box"></div>
-                    </div>
-                </div>
-
-                <div class="control-block">
-                    <label>Filter by Cost</label>
-                    <div class="autocomplete-wrapper">
-                        <input id="filterCost"
-                               placeholder="Free, $, $$…"
-                               oninput="showSuggestions(this, 'cost'); applyAllControls()">
-                        <div class="suggestions-box"></div>
-                    </div>
-                </div>
-
-                <div class="control-block">
-                    <label>Group By</label>
-                    <select id="groupBy" onchange="applyAllControls()">
-                        <option value="">None</option>
-                        <option value="state">State</option>
-                        <option value="city">City</option>
-                        <option value="difficulty">Difficulty</option>
-                        <option value="tags">Tags</option>
-                    </select>
-                </div>
-
-                <div class="control-block">
-                    <label>Reset</label>
-                    <button id="resetFiltersBtn" onclick="resetFilters()">
-                        Reset All Filters
+                    <button class="btn-ghost" onclick="loadTable()">
+                        Refresh
                     </button>
                 </div>
-            </div>
-        </section>
 
-        <!-- ADVENTURE LIST CARD -->
-        <section class="card">
-            <div class="card-header">
-                <div>
-                    <div class="card-title">Adventure List</div>
-                    <div class="card-subtitle">
-                        All the places you’ve logged in your Excel planner
-                    </div>
+                <div
+                    style="
+                        max-height: 420px;
+                        overflow: auto;
+                        border-radius: 8px;
+                        border: 1px solid #e5e7eb;
+                    "
+                >
+                    <table id="places-table">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTable(0)">
+                                    Name <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(1)">
+                                    Website <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(2)">
+                                    Tags <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(3)">
+                                    Drive Time <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(4)">
+                                    Hours <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(5)">
+                                    Duration <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(6)">
+                                    Difficulty <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(7)">
+                                    Trail Length
+                                    <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(8)">
+                                    State <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(9)">
+                                    City <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(10)">
+                                    Cost <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(11)">
+                                    Directions <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(12)">
+                                    Description <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(13)">
+                                    Nearby Things to Do
+                                    <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(14)">
+                                    Links <span class="sort-icon">↕</span>
+                                </th>
+                                <th onclick="sortTable(15)">
+                                    Links2 <span class="sort-icon">↕</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
-                <button class="btn-ghost" onclick="loadTable()">Refresh</button>
-            </div>
+            </section>
 
-            <div style="max-height: 420px; overflow: auto; border-radius: 8px; border: 1px solid #e5e7eb;">
-                <table id="places-table">
-                    <thead>
-                        <tr>
-                            <th onclick="sortTable(0)">Name <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(1)">Website <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(2)">Tags <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(3)">Drive Time <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(4)">Hours <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(5)">Duration <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(6)">Difficulty <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(7)">Trail Length <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(8)">State <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(9)">City <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(10)">Cost <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(11)">Directions <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(12)">Description <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(13)">Nearby Things to Do <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(14)">Links <span class="sort-icon">↕</span></th>
-                            <th onclick="sortTable(15)">Links2 <span class="sort-icon">↕</span></th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </section>
+            <!-- ADD ADVENTURE SECTION -->
+            <button id="toggleAddSection" onclick="toggleAddSection()">
+                Add a New Adventure
+            </button>
 
-        <!-- ADD ADVENTURE SECTION -->
-        <button id="toggleAddSection" onclick="toggleAddSection()">
-            Add a New Adventure
-        </button>
+            <section id="addAdventureSection">
+                <form
+                    id="add-form"
+                    onsubmit="
+                        event.preventDefault();
+                        addRow();
+                    "
+                >
+                    <div class="form-grid">
+                        <div>
+                            <label for="name">Name</label>
+                            <input
+                                id="name"
+                                placeholder="Blue Ridge Parkway Overlook"
+                            />
+                        </div>
+                        <div>
+                            <label for="website">Website</label>
+                            <input id="website" placeholder="https://…" />
+                        </div>
+                        <div>
+                            <label for="tags">Tags</label>
+                            <input
+                                id="tags"
+                                placeholder="waterfalls, overlook, music…"
+                            />
+                        </div>
 
-        <section id="addAdventureSection">
-            <form id="add-form" onsubmit="event.preventDefault(); addRow();">
-                <div class="form-grid">
-                    <div>
-                        <label for="name">Name</label>
-                        <input id="name" placeholder="Blue Ridge Parkway Overlook" />
-                    </div>
-                    <div>
-                        <label for="website">Website</label>
-                        <input id="website" placeholder="https://…" />
-                    </div>
-                    <div>
-                        <label for="tags">Tags</label>
-                        <input id="tags" placeholder="waterfalls, overlook, music…" />
+                        <div>
+                            <label for="driveTime">Drive Time</label>
+                            <input id="driveTime" placeholder="45 min" />
+                        </div>
+                        <div>
+                            <label for="hours">Hours</label>
+                            <input id="hours" placeholder="9am–5pm" />
+                        </div>
+                        <div>
+                            <label for="duration">Activity Duration</label>
+                            <input id="duration" placeholder="2–3 hours" />
+                        </div>
+
+                        <div>
+                            <label for="difficulty">Difficulty</label>
+                            <input
+                                id="difficulty"
+                                placeholder="Easy / Moderate / Hard"
+                            />
+                        </div>
+                        <div>
+                            <label for="trailLength">Trail Length</label>
+                            <input id="trailLength" placeholder="3.2 miles" />
+                        </div>
+                        <div>
+                            <label for="state">State</label>
+                            <input id="state" placeholder="NC" />
+                        </div>
+
+                        <div>
+                            <label for="city">City</label>
+                            <input id="city" placeholder="Asheville" />
+                        </div>
+                        <div>
+                            <label for="cost">Cost</label>
+                            <input id="cost" placeholder="Free / $20" />
+                        </div>
+                        <div>
+                            <label for="directions">Directions</label>
+                            <input
+                                id="directions"
+                                placeholder="Exit 13, follow signs…"
+                            />
+                        </div>
+
+                        <div>
+                            <label for="description">Description</label>
+                            <textarea
+                                id="description"
+                                placeholder="Short summary of why this is fun."
+                            ></textarea>
+                        </div>
+                        <div>
+                            <label for="nearby">Nearby Things to Do</label>
+                            <textarea
+                                id="nearby"
+                                placeholder="Coffee shop, second overlook, waterfall…"
+                            ></textarea>
+                        </div>
+                        <div>
+                            <label for="links">Links</label>
+                            <input
+                                id="links"
+                                placeholder="AllTrails, Google Maps…"
+                            />
+                        </div>
+                        <div>
+                            <label for="links2">Links2</label>
+                            <input
+                                id="links2"
+                                placeholder="Extra link (optional)"
+                            />
+                        </div>
                     </div>
 
-                    <div>
-                        <label for="driveTime">Drive Time</label>
-                        <input id="driveTime" placeholder="45 min" />
+                    <div class="form-footer">
+                        <span class="muted"
+                            >Changes are saved directly into your Excel
+                            file.</span
+                        >
+                        <button type="submit" class="btn-primary">
+                            Add Adventure
+                        </button>
                     </div>
-                    <div>
-                        <label for="hours">Hours</label>
-                        <input id="hours" placeholder="9am–5pm" />
-                    </div>
-                    <div>
-                        <label for="duration">Activity Duration</label>
-                        <input id="duration" placeholder="2–3 hours" />
-                    </div>
-
-                    <div>
-                        <label for="difficulty">Difficulty</label>
-                        <input id="difficulty" placeholder="Easy / Moderate / Hard" />
-                    </div>
-                    <div>
-                        <label for="trailLength">Trail Length</label>
-                        <input id="trailLength" placeholder="3.2 miles" />
-                    </div>
-                    <div>
-                        <label for="state">State</label>
-                        <input id="state" placeholder="NC" />
-                    </div>
-
-                    <div>
-                        <label for="city">City</label>
-                        <input id="city" placeholder="Asheville" />
-                    </div>
-                    <div>
-                        <label for="cost">Cost</label>
-                        <input id="cost" placeholder="Free / $20" />
-                    </div>
-                    <div>
-                        <label for="directions">Directions</label>
-                        <input id="directions" placeholder="Exit 13, follow signs…" />
-                    </div>
-
-                    <div>
-                        <label for="description">Description</label>
-                        <textarea id="description" placeholder="Short summary of why this is fun."></textarea>
-                    </div>
-                    <div>
-                        <label for="nearby">Nearby Things to Do</label>
-                        <textarea id="nearby" placeholder="Coffee shop, second overlook, waterfall…"></textarea>
-                    </div>
-                    <div>
-                        <label for="links">Links</label>
-                        <input id="links" placeholder="AllTrails, Google Maps…" />
-                    </div>
-                    <div>
-                        <label for="links2">Links2</label>
-                        <input id="links2" placeholder="Extra link (optional)" />
-                    </div>
-                </div>
-
-                <div class="form-footer">
-                    <span class="muted">Changes are saved directly into your Excel file.</span>
-                    <button type="submit" class="btn-primary">Add Adventure</button>
-                </div>
-            </form>
-        </section>
-    </main>
-</body>
+                </form>
+            </section>
+        </main>
+    </body>
 </html>
