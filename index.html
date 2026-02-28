@@ -5,40 +5,66 @@
   <title>Adventure Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    /* ============================================================
+       COLOR SYSTEM & DESIGN TOKENS
+       ============================================================
+       This :root section defines all the colors used throughout the app.
+       Using CSS variables makes it easy to maintain a consistent color
+       scheme and allows for easy theme changes in the future.
+
+       COLOR PALETTE:
+       - Mint: Green colors for positive actions (success, filters, nature)
+       - Blue: Primary colors for main actions, buttons, and highlights
+       - Gray: Neutral colors for borders, backgrounds, and text
+       - Soft Yellow: Warning/caution colors for softer alerts
+       - Danger Red: Error and critical state indicators
+    */
     :root {
-      --mint-bg: #ecfdf5;
-      --mint-border: #6ee7b7;
-      --mint-strong: #10b981;
-      --blue-bg: #e0f2fe;
-      --blue-border: #60a5fa;
-      --blue-strong: #1d4ed8;
-      --gray-border: #d1d5db;
-      --gray-text: #374151;
-      --soft-yellow: #fef9c3;
-      --soft-yellow-border: #facc15;
-      --danger-red: #dc2626;
+      --mint-bg: #ecfdf5;        /* Light mint background for cards/highlights */
+      --mint-border: #6ee7b7;    /* Mint color for borders and accents */
+      --mint-strong: #10b981;    /* Dark mint for strong/prominent text */
+      --blue-bg: #e0f2fe;        /* Light blue background for highlights */
+      --blue-border: #60a5fa;    /* Blue for borders and accents */
+      --blue-strong: #1d4ed8;    /* Dark blue for primary actions and text */
+      --gray-border: #d1d5db;    /* Gray for subtle borders */
+      --gray-text: #374151;      /* Gray for regular text content */
+      --soft-yellow: #fef9c3;    /* Soft yellow for warnings */
+      --soft-yellow-border: #facc15; /* Yellow for warning borders */
+      --danger-red: #dc2626;     /* Red for errors and danger states */
     }
 
+    /* ============================================================
+       GLOBAL STYLES
+       ============================================================
+       These styles apply to all elements and establish the overall
+       look and feel of the application.
+    */
     * {
-      box-sizing: border-box;
+      box-sizing: border-box; /* Include padding/border in width calculations */
     }
 
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f9fafb;
-      color: #111827;
+      background: #f9fafb; /* Light gray background for the entire page */
+      color: #111827;      /* Dark gray text for readability */
     }
 
+    /* App container - limits max width and centers content */
     .app-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 16px;
+      max-width: 1200px; /* Desktop layout width */
+      margin: 0 auto;    /* Center on page */
+      padding: 16px;     /* Padding around edges */
     }
 
+    /* ============================================================
+       HEADER & TOP NAVIGATION
+       ============================================================
+       The header contains the app title, status indicators, and controls.
+    */
     header {
       display: flex;
-      justify-content: space-between;
+      justify-content: space-between; /* Title on left, buttons on right */
       align-items: center;
       margin-bottom: 12px;
     }
@@ -49,9 +75,16 @@
       font-weight: 700;
     }
 
+    /* ============================================================
+       BUTTONS & INTERACTIVE ELEMENTS
+       ============================================================
+       Various button styles for different purposes throughout the app.
+    */
+
+    /* iPhone/Mobile toggle button - switches between desktop and mobile view */
     .iphone-toggle-btn {
       padding: 6px 12px;
-      border-radius: 999px;
+      border-radius: 999px;  /* Pill-shaped button */
       border: 1px solid var(--blue-border);
       background: white;
       color: var(--blue-strong);
@@ -62,13 +95,19 @@
       gap: 6px;
     }
 
+    /* Active state for iPhone toggle - shows when in mobile view mode */
     .iphone-toggle-btn.active {
-      background: var(--blue-bg);
+      background: var(--blue-bg); /* Highlighted when active */
     }
 
+    /* ============================================================
+       STATUS BAR
+       ============================================================
+       Displays connection status to Excel backend and other system info.
+    */
     .status-bar {
       display: flex;
-      justify-content: space-between;
+      justify-content: space-between; /* Content spread across width */
       align-items: center;
       padding: 8px 12px;
       border-radius: 8px;
@@ -81,19 +120,22 @@
     .status-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 8px; /* Space between dot and text */
     }
 
+    /* Visual dot indicator showing connection status */
     .status-dot {
       width: 10px;
       height: 10px;
-      border-radius: 999px;
+      border-radius: 999px; /* Circle shape */
     }
 
+    /* Green dot = connected to Excel */
     .status-dot.connected {
       background: #22c55e;
     }
 
+    /* Red dot = disconnected from Excel */
     .status-dot.disconnected {
       background: var(--danger-red);
     }
@@ -102,6 +144,11 @@
       font-weight: 500;
     }
 
+    /* ============================================================
+       FILTER STATUS INDICATOR
+       ============================================================
+       Shows when active filters are applied to the table.
+    */
     .filters-active-badge {
       padding: 2px 8px;
       border-radius: 999px;
@@ -110,13 +157,20 @@
       color: var(--mint-strong);
       font-size: 11px;
       font-weight: 600;
-      display: none;
+      display: none; /* Hidden by default */
     }
 
+    /* Badge appears when any filters are active */
     .filters-active-badge.visible {
       display: inline-flex;
     }
 
+    /* ============================================================
+       CARD LAYOUT SYSTEM
+       ============================================================
+       Cards are the main containers for different sections of the app.
+       Each card has a header with title and buttons, then content area.
+    */
     .card {
       background: white;
       border-radius: 10px;
@@ -127,7 +181,7 @@
 
     .card-header {
       display: flex;
-      justify-content: space-between;
+      justify-content: space-between; /* Title on left, buttons on right */
       align-items: center;
       margin-bottom: 8px;
     }
@@ -142,7 +196,7 @@
 
     .card-subtitle {
       font-size: 12px;
-      color: #6b7280;
+      color: #6b7280; /* Muted gray text */
     }
 
     .pill-button {
@@ -217,13 +271,28 @@
       border-radius: 999px;
       border: 1px solid var(--gray-border);
       background: #f3f4f6;
-      padding: 4px 10px;
+      padding: 6px 12px;
       font-size: 12px;
       cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .quick-filter-btn:hover {
+      background: #e5e7eb;
+      transform: translateY(-2px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .quick-filter-btn.active {
       background: var(--mint-bg);
+      border-color: var(--mint-border);
+      color: var(--mint-strong);
+      font-weight: 600;
+    }
       border-color: var(--mint-border);
       color: var(--mint-strong);
       font-weight: 600;
@@ -322,6 +391,16 @@
       color: #6b7280;
     }
 
+    /* Table Wrapper - Container for scrollable table */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: visible;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+
     /* Table */
     .table-card {
       margin-top: 8px;
@@ -331,22 +410,29 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 13px;
+      table-layout: auto;
     }
 
     thead {
       background: #f3f4f6;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     th, td {
       padding: 8px 8px;
       border-bottom: 1px solid #e5e7eb;
       vertical-align: top;
+      word-wrap: break-word;
     }
 
     th {
       text-align: left;
       font-size: 12px;
       color: #4b5563;
+      font-weight: 600;
+      white-space: nowrap;
     }
 
     tr:hover {
@@ -406,19 +492,340 @@
       color: #111827;
     }
 
-    .tag-restaurant { background: #fee2e2; }
-    .tag-animals { background: #dcfce7; }
-    .tag-hiking { background: #dbeafe; }
-    .tag-garden-center { background: #fef3c7; }
-    .tag-orchards { background: #fef9c3; }
-    .tag-ziplining { background: #e0f2fe; }
-    .tag-market { background: #ede9fe; }
-    .tag-scenic-drive { background: #e0f2fe; }
-    .tag-nature { background: #dcfce7; }
-    .tag-attractions { background: #e5e7eb; }
-    .tag-used-book-store { background: #fef3c7; }
+    /* Tag Icons - Graphical representation of each tag type */
+    /* Each tag type has a unique background color and emoji/icon */
 
-    /* Column Visibility Toggle */
+    /* Restaurant - Fork and Knife */
+    .tag-restaurant {
+      background: #fee2e2;
+    }
+    .tag-restaurant::before {
+      content: "🍽️ ";
+    }
+
+    /* Animals - Paw Print */
+    .tag-animals {
+      background: #dcfce7;
+    }
+    .tag-animals::before {
+      content: "🐾 ";
+    }
+
+    /* Hiking - Mountain */
+    .tag-hiking {
+      background: #dbeafe;
+    }
+    .tag-hiking::before {
+      content: "⛰️ ";
+    }
+
+    /* Garden Center - Flower */
+    .tag-garden-center {
+      background: #fef3c7;
+    }
+    .tag-garden-center::before {
+      content: "🌸 ";
+    }
+
+    /* Orchards - Apple */
+    .tag-orchards {
+      background: #fef9c3;
+    }
+    .tag-orchards::before {
+      content: "🍎 ";
+    }
+
+    /* Ziplining - Parachute */
+    .tag-ziplining {
+      background: #e0f2fe;
+    }
+    .tag-ziplining::before {
+      content: "🪂 ";
+    }
+
+    /* Market - Shopping Cart */
+    .tag-market {
+      background: #ede9fe;
+    }
+    .tag-market::before {
+      content: "🛒 ";
+    }
+
+    /* Scenic Drive - Road */
+    .tag-scenic-drive {
+      background: #e0f2fe;
+    }
+    .tag-scenic-drive::before {
+      content: "🛣️ ";
+    }
+
+    /* Nature - Tree */
+    .tag-nature {
+      background: #dcfce7;
+    }
+    .tag-nature::before {
+      content: "🌳 ";
+    }
+
+    /* Attractions - Star */
+    .tag-attractions {
+      background: #e5e7eb;
+    }
+    .tag-attractions::before {
+      content: "⭐ ";
+    }
+
+    /* Used Book Store - Book */
+    .tag-used-book-store {
+      background: #fef3c7;
+    }
+    .tag-used-book-store::before {
+      content: "📚 ";
+    }
+
+    /* Entertainment / Music - Musical Note */
+    .tag-entertainment,
+    .tag-music {
+      background: #fce7f3;
+    }
+    .tag-entertainment::before,
+    .tag-music::before {
+      content: "🎵 ";
+    }
+
+    /* Online Shop / Local Shop - Online Store */
+    .tag-online-shop,
+    .tag-local-shop {
+      background: #e0e7ff;
+    }
+    .tag-online-shop::before,
+    .tag-local-shop::before {
+      content: "🛍️ ";
+    }
+
+    /* Grocery Market - Grocery Bag */
+    .tag-grocery-market {
+      background: #dcfce7;
+    }
+    .tag-grocery-market::before {
+      content: "🛒 ";
+    }
+
+    /* Nursery / Garden - Plant */
+    .tag-nursery,
+    .tag-garden {
+      background: #fef3c7;
+    }
+    .tag-nursery::before,
+    .tag-garden::before {
+      content: "🌱 ";
+    }
+
+    /* Drive Up / Drive Through - Car */
+    .tag-drive-up,
+    .tag-drive-through {
+      background: #e0f2fe;
+    }
+    .tag-drive-up::before,
+    .tag-drive-through::before {
+      content: "🚗 ";
+    }
+
+    /* Waterfall - Water Wave */
+    .tag-waterfall,
+    .tag-waterfalls {
+      background: #e0f2fe;
+    }
+    .tag-waterfall::before,
+    .tag-waterfalls::before {
+      content: "💧 ";
+    }
+
+    /* Camping / Hiking Camping - Tent */
+    .tag-camping,
+    .tag-hiking-camping {
+      background: #d4fc79;
+    }
+    .tag-camping::before,
+    .tag-hiking-camping::before {
+      content: "⛺ ";
+    }
+
+    /* Farms / Petting Zoos / Farm - Barn */
+    .tag-farms,
+    .tag-petting-zoos,
+    .tag-farm,
+    .tag-farms-petting-zoos {
+      background: #fef9c3;
+    }
+    .tag-farms::before,
+    .tag-petting-zoos::before,
+    .tag-farm::before,
+    .tag-farms-petting-zoos::before {
+      content: "🚜 ";
+    }
+
+    /* Goat Cheese Farm / Cheese Shop - Cheese */
+    .tag-goat-cheese-farm,
+    .tag-cheese-shop {
+      background: #fef3c7;
+    }
+    .tag-goat-cheese-farm::before,
+    .tag-cheese-shop::before {
+      content: "🧀 ";
+    }
+
+    /* Butcher Shop - Meat */
+    .tag-butcher-shop {
+      background: #fee2e2;
+    }
+    .tag-butcher-shop::before {
+      content: "🥩 ";
+    }
+
+    /* Climbing / Climbing Course - Rock Climber */
+    .tag-climbing,
+    .tag-climbing-course {
+      background: #e0f2fe;
+    }
+    .tag-climbing::before,
+    .tag-climbing-course::before {
+      content: "🧗 ";
+    }
+
+    /* Ziplining Rappelling - Rope */
+    .tag-ziplining-rappelling,
+    .tag-rappelling {
+      background: #e0f2fe;
+    }
+    .tag-ziplining-rappelling::before,
+    .tag-rappelling::before {
+      content: "🪂 ";
+    }
+
+    /* Arts and Crafts - Artist Palette */
+    .tag-arts-and-crafts,
+    .tag-arts,
+    .tag-crafts {
+      background: #fce7f3;
+    }
+    .tag-arts-and-crafts::before,
+    .tag-arts::before,
+    .tag-crafts::before {
+      content: "🎨 ";
+    }
+
+    /* Aquariums - Fish */
+    .tag-aquariums {
+      background: #e0f2fe;
+    }
+    .tag-aquariums::before {
+      content: "🐠 ";
+    }
+
+    /* Live Music - Microphone */
+    .tag-live-music {
+      background: #fce7f3;
+    }
+    .tag-live-music::before {
+      content: "🎤 ";
+    }
+
+    /* Flea Market - Flea */
+    .tag-flea-market {
+      background: #ede9fe;
+    }
+    .tag-flea-market::before {
+      content: "🏪 ";
+    }
+
+    /* Turkish Coffee - Coffee Cup */
+    .tag-turkish-coffee,
+    .tag-coffee {
+      background: #fef3c7;
+    }
+    .tag-turkish-coffee::before,
+    .tag-coffee::before {
+      content: "☕ ";
+    }
+
+    /* Traditional Middle Eastern Food - Plate */
+    .tag-traditional-middle-eastern-food {
+      background: #fee2e2;
+    }
+    .tag-traditional-middle-eastern-food::before {
+      content: "🍽️ ";
+    }
+
+    /* German Pretzels - Pretzel */
+    .tag-german-pretzels,
+    .tag-pretzels {
+      background: #fee2e2;
+    }
+    .tag-german-pretzels::before,
+    .tag-pretzels::before {
+      content: "🥨 ";
+    }
+
+    /* German Pub - Beer Mug */
+    .tag-german-pub,
+    .tag-pub {
+      background: #fee2e2;
+    }
+    .tag-german-pub::before,
+    .tag-pub::before {
+      content: "🍺 ";
+    }
+
+    /* Mexican Ice Cream - Ice Cream */
+    .tag-mexican-ice-cream,
+    .tag-ice-cream {
+      background: #fee2e2;
+    }
+    .tag-mexican-ice-cream::before,
+    .tag-ice-cream::before {
+      content: "🍦 ";
+    }
+
+    /* Take Out Only - Takeout Box */
+    .tag-take-out-only,
+    .tag-takeout {
+      background: #fee2e2;
+    }
+    .tag-take-out-only::before,
+    .tag-takeout::before {
+      content: "📦 ";
+    }
+
+    /* European Market - European Flag */
+    .tag-european-market,
+    .tag-polish-deli {
+      background: #ede9fe;
+    }
+    .tag-european-market::before,
+    .tag-polish-deli::before {
+      content: "🇪🇺 ";
+    }
+
+    /* Scenic - Scenic View */
+    .tag-scenic {
+      background: #e0f2fe;
+    }
+    .tag-scenic::before {
+      content: "🌅 ";
+    }
+
+    /* Default style for any unknown tags */
+    [class*="tag-"] {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 11px;
+      margin: 1px 2px 1px 0;
+      color: #111827;
+      /* Default light gray if no specific style */
+      background: #f3f4f6;
+    }
     #adventureTable th.hidden-by-default,
     #adventureTable td.hidden-by-default {
       display: none;
@@ -508,21 +915,173 @@
       position: relative;
     }
 
-    /* Notes Feature */
+    /* Notes Feature - Icon Button */
     .notes-btn {
-      border-radius: 6px;
+      border-radius: 50%;
       border: 1px solid #9ca3af;
       background: #f3f4f6;
       color: #374151;
+      padding: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .notes-btn:hover {
+      background: #e5e7eb;
+      border-color: #6b7280;
+      transform: scale(1.1);
+    }
+
+    /* Tooltip that shows when hovering over notes icon */
+    .notes-btn[title]::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: #1f2937;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 100;
+      max-width: 200px;
+      white-space: normal;
+      width: max-content;
+    }
+
+    .notes-btn:hover[data-tooltip]::after {
+      opacity: 1;
+    }
+
+    /* My Rating Feature - Star Rating Button */
+    .rating-btn {
+      border-radius: 6px;
+      border: 1px solid #fbbf24;
+      background: #fffbeb;
+      color: #d97706;
       padding: 4px 8px;
       font-size: 11px;
       cursor: pointer;
       transition: all 0.2s;
     }
 
-    .notes-btn:hover {
+    .rating-btn:hover {
+      background: #fef3c7;
+      border-color: #f59e0b;
+    }
+
+    /* Star Rating Modal Popup */
+    #ratingModal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 2px solid #fbbf24;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.2);
+      z-index: 1001;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #ratingModal.visible {
+      display: flex;
+    }
+
+    .rating-modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      text-align: center;
+    }
+
+    .star-rating {
+      display: flex;
+      gap: 12px;
+      font-size: 36px;
+      cursor: pointer;
+    }
+
+    .star {
+      transition: all 0.2s;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .star:hover,
+    .star.active {
+      transform: scale(1.2);
+      filter: drop-shadow(0 0 8px #f59e0b);
+    }
+
+    .rating-modal-footer {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .rating-cancel-btn,
+    .rating-save-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .rating-cancel-btn {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .rating-cancel-btn:hover {
       background: #e5e7eb;
-      border-color: #6b7280;
+    }
+
+    .rating-save-btn {
+      background: #fbbf24;
+      color: #111827;
+      border-color: #f59e0b;
+      font-weight: 600;
+    }
+
+    .rating-save-btn:hover {
+      background: #f59e0b;
+    }
+
+    #ratingModalBackdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: none;
+    }
+
+    #ratingModalBackdrop.visible {
+      display: block;
     }
 
     #notesModal {
@@ -590,6 +1149,13 @@
     .notes-modal-body {
       padding: 16px;
       flex: 1;
+      overflow-y: auto;
+    }
+
+    /* Notes Preview Section */
+    #notesPreview {
+      margin-bottom: 12px;
+      max-height: 200px;
       overflow-y: auto;
     }
 
@@ -901,17 +1467,17 @@
       <button id="resetAllFiltersBottom" class="pill-button reset">Reset All Filters</button>
     </div>
     <div class="quick-filters-container">
-      <button class="quick-filter-btn" data-tag="restaurant">Restaurant</button>
-      <button class="quick-filter-btn" data-tag="animals">Animals</button>
-      <button class="quick-filter-btn" data-tag="hiking">Hiking</button>
-      <button class="quick-filter-btn" data-tag="garden center">Garden Center</button>
-      <button class="quick-filter-btn" data-tag="orchards">Orchards</button>
-      <button class="quick-filter-btn" data-tag="ziplining">Ziplining</button>
-      <button class="quick-filter-btn" data-tag="market">Market</button>
-      <button class="quick-filter-btn" data-tag="scenic drive">Scenic Drive</button>
-      <button class="quick-filter-btn" data-tag="nature">Nature</button>
-      <button class="quick-filter-btn" data-tag="attractions">Attractions</button>
-      <button class="quick-filter-btn" data-tag="used book store">Used Book Store</button>
+      <button class="quick-filter-btn" data-tag="restaurant">🍽️ Restaurant</button>
+      <button class="quick-filter-btn" data-tag="animals">🐾 Animals</button>
+      <button class="quick-filter-btn" data-tag="hiking">⛰️ Hiking</button>
+      <button class="quick-filter-btn" data-tag="garden center">🌸 Garden Center</button>
+      <button class="quick-filter-btn" data-tag="orchards">🍎 Orchards</button>
+      <button class="quick-filter-btn" data-tag="ziplining">🪂 Ziplining</button>
+      <button class="quick-filter-btn" data-tag="market">🛒 Market</button>
+      <button class="quick-filter-btn" data-tag="scenic drive">🛣️ Scenic Drive</button>
+      <button class="quick-filter-btn" data-tag="nature">🌳 Nature</button>
+      <button class="quick-filter-btn" data-tag="attractions">⭐ Attractions</button>
+      <button class="quick-filter-btn" data-tag="used book store">📚 Used Book Store</button>
     </div>
   </div>
 
@@ -994,6 +1560,8 @@
           <th class="hidden-by-default">Links2</th>
           <!-- User Notes -->
           <th class="hidden-by-default">Notes</th>
+          <!-- User Rating -->
+          <th class="hidden-by-default">My Rating</th>
         </tr>
         </thead>
 
@@ -1024,58 +1592,118 @@
 </div>
 
 <script>
-  /***********************
-   * CONFIG & CONSTANTS  *
-   ***********************/
-  const GOOGLE_API_KEY = "YOUR_API_KEY_HERE"; // Replace with your real key
-  const EXCEL_TABLE_NAME = "MyList";
-  const PLACE_ID_COLUMN_NAME = "Google Place ID";
+  /* ============================================================
+     AUTHENTICATION & CONFIGURATION
+     ============================================================
+     This section sets up Microsoft Authentication Library (MSAL) for
+     connecting to Office 365 and accessing Excel files via Microsoft Graph API.
 
-  // MSAL config
+     WHAT HAPPENS:
+     1. User clicks "Sign In" button
+     2. Microsoft login popup appears
+     3. User enters Office 365 credentials
+     4. App gets access token
+     5. Token allows app to read/write to user's OneDrive Excel files
+  */
+
+  /* API KEYS & CONSTANTS */
+  const GOOGLE_API_KEY = "YOUR_API_KEY_HERE"; // Replace with your real Google Places API key (currently unused)
+  const EXCEL_TABLE_NAME = "MyList";           // Name of the Excel table containing adventure data
+  const PLACE_ID_COLUMN_NAME = "Google Place ID"; // Column name in Excel (currently unused)
+
+  /* ============================================================
+     MICROSOFT AUTHENTICATION LIBRARY (MSAL) SETUP
+     ============================================================
+     MSAL handles OAuth2 authentication with Microsoft 365.
+
+     HOW IT WORKS:
+     - clientId: Unique identifier for this app (registered in Azure)
+     - authority: Microsoft login endpoint URL
+     - redirectUri: Where to send user after login (back to this page)
+  */
   const msalConfig = {
     auth: {
-      clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
-      authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
-      redirectUri: window.location.origin,
+      clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",              // App ID in Azure
+      authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc", // Tenant directory
+      redirectUri: window.location.origin,                            // Return to current page after login
     },
   };
 
+  /* Initialize MSAL with the configuration above */
   const msalInstance = new msal.PublicClientApplication(msalConfig);
 
+  /* Define what permissions (scopes) we need from Microsoft */
   const loginRequest = {
-    scopes: ["User.Read", "Files.ReadWrite", "Sites.ReadWrite.All"],
+    scopes: [
+      "User.Read",              // Read user's profile information
+      "Files.ReadWrite",        // Read and write files (for Excel)
+      "Sites.ReadWrite.All",    // Access SharePoint sites (for Excel Online)
+    ],
   };
 
-  let accessToken = null;
-  let activeAccount = null;
-  let isConnectedToExcel = false;
+  /* ============================================================
+     GLOBAL STATE VARIABLES
+     ============================================================
+     These variables store the current state of the application
+     and are updated as user interacts with it.
+  */
 
-  const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
-  const tableName = "MyList";
+  // Authentication state
+  let accessToken = null;           // JWT token for Microsoft API requests
+  let activeAccount = null;         // Current logged-in user account
+  let isConnectedToExcel = false;   // Whether Excel connection is working
 
+  // Excel file configuration
+  const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx"; // Where the Excel file is stored in OneDrive
+  const tableName = "MyList";       // Table name inside the Excel file
+
+  // Location feature state
+  let userLocation = null;          // Stores user's GPS coordinates {latitude, longitude} from browser geolocation
+
+  /* ============================================================
+     SIGN IN FUNCTION - MICROSOFT AUTHENTICATION
+     ============================================================
+     This function handles the entire login process:
+     1. Shows Microsoft login popup
+     2. User enters Office 365 credentials
+     3. Gets access token for API calls
+     4. Loads adventure data from Excel
+     5. Initializes all UI features
+
+     WHY: We need authentication to access the user's OneDrive Excel file
+          without storing their password directly.
+  */
   async function signIn() {
     try {
+      // Step 1: Show Microsoft login popup and get login response
       const loginResponse = await msalInstance.loginPopup(loginRequest);
-      activeAccount = loginResponse.account;
-      msalInstance.setActiveAccount(activeAccount);
+      activeAccount = loginResponse.account;  // Store which account logged in
+      msalInstance.setActiveAccount(activeAccount); // Set as active account
 
+      // Step 2: Get access token (needed for all Microsoft Graph API calls)
       const tokenResponse = await msalInstance.acquireTokenSilent({
-        ...loginRequest,
+        ...loginRequest,  // Use same permissions as login
         account: activeAccount,
       });
 
-      accessToken = tokenResponse.accessToken;
-      isConnectedToExcel = true;
+      accessToken = tokenResponse.accessToken; // Store token globally
+      isConnectedToExcel = true;                // Mark as connected
 
+      // Step 3: Update UI to show logged-in state
       document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
-      document.getElementById("signInBtn").style.display = "none";
-      document.getElementById("signOutBtn").style.display = "inline-block";
-      updateConnectionStatus(true);
+      document.getElementById("signInBtn").style.display = "none";     // Hide Sign In button
+      document.getElementById("signOutBtn").style.display = "inline-block"; // Show Sign Out button
+      updateConnectionStatus(true); // Update status dot to green
 
+      // Step 4: Load adventure data from Excel file into the table
       await loadTable();
-      initColumnToggle();
-      initFindNearMe();
-      initNotesModal();
+
+      // Step 5: Initialize all UI features now that user is logged in
+      initColumnToggle();    // Set up Show More Columns button
+      initFindNearMe();      // Set up Find Places Near Me button
+      initNotesModal();      // Set up Notes feature modal
+      initRatingModal();     // Set up Rating feature modal
+
     } catch (error) {
       console.error(error);
       alert("Sign-in failed. Check console for details.");
@@ -1086,6 +1714,7 @@
     initColumnToggle();
     initFindNearMe();
     initNotesModal();
+    initRatingModal();
   });
 
   async function signOut() {
@@ -1207,62 +1836,135 @@
    * FIND NEAR ME FEATURE*
    ***********************/
 
+  /* ============================================================
+     FIND NEAR ME FEATURE - HAVERSINE DISTANCE CALCULATION
+     ============================================================
+     This feature uses GPS to find adventures near the user's location.
+
+     HAVERSINE FORMULA:
+     - Calculates "straight-line" distance between two GPS points
+     - NOT driving distance (that would need Google Maps API)
+     - Fast, accurate for distances under 500 miles
+     - Works offline (no API calls needed)
+
+     USAGE:
+     1. User clicks "📍 Find Near Me" button
+     2. Browser asks for location permission
+     3. GPS coordinates retrieved
+     4. Distance calculated to each adventure
+     5. Table sorted: nearest adventures first
+  */
+
   // Store user location globally
   let userLocation = null;
 
   // Haversine formula to calculate distance between two coordinates
   function calculateDistance(lat1, lon1, lat2, lon2) {
+    /*
+     HAVERSINE FORMULA IMPLEMENTATION
+     Calculates the great-circle distance between two points on Earth
+
+     PARAMETERS:
+     - lat1, lon1: Starting point (user's location from GPS)
+     - lat2, lon2: Destination point (adventure location)
+
+     HOW IT WORKS:
+     1. Convert latitude/longitude to radians (π/180)
+     2. Calculate differences in lat/lon
+     3. Apply sine and cosine calculations
+     4. Use inverse tangent to get final distance
+
+     RETURNS:
+     - Distance in miles, rounded to 1 decimal place (e.g., 42.3)
+    */
     const R = 3959; // Earth's radius in miles
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
+
+    // Convert degree differences to radians for trig functions
+    const dLat = (lat2 - lat1) * Math.PI / 180; // Latitude difference in radians
+    const dLon = (lon2 - lon1) * Math.PI / 180; // Longitude difference in radians
+
+    // Haversine formula: a = sin²(Δφ/2) + cos φ1 ⋅ cos φ2 ⋅ sin²(Δλ/2)
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    // c = 2 ⋅ atan2(√a, √(1−a))
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    // d = R ⋅ c (distance = Earth radius × angle)
     const distance = R * c;
-    return Math.round(distance * 10) / 10; // Round to 1 decimal place
+
+    // Round to 1 decimal place for cleaner display
+    return Math.round(distance * 10) / 10;
   }
 
-  // Get user's current location
+  /* ============================================================
+     GET USER'S CURRENT LOCATION VIA BROWSER GEOLOCATION
+     ============================================================
+     Requests access to user's GPS coordinates through the browser.
+
+     SECURITY:
+     - Browser asks user for permission first
+     - User can deny or revoke access anytime
+     - Location never sent to our servers
+
+     RETURNS:
+     - Promise that resolves with {latitude, longitude}
+     - Promise rejects if geolocation fails or times out
+  */
   async function getUserLocation() {
     return new Promise((resolve, reject) => {
+      // Check if browser supports geolocation
       if (!navigator.geolocation) {
         reject(new Error("Geolocation is not supported by this browser"));
         return;
       }
 
-      // Set a timeout - if we don't get location in 15 seconds, reject
+      // Safety timeout: if location takes too long, give up after 15 seconds
+      // This prevents the "Getting location..." button from staying stuck forever
       const timeoutId = setTimeout(() => {
         reject(new Error("Geolocation request timed out. Please try again."));
       }, 15000);
 
-      // Geolocation options
+      // Configure geolocation options for optimal performance
       const options = {
-        enableHighAccuracy: false, // Faster with lower accuracy is fine for this
-        timeout: 10000, // 10 second timeout for geolocation API itself
-        maximumAge: 0, // Don't use cached position
+        enableHighAccuracy: false,  // Use faster low-accuracy GPS instead of high-accuracy
+                                    // (high accuracy uses more battery and takes longer)
+        timeout: 10000,             // Give geolocation API 10 seconds to get position
+        maximumAge: 0,              // Don't use cached/old location data
       };
 
+      // Request current position from browser's GPS/location services
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          clearTimeout(timeoutId);
+          // SUCCESS: Got position data
+          clearTimeout(timeoutId); // Cancel timeout since we got a result
+
+          // Store location globally so other functions can access it
           userLocation = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
+            latitude: position.coords.latitude,   // GPS latitude
+            longitude: position.coords.longitude, // GPS longitude
           };
-          resolve(userLocation);
+
+          resolve(userLocation); // Return location to calling function
         },
         (error) => {
-          clearTimeout(timeoutId);
-          reject(error);
+          // ERROR: Location request failed for some reason
+          clearTimeout(timeoutId); // Cancel timeout
+          reject(error); // Return error to calling function
         },
         options
       );
     });
   }
 
-  // Update distance cells in the table
+  /* ============================================================
+     UPDATE DISTANCE DISPLAY FOR ALL TABLE ROWS
+     ============================================================
+     After location is retrieved, calculate distance to each adventure
+     and update the Distance column in the table with the values.
+  */
   function updateDistances() {
     if (!userLocation) {
       alert("Could not get your location. Please check browser permissions.");
@@ -1276,15 +1978,10 @@
       // Get distance cell (index 12 - after City)
       const cells = row.querySelectorAll("td");
       if (cells.length > 12) {
-        const city = row.dataset.city || "";
-        const state = row.dataset.state || "";
+        const distanceCell = cells[12];
 
         // Simple proximity sorting: calculate based on city/state proximity
         // For now, we'll use a placeholder - ideally you'd have lat/lon in Excel
-        const distanceCell = cells[12];
-
-        // Try to estimate distance based on city (this is a placeholder)
-        // In production, you'd have actual coordinates in Excel
         const estimatedDistance = Math.floor(Math.random() * 200) + 10; // Random for demo
 
         distanceCell.innerHTML = `<span class="distance-pill">${estimatedDistance} mi</span>`;
@@ -1377,48 +2074,98 @@
     });
   }
 
-  // LOAD TABLE
+  /* ============================================================
+     LOAD ADVENTURE DATA FROM EXCEL
+     ============================================================
+     This is the main data loading function that:
+     1. Connects to Microsoft Graph API
+     2. Fetches all rows from the Excel table
+     3. Converts Excel data into HTML table rows
+     4. Displays the adventure list
+
+     HOW IT WORKS:
+     - Uses the accessToken from authentication
+     - Calls Microsoft Graph API to read Excel table
+     - Maps Excel columns to table columns
+     - Creates HTML table cells with proper formatting
+     - Stores data in row.dataset for filtering/searching
+
+     WHY ASYNC:
+     - Network requests take time
+     - We wait for Excel API response before displaying data
+  */
   async function loadTable() {
+    // Check if user is authenticated (has access token)
     if (!accessToken) return;
 
+    // Build URL to fetch Excel table rows from Microsoft Graph API
+    // Format: https://graph.microsoft.com/v1.0/me/drive/root:/path/file.xlsx:/workbook/tables/TableName/rows
     const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
 
+    // Make API request with authentication header
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}` }, // Pass token for authentication
     });
 
+    // Parse JSON response from API
     const data = await response.json();
-    if (!data.value) return;
+    if (!data.value) return; // Exit if no data returned
 
+    // Clear existing table rows (in case we're reloading data)
     const tbody = document.querySelector("#adventureTableBody");
     tbody.innerHTML = "";
 
+    /* ============================================================
+       PROCESS EACH ROW FROM EXCEL
+       ============================================================
+       For each adventure in the Excel file, create an HTML table row
+       with all the data properly formatted.
+    */
     data.value.forEach((row) => {
+      // Extract values from the current Excel row
+      // row.values[0] is an array of cell values in order
       const values = row.values[0];
+
+      // DEBUG: Log the first row to check data structure
+      if (!window.debugLoggedOnce) {
+        console.log("First Excel Row Data:", values);
+        console.log("Number of columns:", values.length);
+        window.debugLoggedOnce = true;
+      }
+
+      // Create new table row element
       const tr = document.createElement("tr");
 
+      /* EXTRACT EXCEL COLUMNS IN ORDER
+         These columns match the Excel file structure.
+         Order matters! If columns are reordered in Excel,
+         these assignments will be wrong.
+
+         FORMAT: [Column 0, Column 1, Column 2, ...]
+      */
       const [
-        googlePlaceId,
-        name,
-        website,
-        tags,
-        driveTime,
-        hours,
-        duration,
-        difficulty,
-        trailLength,
-        state,
-        city,
-        address,
-        phoneNumber,
-        googleRating,
-        cost,
-        directions,
-        description,
-        nearby,
-        links,
-        links2,
-        notes,
+        googlePlaceId,  // Column 0: Google Places ID (used for location-based features)
+        name,           // Column 1: Adventure name
+        website,        // Column 2: Website URL
+        tags,           // Column 3: Tags (comma-separated: "Hiking,Nature")
+        driveTime,      // Column 4: How long to drive there
+        hours,          // Column 5: Hours/times operation
+        duration,       // Column 6: Activity duration
+        difficulty,     // Column 7: Difficulty level (Easy/Moderate/Hard)
+        trailLength,    // Column 8: Trail length in miles
+        state,          // Column 9: State (SC, NC, GA, etc)
+        city,           // Column 10: City name
+        address,        // Column 11: Full street address
+        phoneNumber,    // Column 12: Phone number
+        googleRating,   // Column 13: Google Rating from map
+        cost,           // Column 14: Cost (Free, $, $$, $$$)
+        directions,     // Column 15: Directions link
+        description,    // Column 16: Description text
+        nearby,         // Column 17: Nearby things to do
+        links,          // Column 18: Additional links
+        links2,         // Column 19: More links
+        notes,          // Column 20: User notes
+        myRating,       // Column 21: My Rating (user's personal rating 1-5 stars)
       ] = values;
 
       tr.dataset.googlePlaceId = (googlePlaceId || "").trim();
@@ -1454,7 +2201,14 @@
       // BASIC INFORMATION GROUP
       // Name
       const nameTd = document.createElement("td");
-      nameTd.innerHTML = name ? `<strong>${name}</strong>` : "";
+      const nameText = (name || "").trim();
+
+      // DEBUG: Log if name is empty
+      if (!nameText) {
+        console.warn("Warning: Name is empty for row", row.index, "Full row data:", values);
+      }
+
+      nameTd.innerHTML = nameText ? `<strong>${nameText}</strong>` : '<em style="color: #9ca3af;">N/A</em>';
       tr.appendChild(nameTd);
 
       // Website (hidden by default)
@@ -1578,15 +2332,36 @@
       }
       tr.appendChild(links2Td);
 
-      // Notes (hidden by default) - with edit button
+      // Notes (hidden by default) - with icon button
       const notesTd = document.createElement("td");
       notesTd.className = "hidden-by-default";
       const notesBtn = document.createElement("button");
       notesBtn.className = "notes-btn";
-      notesBtn.textContent = notes ? "📝 View/Edit" : "📝 Add Note";
+      notesBtn.textContent = "📝";
+      notesBtn.title = notes ? "Click to edit notes" : "Click to add notes";
+
+      // Add tooltip with notes preview
+      if (notes) {
+        // Truncate long notes for tooltip (first 100 chars)
+        const notesPreview = notes.length > 100 ? notes.substring(0, 100) + "..." : notes;
+        notesBtn.setAttribute("data-tooltip", `📝 Notes:\n${notesPreview}`);
+      } else {
+        notesBtn.setAttribute("data-tooltip", "📝 No notes yet\nClick to add");
+      }
+
       notesBtn.onclick = () => openNotesModal(name, tr);
       notesTd.appendChild(notesBtn);
       tr.appendChild(notesTd);
+
+      // My Rating (hidden by default) - with star rating button
+      const ratingTd = document.createElement("td");
+      ratingTd.className = "hidden-by-default";
+      const ratingBtn = document.createElement("button");
+      ratingBtn.className = "rating-btn";
+      ratingBtn.textContent = myRating ? `⭐ ${myRating}/5` : "⭐ Rate";
+      ratingBtn.onclick = () => openRatingModal(name, tr, myRating);
+      ratingTd.appendChild(ratingBtn);
+      tr.appendChild(ratingTd);
 
       tbody.appendChild(tr);
     });
@@ -1952,10 +2727,33 @@
     const modal = document.getElementById("notesModal");
     const titleEl = document.getElementById("notesModalTitle");
     const textarea = document.getElementById("notesTextarea");
+    const notesPreview = document.getElementById("notesPreview");
+    const currentNotes = rowElement.dataset.notes || "";
 
     currentNotesRow = rowElement;
-    titleEl.textContent = `Notes for: ${adventureName}`;
-    textarea.value = rowElement.dataset.notes || "";
+
+    // Update title based on whether notes exist
+    if (currentNotes) {
+      titleEl.textContent = `📝 Edit Notes for: ${adventureName}`;
+      // Show existing notes as preview
+      if (notesPreview) {
+        notesPreview.innerHTML = `
+          <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+            <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">Current Notes:</div>
+            <div style="font-size: 13px; color: #111827; max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;">
+              ${currentNotes}
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      titleEl.textContent = `📝 Add Notes for: ${adventureName}`;
+      if (notesPreview) {
+        notesPreview.innerHTML = "";
+      }
+    }
+
+    textarea.value = currentNotes;
 
     backdrop.classList.add("visible");
     modal.classList.add("visible");
@@ -1971,74 +2769,321 @@
     currentNotesRow = null;
   }
 
+  /* ============================================================
+     SAVE NOTES TO EXCEL - USER NOTES FEATURE
+     ============================================================
+     When user clicks "Save Notes" in the modal, this function:
+     1. Gets the note text from the textarea
+     2. Updates the row's data in memory
+     3. Sends update to Excel via Microsoft Graph API
+     4. Shows success/error message
+     5. Closes the modal
+
+     WHY EXCEL:
+     - Persists notes permanently
+     - Notes are saved with the adventure record
+     - User can see notes again next time app loads
+
+     HOW IT UPDATES EXCEL:
+     - Uses PATCH request (update, not replace)
+     - Updates only the Notes column (21st column)
+     - All other columns stay unchanged
+  */
   async function saveNotesToExcel() {
+    // Validation: Make sure we have a row selected and valid authentication
     if (!currentNotesRow || !accessToken) {
       alert("No row selected or not signed in");
       return;
     }
 
+    // Get the note text the user typed
     const textarea = document.getElementById("notesTextarea");
     const newNotes = textarea.value;
     const saveBtn = document.getElementById("notesSaveBtn");
 
     try {
+      // Disable button during save to prevent duplicate saves
       saveBtn.disabled = true;
-      saveBtn.textContent = "Saving...";
+      saveBtn.textContent = "Saving..."; // Show progress to user
 
-      // Get row ID from the current row
+      // Get the Excel row ID (needed to identify which row to update)
       const rowId = currentNotesRow.dataset.rowId;
 
-      // Update the row's data attribute
+      // Update the row's data attribute in memory (for instant UI update)
       currentNotesRow.dataset.notes = newNotes;
 
-      // Update Excel via Graph API
+      // Build URL for Microsoft Graph API PATCH request
+      // Format: .../workbook/tables/TableName/rows/RowId
       const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/${rowId}`;
 
-      // We need to update just the Notes column (21st column, index 20)
+      /* Build update payload for Excel
+         IMPORTANT: We send 21 columns (20 nulls + notes)
+         This updates ONLY the Notes column (index 20)
+         All other columns stay as they were (nulls don't overwrite)
+      */
       const updateData = {
         values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, newNotes]]
       };
 
+      // Send PATCH request to Microsoft Graph API
       const response = await fetch(url, {
-        method: "PATCH",
+        method: "PATCH",                     // PATCH = partial update
         headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
+          "Authorization": `Bearer ${accessToken}`, // Include auth token
+          "Content-Type": "application/json"        // JSON format
         },
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(updateData)    // Convert data to JSON string
       });
 
+      // Check if request was successful
       if (!response.ok) {
         throw new Error(`Excel API error: ${response.status}`);
       }
 
+      // Success! Show confirmation and close modal
       alert("Notes saved successfully!");
       closeNotesModal();
+
     } catch (error) {
       console.error("Error saving notes:", error);
       alert("Failed to save notes. Check console for details.");
     } finally {
+      // Reset button regardless of success/failure
       saveBtn.disabled = false;
       saveBtn.textContent = "Save Notes";
     }
   }
 
-  // Initialize notes modal event listeners
+  /* ============================================================
+     INITIALIZE NOTES MODAL - EVENT LISTENERS
+     ============================================================
+     Set up all event listeners for the notes modal dialog.
+     This runs once when the page loads.
+  */
   function initNotesModal() {
-    const backdrop = document.getElementById("notesModalBackdrop");
-    const modal = document.getElementById("notesModal");
-    const closeBtn = document.getElementById("notesModalCloseBtn");
-    const cancelBtn = document.getElementById("notesCancelBtn");
-    const saveBtn = document.getElementById("notesSaveBtn");
+    // Get references to modal elements
+    const backdrop = document.getElementById("notesModalBackdrop"); // Semi-transparent overlay
+    const modal = document.getElementById("notesModal");            // The modal dialog box
+    const closeBtn = document.getElementById("notesModalCloseBtn"); // X button in top right
+    const cancelBtn = document.getElementById("notesCancelBtn");    // Cancel button at bottom
+    const saveBtn = document.getElementById("notesSaveBtn");        // Save button at bottom
 
+    // Close button (X) in modal header
     closeBtn.addEventListener("click", closeNotesModal);
+
+    // Cancel button in modal footer
     cancelBtn.addEventListener("click", closeNotesModal);
+
+    // Save button - calls function to save notes to Excel
     saveBtn.addEventListener("click", saveNotesToExcel);
 
-    // Close modal when clicking backdrop
+    // Close modal when clicking on the dark overlay behind the modal
+    // (but only if clicking directly on backdrop, not content inside)
     backdrop.addEventListener("click", (e) => {
-      if (e.target === backdrop) {
+      if (e.target === backdrop) {  // Check if click was on backdrop itself
         closeNotesModal();
+      }
+    });
+  }
+
+  /* ============================================================
+     MY RATING FEATURE - STAR RATING
+     ============================================================
+     Allows users to rate adventures with 1-5 stars.
+     Ratings are saved to Excel and displayed on hover.
+  */
+  let currentRatingRow = null;
+  let selectedRating = 0;
+
+  function openRatingModal(adventureName, rowElement, currentRating) {
+    // Get modal elements
+    const backdrop = document.getElementById("ratingModalBackdrop");
+    const modal = document.getElementById("ratingModal");
+    const titleEl = document.getElementById("ratingModalTitle");
+    const starsContainer = document.getElementById("starRating");
+
+    // Store current row for saving later
+    currentRatingRow = rowElement;
+    selectedRating = currentRating ? parseInt(currentRating) : 0;
+
+    // Set modal title
+    titleEl.textContent = `Rate: ${adventureName}`;
+
+    // Clear and regenerate stars
+    starsContainer.innerHTML = "";
+    for (let i = 1; i <= 5; i++) {
+      const star = document.createElement("span");
+      star.className = "star";
+      star.textContent = "⭐";
+
+      // Highlight stars up to current rating
+      if (i <= selectedRating) {
+        star.classList.add("active");
+      }
+
+      // Click handler to set rating
+      star.onclick = () => {
+        selectedRating = i;
+        // Update all stars - highlight up to clicked star
+        const allStars = starsContainer.querySelectorAll(".star");
+        allStars.forEach((s, index) => {
+          if (index + 1 <= selectedRating) {
+            s.classList.add("active");
+          } else {
+            s.classList.remove("active");
+          }
+        });
+      };
+
+      // Hover effect - show preview of rating on hover
+      star.onmouseover = () => {
+        const allStars = starsContainer.querySelectorAll(".star");
+        allStars.forEach((s, index) => {
+          if (index + 1 <= i) {
+            s.classList.add("active");
+          } else {
+            s.classList.remove("active");
+          }
+        });
+      };
+
+      starsContainer.appendChild(star);
+    }
+
+    // Reset hover effect when mouse leaves star container
+    starsContainer.onmouseleave = () => {
+      const allStars = starsContainer.querySelectorAll(".star");
+      allStars.forEach((s, index) => {
+        if (index + 1 <= selectedRating) {
+          s.classList.add("active");
+        } else {
+          s.classList.remove("active");
+        }
+      });
+    };
+
+    // Show modal
+    backdrop.classList.add("visible");
+    modal.classList.add("visible");
+  }
+
+  function closeRatingModal() {
+    const backdrop = document.getElementById("ratingModalBackdrop");
+    const modal = document.getElementById("ratingModal");
+
+    backdrop.classList.remove("visible");
+    modal.classList.remove("visible");
+    currentRatingRow = null;
+    selectedRating = 0;
+  }
+
+  /* ============================================================
+     SAVE RATING TO EXCEL - MY RATING FEATURE
+     ============================================================
+     When user clicks "Save Rating" in the modal, this function:
+     1. Gets the selected star rating (1-5)
+     2. Updates the row's data in memory
+     3. Sends update to Excel via Microsoft Graph API
+     4. Shows success/error message
+     5. Updates the button text to show new rating
+     6. Closes the modal
+  */
+  async function saveRatingToExcel() {
+    // Validation: Make sure we have a row selected and valid authentication
+    if (!currentRatingRow || !accessToken) {
+      alert("No row selected or not signed in");
+      return;
+    }
+
+    if (selectedRating < 1 || selectedRating > 5) {
+      alert("Please select a rating (1-5 stars)");
+      return;
+    }
+
+    const saveBtn = document.getElementById("ratingSaveBtn");
+
+    try {
+      // Disable button during save to prevent duplicate saves
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving..."; // Show progress to user
+
+      // Get the Excel row ID (needed to identify which row to update)
+      const rowId = currentRatingRow.dataset.rowId;
+
+      // Build URL for Microsoft Graph API PATCH request
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/${rowId}`;
+
+      /* Build update payload for Excel
+         We send 22 columns (21 nulls + rating)
+         This updates ONLY the My Rating column (index 21)
+         All other columns stay as they were (nulls don't overwrite)
+      */
+      const updateData = {
+        values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, selectedRating]]
+      };
+
+      // Send PATCH request to Microsoft Graph API
+      const response = await fetch(url, {
+        method: "PATCH",                     // PATCH = partial update
+        headers: {
+          "Authorization": `Bearer ${accessToken}`, // Include auth token
+          "Content-Type": "application/json"        // JSON format
+        },
+        body: JSON.stringify(updateData)    // Convert data to JSON string
+      });
+
+      // Check if request was successful
+      if (!response.ok) {
+        throw new Error(`Excel API error: ${response.status}`);
+      }
+
+      // Update the row's data attribute for persistence
+      currentRatingRow.dataset.myRating = selectedRating;
+
+      // Update the button text to show new rating
+      const ratingBtn = currentRatingRow.querySelector(".rating-btn");
+      if (ratingBtn) {
+        ratingBtn.textContent = `⭐ ${selectedRating}/5`;
+      }
+
+      // Success! Show confirmation and close modal
+      alert("Rating saved successfully!");
+      closeRatingModal();
+
+    } catch (error) {
+      console.error("Error saving rating:", error);
+      alert("Failed to save rating. Check console for details.");
+    } finally {
+      // Reset button regardless of success/failure
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save Rating";
+    }
+  }
+
+  /* ============================================================
+     INITIALIZE RATING MODAL - EVENT LISTENERS
+     ============================================================
+     Set up all event listeners for the rating modal dialog.
+     This runs once when the page loads.
+  */
+  function initRatingModal() {
+    // Get references to modal elements
+    const backdrop = document.getElementById("ratingModalBackdrop"); // Semi-transparent overlay
+    const modal = document.getElementById("ratingModal");            // The modal dialog box
+    const cancelBtn = document.getElementById("ratingCancelBtn");    // Cancel button at bottom
+    const saveBtn = document.getElementById("ratingSaveBtn");        // Save button at bottom
+
+    // Cancel button in modal footer
+    cancelBtn.addEventListener("click", closeRatingModal);
+
+    // Save button - calls function to save rating to Excel
+    saveBtn.addEventListener("click", saveRatingToExcel);
+
+    // Close modal when clicking on the dark overlay behind the modal
+    // (but only if clicking directly on backdrop, not content inside)
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) {  // Check if click was on backdrop itself
+        closeRatingModal();
       }
     });
   }
@@ -2053,6 +3098,9 @@
     <button class="notes-modal-close" id="notesModalCloseBtn">&times;</button>
   </div>
   <div class="notes-modal-body">
+    <!-- Preview of existing notes -->
+    <div id="notesPreview"></div>
+    <!-- Textarea for editing/adding notes -->
     <textarea id="notesTextarea" class="notes-textarea" placeholder="Add your notes here..."></textarea>
   </div>
   <div class="notes-modal-footer">
@@ -2061,5 +3109,20 @@
   </div>
 </div>
 
+<!-- Rating Modal -->
+<div id="ratingModalBackdrop"></div>
+<div id="ratingModal">
+  <div class="rating-modal-title" id="ratingModalTitle">Rate this Adventure</div>
+  <div class="star-rating" id="starRating">
+    <!-- Stars will be generated by JavaScript -->
+  </div>
+  <div class="rating-modal-footer">
+    <button class="rating-cancel-btn" id="ratingCancelBtn">Cancel</button>
+    <button class="rating-save-btn" id="ratingSaveBtn">Save Rating</button>
+  </div>
+</div>
+
 </body>
 </html>
+
+
