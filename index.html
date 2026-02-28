@@ -1628,6 +1628,11 @@
   /* Initialize MSAL with the configuration above */
   const msalInstance = new msal.PublicClientApplication(msalConfig);
 
+  /* Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly */
+  msalInstance.initialize().catch(error => {
+    console.error("MSAL initialization failed:", error);
+  });
+
   /* Define what permissions (scopes) we need from Microsoft */
   const loginRequest = {
     scopes: [
@@ -1671,38 +1676,81 @@
   */
   async function signIn() {
     try {
+      console.log("=== SIGN-IN PROCESS STARTED ===");
+      console.log("MSAL Instance:", msalInstance);
+      console.log("Login Request:", loginRequest);
+
       // Step 1: Show Microsoft login popup and get login response
+      console.log("Step 1: Calling msalInstance.loginPopup()");
       const loginResponse = await msalInstance.loginPopup(loginRequest);
+      console.log("Step 1 SUCCESS: Login response received", loginResponse);
+
       activeAccount = loginResponse.account;  // Store which account logged in
+      console.log("Active account set:", activeAccount);
       msalInstance.setActiveAccount(activeAccount); // Set as active account
+      console.log("Active account confirmed in MSAL");
 
       // Step 2: Get access token (needed for all Microsoft Graph API calls)
+      console.log("Step 2: Calling acquireTokenSilent()");
       const tokenResponse = await msalInstance.acquireTokenSilent({
         ...loginRequest,  // Use same permissions as login
         account: activeAccount,
       });
+      console.log("Step 2 SUCCESS: Token acquired", tokenResponse);
 
       accessToken = tokenResponse.accessToken; // Store token globally
+      console.log("Access token stored globally");
       isConnectedToExcel = true;                // Mark as connected
 
       // Step 3: Update UI to show logged-in state
+      console.log("Step 3: Updating UI to show logged-in state");
       document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
       document.getElementById("signInBtn").style.display = "none";     // Hide Sign In button
       document.getElementById("signOutBtn").style.display = "inline-block"; // Show Sign Out button
       updateConnectionStatus(true); // Update status dot to green
+      console.log("Step 3 SUCCESS: UI updated");
 
       // Step 4: Load adventure data from Excel file into the table
+      console.log("Step 4: Loading adventure data from Excel");
       await loadTable();
+      console.log("Step 4 SUCCESS: Table data loaded");
 
       // Step 5: Initialize all UI features now that user is logged in
+      console.log("Step 5: Initializing UI features");
       initColumnToggle();    // Set up Show More Columns button
       initFindNearMe();      // Set up Find Places Near Me button
       initNotesModal();      // Set up Notes feature modal
       initRatingModal();     // Set up Rating feature modal
+      console.log("Step 5 SUCCESS: All UI features initialized");
+
+      console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
 
     } catch (error) {
-      console.error(error);
-      alert("Sign-in failed. Check console for details.");
+      console.error("=== SIGN-IN ERROR ===");
+      console.error("Error object:", error);
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Error code:", error.code);
+      console.error("Full stack trace:", error.stack);
+
+      let userMessage = "Sign-in failed. Check console for details.";
+
+      // Provide specific error messages for common MSAL errors
+      if (error.name === "BrowserAuthError") {
+        if (error.code === "popup_window_error") {
+          userMessage = "Could not open login popup. Please check if popups are blocked.";
+        } else if (error.code === "user_cancelled") {
+          userMessage = "Login was cancelled. Please try again.";
+        } else if (error.code === "interaction_in_progress") {
+          userMessage = "An interaction is already in progress. Please wait.";
+        }
+      } else if (error.name === "BrowserConfigurationAuthError") {
+        userMessage = "MSAL configuration error. Please check credentials in the code.";
+      } else if (error.name === "BrowserAuthError") {
+        userMessage = "Browser authentication error: " + error.message;
+      }
+
+      alert(userMessage);
     }
   }
 
@@ -1739,35 +1787,43 @@
   // Enhanced initialization with better error handling
   function initializeApp() {
     // Log initialization start
-    console.log("Initializing app...");
+    console.log("=== APP INITIALIZATION STARTED ===");
+    console.log("DOM Content Loaded - All elements should be ready");
 
     // Initialize authentication buttons
     const signInBtn = document.getElementById("signInBtn");
     const signOutBtn = document.getElementById("signOutBtn");
 
+    console.log("Sign In Button found:", !!signInBtn, signInBtn);
+    console.log("Sign Out Button found:", !!signOutBtn, signOutBtn);
+
     if (signInBtn) {
-      console.log("Sign In button found, attaching event listener");
+      console.log("✓ Sign In button found - Attaching event listener");
       signInBtn.addEventListener("click", (e) => {
         e.preventDefault();
-        console.log("Sign In button clicked");
+        console.log("✓ Sign In button CLICKED - Calling signIn() function");
         signIn();
       });
+      console.log("✓ Event listener successfully attached to Sign In button");
     } else {
-      console.error("Sign In button (id='signInBtn') not found in DOM");
+      console.error("✗ CRITICAL ERROR: Sign In button (id='signInBtn') not found in DOM");
+      console.error("Available elements with 'btn' in id:", document.querySelectorAll("[id*='btn']"));
     }
 
     if (signOutBtn) {
-      console.log("Sign Out button found, attaching event listener");
+      console.log("✓ Sign Out button found - Attaching event listener");
       signOutBtn.addEventListener("click", (e) => {
         e.preventDefault();
-        console.log("Sign Out button clicked");
+        console.log("✓ Sign Out button CLICKED - Calling signOut() function");
         signOut();
       });
+      console.log("✓ Event listener successfully attached to Sign Out button");
     } else {
-      console.error("Sign Out button (id='signOutBtn') not found in DOM");
+      console.error("✗ Sign Out button (id='signOutBtn') not found in DOM");
     }
 
     // Initialize other UI features
+    console.log("Initializing other UI features...");
     initConnectionStatus();
     initIphoneToggle();
     initColumnToggle();
@@ -1779,7 +1835,7 @@
     initDryRunToggle();
     initAutomationButtons();
 
-    console.log("App initialization complete");
+    console.log("=== APP INITIALIZATION COMPLETE ===");
   }
 
   // Use DOMContentLoaded to ensure all DOM elements are ready
