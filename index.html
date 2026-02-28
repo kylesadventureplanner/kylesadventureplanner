@@ -2638,15 +2638,41 @@
            these assignments will be wrong.
 
            FORMAT: [Column 0, Column 1, Column 2, ...]
+           
+           ACTUAL EXCEL STRUCTURE (based on debug output):
+           [0]: Name
+           [1]: (empty/unused - was Google Place ID)
+           [2]: Website
+           [3]: Tags
+           [4]: Drive Time
+           [5]: (empty)
+           [6]: Hours of Operation (duration)
+           [7]: Difficulty
+           [8]: Trail Length
+           [9]: State
+           [10]: City
+           [11]: Address (empty)
+           [12]: Phone Number (empty)
+           [13]: Google Rating (empty)
+           [14]: Cost (empty)
+           [15]: Directions
+           [16]: Description
+           [17]: Nearby (empty)
+           [18]: Links (empty)
+           [19]: Links2 (empty)
+           [20]: Notes (empty)
+           [21]: My Rating (empty)
+           [22]: (extra column - 23 total)
         */
+        // noinspection JSUnusedLocalSymbols - unused1 and unused2 are placeholders for empty Excel columns
         const [
-          googlePlaceId,  // Column 0: Google Places ID (used for location-based features)
-          name,           // Column 1: Adventure name
+          name,           // Column 0: Adventure name (FIXED - was in wrong position!)
+          googlePlaceId,  // Column 1: Google Places ID (currently empty in your Excel)
           website,        // Column 2: Website URL
           tags,           // Column 3: Tags (comma-separated: "Hiking,Nature")
           driveTime,      // Column 4: How long to drive there
-          hours,          // Column 5: Hours/times operation
-          duration,       // Column 6: Activity duration
+          unused1,        // Column 5: (empty in Excel)
+          hours,          // Column 6: Hours/times operation (labeled as duration in Excel)
           difficulty,     // Column 7: Difficulty level (Easy/Moderate/Hard)
           trailLength,    // Column 8: Trail length in miles
           state,          // Column 9: State (SC, NC, GA, etc)
@@ -2662,6 +2688,7 @@
           links2,         // Column 19: More links
           notes,          // Column 20: User notes
           myRating,       // Column 21: My Rating (user's personal rating 1-5 stars)
+          unused2,        // Column 22: (extra column in your Excel - 23 total)
         ] = values;
 
       tr.dataset.googlePlaceId = (googlePlaceId || "").trim();
