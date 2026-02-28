@@ -2638,7 +2638,7 @@
            these assignments will be wrong.
 
            FORMAT: [Column 0, Column 1, Column 2, ...]
-           
+
            ACTUAL EXCEL STRUCTURE (based on debug output):
            [0]: Name
            [1]: (empty/unused - was Google Place ID)
@@ -2666,29 +2666,29 @@
         */
         // noinspection JSUnusedLocalSymbols - unused1 and unused2 are placeholders for empty Excel columns
         const [
-          name,           // Column 0: Adventure name (FIXED - was in wrong position!)
-          googlePlaceId,  // Column 1: Google Places ID (currently empty in your Excel)
-          website,        // Column 2: Website URL
-          tags,           // Column 3: Tags (comma-separated: "Hiking,Nature")
-          driveTime,      // Column 4: How long to drive there
-          unused1,        // Column 5: (empty in Excel)
-          hours,          // Column 6: Hours/times operation (labeled as duration in Excel)
-          difficulty,     // Column 7: Difficulty level (Easy/Moderate/Hard)
-          trailLength,    // Column 8: Trail length in miles
-          state,          // Column 9: State (SC, NC, GA, etc)
-          city,           // Column 10: City name
-          address,        // Column 11: Full street address
-          phoneNumber,    // Column 12: Phone number
-          googleRating,   // Column 13: Google Rating from map
-          cost,           // Column 14: Cost (Free, $, $$, $$$)
-          directions,     // Column 15: Directions link
-          description,    // Column 16: Description text
-          nearby,         // Column 17: Nearby things to do
-          links,          // Column 18: Additional links
-          links2,         // Column 19: More links
-          notes,          // Column 20: User notes
-          myRating,       // Column 21: My Rating (user's personal rating 1-5 stars)
-          unused2,        // Column 22: (extra column in your Excel - 23 total)
+          name,              // Column 0: Adventure name (FIXED - was in wrong position!)
+          googlePlaceId,     // Column 1: Google Places ID (currently empty in your Excel)
+          website,           // Column 2: Website URL
+          tags,              // Column 3: Tags (comma-separated: "Hiking,Nature")
+          driveTime,         // Column 4: How long to drive there
+          unused1,           // Column 5: (empty in Excel)
+          activityDuration,  // Column 6: Activity Duration - how long activity takes (e.g., "7-8 hrs")
+          difficulty,        // Column 7: Difficulty level (Easy/Moderate/Hard)
+          trailLength,       // Column 8: Trail length in miles
+          state,             // Column 9: State (SC, NC, GA, etc)
+          city,              // Column 10: City name
+          address,           // Column 11: Full street address
+          phoneNumber,       // Column 12: Phone number
+          googleRating,      // Column 13: Google Rating from map
+          cost,              // Column 14: Cost (Free, $, $$, $$$)
+          directions,        // Column 15: Directions link
+          description,       // Column 16: Description text
+          nearby,            // Column 17: Nearby things to do
+          links,             // Column 18: Additional links
+          links2,            // Column 19: More links
+          notes,             // Column 20: User notes
+          myRating,          // Column 21: My Rating (user's personal rating 1-5 stars)
+          unused2,           // Column 22: (extra column in your Excel - 23 total)
         ] = values;
 
       tr.dataset.googlePlaceId = (googlePlaceId || "").trim();
@@ -2793,8 +2793,8 @@
       tr.appendChild(hiddenCell(directions));
 
       // ACTIVITY DETAILS GROUP
-      // Duration
-      tr.appendChild(cell(duration));
+      // Activity Duration (how long the activity takes)
+      tr.appendChild(cell(activityDuration));
 
       // Difficulty pill
       const diffTd = document.createElement("td");
@@ -2812,14 +2812,13 @@
       tr.appendChild(cell(trailLength));
 
       // HOURS & OPERATIONS GROUP
-      // Hours (2-line preview) - hidden by default
+      // Hours of Operation (using Activity Duration data since Excel doesn't have separate hours column)
       const hoursTd = document.createElement("td");
-      hoursTd.classList.add("hidden-by-default");
       const hoursWrapper = document.createElement("div");
       hoursWrapper.className = "text-cell-wrapper";
       hoursWrapper.innerHTML = `
-        <div class="hours-preview">${hours || ""}</div>
-        ${hours ? '<button class="more-less-btn" data-type="hours">More</button><div class="hours-full" style="display:none;">' + hours + '</div>' : ""}
+        <div class="hours-preview">${activityDuration || ""}</div>
+        ${activityDuration ? '<button class="more-less-btn" data-type="hours">More</button><div class="hours-full" style="display:none;">' + activityDuration + '</div>' : ""}
       `;
       hoursTd.appendChild(hoursWrapper);
       tr.appendChild(hoursTd);
