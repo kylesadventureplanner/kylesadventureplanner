@@ -2614,8 +2614,18 @@
 
         // DEBUG: Log the first row to check data structure
         if (!window.debugLoggedOnce) {
+          console.log("=== EXCEL DATA STRUCTURE DEBUG ===");
           console.log("First Excel Row Data:", values);
           console.log("Number of columns:", values.length);
+          console.log("Column 0 (Google Place ID):", values[0]);
+          console.log("Column 1 (Name):", values[1]);
+          console.log("Column 2 (Website):", values[2]);
+          console.log("Column 3 (Tags):", values[3]);
+          console.log("All values indexed:");
+          values.forEach((val, idx) => {
+            console.log(`  [${idx}]: ${val}`);
+          });
+          console.log("=================================");
           window.debugLoggedOnce = true;
         }
 
@@ -2687,14 +2697,28 @@
       // BASIC INFORMATION GROUP
       // Name
       const nameTd = document.createElement("td");
-      const nameText = (name || "").trim();
 
-      // DEBUG: Log if name is empty
-      if (!nameText) {
-        console.warn("Warning: Name is empty for row", row.index, "Full row data:", values);
+      // DEBUG: Log name value to see what we're getting
+      if (row.index < 3) { // Log first 3 rows only to avoid console spam
+        console.log(`Row ${row.index} - Name value from Excel:`, name, `(type: ${typeof name})`);
       }
 
-      nameTd.innerHTML = nameText ? `<strong>${nameText}</strong>` : '<em style="color: #9ca3af;">N/A</em>';
+      // If name is empty, try to use tags or first part of description as a fallback
+      let displayName = (name || "").trim();
+      if (!displayName) {
+        // Try to extract a usable name from tags or description
+        if (tags && tags.trim()) {
+          displayName = tags.split(',')[0].trim(); // Use first tag as name
+          console.info(`Row ${row.index}: Using first tag "${displayName}" as name (Name column is empty)`);
+        } else if (description && description.trim()) {
+          displayName = description.substring(0, 30).trim() + '...'; // Use first 30 chars of description
+          console.info(`Row ${row.index}: Using description preview as name (Name column is empty)`);
+        } else {
+          console.info(`Row ${row.index}: Name is empty, showing as N/A`);
+        }
+      }
+
+      nameTd.innerHTML = displayName ? `<strong>${displayName}</strong>` : '<em style="color: #9ca3af;">N/A</em>';
       tr.appendChild(nameTd);
 
       // Website (hidden by default)
