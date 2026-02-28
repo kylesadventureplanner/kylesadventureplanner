@@ -418,6 +418,32 @@
     .tag-attractions { background: #e5e7eb; }
     .tag-used-book-store { background: #fef3c7; }
 
+    /* Column Visibility Toggle */
+    #adventureTable th.hidden-by-default,
+    #adventureTable td.hidden-by-default {
+      display: none;
+    }
+
+    #adventureTable.show-all-columns th.hidden-by-default,
+    #adventureTable.show-all-columns td.hidden-by-default {
+      display: table-cell;
+    }
+
+    .columns-toggle-btn {
+      border-radius: 999px;
+      border: 1px solid var(--blue-border);
+      background: var(--blue-bg);
+      color: var(--blue-strong);
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .columns-toggle-btn:hover {
+      background: #bfdbfe;
+    }
+
     /* Mobile / iPhone view overrides */
     body.mobile-view .control-panel-grid {
       grid-template-columns: 1fr;
@@ -445,6 +471,153 @@
 
     body.mobile-view .iphone-toggle-btn {
       position: relative;
+    }
+
+    /* Notes Feature */
+    .notes-btn {
+      border-radius: 6px;
+      border: 1px solid #9ca3af;
+      background: #f3f4f6;
+      color: #374151;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .notes-btn:hover {
+      background: #e5e7eb;
+      border-color: #6b7280;
+    }
+
+    #notesModal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      display: none;
+      flex-direction: column;
+    }
+
+    #notesModal.visible {
+      display: flex;
+    }
+
+    #notesModalBackdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
+    }
+
+    #notesModalBackdrop.visible {
+      display: block;
+    }
+
+    .notes-modal-header {
+      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .notes-modal-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: #111827;
+    }
+
+    .notes-modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #6b7280;
+    }
+
+    .notes-modal-close:hover {
+      color: #111827;
+    }
+
+    .notes-modal-body {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .notes-textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+
+    .notes-textarea:focus {
+      outline: none;
+      border-color: var(--blue-border);
+      box-shadow: 0 0 0 3px var(--blue-bg);
+    }
+
+    .notes-modal-footer {
+      padding: 16px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .notes-save-btn {
+      border-radius: 6px;
+      border: none;
+      background: var(--blue-strong);
+      color: white;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .notes-save-btn:hover {
+      background: #1e40af;
+    }
+
+    .notes-save-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .notes-cancel-btn {
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: white;
+      color: #374151;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .notes-cancel-btn:hover {
+      background: #f9fafb;
     }
 
     /* Simple modal shell for automation progress (placeholder) */
@@ -736,78 +909,55 @@
   <!-- Adventure List -->
   <div class="card table-card">
     <div class="card-header">
-      <div class="card-title">
-        Adventure List
+      <div>
+        <div class="card-title">
+          Adventure List
+        </div>
+        <div class="card-subtitle">
+          Data source: Adventure_Finder_Excel_DB.xlsx (Table: MyList)
+        </div>
       </div>
-      <div class="card-subtitle">
-        Data source: Adventure_Finder_Excel_DB.xlsx (Table: MyList)
-      </div>
+      <button id="columnsToggleBtn" class="columns-toggle-btn">
+        📊 Show More Columns
+      </button>
     </div>
     <div class="table-wrapper">
       <table id="adventureTable">
         <thead>
         <tr>
           <th style="display:none;">Google Place ID</th>
+          <!-- Basic Information -->
           <th>Name</th>
           <th>Website</th>
           <th>Tags</th>
+          <!-- Travel & Location -->
           <th>Drive Time</th>
-          <th>Hours of Operation</th>
-          <th>Activity Duration</th>
-          <th>Difficulty</th>
-          <th>Trail Length</th>
           <th>State</th>
           <th>City</th>
-          <th>Address</th>
-          <th>Phone Number</th>
-          <th>Google Rating</th>
-          <th>Cost</th>
-          <th>Directions</th>
+          <th class="hidden-by-default">Address</th>
+          <th class="hidden-by-default">Directions</th>
+          <!-- Activity Details -->
+          <th class="hidden-by-default">Activity Duration</th>
+          <th class="hidden-by-default">Difficulty</th>
+          <th class="hidden-by-default">Trail Length</th>
+          <!-- Hours & Operations -->
+          <th>Hours of Operation</th>
+          <!-- Contact & Details -->
+          <th class="hidden-by-default">Phone Number</th>
+          <th class="hidden-by-default">Google Rating</th>
+          <th class="hidden-by-default">Cost</th>
+          <!-- Description & Resources -->
           <th>Description</th>
-          <th>Nearby Things to Do</th>
-          <th>Links</th>
-          <th>Links2</th>
+          <th class="hidden-by-default">Nearby Things to Do</th>
+          <th class="hidden-by-default">Links</th>
+          <th class="hidden-by-default">Links2</th>
+          <!-- User Notes -->
+          <th class="hidden-by-default">Notes</th>
         </tr>
         </thead>
 
         <tbody id="adventureTableBody">
-        <!-- Example static row; real rows will be populated from Excel/Graph -->
-        <tr>
-          <td>Sample Adventure</td>
-          <td>Columbia</td>
-          <td>SC</td>
-          <td>$</td>
-          <td>Easy</td>
-          <td>
-            <span class="tag-pill tag-restaurant">Restaurant</span>
-            <span class="tag-pill tag-nature">Nature</span>
-          </td>
-          <td>
-            <div class="text-cell-wrapper">
-              <div class="description-preview">
-                A short sample description that shows how the preview will look when truncated to two lines...
-              </div>
-              <div class="description-full">
-                A short sample description that shows how the preview will look when truncated to two lines, and this is the full version that appears when you click More. It can span multiple sentences and provide full context.
-              </div>
-              <button class="more-less-btn" data-type="description">More</button>
-            </div>
-          </td>
-          <td>
-            <div class="text-cell-wrapper">
-              <div class="hours-preview">
-                Mon–Fri: 9am–5pm; Sat: 10am–4pm; Sun: Closed
-              </div>
-              <div class="hours-full">
-                Mon–Fri: 9am–5pm<br />
-                Sat: 10am–4pm<br />
-                Sun: Closed
-              </div>
-              <button class="more-less-btn" data-type="hours">More</button>
-            </div>
-          </td>
-        </tr>
-        <!-- More rows will be injected dynamically -->
+        <!-- Real rows will be populated from Excel/Graph -->
         </tbody>
       </table>
     </div>
@@ -882,11 +1032,18 @@
       updateConnectionStatus(true);
 
       await loadTable();
+      initColumnToggle();
+      initNotesModal();
     } catch (error) {
       console.error(error);
       alert("Sign-in failed. Check console for details.");
     }
   }
+
+  window.addEventListener("load", () => {
+    initColumnToggle();
+    initNotesModal();
+  });
 
   async function signOut() {
     const account = msalInstance.getActiveAccount();
@@ -920,6 +1077,7 @@
     };
     initConnectionStatus();
     initIphoneToggle();
+    initColumnToggle();
     initFilters();
     initQuickFilters();
     initResetButtons();
@@ -973,6 +1131,35 @@
     });
   }
 
+  /***********************
+   * COLUMN TOGGLE       *
+   ***********************/
+  function initColumnToggle() {
+    const btn = document.getElementById("columnsToggleBtn");
+    const table = document.getElementById("adventureTable");
+
+    if (!btn || !table) {
+      console.error("Column toggle button or table not found");
+      return;
+    }
+
+    let showAllColumns = false;
+
+    btn.addEventListener("click", () => {
+      showAllColumns = !showAllColumns;
+
+      if (showAllColumns) {
+        table.classList.add("show-all-columns");
+        btn.textContent = "📊 Hide Extra Columns";
+      } else {
+        table.classList.remove("show-all-columns");
+        btn.textContent = "📊 Show More Columns";
+      }
+
+      console.log("Column visibility toggled. Show all columns:", showAllColumns);
+    });
+  }
+
   // LOAD TABLE
   async function loadTable() {
     if (!accessToken) return;
@@ -1014,9 +1201,12 @@
         nearby,
         links,
         links2,
+        notes,
       ] = values;
 
       tr.dataset.googlePlaceId = (googlePlaceId || "").trim();
+      tr.dataset.rowId = row.index;
+      tr.dataset.notes = (notes || "").trim();
       tr.dataset.difficulty = (difficulty || "").toLowerCase();
       tr.dataset.state = (state || "").toLowerCase();
       tr.dataset.tags = (tags || "").toLowerCase();
@@ -1030,20 +1220,29 @@
         return td;
       }
 
+      function hiddenCell(text, className) {
+        const td = document.createElement("td");
+        td.classList.add("hidden-by-default");
+        if (className) td.className += " " + className;
+        td.textContent = text ?? "";
+        return td;
+      }
+
       // Google Place ID (hidden)
       const placeIdTd = document.createElement("td");
       placeIdTd.style.display = "none";
       placeIdTd.textContent = googlePlaceId || "";
       tr.appendChild(placeIdTd);
 
+      // BASIC INFORMATION GROUP
       // Name
       const nameTd = document.createElement("td");
       nameTd.innerHTML = name ? `<strong>${name}</strong>` : "";
       tr.appendChild(nameTd);
 
-      // Website
+      // Website (hidden by default)
       const websiteTd = document.createElement("td");
-      websiteTd.className = "link-cell";
+      websiteTd.className = "link-cell hidden-by-default";
       if (website) {
         websiteTd.innerHTML = `<a href="${website}" target="_blank" rel="noopener">Open</a>`;
       }
@@ -1063,20 +1262,23 @@
       }
       tr.appendChild(tagTd);
 
+      // TRAVEL & LOCATION GROUP
       // Drive Time
       tr.appendChild(cell(driveTime));
 
-      // Hours (2-line preview)
-      const hoursTd = document.createElement("td");
-      const hoursWrapper = document.createElement("div");
-      hoursWrapper.className = "text-cell-wrapper";
-      hoursWrapper.innerHTML = `
-        <div class="hours-preview">${hours || ""}</div>
-        ${hours ? '<button class="more-less-btn" data-type="hours">More</button><div class="hours-full" style="display:none;">' + hours + '</div>' : ""}
-      `;
-      hoursTd.appendChild(hoursWrapper);
-      tr.appendChild(hoursTd);
+      // State
+      tr.appendChild(cell(state));
 
+      // City
+      tr.appendChild(cell(city));
+
+      // Address (hidden by default)
+      tr.appendChild(hiddenCell(address));
+
+      // Directions (hidden by default)
+      tr.appendChild(hiddenCell(directions));
+
+      // ACTIVITY DETAILS GROUP
       // Duration
       tr.appendChild(cell(duration));
 
@@ -1092,26 +1294,33 @@
       }
       tr.appendChild(diffTd);
 
-      // Trail Length, State, City
+      // Trail Length
       tr.appendChild(cell(trailLength));
-      tr.appendChild(cell(state));
-      tr.appendChild(cell(city));
 
-      // Address
-      tr.appendChild(cell(address));
+      // HOURS & OPERATIONS GROUP
+      // Hours (2-line preview) - hidden by default
+      const hoursTd = document.createElement("td");
+      hoursTd.classList.add("hidden-by-default");
+      const hoursWrapper = document.createElement("div");
+      hoursWrapper.className = "text-cell-wrapper";
+      hoursWrapper.innerHTML = `
+        <div class="hours-preview">${hours || ""}</div>
+        ${hours ? '<button class="more-less-btn" data-type="hours">More</button><div class="hours-full" style="display:none;">' + hours + '</div>' : ""}
+      `;
+      hoursTd.appendChild(hoursWrapper);
+      tr.appendChild(hoursTd);
 
-      // Phone Number
-      tr.appendChild(cell(phoneNumber));
+      // CONTACT & DETAILS GROUP
+      // Phone Number (hidden by default)
+      tr.appendChild(hiddenCell(phoneNumber));
 
-      // Google Rating
-      tr.appendChild(cell(googleRating));
+      // Google Rating (hidden by default)
+      tr.appendChild(hiddenCell(googleRating));
 
       // Cost
       tr.appendChild(cell(cost));
 
-      // Directions
-      tr.appendChild(cell(directions));
-
+      // DESCRIPTION & RESOURCES GROUP
       // Description (2-line preview + toggle)
       const descTd = document.createElement("td");
       descTd.className = "description-cell";
@@ -1127,24 +1336,34 @@
       }
       tr.appendChild(descTd);
 
-      // Nearby
-      tr.appendChild(cell(nearby));
+      // Nearby (hidden by default)
+      tr.appendChild(hiddenCell(nearby));
 
-      // Links
+      // Links (hidden by default)
       const linksTd = document.createElement("td");
-      linksTd.className = "link-cell";
+      linksTd.className = "link-cell hidden-by-default";
       if (links) {
         linksTd.innerHTML = `<a href="${links}" target="_blank" rel="noopener">Link</a>`;
       }
       tr.appendChild(linksTd);
 
-      // Links2
+      // Links2 (hidden by default)
       const links2Td = document.createElement("td");
-      links2Td.className = "link-cell";
+      links2Td.className = "link-cell hidden-by-default";
       if (links2) {
         links2Td.innerHTML = `<a href="${links2}" target="_blank" rel="noopener">Link</a>`;
       }
       tr.appendChild(links2Td);
+
+      // Notes (hidden by default) - with edit button
+      const notesTd = document.createElement("td");
+      notesTd.className = "hidden-by-default";
+      const notesBtn = document.createElement("button");
+      notesBtn.className = "notes-btn";
+      notesBtn.textContent = notes ? "📝 View/Edit" : "📝 Add Note";
+      notesBtn.onclick = () => openNotesModal(name, tr);
+      notesTd.appendChild(notesBtn);
+      tr.appendChild(notesTd);
 
       tbody.appendChild(tr);
     });
@@ -1499,6 +1718,125 @@
     const backdrop = document.getElementById("automationModalBackdrop");
     backdrop.classList.remove("visible");
   }
+
+  /***********************
+   * NOTES FEATURE       *
+   ***********************/
+  let currentNotesRow = null;
+
+  function openNotesModal(adventureName, rowElement) {
+    const backdrop = document.getElementById("notesModalBackdrop");
+    const modal = document.getElementById("notesModal");
+    const titleEl = document.getElementById("notesModalTitle");
+    const textarea = document.getElementById("notesTextarea");
+
+    currentNotesRow = rowElement;
+    titleEl.textContent = `Notes for: ${adventureName}`;
+    textarea.value = rowElement.dataset.notes || "";
+
+    backdrop.classList.add("visible");
+    modal.classList.add("visible");
+    textarea.focus();
+  }
+
+  function closeNotesModal() {
+    const backdrop = document.getElementById("notesModalBackdrop");
+    const modal = document.getElementById("notesModal");
+
+    backdrop.classList.remove("visible");
+    modal.classList.remove("visible");
+    currentNotesRow = null;
+  }
+
+  async function saveNotesToExcel() {
+    if (!currentNotesRow || !accessToken) {
+      alert("No row selected or not signed in");
+      return;
+    }
+
+    const textarea = document.getElementById("notesTextarea");
+    const newNotes = textarea.value;
+    const saveBtn = document.getElementById("notesSaveBtn");
+
+    try {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+
+      // Get row ID from the current row
+      const rowId = currentNotesRow.dataset.rowId;
+
+      // Update the row's data attribute
+      currentNotesRow.dataset.notes = newNotes;
+
+      // Update Excel via Graph API
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/${rowId}`;
+
+      // We need to update just the Notes column (21st column, index 20)
+      const updateData = {
+        values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, newNotes]]
+      };
+
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Excel API error: ${response.status}`);
+      }
+
+      alert("Notes saved successfully!");
+      closeNotesModal();
+    } catch (error) {
+      console.error("Error saving notes:", error);
+      alert("Failed to save notes. Check console for details.");
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save Notes";
+    }
+  }
+
+  // Initialize notes modal event listeners
+  function initNotesModal() {
+    const backdrop = document.getElementById("notesModalBackdrop");
+    const modal = document.getElementById("notesModal");
+    const closeBtn = document.getElementById("notesModalCloseBtn");
+    const cancelBtn = document.getElementById("notesCancelBtn");
+    const saveBtn = document.getElementById("notesSaveBtn");
+
+    closeBtn.addEventListener("click", closeNotesModal);
+    cancelBtn.addEventListener("click", closeNotesModal);
+    saveBtn.addEventListener("click", saveNotesToExcel);
+
+    // Close modal when clicking backdrop
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) {
+        closeNotesModal();
+      }
+    });
+  }
+
 </script>
+
+<!-- Notes Modal -->
+<div id="notesModalBackdrop"></div>
+<div id="notesModal">
+  <div class="notes-modal-header">
+    <div class="notes-modal-title" id="notesModalTitle">Add Notes</div>
+    <button class="notes-modal-close" id="notesModalCloseBtn">&times;</button>
+  </div>
+  <div class="notes-modal-body">
+    <textarea id="notesTextarea" class="notes-textarea" placeholder="Add your notes here..."></textarea>
+  </div>
+  <div class="notes-modal-footer">
+    <button class="notes-cancel-btn" id="notesCancelBtn">Cancel</button>
+    <button class="notes-save-btn" id="notesSaveBtn">Save Notes</button>
+  </div>
+</div>
+
 </body>
 </html>
