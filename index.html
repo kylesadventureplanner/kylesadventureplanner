@@ -1572,6 +1572,287 @@
       }
     }
 
+    /* ============================================================
+       ROW DETAIL MODAL WITH TABS
+       ============================================================
+       Polished popup for viewing full adventure details organized in tabs.
+       Double-click a row to open this modal.
+    */
+    #rowDetailModal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+      z-index: 1002;
+      width: 90%;
+      max-width: 900px;
+      max-height: 85vh;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    #rowDetailModal.visible {
+      display: flex;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -48%);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+
+    /* Row detail modal header */
+    .row-detail-header {
+      padding: 24px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-radius: 16px 16px 0 0;
+    }
+
+    .row-detail-title-section {
+      flex: 1;
+    }
+
+    .row-detail-adventure-name {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      line-height: 1.2;
+    }
+
+    .row-detail-location {
+      font-size: 14px;
+      opacity: 0.95;
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .row-detail-close-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .row-detail-close-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Tab navigation */
+    .row-detail-tabs {
+      display: flex;
+      gap: 0;
+      background: #f9fafb;
+      border-bottom: 2px solid #e5e7eb;
+      padding: 0 24px;
+      overflow-x: auto;
+    }
+
+    .row-detail-tab-btn {
+      background: none;
+      border: none;
+      padding: 16px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .row-detail-tab-btn:hover {
+      color: #1f2937;
+      background: rgba(29, 78, 216, 0.05);
+    }
+
+    .row-detail-tab-btn.active {
+      color: #1d4ed8;
+      border-bottom-color: #1d4ed8;
+    }
+
+    /* Tab content area */
+    .row-detail-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .row-detail-tab-pane {
+      display: none;
+    }
+
+    .row-detail-tab-pane.active {
+      display: block;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Content sections within tabs */
+    .row-detail-section {
+      margin-bottom: 24px;
+    }
+
+    .row-detail-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .row-detail-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .row-detail-section-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 12px;
+      background: #1d4ed8;
+      border-radius: 2px;
+    }
+
+    /* Field rows */
+    .row-detail-field {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 16px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .row-detail-field:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .row-detail-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .row-detail-value {
+      font-size: 14px;
+      color: #111827;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .row-detail-value a {
+      color: #1d4ed8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .row-detail-value a:hover {
+      text-decoration: underline;
+    }
+
+    /* Tags display in detail modal */
+    .row-detail-tags-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .row-detail-tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      background: #e0f2fe;
+      color: #0284c7;
+    }
+
+    /* Empty state */
+    .row-detail-empty {
+      color: #9ca3af;
+      font-style: italic;
+      font-size: 13px;
+    }
+
+    /* Modal footer */
+    .row-detail-footer {
+      padding: 16px 24px;
+      background: #f9fafb;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      border-radius: 0 0 16px 16px;
+    }
+
+    .row-detail-footer-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: white;
+      color: #111827;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .row-detail-footer-btn:hover {
+      background: #f3f4f6;
+      border-color: #9ca3af;
+    }
+
+    .row-detail-footer-btn.primary {
+      background: #1d4ed8;
+      color: white;
+      border-color: #1d4ed8;
+    }
+
+    .row-detail-footer-btn.primary:hover {
+      background: #1e40af;
+      border-color: #1e40af;
+    }
 
   </style>
   <!--suppress HtmlUnknownTarget -->
@@ -2119,6 +2400,7 @@
       initFindNearMe();      // Set up Find Places Near Me button
       initNotesModal();      // Set up Notes feature modal
       initRatingModal();     // Set up Rating feature modal
+      initRowDetailModal();  // Set up Row Detail Modal (double-click to view details)
       console.log("Step 5 SUCCESS: All UI features initialized");
 
       console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
@@ -2157,6 +2439,7 @@
     initFindNearMe();
     initNotesModal();
     initRatingModal();
+    initRowDetailModal();
   });
 
   async function signOut() {
@@ -2899,6 +3182,37 @@
       ratingTd.appendChild(ratingBtn);
       tr.appendChild(ratingTd);
 
+      // Store row data in map for detail modal access
+      rowDataMap.set(tr, {
+        name: name,
+        website: website,
+        tags: tags,
+        driveTime: driveTime,
+        state: state,
+        city: city,
+        address: address,
+        directions: directions,
+        activityDuration: activityDuration,
+        difficulty: difficulty,
+        trailLength: trailLength,
+        phoneNumber: phoneNumber,
+        googleRating: googleRating,
+        cost: cost,
+        description: description,
+        nearby: nearby,
+        links: links,
+        links2: links2,
+        notes: notes,
+        myRating: myRating,
+        googlePlaceId: googlePlaceId,
+        hours: activityDuration
+      });
+
+      // Add double-click listener to open detail modal
+      tr.addEventListener("dblclick", () => {
+        openRowDetailModal(tr);
+      });
+
       tbody.appendChild(tr);
       });
 
@@ -3440,6 +3754,219 @@
   }
 
   /* ============================================================
+     ROW DETAIL MODAL - DOUBLE-CLICK TO VIEW FULL DETAILS
+     ============================================================
+     Opens a polished modal with tabbed interface showing full adventure details.
+     Triggered by double-clicking on a table row.
+  */
+  let currentDetailRow = null;
+  const rowDataMap = new Map();
+
+  // Store row data for detail view (populated when table loads)
+  function openRowDetailModal(rowElement) {
+    try {
+      const rowData = rowDataMap.get(rowElement);
+      if (!rowData) {
+        console.error("No data found for row");
+        return;
+      }
+      currentDetailRow = rowElement;
+      document.getElementById("rowDetailTitle").textContent = rowData.name || "Adventure";
+      const locationEl = document.getElementById("rowDetailLocation");
+      locationEl.innerHTML = `
+        <span>📍 ${rowData.city || "Unknown"}, ${rowData.state || "Unknown"}</span>
+        <span>⏱️ ${rowData.driveTime || "N/A"}</span>
+      `;
+      const tabs = [
+        { id: "overview", name: "📋 Overview", content: generateOverviewTab(rowData) },
+        { id: "details", name: "ℹ️ Details", content: generateDetailsTab(rowData) },
+        { id: "visit-info", name: "🏞️ Visit Info", content: generateVisitInfoTab(rowData) },
+        { id: "contact", name: "📞 Contact", content: generateContactTab(rowData) },
+        { id: "links", name: "🔗 Links", content: generateLinksTab(rowData) }
+      ];
+      const tabsContainer = document.getElementById("rowDetailTabsContainer");
+      tabsContainer.innerHTML = tabs.map((tab, idx) => `
+        <button class="row-detail-tab-btn ${idx === 0 ? "active" : ""}" data-tab="${tab.id}">
+          ${tab.name}
+        </button>
+      `).join("");
+      const contentContainer = document.getElementById("rowDetailContent");
+      contentContainer.innerHTML = tabs.map((tab, idx) => `
+        <div class="row-detail-tab-pane ${idx === 0 ? "active" : ""}" data-tab="${tab.id}">
+          ${tab.content}
+        </div>
+      `).join("");
+      attachTabListeners();
+      document.getElementById("rowDetailModal").classList.add("visible");
+      document.getElementById("rowDetailModalBackdrop").classList.add("visible");
+    } catch (error) {
+      console.error("Error opening row detail modal:", error);
+    }
+  }
+
+  function generateOverviewTab(data) {
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📌 Description</div>
+        <div class="row-detail-value">${data.description || '<span class="row-detail-empty">No description available</span>'}</div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">🏷️ Categories</div>
+        ${data.tags ? `<div class="row-detail-tags-list">${data.tags.split(",").map(tag => `<span class="row-detail-tag">${tag.trim()}</span>`).join("")}</div>` : '<span class="row-detail-empty">No tags</span>'}
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-field">
+          <div class="row-detail-label">Activity</div>
+          <div class="row-detail-value">${data.tags?.split(",")[0] || "N/A"}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Difficulty</div>
+          <div class="row-detail-value"><span style="padding: 2px 8px; border-radius: 4px; background: ${data.difficulty?.includes("Easy") ? "#d1fae5" : data.difficulty?.includes("Hard") ? "#fee2e2" : "#fef3c7"}; color: ${data.difficulty?.includes("Easy") ? "#047857" : data.difficulty?.includes("Hard") ? "#991b1b" : "#92400e"}">${data.difficulty || "N/A"}</span></div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Trail Length</div>
+          <div class="row-detail-value">${data.trailLength || "N/A"}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function generateDetailsTab(data) {
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📍 Location</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">City</div>
+          <div class="row-detail-value">${data.city || "N/A"}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">State</div>
+          <div class="row-detail-value">${data.state || "N/A"}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Address</div>
+          <div class="row-detail-value">${data.address || '<span class="row-detail-empty">Not available</span>'}</div>
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">⏱️ Timing & Duration</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Drive Time</div>
+          <div class="row-detail-value">${data.driveTime || "N/A"}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Duration</div>
+          <div class="row-detail-value">${data.activityDuration || "N/A"}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Hours</div>
+          <div class="row-detail-value">${data.hours || "N/A"}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function generateVisitInfoTab(data) {
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">💰 Cost & Access</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Cost</div>
+          <div class="row-detail-value">${data.cost || '<span class="row-detail-empty">Not specified</span>'}</div>
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📌 Nearby Attractions</div>
+        <div class="row-detail-value">${data.nearby || '<span class="row-detail-empty">No information available</span>'}</div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📋 Additional Notes</div>
+        <div class="row-detail-value">${data.notes || '<span class="row-detail-empty">No user notes</span>'}</div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">⭐ Your Rating</div>
+        <div class="row-detail-value">${data.myRating ? `<strong>${data.myRating}/5 Stars</strong>` : '<span class="row-detail-empty">Not rated yet</span>'}</div>
+      </div>
+    `;
+  }
+
+  function generateContactTab(data) {
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">🌐 Website</div>
+        ${data.website ? `<div class="row-detail-value"><a href="${data.website}" target="_blank" rel="noopener">Visit Website ↗</a></div>` : '<span class="row-detail-empty">No website available</span>'}
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📞 Contact Info</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Phone</div>
+          <div class="row-detail-value">${data.phoneNumber || '<span class="row-detail-empty">Not available</span>'}</div>
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">⭐ Reviews & Ratings</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Google Rating</div>
+          <div class="row-detail-value">${data.googleRating || '<span class="row-detail-empty">Not available</span>'}</div>
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📍 Location ID</div>
+        <div class="row-detail-value" style="font-family: monospace; font-size: 12px; color: #6b7280;">${data.googlePlaceId || '<span class="row-detail-empty">Not available</span>'}</div>
+      </div>
+    `;
+  }
+
+  function generateLinksTab(data) {
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">🔗 External Resources</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Link 1</div>
+          <div class="row-detail-value">${data.links ? `<a href="${data.links}" target="_blank" rel="noopener">View Resource ↗</a>` : '<span class="row-detail-empty">No link</span>'}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Link 2</div>
+          <div class="row-detail-value">${data.links2 ? `<a href="${data.links2}" target="_blank" rel="noopener">View Resource ↗</a>` : '<span class="row-detail-empty">No link</span>'}</div>
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📍 Directions</div>
+        <div class="row-detail-value">${data.directions ? `<a href="${data.directions}" target="_blank" rel="noopener">Get Directions ↗</a>` : '<span class="row-detail-empty">No directions link</span>'}</div>
+      </div>
+    `;
+  }
+
+  function attachTabListeners() {
+    const tabBtns = document.querySelectorAll(".row-detail-tab-btn");
+    const tabPanes = document.querySelectorAll(".row-detail-tab-pane");
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tabId = btn.dataset.tab;
+        tabBtns.forEach(b => b.classList.remove("active"));
+        tabPanes.forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.querySelector(`[data-tab="${tabId}"].row-detail-tab-pane`).classList.add("active");
+      });
+    });
+  }
+
+  function closeRowDetailModal() {
+    document.getElementById("rowDetailModal").classList.remove("visible");
+    document.getElementById("rowDetailModalBackdrop").classList.remove("visible");
+    currentDetailRow = null;
+  }
+
+  function initRowDetailModal() {
+    document.getElementById("rowDetailCloseBtn").addEventListener("click", closeRowDetailModal);
+    document.getElementById("rowDetailCloseFooterBtn").addEventListener("click", closeRowDetailModal);
+    document.getElementById("rowDetailModalBackdrop").addEventListener("click", closeRowDetailModal);
+    document.getElementById("rowDetailEditBtn").addEventListener("click", () => {
+      alert("Edit functionality coming soon!");
+    });
+  }
+
+  /* ============================================================
      MY RATING FEATURE - STAR RATING
      ============================================================
      Allows users to rate adventures with 1-5 stars.
@@ -3681,6 +4208,39 @@
     <button class="rating-save-btn" id="ratingSaveBtn">Save Rating</button>
   </div>
 </div>
+
+<!-- Row Detail Modal with Tabs (opened by double-clicking a row) -->
+<div id="rowDetailModal" class="row-detail-modal">
+  <!-- Header with title and close button -->
+  <div class="row-detail-header">
+    <div class="row-detail-title-section">
+      <h1 class="row-detail-adventure-name" id="rowDetailTitle">Adventure Name</h1>
+      <div class="row-detail-location" id="rowDetailLocation">
+        <!-- Location info will be filled here -->
+      </div>
+    </div>
+    <button class="row-detail-close-btn" id="rowDetailCloseBtn">✕</button>
+  </div>
+
+  <!-- Tab navigation -->
+  <div class="row-detail-tabs" id="rowDetailTabsContainer">
+    <!-- Tabs will be generated by JavaScript -->
+  </div>
+
+  <!-- Tab content area -->
+  <div class="row-detail-content" id="rowDetailContent">
+    <!-- Tab panes will be generated by JavaScript -->
+  </div>
+
+  <!-- Footer with action buttons -->
+  <div class="row-detail-footer">
+    <button class="row-detail-footer-btn" id="rowDetailCloseFooterBtn">Close</button>
+    <button class="row-detail-footer-btn primary" id="rowDetailEditBtn">✎ Edit</button>
+  </div>
+</div>
+
+<!-- Modal backdrop for row detail modal -->
+<div id="rowDetailModalBackdrop" class="modal-backdrop" style="z-index: 1001;"></div>
 
 </body>
 </html>
