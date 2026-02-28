@@ -597,6 +597,7 @@
 
 
   </style>
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 </head>
 <body>
 <header class="app-header">
@@ -900,18 +901,17 @@
     document.querySelector("#adventureTableBody").innerHTML = "";
   }
 
-  document.getElementById("signInBtn").onclick = () => {
-    signIn();
-  };
-
-  document.getElementById("signOutBtn").onclick = () => {
-    signOut();
-  };
-
   /***********************
    * INITIALIZATION      *
    ***********************/
   document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("signInBtn").onclick = () => {
+      signIn();
+    };
+
+    document.getElementById("signOutBtn").onclick = () => {
+      signOut();
+    };
     initConnectionStatus();
     initIphoneToggle();
     initFilters();
@@ -948,7 +948,12 @@
    ***********************/
   function initIphoneToggle() {
     const btn = document.getElementById("iphoneToggleBtn");
-    btn.addEventListener("click", () => {
+    if (!btn) {
+      console.error("iPhone toggle button not found");
+      return;
+    }
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
       document.body.classList.toggle("mobile-view");
       const isMobile = document.body.classList.contains("mobile-view");
       if (isMobile) {
@@ -958,6 +963,7 @@
         btn.classList.remove("active");
         btn.textContent = "📱 iPhone View";
       }
+      console.log("iPhone view toggled. Mobile view is now:", isMobile);
     });
   }
 
