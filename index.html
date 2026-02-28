@@ -293,10 +293,6 @@
       color: var(--mint-strong);
       font-weight: 600;
     }
-      border-color: var(--mint-border);
-      color: var(--mint-strong);
-      font-weight: 600;
-    }
 
     /* Google Automation Card */
     .automation-card {
@@ -1739,14 +1735,39 @@
   /***********************
    * INITIALIZATION      *
    ***********************/
-  document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("signInBtn").onclick = () => {
-      signIn();
-    };
 
-    document.getElementById("signOutBtn").onclick = () => {
-      signOut();
-    };
+  // Enhanced initialization with better error handling
+  function initializeApp() {
+    // Log initialization start
+    console.log("Initializing app...");
+
+    // Initialize authentication buttons
+    const signInBtn = document.getElementById("signInBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
+
+    if (signInBtn) {
+      console.log("Sign In button found, attaching event listener");
+      signInBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        console.log("Sign In button clicked");
+        signIn();
+      });
+    } else {
+      console.error("Sign In button (id='signInBtn') not found in DOM");
+    }
+
+    if (signOutBtn) {
+      console.log("Sign Out button found, attaching event listener");
+      signOutBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        console.log("Sign Out button clicked");
+        signOut();
+      });
+    } else {
+      console.error("Sign Out button (id='signOutBtn') not found in DOM");
+    }
+
+    // Initialize other UI features
     initConnectionStatus();
     initIphoneToggle();
     initColumnToggle();
@@ -1757,7 +1778,12 @@
     initRowSelection();
     initDryRunToggle();
     initAutomationButtons();
-  });
+
+    console.log("App initialization complete");
+  }
+
+  // Use DOMContentLoaded to ensure all DOM elements are ready
+  document.addEventListener("DOMContentLoaded", initializeApp);
 
   function initConnectionStatus() {
     // Hook this to your real MSAL/Graph connection logic.
