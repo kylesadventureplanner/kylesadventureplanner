@@ -1232,8 +1232,21 @@
         return;
       }
 
+      // Set a timeout - if we don't get location in 15 seconds, reject
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Geolocation request timed out. Please try again."));
+      }, 15000);
+
+      // Geolocation options
+      const options = {
+        enableHighAccuracy: false, // Faster with lower accuracy is fine for this
+        timeout: 10000, // 10 second timeout for geolocation API itself
+        maximumAge: 0, // Don't use cached position
+      };
+
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          clearTimeout(timeoutId);
           userLocation = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -1241,8 +1254,10 @@
           resolve(userLocation);
         },
         (error) => {
+          clearTimeout(timeoutId);
           reject(error);
-        }
+        },
+        options
       );
     });
   }
@@ -1340,7 +1355,21 @@
 
       } catch (error) {
         console.error("Error getting location:", error);
-        alert("Could not access your location. Please enable location permissions.");
+
+        // Provide specific error messages based on error type
+        let errorMessage = "Could not access your location.";
+
+        if (error.code === 1) {
+          errorMessage = "Location permission denied. Please enable location access in your browser settings.";
+        } else if (error.code === 2) {
+          errorMessage = "Location unavailable. Please check your internet connection.";
+        } else if (error.code === 3 || error.message.includes("timed out")) {
+          errorMessage = "Location request timed out. Please try again.";
+        } else if (error.message.includes("not supported")) {
+          errorMessage = "Geolocation is not supported in your browser.";
+        }
+
+        alert(errorMessage);
         btn.textContent = "📍 Find Near Me";
         btn.classList.remove("loading");
         btn.disabled = false;
