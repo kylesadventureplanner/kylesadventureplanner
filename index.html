@@ -2047,8 +2047,8 @@
           <th class="hidden-by-default">Directions</th>
           <!-- Activity Details -->
           <th class="hidden-by-default">Activity Duration</th>
-          <th>Difficulty</th>
-          <th>Trail Length</th>
+          <th class="hidden-by-default">Difficulty</th>
+          <th class="hidden-by-default">Trail Length</th>
           <!-- Hours & Operations -->
           <th>Hours of Operation</th>
           <!-- Contact & Details -->
@@ -3156,24 +3156,14 @@
       // Directions (hidden by default)
       tr.appendChild(hiddenCell(directions));
 
-      // ACTIVITY DETAILS GROUP
-      // Activity Duration (how long the activity takes) - hidden since Hours of Operation shows same data
+      // Activity Duration (how long the activity takes) - hidden by default
       tr.appendChild(hiddenCell(activityDuration));
 
-      // Difficulty pill
-      const diffTd = document.createElement("td");
-      if (difficulty) {
-        let cls = "pill";
-        const d = difficulty.toLowerCase();
-        if (d.includes("easy")) cls += " pill-green";
-        else if (d.includes("moderate") || d.includes("medium")) cls += " pill-amber";
-        else if (d.includes("hard") || d.includes("difficult")) cls += " pill-red";
-        diffTd.innerHTML = `<span class="${cls}">${difficulty}</span>`;
-      }
-      tr.appendChild(diffTd);
+      // Difficulty pill (hidden by default)
+      tr.appendChild(hiddenCell(difficulty));
 
-      // Trail Length
-      tr.appendChild(cell(trailLength));
+      // Trail Length (hidden by default)
+      tr.appendChild(hiddenCell(trailLength));
 
       // HOURS & OPERATIONS GROUP
       // Hours of Operation (using Activity Duration data since Excel doesn't have separate hours column)
@@ -3194,8 +3184,8 @@
       // Google Rating (hidden by default)
       tr.appendChild(hiddenCell(googleRating));
 
-      // Cost
-      tr.appendChild(cell(cost));
+      // Cost (hidden by default)
+      tr.appendChild(hiddenCell(cost));
 
       // DESCRIPTION & RESOURCES GROUP
       // Description (2-line preview + toggle)
@@ -3886,6 +3876,20 @@
   }
 
   function generateOverviewTab(data) {
+    const isHiking = data.tags && data.tags.toLowerCase().includes("hiking");
+
+    // Build difficulty and trail length fields only if hiking tag is present
+    const hikingFields = isHiking ? `
+      <div class="row-detail-field">
+        <div class="row-detail-label">Difficulty</div>
+        <div class="row-detail-value"><span style="padding: 2px 8px; border-radius: 4px; background: ${data.difficulty?.includes("Easy") ? "#d1fae5" : data.difficulty?.includes("Hard") ? "#fee2e2" : "#fef3c7"}; color: ${data.difficulty?.includes("Easy") ? "#047857" : data.difficulty?.includes("Hard") ? "#991b1b" : "#92400e"}">${data.difficulty || "N/A"}</span></div>
+      </div>
+      <div class="row-detail-field">
+        <div class="row-detail-label">Trail Length</div>
+        <div class="row-detail-value">${data.trailLength || "N/A"}</div>
+      </div>
+    ` : '';
+
     return `
       <div class="row-detail-section">
         <div class="row-detail-section-title">📌 Description</div>
@@ -3900,14 +3904,7 @@
           <div class="row-detail-label">Activity</div>
           <div class="row-detail-value">${data.tags?.split(",")[0] || "N/A"}</div>
         </div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Difficulty</div>
-          <div class="row-detail-value"><span style="padding: 2px 8px; border-radius: 4px; background: ${data.difficulty?.includes("Easy") ? "#d1fae5" : data.difficulty?.includes("Hard") ? "#fee2e2" : "#fef3c7"}; color: ${data.difficulty?.includes("Easy") ? "#047857" : data.difficulty?.includes("Hard") ? "#991b1b" : "#92400e"}">${data.difficulty || "N/A"}</span></div>
-        </div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Trail Length</div>
-          <div class="row-detail-value">${data.trailLength || "N/A"}</div>
-        </div>
+        ${hikingFields}
       </div>
     `;
   }
