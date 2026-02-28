@@ -531,9 +531,86 @@
     .secondary-btn:hover {
       background: #f3f4f6;
     }
+
+    .app-header {
+      width: 100%;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, #1e3a8a, #1d4ed8);
+      color: white;
+      box-sizing: border-box;
+    }
+
+    .header-left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .header-subtitle {
+      font-size: 14px;
+      color: #d1d5db; /* stronger gray for readability */
+      max-width: 420px;
+      line-height: 1.3;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .auth-btn {
+      background: white;
+      color: #1e3a8a;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .auth-btn:hover {
+      background: #f3f4f6;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 600px) {
+      .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .header-right {
+        align-self: flex-end;
+      }
+    }
+
+
   </style>
 </head>
 <body>
+<header class="app-header">
+  <div class="header-left">
+    <div class="header-title">Kyle’s Adventure Finder</div>
+    <div class="header-subtitle">Powered by Excel, enhanced with Google data and mobile-friendly design.</div>
+  </div>
+
+  <div class="header-right">
+    <span id="authStatus">Not signed in</span>
+    <button id="signInBtn" class="auth-btn">Sign In</button>
+    <button id="signOutBtn" class="auth-btn" style="display:none;">Sign Out</button>
+  </div>
+</header>
 <div class="app-container">
   <header>
     <h1>Adventure Planner</h1>
@@ -664,15 +741,28 @@
         <thead>
         <tr>
           <th>Name</th>
-          <th>City</th>
-          <th>State</th>
-          <th>Cost</th>
-          <th>Difficulty</th>
+          <th style="display:none;">Google Place ID</th>
+          <th>Website</th>
           <th>Tags</th>
-          <th>Description</th>
+          <th>Drive Time</th>
           <th>Hours of Operation</th>
+          <th>Activity Duration</th>
+          <th>Difficulty</th>
+          <th>Trail Length</th>
+          <th>State</th>
+          <th>City</th>
+          <th>Address</th>
+          <th>Phone Number</th>
+          <th>Google Rating</th>
+          <th>Cost</th>
+          <th>Directions</th>
+          <th>Description</th>
+          <th>Nearby Things to Do</th>
+          <th>Links</th>
+          <th>Links2</th>
         </tr>
         </thead>
+
         <tbody id="adventureTableBody">
         <!-- Example static row; real rows will be populated from Excel/Graph -->
         <tr>
@@ -743,19 +833,80 @@
   const EXCEL_TABLE_NAME = "MyList";
   const PLACE_ID_COLUMN_NAME = "Google Place ID";
 
-  // MSAL config: your real clientId is preserved from your existing file.
+  // MSAL config
   const msalConfig = {
     auth: {
-      clientId: "YOUR_REAL_CLIENT_ID_HERE", // keep your existing value here
-      authority: "https://login.microsoftonline.com/common",
-      redirectUri: window.location.origin
-    }
+      clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
+      authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
+      redirectUri: window.location.origin,
+    },
   };
 
-  // Placeholder MSAL/Graph objects (wire to your existing logic)
-  let msalInstance = null;
-  let graphClient = null;
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+  const loginRequest = {
+    scopes: ["User.Read", "Files.ReadWrite", "Sites.ReadWrite.All"],
+  };
+
+  let accessToken = null;
+  let activeAccount = null;
   let isConnectedToExcel = false;
+
+  const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+  const tableName = "MyList";
+
+  async function signIn() {
+    try {
+      const loginResponse = await msalInstance.loginPopup(loginRequest);
+      activeAccount = loginResponse.account;
+      msalInstance.setActiveAccount(activeAccount);
+
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        ...loginRequest,
+        account: activeAccount,
+      });
+
+      accessToken = tokenResponse.accessToken;
+      isConnectedToExcel = true;
+
+      document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
+      document.getElementById("signInBtn").style.display = "none";
+      document.getElementById("signOutBtn").style.display = "inline-block";
+      updateConnectionStatus(true);
+
+      await loadTable();
+    } catch (error) {
+      console.error(error);
+      alert("Sign-in failed. Check console for details.");
+    }
+  }
+
+  async function signOut() {
+    const account = msalInstance.getActiveAccount();
+    if (!account) return;
+
+    await msalInstance.logoutPopup({
+      account,
+      postLogoutRedirectUri: window.location.origin,
+    });
+
+    accessToken = null;
+    activeAccount = null;
+    isConnectedToExcel = false;
+    document.getElementById("authStatus").textContent = "Not signed in";
+    document.getElementById("signInBtn").style.display = "inline-block";
+    document.getElementById("signOutBtn").style.display = "none";
+    updateConnectionStatus(false);
+    document.querySelector("#adventureTableBody").innerHTML = "";
+  }
+
+  document.getElementById("signInBtn").onclick = () => {
+    signIn();
+  };
+
+  document.getElementById("signOutBtn").onclick = () => {
+    signOut();
+  };
 
   /***********************
    * INITIALIZATION      *
@@ -808,6 +959,166 @@
         btn.textContent = "📱 iPhone View";
       }
     });
+  }
+
+  // LOAD TABLE
+  async function loadTable() {
+    if (!accessToken) return;
+
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const data = await response.json();
+    if (!data.value) return;
+
+    const tbody = document.querySelector("#adventureTableBody");
+    tbody.innerHTML = "";
+
+    data.value.forEach((row) => {
+      const values = row.values[0];
+      const tr = document.createElement("tr");
+
+      const [
+        name,
+        website,
+        tags,
+        driveTime,
+        hours,
+        duration,
+        difficulty,
+        trailLength,
+        state,
+        city,
+        cost,
+        directions,
+        description,
+        nearby,
+        links,
+        links2,
+      ] = values;
+
+      tr.dataset.difficulty = (difficulty || "").toLowerCase();
+      tr.dataset.state = (state || "").toLowerCase();
+      tr.dataset.tags = (tags || "").toLowerCase();
+      tr.dataset.city = (city || "").toLowerCase();
+      tr.dataset.cost = (cost || "").toLowerCase();
+
+      function cell(text, className) {
+        const td = document.createElement("td");
+        if (className) td.className = className;
+        td.textContent = text ?? "";
+        return td;
+      }
+
+      // Name
+      const nameTd = document.createElement("td");
+      nameTd.innerHTML = name ? `<strong>${name}</strong>` : "";
+      tr.appendChild(nameTd);
+
+      // Website
+      const websiteTd = document.createElement("td");
+      websiteTd.className = "link-cell";
+      if (website) {
+        websiteTd.innerHTML = `<a href="${website}" target="_blank" rel="noopener">Open</a>`;
+      }
+      tr.appendChild(websiteTd);
+
+      // Tags
+      const tagTd = document.createElement("td");
+      tagTd.className = "tag-cell";
+      if (tags) {
+        const tagList = tags.split(",").map((t) => t.trim());
+        tagTd.innerHTML = tagList
+          .map(
+            (t) =>
+              `<span class="tag-pill tag-${t.toLowerCase().replace(/\s+/g, "-")}">${t}</span>`,
+          )
+          .join(" ");
+      }
+      tr.appendChild(tagTd);
+
+      // Drive Time
+      tr.appendChild(cell(driveTime));
+
+      // Hours (2-line preview)
+      const hoursTd = document.createElement("td");
+      const hoursWrapper = document.createElement("div");
+      hoursWrapper.className = "text-cell-wrapper";
+      hoursWrapper.innerHTML = `
+        <div class="hours-preview">${hours || ""}</div>
+        ${hours ? '<button class="more-less-btn" data-type="hours">More</button><div class="hours-full" style="display:none;">' + hours + '</div>' : ""}
+      `;
+      hoursTd.appendChild(hoursWrapper);
+      tr.appendChild(hoursTd);
+
+      // Duration
+      tr.appendChild(cell(duration));
+
+      // Difficulty pill
+      const diffTd = document.createElement("td");
+      if (difficulty) {
+        let cls = "pill";
+        const d = difficulty.toLowerCase();
+        if (d.includes("easy")) cls += " pill-green";
+        else if (d.includes("moderate") || d.includes("medium")) cls += " pill-amber";
+        else if (d.includes("hard") || d.includes("difficult")) cls += " pill-red";
+        diffTd.innerHTML = `<span class="${cls}">${difficulty}</span>`;
+      }
+      tr.appendChild(diffTd);
+
+      // Trail Length, State, City, Cost
+      tr.appendChild(cell(trailLength));
+      tr.appendChild(cell(state));
+      tr.appendChild(cell(city));
+      tr.appendChild(cell(cost));
+
+      // Directions
+      tr.appendChild(cell(directions));
+
+      // Description (2-line preview + toggle)
+      const descTd = document.createElement("td");
+      descTd.className = "description-cell";
+      if (description) {
+        const descWrapper = document.createElement("div");
+        descWrapper.className = "text-cell-wrapper";
+        descWrapper.innerHTML = `
+          <div class="description-preview">${description}</div>
+          <button class="more-less-btn" data-type="description">More</button>
+          <div class="description-full" style="display:none;">${description}</div>
+        `;
+        descTd.appendChild(descWrapper);
+      }
+      tr.appendChild(descTd);
+
+      // Nearby
+      tr.appendChild(cell(nearby));
+
+      // Links
+      const linksTd = document.createElement("td");
+      linksTd.className = "link-cell";
+      if (links) {
+        linksTd.innerHTML = `<a href="${links}" target="_blank" rel="noopener">Link</a>`;
+      }
+      tr.appendChild(linksTd);
+
+      // Links2
+      const links2Td = document.createElement("td");
+      links2Td.className = "link-cell";
+      if (links2) {
+        links2Td.innerHTML = `<a href="${links2}" target="_blank" rel="noopener">Link</a>`;
+      }
+      tr.appendChild(links2Td);
+
+      tbody.appendChild(tr);
+    });
+
+    // Re-initialize more/less buttons and row selection for new rows
+    initMoreLessButtons();
+    initRowSelection();
+    applyFilters();
   }
 
   /***********************
