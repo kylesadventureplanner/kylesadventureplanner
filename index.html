@@ -947,7 +947,6 @@
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 12px;
-      white-space: nowrap;
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.2s;
@@ -1365,11 +1364,237 @@
       }
     }
 
+    /* ============================================================
+       ERROR/WARNING NOTIFICATION BAR
+       ============================================================
+       Collapsible bar at the top showing console errors and warnings.
+       Click to expand/collapse and see detailed error messages.
+    */
+    #errorNotificationBar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--danger-red);
+      color: white;
+      padding: 12px 16px;
+      display: none; /* Hidden by default */
+      z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    #errorNotificationBar.has-errors {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #errorNotificationBar.collapsed {
+      padding: 8px 16px;
+    }
+
+    #errorNotificationBar .error-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
+    #errorNotificationBar .error-count {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.3);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    #errorNotificationBar .toggle-icon {
+      font-size: 16px;
+      transition: transform 0.2s ease;
+    }
+
+    #errorNotificationBar.collapsed .toggle-icon {
+      transform: rotate(0deg);
+    }
+
+    #errorNotificationBar.expanded .toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    #errorDetailsPanel {
+      display: none;
+      max-height: 400px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.1);
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      margin-top: 12px;
+      padding: 12px 16px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    #errorDetailsPanel.show {
+      display: block;
+    }
+
+    .error-item {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .error-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .error-type {
+      font-weight: bold;
+      margin-bottom: 4px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .error-type.console-error {
+      color: #ff6b6b;
+    }
+
+    .error-type.console-warn {
+      color: #ffd93d;
+    }
+
+    .error-type.app-error {
+      color: #ff6b6b;
+    }
+
+    .error-message {
+      font-size: 11px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+
+    /* ============================================================
+       DATA LOADED INDICATOR
+       ============================================================
+       Visual indicator showing when Excel data has loaded successfully.
+    */
+    .data-load-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--mint-bg);
+      border: 1px solid var(--mint-border);
+      border-radius: 6px;
+      color: var(--mint-strong);
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .data-load-indicator.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .data-load-indicator .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--mint-strong);
+      animation: pulse-success 2s ease-in-out;
+    }
+
+    @keyframes pulse-success {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.7;
+        transform: scale(1.2);
+      }
+    }
+
+    .data-load-indicator.loading {
+      opacity: 1;
+      background: var(--blue-bg);
+      border-color: var(--blue-border);
+      color: var(--blue-strong);
+    }
+
+    .data-load-indicator.loading .status-dot {
+      background: var(--blue-strong);
+      animation: pulse-loading 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-loading {
+      0%, 100% {
+        opacity: 0.5;
+        transform: scale(0.8);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.2);
+      }
+    }
+
+    .data-load-indicator.error {
+      opacity: 1;
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: var(--danger-red);
+    }
+
+    .data-load-indicator.error .status-dot {
+      background: var(--danger-red);
+      animation: pulse-error 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-error {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.5;
+        transform: scale(1.1);
+      }
+    }
+
 
   </style>
+  <!--suppress HtmlUnknownTarget -->
+  <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 </head>
 <body>
+<!-- Error/Warning Notification Bar - Shows console errors and app errors -->
+<div id="errorNotificationBar" class="collapsed">
+  <div class="error-header">
+    <span>⚠️ Errors Detected</span>
+    <span class="error-count" id="errorCount">0</span>
+  </div>
+  <span class="toggle-icon">▼</span>
+  <div id="errorDetailsPanel"></div>
+</div>
+
+<!-- Data Load Indicator - Shows when Excel data is loading/loaded -->
+<div id="dataLoadIndicator" class="data-load-indicator">
+  <span class="status-dot"></span>
+  <span id="dataLoadText">Loading data...</span>
+</div>
+
 <header class="app-header">
   <div class="header-left">
     <div class="header-title">Kyle’s Adventure Finder</div>
@@ -1589,6 +1814,177 @@
 
 <script>
   /* ============================================================
+     ERROR TRACKING & ERROR NOTIFICATION BAR
+     ============================================================
+     Captures all console errors, warnings, and app-level errors.
+     Displays them in a collapsible bar at the top of the page.
+     User can click to expand and see detailed error messages.
+  */
+
+  // Store all errors for display in the error bar
+  const errorLog = [];
+  const MAX_ERRORS_TO_STORE = 50;
+
+  /**
+   * Add error to the error log and update the error notification bar
+   * @param {string} type - Error type: 'error', 'warning', 'app-error'
+   * @param {string} message - Error message
+   * @param {string} stackTrace - Optional stack trace or additional info
+   */
+  function logErrorToBar(type, message, stackTrace = '') {
+    // Create error object
+    const errorEntry = {
+      type: type,
+      message: message,
+      stackTrace: stackTrace,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+
+    // Add to error log
+    errorLog.push(errorEntry);
+
+    // Keep only recent errors to avoid memory issues
+    if (errorLog.length > MAX_ERRORS_TO_STORE) {
+      errorLog.shift();
+    }
+
+    // Update error notification bar
+    updateErrorBar();
+  }
+
+  /**
+   * Update the error notification bar with current errors
+   */
+  function updateErrorBar() {
+    const errorBar = document.getElementById('errorNotificationBar');
+    const errorCount = document.getElementById('errorCount');
+    const errorDetailsPanel = document.getElementById('errorDetailsPanel');
+
+    if (errorLog.length === 0) {
+      errorBar.classList.remove('has-errors');
+      return;
+    }
+
+    // Show error bar
+    errorBar.classList.add('has-errors');
+    errorCount.textContent = errorLog.length;
+
+    // Build error details HTML
+    let detailsHTML = '';
+    errorLog.forEach((error) => {
+      const typeEmoji = error.type === 'error' ? '❌' : error.type === 'warning' ? '⚠️' : '🔴';
+      const typeClass = error.type === 'warning' ? 'console-warn' : 'console-error';
+
+      detailsHTML += `
+        <div class="error-item">
+          <div class="error-type ${typeClass}">
+            ${typeEmoji} ${error.type.toUpperCase()} [${error.timestamp}]
+          </div>
+          <div class="error-message">
+            ${error.message}
+            ${error.stackTrace ? `<br><br><strong>Details:</strong><br>${error.stackTrace}` : ''}
+          </div>
+        </div>
+      `;
+    });
+
+    errorDetailsPanel.innerHTML = detailsHTML;
+  }
+
+  /**
+   * Toggle error details panel open/close
+   */
+  function toggleErrorBar() {
+    const errorBar = document.getElementById('errorNotificationBar');
+    const errorDetailsPanel = document.getElementById('errorDetailsPanel');
+
+    errorBar.classList.toggle('collapsed');
+    errorBar.classList.toggle('expanded');
+    errorDetailsPanel.classList.toggle('show');
+  }
+
+  // Intercept console.error to capture errors
+  const originalConsoleError = console.error;
+  console.error = function(...args) {
+    const message = args.join(' ');
+    logErrorToBar('error', message);
+    originalConsoleError.apply(console, args);
+  };
+
+  // Intercept console.warn to capture warnings
+  const originalConsoleWarn = console.warn;
+  console.warn = function(...args) {
+    const message = args.join(' ');
+    logErrorToBar('warning', message);
+    originalConsoleWarn.apply(console, args);
+  };
+
+  // Catch uncaught errors
+  window.addEventListener('error', (event) => {
+    logErrorToBar('error', event.message, `File: ${event.filename}, Line: ${event.lineno}`);
+  });
+
+  // Catch uncaught promise rejections
+  window.addEventListener('unhandledrejection', (event) => {
+    logErrorToBar('error', 'Unhandled Promise Rejection', event.reason?.message || String(event.reason));
+  });
+
+  // Add click handler to error notification bar
+  document.addEventListener('DOMContentLoaded', () => {
+    const errorBar = document.getElementById('errorNotificationBar');
+    if (errorBar) {
+      errorBar.addEventListener('click', toggleErrorBar);
+    }
+  });
+
+  /* ============================================================
+     DATA LOAD INDICATOR
+     ============================================================
+     Shows visual feedback when Excel data is being loaded and when
+     it has successfully completed loading.
+  */
+
+  /**
+   * Update the data load indicator
+   * @param {string} state - 'loading', 'success', 'error', 'hidden'
+   * @param {string} message - Message to display
+   */
+  function updateDataLoadIndicator(state, message = '') {
+    const indicator = document.getElementById('dataLoadIndicator');
+    const text = document.getElementById('dataLoadText');
+
+    if (!indicator) return;
+
+    // Remove all state classes
+    indicator.classList.remove('loading', 'show', 'error');
+
+    switch (state) {
+      case 'loading':
+        indicator.classList.add('loading', 'show');
+        text.textContent = message || '⏳ Loading Excel data...';
+        break;
+
+      case 'success':
+        indicator.classList.add('show');
+        text.textContent = message || '✓ Excel data loaded successfully';
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          indicator.classList.remove('show');
+        }, 3000);
+        break;
+
+      case 'error':
+        indicator.classList.add('error', 'show');
+        text.textContent = message || '✗ Failed to load Excel data';
+        break;
+
+      case 'hidden':
+        indicator.classList.remove('show');
+        break;
+    }
+  }
+
+  /* ============================================================
      AUTHENTICATION & CONFIGURATION
      ============================================================
      This section sets up Microsoft Authentication Library (MSAL) for
@@ -1603,9 +1999,11 @@
   */
 
   /* API KEYS & CONSTANTS */
-  const GOOGLE_API_KEY = "YOUR_API_KEY_HERE"; // Replace with your real Google Places API key (currently unused)
-  const EXCEL_TABLE_NAME = "MyList";           // Name of the Excel table containing adventure data
-  const PLACE_ID_COLUMN_NAME = "Google Place ID"; // Column name in Excel (currently unused)
+  // Note: These constants are reserved for future features and are currently unused
+  // Uncomment and set values when implementing these features:
+  // const GOOGLE_API_KEY = "YOUR_API_KEY_HERE"; // For Google Places API integration
+  // const EXCEL_TABLE_NAME = "MyList";           // Excel table name (currently hardcoded in code)
+  // const PLACE_ID_COLUMN_NAME = "Google Place ID"; // For location-based features
 
   /* ============================================================
      MICROSOFT AUTHENTICATION LIBRARY (MSAL) SETUP
@@ -1937,8 +2335,6 @@
      5. Table sorted: nearest adventures first
   */
 
-  // Store user location globally
-  let userLocation = null;
 
   // Haversine formula to calculate distance between two coordinates
   function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -2180,75 +2576,83 @@
     // Check if user is authenticated (has access token)
     if (!accessToken) return;
 
-    // Build URL to fetch Excel table rows from Microsoft Graph API
-    // Format: https://graph.microsoft.com/v1.0/me/drive/root:/path/file.xlsx:/workbook/tables/TableName/rows
-    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
+    try {
+      // Show loading indicator
+      updateDataLoadIndicator('loading', '⏳ Loading Excel data...');
+      console.log("Starting to load Excel data...");
 
-    // Make API request with authentication header
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` }, // Pass token for authentication
-    });
+      // Build URL to fetch Excel table rows from Microsoft Graph API
+      // Format: https://graph.microsoft.com/v1.0/me/drive/root:/path/file.xlsx:/workbook/tables/TableName/rows
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
 
-    // Parse JSON response from API
-    const data = await response.json();
-    if (!data.value) return; // Exit if no data returned
+      // Make API request with authentication header
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` }, // Pass token for authentication
+      });
 
-    // Clear existing table rows (in case we're reloading data)
-    const tbody = document.querySelector("#adventureTableBody");
-    tbody.innerHTML = "";
-
-    /* ============================================================
-       PROCESS EACH ROW FROM EXCEL
-       ============================================================
-       For each adventure in the Excel file, create an HTML table row
-       with all the data properly formatted.
-    */
-    data.value.forEach((row) => {
-      // Extract values from the current Excel row
-      // row.values[0] is an array of cell values in order
-      const values = row.values[0];
-
-      // DEBUG: Log the first row to check data structure
-      if (!window.debugLoggedOnce) {
-        console.log("First Excel Row Data:", values);
-        console.log("Number of columns:", values.length);
-        window.debugLoggedOnce = true;
+      // Parse JSON response from API
+      const data = await response.json();
+      if (!data.value) {
+        // noinspection ExceptionCaughtLocallyJS - Error is intentionally thrown to be caught by try-catch below
+        throw new Error("No data returned from Excel file");
       }
 
-      // Create new table row element
-      const tr = document.createElement("tr");
+      // Clear existing table rows (in case we're reloading data)
+      const tbody = document.querySelector("#adventureTableBody");
+      tbody.innerHTML = "";
 
-      /* EXTRACT EXCEL COLUMNS IN ORDER
-         These columns match the Excel file structure.
-         Order matters! If columns are reordered in Excel,
-         these assignments will be wrong.
-
-         FORMAT: [Column 0, Column 1, Column 2, ...]
+      /* ============================================================
+         PROCESS EACH ROW FROM EXCEL
+         ============================================================
+         For each adventure in the Excel file, create an HTML table row
+         with all the data properly formatted.
       */
-      const [
-        googlePlaceId,  // Column 0: Google Places ID (used for location-based features)
-        name,           // Column 1: Adventure name
-        website,        // Column 2: Website URL
-        tags,           // Column 3: Tags (comma-separated: "Hiking,Nature")
-        driveTime,      // Column 4: How long to drive there
-        hours,          // Column 5: Hours/times operation
-        duration,       // Column 6: Activity duration
-        difficulty,     // Column 7: Difficulty level (Easy/Moderate/Hard)
-        trailLength,    // Column 8: Trail length in miles
-        state,          // Column 9: State (SC, NC, GA, etc)
-        city,           // Column 10: City name
-        address,        // Column 11: Full street address
-        phoneNumber,    // Column 12: Phone number
-        googleRating,   // Column 13: Google Rating from map
-        cost,           // Column 14: Cost (Free, $, $$, $$$)
-        directions,     // Column 15: Directions link
-        description,    // Column 16: Description text
-        nearby,         // Column 17: Nearby things to do
-        links,          // Column 18: Additional links
-        links2,         // Column 19: More links
-        notes,          // Column 20: User notes
-        myRating,       // Column 21: My Rating (user's personal rating 1-5 stars)
-      ] = values;
+      data.value.forEach((row) => {
+        // Extract values from the current Excel row
+        // row.values[0] is an array of cell values in order
+        const values = row.values[0];
+
+        // DEBUG: Log the first row to check data structure
+        if (!window.debugLoggedOnce) {
+          console.log("First Excel Row Data:", values);
+          console.log("Number of columns:", values.length);
+          window.debugLoggedOnce = true;
+        }
+
+        // Create new table row element
+        const tr = document.createElement("tr");
+
+        /* EXTRACT EXCEL COLUMNS IN ORDER
+           These columns match the Excel file structure.
+           Order matters! If columns are reordered in Excel,
+           these assignments will be wrong.
+
+           FORMAT: [Column 0, Column 1, Column 2, ...]
+        */
+        const [
+          googlePlaceId,  // Column 0: Google Places ID (used for location-based features)
+          name,           // Column 1: Adventure name
+          website,        // Column 2: Website URL
+          tags,           // Column 3: Tags (comma-separated: "Hiking,Nature")
+          driveTime,      // Column 4: How long to drive there
+          hours,          // Column 5: Hours/times operation
+          duration,       // Column 6: Activity duration
+          difficulty,     // Column 7: Difficulty level (Easy/Moderate/Hard)
+          trailLength,    // Column 8: Trail length in miles
+          state,          // Column 9: State (SC, NC, GA, etc)
+          city,           // Column 10: City name
+          address,        // Column 11: Full street address
+          phoneNumber,    // Column 12: Phone number
+          googleRating,   // Column 13: Google Rating from map
+          cost,           // Column 14: Cost (Free, $, $$, $$$)
+          directions,     // Column 15: Directions link
+          description,    // Column 16: Description text
+          nearby,         // Column 17: Nearby things to do
+          links,          // Column 18: Additional links
+          links2,         // Column 19: More links
+          notes,          // Column 20: User notes
+          myRating,       // Column 21: My Rating (user's personal rating 1-5 stars)
+        ] = values;
 
       tr.dataset.googlePlaceId = (googlePlaceId || "").trim();
       tr.dataset.rowId = row.index;
@@ -2446,12 +2850,24 @@
       tr.appendChild(ratingTd);
 
       tbody.appendChild(tr);
-    });
+      });
 
-    // Re-initialize more/less buttons and row selection for new rows
-    initMoreLessButtons();
-    initRowSelection();
-    applyFilters();
+      // Re-initialize more/less buttons and row selection for new rows
+      initMoreLessButtons();
+      initRowSelection();
+      applyFilters();
+
+      // Show success indicator
+      console.log("✓ Excel data loaded successfully");
+      updateDataLoadIndicator('success', '✓ Excel data loaded successfully');
+
+    } catch (error) {
+      // Handle errors during data loading
+      console.error("Error loading Excel data:", error);
+      logErrorToBar('app-error', 'Failed to load Excel data', error.message);
+      updateDataLoadIndicator('error', '✗ Failed to load Excel data');
+      alert(`Error loading data: ${error.message}`);
+    }
   }
 
   /***********************
@@ -2919,6 +3335,7 @@
 
       // Check if request was successful
       if (!response.ok) {
+        // noinspection ExceptionCaughtLocallyJS - Error is intentionally thrown to be caught by try-catch below
         throw new Error(`Excel API error: ${response.status}`);
       }
 
@@ -2945,7 +3362,7 @@
   function initNotesModal() {
     // Get references to modal elements
     const backdrop = document.getElementById("notesModalBackdrop"); // Semi-transparent overlay
-    const modal = document.getElementById("notesModal");            // The modal dialog box
+    // const modal = document.getElementById("notesModal");            // The modal dialog box (unused - modal controlled via backdrop)
     const closeBtn = document.getElementById("notesModalCloseBtn"); // X button in top right
     const cancelBtn = document.getElementById("notesCancelBtn");    // Cancel button at bottom
     const saveBtn = document.getElementById("notesSaveBtn");        // Save button at bottom
@@ -3116,6 +3533,7 @@
 
       // Check if request was successful
       if (!response.ok) {
+        // noinspection ExceptionCaughtLocallyJS - Error is intentionally thrown to be caught by try-catch below
         throw new Error(`Excel API error: ${response.status}`);
       }
 
@@ -3151,7 +3569,7 @@
   function initRatingModal() {
     // Get references to modal elements
     const backdrop = document.getElementById("ratingModalBackdrop"); // Semi-transparent overlay
-    const modal = document.getElementById("ratingModal");            // The modal dialog box
+    // const modal = document.getElementById("ratingModal");            // The modal dialog box (unused - modal controlled via backdrop)
     const cancelBtn = document.getElementById("ratingCancelBtn");    // Cancel button at bottom
     const saveBtn = document.getElementById("ratingSaveBtn");        // Save button at bottom
 
@@ -3183,6 +3601,7 @@
     <!-- Preview of existing notes -->
     <div id="notesPreview"></div>
     <!-- Textarea for editing/adding notes -->
+    <label for="notesTextarea" style="display: block; margin-bottom: 5px; font-weight: 500;">Your Notes:</label>
     <textarea id="notesTextarea" class="notes-textarea" placeholder="Add your notes here..."></textarea>
   </div>
   <div class="notes-modal-footer">
