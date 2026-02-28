@@ -1755,7 +1755,7 @@
           <th style="display:none;">Google Place ID</th>
           <!-- Basic Information -->
           <th>Name</th>
-          <th>Website</th>
+          <th class="hidden-by-default">Website</th>
           <th>Tags</th>
           <!-- Travel & Location -->
           <th>Drive Time</th>
@@ -1766,8 +1766,8 @@
           <th class="hidden-by-default">Directions</th>
           <!-- Activity Details -->
           <th class="hidden-by-default">Activity Duration</th>
-          <th class="hidden-by-default">Difficulty</th>
-          <th class="hidden-by-default">Trail Length</th>
+          <th>Difficulty</th>
+          <th>Trail Length</th>
           <!-- Hours & Operations -->
           <th>Hours of Operation</th>
           <!-- Contact & Details -->
@@ -2793,8 +2793,8 @@
       tr.appendChild(hiddenCell(directions));
 
       // ACTIVITY DETAILS GROUP
-      // Activity Duration (how long the activity takes)
-      tr.appendChild(cell(activityDuration));
+      // Activity Duration (how long the activity takes) - hidden since Hours of Operation shows same data
+      tr.appendChild(hiddenCell(activityDuration));
 
       // Difficulty pill
       const diffTd = document.createElement("td");
@@ -3354,23 +3354,27 @@
       saveBtn.disabled = true;
       saveBtn.textContent = "Saving..."; // Show progress to user
 
-      // Get the Excel row ID (needed to identify which row to update)
-      const rowId = currentNotesRow.dataset.rowId;
+      // Get the Excel row index (needed to identify which row to update)
+      const rowIndex = currentNotesRow.dataset.rowId;
 
       // Update the row's data attribute in memory (for instant UI update)
       currentNotesRow.dataset.notes = newNotes;
 
       // Build URL for Microsoft Graph API PATCH request
-      // Format: .../workbook/tables/TableName/rows/RowId
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/${rowId}`;
+      // Note: Use itemAt(index=X) syntax to update a specific row by its position in the table
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
 
       /* Build update payload for Excel
-         IMPORTANT: We send 21 columns (20 nulls + notes)
+         IMPORTANT: We send 23 columns to match the Excel table structure
+         Column 0-19: null (unchanged)
+         Column 20: newNotes (Notes column - the one we're updating)
+         Column 21-22: null (My Rating and extra column - unchanged)
+
          This updates ONLY the Notes column (index 20)
          All other columns stay as they were (nulls don't overwrite)
       */
       const updateData = {
-        values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, newNotes]]
+        values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, newNotes, null, null]]
       };
 
       // Send PATCH request to Microsoft Graph API
@@ -3556,19 +3560,24 @@
       saveBtn.disabled = true;
       saveBtn.textContent = "Saving..."; // Show progress to user
 
-      // Get the Excel row ID (needed to identify which row to update)
-      const rowId = currentRatingRow.dataset.rowId;
+      // Get the Excel row index (needed to identify which row to update)
+      const rowIndex = currentRatingRow.dataset.rowId;
 
       // Build URL for Microsoft Graph API PATCH request
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/${rowId}`;
+      // Note: Use itemAt(index=X) syntax to update a specific row by its position in the table
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
 
       /* Build update payload for Excel
-         We send 22 columns (21 nulls + rating)
+         We send 23 columns to match the Excel table structure
+         Column 0-20: null (unchanged)
+         Column 21: selectedRating (My Rating column - the one we're updating)
+         Column 22: null (extra column - unchanged)
+
          This updates ONLY the My Rating column (index 21)
          All other columns stay as they were (nulls don't overwrite)
       */
       const updateData = {
-        values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, selectedRating]]
+        values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, selectedRating, null]]
       };
 
       // Send PATCH request to Microsoft Graph API
