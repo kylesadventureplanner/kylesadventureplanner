@@ -2341,6 +2341,52 @@
   let userLocation = null;          // Stores user's GPS coordinates {latitude, longitude} from browser geolocation
 
   /* ============================================================
+     STATE FLAG EMOJI MAPPING
+     ============================================================
+     Maps US state abbreviations to their flag emojis for visual display.
+     Makes the State column more visually appealing and easier to scan.
+  */
+  const STATE_FLAGS = {
+    "AL": "🇦🇱", "AK": "🇦🇰", "AZ": "🇦🇿", "AR": "🇦🇷", "CA": "🇨🇦",
+    "CO": "🇨🇴", "CT": "🇨🇹", "DE": "🇩🇪", "FL": "🇫🇷", "GA": "🇬🇦",
+    "HI": "🇭🇮", "ID": "🇮🇩", "IL": "🇮🇱", "IN": "🇮🇳", "IA": "🇮🇦",
+    "KS": "🇰🇷", "KY": "🇰🇾", "LA": "🇱🇦", "ME": "🇲🇪", "MD": "🇲🇩",
+    "MA": "🇲🇦", "MI": "🇲🇮", "MN": "🇲🇳", "MS": "🇲🇸", "MO": "🇲🇴",
+    "MT": "🇲🇹", "NE": "🇳🇪", "NV": "🇳🇻", "NH": "🇳🇭", "NJ": "🇳🇯",
+    "NM": "🇳🇲", "NY": "🇳🇾", "NC": "🇳🇨", "ND": "🇳🇩", "OH": "🇴🇭",
+    "OK": "🇴🇰", "OR": "🇴🇷", "PA": "🇵🇦", "RI": "🇷🇮", "SC": "🇸🇨",
+    "SD": "🇸🇩", "TN": "🇹🇳", "TX": "🇹🇽", "UT": "🇺🇹", "VT": "🇻🇹",
+    "VA": "🇻🇦", "WA": "🇼🇦", "WV": "🇼🇻", "WI": "🇼🇮", "WY": "🇼🇾",
+    "DC": "🇩🇨", "AS": "🇦🇸", "GU": "🇬🇺", "MP": "🇲🇵", "PR": "🇵🇷", "VI": "🇻🇮"
+  };
+
+  /* ============================================================
+     CITY COUNT TRACKING
+     ============================================================
+     Counts how many times each city appears in the table.
+     Used to display city frequency next to city names.
+  */
+  let cityCountMap = {};
+
+  /**
+   * Count all cities in the current table data
+   * Should be called after Excel data is loaded but before rendering
+   */
+  function calculateCityCounts(excelData) {
+    cityCountMap = {};
+    // Count each city as it appears
+    excelData.forEach(row => {
+      const values = row.values[0];
+      if (values && values.length > 10) {
+        const city = (values[10] || "").trim(); // City is column 10
+        if (city) {
+          cityCountMap[city] = (cityCountMap[city] || 0) + 1;
+        }
+      }
+    });
+  }
+
+  /* ============================================================
      SIGN IN FUNCTION - MICROSOFT AUTHENTICATION
      ============================================================
      This function handles the entire login process:
@@ -2880,6 +2926,9 @@
         throw new Error("No data returned from Excel file");
       }
 
+      // Calculate city counts for display next to city names
+      calculateCityCounts(data.value);
+
       // Clear existing table rows (in case we're reloading data)
       const tbody = document.querySelector("#adventureTableBody");
       tbody.innerHTML = "";
@@ -3057,11 +3106,30 @@
       // Drive Time
       tr.appendChild(cell(driveTime));
 
-      // State
-      tr.appendChild(cell(state));
+      // State - Add flag icon with state abbreviation
+      const stateTd = document.createElement("td");
+      if (state) {
+        const stateUpper = (state || "").trim().toUpperCase();
+        const flagEmoji = STATE_FLAGS[stateUpper] || "📍";
+        stateTd.innerHTML = `${flagEmoji} ${stateUpper}`;
+        stateTd.style.fontWeight = "500";
+      } else {
+        stateTd.textContent = "";
+      }
+      tr.appendChild(stateTd);
 
-      // City
-      tr.appendChild(cell(city));
+      // City - Add city count next to city name
+      const cityTd = document.createElement("td");
+      if (city) {
+        const cityTrimmed = (city || "").trim();
+        const cityCount = cityCountMap[cityTrimmed] || 1;
+        // Show count only if city appears more than once
+        const countDisplay = cityCount > 1 ? ` <span style="font-size: 0.85em; color: #9ca3af;">(${cityCount})</span>` : "";
+        cityTd.innerHTML = `${cityTrimmed}${countDisplay}`;
+      } else {
+        cityTd.textContent = "";
+      }
+      tr.appendChild(cityTd);
 
       // Distance (hidden by default, shown when Find Near Me is used)
       const distanceTd = document.createElement("td");
