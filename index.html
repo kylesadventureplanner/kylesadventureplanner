@@ -652,19 +652,19 @@
       </div>
       <div class="filter-item">
         <label for="filterState">Filter by State</label>
-        <input id="filterState" class="filter-input" type="text" placeholder="SC, NC, GA..." />
+        <input id="filterState" class="filter-input" type="text" placeholder="SC, NC, GA..." list="stateList" />
       </div>
       <div class="filter-item">
         <label for="filterCity">Filter by City</label>
-        <input id="filterCity" class="filter-input" type="text" placeholder="Columbia, Greenville..." />
+        <input id="filterCity" class="filter-input" type="text" placeholder="Columbia, Greenville..." list="cityList" />
       </div>
       <div class="filter-item">
         <label for="filterTags">Filter by Tags</label>
-        <input id="filterTags" class="filter-input" type="text" placeholder="Restaurant, Animals, Nature..." />
+        <input id="filterTags" class="filter-input" type="text" placeholder="Restaurant, Animals, Nature..." list="tagsList" />
       </div>
       <div class="filter-item">
         <label for="filterCost">Filter by Cost</label>
-        <input id="filterCost" class="filter-input" type="text" placeholder="Free, $, $$..." />
+        <input id="filterCost" class="filter-input" type="text" placeholder="Free, $, $$..." list="costList" />
       </div>
       <div class="filter-item">
         <label for="groupBy">Group By</label>
@@ -701,6 +701,12 @@
       <button class="quick-filter-btn" data-tag="used book store">Used Book Store</button>
     </div>
   </div>
+
+  <!-- Autofill Datalists -->
+  <datalist id="stateList"></datalist>
+  <datalist id="cityList"></datalist>
+  <datalist id="tagsList"></datalist>
+  <datalist id="costList"></datalist>
 
   <!-- Google Data Automation -->
   <div class="card automation-card">
@@ -1244,9 +1250,71 @@
   }
 
   function applyFilters() {
-    // Hook this into your existing filtering + grouping logic.
-    // For now, we only update visual filter state indicators.
+    const tbody = document.querySelector("#adventureTableBody");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
 
+    // Filter logic
+    const filteredRows = rows.filter((row) => {
+      const name = row.cells[1]?.textContent.toLowerCase() || "";
+      const difficulty = (row.dataset.difficulty || "").toLowerCase();
+      const state = (row.dataset.state || "").toLowerCase();
+      const city = (row.dataset.city || "").toLowerCase();
+      const tags = (row.dataset.tags || "").toLowerCase();
+      const cost = (row.dataset.cost || "").toLowerCase();
+
+      // Name filter
+      if (filterState.name && !name.includes(filterState.name)) {
+        return false;
+      }
+
+      // Difficulty filter
+      if (filterState.difficulty && !difficulty.includes(filterState.difficulty.toLowerCase())) {
+        return false;
+      }
+
+      // State filter
+      if (filterState.state && !state.includes(filterState.state)) {
+        return false;
+      }
+
+      // City filter
+      if (filterState.city && !city.includes(filterState.city)) {
+        return false;
+      }
+
+      // Tags filter (check if any tag matches)
+      if (filterState.tags) {
+        const tagsArray = tags.split(",").map(t => t.trim());
+        if (!tagsArray.some(t => t.includes(filterState.tags))) {
+          return false;
+        }
+      }
+
+      // Cost filter
+      if (filterState.cost && !cost.includes(filterState.cost)) {
+        return false;
+      }
+
+      // Quick tags filter (check if row has any of the selected quick tags)
+      if (filterState.quickTags.size > 0) {
+        const rowTags = tags.split(",").map(t => t.trim().toLowerCase());
+        const hasQuickTag = Array.from(filterState.quickTags).some(qtag =>
+          rowTags.some(rt => rt.includes(qtag.toLowerCase()))
+        );
+        if (!hasQuickTag) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Show/hide rows based on filter
+    rows.forEach((row) => {
+      row.style.display = filteredRows.includes(row) ? "" : "none";
+    });
+
+    // Update filter state indicators
     const anyFilterActive =
             filterState.name ||
             filterState.difficulty ||
@@ -1271,10 +1339,48 @@
       badge.classList.remove("visible");
     }
 
-    // Your real implementation:
-    // - Filter rows based on filterState
-    // - Optionally group rows based on filterState.groupBy
-    // - Re-render table body
+    // Generate autofill suggestions for filter fields
+    updateFilterSuggestions(filteredRows);
+  }
+
+  function updateFilterSuggestions(visibleRows) {
+    // Extract unique values from visible rows for autofill
+    const states = new Set();
+    const cities = new Set();
+    const tags = new Set();
+    const costs = new Set();
+
+    visibleRows.forEach((row) => {
+      const state = (row.dataset.state || "").trim();
+      const city = (row.cells[10]?.textContent || "").trim();
+      const rowTags = (row.dataset.tags || "").split(",").map(t => t.trim());
+      const cost = (row.dataset.cost || "").trim();
+
+      if (state) states.add(state);
+      if (city) cities.add(city);
+      rowTags.forEach(tag => {
+        if (tag) tags.add(tag);
+      });
+      if (cost) costs.add(cost);
+    });
+
+    // Set datalist values for autofill
+    const stateDatalist = document.getElementById("stateList") || createDatalist("stateList");
+    const cityDatalist = document.getElementById("cityList") || createDatalist("cityList");
+    const tagsDatalist = document.getElementById("tagsList") || createDatalist("tagsList");
+    const costDatalist = document.getElementById("costList") || createDatalist("costList");
+
+    stateDatalist.innerHTML = Array.from(states).map(s => `<option value="${s}">`).join("");
+    cityDatalist.innerHTML = Array.from(cities).map(c => `<option value="${c}">`).join("");
+    tagsDatalist.innerHTML = Array.from(tags).map(t => `<option value="${t}">`).join("");
+    costDatalist.innerHTML = Array.from(costs).map(c => `<option value="${c}">`).join("");
+  }
+
+  function createDatalist(id) {
+    const datalist = document.createElement("datalist");
+    datalist.id = id;
+    document.body.appendChild(datalist);
+    return datalist;
   }
 
   /***********************
