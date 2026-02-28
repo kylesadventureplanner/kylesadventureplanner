@@ -2341,23 +2341,34 @@
   let userLocation = null;          // Stores user's GPS coordinates {latitude, longitude} from browser geolocation
 
   /* ============================================================
-     STATE FLAG EMOJI MAPPING
+     STATE COLORS MAPPING
      ============================================================
-     Maps US state abbreviations to their flag emojis for visual display.
-     Makes the State column more visually appealing and easier to scan.
+     Maps US state abbreviations to display colors for state badges.
+
+     IMPORTANT: US state flags do NOT exist as Unicode emoji!
+     The country flag emojis (like 🇳🇨) represent countries, not US states.
+     For example: 🇳🇨 = New Caledonia (country), NOT North Carolina (US state)
+
+     Instead, we use colored badges that match the existing tag-pill styling
+     to create visually distinct and recognizable state indicators.
   */
-  const STATE_FLAGS = {
-    "AL": "🇦🇱", "AK": "🇦🇰", "AZ": "🇦🇿", "AR": "🇦🇷", "CA": "🇨🇦",
-    "CO": "🇨🇴", "CT": "🇨🇹", "DE": "🇩🇪", "FL": "🇫🇷", "GA": "🇬🇦",
-    "HI": "🇭🇮", "ID": "🇮🇩", "IL": "🇮🇱", "IN": "🇮🇳", "IA": "🇮🇦",
-    "KS": "🇰🇷", "KY": "🇰🇾", "LA": "🇱🇦", "ME": "🇲🇪", "MD": "🇲🇩",
-    "MA": "🇲🇦", "MI": "🇲🇮", "MN": "🇲🇳", "MS": "🇲🇸", "MO": "🇲🇴",
-    "MT": "🇲🇹", "NE": "🇳🇪", "NV": "🇳🇻", "NH": "🇳🇭", "NJ": "🇳🇯",
-    "NM": "🇳🇲", "NY": "🇳🇾", "NC": "🇳🇨", "ND": "🇳🇩", "OH": "🇴🇭",
-    "OK": "🇴🇰", "OR": "🇴🇷", "PA": "🇵🇦", "RI": "🇷🇮", "SC": "🇸🇨",
-    "SD": "🇸🇩", "TN": "🇹🇳", "TX": "🇹🇽", "UT": "🇺🇹", "VT": "🇻🇹",
-    "VA": "🇻🇦", "WA": "🇼🇦", "WV": "🇼🇻", "WI": "🇼🇮", "WY": "🇼🇾",
-    "DC": "🇩🇨", "AS": "🇦🇸", "GU": "🇬🇺", "MP": "🇲🇵", "PR": "🇵🇷", "VI": "🇻🇮"
+  const STATE_COLORS = {
+    "NC": "#3b82f6",  // Blue - North Carolina
+    "SC": "#ef4444",  // Red - South Carolina
+    "TN": "#f97316",  // Orange - Tennessee
+    "GA": "#10b981",  // Green - Georgia
+    "VA": "#8b5cf6",  // Purple - Virginia
+    "KY": "#06b6d4",  // Cyan - Kentucky
+    "WV": "#84cc16",  // Lime - West Virginia
+    "AL": "#f59e0b",  // Amber - Alabama
+    "MS": "#ec4899",  // Pink - Mississippi
+    "FL": "#14b8a6",  // Teal - Florida
+    "LA": "#a855f7",  // Purple - Louisiana
+    "TX": "#eab308",  // Yellow - Texas
+    "OK": "#22c55e",  // Green - Oklahoma
+    "AR": "#6366f1",  // Indigo - Arkansas
+    "MO": "#f43f5e",  // Rose - Missouri
+    "DEFAULT": "#6b7280"  // Gray - For any states not specifically mapped
   };
 
   /* ============================================================
@@ -3107,12 +3118,14 @@
       tr.appendChild(cell(driveTime));
 
       // State - Add flag icon with state abbreviation
+      // State - Display as colored badge (US state flags don't exist as emoji)
       const stateTd = document.createElement("td");
       if (state) {
         const stateUpper = (state || "").trim().toUpperCase();
-        const flagEmoji = STATE_FLAGS[stateUpper] || "📍";
-        stateTd.innerHTML = `${flagEmoji} ${stateUpper}`;
-        stateTd.style.fontWeight = "500";
+        // Get color for this state, or use default gray if not mapped
+        const stateColor = STATE_COLORS[stateUpper] || STATE_COLORS["DEFAULT"];
+        // Create badge similar to tag-pill styling but for states
+        stateTd.innerHTML = `<span style="display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; color: white; background-color: ${stateColor};">${stateUpper}</span>`;
       } else {
         stateTd.textContent = "";
       }
