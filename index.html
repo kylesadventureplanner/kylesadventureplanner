@@ -741,8 +741,8 @@
       <table id="adventureTable">
         <thead>
         <tr>
-          <th>Name</th>
           <th style="display:none;">Google Place ID</th>
+          <th>Name</th>
           <th>Website</th>
           <th>Tags</th>
           <th>Drive Time</th>
@@ -988,6 +988,7 @@
       const tr = document.createElement("tr");
 
       const [
+        googlePlaceId,
         name,
         website,
         tags,
@@ -998,6 +999,9 @@
         trailLength,
         state,
         city,
+        address,
+        phoneNumber,
+        googleRating,
         cost,
         directions,
         description,
@@ -1006,6 +1010,7 @@
         links2,
       ] = values;
 
+      tr.dataset.googlePlaceId = (googlePlaceId || "").trim();
       tr.dataset.difficulty = (difficulty || "").toLowerCase();
       tr.dataset.state = (state || "").toLowerCase();
       tr.dataset.tags = (tags || "").toLowerCase();
@@ -1018,6 +1023,12 @@
         td.textContent = text ?? "";
         return td;
       }
+
+      // Google Place ID (hidden)
+      const placeIdTd = document.createElement("td");
+      placeIdTd.style.display = "none";
+      placeIdTd.textContent = googlePlaceId || "";
+      tr.appendChild(placeIdTd);
 
       // Name
       const nameTd = document.createElement("td");
@@ -1075,10 +1086,21 @@
       }
       tr.appendChild(diffTd);
 
-      // Trail Length, State, City, Cost
+      // Trail Length, State, City
       tr.appendChild(cell(trailLength));
       tr.appendChild(cell(state));
       tr.appendChild(cell(city));
+
+      // Address
+      tr.appendChild(cell(address));
+
+      // Phone Number
+      tr.appendChild(cell(phoneNumber));
+
+      // Google Rating
+      tr.appendChild(cell(googleRating));
+
+      // Cost
       tr.appendChild(cell(cost));
 
       // Directions
