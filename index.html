@@ -2365,17 +2365,17 @@
 
   // Initialize Google services
   let geocoderService = null;
-  let map = null;
 
   /**
    * Initialize Google Maps services
    * Call this after Google Maps API is loaded
    */
-  function initializeGoogleServices() {
+  async function initializeGoogleServices() {
     try {
       if (typeof google !== 'undefined' && google.maps) {
-        // Initialize Geocoder service
-        geocoderService = new google.maps.Geocoder();
+        // Load geocoding library asynchronously
+        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        geocoderService = new Geocoder();
 
         console.log("✅ Google Maps services initialized successfully (NEW Places API)");
         return true;
@@ -2515,40 +2515,38 @@
    * console.log(distance.distanceInMiles, distance.durationInMinutes);
    */
   async function calculateDistance(origin, destination) {
-    return new Promise((resolve, reject) => {
-      if (!map) {
-        reject(new Error("Map not initialized"));
-        return;
-      }
+    try {
+      // Load routes library for distance calculations
+      const { DistanceMatrixService } = await google.maps.importLibrary("routes");
+      const service = new DistanceMatrixService();
+      
+      const result = await service.getDistanceMatrix({
+        origins: [origin],
+        destinations: [destination],
+        travelMode: google.maps.TravelMode.DRIVING
+      });
 
-      const service = new google.maps.DistanceMatrixService();
-      service.getDistanceMatrix(
-        {
-          origins: [origin],
-          destinations: [destination],
-          travelMode: 'DRIVING'
-        },
-        (response, status) => {
-          if (status === google.maps.DistanceMatrixStatus.OK) {
-            const result = response.rows[0].elements[0];
-            if (result.status === google.maps.DistanceMatrixElementStatus.OK) {
-              resolve({
-                distanceInMeters: result.distance.value,
-                distanceInMiles: (result.distance.value / 1609.34).toFixed(2),
-                durationInSeconds: result.duration.value,
-                durationInMinutes: Math.round(result.duration.value / 60),
-                durationText: result.duration.text,
-                distanceText: result.distance.text
-              });
-            } else {
-              reject(new Error(`Distance calculation error: ${result.status}`));
-            }
-          } else {
-            reject(new Error(`Distance Matrix API error: ${status}`));
-          }
+      if (result.rows && result.rows.length > 0) {
+        const element = result.rows[0].elements[0];
+        if (element.status === "OK") {
+          return {
+            distanceInMeters: element.distance.value,
+            distanceInMiles: (element.distance.value / 1609.34).toFixed(2),
+            durationInSeconds: element.duration.value,
+            durationInMinutes: Math.round(element.duration.value / 60),
+            durationText: element.duration.text,
+            distanceText: element.distance.text
+          };
+        } else {
+          throw new Error(`Distance calculation error: ${element.status}`);
         }
-      );
-    });
+      } else {
+        throw new Error("No distance results found");
+      }
+    } catch (error) {
+      console.error("Distance Matrix error:", error);
+      throw new Error(`Distance Matrix API error: ${error.message}`);
+    }
   }
 
   /**
@@ -2561,30 +2559,34 @@
    * console.log(geocoded.lat, geocoded.lng, geocoded.formattedAddress);
    */
   async function geocodeAddress(address) {
-    return new Promise((resolve, reject) => {
+    try {
+      // Ensure geocoder is loaded
       if (!geocoderService) {
-        reject(new Error("Geocoder service not initialized"));
-        return;
+        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        geocoderService = new Geocoder();
       }
 
-      geocoderService.geocode({ address: address }, (results, status) => {
-        if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
-          const result = results[0];
-          resolve({
-            lat: result.geometry.location.lat(),
-            lng: result.geometry.location.lng(),
-            formattedAddress: result.formatted_address,
-            placeId: result.place_id,
-            geometry: {
-              location_type: result.geometry.location_type,
-              bounds: result.geometry.bounds
-            }
-          });
-        } else {
-          reject(new Error(`Geocoding error: ${status}`));
-        }
-      });
-    });
+      const result = await geocoderService.geocode({ address: address });
+      
+      if (result.results && result.results.length > 0) {
+        const place = result.results[0];
+        return {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          formattedAddress: place.formatted_address,
+          placeId: place.place_id,
+          geometry: {
+            location_type: place.geometry.location_type,
+            bounds: place.geometry.bounds
+          }
+        };
+      } else {
+        throw new Error("No results found for address");
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      throw new Error(`Geocoding error: ${error.message}`);
+    }
   }
 
   /**
@@ -2597,27 +2599,31 @@
    * console.log(address.formattedAddress);
    */
   async function reverseGeocodeCoordinates(coordinates) {
-    return new Promise((resolve, reject) => {
+    try {
+      // Ensure geocoder is loaded
       if (!geocoderService) {
-        reject(new Error("Geocoder service not initialized"));
-        return;
+        const { Geocoder } = await google.maps.importLibrary("geocoding");
+        geocoderService = new Geocoder();
       }
 
-      geocoderService.geocode({ location: coordinates }, (results, status) => {
-        if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
-          const result = results[0];
-          resolve({
-            formattedAddress: result.formatted_address,
-            placeId: result.place_id,
-            addressComponents: result.address_components,
-            lat: result.geometry.location.lat(),
-            lng: result.geometry.location.lng()
-          });
-        } else {
-          reject(new Error(`Reverse geocoding error: ${status}`));
-        }
-      });
-    });
+      const result = await geocoderService.geocode({ location: coordinates });
+      
+      if (result.results && result.results.length > 0) {
+        const place = result.results[0];
+        return {
+          formattedAddress: place.formatted_address,
+          placeId: place.place_id,
+          addressComponents: place.address_components,
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng()
+        };
+      } else {
+        throw new Error("No results found for coordinates");
+      }
+    } catch (error) {
+      console.error("Reverse geocoding error:", error);
+      throw new Error(`Reverse geocoding error: ${error.message}`);
+    }
   }
 
   /* ============================================================
@@ -4824,6 +4830,7 @@
 
 </body>
 </html>
+
 
 
 
