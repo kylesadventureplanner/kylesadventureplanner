@@ -4881,23 +4881,18 @@
    * Initialize row detail modal event listeners
    */
   function initRowDetailModal() {
-    document.getElementById("rowDetailCloseBtn").addEventListener("click", closeRowDetailModal);
-    document.getElementById("rowDetailCloseFooterBtn").addEventListener("click", closeRowDetailModal);
-    document.getElementById("rowDetailModalBackdrop").addEventListener("click", closeRowDetailModal);
-    document.getElementById("rowDetailSearchPricesBtn").addEventListener("click", () => {
-      if (currentDetailRow) {
-        const rowData = rowDataMap.get(currentDetailRow);
-        if (rowData) {
-          // Switch to Cost tab
-          switchToCostTab();
-          // Search for prices
-          searchForPricesInCostTab(rowData);
-        }
-      }
-    });
-    document.getElementById("rowDetailEditBtn").addEventListener("click", () => {
-      alert("Edit functionality coming soon!");
-    });
+    const closeBtn = document.getElementById("rowDetailCloseBtn");
+    const closeFooterBtn = document.getElementById("rowDetailCloseFooterBtn");
+    const backdrop = document.getElementById("rowDetailModalBackdrop");
+
+    // Only add listeners if elements exist
+    if (closeBtn) closeBtn.addEventListener("click", closeRowDetailModal);
+    if (closeFooterBtn) closeFooterBtn.addEventListener("click", closeRowDetailModal);
+    if (backdrop) {
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) closeRowDetailModal();
+      });
+    }
   }
 
   /**
@@ -4920,6 +4915,61 @@
   }
 
   /**
+   * Create a clickable Google AI mode search link
+   * @param {string} query - Search query text
+   * @param {string} displayText - Text to display (optional)
+   * @returns {string} - HTML anchor tag with Google AI mode
+   */
+  function createAISearchLink(query, displayText = null) {
+    const encodedQuery = encodeURIComponent(query);
+    const displayLabel = displayText || query;
+    const url = `https://www.google.com/search?q=${encodedQuery}&udm=14`;
+    return `<a href="${url}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: underline; cursor: pointer;">${displayLabel}</a>`;
+  }
+
+  /**
+   * Convert search suggestions text to clickable AI mode links
+   * @param {string} text - Plain text with search suggestions
+   * @returns {string} - Text with HTML links inserted
+   */
+  function convertSearchesToLinks(text) {
+    let result = text;
+
+    // Convert quoted searches to clickable links
+    // Pattern: "search query" -> clickable link
+    result = result.replace(/"([^"]+)"/g, (match, query) => {
+      // Only convert if it looks like a search (has spaces or is longer than 3 chars)
+      if (query.includes(" ") || query.length > 3) {
+        return createAISearchLink(query, match);
+      }
+      return match;
+    });
+
+    // Convert URLs to clickable links
+    result = result.replace(/(https?:\/\/[^\s\n]+)/g, (url) => {
+      const displayUrl = url.length > 60 ? url.substring(0, 60) + "..." : url;
+      return `<a href="${url}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: underline; cursor: pointer;">${displayUrl}</a>`;
+    });
+
+    return result;
+  }
+
+  /**
+   * Display search results with clickable links
+   * @param {string} elementId - Element ID of results container
+   * @param {string} content - Text content to display
+   */
+  function displaySearchResults(elementId, content) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    // Convert to links and replace line breaks with <br>
+    const htmlContent = convertSearchesToLinks(content).replace(/\n/g, "<br>");
+    element.innerHTML = htmlContent;
+    element.className = "search-results-box";
+  }
+
+  /**
    * Search for prices and display results in Cost tab
    */
   async function searchForPricesInCostTab(rowData) {
@@ -4932,8 +4982,8 @@
     // Call the pricing search function
     const pricingInfo = await generatePricingInfo(rowData);
 
-    resultsBox.textContent = pricingInfo;
-    resultsBox.className = "pricing-results-box";
+    // Display with clickable AI mode links
+    displaySearchResults("costTabPricingResults", pricingInfo);
   }
 
   /**
@@ -5729,5 +5779,6 @@
 
 <!-- Modal backdrop for row detail modal -->
 <div id="rowDetailModalBackdrop" class="modal-backdrop" style="z-index: 1001;"></div>
+
 
 
