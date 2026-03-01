@@ -2029,6 +2029,7 @@
         <button id="btnPopulateMissing" class="automation-btn">Populate Missing Fields</button>
         <button id="btnRefreshHours" class="automation-btn">Refresh Hours Only</button>
         <button id="btnRefreshAll" class="automation-btn">Refresh All Fields</button>
+        <button id="btnSearchPlaceIds" class="automation-btn" style="background: #10b981; border-color: #10b981; color: white;">🔍 Search Place IDs</button>
       </div>
       <div class="dry-run-note">
         Dry Run ON: changes are previewed but not written to Excel. Turn off to apply updates.
@@ -3512,7 +3513,7 @@
       tr.appendChild(hiddenCell(trailLength));
 
       // HOURS & OPERATIONS GROUP
-      // Hours of Operation (using Activity Duration data since Excel doesn't have separate hours column)
+      // Hours of Operation - displays the actual hours data from Excel Column 6 (Activity Duration)
       const hoursTd = document.createElement("td");
       const hoursWrapper = document.createElement("div");
       hoursWrapper.className = "text-cell-wrapper";
@@ -3622,7 +3623,7 @@
         notes: notes,
         myRating: myRating,
         googlePlaceId: googlePlaceId,
-        hours: activityDuration
+        hours: activityDuration  // Hours of Operation column displays Activity Duration from Excel Column 6
       });
 
       // Add double-click listener to open detail modal
@@ -4231,17 +4232,17 @@
         </div>
       </div>
       <div class="row-detail-section">
-        <div class="row-detail-section-title">⏱️ Timing & Duration</div>
+        <div class="row-detail-section-title">⏱️ Time Commitment and Hours of Operation</div>
         <div class="row-detail-field">
           <div class="row-detail-label">Drive Time</div>
           <div class="row-detail-value">${data.driveTime || "N/A"}</div>
         </div>
         <div class="row-detail-field">
-          <div class="row-detail-label">Duration</div>
+          <div class="row-detail-label">Activity Duration</div>
           <div class="row-detail-value">${data.activityDuration || "N/A"}</div>
         </div>
         <div class="row-detail-field">
-          <div class="row-detail-label">Hours</div>
+          <div class="row-detail-label">Hours of Operation</div>
           <div class="row-detail-value">${data.hours || "N/A"}</div>
         </div>
       </div>
@@ -4582,11 +4583,15 @@
     const modalBody = document.getElementById("automationModalBody");
 
     backdrop.style.display = "block";
-    modalBody.innerHTML = `Starting ${mode.replace('-', ' ')} (Dry Run: ON)...`;
+    modalBody.innerHTML = `<div style="text-align: center; padding: 20px;">
+      <div style="font-size: 16px; margin-bottom: 16px;">🔄 Fetching data from Google Places API...</div>
+      <div style="font-size: 13px; color: #6b7280;">This may take a minute. Please wait...</div>
+    </div>`;
 
     try {
       // Get all rows from table
       const rows = document.querySelectorAll("#adventureTableBody tr");
+      console.log(`Processing ${rows.length} rows in ${mode} mode`);
 
       // Dry run: simulate what would be updated
       for (const row of rows) {
@@ -4599,49 +4604,78 @@
           continue;
         }
 
-        // Based on mode, determine what to update
-        if (mode === "hours-only") {
-          // Only refresh hours column
-          const hourCell = row.cells[13]; // Hours of Operation column
-          if (hourCell) {
+        try {
+          // Fetch real data from Google Places API
+          const placeDetails = await getPlaceDetails(placeId);
+
+          // Get current values from table
+          const currentValues = {
+            name: row.cells[1]?.textContent || "(empty)",
+            website: row.cells[2]?.textContent || "(empty)",
+            hours: row.cells[13]?.textContent || "(empty)",
+            phone: row.cells[14]?.textContent || "(empty)",
+            rating: row.cells[15]?.textContent || "(empty)",
+            address: row.dataset.address || "(empty)"
+          };
+
+          // Determine what fields to include based on mode
+          let fieldsToUpdate = [];
+
+          if (mode === "all-fields") {
+            fieldsToUpdate = [
+              { name: "Website", current: currentValues.website, new: placeDetails.website || "(not found)" },
+              { name: "Hours", current: currentValues.hours, new: formatHours(placeDetails.hours) || "(not found)" },
+              { name: "Phone Number", current: currentValues.phone, new: placeDetails.phone || "(not found)" },
+              { name: "Google Rating", current: currentValues.rating, new: placeDetails.rating ? `${placeDetails.rating}/5 (${placeDetails.userRatingsTotal} reviews)` : "(not found)" },
+              { name: "Address", current: currentValues.address, new: placeDetails.address || "(not found)" }
+            ];
+          } else if (mode === "hours-only") {
+            const newHours = formatHours(placeDetails.hours) || "(not found)";
+            if (newHours !== currentValues.hours) {
+              fieldsToUpdate = [
+                { name: "Hours", current: currentValues.hours, new: newHours }
+              ];
+            }
+          } else if (mode === "missing-fields") {
+            // Only include empty fields
+            if (!currentValues.website || currentValues.website === "(empty)") {
+              fieldsToUpdate.push({ name: "Website", current: currentValues.website, new: placeDetails.website || "(not found)" });
+            }
+            if (!currentValues.hours || currentValues.hours === "(empty)") {
+              fieldsToUpdate.push({ name: "Hours", current: currentValues.hours, new: formatHours(placeDetails.hours) || "(not found)" });
+            }
+            if (!currentValues.phone || currentValues.phone === "(empty)") {
+              fieldsToUpdate.push({ name: "Phone Number", current: currentValues.phone, new: placeDetails.phone || "(not found)" });
+            }
+            if (!currentValues.rating || currentValues.rating === "(empty)") {
+              fieldsToUpdate.push({
+                name: "Google Rating",
+                current: currentValues.rating,
+                new: placeDetails.rating ? `${placeDetails.rating}/5 (${placeDetails.userRatingsTotal} reviews)` : "(not found)"
+              });
+            }
+            if (!currentValues.address || currentValues.address === "(empty)") {
+              fieldsToUpdate.push({ name: "Address", current: currentValues.address, new: placeDetails.address || "(not found)" });
+            }
+          }
+
+          // Add to changes if there are any fields to update
+          if (fieldsToUpdate.length > 0) {
             automationChanges.push({
               name: row.cells[1]?.textContent || "Unknown",
               placeId: placeId,
-              field: "Hours of Operation",
-              oldValue: hourCell.textContent || "(empty)",
-              newValue: "🔄 Will fetch from Google Places API"
+              fields: fieldsToUpdate,
+              rowElement: row
             });
           }
-        } else if (mode === "missing-fields") {
-          // Only update empty fields
-          const hasEmptyFields = 
-            !row.cells[13]?.textContent.trim() ||  // Hours
-            !row.cells[14]?.textContent.trim() ||  // Phone
-            !row.cells[15]?.textContent.trim() ||  // Rating
-            !row.cells[2]?.textContent.trim();      // Website
-          
-          if (hasEmptyFields) {
-            automationChanges.push({
-              name: row.cells[1]?.textContent || "Unknown",
-              placeId: placeId,
-              field: "Multiple Fields",
-              oldValue: "(empty fields detected)",
-              newValue: "🔄 Will fetch from Google Places API"
-            });
-          }
-        } else if (mode === "all-fields") {
-          // Refresh all fields
-          automationChanges.push({
-            name: row.cells[1]?.textContent || "Unknown",
-            placeId: placeId,
-            field: "All Fields",
-            oldValue: "(all current values)",
-            newValue: "🔄 Will fetch from Google Places API"
-          });
+
+        } catch (error) {
+          console.error(`Error fetching details for ${row.cells[1]?.textContent}:`, error);
+          // Continue to next row even if one fails
         }
       }
 
-      console.log(`Found ${automationChanges.length} changes for ${mode} mode`);
+      console.log(`Found ${automationChanges.length} locations with changes for ${mode} mode`);
 
       // Show preview of changes
       showAutomationPreview();
@@ -4649,6 +4683,19 @@
     } catch (error) {
       console.error("Error starting automation:", error);
       modalBody.innerHTML = `❌ Error: ${error.message}`;
+    }
+  }
+
+  /**
+   * Format hours object into readable string
+   */
+  function formatHours(hoursObj) {
+    if (!hoursObj || !hoursObj.weekdayDescriptions) return null;
+
+    try {
+      return hoursObj.weekdayDescriptions.join(", ");
+    } catch (e) {
+      return null;
     }
   }
 
@@ -4759,6 +4806,7 @@
     const btnRefreshHours = document.getElementById("btnRefreshHours");
     const btnPopulateMissing = document.getElementById("btnPopulateMissing");
     const btnRefreshAll = document.getElementById("btnRefreshAll");
+    const btnSearchPlaceIds = document.getElementById("btnSearchPlaceIds");
     const automationApplyBtn = document.getElementById("automationApplyBtn");
     const automationCancelBtn = document.getElementById("automationCancelBtn");
     const automationModalClose = document.getElementById("automationModalClose");
@@ -4782,6 +4830,15 @@
       });
     }
 
+    if (btnSearchPlaceIds) {
+      btnSearchPlaceIds.addEventListener("click", () => {
+        // Open the place ID finder tool in a new window
+        const placeIdToolPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/get-place-ids.html';
+        window.open(placeIdToolPath, 'PlaceIDFinder', 'width=1000,height=800,resizable=yes,scrollbars=yes');
+      });
+    }
+
+    // ...existing code...
     if (automationApplyBtn) {
       automationApplyBtn.addEventListener("click", applyAutomationChanges);
     }
