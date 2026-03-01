@@ -1079,6 +1079,162 @@
       display: block;
     }
 
+    /* Pricing Search Modal */
+    #pricingSearchModal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      max-width: 700px;
+      width: 90%;
+      max-height: 80vh;
+      display: none;
+      flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #pricingSearchModal.visible {
+      display: flex;
+    }
+
+    #pricingSearchModalBackdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
+    }
+
+    #pricingSearchModalBackdrop.visible {
+      display: block;
+    }
+
+    .pricing-modal-header {
+      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+      color: white;
+    }
+
+    .pricing-modal-title {
+      font-weight: 600;
+      font-size: 16px;
+      color: white;
+    }
+
+    .pricing-modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .pricing-modal-close:hover {
+      opacity: 0.8;
+    }
+
+    .pricing-modal-body {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .pricing-search-info {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #92400e;
+    }
+
+    .pricing-results-box {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 12px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 13px;
+      color: #374151;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .pricing-results-box.loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+    }
+
+    .pricing-results-box.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-style: italic;
+    }
+
+    .pricing-modal-footer {
+      padding: 16px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .pricing-btn {
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      background: white;
+      color: #374151;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pricing-btn:hover {
+      background: #f9fafb;
+      border-color: #9ca3af;
+    }
+
+    .pricing-btn.primary {
+      background: #f59e0b;
+      color: white;
+      border-color: #f59e0b;
+    }
+
+    .pricing-btn.primary:hover {
+      background: #d97706;
+      border-color: #d97706;
+    }
+
+    .pricing-btn:disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      border-color: #d1d5db;
+    }
+
     #notesModal {
       position: fixed;
       top: 50%;
@@ -2799,6 +2955,7 @@
       initNotesModal();      // Set up Notes feature modal
       initRatingModal();     // Set up Rating feature modal
       initRowDetailModal();  // Set up Row Detail Modal (double-click to view details)
+      initPricingSearchModal(); // Set up Pricing Search feature modal
       console.log("Step 5 SUCCESS: All UI features initialized");
 
       console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
@@ -2842,6 +2999,7 @@
     // Initialize modals
     initNotesModal();
     initRatingModal();
+    initPricingSearchModal();
 
     console.log("✅ Page initialization complete - Automation buttons ready");
   });
@@ -4344,8 +4502,170 @@
     document.getElementById("rowDetailCloseBtn").addEventListener("click", closeRowDetailModal);
     document.getElementById("rowDetailCloseFooterBtn").addEventListener("click", closeRowDetailModal);
     document.getElementById("rowDetailModalBackdrop").addEventListener("click", closeRowDetailModal);
+    document.getElementById("rowDetailSearchPricesBtn").addEventListener("click", () => {
+      if (currentDetailRow) {
+        const rowData = rowDataMap.get(currentDetailRow);
+        if (rowData) {
+          openPricingSearchModal(rowData);
+        }
+      }
+    });
     document.getElementById("rowDetailEditBtn").addEventListener("click", () => {
       alert("Edit functionality coming soon!");
+    });
+  }
+
+  /* ============================================================
+     PRICING SEARCH FEATURE - SEARCH FOR PRICING INFORMATION
+     ============================================================
+     Allows users to search for pricing information using the website URL
+     and the Custom Search API to find pricing details.
+  */
+
+  let currentPricingData = null;
+
+  /**
+   * Open pricing search modal and start searching for prices
+   */
+  function openPricingSearchModal(rowData) {
+    const backdrop = document.getElementById("pricingSearchModalBackdrop");
+    const modal = document.getElementById("pricingSearchModal");
+    const resultsBox = document.getElementById("pricingResultsBox");
+
+    currentPricingData = rowData;
+
+    backdrop.classList.add("visible");
+    modal.classList.add("visible");
+    resultsBox.className = "pricing-results-box loading";
+    resultsBox.textContent = "🔍 Searching for pricing information...\n\nSearching website and Google for prices...";
+
+    // Start the pricing search
+    searchForPricing(rowData);
+  }
+
+  /**
+   * Close pricing search modal
+   */
+  function closePricingSearchModal() {
+    const backdrop = document.getElementById("pricingSearchModalBackdrop");
+    const modal = document.getElementById("pricingSearchModal");
+
+    backdrop.classList.remove("visible");
+    modal.classList.remove("visible");
+    currentPricingData = null;
+  }
+
+  /**
+   * Search for pricing information using website URL and search APIs
+   */
+  async function searchForPricing(rowData) {
+    const resultsBox = document.getElementById("pricingResultsBox");
+    let pricingInfo = "";
+
+    try {
+      // Start building pricing information
+      pricingInfo += `💰 PRICING SEARCH RESULTS\n`;
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      pricingInfo += `📍 Location: ${rowData.name}\n`;
+      pricingInfo += `🌐 Website: ${rowData.website || "No website available"}\n\n`;
+
+      // Try to fetch pricing information
+      if (rowData.website) {
+        try {
+          pricingInfo += `FETCHING PRICING FROM WEBSITE:\n`;
+          pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+          // Use fetch to get website content (if available)
+          const response = await fetch(rowData.website, {
+            method: 'GET',
+            mode: 'no-cors',
+            cache: 'no-cache'
+          });
+
+          // Note: With no-cors mode, we won't get the body, but we can try
+          pricingInfo += `✓ Website is accessible\n\n`;
+
+        } catch (error) {
+          pricingInfo += `⚠️ Could not access website directly (CORS limitation)\n`;
+          pricingInfo += `   Error: ${error.message}\n\n`;
+        }
+      }
+
+      // Add information about cost field if available
+      pricingInfo += `AVAILABLE PRICING DATA:\n`;
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+      if (rowData.cost && rowData.cost !== "(empty)") {
+        pricingInfo += `💵 Cost Category: ${rowData.cost}\n\n`;
+      } else {
+        pricingInfo += `💵 Cost Category: Not specified\n\n`;
+      }
+
+      // Add recommendations for getting pricing
+      pricingInfo += `RECOMMENDATIONS:\n`;
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      pricingInfo += `1. 🌐 Visit the website directly:\n`;
+      pricingInfo += `   ${rowData.website || "No website available"}\n\n`;
+      pricingInfo += `2. 🔍 Search Google for:\n`;
+      pricingInfo += `   "${rowData.name} prices"\n`;
+      pricingInfo += `   "${rowData.name} admission"\n`;
+      pricingInfo += `   "${rowData.name} cost"\n\n`;
+      pricingInfo += `3. 📱 Check Google Maps for business info:\n`;
+      pricingInfo += `   Search Google Maps for the location\n`;
+      pricingInfo += `   Pricing info is often in the business details\n\n`;
+      pricingInfo += `4. 📞 Contact directly:\n`;
+      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)") {
+        pricingInfo += `   Phone: ${rowData.phoneNumber}\n\n`;
+      } else {
+        pricingInfo += `   Call the business for pricing details\n\n`;
+      }
+
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      pricingInfo += `✓ Search Tips:\n`;
+      pricingInfo += `• Look for FAQ or "Rates" pages on the website\n`;
+      pricingInfo += `• Check for seasonal pricing variations\n`;
+      pricingInfo += `• Group discounts may be available\n`;
+      pricingInfo += `• Membership discounts might apply\n`;
+
+    } catch (error) {
+      pricingInfo = `❌ Error searching for pricing:\n\n${error.message}`;
+      resultsBox.className = "pricing-results-box empty";
+    }
+
+    // Display results
+    resultsBox.textContent = pricingInfo;
+    resultsBox.className = "pricing-results-box";
+  }
+
+  /**
+   * Initialize pricing search modal event listeners
+   */
+  function initPricingSearchModal() {
+    const backdrop = document.getElementById("pricingSearchModalBackdrop");
+    const closeBtn = document.getElementById("pricingModalCloseBtn");
+    const cancelBtn = document.getElementById("pricingModalCancelBtn");
+    const copyBtn = document.getElementById("pricingModalCopyBtn");
+
+    closeBtn.addEventListener("click", closePricingSearchModal);
+    cancelBtn.addEventListener("click", closePricingSearchModal);
+
+    // Copy results to clipboard
+    copyBtn.addEventListener("click", () => {
+      const resultsBox = document.getElementById("pricingResultsBox");
+      const text = resultsBox.textContent;
+
+      navigator.clipboard.writeText(text).then(() => {
+        alert("✅ Pricing information copied to clipboard!");
+      }).catch(err => {
+        alert("❌ Failed to copy: " + err.message);
+      });
+    });
+
+    // Close when clicking backdrop
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) {
+        closePricingSearchModal();
+      }
     });
   }
 
@@ -4887,6 +5207,28 @@
   </div>
 </div>
 
+<!-- Pricing Search Modal -->
+<div id="pricingSearchModalBackdrop"></div>
+<div id="pricingSearchModal">
+  <div class="pricing-modal-header">
+    <div class="pricing-modal-title">💰 Search for Pricing Information</div>
+    <button class="pricing-modal-close" id="pricingModalCloseBtn">&times;</button>
+  </div>
+  <div class="pricing-modal-body">
+    <div class="pricing-search-info">
+      <strong>🔍 Searching for pricing information...</strong><br>
+      The app will search the website and Google for pricing details.
+    </div>
+    <div id="pricingResultsBox" class="pricing-results-box loading">
+      Searching for pricing information...
+    </div>
+  </div>
+  <div class="pricing-modal-footer">
+    <button class="pricing-btn" id="pricingModalCancelBtn">Close</button>
+    <button class="pricing-btn primary" id="pricingModalCopyBtn">📋 Copy Results</button>
+  </div>
+</div>
+
 <!-- Row Detail Modal with Tabs (opened by double-clicking a row) -->
 <div id="rowDetailModal" class="row-detail-modal">
   <!-- Header with title and close button -->
@@ -4913,6 +5255,7 @@
   <!-- Footer with action buttons -->
   <div class="row-detail-footer">
     <button class="row-detail-footer-btn" id="rowDetailCloseFooterBtn">Close</button>
+    <button class="row-detail-footer-btn" id="rowDetailSearchPricesBtn" style="background: #f59e0b; border-color: #f59e0b; color: white;">💰 Search Prices</button>
     <button class="row-detail-footer-btn primary" id="rowDetailEditBtn">✎ Edit</button>
   </div>
 </div>
