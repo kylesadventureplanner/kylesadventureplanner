@@ -4937,6 +4937,65 @@
   }
 
   /**
+   * Generate pricing information text
+   */
+  async function generatePricingInfo(rowData) {
+    let pricingInfo = "";
+
+    try {
+      // Start building pricing information
+      pricingInfo += `💰 PRICING & COST INFORMATION\n`;
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      pricingInfo += `📍 Location: ${rowData.name}\n`;
+      pricingInfo += `🌐 Website: ${rowData.website || "No website available"}\n`;
+      pricingInfo += `💵 Listed Cost: ${rowData.cost || "Not specified"}\n\n`;
+
+      // Add recommendations for finding pricing
+      pricingInfo += `HOW TO FIND CURRENT PRICING:\n`;
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      pricingInfo += `1. 🌐 Visit the official website:\n`;
+      if (rowData.website) {
+        pricingInfo += `   ${rowData.website}\n`;
+        pricingInfo += `   Look for "Pricing", "Admission", "Tickets"\n\n`;
+      } else {
+        pricingInfo += `   Search for "${rowData.name}" to find website\n\n`;
+      }
+
+      pricingInfo += `2. 🔍 Try these Google searches:\n`;
+      pricingInfo += `   - "${rowData.name} pricing"\n`;
+      pricingInfo += `   - "${rowData.name} admission cost"\n`;
+      pricingInfo += `   - "${rowData.name} ticket price"\n`;
+      pricingInfo += `   - "${rowData.name} how much does it cost"\n\n`;
+
+      pricingInfo += `3. 📱 Google Maps Reviews:\n`;
+      pricingInfo += `   Search location on Google Maps\n`;
+      pricingInfo += `   Check reviews for pricing mentions\n\n`;
+
+      pricingInfo += `4. 📞 Call for current rates:\n`;
+      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)" && rowData.phoneNumber !== "Not available") {
+        pricingInfo += `   ${rowData.phoneNumber}\n\n`;
+      } else {
+        pricingInfo += `   Search for phone number online\n\n`;
+      }
+
+      pricingInfo += `💡 TIP: Prices may vary by:\n`;
+      pricingInfo += `   • Season (peak vs. off-peak)\n`;
+      pricingInfo += `   • Age (children, seniors, students)\n`;
+      pricingInfo += `   • Day of week (weekday vs. weekend)\n`;
+      pricingInfo += `   • Group size (discounts available)\n\n`;
+
+      pricingInfo += `⚠️ NOTE: AI Overview automatic extraction is not available\n`;
+      pricingInfo += `due to Google API limitations. Please use the search\n`;
+      pricingInfo += `links provided above for most current pricing.\n`;
+
+    } catch (error) {
+      pricingInfo = `❌ Error generating pricing info:\n\n${error.message}`;
+    }
+
+    return pricingInfo;
+  }
+
+  /**
    * Generate hours information text
    */
   async function generateHoursInfo(rowData) {
@@ -4950,60 +5009,49 @@
       hoursInfo += `🌐 Website: ${rowData.website || "No website available"}\n`;
       hoursInfo += `⏱️ Listed Hours: ${rowData.hours || "Not specified"}\n\n`;
 
-      // Try to fetch Google AI Overview for hours
-      if (rowData.name) {
-        try {
-          hoursInfo += `🔍 GOOGLE AI OVERVIEW - HOURS:\n`;
-          hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      // Add recommendations for getting hours
+      hoursInfo += `HOW TO FIND CURRENT HOURS:\n`;
+      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-          const queries = [
-            `${rowData.name} hours of operation`,
-            `${rowData.name} hours`,
-            `${rowData.name} open hours`
-          ];
-
-          let foundOverview = false;
-          for (const query of queries) {
-            try {
-              const overview = await fetchGoogleAIOverview(query);
-              if (overview) {
-                hoursInfo += `${overview}\n\n`;
-                foundOverview = true;
-                break;
-              }
-            } catch (e) {
-              // Continue to next query
-            }
-          }
-
-          if (!foundOverview) {
-            hoursInfo += `⚠️ AI Overview not available for hours queries.\n`;
-            hoursInfo += `Try searching manually: "${rowData.name} hours"\n\n`;
-          }
-
-        } catch (error) {
-          hoursInfo += `⚠️ Could not fetch AI Overview: ${error.message}\n\n`;
-        }
+      hoursInfo += `1. 🌐 Visit the official website:\n`;
+      if (rowData.website) {
+        hoursInfo += `   ${rowData.website}\n`;
+        hoursInfo += `   Look for "Hours", "Visit", "Plan Your Visit"\n\n`;
+      } else {
+        hoursInfo += `   Search for "${rowData.name}" to find website\n\n`;
       }
 
-      // Add recommendations for getting hours
-      hoursInfo += `MANUAL SEARCH RECOMMENDATIONS:\n`;
-      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      hoursInfo += `1. 🌐 Visit website:\n`;
-      hoursInfo += `   ${rowData.website || "Search for website"}\n\n`;
-      hoursInfo += `2. 🔍 Try these Google searches:\n`;
+      hoursInfo += `2. 📱 Check Google Maps (RECOMMENDED):\n`;
+      hoursInfo += `   a. Search "${rowData.name}" on Google Maps\n`;
+      hoursInfo += `   b. Hours are shown in the business card\n`;
+      hoursInfo += `   c. Click "See more hours" for full schedule\n`;
+      if (rowData.googlePlaceId) {
+        hoursInfo += `   Direct link: https://google.com/maps/place/?q=place_id:${rowData.googlePlaceId}\n`;
+      }
+      hoursInfo += `\n`;
+
+      hoursInfo += `3. 🔍 Try these Google searches:\n`;
       hoursInfo += `   - "${rowData.name} hours"\n`;
       hoursInfo += `   - "${rowData.name} hours of operation"\n`;
-      hoursInfo += `   - "${rowData.name} open hours"\n\n`;
-      hoursInfo += `3. 📱 Google Maps:\n`;
-      hoursInfo += `   Search location on Google Maps\n`;
-      hoursInfo += `   Hours shown in business details\n\n`;
-      hoursInfo += `4. 📞 Call:\n`;
-      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)") {
+      hoursInfo += `   - "${rowData.name} open hours"\n`;
+      hoursInfo += `   - "${rowData.name} what time does it open"\n\n`;
+
+      hoursInfo += `4. 📞 Call for confirmation:\n`;
+      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)" && rowData.phoneNumber !== "Not available") {
         hoursInfo += `   ${rowData.phoneNumber}\n\n`;
       } else {
         hoursInfo += `   Search for phone number online\n\n`;
       }
+
+      hoursInfo += `💡 PRO TIP: Hours may vary by:\n`;
+      hoursInfo += `   • Season (summer vs. winter)\n`;
+      hoursInfo += `   • Day of week (weekends vs. weekdays)\n`;
+      hoursInfo += `   • Holidays (special hours or closures)\n`;
+      hoursInfo += `   Always verify before visiting!\n\n`;
+
+      hoursInfo += `⚠️ NOTE: AI Overview automatic extraction is not available\n`;
+      hoursInfo += `due to Google API limitations. Google Maps is your\n`;
+      hoursInfo += `best source for real-time hours information.\n`;
 
     } catch (error) {
       hoursInfo = `❌ Error searching for hours:\n\n${error.message}`;
