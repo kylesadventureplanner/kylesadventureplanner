@@ -4604,80 +4604,79 @@
   }
 
   /**
-   * Generate pricing information text
+   * Generate hours information text
    */
-  async function generatePricingInfo(rowData) {
-    let pricingInfo = "";
+  async function generateHoursInfo(rowData) {
+    let hoursInfo = "";
 
     try {
-      // Start building pricing information
-      pricingInfo += `💰 PRICING INFORMATION\n`;
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      pricingInfo += `📍 Location: ${rowData.name}\n`;
-      pricingInfo += `🌐 Website: ${rowData.website || "No website available"}\n\n`;
+      // Start building hours information
+      hoursInfo += `🕐 HOURS OF OPERATION SEARCH\n`;
+      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      hoursInfo += `📍 Location: ${rowData.name}\n`;
+      hoursInfo += `🌐 Website: ${rowData.website || "No website available"}\n`;
+      hoursInfo += `⏱️ Listed Hours: ${rowData.hours || "Not specified"}\n\n`;
 
-      // Try to fetch pricing information
-      if (rowData.website) {
+      // Try to fetch Google AI Overview for hours
+      if (rowData.name) {
         try {
-          pricingInfo += `FETCHING PRICING FROM WEBSITE:\n`;
-          pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+          hoursInfo += `🔍 GOOGLE AI OVERVIEW - HOURS:\n`;
+          hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-          // Use fetch to get website content (if available)
-          const response = await fetch(rowData.website, {
-            method: 'GET',
-            mode: 'no-cors',
-            cache: 'no-cache'
-          });
+          const queries = [
+            `${rowData.name} hours of operation`,
+            `${rowData.name} hours`,
+            `${rowData.name} open hours`
+          ];
 
-          pricingInfo += `✓ Website is accessible\n\n`;
+          let foundOverview = false;
+          for (const query of queries) {
+            try {
+              const overview = await fetchGoogleAIOverview(query);
+              if (overview) {
+                hoursInfo += `${overview}\n\n`;
+                foundOverview = true;
+                break;
+              }
+            } catch (e) {
+              // Continue to next query
+            }
+          }
+
+          if (!foundOverview) {
+            hoursInfo += `⚠️ AI Overview not available for hours queries.\n`;
+            hoursInfo += `Try searching manually: "${rowData.name} hours"\n\n`;
+          }
 
         } catch (error) {
-          pricingInfo += `⚠️ Could not access website directly (CORS limitation)\n`;
-          pricingInfo += `   Error: ${error.message}\n\n`;
+          hoursInfo += `⚠️ Could not fetch AI Overview: ${error.message}\n\n`;
         }
       }
 
-      // Add information about cost field if available
-      pricingInfo += `AVAILABLE PRICING DATA:\n`;
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-      if (rowData.cost && rowData.cost !== "(empty)") {
-        pricingInfo += `💵 Cost Category: ${rowData.cost}\n\n`;
-      } else {
-        pricingInfo += `💵 Cost Category: Not specified\n\n`;
-      }
-
-      // Add recommendations for getting pricing
-      pricingInfo += `RECOMMENDATIONS:\n`;
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      pricingInfo += `1. 🌐 Visit the website directly:\n`;
-      pricingInfo += `   ${rowData.website || "No website available"}\n\n`;
-      pricingInfo += `2. 🔍 Search Google for:\n`;
-      pricingInfo += `   "${rowData.name} prices"\n`;
-      pricingInfo += `   "${rowData.name} admission"\n`;
-      pricingInfo += `   "${rowData.name} cost"\n\n`;
-      pricingInfo += `3. 📱 Check Google Maps for business info:\n`;
-      pricingInfo += `   Search Google Maps for the location\n`;
-      pricingInfo += `   Pricing info is often in the business details\n\n`;
-      pricingInfo += `4. 📞 Contact directly:\n`;
+      // Add recommendations for getting hours
+      hoursInfo += `MANUAL SEARCH RECOMMENDATIONS:\n`;
+      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      hoursInfo += `1. 🌐 Visit website:\n`;
+      hoursInfo += `   ${rowData.website || "Search for website"}\n\n`;
+      hoursInfo += `2. 🔍 Try these Google searches:\n`;
+      hoursInfo += `   - "${rowData.name} hours"\n`;
+      hoursInfo += `   - "${rowData.name} hours of operation"\n`;
+      hoursInfo += `   - "${rowData.name} open hours"\n\n`;
+      hoursInfo += `3. 📱 Google Maps:\n`;
+      hoursInfo += `   Search location on Google Maps\n`;
+      hoursInfo += `   Hours shown in business details\n\n`;
+      hoursInfo += `4. 📞 Call:\n`;
       if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)") {
-        pricingInfo += `   Phone: ${rowData.phoneNumber}\n\n`;
+        hoursInfo += `   ${rowData.phoneNumber}\n\n`;
       } else {
-        pricingInfo += `   Call the business for pricing details\n\n`;
+        hoursInfo += `   Search for phone number online\n\n`;
       }
-
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      pricingInfo += `✓ Search Tips:\n`;
-      pricingInfo += `• Look for FAQ or "Rates" pages on the website\n`;
-      pricingInfo += `• Check for seasonal pricing variations\n`;
-      pricingInfo += `• Group discounts may be available\n`;
-      pricingInfo += `• Membership discounts might apply\n`;
 
     } catch (error) {
-      pricingInfo = `❌ Error searching for pricing:\n\n${error.message}`;
+      hoursInfo = `❌ Error searching for hours:\n\n${error.message}`;
     }
 
-    return pricingInfo;
+    return hoursInfo;
   }
 
   /**
@@ -4694,224 +4693,6 @@
     const hoursInfo = await generateHoursInfo(rowData);
 
     resultsBox.textContent = hoursInfo;
-    resultsBox.className = "pricing-results-box";
-  }
-
-  /**
-   * Generate hours information text
-   */
-  async function generateHoursInfo(rowData) {
-    let hoursInfo = "";
-
-    try {
-      // Start building hours information
-      hoursInfo += `🕐 HOURS OF OPERATION SEARCH\n`;
-      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      hoursInfo += `📍 Location: ${rowData.name}\n`;
-      hoursInfo += `🌐 Website: ${rowData.website || "No website available"}\n`;
-      hoursInfo += `⏱️ Listed Hours: ${rowData.hours || "Not specified"}\n\n`;
-
-      // Try to fetch hours information
-      if (rowData.website) {
-        try {
-          hoursInfo += `FETCHING HOURS FROM WEBSITE:\n`;
-          hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-          // Use fetch to get website content (if available)
-          const response = await fetch(rowData.website, {
-            method: 'GET',
-            mode: 'no-cors',
-            cache: 'no-cache'
-          });
-
-          hoursInfo += `✓ Website is accessible\n\n`;
-
-        } catch (error) {
-          hoursInfo += `⚠️ Could not access website directly (CORS limitation)\n`;
-          hoursInfo += `   Error: ${error.message}\n\n`;
-        }
-      }
-
-      // Add recommendations for getting hours
-      hoursInfo += `RECOMMENDATIONS:\n`;
-      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      hoursInfo += `1. 🌐 Visit the website directly:\n`;
-      hoursInfo += `   ${rowData.website || "No website available"}\n`;
-      hoursInfo += `   Look for "Hours" or "Visit" page\n\n`;
-      hoursInfo += `2. 🔍 Search Google for:\n`;
-      hoursInfo += `   "${rowData.name} hours"\n`;
-      hoursInfo += `   "${rowData.name} opening hours"\n`;
-      hoursInfo += `   "${rowData.name} operating hours"\n\n`;
-      hoursInfo += `3. 📱 Check Google Maps:\n`;
-      hoursInfo += `   Search Google Maps for the location\n`;
-      hoursInfo += `   Hours are displayed on business details\n\n`;
-      hoursInfo += `4. 📞 Contact directly:\n`;
-      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)") {
-        hoursInfo += `   Phone: ${rowData.phoneNumber}\n\n`;
-      } else {
-        hoursInfo += `   Call the business for hours\n\n`;
-      }
-
-      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      hoursInfo += `✓ Helpful Tips:\n`;
-      hoursInfo += `• Most businesses have hours on their website\n`;
-      hoursInfo += `• Google Maps shows real-time hours\n`;
-      hoursInfo += `• Check for seasonal variations\n`;
-      hoursInfo += `• Holiday hours may differ\n`;
-      hoursInfo += `• Call to confirm before visiting\n`;
-
-    } catch (error) {
-      hoursInfo = `❌ Error searching for hours:\n\n${error.message}`;
-    }
-
-    return hoursInfo;
-  }
-
-  function closeRowDetailModal() {
-    document.getElementById("rowDetailModal").classList.remove("visible");
-    document.getElementById("rowDetailModalBackdrop").classList.remove("visible");
-    currentDetailRow = null;
-  }
-
-  function initRowDetailModal() {
-    document.getElementById("rowDetailCloseBtn").addEventListener("click", closeRowDetailModal);
-    document.getElementById("rowDetailCloseFooterBtn").addEventListener("click", closeRowDetailModal);
-    document.getElementById("rowDetailModalBackdrop").addEventListener("click", closeRowDetailModal);
-    document.getElementById("rowDetailSearchPricesBtn").addEventListener("click", () => {
-      if (currentDetailRow) {
-        const rowData = rowDataMap.get(currentDetailRow);
-        if (rowData) {
-          // Switch to Cost tab
-          switchToCostTab();
-          // Search for prices
-          searchForPricesInCostTab(rowData);
-        }
-      }
-    });
-    document.getElementById("rowDetailEditBtn").addEventListener("click", () => {
-      alert("Edit functionality coming soon!");
-    });
-  }
-
-  /* ============================================================
-     PRICING SEARCH FEATURE - SEARCH FOR PRICING INFORMATION
-     ============================================================
-     Allows users to search for pricing information using the website URL
-     and the Custom Search API to find pricing details.
-  */
-
-  let currentPricingData = null;
-
-  /**
-   * Open pricing search modal and start searching for prices
-   */
-  function openPricingSearchModal(rowData) {
-    const backdrop = document.getElementById("pricingSearchModalBackdrop");
-    const modal = document.getElementById("pricingSearchModal");
-    const resultsBox = document.getElementById("pricingResultsBox");
-
-    currentPricingData = rowData;
-
-    backdrop.classList.add("visible");
-    modal.classList.add("visible");
-    resultsBox.className = "pricing-results-box loading";
-    resultsBox.textContent = "🔍 Searching for pricing information...\n\nSearching website and Google for prices...";
-
-    // Start the pricing search
-    searchForPricing(rowData);
-  }
-
-  /**
-   * Close pricing search modal
-   */
-  function closePricingSearchModal() {
-    const backdrop = document.getElementById("pricingSearchModalBackdrop");
-    const modal = document.getElementById("pricingSearchModal");
-
-    backdrop.classList.remove("visible");
-    modal.classList.remove("visible");
-    currentPricingData = null;
-  }
-
-  /**
-   * Search for pricing information using website URL and search APIs
-   */
-  async function searchForPricing(rowData) {
-    const resultsBox = document.getElementById("pricingResultsBox");
-    let pricingInfo = "";
-
-    try {
-      // Start building pricing information
-      pricingInfo += `💰 PRICING SEARCH RESULTS\n`;
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      pricingInfo += `📍 Location: ${rowData.name}\n`;
-      pricingInfo += `🌐 Website: ${rowData.website || "No website available"}\n\n`;
-
-      // Try to fetch pricing information
-      if (rowData.website) {
-        try {
-          pricingInfo += `FETCHING PRICING FROM WEBSITE:\n`;
-          pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-          // Use fetch to get website content (if available)
-          const response = await fetch(rowData.website, {
-            method: 'GET',
-            mode: 'no-cors',
-            cache: 'no-cache'
-          });
-
-          // Note: With no-cors mode, we won't get the body, but we can try
-          pricingInfo += `✓ Website is accessible\n\n`;
-
-        } catch (error) {
-          pricingInfo += `⚠️ Could not access website directly (CORS limitation)\n`;
-          pricingInfo += `   Error: ${error.message}\n\n`;
-        }
-      }
-
-      // Add information about cost field if available
-      pricingInfo += `AVAILABLE PRICING DATA:\n`;
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-      if (rowData.cost && rowData.cost !== "(empty)") {
-        pricingInfo += `💵 Cost Category: ${rowData.cost}\n\n`;
-      } else {
-        pricingInfo += `💵 Cost Category: Not specified\n\n`;
-      }
-
-      // Add recommendations for getting pricing
-      pricingInfo += `RECOMMENDATIONS:\n`;
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      pricingInfo += `1. 🌐 Visit the website directly:\n`;
-      pricingInfo += `   ${rowData.website || "No website available"}\n\n`;
-      pricingInfo += `2. 🔍 Search Google for:\n`;
-      pricingInfo += `   "${rowData.name} prices"\n`;
-      pricingInfo += `   "${rowData.name} admission"\n`;
-      pricingInfo += `   "${rowData.name} cost"\n\n`;
-      pricingInfo += `3. 📱 Check Google Maps for business info:\n`;
-      pricingInfo += `   Search Google Maps for the location\n`;
-      pricingInfo += `   Pricing info is often in the business details\n\n`;
-      pricingInfo += `4. 📞 Contact directly:\n`;
-      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)") {
-        pricingInfo += `   Phone: ${rowData.phoneNumber}\n\n`;
-      } else {
-        pricingInfo += `   Call the business for pricing details\n\n`;
-      }
-
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      pricingInfo += `✓ Search Tips:\n`;
-      pricingInfo += `• Look for FAQ or "Rates" pages on the website\n`;
-      pricingInfo += `• Check for seasonal pricing variations\n`;
-      pricingInfo += `• Group discounts may be available\n`;
-      pricingInfo += `• Membership discounts might apply\n`;
-
-    } catch (error) {
-      pricingInfo = `❌ Error searching for pricing:\n\n${error.message}`;
-      resultsBox.className = "pricing-results-box empty";
-    }
-
-    // Display results
-    resultsBox.textContent = pricingInfo;
     resultsBox.className = "pricing-results-box";
   }
 
@@ -5149,7 +4930,7 @@
     // Close modal when clicking on the dark overlay behind the modal
     // (but only if clicking directly on backdrop, not content inside)
     backdrop.addEventListener("click", (e) => {
-      if (e.target === backdrop) {  // Check if click was on backdrop itself
+      if (e.target === backdrop) {
         closeRatingModal();
       }
     });
@@ -5436,7 +5217,6 @@
       });
     }
 
-    // ...existing code...
     if (automationApplyBtn) {
       automationApplyBtn.addEventListener("click", applyAutomationChanges);
     }
@@ -5540,12 +5320,5 @@
 
 <!-- Modal backdrop for row detail modal -->
 <div id="rowDetailModalBackdrop" class="modal-backdrop" style="z-index: 1001;"></div>
-
-</body>
-</html>
-
-
-
-
 
 
