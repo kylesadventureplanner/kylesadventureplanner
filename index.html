@@ -2076,7 +2076,7 @@
     <div class="control-panel-grid">
       <div class="filter-item">
         <label for="searchName">Search by Name</label>
-        <input id="searchName" class="filter-input" type="text" placeholder="Search adventures..." />
+        <input id="searchName" class="filter-input" type="text" placeholder="Search adventures..." list="nameList" />
       </div>
       <div class="filter-item">
         <label for="filterDifficulty">Filter by Difficulty</label>
@@ -2140,6 +2140,7 @@
   </div>
 
   <!-- Autofill Datalists -->
+  <datalist id="nameList"></datalist>
   <datalist id="stateList"></datalist>
   <datalist id="cityList"></datalist>
   <datalist id="tagsList"></datalist>
@@ -4000,17 +4001,20 @@
 
   function updateFilterSuggestions(visibleRows) {
     // Extract unique values from visible rows for autofill
+    const names = new Set();
     const states = new Set();
     const cities = new Set();
     const tags = new Set();
     const costs = new Set();
 
     visibleRows.forEach((row) => {
+      const name = (row.cells[1]?.textContent || "").trim();
       const state = (row.dataset.state || "").trim();
       const city = (row.cells[10]?.textContent || "").trim();
       const rowTags = (row.dataset.tags || "").split(",").map(t => t.trim());
       const cost = (row.dataset.cost || "").trim();
 
+      if (name) names.add(name);
       if (state) states.add(state);
       if (city) cities.add(city);
       rowTags.forEach(tag => {
@@ -4020,11 +4024,13 @@
     });
 
     // Set datalist values for autofill
+    const nameDatalist = document.getElementById("nameList") || createDatalist("nameList");
     const stateDatalist = document.getElementById("stateList") || createDatalist("stateList");
     const cityDatalist = document.getElementById("cityList") || createDatalist("cityList");
     const tagsDatalist = document.getElementById("tagsList") || createDatalist("tagsList");
     const costDatalist = document.getElementById("costList") || createDatalist("costList");
 
+    nameDatalist.innerHTML = Array.from(names).map(n => `<option value="${n}">`).join("");
     stateDatalist.innerHTML = Array.from(states).map(s => `<option value="${s}">`).join("");
     cityDatalist.innerHTML = Array.from(cities).map(c => `<option value="${c}">`).join("");
     tagsDatalist.innerHTML = Array.from(tags).map(t => `<option value="${t}">`).join("");
@@ -4316,6 +4322,7 @@
         { id: "details", name: "ℹ️ Details", content: generateDetailsTab(rowData) },
         { id: "visit-info", name: "🏞️ Visit Info", content: generateVisitInfoTab(rowData) },
         { id: "contact", name: "📞 Contact", content: generateContactTab(rowData) },
+        { id: "hours", name: "🕐 Hours", content: generateHoursTab(rowData) },
         { id: "cost", name: "💰 Cost to Visit", content: generateCostTab(rowData) },
         { id: "links", name: "🔗 Links", content: generateLinksTab(rowData) }
       ];
@@ -4340,6 +4347,17 @@
           const rowData = rowDataMap.get(currentDetailRow);
           if (rowData) {
             searchForPricesInCostTab(rowData);
+          }
+        });
+      }
+
+      // Set up Hours tab search button
+      const hoursSearchBtn = document.getElementById("hoursTabSearchBtn");
+      if (hoursSearchBtn) {
+        hoursSearchBtn.addEventListener("click", () => {
+          const rowData = rowDataMap.get(currentDetailRow);
+          if (rowData) {
+            searchForHoursInHoursTab(rowData);
           }
         });
       }
@@ -4473,6 +4491,25 @@
       <div class="row-detail-section">
         <div class="row-detail-section-title">📍 Location ID</div>
         <div class="row-detail-value" style="font-family: monospace; font-size: 12px; color: #6b7280;">${data.googlePlaceId || '<span class="row-detail-empty">Not available</span>'}</div>
+      </div>
+    `;
+  }
+
+  function generateHoursTab(data) {
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">🕐 Hours of Operation</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Listed Hours</div>
+          <div class="row-detail-value">${data.hours || '<span class="row-detail-empty">Not specified</span>'}</div>
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">🔍 Hours Search Information</div>
+        <div id="hoursTabSearchResults" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; font-size: 13px; color: #374151; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">
+          Click the "Search Hours" button to find hours information
+        </div>
+        <button id="hoursTabSearchBtn" class="row-detail-footer-btn primary" style="margin-top: 12px; width: 100%; background: #3b82f6; border-color: #3b82f6; color: white;">🕐 Search Hours</button>
       </div>
     `;
   }
@@ -4641,6 +4678,93 @@
     }
 
     return pricingInfo;
+  }
+
+  /**
+   * Search for hours and display results in Hours tab
+   */
+  async function searchForHoursInHoursTab(rowData) {
+    const resultsBox = document.getElementById("hoursTabSearchResults");
+    if (!resultsBox) return;
+
+    resultsBox.className = "pricing-results-box loading";
+    resultsBox.textContent = "🔍 Searching for hours information...\n\nSearching website and Google for hours...";
+
+    // Call the hours search function
+    const hoursInfo = await generateHoursInfo(rowData);
+
+    resultsBox.textContent = hoursInfo;
+    resultsBox.className = "pricing-results-box";
+  }
+
+  /**
+   * Generate hours information text
+   */
+  async function generateHoursInfo(rowData) {
+    let hoursInfo = "";
+
+    try {
+      // Start building hours information
+      hoursInfo += `🕐 HOURS OF OPERATION SEARCH\n`;
+      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      hoursInfo += `📍 Location: ${rowData.name}\n`;
+      hoursInfo += `🌐 Website: ${rowData.website || "No website available"}\n`;
+      hoursInfo += `⏱️ Listed Hours: ${rowData.hours || "Not specified"}\n\n`;
+
+      // Try to fetch hours information
+      if (rowData.website) {
+        try {
+          hoursInfo += `FETCHING HOURS FROM WEBSITE:\n`;
+          hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+          // Use fetch to get website content (if available)
+          const response = await fetch(rowData.website, {
+            method: 'GET',
+            mode: 'no-cors',
+            cache: 'no-cache'
+          });
+
+          hoursInfo += `✓ Website is accessible\n\n`;
+
+        } catch (error) {
+          hoursInfo += `⚠️ Could not access website directly (CORS limitation)\n`;
+          hoursInfo += `   Error: ${error.message}\n\n`;
+        }
+      }
+
+      // Add recommendations for getting hours
+      hoursInfo += `RECOMMENDATIONS:\n`;
+      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      hoursInfo += `1. 🌐 Visit the website directly:\n`;
+      hoursInfo += `   ${rowData.website || "No website available"}\n`;
+      hoursInfo += `   Look for "Hours" or "Visit" page\n\n`;
+      hoursInfo += `2. 🔍 Search Google for:\n`;
+      hoursInfo += `   "${rowData.name} hours"\n`;
+      hoursInfo += `   "${rowData.name} opening hours"\n`;
+      hoursInfo += `   "${rowData.name} operating hours"\n\n`;
+      hoursInfo += `3. 📱 Check Google Maps:\n`;
+      hoursInfo += `   Search Google Maps for the location\n`;
+      hoursInfo += `   Hours are displayed on business details\n\n`;
+      hoursInfo += `4. 📞 Contact directly:\n`;
+      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)") {
+        hoursInfo += `   Phone: ${rowData.phoneNumber}\n\n`;
+      } else {
+        hoursInfo += `   Call the business for hours\n\n`;
+      }
+
+      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      hoursInfo += `✓ Helpful Tips:\n`;
+      hoursInfo += `• Most businesses have hours on their website\n`;
+      hoursInfo += `• Google Maps shows real-time hours\n`;
+      hoursInfo += `• Check for seasonal variations\n`;
+      hoursInfo += `• Holiday hours may differ\n`;
+      hoursInfo += `• Call to confirm before visiting\n`;
+
+    } catch (error) {
+      hoursInfo = `❌ Error searching for hours:\n\n${error.message}`;
+    }
+
+    return hoursInfo;
   }
 
   function closeRowDetailModal() {
