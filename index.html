@@ -3519,8 +3519,8 @@
           website,           // Column 2: Website URL
           tags,              // Column 3: Tags (comma-separated: "Hiking,Nature")
           driveTime,         // Column 4: How long to drive there
-          unused1,           // Column 5: (empty in Excel)
-          activityDuration,  // Column 6: Activity Duration - how long activity takes (e.g., "7-8 hrs")
+          hoursOfOperation,  // Column 5: Hours of Operation - ACTUAL business/activity hours (e.g., "7-8 hrs", "30 min")
+          activityDuration,  // Column 6: Activity Duration - how long activity takes
           difficulty,        // Column 7: Difficulty level (Easy/Moderate/Hard)
           trailLength,       // Column 8: Trail length in miles
           state,             // Column 9: State (SC, NC, GA, etc)
@@ -3671,13 +3671,13 @@
       tr.appendChild(hiddenCell(trailLength));
 
       // HOURS & OPERATIONS GROUP
-      // Hours of Operation - displays the actual hours data from Excel Column 6 (Activity Duration)
+      // Hours of Operation - displays the actual hours data from Excel Column 5
       const hoursTd = document.createElement("td");
       const hoursWrapper = document.createElement("div");
       hoursWrapper.className = "text-cell-wrapper";
       hoursWrapper.innerHTML = `
-        <div class="hours-preview">${activityDuration || ""}</div>
-        ${activityDuration ? '<button class="more-less-btn" data-type="hours">More</button><div class="hours-full" style="display:none;">' + activityDuration + '</div>' : ""}
+        <div class="hours-preview">${hoursOfOperation || ""}</div>
+        ${hoursOfOperation ? '<button class="more-less-btn" data-type="hours">More</button><div class="hours-full" style="display:none;">' + hoursOfOperation + '</div>' : ""}
       `;
       hoursTd.appendChild(hoursWrapper);
       tr.appendChild(hoursTd);
@@ -3781,7 +3781,7 @@
         notes: notes,
         myRating: myRating,
         googlePlaceId: googlePlaceId,
-        hours: activityDuration  // Hours of Operation column displays Activity Duration from Excel Column 6
+        hours: hoursOfOperation  // Hours of Operation from Excel Column 5
       });
 
       // Add double-click listener to open detail modal
@@ -4387,6 +4387,12 @@
         <div class="row-detail-field">
           <div class="row-detail-label">Address</div>
           <div class="row-detail-value">${data.address || '<span class="row-detail-empty">Not available</span>'}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Google Maps</div>
+          <div class="row-detail-value">
+            ${data.googlePlaceId ? `<a href="https://google.com/maps/place/?q=place_id:${data.googlePlaceId}" target="_blank" rel="noopener">📍 View on Google Maps ↗</a>` : '<span class="row-detail-empty">No Place ID available</span>'}
+          </div>
         </div>
       </div>
       <div class="row-detail-section">
