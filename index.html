@@ -2141,6 +2141,110 @@
       border-color: #1e40af;
     }
 
+    /* ============================================================
+       TAB NAVIGATION SYSTEM
+       ============================================================
+       Provides tabbed interface for different app sections.
+    */
+    .app-tabs-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .app-tabs-nav {
+      display: flex;
+      gap: 0;
+      background: #f3f4f6;
+      border-bottom: 2px solid #e5e7eb;
+      padding: 0;
+      overflow-x: auto;
+      margin-bottom: 16px;
+      border-radius: 8px 8px 0 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .app-tab-btn {
+      background: none;
+      border: none;
+      padding: 14px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .app-tab-btn:hover {
+      color: #1f2937;
+      background: rgba(29, 78, 216, 0.05);
+    }
+
+    .app-tab-btn.active {
+      color: #1d4ed8;
+      border-bottom-color: #1d4ed8;
+      background: white;
+    }
+
+    .app-tabs-content {
+      flex: 1;
+      overflow-y: auto;
+      background: white;
+      border-radius: 0 0 8px 8px;
+      padding: 16px;
+    }
+
+    .app-tab-pane {
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .app-tab-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Placeholder content styling */
+    .tab-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      color: #9ca3af;
+      text-align: center;
+      gap: 12px;
+    }
+
+    .tab-placeholder-icon {
+      font-size: 48px;
+      opacity: 0.5;
+    }
+
+    .tab-placeholder-text {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .tab-placeholder-subtext {
+      font-size: 13px;
+      color: #d1d5db;
+    }
+
   </style>
   <!--suppress HtmlUnknownTarget -->
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
@@ -2176,28 +2280,41 @@
   </div>
 </header>
 <div class="app-container">
-  <header>
-    <h1>Adventure Planner</h1>
-    <button id="iphoneToggleBtn" class="iphone-toggle-btn">
-      📱 iPhone View
-    </button>
-  </header>
-
-  <div class="status-bar">
-    <div class="status-left">
-      <div id="connectionDot" class="status-dot disconnected"></div>
-      <div class="status-text" id="connectionText">Not connected to Excel backend</div>
-    </div>
-    <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
+  <!-- Tab Navigation -->
+  <div class="app-tabs-nav" id="appTabsNav">
+    <button class="app-tab-btn active" data-tab="adventure-planner">🏔️ Adventure Planner</button>
+    <button class="app-tab-btn" data-tab="birding">🐦 Birding Locations</button>
+    <button class="app-tab-btn" data-tab="recipes">👨‍🍳 Recipes</button>
+    <button class="app-tab-btn" data-tab="garden">🌱 Garden Planner</button>
+    <button class="app-tab-btn" data-tab="budget">💰 Budget Planner</button>
   </div>
 
-  <!-- Breadcrumb Filter Menu - Shows active filters as removable breadcrumbs -->
-  <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
-    <span class="breadcrumb-filter-label">Active Filters:</span>
-    <div id="breadcrumbContainer" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-  </div>
+  <!-- Tab Content -->
+  <div class="app-tabs-content">
+    <!-- Adventure Planner Tab (Main Content) -->
+    <div class="app-tab-pane active" data-tab="adventure-planner" id="adventurePlannerTab">
+      <header>
+        <h1>Adventure Planner</h1>
+        <button id="iphoneToggleBtn" class="iphone-toggle-btn">
+          📱 iPhone View
+        </button>
+      </header>
 
-  <!-- Control Panel -->
+      <div class="status-bar">
+        <div class="status-left">
+          <div id="connectionDot" class="status-dot disconnected"></div>
+          <div class="status-text" id="connectionText">Not connected to Excel backend</div>
+        </div>
+        <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
+      </div>
+
+      <!-- Breadcrumb Filter Menu - Shows active filters as removable breadcrumbs -->
+      <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
+        <span class="breadcrumb-filter-label">Active Filters:</span>
+        <div id="breadcrumbContainer" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+      </div>
+
+      <!-- ...existing content continues below... -->
   <div id="controlPanelCard" class="card control-panel-card">
     <div class="card-header">
       <div class="card-title">
@@ -2388,6 +2505,44 @@
         <!-- Real rows will be populated from Excel/Graph -->
         </tbody>
       </table>
+    </div>
+  </div>
+    </div>
+
+    <!-- Birding Locations Tab -->
+    <div class="app-tab-pane" data-tab="birding" id="birdingTab">
+      <div class="tab-placeholder">
+        <div class="tab-placeholder-icon">🐦</div>
+        <div class="tab-placeholder-text">Birding Locations</div>
+        <div class="tab-placeholder-subtext">Discover the best bird watching spots in your area</div>
+      </div>
+    </div>
+
+    <!-- Recipes Tab -->
+    <div class="app-tab-pane" data-tab="recipes" id="recipesTab">
+      <div class="tab-placeholder">
+        <div class="tab-placeholder-icon">👨‍🍳</div>
+        <div class="tab-placeholder-text">Recipes</div>
+        <div class="tab-placeholder-subtext">Browse and manage your favorite recipes</div>
+      </div>
+    </div>
+
+    <!-- Garden Planner Tab -->
+    <div class="app-tab-pane" data-tab="garden" id="gardenTab">
+      <div class="tab-placeholder">
+        <div class="tab-placeholder-icon">🌱</div>
+        <div class="tab-placeholder-text">Garden Planner</div>
+        <div class="tab-placeholder-subtext">Plan and organize your garden activities</div>
+      </div>
+    </div>
+
+    <!-- Budget Planner Tab -->
+    <div class="app-tab-pane" data-tab="budget" id="budgetTab">
+      <div class="tab-placeholder">
+        <div class="tab-placeholder-icon">💰</div>
+        <div class="tab-placeholder-text">Budget Planner</div>
+        <div class="tab-placeholder-subtext">Track and manage your adventure budget</div>
+      </div>
     </div>
   </div>
 </div>
@@ -3206,6 +3361,7 @@
     // Initialize other UI features
     console.log("Initializing other UI features...");
     initConnectionStatus();
+    initAppTabs();
     initIphoneToggle();
     initColumnToggle();
     initFilters();
@@ -3242,6 +3398,40 @@
       dot.classList.add("disconnected");
       text.textContent = "Not connected to Excel backend";
     }
+  }
+
+  /***********************
+   * APP TABS SYSTEM     *
+   ***********************/
+
+  function initAppTabs() {
+    const tabBtns = document.querySelectorAll(".app-tab-btn");
+    const tabPanes = document.querySelectorAll(".app-tab-pane");
+
+    if (!tabBtns.length) {
+      console.warn("No tab buttons found - tabs system disabled");
+      return;
+    }
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tabId = btn.getAttribute("data-tab");
+
+        // Remove active class from all buttons and panes
+        tabBtns.forEach(b => b.classList.remove("active"));
+        tabPanes.forEach(p => p.classList.remove("active"));
+
+        // Add active class to clicked button and corresponding pane
+        btn.classList.add("active");
+        const activePane = document.querySelector(`.app-tab-pane[data-tab="${tabId}"]`);
+        if (activePane) {
+          activePane.classList.add("active");
+          console.log(`✓ Switched to tab: ${tabId}`);
+        }
+      });
+    });
+
+    console.log("✓ App tabs system initialized");
   }
 
   /***********************
@@ -4476,13 +4666,13 @@
   */
   function initContextMenu() {
     const tbody = document.getElementById("adventureTableBody");
-    
+
     // Add null check - tbody might not be ready during init
     if (!tbody) {
       console.warn("Context menu: Table body not found. Right-click filtering disabled.");
       return;
     }
-    
+
     // Right-click handler on table rows
     tbody.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -4503,7 +4693,7 @@
       // Determine which column was clicked
       const cellIndex = Array.from(row.cells).indexOf(cell);
       const fieldInfo = getFieldFromCellIndex(cellIndex);
-      
+
       if (!fieldInfo) return;
 
       // Show context menu at mouse position
@@ -4909,21 +5099,23 @@
     const saveBtn = document.getElementById("notesSaveBtn");        // Save button at bottom
 
     // Close button (X) in modal header
-    closeBtn.addEventListener("click", closeNotesModal);
+    if (closeBtn) closeBtn.addEventListener("click", closeNotesModal);
 
     // Cancel button in modal footer
-    cancelBtn.addEventListener("click", closeNotesModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeNotesModal);
 
     // Save button - calls function to save notes to Excel
-    saveBtn.addEventListener("click", saveNotesToExcel);
+    if (saveBtn) saveBtn.addEventListener("click", saveNotesToExcel);
 
     // Close modal when clicking on the dark overlay behind the modal
     // (but only if clicking directly on backdrop, not content inside)
-    backdrop.addEventListener("click", (e) => {
-      if (e.target === backdrop) {  // Check if click was on backdrop itself
-        closeNotesModal();
-      }
-    });
+    if (backdrop) {
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) {  // Check if click was on backdrop itself
+          closeNotesModal();
+        }
+      });
+    }
   }
 
   /* ============================================================
@@ -5787,27 +5979,33 @@
     const cancelBtn = document.getElementById("pricingModalCancelBtn");
     const copyBtn = document.getElementById("pricingModalCopyBtn");
 
-    closeBtn.addEventListener("click", closePricingSearchModal);
-    cancelBtn.addEventListener("click", closePricingSearchModal);
+    // Only add listeners if elements exist
+    if (closeBtn) closeBtn.addEventListener("click", closePricingSearchModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closePricingSearchModal);
 
     // Copy results to clipboard
-    copyBtn.addEventListener("click", () => {
-      const resultsBox = document.getElementById("pricingResultsBox");
-      const text = resultsBox.textContent;
-
-      navigator.clipboard.writeText(text).then(() => {
-        alert("✅ Pricing information copied to clipboard!");
-      }).catch(err => {
-        alert("❌ Failed to copy: " + err.message);
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        const resultsBox = document.getElementById("pricingResultsBox");
+        if (resultsBox) {
+          const text = resultsBox.textContent;
+          navigator.clipboard.writeText(text).then(() => {
+            alert("✅ Pricing information copied to clipboard!");
+          }).catch(err => {
+            alert("❌ Failed to copy: " + err.message);
+          });
+        }
       });
-    });
+    }
 
     // Close when clicking backdrop
-    backdrop.addEventListener("click", (e) => {
-      if (e.target === backdrop) {
-        closePricingSearchModal();
-      }
-    });
+    if (backdrop) {
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) {
+          closePricingSearchModal();
+        }
+      });
+    }
   }
 
   /* ============================================================
@@ -6004,18 +6202,20 @@
     const saveBtn = document.getElementById("ratingSaveBtn");        // Save button at bottom
 
     // Cancel button in modal footer
-    cancelBtn.addEventListener("click", closeRatingModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeRatingModal);
 
     // Save button - calls function to save rating to Excel
-    saveBtn.addEventListener("click", saveRatingToExcel);
+    if (saveBtn) saveBtn.addEventListener("click", saveRatingToExcel);
 
     // Close modal when clicking on the dark overlay behind the modal
     // (but only if clicking directly on backdrop, not content inside)
-    backdrop.addEventListener("click", (e) => {
-      if (e.target === backdrop) {
-        closeRatingModal();
-      }
-    });
+    if (backdrop) {
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) {
+          closeRatingModal();
+        }
+      });
+    }
   }
 
   /* ============================================================
