@@ -882,6 +882,134 @@
       font-weight: 500;
     }
 
+    /* ============================================================
+       BREADCRUMB FILTER MENU
+       ============================================================
+       Shows active filters as clickable breadcrumbs with remove buttons
+    */
+    .breadcrumb-filter-menu {
+      display: none;
+      background: #f0f9ff;
+      border: 1px solid #60a5fa;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .breadcrumb-filter-menu.visible {
+      display: flex;
+    }
+
+    .breadcrumb-filter-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1d4ed8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 4px;
+    }
+
+    .filter-breadcrumb {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      border: 1px solid #60a5fa;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: #1d4ed8;
+    }
+
+    .filter-breadcrumb-type {
+      font-weight: 600;
+      color: #1d4ed8;
+    }
+
+    .filter-breadcrumb-value {
+      color: #2563eb;
+    }
+
+    .filter-breadcrumb-remove {
+      cursor: pointer;
+      font-size: 16px;
+      color: #ef4444;
+      margin-left: 4px;
+      transition: all 0.2s;
+    }
+
+    .filter-breadcrumb-remove:hover {
+      color: #991b1b;
+      transform: scale(1.2);
+    }
+
+    /* ============================================================
+       CONTEXT MENU (RIGHT-CLICK)
+       ============================================================
+       Shows filtering options on right-click in table cells
+    */
+    #contextMenu {
+      position: fixed;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 10000;
+      min-width: 220px;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #contextMenu.visible {
+      display: flex;
+    }
+
+    .context-menu-header {
+      padding: 8px 12px;
+      background: #e0f2fe;
+      border-bottom: 1px solid #60a5fa;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1d4ed8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .context-menu-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #374151;
+      transition: all 0.15s;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .context-menu-item:last-child {
+      border-bottom: none;
+    }
+
+    .context-menu-item:hover {
+      background: #f3f4f6;
+      color: #1d4ed8;
+      padding-left: 16px;
+    }
+
+    .context-menu-item.danger:hover {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .context-menu-icon {
+      font-size: 14px;
+    }
+
     /* Mobile / iPhone view overrides */
     body.mobile-view .control-panel-grid {
       grid-template-columns: 1fr;
@@ -2063,6 +2191,12 @@
     <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
   </div>
 
+  <!-- Breadcrumb Filter Menu - Shows active filters as removable breadcrumbs -->
+  <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
+    <span class="breadcrumb-filter-label">Active Filters:</span>
+    <div id="breadcrumbContainer" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+  </div>
+
   <!-- Control Panel -->
   <div id="controlPanelCard" class="card control-panel-card">
     <div class="card-header">
@@ -3079,6 +3213,8 @@
     initResetButtons();
     initMoreLessButtons();
     initRowSelection();
+    initContextMenu();
+    updateBreadcrumbMenu();
     initDryRunToggle();
     // Note: initAutomationButtons() is called in window.load event listener
 
@@ -3825,6 +3961,8 @@
     tags: "",
     cost: "",
     groupBy: "",
+    groupBySecondary: "",
+    contextFilters: [],
     quickTags: new Set()
   };
 
@@ -3855,6 +3993,10 @@
     });
     document.getElementById("groupBy").addEventListener("change", e => {
       filterState.groupBy = e.target.value;
+      applyFilters();
+    });
+    document.getElementById("groupBySecondary").addEventListener("change", e => {
+      filterState.groupBySecondary = e.target.value;
       applyFilters();
     });
   }
@@ -3891,6 +4033,8 @@
     filterState.tags = "";
     filterState.cost = "";
     filterState.groupBy = "";
+    filterState.groupBySecondary = "";
+    filterState.contextFilters = [];
     filterState.quickTags.clear();
 
     document.getElementById("searchName").value = "";
@@ -3900,12 +4044,14 @@
     document.getElementById("filterTags").value = "";
     document.getElementById("filterCost").value = "";
     document.getElementById("groupBy").value = "";
+    document.getElementById("groupBySecondary").value = "";
 
     document.querySelectorAll(".quick-filter-btn").forEach(btn => {
       btn.classList.remove("active");
     });
 
-    applyFilters();
+    updateBreadcrumbMenu();
+    applyFilters();    applyFilters();
   }
 
   function applyFilters() {
@@ -3965,6 +4111,45 @@
         }
       }
 
+      // Context menu filters (right-click filters)
+      if (filterState.contextFilters && filterState.contextFilters.length > 0) {
+        for (const contextFilter of filterState.contextFilters) {
+          let rowValue = "";
+          switch (contextFilter.key) {
+            case "name":
+              rowValue = row.cells[1]?.textContent.toLowerCase() || "";
+              break;
+            case "tags":
+              rowValue = tags;
+              break;
+            case "driveTime":
+              rowValue = row.cells[4]?.textContent.toLowerCase() || "";
+              break;
+            case "state":
+              rowValue = state;
+              break;
+            case "city":
+              rowValue = city;
+              break;
+            case "hours":
+              rowValue = row.cells[13]?.textContent.toLowerCase() || "";
+              break;
+            case "cost":
+              rowValue = cost;
+              break;
+          }
+
+          const filterValue = contextFilter.value.toLowerCase();
+          const matches = rowValue.includes(filterValue);
+
+          if (contextFilter.operation === "equals" && !matches) {
+            return false;
+          } else if (contextFilter.operation === "not-equals" && matches) {
+            return false;
+          }
+        }
+      }
+
       return true;
     });
 
@@ -4000,6 +4185,184 @@
 
     // Generate autofill suggestions for filter fields
     updateFilterSuggestions(filteredRows);
+
+    // Apply multi-level grouping if enabled
+    if (filterState.groupBy) {
+      applyMultiLevelGrouping(filteredRows);
+    }
+  }
+
+  /**
+   * Apply multi-level grouping to table rows
+   * Groups rows by primary grouping key, then optionally by secondary key
+   * Inserts group header rows for visual hierarchy
+   */
+  function applyMultiLevelGrouping(visibleRows) {
+    const tbody = document.querySelector("#adventureTableBody");
+    const primaryKey = filterState.groupBy;
+    const secondaryKey = filterState.groupBySecondary;
+
+    // Group rows by primary key (and secondary key if specified)
+    const grouped = {};
+    visibleRows.forEach((row) => {
+      const primaryValue = getGroupValue(row, primaryKey);
+      if (!grouped[primaryValue]) {
+        grouped[primaryValue] = {};
+      }
+
+      if (secondaryKey) {
+        const secondaryValue = getGroupValue(row, secondaryKey);
+        if (!grouped[primaryValue][secondaryValue]) {
+          grouped[primaryValue][secondaryValue] = [];
+        }
+        grouped[primaryValue][secondaryValue].push(row);
+      } else {
+        if (!grouped[primaryValue].items) {
+          grouped[primaryValue].items = [];
+        }
+        grouped[primaryValue].items.push(row);
+      }
+    });
+
+    // Clear tbody and rebuild with group headers
+    tbody.innerHTML = "";
+
+    // Get sorted keys for consistent ordering
+    const primaryKeys = Object.keys(grouped).sort();
+
+    primaryKeys.forEach((primaryValue) => {
+      // Create primary group header
+      const primaryHeader = createGroupHeader(primaryKey, primaryValue, true);
+      tbody.appendChild(primaryHeader);
+
+      if (secondaryKey) {
+        // Multi-level grouping: show secondary groups
+        const secondaryKeys = Object.keys(grouped[primaryValue]).sort();
+        secondaryKeys.forEach((secondaryValue) => {
+          // Create secondary group header
+          const secondaryHeader = createGroupHeader(secondaryKey, secondaryValue, false);
+          tbody.appendChild(secondaryHeader);
+
+          // Add rows for this secondary group
+          grouped[primaryValue][secondaryValue].forEach((row) => {
+            tbody.appendChild(row);
+            row.style.display = "";
+          });
+        });
+      } else {
+        // Single-level grouping: just add rows
+        grouped[primaryValue].items.forEach((row) => {
+          tbody.appendChild(row);
+          row.style.display = "";
+        });
+      }
+    });
+  }
+
+  /**
+   * Get the grouping value for a row based on group key
+   * @param {HTMLTableRowElement} row - Table row element
+   * @param {string} groupKey - Field to group by (State, City, Cost, Tag, Difficulty)
+   * @returns {string} - The grouping value
+   */
+  function getGroupValue(row, groupKey) {
+    switch (groupKey) {
+      case "State":
+        return (row.dataset.state || "").toUpperCase() || "UNKNOWN";
+      case "City":
+        // Extract city name from cells[6], removing count display
+        const cityText = (row.cells[6]?.textContent || "").trim();
+        const cityName = cityText.replace(/\s*\(\d+\)/, ""); // Remove count like "(2)"
+        return cityName || "UNKNOWN";
+      case "Cost":
+        return (row.dataset.cost || "") || "FREE";
+      case "Tag":
+        // Get first tag for grouping
+        const tags = (row.dataset.tags || "").split(",");
+        return (tags[0]?.trim() || "UNTAGGED").toUpperCase();
+      case "Difficulty":
+        return (row.dataset.difficulty || "").toUpperCase() || "UNKNOWN";
+      default:
+        return "OTHER";
+    }
+  }
+
+  /**
+   * Create a group header row for visual grouping
+   * @param {string} groupKey - Field being grouped by
+   * @param {string} groupValue - Value of the group
+   * @param {boolean} isPrimary - Is this a primary or secondary header
+   * @returns {HTMLTableRowElement} - Header row element
+   */
+  function createGroupHeader(groupKey, groupValue, isPrimary) {
+    const headerRow = document.createElement("tr");
+    headerRow.className = isPrimary ? "group-header-primary" : "group-header-secondary";
+    headerRow.style.backgroundColor = isPrimary ? "#e0f2fe" : "#f0f9ff";
+    headerRow.style.fontWeight = isPrimary ? "bold" : "600";
+    headerRow.style.cursor = "pointer";
+
+    // Add indent for secondary headers
+    const indent = isPrimary ? "" : "&nbsp;&nbsp;&nbsp;&nbsp;";
+
+    const headerCell = document.createElement("td");
+    headerCell.colSpan = 20; // Span all columns
+    headerCell.style.padding = `${isPrimary ? "12px" : "8px"} 8px`;
+    headerCell.style.fontSize = isPrimary ? "14px" : "12px";
+    headerCell.style.color = isPrimary ? "#1d4ed8" : "#2563eb";
+    headerCell.innerHTML = `${indent}${groupKey}: <strong>${groupValue}</strong>`;
+
+    headerRow.appendChild(headerCell);
+
+    // Add click handler to collapse/expand groups
+    headerRow.addEventListener("click", () => {
+      toggleGroupVisibility(headerRow, isPrimary);
+    });
+
+    // Store group info for toggling
+    headerRow.dataset.groupKey = groupKey;
+    headerRow.dataset.groupValue = groupValue;
+    headerRow.dataset.isPrimary = isPrimary;
+
+    return headerRow;
+  }
+
+  /**
+   * Toggle visibility of rows under a group header
+   * @param {HTMLTableRowElement} headerRow - The group header row
+   * @param {boolean} isPrimary - Is this a primary group header
+   */
+  function toggleGroupVisibility(headerRow, isPrimary) {
+    const tbody = headerRow.parentElement;
+    let currentRow = headerRow.nextElementSibling;
+    let nextHeader = null;
+
+    // Find the next header row (to know when to stop)
+    let searchRow = headerRow.nextElementSibling;
+    while (searchRow) {
+      if (searchRow.classList.contains("group-header-primary") ||
+          searchRow.classList.contains("group-header-secondary")) {
+        nextHeader = searchRow;
+        break;
+      }
+      searchRow = searchRow.nextElementSibling;
+    }
+
+    // Toggle visibility of all rows until next header
+    const isHidden = currentRow?.style.display === "none";
+    while (currentRow && currentRow !== nextHeader) {
+      if (!currentRow.classList.contains("group-header-primary") &&
+          !currentRow.classList.contains("group-header-secondary")) {
+        currentRow.style.display = isHidden ? "" : "none";
+      } else if (!isPrimary && currentRow.classList.contains("group-header-secondary")) {
+        // For primary groups, only hide data rows, not secondary headers
+        break;
+      }
+      currentRow = currentRow.nextElementSibling;
+    }
+
+    // Update header styling to show collapsed state
+    headerRow.style.opacity = isHidden ? "1" : "0.7";
+    headerRow.title = isHidden ? "Click to collapse" : "Click to expand";
   }
 
   function updateFilterSuggestions(visibleRows) {
@@ -4013,7 +4376,9 @@
     visibleRows.forEach((row) => {
       const name = (row.cells[1]?.textContent || "").trim();
       const state = (row.dataset.state || "").trim();
-      const city = (row.cells[10]?.textContent || "").trim();
+      // FIX: City is at cells[6], NOT cells[10]
+      // Cell indices: 1=Name, 2=Website, 3=Tags, 4=Drive Time, 5=State, 6=City, 7=Distance, 8=Address, 9=Directions, 10=Activity Duration
+      const city = (row.cells[6]?.textContent || "").trim();
       const rowTags = (row.dataset.tags || "").split(",").map(t => t.trim());
       const cost = (row.dataset.cost || "").trim();
 
@@ -4102,6 +4467,266 @@
       // Apply to clicked row
       row.classList.add("row-selected");
     });
+  }
+
+  /* ============================================================
+     RIGHT-CLICK CONTEXT MENU FOR FILTERING
+     ============================================================
+     Allows users to right-click on table cells and filter by value
+  */
+  function initContextMenu() {
+    const contextMenu = document.getElementById("contextMenu");
+    const tbody = document.getElementById("adventureTableBody");
+
+    // Right-click handler on table rows
+    tbody.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+
+      const row = e.target.closest("tr");
+      if (!row || row.classList.contains("group-header-primary") ||
+          row.classList.contains("group-header-secondary")) {
+        return;
+      }
+
+      // Get the cell that was clicked
+      const cell = e.target.closest("td");
+      if (!cell) return;
+
+      const cellText = cell.textContent.trim();
+      if (!cellText) return;
+
+      // Determine which column was clicked
+      const cellIndex = Array.from(row.cells).indexOf(cell);
+      const fieldInfo = getFieldFromCellIndex(cellIndex);
+
+      if (!fieldInfo) return;
+
+      // Show context menu at mouse position
+      showContextMenu(e.pageX, e.pageY, cellText, fieldInfo);
+    });
+
+    // Close context menu on click elsewhere
+    document.addEventListener("click", () => {
+      hideContextMenu();
+    });
+
+    // Close context menu on escape key
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        hideContextMenu();
+      }
+    });
+  }
+
+  /**
+   * Get field information from cell index
+   * @param {number} cellIndex - Index of the cell
+   * @returns {object|null} - Field info with name and filter key
+   */
+  function getFieldFromCellIndex(cellIndex) {
+    const fieldMap = {
+      1: { name: "Name", key: "name", type: "text" },
+      3: { name: "Tags", key: "tags", type: "multiselect" },
+      4: { name: "Drive Time", key: "driveTime", type: "text" },
+      5: { name: "State", key: "state", type: "text" },
+      6: { name: "City", key: "city", type: "text" },
+      13: { name: "Hours", key: "hours", type: "text" },
+      14: { name: "Cost", key: "cost", type: "text" }
+    };
+    return fieldMap[cellIndex] || null;
+  }
+
+  /**
+   * Show context menu with filter options
+   * @param {number} x - X coordinate
+   * @param {number} y - Y coordinate
+   * @param {string} cellValue - Value of the cell
+   * @param {object} fieldInfo - Field information
+   */
+  function showContextMenu(x, y, cellValue, fieldInfo) {
+    const contextMenu = document.getElementById("contextMenu");
+    const menuItems = document.getElementById("contextMenuItems");
+    const header = document.getElementById("contextMenuHeader");
+
+    // Set header
+    header.textContent = `Filter: ${fieldInfo.name}`;
+
+    // Create menu items
+    let html = `
+      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'equals')">
+        <span class="context-menu-icon">✓</span>
+        <span>Show Only: <strong>${truncate(cellValue, 30)}</strong></span>
+      </div>
+      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'not-equals')">
+        <span class="context-menu-icon">✗</span>
+        <span>Exclude: <strong>${truncate(cellValue, 30)}</strong></span>
+      </div>
+      <div class="context-menu-item" onclick="clearContextFilter('${fieldInfo.key}')">
+        <span class="context-menu-icon">🔄</span>
+        <span>Clear ${fieldInfo.name} Filter</span>
+      </div>
+    `;
+
+    menuItems.innerHTML = html;
+
+    // Position menu
+    contextMenu.style.left = x + "px";
+    contextMenu.style.top = y + "px";
+    contextMenu.classList.add("visible");
+  }
+
+  /**
+   * Hide context menu
+   */
+  function hideContextMenu() {
+    const contextMenu = document.getElementById("contextMenu");
+    contextMenu.classList.remove("visible");
+  }
+
+  /**
+   * Apply filter from context menu
+   * @param {string} fieldKey - Filter field key
+   * @param {string} value - Filter value
+   * @param {string} operation - 'equals' or 'not-equals'
+   */
+  function applyContextFilter(fieldKey, value, operation) {
+    // Store context filter in filterState
+    if (!filterState.contextFilters) {
+      filterState.contextFilters = [];
+    }
+
+    // Add or update filter
+    const existingFilter = filterState.contextFilters.find(f => f.key === fieldKey);
+    if (existingFilter) {
+      existingFilter.value = value;
+      existingFilter.operation = operation;
+    } else {
+      filterState.contextFilters.push({ key: fieldKey, value, operation });
+    }
+
+    hideContextMenu();
+    updateBreadcrumbMenu();
+    applyFilters();
+  }
+
+  /**
+   * Clear context filter
+   * @param {string} fieldKey - Field to clear
+   */
+  function clearContextFilter(fieldKey) {
+    if (!filterState.contextFilters) return;
+    filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== fieldKey);
+    hideContextMenu();
+    updateBreadcrumbMenu();
+    applyFilters();
+  }
+
+  /**
+   * Update breadcrumb filter menu
+   */
+  function updateBreadcrumbMenu() {
+    const breadcrumbMenu = document.getElementById("breadcrumbFilterMenu");
+    const container = document.getElementById("breadcrumbContainer");
+
+    // Collect all active filters
+    const activeFilters = [];
+
+    if (filterState.name) activeFilters.push({ type: "Name", value: filterState.name, key: "name" });
+    if (filterState.difficulty) activeFilters.push({ type: "Difficulty", value: filterState.difficulty, key: "difficulty" });
+    if (filterState.state) activeFilters.push({ type: "State", value: filterState.state, key: "state" });
+    if (filterState.city) activeFilters.push({ type: "City", value: filterState.city, key: "city" });
+    if (filterState.tags) activeFilters.push({ type: "Tags", value: filterState.tags, key: "tags" });
+    if (filterState.cost) activeFilters.push({ type: "Cost", value: filterState.cost, key: "cost" });
+
+    if (filterState.contextFilters && filterState.contextFilters.length > 0) {
+      filterState.contextFilters.forEach(filter => {
+        const fieldNames = { name: "Name", tags: "Tags", driveTime: "Drive Time", state: "State", city: "City", hours: "Hours", cost: "Cost" };
+        activeFilters.push({
+          type: fieldNames[filter.key] || filter.key,
+          value: `${filter.operation === "not-equals" ? "NOT " : ""}${filter.value}`,
+          key: filter.key
+        });
+      });
+    }
+
+    if (activeFilters.length === 0) {
+      breadcrumbMenu.classList.remove("visible");
+      return;
+    }
+
+    // Generate breadcrumb HTML
+    let html = "";
+    activeFilters.forEach((filter, index) => {
+      html += `
+        <div class="filter-breadcrumb">
+          <span class="filter-breadcrumb-type">${filter.type}:</span>
+          <span class="filter-breadcrumb-value">${truncate(filter.value, 20)}</span>
+          <span class="filter-breadcrumb-remove" onclick="removeBreadcrumbFilter('${filter.key}')">✕</span>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    breadcrumbMenu.classList.add("visible");
+  }
+
+  /**
+   * Remove filter from breadcrumb menu
+   * @param {string} fieldKey - Field to remove
+   */
+  function removeBreadcrumbFilter(fieldKey) {
+    // Remove from respective filter state
+    switch (fieldKey) {
+      case "name":
+        filterState.name = "";
+        document.getElementById("searchName").value = "";
+        break;
+      case "difficulty":
+        filterState.difficulty = "";
+        document.getElementById("filterDifficulty").value = "";
+        break;
+      case "state":
+        filterState.state = "";
+        document.getElementById("filterState").value = "";
+        break;
+      case "city":
+        filterState.city = "";
+        document.getElementById("filterCity").value = "";
+        break;
+      case "tags":
+        filterState.tags = "";
+        document.getElementById("filterTags").value = "";
+        break;
+      case "cost":
+        filterState.cost = "";
+        document.getElementById("filterCost").value = "";
+        break;
+      default:
+        // Context filter
+        if (filterState.contextFilters) {
+          filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== fieldKey);
+        }
+    }
+
+    updateBreadcrumbMenu();
+    applyFilters();
+  }
+
+  /**
+   * Helper: Escape string for HTML
+   */
+  function escapeForHTML(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  /**
+   * Helper: Truncate string
+   */
+  function truncate(str, length) {
+    if (str.length <= length) return str;
+    return str.substring(0, length) + "...";
   }
 
   /***********************
@@ -5780,5 +6405,11 @@
 <!-- Modal backdrop for row detail modal -->
 <div id="rowDetailModalBackdrop" class="modal-backdrop" style="z-index: 1001;"></div>
 
+<!-- Context Menu (Right-Click) -->
+<div id="contextMenu">
+  <div class="context-menu-header" id="contextMenuHeader">Filter Options</div>
+  <div id="contextMenuItems"></div>
+</div>
 
-
+</body>
+</html>
