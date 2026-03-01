@@ -2861,7 +2861,7 @@
     initMoreLessButtons();
     initRowSelection();
     initDryRunToggle();
-    initAutomationButtons();
+    // Note: initAutomationButtons() is called in window.load event listener
 
     console.log("=== APP INITIALIZATION COMPLETE ===");
   }
@@ -2967,7 +2967,7 @@
 
 
   // Haversine formula to calculate distance between two coordinates
-  function calculateDistance(lat1, lon1, lat2, lon2) {
+  function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
     /*
      HAVERSINE FORMULA IMPLEMENTATION
      Calculates the great-circle distance between two points on Earth
@@ -3895,50 +3895,8 @@
   /***********************
    * AUTOMATION BUTTONS  *
    ***********************/
-  function initAutomationButtons() {
-    document.getElementById("btnPopulateMissing").addEventListener("click", () => {
-      startAutomationRun("populate-missing");
-    });
-    document.getElementById("btnRefreshHours").addEventListener("click", () => {
-      startAutomationRun("refresh-hours");
-    });
-    document.getElementById("btnRefreshAll").addEventListener("click", () => {
-      startAutomationRun("refresh-all");
-    });
-
-    document.getElementById("automationModalClose").addEventListener("click", closeAutomationModal);
-    document.getElementById("automationCancelBtn").addEventListener("click", closeAutomationModal);
-    document.getElementById("automationApplyBtn").addEventListener("click", () => {
-      // In real implementation, apply diff to Excel here.
-      closeAutomationModal();
-    });
-  }
-
-  function startAutomationRun(mode) {
-    const dryRun = document.getElementById("dryRunToggle").classList.contains("on");
-    openAutomationModal(`Starting ${mode} (Dry Run: ${dryRun ? "ON" : "OFF"})...`);
-
-    // Placeholder: here you would:
-    // 1. Read rows from Excel (Graph API, table: MyList).
-    // 2. For each row, use "Google Place ID" + GOOGLE_API_KEY to call:
-    //    - Places Details API
-    //    - Distance Matrix API
-    // 3. Build a diff of proposed changes.
-    // 4. If dryRun: show diff only.
-    //    If not dryRun: write changes back to Excel.
-  }
-
-  function openAutomationModal(initialText) {
-    const backdrop = document.getElementById("automationModalBackdrop");
-    const body = document.getElementById("automationModalBody");
-    body.textContent = initialText || "Preparing automation run...";
-    backdrop.classList.add("visible");
-  }
-
-  function closeAutomationModal() {
-    const backdrop = document.getElementById("automationModalBackdrop");
-    backdrop.classList.remove("visible");
-  }
+  // NOTE: Automation functions are implemented below in the "AUTOMATION FUNCTIONS" section
+  // This section is left empty to avoid duplicate declarations
 
   /***********************
    * NOTES FEATURE       *
