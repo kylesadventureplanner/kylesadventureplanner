@@ -903,6 +903,23 @@
       display: flex;
     }
 
+    .breadcrumb-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1d4ed8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 8px;
+      white-space: nowrap;
+    }
+
+    .breadcrumb-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex: 1;
+    }
+
     .breadcrumb-filter-label {
       font-size: 12px;
       font-weight: 600;
@@ -2524,6 +2541,16 @@
           <option value="Tag">Tag</option>
         </select>
       </div>
+      <div class="filter-item">
+        <label for="groupBySecondary">Then Group By (Optional)</label>
+        <select id="groupBySecondary" class="filter-select">
+          <option value="">None</option>
+          <option value="State">State</option>
+          <option value="City">City</option>
+          <option value="Cost">Cost</option>
+          <option value="Tag">Tag</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -2547,6 +2574,14 @@
       <button class="quick-filter-btn" data-tag="nature">🌳 Nature</button>
       <button class="quick-filter-btn" data-tag="attractions">⭐ Attractions</button>
       <button class="quick-filter-btn" data-tag="used book store">📚 Used Book Store</button>
+    </div>
+  </div>
+
+  <!-- Breadcrumb Filter Menu - Shows active filters -->
+  <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
+    <div class="breadcrumb-title">Active Filters:</div>
+    <div id="breadcrumbContainer" class="breadcrumb-container">
+      <!-- Filter breadcrumbs will be inserted here -->
     </div>
   </div>
 
@@ -4507,6 +4542,7 @@
     tags: "",
     cost: "",
     groupBy: "",
+    groupBySecondary: "",
     contextFilters: [],
     quickTags: new Set()
   };
@@ -4581,6 +4617,15 @@
         applyFilters();
       });
     }
+
+    // Group By Secondary
+    const groupBySecondary = getElement("groupBySecondary");
+    if (groupBySecondary) {
+      groupBySecondary.addEventListener("change", e => {
+        filterState.groupBySecondary = e.target.value;
+        applyFilters();
+      });
+    }
   }
 
   function initQuickFilters() {
@@ -4615,6 +4660,7 @@
     filterState.tags = "";
     filterState.cost = "";
     filterState.groupBy = "";
+    filterState.groupBySecondary = "";
     filterState.contextFilters = [];
     filterState.quickTags.clear();
 
@@ -4625,6 +4671,10 @@
     document.getElementById("filterTags").value = "";
     document.getElementById("filterCost").value = "";
     document.getElementById("groupBy").value = "";
+    const secondarySelector = document.getElementById("groupBySecondary");
+    if (secondarySelector) {
+      secondarySelector.value = "";
+    }
 
     document.querySelectorAll(".quick-filter-btn").forEach(btn => {
       btn.classList.remove("active");
@@ -4780,15 +4830,28 @@
   function applyMultiLevelGrouping(visibleRows) {
     const tbody = document.querySelector("#adventureTableBody");
     const primaryKey = filterState.groupBy;
+    const secondaryKey = filterState.groupBySecondary;
 
-    // Group rows by primary key
+    // Group rows by primary key (and secondary key if specified)
     const grouped = {};
     visibleRows.forEach((row) => {
       const primaryValue = getGroupValue(row, primaryKey);
       if (!grouped[primaryValue]) {
-        grouped[primaryValue] = [];
+        grouped[primaryValue] = {};
       }
-      grouped[primaryValue].push(row);
+
+      if (secondaryKey) {
+        const secondaryValue = getGroupValue(row, secondaryKey);
+        if (!grouped[primaryValue][secondaryValue]) {
+          grouped[primaryValue][secondaryValue] = [];
+        }
+        grouped[primaryValue][secondaryValue].push(row);
+      } else {
+        if (!grouped[primaryValue].items) {
+          grouped[primaryValue].items = [];
+        }
+        grouped[primaryValue].items.push(row);
+      }
     });
 
     // Clear tbody and rebuild with group headers
@@ -4802,11 +4865,27 @@
       const primaryHeader = createGroupHeader(primaryKey, primaryValue, true);
       tbody.appendChild(primaryHeader);
 
-      // Add rows for this group
-      grouped[primaryValue].forEach((row) => {
-        tbody.appendChild(row);
-        row.style.display = "";
-      });
+      if (secondaryKey) {
+        // Multi-level grouping: show secondary groups
+        const secondaryKeys = Object.keys(grouped[primaryValue]).sort();
+        secondaryKeys.forEach((secondaryValue) => {
+          // Create secondary group header
+          const secondaryHeader = createGroupHeader(secondaryKey, secondaryValue, false);
+          tbody.appendChild(secondaryHeader);
+
+          // Add rows for this secondary group
+          grouped[primaryValue][secondaryValue].forEach((row) => {
+            tbody.appendChild(row);
+            row.style.display = "";
+          });
+        });
+      } else {
+        // Single-level grouping: just add rows
+        grouped[primaryValue].items.forEach((row) => {
+          tbody.appendChild(row);
+          row.style.display = "";
+        });
+      }
     });
   }
 
