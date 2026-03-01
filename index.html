@@ -1989,6 +1989,11 @@
   <datalist id="tagsList"></datalist>
   <datalist id="costList"></datalist>
 
+  <!-- Google Maps API Script -->
+  <!-- This loads the Google Maps JavaScript API with Places and other services -->
+  <!-- Make sure to replace YOUR_GOOGLE_API_KEY in the API constants section above -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc&libraries=places,geometry,drawing"></script>
+
   <!-- Google Data Automation -->
   <div class="card automation-card">
     <div class="automation-header">
@@ -2280,11 +2285,290 @@
   */
 
   /* API KEYS & CONSTANTS */
-  // Note: These constants are reserved for future features and are currently unused
-  // Uncomment and set values when implementing these features:
-  // const GOOGLE_API_KEY = "YOUR_API_KEY_HERE"; // For Google Places API integration
-  // const EXCEL_TABLE_NAME = "MyList";           // Excel table name (currently hardcoded in code)
-  // const PLACE_ID_COLUMN_NAME = "Google Place ID"; // For location-based features
+  // Google Maps & Places API Configuration
+  // HOW TO SET THIS UP:
+  // 1. Go to Google Cloud Console: https://console.cloud.google.com/
+  // 2. Create a new project or select existing one
+  // 3. Enable these APIs:
+  //    - Google Maps JavaScript API
+  //    - Places API
+  //    - Distance Matrix API (for distance calculations)
+  //    - Geocoding API (for address lookup)
+  // 4. Create an API key (Credentials → Create Credentials → API Key)
+  // 5. Restrict the key to:
+  //    - HTTP referrers (your domain)
+  //    - Only allow: Maps JavaScript API, Places API, Distance Matrix API, Geocoding API
+  // 6. Replace "YOUR_GOOGLE_API_KEY" below with your actual key
+
+  const GOOGLE_API_KEY = "AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc"; // Replace with your actual Google API key from Google Cloud Console
+  const EXCEL_TABLE_NAME = "MyList";           // Excel table name
+  const PLACE_ID_COLUMN_NAME = "Google Place ID"; // Column name for Google Place IDs
+
+  /* ============================================================
+     GOOGLE MAPS & PLACES API UTILITY FUNCTIONS
+     ============================================================
+     These functions handle all interactions with Google Maps APIs
+     (Places API, Distance Matrix API, Geocoding API)
+  */
+
+  // Initialize Google Places service
+  let placesService = null;
+  let geocoderService = null;
+  let map = null;
+
+  /**
+   * Initialize Google Maps services
+   * Call this after Google Maps API is loaded
+   */
+  function initializeGoogleServices() {
+    try {
+      if (typeof google !== 'undefined' && google.maps) {
+        // Create a hidden map div for services (not displayed)
+        let mapContainer = document.getElementById('hiddenMapContainer');
+        if (!mapContainer) {
+          mapContainer = document.createElement('div');
+          mapContainer.id = 'hiddenMapContainer';
+          mapContainer.style.display = 'none';
+          document.body.appendChild(mapContainer);
+        }
+
+        // Initialize map
+        map = new google.maps.Map(mapContainer, {
+          center: { lat: 0, lng: 0 },
+          zoom: 10
+        });
+
+        // Initialize Places service
+        placesService = new google.maps.places.PlacesService(map);
+        geocoderService = new google.maps.Geocoder();
+
+        console.log("✅ Google Maps services initialized successfully");
+        return true;
+      } else {
+        console.warn("⚠️ Google Maps API not yet loaded. Services will be initialized when API is ready.");
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ Error initializing Google Maps services:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Get place details from Google Places API using Place ID
+   * @param {string} placeId - The Google Place ID
+   * @returns {Promise} - Promise resolving to place details object
+   *
+   * EXAMPLE:
+   * const details = await getPlaceDetails('ChIJK...');
+   * console.log(details.name, details.rating, details.formatted_address);
+   */
+  async function getPlaceDetails(placeId) {
+    return new Promise((resolve, reject) => {
+      if (!placesService) {
+        reject(new Error("Places service not initialized"));
+        return;
+      }
+
+      const request = {
+        placeId: placeId,
+        fields: [
+          'name',
+          'rating',
+          'formatted_address',
+          'formatted_phone_number',
+          'website',
+          'opening_hours',
+          'geometry',
+          'reviews',
+          'user_ratings_total',
+          'photos'
+        ]
+      };
+
+      placesService.getDetails(request, (place, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+          resolve({
+            name: place.name,
+            rating: place.rating,
+            userRatingsTotal: place.user_ratings_total,
+            address: place.formatted_address,
+            phone: place.formatted_phone_number,
+            website: place.website,
+            hours: place.opening_hours,
+            coordinates: {
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng()
+            },
+            reviews: place.reviews || [],
+            photos: place.photos || []
+          });
+        } else {
+          reject(new Error(`Places API error: ${status}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * Search for places using text search
+   * @param {string} query - Search query (e.g., "coffee near Charlotte, NC")
+   * @returns {Promise} - Promise resolving to array of place results
+   *
+   * EXAMPLE:
+   * const results = await searchPlaces("hiking trails near Greenville SC");
+   * results.forEach(place => console.log(place.name, place.formatted_address));
+   */
+  async function searchPlaces(query) {
+    return new Promise((resolve, reject) => {
+      if (!placesService) {
+        reject(new Error("Places service not initialized"));
+        return;
+      }
+
+      const request = {
+        query: query,
+        fields: ['place_id', 'name', 'formatted_address', 'geometry', 'rating']
+      };
+
+      placesService.textSearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+          const formattedResults = results.map(place => ({
+            placeId: place.place_id,
+            name: place.name,
+            address: place.formatted_address,
+            coordinates: {
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng()
+            },
+            rating: place.rating
+          }));
+          resolve(formattedResults);
+        } else {
+          reject(new Error(`Text search error: ${status}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * Calculate distance between two coordinates using Distance Matrix API
+   * @param {object} origin - {lat: number, lng: number}
+   * @param {object} destination - {lat: number, lng: number}
+   * @returns {Promise} - Promise resolving to distance and duration info
+   *
+   * EXAMPLE:
+   * const distance = await calculateDistance(
+   *   { lat: 34.0007, lng: -81.0348 },  // Columbia, SC
+   *   { lat: 34.8526, lng: -82.3959 }   // Greenville, SC
+   * );
+   * console.log(distance.distanceInMiles, distance.durationInMinutes);
+   */
+  async function calculateDistance(origin, destination) {
+    return new Promise((resolve, reject) => {
+      if (!map) {
+        reject(new Error("Map not initialized"));
+        return;
+      }
+
+      const service = new google.maps.DistanceMatrixService();
+      service.getDistanceMatrix(
+        {
+          origins: [origin],
+          destinations: [destination],
+          travelMode: 'DRIVING'
+        },
+        (response, status) => {
+          if (status === google.maps.DistanceMatrixStatus.OK) {
+            const result = response.rows[0].elements[0];
+            if (result.status === google.maps.DistanceMatrixElementStatus.OK) {
+              resolve({
+                distanceInMeters: result.distance.value,
+                distanceInMiles: (result.distance.value / 1609.34).toFixed(2),
+                durationInSeconds: result.duration.value,
+                durationInMinutes: Math.round(result.duration.value / 60),
+                durationText: result.duration.text,
+                distanceText: result.distance.text
+              });
+            } else {
+              reject(new Error(`Distance calculation error: ${result.status}`));
+            }
+          } else {
+            reject(new Error(`Distance Matrix API error: ${status}`));
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Geocode an address to get coordinates
+   * @param {string} address - The address to geocode
+   * @returns {Promise} - Promise resolving to coordinates and details
+   *
+   * EXAMPLE:
+   * const geocoded = await geocodeAddress("123 Main St, Columbia, SC");
+   * console.log(geocoded.lat, geocoded.lng, geocoded.formattedAddress);
+   */
+  async function geocodeAddress(address) {
+    return new Promise((resolve, reject) => {
+      if (!geocoderService) {
+        reject(new Error("Geocoder service not initialized"));
+        return;
+      }
+
+      geocoderService.geocode({ address: address }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+          const result = results[0];
+          resolve({
+            lat: result.geometry.location.lat(),
+            lng: result.geometry.location.lng(),
+            formattedAddress: result.formatted_address,
+            placeId: result.place_id,
+            geometry: {
+              location_type: result.geometry.location_type,
+              bounds: result.geometry.bounds
+            }
+          });
+        } else {
+          reject(new Error(`Geocoding error: ${status}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * Reverse geocode coordinates to get address
+   * @param {object} coordinates - {lat: number, lng: number}
+   * @returns {Promise} - Promise resolving to address information
+   *
+   * EXAMPLE:
+   * const address = await reverseGeocodeCoordinates({lat: 34.0007, lng: -81.0348});
+   * console.log(address.formattedAddress);
+   */
+  async function reverseGeocodeCoordinates(coordinates) {
+    return new Promise((resolve, reject) => {
+      if (!geocoderService) {
+        reject(new Error("Geocoder service not initialized"));
+        return;
+      }
+
+      geocoderService.geocode({ location: coordinates }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+          const result = results[0];
+          resolve({
+            formattedAddress: result.formatted_address,
+            placeId: result.place_id,
+            addressComponents: result.address_components,
+            lat: result.geometry.location.lat(),
+            lng: result.geometry.location.lng()
+          });
+        } else {
+          reject(new Error(`Reverse geocoding error: ${status}`));
+        }
+      });
+    });
+  }
 
   /* ============================================================
      MICROSOFT AUTHENTICATION LIBRARY (MSAL) SETUP
@@ -4322,5 +4606,7 @@
 
 </body>
 </html>
+
+
 
 
