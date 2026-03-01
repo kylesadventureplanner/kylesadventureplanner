@@ -2519,7 +2519,7 @@
       // Load routes library for distance calculations
       const { DistanceMatrixService } = await google.maps.importLibrary("routes");
       const service = new DistanceMatrixService();
-      
+
       const result = await service.getDistanceMatrix({
         origins: [origin],
         destinations: [destination],
@@ -2567,7 +2567,7 @@
       }
 
       const result = await geocoderService.geocode({ address: address });
-      
+
       if (result.results && result.results.length > 0) {
         const place = result.results[0];
         return {
@@ -2607,7 +2607,7 @@
       }
 
       const result = await geocoderService.geocode({ location: coordinates });
-      
+
       if (result.results && result.results.length > 0) {
         const place = result.results[0];
         return {
@@ -4582,7 +4582,7 @@
     const modalBody = document.getElementById("automationModalBody");
 
     backdrop.style.display = "block";
-    modalBody.innerHTML = `Starting refresh-${mode} (Dry Run: ON)...`;
+    modalBody.innerHTML = `Starting ${mode.replace('-', ' ')} (Dry Run: ON)...`;
 
     try {
       // Get all rows from table
@@ -4590,9 +4590,14 @@
 
       // Dry run: simulate what would be updated
       for (const row of rows) {
-        const placeId = row.dataset.placeId || row.cells[0]?.textContent.trim();
+        // Get Google Place ID from dataset (set during table load)
+        const placeId = row.dataset.googlePlaceId?.trim();
 
-        if (!placeId) continue;
+        // Skip rows without a Google Place ID
+        if (!placeId || placeId === "") {
+          console.log(`Skipping row (no Place ID): ${row.cells[1]?.textContent}`);
+          continue;
+        }
 
         // Based on mode, determine what to update
         if (mode === "hours-only") {
@@ -4600,35 +4605,43 @@
           const hourCell = row.cells[13]; // Hours of Operation column
           if (hourCell) {
             automationChanges.push({
-              name: row.cells[1]?.textContent,
+              name: row.cells[1]?.textContent || "Unknown",
               placeId: placeId,
               field: "Hours of Operation",
-              oldValue: hourCell.textContent,
-              newValue: "🔄 Fetching..." // Placeholder
+              oldValue: hourCell.textContent || "(empty)",
+              newValue: "🔄 Will fetch from Google Places API"
             });
           }
         } else if (mode === "missing-fields") {
           // Only update empty fields
-          if (row.cells[13]?.textContent.trim() === "") {
+          const hasEmptyFields = 
+            !row.cells[13]?.textContent.trim() ||  // Hours
+            !row.cells[14]?.textContent.trim() ||  // Phone
+            !row.cells[15]?.textContent.trim() ||  // Rating
+            !row.cells[2]?.textContent.trim();      // Website
+          
+          if (hasEmptyFields) {
             automationChanges.push({
-              name: row.cells[1]?.textContent,
+              name: row.cells[1]?.textContent || "Unknown",
               placeId: placeId,
               field: "Multiple Fields",
-              oldValue: "(empty)",
-              newValue: "🔄 Fetching..."
+              oldValue: "(empty fields detected)",
+              newValue: "🔄 Will fetch from Google Places API"
             });
           }
         } else if (mode === "all-fields") {
           // Refresh all fields
           automationChanges.push({
-            name: row.cells[1]?.textContent,
+            name: row.cells[1]?.textContent || "Unknown",
             placeId: placeId,
             field: "All Fields",
-            oldValue: "(current values)",
-            newValue: "🔄 Fetching..."
+            oldValue: "(all current values)",
+            newValue: "🔄 Will fetch from Google Places API"
           });
         }
       }
+
+      console.log(`Found ${automationChanges.length} changes for ${mode} mode`);
 
       // Show preview of changes
       showAutomationPreview();
@@ -4646,7 +4659,21 @@
     const modalBody = document.getElementById("automationModalBody");
 
     if (automationChanges.length === 0) {
-      modalBody.innerHTML = "No changes to make - all fields are already populated!";
+      modalBody.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+          <h3 style="color: #f59e0b; margin-bottom: 16px;">⚠️ No Changes to Make</h3>
+          <p style="margin-bottom: 12px;">No adventures found with Google Place IDs.</p>
+          <p style="font-size: 13px; color: #6b7280;">
+            <strong>To use automation features:</strong><br>
+            1. Add Google Place IDs to the "Google Place ID" column in your Excel file<br>
+            2. Reload the data<br>
+            3. Try the automation again
+          </p>
+          <p style="font-size: 12px; color: #9ca3af; margin-top: 16px;">
+            Tip: You can find Place IDs by searching on Google Maps and copying the ID from the URL.
+          </p>
+        </div>
+      `;
       return;
     }
 
@@ -4657,11 +4684,19 @@
         <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px;">
           <strong>${index + 1}. ${change.name}</strong><br>
           <small>Field: ${change.field}</small><br>
+          <small>Place ID: ${change.placeId}</small><br>
           <small>Old: ${change.oldValue}</small><br>
           <small>New: ${change.newValue}</small>
         </div>
       `;
     });
+
+    html += `
+      <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;">
+        <strong>⚠️ Dry Run Mode:</strong> These changes are NOT applied yet.<br>
+        <small>Turn off "Dry Run" and click "Apply Changes to Excel" to save them.</small>
+      </div>
+    `;
 
     modalBody.innerHTML = html;
   }
