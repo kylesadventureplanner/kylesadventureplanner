@@ -4568,6 +4568,38 @@
   }
 
   /**
+   * Close row detail modal
+   */
+  function closeRowDetailModal() {
+    document.getElementById("rowDetailModal").classList.remove("visible");
+    document.getElementById("rowDetailModalBackdrop").classList.remove("visible");
+    currentDetailRow = null;
+  }
+
+  /**
+   * Initialize row detail modal event listeners
+   */
+  function initRowDetailModal() {
+    document.getElementById("rowDetailCloseBtn").addEventListener("click", closeRowDetailModal);
+    document.getElementById("rowDetailCloseFooterBtn").addEventListener("click", closeRowDetailModal);
+    document.getElementById("rowDetailModalBackdrop").addEventListener("click", closeRowDetailModal);
+    document.getElementById("rowDetailSearchPricesBtn").addEventListener("click", () => {
+      if (currentDetailRow) {
+        const rowData = rowDataMap.get(currentDetailRow);
+        if (rowData) {
+          // Switch to Cost tab
+          switchToCostTab();
+          // Search for prices
+          searchForPricesInCostTab(rowData);
+        }
+      }
+    });
+    document.getElementById("rowDetailEditBtn").addEventListener("click", () => {
+      alert("Edit functionality coming soon!");
+    });
+  }
+
+  /**
    * Switch to Cost to Visit tab
    */
   function switchToCostTab() {
@@ -4694,6 +4726,27 @@
 
     resultsBox.textContent = hoursInfo;
     resultsBox.className = "pricing-results-box";
+  }
+
+  /* ============================================================
+     PRICING SEARCH FEATURE - SEARCH FOR PRICING INFORMATION
+     ============================================================
+     Allows users to search for pricing information using the website URL
+     and the Custom Search API to find pricing details.
+  */
+
+  let currentPricingData = null;
+
+  /**
+   * Close pricing search modal
+   */
+  function closePricingSearchModal() {
+    const backdrop = document.getElementById("pricingSearchModalBackdrop");
+    const modal = document.getElementById("pricingSearchModal");
+
+    backdrop.classList.remove("visible");
+    modal.classList.remove("visible");
+    currentPricingData = null;
   }
 
   /**
