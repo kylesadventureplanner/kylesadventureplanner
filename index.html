@@ -1989,11 +1989,27 @@
   <datalist id="tagsList"></datalist>
   <datalist id="costList"></datalist>
 
-  <!-- Google Maps API Script -->
-  <!-- ⚠️ IMPORTANT: Replace YOUR_GOOGLE_API_KEY in the URL below with your actual API key! -->
-  <!-- This loads the Google Maps JavaScript API with the NEW Places library -->
-  <!-- Uses: places (NEW API), geometry (distance calculations), drawing (future features) -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY&libraries=places,geometry,drawing&callback=initializeGoogleServices"></script>
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- ⚠️⚠️⚠️ GOOGLE MAPS API LOADER - REPLACE KEY HERE! ⚠️⚠️⚠️ -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--
+       📍 LOCATION 2 OF 2: Replace YOUR_GOOGLE_API_KEY below!
+
+       Find this line:
+         key: "YOUR_GOOGLE_API_KEY",
+
+       Replace with your actual Google API key:
+         key: "AIzaSyD_Your_Actual_Key_Here",
+
+       ⚠️ This MUST match the key in the constant above (line ~2334)!
+  -->
+  <script>
+    (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+      key: "AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc", // ⚠️⚠️⚠️ REPLACE THIS WITH YOUR ACTUAL KEY!
+      v: "weekly",
+      libraries: "places,geometry,drawing"
+    });
+  </script>
 
   <!-- Google Data Automation -->
   <div class="card automation-card">
@@ -2302,30 +2318,40 @@
   // 6. Replace "YOUR_GOOGLE_API_KEY" below with your actual key
 
   /* ============================================================
-     ⚠️ REQUIRED: ADD YOUR GOOGLE MAPS API KEY BELOW
+     ⚠️⚠️⚠️ CRITICAL: REPLACE API KEY IN 2 LOCATIONS ⚠️⚠️⚠️
      ============================================================
-     
-     IMPORTANT: Replace "YOUR_GOOGLE_API_KEY" with your actual API key!
-     
-     HOW TO GET AN API KEY:
+
+     YOU MUST REPLACE "YOUR_GOOGLE_API_KEY" IN TWO PLACES:
+
+     📍 LOCATION 1: Line ~2334 below (this constant)
+     📍 LOCATION 2: Line ~2001 (in the Google Maps script tag)
+
+     BOTH must use the SAME API key or Google Maps won't work!
+
+     ═══════════════════════════════════════════════════════════
+     HOW TO GET YOUR GOOGLE API KEY:
+     ═══════════════════════════════════════════════════════════
+
      1. Go to: https://console.cloud.google.com/
-     2. Create a project or select an existing one
-     3. Enable these APIs:
-        - Maps JavaScript API
-        - Places API (New)
-        - Distance Matrix API
-        - Geocoding API
+     2. Create a project (or select existing)
+     3. Enable these 4 APIs:
+        ✓ Maps JavaScript API
+        ✓ Places API (New)
+        ✓ Distance Matrix API
+        ✓ Geocoding API
      4. Go to: Credentials → Create Credentials → API Key
-     5. Copy the API key and paste it below
-     6. Restrict the key (recommended):
-        - Application restrictions: HTTP referrers
-        - API restrictions: Select the 4 APIs listed above
-     
-     EXAMPLE:
-     const GOOGLE_API_KEY = "AIzaSyD_Your_Actual_Key_Goes_Here_1234567890";
+     5. Copy the key (looks like: AIzaSyD_ABC123...)
+     6. REPLACE "YOUR_GOOGLE_API_KEY" below AND in the script tag
+
+     ═══════════════════════════════════════════════════════════
+     EXAMPLE OF CORRECT KEY:
+     ═══════════════════════════════════════════════════════════
+     const GOOGLE_API_KEY = "AIzaSyDaBcD1234567890EfGhIjKlMnOpQrStUvW";
+
+     ⚠️ WITHOUT THIS, YOU WILL SEE "InvalidKey" ERROR!
   */
-  
-  const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY"; // ⚠️ REPLACE THIS WITH YOUR ACTUAL API KEY!
+
+  const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY"; // ⚠️⚠️⚠️ REPLACE THIS!
   const EXCEL_TABLE_NAME = "MyList";           // Excel table name
   const PLACE_ID_COLUMN_NAME = "Google Place ID"; // Column name for Google Place IDs
 
@@ -2442,7 +2468,7 @@
 
       // Use NEW searchByText method
       const { Place } = await google.maps.importLibrary("places");
-      
+
       const request = {
         textQuery: query,
         fields: ['displayName', 'formattedAddress', 'location', 'rating', 'id'],
