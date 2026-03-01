@@ -1162,7 +1162,8 @@
       color: #92400e;
     }
 
-    .pricing-results-box {
+    .pricing-results-box,
+    .search-results-box {
       background: #f9fafb;
       border: 1px solid #e5e7eb;
       border-radius: 6px;
@@ -1177,14 +1178,16 @@
       word-wrap: break-word;
     }
 
-    .pricing-results-box.loading {
+    .pricing-results-box.loading,
+    .search-results-box.loading {
       display: flex;
       align-items: center;
       justify-content: center;
       color: #6b7280;
     }
 
-    .pricing-results-box.empty {
+    .pricing-results-box.empty,
+    .search-results-box.empty {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -4318,49 +4321,41 @@
         <span>⏱️ ${rowData.driveTime || "N/A"}</span>
       `;
       const tabs = [
-        { id: "overview", name: "📋 Overview", content: generateOverviewTab(rowData) },
-        { id: "details", name: "ℹ️ Details", content: generateDetailsTab(rowData) },
-        { id: "visit-info", name: "🏞️ Visit Info", content: generateVisitInfoTab(rowData) },
-        { id: "contact", name: "📞 Contact", content: generateContactTab(rowData) },
-        { id: "hours", name: "🕐 Hours", content: generateHoursTab(rowData) },
-        { id: "cost", name: "💰 Cost to Visit", content: generateCostTab(rowData) },
-        { id: "links", name: "🔗 Links", content: generateLinksTab(rowData) }
+        { id: "overview", name: "📋 Overview", content: generateOverviewTab(rowData), visible: true },
+        { id: "details", name: "ℹ️ Details", content: generateDetailsTab(rowData), visible: true },
+        { id: "visit-info", name: "🏞️ Visit Info", content: generateVisitInfoTab(rowData), visible: true },
+        { id: "contact", name: "📞 Contact", content: generateContactTab(rowData), visible: true },
+        { id: "links", name: "🔗 Links", content: generateLinksTab(rowData), visible: true },
+        // Dynamic search tabs (hidden until activated by buttons)
+        { id: "hours-search", name: "🕐 Hours", content: generateSearchTab("hours-search", "Hours of Operation", rowData), visible: false },
+        { id: "cost-search", name: "💰 Cost", content: generateSearchTab("cost-search", "Cost to Visit", rowData), visible: false },
+        { id: "visit-duration", name: "⏱️ Visit Length", content: generateSearchTab("visit-duration", "Average Visit Duration", rowData), visible: false },
+        { id: "parking", name: "🅿️ Parking", content: generateSearchTab("parking", "Parking Information", rowData), visible: false },
+        { id: "drive-time", name: "🚗 Drive Time", content: generateSearchTab("drive-time", "Drive Time from Home", rowData), visible: false },
+        { id: "nearby", name: "📍 Nearby", content: generateSearchTab("nearby", "What's Nearby", rowData), visible: false },
+        { id: "best-time", name: "🌅 Best Time", content: generateSearchTab("best-time", "Best Time to Visit", rowData), visible: false }
       ];
       const tabsContainer = document.getElementById("rowDetailTabsContainer");
-      tabsContainer.innerHTML = tabs.map((tab, idx) => `
+      tabsContainer.innerHTML = tabs
+        .filter(tab => tab.visible)
+        .map((tab, idx) => `
         <button class="row-detail-tab-btn ${idx === 0 ? "active" : ""}" data-tab="${tab.id}">
           ${tab.name}
         </button>
       `).join("");
       const contentContainer = document.getElementById("rowDetailContent");
       contentContainer.innerHTML = tabs.map((tab, idx) => `
-        <div class="row-detail-tab-pane ${idx === 0 ? "active" : ""}" data-tab="${tab.id}">
+        <div class="row-detail-tab-pane ${idx === 0 && tab.visible ? "active" : ""}" data-tab="${tab.id}" style="${tab.visible ? '' : 'display: none;'}">
           ${tab.content}
         </div>
       `).join("");
       attachTabListeners();
 
-      // Set up Cost tab search button
-      const costSearchBtn = document.getElementById("costTabSearchBtn");
-      if (costSearchBtn) {
-        costSearchBtn.addEventListener("click", () => {
-          const rowData = rowDataMap.get(currentDetailRow);
-          if (rowData) {
-            searchForPricesInCostTab(rowData);
-          }
-        });
-      }
+      // Set up all search trigger buttons in footer
+      setupSearchTriggerButtons();
 
-      // Set up Hours tab search button
-      const hoursSearchBtn = document.getElementById("hoursTabSearchBtn");
-      if (hoursSearchBtn) {
-        hoursSearchBtn.addEventListener("click", () => {
-          const rowData = rowDataMap.get(currentDetailRow);
-          if (rowData) {
-            searchForHoursInHoursTab(rowData);
-          }
-        });
-      }
+      // Set up all in-tab search buttons
+      setupInTabSearchButtons();
 
       document.getElementById("rowDetailModal").classList.add("visible");
       document.getElementById("rowDetailModalBackdrop").classList.add("visible");
@@ -4551,6 +4546,312 @@
         <div class="row-detail-value">${data.directions ? `<a href="${data.directions}" target="_blank" rel="noopener">Get Directions ↗</a>` : '<span class="row-detail-empty">No directions link</span>'}</div>
       </div>
     `;
+  }
+
+  /**
+   * Generate a generic search tab for various search types
+   * @param {string} tabId - Unique tab ID
+   * @param {string} title - Display title for the search
+   * @param {object} data - Row data
+   */
+  function generateSearchTab(tabId, title, data) {
+    const searchConfig = {
+      'hours-search': { icon: '🕐', color: '#3b82f6', buttonText: 'Search Hours' },
+      'cost-search': { icon: '💰', color: '#f59e0b', buttonText: 'Search Prices' },
+      'visit-duration': { icon: '⏱️', color: '#10b981', buttonText: 'Search Visit Length' },
+      'parking': { icon: '🅿️', color: '#6366f1', buttonText: 'Search Parking Info' },
+      'drive-time': { icon: '🚗', color: '#8b5cf6', buttonText: 'Search Drive Time' },
+      'nearby': { icon: '📍', color: '#ec4899', buttonText: 'Search Nearby' },
+      'best-time': { icon: '🌅', color: '#f97316', buttonText: 'Search Best Time' }
+    };
+
+    const config = searchConfig[tabId] || { icon: '🔍', color: '#6b7280', buttonText: 'Search' };
+
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">${config.icon} ${title}</div>
+        <div id="${tabId}-results" class="search-results-box" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; font-size: 13px; color: #374151; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">
+          Click the "${config.buttonText}" button below to search for information
+        </div>
+        <button id="${tabId}-search-btn" class="row-detail-footer-btn primary" style="margin-top: 12px; width: 100%; background: ${config.color}; border-color: ${config.color}; color: white;">
+          ${config.icon} ${config.buttonText}
+        </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Set up search trigger buttons in modal footer
+   * These buttons activate tabs and trigger searches
+   */
+  function setupSearchTriggerButtons() {
+    const searchTriggers = [
+      { id: 'hours-search', trigger: 'search-trigger-hours' },
+      { id: 'cost-search', trigger: 'search-trigger-cost' },
+      { id: 'visit-duration', trigger: 'search-trigger-visit-duration' },
+      { id: 'parking', trigger: 'search-trigger-parking' },
+      { id: 'drive-time', trigger: 'search-trigger-drive-time' },
+      { id: 'nearby', trigger: 'search-trigger-nearby' },
+      { id: 'best-time', trigger: 'search-trigger-best-time' }
+    ];
+
+    searchTriggers.forEach(({ id, trigger }) => {
+      const btn = document.getElementById(trigger);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          activateSearchTab(id);
+        });
+      }
+    });
+  }
+
+  /**
+   * Set up in-tab search buttons
+   * These are the buttons within each tab that trigger the actual search
+   */
+  function setupInTabSearchButtons() {
+    const searchButtons = [
+      { id: 'hours-search', searchType: 'hours' },
+      { id: 'cost-search', searchType: 'cost' },
+      { id: 'visit-duration', searchType: 'visit-duration' },
+      { id: 'parking', searchType: 'parking' },
+      { id: 'drive-time', searchType: 'drive-time' },
+      { id: 'nearby', searchType: 'nearby' },
+      { id: 'best-time', searchType: 'best-time' }
+    ];
+
+    searchButtons.forEach(({ id, searchType }) => {
+      const btn = document.getElementById(`${id}-search-btn`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          const rowData = rowDataMap.get(currentDetailRow);
+          if (rowData) {
+            performSearch(searchType, rowData);
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Activate a search tab (show it and switch to it)
+   * @param {string} tabId - The tab ID to activate
+   */
+  function activateSearchTab(tabId) {
+    const tabsContainer = document.getElementById("rowDetailTabsContainer");
+    const tabPane = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-pane`);
+
+    // Check if tab button already exists
+    let tabBtn = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-btn`);
+
+    if (!tabBtn) {
+      // Create and add the tab button
+      const tabNames = {
+        'hours-search': '🕐 Hours',
+        'cost-search': '💰 Cost',
+        'visit-duration': '⏱️ Visit Length',
+        'parking': '🅿️ Parking',
+        'drive-time': '🚗 Drive Time',
+        'nearby': '📍 Nearby',
+        'best-time': '🌅 Best Time'
+      };
+
+      const newTabBtn = document.createElement('button');
+      newTabBtn.className = 'row-detail-tab-btn';
+      newTabBtn.dataset.tab = tabId;
+      newTabBtn.textContent = tabNames[tabId] || 'Search';
+      newTabBtn.addEventListener('click', () => {
+        switchToTab(tabId);
+      });
+
+      tabsContainer.appendChild(newTabBtn);
+      tabBtn = newTabBtn;
+    }
+
+    // Show the tab pane
+    if (tabPane) {
+      tabPane.style.display = '';
+    }
+
+    // Switch to the tab
+    switchToTab(tabId);
+  }
+
+  /**
+   * Switch to a specific tab
+   * @param {string} tabId - The tab ID to switch to
+   */
+  function switchToTab(tabId) {
+    const tabBtns = document.querySelectorAll(".row-detail-tab-btn");
+    const tabPanes = document.querySelectorAll(".row-detail-tab-pane");
+
+    tabBtns.forEach(b => b.classList.remove("active"));
+    tabPanes.forEach(p => p.classList.remove("active"));
+
+    const targetBtn = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-btn`);
+    const targetPane = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-pane`);
+
+    if (targetBtn) targetBtn.classList.add("active");
+    if (targetPane) targetPane.classList.add("active");
+  }
+
+  /**
+   * Perform a search based on the search type
+   * @param {string} searchType - Type of search to perform
+   * @param {object} rowData - Row data containing adventure information
+   */
+  async function performSearch(searchType, rowData) {
+    // Map search type to tab ID
+    const tabIdMap = {
+      'hours': 'hours-search',
+      'cost': 'cost-search',
+      'visit-duration': 'visit-duration',
+      'parking': 'parking',
+      'drive-time': 'drive-time',
+      'nearby': 'nearby',
+      'best-time': 'best-time'
+    };
+
+    const tabId = tabIdMap[searchType] || searchType;
+    const resultsBox = document.getElementById(`${tabId}-results`);
+
+    if (!resultsBox) {
+      console.error(`Results box not found for ${searchType} (looking for ${tabId}-results)`);
+      return;
+    }
+
+    resultsBox.className = "search-results-box loading";
+    resultsBox.innerHTML = "🔍 Searching...\n\nPlease wait while we search for information...";
+
+    try {
+      let searchInfo = "";
+      const website = rowData.website || "";
+      const name = rowData.name || "this location";
+
+      searchInfo += `🔍 SEARCH RESULTS\n`;
+      searchInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      searchInfo += `📍 Location: ${name}\n`;
+      if (website) {
+        searchInfo += `🌐 Website: ${makeClickable(website)}\n`;
+      }
+      searchInfo += `\n`;
+
+      // Build search queries based on type
+      let queries = [];
+      let additionalInfo = "";
+
+      switch (searchType) {
+        case 'hours':
+          queries = [
+            `"${name}" hours of operation`,
+            `"${name}" hours`,
+            `"${name}" open hours`,
+            `"${name}" opening times`
+          ];
+          if (website) {
+            searchInfo += `🔍 Recommended searches:\n`;
+            searchInfo += `1. Visit the website above\n`;
+            searchInfo += `2. Search Google Maps for "${name}"\n`;
+            searchInfo += `3. Try these Google searches:\n\n`;
+          }
+          break;
+
+        case 'cost':
+          queries = [
+            `"${name}" pricing`,
+            `"${name}" admission cost`,
+            `"${name}" ticket price`,
+            `"${name}" how much does it cost`
+          ];
+          if (website) {
+            searchInfo += `💰 Recommended approaches:\n`;
+            searchInfo += `1. Check the website for pricing\n`;
+            searchInfo += `2. Call for current rates\n`;
+            searchInfo += `3. Try these Google searches:\n\n`;
+          }
+          break;
+
+        case 'visit-duration':
+          queries = [
+            `"${name}" how long does a visit take`,
+            `"${name}" average visit duration`,
+            `"${name}" how much time to spend`,
+            `"${name}" typical visit length`
+          ];
+          searchInfo += `⏱️ Finding visit duration:\n\n`;
+          break;
+
+        case 'parking':
+          queries = [
+            `"${name}" parking`,
+            `"${name}" parking information`,
+            `"${name}" where to park`,
+            `"${name}" parking availability`
+          ];
+          searchInfo += `🅿️ Parking information:\n\n`;
+          break;
+
+        case 'drive-time':
+          queries = [
+            `driving directions from "217 Turtle Ln, Hendersonville, NC" to "${name}"`,
+            `how long to drive from Hendersonville to "${name}"`,
+            `drive time to "${name}" from Hendersonville NC`
+          ];
+          searchInfo += `🚗 Drive time from home:\n\n`;
+          additionalInfo = `\n📍 Google Maps is the best tool for this:\n`;
+          additionalInfo += makeClickable(`https://www.google.com/maps/dir/217+Turtle+Ln,+Hendersonville,+NC/${encodeURIComponent(name)}`);
+          additionalInfo += `\n\n`;
+          break;
+
+        case 'nearby':
+          queries = [
+            `things to do near "${name}"`,
+            `attractions near "${name}"`,
+            `what to do near "${name}"`,
+            `nearby activities "${name}"`
+          ];
+          searchInfo += `📍 What's nearby:\n\n`;
+          break;
+
+        case 'best-time':
+          queries = [
+            `"${name}" best time to visit`,
+            `"${name}" when to visit`,
+            `"${name}" busiest times`,
+            `"${name}" least crowded times`
+          ];
+          searchInfo += `🌅 Best time to visit:\n\n`;
+          break;
+      }
+
+      // Add Google search links
+      queries.forEach((query, index) => {
+        const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        searchInfo += `${index + 1}. ${makeClickable(googleUrl, `Search: "${query}"`)}\n\n`;
+      });
+
+      searchInfo += additionalInfo;
+
+      searchInfo += `\n💡 TIP: Click any blue link above to open in a new tab\n`;
+
+      // Make URLs clickable
+      resultsBox.innerHTML = searchInfo;
+      resultsBox.className = "search-results-box";
+    } catch (error) {
+      resultsBox.innerHTML = `❌ Error: ${error.message}`;
+      resultsBox.className = "search-results-box";
+    }
+  }
+
+  /**
+   * Make URLs clickable in text
+   * @param {string} url - The URL to make clickable
+   * @param {string} text - Optional display text (defaults to URL)
+   * @returns {string} HTML anchor tag
+   */
+  function makeClickable(url, text = null) {
+    const displayText = text || url;
+    return `<a href="${url}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: underline; cursor: pointer;">${displayText}</a>`;
   }
 
   function attachTabListeners() {
@@ -5366,8 +5667,15 @@
   <!-- Footer with action buttons -->
   <div class="row-detail-footer">
     <button class="row-detail-footer-btn" id="rowDetailCloseFooterBtn">Close</button>
-    <button class="row-detail-footer-btn" id="rowDetailSearchPricesBtn" style="background: #f59e0b; border-color: #f59e0b; color: white;">💰 Search Prices</button>
-    <button class="row-detail-footer-btn primary" id="rowDetailEditBtn">✎ Edit</button>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; width: 100%;">
+      <button class="row-detail-footer-btn" id="search-trigger-hours" style="background: #3b82f6; border-color: #3b82f6; color: white; flex: 1; min-width: 140px;">🕐 Hours</button>
+      <button class="row-detail-footer-btn" id="search-trigger-cost" style="background: #f59e0b; border-color: #f59e0b; color: white; flex: 1; min-width: 140px;">💰 Cost</button>
+      <button class="row-detail-footer-btn" id="search-trigger-visit-duration" style="background: #10b981; border-color: #10b981; color: white; flex: 1; min-width: 140px;">⏱️ Visit Length</button>
+      <button class="row-detail-footer-btn" id="search-trigger-parking" style="background: #6366f1; border-color: #6366f1; color: white; flex: 1; min-width: 140px;">🅿️ Parking</button>
+      <button class="row-detail-footer-btn" id="search-trigger-drive-time" style="background: #8b5cf6; border-color: #8b5cf6; color: white; flex: 1; min-width: 140px;">🚗 Drive Time</button>
+      <button class="row-detail-footer-btn" id="search-trigger-nearby" style="background: #ec4899; border-color: #ec4899; color: white; flex: 1; min-width: 140px;">📍 Nearby</button>
+      <button class="row-detail-footer-btn" id="search-trigger-best-time" style="background: #f97316; border-color: #f97316; color: white; flex: 1; min-width: 140px;">🌅 Best Time</button>
+    </div>
   </div>
 </div>
 
