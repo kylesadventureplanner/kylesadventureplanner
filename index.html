@@ -4475,9 +4475,14 @@
      Allows users to right-click on table cells and filter by value
   */
   function initContextMenu() {
-    const contextMenu = document.getElementById("contextMenu");
     const tbody = document.getElementById("adventureTableBody");
-
+    
+    // Add null check - tbody might not be ready during init
+    if (!tbody) {
+      console.warn("Context menu: Table body not found. Right-click filtering disabled.");
+      return;
+    }
+    
     // Right-click handler on table rows
     tbody.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -4498,7 +4503,7 @@
       // Determine which column was clicked
       const cellIndex = Array.from(row.cells).indexOf(cell);
       const fieldInfo = getFieldFromCellIndex(cellIndex);
-
+      
       if (!fieldInfo) return;
 
       // Show context menu at mouse position
