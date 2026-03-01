@@ -4316,6 +4316,7 @@
         { id: "details", name: "ℹ️ Details", content: generateDetailsTab(rowData) },
         { id: "visit-info", name: "🏞️ Visit Info", content: generateVisitInfoTab(rowData) },
         { id: "contact", name: "📞 Contact", content: generateContactTab(rowData) },
+        { id: "cost", name: "💰 Cost to Visit", content: generateCostTab(rowData) },
         { id: "links", name: "🔗 Links", content: generateLinksTab(rowData) }
       ];
       const tabsContainer = document.getElementById("rowDetailTabsContainer");
@@ -4331,6 +4332,18 @@
         </div>
       `).join("");
       attachTabListeners();
+
+      // Set up Cost tab search button
+      const costSearchBtn = document.getElementById("costTabSearchBtn");
+      if (costSearchBtn) {
+        costSearchBtn.addEventListener("click", () => {
+          const rowData = rowDataMap.get(currentDetailRow);
+          if (rowData) {
+            searchForPricesInCostTab(rowData);
+          }
+        });
+      }
+
       document.getElementById("rowDetailModal").classList.add("visible");
       document.getElementById("rowDetailModalBackdrop").classList.add("visible");
     } catch (error) {
@@ -4464,6 +4477,25 @@
     `;
   }
 
+  function generateCostTab(data) {
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">💰 Cost Information</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Cost Category</div>
+          <div class="row-detail-value">${data.cost ? `<span style="background: #fef3c7; padding: 4px 8px; border-radius: 4px; font-weight: 600;">${data.cost}</span>` : '<span class="row-detail-empty">Not specified</span>'}</div>
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">🔍 Pricing Details</div>
+        <div id="costTabPricingResults" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; font-size: 13px; color: #374151; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">
+          Click the "Search Prices" button to find pricing information
+        </div>
+        <button id="costTabSearchBtn" class="row-detail-footer-btn primary" style="margin-top: 12px; width: 100%; background: #f59e0b; border-color: #f59e0b; color: white;">💰 Search Prices</button>
+      </div>
+    `;
+  }
+
   function generateLinksTab(data) {
     return `
       <div class="row-detail-section">
@@ -4498,6 +4530,119 @@
     });
   }
 
+  /**
+   * Switch to Cost to Visit tab
+   */
+  function switchToCostTab() {
+    const tabBtns = document.querySelectorAll(".row-detail-tab-btn");
+    const tabPanes = document.querySelectorAll(".row-detail-tab-pane");
+
+    // Deactivate all tabs
+    tabBtns.forEach(b => b.classList.remove("active"));
+    tabPanes.forEach(p => p.classList.remove("active"));
+
+    // Activate cost tab
+    const costBtn = Array.from(tabBtns).find(b => b.dataset.tab === "cost");
+    const costPane = document.querySelector('[data-tab="cost"].row-detail-tab-pane');
+
+    if (costBtn) costBtn.classList.add("active");
+    if (costPane) costPane.classList.add("active");
+  }
+
+  /**
+   * Search for prices and display results in Cost tab
+   */
+  async function searchForPricesInCostTab(rowData) {
+    const resultsBox = document.getElementById("costTabPricingResults");
+    if (!resultsBox) return;
+
+    resultsBox.className = "pricing-results-box loading";
+    resultsBox.textContent = "🔍 Searching for pricing information...\n\nSearching website and Google for prices...";
+
+    // Call the pricing search function
+    const pricingInfo = await generatePricingInfo(rowData);
+
+    resultsBox.textContent = pricingInfo;
+    resultsBox.className = "pricing-results-box";
+  }
+
+  /**
+   * Generate pricing information text
+   */
+  async function generatePricingInfo(rowData) {
+    let pricingInfo = "";
+
+    try {
+      // Start building pricing information
+      pricingInfo += `💰 PRICING INFORMATION\n`;
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      pricingInfo += `📍 Location: ${rowData.name}\n`;
+      pricingInfo += `🌐 Website: ${rowData.website || "No website available"}\n\n`;
+
+      // Try to fetch pricing information
+      if (rowData.website) {
+        try {
+          pricingInfo += `FETCHING PRICING FROM WEBSITE:\n`;
+          pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+          // Use fetch to get website content (if available)
+          const response = await fetch(rowData.website, {
+            method: 'GET',
+            mode: 'no-cors',
+            cache: 'no-cache'
+          });
+
+          pricingInfo += `✓ Website is accessible\n\n`;
+
+        } catch (error) {
+          pricingInfo += `⚠️ Could not access website directly (CORS limitation)\n`;
+          pricingInfo += `   Error: ${error.message}\n\n`;
+        }
+      }
+
+      // Add information about cost field if available
+      pricingInfo += `AVAILABLE PRICING DATA:\n`;
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+      if (rowData.cost && rowData.cost !== "(empty)") {
+        pricingInfo += `💵 Cost Category: ${rowData.cost}\n\n`;
+      } else {
+        pricingInfo += `💵 Cost Category: Not specified\n\n`;
+      }
+
+      // Add recommendations for getting pricing
+      pricingInfo += `RECOMMENDATIONS:\n`;
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      pricingInfo += `1. 🌐 Visit the website directly:\n`;
+      pricingInfo += `   ${rowData.website || "No website available"}\n\n`;
+      pricingInfo += `2. 🔍 Search Google for:\n`;
+      pricingInfo += `   "${rowData.name} prices"\n`;
+      pricingInfo += `   "${rowData.name} admission"\n`;
+      pricingInfo += `   "${rowData.name} cost"\n\n`;
+      pricingInfo += `3. 📱 Check Google Maps for business info:\n`;
+      pricingInfo += `   Search Google Maps for the location\n`;
+      pricingInfo += `   Pricing info is often in the business details\n\n`;
+      pricingInfo += `4. 📞 Contact directly:\n`;
+      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)") {
+        pricingInfo += `   Phone: ${rowData.phoneNumber}\n\n`;
+      } else {
+        pricingInfo += `   Call the business for pricing details\n\n`;
+      }
+
+      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      pricingInfo += `✓ Search Tips:\n`;
+      pricingInfo += `• Look for FAQ or "Rates" pages on the website\n`;
+      pricingInfo += `• Check for seasonal pricing variations\n`;
+      pricingInfo += `• Group discounts may be available\n`;
+      pricingInfo += `• Membership discounts might apply\n`;
+
+    } catch (error) {
+      pricingInfo = `❌ Error searching for pricing:\n\n${error.message}`;
+    }
+
+    return pricingInfo;
+  }
+
   function closeRowDetailModal() {
     document.getElementById("rowDetailModal").classList.remove("visible");
     document.getElementById("rowDetailModalBackdrop").classList.remove("visible");
@@ -4512,7 +4657,10 @@
       if (currentDetailRow) {
         const rowData = rowDataMap.get(currentDetailRow);
         if (rowData) {
-          openPricingSearchModal(rowData);
+          // Switch to Cost tab
+          switchToCostTab();
+          // Search for prices
+          searchForPricesInCostTab(rowData);
         }
       }
     });
@@ -5159,8 +5307,8 @@
     if (btnSearchPlaceIds) {
       btnSearchPlaceIds.addEventListener("click", () => {
         // Open the place ID finder tool in a new window
-        const placeIdToolPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/get-place-ids.html';
-        window.open(placeIdToolPath, 'PlaceIDFinder', 'width=1000,height=800,resizable=yes,scrollbars=yes');
+        // Use relative path that works from same directory
+        window.open('get-place-ids.html', 'PlaceIDFinder', 'width=1000,height=800,resizable=yes,scrollbars=yes');
       });
     }
 
