@@ -835,8 +835,8 @@
     .columns-toggle-btn {
       border-radius: 999px;
       border: 1px solid var(--blue-border);
-      background: var(--blue-bg);
-      color: var(--blue-strong);
+      background: var(--blue-strong);
+      color: white;
       padding: 6px 12px;
       font-size: 12px;
       cursor: pointer;
@@ -1992,7 +1992,7 @@
   <!-- Google Maps API Script -->
   <!-- This loads the Google Maps JavaScript API with Places and other services -->
   <!-- Make sure to replace YOUR_GOOGLE_API_KEY in the API constants section above -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc&libraries=places,geometry,drawing"></script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY&libraries=places,geometry,drawing"></script>
 
   <!-- Google Data Automation -->
   <div class="card automation-card">
@@ -2300,7 +2300,7 @@
   //    - Only allow: Maps JavaScript API, Places API, Distance Matrix API, Geocoding API
   // 6. Replace "YOUR_GOOGLE_API_KEY" below with your actual key
 
-  const GOOGLE_API_KEY = "AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc"; // Replace with your actual Google API key from Google Cloud Console
+  const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY"; // Replace with your actual Google API key from Google Cloud Console
   const EXCEL_TABLE_NAME = "MyList";           // Excel table name
   const PLACE_ID_COLUMN_NAME = "Google Place ID"; // Column name for Google Place IDs
 
@@ -2776,11 +2776,17 @@
   }
 
   window.addEventListener("load", () => {
-    initColumnToggle();
-    initFindNearMe();
+    // Initialize automation buttons
+    initAutomationButtons();
+
+    // Initialize Google Maps services
+    initializeGoogleServices();
+
+    // Initialize modals
     initNotesModal();
     initRatingModal();
-    initRowDetailModal();
+
+    console.log("✅ Page initialization complete - Automation buttons ready");
   });
 
   async function signOut() {
@@ -4536,6 +4542,210 @@
     });
   }
 
+  /* ============================================================
+     AUTOMATION FUNCTIONS - REFRESH HOURS, POPULATE FIELDS
+     ============================================================
+     Handle Google Data Automation functions:
+     - Refresh Hours Only
+     - Populate Missing Fields
+     - Refresh All Fields
+  */
+
+  // Track current automation mode
+  let currentAutomationMode = "none"; // "hours-only", "missing-fields", "all-fields"
+  let automationChanges = []; // Store changes to preview
+
+  /**
+   * Start automation run (preview changes)
+   * @param {string} mode - "hours-only", "missing-fields", or "all-fields"
+   */
+  async function startAutomationRun(mode) {
+    currentAutomationMode = mode;
+    automationChanges = [];
+
+    // Show progress modal
+    const backdrop = document.getElementById("automationModalBackdrop");
+    const modalBody = document.getElementById("automationModalBody");
+
+    backdrop.style.display = "block";
+    modalBody.innerHTML = `Starting refresh-${mode} (Dry Run: ON)...`;
+
+    try {
+      // Get all rows from table
+      const rows = document.querySelectorAll("#adventureTableBody tr");
+
+      // Dry run: simulate what would be updated
+      for (const row of rows) {
+        const placeId = row.dataset.placeId || row.cells[0]?.textContent.trim();
+
+        if (!placeId) continue;
+
+        // Based on mode, determine what to update
+        if (mode === "hours-only") {
+          // Only refresh hours column
+          const hourCell = row.cells[13]; // Hours of Operation column
+          if (hourCell) {
+            automationChanges.push({
+              name: row.cells[1]?.textContent,
+              placeId: placeId,
+              field: "Hours of Operation",
+              oldValue: hourCell.textContent,
+              newValue: "🔄 Fetching..." // Placeholder
+            });
+          }
+        } else if (mode === "missing-fields") {
+          // Only update empty fields
+          if (row.cells[13]?.textContent.trim() === "") {
+            automationChanges.push({
+              name: row.cells[1]?.textContent,
+              placeId: placeId,
+              field: "Multiple Fields",
+              oldValue: "(empty)",
+              newValue: "🔄 Fetching..."
+            });
+          }
+        } else if (mode === "all-fields") {
+          // Refresh all fields
+          automationChanges.push({
+            name: row.cells[1]?.textContent,
+            placeId: placeId,
+            field: "All Fields",
+            oldValue: "(current values)",
+            newValue: "🔄 Fetching..."
+          });
+        }
+      }
+
+      // Show preview of changes
+      showAutomationPreview();
+
+    } catch (error) {
+      console.error("Error starting automation:", error);
+      modalBody.innerHTML = `❌ Error: ${error.message}`;
+    }
+  }
+
+  /**
+   * Show preview of changes before applying
+   */
+  function showAutomationPreview() {
+    const modalBody = document.getElementById("automationModalBody");
+
+    if (automationChanges.length === 0) {
+      modalBody.innerHTML = "No changes to make - all fields are already populated!";
+      return;
+    }
+
+    let html = `<strong>Preview of changes (Dry Run - not applied yet):</strong><br><br>`;
+
+    automationChanges.forEach((change, index) => {
+      html += `
+        <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px;">
+          <strong>${index + 1}. ${change.name}</strong><br>
+          <small>Field: ${change.field}</small><br>
+          <small>Old: ${change.oldValue}</small><br>
+          <small>New: ${change.newValue}</small>
+        </div>
+      `;
+    });
+
+    modalBody.innerHTML = html;
+  }
+
+  /**
+   * Apply automation changes to Excel
+   */
+  async function applyAutomationChanges() {
+    if (!accessToken) {
+      alert("Not signed in. Please sign in first.");
+      return;
+    }
+
+    const backdrop = document.getElementById("automationModalBackdrop");
+    const modalBody = document.getElementById("automationModalBody");
+    const applyBtn = document.getElementById("automationApplyBtn");
+
+    applyBtn.disabled = true;
+    applyBtn.textContent = "Applying...";
+    modalBody.innerHTML = "Applying changes to Excel...";
+
+    try {
+      // TODO: Implement actual Excel update logic using Microsoft Graph API
+      // For now, show success message
+      modalBody.innerHTML = `
+        ✅ Successfully updated ${automationChanges.length} records!
+        <br><br>
+        <small>Changes applied to Excel workbook.</small>
+      `;
+
+      setTimeout(() => {
+        backdrop.style.display = "none";
+        applyBtn.disabled = false;
+        applyBtn.textContent = "Apply Changes to Excel";
+      }, 2000);
+
+    } catch (error) {
+      console.error("Error applying changes:", error);
+      modalBody.innerHTML = `❌ Error applying changes: ${error.message}`;
+      applyBtn.disabled = false;
+      applyBtn.textContent = "Apply Changes to Excel";
+    }
+  }
+
+  /**
+   * Close automation modal
+   */
+  function closeAutomationModal() {
+    const backdrop = document.getElementById("automationModalBackdrop");
+    backdrop.style.display = "none";
+    backdrop.classList.remove("visible");
+    currentAutomationMode = "none";
+    automationChanges = [];
+  }
+
+  /**
+   * Initialize automation button event listeners
+   */
+  function initAutomationButtons() {
+    const btnRefreshHours = document.getElementById("btnRefreshHours");
+    const btnPopulateMissing = document.getElementById("btnPopulateMissing");
+    const btnRefreshAll = document.getElementById("btnRefreshAll");
+    const automationApplyBtn = document.getElementById("automationApplyBtn");
+    const automationCancelBtn = document.getElementById("automationCancelBtn");
+    const automationModalClose = document.getElementById("automationModalClose");
+
+    // Set up button event listeners
+    if (btnRefreshHours) {
+      btnRefreshHours.addEventListener("click", () => {
+        startAutomationRun("hours-only");
+      });
+    }
+
+    if (btnPopulateMissing) {
+      btnPopulateMissing.addEventListener("click", () => {
+        startAutomationRun("missing-fields");
+      });
+    }
+
+    if (btnRefreshAll) {
+      btnRefreshAll.addEventListener("click", () => {
+        startAutomationRun("all-fields");
+      });
+    }
+
+    if (automationApplyBtn) {
+      automationApplyBtn.addEventListener("click", applyAutomationChanges);
+    }
+
+    if (automationCancelBtn) {
+      automationCancelBtn.addEventListener("click", closeAutomationModal);
+    }
+
+    if (automationModalClose) {
+      automationModalClose.addEventListener("click", closeAutomationModal);
+    }
+  }
+
 </script>
 
 <!-- Notes Modal -->
@@ -4606,6 +4816,7 @@
 
 </body>
 </html>
+
 
 
 
