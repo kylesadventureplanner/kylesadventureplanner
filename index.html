@@ -1990,9 +1990,10 @@
   <datalist id="costList"></datalist>
 
   <!-- Google Maps API Script -->
-  <!-- This loads the Google Maps JavaScript API with Places and other services -->
-  <!-- Make sure to replace YOUR_GOOGLE_API_KEY in the API constants section above -->
-  <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY&libraries=places,geometry,drawing"></script>
+  <!-- ⚠️ IMPORTANT: Replace YOUR_GOOGLE_API_KEY in the URL below with your actual API key! -->
+  <!-- This loads the Google Maps JavaScript API with the NEW Places library -->
+  <!-- Uses: places (NEW API), geometry (distance calculations), drawing (future features) -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY&libraries=places,geometry,drawing&callback=initializeGoogleServices"></script>
 
   <!-- Google Data Automation -->
   <div class="card automation-card">
@@ -2300,7 +2301,31 @@
   //    - Only allow: Maps JavaScript API, Places API, Distance Matrix API, Geocoding API
   // 6. Replace "YOUR_GOOGLE_API_KEY" below with your actual key
 
-  const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY"; // Replace with your actual Google API key from Google Cloud Console
+  /* ============================================================
+     ⚠️ REQUIRED: ADD YOUR GOOGLE MAPS API KEY BELOW
+     ============================================================
+     
+     IMPORTANT: Replace "YOUR_GOOGLE_API_KEY" with your actual API key!
+     
+     HOW TO GET AN API KEY:
+     1. Go to: https://console.cloud.google.com/
+     2. Create a project or select an existing one
+     3. Enable these APIs:
+        - Maps JavaScript API
+        - Places API (New)
+        - Distance Matrix API
+        - Geocoding API
+     4. Go to: Credentials → Create Credentials → API Key
+     5. Copy the API key and paste it below
+     6. Restrict the key (recommended):
+        - Application restrictions: HTTP referrers
+        - API restrictions: Select the 4 APIs listed above
+     
+     EXAMPLE:
+     const GOOGLE_API_KEY = "AIzaSyD_Your_Actual_Key_Goes_Here_1234567890";
+  */
+  
+  const GOOGLE_API_KEY = "YOUR_GOOGLE_API_KEY"; // ⚠️ REPLACE THIS WITH YOUR ACTUAL API KEY!
   const EXCEL_TABLE_NAME = "MyList";           // Excel table name
   const PLACE_ID_COLUMN_NAME = "Google Place ID"; // Column name for Google Place IDs
 
@@ -2308,11 +2333,11 @@
      GOOGLE MAPS & PLACES API UTILITY FUNCTIONS
      ============================================================
      These functions handle all interactions with Google Maps APIs
-     (Places API, Distance Matrix API, Geocoding API)
+     Uses the NEW Google Places API (google.maps.places.Place)
+     instead of the deprecated PlacesService
   */
 
-  // Initialize Google Places service
-  let placesService = null;
+  // Initialize Google services
   let geocoderService = null;
   let map = null;
 
@@ -2323,26 +2348,10 @@
   function initializeGoogleServices() {
     try {
       if (typeof google !== 'undefined' && google.maps) {
-        // Create a hidden map div for services (not displayed)
-        let mapContainer = document.getElementById('hiddenMapContainer');
-        if (!mapContainer) {
-          mapContainer = document.createElement('div');
-          mapContainer.id = 'hiddenMapContainer';
-          mapContainer.style.display = 'none';
-          document.body.appendChild(mapContainer);
-        }
-
-        // Initialize map
-        map = new google.maps.Map(mapContainer, {
-          center: { lat: 0, lng: 0 },
-          zoom: 10
-        });
-
-        // Initialize Places service
-        placesService = new google.maps.places.PlacesService(map);
+        // Initialize Geocoder service
         geocoderService = new google.maps.Geocoder();
 
-        console.log("✅ Google Maps services initialized successfully");
+        console.log("✅ Google Maps services initialized successfully (NEW Places API)");
         return true;
       } else {
         console.warn("⚠️ Google Maps API not yet loaded. Services will be initialized when API is ready.");
@@ -2355,7 +2364,7 @@
   }
 
   /**
-   * Get place details from Google Places API using Place ID
+   * Get place details from NEW Google Places API using Place ID
    * @param {string} placeId - The Google Place ID
    * @returns {Promise} - Promise resolving to place details object
    *
@@ -2364,54 +2373,60 @@
    * console.log(details.name, details.rating, details.formatted_address);
    */
   async function getPlaceDetails(placeId) {
-    return new Promise((resolve, reject) => {
-      if (!placesService) {
-        reject(new Error("Places service not initialized"));
-        return;
+    try {
+      if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+        throw new Error("Google Maps Places API not loaded");
       }
 
-      const request = {
-        placeId: placeId,
+      // Use NEW Place class instead of deprecated PlacesService
+      const { Place } = await google.maps.importLibrary("places");
+
+      const place = new Place({
+        id: placeId,
+        requestedLanguage: 'en'
+      });
+
+      // Fetch place details with specific fields
+      await place.fetchFields({
         fields: [
-          'name',
+          'displayName',
+          'formattedAddress',
+          'internationalPhoneNumber',
+          'websiteURI',
+          'regularOpeningHours',
+          'location',
           'rating',
-          'formatted_address',
-          'formatted_phone_number',
-          'website',
-          'opening_hours',
-          'geometry',
+          'userRatingCount',
           'reviews',
-          'user_ratings_total',
           'photos'
         ]
+      });
+
+      // Return formatted place details
+      return {
+        name: place.displayName || place.name || '',
+        rating: place.rating || null,
+        userRatingsTotal: place.userRatingCount || 0,
+        address: place.formattedAddress || '',
+        phone: place.internationalPhoneNumber || '',
+        website: place.websiteURI || '',
+        hours: place.regularOpeningHours || null,
+        coordinates: place.location ? {
+          lat: place.location.lat(),
+          lng: place.location.lng()
+        } : null,
+        reviews: place.reviews || [],
+        photos: place.photos || []
       };
 
-      placesService.getDetails(request, (place, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK) {
-          resolve({
-            name: place.name,
-            rating: place.rating,
-            userRatingsTotal: place.user_ratings_total,
-            address: place.formatted_address,
-            phone: place.formatted_phone_number,
-            website: place.website,
-            hours: place.opening_hours,
-            coordinates: {
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng()
-            },
-            reviews: place.reviews || [],
-            photos: place.photos || []
-          });
-        } else {
-          reject(new Error(`Places API error: ${status}`));
-        }
-      });
-    });
+    } catch (error) {
+      console.error("Error fetching place details:", error);
+      throw new Error(`Places API error: ${error.message}`);
+    }
   }
 
   /**
-   * Search for places using text search
+   * Search for places using text search (NEW API)
    * @param {string} query - Search query (e.g., "coffee near Charlotte, NC")
    * @returns {Promise} - Promise resolving to array of place results
    *
@@ -2420,35 +2435,44 @@
    * results.forEach(place => console.log(place.name, place.formatted_address));
    */
   async function searchPlaces(query) {
-    return new Promise((resolve, reject) => {
-      if (!placesService) {
-        reject(new Error("Places service not initialized"));
-        return;
+    try {
+      if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+        throw new Error("Google Maps Places API not loaded");
       }
 
+      // Use NEW searchByText method
+      const { Place } = await google.maps.importLibrary("places");
+      
       const request = {
-        query: query,
-        fields: ['place_id', 'name', 'formatted_address', 'geometry', 'rating']
+        textQuery: query,
+        fields: ['displayName', 'formattedAddress', 'location', 'rating', 'id'],
+        language: 'en'
       };
 
-      placesService.textSearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK) {
-          const formattedResults = results.map(place => ({
-            placeId: place.place_id,
-            name: place.name,
-            address: place.formatted_address,
-            coordinates: {
-              lat: place.geometry.location.lat(),
-              lng: place.geometry.location.lng()
-            },
-            rating: place.rating
-          }));
-          resolve(formattedResults);
-        } else {
-          reject(new Error(`Text search error: ${status}`));
-        }
-      });
-    });
+      const { places } = await Place.searchByText(request);
+
+      if (!places || places.length === 0) {
+        return [];
+      }
+
+      // Format results to match expected structure
+      const formattedResults = places.map(place => ({
+        placeId: place.id,
+        name: place.displayName || '',
+        address: place.formattedAddress || '',
+        coordinates: place.location ? {
+          lat: place.location.lat(),
+          lng: place.location.lng()
+        } : null,
+        rating: place.rating || null
+      }));
+
+      return formattedResults;
+
+    } catch (error) {
+      console.error("Error searching places:", error);
+      throw new Error(`Text search error: ${error.message}`);
+    }
   }
 
   /**
