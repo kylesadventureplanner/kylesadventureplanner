@@ -4507,7 +4507,6 @@
     tags: "",
     cost: "",
     groupBy: "",
-    groupBySecondary: "",
     contextFilters: [],
     quickTags: new Set()
   };
@@ -4582,15 +4581,6 @@
         applyFilters();
       });
     }
-
-    // Group By Secondary
-    const groupBySecondary = getElement("groupBySecondary");
-    if (groupBySecondary) {
-      groupBySecondary.addEventListener("change", e => {
-        filterState.groupBySecondary = e.target.value;
-        applyFilters();
-      });
-    }
   }
 
   function initQuickFilters() {
@@ -4625,7 +4615,6 @@
     filterState.tags = "";
     filterState.cost = "";
     filterState.groupBy = "";
-    filterState.groupBySecondary = "";
     filterState.contextFilters = [];
     filterState.quickTags.clear();
 
@@ -4636,14 +4625,13 @@
     document.getElementById("filterTags").value = "";
     document.getElementById("filterCost").value = "";
     document.getElementById("groupBy").value = "";
-    document.getElementById("groupBySecondary").value = "";
 
     document.querySelectorAll(".quick-filter-btn").forEach(btn => {
       btn.classList.remove("active");
     });
 
     updateBreadcrumbMenu();
-    applyFilters();    applyFilters();
+    applyFilters();
   }
 
   function applyFilters() {
@@ -4792,28 +4780,15 @@
   function applyMultiLevelGrouping(visibleRows) {
     const tbody = document.querySelector("#adventureTableBody");
     const primaryKey = filterState.groupBy;
-    const secondaryKey = filterState.groupBySecondary;
 
-    // Group rows by primary key (and secondary key if specified)
+    // Group rows by primary key
     const grouped = {};
     visibleRows.forEach((row) => {
       const primaryValue = getGroupValue(row, primaryKey);
       if (!grouped[primaryValue]) {
-        grouped[primaryValue] = {};
+        grouped[primaryValue] = [];
       }
-
-      if (secondaryKey) {
-        const secondaryValue = getGroupValue(row, secondaryKey);
-        if (!grouped[primaryValue][secondaryValue]) {
-          grouped[primaryValue][secondaryValue] = [];
-        }
-        grouped[primaryValue][secondaryValue].push(row);
-      } else {
-        if (!grouped[primaryValue].items) {
-          grouped[primaryValue].items = [];
-        }
-        grouped[primaryValue].items.push(row);
-      }
+      grouped[primaryValue].push(row);
     });
 
     // Clear tbody and rebuild with group headers
@@ -4827,27 +4802,11 @@
       const primaryHeader = createGroupHeader(primaryKey, primaryValue, true);
       tbody.appendChild(primaryHeader);
 
-      if (secondaryKey) {
-        // Multi-level grouping: show secondary groups
-        const secondaryKeys = Object.keys(grouped[primaryValue]).sort();
-        secondaryKeys.forEach((secondaryValue) => {
-          // Create secondary group header
-          const secondaryHeader = createGroupHeader(secondaryKey, secondaryValue, false);
-          tbody.appendChild(secondaryHeader);
-
-          // Add rows for this secondary group
-          grouped[primaryValue][secondaryValue].forEach((row) => {
-            tbody.appendChild(row);
-            row.style.display = "";
-          });
-        });
-      } else {
-        // Single-level grouping: just add rows
-        grouped[primaryValue].items.forEach((row) => {
-          tbody.appendChild(row);
-          row.style.display = "";
-        });
-      }
+      // Add rows for this group
+      grouped[primaryValue].forEach((row) => {
+        tbody.appendChild(row);
+        row.style.display = "";
+      });
     });
   }
 
