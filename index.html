@@ -3614,6 +3614,7 @@
       initRatingModal();     // Set up Rating feature modal
       initRowDetailModal();  // Set up Row Detail Modal (double-click to view details)
       initPricingSearchModal(); // Set up Pricing Search feature modal
+      initContextMenu();     // Set up Right-Click Context Menu (must be after table loads)
       console.log("Step 5 SUCCESS: All UI features initialized");
 
       console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
@@ -3734,7 +3735,7 @@
     initResetButtons();
     initMoreLessButtons();
     initRowSelection();
-    initContextMenu();
+    // initContextMenu(); // NOTE: Moved to after table loads in signIn()
     updateBreadcrumbMenu();
     initDryRunToggle();
     // Note: initAutomationButtons() is called in window.load event listener
@@ -5143,40 +5144,59 @@
      Allows users to right-click on table cells and filter by value
   */
   function initContextMenu() {
+    console.log("🔧 Initializing context menu...");
     const tbody = document.getElementById("adventureTableBody");
 
     // Add null check - tbody might not be ready during init
     if (!tbody) {
-      console.warn("Context menu: Table body not found. Right-click filtering disabled.");
+      console.warn("⚠️ Context menu: Table body not found. Right-click filtering disabled.");
       return;
     }
+
+    console.log("✅ Context menu: Table body found, attaching event listener...");
 
     // Right-click handler on table rows
     tbody.addEventListener("contextmenu", (e) => {
       e.preventDefault();
+      console.log("🖱️ Right-click detected on table");
 
       const row = e.target.closest("tr");
       if (!row || row.classList.contains("group-header-primary") ||
           row.classList.contains("group-header-secondary")) {
+        console.log("❌ Right-click on group header or invalid row, ignoring");
         return;
       }
 
       // Get the cell that was clicked
       const cell = e.target.closest("td");
-      if (!cell) return;
+      if (!cell) {
+        console.log("❌ No cell found, ignoring");
+        return;
+      }
 
       const cellText = cell.textContent.trim();
-      if (!cellText) return;
+      if (!cellText) {
+        console.log("❌ Empty cell, ignoring");
+        return;
+      }
 
       // Determine which column was clicked
       const cellIndex = Array.from(row.cells).indexOf(cell);
+      console.log(`✅ Cell clicked: index=${cellIndex}, text="${cellText}"`);
+
       const fieldInfo = getFieldFromCellIndex(cellIndex);
 
-      if (!fieldInfo) return;
+      if (!fieldInfo) {
+        console.log(`❌ No field mapping for cell index ${cellIndex}`);
+        return;
+      }
 
+      console.log(`✅ Showing context menu for field: ${fieldInfo.name}`);
       // Show context menu at mouse position
       showContextMenu(e.pageX, e.pageY, cellText, fieldInfo);
     });
+
+    console.log("✅ Context menu event listener attached successfully!");
 
     // Close context menu on click elsewhere
     document.addEventListener("click", () => {
