@@ -970,19 +970,25 @@
     */
     #contextMenu {
       position: fixed;
-      background: white;
-      border: 2px solid #1d4ed8;
-      border-radius: 8px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(29, 78, 216, 0.1);
+      background: white !important;
+      border: 2px solid #1d4ed8 !important;
+      border-radius: 8px !important;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(29, 78, 216, 0.3) !important;
       z-index: 99999 !important;
-      min-width: 250px;
-      display: none;
-      flex-direction: column;
-      overflow: visible;
+      min-width: 250px !important;
+      display: none !important;
+      flex-direction: column !important;
+      overflow: visible !important;
+      pointer-events: auto !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      transition: opacity 0.2s, visibility 0.2s !important;
     }
 
     #contextMenu.visible {
       display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
 
     .context-menu-header {
@@ -5162,6 +5168,7 @@
   function initContextMenu() {
     console.log("🔧 Initializing context menu...");
     const tbody = document.getElementById("adventureTableBody");
+    const contextMenu = document.getElementById("contextMenu");
 
     // Add null check - tbody might not be ready during init
     if (!tbody) {
@@ -5174,6 +5181,7 @@
     // Right-click handler on table rows
     tbody.addEventListener("contextmenu", (e) => {
       e.preventDefault();
+      e.stopPropagation();
       console.log("🖱️ RIGHT-CLICK DETECTED!", {
         target: e.target,
         targetTag: e.target.tagName,
@@ -5227,8 +5235,13 @@
 
     console.log("✅ Context menu event listener attached successfully!");
 
-    // Close context menu on click elsewhere
-    document.addEventListener("click", () => {
+    // Close context menu on click elsewhere (but not on menu itself)
+    document.addEventListener("click", (e) => {
+      // Don't close if clicking on the context menu itself
+      if (contextMenu && contextMenu.contains(e.target)) {
+        e.stopPropagation();
+        return;
+      }
       hideContextMenu();
     });
 
@@ -5283,6 +5296,9 @@
       return;
     }
 
+    // First, hide any existing menu
+    contextMenu.classList.remove("visible");
+    
     // Set header
     header.textContent = `Filter: ${fieldInfo.name}`;
     console.log("Set header to:", header.textContent);
@@ -5306,13 +5322,31 @@
     menuItems.innerHTML = html;
     console.log("Menu items HTML set");
 
+    // Adjust position to keep menu on screen
+    let adjustedX = x;
+    let adjustedY = y;
+    
+    // Add offset so menu appears next to cursor
+    adjustedX = Math.max(10, x + 10);
+    adjustedY = Math.max(10, y + 10);
+    
     // Position menu
-    contextMenu.style.left = x + "px";
-    contextMenu.style.top = y + "px";
-    console.log(`Menu positioned at: ${x}, ${y}`);
+    contextMenu.style.left = adjustedX + "px";
+    contextMenu.style.top = adjustedY + "px";
+    contextMenu.style.position = "fixed";
+    console.log(`📍 Menu positioned at: ${adjustedX}, ${adjustedY}`);
 
+    // Make it visible - force all styles
+    contextMenu.style.display = "flex";
+    contextMenu.style.visibility = "visible";
+    contextMenu.style.opacity = "1";
+    
     contextMenu.classList.add("visible");
-    console.log("✅ CONTEXT MENU VISIBLE! Classes:", contextMenu.className);
+    console.log("✅ CONTEXT MENU NOW VISIBLE!");
+    console.log("Menu element:", contextMenu);
+    console.log("Menu classes:", contextMenu.className);
+    console.log("Menu computed style display:", window.getComputedStyle(contextMenu).display);
+    console.log("Menu computed style visibility:", window.getComputedStyle(contextMenu).visibility);
   }
 
   /**
