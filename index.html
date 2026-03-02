@@ -4903,11 +4903,21 @@
         }
       }
 
-      // Context menu filters (right-click filters)
+      // Context menu filters (right-click filters) with multi-select support
       if (filterState.contextFilters && filterState.contextFilters.length > 0) {
-        for (const contextFilter of filterState.contextFilters) {
+        // Group filters by field key for OR logic within same field
+        const filtersByField = {};
+        filterState.contextFilters.forEach(filter => {
+          if (!filtersByField[filter.key]) {
+            filtersByField[filter.key] = [];
+          }
+          filtersByField[filter.key].push(filter);
+        });
+
+        // Check each field group - ALL fields must match (AND), but within a field any value can match (OR)
+        for (const [fieldKey, filtersForField] of Object.entries(filtersByField)) {
           let rowValue = "";
-          switch (contextFilter.key) {
+          switch (fieldKey) {
             case "name":
               rowValue = row.cells[1]?.textContent.toLowerCase() || "";
               break;
@@ -4931,17 +4941,30 @@
               break;
           }
 
-          const filterValue = contextFilter.value.toLowerCase().trim();
-          // For "Show Only", we need exact or close match
-          // For "Exclude", we need to exclude if contains
-          const matches = rowValue.includes(filterValue);
+          // For this field, check if ANY of the filter values match (OR logic)
+          const includeFilters = filtersForField.filter(f => f.operation === "equals");
+          const excludeFilters = filtersForField.filter(f => f.operation === "not-equals");
 
-          console.log(`Filter check - key:${contextFilter.key}, operation:${contextFilter.operation}, rowValue:"${rowValue}", filterValue:"${filterValue}", matches:${matches}`);
+          // Check include filters (OR - any match is good)
+          if (includeFilters.length > 0) {
+            const matchesAny = includeFilters.some(filter => {
+              const filterValue = filter.value.toLowerCase().trim();
+              return rowValue.includes(filterValue);
+            });
+            if (!matchesAny) {
+              return false; // No match found for include filters
+            }
+          }
 
-          if (contextFilter.operation === "equals" && !matches) {
-            return false;
-          } else if (contextFilter.operation === "not-equals" && matches) {
-            return false;
+          // Check exclude filters (AND - all must NOT match)
+          if (excludeFilters.length > 0) {
+            const matchesAny = excludeFilters.some(filter => {
+              const filterValue = filter.value.toLowerCase().trim();
+              return rowValue.includes(filterValue);
+            });
+            if (matchesAny) {
+              return false; // Found a match that should be excluded
+            }
           }
         }
       }
@@ -4986,6 +5009,10 @@
     if (filterState.groupBy) {
       applyMultiLevelGrouping(filteredRows);
     }
+
+    // CRITICAL: Re-initialize context menu to ensure right-click keeps working after DOM updates
+    // The context menu event listener needs to be reattached when table rows are shown/hidden
+    initContextMenu();
   }
 
   /**
@@ -5473,13 +5500,17 @@
     header.textContent = `Filter: ${fieldInfo.name}`;
     console.log("Set header to:", header.textContent);
 
-    // Create menu items
+    // Create menu items with multi-select option
     let html = `
-      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'equals')">
+      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'equals', false)">
         <span class="context-menu-icon">✓</span>
         <span>Show Only: <strong>${truncate(cellValue, 30)}</strong></span>
       </div>
-      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'not-equals')">
+      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'equals', true)">
+        <span class="context-menu-icon">➕</span>
+        <span>Add to Filter: <strong>${truncate(cellValue, 30)}</strong></span>
+      </div>
+      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'not-equals', false)">
         <span class="context-menu-icon">✗</span>
         <span>Exclude: <strong>${truncate(cellValue, 30)}</strong></span>
       </div>
@@ -5563,26 +5594,45 @@
    * @param {string} value - Filter value
    * @param {string} operation - 'equals' or 'not-equals'
    */
-  function applyContextFilter(fieldKey, value, operation) {
+  /**
+   * Apply context filter from right-click menu
+   * @param {string} fieldKey - Field to filter
+   * @param {string} value - Value to filter by
+   * @param {string} operation - 'equals' or 'not-equals'
+   * @param {boolean} additive - If true, add to existing filters. If false, replace
+   */
+  function applyContextFilter(fieldKey, value, operation, additive = false) {
     // Clean up value - remove city count indicator like "(2)"
     let cleanValue = value.replace(/\s*\(\d+\)\s*$/, "").trim();
 
-    console.log(`🎯 applyContextFilter called: key=${fieldKey}, value="${cleanValue}", operation=${operation}`);
+    console.log(`🎯 applyContextFilter called: key=${fieldKey}, value="${cleanValue}", operation=${operation}, additive=${additive}`);
 
     // Store context filter in filterState
     if (!filterState.contextFilters) {
       filterState.contextFilters = [];
     }
 
-    // Add or update filter
-    const existingFilter = filterState.contextFilters.find(f => f.key === fieldKey);
-    if (existingFilter) {
-      existingFilter.value = cleanValue;
-      existingFilter.operation = operation;
-      console.log(`Updated existing filter:`, existingFilter);
+    if (additive) {
+      // MULTI-SELECT MODE: Add to existing filters
+      // Check if this exact filter already exists
+      const isDuplicate = filterState.contextFilters.some(f =>
+        f.key === fieldKey && f.value === cleanValue && f.operation === operation
+      );
+
+      if (!isDuplicate) {
+        filterState.contextFilters.push({ key: fieldKey, value: cleanValue, operation });
+        console.log(`✅ Added filter to multi-select:`, { key: fieldKey, value: cleanValue, operation });
+      } else {
+        console.log(`⚠️ Filter already exists, skipping duplicate`);
+      }
     } else {
+      // REPLACE MODE: Replace existing filter for this field
+      // Remove all existing filters for this field first
+      filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== fieldKey);
+
+      // Add the new filter
       filterState.contextFilters.push({ key: fieldKey, value: cleanValue, operation });
-      console.log(`Added new filter:`, { key: fieldKey, value: cleanValue, operation });
+      console.log(`✅ Replaced filter:`, { key: fieldKey, value: cleanValue, operation });
     }
 
     console.log("All context filters:", filterState.contextFilters);
@@ -5650,21 +5700,27 @@
 
     container.innerHTML = html;
 
-    // Add event delegation for remove buttons using direct event listener on container
-    container.addEventListener("click", (e) => {
-      const removeBtn = e.target.closest(".filter-breadcrumb-remove");
-      if (removeBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const breadcrumb = removeBtn.closest(".filter-breadcrumb");
-        const filterKey = breadcrumb.getAttribute("data-filter-key");
-        console.log(`🔴 Remove breadcrumb filter: ${filterKey}`);
-        removeBreadcrumbFilter(filterKey);
-      }
-    });
-
     breadcrumbMenu.classList.add("visible");
   }
+
+  // Initialize breadcrumb removal event listener ONCE on container (persists across updates)
+  document.addEventListener("DOMContentLoaded", () => {
+    const breadcrumbContainer = document.getElementById("breadcrumbContainer");
+    if (breadcrumbContainer) {
+      breadcrumbContainer.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".filter-breadcrumb-remove");
+        if (removeBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const breadcrumb = removeBtn.closest(".filter-breadcrumb");
+          const filterKey = breadcrumb.getAttribute("data-filter-key");
+          console.log(`🔴 Remove breadcrumb filter: ${filterKey}`);
+          removeBreadcrumbFilter(filterKey);
+        }
+      });
+      console.log("✅ Breadcrumb removal event listener attached to container");
+    }
+  });
 
   /**
    * Remove filter from breadcrumb menu
