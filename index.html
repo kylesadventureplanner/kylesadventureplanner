@@ -969,13 +969,13 @@
        Shows filtering options on right-click in table cells
     */
     #contextMenu {
-      position: fixed;
+      position: fixed !important;
       background: white !important;
-      border: 2px solid #1d4ed8 !important;
+      border: 3px solid #1d4ed8 !important;
       border-radius: 8px !important;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(29, 78, 216, 0.3) !important;
       z-index: 99999 !important;
-      min-width: 250px !important;
+      min-width: 280px !important;
       display: none !important;
       flex-direction: column !important;
       overflow: visible !important;
@@ -983,12 +983,20 @@
       visibility: hidden !important;
       opacity: 0 !important;
       transition: opacity 0.2s, visibility 0.2s !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      bottom: auto !important;
+      transform: none !important;
     }
 
     #contextMenu.visible {
       display: flex !important;
       visibility: visible !important;
       opacity: 1 !important;
+      pointer-events: auto !important;
     }
 
     .context-menu-header {
@@ -5182,7 +5190,7 @@
       // Check if click is inside the adventure table
       const table = document.getElementById("adventureTable");
       const tbody = document.getElementById("adventureTableBody");
-      
+
       // Ensure click is within table
       if (!table || !table.contains(e.target)) {
         // Not a table click, ignore
@@ -5191,7 +5199,7 @@
 
       e.preventDefault();
       e.stopPropagation();
-      
+
       console.log("🖱️ RIGHT-CLICK DETECTED in table!", {
         target: e.target,
         targetTag: e.target.tagName,
@@ -5292,9 +5300,23 @@
   function showContextMenu(x, y, cellValue, fieldInfo) {
     console.log("🎯 showContextMenu called with:", { x, y, cellValue, fieldInfo });
 
-    const contextMenu = document.getElementById("contextMenu");
-    const menuItems = document.getElementById("contextMenuItems");
-    const header = document.getElementById("contextMenuHeader");
+    let contextMenu = document.getElementById("contextMenu");
+    let menuItems = document.getElementById("contextMenuItems");
+    let header = document.getElementById("contextMenuHeader");
+
+    // If menu doesn't exist, create it
+    if (!contextMenu) {
+      console.warn("⚠️ Context menu not found in DOM, creating...");
+      contextMenu = document.createElement("div");
+      contextMenu.id = "contextMenu";
+      contextMenu.innerHTML = `
+        <div class="context-menu-header" id="contextMenuHeader">Filter Options</div>
+        <div id="contextMenuItems"></div>
+      `;
+      document.body.appendChild(contextMenu);
+      menuItems = document.getElementById("contextMenuItems");
+      header = document.getElementById("contextMenuHeader");
+    }
 
     console.log("DOM elements found:", {
       contextMenu: !!contextMenu,
@@ -5306,9 +5328,6 @@
       console.error("❌ Context menu DOM elements not found!");
       return;
     }
-
-    // First, hide any existing menu
-    contextMenu.classList.remove("visible");
 
     // Set header
     header.textContent = `Filter: ${fieldInfo.name}`;
@@ -5341,23 +5360,33 @@
     adjustedX = Math.max(10, x + 10);
     adjustedY = Math.max(10, y + 10);
 
-    // Position menu
-    contextMenu.style.left = adjustedX + "px";
-    contextMenu.style.top = adjustedY + "px";
-    contextMenu.style.position = "fixed";
-    console.log(`📍 Menu positioned at: ${adjustedX}, ${adjustedY}`);
+    // Ensure menu stays in viewport
+    if (adjustedX + 280 > window.innerWidth) {
+      adjustedX = window.innerWidth - 290;
+    }
+    if (adjustedY + 150 > window.innerHeight) {
+      adjustedY = window.innerHeight - 160;
+    }
 
-    // Make it visible - force all styles
-    contextMenu.style.display = "flex";
-    contextMenu.style.visibility = "visible";
-    contextMenu.style.opacity = "1";
+    // Force position and visibility with !important inline styles
+    contextMenu.style.cssText = `
+      position: fixed !important;
+      left: ${adjustedX}px !important;
+      top: ${adjustedY}px !important;
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 999999 !important;
+      pointer-events: auto !important;
+    `;
 
     contextMenu.classList.add("visible");
+
+    console.log(`📍 Menu positioned at: ${adjustedX}, ${adjustedY}`);
     console.log("✅ CONTEXT MENU NOW VISIBLE!");
     console.log("Menu element:", contextMenu);
     console.log("Menu classes:", contextMenu.className);
-    console.log("Menu computed style display:", window.getComputedStyle(contextMenu).display);
-    console.log("Menu computed style visibility:", window.getComputedStyle(contextMenu).visibility);
+    console.log("Computed style:", window.getComputedStyle(contextMenu).cssText.substring(0, 200));
   }
 
   /**
@@ -5365,8 +5394,28 @@
    */
   function hideContextMenu() {
     const contextMenu = document.getElementById("contextMenu");
-    contextMenu.classList.remove("visible");
+    if (contextMenu) {
+      contextMenu.classList.remove("visible");
+      contextMenu.style.visibility = "hidden";
+      contextMenu.style.opacity = "0";
+      contextMenu.style.pointerEvents = "none";
+    }
   }
+
+  // Hide context menu when clicking anywhere else
+  document.addEventListener("click", (e) => {
+    const contextMenu = document.getElementById("contextMenu");
+    if (contextMenu && !contextMenu.contains(e.target)) {
+      hideContextMenu();
+    }
+  }, true); // Use capture phase
+
+  // Hide context menu on escape key
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      hideContextMenu();
+    }
+  });
 
   /**
    * Apply filter from context menu
