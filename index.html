@@ -2650,10 +2650,6 @@
         <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
       </div>
 
-      <!-- Breadcrumb Filter Menu (Active Filters Display) -->
-      <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
-        <div id="breadcrumbContainer" class="breadcrumb-container"></div>
-      </div>
 
       <!-- ...existing content continues below... -->
   <div id="controlPanelCard" class="card control-panel-card">
@@ -2798,6 +2794,11 @@
         Dry Run ON: changes are previewed but not written to Excel. Turn off to apply updates.
       </div>
     </div>
+  </div>
+
+  <!-- Breadcrumb Filter Menu (Active Filters Display) - Positioned above table -->
+  <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
   </div>
 
   <!-- Adventure List -->
@@ -5649,16 +5650,17 @@
 
     container.innerHTML = html;
 
-    // Add event delegation for remove buttons
-    const removeButtons = container.querySelectorAll(".filter-breadcrumb-remove");
-    removeButtons.forEach(btn => {
-      btn.addEventListener("click", (e) => {
+    // Add event delegation for remove buttons using direct event listener on container
+    container.addEventListener("click", (e) => {
+      const removeBtn = e.target.closest(".filter-breadcrumb-remove");
+      if (removeBtn) {
+        e.preventDefault();
         e.stopPropagation();
-        const breadcrumb = btn.closest(".filter-breadcrumb");
+        const breadcrumb = removeBtn.closest(".filter-breadcrumb");
         const filterKey = breadcrumb.getAttribute("data-filter-key");
         console.log(`🔴 Remove breadcrumb filter: ${filterKey}`);
         removeBreadcrumbFilter(filterKey);
-      });
+      }
     });
 
     breadcrumbMenu.classList.add("visible");
