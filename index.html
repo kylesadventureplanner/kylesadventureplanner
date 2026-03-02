@@ -2482,11 +2482,6 @@
         <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
       </div>
 
-      <!-- Breadcrumb Filter Menu - Shows active filters as removable breadcrumbs -->
-      <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
-        <span class="breadcrumb-filter-label">Active Filters:</span>
-        <div id="breadcrumbContainer" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-      </div>
 
       <!-- ...existing content continues below... -->
   <div id="controlPanelCard" class="card control-panel-card">
@@ -5100,6 +5095,49 @@
   }
 
   /* ============================================================
+     UTILITY HELPER FUNCTIONS
+     ============================================================
+     General utility functions used throughout the app
+  */
+
+  /**
+   * Escape HTML special characters to prevent XSS
+   * @param {string} str - String to escape
+   * @returns {string} - Escaped string
+   */
+  function escapeForHTML(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Truncate string to specified length
+   * @param {string} str - String to truncate
+   * @param {number} maxLength - Maximum length
+   * @returns {string} - Truncated string
+   */
+  function truncate(str, maxLength) {
+    if (!str) return '';
+    str = String(str);
+    if (str.length <= maxLength) return str;
+    return str.substring(0, maxLength) + '...';
+  }
+
+  /**
+   * Safe element getter with null check
+   * @param {string} id - Element ID
+   * @returns {HTMLElement|null} - Element or null
+   */
+  function getElement(id) {
+    return document.getElementById(id);
+  }
+
+  /* ============================================================
      RIGHT-CLICK CONTEXT MENU FOR FILTERING
      ============================================================
      Allows users to right-click on table cells and filter by value
@@ -5347,22 +5385,6 @@
     applyFilters();
   }
 
-  /**
-   * Helper: Escape string for HTML
-   */
-  function escapeForHTML(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  /**
-   * Helper: Truncate string
-   */
-  function truncate(str, length) {
-    if (str.length <= length) return str;
-    return str.substring(0, length) + "...";
-  }
 
   /***********************
    * DRY RUN TOGGLE      *
