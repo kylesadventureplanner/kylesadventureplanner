@@ -4795,8 +4795,12 @@
               break;
           }
 
-          const filterValue = contextFilter.value.toLowerCase();
+          const filterValue = contextFilter.value.toLowerCase().trim();
+          // For "Show Only", we need exact or close match
+          // For "Exclude", we need to exclude if contains
           const matches = rowValue.includes(filterValue);
+
+          console.log(`Filter check - key:${contextFilter.key}, operation:${contextFilter.operation}, rowValue:"${rowValue}", filterValue:"${filterValue}", matches:${matches}`);
 
           if (contextFilter.operation === "equals" && !matches) {
             return false;
@@ -5424,6 +5428,11 @@
    * @param {string} operation - 'equals' or 'not-equals'
    */
   function applyContextFilter(fieldKey, value, operation) {
+    // Clean up value - remove city count indicator like "(2)"
+    let cleanValue = value.replace(/\s*\(\d+\)\s*$/, "").trim();
+
+    console.log(`🎯 applyContextFilter called: key=${fieldKey}, value="${cleanValue}", operation=${operation}`);
+
     // Store context filter in filterState
     if (!filterState.contextFilters) {
       filterState.contextFilters = [];
@@ -5432,12 +5441,15 @@
     // Add or update filter
     const existingFilter = filterState.contextFilters.find(f => f.key === fieldKey);
     if (existingFilter) {
-      existingFilter.value = value;
+      existingFilter.value = cleanValue;
       existingFilter.operation = operation;
+      console.log(`Updated existing filter:`, existingFilter);
     } else {
-      filterState.contextFilters.push({ key: fieldKey, value, operation });
+      filterState.contextFilters.push({ key: fieldKey, value: cleanValue, operation });
+      console.log(`Added new filter:`, { key: fieldKey, value: cleanValue, operation });
     }
 
+    console.log("All context filters:", filterState.contextFilters);
     hideContextMenu();
     updateBreadcrumbMenu();
     applyFilters();
@@ -5492,15 +5504,28 @@
     let html = "";
     activeFilters.forEach((filter, index) => {
       html += `
-        <div class="filter-breadcrumb">
+        <div class="filter-breadcrumb" data-filter-key="${filter.key}">
           <span class="filter-breadcrumb-type">${filter.type}:</span>
           <span class="filter-breadcrumb-value">${truncate(filter.value, 20)}</span>
-          <span class="filter-breadcrumb-remove" onclick="removeBreadcrumbFilter('${filter.key}')">✕</span>
+          <span class="filter-breadcrumb-remove">✕</span>
         </div>
       `;
     });
 
     container.innerHTML = html;
+
+    // Add event delegation for remove buttons
+    const removeButtons = container.querySelectorAll(".filter-breadcrumb-remove");
+    removeButtons.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const breadcrumb = btn.closest(".filter-breadcrumb");
+        const filterKey = breadcrumb.getAttribute("data-filter-key");
+        console.log(`🔴 Remove breadcrumb filter: ${filterKey}`);
+        removeBreadcrumbFilter(filterKey);
+      });
+    });
+
     breadcrumbMenu.classList.add("visible");
   }
 
@@ -5509,39 +5534,58 @@
    * @param {string} fieldKey - Field to remove
    */
   function removeBreadcrumbFilter(fieldKey) {
+    console.log(`🔴 removeBreadcrumbFilter called with fieldKey: ${fieldKey}`);
+
     // Remove from respective filter state
     switch (fieldKey) {
       case "name":
         filterState.name = "";
-        document.getElementById("searchName").value = "";
+        const searchNameInput = document.getElementById("searchName");
+        if (searchNameInput) searchNameInput.value = "";
+        console.log("✓ Cleared name filter");
         break;
       case "difficulty":
         filterState.difficulty = "";
-        document.getElementById("filterDifficulty").value = "";
+        const difficultySelect = document.getElementById("filterDifficulty");
+        if (difficultySelect) difficultySelect.value = "";
+        console.log("✓ Cleared difficulty filter");
         break;
       case "state":
         filterState.state = "";
-        document.getElementById("filterState").value = "";
+        const stateInput = document.getElementById("filterState");
+        if (stateInput) stateInput.value = "";
+        console.log("✓ Cleared state filter");
         break;
       case "city":
         filterState.city = "";
-        document.getElementById("filterCity").value = "";
+        const cityInput = document.getElementById("filterCity");
+        if (cityInput) cityInput.value = "";
+        console.log("✓ Cleared city filter");
         break;
       case "tags":
         filterState.tags = "";
-        document.getElementById("filterTags").value = "";
+        const tagsInput = document.getElementById("filterTags");
+        if (tagsInput) tagsInput.value = "";
+        console.log("✓ Cleared tags filter");
         break;
       case "cost":
         filterState.cost = "";
-        document.getElementById("filterCost").value = "";
+        const costInput = document.getElementById("filterCost");
+        if (costInput) costInput.value = "";
+        console.log("✓ Cleared cost filter");
         break;
       default:
-        // Context filter
+        // Context filter from right-click menu
+        console.log("Context filter removal - checking contextFilters:", filterState.contextFilters);
         if (filterState.contextFilters) {
+          const beforeLength = filterState.contextFilters.length;
           filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== fieldKey);
+          const afterLength = filterState.contextFilters.length;
+          console.log(`✓ Removed context filter - before: ${beforeLength}, after: ${afterLength}`);
         }
     }
 
+    console.log("Updated filterState:", filterState);
     updateBreadcrumbMenu();
     applyFilters();
   }
