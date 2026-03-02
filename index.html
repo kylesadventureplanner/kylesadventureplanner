@@ -1699,7 +1699,145 @@
     }
 
     /* ============================================================
-       ERROR/WARNING NOTIFICATION BAR
+       BREADCRUMB FILTER MENU
+       ============================================================
+       Shows active filters with option to remove them individually.
+    */
+    #breadcrumbFilterMenu {
+      display: none;
+      padding: 12px 16px;
+      background: #e0f2fe;
+      border: 1px solid #60a5fa;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 100;
+    }
+
+    #breadcrumbFilterMenu.visible {
+      display: block;
+    }
+
+    #breadcrumbContainer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-breadcrumb {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: white;
+      border: 1px solid #60a5fa;
+      border-radius: 999px;
+      font-size: 13px;
+      color: #1d4ed8;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-breadcrumb-type {
+      font-weight: 600;
+      color: #1d4ed8;
+    }
+
+    .filter-breadcrumb-value {
+      color: #1f2937;
+    }
+
+    .filter-breadcrumb-remove {
+      cursor: pointer;
+      color: #dc2626;
+      font-weight: bold;
+      font-size: 16px;
+      line-height: 1;
+      transition: all 0.2s;
+      padding: 0 2px;
+      user-select: none;
+    }
+
+    .filter-breadcrumb-remove:hover {
+      color: #991b1b;
+      transform: scale(1.2);
+    }
+
+    .filter-breadcrumb-remove:active {
+      transform: scale(0.95);
+    }
+
+    /* ============================================================
+       CONTEXT MENU (Right-Click Filter Menu)
+       ============================================================
+       Shows filter options when user right-clicks on a table cell.
+    */
+    #contextMenu {
+      position: fixed;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      z-index: 999999;
+      min-width: 280px;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, visibility 0.2s;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #contextMenu.visible {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .context-menu-header {
+      padding: 12px 16px;
+      background: #f3f4f6;
+      border-bottom: 1px solid #e5e7eb;
+      font-weight: 600;
+      font-size: 13px;
+      color: #1f2937;
+      border-radius: 8px 8px 0 0;
+    }
+
+    #contextMenuItems {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .context-menu-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #1f2937;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .context-menu-item:last-child {
+      border-bottom: none;
+      border-radius: 0 0 8px 8px;
+    }
+
+    .context-menu-item:hover {
+      background: #f9fafb;
+    }
+
+    .context-menu-icon {
+      font-weight: bold;
+      font-size: 14px;
+      color: #1d4ed8;
+      min-width: 14px;
+    }
+
+    /* ============================================================
        ============================================================
        Collapsible bar at the top showing console errors and warnings.
        Click to expand/collapse and see detailed error messages.
@@ -2512,6 +2650,10 @@
         <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
       </div>
 
+      <!-- Breadcrumb Filter Menu (Active Filters Display) -->
+      <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
+        <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+      </div>
 
       <!-- ...existing content continues below... -->
   <div id="controlPanelCard" class="card control-panel-card">
@@ -2602,13 +2744,6 @@
     </div>
   </div>
 
-  <!-- Breadcrumb Filter Menu - Shows active filters -->
-  <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
-    <div class="breadcrumb-title">Active Filters:</div>
-    <div id="breadcrumbContainer" class="breadcrumb-container">
-      <!-- Filter breadcrumbs will be inserted here -->
-    </div>
-  </div>
 
   <!-- Autofill Datalists -->
   <datalist id="nameList"></datalist>
@@ -7276,6 +7411,7 @@
 
 <!-- Modal backdrop for row detail modal -->
 <div id="rowDetailModalBackdrop" class="modal-backdrop" style="z-index: 1001;"></div>
+
 
 <!-- Context Menu (Right-Click) -->
 <div id="contextMenu">
