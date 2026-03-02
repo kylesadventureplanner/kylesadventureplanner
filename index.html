@@ -5158,9 +5158,16 @@
     // Right-click handler on table rows
     tbody.addEventListener("contextmenu", (e) => {
       e.preventDefault();
-      console.log("🖱️ Right-click detected on table");
+      console.log("🖱️ RIGHT-CLICK DETECTED!", {
+        target: e.target,
+        targetTag: e.target.tagName,
+        pageX: e.pageX,
+        pageY: e.pageY
+      });
 
       const row = e.target.closest("tr");
+      console.log("Found row:", row);
+
       if (!row || row.classList.contains("group-header-primary") ||
           row.classList.contains("group-header-secondary")) {
         console.log("❌ Right-click on group header or invalid row, ignoring");
@@ -5169,12 +5176,16 @@
 
       // Get the cell that was clicked
       const cell = e.target.closest("td");
+      console.log("Found cell:", cell);
+
       if (!cell) {
         console.log("❌ No cell found, ignoring");
         return;
       }
 
       const cellText = cell.textContent.trim();
+      console.log("Cell text:", cellText);
+
       if (!cellText) {
         console.log("❌ Empty cell, ignoring");
         return;
@@ -5182,16 +5193,18 @@
 
       // Determine which column was clicked
       const cellIndex = Array.from(row.cells).indexOf(cell);
-      console.log(`✅ Cell clicked: index=${cellIndex}, text="${cellText}"`);
+      console.log(`📍 Cell clicked: index=${cellIndex}, text="${cellText}"`);
 
       const fieldInfo = getFieldFromCellIndex(cellIndex);
+      console.log("Field info:", fieldInfo);
 
       if (!fieldInfo) {
         console.log(`❌ No field mapping for cell index ${cellIndex}`);
+        console.log("Available indexes in fieldMap: 1, 3, 4, 5, 6, 13, 14");
         return;
       }
 
-      console.log(`✅ Showing context menu for field: ${fieldInfo.name}`);
+      console.log(`✅ SHOWING CONTEXT MENU for field: ${fieldInfo.name}`);
       // Show context menu at mouse position
       showContextMenu(e.pageX, e.pageY, cellText, fieldInfo);
     });
@@ -5237,12 +5250,26 @@
    * @param {object} fieldInfo - Field information
    */
   function showContextMenu(x, y, cellValue, fieldInfo) {
+    console.log("🎯 showContextMenu called with:", { x, y, cellValue, fieldInfo });
+
     const contextMenu = document.getElementById("contextMenu");
     const menuItems = document.getElementById("contextMenuItems");
     const header = document.getElementById("contextMenuHeader");
 
+    console.log("DOM elements found:", {
+      contextMenu: !!contextMenu,
+      menuItems: !!menuItems,
+      header: !!header
+    });
+
+    if (!contextMenu || !menuItems || !header) {
+      console.error("❌ Context menu DOM elements not found!");
+      return;
+    }
+
     // Set header
     header.textContent = `Filter: ${fieldInfo.name}`;
+    console.log("Set header to:", header.textContent);
 
     // Create menu items
     let html = `
@@ -5261,11 +5288,15 @@
     `;
 
     menuItems.innerHTML = html;
+    console.log("Menu items HTML set");
 
     // Position menu
     contextMenu.style.left = x + "px";
     contextMenu.style.top = y + "px";
+    console.log(`Menu positioned at: ${x}, ${y}`);
+
     contextMenu.classList.add("visible");
+    console.log("✅ CONTEXT MENU VISIBLE! Classes:", contextMenu.className);
   }
 
   /**
