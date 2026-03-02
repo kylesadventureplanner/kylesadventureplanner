@@ -5167,28 +5167,39 @@
   */
   function initContextMenu() {
     console.log("🔧 Initializing context menu...");
-    const tbody = document.getElementById("adventureTableBody");
     const contextMenu = document.getElementById("contextMenu");
 
-    // Add null check - tbody might not be ready during init
-    if (!tbody) {
-      console.warn("⚠️ Context menu: Table body not found. Right-click filtering disabled.");
+    if (!contextMenu) {
+      console.error("❌ Context menu: contextMenu element not found!");
       return;
     }
 
-    console.log("✅ Context menu: Table body found, attaching event listener...");
+    console.log("✅ Context menu: Element found, attaching global event listener...");
 
-    // Right-click handler on table rows
-    tbody.addEventListener("contextmenu", (e) => {
+    // Use document-level listener with event delegation for better capture
+    // This ensures we catch right-clicks even if table isn't fully loaded
+    document.addEventListener("contextmenu", (e) => {
+      // Check if click is inside the adventure table
+      const table = document.getElementById("adventureTable");
+      const tbody = document.getElementById("adventureTableBody");
+      
+      // Ensure click is within table
+      if (!table || !table.contains(e.target)) {
+        // Not a table click, ignore
+        return;
+      }
+
       e.preventDefault();
       e.stopPropagation();
-      console.log("🖱️ RIGHT-CLICK DETECTED!", {
+      
+      console.log("🖱️ RIGHT-CLICK DETECTED in table!", {
         target: e.target,
         targetTag: e.target.tagName,
         pageX: e.pageX,
         pageY: e.pageY
       });
 
+      // Get the row this click is in
       const row = e.target.closest("tr");
       console.log("Found row:", row);
 
@@ -5231,7 +5242,7 @@
       console.log(`✅ SHOWING CONTEXT MENU for field: ${fieldInfo.name}`);
       // Show context menu at mouse position
       showContextMenu(e.pageX, e.pageY, cellText, fieldInfo);
-    });
+    }, true); // Use capture phase for better event detection
 
     console.log("✅ Context menu event listener attached successfully!");
 
@@ -5298,7 +5309,7 @@
 
     // First, hide any existing menu
     contextMenu.classList.remove("visible");
-    
+
     // Set header
     header.textContent = `Filter: ${fieldInfo.name}`;
     console.log("Set header to:", header.textContent);
@@ -5325,11 +5336,11 @@
     // Adjust position to keep menu on screen
     let adjustedX = x;
     let adjustedY = y;
-    
+
     // Add offset so menu appears next to cursor
     adjustedX = Math.max(10, x + 10);
     adjustedY = Math.max(10, y + 10);
-    
+
     // Position menu
     contextMenu.style.left = adjustedX + "px";
     contextMenu.style.top = adjustedY + "px";
@@ -5340,7 +5351,7 @@
     contextMenu.style.display = "flex";
     contextMenu.style.visibility = "visible";
     contextMenu.style.opacity = "1";
-    
+
     contextMenu.classList.add("visible");
     console.log("✅ CONTEXT MENU NOW VISIBLE!");
     console.log("Menu element:", contextMenu);
