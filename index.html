@@ -5085,7 +5085,8 @@
     quickTags: new Set()
   };
 
-  function initFilters() {
+  // ...existing code...
+    function initFilters() {
     // Safe element getter with logging
     const getElement = (id) => {
       const el = document.getElementById(id);
@@ -5124,7 +5125,7 @@
     const filterCity = getElement("filterCity");
     if (filterCity) {
       filterCity.addEventListener("input", e => {
-        filterState.city = e.target.value.trim().toLowerCase();
+        filterState.city = normalizeCityValue(e.target.value);
         applyFilters();
       });
     }
@@ -5164,7 +5165,8 @@
         applyFilters();
       });
     }
-  }
+    }
+  // ...existing code...
 
   function initQuickFilters() {
     const quickButtons = document.querySelectorAll(".quick-filter-btn");
@@ -5222,7 +5224,7 @@
     applyFilters();
   }
 
-  function applyFilters() {
+    function applyFilters() {
     const tbody = document.querySelector("#adventureTableBody");
     const rows = Array.from(tbody.querySelectorAll("tr"));
 
@@ -5231,7 +5233,7 @@
       const name = row.cells[1]?.textContent.toLowerCase() || "";
       const difficulty = (row.dataset.difficulty || "").toLowerCase();
       const state = (row.dataset.state || "").toLowerCase();
-      const city = (row.dataset.city || "").toLowerCase();
+      const city = normalizeCityValue(row.dataset.city || "");
       const tags = (row.dataset.tags || "").toLowerCase();
       const cost = (row.dataset.cost || "").toLowerCase();
 
@@ -5324,7 +5326,8 @@
           // Check include filters (OR - any match is good)
           if (includeFilters.length > 0) {
             const matchesAny = includeFilters.some(filter => {
-              const filterValue = filter.value.toLowerCase().trim();
+              const rawFilterValue = filter.value.toLowerCase().trim();
+              const filterValue = fieldKey === "city" ? normalizeCityValue(rawFilterValue) : rawFilterValue;
               return rowValue.includes(filterValue);
             });
             if (!matchesAny) {
@@ -5335,7 +5338,8 @@
           // Check exclude filters (AND - all must NOT match)
           if (excludeFilters.length > 0) {
             const matchesAny = excludeFilters.some(filter => {
-              const filterValue = filter.value.toLowerCase().trim();
+              const rawFilterValue = filter.value.toLowerCase().trim();
+              const filterValue = fieldKey === "city" ? normalizeCityValue(rawFilterValue) : rawFilterValue;
               return rowValue.includes(filterValue);
             });
             if (matchesAny) {
@@ -5464,15 +5468,12 @@
    * @param {string} groupKey - Field to group by (State, City, Cost, Tag, Difficulty)
    * @returns {string} - The grouping value
    */
-  function getGroupValue(row, groupKey) {
+    function getGroupValue(row, groupKey) {
     switch (groupKey) {
       case "State":
         return (row.dataset.state || "").toUpperCase() || "UNKNOWN";
       case "City":
-        // Extract city name from cells[6], removing count display
-        const cityText = (row.cells[6]?.textContent || "").trim();
-        const cityName = cityText.replace(/\s*\(\d+\)/, ""); // Remove count like "(2)"
-        return cityName || "UNKNOWN";
+        return normalizeCityValue(row.cells[6]?.textContent || "") || "UNKNOWN";
       case "Cost":
         return (row.dataset.cost || "") || "FREE";
       case "Tag":
@@ -5484,7 +5485,15 @@
       default:
         return "OTHER";
     }
-  }
+    }
+
+    function normalizeCityValue(value) {
+    return (value || "")
+      .toString()
+      .replace(/\s*\(\d+\)\s*$/, "")
+      .trim()
+      .toLowerCase();
+    }
 
   /**
    * Create a group header row for visual grouping
@@ -5564,7 +5573,7 @@
     headerRow.title = isHidden ? "Click to collapse" : "Click to expand";
   }
 
-  function updateFilterSuggestions(visibleRows) {
+    function updateFilterSuggestions(visibleRows) {
     // Extract unique values from visible rows for autofill
     const names = new Set();
     const states = new Set();
@@ -5575,9 +5584,7 @@
     visibleRows.forEach((row) => {
       const name = (row.cells[1]?.textContent || "").trim();
       const state = (row.dataset.state || "").trim();
-      // FIX: City is at cells[6], NOT cells[10]
-      // Cell indices: 1=Name, 2=Website, 3=Tags, 4=Drive Time, 5=State, 6=City, 7=Distance, 8=Address, 9=Directions, 10=Activity Duration
-      const city = (row.cells[6]?.textContent || "").trim();
+      const city = normalizeCityValue(row.cells[6]?.textContent || "");
       const rowTags = (row.dataset.tags || "").split(",").map(t => t.trim());
       const cost = (row.dataset.cost || "").trim();
 
@@ -5599,10 +5606,10 @@
 
     nameDatalist.innerHTML = Array.from(names).map(n => `<option value="${n}">`).join("");
     stateDatalist.innerHTML = Array.from(states).map(s => `<option value="${s}">`).join("");
-    cityDatalist.innerHTML = Array.from(cities).map(c => `<option value="${c}">`).join("");
+    cityDatalist.innerHTML = Array.from(cities).sort((a, b) => a.localeCompare(b)).map(c => `<option value="${c}">`).join("");
     tagsDatalist.innerHTML = Array.from(tags).map(t => `<option value="${t}">`).join("");
     costDatalist.innerHTML = Array.from(costs).map(c => `<option value="${c}">`).join("");
-  }
+    }
 
   function createDatalist(id) {
     const datalist = document.createElement("datalist");
@@ -5840,8 +5847,9 @@
    * @param {string} cellValue - Value of the cell
    * @param {object} fieldInfo - Field information
    */
-  function showContextMenu(x, y, cellValue, fieldInfo) {
-    console.log("🎯 showContextMenu called with:", { x, y, cellValue, fieldInfo });
+    function showContextMenu(x, y, cellValue, fieldInfo) {
+    const normalizedCellValue = fieldInfo?.key === "city" ? normalizeCityValue(cellValue) : cellValue;
+    console.log("🎯 showContextMenu called with:", { x, y, cellValue: normalizedCellValue, fieldInfo });
 
     let contextMenu = document.getElementById("contextMenu");
     let menuItems = document.getElementById("contextMenuItems");
@@ -5878,17 +5886,17 @@
 
     // Create menu items with multi-select option
     let html = `
-      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'equals', false)">
+      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'equals', false)">
         <span class="context-menu-icon">✓</span>
-        <span>Show Only: <strong>${truncate(cellValue, 30)}</strong></span>
+        <span>Show Only: <strong>${truncate(normalizedCellValue, 30)}</strong></span>
       </div>
-      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'equals', true)">
+      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'equals', true)">
         <span class="context-menu-icon">➕</span>
-        <span>Add to Filter: <strong>${truncate(cellValue, 30)}</strong></span>
+        <span>Add to Filter: <strong>${truncate(normalizedCellValue, 30)}</strong></span>
       </div>
-      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(cellValue)}', 'not-equals', false)">
+      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'not-equals', false)">
         <span class="context-menu-icon">✗</span>
-        <span>Exclude: <strong>${truncate(cellValue, 30)}</strong></span>
+        <span>Exclude: <strong>${truncate(normalizedCellValue, 30)}</strong></span>
       </div>
       <div class="context-menu-item" onclick="clearContextFilter('${fieldInfo.key}')">
         <span class="context-menu-icon">🔄</span>
@@ -5934,7 +5942,7 @@
     console.log("Menu element:", contextMenu);
     console.log("Menu classes:", contextMenu.className);
     console.log("Computed style:", window.getComputedStyle(contextMenu).cssText.substring(0, 200));
-  }
+    }
 
   /**
    * Hide context menu
