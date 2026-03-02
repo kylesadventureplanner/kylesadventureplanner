@@ -2803,6 +2803,144 @@
       color: #d1d5db;
     }
 
+    /* Context Menu */
+    #contextMenu {
+      position: fixed;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+      z-index: 10000;
+      display: none;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      min-width: 280px;
+      overflow: hidden;
+    }
+
+    #contextMenu.visible {
+      display: flex;
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+      flex-direction: column;
+    }
+
+    .context-menu-header {
+      background: #f3f4f6;
+      padding: 12px;
+      font-weight: 600;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 13px;
+    }
+
+    #contextMenuItems {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .context-menu-item {
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      border-bottom: 1px solid #f3f4f6;
+      transition: background 0.2s;
+    }
+
+    .context-menu-item:last-child {
+      border-bottom: none;
+    }
+
+    .context-menu-item:hover {
+      background: #f9fafb;
+    }
+
+    .context-menu-icon {
+      font-weight: 600;
+      min-width: 20px;
+    }
+
+    /* Breadcrumb Filter Menu */
+    #breadcrumbFilterMenu {
+      display: none;
+      background: var(--mint-bg);
+      border: 1px solid var(--mint-border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #breadcrumbFilterMenu.visible {
+      display: flex;
+    }
+
+    #breadcrumbFilterMenu.filters-active {
+      background: var(--mint-bg);
+      border-color: var(--mint-border);
+    }
+
+    #breadcrumbContainer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .filter-breadcrumb {
+      background: white;
+      border: 1px solid var(--mint-border);
+      padding: 6px 10px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    .filter-breadcrumb-type {
+      font-weight: 600;
+      color: var(--mint-strong);
+    }
+
+    .filter-breadcrumb-value {
+      color: #111827;
+    }
+
+    .filter-breadcrumb-remove {
+      cursor: pointer;
+      color: #6b7280;
+      font-weight: bold;
+      margin-left: 4px;
+      transition: color 0.2s;
+    }
+
+    .filter-breadcrumb-remove:hover {
+      color: var(--danger-red);
+    }
+
+    .breadcrumb-reset-btn {
+      border-radius: 999px;
+      border: 1px solid var(--mint-border);
+      background: white;
+      color: var(--mint-strong);
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .breadcrumb-reset-btn:hover {
+      background: var(--mint-bg);
+    }
+
   </style>
   <!--suppress HtmlUnknownTarget -->
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
@@ -4014,10 +4152,6 @@
       console.log("Step 5: Initializing UI features");
       initColumnToggle();    // Set up Show More Columns button
       initFindNearMe();      // Set up Find Places Near Me button
-      initNotesModal();      // Set up Notes feature modal
-      initRatingModal();     // Set up Rating feature modal
-      initRowDetailModal();  // Set up Row Detail Modal (double-click to view details)
-      initPricingSearchModal(); // Set up Pricing Search feature modal
       initContextMenu();     // Set up Right-Click Context Menu (must be after table loads)
       console.log("Step 5 SUCCESS: All UI features initialized");
 
@@ -4053,18 +4187,10 @@
   }
 
   window.addEventListener("load", () => {
-    // Initialize automation buttons
-    initAutomationButtons();
-
     // Initialize Google Maps services
     initializeGoogleServices();
 
-    // Initialize modals
-    initNotesModal();
-    initRatingModal();
-    initPricingSearchModal();
-
-    console.log("✅ Page initialization complete - Automation buttons ready");
+    console.log("✅ Page initialization complete");
   });
 
   async function signOut() {
@@ -6351,45 +6477,18 @@
     });
   }
 
-  /**
-   * Initialize More/Less text expansion buttons
-   */
-  function initMoreLessButtons() {
-    document.querySelectorAll(".more-less-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const wrapper = btn.closest(".text-cell-wrapper");
-        if (!wrapper) return;
 
-        const type = btn.getAttribute("data-type");
-        if (type === "description") {
-          const preview = wrapper.querySelector(".description-preview");
-          const full = wrapper.querySelector(".description-full");
-          if (full.style.display === "block") {
-            full.style.display = "none";
-            preview.style.display = "-webkit-box";
-            btn.textContent = "More";
-          } else {
-            full.style.display = "block";
-            preview.style.display = "none";
-            btn.textContent = "Less";
-          }
-        } else if (type === "hours") {
-          const preview = wrapper.querySelector(".hours-preview");
-          const full = wrapper.querySelector(".hours-full");
-          if (full.style.display === "block") {
-            full.style.display = "none";
-            preview.style.display = "-webkit-box";
-            btn.textContent = "More";
-          } else {
-            full.style.display = "block";
-            preview.style.display = "none";
-            btn.textContent = "Less";
-          }
-        }
-      });
-    });
-  }
+<!-- Context Menu (Right-Click) -->
+<div id="contextMenu">
+  <div class="context-menu-header" id="contextMenuHeader">Filter Options</div>
+  <div id="contextMenuItems"></div>
+</div>
+
+<!-- Breadcrumb Filter Menu (Active Filters Display) -->
+<div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
+  <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+  <button id="breadcrumbResetBtn" class="breadcrumb-reset-btn">🔄 Clear Filters</button>
+</div>
 
 </script>
 </body>
