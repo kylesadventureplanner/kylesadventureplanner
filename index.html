@@ -999,6 +999,57 @@
       pointer-events: auto !important;
     }
 
+    /* Tag Context Menu for individual tag selection */
+    .tag-context-menu {
+      position: fixed;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      min-width: 180px;
+      max-width: 300px;
+      padding: 4px 0;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+
+    .tag-context-menu.visible {
+      display: flex;
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .tag-context-menu-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #111827;
+      transition: background 0.15s;
+      border-left: 3px solid transparent;
+    }
+
+    .tag-context-menu-item:hover {
+      background: #f3f4f6;
+      border-left-color: var(--blue-border);
+    }
+
+    .tag-context-menu-item.divider {
+      height: 1px;
+      background: #e5e7eb;
+      cursor: default;
+      padding: 0;
+      margin: 4px 0;
+    }
+
+    .tag-context-menu-item.divider:hover {
+      background: #e5e7eb;
+      border-left: none;
+    }
+
     .context-menu-header {
       padding: 12px 16px;
       background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
@@ -1685,6 +1736,162 @@
       background: #f3f4f6;
     }
 
+    /* ============================================================
+       BREADCRUMB FILTER MENU
+       ============================================================
+       Displays active filters as removable pills/breadcrumbs.
+       Positioned above the main table for easy access.
+    */
+    .breadcrumb-filter-menu {
+      display: none;
+      padding: 12px 16px;
+      background: white;
+      border: 2px solid var(--gray-border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .breadcrumb-filter-menu.visible {
+      display: flex;
+    }
+
+    .breadcrumb-filter-menu.filters-active {
+      background: var(--mint-bg);
+      border-color: var(--mint-border);
+    }
+
+    .breadcrumb-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .filter-breadcrumb {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: white;
+      border: 1px solid var(--mint-border);
+      border-radius: 999px;
+      font-size: 12px;
+      color: #111827;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-breadcrumb:hover {
+      background: #f0fdf4;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-breadcrumb-type {
+      font-weight: 600;
+      color: var(--mint-strong);
+    }
+
+    .filter-breadcrumb-value {
+      color: #111827;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .filter-breadcrumb-remove {
+      cursor: pointer;
+      color: var(--danger-red);
+      font-weight: bold;
+      font-size: 14px;
+      margin-left: 4px;
+      transition: all 0.2s;
+    }
+
+    .filter-breadcrumb-remove:hover {
+      transform: scale(1.3);
+      color: #b91c1c;
+    }
+
+    .breadcrumb-reset-btn {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--mint-border);
+      background: white;
+      color: var(--mint-strong);
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .breadcrumb-reset-btn:hover {
+      background: var(--mint-bg);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Context menu for tags */
+    .tag-context-menu {
+      position: fixed;
+      background: white;
+      border: 1px solid var(--gray-border);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 2000;
+      min-width: 180px;
+      max-width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      display: none;
+      flex-direction: column;
+    }
+
+    .tag-context-menu.visible {
+      display: flex;
+    }
+
+    .tag-menu-header {
+      padding: 8px 12px;
+      background: var(--blue-bg);
+      border-bottom: 1px solid var(--gray-border);
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--blue-strong);
+      sticky: top 0;
+    }
+
+    .tag-menu-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #111827;
+      border-bottom: 1px solid #f3f4f6;
+      transition: background 0.15s;
+    }
+
+    .tag-menu-item:last-child {
+      border-bottom: none;
+    }
+
+    .tag-menu-item:hover {
+      background: #f3f4f6;
+    }
+
+    .tag-menu-item.separator {
+      height: 1px;
+      background: var(--gray-border);
+      padding: 0;
+      margin: 4px 0;
+      cursor: default;
+    }
+
+    .tag-menu-item.separator:hover {
+      background: var(--gray-border);
+    }
+
     /* Mobile responsiveness */
     @media (max-width: 600px) {
       .app-header {
@@ -1712,10 +1919,20 @@
       margin-bottom: 12px;
       position: relative;
       z-index: 100;
+      transition: background 0.3s, border-color 0.3s;
     }
 
     #breadcrumbFilterMenu.visible {
-      display: block;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Mint green highlight when filters active */
+    #breadcrumbFilterMenu.visible.filters-active {
+      background: var(--mint-bg);
+      border-color: var(--mint-border);
     }
 
     #breadcrumbContainer {
@@ -1723,6 +1940,29 @@
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
+      flex: 1;
+    }
+
+    .breadcrumb-reset-btn {
+      border-radius: 999px;
+      border: 1px solid var(--mint-border);
+      background: white;
+      color: var(--mint-strong);
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .breadcrumb-reset-btn:hover {
+      background: var(--mint-bg);
+      border-color: var(--mint-strong);
+    }
+
+    .breadcrumb-reset-btn:active {
+      transform: scale(0.95);
     }
 
     .filter-breadcrumb {
@@ -2497,9 +2737,6 @@
       transition: all 0.2s ease;
       white-space: nowrap;
       position: relative;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
     .app-tab-btn:hover {
@@ -2799,6 +3036,7 @@
   <!-- Breadcrumb Filter Menu (Active Filters Display) - Positioned above table -->
   <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
     <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+    <button id="breadcrumbResetBtn" class="breadcrumb-reset-btn">🔄 Clear Filters</button>
   </div>
 
   <!-- Adventure List -->
@@ -4495,9 +4733,21 @@
         tagTd.innerHTML = tagList
           .map(
             (t) =>
-              `<span class="tag-pill tag-${t.toLowerCase().replace(/\s+/g, "-")}">${t}</span>`,
+              `<span class="tag-pill tag-${t.toLowerCase().replace(/\s+/g, "-")}" data-tag="${t}" data-all-tags="${tags}">${t}</span>`,
           )
           .join(" ");
+
+        // Add right-click handlers to individual tags for multi-tag cells
+        if (tagList.length > 1) {
+          const tagSpans = tagTd.querySelectorAll(".tag-pill");
+          tagSpans.forEach(tagSpan => {
+            tagSpan.addEventListener("contextmenu", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              showTagContextMenu(e, tagList);
+            });
+          });
+        }
       }
       tr.appendChild(tagTd);
 
@@ -5423,7 +5673,7 @@
 
     // Close context menu on click elsewhere (but not on menu itself)
     document.addEventListener("click", (e) => {
-      // Don't close if clicking on the context menu itself
+      const contextMenu = document.getElementById("contextMenu");
       if (contextMenu && contextMenu.contains(e.target)) {
         e.stopPropagation();
         return;
@@ -5581,1901 +5831,563 @@
     }
   }, true); // Use capture phase
 
-  // Hide context menu on escape key
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      hideContextMenu();
-    }
-  });
-
   /**
-   * Apply filter from context menu
-   * @param {string} fieldKey - Filter field key
-   * @param {string} value - Filter value
-   * @param {string} operation - 'equals' or 'not-equals'
+   * Show context menu for individual tag selection (multi-tag cells)
+   * @param {Event} e - Right-click event
+   * @param {Array} tagList - Array of tags in the cell
    */
+  function showTagContextMenu(e, tagList) {
+    console.log("🏷️  showTagContextMenu called with tags:", tagList);
+
+    const menu = document.getElementById("tagContextMenu");
+    const itemsContainer = document.getElementById("tagContextMenuItems");
+
+    if (!menu || !itemsContainer) {
+      console.error("Tag context menu elements not found");
+      return;
+    }
+
+    // Build menu items - one for each tag
+    let html = "";
+    tagList.forEach(tag => {
+      html += `
+        <div class="tag-context-menu-item" data-tag="${tag}">
+          📍 Show Only: ${tag}
+        </div>
+        <div class="tag-context-menu-item" data-tag="${tag}" data-action="add">
+          ➕ Add to Filter: ${tag}
+        </div>
+      `;
+    });
+
+    // Add divider and exclude option
+    html += `<div class="tag-context-menu-item divider"></div>`;
+    tagList.forEach(tag => {
+      html += `
+        <div class="tag-context-menu-item danger" data-tag="${tag}" data-action="exclude">
+          ✗ Exclude: ${tag}
+        </div>
+      `;
+    });
+
+    itemsContainer.innerHTML = html;
+
+    // Position menu
+    menu.style.left = e.pageX + "px";
+    menu.style.top = e.pageY + "px";
+    menu.classList.add("visible");
+
+    // Add event listeners to menu items
+    const menuItems = itemsContainer.querySelectorAll(".tag-context-menu-item:not(.divider)");
+    menuItems.forEach(item => {
+      item.addEventListener("click", (clickEvent) => {
+        const tag = item.getAttribute("data-tag");
+        const action = item.getAttribute("data-action") || "replace";
+
+        console.log(`Tag menu clicked: tag=${tag}, action=${action}`);
+
+        // Map the action to the appropriate operation
+        let operation = "equals";
+        if (action === "add") {
+          operation = "add-equals";
+        } else if (action === "exclude") {
+          operation = "not-equals";
+        }
+
+        // Apply the tag filter
+        applyContextFilter("tags", tag, operation);
+        menu.classList.remove("visible");
+      });
+    });
+
+    // Close menu when clicking outside
+    const closeMenu = (clickEvent) => {
+      if (!menu.contains(clickEvent.target)) {
+        menu.classList.remove("visible");
+        document.removeEventListener("click", closeMenu);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener("click", closeMenu);
+    }, 0);
+  }
+
+  // ...existing code...
+
   /**
    * Apply context filter from right-click menu
-   * @param {string} fieldKey - Field to filter
-   * @param {string} value - Value to filter by
-   * @param {string} operation - 'equals' or 'not-equals'
-   * @param {boolean} additive - If true, add to existing filters. If false, replace
+   * @param {string} key - Filter field key (tags, city, state, etc)
+   * @param {string} value - Filter value
+   * @param {string} operation - 'equals' for Show Only, 'add-equals' for Add, 'not-equals' for Exclude
+   * @param {boolean} isAdd - true to add to existing filters, false to replace
    */
-  function applyContextFilter(fieldKey, value, operation, additive = false) {
-    // Clean up value - remove city count indicator like "(2)"
-    let cleanValue = value.replace(/\s*\(\d+\)\s*$/, "").trim();
+  function applyContextFilter(key, value, operation = 'equals', isAdd = false) {
+    console.log(`Applying context filter: key=${key}, value=${value}, operation=${operation}, isAdd=${isAdd}`);
 
-    console.log(`🎯 applyContextFilter called: key=${fieldKey}, value="${cleanValue}", operation=${operation}, additive=${additive}`);
-
-    // Store context filter in filterState
-    if (!filterState.contextFilters) {
-      filterState.contextFilters = [];
+    if (!isAdd) {
+      // Show Only - replace all filters for this key
+      filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== key);
     }
 
-    if (additive) {
-      // MULTI-SELECT MODE: Add to existing filters
-      // Check if this exact filter already exists
-      const isDuplicate = filterState.contextFilters.some(f =>
-        f.key === fieldKey && f.value === cleanValue && f.operation === operation
-      );
-
-      if (!isDuplicate) {
-        filterState.contextFilters.push({ key: fieldKey, value: cleanValue, operation });
-        console.log(`✅ Added filter to multi-select:`, { key: fieldKey, value: cleanValue, operation });
-      } else {
-        console.log(`⚠️ Filter already exists, skipping duplicate`);
-      }
-    } else {
-      // REPLACE MODE: Replace existing filter for this field
-      // Remove all existing filters for this field first
-      filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== fieldKey);
-
-      // Add the new filter
-      filterState.contextFilters.push({ key: fieldKey, value: cleanValue, operation });
-      console.log(`✅ Replaced filter:`, { key: fieldKey, value: cleanValue, operation });
+    // Determine actual operation
+    let actualOperation = 'equals';
+    if (operation === 'add-equals') {
+      actualOperation = 'equals';
+    } else if (operation === 'not-equals') {
+      actualOperation = 'not-equals';
     }
 
-    console.log("All context filters:", filterState.contextFilters);
-    hideContextMenu();
+    // Check if this filter already exists
+    const existingFilter = filterState.contextFilters.find(f => f.key === key && f.value === value && f.operation === actualOperation);
+    if (!existingFilter) {
+      // Add new filter
+      filterState.contextFilters.push({
+        key: key,
+        value: value,
+        operation: actualOperation
+      });
+    }
+
+    console.log('Updated context filters:', filterState.contextFilters);
+
+    // Update breadcrumb menu
     updateBreadcrumbMenu();
+
+    // Re-apply all filters
     applyFilters();
+
+    // Re-initialize context menu (important!)
+    initContextMenu();
   }
 
   /**
-   * Clear context filter
-   * @param {string} fieldKey - Field to clear
+   * Clear context filter for a specific key
+   * @param {string} key - Filter field key to clear
    */
-  function clearContextFilter(fieldKey) {
-    if (!filterState.contextFilters) return;
-    filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== fieldKey);
-    hideContextMenu();
+  function clearContextFilter(key) {
+    console.log(`Clearing context filter for key: ${key}`);
+    filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== key);
     updateBreadcrumbMenu();
     applyFilters();
+    initContextMenu();
   }
 
   /**
-   * Update breadcrumb filter menu
+   * Remove a specific context filter by index
+   * @param {number} index - Index of filter to remove in breadcrumb display
+   */
+  function removeContextFilterByIndex(index) {
+    console.log(`Removing context filter at index: ${index}`);
+    if (index >= 0 && index < filterState.contextFilters.length) {
+      filterState.contextFilters.splice(index, 1);
+      updateBreadcrumbMenu();
+      applyFilters();
+      initContextMenu();
+    }
+  }
+
+  /**
+   * Update the breadcrumb filter menu display
    */
   function updateBreadcrumbMenu() {
-    const breadcrumbMenu = document.getElementById("breadcrumbFilterMenu");
+    const menu = document.getElementById("breadcrumbFilterMenu");
     const container = document.getElementById("breadcrumbContainer");
+    const resetBtn = document.getElementById("breadcrumbResetBtn");
 
-    // Collect all active filters
-    const activeFilters = [];
+    if (!menu || !container) return;
 
-    if (filterState.name) activeFilters.push({ type: "Name", value: filterState.name, key: "name" });
-    if (filterState.difficulty) activeFilters.push({ type: "Difficulty", value: filterState.difficulty, key: "difficulty" });
-    if (filterState.state) activeFilters.push({ type: "State", value: filterState.state, key: "state" });
-    if (filterState.city) activeFilters.push({ type: "City", value: filterState.city, key: "city" });
-    if (filterState.tags) activeFilters.push({ type: "Tags", value: filterState.tags, key: "tags" });
-    if (filterState.cost) activeFilters.push({ type: "Cost", value: filterState.cost, key: "cost" });
+    // Clear existing breadcrumbs
+    container.innerHTML = "";
 
     if (filterState.contextFilters && filterState.contextFilters.length > 0) {
-      filterState.contextFilters.forEach(filter => {
-        const fieldNames = { name: "Name", tags: "Tags", driveTime: "Drive Time", state: "State", city: "City", hours: "Hours", cost: "Cost" };
-        activeFilters.push({
-          type: fieldNames[filter.key] || filter.key,
-          value: `${filter.operation === "not-equals" ? "NOT " : ""}${filter.value}`,
-          key: filter.key
-        });
-      });
-    }
+      // Show menu and breadcrumbs
+      menu.classList.add("visible");
+      menu.classList.add("filters-active");
 
-    if (activeFilters.length === 0) {
-      breadcrumbMenu.classList.remove("visible");
-      return;
-    }
+      filterState.contextFilters.forEach((filter, index) => {
+        const breadcrumb = document.createElement("div");
+        breadcrumb.className = "filter-breadcrumb";
+        breadcrumb.setAttribute("data-context-index", index);
 
-    // Generate breadcrumb HTML
-    let html = "";
-    activeFilters.forEach((filter, index) => {
-      html += `
-        <div class="filter-breadcrumb" data-filter-key="${filter.key}">
-          <span class="filter-breadcrumb-type">${filter.type}:</span>
-          <span class="filter-breadcrumb-value">${truncate(filter.value, 20)}</span>
-          <span class="filter-breadcrumb-remove">✕</span>
-        </div>
-      `;
-    });
+        // Friendly names for filter keys
+        const friendlyKeyNames = {
+          "name": "Name",
+          "tags": "Tags",
+          "driveTime": "Drive Time",
+          "state": "State",
+          "city": "City",
+          "hours": "Hours",
+          "cost": "Cost"
+        };
 
-    container.innerHTML = html;
+        const keyDisplay = friendlyKeyNames[filter.key] || filter.key;
+        const displayValue = truncate(filter.value, 20);
+        const iconMeaning = filter.operation === 'not-equals' ? '✗' : '✓';
 
-    breadcrumbMenu.classList.add("visible");
-  }
+        breadcrumb.innerHTML = `
+          <span class="filter-breadcrumb-type">${iconMeaning} ${keyDisplay}:</span>
+          <span class="filter-breadcrumb-value">${displayValue}</span>
+          <span class="filter-breadcrumb-remove" data-index="${index}">✕</span>
+        `;
 
-  // Initialize breadcrumb removal event listener ONCE on container (persists across updates)
-  document.addEventListener("DOMContentLoaded", () => {
-    const breadcrumbContainer = document.getElementById("breadcrumbContainer");
-    if (breadcrumbContainer) {
-      breadcrumbContainer.addEventListener("click", (e) => {
-        const removeBtn = e.target.closest(".filter-breadcrumb-remove");
-        if (removeBtn) {
+        // Add remove click handler
+        const removeBtn = breadcrumb.querySelector(".filter-breadcrumb-remove");
+        removeBtn.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
-          const breadcrumb = removeBtn.closest(".filter-breadcrumb");
-          const filterKey = breadcrumb.getAttribute("data-filter-key");
-          console.log(`🔴 Remove breadcrumb filter: ${filterKey}`);
-          removeBreadcrumbFilter(filterKey);
-        }
+          removeContextFilterByIndex(index);
+        });
+
+        container.appendChild(breadcrumb);
       });
-      console.log("✅ Breadcrumb removal event listener attached to container");
-    }
-  });
 
-  /**
-   * Remove filter from breadcrumb menu
-   * @param {string} fieldKey - Field to remove
-   */
-  function removeBreadcrumbFilter(fieldKey) {
-    console.log(`🔴 removeBreadcrumbFilter called with fieldKey: ${fieldKey}`);
-
-    // Remove from respective filter state
-    switch (fieldKey) {
-      case "name":
-        filterState.name = "";
-        const searchNameInput = document.getElementById("searchName");
-        if (searchNameInput) searchNameInput.value = "";
-        console.log("✓ Cleared name filter");
-        break;
-      case "difficulty":
-        filterState.difficulty = "";
-        const difficultySelect = document.getElementById("filterDifficulty");
-        if (difficultySelect) difficultySelect.value = "";
-        console.log("✓ Cleared difficulty filter");
-        break;
-      case "state":
-        filterState.state = "";
-        const stateInput = document.getElementById("filterState");
-        if (stateInput) stateInput.value = "";
-        console.log("✓ Cleared state filter");
-        break;
-      case "city":
-        filterState.city = "";
-        const cityInput = document.getElementById("filterCity");
-        if (cityInput) cityInput.value = "";
-        console.log("✓ Cleared city filter");
-        break;
-      case "tags":
-        filterState.tags = "";
-        const tagsInput = document.getElementById("filterTags");
-        if (tagsInput) tagsInput.value = "";
-        console.log("✓ Cleared tags filter");
-        break;
-      case "cost":
-        filterState.cost = "";
-        const costInput = document.getElementById("filterCost");
-        if (costInput) costInput.value = "";
-        console.log("✓ Cleared cost filter");
-        break;
-      default:
-        // Context filter from right-click menu
-        console.log("Context filter removal - checking contextFilters:", filterState.contextFilters);
-        if (filterState.contextFilters) {
-          const beforeLength = filterState.contextFilters.length;
-          filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== fieldKey);
-          const afterLength = filterState.contextFilters.length;
-          console.log(`✓ Removed context filter - before: ${beforeLength}, after: ${afterLength}`);
-        }
-    }
-
-    console.log("Updated filterState:", filterState);
-    updateBreadcrumbMenu();
-    applyFilters();
-  }
-
-
-  /***********************
-   * DRY RUN TOGGLE      *
-   ***********************/
-  function initDryRunToggle() {
-    const toggle = document.getElementById("dryRunToggle");
-    toggle.addEventListener("click", () => {
-      toggle.classList.toggle("on");
-      // You can read this state when running automation:
-      // const dryRun = toggle.classList.contains("on");
-    });
-  }
-
-  /***********************
-   * AUTOMATION BUTTONS  *
-   ***********************/
-  // NOTE: Automation functions are implemented below in the "AUTOMATION FUNCTIONS" section
-  // This section is left empty to avoid duplicate declarations
-
-  /***********************
-   * NOTES FEATURE       *
-   ***********************/
-  let currentNotesRow = null;
-
-  function openNotesModal(adventureName, rowElement) {
-    const backdrop = document.getElementById("notesModalBackdrop");
-    const modal = document.getElementById("notesModal");
-    const titleEl = document.getElementById("notesModalTitle");
-    const textarea = document.getElementById("notesTextarea");
-    const notesPreview = document.getElementById("notesPreview");
-    const currentNotes = rowElement.dataset.notes || "";
-
-    currentNotesRow = rowElement;
-
-    // Update title based on whether notes exist
-    if (currentNotes) {
-      titleEl.textContent = `📝 Edit Notes for: ${adventureName}`;
-      // Show existing notes as preview
-      if (notesPreview) {
-        notesPreview.innerHTML = `
-          <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-            <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 6px;">Current Notes:</div>
-            <div style="font-size: 13px; color: #111827; max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;">
-              ${currentNotes}
-            </div>
-          </div>
-        `;
-      }
+      // Show reset button
+      if (resetBtn) resetBtn.style.display = "block";
     } else {
-      titleEl.textContent = `📝 Add Notes for: ${adventureName}`;
-      if (notesPreview) {
-        notesPreview.innerHTML = "";
-      }
-    }
-
-    textarea.value = currentNotes;
-
-    backdrop.classList.add("visible");
-    modal.classList.add("visible");
-    textarea.focus();
-  }
-
-  function closeNotesModal() {
-    const backdrop = document.getElementById("notesModalBackdrop");
-    const modal = document.getElementById("notesModal");
-
-    backdrop.classList.remove("visible");
-    modal.classList.remove("visible");
-    currentNotesRow = null;
-  }
-
-  /* ============================================================
-     SAVE NOTES TO EXCEL - USER NOTES FEATURE
-     ============================================================
-     When user clicks "Save Notes" in the modal, this function:
-     1. Gets the note text from the textarea
-     2. Updates the row's data in memory
-     3. Sends update to Excel via Microsoft Graph API
-     4. Shows success/error message
-     5. Closes the modal
-
-     WHY EXCEL:
-     - Persists notes permanently
-     - Notes are saved with the adventure record
-     - User can see notes again next time app loads
-
-     HOW IT UPDATES EXCEL:
-     - Uses PATCH request (update, not replace)
-     - Updates only the Notes column (21st column)
-     - All other columns stay unchanged
-  */
-  async function saveNotesToExcel() {
-    // Validation: Make sure we have a row selected and valid authentication
-    if (!currentNotesRow || !accessToken) {
-      alert("No row selected or not signed in");
-      return;
-    }
-
-    // Get the note text the user typed
-    const textarea = document.getElementById("notesTextarea");
-    const newNotes = textarea.value;
-    const saveBtn = document.getElementById("notesSaveBtn");
-
-    try {
-      // Disable button during save to prevent duplicate saves
-      saveBtn.disabled = true;
-      saveBtn.textContent = "Saving..."; // Show progress to user
-
-      // Get the Excel row index (needed to identify which row to update)
-      const rowIndex = currentNotesRow.dataset.rowId;
-
-      // Update the row's data attribute in memory (for instant UI update)
-      currentNotesRow.dataset.notes = newNotes;
-
-      // Build URL for Microsoft Graph API PATCH request
-      // Note: Use itemAt(index=X) syntax to update a specific row by its position in the table
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
-
-      /* Build update payload for Excel
-         IMPORTANT: We send 23 columns to match the Excel table structure
-         Column 0-19: null (unchanged)
-         Column 20: newNotes (Notes column - the one we're updating)
-         Column 21-22: null (My Rating and extra column - unchanged)
-
-         This updates ONLY the Notes column (index 20)
-         All other columns stay as they were (nulls don't overwrite)
-      */
-      const updateData = {
-        values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, newNotes, null, null]]
-      };
-
-      // Send PATCH request to Microsoft Graph API
-      const response = await fetch(url, {
-        method: "PATCH",                     // PATCH = partial update
-        headers: {
-          "Authorization": `Bearer ${accessToken}`, // Include auth token
-          "Content-Type": "application/json"        // JSON format
-        },
-        body: JSON.stringify(updateData)    // Convert data to JSON string
-      });
-
-      // Check if request was successful
-      if (!response.ok) {
-        // noinspection ExceptionCaughtLocallyJS - Error is intentionally thrown to be caught by try-catch below
-        throw new Error(`Excel API error: ${response.status}`);
-      }
-
-      // Success! Show confirmation and close modal
-      alert("Notes saved successfully!");
-      closeNotesModal();
-
-    } catch (error) {
-      console.error("Error saving notes:", error);
-      alert("Failed to save notes. Check console for details.");
-    } finally {
-      // Reset button regardless of success/failure
-      saveBtn.disabled = false;
-      saveBtn.textContent = "Save Notes";
+      // Hide menu if no filters
+      menu.classList.remove("visible");
+      menu.classList.remove("filters-active");
+      if (resetBtn) resetBtn.style.display = "none";
     }
   }
 
-  /* ============================================================
-     INITIALIZE NOTES MODAL - EVENT LISTENERS
-     ============================================================
-     Set up all event listeners for the notes modal dialog.
-     This runs once when the page loads.
-  */
-  function initNotesModal() {
-    // Get references to modal elements
-    const backdrop = document.getElementById("notesModalBackdrop"); // Semi-transparent overlay
-    // const modal = document.getElementById("notesModal");            // The modal dialog box (unused - modal controlled via backdrop)
-    const closeBtn = document.getElementById("notesModalCloseBtn"); // X button in top right
-    const cancelBtn = document.getElementById("notesCancelBtn");    // Cancel button at bottom
-    const saveBtn = document.getElementById("notesSaveBtn");        // Save button at bottom
-
-    // Close button (X) in modal header
-    if (closeBtn) closeBtn.addEventListener("click", closeNotesModal);
-
-    // Cancel button in modal footer
-    if (cancelBtn) cancelBtn.addEventListener("click", closeNotesModal);
-
-    // Save button - calls function to save notes to Excel
-    if (saveBtn) saveBtn.addEventListener("click", saveNotesToExcel);
-
-    // Close modal when clicking on the dark overlay behind the modal
-    // (but only if clicking directly on backdrop, not content inside)
-    if (backdrop) {
-      backdrop.addEventListener("click", (e) => {
-        if (e.target === backdrop) {  // Check if click was on backdrop itself
-          closeNotesModal();
-        }
-      });
-    }
-  }
-
-  /* ============================================================
-     ROW DETAIL MODAL - DOUBLE-CLICK TO VIEW FULL DETAILS
-     ============================================================
-     Opens a polished modal with tabbed interface showing full adventure details.
-     Triggered by double-clicking on a table row.
-  */
-  let currentDetailRow = null;
+  // Data map to store row data for detail modal
   const rowDataMap = new Map();
 
-  // Store row data for detail view (populated when table loads)
-  function openRowDetailModal(rowElement) {
-    try {
-      const rowData = rowDataMap.get(rowElement);
-      if (!rowData) {
-        console.error("No data found for row");
-        return;
-      }
-      currentDetailRow = rowElement;
-      document.getElementById("rowDetailTitle").textContent = rowData.name || "Adventure";
-      const locationEl = document.getElementById("rowDetailLocation");
-      locationEl.innerHTML = `
-        <span>📍 ${rowData.city || "Unknown"}, ${rowData.state || "Unknown"}</span>
-        <span>⏱️ ${rowData.driveTime || "N/A"}</span>
-      `;
-      const tabs = [
-        { id: "overview", name: "📋 Overview", content: generateOverviewTab(rowData), visible: true },
-        { id: "details", name: "ℹ️ Details", content: generateDetailsTab(rowData), visible: true },
-        { id: "visit-info", name: "🏞️ Visit Info", content: generateVisitInfoTab(rowData), visible: true },
-        { id: "contact", name: "📞 Contact", content: generateContactTab(rowData), visible: true },
-        { id: "links", name: "🔗 Links", content: generateLinksTab(rowData), visible: true },
-        // Dynamic search tabs (hidden until activated by buttons)
-        { id: "hours-search", name: "🕐 Hours", content: generateSearchTab("hours-search", "Hours of Operation", rowData), visible: false },
-        { id: "cost-search", name: "💰 Cost", content: generateSearchTab("cost-search", "Cost to Visit", rowData), visible: false },
-        { id: "visit-duration", name: "⏱️ Visit Length", content: generateSearchTab("visit-duration", "Average Visit Duration", rowData), visible: false },
-        { id: "parking", name: "🅿️ Parking", content: generateSearchTab("parking", "Parking Information", rowData), visible: false },
-        { id: "drive-time", name: "🚗 Drive Time", content: generateSearchTab("drive-time", "Drive Time from Home", rowData), visible: false },
-        { id: "nearby", name: "📍 Nearby", content: generateSearchTab("nearby", "What's Nearby", rowData), visible: false },
-        { id: "best-time", name: "🌅 Best Time", content: generateSearchTab("best-time", "Best Time to Visit", rowData), visible: false }
-      ];
-      const tabsContainer = document.getElementById("rowDetailTabsContainer");
-      tabsContainer.innerHTML = tabs
-        .filter(tab => tab.visible)
-        .map((tab, idx) => `
-        <button class="row-detail-tab-btn ${idx === 0 ? "active" : ""}" data-tab="${tab.id}">
-          ${tab.name}
-        </button>
-      `).join("");
-      const contentContainer = document.getElementById("rowDetailContent");
-      contentContainer.innerHTML = tabs.map((tab, idx) => `
-        <div class="row-detail-tab-pane ${idx === 0 && tab.visible ? "active" : ""}" data-tab="${tab.id}" style="${tab.visible ? '' : 'display: none;'}">
-          ${tab.content}
-        </div>
-      `).join("");
-      attachTabListeners();
-
-      // Set up all search trigger buttons in footer
-      setupSearchTriggerButtons();
-
-      // Set up all in-tab search buttons
-      setupInTabSearchButtons();
-
-      document.getElementById("rowDetailModal").classList.add("visible");
-      document.getElementById("rowDetailModalBackdrop").classList.add("visible");
-    } catch (error) {
-      console.error("Error opening row detail modal:", error);
-    }
-  }
-
-  function generateOverviewTab(data) {
-    const isHiking = data.tags && data.tags.toLowerCase().includes("hiking");
-
-    // Build difficulty and trail length fields only if hiking tag is present
-    const hikingFields = isHiking ? `
-      <div class="row-detail-field">
-        <div class="row-detail-label">Difficulty</div>
-        <div class="row-detail-value"><span style="padding: 2px 8px; border-radius: 4px; background: ${data.difficulty?.includes("Easy") ? "#d1fae5" : data.difficulty?.includes("Hard") ? "#fee2e2" : "#fef3c7"}; color: ${data.difficulty?.includes("Easy") ? "#047857" : data.difficulty?.includes("Hard") ? "#991b1b" : "#92400e"}">${data.difficulty || "N/A"}</span></div>
-      </div>
-      <div class="row-detail-field">
-        <div class="row-detail-label">Trail Length</div>
-        <div class="row-detail-value">${data.trailLength || "N/A"}</div>
-      </div>
-    ` : '';
-
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📌 Description</div>
-        <div class="row-detail-value">${data.description || '<span class="row-detail-empty">No description available</span>'}</div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">🏷️ Categories</div>
-        ${data.tags ? `<div class="row-detail-tags-list">${data.tags.split(",").map(tag => `<span class="row-detail-tag">${tag.trim()}</span>`).join("")}</div>` : '<span class="row-detail-empty">No tags</span>'}
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-field">
-          <div class="row-detail-label">Activity</div>
-          <div class="row-detail-value">${data.tags?.split(",")[0] || "N/A"}</div>
-        </div>
-        ${hikingFields}
-      </div>
-    `;
-  }
-
-  function generateDetailsTab(data) {
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📍 Location</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">City</div>
-          <div class="row-detail-value">${data.city || "N/A"}</div>
-        </div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">State</div>
-          <div class="row-detail-value">${data.state || "N/A"}</div>
-        </div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Address</div>
-          <div class="row-detail-value">${data.address || '<span class="row-detail-empty">Not available</span>'}</div>
-        </div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Google Maps</div>
-          <div class="row-detail-value">
-            ${data.googlePlaceId ? `<a href="https://google.com/maps/place/?q=place_id:${data.googlePlaceId}" target="_blank" rel="noopener">📍 View on Google Maps ↗</a>` : '<span class="row-detail-empty">No Place ID available</span>'}
-          </div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">⏱️ Time Commitment and Hours of Operation</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Drive Time</div>
-          <div class="row-detail-value">${data.driveTime || "N/A"}</div>
-        </div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Activity Duration</div>
-          <div class="row-detail-value">${data.activityDuration || "N/A"}</div>
-        </div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Hours of Operation</div>
-          <div class="row-detail-value">${data.hours || "N/A"}</div>
-        </div>
-      </div>
-    `;
-  }
-
-  function generateVisitInfoTab(data) {
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">💰 Cost & Access</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Cost</div>
-          <div class="row-detail-value">${data.cost || '<span class="row-detail-empty">Not specified</span>'}</div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📌 Nearby Attractions</div>
-        <div class="row-detail-value">${data.nearby || '<span class="row-detail-empty">No information available</span>'}</div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📋 Additional Notes</div>
-        <div class="row-detail-value">${data.notes || '<span class="row-detail-empty">No user notes</span>'}</div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">⭐ Your Rating</div>
-        <div class="row-detail-value">${data.myRating ? `<strong>${data.myRating}/5 Stars</strong>` : '<span class="row-detail-empty">Not rated yet</span>'}</div>
-      </div>
-    `;
-  }
-
-  function generateContactTab(data) {
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">🌐 Website</div>
-        ${data.website ? `<div class="row-detail-value"><a href="${data.website}" target="_blank" rel="noopener">Visit Website ↗</a></div>` : '<span class="row-detail-empty">No website available</span>'}
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📞 Contact Info</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Phone</div>
-          <div class="row-detail-value">${data.phoneNumber || '<span class="row-detail-empty">Not available</span>'}</div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">⭐ Reviews & Ratings</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Google Rating</div>
-          <div class="row-detail-value">${data.googleRating || '<span class="row-detail-empty">Not available</span>'}</div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📍 Location ID</div>
-        <div class="row-detail-value" style="font-family: monospace; font-size: 12px; color: #6b7280;">${data.googlePlaceId || '<span class="row-detail-empty">Not available</span>'}</div>
-      </div>
-    `;
-  }
-
-  function generateHoursTab(data) {
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">🕐 Hours of Operation</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Listed Hours</div>
-          <div class="row-detail-value">${data.hours || '<span class="row-detail-empty">Not specified</span>'}</div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">🔍 Hours Search Information</div>
-        <div id="hoursTabSearchResults" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; font-size: 13px; color: #374151; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">
-          Click the "Search Hours" button to find hours information
-        </div>
-        <button id="hoursTabSearchBtn" class="row-detail-footer-btn primary" style="margin-top: 12px; width: 100%; background: #3b82f6; border-color: #3b82f6; color: white;">🕐 Search Hours</button>
-      </div>
-    `;
-  }
-
-  function generateCostTab(data) {
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">💰 Cost Information</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Cost Category</div>
-          <div class="row-detail-value">${data.cost ? `<span style="background: #fef3c7; padding: 4px 8px; border-radius: 4px; font-weight: 600;">${data.cost}</span>` : '<span class="row-detail-empty">Not specified</span>'}</div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">🔍 Pricing Details</div>
-        <div id="costTabPricingResults" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; font-size: 13px; color: #374151; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">
-          Click the "Search Prices" button to find pricing information
-        </div>
-        <button id="costTabSearchBtn" class="row-detail-footer-btn primary" style="margin-top: 12px; width: 100%; background: #f59e0b; border-color: #f59e0b; color: white;">💰 Search Prices</button>
-      </div>
-    `;
-  }
-
-  function generateLinksTab(data) {
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">🔗 External Resources</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Link 1</div>
-          <div class="row-detail-value">${data.links ? `<a href="${data.links}" target="_blank" rel="noopener">View Resource ↗</a>` : '<span class="row-detail-empty">No link</span>'}</div>
-        </div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Link 2</div>
-          <div class="row-detail-value">${data.links2 ? `<a href="${data.links2}" target="_blank" rel="noopener">View Resource ↗</a>` : '<span class="row-detail-empty">No link</span>'}</div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📍 Directions</div>
-        <div class="row-detail-value">${data.directions ? `<a href="${data.directions}" target="_blank" rel="noopener">Get Directions ↗</a>` : '<span class="row-detail-empty">No directions link</span>'}</div>
-      </div>
-    `;
-  }
-
   /**
-   * Generate a generic search tab for various search types
-   * @param {string} tabId - Unique tab ID
-   * @param {string} title - Display title for the search
-   * @param {object} data - Row data
-   */
-  function generateSearchTab(tabId, title, data) {
-    const searchConfig = {
-      'hours-search': { icon: '🕐', color: '#3b82f6', buttonText: 'Search Hours' },
-      'cost-search': { icon: '💰', color: '#f59e0b', buttonText: 'Search Prices' },
-      'visit-duration': { icon: '⏱️', color: '#10b981', buttonText: 'Search Visit Length' },
-      'parking': { icon: '🅿️', color: '#6366f1', buttonText: 'Search Parking Info' },
-      'drive-time': { icon: '🚗', color: '#8b5cf6', buttonText: 'Search Drive Time' },
-      'nearby': { icon: '📍', color: '#ec4899', buttonText: 'Search Nearby' },
-      'best-time': { icon: '🌅', color: '#f97316', buttonText: 'Search Best Time' }
-    };
-
-    const config = searchConfig[tabId] || { icon: '🔍', color: '#6b7280', buttonText: 'Search' };
-
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">${config.icon} ${title}</div>
-        <div id="${tabId}-results" class="search-results-box" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 200px; max-height: 400px; overflow-y: auto; font-size: 13px; color: #374151; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word;">
-          Click the "${config.buttonText}" button below to search for information
-        </div>
-        <button id="${tabId}-search-btn" class="row-detail-footer-btn primary" style="margin-top: 12px; width: 100%; background: ${config.color}; border-color: ${config.color}; color: white;">
-          ${config.icon} ${config.buttonText}
-        </button>
-      </div>
-    `;
-  }
-
-  /**
-   * Set up search trigger buttons in modal footer
-   * These buttons activate tabs and trigger searches
-   */
-  function setupSearchTriggerButtons() {
-    const searchTriggers = [
-      { id: 'hours-search', trigger: 'search-trigger-hours' },
-      { id: 'cost-search', trigger: 'search-trigger-cost' },
-      { id: 'visit-duration', trigger: 'search-trigger-visit-duration' },
-      { id: 'parking', trigger: 'search-trigger-parking' },
-      { id: 'drive-time', trigger: 'search-trigger-drive-time' },
-      { id: 'nearby', trigger: 'search-trigger-nearby' },
-      { id: 'best-time', trigger: 'search-trigger-best-time' }
-    ];
-
-    searchTriggers.forEach(({ id, trigger }) => {
-      const btn = document.getElementById(trigger);
-      if (btn) {
-        btn.addEventListener('click', () => {
-          activateSearchTab(id);
-        });
-      }
-    });
-  }
-
-  /**
-   * Set up in-tab search buttons
-   * These are the buttons within each tab that trigger the actual search
-   */
-  function setupInTabSearchButtons() {
-    const searchButtons = [
-      { id: 'hours-search', searchType: 'hours' },
-      { id: 'cost-search', searchType: 'cost' },
-      { id: 'visit-duration', searchType: 'visit-duration' },
-      { id: 'parking', searchType: 'parking' },
-      { id: 'drive-time', searchType: 'drive-time' },
-      { id: 'nearby', searchType: 'nearby' },
-      { id: 'best-time', searchType: 'best-time' }
-    ];
-
-    searchButtons.forEach(({ id, searchType }) => {
-      const btn = document.getElementById(`${id}-search-btn`);
-      if (btn) {
-        btn.addEventListener('click', () => {
-          const rowData = rowDataMap.get(currentDetailRow);
-          if (rowData) {
-            performSearch(searchType, rowData);
-          }
-        });
-      }
-    });
-  }
-
-  /**
-   * Activate a search tab (show it and switch to it)
-   * @param {string} tabId - The tab ID to activate
-   */
-  function activateSearchTab(tabId) {
-    const tabsContainer = document.getElementById("rowDetailTabsContainer");
-    const tabPane = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-pane`);
-
-    // Check if tab button already exists
-    let tabBtn = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-btn`);
-
-    if (!tabBtn) {
-      // Create and add the tab button
-      const tabNames = {
-        'hours-search': '🕐 Hours',
-        'cost-search': '💰 Cost',
-        'visit-duration': '⏱️ Visit Length',
-        'parking': '🅿️ Parking',
-        'drive-time': '🚗 Drive Time',
-        'nearby': '📍 Nearby',
-        'best-time': '🌅 Best Time'
-      };
-
-      const newTabBtn = document.createElement('button');
-      newTabBtn.className = 'row-detail-tab-btn';
-      newTabBtn.dataset.tab = tabId;
-      newTabBtn.textContent = tabNames[tabId] || 'Search';
-      newTabBtn.addEventListener('click', () => {
-        switchToTab(tabId);
-      });
-
-      tabsContainer.appendChild(newTabBtn);
-      tabBtn = newTabBtn;
-    }
-
-    // Show the tab pane
-    if (tabPane) {
-      tabPane.style.display = '';
-    }
-
-    // Switch to the tab
-    switchToTab(tabId);
-  }
-
-  /**
-   * Switch to a specific tab
-   * @param {string} tabId - The tab ID to switch to
-   */
-  function switchToTab(tabId) {
-    const tabBtns = document.querySelectorAll(".row-detail-tab-btn");
-    const tabPanes = document.querySelectorAll(".row-detail-tab-pane");
-
-    tabBtns.forEach(b => b.classList.remove("active"));
-    tabPanes.forEach(p => p.classList.remove("active"));
-
-    const targetBtn = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-btn`);
-    const targetPane = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-pane`);
-
-    if (targetBtn) targetBtn.classList.add("active");
-    if (targetPane) targetPane.classList.add("active");
-  }
-
-  /**
-   * Perform a search based on the search type
-   * @param {string} searchType - Type of search to perform
-   * @param {object} rowData - Row data containing adventure information
-   */
-  async function performSearch(searchType, rowData) {
-    // Map search type to tab ID
-    const tabIdMap = {
-      'hours': 'hours-search',
-      'cost': 'cost-search',
-      'visit-duration': 'visit-duration',
-      'parking': 'parking',
-      'drive-time': 'drive-time',
-      'nearby': 'nearby',
-      'best-time': 'best-time'
-    };
-
-    const tabId = tabIdMap[searchType] || searchType;
-    const resultsBox = document.getElementById(`${tabId}-results`);
-
-    if (!resultsBox) {
-      console.error(`Results box not found for ${searchType} (looking for ${tabId}-results)`);
-      return;
-    }
-
-    resultsBox.className = "search-results-box loading";
-    resultsBox.innerHTML = "🔍 Searching...\n\nPlease wait while we search for information...";
-
-    try {
-      let searchInfo = "";
-      const website = rowData.website || "";
-      const name = rowData.name || "this location";
-
-      searchInfo += `🔍 SEARCH RESULTS\n`;
-      searchInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      searchInfo += `📍 Location: ${name}\n`;
-      if (website) {
-        searchInfo += `🌐 Website: ${makeClickable(website)}\n`;
-      }
-      searchInfo += `\n`;
-
-      // Build search queries based on type
-      let queries = [];
-      let additionalInfo = "";
-
-      switch (searchType) {
-        case 'hours':
-          queries = [
-            `"${name}" hours of operation`,
-            `"${name}" hours`,
-            `"${name}" open hours`,
-            `"${name}" opening times`
-          ];
-          if (website) {
-            searchInfo += `🔍 Recommended searches:\n`;
-            searchInfo += `1. Visit the website above\n`;
-            searchInfo += `2. Search Google Maps for "${name}"\n`;
-            searchInfo += `3. Try these Google searches:\n\n`;
-          }
-          break;
-
-        case 'cost':
-          queries = [
-            `"${name}" pricing`,
-            `"${name}" admission cost`,
-            `"${name}" ticket price`,
-            `"${name}" how much does it cost`
-          ];
-          if (website) {
-            searchInfo += `💰 Recommended approaches:\n`;
-            searchInfo += `1. Check the website for pricing\n`;
-            searchInfo += `2. Call for current rates\n`;
-            searchInfo += `3. Try these Google searches:\n\n`;
-          }
-          break;
-
-        case 'visit-duration':
-          queries = [
-            `"${name}" how long does a visit take`,
-            `"${name}" average visit duration`,
-            `"${name}" how much time to spend`,
-            `"${name}" typical visit length`
-          ];
-          searchInfo += `⏱️ Finding visit duration:\n\n`;
-          break;
-
-        case 'parking':
-          queries = [
-            `"${name}" parking`,
-            `"${name}" parking information`,
-            `"${name}" where to park`,
-            `"${name}" parking availability`
-          ];
-          searchInfo += `🅿️ Parking information:\n\n`;
-          break;
-
-        case 'drive-time':
-          queries = [
-            `driving directions from "217 Turtle Ln, Hendersonville, NC" to "${name}"`,
-            `how long to drive from Hendersonville to "${name}"`,
-            `drive time to "${name}" from Hendersonville NC`
-          ];
-          searchInfo += `🚗 Drive time from home:\n\n`;
-          additionalInfo = `\n📍 Google Maps is the best tool for this:\n`;
-          additionalInfo += makeClickable(`https://www.google.com/maps/dir/217+Turtle+Ln,+Hendersonville,+NC/${encodeURIComponent(name)}`);
-          additionalInfo += `\n\n`;
-          break;
-
-        case 'nearby':
-          queries = [
-            `things to do near "${name}"`,
-            `attractions near "${name}"`,
-            `what to do near "${name}"`,
-            `nearby activities "${name}"`
-          ];
-          searchInfo += `📍 What's nearby:\n\n`;
-          break;
-
-        case 'best-time':
-          queries = [
-            `"${name}" best time to visit`,
-            `"${name}" when to visit`,
-            `"${name}" busiest times`,
-            `"${name}" least crowded times`
-          ];
-          searchInfo += `🌅 Best time to visit:\n\n`;
-          break;
-      }
-
-      // Add Google search links
-      queries.forEach((query, index) => {
-        const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-        searchInfo += `${index + 1}. ${makeClickable(googleUrl, `Search: "${query}"`)}\n\n`;
-      });
-
-      searchInfo += additionalInfo;
-
-      searchInfo += `\n💡 TIP: Click any blue link above to open in a new tab\n`;
-
-      // Make URLs clickable
-      resultsBox.innerHTML = searchInfo;
-      resultsBox.className = "search-results-box";
-    } catch (error) {
-      resultsBox.innerHTML = `❌ Error: ${error.message}`;
-      resultsBox.className = "search-results-box";
-    }
-  }
-
-  /**
-   * Make URLs clickable in text
-   * @param {string} url - The URL to make clickable
-   * @param {string} text - Optional display text (defaults to URL)
-   * @returns {string} HTML anchor tag
-   */
-  function makeClickable(url, text = null) {
-    const displayText = text || url;
-    return `<a href="${url}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: underline; cursor: pointer;">${displayText}</a>`;
-  }
-
-  function attachTabListeners() {
-    const tabBtns = document.querySelectorAll(".row-detail-tab-btn");
-    const tabPanes = document.querySelectorAll(".row-detail-tab-pane");
-    tabBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tabId = btn.dataset.tab;
-        tabBtns.forEach(b => b.classList.remove("active"));
-        tabPanes.forEach(p => p.classList.remove("active"));
-        btn.classList.add("active");
-        document.querySelector(`[data-tab="${tabId}"].row-detail-tab-pane`).classList.add("active");
-      });
-    });
-  }
-
-  /**
-   * Close row detail modal
-   */
-  function closeRowDetailModal() {
-    document.getElementById("rowDetailModal").classList.remove("visible");
-    document.getElementById("rowDetailModalBackdrop").classList.remove("visible");
-    currentDetailRow = null;
-  }
-
-  /**
-   * Initialize row detail modal event listeners
+   * Initialize Row Detail Modal - detailed view of a single adventure
    */
   function initRowDetailModal() {
-    const closeBtn = document.getElementById("rowDetailCloseBtn");
-    const closeFooterBtn = document.getElementById("rowDetailCloseFooterBtn");
+    console.log("Initializing Row Detail Modal");
+
+    const modal = document.getElementById("rowDetailModal");
     const backdrop = document.getElementById("rowDetailModalBackdrop");
 
-    // Only add listeners if elements exist
-    if (closeBtn) closeBtn.addEventListener("click", closeRowDetailModal);
-    if (closeFooterBtn) closeFooterBtn.addEventListener("click", closeRowDetailModal);
-    if (backdrop) {
-      backdrop.addEventListener("click", (e) => {
-        if (e.target === backdrop) closeRowDetailModal();
-      });
+    if (!modal) {
+      console.error("Row detail modal element not found");
+      return;
     }
-  }
 
-  /**
-   * Switch to Cost to Visit tab
-   */
-  function switchToCostTab() {
-    const tabBtns = document.querySelectorAll(".row-detail-tab-btn");
-    const tabPanes = document.querySelectorAll(".row-detail-tab-pane");
+    // Create modal if it doesn't exist
+    if (!modal.innerHTML) {
+      modal.innerHTML = `
+        <div class="row-detail-header">
+          <div class="row-detail-title-section">
+            <h2 class="row-detail-adventure-name" id="detailAdventureName">Adventure Name</h2>
+            <div class="row-detail-location">
+              <span id="detailCity">City</span>
+              <span id="detailState">State</span>
+            </div>
+          </div>
+          <button class="row-detail-close-btn" id="detailCloseBtn">✕</button>
+        </div>
 
-    // Deactivate all tabs
-    tabBtns.forEach(b => b.classList.remove("active"));
-    tabPanes.forEach(p => p.classList.remove("active"));
+        <div class="row-detail-tabs" id="detailTabs">
+          <button class="row-detail-tab-btn active" data-tab="overview">📋 Overview</button>
+          <button class="row-detail-tab-btn" data-tab="details">📍 Details</button>
+          <button class="row-detail-tab-btn" data-tab="hours">⏰ Hours & Timing</button>
+          <button class="row-detail-tab-btn" data-tab="cost">💰 Cost to Visit</button>
+          <button class="row-detail-tab-btn" data-tab="research">🔍 Research Notes</button>
+        </div>
 
-    // Activate cost tab
-    const costBtn = Array.from(tabBtns).find(b => b.dataset.tab === "cost");
-    const costPane = document.querySelector('[data-tab="cost"].row-detail-tab-pane');
+        <div class="row-detail-content">
+          <!-- Overview Tab -->
+          <div class="row-detail-tab-pane active" data-tab="overview" id="overviewPane">
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Description</div>
+              <div class="row-detail-value" id="detailDescription">No description available</div>
+            </div>
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Tags</div>
+              <div class="row-detail-tags-list" id="detailTags"></div>
+            </div>
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Quick Facts</div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Drive Time</div>
+                <div class="row-detail-value" id="detailDriveTime">-</div>
+              </div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Difficulty</div>
+                <div class="row-detail-value" id="detailDifficulty">-</div>
+              </div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Activity Duration</div>
+                <div class="row-detail-value" id="detailActivityDuration">-</div>
+              </div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Trail Length</div>
+                <div class="row-detail-value" id="detailTrailLength">-</div>
+              </div>
+            </div>
+          </div>
 
-    if (costBtn) costBtn.classList.add("active");
-    if (costPane) costPane.classList.add("active");
-  }
+          <!-- Details Tab -->
+          <div class="row-detail-tab-pane" data-tab="details" id="detailsPane">
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Location Information</div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Address</div>
+                <div class="row-detail-value" id="detailAddress">-</div>
+              </div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Google Maps Link</div>
+                <div class="row-detail-value" id="detailGoogleMapsLink">-</div>
+              </div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Website</div>
+                <div class="row-detail-value" id="detailWebsite">-</div>
+              </div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Phone</div>
+                <div class="row-detail-value" id="detailPhone">-</div>
+              </div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Directions</div>
+                <div class="row-detail-value" id="detailDirections">-</div>
+              </div>
+            </div>
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Additional Information</div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Rating</div>
+                <div class="row-detail-value" id="detailGoogleRating">-</div>
+              </div>
+              <div class="row-detail-field">
+                <div class="row-detail-label">Nearby Things</div>
+                <div class="row-detail-value" id="detailNearby">-</div>
+              </div>
+            </div>
+          </div>
 
-  /**
-   * Create a clickable Google AI mode search link
-   * @param {string} query - Search query text
-   * @param {string} displayText - Text to display (optional)
-   * @returns {string} - HTML anchor tag with Google AI mode
-   */
-  function createAISearchLink(query, displayText = null) {
-    const encodedQuery = encodeURIComponent(query);
-    const displayLabel = displayText || query;
-    const url = `https://www.google.com/search?q=${encodedQuery}&udm=14`;
-    return `<a href="${url}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: underline; cursor: pointer;">${displayLabel}</a>`;
-  }
+          <!-- Hours & Timing Tab -->
+          <div class="row-detail-tab-pane" data-tab="hours" id="hoursPane">
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Hours of Operation</div>
+              <div class="row-detail-value" id="detailHours">-</div>
+            </div>
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Search Results</div>
+              <button class="row-detail-footer-btn" id="searchHoursBtn">🔍 Search for Hours Online</button>
+              <div class="search-results-box" id="hoursSearchResults" style="margin-top: 12px;"></div>
+            </div>
+          </div>
 
-  /**
-   * Convert search suggestions text to clickable AI mode links
-   * @param {string} text - Plain text with search suggestions
-   * @returns {string} - Text with HTML links inserted
-   */
-  function convertSearchesToLinks(text) {
-    let result = text;
+          <!-- Cost to Visit Tab -->
+          <div class="row-detail-tab-pane" data-tab="cost" id="costPane">
+            <div class="row-detail-section">
+              <button class="row-detail-footer-btn" id="searchCostBtn">💰 Search Pricing Information</button>
+              <div class="search-results-box" id="costSearchResults" style="margin-top: 12px;"></div>
+            </div>
+          </div>
 
-    // Convert quoted searches to clickable links
-    // Pattern: "search query" -> clickable link
-    result = result.replace(/"([^"]+)"/g, (match, query) => {
-      // Only convert if it looks like a search (has spaces or is longer than 3 chars)
-      if (query.includes(" ") || query.length > 3) {
-        return createAISearchLink(query, match);
-      }
-      return match;
+          <!-- Research Notes Tab -->
+          <div class="row-detail-tab-pane" data-tab="research" id="researchPane">
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Your Notes</div>
+              <div class="row-detail-value" id="detailNotes">No notes yet</div>
+              <button class="row-detail-footer-btn" id="editNotesBtn" style="margin-top: 12px;">📝 Edit Notes</button>
+            </div>
+            <div class="row-detail-section">
+              <div class="row-detail-section-title">Your Rating</div>
+              <div class="row-detail-value" id="detailMyRating">Not rated</div>
+              <button class="row-detail-footer-btn" id="editRatingBtn" style="margin-top: 12px;">⭐ Rate This Adventure</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row-detail-footer">
+          <button class="row-detail-footer-btn" id="detailCancelBtn">Close</button>
+        </div>
+      `;
+    }
+
+    // Set up tab switching
+    const tabBtns = modal.querySelectorAll(".row-detail-tab-btn");
+    const tabPanes = modal.querySelectorAll(".row-detail-tab-pane");
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tabId = btn.getAttribute("data-tab");
+
+        // Deactivate all tabs and panes
+        tabBtns.forEach(b => b.classList.remove("active"));
+        tabPanes.forEach(p => p.classList.remove("active"));
+
+        // Activate clicked tab
+        btn.classList.add("active");
+        const pane = modal.querySelector(`.row-detail-tab-pane[data-tab="${tabId}"]`);
+        if (pane) pane.classList.add("active");
+      });
     });
 
-    // Convert URLs to clickable links
-    result = result.replace(/(https?:\/\/[^\s\n]+)/g, (url) => {
-      const displayUrl = url.length > 60 ? url.substring(0, 60) + "..." : url;
-      return `<a href="${url}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: underline; cursor: pointer;">${displayUrl}</a>`;
-    });
-
-    return result;
-  }
-
-  /**
-   * Display search results with clickable links
-   * @param {string} elementId - Element ID of results container
-   * @param {string} content - Text content to display
-   */
-  function displaySearchResults(elementId, content) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-
-    // Convert to links and replace line breaks with <br>
-    const htmlContent = convertSearchesToLinks(content).replace(/\n/g, "<br>");
-    element.innerHTML = htmlContent;
-    element.className = "search-results-box";
-  }
-
-  /**
-   * Search for prices and display results in Cost tab
-   */
-  async function searchForPricesInCostTab(rowData) {
-    const resultsBox = document.getElementById("costTabPricingResults");
-    if (!resultsBox) return;
-
-    resultsBox.className = "pricing-results-box loading";
-    resultsBox.textContent = "🔍 Searching for pricing information...\n\nSearching website and Google for prices...";
-
-    // Call the pricing search function
-    const pricingInfo = await generatePricingInfo(rowData);
-
-    // Display with clickable AI mode links
-    displaySearchResults("costTabPricingResults", pricingInfo);
-  }
-
-  /**
-   * Generate pricing information text
-   */
-  async function generatePricingInfo(rowData) {
-    let pricingInfo = "";
-
-    try {
-      // Start building pricing information
-      pricingInfo += `💰 PRICING & COST INFORMATION\n`;
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      pricingInfo += `📍 Location: ${rowData.name}\n`;
-      pricingInfo += `🌐 Website: ${rowData.website || "No website available"}\n`;
-      pricingInfo += `💵 Listed Cost: ${rowData.cost || "Not specified"}\n\n`;
-
-      // Add recommendations for finding pricing
-      pricingInfo += `HOW TO FIND CURRENT PRICING:\n`;
-      pricingInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      pricingInfo += `1. 🌐 Visit the official website:\n`;
-      if (rowData.website) {
-        pricingInfo += `   ${rowData.website}\n`;
-        pricingInfo += `   Look for "Pricing", "Admission", "Tickets"\n\n`;
-      } else {
-        pricingInfo += `   Search for "${rowData.name}" to find website\n\n`;
-      }
-
-      pricingInfo += `2. 🔍 Try these Google searches:\n`;
-      pricingInfo += `   - "${rowData.name} pricing"\n`;
-      pricingInfo += `   - "${rowData.name} admission cost"\n`;
-      pricingInfo += `   - "${rowData.name} ticket price"\n`;
-      pricingInfo += `   - "${rowData.name} how much does it cost"\n\n`;
-
-      pricingInfo += `3. 📱 Google Maps Reviews:\n`;
-      pricingInfo += `   Search location on Google Maps\n`;
-      pricingInfo += `   Check reviews for pricing mentions\n\n`;
-
-      pricingInfo += `4. 📞 Call for current rates:\n`;
-      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)" && rowData.phoneNumber !== "Not available") {
-        pricingInfo += `   ${rowData.phoneNumber}\n\n`;
-      } else {
-        pricingInfo += `   Search for phone number online\n\n`;
-      }
-
-      pricingInfo += `💡 TIP: Prices may vary by:\n`;
-      pricingInfo += `   • Season (peak vs. off-peak)\n`;
-      pricingInfo += `   • Age (children, seniors, students)\n`;
-      pricingInfo += `   • Day of week (weekday vs. weekend)\n`;
-      pricingInfo += `   • Group size (discounts available)\n\n`;
-
-      pricingInfo += `⚠️ NOTE: AI Overview automatic extraction is not available\n`;
-      pricingInfo += `due to Google API limitations. Please use the search\n`;
-      pricingInfo += `links provided above for most current pricing.\n`;
-
-    } catch (error) {
-      pricingInfo = `❌ Error generating pricing info:\n\n${error.message}`;
+    // Set up close button
+    const closeBtn = modal.querySelector("#detailCloseBtn");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => closeRowDetailModal());
     }
 
-    return pricingInfo;
-  }
-
-  /**
-   * Generate hours information text
-   */
-  async function generateHoursInfo(rowData) {
-    let hoursInfo = "";
-
-    try {
-      // Start building hours information
-      hoursInfo += `🕐 HOURS OF OPERATION SEARCH\n`;
-      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      hoursInfo += `📍 Location: ${rowData.name}\n`;
-      hoursInfo += `🌐 Website: ${rowData.website || "No website available"}\n`;
-      hoursInfo += `⏱️ Listed Hours: ${rowData.hours || "Not specified"}\n\n`;
-
-      // Add recommendations for getting hours
-      hoursInfo += `HOW TO FIND CURRENT HOURS:\n`;
-      hoursInfo += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-      hoursInfo += `1. 🌐 Visit the official website:\n`;
-      if (rowData.website) {
-        hoursInfo += `   ${rowData.website}\n`;
-        hoursInfo += `   Look for "Hours", "Visit", "Plan Your Visit"\n\n`;
-      } else {
-        hoursInfo += `   Search for "${rowData.name}" to find website\n\n`;
-      }
-
-      hoursInfo += `2. 📱 Check Google Maps (RECOMMENDED):\n`;
-      hoursInfo += `   a. Search "${rowData.name}" on Google Maps\n`;
-      hoursInfo += `   b. Hours are shown in the business card\n`;
-      hoursInfo += `   c. Click "See more hours" for full schedule\n`;
-      if (rowData.googlePlaceId) {
-        hoursInfo += `   Direct link: https://google.com/maps/place/?q=place_id:${rowData.googlePlaceId}\n`;
-      }
-      hoursInfo += `\n`;
-
-      hoursInfo += `3. 🔍 Try these Google searches:\n`;
-      hoursInfo += `   - "${rowData.name} hours"\n`;
-      hoursInfo += `   - "${rowData.name} hours of operation"\n`;
-      hoursInfo += `   - "${rowData.name} open hours"\n`;
-      hoursInfo += `   - "${rowData.name} what time does it open"\n\n`;
-
-      hoursInfo += `4. 📞 Call for confirmation:\n`;
-      if (rowData.phoneNumber && rowData.phoneNumber !== "(empty)" && rowData.phoneNumber !== "Not available") {
-        hoursInfo += `   ${rowData.phoneNumber}\n\n`;
-      } else {
-        hoursInfo += `   Search for phone number online\n\n`;
-      }
-
-      hoursInfo += `💡 PRO TIP: Hours may vary by:\n`;
-      hoursInfo += `   • Season (summer vs. winter)\n`;
-      hoursInfo += `   • Day of week (weekends vs. weekdays)\n`;
-      hoursInfo += `   • Holidays (special hours or closures)\n`;
-      hoursInfo += `   Always verify before visiting!\n\n`;
-
-      hoursInfo += `⚠️ NOTE: AI Overview automatic extraction is not available\n`;
-      hoursInfo += `due to Google API limitations. Google Maps is your\n`;
-      hoursInfo += `best source for real-time hours information.\n`;
-
-    } catch (error) {
-      hoursInfo = `❌ Error searching for hours:\n\n${error.message}`;
+    const cancelBtn = modal.querySelector("#detailCancelBtn");
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", () => closeRowDetailModal());
     }
 
-    return hoursInfo;
-  }
-
-  /**
-   * Search for hours and display results in Hours tab
-   */
-  async function searchForHoursInHoursTab(rowData) {
-    const resultsBox = document.getElementById("hoursTabSearchResults");
-    if (!resultsBox) return;
-
-    resultsBox.className = "pricing-results-box loading";
-    resultsBox.textContent = "🔍 Searching for hours information...\n\nSearching website and Google for hours...";
-
-    // Call the hours search function
-    const hoursInfo = await generateHoursInfo(rowData);
-
-    resultsBox.textContent = hoursInfo;
-    resultsBox.className = "pricing-results-box";
-  }
-
-  /* ============================================================
-     PRICING SEARCH FEATURE - SEARCH FOR PRICING INFORMATION
-     ============================================================
-     Allows users to search for pricing information using the website URL
-     and the Custom Search API to find pricing details.
-  */
-
-  let currentPricingData = null;
-
-  /**
-   * Close pricing search modal
-   */
-  function closePricingSearchModal() {
-    const backdrop = document.getElementById("pricingSearchModalBackdrop");
-    const modal = document.getElementById("pricingSearchModal");
-
-    backdrop.classList.remove("visible");
-    modal.classList.remove("visible");
-    currentPricingData = null;
-  }
-
-  /**
-   * Initialize pricing search modal event listeners
-   */
-  function initPricingSearchModal() {
-    const backdrop = document.getElementById("pricingSearchModalBackdrop");
-    const closeBtn = document.getElementById("pricingModalCloseBtn");
-    const cancelBtn = document.getElementById("pricingModalCancelBtn");
-    const copyBtn = document.getElementById("pricingModalCopyBtn");
-
-    // Only add listeners if elements exist
-    if (closeBtn) closeBtn.addEventListener("click", closePricingSearchModal);
-    if (cancelBtn) cancelBtn.addEventListener("click", closePricingSearchModal);
-
-    // Copy results to clipboard
-    if (copyBtn) {
-      copyBtn.addEventListener("click", () => {
-        const resultsBox = document.getElementById("pricingResultsBox");
-        if (resultsBox) {
-          const text = resultsBox.textContent;
-          navigator.clipboard.writeText(text).then(() => {
-            alert("✅ Pricing information copied to clipboard!");
-          }).catch(err => {
-            alert("❌ Failed to copy: " + err.message);
-          });
-        }
-      });
-    }
-
-    // Close when clicking backdrop
+    // Close modal on backdrop click
     if (backdrop) {
-      backdrop.addEventListener("click", (e) => {
-        if (e.target === backdrop) {
-          closePricingSearchModal();
-        }
-      });
+      backdrop.addEventListener("click", closeRowDetailModal);
     }
   }
 
-  /* ============================================================
-     MY RATING FEATURE - STAR RATING
-     ============================================================
-     Allows users to rate adventures with 1-5 stars.
-     Ratings are saved to Excel and displayed on hover.
-  */
-  let currentRatingRow = null;
-  let selectedRating = 0;
+  /**
+   * Open the row detail modal with adventure information
+   * @param {HTMLTableRowElement} row - The table row to display
+   */
+  function openRowDetailModal(row) {
+    console.log("Opening row detail modal for row:", row);
 
-  function openRatingModal(adventureName, rowElement, currentRating) {
-    // Get modal elements
-    const backdrop = document.getElementById("ratingModalBackdrop");
-    const modal = document.getElementById("ratingModal");
-    const titleEl = document.getElementById("ratingModalTitle");
-    const starsContainer = document.getElementById("starRating");
+    const modal = document.getElementById("rowDetailModal");
+    const backdrop = document.getElementById("rowDetailModalBackdrop");
 
-    // Store current row for saving later
-    currentRatingRow = rowElement;
-    selectedRating = currentRating ? parseInt(currentRating) : 0;
-
-    // Set modal title
-    titleEl.textContent = `Rate: ${adventureName}`;
-
-    // Clear and regenerate stars
-    starsContainer.innerHTML = "";
-    for (let i = 1; i <= 5; i++) {
-      const star = document.createElement("span");
-      star.className = "star";
-      star.textContent = "⭐";
-
-      // Highlight stars up to current rating
-      if (i <= selectedRating) {
-        star.classList.add("active");
-      }
-
-      // Click handler to set rating
-      star.onclick = () => {
-        selectedRating = i;
-        // Update all stars - highlight up to clicked star
-        const allStars = starsContainer.querySelectorAll(".star");
-        allStars.forEach((s, index) => {
-          if (index + 1 <= selectedRating) {
-            s.classList.add("active");
-          } else {
-            s.classList.remove("active");
-          }
-        });
-      };
-
-      // Hover effect - show preview of rating on hover
-      star.onmouseover = () => {
-        const allStars = starsContainer.querySelectorAll(".star");
-        allStars.forEach((s, index) => {
-          if (index + 1 <= i) {
-            s.classList.add("active");
-          } else {
-            s.classList.remove("active");
-          }
-        });
-      };
-
-      starsContainer.appendChild(star);
+    if (!modal) {
+      console.error("Row detail modal not found");
+      initRowDetailModal();
+      return;
     }
 
-    // Reset hover effect when mouse leaves star container
-    starsContainer.onmouseleave = () => {
-      const allStars = starsContainer.querySelectorAll(".star");
-      allStars.forEach((s, index) => {
-        if (index + 1 <= selectedRating) {
-          s.classList.add("active");
-        } else {
-          s.classList.remove("active");
-        }
+    // Get row data from map
+    const rowData = rowDataMap.get(row);
+    if (!rowData) {
+      console.error("No data found for row");
+      return;
+    }
+
+    // Update modal content
+    document.getElementById("detailAdventureName").textContent = rowData.name || "Unknown";
+    document.getElementById("detailCity").textContent = rowData.city || "-";
+    document.getElementById("detailState").textContent = rowData.state?.toUpperCase() || "-";
+
+    // Overview tab
+    document.getElementById("detailDescription").textContent = rowData.description || "No description available";
+
+    const tagsContainer = document.getElementById("detailTags");
+    tagsContainer.innerHTML = "";
+    if (rowData.tags) {
+      const tagList = rowData.tags.split(",").map(t => t.trim());
+      tagList.forEach(tag => {
+        const tagEl = document.createElement("span");
+        tagEl.className = "row-detail-tag";
+        tagEl.textContent = tag;
+        tagsContainer.appendChild(tagEl);
       });
-    };
+    }
+
+    document.getElementById("detailDriveTime").textContent = rowData.driveTime || "-";
+    document.getElementById("detailDifficulty").textContent = rowData.difficulty || "-";
+    document.getElementById("detailActivityDuration").textContent = rowData.activityDuration || "-";
+    document.getElementById("detailTrailLength").textContent = rowData.trailLength || "-";
+
+    // Details tab
+    document.getElementById("detailAddress").textContent = rowData.address || "-";
+
+    // Google Maps Link
+    if (rowData.googlePlaceId) {
+      const mapsLink = `https://google.com/maps/place/?q=place_id:${rowData.googlePlaceId}`;
+      document.getElementById("detailGoogleMapsLink").innerHTML = `
+        <a href="${mapsLink}" target="_blank" rel="noopener">Open on Google Maps</a>
+      `;
+    } else {
+      document.getElementById("detailGoogleMapsLink").textContent = "-";
+    }
+
+    document.getElementById("detailWebsite").innerHTML = rowData.website ?
+      `<a href="${rowData.website}" target="_blank" rel="noopener">Visit Website</a>` : "-";
+    document.getElementById("detailPhone").textContent = rowData.phoneNumber || "-";
+    document.getElementById("detailDirections").innerHTML = rowData.directions ?
+      `<a href="${rowData.directions}" target="_blank" rel="noopener">Get Directions</a>` : "-";
+    document.getElementById("detailGoogleRating").textContent = rowData.googleRating || "-";
+    document.getElementById("detailNearby").textContent = rowData.nearby || "-";
+
+    // Hours tab
+    document.getElementById("detailHours").textContent = rowData.hours || "-";
+
+    // Research tab
+    document.getElementById("detailNotes").textContent = rowData.notes || "No notes yet";
+    document.getElementById("detailMyRating").textContent = rowData.myRating ? `⭐ ${rowData.myRating}/5` : "Not rated";
 
     // Show modal
-    backdrop.classList.add("visible");
     modal.classList.add("visible");
-  }
+    if (backdrop) backdrop.classList.add("visible");
 
-  function closeRatingModal() {
-    const backdrop = document.getElementById("ratingModalBackdrop");
-    const modal = document.getElementById("ratingModal");
-
-    backdrop.classList.remove("visible");
-    modal.classList.remove("visible");
-    currentRatingRow = null;
-    selectedRating = 0;
-  }
-
-  /* ============================================================
-     SAVE RATING TO EXCEL - MY RATING FEATURE
-     ============================================================
-     When user clicks "Save Rating" in the modal, this function:
-     1. Gets the selected star rating (1-5)
-     2. Updates the row's data in memory
-     3. Sends update to Excel via Microsoft Graph API
-     4. Shows success/error message
-     5. Updates the button text to show new rating
-     6. Closes the modal
-  */
-  async function saveRatingToExcel() {
-    // Validation: Make sure we have a row selected and valid authentication
-    if (!currentRatingRow || !accessToken) {
-      alert("No row selected or not signed in");
-      return;
-    }
-
-    if (selectedRating < 1 || selectedRating > 5) {
-      alert("Please select a rating (1-5 stars)");
-      return;
-    }
-
-    const saveBtn = document.getElementById("ratingSaveBtn");
-
-    try {
-      // Disable button during save to prevent duplicate saves
-      saveBtn.disabled = true;
-      saveBtn.textContent = "Saving..."; // Show progress to user
-
-      // Get the Excel row index (needed to identify which row to update)
-      const rowIndex = currentRatingRow.dataset.rowId;
-
-      // Build URL for Microsoft Graph API PATCH request
-      // Note: Use itemAt(index=X) syntax to update a specific row by its position in the table
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
-
-      /* Build update payload for Excel
-         We send 23 columns to match the Excel table structure
-         Column 0-20: null (unchanged)
-         Column 21: selectedRating (My Rating column - the one we're updating)
-         Column 22: null (extra column - unchanged)
-
-         This updates ONLY the My Rating column (index 21)
-         All other columns stay as they were (nulls don't overwrite)
-      */
-      const updateData = {
-        values: [[null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, selectedRating, null]]
-      };
-
-      // Send PATCH request to Microsoft Graph API
-      const response = await fetch(url, {
-        method: "PATCH",                     // PATCH = partial update
-        headers: {
-          "Authorization": `Bearer ${accessToken}`, // Include auth token
-          "Content-Type": "application/json"        // JSON format
-        },
-        body: JSON.stringify(updateData)    // Convert data to JSON string
-      });
-
-      // Check if request was successful
-      if (!response.ok) {
-        // noinspection ExceptionCaughtLocallyJS - Error is intentionally thrown to be caught by try-catch below
-        throw new Error(`Excel API error: ${response.status}`);
-      }
-
-      // Update the row's data attribute for persistence
-      currentRatingRow.dataset.myRating = selectedRating;
-
-      // Update the button text to show new rating
-      const ratingBtn = currentRatingRow.querySelector(".rating-btn");
-      if (ratingBtn) {
-        ratingBtn.textContent = `⭐ ${selectedRating}/5`;
-      }
-
-      // Success! Show confirmation and close modal
-      alert("Rating saved successfully!");
-      closeRatingModal();
-
-    } catch (error) {
-      console.error("Error saving rating:", error);
-      alert("Failed to save rating. Check console for details.");
-    } finally {
-      // Reset button regardless of success/failure
-      saveBtn.disabled = false;
-      saveBtn.textContent = "Save Rating";
-    }
-  }
-
-  /* ============================================================
-     INITIALIZE RATING MODAL - EVENT LISTENERS
-     ============================================================
-     Set up all event listeners for the rating modal dialog.
-     This runs once when the page loads.
-  */
-  function initRatingModal() {
-    // Get references to modal elements
-    const backdrop = document.getElementById("ratingModalBackdrop"); // Semi-transparent overlay
-    // const modal = document.getElementById("ratingModal");            // The modal dialog box (unused - modal controlled via backdrop)
-    const cancelBtn = document.getElementById("ratingCancelBtn");    // Cancel button at bottom
-    const saveBtn = document.getElementById("ratingSaveBtn");        // Save button at bottom
-
-    // Cancel button in modal footer
-    if (cancelBtn) cancelBtn.addEventListener("click", closeRatingModal);
-
-    // Save button - calls function to save rating to Excel
-    if (saveBtn) saveBtn.addEventListener("click", saveRatingToExcel);
-
-    // Close modal when clicking on the dark overlay behind the modal
-    // (but only if clicking directly on backdrop, not content inside)
-    if (backdrop) {
-      backdrop.addEventListener("click", (e) => {
-        if (e.target === backdrop) {
-          closeRatingModal();
-        }
-      });
-    }
-  }
-
-  /* ============================================================
-     AUTOMATION FUNCTIONS - REFRESH HOURS, POPULATE FIELDS
-     ============================================================
-     Handle Google Data Automation functions:
-     - Refresh Hours Only
-     - Populate Missing Fields
-     - Refresh All Fields
-  */
-
-  // Track current automation mode
-  let currentAutomationMode = "none"; // "hours-only", "missing-fields", "all-fields"
-  let automationChanges = []; // Store changes to preview
-
-  /**
-   * Start automation run (preview changes)
-   * @param {string} mode - "hours-only", "missing-fields", or "all-fields"
-   */
-  async function startAutomationRun(mode) {
-    currentAutomationMode = mode;
-    automationChanges = [];
-
-    // Show progress modal
-    const backdrop = document.getElementById("automationModalBackdrop");
-    const modalBody = document.getElementById("automationModalBody");
-
-    backdrop.style.display = "block";
-    modalBody.innerHTML = `<div style="text-align: center; padding: 20px;">
-      <div style="font-size: 16px; margin-bottom: 16px;">🔄 Fetching data from Google Places API...</div>
-      <div style="font-size: 13px; color: #6b7280;">This may take a minute. Please wait...</div>
-    </div>`;
-
-    try {
-      // Get all rows from table
-      const rows = document.querySelectorAll("#adventureTableBody tr");
-      console.log(`Processing ${rows.length} rows in ${mode} mode`);
-
-      // Dry run: simulate what would be updated
-      for (const row of rows) {
-        // Get Google Place ID from dataset (set during table load)
-        const placeId = row.dataset.googlePlaceId?.trim();
-
-        // Skip rows without a Google Place ID
-        if (!placeId || placeId === "") {
-          console.log(`Skipping row (no Place ID): ${row.cells[1]?.textContent}`);
-          continue;
-        }
-
-        try {
-          // Fetch real data from Google Places API
-          const placeDetails = await getPlaceDetails(placeId);
-
-          // Get current values from table
-          const currentValues = {
-            name: row.cells[1]?.textContent || "(empty)",
-            website: row.cells[2]?.textContent || "(empty)",
-            hours: row.cells[13]?.textContent || "(empty)",
-            phone: row.cells[14]?.textContent || "(empty)",
-            rating: row.cells[15]?.textContent || "(empty)",
-            address: row.dataset.address || "(empty)"
-          };
-
-          // Determine what fields to include based on mode
-          let fieldsToUpdate = [];
-
-          if (mode === "all-fields") {
-            fieldsToUpdate = [
-              { name: "Website", current: currentValues.website, new: placeDetails.website || "(not found)" },
-              { name: "Hours", current: currentValues.hours, new: formatHours(placeDetails.hours) || "(not found)" },
-              { name: "Phone Number", current: currentValues.phone, new: placeDetails.phone || "(not found)" },
-              { name: "Google Rating", current: currentValues.rating, new: placeDetails.rating ? `${placeDetails.rating}/5 (${placeDetails.userRatingsTotal} reviews)` : "(not found)" },
-              { name: "Address", current: currentValues.address, new: placeDetails.address || "(not found)" }
-            ];
-          } else if (mode === "hours-only") {
-            const newHours = formatHours(placeDetails.hours) || "(not found)";
-            if (newHours !== currentValues.hours) {
-              fieldsToUpdate = [
-                { name: "Hours", current: currentValues.hours, new: newHours }
-              ];
-            }
-          } else if (mode === "missing-fields") {
-            // Only include empty fields
-            if (!currentValues.website || currentValues.website === "(empty)") {
-              fieldsToUpdate.push({ name: "Website", current: currentValues.website, new: placeDetails.website || "(not found)" });
-            }
-            if (!currentValues.hours || currentValues.hours === "(empty)") {
-              fieldsToUpdate.push({ name: "Hours", current: currentValues.hours, new: formatHours(placeDetails.hours) || "(not found)" });
-            }
-            if (!currentValues.phone || currentValues.phone === "(empty)") {
-              fieldsToUpdate.push({ name: "Phone Number", current: currentValues.phone, new: placeDetails.phone || "(not found)" });
-            }
-            if (!currentValues.rating || currentValues.rating === "(empty)") {
-              fieldsToUpdate.push({
-                name: "Google Rating",
-                current: currentValues.rating,
-                new: placeDetails.rating ? `${placeDetails.rating}/5 (${placeDetails.userRatingsTotal} reviews)` : "(not found)"
-              });
-            }
-            if (!currentValues.address || currentValues.address === "(empty)") {
-              fieldsToUpdate.push({ name: "Address", current: currentValues.address, new: placeDetails.address || "(not found)" });
-            }
-          }
-
-          // Add to changes if there are any fields to update
-          if (fieldsToUpdate.length > 0) {
-            automationChanges.push({
-              name: row.cells[1]?.textContent || "Unknown",
-              placeId: placeId,
-              fields: fieldsToUpdate,
-              rowElement: row
-            });
-          }
-
-        } catch (error) {
-          console.error(`Error fetching details for ${row.cells[1]?.textContent}:`, error);
-          // Continue to next row even if one fails
-        }
-      }
-
-      console.log(`Found ${automationChanges.length} locations with changes for ${mode} mode`);
-
-      // Show preview of changes
-      showAutomationPreview();
-
-    } catch (error) {
-      console.error("Error starting automation:", error);
-      modalBody.innerHTML = `❌ Error: ${error.message}`;
-    }
+    // Reset to overview tab
+    modal.querySelector(".row-detail-tab-btn").click();
   }
 
   /**
-   * Format hours object into readable string
+   * Close the row detail modal
    */
-  function formatHours(hoursObj) {
-    if (!hoursObj || !hoursObj.weekdayDescriptions) return null;
+  function closeRowDetailModal() {
+    const modal = document.getElementById("rowDetailModal");
+    const backdrop = document.getElementById("rowDetailModalBackdrop");
 
-    try {
-      return hoursObj.weekdayDescriptions.join(", ");
-    } catch (e) {
-      return null;
-    }
+    if (modal) modal.classList.remove("visible");
+    if (backdrop) backdrop.classList.remove("visible");
   }
 
   /**
-   * Show preview of changes before applying
+   * Initialize Dry Run Toggle
    */
-  function showAutomationPreview() {
-    const modalBody = document.getElementById("automationModalBody");
-
-    if (automationChanges.length === 0) {
-      modalBody.innerHTML = `
-        <div style="padding: 20px; text-align: center;">
-          <h3 style="color: #f59e0b; margin-bottom: 16px;">⚠️ No Changes to Make</h3>
-          <p style="margin-bottom: 12px;">No adventures found with Google Place IDs.</p>
-          <p style="font-size: 13px; color: #6b7280;">
-            <strong>To use automation features:</strong><br>
-            1. Add Google Place IDs to the "Google Place ID" column in your Excel file<br>
-            2. Reload the data<br>
-            3. Try the automation again
-          </p>
-          <p style="font-size: 12px; color: #9ca3af; margin-top: 16px;">
-            Tip: You can find Place IDs by searching on Google Maps and copying the ID from the URL.
-          </p>
-        </div>
-      `;
+  function initDryRunToggle() {
+    const toggle = document.getElementById("dryRunToggle");
+    if (!toggle) {
+      console.error("Dry run toggle not found");
       return;
     }
 
-    let html = `<strong>Preview of changes (Dry Run - not applied yet):</strong><br><br>`;
-
-    automationChanges.forEach((change, index) => {
-      html += `
-        <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px;">
-          <strong>${index + 1}. ${change.name}</strong><br>
-          <small>Field: ${change.field}</small><br>
-          <small>Place ID: ${change.placeId}</small><br>
-          <small>Old: ${change.oldValue}</small><br>
-          <small>New: ${change.newValue}</small>
-        </div>
-      `;
+    toggle.addEventListener("click", () => {
+      toggle.classList.toggle("on");
+      const isOn = toggle.classList.contains("on");
+      console.log("Dry Run mode:", isOn ? "ON" : "OFF");
     });
-
-    html += `
-      <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px;">
-        <strong>⚠️ Dry Run Mode:</strong> These changes are NOT applied yet.<br>
-        <small>Turn off "Dry Run" and click "Apply Changes to Excel" to save them.</small>
-      </div>
-    `;
-
-    modalBody.innerHTML = html;
   }
 
   /**
-   * Apply automation changes to Excel
+   * Initialize More/Less text expansion buttons
    */
-  async function applyAutomationChanges() {
-    if (!accessToken) {
-      alert("Not signed in. Please sign in first.");
-      return;
-    }
+  function initMoreLessButtons() {
+    document.querySelectorAll(".more-less-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const wrapper = btn.closest(".text-cell-wrapper");
+        if (!wrapper) return;
 
-    const backdrop = document.getElementById("automationModalBackdrop");
-    const modalBody = document.getElementById("automationModalBody");
-    const applyBtn = document.getElementById("automationApplyBtn");
-
-    applyBtn.disabled = true;
-    applyBtn.textContent = "Applying...";
-    modalBody.innerHTML = "Applying changes to Excel...";
-
-    try {
-      // TODO: Implement actual Excel update logic using Microsoft Graph API
-      // For now, show success message
-      modalBody.innerHTML = `
-        ✅ Successfully updated ${automationChanges.length} records!
-        <br><br>
-        <small>Changes applied to Excel workbook.</small>
-      `;
-
-      setTimeout(() => {
-        backdrop.style.display = "none";
-        applyBtn.disabled = false;
-        applyBtn.textContent = "Apply Changes to Excel";
-      }, 2000);
-
-    } catch (error) {
-      console.error("Error applying changes:", error);
-      modalBody.innerHTML = `❌ Error applying changes: ${error.message}`;
-      applyBtn.disabled = false;
-      applyBtn.textContent = "Apply Changes to Excel";
-    }
+        const type = btn.getAttribute("data-type");
+        if (type === "description") {
+          const preview = wrapper.querySelector(".description-preview");
+          const full = wrapper.querySelector(".description-full");
+          if (full.style.display === "block") {
+            full.style.display = "none";
+            preview.style.display = "-webkit-box";
+            btn.textContent = "More";
+          } else {
+            full.style.display = "block";
+            preview.style.display = "none";
+            btn.textContent = "Less";
+          }
+        } else if (type === "hours") {
+          const preview = wrapper.querySelector(".hours-preview");
+          const full = wrapper.querySelector(".hours-full");
+          if (full.style.display === "block") {
+            full.style.display = "none";
+            preview.style.display = "-webkit-box";
+            btn.textContent = "More";
+          } else {
+            full.style.display = "block";
+            preview.style.display = "none";
+            btn.textContent = "Less";
+          }
+        }
+      });
+    });
   }
 
-  /**
-   * Close automation modal
-   */
-  function closeAutomationModal() {
-    const backdrop = document.getElementById("automationModalBackdrop");
-    backdrop.style.display = "none";
-    backdrop.classList.remove("visible");
-    currentAutomationMode = "none";
-    automationChanges = [];
-  }
-
-  /**
-   * Initialize automation button event listeners
-   */
-  function initAutomationButtons() {
-    const btnRefreshHours = document.getElementById("btnRefreshHours");
-    const btnPopulateMissing = document.getElementById("btnPopulateMissing");
-    const btnRefreshAll = document.getElementById("btnRefreshAll");
-    const btnSearchPlaceIds = document.getElementById("btnSearchPlaceIds");
-    const automationApplyBtn = document.getElementById("automationApplyBtn");
-    const automationCancelBtn = document.getElementById("automationCancelBtn");
-    const automationModalClose = document.getElementById("automationModalClose");
-
-    // Set up button event listeners
-    if (btnRefreshHours) {
-      btnRefreshHours.addEventListener("click", () => {
-        startAutomationRun("hours-only");
-      });
-    }
-
-    if (btnPopulateMissing) {
-      btnPopulateMissing.addEventListener("click", () => {
-        startAutomationRun("missing-fields");
-      });
-    }
-
-    if (btnRefreshAll) {
-      btnRefreshAll.addEventListener("click", () => {
-        startAutomationRun("all-fields");
-      });
-    }
-
-    if (btnSearchPlaceIds) {
-      btnSearchPlaceIds.addEventListener("click", () => {
-        // Open the place ID finder tool in a new window
-        // Use relative path that works from same directory
-        window.open('get-place-ids.html', 'PlaceIDFinder', 'width=1000,height=800,resizable=yes,scrollbars=yes');
-      });
-    }
-
-    if (automationApplyBtn) {
-      automationApplyBtn.addEventListener("click", applyAutomationChanges);
-    }
-
-    if (automationCancelBtn) {
-      automationCancelBtn.addEventListener("click", closeAutomationModal);
-    }
-
-    if (automationModalClose) {
-      automationModalClose.addEventListener("click", closeAutomationModal);
-    }
-  }
-
-</script>
-
-<!-- Notes Modal -->
-<div id="notesModalBackdrop"></div>
-<div id="notesModal">
-  <div class="notes-modal-header">
-    <div class="notes-modal-title" id="notesModalTitle">Add Notes</div>
-    <button class="notes-modal-close" id="notesModalCloseBtn">&times;</button>
-  </div>
-  <div class="notes-modal-body">
-    <!-- Preview of existing notes -->
-    <div id="notesPreview"></div>
-    <!-- Textarea for editing/adding notes -->
-    <label for="notesTextarea" style="display: block; margin-bottom: 5px; font-weight: 500;">Your Notes:</label>
-    <textarea id="notesTextarea" class="notes-textarea" placeholder="Add your notes here..."></textarea>
-  </div>
-  <div class="notes-modal-footer">
-    <button class="notes-cancel-btn" id="notesCancelBtn">Cancel</button>
-    <button class="notes-save-btn" id="notesSaveBtn">Save Notes</button>
-  </div>
-</div>
-
-<!-- Rating Modal -->
-<div id="ratingModalBackdrop"></div>
-<div id="ratingModal">
-  <div class="rating-modal-title" id="ratingModalTitle">Rate this Adventure</div>
-  <div class="star-rating" id="starRating">
-    <!-- Stars will be generated by JavaScript -->
-  </div>
-  <div class="rating-modal-footer">
-    <button class="rating-cancel-btn" id="ratingCancelBtn">Cancel</button>
-    <button class="rating-save-btn" id="ratingSaveBtn">Save Rating</button>
-  </div>
-</div>
-
-<!-- Pricing Search Modal -->
-<div id="pricingSearchModalBackdrop"></div>
-<div id="pricingSearchModal">
-  <div class="pricing-modal-header">
-    <div class="pricing-modal-title">💰 Search for Pricing Information</div>
-    <button class="pricing-modal-close" id="pricingModalCloseBtn">&times;</button>
-  </div>
-  <div class="pricing-modal-body">
-    <div class="pricing-search-info">
-      <strong>🔍 Searching for pricing information...</strong><br>
-      The app will search the website and Google for pricing details.
-    </div>
-    <div id="pricingResultsBox" class="pricing-results-box loading">
-      Searching for pricing information...
-    </div>
-  </div>
-  <div class="pricing-modal-footer">
-    <button class="pricing-btn" id="pricingModalCancelBtn">Close</button>
-    <button class="pricing-btn primary" id="pricingModalCopyBtn">📋 Copy Results</button>
-  </div>
-</div>
-
-<!-- Row Detail Modal with Tabs (opened by double-clicking a row) -->
-<div id="rowDetailModal" class="row-detail-modal">
-  <!-- Header with title and close button -->
-  <div class="row-detail-header">
-    <div class="row-detail-title-section">
-      <h1 class="row-detail-adventure-name" id="rowDetailTitle">Adventure Name</h1>
-      <div class="row-detail-location" id="rowDetailLocation">
-        <!-- Location info will be filled here -->
-      </div>
-    </div>
-    <button class="row-detail-close-btn" id="rowDetailCloseBtn">✕</button>
-  </div>
-
-  <!-- Tab navigation -->
-  <div class="row-detail-tabs" id="rowDetailTabsContainer">
-    <!-- Tabs will be generated by JavaScript -->
-  </div>
-
-  <!-- Tab content area -->
-  <div class="row-detail-content" id="rowDetailContent">
-    <!-- Tab panes will be generated by JavaScript -->
-  </div>
-
-  <!-- Footer with action buttons -->
-  <div class="row-detail-footer">
-    <button class="row-detail-footer-btn" id="rowDetailCloseFooterBtn">Close</button>
-    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; width: 100%;">
-      <button class="row-detail-footer-btn" id="search-trigger-hours" style="background: #3b82f6; border-color: #3b82f6; color: white; flex: 1; min-width: 140px;">🕐 Hours</button>
-      <button class="row-detail-footer-btn" id="search-trigger-cost" style="background: #f59e0b; border-color: #f59e0b; color: white; flex: 1; min-width: 140px;">💰 Cost</button>
-      <button class="row-detail-footer-btn" id="search-trigger-visit-duration" style="background: #10b981; border-color: #10b981; color: white; flex: 1; min-width: 140px;">⏱️ Visit Length</button>
-      <button class="row-detail-footer-btn" id="search-trigger-parking" style="background: #6366f1; border-color: #6366f1; color: white; flex: 1; min-width: 140px;">🅿️ Parking</button>
-      <button class="row-detail-footer-btn" id="search-trigger-drive-time" style="background: #8b5cf6; border-color: #8b5cf6; color: white; flex: 1; min-width: 140px;">🚗 Drive Time</button>
-      <button class="row-detail-footer-btn" id="search-trigger-nearby" style="background: #ec4899; border-color: #ec4899; color: white; flex: 1; min-width: 140px;">📍 Nearby</button>
-      <button class="row-detail-footer-btn" id="search-trigger-best-time" style="background: #f97316; border-color: #f97316; color: white; flex: 1; min-width: 140px;">🌅 Best Time</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal backdrop for row detail modal -->
-<div id="rowDetailModalBackdrop" class="modal-backdrop" style="z-index: 1001;"></div>
-
-
-<!-- Context Menu (Right-Click) -->
-<div id="contextMenu">
-  <div class="context-menu-header" id="contextMenuHeader">Filter Options</div>
-  <div id="contextMenuItems"></div>
-</div>
-
-</body>
-</html>
