@@ -4110,6 +4110,7 @@
       initColumnToggle();    // Set up Show More Columns button
       initFindNearMe();      // Set up Find Places Near Me button
       initContextMenu();     // Set up Right-Click Context Menu (must be after table loads)
+      initRowDetailModal();  // Set up Row Detail Modal buttons (Close, Edit, X)
       console.log("Step 5 SUCCESS: All UI features initialized");
 
       console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
@@ -6611,7 +6612,6 @@
 
     if (!modal) {
       console.error("Row detail modal not found");
-      initRowDetailModal();
       return;
     }
 
