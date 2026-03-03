@@ -5227,8 +5227,10 @@
 
       // Tags filter (check if any tag matches)
       if (filterState.tags) {
-        const tagsArray = tags.split(",").map(t => t.trim());
-        if (!tagsArray.some(t => t.includes(filterState.tags))) {
+        const tagsArray = tags.split(",").map(t => t.trim().toLowerCase());
+        const filterTagLower = filterState.tags.toLowerCase().trim();
+        // Check if any individual tag matches the filter
+        if (!tagsArray.some(t => t === filterTagLower || t.includes(filterTagLower))) {
           return false;
         }
       }
@@ -5296,13 +5298,17 @@
             const matchesAny = includeFilters.some(filter => {
               const rawFilterValue = filter.value.toLowerCase().trim();
               const filterValue = fieldKey === "city" ? normalizeCityValue(rawFilterValue) : rawFilterValue;
-              const doesInclude = rowValue.includes(filterValue);
 
-              // DEBUG: Log tag filtering
+              // Special handling for tags - check individual tags instead of using includes on raw string
               if (fieldKey === "tags") {
-                console.log(`🔍 Tag filter check: rowValue="${rowValue}", filterValue="${filterValue}", matches=${doesInclude}`);
+                const rowTagsArray = rowValue.split(",").map(t => t.trim().toLowerCase());
+                const doesMatch = rowTagsArray.includes(filterValue);
+                console.log(`🔍 Tag filter check: rowTags=[${rowTagsArray.join(", ")}], filterValue="${filterValue}", matches=${doesMatch}`);
+                return doesMatch;
               }
 
+              // For other fields, use includes
+              const doesInclude = rowValue.includes(filterValue);
               return doesInclude;
             });
             if (!matchesAny) {
@@ -5315,6 +5321,14 @@
             const matchesAny = excludeFilters.some(filter => {
               const rawFilterValue = filter.value.toLowerCase().trim();
               const filterValue = fieldKey === "city" ? normalizeCityValue(rawFilterValue) : rawFilterValue;
+
+              // Special handling for tags - check individual tags instead of using includes on raw string
+              if (fieldKey === "tags") {
+                const rowTagsArray = rowValue.split(",").map(t => t.trim().toLowerCase());
+                return rowTagsArray.includes(filterValue);
+              }
+
+              // For other fields, use includes
               return rowValue.includes(filterValue);
             });
             if (matchesAny) {
@@ -6178,13 +6192,14 @@
    * @param {number} index - Index of filter to remove in breadcrumb display
    */
   // ...existing code...
-    function removeContextFilterByIndex(index) {
+  function removeContextFilterByIndex(index) {
     console.log(`Removing context filter at index: ${index}`);
     if (index >= 0 && index < filterState.contextFilters.length) {
       filterState.contextFilters.splice(index, 1);
+      updateBreadcrumbMenu(); // Update breadcrumb display after removing filter
       applyFilters();
     }
-    }
+  }
 
     function removeBreadcrumbFilter(filterMeta) {
     if (!filterMeta) return;
@@ -6201,6 +6216,7 @@
           btn.classList.remove("active");
         }
       });
+      updateBreadcrumbMenu(); // Update breadcrumb display after removing filter
       applyFilters();
       return;
     }
@@ -6223,6 +6239,7 @@
         controlEl.value = "";
       }
 
+      updateBreadcrumbMenu(); // Update breadcrumb display after removing filter
       applyFilters();
     }
     }
@@ -6349,174 +6366,37 @@
       return;
     }
 
-    // Create modal if it doesn't exist
-    if (!modal.innerHTML) {
-      modal.innerHTML = `
-        <div class="row-detail-header">
-          <div class="row-detail-title-section">
-            <h2 class="row-detail-adventure-name" id="detailAdventureName">Adventure Name</h2>
-            <div class="row-detail-location">
-              <span id="detailCity">City</span>
-              <span id="detailState">State</span>
-            </div>
-          </div>
-          <button class="row-detail-close-btn" id="detailCloseBtn">✕</button>
-        </div>
+    // Don't replace HTML - it already exists in the DOM!
+    // Just attach event listeners to existing elements
 
-        <div class="row-detail-tabs" id="detailTabs">
-          <button class="row-detail-tab-btn active" data-tab="overview">📋 Overview</button>
-          <button class="row-detail-tab-btn" data-tab="details">📍 Details</button>
-          <button class="row-detail-tab-btn" data-tab="hours">⏰ Hours & Timing</button>
-          <button class="row-detail-tab-btn" data-tab="cost">💰 Cost to Visit</button>
-          <button class="row-detail-tab-btn" data-tab="research">🔍 Research Notes</button>
-        </div>
+    const closeBtn = document.getElementById("rowDetailCloseBtn");
+    const closeFooterBtn = document.getElementById("rowDetailCloseFooterBtn");
+    const editBtn = document.getElementById("rowDetailEditBtn");
 
-        <div class="row-detail-content">
-          <!-- Overview Tab -->
-          <div class="row-detail-tab-pane active" data-tab="overview" id="overviewPane">
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Description</div>
-              <div class="row-detail-value" id="detailDescription">No description available</div>
-            </div>
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Tags</div>
-              <div class="row-detail-tags-list" id="detailTags"></div>
-            </div>
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Quick Facts</div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Drive Time</div>
-                <div class="row-detail-value" id="detailDriveTime">-</div>
-              </div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Difficulty</div>
-                <div class="row-detail-value" id="detailDifficulty">-</div>
-              </div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Activity Duration</div>
-                <div class="row-detail-value" id="detailActivityDuration">-</div>
-              </div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Trail Length</div>
-                <div class="row-detail-value" id="detailTrailLength">-</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Details Tab -->
-          <div class="row-detail-tab-pane" data-tab="details" id="detailsPane">
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Location Information</div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Address</div>
-                <div class="row-detail-value" id="detailAddress">-</div>
-              </div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Google Maps Link</div>
-                <div class="row-detail-value" id="detailGoogleMapsLink">-</div>
-              </div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Website</div>
-                <div class="row-detail-value" id="detailWebsite">-</div>
-              </div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Phone</div>
-                <div class="row-detail-value" id="detailPhone">-</div>
-              </div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Directions</div>
-                <div class="row-detail-value" id="detailDirections">-</div>
-              </div>
-            </div>
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Additional Information</div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Rating</div>
-                <div class="row-detail-value" id="detailGoogleRating">-</div>
-              </div>
-              <div class="row-detail-field">
-                <div class="row-detail-label">Nearby Things</div>
-                <div class="row-detail-value" id="detailNearby">-</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Hours & Timing Tab -->
-          <div class="row-detail-tab-pane" data-tab="hours" id="hoursPane">
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Hours of Operation</div>
-              <div class="row-detail-value" id="detailHours">-</div>
-            </div>
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Search Results</div>
-              <button class="row-detail-footer-btn" id="searchHoursBtn">🔍 Search for Hours Online</button>
-              <div class="search-results-box" id="hoursSearchResults" style="margin-top: 12px;"></div>
-            </div>
-          </div>
-
-          <!-- Cost to Visit Tab -->
-          <div class="row-detail-tab-pane" data-tab="cost" id="costPane">
-            <div class="row-detail-section">
-              <button class="row-detail-footer-btn" id="searchCostBtn">💰 Search Pricing Information</button>
-              <div class="search-results-box" id="costSearchResults" style="margin-top: 12px;"></div>
-            </div>
-          </div>
-
-          <!-- Research Notes Tab -->
-          <div class="row-detail-tab-pane" data-tab="research" id="researchPane">
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Your Notes</div>
-              <div class="row-detail-value" id="detailNotes">No notes yet</div>
-              <button class="row-detail-footer-btn" id="editNotesBtn" style="margin-top: 12px;">📝 Edit Notes</button>
-            </div>
-            <div class="row-detail-section">
-              <div class="row-detail-section-title">Your Rating</div>
-              <div class="row-detail-value" id="detailMyRating">Not rated</div>
-              <button class="row-detail-footer-btn" id="editRatingBtn" style="margin-top: 12px;">⭐ Rate This Adventure</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="row-detail-footer">
-          <button class="row-detail-footer-btn" id="detailCancelBtn">Close</button>
-        </div>
-      `;
-    }
-
-    // Set up tab switching
-    const tabBtns = modal.querySelectorAll(".row-detail-tab-btn");
-    const tabPanes = modal.querySelectorAll(".row-detail-tab-pane");
-
-    tabBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tabId = btn.getAttribute("data-tab");
-
-        // Deactivate all tabs and panes
-        tabBtns.forEach(b => b.classList.remove("active"));
-        tabPanes.forEach(p => p.classList.remove("active"));
-
-        // Activate clicked tab
-        btn.classList.add("active");
-        const pane = modal.querySelector(`.row-detail-tab-pane[data-tab="${tabId}"]`);
-        if (pane) pane.classList.add("active");
-      });
-    });
-
-    // Set up close button
-    const closeBtn = modal.querySelector("#detailCloseBtn");
     if (closeBtn) {
       closeBtn.addEventListener("click", () => closeRowDetailModal());
     }
 
-    const cancelBtn = modal.querySelector("#detailCancelBtn");
-    if (cancelBtn) {
-      cancelBtn.addEventListener("click", () => closeRowDetailModal());
+    if (closeFooterBtn) {
+      closeFooterBtn.addEventListener("click", () => closeRowDetailModal());
+    }
+
+    if (editBtn) {
+      editBtn.addEventListener("click", () => {
+        alert("Edit functionality coming soon!");
+      });
     }
 
     // Close modal on backdrop click
     if (backdrop) {
-      backdrop.addEventListener("click", closeRowDetailModal);
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) {
+          closeRowDetailModal();
+        }
+      });
     }
+
+    console.log("✅ Row detail modal initialized successfully");
   }
 
   /**
