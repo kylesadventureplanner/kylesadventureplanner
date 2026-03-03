@@ -4267,6 +4267,7 @@
     initRowSelection();
     // initContextMenu(); // NOTE: Moved to after table loads in signIn()
     updateBreadcrumbMenu();
+    initBreadcrumbResetBtn();
     initDryRunToggle();
     // Note: initAutomationButtons() is called in window.load event listener
 
@@ -4861,19 +4862,19 @@
             (t) =>
               `<span class="tag-pill tag-${t.toLowerCase().replace(/\s+/g, "-")}" data-tag="${t}" data-all-tags="${tags}">${t}</span>`,
           )
-          .join(" ");
+          .join("");
 
-        // Add right-click handlers to individual tags for multi-tag cells
-        if (tagList.length > 1) {
-          const tagSpans = tagTd.querySelectorAll(".tag-pill");
-          tagSpans.forEach(tagSpan => {
-            tagSpan.addEventListener("contextmenu", (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              showTagContextMenu(e, tagList);
-            });
+        // Add right-click handlers to ALL individual tags for filtering
+        const tagSpans = tagTd.querySelectorAll(".tag-pill");
+        tagSpans.forEach(tagSpan => {
+          tagSpan.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Get the specific tag that was clicked
+            const clickedTag = tagSpan.getAttribute("data-tag");
+            showIndividualTagContextMenu(e, clickedTag, tagList);
           });
-        }
+        });
       }
       tr.appendChild(tagTd);
 
@@ -5190,6 +5191,16 @@
     const bottomReset = document.getElementById("resetAllFiltersBottom");
     topReset.addEventListener("click", resetAllFilters);
     bottomReset.addEventListener("click", resetAllFilters);
+  }
+
+  function initBreadcrumbResetBtn() {
+    const resetBtn = document.getElementById("breadcrumbResetBtn");
+    if (resetBtn) {
+      resetBtn.addEventListener("click", () => {
+        console.log("🔄 Clear Filters button clicked");
+        resetAllFilters();
+      });
+    }
   }
 
   // ...existing code...
@@ -6022,6 +6033,80 @@
         const action = item.getAttribute("data-action") || "replace";
 
         console.log(`Tag menu clicked: tag=${tag}, action=${action}`);
+
+        // Map the action to the appropriate operation
+        let operation = "equals";
+        if (action === "add") {
+          operation = "add-equals";
+        } else if (action === "exclude") {
+          operation = "not-equals";
+        }
+
+        // Apply the tag filter
+        applyContextFilter("tags", tag, operation);
+        menu.classList.remove("visible");
+      });
+    });
+
+    // Close menu when clicking outside
+    const closeMenu = (clickEvent) => {
+      if (!menu.contains(clickEvent.target)) {
+        menu.classList.remove("visible");
+        document.removeEventListener("click", closeMenu);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener("click", closeMenu);
+    }, 0);
+  }
+
+  /**
+   * Show context menu for individual tag right-click filtering
+   * @param {Event} e - Right-click event
+   * @param {string} clickedTag - The specific tag that was clicked
+   * @param {Array} tagList - Array of all tags in the cell (for display)
+   */
+  function showIndividualTagContextMenu(e, clickedTag, tagList) {
+    console.log("🏷️ showIndividualTagContextMenu called for tag:", clickedTag);
+
+    const menu = document.getElementById("tagContextMenu");
+    const itemsContainer = document.getElementById("tagContextMenuItems");
+
+    if (!menu || !itemsContainer) {
+      console.error("Tag context menu elements not found");
+      return;
+    }
+
+    // Build menu items for the clicked tag only
+    let html = `
+      <div class="tag-context-menu-item" data-tag="${clickedTag}">
+        📌 Show Only: ${clickedTag}
+      </div>
+      <div class="tag-context-menu-item" data-tag="${clickedTag}" data-action="add">
+        ➕ Add to Filter: ${clickedTag}
+      </div>
+      <div class="tag-context-menu-item divider"></div>
+      <div class="tag-context-menu-item danger" data-tag="${clickedTag}" data-action="exclude">
+        ✗ Exclude: ${clickedTag}
+      </div>
+    `;
+
+    itemsContainer.innerHTML = html;
+
+    // Position menu
+    menu.style.left = e.pageX + "px";
+    menu.style.top = e.pageY + "px";
+    menu.classList.add("visible");
+
+    // Add event listeners to menu items
+    const menuItems = itemsContainer.querySelectorAll(".tag-context-menu-item:not(.divider)");
+    menuItems.forEach(item => {
+      item.addEventListener("click", (clickEvent) => {
+        const tag = item.getAttribute("data-tag");
+        const action = item.getAttribute("data-action") || "replace";
+
+        console.log(`Individual tag menu clicked: tag=${tag}, action=${action}`);
 
         // Map the action to the appropriate operation
         let operation = "equals";
