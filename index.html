@@ -6353,6 +6353,219 @@
   // Data map to store row data for detail modal
   const rowDataMap = new Map();
 
+  // Store current row being edited
+  let currentEditingRow = null;
+
+  /**
+   * Enable Edit Mode - Convert modal to editable form
+   */
+  function enableEditMode() {
+    const modal = document.getElementById("rowDetailModal");
+    const editBtn = document.getElementById("rowDetailEditBtn");
+    const closeBtn = document.getElementById("rowDetailCloseFooterBtn");
+
+    if (!currentEditingRow) {
+      console.error("No row selected for editing");
+      return;
+    }
+
+    const rowData = rowDataMap.get(currentEditingRow);
+    if (!rowData) {
+      console.error("No data found for current row");
+      return;
+    }
+
+    // Change Edit button to Save button
+    editBtn.textContent = "💾 Save Changes";
+    editBtn.classList.add("primary");
+    editBtn.onclick = () => saveEditedData();
+
+    // Change Close button to Cancel button
+    closeBtn.textContent = "Cancel";
+    closeBtn.onclick = () => cancelEdit();
+
+    // Make all value fields editable
+    const valueElements = modal.querySelectorAll(".row-detail-value");
+    valueElements.forEach((valueEl) => {
+      const label = valueEl.previousElementSibling;
+      if (!label) return;
+
+      const fieldName = label.textContent.trim();
+      const currentValue = valueEl.textContent.trim();
+
+      // Skip making certain fields editable (read-only)
+      if (fieldName === "Google Rating" || fieldName === "Google Place ID") {
+        return; // These come from Google, shouldn't be edited
+      }
+
+      // Create input field based on field type
+      let inputHTML = "";
+      
+      if (fieldName === "Description" || fieldName === "Nearby Attractions") {
+        // Multi-line textarea for long text
+        inputHTML = `<textarea class="edit-textarea" style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">${currentValue}</textarea>`;
+      } else if (fieldName === "Difficulty") {
+        // Dropdown for difficulty
+        const difficulties = ["Easy", "Moderate", "Hard"];
+        inputHTML = `<select class="edit-select" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+          ${difficulties.map(d => `<option value="${d}" ${currentValue.toUpperCase().includes(d.toUpperCase()) ? "selected" : ""}>${d}</option>`).join("")}
+        </select>`;
+      } else if (fieldName === "Cost") {
+        // Dropdown for cost
+        const costs = ["Free", "$", "$$", "$$$", "$$$$"];
+        inputHTML = `<select class="edit-select" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+          ${costs.map(c => `<option value="${c}" ${currentValue === c ? "selected" : ""}>${c}</option>`).join("")}
+        </select>`;
+      } else {
+        // Regular text input
+        inputHTML = `<input type="text" class="edit-input" value="${currentValue.replace(/"/g, '&quot;')}" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">`;
+      }
+
+      valueEl.innerHTML = inputHTML;
+    });
+
+    console.log("✅ Edit mode enabled");
+  }
+
+  /**
+   * Cancel Edit - Restore original modal view
+   */
+  function cancelEdit() {
+    if (!confirm("Discard changes and close?")) {
+      return;
+    }
+
+    closeRowDetailModal();
+    
+    // Reset buttons will happen when modal is reopened
+  }
+
+  /**
+   * Save Edited Data - Update Excel with changes
+   */
+  async function saveEditedData() {
+    if (!currentEditingRow || !accessToken) {
+      alert("Cannot save: Not authenticated or no row selected");
+      return;
+    }
+
+    const modal = document.getElementById("rowDetailModal");
+    const editBtn = document.getElementById("rowDetailEditBtn");
+    
+    try {
+      // Disable save button during save
+      editBtn.disabled = true;
+      editBtn.textContent = "💾 Saving...";
+
+      // Collect edited values
+      const editedData = {};
+      const valueElements = modal.querySelectorAll(".row-detail-value");
+      
+      valueElements.forEach((valueEl) => {
+        const label = valueEl.previousElementSibling;
+        if (!label) return;
+
+        const fieldName = label.textContent.trim();
+        let newValue = "";
+
+        // Get value from input/textarea/select
+        const input = valueEl.querySelector("input, textarea, select");
+        if (input) {
+          newValue = input.value.trim();
+          editedData[fieldName] = newValue;
+        }
+      });
+
+      console.log("Edited data:", editedData);
+
+      // Get row index for Excel update
+      const rowIndex = currentEditingRow.dataset.rowId;
+
+      // Map UI field names to Excel column indices
+      // Based on Excel structure: [Name, GooglePlaceId, Website, Tags, DriveTime, ...]
+      const fieldMapping = {
+        "Name": 0,
+        "Website": 2,
+        "Tags": 3,
+        "Drive Time": 4,
+        "Activity Duration": 6,
+        "Difficulty": 7,
+        "Trail Length": 8,
+        "State": 9,
+        "City": 10,
+        "Address": 11,
+        "Phone Number": 12,
+        "Cost": 14,
+        "Directions": 15,
+        "Description": 16,
+        "Nearby Attractions": 17,
+        "Links": 18,
+        "Links2": 19,
+      };
+
+      // Build Excel update array (23 columns total)
+      const excelRow = new Array(23).fill(null);
+      
+      Object.keys(editedData).forEach(fieldName => {
+        const columnIndex = fieldMapping[fieldName];
+        if (columnIndex !== undefined) {
+          excelRow[columnIndex] = editedData[fieldName];
+        }
+      });
+
+      // Update Excel via Microsoft Graph API
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
+      
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values: [excelRow] })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Excel API error: ${response.status}`);
+      }
+
+      // Success! Update the row data map
+      const rowData = rowDataMap.get(currentEditingRow);
+      Object.assign(rowData, {
+        name: editedData["Name"] || rowData.name,
+        website: editedData["Website"] || rowData.website,
+        tags: editedData["Tags"] || rowData.tags,
+        driveTime: editedData["Drive Time"] || rowData.driveTime,
+        state: editedData["State"] || rowData.state,
+        city: editedData["City"] || rowData.city,
+        address: editedData["Address"] || rowData.address,
+        directions: editedData["Directions"] || rowData.directions,
+        activityDuration: editedData["Activity Duration"] || rowData.activityDuration,
+        difficulty: editedData["Difficulty"] || rowData.difficulty,
+        trailLength: editedData["Trail Length"] || rowData.trailLength,
+        phoneNumber: editedData["Phone Number"] || rowData.phoneNumber,
+        cost: editedData["Cost"] || rowData.cost,
+        description: editedData["Description"] || rowData.description,
+        nearby: editedData["Nearby Attractions"] || rowData.nearby,
+        links: editedData["Links"] || rowData.links,
+        links2: editedData["Links2"] || rowData.links2,
+      });
+
+      alert("✅ Changes saved successfully!");
+      
+      // Close modal and reload data to reflect changes
+      closeRowDetailModal();
+      await loadTable(); // Reload table data from Excel
+
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      alert(`Failed to save changes: ${error.message}`);
+      
+      editBtn.disabled = false;
+      editBtn.textContent = "💾 Save Changes";
+    }
+  }
+
   /**
    * Initialize Row Detail Modal - detailed view of a single adventure
    */
@@ -6384,7 +6597,7 @@
 
     if (editBtn) {
       editBtn.addEventListener("click", () => {
-        alert("Edit functionality coming soon!");
+        enableEditMode();
       });
     }
 
@@ -6615,6 +6828,23 @@
       return;
     }
 
+    // Store current row for editing
+    currentEditingRow = row;
+
+    // Reset buttons to default state (in case they were changed to Save/Cancel)
+    const editBtn = document.getElementById("rowDetailEditBtn");
+    const closeBtn = document.getElementById("rowDetailCloseFooterBtn");
+    if (editBtn) {
+      editBtn.textContent = "✎ Edit";
+      editBtn.classList.remove("primary");
+      editBtn.disabled = false;
+      editBtn.onclick = () => enableEditMode();
+    }
+    if (closeBtn) {
+      closeBtn.textContent = "Close";
+      closeBtn.onclick = () => closeRowDetailModal();
+    }
+
     // Get row data from map
     const rowData = rowDataMap.get(row);
     if (!rowData) {
@@ -6683,6 +6913,9 @@
 
     if (modal) modal.classList.remove("visible");
     if (backdrop) backdrop.classList.remove("visible");
+
+    // Clear current editing row
+    currentEditingRow = null;
   }
 
   /**
