@@ -5768,6 +5768,14 @@
         return;
       }
 
+      // IMPORTANT: Check if the click was on an individual tag pill
+      // Tag pills have their own context menu handlers, so we should skip this handler
+      if (e.target.classList.contains("tag-pill")) {
+        console.log("🏷️ Click on individual tag pill detected - skipping global handler");
+        // Don't preventDefault - let the tag pill handler process it
+        return;
+      }
+
       e.preventDefault();
       e.stopPropagation();
 
