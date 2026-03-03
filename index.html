@@ -6536,7 +6536,7 @@
    */
   function generateLinksTab(data) {
     // Build Google Maps link from Google Place ID
-    const googleMapsLink = data.googlePlaceId 
+    const googleMapsLink = data.googlePlaceId
       ? `https://google.com/maps/place/?q=place_id:${data.googlePlaceId}`
       : null;
 
@@ -6564,6 +6564,39 @@
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Attach event listeners to row detail modal tabs
+   * This enables tab switching in the row detail modal
+   */
+  function attachTabListeners() {
+    const tabButtons = document.querySelectorAll(".row-detail-tab-btn");
+    const tabPanes = document.querySelectorAll(".row-detail-tab-pane");
+
+    if (!tabButtons || tabButtons.length === 0) {
+      console.warn("No tab buttons found in row detail modal");
+      return;
+    }
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tabId = btn.dataset.tab;
+
+        // Remove active class from all tabs and panes
+        tabButtons.forEach(b => b.classList.remove("active"));
+        tabPanes.forEach(p => p.classList.remove("active"));
+
+        // Add active class to clicked tab and corresponding pane
+        btn.classList.add("active");
+        const targetPane = document.querySelector(`[data-tab="${tabId}"].row-detail-tab-pane`);
+        if (targetPane) {
+          targetPane.classList.add("active");
+        }
+      });
+    });
+
+    console.log(`✅ Attached listeners to ${tabButtons.length} tab buttons`);
   }
 
   /**
