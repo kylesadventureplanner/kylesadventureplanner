@@ -484,8 +484,15 @@
       padding: 2px 6px;
       border-radius: 999px;
       font-size: 11px;
-      margin: 1px 2px 1px 0;
+      margin: 2px 4px 2px 0;
       color: #111827;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .tag-pill:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     }
 
     /* Tag Icons - Graphical representation of each tag type */
