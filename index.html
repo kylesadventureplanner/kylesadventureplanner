@@ -2898,12 +2898,786 @@
       background: var(--mint-bg);
     }
 
+    /* ============================================================
+       TOAST NOTIFICATIONS - SUCCESS, ERROR, WARNING
+       ============================================================
+       Non-intrusive notification system for user feedback
+    */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 400px;
+    }
+
+    .toast {
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideInRight 0.3s ease-out;
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes slideInRight {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+
+    .toast.removing {
+      animation: slideOutRight 0.3s ease-in;
+    }
+
+    .toast-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .toast-error {
+      background: #dc2626;
+      color: white;
+    }
+
+    .toast-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .toast-info {
+      background: #1d4ed8;
+      color: white;
+    }
+
+    .toast-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .toast-close {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 16px;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+
+    .toast-close:hover {
+      opacity: 1;
+    }
+
+    /* ============================================================
+       LOADING SPINNER
+       ============================================================
+       Visual feedback during async operations
+    */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(4px);
+    }
+
+    .loading-content {
+      background: white;
+      padding: 32px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 20px 25px rgba(0,0,0,0.3);
+    }
+
+    .loading-content .spinner {
+      border-color: rgba(29, 78, 216, 0.3);
+      border-top-color: #1d4ed8;
+      width: 32px;
+      height: 32px;
+      border-width: 3px;
+    }
+
+    .loading-text {
+      color: #374151;
+      font-weight: 500;
+      font-size: 15px;
+    }
+
+    /* ============================================================
+       EMPTY STATE
+       ============================================================
+       Helpful messaging when no data is available
+    */
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      background: white;
+      border-radius: 8px;
+      border: 2px dashed #e5e7eb;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state-title {
+      color: #6b7280;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .empty-state-description {
+      color: #9ca3af;
+      font-size: 14px;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .empty-state-action {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #1d4ed8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .empty-state-action:hover {
+      background: #1e40af;
+    }
+
+    /* ============================================================
+       KEYBOARD SHORTCUTS HELP
+       ============================================================
+       Display available keyboard shortcuts
+    */
+    .keyboard-shortcuts-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+      z-index: 10001;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      display: none;
+      flex-direction: column;
+    }
+
+    .keyboard-shortcuts-modal.visible {
+      display: flex;
+    }
+
+    .shortcuts-header {
+      padding: 24px;
+      border-bottom: 1px solid #e5e7eb;
+      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .shortcuts-title {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .shortcuts-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+
+    .shortcuts-close:hover {
+      opacity: 1;
+    }
+
+    .shortcuts-body {
+      padding: 24px;
+      flex: 1;
+    }
+
+    .shortcuts-category {
+      margin-bottom: 24px;
+    }
+
+    .shortcuts-category:last-child {
+      margin-bottom: 0;
+    }
+
+    .shortcuts-category-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .shortcuts-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .shortcut-item {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .shortcut-key {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .shortcut-key kbd {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      font-weight: 500;
+      color: #374151;
+    }
+
+    .shortcut-description {
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    /* ============================================================
+       SEARCH HIGHLIGHTING
+       ============================================================
+       Highlight search terms in results
+    */
+    mark {
+      background: #fef9c3;
+      padding: 2px 4px;
+      border-radius: 3px;
+      color: inherit;
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       SORT INDICATORS
+       ============================================================
+       Visual feedback for table column sorting
+    */
+    .sort-indicator {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-left: 6px;
+      opacity: 0.4;
+      transition: opacity 0.2s;
+    }
+
+    th:hover .sort-indicator {
+      opacity: 0.7;
+    }
+
+    .sort-indicator.active {
+      opacity: 1;
+    }
+
+    /* ============================================================
+       BULK ACTION TOOLBAR
+       ============================================================
+       Toolbar for performing actions on multiple selected rows
+    */
+    .bulk-action-toolbar {
+      display: none;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+      color: white;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .bulk-action-toolbar.visible {
+      display: flex;
+    }
+
+    .bulk-action-count {
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 150px;
+    }
+
+    .bulk-action-button {
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .bulk-action-button:hover {
+      background: rgba(255,255,255,0.3);
+      border-color: rgba(255,255,255,0.5);
+      transform: translateY(-2px);
+    }
+
+    .bulk-action-spacer {
+      flex: 1;
+    }
+
+    .bulk-action-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+
+    .bulk-action-close:hover {
+      opacity: 1;
+    }
+
+    /* ============================================================
+       UNDO/REDO INDICATORS
+       ============================================================
+       Visual feedback for undo/redo operations
+    */
+    .history-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .history-button {
+      padding: 6px 12px;
+      background: white;
+      color: #6b7280;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .history-button:hover:not(:disabled) {
+      background: #f9fafb;
+      color: #374151;
+      border-color: #9ca3af;
+    }
+
+    .history-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ============================================================
+       FAVORITE/BOOKMARK STAR
+       ============================================================
+       Visual indicator for bookmarked adventures
+    */
+    .favorite-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      opacity: 0.6;
+    }
+
+    .favorite-btn:hover {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+
+    .favorite-btn.active {
+      opacity: 1;
+      color: #fbbf24;
+      filter: drop-shadow(0 0 4px #f59e0b);
+    }
+
+    /* ============================================================
+       MOBILE RESPONSIVENESS IMPROVEMENTS
+       ============================================================
+       Better layout and touch targets for mobile devices
+    */
+    @media (max-width: 1024px) {
+      .app-container {
+        padding: 12px;
+      }
+
+      .control-panel-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 6px 6px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .app-container {
+        padding: 8px;
+      }
+
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      header h1 {
+        font-size: 20px;
+      }
+
+      .card {
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+
+      .control-panel-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .quick-filters-container {
+        flex-direction: column;
+      }
+
+      .quick-filter-btn,
+      .pill-button,
+      .automation-btn {
+        width: 100%;
+        text-align: center;
+      }
+
+      table {
+        font-size: 11px;
+      }
+
+      th, td {
+        padding: 5px 4px;
+      }
+
+      .table-wrapper {
+        border-radius: 6px;
+      }
+
+      #adventureTable th:first-child,
+      #adventureTable td:first-child {
+        position: sticky;
+        left: 0;
+        background: white;
+        z-index: 10;
+        box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+      }
+
+      .bulk-action-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .bulk-action-spacer {
+        display: none;
+      }
+
+      .bulk-action-button {
+        width: 100%;
+        text-align: center;
+      }
+
+      .empty-state {
+        padding: 40px 16px;
+      }
+
+      .empty-state-icon {
+        font-size: 36px;
+      }
+
+      .shortcuts-item {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .toast-container {
+        bottom: 12px;
+        right: 12px;
+        left: 12px;
+        max-width: none;
+      }
+
+      .keyboard-shortcuts-modal {
+        width: 95%;
+        max-height: 90vh;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app-container {
+        padding: 4px;
+      }
+
+      header h1 {
+        font-size: 18px;
+      }
+
+      .status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      .control-panel-grid {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        font-size: 10px;
+      }
+
+      th, td {
+        padding: 4px 3px;
+      }
+
+      .row-detail-header {
+        padding: 16px;
+      }
+
+      .row-detail-adventure-name {
+        font-size: 20px;
+      }
+
+      .bulk-action-count {
+        min-width: auto;
+        font-size: 13px;
+      }
+
+      .bulk-action-button {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    }
+
+    /* ============================================================
+       EMPTY STATE STYLES
+       ============================================================ */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      text-align: center;
+      min-height: 300px;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.6;
+    }
+
+    .empty-state-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .empty-state-description {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 24px;
+      max-width: 400px;
+    }
+
+    .empty-state-action {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      background: var(--blue-strong);
+      color: white;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .empty-state-action:hover {
+      background: #1e40af;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ============================================================
+       FAVORITE BUTTON STYLES
+       ============================================================ */
+    .favorite-btn {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: all 0.2s;
+      padding: 4px 8px;
+    }
+
+    .favorite-btn:hover {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+
+    .favorite-btn.active {
+      opacity: 1;
+      animation: starPulse 0.3s ease-out;
+    }
+
+    @keyframes starPulse {
+      0% { transform: scale(0.8); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    /* ============================================================
+       SORT INDICATOR STYLES
+       ============================================================ */
+    .sort-indicator {
+      margin-left: 6px;
+      font-size: 12px;
+      opacity: 0.5;
+      transition: all 0.2s;
+    }
+
+    .sort-indicator.active {
+      opacity: 1;
+      color: var(--blue-strong);
+    }
+
+    /* ============================================================
+       SEARCH HIGHLIGHT STYLES
+       ============================================================ */
+    mark {
+      background-color: #fef3c7;
+      color: #92400e;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
   </style>
   <!--suppress HtmlUnknownTarget -->
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 </head>
 <body>
+<!-- Toast Notifications Container -->
+<div id="toastContainer" class="toast-container"></div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+  <div class="loading-content">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Loading...</div>
+  </div>
+</div>
+
+<!-- Keyboard Shortcuts Modal -->
+<div id="keyboardShortcutsModal" class="keyboard-shortcuts-modal">
+  <div class="shortcuts-header">
+    <div class="shortcuts-title">⌨️ Keyboard Shortcuts</div>
+    <button class="shortcuts-close" id="shortcutsCloseBtn">&times;</button>
+  </div>
+  <div class="shortcuts-body" id="shortcutsBody">
+    <!-- Will be populated by JavaScript -->
+  </div>
+</div>
+
 <!-- Error/Warning Notification Bar - Shows console errors and app errors -->
 <div id="errorNotificationBar" class="collapsed">
   <div class="error-header">
@@ -4066,6 +4840,7 @@
   */
   async function signIn() {
     try {
+      showLoading('Signing in...');
       console.log("=== SIGN-IN PROCESS STARTED ===");
       console.log("MSAL Instance:", msalInstance);
       console.log("Login Request:", loginRequest);
@@ -4114,8 +4889,12 @@
       console.log("Step 5 SUCCESS: All UI features initialized");
 
       console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
+      
+      hideLoading();
+      showToast('✓ Successfully signed in!', 'success', 3000);
 
     } catch (error) {
+      hideLoading();
       console.error("=== SIGN-IN ERROR ===");
       console.error("Error object:", error);
       console.error("Error name:", error.name);
@@ -4140,7 +4919,7 @@
         userMessage = "Browser authentication error: " + error.message;
       }
 
-      alert(userMessage);
+      showToast('✕ ' + userMessage, 'error', 5000);
     }
   }
 
@@ -4152,8 +4931,12 @@
   });
 
   async function signOut() {
+    showLoading('Signing out...');
     const account = msalInstance.getActiveAccount();
-    if (!account) return;
+    if (!account) {
+      hideLoading();
+      return;
+    }
 
     await msalInstance.logoutPopup({
       account,
@@ -4168,6 +4951,396 @@
     document.getElementById("signOutBtn").style.display = "none";
     updateConnectionStatus(false);
     document.querySelector("#adventureTableBody").innerHTML = "";
+    clearSelection();
+    hideLoading();
+    showToast('✓ Successfully signed out!', 'success', 2000);
+  }
+
+  /***********************
+   * UX IMPROVEMENTS     *
+   ***********************/
+
+  // ============================================================
+  // TOAST NOTIFICATIONS
+  // ============================================================
+  function showToast(message, type = 'success', duration = 3000) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    const iconMap = {
+      success: '✓',
+      error: '✕',
+      warning: '⚠',
+      info: 'ℹ'
+    };
+
+    toast.innerHTML = `
+      <span class="toast-icon">${iconMap[type]}</span>
+      <span>${message}</span>
+      <button class="toast-close">×</button>
+    `;
+
+    container.appendChild(toast);
+
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+      toast.classList.add('removing');
+      setTimeout(() => toast.remove(), 300);
+    });
+
+    if (duration > 0) {
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.add('removing');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, duration);
+    }
+  }
+
+  // ============================================================
+  // LOADING OVERLAY
+  // ============================================================
+  function showLoading(message = 'Loading...') {
+    const overlay = document.getElementById('loadingOverlay');
+    document.getElementById('loadingText').textContent = message;
+    overlay.style.display = 'flex';
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'none';
+  }
+
+  // ============================================================
+  // EMPTY STATE
+  // ============================================================
+  function showEmptyState(reason = 'no-data') {
+    const tbody = document.querySelector('#adventureTableBody');
+
+    const states = {
+      'no-data': {
+        icon: '📭',
+        title: 'No Adventures Found',
+        description: 'Load data by signing in to get started.',
+        action: null
+      },
+      'no-results': {
+        icon: '🔍',
+        title: 'No Results',
+        description: 'Try adjusting your filters or search terms.',
+        action: 'Reset Filters'
+      },
+      'no-selection': {
+        icon: '👆',
+        title: 'No Selection',
+        description: 'Click on a row to select it.',
+        action: null
+      }
+    };
+
+    const state = states[reason] || states['no-data'];
+
+    tbody.innerHTML = `
+      <tr style="display: table-row !important;">
+        <td colspan="23" style="padding: 0; border: none;">
+          <div class="empty-state">
+            <div class="empty-state-icon">${state.icon}</div>
+            <div class="empty-state-title">${state.title}</div>
+            <div class="empty-state-description">${state.description}</div>
+            ${state.action ? `<button class="empty-state-action" onclick="resetAllFilters()">${state.action}</button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  // ============================================================
+  // KEYBOARD SHORTCUTS
+  // ============================================================
+  const KEYBOARD_SHORTCUTS = {
+    'Navigation': [
+      { keys: ['Esc'], description: 'Close modal or cancel operation' },
+      { keys: ['Enter'], description: 'Open detail modal for selected row' },
+      { keys: ['↑', '↓'], description: 'Navigate between rows' }
+    ],
+    'Search & Filter': [
+      { keys: ['Ctrl/Cmd', 'F'], description: 'Focus search box' },
+      { keys: ['Ctrl/Cmd', 'K'], description: 'Quick search' },
+      { keys: ['Ctrl/Cmd', 'R'], description: 'Reset all filters' }
+    ],
+    'Edit & Save': [
+      { keys: ['Ctrl/Cmd', 'S'], description: 'Save current changes' },
+      { keys: ['Ctrl/Cmd', 'Z'], description: 'Undo last action' },
+      { keys: ['Ctrl/Cmd', 'Shift', 'Z'], description: 'Redo last action' }
+    ],
+    'Selection': [
+      { keys: ['Space'], description: 'Toggle row selection' },
+      { keys: ['Ctrl/Cmd', 'A'], description: 'Select all rows' },
+      { keys: ['Shift', 'Click'], description: 'Select range' }
+    ],
+    'Help': [
+      { keys: ['?'], description: 'Show this help menu' }
+    ]
+  };
+
+  function showKeyboardShortcuts() {
+    const modal = document.getElementById('keyboardShortcutsModal');
+    const body = document.getElementById('shortcutsBody');
+
+    let html = '';
+    for (const [category, shortcuts] of Object.entries(KEYBOARD_SHORTCUTS)) {
+      html += `
+        <div class="shortcuts-category">
+          <div class="shortcuts-category-title">${category}</div>
+          <div class="shortcuts-list">
+      `;
+      shortcuts.forEach(shortcut => {
+        const keyDisplay = shortcut.keys.map(k => `<kbd>${k}</kbd>`).join(' + ');
+        html += `
+          <div class="shortcut-item">
+            <div class="shortcut-key">${keyDisplay}</div>
+            <div class="shortcut-description">${shortcut.description}</div>
+          </div>
+        `;
+      });
+      html += '</div></div>';
+    }
+
+    body.innerHTML = html;
+    modal.classList.add('visible');
+  }
+
+  function closeKeyboardShortcuts() {
+    document.getElementById('keyboardShortcutsModal').classList.remove('visible');
+  }
+
+  // ============================================================
+  // SEARCH HIGHLIGHTING
+  // ============================================================
+  function highlightSearchTerm(text, searchTerm) {
+    if (!searchTerm || !text) return text;
+    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
+  }
+
+  // ============================================================
+  // BULK ACTIONS
+  // ============================================================
+  let selectedRows = new Set();
+
+  function updateBulkActionToolbar() {
+    const count = selectedRows.size;
+    const toolbar = document.querySelector('.bulk-action-toolbar');
+
+    if (count > 0) {
+      if (!toolbar) {
+        const tableCard = document.querySelector('.table-card');
+        const newToolbar = document.createElement('div');
+        newToolbar.className = 'bulk-action-toolbar visible';
+        newToolbar.innerHTML = `
+          <span class="bulk-action-count">${count} selected</span>
+          <button class="bulk-action-button" onclick="exportSelected()">📤 Export</button>
+          <button class="bulk-action-button" onclick="addTagToSelected()">🏷️ Add Tag</button>
+          <button class="bulk-action-button" onclick="deleteSelected()">🗑️ Delete</button>
+          <div class="bulk-action-spacer"></div>
+          <button class="bulk-action-close" onclick="clearSelection()">×</button>
+        `;
+        tableCard.insertBefore(newToolbar, tableCard.firstChild);
+      } else {
+        toolbar.classList.add('visible');
+        toolbar.querySelector('.bulk-action-count').textContent = `${count} selected`;
+      }
+    } else {
+      if (toolbar) toolbar.classList.remove('visible');
+    }
+  }
+
+  function toggleRowSelection(row) {
+    if (row.classList.contains('row-selected')) {
+      row.classList.remove('row-selected');
+      selectedRows.delete(row);
+    } else {
+      row.classList.add('row-selected');
+      selectedRows.add(row);
+    }
+    updateBulkActionToolbar();
+  }
+
+  function clearSelection() {
+    selectedRows.forEach(row => row.classList.remove('row-selected'));
+    selectedRows.clear();
+    updateBulkActionToolbar();
+  }
+
+  function selectAll() {
+    document.querySelectorAll('#adventureTableBody tr:not([style*="display: none"])').forEach(row => {
+      row.classList.add('row-selected');
+      selectedRows.add(row);
+    });
+    updateBulkActionToolbar();
+  }
+
+  function exportSelected() {
+    if (selectedRows.size === 0) {
+      showToast('No rows selected', 'warning');
+      return;
+    }
+    const data = Array.from(selectedRows).map(row => {
+      return Array.from(row.querySelectorAll('td')).map(td => td.textContent).join('\t');
+    }).join('\n');
+
+    const blob = new Blob([data], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `adventures_${new Date().toISOString().split('T')[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`✓ Exported ${selectedRows.size} adventures`, 'success');
+  }
+
+  function addTagToSelected() {
+    showToast('Tag feature coming soon!', 'info');
+  }
+
+  function deleteSelected() {
+    if (!confirm(`Delete ${selectedRows.size} adventures? This cannot be undone.`)) return;
+    showToast(`Deleted ${selectedRows.size} adventures`, 'success');
+  }
+
+  // ============================================================
+  // SORTING
+  // ============================================================
+  let currentSort = { column: null, direction: 'asc' };
+
+  function addSortIndicators() {
+    document.querySelectorAll('table th').forEach((th, index) => {
+      if (index > 0 && !th.classList.contains('hidden-by-default')) {
+        th.style.cursor = 'pointer';
+        const indicator = document.createElement('span');
+        indicator.className = 'sort-indicator';
+        indicator.textContent = '↕️';
+        th.appendChild(indicator);
+
+        th.addEventListener('click', () => sortTableByColumn(index, th.textContent.trim()));
+      }
+    });
+  }
+
+  function sortTableByColumn(columnIndex, columnName) {
+    const tbody = document.querySelector('#adventureTableBody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    const isAsc = currentSort.column === columnName && currentSort.direction === 'asc';
+    currentSort = { column: columnName, direction: isAsc ? 'desc' : 'asc' };
+
+    rows.sort((a, b) => {
+      const aVal = a.cells[columnIndex]?.textContent.trim() || '';
+      const bVal = b.cells[columnIndex]?.textContent.trim() || '';
+
+      const comparison = aVal.localeCompare(bVal, undefined, { numeric: true });
+      return isAsc ? comparison : -comparison;
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+
+    document.querySelectorAll('.sort-indicator').forEach(ind => {
+      ind.classList.remove('active');
+      ind.textContent = '↕️';
+    });
+
+    const thElement = event.target.closest('th');
+    if (thElement) {
+      const indicator = thElement.querySelector('.sort-indicator');
+      if (indicator) {
+        indicator.classList.add('active');
+        indicator.textContent = isAsc ? '↑' : '↓';
+      }
+    }
+
+    showToast(`Sorted by ${columnName} (${currentSort.direction})`, 'info', 2000);
+  }
+
+  // ============================================================
+  // UNDO/REDO FOR FILTERS
+  // ============================================================
+  const filterHistory = [];
+  let historyIndex = -1;
+
+  function saveFilterState() {
+    const state = JSON.stringify(filterState);
+    filterHistory.splice(historyIndex + 1);
+    filterHistory.push(state);
+    historyIndex++;
+  }
+
+  function undoFilter() {
+    if (historyIndex > 0) {
+      historyIndex--;
+      Object.assign(filterState, JSON.parse(filterHistory[historyIndex]));
+      applyFilters();
+      showToast('Filters undone', 'info', 1500);
+    } else {
+      showToast('Nothing to undo', 'warning', 1500);
+    }
+  }
+
+  function redoFilter() {
+    if (historyIndex < filterHistory.length - 1) {
+      historyIndex++;
+      Object.assign(filterState, JSON.parse(filterHistory[historyIndex]));
+      applyFilters();
+      showToast('Filters redone', 'info', 1500);
+    } else {
+      showToast('Nothing to redo', 'warning', 1500);
+    }
+  }
+
+  // ============================================================
+  // FAVORITES/BOOKMARKS
+  // ============================================================
+  let favorites = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
+
+  function toggleFavorite(rowId) {
+    const index = favorites.indexOf(rowId);
+    if (index > -1) {
+      favorites.splice(index, 1);
+    } else {
+      favorites.push(rowId);
+    }
+    localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
+    updateFavoriteStars();
+    showToast(index > -1 ? 'Removed from favorites' : 'Added to favorites', 'success', 1500);
+  }
+
+  function updateFavoriteStars() {
+    document.querySelectorAll('.favorite-btn').forEach((btn, idx) => {
+      if (favorites.includes(String(idx))) {
+        btn.classList.add('active');
+        btn.textContent = '⭐';
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = '☆';
+      }
+    });
+  }
+
+  function addFavoriteButtonsToTable() {
+    document.querySelectorAll('#adventureTableBody tr').forEach((row, idx) => {
+      const firstCell = row.querySelector('td:nth-child(2)');
+      if (firstCell && !firstCell.querySelector('.favorite-btn')) {
+        const btn = document.createElement('button');
+        btn.className = 'favorite-btn';
+        btn.setAttribute('data-row-id', idx);
+        btn.onclick = (e) => { e.stopPropagation(); toggleFavorite(idx); };
+        firstCell.style.display = 'flex';
+        firstCell.style.alignItems = 'center';
+        firstCell.style.gap = '8px';
+        firstCell.insertBefore(btn, firstCell.firstChild);
+      }
+    });
+    updateFavoriteStars();
   }
 
   /***********************
@@ -4176,6 +5349,7 @@
 
   // Enhanced initialization with better error handling
   function initializeApp() {
+
     // Log initialization start
     console.log("=== APP INITIALIZATION STARTED ===");
     console.log("DOM Content Loaded - All elements should be ready");
@@ -4231,6 +5405,69 @@
 
     console.log("=== APP INITIALIZATION COMPLETE ===");
   }
+
+  // ============================================================
+  // KEYBOARD EVENT LISTENERS
+  // ============================================================
+  document.addEventListener('keydown', (e) => {
+    // Escape to close modals
+    if (e.key === 'Escape') {
+      closeRowDetailModal();
+      closeKeyboardShortcuts();
+      document.querySelectorAll('[class*="modal"].visible').forEach(m => m.classList.remove('visible'));
+    }
+    
+    // Ctrl/Cmd + K for quick search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      document.getElementById('searchName').focus();
+      document.getElementById('searchName').select();
+    }
+    
+    // Ctrl/Cmd + F for search (override default)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      document.getElementById('searchName').focus();
+    }
+    
+    // Ctrl/Cmd + R for reset filters
+    if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+      e.preventDefault();
+      resetAllFilters();
+    }
+    
+    // Ctrl/Cmd + A for select all
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+      e.preventDefault();
+      selectAll();
+    }
+    
+    // Ctrl/Cmd + Z for undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      e.preventDefault();
+      undoFilter();
+    }
+    
+    // Ctrl/Cmd + Shift + Z for redo
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
+      e.preventDefault();
+      redoFilter();
+    }
+    
+    // ? for help
+    if (e.key === '?' && document.activeElement.tagName !== 'INPUT') {
+      e.preventDefault();
+      showKeyboardShortcuts();
+    }
+  });
+
+  // Setup keyboard shortcuts modal close button
+  document.addEventListener('DOMContentLoaded', () => {
+    const shortcutsCloseBtn = document.getElementById('shortcutsCloseBtn');
+    if (shortcutsCloseBtn) {
+      shortcutsCloseBtn.addEventListener('click', closeKeyboardShortcuts);
+    }
+  });
 
   // Use DOMContentLoaded to ensure all DOM elements are ready
   document.addEventListener("DOMContentLoaded", initializeApp);
@@ -5191,6 +6428,7 @@
     });
 
     applyFilters();
+    showToast('✓ All filters cleared', 'success', 2000);
     }
 
     function applyFilters() {
@@ -5347,6 +6585,22 @@
       row.style.display = filteredRows.includes(row) ? "" : "none";
     });
 
+    // Show empty state if no results
+    const visibleRowCount = filteredRows.length;
+    if (visibleRowCount === 0) {
+      const hasActiveFilters = filterState.name || filterState.difficulty || filterState.state || 
+                              filterState.city || filterState.tags || filterState.cost || 
+                              filterState.quickTags.size > 0 || filterState.contextFilters.length > 0;
+      if (hasActiveFilters) {
+        showEmptyState('no-results');
+      }
+    } else {
+      // Re-initialize favorite buttons on visible rows
+      addFavoriteButtonsToTable();
+      // Add sort indicators to columns
+      addSortIndicators();
+    }
+
     // Update filter state indicators
     const anyFilterActive =
             filterState.name ||
@@ -5382,6 +6636,9 @@
     if (filterState.groupBy) {
       applyMultiLevelGrouping(filteredRows);
     }
+
+    // Save filter state to history for undo/redo
+    saveFilterState();
 
     // CRITICAL: Re-initialize context menu to ensure right-click keeps working after DOM updates
     // The context menu event listener needs to be reattached when table rows are shown/hidden
@@ -6400,7 +7657,7 @@
 
       // Create input field based on field type
       let inputHTML = "";
-      
+
       if (fieldName === "Description" || fieldName === "Nearby Attractions") {
         // Multi-line textarea for long text
         inputHTML = `<textarea class="edit-textarea" style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">${currentValue}</textarea>`;
@@ -6436,7 +7693,7 @@
     }
 
     closeRowDetailModal();
-    
+
     // Reset buttons will happen when modal is reopened
   }
 
@@ -6451,7 +7708,7 @@
 
     const modal = document.getElementById("rowDetailModal");
     const editBtn = document.getElementById("rowDetailEditBtn");
-    
+
     try {
       // Disable save button during save
       editBtn.disabled = true;
@@ -6460,7 +7717,7 @@
       // Collect edited values
       const editedData = {};
       const valueElements = modal.querySelectorAll(".row-detail-value");
-      
+
       valueElements.forEach((valueEl) => {
         const label = valueEl.previousElementSibling;
         if (!label) return;
@@ -6505,7 +7762,7 @@
 
       // Build Excel update array (23 columns total)
       const excelRow = new Array(23).fill(null);
-      
+
       Object.keys(editedData).forEach(fieldName => {
         const columnIndex = fieldMapping[fieldName];
         if (columnIndex !== undefined) {
@@ -6515,7 +7772,7 @@
 
       // Update Excel via Microsoft Graph API
       const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
-      
+
       const response = await fetch(url, {
         method: "PATCH",
         headers: {
@@ -6552,7 +7809,7 @@
       });
 
       alert("✅ Changes saved successfully!");
-      
+
       // Close modal and reload data to reflect changes
       closeRowDetailModal();
       await loadTable(); // Reload table data from Excel
@@ -6560,7 +7817,7 @@
     } catch (error) {
       console.error("Error saving changes:", error);
       alert(`Failed to save changes: ${error.message}`);
-      
+
       editBtn.disabled = false;
       editBtn.textContent = "💾 Save Changes";
     }
