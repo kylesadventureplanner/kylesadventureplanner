@@ -6034,7 +6034,7 @@
    */
   function showIndividualTagContextMenu(e, clickedTag, tagList) {
     console.log("🏷️ showIndividualTagContextMenu called for tag:", clickedTag);
-    
+
     // Prevent default context menu
     e.preventDefault();
     e.stopPropagation();
@@ -6075,7 +6075,7 @@
     menuItems.forEach(item => {
       item.addEventListener("click", (clickEvent) => {
         clickEvent.stopPropagation();
-        
+
         const tag = item.getAttribute("data-tag");
         const action = item.getAttribute("data-action") || "replace";
 
@@ -6091,7 +6091,7 @@
 
         // Apply the tag filter
         applyContextFilter("tags", tag, operation);
-        
+
         // Close menu
         menu.classList.remove("visible");
       });
