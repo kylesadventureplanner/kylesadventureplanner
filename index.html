@@ -1007,56 +1007,6 @@
     }
 
     /* Tag Context Menu for individual tag selection */
-    .tag-context-menu {
-      position: fixed;
-      background: white;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      z-index: 2000;
-      display: none;
-      flex-direction: column;
-      min-width: 180px;
-      max-width: 300px;
-      padding: 4px 0;
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 0.2s, visibility 0.2s;
-    }
-
-    .tag-context-menu.visible {
-      display: flex;
-      visibility: visible;
-      opacity: 1;
-    }
-
-    .tag-context-menu-item {
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 13px;
-      color: #111827;
-      transition: background 0.15s;
-      border-left: 3px solid transparent;
-    }
-
-    .tag-context-menu-item:hover {
-      background: #f3f4f6;
-      border-left-color: var(--blue-border);
-    }
-
-    .tag-context-menu-item.divider {
-      height: 1px;
-      background: #e5e7eb;
-      cursor: default;
-      padding: 0;
-      margin: 4px 0;
-    }
-
-    .tag-context-menu-item.divider:hover {
-      background: #e5e7eb;
-      border-left: none;
-    }
-
     .context-menu-header {
       padding: 12px 16px;
       background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
@@ -6084,6 +6034,10 @@
    */
   function showIndividualTagContextMenu(e, clickedTag, tagList) {
     console.log("🏷️ showIndividualTagContextMenu called for tag:", clickedTag);
+    
+    // Prevent default context menu
+    e.preventDefault();
+    e.stopPropagation();
 
     const menu = document.getElementById("tagContextMenu");
     const itemsContainer = document.getElementById("tagContextMenuItems");
@@ -6093,35 +6047,39 @@
       return;
     }
 
-    // Build menu items for the clicked tag only
+    // Build menu items for the clicked tag only - using tag-menu-item class to match CSS
     let html = `
-      <div class="tag-context-menu-item" data-tag="${clickedTag}">
+      <div class="tag-menu-item" data-tag="${clickedTag}" data-action="replace">
         📌 Show Only: ${clickedTag}
       </div>
-      <div class="tag-context-menu-item" data-tag="${clickedTag}" data-action="add">
+      <div class="tag-menu-item" data-tag="${clickedTag}" data-action="add">
         ➕ Add to Filter: ${clickedTag}
       </div>
-      <div class="tag-context-menu-item divider"></div>
-      <div class="tag-context-menu-item danger" data-tag="${clickedTag}" data-action="exclude">
+      <div class="tag-menu-item separator"></div>
+      <div class="tag-menu-item" data-tag="${clickedTag}" data-action="exclude">
         ✗ Exclude: ${clickedTag}
       </div>
     `;
 
     itemsContainer.innerHTML = html;
 
-    // Position menu
+    // Position menu at click location
     menu.style.left = e.pageX + "px";
     menu.style.top = e.pageY + "px";
     menu.classList.add("visible");
 
+    console.log("✅ Tag context menu positioned and made visible at", e.pageX, e.pageY);
+
     // Add event listeners to menu items
-    const menuItems = itemsContainer.querySelectorAll(".tag-context-menu-item:not(.divider)");
+    const menuItems = itemsContainer.querySelectorAll(".tag-menu-item:not(.separator)");
     menuItems.forEach(item => {
       item.addEventListener("click", (clickEvent) => {
+        clickEvent.stopPropagation();
+        
         const tag = item.getAttribute("data-tag");
         const action = item.getAttribute("data-action") || "replace";
 
-        console.log(`Individual tag menu clicked: tag=${tag}, action=${action}`);
+        console.log(`✅ Individual tag menu clicked: tag=${tag}, action=${action}`);
 
         // Map the action to the appropriate operation
         let operation = "equals";
@@ -6133,6 +6091,8 @@
 
         // Apply the tag filter
         applyContextFilter("tags", tag, operation);
+        
+        // Close menu
         menu.classList.remove("visible");
       });
     });
