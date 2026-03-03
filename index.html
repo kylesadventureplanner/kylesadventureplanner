@@ -6542,65 +6542,56 @@
       return;
     }
 
-    // Update modal content
-    document.getElementById("detailAdventureName").textContent = rowData.name || "Unknown";
-    document.getElementById("detailCity").textContent = rowData.city || "-";
-    document.getElementById("detailState").textContent = rowData.state?.toUpperCase() || "-";
-
-    // Overview tab
-    document.getElementById("detailDescription").textContent = rowData.description || "No description available";
-
-    const tagsContainer = document.getElementById("detailTags");
-    tagsContainer.innerHTML = "";
-    if (rowData.tags) {
-      const tagList = rowData.tags.split(",").map(t => t.trim());
-      tagList.forEach(tag => {
-        const tagEl = document.createElement("span");
-        tagEl.className = "row-detail-tag";
-        tagEl.textContent = tag;
-        tagsContainer.appendChild(tagEl);
-      });
-    }
-
-    document.getElementById("detailDriveTime").textContent = rowData.driveTime || "-";
-    document.getElementById("detailDifficulty").textContent = rowData.difficulty || "-";
-    document.getElementById("detailActivityDuration").textContent = rowData.activityDuration || "-";
-    document.getElementById("detailTrailLength").textContent = rowData.trailLength || "-";
-
-    // Details tab
-    document.getElementById("detailAddress").textContent = rowData.address || "-";
-
-    // Google Maps Link
-    if (rowData.googlePlaceId) {
-      const mapsLink = `https://google.com/maps/place/?q=place_id:${rowData.googlePlaceId}`;
-      document.getElementById("detailGoogleMapsLink").innerHTML = `
-        <a href="${mapsLink}" target="_blank" rel="noopener">Open on Google Maps</a>
+    // Update header with title and location
+    document.getElementById("rowDetailTitle").textContent = rowData.name || "Adventure";
+    const locationEl = document.getElementById("rowDetailLocation");
+    if (locationEl) {
+      locationEl.innerHTML = `
+        <span>📍 ${rowData.city || "Unknown"}, ${rowData.state || "Unknown"}</span>
+        <span>⏱️ ${rowData.driveTime || "N/A"}</span>
       `;
-    } else {
-      document.getElementById("detailGoogleMapsLink").textContent = "-";
     }
 
-    document.getElementById("detailWebsite").innerHTML = rowData.website ?
-      `<a href="${rowData.website}" target="_blank" rel="noopener">Visit Website</a>` : "-";
-    document.getElementById("detailPhone").textContent = rowData.phoneNumber || "-";
-    document.getElementById("detailDirections").innerHTML = rowData.directions ?
-      `<a href="${rowData.directions}" target="_blank" rel="noopener">Get Directions</a>` : "-";
-    document.getElementById("detailGoogleRating").textContent = rowData.googleRating || "-";
-    document.getElementById("detailNearby").textContent = rowData.nearby || "-";
+    // Build tabs content
+    const tabs = [
+      { id: "overview", name: "📋 Overview", content: generateOverviewTab(rowData) },
+      { id: "details", name: "ℹ️ Details", content: generateDetailsTab(rowData) },
+      { id: "visit-info", name: "🏞️ Visit Info", content: generateVisitInfoTab(rowData) },
+      { id: "contact", name: "📞 Contact", content: generateContactTab(rowData) },
+      { id: "links", name: "🔗 Links", content: generateLinksTab(rowData) }
+    ];
 
-    // Hours tab
-    document.getElementById("detailHours").textContent = rowData.hours || "-";
+    // Update tab buttons
+    const tabsContainer = document.getElementById("rowDetailTabsContainer");
+    if (tabsContainer) {
+      tabsContainer.innerHTML = tabs.map((tab, idx) => `
+        <button class="row-detail-tab-btn ${idx === 0 ? "active" : ""}" data-tab="${tab.id}">
+          ${tab.name}
+        </button>
+      `).join("");
+    }
 
-    // Research tab
-    document.getElementById("detailNotes").textContent = rowData.notes || "No notes yet";
-    document.getElementById("detailMyRating").textContent = rowData.myRating ? `⭐ ${rowData.myRating}/5` : "Not rated";
+    // Update tab content
+    const contentContainer = document.getElementById("rowDetailContent");
+    if (contentContainer) {
+      contentContainer.innerHTML = tabs.map((tab, idx) => `
+        <div class="row-detail-tab-pane ${idx === 0 ? "active" : ""}" data-tab="${tab.id}">
+          ${tab.content}
+        </div>
+      `).join("");
+    }
+
+    // Attach tab listeners
+    attachTabListeners();
 
     // Show modal
-    modal.classList.add("visible");
+
+    if (modal) modal.classList.add("visible");
     if (backdrop) backdrop.classList.add("visible");
 
-    // Reset to overview tab
-    modal.querySelector(".row-detail-tab-btn").click();
+    // Reset to overview tab (first tab)
+    const firstTab = modal?.querySelector(".row-detail-tab-btn");
+    if (firstTab) firstTab.click();
   }
 
   /**
