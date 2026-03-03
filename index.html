@@ -5192,7 +5192,8 @@
     bottomReset.addEventListener("click", resetAllFilters);
   }
 
-  function resetAllFilters() {
+  // ...existing code...
+    function resetAllFilters() {
     filterState.name = "";
     filterState.difficulty = "";
     filterState.state = "";
@@ -5220,9 +5221,8 @@
       btn.classList.remove("active");
     });
 
-    updateBreadcrumbMenu();
     applyFilters();
-  }
+    }
 
     function applyFilters() {
     const tbody = document.querySelector("#adventureTableBody");
@@ -5385,6 +5385,9 @@
     // Generate autofill suggestions for filter fields
     updateFilterSuggestions(filteredRows);
 
+    // Keep breadcrumb chips synced with all active filter sources
+    updateBreadcrumbMenu();
+
     // Apply multi-level grouping if enabled
     if (filterState.groupBy) {
       applyMultiLevelGrouping(filteredRows);
@@ -5393,7 +5396,7 @@
     // CRITICAL: Re-initialize context menu to ensure right-click keeps working after DOM updates
     // The context menu event listener needs to be reattached when table rows are shown/hidden
     initContextMenu();
-  }
+    }
 
   /**
    * Apply multi-level grouping to table rows
@@ -6111,80 +6114,161 @@
    * Remove a specific context filter by index
    * @param {number} index - Index of filter to remove in breadcrumb display
    */
-  function removeContextFilterByIndex(index) {
+  // ...existing code...
+    function removeContextFilterByIndex(index) {
     console.log(`Removing context filter at index: ${index}`);
     if (index >= 0 && index < filterState.contextFilters.length) {
       filterState.contextFilters.splice(index, 1);
-      updateBreadcrumbMenu();
       applyFilters();
       initContextMenu();
     }
-  }
+    }
 
-  /**
-   * Update the breadcrumb filter menu display
-   */
-  function updateBreadcrumbMenu() {
+    function removeBreadcrumbFilter(filterMeta) {
+    if (!filterMeta) return;
+
+    if (filterMeta.type === "context") {
+      removeContextFilterByIndex(filterMeta.index);
+      return;
+    }
+
+    if (filterMeta.type === "quick-tag") {
+      filterState.quickTags.delete(filterMeta.value);
+      document.querySelectorAll(".quick-filter-btn").forEach(btn => {
+        if ((btn.getAttribute("data-tag") || "") === filterMeta.value) {
+          btn.classList.remove("active");
+        }
+      });
+      applyFilters();
+      return;
+    }
+
+    if (filterMeta.type === "control") {
+      const key = filterMeta.key;
+      filterState[key] = "";
+
+      const controlIdMap = {
+        name: "searchName",
+        difficulty: "filterDifficulty",
+        state: "filterState",
+        city: "filterCity",
+        tags: "filterTags",
+        cost: "filterCost"
+      };
+
+      const controlEl = document.getElementById(controlIdMap[key]);
+      if (controlEl) {
+        controlEl.value = "";
+      }
+
+      applyFilters();
+    }
+    }
+
+    function getActiveBreadcrumbFilters() {
+    const chips = [];
+
+    // Existing context filters (right-click)
+    (filterState.contextFilters || []).forEach((filter, index) => {
+      chips.push({
+        type: "context",
+        key: filter.key,
+        value: filter.value,
+        operation: filter.operation,
+        index
+      });
+    });
+
+    // Text/select controls
+    const controlFilters = [
+      { key: "name", label: "Name" },
+      { key: "difficulty", label: "Difficulty" },
+      { key: "state", label: "State" },
+      { key: "city", label: "City" },
+      { key: "tags", label: "Tags" },
+      { key: "cost", label: "Cost" }
+    ];
+
+    controlFilters.forEach(({ key, label }) => {
+      const value = (filterState[key] || "").toString().trim();
+      if (value) {
+        chips.push({ type: "control", key, label, value });
+      }
+    });
+
+    // Quick tag buttons
+    Array.from(filterState.quickTags || []).forEach(tag => {
+      chips.push({
+        type: "quick-tag",
+        key: "quickTags",
+        label: "Quick Tag",
+        value: tag
+      });
+    });
+
+    return chips;
+    }
+
+    /**
+     * Update the breadcrumb filter menu display
+     */
+    function updateBreadcrumbMenu() {
     const menu = document.getElementById("breadcrumbFilterMenu");
     const container = document.getElementById("breadcrumbContainer");
     const resetBtn = document.getElementById("breadcrumbResetBtn");
 
     if (!menu || !container) return;
 
-    // Clear existing breadcrumbs
     container.innerHTML = "";
+    const activeFilters = getActiveBreadcrumbFilters();
 
-    if (filterState.contextFilters && filterState.contextFilters.length > 0) {
-      // Show menu and breadcrumbs
-      menu.classList.add("visible");
-      menu.classList.add("filters-active");
-
-      filterState.contextFilters.forEach((filter, index) => {
-        const breadcrumb = document.createElement("div");
-        breadcrumb.className = "filter-breadcrumb";
-        breadcrumb.setAttribute("data-context-index", index);
-
-        // Friendly names for filter keys
-        const friendlyKeyNames = {
-          "name": "Name",
-          "tags": "Tags",
-          "driveTime": "Drive Time",
-          "state": "State",
-          "city": "City",
-          "hours": "Hours",
-          "cost": "Cost"
-        };
-
-        const keyDisplay = friendlyKeyNames[filter.key] || filter.key;
-        const displayValue = truncate(filter.value, 20);
-        const iconMeaning = filter.operation === 'not-equals' ? '✗' : '✓';
-
-        breadcrumb.innerHTML = `
-          <span class="filter-breadcrumb-type">${iconMeaning} ${keyDisplay}:</span>
-          <span class="filter-breadcrumb-value">${displayValue}</span>
-          <span class="filter-breadcrumb-remove" data-index="${index}">✕</span>
-        `;
-
-        // Add remove click handler
-        const removeBtn = breadcrumb.querySelector(".filter-breadcrumb-remove");
-        removeBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          removeContextFilterByIndex(index);
-        });
-
-        container.appendChild(breadcrumb);
-      });
-
-      // Show reset button
-      if (resetBtn) resetBtn.style.display = "block";
-    } else {
-      // Hide menu if no filters
+    if (activeFilters.length === 0) {
       menu.classList.remove("visible");
       menu.classList.remove("filters-active");
       if (resetBtn) resetBtn.style.display = "none";
+      return;
     }
-  }
+
+    menu.classList.add("visible");
+    menu.classList.add("filters-active");
+    if (resetBtn) resetBtn.style.display = "block";
+
+    const friendlyKeyNames = {
+      name: "Name",
+      tags: "Tags",
+      driveTime: "Drive Time",
+      state: "State",
+      city: "City",
+      hours: "Hours",
+      cost: "Cost",
+      difficulty: "Difficulty"
+    };
+
+    activeFilters.forEach((filter) => {
+      const breadcrumb = document.createElement("div");
+      breadcrumb.className = "filter-breadcrumb";
+
+      const keyDisplay = filter.label || friendlyKeyNames[filter.key] || filter.key;
+      const displayValue = truncate((filter.value || "").toString(), 20);
+      const iconMeaning = filter.type === "context" && filter.operation === "not-equals" ? "✗" : "✓";
+
+      breadcrumb.innerHTML = `
+        <span class="filter-breadcrumb-type">${iconMeaning} ${keyDisplay}:</span>
+        <span class="filter-breadcrumb-value">${displayValue}</span>
+        <span class="filter-breadcrumb-remove">✕</span>
+      `;
+
+      const removeBtn = breadcrumb.querySelector(".filter-breadcrumb-remove");
+      removeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeBreadcrumbFilter(filter);
+      });
+
+      container.appendChild(breadcrumb);
+    });
+    }
+  // ...existing code...
 
   // Data map to store row data for detail modal
   const rowDataMap = new Map();
