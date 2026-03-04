@@ -7157,22 +7157,21 @@
     // Set header
     header.textContent = `Filter: ${fieldInfo.name}`;
     console.log("Set header to:", header.textContent);
-
     // Create menu items with multi-select option
     let html = `
-      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'equals', false)">
+      <div class="context-menu-item" onclick="event.stopPropagation(); applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'equals', false)">
         <span class="context-menu-icon">✓</span>
         <span>Show Only: <strong>${truncate(normalizedCellValue, 30)}</strong></span>
       </div>
-      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'equals', true)">
+      <div class="context-menu-item" onclick="event.stopPropagation(); applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'equals', true)">
         <span class="context-menu-icon">➕</span>
         <span>Add to Filter: <strong>${truncate(normalizedCellValue, 30)}</strong></span>
       </div>
-      <div class="context-menu-item" onclick="applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'not-equals', false)">
+      <div class="context-menu-item" onclick="event.stopPropagation(); applyContextFilter('${fieldInfo.key}', '${escapeForHTML(normalizedCellValue)}', 'not-equals', false)">
         <span class="context-menu-icon">✗</span>
         <span>Exclude: <strong>${truncate(normalizedCellValue, 30)}</strong></span>
       </div>
-      <div class="context-menu-item" onclick="clearContextFilter('${fieldInfo.key}')">
+      <div class="context-menu-item" onclick="event.stopPropagation(); clearContextFilter('${fieldInfo.key}')">
         <span class="context-menu-icon">🔄</span>
         <span>Clear ${fieldInfo.name} Filter</span>
       </div>
@@ -7443,11 +7442,8 @@
 
     console.log('Updated context filters:', filterState.contextFilters);
 
-    // Close the context menu
-    const contextMenu = document.getElementById("contextMenu");
-    if (contextMenu) {
-      contextMenu.classList.remove("visible");
-    }
+    // Close the context menu using the dedicated function
+    hideContextMenu();
 
     // Update breadcrumb menu
     updateBreadcrumbMenu();
@@ -7464,11 +7460,8 @@
     console.log(`Clearing context filter for key: ${key}`);
     filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== key);
 
-    // Close the context menu
-    const contextMenu = document.getElementById("contextMenu");
-    if (contextMenu) {
-      contextMenu.classList.remove("visible");
-    }
+    // Close the context menu using the dedicated function
+    hideContextMenu();
 
     updateBreadcrumbMenu();
     applyFilters();
