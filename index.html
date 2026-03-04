@@ -733,7 +733,7 @@
       content: "🪂 ";
     }
 
-    /* Arts and Crafts - Artist Palette */
+    /* Arts and Crafts - Graphical representation of each tag type */
     .tag-arts-and-crafts,
     .tag-arts,
     .tag-crafts {
@@ -2129,7 +2129,11 @@
 
     .breadcrumb-reset-btn:hover {
       background: var(--mint-bg);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border-color: var(--mint-strong);
+    }
+
+    .breadcrumb-reset-btn:active {
+      transform: scale(0.95);
     }
 
     /* Context menu for tags */
@@ -2262,982 +2266,6 @@
 
     .breadcrumb-reset-btn:active {
       transform: scale(0.95);
-    }
-
-    .filter-breadcrumb {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: white;
-      border: 1px solid #60a5fa;
-      border-radius: 999px;
-      font-size: 13px;
-      color: #1d4ed8;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .filter-breadcrumb-type {
-      font-weight: 600;
-      color: #1d4ed8;
-    }
-
-    .filter-breadcrumb-value {
-      color: #1f2937;
-    }
-
-    .filter-breadcrumb-remove {
-      cursor: pointer;
-      color: #dc2626;
-      font-weight: bold;
-      font-size: 16px;
-      line-height: 1;
-      transition: all 0.2s;
-      padding: 0 2px;
-      user-select: none;
-    }
-
-    .filter-breadcrumb-remove:hover {
-      color: #991b1b;
-      transform: scale(1.2);
-    }
-
-    .filter-breadcrumb-remove:active {
-      transform: scale(0.95);
-    }
-
-    /* ============================================================
-       CONTEXT MENU (Right-Click Filter Menu)
-       ============================================================
-       Shows filter options when user right-clicks on a table cell.
-    */
-    #contextMenu {
-      position: fixed;
-      background: white;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-      z-index: 999999;
-      min-width: 280px;
-      visibility: hidden;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s, visibility 0.2s;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #contextMenu.visible {
-      visibility: visible;
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .context-menu-header {
-      padding: 12px 16px;
-      background: #f3f4f6;
-      border-bottom: 1px solid #e5e7eb;
-      font-weight: 600;
-      font-size: 13px;
-      color: #1f2937;
-      border-radius: 8px 8px 0 0;
-    }
-
-    #contextMenuItems {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .context-menu-item {
-      padding: 10px 16px;
-      cursor: pointer;
-      transition: background 0.15s;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-      color: #1f2937;
-      border-bottom: 1px solid #f3f4f6;
-    }
-
-    .context-menu-item:last-child {
-      border-bottom: none;
-      border-radius: 0 0 8px 8px;
-    }
-
-    .context-menu-item:hover {
-      background: #f9fafb;
-    }
-
-    .context-menu-icon {
-      font-weight: bold;
-      font-size: 14px;
-      color: #1d4ed8;
-      min-width: 14px;
-    }
-
-    /* ============================================================
-       ============================================================
-       Collapsible bar at the top showing console errors and warnings.
-       Click to expand/collapse and see detailed error messages.
-    */
-    #errorNotificationBar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: var(--danger-red);
-      color: white;
-      padding: 12px 16px;
-      display: none; /* Hidden by default */
-      z-index: 9999;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    #errorNotificationBar.has-errors {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #errorNotificationBar.collapsed {
-      padding: 8px 16px;
-    }
-
-    #errorNotificationBar .error-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-    }
-
-    #errorNotificationBar .error-count {
-      display: inline-block;
-      background: rgba(255, 255, 255, 0.3);
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-weight: bold;
-      font-size: 12px;
-    }
-
-    #errorNotificationBar .toggle-icon {
-      font-size: 16px;
-      transition: transform 0.2s ease;
-    }
-
-    #errorNotificationBar.collapsed .toggle-icon {
-      transform: rotate(0deg);
-    }
-
-    #errorNotificationBar.expanded .toggle-icon {
-      transform: rotate(180deg);
-    }
-
-    #errorDetailsPanel {
-      display: none;
-      max-height: 400px;
-      overflow-y: auto;
-      background: rgba(0, 0, 0, 0.1);
-      border-top: 1px solid rgba(255, 255, 255, 0.2);
-      margin-top: 12px;
-      padding: 12px 16px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-    }
-
-    #errorDetailsPanel.show {
-      display: block;
-    }
-
-    .error-item {
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .error-item:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-
-    .error-type {
-      font-weight: bold;
-      margin-bottom: 4px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .error-type.console-error {
-      color: #ff6b6b;
-    }
-
-    .error-type.console-warn {
-      color: #ffd93d;
-    }
-
-    .error-type.app-error {
-      color: #ff6b6b;
-    }
-
-    .error-message {
-      font-size: 11px;
-      opacity: 0.9;
-      margin-top: 4px;
-    }
-
-    /* Debug buttons for error copying */
-    .error-debug-buttons {
-      display: flex;
-      gap: 6px;
-      margin-top: 8px;
-      flex-wrap: wrap;
-    }
-
-    .error-copy-btn {
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      background: rgba(255, 255, 255, 0.1);
-      color: white;
-      font-size: 10px;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-weight: 600;
-    }
-
-    .error-copy-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-
-    .error-copy-btn.copied {
-      background: rgba(52, 211, 153, 0.3);
-      border-color: #34d399;
-      color: #34d399;
-    }
-
-    /* Advanced Debugging Console */
-    #debuggingConsole {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      max-height: 40vh;
-      background: #1f2937;
-      border-top: 2px solid #4b5563;
-      color: #e5e7eb;
-      font-family: 'Courier New', monospace;
-      font-size: 12px;
-      z-index: 9998;
-      display: none;
-      flex-direction: column;
-      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.4);
-    }
-
-    #debuggingConsole.visible {
-      display: flex;
-    }
-
-    .debug-console-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 14px;
-      background: #111827;
-      border-bottom: 1px solid #4b5563;
-    }
-
-    .debug-console-title {
-      font-weight: 600;
-      color: #60a5fa;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .debug-console-buttons {
-      display: flex;
-      gap: 8px;
-    }
-
-    .debug-btn {
-      padding: 4px 10px;
-      border-radius: 4px;
-      border: 1px solid #4b5563;
-      background: #374151;
-      color: #d1d5db;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .debug-btn:hover {
-      background: #4b5563;
-      border-color: #60a5fa;
-    }
-
-    .debug-console-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px 14px;
-      line-height: 1.5;
-    }
-
-    .debug-line {
-      margin-bottom: 4px;
-      display: flex;
-      gap: 8px;
-    }
-
-    .debug-timestamp {
-      color: #9ca3af;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-
-    .debug-message {
-      color: #d1d5db;
-      flex: 1;
-      word-break: break-word;
-    }
-
-    .debug-log {
-      color: #d1d5db;
-    }
-
-    .debug-error {
-      color: #fca5a5;
-    }
-
-    .debug-warn {
-      color: #fbbf24;
-    }
-
-    .debug-success {
-      color: #6ee7b7;
-    }
-
-    .debug-info {
-      color: #60a5fa;
-    }
-
-    /* ============================================================
-       DATA LOADED INDICATOR
-       ============================================================
-       Visual indicator showing when Excel data has loaded successfully.
-    */
-    .data-load-indicator {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: var(--mint-bg);
-      border: 1px solid var(--mint-border);
-      border-radius: 6px;
-      color: var(--mint-strong);
-      font-size: 13px;
-      font-weight: 500;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-    }
-
-    .data-load-indicator.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .data-load-indicator .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--mint-strong);
-      animation: pulse-success 2s ease-in-out;
-    }
-
-    @keyframes pulse-success {
-      0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.7;
-        transform: scale(1.2);
-      }
-    }
-
-    .data-load-indicator.loading {
-      opacity: 1;
-      background: var(--blue-bg);
-      border-color: var(--blue-border);
-      color: var(--blue-strong);
-    }
-
-    .data-load-indicator.loading .status-dot {
-      background: var(--blue-strong);
-      animation: pulse-loading 1.5s ease-in-out infinite;
-    }
-
-    @keyframes pulse-loading {
-      0%, 100% {
-        opacity: 0.5;
-        transform: scale(0.8);
-      }
-      50% {
-        opacity: 1;
-        transform: scale(1.2);
-      }
-    }
-
-    .data-load-indicator.error {
-      opacity: 1;
-      background: #fee2e2;
-      border-color: #fca5a5;
-      color: var(--danger-red);
-    }
-
-    .data-load-indicator.error .status-dot {
-      background: var(--danger-red);
-      animation: pulse-error 1s ease-in-out infinite;
-    }
-
-    @keyframes pulse-error {
-      0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-      }
-      50% {
-        opacity: 0.5;
-        transform: scale(1.1);
-      }
-    }
-
-    /* ============================================================
-       ROW DETAIL MODAL WITH TABS
-       ============================================================
-       Polished popup for viewing full adventure details organized in tabs.
-       Double-click a row to open this modal.
-    */
-    #rowDetailModal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-      z-index: 1002;
-      width: 90%;
-      max-width: 900px;
-      max-height: 85vh;
-      display: none;
-      flex-direction: column;
-      overflow: hidden;
-      animation: slideIn 0.3s ease-out;
-    }
-
-    #rowDetailModal.visible {
-      display: flex;
-    }
-
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translate(-50%, -48%);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, -50%);
-      }
-    }
-
-    /* Row detail modal header */
-    .row-detail-header {
-      padding: 24px;
-      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
-      color: white;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-radius: 16px 16px 0 0;
-    }
-
-    .row-detail-title-section {
-      flex: 1;
-    }
-
-    .row-detail-adventure-name {
-      font-size: 28px;
-      font-weight: 700;
-      margin: 0 0 8px 0;
-      line-height: 1.2;
-    }
-
-    .row-detail-location {
-      font-size: 14px;
-      opacity: 0.95;
-      display: flex;
-      gap: 16px;
-      margin-top: 8px;
-    }
-
-    .row-detail-close-btn {
-      background: rgba(255, 255, 255, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 20px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .row-detail-close-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-
-    /* Tab navigation */
-    .row-detail-tabs {
-      display: flex;
-      gap: 0;
-      background: #f9fafb;
-      border-bottom: 2px solid #e5e7eb;
-      padding: 0 24px;
-      overflow-x: auto;
-    }
-
-    .row-detail-tab-btn {
-      background: none;
-      border: none;
-      padding: 16px 20px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #6b7280;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      transition: all 0.2s;
-      white-space: nowrap;
-      position: relative;
-    }
-
-    .row-detail-tab-btn:hover {
-      color: #1f2937;
-      background: rgba(29, 78, 216, 0.05);
-    }
-
-    .row-detail-tab-btn.active {
-      color: #1d4ed8;
-      border-bottom-color: #1d4ed8;
-    }
-
-    /* Tab content area */
-    .row-detail-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
-    }
-
-    .row-detail-tab-pane {
-      display: none;
-    }
-
-    .row-detail-tab-pane.active {
-      display: block;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-
-    /* Content sections within tabs */
-    .row-detail-section {
-      margin-bottom: 24px;
-    }
-
-    .row-detail-section:last-child {
-      margin-bottom: 0;
-    }
-
-    .row-detail-section-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .row-detail-section-title::before {
-      content: '';
-      display: inline-block;
-      width: 3px;
-      height: 12px;
-      background: #1d4ed8;
-      border-radius: 2px;
-    }
-
-    /* Field rows */
-    .row-detail-field {
-      display: grid;
-      grid-template-columns: 120px 1fr;
-      gap: 16px;
-      margin-bottom: 12px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #f3f4f6;
-    }
-
-    .row-detail-field:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-
-    .row-detail-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-
-    .row-detail-value {
-      font-size: 14px;
-      color: #111827;
-      line-height: 1.5;
-      word-break: break-word;
-    }
-
-    .row-detail-value a {
-      color: #1d4ed8;
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .row-detail-value a:hover {
-      text-decoration: underline;
-    }
-
-    /* Tags display in detail modal */
-    .row-detail-tags-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .row-detail-tag {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 500;
-      background: #e0f2fe;
-      color: #0284c7;
-    }
-
-    /* Empty state */
-    .row-detail-empty {
-      color: #9ca3af;
-      font-style: italic;
-      font-size: 13px;
-    }
-
-    /* Modal footer */
-    .row-detail-footer {
-      padding: 16px 24px;
-      background: #f9fafb;
-      border-top: 1px solid #e5e7eb;
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      border-radius: 0 0 16px 16px;
-    }
-
-    .row-detail-footer-btn {
-      padding: 8px 16px;
-      border-radius: 6px;
-      border: 1px solid #d1d5db;
-      background: white;
-      color: #111827;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-
-    .row-detail-footer-btn:hover {
-      background: #f3f4f6;
-      border-color: #9ca3af;
-    }
-
-    .row-detail-footer-btn.primary {
-      background: #1d4ed8;
-      color: white;
-      border-color: #1d4ed8;
-    }
-
-    .row-detail-footer-btn.primary:hover {
-      background: #1e40af;
-      border-color: #1e40af;
-    }
-
-    /* ============================================================
-       TAB NAVIGATION SYSTEM
-       ============================================================
-       Provides tabbed interface for different app sections.
-    */
-    .app-tabs-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-
-    .app-tabs-nav {
-      display: flex;
-      gap: 0;
-      background: #f3f4f6;
-      border-bottom: 2px solid #e5e7eb;
-      padding: 0;
-      overflow-x: auto;
-      margin-bottom: 16px;
-      border-radius: 8px 8px 0 0;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .app-tab-btn {
-      background: none;
-      border: none;
-      padding: 14px 20px;
-      font-size: 14px;
-      font-weight: 500;
-      color: #6b7280;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-      position: relative;
-    }
-
-    .app-tab-btn:hover {
-      color: #1f2937;
-      background: rgba(29, 78, 216, 0.05);
-    }
-
-    .app-tab-btn.active {
-      color: #1d4ed8;
-      border-bottom-color: #1d4ed8;
-      background: white;
-    }
-
-    .app-tabs-content {
-      flex: 1;
-      overflow-y: auto;
-      background: white;
-      border-radius: 0 0 8px 8px;
-      padding: 16px;
-    }
-
-    .app-tab-pane {
-      display: none;
-      animation: fadeIn 0.2s ease-out;
-    }
-
-    .app-tab-pane.active {
-      display: block;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
-    }
-
-    /* Placeholder content styling */
-    .tab-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 300px;
-      color: #9ca3af;
-      text-align: center;
-      gap: 12px;
-    }
-
-    .tab-placeholder-icon {
-      font-size: 48px;
-      opacity: 0.5;
-    }
-
-    .tab-placeholder-text {
-      font-size: 16px;
-      font-weight: 500;
-    }
-
-    .tab-placeholder-subtext {
-      font-size: 13px;
-      color: #d1d5db;
-    }
-
-    /* Context Menu */
-    #contextMenu {
-      position: fixed;
-      background: white;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-      z-index: 10000;
-      display: none;
-      visibility: hidden;
-      opacity: 0;
-      pointer-events: none;
-      min-width: 280px;
-      overflow: hidden;
-    }
-
-    #contextMenu.visible {
-      display: flex;
-      visibility: visible;
-      opacity: 1;
-      pointer-events: auto;
-      flex-direction: column;
-    }
-
-    .context-menu-header {
-      background: #f3f4f6;
-      padding: 12px;
-      font-weight: 600;
-      border-bottom: 1px solid #e5e7eb;
-      font-size: 13px;
-    }
-
-    #contextMenuItems {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .context-menu-item {
-      padding: 12px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      border-bottom: 1px solid #f3f4f6;
-      transition: background 0.2s;
-    }
-
-    .context-menu-item:last-child {
-      border-bottom: none;
-    }
-
-    .context-menu-item:hover {
-      background: #f9fafb;
-    }
-
-    .context-menu-icon {
-      font-weight: 600;
-      min-width: 20px;
-    }
-
-    /* Breadcrumb Filter Menu */
-    #breadcrumbFilterMenu {
-      display: none;
-      background: var(--mint-bg);
-      border: 1px solid var(--mint-border);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    #breadcrumbFilterMenu.visible {
-      display: flex;
-    }
-
-    #breadcrumbFilterMenu.filters-active {
-      background: var(--mint-bg);
-      border-color: var(--mint-border);
-    }
-
-    #breadcrumbContainer {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      flex: 1;
-    }
-
-    .filter-breadcrumb {
-      background: white;
-      border: 1px solid var(--mint-border);
-      padding: 6px 10px;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-    }
-
-    .filter-breadcrumb-type {
-      font-weight: 600;
-      color: var(--mint-strong);
-    }
-
-    .filter-breadcrumb-value {
-      color: #111827;
-    }
-
-    .filter-breadcrumb-remove {
-      cursor: pointer;
-      color: #6b7280;
-      font-weight: bold;
-      margin-left: 4px;
-      transition: color 0.2s;
-    }
-
-    .filter-breadcrumb-remove:hover {
-      color: var(--danger-red);
-    }
-
-    .breadcrumb-reset-btn {
-      border-radius: 999px;
-      border: 1px solid var(--mint-border);
-      background: white;
-      color: var(--mint-strong);
-      padding: 6px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-
-    .breadcrumb-reset-btn:hover {
-      background: var(--mint-bg);
     }
 
     /* ============================================================
@@ -3547,19 +2575,6 @@
     .shortcut-description {
       font-size: 13px;
       color: #6b7280;
-    }
-
-    /* ============================================================
-       SEARCH HIGHLIGHTING
-       ============================================================
-       Highlight search terms in results
-    */
-    mark {
-      background: #fef9c3;
-      padding: 2px 4px;
-      border-radius: 3px;
-      color: inherit;
-      font-weight: 500;
     }
 
     /* ============================================================
@@ -3945,9 +2960,9 @@
       border: none;
       font-size: 18px;
       cursor: pointer;
-      opacity: 0.6;
       transition: all 0.2s;
       padding: 4px 8px;
+      opacity: 0.6;
     }
 
     .favorite-btn:hover {
@@ -4559,7 +3574,7 @@
     if (console_el) {
       console_el.classList.toggle('visible');
       if (console_el.classList.contains('visible')) {
-        addDebugLog('success', 'Debug Console Opened');
+        addDebugLog('success', 'Debug console Opened');
       }
     }
   }
@@ -4663,29 +3678,22 @@
 
     if (!indicator) return;
 
-    // Remove all state classes
     indicator.classList.remove('loading', 'show', 'error');
 
     switch (state) {
       case 'loading':
         indicator.classList.add('loading', 'show');
-        text.textContent = message || '⏳ Loading Excel data...';
+        text.textContent = message || 'Loading Excel data...';
         break;
-
       case 'success':
         indicator.classList.add('show');
-        text.textContent = message || '✓ Excel data loaded successfully';
-        // Auto-hide after 3 seconds
-        setTimeout(() => {
-          indicator.classList.remove('show');
-        }, 3000);
+        text.textContent = message || 'Data loaded successfully';
+        setTimeout(() => indicator.classList.remove('show'), 3000);
         break;
-
       case 'error':
         indicator.classList.add('error', 'show');
-        text.textContent = message || '✗ Failed to load Excel data';
+        text.textContent = message || 'Failed to load data';
         break;
-
       case 'hidden':
         indicator.classList.remove('show');
         break;
@@ -4858,7 +3866,7 @@
 
   /**
    * Search for places using text search (NEW API)
-   * @param {string} query - Search query (e.g., "coffee near Charlotte, NC")
+   * @param {string} query - Search query (e.g., "coffee near Columbia, SC")
    * @returns {Promise} - Promise resolving to array of place results
    *
    * EXAMPLE:
@@ -6045,7 +5053,7 @@
   }
 
   /* ============================================================
-     UPDATE DISTANCE DISPLAY FOR ALL TABLE ROWS
+     UPDATE DISTANCE DISPLAY FOR ALL TABLES ROWS
      ============================================================
      After location is retrieved, calculate distance to each adventure
      and update the Distance column in the table with the values.
@@ -6471,7 +5479,7 @@
       ${tags ? `
         <div class="modal-detail-section">
           <h3>🏷️ Tags</h3>
-          <div>${tags.split(',').map(t => `<span class="tag-pill">${t.trim()}</span>`).join('')}</div>
+          <div>${tags.split(',').map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}</div>
         </div>
       ` : ''}
 
@@ -7328,6 +6336,9 @@
    ***********************/
   function initRowSelection() {
     const tbody = document.getElementById("adventureTableBody");
+    if (!tbody) {
+      return;
+    }
     tbody.addEventListener("click", (e) => {
       const row = e.target.closest("tr");
       if (!row) return;
@@ -7869,8 +6880,7 @@
    * Remove a specific context filter by index
    * @param {number} index - Index of filter to remove in breadcrumb display
    */
-  // ...existing code...
-  function removeContextFilterByIndex(index) {
+    function removeContextFilterByIndex(index) {
     console.log(`Removing context filter at index: ${index}`);
     if (index >= 0 && index < filterState.contextFilters.length) {
       filterState.contextFilters.splice(index, 1);
@@ -8025,7 +7035,6 @@
       container.appendChild(breadcrumb);
     });
     }
-  // ...existing code...
 
   // Data map to store row data for detail modal
   const rowDataMap = new Map();
@@ -8611,53 +7620,26 @@
       console.log("Dry Run mode:", isOn ? "ON" : "OFF");
     });
   }
-
 </script>
 
 <!-- Row Detail Modal with Tabs (opened by double-clicking a row) -->
 <div id="rowDetailModal" class="row-detail-modal">
-  <!-- Header with title and close button -->
   <div class="row-detail-header">
     <div class="row-detail-title-section">
       <h1 class="row-detail-adventure-name" id="rowDetailTitle">Adventure Name</h1>
-      <div class="row-detail-location" id="rowDetailLocation">
-        <!-- Location info will be filled here -->
-      </div>
+      <div class="row-detail-location" id="rowDetailLocation"></div>
     </div>
-    <button class="row-detail-close-btn" id="rowDetailCloseBtn">✕</button>
+    <button class="row-detail-close-btn" id="rowDetailCloseBtn">X</button>
   </div>
 
-  <!-- Tab navigation -->
-  <div class="row-detail-tabs" id="rowDetailTabsContainer">
-    <!-- Tabs will be generated by JavaScript -->
-  </div>
+  <div class="row-detail-tabs" id="rowDetailTabsContainer"></div>
+  <div class="row-detail-content" id="rowDetailContent"></div>
 
-  <!-- Tab content area -->
-  <div class="row-detail-content" id="rowDetailContent">
-    <!-- Tab panes will be generated by JavaScript -->
-  </div>
-
-  <!-- Footer with action buttons -->
   <div class="row-detail-footer">
     <button class="row-detail-footer-btn" id="rowDetailCloseFooterBtn">Close</button>
-    <button class="row-detail-footer-btn primary" id="rowDetailEditBtn">✎ Edit</button>
+    <button class="row-detail-footer-btn primary" id="rowDetailEditBtn">Edit</button>
   </div>
 </div>
 
-<!-- Modal backdrop for row detail modal -->
 <div id="rowDetailModalBackdrop" class="modal-backdrop" style="z-index: 1001;"></div>
 
-<!-- Context Menu (Right-Click) -->
-<div id="contextMenu">
-  <div class="context-menu-header" id="contextMenuHeader">Filter Options</div>
-  <div id="contextMenuItems"></div>
-</div>
-
-<!-- Tag Context Menu (Individual Tag Filtering) -->
-<div id="tagContextMenu" class="tag-context-menu">
-  <div class="tag-menu-header">Filter by Tag</div>
-  <div id="tagContextMenuItems"></div>
-</div>
-
-</body>
-</html>
