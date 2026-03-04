@@ -402,6 +402,34 @@
       margin-top: 8px;
     }
 
+    .table-help-legend {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      border: 1px solid #dbeafe;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .table-help-legend .help-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #1d4ed8;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 12px;
+      flex: 0 0 auto;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -3908,8 +3936,8 @@
     <button id="breadcrumbResetBtn" class="breadcrumb-reset-btn">🔄 Clear Filters</button>
   </div>
 
-  <!-- Adventure List -->
-  <div class="card table-card">
+    <!-- Adventure List -->
+    <div class="card table-card">
     <div class="card-header">
       <div>
         <div class="card-title">
@@ -3922,6 +3950,10 @@
       <button id="columnsToggleBtn" class="columns-toggle-btn">
         📊 Show More Columns
       </button>
+    </div>
+    <div class="table-help-legend" role="note" aria-label="Table help legend">
+      <span class="help-icon">?</span>
+      <span>Tip: Click a column header to sort. Right-click any cell to filter by that value.</span>
     </div>
     <div class="table-wrapper">
       <table id="adventureTable">
@@ -4889,7 +4921,7 @@
       console.log("Step 5 SUCCESS: All UI features initialized");
 
       console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
-      
+
       hideLoading();
       showToast('✓ Successfully signed in!', 'success', 3000);
 
@@ -5213,19 +5245,45 @@
   // SORTING
   // ============================================================
   let currentSort = { column: null, direction: 'asc' };
+  let sortIndicatorsInitialized = false;
 
   function addSortIndicators() {
+    // Only add indicators once - don't duplicate them on subsequent filter calls
+    if (sortIndicatorsInitialized) {
+      return;
+    }
+
     document.querySelectorAll('table th').forEach((th, index) => {
       if (index > 0 && !th.classList.contains('hidden-by-default')) {
         th.style.cursor = 'pointer';
+        th.style.userSelect = 'none';
+
+        // Add tooltip
+        th.title = 'Click to sort this column';
+
         const indicator = document.createElement('span');
         indicator.className = 'sort-indicator';
-        indicator.textContent = '↕️';
+        indicator.textContent = '⇅';  // Use double arrow for cleaner look
+        indicator.style.marginLeft = '4px';
+        indicator.style.opacity = '0.5';
+        indicator.style.transition = 'opacity 0.2s';
         th.appendChild(indicator);
 
-        th.addEventListener('click', () => sortTableByColumn(index, th.textContent.trim()));
+        th.addEventListener('mouseenter', () => {
+          indicator.style.opacity = '1';
+        });
+
+        th.addEventListener('mouseleave', () => {
+          if (!indicator.classList.contains('active')) {
+            indicator.style.opacity = '0.5';
+          }
+        });
+
+        th.addEventListener('click', () => sortTableByColumn(index, th.textContent.trim().replace('⇅', '').trim()));
       }
     });
+
+    sortIndicatorsInitialized = true;
   }
 
   function sortTableByColumn(columnIndex, columnName) {
@@ -5245,21 +5303,26 @@
 
     rows.forEach(row => tbody.appendChild(row));
 
+    // Clear all active indicators
     document.querySelectorAll('.sort-indicator').forEach(ind => {
       ind.classList.remove('active');
-      ind.textContent = '↕️';
+      ind.textContent = '⇅';
+      ind.style.opacity = '0.5';
     });
 
-    const thElement = event.target.closest('th');
+    // Set active indicator for current column
+    const headers = document.querySelectorAll('table th');
+    const thElement = headers[columnIndex];
     if (thElement) {
       const indicator = thElement.querySelector('.sort-indicator');
       if (indicator) {
         indicator.classList.add('active');
-        indicator.textContent = isAsc ? '↑' : '↓';
+        indicator.textContent = isAsc ? '⬆' : '⬇';
+        indicator.style.opacity = '1';
       }
     }
 
-    showToast(`Sorted by ${columnName} (${currentSort.direction})`, 'info', 2000);
+    showToast(`Sorted by ${columnName} (${currentSort.direction === 'asc' ? '↑' : '↓'})`, 'info', 2000);
   }
 
   // ============================================================
@@ -5416,44 +5479,44 @@
       closeKeyboardShortcuts();
       document.querySelectorAll('[class*="modal"].visible').forEach(m => m.classList.remove('visible'));
     }
-    
+
     // Ctrl/Cmd + K for quick search
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
       document.getElementById('searchName').focus();
       document.getElementById('searchName').select();
     }
-    
+
     // Ctrl/Cmd + F for search (override default)
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
       e.preventDefault();
       document.getElementById('searchName').focus();
     }
-    
+
     // Ctrl/Cmd + R for reset filters
     if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
       e.preventDefault();
       resetAllFilters();
     }
-    
+
     // Ctrl/Cmd + A for select all
     if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
       e.preventDefault();
       selectAll();
     }
-    
+
     // Ctrl/Cmd + Z for undo
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
       e.preventDefault();
       undoFilter();
     }
-    
+
     // Ctrl/Cmd + Shift + Z for redo
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
       e.preventDefault();
       redoFilter();
     }
-    
+
     // ? for help
     if (e.key === '?' && document.activeElement.tagName !== 'INPUT') {
       e.preventDefault();
@@ -6588,8 +6651,8 @@
     // Show empty state if no results
     const visibleRowCount = filteredRows.length;
     if (visibleRowCount === 0) {
-      const hasActiveFilters = filterState.name || filterState.difficulty || filterState.state || 
-                              filterState.city || filterState.tags || filterState.cost || 
+      const hasActiveFilters = filterState.name || filterState.difficulty || filterState.state ||
+                              filterState.city || filterState.tags || filterState.cost ||
                               filterState.quickTags.size > 0 || filterState.contextFilters.length > 0;
       if (hasActiveFilters) {
         showEmptyState('no-results');
