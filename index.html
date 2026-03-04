@@ -6618,88 +6618,85 @@
      FILTERING FUNCTIONS
      ============================================================ */
   function applyFilters() {
+    if (!window.adventuresData) {
+      console.warn("No adventures data available for filtering");
+      return;
+    }
 
-        // DEBUG: Log the first row to check data structure
-        if (!window.debugLoggedOnce) {
-          console.log("=== EXCEL DATA STRUCTURE DEBUG ===");
-          console.log("First Excel Row Data:", values);
-          console.log("Number of columns:", values.length);
-          console.log("Column 0 (Google Place ID):", values[0]);
-          console.log("Column 1 (Name):", values[1]);
-          console.log("Column 2 (Website):", values[2]);
-          console.log("Column 3 (Tags):", values[3]);
-          console.log("All values indexed:");
-          values.forEach((val, idx) => {
-            console.log(`  [${idx}]: ${val}`);
-          });
-          console.log("=================================");
-          window.debugLoggedOnce = true;
+    console.log("Applying filters...");
+    const filteredData = window.adventuresData.filter(row => {
+      const values = row.values[0];
+      const [name, , , tags, , , , , , state, city] = values;
+
+      // Apply filter logic
+      if (filterState.name && !name.toLowerCase().includes(filterState.name.toLowerCase())) {
+        return false;
+      }
+      if (filterState.tags && !tags.toLowerCase().includes(filterState.tags.toLowerCase())) {
+        return false;
+      }
+      if (filterState.state && state.toLowerCase() !== filterState.state.toLowerCase()) {
+        return false;
+      }
+      if (filterState.city && city.toLowerCase() !== filterState.city.toLowerCase()) {
+        return false;
+      }
+
+      // Apply context filters
+      for (const filter of filterState.contextFilters) {
+        const fieldIndex = getFieldIndexByKey(filter.key);
+        if (fieldIndex >= 0) {
+          const fieldValue = (values[fieldIndex] || "").toLowerCase();
+          const filterValue = filter.value.toLowerCase();
+          
+          if (filter.operation === 'equals') {
+            if (!fieldValue.includes(filterValue)) return false;
+          } else if (filter.operation === 'not-equals') {
+            if (fieldValue.includes(filterValue)) return false;
+          }
         }
+      }
 
-        // Create new table row element
-        const tr = document.createElement("tr");
+      return true;
+    });
 
-        /* EXTRACT EXCEL COLUMNS IN ORDER
-           These columns match the Excel file structure.
-           Order matters! If columns are reordered in Excel,
-           these assignments will be wrong.
+    renderAdventureCards(filteredData);
+    updateResultsCount(filteredData.length);
+  }
 
-           FORMAT: [Column 0, Column 1, Column 2, ...]
+  function getFieldIndexByKey(key) {
+    const fieldMap = {
+      'name': 0,
+      'tags': 3,
+      'driveTime': 4,
+      'state': 9,
+      'city': 10,
+      'difficulty': 7,
+      'cost': 14
+    };
+    return fieldMap[key] ?? -1;
+  }
 
-           ACTUAL EXCEL STRUCTURE (based on debug output):
-           [0]: Name
-           [1]: (empty/unused - was Google Place ID)
-           [2]: Website
-           [3]: Tags
-           [4]: Drive Time
-           [5]: (empty)
-           [6]: Hours of Operation (duration)
-           [7]: Difficulty
-           [8]: Trail Length
-           [9]: State
-           [10]: City
-           [11]: Address (empty)
-           [12]: Phone Number (empty)
-           [13]: Google Rating (empty)
-           [14]: Cost (empty)
-           [15]: Directions
-           [16]: Description
-           [17]: Nearby (empty)
-           [18]: Links (empty)
-           [19]: Links2 (empty)
-           [20]: Notes (empty)
-           [21]: My Rating (empty)
-           [22]: (extra column - 23 total)
-        */
-        // noinspection JSUnusedLocalSymbols - unused1 and unused2 are placeholders for empty Excel columns
-        const [
-          name,              // Column 0: Adventure name (FIXED - was in wrong position!)
-          googlePlaceId,     // Column 1: Google Places ID (currently empty in your Excel)
-          website,           // Column 2: Website URL
-          tags,              // Column 3: Tags (comma-separated: "Hiking,Nature")
-          driveTime,         // Column 4: How long to drive there
-          hoursOfOperation,  // Column 5: Hours of Operation - ACTUAL business/activity hours (e.g., "7-8 hrs", "30 min")
-          activityDuration,  // Column 6: Activity Duration - how long activity takes
-          difficulty,        // Column 7: Difficulty level (Easy/Moderate/Hard)
-          trailLength,       // Column 8: Trail length in miles
-          state,             // Column 9: State (SC, NC, GA, etc)
-          city,              // Column 10: City name
-          address,           // Column 11: Full street address
-          phoneNumber,       // Column 12: Phone number
-          googleRating,      // Column 13: Google Rating from map
-          cost,              // Column 14: Cost (Free, $, $$, $$$)
-          directions,        // Column 15: Directions link
-          description,       // Column 16: Description text
-          nearby,            // Column 17: Nearby things to do
-          links,             // Column 18: Additional links
-          links2,            // Column 19: More links
-          notes,             // Column 20: User notes
-          myRating,          // Column 21: My Rating (user's personal rating 1-5 stars)
-          unused2,           // Column 22: (extra column in your Excel - 23 total)
-        ] = values;
+  /***********************
+   * FILTERING LOGIC     *
+   ***********************/
+  const filterState = {
+    name: "",
+    difficulty: "",
+    state: "",
+    city: "",
+    tags: "",
+    cost: "",
+    groupBy: "",
+    groupBySecondary: "",
+    contextFilters: [],
+    quickTags: new Set()
+  };
 
-      tr.dataset.googlePlaceId = (googlePlaceId || "").trim();
-      tr.dataset.rowId = row.index;
+  // ...existing code...
+    function initFilters() {
+    // Safe element getter with logging
+    const getElement = (id) => {
       tr.dataset.notes = (notes || "").trim();
       tr.dataset.difficulty = (difficulty || "").toLowerCase();
       tr.dataset.state = (state || "").toLowerCase();
@@ -6961,8 +6958,7 @@
       });
 
       tbody.appendChild(tr);
-      });
-
+    }
   }
 
   /* ============================================================
@@ -6999,7 +6995,7 @@
         if (fieldIndex >= 0) {
           const fieldValue = (values[fieldIndex] || "").toLowerCase();
           const filterValue = filter.value.toLowerCase();
-          
+
           if (filter.operation === 'equals') {
             if (!fieldValue.includes(filterValue)) return false;
           } else if (filter.operation === 'not-equals') {
@@ -7194,6 +7190,7 @@
     showToast('✓ All filters cleared', 'success', 2000);
     }
 
+    /* OLD TABLE-BASED APPLY FILTERS - DISABLED FOR CARD VIEW
     function applyFilters() {
     const tbody = document.querySelector("#adventureTableBody");
     const rows = Array.from(tbody.querySelectorAll("tr"));
@@ -7407,6 +7404,7 @@
     // The context menu event listener needs to be reattached when table rows are shown/hidden
     initContextMenu();
     }
+    END OF OLD TABLE-BASED APPLY FILTERS */
 
   /**
    * Apply multi-level grouping to table rows
