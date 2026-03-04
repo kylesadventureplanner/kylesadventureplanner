@@ -861,6 +861,339 @@
       display: none;
     }
 
+    /* ============================================================
+       MODERN CARD VIEW STYLES
+       ============================================================ */
+
+    /* View Controls */
+    .view-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sort-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+    }
+
+    .sort-select {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .sort-select:hover {
+      border-color: #3b82f6;
+    }
+
+    .sort-select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .sort-order-btn {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sort-order-btn:hover {
+      background: #f3f4f6;
+      border-color: #3b82f6;
+    }
+
+    .sort-icon {
+      font-size: 18px;
+      font-weight: bold;
+      color: #3b82f6;
+    }
+
+    .results-count {
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    /* Adventure Cards Grid */
+    .adventure-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+      padding: 24px;
+      max-width: 100%;
+    }
+
+    /* Individual Adventure Card */
+    .adventure-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .adventure-card:hover {
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      transform: translateY(-4px);
+    }
+
+    /* Card Header */
+    .adventure-card-header {
+      padding: 20px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .adventure-card-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .adventure-card-location {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .location-icon {
+      font-size: 14px;
+    }
+
+    .adventure-card-time {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .time-icon {
+      font-size: 14px;
+    }
+
+    /* Card Tags */
+    .adventure-card-tags {
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      background: #fafafa;
+      min-height: 48px;
+      align-items: center;
+    }
+
+    /* Card Body */
+    .adventure-card-body {
+      padding: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-info-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .card-info-icon {
+      font-size: 16px;
+      min-width: 20px;
+      color: #6b7280;
+    }
+
+    .card-info-label {
+      font-weight: 500;
+      color: #6b7280;
+      min-width: 100px;
+    }
+
+    .card-info-value {
+      color: #374151;
+      flex: 1;
+    }
+
+    .card-description {
+      font-size: 14px;
+      color: #4b5563;
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Card Footer */
+    .adventure-card-footer {
+      padding: 16px 20px;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fafafa;
+    }
+
+    .card-action-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .card-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid #d1d5db;
+      background: white;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-btn:hover {
+      background: #f3f4f6;
+      border-color: #3b82f6;
+      color: #3b82f6;
+    }
+
+    .card-btn-primary {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    .card-btn-primary:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: white;
+    }
+
+    .card-favorite {
+      padding: 8px;
+      border-radius: 8px;
+      background: white;
+      border: 1px solid #d1d5db;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 18px;
+    }
+
+    .card-favorite:hover {
+      background: #fef3c7;
+      border-color: #fbbf24;
+    }
+
+    .card-favorite.active {
+      background: #fef3c7;
+      border-color: #fbbf24;
+    }
+
+    /* State Badge */
+    .state-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .adventure-cards-grid {
+        grid-template-columns: 1fr;
+        padding: 16px;
+        gap: 16px;
+      }
+
+      .adventure-card-header {
+        padding: 16px;
+      }
+
+      .adventure-card-body {
+        padding: 16px;
+      }
+
+      .adventure-card-footer {
+        padding: 12px 16px;
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .card-action-btns {
+        width: 100%;
+      }
+
+      .card-btn {
+        flex: 1;
+        justify-content: center;
+      }
+    }
+
+    /* Empty State */
+    .cards-empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #9ca3af;
+    }
+
+    .cards-empty-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    .cards-empty-text {
+      font-size: 18px;
+      font-weight: 500;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .cards-empty-subtext {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+
 
 
     /* Find Near Me Feature */
@@ -3929,52 +4262,26 @@
         </div>
       </div>
     </div>
-    <div class="table-help-legend" role="note" aria-label="Table help legend">
-      <span class="help-icon">?</span>
-      <span>Tip: Click a column header to sort. Right-click any cell to filter by that value.</span>
+    <div class="view-controls">
+      <div class="sort-controls">
+        <label for="sortBy" class="sort-label">Sort by:</label>
+        <select id="sortBy" class="sort-select">
+          <option value="name">Name</option>
+          <option value="driveTime">Drive Time</option>
+          <option value="state">State</option>
+          <option value="city">City</option>
+          <option value="tags">Tags</option>
+        </select>
+        <button id="sortOrderBtn" class="sort-order-btn" title="Toggle sort order">
+          <span class="sort-icon">↑</span>
+        </button>
+      </div>
+      <div class="results-count" id="resultsCount">0 adventures</div>
     </div>
-    <div class="table-wrapper">
-      <table id="adventureTable">
-        <thead>
-        <tr>
-          <th style="display:none;">Google Place ID</th>
-          <!-- Basic Information -->
-          <th>Name</th>
-          <th class="hidden-by-default">Website</th>
-          <th>Tags</th>
-          <!-- Travel & Location -->
-          <th>Drive Time</th>
-          <th>State</th>
-          <th>City</th>
-          <th class="hidden-by-default" id="distanceHeader">Distance</th>
-          <th class="hidden-by-default">Address</th>
-          <th class="hidden-by-default">Directions</th>
-          <!-- Activity Details -->
-          <th class="hidden-by-default">Activity Duration</th>
-          <th class="hidden-by-default">Difficulty</th>
-          <th class="hidden-by-default">Trail Length</th>
-          <!-- Hours & Operations -->
-          <th>Hours of Operation</th>
-          <!-- Contact & Details -->
-          <th class="hidden-by-default">Phone Number</th>
-          <th class="hidden-by-default">Google Rating</th>
-          <th class="hidden-by-default">Cost</th>
-          <!-- Description & Resources -->
-          <th>Description</th>
-          <th class="hidden-by-default">Nearby Things to Do</th>
-          <th class="hidden-by-default">Links</th>
-          <th class="hidden-by-default">Links2</th>
-          <!-- User Notes -->
-          <th class="hidden-by-default">Notes</th>
-          <!-- User Rating -->
-          <th class="hidden-by-default">My Rating</th>
-        </tr>
-        </thead>
 
-        <tbody id="adventureTableBody">
-        <!-- Real rows will be populated from Excel/Graph -->
-        </tbody>
-      </table>
+    <!-- Adventure Cards Grid -->
+    <div id="adventureCardsGrid" class="adventure-cards-grid">
+      <!-- Cards will be populated from Excel/Graph -->
     </div>
   </div>
     </div>
@@ -5431,6 +5738,7 @@
     initConnectionStatus();
     initAppTabs();
     initIphoneToggle();
+    initSortControls();
     initFilters();
     initQuickFilters();
     initResetButtons();
@@ -5899,20 +6207,417 @@
       // Calculate city counts for display next to city names
       calculateCityCounts(data.value);
 
-      // Clear existing table rows (in case we're reloading data)
-      const tbody = document.querySelector("#adventureTableBody");
-      tbody.innerHTML = "";
+      // Store the data globally for filtering/sorting
+      window.adventuresData = data.value;
 
-      /* ============================================================
-         PROCESS EACH ROW FROM EXCEL
-         ============================================================
-         For each adventure in the Excel file, create an HTML table row
-         with all the data properly formatted.
-      */
-      data.value.forEach((row) => {
-        // Extract values from the current Excel row
-        // row.values[0] is an array of cell values in order
-        const values = row.values[0];
+      // Render cards instead of table rows
+      renderAdventureCards(data.value);
+
+      // Update results count
+      updateResultsCount(data.value.length);
+
+      // Hide loading indicator
+      updateDataLoadIndicator('success', '✓ Data loaded successfully');
+      console.log("✓ Adventure data loaded successfully!");
+
+    } catch (err) {
+      console.error("❌ Failed to load adventure data:", err);
+      updateDataLoadIndicator('error', '❌ Failed to load data');
+      alert(`Failed to load adventure data: ${err.message}`);
+    }
+  }
+
+  /**
+   * Render adventure cards from Excel data
+   * @param {Array} adventuresArray - Array of adventure row data from Excel
+   */
+  function renderAdventureCards(adventuresArray) {
+    const cardsGrid = document.getElementById("adventureCardsGrid");
+    if (!cardsGrid) {
+      console.error("Adventure cards grid container not found!");
+      return;
+    }
+
+    // Clear existing cards
+    cardsGrid.innerHTML = "";
+
+    // If no adventures, show empty state
+    if (!adventuresArray || adventuresArray.length === 0) {
+      cardsGrid.innerHTML = `
+        <div class="cards-empty-state">
+          <div class="cards-empty-icon">🏞️</div>
+          <div class="cards-empty-text">No adventures found</div>
+          <div class="cards-empty-subtext">Try adjusting your filters or check back later</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Create a card for each adventure
+    adventuresArray.forEach((row, index) => {
+      const values = row.values[0];
+
+      // Extract adventure data from Excel columns
+      const [
+        name,
+        googlePlaceId,
+        website,
+        tags,
+        driveTime,
+        hoursOfOperation,
+        activityDuration,
+        difficulty,
+        trailLength,
+        state,
+        city,
+        address,
+        phoneNumber,
+        googleRating,
+        cost,
+        directions,
+        description,
+        nearby,
+        links,
+        links2,
+        notes,
+        myRating,
+      ] = values;
+
+      // Get state color
+      const stateUpper = (state || "").trim().toUpperCase();
+      const stateColor = STATE_COLORS[stateUpper] || STATE_COLORS["DEFAULT"];
+
+      // Parse tags
+      const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+      // Create card element
+      const card = document.createElement("div");
+      card.className = "adventure-card";
+      card.dataset.index = index;
+      card.dataset.googlePlaceId = (googlePlaceId || "").trim();
+      card.dataset.state = (state || "").toLowerCase();
+      card.dataset.city = (city || "").toLowerCase();
+      card.dataset.tags = (tags || "").toLowerCase();
+      card.dataset.difficulty = (difficulty || "").toLowerCase();
+
+      // Build card HTML
+      card.innerHTML = `
+        <div class="adventure-card-header">
+          <div class="adventure-card-title">${name || "Unnamed Adventure"}</div>
+          <div class="adventure-card-location">
+            <span class="location-icon">📍</span>
+            <span>${city || "Unknown"}${state ? ', ' + stateUpper : ''}</span>
+          </div>
+          ${driveTime ? `
+            <div class="adventure-card-time">
+              <span class="time-icon">🚗</span>
+              <span>${driveTime}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        ${tagList.length > 0 ? `
+          <div class="adventure-card-tags">
+            ${tagList.map(tag => {
+              const tagClass = tag.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+              return `<span class="tag-pill tag-${tagClass}" data-tag="${tag}">${tag}</span>`;
+            }).join('')}
+          </div>
+        ` : ''}
+
+        <div class="adventure-card-body">
+          ${description ? `<div class="card-description">${description}</div>` : ''}
+
+          ${hoursOfOperation ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">🕐</span>
+              <span class="card-info-label">Hours:</span>
+              <span class="card-info-value">${hoursOfOperation}</span>
+            </div>
+          ` : ''}
+
+          ${difficulty ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">⚡</span>
+              <span class="card-info-label">Difficulty:</span>
+              <span class="card-info-value">${difficulty}</span>
+            </div>
+          ` : ''}
+
+          ${activityDuration ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">⏱️</span>
+              <span class="card-info-label">Duration:</span>
+              <span class="card-info-value">${activityDuration}</span>
+            </div>
+          ` : ''}
+
+          ${trailLength ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">📏</span>
+              <span class="card-info-label">Length:</span>
+              <span class="card-info-value">${trailLength}</span>
+            </div>
+          ` : ''}
+
+          ${cost ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">💰</span>
+              <span class="card-info-label">Cost:</span>
+              <span class="card-info-value">${cost}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="adventure-card-footer">
+          <div class="card-action-btns">
+            <button class="card-btn" onclick="showCardDetails(${index})">
+              <span>📖</span> Details
+            </button>
+            ${directions ? `
+              <button class="card-btn card-btn-primary" onclick="window.open('${directions}', '_blank')">
+                <span>🗺️</span> Directions
+              </button>
+            ` : ''}
+          </div>
+          <button class="card-favorite" onclick="toggleCardFavorite(${index})" title="Add to favorites">
+            ⭐
+          </button>
+        </div>
+      `;
+
+      // Add click handler to open details modal
+      card.addEventListener('click', (e) => {
+        // Don't trigger if clicking on a button
+        if (!e.target.closest('button')) {
+          showCardDetails(index);
+        }
+      });
+
+      // Add tag click handlers
+      card.querySelectorAll('.tag-pill').forEach(tagPill => {
+        tagPill.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tag = tagPill.getAttribute('data-tag');
+          filterByTag(tag);
+        });
+      });
+
+      cardsGrid.appendChild(card);
+    });
+
+    console.log(`✓ Rendered ${adventuresArray.length} adventure cards`);
+  }
+
+  /**
+   * Update the results count display
+   */
+  function updateResultsCount(count) {
+    const resultsCount = document.getElementById("resultsCount");
+    if (resultsCount) {
+      resultsCount.textContent = `${count} adventure${count !== 1 ? 's' : ''}`;
+    }
+  }
+
+  /**
+   * Show details modal for a specific adventure card
+   */
+  function showCardDetails(index) {
+    if (!window.adventuresData || !window.adventuresData[index]) {
+      console.error("Adventure data not found for index:", index);
+      return;
+    }
+
+    const row = window.adventuresData[index];
+    const values = row.values[0];
+
+    // Extract all data
+    const [
+      name, googlePlaceId, website, tags, driveTime, hoursOfOperation,
+      activityDuration, difficulty, trailLength, state, city, address,
+      phoneNumber, googleRating, cost, directions, description, nearby,
+      links, links2, notes, myRating
+    ] = values;
+
+    // Use the existing row detail modal
+    const modal = document.getElementById("rowDetailModal");
+    const modalName = document.getElementById("modalName");
+    const modalBody = document.getElementById("modalBody");
+
+    if (!modal || !modalName || !modalBody) {
+      console.error("Modal elements not found");
+      return;
+    }
+
+    modalName.textContent = name || "Adventure Details";
+
+    // Build detailed info HTML
+    modalBody.innerHTML = `
+      <div class="modal-detail-section">
+        <h3>📍 Location</h3>
+        <p><strong>City:</strong> ${city || "N/A"}</p>
+        <p><strong>State:</strong> ${state || "N/A"}</p>
+        ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
+        ${driveTime ? `<p><strong>Drive Time:</strong> ${driveTime}</p>` : ''}
+      </div>
+
+      ${description ? `
+        <div class="modal-detail-section">
+          <h3>📖 Description</h3>
+          <p>${description}</p>
+        </div>
+      ` : ''}
+
+      ${tags ? `
+        <div class="modal-detail-section">
+          <h3>🏷️ Tags</h3>
+          <div>${tags.split(',').map(t => `<span class="tag-pill">${t.trim()}</span>`).join('')}</div>
+        </div>
+      ` : ''}
+
+      <div class="modal-detail-section">
+        <h3>ℹ️ Details</h3>
+        ${hoursOfOperation ? `<p><strong>Hours:</strong> ${hoursOfOperation}</p>` : ''}
+        ${activityDuration ? `<p><strong>Duration:</strong> ${activityDuration}</p>` : ''}
+        ${difficulty ? `<p><strong>Difficulty:</strong> ${difficulty}</p>` : ''}
+        ${trailLength ? `<p><strong>Trail Length:</strong> ${trailLength}</p>` : ''}
+        ${cost ? `<p><strong>Cost:</strong> ${cost}</p>` : ''}
+        ${googleRating ? `<p><strong>Google Rating:</strong> ${googleRating}</p>` : ''}
+      </div>
+
+      ${(phoneNumber || website || directions) ? `
+        <div class="modal-detail-section">
+          <h3>🔗 Contact & Links</h3>
+          ${phoneNumber ? `<p><strong>Phone:</strong> ${phoneNumber}</p>` : ''}
+          ${website ? `<p><strong>Website:</strong> <a href="${website}" target="_blank">${website}</a></p>` : ''}
+          ${directions ? `<p><strong>Directions:</strong> <a href="${directions}" target="_blank">Get Directions</a></p>` : ''}
+          ${links ? `<p><strong>Link:</strong> <a href="${links}" target="_blank">${links}</a></p>` : ''}
+          ${links2 ? `<p><strong>Additional Link:</strong> <a href="${links2}" target="_blank">${links2}</a></p>` : ''}
+        </div>
+      ` : ''}
+
+      ${nearby ? `
+        <div class="modal-detail-section">
+          <h3>🌟 Nearby Attractions</h3>
+          <p>${nearby}</p>
+        </div>
+      ` : ''}
+
+      ${notes ? `
+        <div class="modal-detail-section">
+          <h3>📝 My Notes</h3>
+          <p>${notes}</p>
+        </div>
+      ` : ''}
+
+      ${myRating ? `
+        <div class="modal-detail-section">
+          <h3>⭐ My Rating</h3>
+          <p>${myRating}</p>
+        </div>
+      ` : ''}
+    `;
+
+    modal.classList.add("visible");
+  }
+
+  /**
+   * Toggle favorite status for a card
+   */
+  function toggleCardFavorite(index) {
+    event.stopPropagation();
+    const card = document.querySelector(`.adventure-card[data-index="${index}"]`);
+    if (card) {
+      const favoriteBtn = card.querySelector('.card-favorite');
+      favoriteBtn.classList.toggle('active');
+
+      // Could save to localStorage or Excel here
+      console.log(`Toggled favorite for adventure ${index}`);
+    }
+  }
+
+  /**
+   * Filter cards by tag
+   */
+  function filterByTag(tag) {
+    console.log(`Filtering by tag: ${tag}`);
+    // This would integrate with your existing filter system
+    // For now, just log it
+  }
+
+  // Initialize sort controls
+  function initSortControls() {
+    const sortSelect = document.getElementById("sortBy");
+    const sortOrderBtn = document.getElementById("sortOrderBtn");
+    let sortOrder = 'asc';
+
+    if (!sortSelect || !sortOrderBtn) {
+      console.warn("Sort controls not found");
+      return;
+    }
+
+    function sortAdventures() {
+      if (!window.adventuresData) return;
+
+      const sortBy = sortSelect.value;
+      const data = [...window.adventuresData];
+
+      data.sort((a, b) => {
+        const aValues = a.values[0];
+        const bValues = b.values[0];
+
+        let aVal, bVal;
+
+        switch(sortBy) {
+          case 'name':
+            aVal = (aValues[0] || "").toLowerCase();
+            bVal = (bValues[0] || "").toLowerCase();
+            break;
+          case 'driveTime':
+            aVal = aValues[4] || "";
+            bVal = bValues[4] || "";
+            break;
+          case 'state':
+            aVal = (aValues[9] || "").toLowerCase();
+            bVal = (bValues[9] || "").toLowerCase();
+            break;
+          case 'city':
+            aVal = (aValues[10] || "").toLowerCase();
+            bVal = (bValues[10] || "").toLowerCase();
+            break;
+          case 'tags':
+            aVal = (aValues[3] || "").toLowerCase();
+            bVal = (bValues[3] || "").toLowerCase();
+            break;
+          default:
+            return 0;
+        }
+
+        if (sortOrder === 'asc') {
+          return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+        } else {
+          return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+        }
+      });
+
+      renderAdventureCards(data);
+    }
+
+    sortSelect.addEventListener('change', sortAdventures);
+
+    sortOrderBtn.addEventListener('click', () => {
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      sortOrderBtn.querySelector('.sort-icon').textContent = sortOrder === 'asc' ? '↑' : '↓';
+      sortAdventures();
+    });
+
+    console.log("✓ Sort controls initialized");
+  }
+
+  /* ============================================================
+     FILTERING FUNCTIONS
+     ============================================================ */
+  function applyFilters() {
 
         // DEBUG: Log the first row to check data structure
         if (!window.debugLoggedOnce) {
@@ -6258,22 +6963,69 @@
       tbody.appendChild(tr);
       });
 
-      // Re-initialize more/less buttons and row selection for new rows
-      initMoreLessButtons();
-      initRowSelection();
-      applyFilters();
+  }
 
-      // Show success indicator
-      console.log("✓ Excel data loaded successfully");
-      updateDataLoadIndicator('success', '✓ Excel data loaded successfully');
-
-    } catch (error) {
-      // Handle errors during data loading
-      console.error("Error loading Excel data:", error);
-      logErrorToBar('app-error', 'Failed to load Excel data', error.message);
-      updateDataLoadIndicator('error', '✗ Failed to load Excel data');
-      alert(`Error loading data: ${error.message}`);
+  /* ============================================================
+     FILTERING FUNCTIONS
+     ============================================================ */
+  function applyFilters() {
+    if (!window.adventuresData) {
+      console.warn("No adventures data available for filtering");
+      return;
     }
+
+    console.log("Applying filters...");
+    const filteredData = window.adventuresData.filter(row => {
+      const values = row.values[0];
+      const [name, , , tags, , , , , , state, city] = values;
+
+      // Apply filter logic
+      if (filterState.name && !name.toLowerCase().includes(filterState.name.toLowerCase())) {
+        return false;
+      }
+      if (filterState.tags && !tags.toLowerCase().includes(filterState.tags.toLowerCase())) {
+        return false;
+      }
+      if (filterState.state && state.toLowerCase() !== filterState.state.toLowerCase()) {
+        return false;
+      }
+      if (filterState.city && city.toLowerCase() !== filterState.city.toLowerCase()) {
+        return false;
+      }
+
+      // Apply context filters
+      for (const filter of filterState.contextFilters) {
+        const fieldIndex = getFieldIndexByKey(filter.key);
+        if (fieldIndex >= 0) {
+          const fieldValue = (values[fieldIndex] || "").toLowerCase();
+          const filterValue = filter.value.toLowerCase();
+          
+          if (filter.operation === 'equals') {
+            if (!fieldValue.includes(filterValue)) return false;
+          } else if (filter.operation === 'not-equals') {
+            if (fieldValue.includes(filterValue)) return false;
+          }
+        }
+      }
+
+      return true;
+    });
+
+    renderAdventureCards(filteredData);
+    updateResultsCount(filteredData.length);
+  }
+
+  function getFieldIndexByKey(key) {
+    const fieldMap = {
+      'name': 0,
+      'tags': 3,
+      'driveTime': 4,
+      'state': 9,
+      'city': 10,
+      'difficulty': 7,
+      'cost': 14
+    };
+    return fieldMap[key] ?? -1;
   }
 
   /***********************
