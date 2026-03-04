@@ -866,25 +866,7 @@
       display: none;
     }
 
-    #adventureTable.show-all-columns th.hidden-by-default,
-    #adventureTable.show-all-columns td.hidden-by-default {
-      display: table-cell;
-    }
 
-    .columns-toggle-btn {
-      border-radius: 999px;
-      border: 1px solid var(--blue-border);
-      background: var(--blue-strong);
-      color: white;
-      padding: 6px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      font-weight: 500;
-    }
-
-    .columns-toggle-btn:hover {
-      background: #bfdbfe;
-    }
 
     /* Find Near Me Feature */
     .find-near-me-btn {
@@ -3951,9 +3933,6 @@
           Data source: Adventure_Finder_Excel_DB.xlsx (Table: MyList)
         </div>
       </div>
-      <button id="columnsToggleBtn" class="columns-toggle-btn">
-        📊 Show More Columns
-      </button>
     </div>
     <div class="table-help-legend" role="note" aria-label="Table help legend">
       <span class="help-icon">?</span>
@@ -4918,7 +4897,6 @@
 
       // Step 5: Initialize all UI features now that user is logged in
       console.log("Step 5: Initializing UI features");
-      initColumnToggle();    // Set up Show More Columns button
       initFindNearMe();      // Set up Find Places Near Me button
       initContextMenu();     // Set up Right-Click Context Menu (must be after table loads)
       initRowDetailModal();  // Set up Row Detail Modal buttons (Close, Edit, X)
@@ -5638,34 +5616,6 @@
     });
   }
 
-  /***********************
-   * COLUMN TOGGLE       *
-   ***********************/
-  function initColumnToggle() {
-    const btn = document.getElementById("columnsToggleBtn");
-    const table = document.getElementById("adventureTable");
-
-    if (!btn || !table) {
-      console.error("Column toggle button or table not found");
-      return;
-    }
-
-    let showAllColumns = false;
-
-    btn.addEventListener("click", () => {
-      showAllColumns = !showAllColumns;
-
-      if (showAllColumns) {
-        table.classList.add("show-all-columns");
-        btn.textContent = "📊 Hide Extra Columns";
-      } else {
-        table.classList.remove("show-all-columns");
-        btn.textContent = "📊 Show More Columns";
-      }
-
-      console.log("Column visibility toggled. Show all columns:", showAllColumns);
-    });
-  }
 
   /***********************
    * FIND NEAR ME FEATURE*
