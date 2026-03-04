@@ -6398,16 +6398,30 @@
      ============================================================
      Allows users to right-click on table cells and filter by value
   */
+  function ensureContextMenuElement() {
+    let contextMenu = document.getElementById("contextMenu");
+    if (contextMenu) return contextMenu;
+
+    contextMenu = document.createElement("div");
+    contextMenu.id = "contextMenu";
+    contextMenu.innerHTML = `
+      <div class="context-menu-header" id="contextMenuHeader">Filter Options</div>
+      <div id="contextMenuItems"></div>
+    `;
+    document.body.appendChild(contextMenu);
+    return contextMenu;
+  }
+
   function initContextMenu() {
     console.log("🔧 Initializing context menu...");
-    const contextMenu = document.getElementById("contextMenu");
+    ensureContextMenuElement();
 
-    if (!contextMenu) {
-      console.error("❌ Context menu: contextMenu element not found!");
+    if (window.__contextMenuInitialized) {
       return;
     }
+    window.__contextMenuInitialized = true;
 
-    console.log("✅ Context menu: Element found, attaching global event listener...");
+    console.log("✅ Context menu: Element ready, attaching global event listener...");
 
     // Use document-level listener with event delegation for better capture
     // This ensures we catch right-clicks even if table isn't fully loaded
@@ -6813,7 +6827,6 @@
     }, 0);
   }
 
-  // ...existing code...
 
   /**
    * Apply context filter from right-click menu
@@ -7643,3 +7656,15 @@
 
 <div id="rowDetailModalBackdrop" class="modal-backdrop" style="z-index: 1001;"></div>
 
+<div id="contextMenu">
+  <div class="context-menu-header" id="contextMenuHeader">Filter Options</div>
+  <div id="contextMenuItems"></div>
+</div>
+
+<div id="tagContextMenu" class="tag-context-menu">
+  <div class="tag-menu-header">Filter by Tag</div>
+  <div id="tagContextMenuItems"></div>
+</div>
+
+</body>
+</html>
