@@ -863,7 +863,10 @@
     }
     #adventureTable th.hidden-by-default,
     #adventureTable td.hidden-by-default {
-      display: none;
+      visibility: hidden;
+      width: 0;
+      padding: 0;
+      border: none;
     }
 
 
@@ -3942,7 +3945,7 @@
       <table id="adventureTable">
         <thead>
         <tr>
-          <th style="display:none;">Google Place ID</th>
+          <th style="visibility:hidden; width: 0; padding: 0; border: none;">Google Place ID</th>
           <!-- Basic Information -->
           <th>Name</th>
           <th class="hidden-by-default">Website</th>
