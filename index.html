@@ -7443,6 +7443,12 @@
 
     console.log('Updated context filters:', filterState.contextFilters);
 
+    // Close the context menu
+    const contextMenu = document.getElementById("contextMenu");
+    if (contextMenu) {
+      contextMenu.classList.remove("visible");
+    }
+
     // Update breadcrumb menu
     updateBreadcrumbMenu();
 
@@ -7457,6 +7463,13 @@
   function clearContextFilter(key) {
     console.log(`Clearing context filter for key: ${key}`);
     filterState.contextFilters = filterState.contextFilters.filter(f => f.key !== key);
+
+    // Close the context menu
+    const contextMenu = document.getElementById("contextMenu");
+    if (contextMenu) {
+      contextMenu.classList.remove("visible");
+    }
+
     updateBreadcrumbMenu();
     applyFilters();
   }
