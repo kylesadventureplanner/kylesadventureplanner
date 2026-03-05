@@ -3332,6 +3332,102 @@
       font-weight: 600;
     }
 
+    /* ============================================================
+       TAB SYSTEM STYLES
+       ============================================================
+       Navigation tabs and tab content panes for different sections
+    */
+    .app-tabs-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid var(--gray-border);
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .app-tab-btn {
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      color: var(--gray-text);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -11px;
+      position: relative;
+      top: 2px;
+    }
+
+    .app-tab-btn:hover {
+      color: var(--blue-strong);
+      background: var(--blue-bg);
+      border-bottom-color: var(--blue-border);
+    }
+
+    .app-tab-btn.active {
+      color: var(--blue-strong);
+      border-bottom-color: var(--blue-strong);
+      font-weight: 600;
+    }
+
+    .app-tabs-content {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-tab-pane {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .app-tab-pane.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Tab placeholder for non-active tabs */
+    .tab-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      text-align: center;
+      background: var(--blue-bg);
+      border-radius: 8px;
+      border: 2px dashed var(--blue-border);
+      gap: 12px;
+    }
+
+    .tab-placeholder-icon {
+      font-size: 48px;
+    }
+
+    .tab-placeholder-text {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--blue-strong);
+    }
+
+    .tab-placeholder-subtext {
+      font-size: 14px;
+      color: var(--gray-text);
+    }
+
   </style>
   <!--suppress HtmlUnknownTarget -->
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
