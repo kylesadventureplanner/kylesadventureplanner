@@ -6071,81 +6071,131 @@
     const backdrop = document.getElementById("rowDetailModalBackdrop");
     const modalTitle = document.getElementById("rowDetailTitle");
     const modalContent = document.getElementById("rowDetailContent");
+    const tabsContainer = document.getElementById("rowDetailTabsContainer");
 
-    if (!modal || !backdrop || !modalTitle || !modalContent) {
+    if (!modal || !backdrop || !modalTitle || !modalContent || !tabsContainer) {
       console.error("Modal elements not found");
       return;
     }
 
     modalTitle.textContent = name || "Adventure Details";
 
-    // Build detailed info HTML
-    modalContent.innerHTML = `
-      <div class="row-detail-tab-pane active" data-tab="overview">
-        <div class="modal-detail-section">
-          <h3>📍 Location</h3>
-          <p><strong>City:</strong> ${city || "N/A"}</p>
-          <p><strong>State:</strong> ${state || "N/A"}</p>
-          ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
-          ${driveTime ? `<p><strong>Drive Time:</strong> ${driveTime}</p>` : ''}
-        </div>
+    // Define tabs
+    const tabs = [
+      {
+        id: "overview",
+        label: "📋 Overview",
+        content: `
+          <div class="modal-detail-section">
+            <h3>📍 Location</h3>
+            <p><strong>City:</strong> ${city || "N/A"}</p>
+            <p><strong>State:</strong> ${state || "N/A"}</p>
+            ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
+            ${driveTime ? `<p><strong>Drive Time:</strong> ${driveTime}</p>` : ''}
+          </div>
 
-      ${description ? `
-        <div class="modal-detail-section">
-          <h3>📖 Description</h3>
-          <p>${description}</p>
-        </div>
-      ` : ''}
+          ${description ? `
+            <div class="modal-detail-section">
+              <h3>📖 Description</h3>
+              <p>${description}</p>
+            </div>
+          ` : ''}
 
-      ${tags ? `
-        <div class="modal-detail-section">
-          <h3>🏷️ Tags</h3>
-          <div>${tags.split(',').map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}</div>
-        </div>
-      ` : ''}
+          ${tags ? `
+            <div class="modal-detail-section">
+              <h3>🏷️ Tags</h3>
+              <div>${tags.split(',').map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}</div>
+            </div>
+          ` : ''}
+        `
+      },
+      {
+        id: "details",
+        label: "ℹ️ Details",
+        content: `
+          <div class="modal-detail-section">
+            <h3>Details</h3>
+            ${hoursOfOperation ? `<p><strong>Hours:</strong> ${hoursOfOperation}</p>` : ''}
+            ${activityDuration ? `<p><strong>Duration:</strong> ${activityDuration}</p>` : ''}
+            ${difficulty ? `<p><strong>Difficulty:</strong> ${difficulty}</p>` : ''}
+            ${trailLength ? `<p><strong>Trail Length:</strong> ${trailLength}</p>` : ''}
+            ${cost ? `<p><strong>Cost:</strong> ${cost}</p>` : ''}
+            ${googleRating ? `<p><strong>Google Rating:</strong> ${googleRating}</p>` : ''}
+          </div>
+        `
+      },
+      {
+        id: "contact",
+        label: "🔗 Contact",
+        content: `
+          ${(phoneNumber || website || directions || links || links2) ? `
+            <div class="modal-detail-section">
+              <h3>Contact & Links</h3>
+              ${phoneNumber ? `<p><strong>Phone:</strong> ${phoneNumber}</p>` : ''}
+              ${website ? `<p><strong>Website:</strong> <a href="${website}" target="_blank">${website}</a></p>` : ''}
+              ${directions ? `<p><strong>Directions:</strong> <a href="${directions}" target="_blank">Get Directions</a></p>` : ''}
+              ${links ? `<p><strong>Link:</strong> <a href="${links}" target="_blank">${links}</a></p>` : ''}
+              ${links2 ? `<p><strong>Additional Link:</strong> <a href="${links2}" target="_blank">${links2}</a></p>` : ''}
+            </div>
+          ` : '<p>No contact information available</p>'}
+        `
+      },
+      {
+        id: "additional",
+        label: "📌 Additional",
+        content: `
+          ${nearby ? `
+            <div class="modal-detail-section">
+              <h3>🌟 Nearby Attractions</h3>
+              <p>${nearby}</p>
+            </div>
+          ` : ''}
 
-      <div class="modal-detail-section">
-        <h3>ℹ️ Details</h3>
-        ${hoursOfOperation ? `<p><strong>Hours:</strong> ${hoursOfOperation}</p>` : ''}
-        ${activityDuration ? `<p><strong>Duration:</strong> ${activityDuration}</p>` : ''}
-        ${difficulty ? `<p><strong>Difficulty:</strong> ${difficulty}</p>` : ''}
-        ${trailLength ? `<p><strong>Trail Length:</strong> ${trailLength}</p>` : ''}
-        ${cost ? `<p><strong>Cost:</strong> ${cost}</p>` : ''}
-        ${googleRating ? `<p><strong>Google Rating:</strong> ${googleRating}</p>` : ''}
+          ${notes ? `
+            <div class="modal-detail-section">
+              <h3>📝 My Notes</h3>
+              <p>${notes}</p>
+            </div>
+          ` : ''}
+
+          ${myRating ? `
+            <div class="modal-detail-section">
+              <h3>⭐ My Rating</h3>
+              <p>${myRating}</p>
+            </div>
+          ` : ''}
+        `
+      }
+    ];
+
+    // Create tab buttons
+    tabsContainer.innerHTML = tabs.map((tab, idx) => `
+      <button class="row-detail-tab-btn ${idx === 0 ? 'active' : ''}" data-tab-id="${tab.id}">
+        ${tab.label}
+      </button>
+    `).join('');
+
+    // Create tab content panes
+    modalContent.innerHTML = tabs.map((tab, idx) => `
+      <div class="row-detail-tab-pane ${idx === 0 ? 'active' : ''}" data-tab-id="${tab.id}">
+        ${tab.content}
       </div>
+    `).join('');
 
-      ${(phoneNumber || website || directions) ? `
-        <div class="modal-detail-section">
-          <h3>🔗 Contact & Links</h3>
-          ${phoneNumber ? `<p><strong>Phone:</strong> ${phoneNumber}</p>` : ''}
-          ${website ? `<p><strong>Website:</strong> <a href="${website}" target="_blank">${website}</a></p>` : ''}
-          ${directions ? `<p><strong>Directions:</strong> <a href="${directions}" target="_blank">Get Directions</a></p>` : ''}
-          ${links ? `<p><strong>Link:</strong> <a href="${links}" target="_blank">${links}</a></p>` : ''}
-          ${links2 ? `<p><strong>Additional Link:</strong> <a href="${links2}" target="_blank">${links2}</a></p>` : ''}
-        </div>
-      ` : ''}
+    // Add tab click handlers
+    tabsContainer.querySelectorAll('.row-detail-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabId = btn.getAttribute('data-tab-id');
 
-      ${nearby ? `
-        <div class="modal-detail-section">
-          <h3>🌟 Nearby Attractions</h3>
-          <p>${nearby}</p>
-        </div>
-      ` : ''}
+        // Remove active from all buttons and panes
+        tabsContainer.querySelectorAll('.row-detail-tab-btn').forEach(b => b.classList.remove('active'));
+        modalContent.querySelectorAll('.row-detail-tab-pane').forEach(p => p.classList.remove('active'));
 
-      ${notes ? `
-        <div class="modal-detail-section">
-          <h3>📝 My Notes</h3>
-          <p>${notes}</p>
-        </div>
-      ` : ''}
-
-      ${myRating ? `
-        <div class="modal-detail-section">
-          <h3>⭐ My Rating</h3>
-          <p>${myRating}</p>
-        </div>
-      ` : ''}
-      `;
+        // Add active to clicked button and corresponding pane
+        btn.classList.add('active');
+        modalContent.querySelector(`.row-detail-tab-pane[data-tab-id="${tabId}"]`).classList.add('active');
+      });
+    });
 
     modal.classList.add("visible");
     backdrop.classList.add("visible");
