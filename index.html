@@ -8057,6 +8057,18 @@
       console.log("Dry Run mode:", isOn ? "ON" : "OFF");
     });
   }
+
+  // ============================================================
+  // INITIALIZE APP ON PAGE LOAD
+  // ============================================================
+  // Call initialization function when DOM is ready
+  if (document.readyState === 'loading') {
+    // DOM is still loading
+    document.addEventListener('DOMContentLoaded', initializeApp);
+  } else {
+    // DOM is already loaded
+    initializeApp();
+  }
 </script>
 
 <!-- Row Detail Modal with Tabs (opened by double-clicking a row) -->
