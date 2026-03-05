@@ -3428,6 +3428,172 @@
       color: var(--gray-text);
     }
 
+    /* ============================================================
+       ROW DETAIL MODAL STYLES
+       ============================================================
+       Modal for displaying detailed information about an adventure
+    */
+    #rowDetailModal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      z-index: 1002;
+      max-width: 90%;
+      max-height: 90vh;
+      width: 600px;
+      overflow-y: auto;
+    }
+
+    #rowDetailModal.visible {
+      display: block;
+    }
+
+    .row-detail-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--gray-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .row-detail-title-section {
+      flex: 1;
+    }
+
+    .row-detail-adventure-name {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .row-detail-location {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--gray-text);
+    }
+
+    .row-detail-close-btn {
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-text);
+      transition: color 0.2s;
+    }
+
+    .row-detail-close-btn:hover {
+      color: #111827;
+    }
+
+    .row-detail-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 16px 24px;
+      border-bottom: 2px solid var(--gray-border);
+      overflow-x: auto;
+    }
+
+    .row-detail-tab-btn {
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--gray-text);
+      font-size: 14px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .row-detail-tab-btn:hover {
+      color: var(--blue-strong);
+      border-bottom-color: var(--blue-border);
+    }
+
+    .row-detail-tab-btn.active {
+      color: var(--blue-strong);
+      border-bottom-color: var(--blue-strong);
+      font-weight: 600;
+    }
+
+    .row-detail-content {
+      padding: 24px;
+    }
+
+    .row-detail-tab-pane {
+      display: none;
+    }
+
+    .row-detail-tab-pane.active {
+      display: block;
+    }
+
+    .row-detail-footer {
+      display: flex;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--gray-border);
+    }
+
+    .row-detail-footer-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1px solid var(--gray-border);
+      background: white;
+      color: var(--gray-text);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .row-detail-footer-btn:hover {
+      background: var(--blue-bg);
+      border-color: var(--blue-border);
+      color: var(--blue-strong);
+    }
+
+    .row-detail-footer-btn.primary {
+      background: var(--blue-strong);
+      color: white;
+      border-color: var(--blue-strong);
+    }
+
+    .row-detail-footer-btn.primary:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+    }
+
+    /* Modal backdrop */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1001;
+    }
+
+    .modal-backdrop.visible {
+      display: block;
+    }
+
   </style>
   <!--suppress HtmlUnknownTarget -->
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
@@ -5122,6 +5288,29 @@
     updateFavoriteStars();
   }
 
+
+  /**
+   * Initialize modal close button event listeners
+   */
+  function initModalCloseButtons() {
+    const closeBtn = document.getElementById("rowDetailCloseBtn");
+    const footerCloseBtn = document.getElementById("rowDetailCloseFooterBtn");
+    const backdrop = document.getElementById("rowDetailModalBackdrop");
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeRowDetailModal);
+    }
+
+    if (footerCloseBtn) {
+      footerCloseBtn.addEventListener("click", closeRowDetailModal);
+    }
+
+    // Close modal when clicking on backdrop
+    if (backdrop) {
+      backdrop.addEventListener("click", closeRowDetailModal);
+    }
+  }
+
   /***********************
    * INITIALIZATION      *
    ***********************/
@@ -5180,6 +5369,7 @@
     updateBreadcrumbMenu();
     initBreadcrumbResetBtn();
     initDryRunToggle();
+    initModalCloseButtons();
     // Note: initAutomationButtons() is called in window.load event listener
 
     console.log("=== APP INITIALIZATION COMPLETE ===");
@@ -5835,6 +6025,11 @@
         });
       });
 
+      // Add click handler to card to open details modal
+      card.addEventListener('click', () => {
+        showCardDetails(index);
+      });
+
       cardsGrid.appendChild(card);
     });
 
@@ -5873,25 +6068,27 @@
 
     // Use the existing row detail modal
     const modal = document.getElementById("rowDetailModal");
-    const modalName = document.getElementById("modalName");
-    const modalBody = document.getElementById("modalBody");
+    const backdrop = document.getElementById("rowDetailModalBackdrop");
+    const modalTitle = document.getElementById("rowDetailTitle");
+    const modalContent = document.getElementById("rowDetailContent");
 
-    if (!modal || !modalName || !modalBody) {
+    if (!modal || !backdrop || !modalTitle || !modalContent) {
       console.error("Modal elements not found");
       return;
     }
 
-    modalName.textContent = name || "Adventure Details";
+    modalTitle.textContent = name || "Adventure Details";
 
     // Build detailed info HTML
-    modalBody.innerHTML = `
-      <div class="modal-detail-section">
-        <h3>📍 Location</h3>
-        <p><strong>City:</strong> ${city || "N/A"}</p>
-        <p><strong>State:</strong> ${state || "N/A"}</p>
-        ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
-        ${driveTime ? `<p><strong>Drive Time:</strong> ${driveTime}</p>` : ''}
-      </div>
+    modalContent.innerHTML = `
+      <div class="row-detail-tab-pane active" data-tab="overview">
+        <div class="modal-detail-section">
+          <h3>📍 Location</h3>
+          <p><strong>City:</strong> ${city || "N/A"}</p>
+          <p><strong>State:</strong> ${state || "N/A"}</p>
+          ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
+          ${driveTime ? `<p><strong>Drive Time:</strong> ${driveTime}</p>` : ''}
+        </div>
 
       ${description ? `
         <div class="modal-detail-section">
@@ -5948,9 +6145,10 @@
           <p>${myRating}</p>
         </div>
       ` : ''}
-    `;
+      `;
 
     modal.classList.add("visible");
+    backdrop.classList.add("visible");
   }
 
   /**
