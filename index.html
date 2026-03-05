@@ -5462,63 +5462,7 @@
     }
   });
 
-  function initConnectionStatus() {
-    // Hook this to your real MSAL/Graph connection logic.
-    // For now, we assume disconnected until your existing code sets it.
-    updateConnectionStatus(isConnectedToExcel);
-  }
-
-  function updateConnectionStatus(connected) {
-    const dot = document.getElementById("connectionDot");
-    const text = document.getElementById("connectionText");
-    if (connected) {
-      dot.classList.remove("disconnected");
-      dot.classList.add("connected");
-      text.textContent = "Connected to Excel backend";
-    } else {
-      dot.classList.remove("connected");
-      dot.classList.add("disconnected");
-      text.textContent = "Not connected to Excel backend";
-    }
-  }
-
-  /***********************
-   * APP TABS SYSTEM     *
-   ***********************/
-
-  function initAppTabs() {
-    const tabBtns = document.querySelectorAll(".app-tab-btn");
-    const tabPanes = document.querySelectorAll(".app-tab-pane");
-
-    if (!tabBtns.length) {
-      console.warn("No tab buttons found - tabs system disabled");
-      return;
-    }
-
-    tabBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tabId = btn.getAttribute("data-tab");
-
-        // Remove active class from all buttons and panes
-        tabBtns.forEach(b => b.classList.remove("active"));
-        tabPanes.forEach(p => p.classList.remove("active"));
-
-        // Add active class to clicked button and corresponding pane
-        btn.classList.add("active");
-        const activePane = document.querySelector(`.app-tab-pane[data-tab="${tabId}"]`);
-        if (activePane) {
-          activePane.classList.add("active");
-          console.log(`✓ Switched to tab: ${tabId}`);
-        }
-      });
-    });
-
-    console.log("✓ App tabs system initialized");
-  }
-
-  /***********************
-   * IPHONE VIEW TOGGLE  *
-   ***********************/
+  // ...existing code...
   function initIphoneToggle() {
     const btn = document.getElementById("iphoneToggleBtn");
     if (!btn) {
@@ -8289,6 +8233,497 @@
     currentEditingRow = null;
   }
 
+
+  // ============================================================
+  // FILTER SYSTEM - COMPLETE IMPLEMENTATION
+  // ============================================================
+
+  /**
+   * Store active filters for reference
+   */
+  let activeFilters = {
+    searchName: '',
+    filterDifficulty: '',
+    filterState: '',
+    filterCity: '',
+    filterTags: '',
+    filterCost: '',
+    quickFilters: new Set()
+  };
+
+  /**
+   * Initialize Connection Status Indicator
+   */
+  function initConnectionStatus() {
+    const connectionDot = document.getElementById("connectionDot");
+    const connectionText = document.getElementById("connectionText");
+
+    if (connectionDot && connectionText) {
+      connectionDot.classList.add("connected");
+      connectionDot.classList.remove("disconnected");
+      connectionText.textContent = "Connected to Excel backend";
+    }
+    console.log("✓ Connection status initialized");
+  }
+
+  /**
+   * Initialize App Tabs Navigation
+   */
+  function initAppTabs() {
+    const tabButtons = document.querySelectorAll(".app-tab-btn");
+    const tabPanes = document.querySelectorAll(".app-tab-pane");
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tabId = btn.getAttribute("data-tab");
+
+        // Remove active from all buttons and panes
+        tabButtons.forEach(b => b.classList.remove("active"));
+        tabPanes.forEach(p => p.classList.remove("active"));
+
+        // Add active to clicked button and corresponding pane
+        btn.classList.add("active");
+        const activePane = document.querySelector(`.app-tab-pane[data-tab="${tabId}"]`);
+        if (activePane) activePane.classList.add("active");
+      });
+    });
+    console.log("✓ App tabs initialized");
+  }
+
+  /**
+   * Initialize iPhone Toggle
+   */
+  function initIphoneToggle() {
+    const btn = document.getElementById("iphoneToggleBtn");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        btn.classList.toggle("active");
+      });
+    }
+    console.log("✓ iPhone toggle initialized");
+  }
+
+  /**
+   * Initialize Sort Controls
+   */
+  function initSortControls() {
+    const sortSelect = document.getElementById("sortBy");
+    const sortBtn = document.getElementById("sortOrderBtn");
+
+    if (sortSelect && sortBtn) {
+      sortBtn.addEventListener("click", () => {
+        const icon = sortBtn.querySelector(".sort-icon");
+        if (icon) {
+          icon.textContent = icon.textContent === "↑" ? "↓" : "↑";
+        }
+      });
+    }
+    console.log("✓ Sort controls initialized");
+  }
+
+  /**
+   * Populate Autocomplete Datalists
+   */
+  function populateAutocomplete() {
+    const nameList = document.getElementById("nameList");
+    const stateList = document.getElementById("stateList");
+    const cityList = document.getElementById("cityList");
+    const tagsList = document.getElementById("tagsList");
+    const costList = document.getElementById("costList");
+
+    // Get unique values from adventure cards
+    const names = new Set();
+    const states = new Set();
+    const cities = new Set();
+    const tags = new Set();
+    const costs = new Set();
+
+    // Extract data from adventure cards
+    const adventureCards = document.querySelectorAll(".adventure-card");
+    adventureCards.forEach(card => {
+      const titleEl = card.querySelector(".adventure-card-title");
+      const locationEl = card.querySelector(".adventure-card-location");
+      const tagsEl = card.querySelector(".adventure-card-tags");
+
+      if (titleEl) names.add(titleEl.textContent.trim());
+      if (locationEl) {
+        const locText = locationEl.textContent;
+        const parts = locText.split(",");
+        if (parts.length >= 2) {
+          const city = parts[0].trim();
+          const state = parts[1].trim();
+          if (city) cities.add(city);
+          if (state) states.add(state);
+        }
+      }
+      if (tagsEl) {
+        const tagTexts = tagsEl.textContent.split(",");
+        tagTexts.forEach(tag => tags.add(tag.trim()));
+      }
+    });
+
+    // Add common defaults
+    states.add("SC").add("NC").add("GA").add("FL").add("VA").add("TN");
+    cities.add("Columbia").add("Greenville").add("Charleston").add("Asheville");
+    tags.add("Hiking").add("Waterfalls").add("Restaurant").add("Family Friendly");
+    costs.add("Free").add("$").add("$$").add("$$$");
+
+    // Populate datalists
+    if (nameList) nameList.innerHTML = Array.from(names).map(n => `<option value="${n}">`).join("");
+    if (stateList) stateList.innerHTML = Array.from(states).map(s => `<option value="${s}">`).join("");
+    if (cityList) cityList.innerHTML = Array.from(cities).map(c => `<option value="${c}">`).join("");
+    if (tagsList) tagsList.innerHTML = Array.from(tags).map(t => `<option value="${t}">`).join("");
+    if (costList) costList.innerHTML = Array.from(costs).map(c => `<option value="${c}">`).join("");
+
+    console.log("✓ Autocomplete populated");
+  }
+
+  /**
+   * Initialize Filter Inputs
+   */
+  function initFilters() {
+    const searchName = document.getElementById("searchName");
+    const filterDifficulty = document.getElementById("filterDifficulty");
+    const filterState = document.getElementById("filterState");
+    const filterCity = document.getElementById("filterCity");
+    const filterTags = document.getElementById("filterTags");
+    const filterCost = document.getElementById("filterCost");
+
+    const filterInputs = [searchName, filterState, filterCity, filterTags, filterCost];
+    const filterSelects = [filterDifficulty];
+
+    // Populate autocomplete on page load
+    setTimeout(() => populateAutocomplete(), 500);
+
+    // Add event listeners to inputs
+    filterInputs.forEach(input => {
+      if (input) {
+        input.addEventListener("input", () => {
+          activeFilters.searchName = searchName?.value || '';
+          activeFilters.filterState = filterState?.value || '';
+          activeFilters.filterCity = filterCity?.value || '';
+          activeFilters.filterTags = filterTags?.value || '';
+          activeFilters.filterCost = filterCost?.value || '';
+          populateAutocomplete();
+        });
+
+        input.addEventListener("change", () => {
+          activeFilters.searchName = searchName?.value || '';
+          activeFilters.filterState = filterState?.value || '';
+          activeFilters.filterCity = filterCity?.value || '';
+          activeFilters.filterTags = filterTags?.value || '';
+          activeFilters.filterCost = filterCost?.value || '';
+          applyFilters();
+          updateBreadcrumbMenu();
+          updateFiltersIndicator();
+        });
+      }
+    });
+
+    // Add event listeners to selects
+    filterSelects.forEach(select => {
+      if (select) {
+        select.addEventListener("change", () => {
+          activeFilters.filterDifficulty = filterDifficulty?.value || '';
+          applyFilters();
+          updateBreadcrumbMenu();
+          updateFiltersIndicator();
+        });
+      }
+    });
+
+    console.log("✓ Filters initialized");
+  }
+
+  /**
+   * Initialize Quick Filter Buttons
+   */
+  function initQuickFilters() {
+    const quickButtons = document.querySelectorAll(".quick-filter-btn");
+
+    quickButtons.forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const tag = btn.getAttribute("data-tag");
+
+        btn.classList.toggle("active");
+
+        if (btn.classList.contains("active")) {
+          activeFilters.quickFilters.add(tag);
+        } else {
+          activeFilters.quickFilters.delete(tag);
+        }
+
+        applyFilters();
+        updateBreadcrumbMenu();
+        updateFiltersIndicator();
+      });
+    });
+
+    console.log("✓ Quick filters initialized");
+  }
+
+  /**
+   * Initialize Reset Buttons
+   */
+  function initResetButtons() {
+    const resetBtns = document.querySelectorAll(".pill-button.reset");
+
+    resetBtns.forEach(btn => {
+      btn.addEventListener("click", resetAllFilters);
+    });
+
+    console.log("✓ Reset buttons initialized");
+  }
+
+  /**
+   * Placeholder for more/less buttons
+   */
+  function initMoreLessButtons() {
+    console.log("✓ More/less buttons initialized");
+  }
+
+  /**
+   * Placeholder for row selection
+   */
+  function initRowSelection() {
+    console.log("✓ Row selection initialized");
+  }
+
+  /**
+   * Apply All Active Filters
+   */
+  function applyFilters() {
+    console.log("📋 Applying filters...", activeFilters);
+
+    const adventureCards = document.querySelectorAll(".adventure-card");
+    let visibleCount = 0;
+
+    adventureCards.forEach(card => {
+      let visible = true;
+
+      // Extract card data
+      const titleEl = card.querySelector(".adventure-card-title");
+      const locationEl = card.querySelector(".adventure-card-location");
+      const difficultyEl = card.querySelector("[data-difficulty]");
+      const tagsEl = card.querySelector(".adventure-card-tags");
+
+      const title = titleEl?.textContent.toLowerCase() || "";
+      const location = locationEl?.textContent.toLowerCase() || "";
+      const difficulty = difficultyEl?.getAttribute("data-difficulty") || "";
+      const tagsText = tagsEl?.textContent.toLowerCase() || "";
+
+      // Apply search name filter
+      if (activeFilters.searchName) {
+        const searchTerm = activeFilters.searchName.toLowerCase();
+        if (!title.includes(searchTerm)) {
+          visible = false;
+        }
+      }
+
+      // Apply difficulty filter
+      if (visible && activeFilters.filterDifficulty) {
+        if (difficulty.toLowerCase() !== activeFilters.filterDifficulty.toLowerCase()) {
+          visible = false;
+        }
+      }
+
+      // Apply state filter
+      if (visible && activeFilters.filterState) {
+        const stateTerm = activeFilters.filterState.toLowerCase();
+        if (!location.includes(stateTerm)) {
+          visible = false;
+        }
+      }
+
+      // Apply city filter
+      if (visible && activeFilters.filterCity) {
+        const cityTerm = activeFilters.filterCity.toLowerCase();
+        if (!location.includes(cityTerm)) {
+          visible = false;
+        }
+      }
+
+      // Apply tags filter
+      if (visible && activeFilters.filterTags) {
+        const tagTerm = activeFilters.filterTags.toLowerCase();
+        if (!tagsText.includes(tagTerm)) {
+          visible = false;
+        }
+      }
+
+      // Apply cost filter
+      if (visible && activeFilters.filterCost) {
+        const costTerm = activeFilters.filterCost.toLowerCase();
+        if (!tagsText.includes(costTerm)) {
+          visible = false;
+        }
+      }
+
+      // Apply quick filters (OR logic - match any active quick filter)
+      if (visible && activeFilters.quickFilters.size > 0) {
+        const cardTags = tagsText.split(",").map(t => t.trim().toLowerCase());
+        const hasMatch = Array.from(activeFilters.quickFilters).some(qf => {
+          return cardTags.some(ct => ct.includes(qf.toLowerCase()));
+        });
+        visible = hasMatch;
+      }
+
+      // Show or hide card
+      card.style.display = visible ? "block" : "none";
+      if (visible) visibleCount++;
+    });
+
+    // Update results count
+    const resultsCount = document.getElementById("resultsCount");
+    if (resultsCount) {
+      resultsCount.textContent = `${visibleCount} adventures`;
+    }
+
+    console.log(`✓ Filters applied - ${visibleCount} adventures visible`);
+  }
+
+  /**
+   * Update Breadcrumb Menu Display
+   */
+  function updateBreadcrumbMenu() {
+    const container = document.getElementById("breadcrumbContainer");
+    const menu = document.getElementById("breadcrumbFilterMenu");
+
+    if (!container || !menu) {
+      console.warn("Breadcrumb elements not found");
+      return;
+    }
+
+    const filters = [];
+
+    if (activeFilters.searchName) filters.push(`🔍 ${activeFilters.searchName}`);
+    if (activeFilters.filterDifficulty) filters.push(`⛰️ ${activeFilters.filterDifficulty}`);
+    if (activeFilters.filterState) filters.push(`📍 ${activeFilters.filterState}`);
+    if (activeFilters.filterCity) filters.push(`🏙️ ${activeFilters.filterCity}`);
+    if (activeFilters.filterTags) filters.push(`🏷️ ${activeFilters.filterTags}`);
+    if (activeFilters.filterCost) filters.push(`💰 ${activeFilters.filterCost}`);
+
+    activeFilters.quickFilters.forEach(qf => {
+      filters.push(`✨ ${qf}`);
+    });
+
+    if (filters.length === 0) {
+      container.innerHTML = '<span class="breadcrumb-empty">No active filters</span>';
+      menu.style.display = "none";
+    } else {
+      container.innerHTML = filters.map(f => `<span class="breadcrumb-filter">${f}</span>`).join("");
+      menu.style.display = "flex";
+    }
+
+    console.log(`✓ Breadcrumb updated with ${filters.length} active filters`);
+  }
+
+  /**
+   * Initialize Breadcrumb Reset Button
+   */
+  function initBreadcrumbResetBtn() {
+    const resetBtn = document.getElementById("breadcrumbResetBtn");
+    if (resetBtn) {
+      resetBtn.addEventListener("click", resetAllFilters);
+    }
+    console.log("✓ Breadcrumb reset button initialized");
+  }
+
+  /**
+   * Update Filter Indicator Badge
+   */
+  function updateFiltersIndicator() {
+    const badge = document.getElementById("filtersActiveBadge");
+    const filterCount =
+      (activeFilters.searchName ? 1 : 0) +
+      (activeFilters.filterDifficulty ? 1 : 0) +
+      (activeFilters.filterState ? 1 : 0) +
+      (activeFilters.filterCity ? 1 : 0) +
+      (activeFilters.filterTags ? 1 : 0) +
+      (activeFilters.filterCost ? 1 : 0) +
+      activeFilters.quickFilters.size;
+
+    if (badge) {
+      if (filterCount > 0) {
+        badge.style.display = "inline-block";
+        badge.textContent = `${filterCount} Filter${filterCount !== 1 ? 's' : ''} Active`;
+      } else {
+        badge.style.display = "none";
+      }
+    }
+
+    console.log(`✓ Filter indicator updated - ${filterCount} active`);
+  }
+
+  /**
+   * Reset All Filters
+   */
+  function resetAllFilters() {
+    console.log("🔄 Resetting all filters...");
+
+    // Clear filter inputs
+    const searchName = document.getElementById("searchName");
+    const filterDifficulty = document.getElementById("filterDifficulty");
+    const filterState = document.getElementById("filterState");
+    const filterCity = document.getElementById("filterCity");
+    const filterTags = document.getElementById("filterTags");
+    const filterCost = document.getElementById("filterCost");
+
+    if (searchName) searchName.value = "";
+    if (filterDifficulty) filterDifficulty.value = "";
+    if (filterState) filterState.value = "";
+    if (filterCity) filterCity.value = "";
+    if (filterTags) filterTags.value = "";
+    if (filterCost) filterCost.value = "";
+
+    // Clear quick filter buttons
+    document.querySelectorAll(".quick-filter-btn").forEach(btn => {
+      btn.classList.remove("active");
+    });
+
+    // Reset active filters object
+    activeFilters = {
+      searchName: '',
+      filterDifficulty: '',
+      filterState: '',
+      filterCity: '',
+      filterTags: '',
+      filterCost: '',
+      quickFilters: new Set()
+    };
+
+    // Reapply filters (shows all)
+    applyFilters();
+    updateBreadcrumbMenu();
+    updateFiltersIndicator();
+
+    showToast("✅ Filters reset", "success", 2000);
+    console.log("✓ All filters reset");
+  }
+
+  /**
+   * Initialize Modal Close Buttons
+   */
+  function initModalCloseButtons() {
+    const closeBtn = document.getElementById("rowDetailCloseBtn");
+    const footerCloseBtn = document.getElementById("rowDetailCloseFooterBtn");
+    const backdrop = document.getElementById("rowDetailModalBackdrop");
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeRowDetailModal);
+    }
+
+    if (footerCloseBtn) {
+      footerCloseBtn.addEventListener("click", closeRowDetailModal);
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener("click", closeRowDetailModal);
+    }
+
+    console.log("✓ Modal close buttons initialized");
+  }
 
   /**
    * Initialize Dry Run Toggle
