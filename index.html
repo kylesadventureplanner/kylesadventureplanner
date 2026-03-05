@@ -1170,6 +1170,76 @@
       }
     }
 
+    /* Pagination Controls */
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 32px 20px;
+      margin-top: 24px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .pagination-btn {
+      padding: 12px 24px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 120px;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .pagination-btn:disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .pagination-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .pagination-info span {
+      color: #111827;
+      font-weight: 600;
+    }
+
+    .pagination-separator {
+      color: #d1d5db;
+      font-weight: 400;
+    }
+
+    @media (max-width: 640px) {
+      .pagination-controls {
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .pagination-btn {
+        width: 100%;
+      }
+    }
+
+
     /* Empty State */
     .cards-empty-state {
       text-align: center;
@@ -3885,6 +3955,21 @@
     <div id="adventureCardsGrid" class="adventure-cards-grid">
       <!-- Cards will be populated from Excel/Graph -->
     </div>
+
+    <!-- Pagination Controls -->
+    <div id="paginationControls" class="pagination-controls" style="display: none;">
+      <button id="prevPageBtn" class="pagination-btn" onclick="changePage(-1)">
+        ← Previous
+      </button>
+      <div class="pagination-info">
+        Page <span id="currentPageNum">1</span> of <span id="totalPagesNum">1</span>
+        <span class="pagination-separator">•</span>
+        Showing <span id="showingRangeStart">1</span>-<span id="showingRangeEnd">20</span> of <span id="totalResultsNum">0</span>
+      </div>
+      <button id="nextPageBtn" class="pagination-btn" onclick="changePage(1)">
+        Next →
+      </button>
+    </div>
   </div>
     </div>
 
@@ -5816,9 +5901,30 @@
           <div class="cards-empty-subtext">Try adjusting your filters or check back later</div>
         </div>
       `;
+      document.getElementById("paginationControls").style.display = "none";
       return;
     }
 
+    // Store all adventures with their indices for pagination
+    totalFilteredAdventures = adventuresArray.map((row, index) => ({ row, index }));
+
+    // Reset to first page
+    currentPage = 1;
+
+    // Render first page
+    renderPaginatedCards();
+
+    // Update pagination controls
+    updatePaginationControls();
+
+    console.log(`✓ Loaded ${adventuresArray.length} adventure cards (showing page 1)`);
+  }
+
+  /**
+   * OLD RENDER CODE - Replaced by pagination system above
+   * Keeping this comment for reference
+   */
+  function _oldRenderAllCards_NotUsed(adventuresArray) {
     // Create a card for each adventure
     adventuresArray.forEach((row, index) => {
       const values = row.values[0];
@@ -5976,9 +6082,13 @@
 
       cardsGrid.appendChild(card);
     });
-
-    console.log(`✓ Rendered ${adventuresArray.length} adventure cards`);
+    // OLD CODE - Not used anymore
   }
+
+  // Pagination state
+  let currentPage = 1;
+  let itemsPerPage = 20; // Show 20 cards per page
+  let totalFilteredAdventures = [];
 
   /**
    * Update the results count display
@@ -5988,6 +6098,230 @@
     if (resultsCount) {
       resultsCount.textContent = `${count} adventure${count !== 1 ? 's' : ''}`;
     }
+  }
+
+  /**
+   * Update pagination controls
+   */
+  function updatePaginationControls() {
+    const totalPages = Math.ceil(totalFilteredAdventures.length / itemsPerPage);
+    const paginationControls = document.getElementById("paginationControls");
+    const prevBtn = document.getElementById("prevPageBtn");
+    const nextBtn = document.getElementById("nextPageBtn");
+    const currentPageNum = document.getElementById("currentPageNum");
+    const totalPagesNum = document.getElementById("totalPagesNum");
+    const showingRangeStart = document.getElementById("showingRangeStart");
+    const showingRangeEnd = document.getElementById("showingRangeEnd");
+    const totalResultsNum = document.getElementById("totalResultsNum");
+
+    if (totalFilteredAdventures.length === 0) {
+      paginationControls.style.display = "none";
+      return;
+    }
+
+    // Show pagination if more than one page
+    if (totalPages > 1) {
+      paginationControls.style.display = "flex";
+    } else {
+      paginationControls.style.display = "none";
+      return;
+    }
+
+    // Update page numbers
+    currentPageNum.textContent = currentPage;
+    totalPagesNum.textContent = totalPages;
+
+    // Calculate showing range
+    const startIndex = (currentPage - 1) * itemsPerPage + 1;
+    const endIndex = Math.min(currentPage * itemsPerPage, totalFilteredAdventures.length);
+    showingRangeStart.textContent = startIndex;
+    showingRangeEnd.textContent = endIndex;
+    totalResultsNum.textContent = totalFilteredAdventures.length;
+
+    // Enable/disable buttons
+    prevBtn.disabled = currentPage === 1;
+    nextBtn.disabled = currentPage === totalPages;
+  }
+
+  /**
+   * Change page
+   */
+  function changePage(direction) {
+    const totalPages = Math.ceil(totalFilteredAdventures.length / itemsPerPage);
+    const newPage = currentPage + direction;
+
+    if (newPage < 1 || newPage > totalPages) {
+      return;
+    }
+
+    currentPage = newPage;
+    renderPaginatedCards();
+    updatePaginationControls();
+
+    // Scroll to top of cards grid
+    const cardsGrid = document.getElementById("adventureCardsGrid");
+    if (cardsGrid) {
+      cardsGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  /**
+   * Render cards for current page
+   */
+  function renderPaginatedCards() {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageAdventures = totalFilteredAdventures.slice(startIndex, endIndex);
+
+    const cardsGrid = document.getElementById("adventureCardsGrid");
+    if (!cardsGrid) {
+      console.error("adventureCardsGrid not found");
+      return;
+    }
+
+    cardsGrid.innerHTML = "";
+
+    // Render each card for this page
+    pageAdventures.forEach((adventure) => {
+      const { row, index } = adventure;
+      const values = row.values[0];
+
+      // Extract adventure data from Excel columns
+      const [
+        name,
+        googlePlaceId,
+        website,
+        tags,
+        driveTime,
+        hoursOfOperation,
+        activityDuration,
+        difficulty,
+        trailLength,
+        state,
+        city,
+        address,
+        phoneNumber,
+        googleRating,
+        cost,
+        directions,
+        description,
+        nearby,
+        links,
+        links2,
+        notes,
+        myRating,
+      ] = values;
+
+      // Get state color
+      const stateUpper = (state || "").trim().toUpperCase();
+
+      // Parse tags
+      const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+      // Create card element
+      const card = document.createElement("div");
+      card.className = "adventure-card";
+      card.dataset.index = index;
+      card.dataset.googlePlaceId = (googlePlaceId || "").trim();
+      card.dataset.state = (state || "").toLowerCase();
+      card.dataset.city = (city || "").toLowerCase();
+      card.dataset.tags = (tags || "").toLowerCase();
+      card.dataset.difficulty = (difficulty || "").toLowerCase();
+
+      // Escape single quotes in directions URL for onclick
+      const escapedDirections = directions ? directions.replace(/'/g, "\\'") : '';
+
+      // Build card HTML
+      card.innerHTML = `
+        <div class="adventure-card-header">
+          <div class="adventure-card-title">${name || "Unnamed Adventure"}</div>
+          <div class="adventure-card-location">
+            <span class="location-icon">📍</span>
+            <span>${city || "Unknown"}${state ? ', ' + stateUpper : ''}</span>
+          </div>
+          ${driveTime ? `
+            <div class="adventure-card-time">
+              <span class="time-icon">🚗</span>
+              <span>${driveTime}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        ${tagList.length > 0 ? `
+          <div class="adventure-card-tags">
+            ${tagList.map(tag => {
+              const tagClass = tag.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+              return `<span class="tag-pill tag-${tagClass}" data-tag="${tag}">${tag}</span>`;
+            }).join('')}
+          </div>
+        ` : ''}
+
+        <div class="adventure-card-body">
+          ${description ? `<div class="card-description">${description}</div>` : ''}
+
+          ${hoursOfOperation ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">🕐</span>
+              <span class="card-info-label">Hours:</span>
+              <span class="card-info-value">${hoursOfOperation}</span>
+            </div>
+          ` : ''}
+
+          ${difficulty ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">⛰️</span>
+              <span class="card-info-label">Difficulty:</span>
+              <span class="card-info-value">${difficulty}</span>
+            </div>
+          ` : ''}
+
+          ${cost ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">💰</span>
+              <span class="card-info-label">Cost:</span>
+              <span class="card-info-value">${cost}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <div class="adventure-card-footer">
+          <div class="card-action-btns">
+            <button class="card-btn" onclick="showCardDetails(${index})">
+              <span>📖</span> Details
+            </button>
+            ${escapedDirections ? `
+              <button class="card-btn card-btn-primary" onclick="window.open('${escapedDirections}', '_blank')">
+                <span>🗺️</span> Directions
+              </button>
+            ` : ''}
+          </div>
+          <button class="card-favorite" onclick="toggleCardFavorite(${index})" title="Add to favorites">
+            ⭐
+          </button>
+        </div>
+      `;
+
+      // Add tag click handlers
+      card.querySelectorAll('.tag-pill').forEach(tagPill => {
+        tagPill.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tag = tagPill.getAttribute('data-tag');
+          filterByTag(tag);
+        });
+      });
+
+      // Add click handler to card to open details modal
+      card.addEventListener('click', (e) => {
+        // Don't trigger if clicking on a button
+        if (!e.target.closest('button')) {
+          showCardDetails(index);
+        }
+      });
+
+      cardsGrid.appendChild(card);
+    });
+
+    console.log(`✓ Rendered ${pageAdventures.length} cards for page ${currentPage}`);
   }
 
   /**
