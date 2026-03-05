@@ -8267,6 +8267,28 @@
   }
 
   /**
+   * Update Connection Status
+   * @param {boolean} connected - Whether connected to Excel backend
+   */
+  function updateConnectionStatus(connected) {
+    const connectionDot = document.getElementById("connectionDot");
+    const connectionText = document.getElementById("connectionText");
+
+    if (connectionDot && connectionText) {
+      if (connected) {
+        connectionDot.classList.add("connected");
+        connectionDot.classList.remove("disconnected");
+        connectionText.textContent = "Connected to Excel backend";
+      } else {
+        connectionDot.classList.add("disconnected");
+        connectionDot.classList.remove("connected");
+        connectionText.textContent = "Not connected to Excel backend";
+      }
+    }
+    console.log(`✓ Connection status updated: ${connected ? 'connected' : 'disconnected'}`);
+  }
+
+  /**
    * Initialize App Tabs Navigation
    */
   function initAppTabs() {
