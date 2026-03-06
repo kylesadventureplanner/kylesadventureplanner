@@ -6075,6 +6075,10 @@
     // RATINGS SYSTEM - CONSOLIDATED CLEAN IMPLEMENTATION
     // ============================================================
     var adventureRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
+    
+    console.log('[RATINGS INIT] adventureRatings initialized:', adventureRatings);
+    console.log('[RATINGS INIT] Type of adventureRatings:', typeof adventureRatings);
+    console.log('[RATINGS INIT] adventureRatings variable exists:', typeof adventureRatings !== 'undefined');
 
     // Load existing favorites
     function persistFavorites() {
@@ -10362,14 +10366,20 @@
     // CANONICAL STAR RATING PERSISTENCE - WITH VISIBILITY/DEBUGGING
     // ============================================================
     setAdventureRating = function(index, rating, cardElement) {
+      console.log('[RATINGS DEBUG] setAdventureRating called with index=' + index + ', rating=' + rating);
+      
       const identity = __identityFromFilteredIndex(index);
+      console.log('[RATINGS DEBUG] identity resolved:', identity);
+      
       if (!identity) {
-        console.warn(`⚠️ Could not resolve identity for index ${index}`);
+        console.warn('Could not resolve identity for index ' + index);
         return;
       }
 
       const normalizedRating = Math.max(1, Math.min(5, Number(rating) || 0));
       const oldRating = adventureRatings[identity.key] || 0;
+
+      console.log('[RATINGS DEBUG] Before save: adventureRatings=', adventureRatings);
 
       // Store rating in canonical location
       adventureRatings[identity.key] = normalizedRating;
@@ -10377,15 +10387,19 @@
         adventureRatings[identity.legacy] = normalizedRating;
       }
 
+      console.log('[RATINGS DEBUG] After update: adventureRatings=', adventureRatings);
+
       // Persist to localStorage
       localStorage.setItem("adventureRatings", JSON.stringify(adventureRatings));
+      
+      console.log('[RATINGS DEBUG] localStorage saved:', localStorage.getItem('adventureRatings'));
 
       // Visual feedback
       __paintCardRating(cardElement, normalizedRating);
       showToast(`Rated ${normalizedRating} star${normalizedRating !== 1 ? "s" : ""}`, "success", 1200);
 
       // Visible logging with key debugging info
-      console.log(`✓ STAR RATING SAVED: "${identity.name}"`);
+      console.log(`STAR RATING SAVED: "${identity.name}"`);
       console.log(`  Key: ${identity.key}`);
       console.log(`  Rating: ${oldRating} → ${normalizedRating}`);
       console.log(`  Total ratings in store: ${Object.keys(adventureRatings).length}`);
