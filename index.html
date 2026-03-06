@@ -5996,8 +5996,8 @@
       const safe = (v) => String(v || '').trim();
       const placeId = safe(values?.[1]);
       const name = safe(values?.[0]);
-      const city = safe(values?.[5]);
-      const state = safe(values?.[6]);
+      const city = safe(values?.[10]);
+      const state = safe(values?.[9]);
 
       // Use placeId if available, otherwise composite key
       if (placeId) return `pid:${placeId}`;
@@ -6939,6 +6939,7 @@
       const card = document.createElement("div");
       card.className = "adventure-card";
       card.dataset.index = index;
+      card.dataset.index = actualIndex;
       card.dataset.googlePlaceId = (googlePlaceId || "").trim();
       card.dataset.state = (state || "").toLowerCase();
       card.dataset.city = (city || "").toLowerCase();
@@ -7226,7 +7227,7 @@
       // Create card element
       const card = document.createElement("div");
       card.className = "adventure-card";
-      card.dataset.index = index;
+      card.dataset.index = actualIndex;
       card.dataset.googlePlaceId = (googlePlaceId || "").trim();
       card.dataset.state = (state || "").toLowerCase();
       card.dataset.city = (city || "").toLowerCase();
@@ -7345,8 +7346,7 @@
       const detailsBtn = e.target.closest('.card-details-btn');
       if (detailsBtn) {
         e.stopPropagation();
-        const card = detailsBtn.closest('.adventure-card');
-        const idx = Number(card.dataset.index);
+        const idx = Number(detailsBtn.getAttribute('data-index'));
         currentEditingRow = totalFilteredAdventures[idx]?.row;
         showCardDetails(idx);
         return;
@@ -7363,8 +7363,8 @@
       const favoriteBtn = e.target.closest('.card-favorite-btn');
       if (favoriteBtn) {
         e.stopPropagation();
+        const idx = Number(favoriteBtn.getAttribute('data-index'));
         const card = favoriteBtn.closest('.adventure-card');
-        const idx = Number(card.dataset.index);
         toggleCardFavorite(idx, null, card);
         return;
       }
@@ -7372,17 +7372,17 @@
       const ratingStar = e.target.closest('.rating-star');
       if (ratingStar) {
         e.stopPropagation();
-        const card = ratingStar.closest('.adventure-card');
-        const idx = Number(card.dataset.index);
+        const ratingContainer = ratingStar.closest('.card-rating');
+        const idx = Number(ratingContainer?.getAttribute('data-index'));
         const rating = parseInt(ratingStar.getAttribute('data-rating'));
-        setAdventureRating(idx, rating, card);
+        setAdventureRating(idx, rating, ratingStar.closest('.adventure-card'));
         return;
       }
 
       // Card click for details (if not clicking button)
       const card = e.target.closest('.adventure-card');
       if (card && !e.target.closest('button') && !e.target.closest('.rating-star')) {
-        const idx = Number(card.dataset.index);
+        const idx = Number(card.querySelector('.card-details-btn')?.getAttribute('data-index'));
         showCardDetails(idx);
       }
     }, false);
@@ -7393,8 +7393,8 @@
       if (ratingContainer) {
         e.preventDefault();
         e.stopPropagation();
+        const idx = Number(ratingContainer.getAttribute('data-index'));
         const card = ratingContainer.closest('.adventure-card');
-        const idx = Number(card.dataset.index);
         clearAdventureRating(idx, card);
       }
     }, false);
@@ -10461,7 +10461,7 @@
     function __ensureCardKeyingAndClearButtons() {
     document.querySelectorAll(".adventure-card").forEach((card) => {
       const favoriteBtn = card.querySelector(".card-favorite-btn");
-      const idxRaw = favoriteBtn?.getAttribute("data-index") || card.dataset.index;
+      const idxRaw = favoriteBtn?.getAttribute("data-index");
       const idx = Number(idxRaw);
       if (!Number.isFinite(idx)) return;
 
