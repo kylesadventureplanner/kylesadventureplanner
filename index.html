@@ -5986,9 +5986,85 @@
   }
 
   // ============================================================
-    // FAVORITES/BOOKMARKS
+    // FAVORITES/BOOKMARKS - CANONICAL IMPLEMENTATION
     // ============================================================
+    // MIGRATION: Clean up legacy favorites to use canonical keys
     let favorites = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
+
+    // Helper: Generate stable identity from adventure values
+    function getFavoriteKey(values) {
+      const safe = (v) => String(v || '').trim();
+      const placeId = safe(values?.[1]);
+      const name = safe(values?.[0]);
+      const city = safe(values?.[5]);
+      const state = safe(values?.[6]);
+
+      // Use placeId if available, otherwise composite key
+      if (placeId) return `pid:${placeId}`;
+      return `name:${name}|city:${city}|state:${state}`;
+    }
+
+    // Get favorite key from filtered index
+    function getFavoriteKeyFromIndex(index) {
+      const adventure = totalFilteredAdventures?.[index];
+      if (!adventure?.row?.values?.[0]) return null;
+      return getFavoriteKey(adventure.row.values[0]);
+    }
+
+    // Check if key is favorited
+    function isFavorite(key) {
+      return key && favorites.includes(key);
+    }
+
+    // Toggle favorite - SINGLE SOURCE OF TRUTH
+    function toggleFavoriteByKey(key, cardElement) {
+      if (!key) return;
+
+      const index = favorites.indexOf(key);
+      const wasRemoved = index > -1;
+
+      if (wasRemoved) {
+        favorites.splice(index, 1);
+      } else {
+        favorites.push(key);
+      }
+
+      // Persist
+      localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
+
+      // Update UI for this specific card only
+      if (cardElement) {
+        const btn = cardElement.querySelector('.card-favorite-btn');
+        if (btn) {
+          const isNowFavorite = favorites.includes(key);
+          btn.classList.toggle('active', isNowFavorite);
+          btn.textContent = isNowFavorite ? '💖' : '🤍';
+          btn.title = isNowFavorite ? 'Remove from favorites' : 'Add to favorites';
+        }
+      }
+
+      showToast(wasRemoved ? 'Removed from favorites' : 'Added to favorites', 'success', 1500);
+      console.log(`✓ Favorite toggled: ${key}, now favorite: ${!wasRemoved}`);
+    }
+
+    // Update all card favorite buttons
+    function updateAllCardFavoriteButtons() {
+      document.querySelectorAll('.card-favorite-btn').forEach((btn) => {
+        const card = btn.closest('.adventure-card');
+        if (!card) return;
+
+        const idx = Number(btn.getAttribute('data-index'));
+        if (!Number.isFinite(idx)) return;
+
+        const key = getFavoriteKeyFromIndex(idx);
+        if (!key) return;
+
+        const isActive = isFavorite(key);
+        btn.classList.toggle('active', isActive);
+        btn.textContent = isActive ? '💖' : '🤍';
+        btn.title = isActive ? 'Remove from favorites' : 'Add to favorites';
+      });
+    }
 
     // ============================================================
     // RATINGS SYSTEM
@@ -6191,46 +6267,7 @@
     return adventureRatings[adventureId] || 0;
   }
 
-  function toggleFavorite(rowId) {
-    const index = favorites.indexOf(rowId);
-    if (index > -1) {
-      favorites.splice(index, 1);
-    } else {
-      favorites.push(rowId);
-    }
-    localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
-    updateFavoriteStars();
-    showToast(index > -1 ? 'Removed from favorites' : 'Added to favorites', 'success', 1500);
-  }
-
-  function updateFavoriteStars() {
-    document.querySelectorAll('.favorite-btn').forEach((btn, idx) => {
-      if (favorites.includes(String(idx))) {
-        btn.classList.add('active');
-        btn.textContent = '⭐';
-      } else {
-        btn.classList.remove('active');
-        btn.textContent = '☆';
-      }
-    });
-  }
-
-  function addFavoriteButtonsToTable() {
-    document.querySelectorAll('#adventureTableBody tr').forEach((row, idx) => {
-      const firstCell = row.querySelector('td:nth-child(2)');
-      if (firstCell && !firstCell.querySelector('.favorite-btn')) {
-        const btn = document.createElement('button');
-        btn.className = 'favorite-btn';
-        btn.setAttribute('data-row-id', idx);
-        btn.onclick = (e) => { e.stopPropagation(); toggleFavorite(idx); };
-        firstCell.style.display = 'flex';
-        firstCell.style.alignItems = 'center';
-        firstCell.style.gap = '8px';
-        firstCell.insertBefore(btn, firstCell.firstChild);
-      }
-    });
-    updateFavoriteStars();
-  }
+  // Old favorites logic removed - replaced with canonical implementation above
 
 
   /**
@@ -7544,85 +7581,26 @@
   }
 
   /**
-   * Toggle favorite status for a card
+   * Toggle favorite status for a card - delegates to canonical implementation
    */
   function toggleCardFavorite(index, event, cardElement) {
     if (event) {
       event.stopPropagation();
     }
 
-    // Get the adventure data
-    const adventure = totalFilteredAdventures[index];
-    if (!adventure) {
-      console.error("Adventure not found at index:", index);
-      return;
-    }
-
-    const values = adventure.row.values[0];
-    const [name, googlePlaceId] = values;
-
-    // Use googlePlaceId as unique identifier, fallback to name (NOT index, as that changes with filtering)
-    const adventureId = googlePlaceId || name;
-
-    // Toggle favorite status
-    const favIndex = favorites.indexOf(adventureId);
-    if (favIndex > -1) {
-      favorites.splice(favIndex, 1);
-      showToast('Removed from favorites', 'success', 1500);
+    const key = getFavoriteKeyFromIndex(index);
+    if (key) {
+      toggleFavoriteByKey(key, cardElement);
     } else {
-      favorites.push(adventureId);
-      showToast('Added to favorites', 'success', 1500);
+      console.error("Could not generate favorite key for index:", index);
     }
-
-    // Save to localStorage
-    localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
-
-    // Update ONLY this card's favorite button
-    if (cardElement) {
-      const favoriteBtn = cardElement.querySelector('.card-favorite-btn');
-      if (favoriteBtn) {
-        if (favorites.includes(adventureId)) {
-          favoriteBtn.classList.add('active');
-          favoriteBtn.textContent = '💖';
-          favoriteBtn.title = 'Remove from favorites';
-        } else {
-          favoriteBtn.classList.remove('active');
-          favoriteBtn.textContent = '🤍';
-          favoriteBtn.title = 'Add to favorites';
-        }
-      }
-    }
-
-    console.log(`✓ Toggled favorite for: ${name} (ID: ${adventureId})`);
   }
 
   /**
    * Update all card favorite buttons to reflect current favorites
    */
   function updateCardFavoriteButtons() {
-    document.querySelectorAll('.card-favorite-btn').forEach(btn => {
-      const card = btn.closest('.adventure-card');
-      if (!card) return;
-
-      const cardIndex = parseInt(btn.getAttribute('data-index'));
-      const adventure = totalFilteredAdventures[cardIndex];
-
-      if (adventure) {
-        const values = adventure.row.values[0];
-        const [name, googlePlaceId] = values;
-        const adventureId = googlePlaceId || name;
-
-        if (favorites.includes(adventureId)) {
-          btn.classList.add('active');
-          btn.textContent = '💖';
-          btn.title = 'Remove from favorites';
-        } else {
-          btn.classList.remove('active');
-          btn.textContent = '🤍';
-          btn.title = 'Add to favorites';
-        }
-      }
-    });
+    updateAllCardFavoriteButtons();
   }
 
   /**
@@ -10136,8 +10114,8 @@
 
       // Apply favorites filter
       if (visible && activeFilters.showFavoritesOnly) {
-        const adventureId = googlePlaceId || name;
-        if (!favorites.includes(adventureId)) {
+        const favoriteKey = getFavoriteKey(row.values[0]);
+        if (!isFavorite(favoriteKey)) {
           visible = false;
         }
       }
@@ -10439,38 +10417,25 @@
     // ============================================================
     // CANONICAL FAVORITES / RATINGS OVERRIDES (final)
     // ============================================================
+
+    // Legacy identity helpers - redirect to canonical implementation
     function __stableAdventureIdentityFromValues(values) {
-    const safe = (v) => String(v || "").trim();
-    const lower = (v) => safe(v).toLowerCase();
-
-    const placeId = lower(values?.[1]);
-    const name = safe(values?.[0]) || "Adventure";
-    const city = lower(values?.[10]);
-    const state = lower(values?.[9]);
-    const address = lower(values?.[11]);
-    const driveTime = lower(values?.[4]);
-
-    const composite = [lower(name), city, state, address, driveTime].filter(Boolean).join("|");
-    const key = placeId ? `pid:${placeId}` : `row:${composite || lower(JSON.stringify(values || []))}`;
-    const legacy = safe(values?.[1]) || safe(values?.[0]) || key;
-
-    return { key, legacy, name };
+      return { key: getFavoriteKey(values), legacy: null, name: String(values?.[0] || '').trim() };
     }
 
     function __identityFromFilteredIndex(index) {
-    const adventure = totalFilteredAdventures?.[index];
-    if (!adventure?.row?.values?.[0]) return null;
-    return __stableAdventureIdentityFromValues(adventure.row.values[0]);
+      const key = getFavoriteKeyFromIndex(index);
+      const adventure = totalFilteredAdventures?.[index];
+      const name = adventure?.row?.values?.[0]?.[0] || '';
+      return key ? { key, legacy: null, name } : null;
     }
 
     function __isFavoriteIdentity(identity) {
-    if (!identity) return false;
-    return favorites.includes(identity.key) || favorites.includes(identity.legacy);
+      return identity ? isFavorite(identity.key) : false;
     }
 
     function __persistFavoritesCanonical() {
-    favorites = Array.from(new Set((favorites || []).filter((v) => typeof v === "string" && v.trim())));
-    localStorage.setItem("adventureFavorites", JSON.stringify(favorites));
+      localStorage.setItem("adventureFavorites", JSON.stringify(favorites));
     }
 
     function __paintCardRating(cardElement, rating) {
@@ -10511,15 +10476,16 @@
       }
 
       let clearBtn = card.querySelector(".rating-clear-btn");
-      if (!clearBtn && ratingContainer?.parentElement) {
+      if (!clearBtn && ratingContainer) {
         clearBtn = document.createElement("button");
         clearBtn.className = "rating-clear-btn";
         clearBtn.type = "button";
-        clearBtn.textContent = "Clear";
-        clearBtn.title = "Clear rating";
+        clearBtn.textContent = "Clear Star Rating";
+        clearBtn.title = "Clear star rating";
+        clearBtn.style.cssText = "margin-top: 4px; font-size: 11px; padding: 2px 8px;";
 
-        const tools = card.querySelector(".card-rating-tools") || ratingContainer.parentElement;
-        tools.appendChild(clearBtn);
+        // Insert right after the rating container
+        ratingContainer.parentElement.insertBefore(clearBtn, ratingContainer.nextSibling);
       }
 
       if (clearBtn) {
