@@ -1064,14 +1064,15 @@
       padding: 16px 20px;
       border-top: 1px solid #f3f4f6;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 12px;
       background: #fafafa;
     }
 
     .card-action-btns {
       display: flex;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .card-btn {
@@ -1130,13 +1131,31 @@
     .card-favorite-rating-container {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 12px;
+      width: 100%;
     }
 
     .card-rating {
       display: flex;
       gap: 4px;
       align-items: center;
+      flex: 1;
+    }
+
+    .card-favorite {
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: white;
+      border: 1px solid #d1d5db;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 18px;
+      flex-shrink: 0;
+      min-width: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .rating-star {
@@ -5403,7 +5422,7 @@
 
     const values = adventure.row.values[0];
     const [name, googlePlaceId] = values;
-    const adventureId = googlePlaceId || `${name}_${index}`;
+    const adventureId = googlePlaceId || name;
 
     // Store rating
     adventureRatings[adventureId] = rating;
@@ -5436,8 +5455,8 @@
   /**
    * Get rating for an adventure
    */
-  function getAdventureRating(googlePlaceId, name, index) {
-    const adventureId = googlePlaceId || `${name}_${index}`;
+  function getAdventureRating(googlePlaceId, name) {
+    const adventureId = googlePlaceId || name;
     return adventureRatings[adventureId] || 0;
   }
 
@@ -6349,7 +6368,7 @@
       ] = values;
 
       // Get saved rating from localStorage
-      const savedRating = getAdventureRating(googlePlaceId, name, index);
+      const savedRating = getAdventureRating(googlePlaceId, name);
       const currentRating = savedRating || myRating || 0;
 
       // Get state color
@@ -6482,7 +6501,7 @@
       if (favoriteBtn) {
         favoriteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          toggleCardFavorite(index);
+          toggleCardFavorite(index, e);
         });
       }
 
@@ -6671,8 +6690,10 @@
   /**
    * Toggle favorite status for a card
    */
-  function toggleCardFavorite(index) {
-    event.stopPropagation();
+  function toggleCardFavorite(index, event) {
+    if (event) {
+      event.stopPropagation();
+    }
 
     // Get the adventure data
     const adventure = totalFilteredAdventures[index];
@@ -6684,8 +6705,8 @@
     const values = adventure.row.values[0];
     const [name, googlePlaceId] = values;
 
-    // Use googlePlaceId as unique identifier, fallback to name+index
-    const adventureId = googlePlaceId || `${name}_${index}`;
+    // Use googlePlaceId as unique identifier, fallback to name (NOT index, as that changes with filtering)
+    const adventureId = googlePlaceId || name;
 
     // Toggle favorite status
     const favIndex = favorites.indexOf(adventureId);
@@ -6717,7 +6738,7 @@
       if (adventure) {
         const values = adventure.row.values[0];
         const [name, googlePlaceId] = values;
-        const adventureId = googlePlaceId || `${name}_${cardIndex}`;
+        const adventureId = googlePlaceId || name;
 
         if (favorites.includes(adventureId)) {
           btn.classList.add('active');
@@ -8938,23 +8959,25 @@
     adventureCards.forEach(card => {
       const titleEl = card.querySelector(".adventure-card-title");
       const locationEl = card.querySelector(".adventure-card-location");
-      const tagsEl = card.querySelector(".adventure-card-tags");
+      const tagPills = card.querySelectorAll(".tag-pill");
 
       if (titleEl) names.add(titleEl.textContent.trim());
       if (locationEl) {
         const locText = locationEl.textContent;
         const parts = locText.split(",");
         if (parts.length >= 2) {
-          const city = parts[0].trim();
+          const city = parts[0].replace('📍', '').trim();
           const state = parts[1].trim();
           if (city) cities.add(city);
           if (state) states.add(state);
         }
       }
-      if (tagsEl) {
-        const tagTexts = tagsEl.textContent.split(",");
-        tagTexts.forEach(tag => tags.add(tag.trim()));
-      }
+      
+      // Get individual tags from tag pills
+      tagPills.forEach(pill => {
+        const tag = pill.textContent.trim();
+        if (tag) tags.add(tag);
+      });
     });
 
     // Add common defaults
@@ -9205,7 +9228,7 @@
 
       // Apply favorites filter
       if (visible && activeFilters.showFavoritesOnly) {
-        const adventureId = googlePlaceId || `${name}_${index}`;
+        const adventureId = googlePlaceId || name;
         if (!favorites.includes(adventureId)) {
           visible = false;
         }
