@@ -4117,8 +4117,7 @@
       border-bottom: 2px solid var(--neutral-200);
       overflow-x: auto;
       background: white;
-      position: sticky;
-      top: 90px;
+      position: relative;
       z-index: 9;
     }
 
@@ -7243,6 +7242,7 @@
 
     // Store current row for editing (CRITICAL FIX)
     currentEditingRow = row;
+    currentEditingRowIndex = index;
 
     // Store row data in map for editing functionality
     rowDataMap.set(row, {
@@ -8993,6 +8993,7 @@
 
   // Store current row being edited
   let currentEditingRow = null;
+  let currentEditingRowIndex = null;
 
   /**
    * Enable Edit Mode - Convert modal to editable form
@@ -9123,7 +9124,11 @@
       console.log("Edited data:", editedData);
 
       // Get row index for Excel update
-      const rowIndex = currentEditingRow.dataset.rowId;
+      if (currentEditingRowIndex === null) {
+        throw new Error("No row index available for update");
+      }
+
+      const rowIndex = currentEditingRowIndex;
 
       // Map UI field names to Excel column indices
       // Based on Excel structure: [Name, GooglePlaceId, Website, Tags, DriveTime, ...]
