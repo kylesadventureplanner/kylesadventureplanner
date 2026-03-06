@@ -1290,6 +1290,33 @@
       cursor: help;
     }
 
+    .card-rating-tools {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      flex: 1;
+      min-width: 0;
+    }
+
+    .rating-clear-btn {
+      border: 1px solid var(--neutral-300);
+      background: white;
+      color: var(--neutral-600);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .rating-clear-btn:hover {
+      border-color: var(--accent-danger);
+      color: var(--accent-danger);
+      background: #fff5f5;
+    }
+
     .card-favorite-btn {
       padding: 10px 14px;
       border-radius: var(--radius-md);
@@ -5959,14 +5986,121 @@
   }
 
   // ============================================================
-  // FAVORITES/BOOKMARKS
-  // ============================================================
-  let favorites = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
+    // FAVORITES/BOOKMARKS
+    // ============================================================
+    let favorites = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
 
-  // ============================================================
-  // RATINGS SYSTEM
-  // ============================================================
-  let adventureRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
+    // ============================================================
+    // RATINGS SYSTEM
+    // ============================================================
+    let adventureRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
+
+    function buildAdventureKeyFromValues(values) {
+    const safe = (v) => String(v || '').trim().toLowerCase();
+    const placeId = safe(values?.[1]);
+    if (placeId) return `pid:${placeId}`;
+
+    const name = safe(values?.[0]);
+    const city = safe(values?.[10]);
+    const state = safe(values?.[9]);
+    const address = safe(values?.[11]);
+    const driveTime = safe(values?.[4]);
+    const website = safe(values?.[2]);
+
+    const composite = [name, city, state, address, driveTime, website].filter(Boolean).join('|');
+    return `row:${composite || safe(JSON.stringify(values || []))}`;
+    }
+
+    function getAdventureIdentity(adventure) {
+    const values = adventure?.row?.values?.[0] || [];
+    const name = String(values[0] || 'Adventure').trim();
+    const key = buildAdventureKeyFromValues(values);
+    return { key, name };
+    }
+
+    function persistFavorites() {
+    favorites = Array.from(new Set((favorites || []).filter((v) => typeof v === 'string' && v.trim())));
+    localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
+    }
+
+    function sanitizeRatingsStore() {
+    const sanitized = {};
+    Object.entries(adventureRatings || {}).forEach(([key, value]) => {
+      const normalizedKey = String(key || '').trim();
+      const normalizedValue = Number(value);
+      if (normalizedKey && Number.isFinite(normalizedValue) && normalizedValue > 0) {
+        sanitized[normalizedKey] = Math.max(1, Math.min(5, Math.round(normalizedValue)));
+      }
+    });
+    adventureRatings = sanitized;
+    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+    }
+
+    persistFavorites();
+    sanitizeRatingsStore();
+
+    /**
+     * Set rating for an adventure
+     */
+    function setAdventureRating(index, rating, cardElement) {
+    const adventure = totalFilteredAdventures[index];
+    if (!adventure) {
+      console.error("Adventure not found at index:", index);
+      return;
+    }
+
+    const { key: adventureId, name } = getAdventureIdentity(adventure);
+
+    adventureRatings[adventureId] = rating;
+    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+
+    if (cardElement) {
+      const stars = cardElement.querySelectorAll('.rating-star');
+      stars.forEach((star, starIndex) => {
+        if (starIndex < rating) {
+          star.classList.add('filled');
+        } else {
+          star.classList.remove('filled');
+        }
+      });
+    }
+
+    showToast(`Rated ${rating} star${rating !== 1 ? 's' : ''}`, 'success', 1500);
+    console.log(`✓ Rated ${name}: ${rating} stars`);
+    }
+
+    /**
+     * Clear rating for a specific adventure
+     */
+    function clearAdventureRating(index, cardElement) {
+    const adventure = totalFilteredAdventures[index];
+    if (!adventure) {
+      console.error("Adventure not found at index:", index);
+      return;
+    }
+
+    const { key: adventureId, name } = getAdventureIdentity(adventure);
+
+    delete adventureRatings[adventureId];
+    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+
+    if (cardElement) {
+      const stars = cardElement.querySelectorAll('.rating-star');
+      stars.forEach((star) => {
+        star.classList.remove('filled');
+      });
+    }
+
+    showToast(`Rating cleared for ${name}`, 'success', 1500);
+    console.log(`✓ Cleared rating for ${name}`);
+    }
+
+    /**
+     * Get rating for an adventure key
+     */
+    function getAdventureRating(adventureKey) {
+    return adventureRatings[adventureKey] || 0;
+    }
 
   /**
    * Set rating for an adventure
@@ -10288,7 +10422,7 @@
   /**
    * Initialize Dry Run Toggle
    */
-  function initDryRunToggle() {
+    function initDryRunToggle() {
     const toggle = document.getElementById("dryRunToggle");
     if (!toggle) {
       console.error("Dry run toggle not found");
@@ -10300,11 +10434,196 @@
       const isOn = toggle.classList.contains("on");
       console.log("Dry Run mode:", isOn ? "ON" : "OFF");
     });
-  }
+    }
 
-  // ============================================================
-  // INITIALIZE APP ON PAGE LOAD
-  // ============================================================
+    // ============================================================
+    // CANONICAL FAVORITES / RATINGS OVERRIDES (final)
+    // ============================================================
+    function __stableAdventureIdentityFromValues(values) {
+    const safe = (v) => String(v || "").trim();
+    const lower = (v) => safe(v).toLowerCase();
+
+    const placeId = lower(values?.[1]);
+    const name = safe(values?.[0]) || "Adventure";
+    const city = lower(values?.[10]);
+    const state = lower(values?.[9]);
+    const address = lower(values?.[11]);
+    const driveTime = lower(values?.[4]);
+
+    const composite = [lower(name), city, state, address, driveTime].filter(Boolean).join("|");
+    const key = placeId ? `pid:${placeId}` : `row:${composite || lower(JSON.stringify(values || []))}`;
+    const legacy = safe(values?.[1]) || safe(values?.[0]) || key;
+
+    return { key, legacy, name };
+    }
+
+    function __identityFromFilteredIndex(index) {
+    const adventure = totalFilteredAdventures?.[index];
+    if (!adventure?.row?.values?.[0]) return null;
+    return __stableAdventureIdentityFromValues(adventure.row.values[0]);
+    }
+
+    function __isFavoriteIdentity(identity) {
+    if (!identity) return false;
+    return favorites.includes(identity.key) || favorites.includes(identity.legacy);
+    }
+
+    function __persistFavoritesCanonical() {
+    favorites = Array.from(new Set((favorites || []).filter((v) => typeof v === "string" && v.trim())));
+    localStorage.setItem("adventureFavorites", JSON.stringify(favorites));
+    }
+
+    function __paintCardRating(cardElement, rating) {
+    if (!cardElement) return;
+    const stars = cardElement.querySelectorAll(".rating-star");
+    stars.forEach((star, idx) => {
+      star.classList.toggle("filled", idx < rating);
+    });
+    }
+
+    function __ensureCardKeyingAndClearButtons() {
+    document.querySelectorAll(".adventure-card").forEach((card) => {
+      const favoriteBtn = card.querySelector(".card-favorite-btn");
+      const idxRaw = favoriteBtn?.getAttribute("data-index") || card.dataset.index;
+      const idx = Number(idxRaw);
+      if (!Number.isFinite(idx)) return;
+
+      const identity = __identityFromFilteredIndex(idx);
+      if (!identity) return;
+
+      card.dataset.adventureKey = identity.key;
+      if (favoriteBtn) favoriteBtn.dataset.adventureKey = identity.key;
+
+      const ratingContainer = card.querySelector(".card-rating");
+      if (ratingContainer) {
+        ratingContainer.dataset.adventureKey = identity.key;
+
+        // Rebind stars with stable index-based handlers.
+        ratingContainer.querySelectorAll(".rating-star").forEach((star) => {
+          const starClone = star.cloneNode(true);
+          star.replaceWith(starClone);
+          starClone.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const rating = Number(starClone.getAttribute("data-rating")) || 0;
+            setAdventureRating(idx, rating, card);
+          });
+        });
+      }
+
+      let clearBtn = card.querySelector(".rating-clear-btn");
+      if (!clearBtn && ratingContainer?.parentElement) {
+        clearBtn = document.createElement("button");
+        clearBtn.className = "rating-clear-btn";
+        clearBtn.type = "button";
+        clearBtn.textContent = "Clear";
+        clearBtn.title = "Clear rating";
+
+        const tools = card.querySelector(".card-rating-tools") || ratingContainer.parentElement;
+        tools.appendChild(clearBtn);
+      }
+
+      if (clearBtn) {
+        const clearClone = clearBtn.cloneNode(true);
+        clearBtn.replaceWith(clearClone);
+        clearClone.addEventListener("click", (e) => {
+          e.stopPropagation();
+          clearAdventureRating(idx, card);
+        });
+      }
+
+      const currentRating = getAdventureRating(identity.key, identity.name);
+      __paintCardRating(card, currentRating);
+    });
+
+    updateCardFavoriteButtons();
+    }
+
+    setAdventureRating = function(index, rating, cardElement) {
+    const identity = __identityFromFilteredIndex(index);
+    if (!identity) return;
+
+    const normalizedRating = Math.max(1, Math.min(5, Number(rating) || 0));
+    adventureRatings[identity.key] = normalizedRating;
+    if (identity.legacy && identity.legacy !== identity.key) {
+      adventureRatings[identity.legacy] = normalizedRating;
+    }
+    localStorage.setItem("adventureRatings", JSON.stringify(adventureRatings));
+
+    __paintCardRating(cardElement, normalizedRating);
+    showToast(`Rated ${normalizedRating} star${normalizedRating !== 1 ? "s" : ""}`, "success", 1200);
+    };
+
+    clearAdventureRating = function(index, cardElement) {
+    const identity = __identityFromFilteredIndex(index);
+    if (!identity) return;
+
+    delete adventureRatings[identity.key];
+    if (identity.legacy && identity.legacy !== identity.key) {
+      delete adventureRatings[identity.legacy];
+    }
+    localStorage.setItem("adventureRatings", JSON.stringify(adventureRatings));
+
+    __paintCardRating(cardElement, 0);
+    showToast(`Rating cleared for ${identity.name}`, "success", 1200);
+    };
+
+    getAdventureRating = function(googlePlaceIdOrKey, name) {
+    if (name !== undefined) {
+      const identity = __stableAdventureIdentityFromValues([name, googlePlaceIdOrKey]);
+      return Number(adventureRatings[identity.key] || adventureRatings[identity.legacy] || 0);
+    }
+    return Number(adventureRatings[googlePlaceIdOrKey] || 0);
+    };
+
+    toggleCardFavorite = function(index, event, cardElement) {
+    if (event) event.stopPropagation();
+
+    const identity = __identityFromFilteredIndex(index);
+    if (!identity) return;
+
+    const currentlyFavorite = __isFavoriteIdentity(identity);
+    if (currentlyFavorite) {
+      favorites = favorites.filter((id) => id !== identity.key && id !== identity.legacy);
+      showToast("Removed from favorites", "success", 1200);
+    } else {
+      favorites.push(identity.key);
+      if (identity.legacy && identity.legacy !== identity.key) favorites.push(identity.legacy);
+      showToast("Added to favorites", "success", 1200);
+    }
+
+    __persistFavoritesCanonical();
+    if (cardElement) {
+      cardElement.dataset.adventureKey = identity.key;
+    }
+    updateCardFavoriteButtons();
+    };
+
+    updateCardFavoriteButtons = function() {
+    document.querySelectorAll(".card-favorite-btn").forEach((btn) => {
+      const card = btn.closest(".adventure-card");
+      if (!card) return;
+
+      const idx = Number(btn.getAttribute("data-index"));
+      const identity = Number.isFinite(idx) ? __identityFromFilteredIndex(idx) : null;
+      if (!identity) return;
+
+      btn.dataset.adventureKey = identity.key;
+      const active = __isFavoriteIdentity(identity);
+      btn.classList.toggle("active", active);
+      btn.textContent = active ? "💖" : "🤍";
+      btn.title = active ? "Remove from favorites" : "Add to favorites";
+    });
+    };
+
+    const __renderPaginatedCardsOriginal = renderPaginatedCards;
+    renderPaginatedCards = function() {
+    __renderPaginatedCardsOriginal();
+    __ensureCardKeyingAndClearButtons();
+    };
+
+    // ============================================================
+    // INITIALIZE APP ON PAGE LOAD
+    // ============================================================
   // Call initialization function when DOM is ready
   if (document.readyState === 'loading') {
     // DOM is still loading
