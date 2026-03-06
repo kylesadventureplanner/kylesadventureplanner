@@ -6008,6 +6008,11 @@
     function getFavoriteKeyFromIndex(index) {
       const adventure = totalFilteredAdventures?.[index];
       if (!adventure?.row?.values?.[0]) return null;
+
+      if (Number.isInteger(adventure.sourceIndex) && adventure.sourceIndex >= 0) {
+        return `src:${adventure.sourceIndex}`;
+      }
+
       return getFavoriteKey(adventure.row.values[0]);
     }
 
@@ -6878,8 +6883,11 @@
       return;
     }
 
-    // Store all adventures with their indices for pagination
-    totalFilteredAdventures = adventuresArray.map((row, index) => ({ row, index }));
+    // Store all adventures with their SOURCE indices for pagination
+    totalFilteredAdventures = adventuresArray.map((row) => ({
+      row,
+      sourceIndex: window.adventuresData ? window.adventuresData.indexOf(row) : -1,
+    }));
 
     // Reset to first page
     currentPage = 1;
@@ -10126,8 +10134,9 @@
 
       // Apply favorites filter
       if (visible && activeFilters.showFavoritesOnly) {
-        const favoriteKey = getFavoriteKey(row.values[0]);
-        if (!isFavorite(favoriteKey)) {
+        const filteredIndex = totalFilteredAdventures.findIndex((entry) => entry.row === row);
+        const identity = filteredIndex >= 0 ? __identityFromFilteredIndex(filteredIndex) : null;
+        if (!identity || !__isFavoriteIdentity(identity)) {
           visible = false;
         }
       }
@@ -10436,10 +10445,14 @@
     }
 
     function __identityFromFilteredIndex(index) {
-      const key = getFavoriteKeyFromIndex(index);
       const adventure = totalFilteredAdventures?.[index];
-      const name = adventure?.row?.values?.[0]?.[0] || '';
-      return key ? { key, legacy: null, name } : null;
+      if (!adventure?.row?.values?.[0]) return null;
+
+      const values = adventure.row.values[0];
+      const key = getFavoriteKeyFromIndex(index);
+      const legacy = getFavoriteKey(values);
+      const name = values?.[0] || '';
+      return key ? { key, legacy, name } : null;
     }
 
     function __isFavoriteIdentity(identity) {
