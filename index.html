@@ -6337,9 +6337,12 @@
     cardsGrid.innerHTML = "";
 
     // Render each card for this page
-    pageAdventures.forEach((adventure) => {
+    pageAdventures.forEach((adventure, pageIndex) => {
       const { row, index } = adventure;
       const values = row.values[0];
+      
+      // Calculate the actual index in totalFilteredAdventures array
+      const actualIndex = startIndex + pageIndex;
 
       // Extract adventure data from Excel columns
       const [
@@ -6442,7 +6445,7 @@
 
         <div class="adventure-card-footer">
           <div class="card-action-btns">
-            <button class="card-btn card-details-btn" data-index="${index}">
+            <button class="card-btn card-details-btn" data-index="${actualIndex}">
               <span>📖</span> Details
             </button>
             ${directions ? `
@@ -6452,14 +6455,14 @@
             ` : ''}
           </div>
           <div class="card-favorite-rating-container">
-            <div class="card-rating" data-index="${index}" title="Rate this place">
+            <div class="card-rating" data-index="${actualIndex}" title="Rate this place">
               <span class="rating-star ${currentRating >= 1 ? 'filled' : ''}" data-rating="1">⭐</span>
               <span class="rating-star ${currentRating >= 2 ? 'filled' : ''}" data-rating="2">⭐</span>
               <span class="rating-star ${currentRating >= 3 ? 'filled' : ''}" data-rating="3">⭐</span>
               <span class="rating-star ${currentRating >= 4 ? 'filled' : ''}" data-rating="4">⭐</span>
               <span class="rating-star ${currentRating >= 5 ? 'filled' : ''}" data-rating="5">⭐</span>
             </div>
-            <button class="card-favorite card-favorite-btn" data-index="${index}" title="Add to favorites">
+            <button class="card-favorite card-favorite-btn" data-index="${actualIndex}" title="Add to favorites">
               🤍
             </button>
           </div>
@@ -8972,7 +8975,7 @@
           if (state) states.add(state);
         }
       }
-      
+
       // Get individual tags from tag pills
       tagPills.forEach(pill => {
         const tag = pill.textContent.trim();
