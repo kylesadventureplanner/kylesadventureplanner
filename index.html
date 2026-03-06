@@ -4118,7 +4118,7 @@
       overflow-x: auto;
       background: white;
       position: sticky;
-      top: 0;
+      top: 90px;
       z-index: 9;
     }
 
@@ -7157,6 +7157,8 @@
       if (detailsBtn) {
         detailsBtn.addEventListener('click', (e) => {
           e.stopPropagation();
+          // Store the row object directly for editing
+          currentEditingRow = row;
           showCardDetails(index);
         });
       }
@@ -9001,15 +9003,21 @@
     const closeBtn = document.getElementById("rowDetailCloseFooterBtn");
 
     if (!currentEditingRow) {
-      console.error("No row selected for editing");
+      console.error("❌ No row selected for editing - currentEditingRow is null");
+      showToast("Error: No row selected for editing", "error");
       return;
     }
 
     const rowData = rowDataMap.get(currentEditingRow);
     if (!rowData) {
-      console.error("No data found for current row");
+      console.error("❌ No data found for current row in rowDataMap");
+      console.error("   rowDataMap size:", rowDataMap.size);
+      console.error("   currentEditingRow:", currentEditingRow);
+      showToast("Error: Could not load row data for editing", "error");
       return;
     }
+
+    console.log("✓ Edit mode enabled for:", rowData.name);
 
     // Change Edit button to Save button
     editBtn.textContent = "💾 Save Changes";
