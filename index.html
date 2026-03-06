@@ -24,13 +24,13 @@
       --primary: #3b82f6;           /* Vibrant blue */
       --primary-dark: #1e40af;      /* Dark blue for hover states */
       --primary-light: #dbeafe;     /* Light blue for backgrounds */
-      
+
       /* Accent Colors */
       --accent-success: #10b981;    /* Green for positive actions */
       --accent-warning: #f59e0b;    /* Orange for warnings */
       --accent-danger: #ef4444;     /* Red for destructive actions */
       --accent-info: #0ea5e9;       /* Cyan for information */
-      
+
       /* Neutral Colors - Premium grays */
       --neutral-50: #f9fafb;        /* Lightest gray */
       --neutral-100: #f3f4f6;       /* Very light gray */
@@ -42,7 +42,7 @@
       --neutral-700: #374151;       /* Darker gray */
       --neutral-800: #1f2937;       /* Very dark gray */
       --neutral-900: #111827;       /* Darkest gray */
-      
+
       /* Semantic Colors - For backwards compatibility */
       --mint-bg: #ecfdf5;           /* Light mint background */
       --mint-border: #6ee7b7;       /* Mint color */
@@ -55,14 +55,14 @@
       --soft-yellow: #fef08a;       /* Soft yellow */
       --soft-yellow-border: #fbbf24; /* Yellow border */
       --danger-red: #ef4444;        /* Red */
-      
+
       /* Shadows - Modern layered shadows */
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
       --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
       --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
       --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
       --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
-      
+
       /* Spacing scale */
       --space-xs: 4px;
       --space-sm: 8px;
@@ -71,14 +71,14 @@
       --space-xl: 24px;
       --space-2xl: 32px;
       --space-3xl: 48px;
-      
+
       /* Border radius */
       --radius-sm: 6px;
       --radius-md: 12px;
       --radius-lg: 16px;
       --radius-xl: 24px;
       --radius-full: 9999px;
-      
+
       /* Typography */
       --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", sans-serif;
       --font-mono: "Monaco", "Courier New", monospace;
@@ -94,11 +94,29 @@
       box-sizing: border-box; /* Include padding/border in width calculations */
     }
 
+    html {
+      scroll-behavior: smooth; /* Smooth scrolling for anchor links and programmatic scrolls */
+    }
+
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #f9fafb; /* Light gray background for the entire page */
       color: #111827;      /* Dark gray text for readability */
+    }
+
+    /* Improved focus states for accessibility */
+    *:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: var(--radius-sm);
+    }
+
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
     }
 
     /* App container - limits max width and centers content */
@@ -1155,6 +1173,39 @@
       font-weight: 500;
     }
 
+    /* Search highlighting */
+    .highlight {
+      background: linear-gradient(90deg, #fef08a 0%, #fde047 100%);
+      padding: 2px 4px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      color: var(--neutral-900);
+      box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.2);
+    }
+
+    /* Card entrance animations with stagger effect */
+    .adventure-card {
+      animation: cardEntrance 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+    }
+
+    .adventure-card:nth-child(1) { animation-delay: 0.05s; }
+    .adventure-card:nth-child(2) { animation-delay: 0.1s; }
+    .adventure-card:nth-child(3) { animation-delay: 0.15s; }
+    .adventure-card:nth-child(4) { animation-delay: 0.2s; }
+    .adventure-card:nth-child(5) { animation-delay: 0.25s; }
+    .adventure-card:nth-child(6) { animation-delay: 0.3s; }
+
+    @keyframes cardEntrance {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
     .card-description {
       font-size: 14px;
       color: #4b5563;
@@ -1320,34 +1371,137 @@
     @media (max-width: 768px) {
       .adventure-cards-grid {
         grid-template-columns: 1fr;
-        padding: 16px;
-        gap: 16px;
+        padding: var(--space-lg);
+        gap: var(--space-xl);
       }
 
       .adventure-card-header {
-        padding: 16px;
+        padding: var(--space-lg);
       }
 
-      .adventure-card-body {
-        padding: 16px;
+      /* Larger touch targets on mobile */
+      .card-btn {
+        padding: 12px 20px;
+        font-size: 14px;
+        min-height: 44px;
       }
 
-      .adventure-card-footer {
-        padding: 12px 16px;
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
+      .card-favorite-btn {
+        min-width: 52px;
+        min-height: 52px;
+        font-size: 22px;
+      }
+
+      .rating-star {
+        font-size: 20px;
+        padding: var(--space-sm);
+        min-width: 36px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .quick-filter-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+        min-height: 44px;
+      }
+
+      /* Hide card hover effects on touch devices */
+      .adventure-card:hover {
+        transform: none;
+      }
+
+      /* Optimize modal for mobile */
+      #rowDetailModal {
+        width: 95%;
+        max-width: 95%;
+        max-height: 95vh;
+      }
+
+      .row-detail-header {
+        padding: var(--space-lg);
+      }
+
+      .row-detail-tabs {
+        padding: var(--space-md) var(--space-lg);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
+    /* Extra small mobile devices */
+    @media (max-width: 480px) {
+      body {
+        font-size: 14px;
+      }
+
+      .adventure-card-title {
+        font-size: 16px;
       }
 
       .card-action-btns {
-        width: 100%;
+        flex-direction: column;
       }
 
       .card-btn {
-        flex: 1;
+        width: 100%;
         justify-content: center;
       }
     }
+
+    /* Tablet landscape and desktop */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .adventure-cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: var(--space-lg);
+      }
+    }
+
+    /* Large screens - limit card width for readability */
+    @media (min-width: 1400px) {
+      .adventure-cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+    }
+
+    /* Reduce motion for accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      html {
+        scroll-behavior: auto;
+      }
+
+      .adventure-card {
+        animation: none;
+      }
+    }
+
+    /* High contrast mode support */
+    @media (prefers-contrast: more) {
+      .adventure-card {
+        border: 2px solid var(--neutral-900);
+      }
+
+      .card-btn {
+        border-width: 2px;
+      }
+
+      .tag-pill {
+        border: 2px solid currentColor;
+      }
+    }
+
 
     /* Pagination Controls */
     .pagination-controls {
@@ -1364,28 +1518,55 @@
 
     .pagination-btn {
       padding: 12px 24px;
-      background: #2563eb;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
-      min-width: 120px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      min-width: 140px;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pagination-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .pagination-btn:hover::before {
+      left: 100%;
     }
 
     .pagination-btn:hover:not(:disabled) {
-      background: #1d4ed8;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      background: linear-gradient(135deg, var(--primary-dark) 0%, #0284c7 100%);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .pagination-btn:active:not(:disabled) {
+      transform: translateY(0) scale(0.98);
     }
 
     .pagination-btn:disabled {
-      background: #e5e7eb;
-      color: #9ca3af;
+      background: var(--neutral-200);
+      color: var(--neutral-400);
       cursor: not-allowed;
       transform: none;
+      box-shadow: none;
+    }
+
+    .pagination-btn:disabled::before {
+      display: none;
     }
 
     .pagination-info {
@@ -2673,28 +2854,188 @@
     }
 
     /* ============================================================
+       SKELETON LOADING CARDS
+       ============================================================
+       Beautiful loading placeholders that match card structure
+    */
+    .skeleton-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      border: 1px solid var(--neutral-200);
+      animation: skeletonPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes skeletonPulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.6;
+      }
+    }
+
+    .skeleton-header {
+      padding: var(--space-xl);
+      border-bottom: 1px solid var(--neutral-100);
+    }
+
+    .skeleton-title {
+      height: 24px;
+      background: linear-gradient(90deg, var(--neutral-200) 0%, var(--neutral-100) 50%, var(--neutral-200) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-md);
+      width: 70%;
+    }
+
+    .skeleton-text {
+      height: 16px;
+      background: linear-gradient(90deg, var(--neutral-200) 0%, var(--neutral-100) 50%, var(--neutral-200) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-sm);
+    }
+
+    .skeleton-text.short {
+      width: 50%;
+    }
+
+    .skeleton-tags {
+      padding: var(--space-md) var(--space-xl);
+      display: flex;
+      gap: var(--space-sm);
+      background: var(--neutral-50);
+      min-height: 48px;
+    }
+
+    .skeleton-tag {
+      height: 24px;
+      width: 60px;
+      background: var(--neutral-200);
+      border-radius: var(--radius-full);
+      animation: shimmer 1.5s infinite;
+    }
+
+    .skeleton-body {
+      padding: var(--space-xl);
+    }
+
+    .skeleton-button {
+      height: 40px;
+      background: linear-gradient(90deg, var(--neutral-200) 0%, var(--neutral-100) 50%, var(--neutral-200) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-md);
+      margin-top: var(--space-md);
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    /* ============================================================
        EMPTY STATE
        ============================================================
-       Helpful messaging when no data is available
+       Beautiful empty states with illustrations and helpful messaging
     */
     .empty-state {
-      padding: 60px 20px;
+      padding: var(--space-3xl) var(--space-xl);
       text-align: center;
       background: white;
-      border-radius: 8px;
-      border: 2px dashed #e5e7eb;
+      border-radius: var(--radius-lg);
+      border: 2px dashed var(--neutral-200);
+      margin: var(--space-xl);
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .empty-state-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
+      font-size: 64px;
+      margin-bottom: var(--space-xl);
+      opacity: 0.5;
+      animation: floatIcon 3s ease-in-out infinite;
+    }
+
+    @keyframes floatIcon {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
     }
 
     .empty-state-title {
-      color: #6b7280;
-      font-size: 18px;
+      color: var(--neutral-900);
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: var(--space-md);
+      letter-spacing: -0.5px;
+    }
+
+    .empty-state-description {
+      color: var(--neutral-600);
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: var(--space-xl);
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .empty-state-actions {
+      display: flex;
+      gap: var(--space-md);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .empty-state-btn {
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
       font-weight: 600;
-      margin-bottom: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 2px solid var(--primary);
+      background: var(--primary);
+      color: white;
+      box-shadow: var(--shadow-md);
+    }
+
+    .empty-state-btn:hover {
+      background: var(--primary-dark);
+      border-color: var(--primary-dark);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .empty-state-btn.secondary {
+      background: white;
+      color: var(--primary);
+    }
+
+    .empty-state-btn.secondary:hover {
+      background: var(--primary-light);
     }
 
     .empty-state-description {
@@ -5300,7 +5641,11 @@
   // ============================================================
   // EMPTY STATE
   // ============================================================
-  function showEmptyState(reason = 'no-data') {
+  /**
+   * Show empty state in table (legacy - for backward compatibility)
+   * @param {string} reason - Reason for empty state
+   */
+  function showEmptyStateTable(reason = 'no-data') {
     const tbody = document.querySelector('#adventureTableBody');
 
     const states = {
@@ -5325,6 +5670,8 @@
     };
 
     const state = states[reason] || states['no-data'];
+
+    if (!tbody) return; // Safety check
 
     tbody.innerHTML = `
       <tr style="display: table-row !important;">
@@ -6259,6 +6606,86 @@
   }
 
   /**
+   * Show skeleton loading cards while data is being fetched
+   * @param {number} count - Number of skeleton cards to show
+   */
+  function showSkeletonCards(count = 6) {
+    const cardsGrid = document.getElementById("adventureCardsGrid");
+    if (!cardsGrid) return;
+
+    cardsGrid.innerHTML = '';
+
+    for (let i = 0; i < count; i++) {
+      const skeleton = document.createElement('div');
+      skeleton.className = 'skeleton-card';
+      skeleton.innerHTML = `
+        <div class="skeleton-header">
+          <div class="skeleton-title"></div>
+          <div class="skeleton-text short"></div>
+          <div class="skeleton-text short"></div>
+        </div>
+        <div class="skeleton-tags">
+          <div class="skeleton-tag"></div>
+          <div class="skeleton-tag"></div>
+          <div class="skeleton-tag"></div>
+        </div>
+        <div class="skeleton-body">
+          <div class="skeleton-text"></div>
+          <div class="skeleton-text"></div>
+          <div class="skeleton-text short"></div>
+          <div class="skeleton-button"></div>
+        </div>
+      `;
+      cardsGrid.appendChild(skeleton);
+    }
+  }
+
+  /**
+   * Show empty state when no adventures match filters
+   * @param {string} message - Custom message to display
+   * @param {string} icon - Emoji icon to show
+   */
+  function showEmptyState(message = 'No adventures found', icon = '🔍') {
+    const cardsGrid = document.getElementById("adventureCardsGrid");
+    if (!cardsGrid) return;
+
+    const emptyState = document.createElement('div');
+    emptyState.className = 'empty-state';
+    emptyState.innerHTML = `
+      <div class="empty-state-icon">${icon}</div>
+      <h2 class="empty-state-title">${message}</h2>
+      <p class="empty-state-description">
+        ${message.includes('filter')
+          ? 'Try adjusting your filters or search terms to find more adventures.'
+          : 'Start exploring by browsing all adventures or use the filters to find something specific.'}
+      </p>
+      <div class="empty-state-actions">
+        <button class="empty-state-btn" onclick="resetAllFilters()">
+          🔄 Clear All Filters
+        </button>
+        <button class="empty-state-btn secondary" onclick="document.getElementById('searchByName').focus()">
+          🔍 Try Different Search
+        </button>
+      </div>
+    `;
+
+    cardsGrid.innerHTML = '';
+    cardsGrid.appendChild(emptyState);
+  }
+
+  /**
+   * Scroll to top of cards grid smoothly
+   */
+  function scrollToCards() {
+    const cardsGrid = document.getElementById("adventureCardsGrid");
+    if (cardsGrid) {
+      const yOffset = -20; // 20px above the grid
+      const y = cardsGrid.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }
+
+  /**
    * Render adventure cards from Excel data
    * @param {Array} adventuresArray - Array of adventure row data from Excel
    */
@@ -6274,13 +6701,7 @@
 
     // If no adventures, show empty state
     if (!adventuresArray || adventuresArray.length === 0) {
-      cardsGrid.innerHTML = `
-        <div class="cards-empty-state">
-          <div class="cards-empty-icon">🏞️</div>
-          <div class="cards-empty-text">No adventures found</div>
-          <div class="cards-empty-subtext">Try adjusting your filters or check back later</div>
-        </div>
-      `;
+      showEmptyState('No adventures found', '🏞️');
       const paginationControls = document.getElementById("paginationControls");
       const paginationControlsTop = document.getElementById("paginationControlsTop");
       if (paginationControls) paginationControls.style.display = "none";
@@ -6562,14 +6983,15 @@
     }
 
     currentPage = newPage;
-    renderPaginatedCards();
-    updatePaginationControls();
 
-    // Scroll to top of cards grid
-    const cardsGrid = document.getElementById("adventureCardsGrid");
-    if (cardsGrid) {
-      cardsGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Scroll to top first for better UX
+    scrollToCards();
+
+    // Small delay to let scroll start, then render new cards
+    setTimeout(() => {
+      renderPaginatedCards();
+      updatePaginationControls();
+    }, 100);
   }
 
   /**
@@ -6816,6 +7238,31 @@
       phoneNumber, googleRating, cost, directions, description, nearby,
       links, links2, notes, myRating
     ] = values;
+
+    // Store current row for editing (CRITICAL FIX)
+    currentEditingRow = row;
+
+    // Store row data in map for editing functionality
+    rowDataMap.set(row, {
+      name, googlePlaceId, website, tags, driveTime, hoursOfOperation,
+      activityDuration, difficulty, trailLength, state, city, address,
+      phoneNumber, googleRating, cost, directions, description, nearby,
+      links, links2, notes, myRating
+    });
+
+    // Reset edit buttons to default state
+    const editBtn = document.getElementById("rowDetailEditBtn");
+    const closeBtn = document.getElementById("rowDetailCloseFooterBtn");
+    if (editBtn) {
+      editBtn.textContent = "✎ Edit";
+      editBtn.classList.remove("primary");
+      editBtn.disabled = false;
+      editBtn.onclick = () => enableEditMode();
+    }
+    if (closeBtn) {
+      closeBtn.textContent = "Close";
+      closeBtn.onclick = () => closeRowDetailModal();
+    }
 
     // Use the existing row detail modal
     const modal = document.getElementById("rowDetailModal");
