@@ -6074,7 +6074,7 @@
     // ============================================================
     // RATINGS SYSTEM - CONSOLIDATED CLEAN IMPLEMENTATION
     // ============================================================
-    let adventureRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
+    var adventureRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
 
     // Load existing favorites
     function persistFavorites() {
