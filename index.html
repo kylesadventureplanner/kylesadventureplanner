@@ -7328,7 +7328,7 @@
           e.stopPropagation();
           // Store the row object directly for editing
           currentEditingRow = row;
-          showCardDetails(index);
+          showCardDetails(actualIndex);  // ✅ Use actualIndex
         });
       }
 
@@ -7349,7 +7349,7 @@
       if (favoriteBtn) {
         favoriteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          toggleCardFavorite(index, e, card);
+          toggleCardFavorite(actualIndex, e, card);  // ✅ Use actualIndex
         });
       }
 
@@ -7359,7 +7359,7 @@
         star.addEventListener('click', (e) => {
           e.stopPropagation();
           const rating = parseInt(star.getAttribute('data-rating'));
-          setAdventureRating(index, rating, card);
+          setAdventureRating(actualIndex, rating, card);  // ✅ Use actualIndex
         });
       });
 
@@ -7369,7 +7369,7 @@
         ratingContainer.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          clearAdventureRating(index, card);
+          clearAdventureRating(actualIndex, card);  // ✅ Use actualIndex
         });
       }
 
@@ -7377,7 +7377,7 @@
       card.addEventListener('click', (e) => {
         // Don't trigger if clicking on a button or rating star
         if (!e.target.closest('button') && !e.target.closest('.rating-star')) {
-          showCardDetails(index);
+          showCardDetails(actualIndex);  // ✅ Use actualIndex
         }
       });
 
