@@ -6072,205 +6072,34 @@
     }
 
     // ============================================================
-    // RATINGS SYSTEM
+    // RATINGS SYSTEM - CONSOLIDATED CLEAN IMPLEMENTATION
     // ============================================================
     let adventureRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
 
-    function buildAdventureKeyFromValues(values) {
-    const safe = (v) => String(v || '').trim().toLowerCase();
-    const placeId = safe(values?.[1]);
-    if (placeId) return `pid:${placeId}`;
-
-    const name = safe(values?.[0]);
-    const city = safe(values?.[10]);
-    const state = safe(values?.[9]);
-    const address = safe(values?.[11]);
-    const driveTime = safe(values?.[4]);
-    const website = safe(values?.[2]);
-
-    const composite = [name, city, state, address, driveTime, website].filter(Boolean).join('|');
-    return `row:${composite || safe(JSON.stringify(values || []))}`;
-    }
-
-    function getAdventureIdentity(adventure) {
-    const values = adventure?.row?.values?.[0] || [];
-    const name = String(values[0] || 'Adventure').trim();
-    const key = buildAdventureKeyFromValues(values);
-    return { key, name };
-    }
-
+    // Load existing favorites
     function persistFavorites() {
-    favorites = Array.from(new Set((favorites || []).filter((v) => typeof v === 'string' && v.trim())));
-    localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
+      favorites = Array.from(new Set((favorites || []).filter((v) => typeof v === 'string' && v.trim())));
+      localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
     }
 
+    // Initialize and validate ratings on load
     function sanitizeRatingsStore() {
-    const sanitized = {};
-    Object.entries(adventureRatings || {}).forEach(([key, value]) => {
-      const normalizedKey = String(key || '').trim();
-      const normalizedValue = Number(value);
-      if (normalizedKey && Number.isFinite(normalizedValue) && normalizedValue > 0) {
-        sanitized[normalizedKey] = Math.max(1, Math.min(5, Math.round(normalizedValue)));
-      }
-    });
-    adventureRatings = sanitized;
-    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+      const sanitized = {};
+      Object.entries(adventureRatings || {}).forEach(([key, value]) => {
+        const normalizedKey = String(key || '').trim();
+        const normalizedValue = Number(value);
+        if (normalizedKey && Number.isFinite(normalizedValue) && normalizedValue > 0) {
+          sanitized[normalizedKey] = Math.max(1, Math.min(5, Math.round(normalizedValue)));
+        }
+      });
+      adventureRatings = sanitized;
+      localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+      console.log(`✓ Ratings store sanitized. Total ratings: ${Object.keys(adventureRatings).length}`);
     }
 
     persistFavorites();
     sanitizeRatingsStore();
 
-    /**
-     * Set rating for an adventure
-     */
-    function setAdventureRating(index, rating, cardElement) {
-    const adventure = totalFilteredAdventures[index];
-    if (!adventure) {
-      console.error("Adventure not found at index:", index);
-      return;
-    }
-
-    const { key: adventureId, name } = getAdventureIdentity(adventure);
-
-    adventureRatings[adventureId] = rating;
-    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
-
-    if (cardElement) {
-      const stars = cardElement.querySelectorAll('.rating-star');
-      stars.forEach((star, starIndex) => {
-        if (starIndex < rating) {
-          star.classList.add('filled');
-        } else {
-          star.classList.remove('filled');
-        }
-      });
-    }
-
-    showToast(`Rated ${rating} star${rating !== 1 ? 's' : ''}`, 'success', 1500);
-    console.log(`✓ Rated ${name}: ${rating} stars`);
-    }
-
-    /**
-     * Clear rating for a specific adventure
-     */
-    function clearAdventureRating(index, cardElement) {
-    const adventure = totalFilteredAdventures[index];
-    if (!adventure) {
-      console.error("Adventure not found at index:", index);
-      return;
-    }
-
-    const { key: adventureId, name } = getAdventureIdentity(adventure);
-
-    delete adventureRatings[adventureId];
-    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
-
-    if (cardElement) {
-      const stars = cardElement.querySelectorAll('.rating-star');
-      stars.forEach((star) => {
-        star.classList.remove('filled');
-      });
-    }
-
-    showToast(`Rating cleared for ${name}`, 'success', 1500);
-    console.log(`✓ Cleared rating for ${name}`);
-    }
-
-    /**
-     * Get rating for an adventure key
-     */
-    function getAdventureRating(adventureKey) {
-    return adventureRatings[adventureKey] || 0;
-    }
-
-  /**
-   * Set rating for an adventure
-   */
-  function setAdventureRating(index, rating, cardElement) {
-    const adventure = totalFilteredAdventures[index];
-    if (!adventure) {
-      console.error("Adventure not found at index:", index);
-      return;
-    }
-
-    const values = adventure.row.values[0];
-    const [name, googlePlaceId] = values;
-    const adventureId = googlePlaceId || name;
-
-    // Store rating
-    adventureRatings[adventureId] = rating;
-    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
-
-    // Update the specific card's stars
-    if (cardElement) {
-      const stars = cardElement.querySelectorAll('.rating-star');
-      stars.forEach((star, starIndex) => {
-        if (starIndex < rating) {
-          star.classList.add('filled');
-        } else {
-          star.classList.remove('filled');
-        }
-      });
-    }
-
-    showToast(`Rated ${rating} star${rating !== 1 ? 's' : ''}`, 'success', 1500);
-    console.log(`✓ Rated ${name}: ${rating} stars`);
-  }
-
-  /**
-   * Clear rating for a specific adventure (right-click on stars)
-   */
-  function clearAdventureRating(index, cardElement) {
-    const adventure = totalFilteredAdventures[index];
-    if (!adventure) {
-      console.error("Adventure not found at index:", index);
-      return;
-    }
-
-    const values = adventure.row.values[0];
-    const [name, googlePlaceId] = values;
-    const adventureId = googlePlaceId || name;
-
-    // Clear rating
-    delete adventureRatings[adventureId];
-    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
-
-    // Update the specific card's stars
-    if (cardElement) {
-      const stars = cardElement.querySelectorAll('.rating-star');
-      stars.forEach(star => {
-        star.classList.remove('filled');
-      });
-    }
-
-    showToast(`Rating cleared for ${name}`, 'success', 1500);
-    console.log(`✓ Cleared rating for ${name}`);
-  }
-
-  /**
-   * Update rating stars for a specific card
-   */
-  function updateCardRatingStars(cardIndex, rating) {
-    const card = document.querySelector(`.adventure-card[data-index="${cardIndex}"]`);
-    if (!card) return;
-
-    const stars = card.querySelectorAll('.rating-star');
-    stars.forEach((star, index) => {
-      if (index < rating) {
-        star.classList.add('filled');
-      } else {
-        star.classList.remove('filled');
-      }
-    });
-  }
-
-  /**
-   * Get rating for an adventure
-   */
-  function getAdventureRating(googlePlaceId, name) {
-    const adventureId = googlePlaceId || name;
-    return adventureRatings[adventureId] || 0;
-  }
 
   // Old favorites logic removed - replaced with canonical implementation above
 
@@ -10529,41 +10358,78 @@
     updateCardFavoriteButtons();
     }
 
+    // ============================================================
+    // CANONICAL STAR RATING PERSISTENCE - WITH VISIBILITY/DEBUGGING
+    // ============================================================
     setAdventureRating = function(index, rating, cardElement) {
-    const identity = __identityFromFilteredIndex(index);
-    if (!identity) return;
+      const identity = __identityFromFilteredIndex(index);
+      if (!identity) {
+        console.warn(`⚠️ Could not resolve identity for index ${index}`);
+        return;
+      }
 
-    const normalizedRating = Math.max(1, Math.min(5, Number(rating) || 0));
-    adventureRatings[identity.key] = normalizedRating;
-    if (identity.legacy && identity.legacy !== identity.key) {
-      adventureRatings[identity.legacy] = normalizedRating;
-    }
-    localStorage.setItem("adventureRatings", JSON.stringify(adventureRatings));
+      const normalizedRating = Math.max(1, Math.min(5, Number(rating) || 0));
+      const oldRating = adventureRatings[identity.key] || 0;
 
-    __paintCardRating(cardElement, normalizedRating);
-    showToast(`Rated ${normalizedRating} star${normalizedRating !== 1 ? "s" : ""}`, "success", 1200);
+      // Store rating in canonical location
+      adventureRatings[identity.key] = normalizedRating;
+      if (identity.legacy && identity.legacy !== identity.key) {
+        adventureRatings[identity.legacy] = normalizedRating;
+      }
+
+      // Persist to localStorage
+      localStorage.setItem("adventureRatings", JSON.stringify(adventureRatings));
+
+      // Visual feedback
+      __paintCardRating(cardElement, normalizedRating);
+      showToast(`Rated ${normalizedRating} star${normalizedRating !== 1 ? "s" : ""}`, "success", 1200);
+
+      // Visible logging with key debugging info
+      console.log(`✓ STAR RATING SAVED: "${identity.name}"`);
+      console.log(`  Key: ${identity.key}`);
+      console.log(`  Rating: ${oldRating} → ${normalizedRating}`);
+      console.log(`  Total ratings in store: ${Object.keys(adventureRatings).length}`);
+      console.log(`  Store contents: ${JSON.stringify(adventureRatings)}`);
     };
 
     clearAdventureRating = function(index, cardElement) {
-    const identity = __identityFromFilteredIndex(index);
-    if (!identity) return;
+      const identity = __identityFromFilteredIndex(index);
+      if (!identity) {
+        console.warn(`⚠️ Could not resolve identity for index ${index}`);
+        return;
+      }
 
-    delete adventureRatings[identity.key];
-    if (identity.legacy && identity.legacy !== identity.key) {
-      delete adventureRatings[identity.legacy];
-    }
-    localStorage.setItem("adventureRatings", JSON.stringify(adventureRatings));
+      const oldRating = adventureRatings[identity.key] || 0;
 
-    __paintCardRating(cardElement, 0);
-    showToast(`Rating cleared for ${identity.name}`, "success", 1200);
+      // Remove rating
+      delete adventureRatings[identity.key];
+      if (identity.legacy && identity.legacy !== identity.key) {
+        delete adventureRatings[identity.legacy];
+      }
+
+      // Persist to localStorage
+      localStorage.setItem("adventureRatings", JSON.stringify(adventureRatings));
+
+      // Visual feedback
+      __paintCardRating(cardElement, 0);
+      showToast(`Rating cleared for ${identity.name}`, "success", 1200);
+
+      // Visible logging with key debugging info
+      console.log(`✓ STAR RATING CLEARED: "${identity.name}"`);
+      console.log(`  Key: ${identity.key}`);
+      console.log(`  Was: ${oldRating} stars`);
+      console.log(`  Total ratings in store: ${Object.keys(adventureRatings).length}`);
+      console.log(`  Store contents: ${JSON.stringify(adventureRatings)}`);
     };
 
     getAdventureRating = function(googlePlaceIdOrKey, name) {
-    if (name !== undefined) {
-      const identity = __stableAdventureIdentityFromValues([name, googlePlaceIdOrKey]);
-      return Number(adventureRatings[identity.key] || adventureRatings[identity.legacy] || 0);
-    }
-    return Number(adventureRatings[googlePlaceIdOrKey] || 0);
+      if (name !== undefined) {
+        const identity = __stableAdventureIdentityFromValues([name, googlePlaceIdOrKey]);
+        const rating = Number(adventureRatings[identity.key] || adventureRatings[identity.legacy] || 0);
+        console.log(`✓ FETCHING RATING: "${name}" → ${rating} stars`);
+        return rating;
+      }
+      return Number(adventureRatings[googlePlaceIdOrKey] || 0);
     };
 
     toggleCardFavorite = function(index, event, cardElement) {
