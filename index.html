@@ -4062,8 +4062,7 @@
       align-items: flex-start;
       gap: var(--space-lg);
       background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(14, 165, 233, 0.02) 100%);
-      position: sticky;
-      top: 0;
+      position: relative;
       z-index: 10;
     }
 
@@ -7255,15 +7254,24 @@
     // Reset edit buttons to default state
     const editBtn = document.getElementById("rowDetailEditBtn");
     const closeBtn = document.getElementById("rowDetailCloseFooterBtn");
+    
+    // Reset edit mode flag
+    isInEditMode = false;
+    
     if (editBtn) {
       editBtn.textContent = "✎ Edit";
       editBtn.classList.remove("primary");
       editBtn.disabled = false;
-      editBtn.onclick = () => enableEditMode();
+      // Clone to remove all old event listeners
+      const newEditBtn = editBtn.cloneNode(true);
+      editBtn.parentNode.replaceChild(newEditBtn, editBtn);
+      newEditBtn.addEventListener("click", enableEditMode);
     }
     if (closeBtn) {
       closeBtn.textContent = "Close";
-      closeBtn.onclick = () => closeRowDetailModal();
+      const newCloseBtn = closeBtn.cloneNode(true);
+      closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+      newCloseBtn.addEventListener("click", closeRowDetailModal);
     }
 
     // Use the existing row detail modal
@@ -8994,6 +9002,7 @@
   // Store current row being edited
   let currentEditingRow = null;
   let currentEditingRowIndex = null;
+  let isInEditMode = false;
 
   /**
    * Enable Edit Mode - Convert modal to editable form
@@ -9020,14 +9029,22 @@
 
     console.log("✓ Edit mode enabled for:", rowData.name);
 
+    // Set edit mode flag FIRST
+    isInEditMode = true;
+
     // Change Edit button to Save button
     editBtn.textContent = "💾 Save Changes";
     editBtn.classList.add("primary");
-    editBtn.onclick = () => saveEditedData();
+    // Remove old handler and add new one
+    editBtn.replaceWith(editBtn.cloneNode(true));
+    const newEditBtn = document.getElementById("rowDetailEditBtn");
+    newEditBtn.addEventListener("click", saveEditedData);
 
     // Change Close button to Cancel button
     closeBtn.textContent = "Cancel";
-    closeBtn.onclick = () => cancelEdit();
+    closeBtn.replaceWith(closeBtn.cloneNode(true));
+    const newCloseBtn = document.getElementById("rowDetailCloseFooterBtn");
+    newCloseBtn.addEventListener("click", cancelEdit);
 
     // Make all value fields editable
     const valueElements = modal.querySelectorAll(".row-detail-value");
@@ -9080,6 +9097,9 @@
       return;
     }
 
+    // Reset edit mode flag
+    isInEditMode = false;
+
     closeRowDetailModal();
 
     // Reset buttons will happen when modal is reopened
@@ -9089,6 +9109,12 @@
    * Save Edited Data - Update Excel with changes
    */
   async function saveEditedData() {
+    // Only allow save if actually in edit mode
+    if (!isInEditMode) {
+      console.warn("⚠️ Not in edit mode, ignoring save");
+      return;
+    }
+
     if (!currentEditingRow || !accessToken) {
       alert("Cannot save: Not authenticated or no row selected");
       return;
@@ -9100,6 +9126,7 @@
     try {
       // Disable save button during save
       editBtn.disabled = true;
+      editBtn.textContent = "💾 Saving...";
       editBtn.textContent = "💾 Saving...";
 
       // Collect edited values
@@ -9202,6 +9229,9 @@
 
       alert("✅ Changes saved successfully!");
 
+      // Reset edit mode flag
+      isInEditMode = false;
+
       // Close modal and reload data to reflect changes
       closeRowDetailModal();
       await loadTable(); // Reload table data from Excel
@@ -9212,6 +9242,9 @@
 
       editBtn.disabled = false;
       editBtn.textContent = "💾 Save Changes";
+      
+      // Reset edit mode flag on error
+      isInEditMode = false;
     }
   }
 
