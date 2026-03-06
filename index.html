@@ -20,17 +20,68 @@
        - Danger Red: Error and critical state indicators
     */
     :root {
-      --mint-bg: #ecfdf5;        /* Light mint background for cards/highlights */
-      --mint-border: #6ee7b7;    /* Mint color for borders and accents */
-      --mint-strong: #10b981;    /* Dark mint for strong/prominent text */
-      --blue-bg: #e0f2fe;        /* Light blue background for highlights */
-      --blue-border: #60a5fa;    /* Blue for borders and accents */
-      --blue-strong: #1d4ed8;    /* Dark blue for primary actions and text */
-      --gray-border: #d1d5db;    /* Gray for subtle borders */
-      --gray-text: #374151;      /* Gray for regular text content */
-      --soft-yellow: #fef9c3;    /* Soft yellow for warnings */
-      --soft-yellow-border: #facc15; /* Yellow for warning borders */
-      --danger-red: #dc2626;     /* Red for errors and danger states */
+      /* Primary Colors - Modern vibrant palette */
+      --primary: #3b82f6;           /* Vibrant blue */
+      --primary-dark: #1e40af;      /* Dark blue for hover states */
+      --primary-light: #dbeafe;     /* Light blue for backgrounds */
+      
+      /* Accent Colors */
+      --accent-success: #10b981;    /* Green for positive actions */
+      --accent-warning: #f59e0b;    /* Orange for warnings */
+      --accent-danger: #ef4444;     /* Red for destructive actions */
+      --accent-info: #0ea5e9;       /* Cyan for information */
+      
+      /* Neutral Colors - Premium grays */
+      --neutral-50: #f9fafb;        /* Lightest gray */
+      --neutral-100: #f3f4f6;       /* Very light gray */
+      --neutral-200: #e5e7eb;       /* Light gray (borders) */
+      --neutral-300: #d1d5db;       /* Medium light gray */
+      --neutral-400: #9ca3af;       /* Medium gray */
+      --neutral-500: #6b7280;       /* Medium gray text */
+      --neutral-600: #4b5563;       /* Dark gray */
+      --neutral-700: #374151;       /* Darker gray */
+      --neutral-800: #1f2937;       /* Very dark gray */
+      --neutral-900: #111827;       /* Darkest gray */
+      
+      /* Semantic Colors - For backwards compatibility */
+      --mint-bg: #ecfdf5;           /* Light mint background */
+      --mint-border: #6ee7b7;       /* Mint color */
+      --mint-strong: #10b981;       /* Dark mint */
+      --blue-bg: #dbeafe;           /* Light blue background */
+      --blue-border: #60a5fa;       /* Blue border */
+      --blue-strong: #1e40af;       /* Dark blue */
+      --gray-border: #e5e7eb;       /* Gray border */
+      --gray-text: #6b7280;         /* Gray text */
+      --soft-yellow: #fef08a;       /* Soft yellow */
+      --soft-yellow-border: #fbbf24; /* Yellow border */
+      --danger-red: #ef4444;        /* Red */
+      
+      /* Shadows - Modern layered shadows */
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+      --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+      --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+      
+      /* Spacing scale */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 12px;
+      --space-lg: 16px;
+      --space-xl: 24px;
+      --space-2xl: 32px;
+      --space-3xl: 48px;
+      
+      /* Border radius */
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+      
+      /* Typography */
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", sans-serif;
+      --font-mono: "Monaco", "Courier New", monospace;
     }
 
     /* ============================================================
@@ -268,30 +319,41 @@
     }
 
     .quick-filter-btn {
-      border-radius: 999px;
-      border: 1px solid var(--gray-border);
-      background: #f3f4f6;
-      padding: 6px 12px;
-      font-size: 12px;
+      border-radius: var(--radius-full);
+      border: 2px solid var(--neutral-200);
+      background: white;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--space-sm);
       white-space: nowrap;
+      color: var(--neutral-700);
+      box-shadow: var(--shadow-sm);
     }
 
     .quick-filter-btn:hover {
-      background: #e5e7eb;
+      background: var(--neutral-50);
+      border-color: var(--primary);
+      color: var(--primary);
       transform: translateY(-2px);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--shadow-md);
     }
 
     .quick-filter-btn.active {
-      background: var(--mint-bg);
-      border-color: var(--mint-border);
-      color: var(--mint-strong);
-      font-weight: 600;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
+      border-color: transparent;
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .quick-filter-btn.active:hover {
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+      transform: translateY(-3px);
     }
 
     /* Google Automation Card */
@@ -508,18 +570,23 @@
     /* Tag pills (example base styles) */
     .tag-pill {
       display: inline-block;
-      padding: 2px 6px;
-      border-radius: 999px;
-      font-size: 11px;
-      margin: 2px 4px 2px 0;
-      color: #111827;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      font-weight: 600;
+      margin: var(--space-xs) var(--space-sm) var(--space-xs) 0;
+      color: white;
       cursor: pointer;
-      transition: transform 0.1s ease, box-shadow 0.1s ease;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .tag-pill:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+      letter-spacing: 0.5px;
     }
 
     /* Tag Icons - Graphical representation of each tag type */
@@ -951,42 +1018,63 @@
     /* Individual Adventure Card */
     .adventure-card {
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
       overflow: hidden;
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer;
       display: flex;
       flex-direction: column;
       position: relative;
+      border: 1px solid var(--neutral-200);
     }
 
     .adventure-card:hover {
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-      transform: translateY(-4px);
+      box-shadow: var(--shadow-xl);
+      transform: translateY(-6px);
+      border-color: var(--neutral-300);
+    }
+
+    .adventure-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--accent-info) 100%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .adventure-card:hover::before {
+      opacity: 1;
     }
 
     /* Card Header */
     .adventure-card-header {
-      padding: 20px;
-      border-bottom: 1px solid #f3f4f6;
+      padding: var(--space-xl);
+      border-bottom: 1px solid var(--neutral-100);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(14, 165, 233, 0.01) 100%);
     }
 
     .adventure-card-title {
       font-size: 18px;
       font-weight: 600;
-      color: #111827;
-      margin-bottom: 8px;
+      color: var(--neutral-900);
+      margin-bottom: var(--space-md);
       line-height: 1.4;
+      letter-spacing: -0.3px;
     }
 
     .adventure-card-location {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
       font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 4px;
+      color: var(--neutral-500);
+      margin-bottom: var(--space-sm);
+      font-weight: 500;
     }
 
     .location-icon {
@@ -996,9 +1084,10 @@
     .adventure-card-time {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
       font-size: 13px;
-      color: #6b7280;
+      color: var(--neutral-500);
+      font-weight: 500;
     }
 
     .time-icon {
@@ -1007,46 +1096,63 @@
 
     /* Card Tags */
     .adventure-card-tags {
-      padding: 12px 20px;
+      padding: var(--space-md) var(--space-xl);
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
-      background: #fafafa;
+      gap: var(--space-sm);
+      background: var(--neutral-50);
       min-height: 48px;
       align-items: center;
     }
 
     /* Card Body */
     .adventure-card-body {
-      padding: 20px;
+      padding: var(--space-xl);
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: var(--space-md);
+    }
+
+    .card-description {
+      color: var(--neutral-600);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: var(--space-md);
     }
 
     .card-info-row {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
+      gap: var(--space-md);
       font-size: 13px;
+      padding: var(--space-sm) 0;
+      border-radius: var(--radius-sm);
+      padding: var(--space-md) var(--space-sm);
+      background: var(--neutral-50);
+      transition: background 0.2s;
+    }
+
+    .card-info-row:hover {
+      background: var(--neutral-100);
     }
 
     .card-info-icon {
       font-size: 16px;
-      min-width: 20px;
-      color: #6b7280;
+      min-width: 24px;
+      color: var(--primary);
     }
 
     .card-info-label {
-      font-weight: 500;
-      color: #6b7280;
+      font-weight: 600;
+      color: var(--neutral-600);
       min-width: 100px;
     }
 
     .card-info-value {
-      color: #374151;
+      color: var(--neutral-800);
       flex: 1;
+      font-weight: 500;
     }
 
     .card-description {
@@ -1071,109 +1177,133 @@
 
     .card-action-btns {
       display: flex;
-      gap: 8px;
+      gap: var(--space-md);
       flex-wrap: wrap;
     }
 
     .card-btn {
-      padding: 8px 16px;
-      border-radius: 8px;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
       font-size: 13px;
-      font-weight: 500;
-      border: 1px solid #d1d5db;
+      font-weight: 600;
+      border: 1px solid var(--neutral-300);
       background: white;
-      color: #374151;
+      color: var(--neutral-700);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-sm);
+      box-shadow: var(--shadow-sm);
     }
 
     .card-btn:hover {
-      background: #f3f4f6;
-      border-color: #3b82f6;
-      color: #3b82f6;
+      background: var(--neutral-50);
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
     }
 
     .card-btn-primary {
-      background: #3b82f6;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
       color: white;
-      border-color: #3b82f6;
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
 
     .card-btn-primary:hover {
-      background: #2563eb;
-      border-color: #2563eb;
+      background: linear-gradient(135deg, var(--primary-dark) 0%, #0284c7 100%);
+      border-color: var(--primary-dark);
       color: white;
-    }
-
-    .card-favorite {
-      padding: 8px;
-      border-radius: 8px;
-      background: white;
-      border: 1px solid #d1d5db;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 18px;
-    }
-
-    .card-favorite:hover {
-      background: #ffe0e0;
-      border-color: #ff6b6b;
-    }
-
-    .card-favorite.active {
-      background: #ffe0e0;
-      border-color: #ff6b6b;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
     }
 
     .card-favorite-rating-container {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: var(--space-lg);
       width: 100%;
+      margin-top: var(--space-md);
+      padding-top: var(--space-md);
+      border-top: 1px solid var(--neutral-100);
     }
 
     .card-rating {
       display: flex;
-      gap: 4px;
+      gap: var(--space-sm);
       align-items: center;
       flex: 1;
+      cursor: help;
     }
 
-    .card-favorite {
-      padding: 8px 12px;
-      border-radius: 8px;
+    .card-favorite-btn {
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
       background: white;
-      border: 1px solid #d1d5db;
+      border: 2px solid var(--neutral-200);
       cursor: pointer;
-      transition: all 0.2s;
-      font-size: 18px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 20px;
       flex-shrink: 0;
-      min-width: 44px;
+      min-width: 48px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-favorite-btn:hover {
+      border-color: var(--accent-danger);
+      background: var(--neutral-50);
+      box-shadow: var(--shadow-md);
+      transform: scale(1.08);
+    }
+
+    .card-favorite-btn.active {
+      background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+    }
+
+    .card-favorite-btn.active:hover {
+      box-shadow: 0 8px 20px rgba(255, 107, 157, 0.4);
+      transform: scale(1.12);
     }
 
     .rating-star {
       cursor: pointer;
-      font-size: 16px;
-      transition: all 0.2s;
-      opacity: 0.3;
+      font-size: 18px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0.25;
       filter: grayscale(1);
     }
 
-    .rating-star:hover {
-      transform: scale(1.2);
-      opacity: 0.7;
+    .rating-star:hover,
+    .rating-star:hover ~ .rating-star {
+      opacity: 0.6;
+      filter: grayscale(0.5);
     }
 
     .rating-star.filled {
       opacity: 1;
       filter: grayscale(0);
+      animation: starFill 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes starFill {
+      0% {
+        transform: scale(0.8);
+      }
+      50% {
+        transform: scale(1.2);
+      }
+      100% {
+        transform: scale(1);
+      }
     }
 
     /* State Badge */
@@ -3563,28 +3693,37 @@
       position: fixed;
       top: 50%;
       left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%) scale(0.95);
       background: white;
-      border-radius: 8px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-2xl);
       z-index: 1002;
       max-width: 90%;
       max-height: 90vh;
-      width: 600px;
+      width: 650px;
       overflow-y: auto;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid var(--neutral-100);
     }
 
     #rowDetailModal.visible {
       display: block;
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
     }
 
     .row-detail-header {
-      padding: 24px;
-      border-bottom: 1px solid var(--gray-border);
+      padding: var(--space-2xl);
+      border-bottom: 1px solid var(--neutral-200);
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 16px;
+      gap: var(--space-lg);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(14, 165, 233, 0.02) 100%);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     .row-detail-title-section {
@@ -3592,17 +3731,19 @@
     }
 
     .row-detail-adventure-name {
-      margin: 0 0 8px 0;
-      font-size: 24px;
+      margin: 0 0 var(--space-md) 0;
+      font-size: 28px;
       font-weight: 700;
-      color: #111827;
+      color: var(--neutral-900);
+      letter-spacing: -0.5px;
     }
 
     .row-detail-location {
       display: flex;
-      gap: 16px;
+      gap: var(--space-lg);
       font-size: 14px;
-      color: var(--gray-text);
+      color: var(--neutral-600);
+      font-weight: 500;
     }
 
     .row-detail-close-btn {
@@ -3610,42 +3751,60 @@
       border: none;
       font-size: 24px;
       cursor: pointer;
-      padding: 0;
-      width: 32px;
-      height: 32px;
+      padding: var(--space-md);
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--gray-text);
-      transition: color 0.2s;
+      color: var(--neutral-500);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: var(--radius-md);
+      margin: calc(-1 * var(--space-md)) calc(-1 * var(--space-md)) 0 0;
     }
 
     .row-detail-close-btn:hover {
-      color: #111827;
+      color: var(--neutral-900);
+      background: var(--neutral-100);
+      transform: rotate(90deg);
     }
 
     .row-detail-tabs {
       display: flex;
-      gap: 8px;
-      padding: 16px 24px;
-      border-bottom: 2px solid var(--gray-border);
+      gap: var(--space-sm);
+      padding: var(--space-lg) var(--space-2xl);
+      border-bottom: 2px solid var(--neutral-200);
       overflow-x: auto;
+      background: white;
+      position: sticky;
+      top: 0;
+      z-index: 9;
     }
 
     .row-detail-tab-btn {
-      padding: 8px 12px;
+      padding: var(--space-md) var(--space-lg);
       border: none;
       background: transparent;
-      color: var(--gray-text);
+      color: var(--neutral-600);
       font-size: 14px;
+      font-weight: 600;
       cursor: pointer;
       border-bottom: 3px solid transparent;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 13px;
     }
 
     .row-detail-tab-btn:hover {
-      color: var(--blue-strong);
-      border-bottom-color: var(--blue-border);
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .row-detail-tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
     }
 
     .row-detail-tab-btn.active {
@@ -3655,52 +3814,101 @@
     }
 
     .row-detail-content {
-      padding: 24px;
+      padding: var(--space-2xl);
     }
 
     .row-detail-tab-pane {
       display: none;
+      animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .row-detail-tab-pane.active {
       display: block;
     }
 
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal-detail-section {
+      margin-bottom: var(--space-2xl);
+      padding: var(--space-xl);
+      background: var(--neutral-50);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--neutral-200);
+      transition: all 0.2s;
+    }
+
+    .modal-detail-section:hover {
+      background: var(--neutral-100);
+      border-color: var(--primary);
+    }
+
+    .modal-detail-section h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--neutral-900);
+      margin: 0 0 var(--space-md) 0;
+      letter-spacing: -0.3px;
+    }
+
+    .modal-detail-section p {
+      color: var(--neutral-700);
+      line-height: 1.6;
+      font-size: 14px;
+      margin: 0;
+    }
+
     .row-detail-footer {
       display: flex;
-      gap: 12px;
-      padding: 16px 24px;
-      border-top: 1px solid var(--gray-border);
+      gap: var(--space-lg);
+      padding: var(--space-xl) var(--space-2xl);
+      border-top: 1px solid var(--neutral-200);
+      background: var(--neutral-50);
+      position: sticky;
+      bottom: 0;
+      z-index: 8;
     }
 
     .row-detail-footer-btn {
       flex: 1;
-      padding: 10px 16px;
-      border: 1px solid var(--gray-border);
+      padding: 12px 20px;
+      border: 2px solid var(--neutral-300);
       background: white;
-      color: var(--gray-text);
-      border-radius: 6px;
+      color: var(--neutral-700);
+      border-radius: var(--radius-md);
       cursor: pointer;
       font-size: 14px;
-      font-weight: 500;
-      transition: all 0.2s;
+      font-weight: 600;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-sm);
     }
 
     .row-detail-footer-btn:hover {
-      background: var(--blue-bg);
-      border-color: var(--blue-border);
-      color: var(--blue-strong);
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
     }
 
     .row-detail-footer-btn.primary {
-      background: var(--blue-strong);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
       color: white;
-      border-color: var(--blue-strong);
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
 
     .row-detail-footer-btn.primary:hover {
-      background: #1d4ed8;
-      border-color: #1d4ed8;
+      background: linear-gradient(135deg, var(--primary-dark) 0%, #0284c7 100%);
+      border-color: var(--primary-dark);
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
     }
 
     /* Modal backdrop */
@@ -3711,12 +3919,17 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
       z-index: 1001;
+      opacity: 0;
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .modal-backdrop.visible {
       display: block;
+      opacity: 1;
     }
 
   </style>
@@ -5413,7 +5626,7 @@
   /**
    * Set rating for an adventure
    */
-  function setAdventureRating(index, rating) {
+  function setAdventureRating(index, rating, cardElement) {
     const adventure = totalFilteredAdventures[index];
     if (!adventure) {
       console.error("Adventure not found at index:", index);
@@ -5428,11 +5641,50 @@
     adventureRatings[adventureId] = rating;
     localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
 
-    // Update the UI
-    updateCardRatingStars(index, rating);
+    // Update the specific card's stars
+    if (cardElement) {
+      const stars = cardElement.querySelectorAll('.rating-star');
+      stars.forEach((star, starIndex) => {
+        if (starIndex < rating) {
+          star.classList.add('filled');
+        } else {
+          star.classList.remove('filled');
+        }
+      });
+    }
 
     showToast(`Rated ${rating} star${rating !== 1 ? 's' : ''}`, 'success', 1500);
     console.log(`✓ Rated ${name}: ${rating} stars`);
+  }
+
+  /**
+   * Clear rating for a specific adventure (right-click on stars)
+   */
+  function clearAdventureRating(index, cardElement) {
+    const adventure = totalFilteredAdventures[index];
+    if (!adventure) {
+      console.error("Adventure not found at index:", index);
+      return;
+    }
+
+    const values = adventure.row.values[0];
+    const [name, googlePlaceId] = values;
+    const adventureId = googlePlaceId || name;
+
+    // Clear rating
+    delete adventureRatings[adventureId];
+    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+
+    // Update the specific card's stars
+    if (cardElement) {
+      const stars = cardElement.querySelectorAll('.rating-star');
+      stars.forEach(star => {
+        star.classList.remove('filled');
+      });
+    }
+
+    showToast(`Rating cleared for ${name}`, 'success', 1500);
+    console.log(`✓ Cleared rating for ${name}`);
   }
 
   /**
@@ -6340,7 +6592,7 @@
     pageAdventures.forEach((adventure, pageIndex) => {
       const { row, index } = adventure;
       const values = row.values[0];
-      
+
       // Calculate the actual index in totalFilteredAdventures array
       const actualIndex = startIndex + pageIndex;
 
@@ -6504,7 +6756,7 @@
       if (favoriteBtn) {
         favoriteBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          toggleCardFavorite(index, e);
+          toggleCardFavorite(index, e, card);
         });
       }
 
@@ -6514,9 +6766,19 @@
         star.addEventListener('click', (e) => {
           e.stopPropagation();
           const rating = parseInt(star.getAttribute('data-rating'));
-          setAdventureRating(index, rating);
+          setAdventureRating(index, rating, card);
         });
       });
+
+      // Add clear rating handler (right-click on stars)
+      const ratingContainer = card.querySelector('.card-rating');
+      if (ratingContainer) {
+        ratingContainer.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          clearAdventureRating(index, card);
+        });
+      }
 
       // Add click handler to card to open details modal
       card.addEventListener('click', (e) => {
@@ -6693,7 +6955,7 @@
   /**
    * Toggle favorite status for a card
    */
-  function toggleCardFavorite(index, event) {
+  function toggleCardFavorite(index, event, cardElement) {
     if (event) {
       event.stopPropagation();
     }
@@ -6724,8 +6986,21 @@
     // Save to localStorage
     localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
 
-    // Update the button UI
-    updateCardFavoriteButtons();
+    // Update ONLY this card's favorite button
+    if (cardElement) {
+      const favoriteBtn = cardElement.querySelector('.card-favorite-btn');
+      if (favoriteBtn) {
+        if (favorites.includes(adventureId)) {
+          favoriteBtn.classList.add('active');
+          favoriteBtn.textContent = '💖';
+          favoriteBtn.title = 'Remove from favorites';
+        } else {
+          favoriteBtn.classList.remove('active');
+          favoriteBtn.textContent = '🤍';
+          favoriteBtn.title = 'Add to favorites';
+        }
+      }
+    }
 
     console.log(`✓ Toggled favorite for: ${name} (ID: ${adventureId})`);
   }
@@ -6735,6 +7010,9 @@
    */
   function updateCardFavoriteButtons() {
     document.querySelectorAll('.card-favorite-btn').forEach(btn => {
+      const card = btn.closest('.adventure-card');
+      if (!card) return;
+
       const cardIndex = parseInt(btn.getAttribute('data-index'));
       const adventure = totalFilteredAdventures[cardIndex];
 
