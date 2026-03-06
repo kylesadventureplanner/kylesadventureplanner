@@ -6075,7 +6075,7 @@
     // RATINGS SYSTEM - CONSOLIDATED CLEAN IMPLEMENTATION
     // ============================================================
     var adventureRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
-    
+
     console.log('[RATINGS INIT] adventureRatings initialized:', adventureRatings);
     console.log('[RATINGS INIT] Type of adventureRatings:', typeof adventureRatings);
     console.log('[RATINGS INIT] adventureRatings variable exists:', typeof adventureRatings !== 'undefined');
@@ -10355,7 +10355,8 @@
         });
       }
 
-      const currentRating = getAdventureRating(identity.key, identity.name);
+      const currentRating = getAdventureRating(identity.key);
+      console.log('[RATINGS DEBUG] Loading rating for key=' + identity.key + ', got=' + currentRating + ' stars');
       __paintCardRating(card, currentRating);
     });
 
@@ -10367,10 +10368,10 @@
     // ============================================================
     setAdventureRating = function(index, rating, cardElement) {
       console.log('[RATINGS DEBUG] setAdventureRating called with index=' + index + ', rating=' + rating);
-      
+
       const identity = __identityFromFilteredIndex(index);
       console.log('[RATINGS DEBUG] identity resolved:', identity);
-      
+
       if (!identity) {
         console.warn('Could not resolve identity for index ' + index);
         return;
@@ -10391,7 +10392,7 @@
 
       // Persist to localStorage
       localStorage.setItem("adventureRatings", JSON.stringify(adventureRatings));
-      
+
       console.log('[RATINGS DEBUG] localStorage saved:', localStorage.getItem('adventureRatings'));
 
       // Visual feedback
@@ -10436,14 +10437,11 @@
       console.log(`  Store contents: ${JSON.stringify(adventureRatings)}`);
     };
 
-    getAdventureRating = function(googlePlaceIdOrKey, name) {
-      if (name !== undefined) {
-        const identity = __stableAdventureIdentityFromValues([name, googlePlaceIdOrKey]);
-        const rating = Number(adventureRatings[identity.key] || adventureRatings[identity.legacy] || 0);
-        console.log(`✓ FETCHING RATING: "${name}" → ${rating} stars`);
-        return rating;
-      }
-      return Number(adventureRatings[googlePlaceIdOrKey] || 0);
+    getAdventureRating = function(keyToLookup) {
+      // Direct key lookup - no reconstruction needed
+      const rating = Number(adventureRatings[keyToLookup] || 0);
+      console.log('[RATINGS DEBUG] getAdventureRating direct lookup: key=' + keyToLookup + ' → ' + rating + ' stars');
+      return rating;
     };
 
     toggleCardFavorite = function(index, event, cardElement) {
