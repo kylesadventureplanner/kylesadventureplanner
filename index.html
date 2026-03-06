@@ -1118,13 +1118,43 @@
     }
 
     .card-favorite:hover {
-      background: #fef3c7;
-      border-color: #fbbf24;
+      background: #ffe0e0;
+      border-color: #ff6b6b;
     }
 
     .card-favorite.active {
-      background: #fef3c7;
-      border-color: #fbbf24;
+      background: #ffe0e0;
+      border-color: #ff6b6b;
+    }
+
+    .card-favorite-rating-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-rating {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .rating-star {
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+      opacity: 0.3;
+      filter: grayscale(1);
+    }
+
+    .rating-star:hover {
+      transform: scale(1.2);
+      opacity: 0.7;
+    }
+
+    .rating-star.filled {
+      opacity: 1;
+      filter: grayscale(0);
     }
 
     /* State Badge */
@@ -2182,6 +2212,12 @@
     .filter-breadcrumb-remove:hover {
       transform: scale(1.3);
       color: #b91c1c;
+    }
+
+    .breadcrumb-empty {
+      color: #9ca3af;
+      font-size: 13px;
+      font-style: italic;
     }
 
     .breadcrumb-reset-btn {
@@ -3846,6 +3882,9 @@
       <button id="resetAllFiltersBottom" class="pill-button reset">Reset All Filters</button>
     </div>
     <div class="quick-filters-container">
+      <button id="favoritesFilterBtn" class="quick-filter-btn favorites-filter-btn" data-filter="favorites">
+        💖 My Favorites
+      </button>
       <button class="quick-filter-btn" data-tag="restaurant">🍽️ Restaurant</button>
       <button class="quick-filter-btn" data-tag="animals">🐾 Animals</button>
       <button class="quick-filter-btn" data-tag="hiking">⛰️ Hiking</button>
@@ -3951,12 +3990,27 @@
       <div class="results-count" id="resultsCount">0 adventures</div>
     </div>
 
+    <!-- Pagination Controls (Top) -->
+    <div id="paginationControlsTop" class="pagination-controls" style="display: none;">
+      <button id="prevPageBtnTop" class="pagination-btn" onclick="changePage(-1)">
+        ← Previous
+      </button>
+      <div class="pagination-info">
+        Page <span id="currentPageNumTop">1</span> of <span id="totalPagesNumTop">1</span>
+        <span class="pagination-separator">•</span>
+        Showing <span id="showingRangeStartTop">1</span>-<span id="showingRangeEndTop">20</span> of <span id="totalResultsNumTop">0</span>
+      </div>
+      <button id="nextPageBtnTop" class="pagination-btn" onclick="changePage(1)">
+        Next →
+      </button>
+    </div>
+
     <!-- Adventure Cards Grid -->
     <div id="adventureCardsGrid" class="adventure-cards-grid">
       <!-- Cards will be populated from Excel/Graph -->
     </div>
 
-    <!-- Pagination Controls -->
+    <!-- Pagination Controls (Bottom) -->
     <div id="paginationControls" class="pagination-controls" style="display: none;">
       <button id="prevPageBtn" class="pagination-btn" onclick="changePage(-1)">
         ← Previous
@@ -5332,6 +5386,61 @@
   // ============================================================
   let favorites = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
 
+  // ============================================================
+  // RATINGS SYSTEM
+  // ============================================================
+  let adventureRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
+
+  /**
+   * Set rating for an adventure
+   */
+  function setAdventureRating(index, rating) {
+    const adventure = totalFilteredAdventures[index];
+    if (!adventure) {
+      console.error("Adventure not found at index:", index);
+      return;
+    }
+
+    const values = adventure.row.values[0];
+    const [name, googlePlaceId] = values;
+    const adventureId = googlePlaceId || `${name}_${index}`;
+
+    // Store rating
+    adventureRatings[adventureId] = rating;
+    localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+
+    // Update the UI
+    updateCardRatingStars(index, rating);
+
+    showToast(`Rated ${rating} star${rating !== 1 ? 's' : ''}`, 'success', 1500);
+    console.log(`✓ Rated ${name}: ${rating} stars`);
+  }
+
+  /**
+   * Update rating stars for a specific card
+   */
+  function updateCardRatingStars(cardIndex, rating) {
+    const card = document.querySelector(`.adventure-card[data-index="${cardIndex}"]`);
+    if (!card) return;
+
+    const stars = card.querySelectorAll('.rating-star');
+    stars.forEach((star, index) => {
+      if (index < rating) {
+        star.classList.add('filled');
+      } else {
+        star.classList.remove('filled');
+      }
+    });
+  }
+
+  /**
+   * Get rating for an adventure
+   */
+  function getAdventureRating(googlePlaceId, name, index) {
+    const adventureId = googlePlaceId || `${name}_${index}`;
+    return adventureRatings[adventureId] || 0;
+  }
+
   function toggleFavorite(rowId) {
     const index = favorites.indexOf(rowId);
     if (index > -1) {
@@ -5901,7 +6010,10 @@
           <div class="cards-empty-subtext">Try adjusting your filters or check back later</div>
         </div>
       `;
-      document.getElementById("paginationControls").style.display = "none";
+      const paginationControls = document.getElementById("paginationControls");
+      const paginationControlsTop = document.getElementById("paginationControlsTop");
+      if (paginationControls) paginationControls.style.display = "none";
+      if (paginationControlsTop) paginationControlsTop.style.display = "none";
       return;
     }
 
@@ -6105,7 +6217,12 @@
    */
   function updatePaginationControls() {
     const totalPages = Math.ceil(totalFilteredAdventures.length / itemsPerPage);
+
+    // Get both sets of pagination controls
     const paginationControls = document.getElementById("paginationControls");
+    const paginationControlsTop = document.getElementById("paginationControlsTop");
+
+    // Bottom controls
     const prevBtn = document.getElementById("prevPageBtn");
     const nextBtn = document.getElementById("nextPageBtn");
     const currentPageNum = document.getElementById("currentPageNum");
@@ -6114,33 +6231,52 @@
     const showingRangeEnd = document.getElementById("showingRangeEnd");
     const totalResultsNum = document.getElementById("totalResultsNum");
 
+    // Top controls
+    const prevBtnTop = document.getElementById("prevPageBtnTop");
+    const nextBtnTop = document.getElementById("nextPageBtnTop");
+    const currentPageNumTop = document.getElementById("currentPageNumTop");
+    const totalPagesNumTop = document.getElementById("totalPagesNumTop");
+    const showingRangeStartTop = document.getElementById("showingRangeStartTop");
+    const showingRangeEndTop = document.getElementById("showingRangeEndTop");
+    const totalResultsNumTop = document.getElementById("totalResultsNumTop");
+
     if (totalFilteredAdventures.length === 0) {
-      paginationControls.style.display = "none";
+      if (paginationControls) paginationControls.style.display = "none";
+      if (paginationControlsTop) paginationControlsTop.style.display = "none";
       return;
     }
 
     // Show pagination if more than one page
     if (totalPages > 1) {
-      paginationControls.style.display = "flex";
+      if (paginationControls) paginationControls.style.display = "flex";
+      if (paginationControlsTop) paginationControlsTop.style.display = "flex";
     } else {
-      paginationControls.style.display = "none";
+      if (paginationControls) paginationControls.style.display = "none";
+      if (paginationControlsTop) paginationControlsTop.style.display = "none";
       return;
     }
-
-    // Update page numbers
-    currentPageNum.textContent = currentPage;
-    totalPagesNum.textContent = totalPages;
 
     // Calculate showing range
     const startIndex = (currentPage - 1) * itemsPerPage + 1;
     const endIndex = Math.min(currentPage * itemsPerPage, totalFilteredAdventures.length);
-    showingRangeStart.textContent = startIndex;
-    showingRangeEnd.textContent = endIndex;
-    totalResultsNum.textContent = totalFilteredAdventures.length;
 
-    // Enable/disable buttons
-    prevBtn.disabled = currentPage === 1;
-    nextBtn.disabled = currentPage === totalPages;
+    // Update bottom controls
+    if (currentPageNum) currentPageNum.textContent = currentPage;
+    if (totalPagesNum) totalPagesNum.textContent = totalPages;
+    if (showingRangeStart) showingRangeStart.textContent = startIndex;
+    if (showingRangeEnd) showingRangeEnd.textContent = endIndex;
+    if (totalResultsNum) totalResultsNum.textContent = totalFilteredAdventures.length;
+    if (prevBtn) prevBtn.disabled = currentPage === 1;
+    if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+
+    // Update top controls
+    if (currentPageNumTop) currentPageNumTop.textContent = currentPage;
+    if (totalPagesNumTop) totalPagesNumTop.textContent = totalPages;
+    if (showingRangeStartTop) showingRangeStartTop.textContent = startIndex;
+    if (showingRangeEndTop) showingRangeEndTop.textContent = endIndex;
+    if (totalResultsNumTop) totalResultsNumTop.textContent = totalFilteredAdventures.length;
+    if (prevBtnTop) prevBtnTop.disabled = currentPage === 1;
+    if (nextBtnTop) nextBtnTop.disabled = currentPage === totalPages;
   }
 
   /**
@@ -6212,6 +6348,10 @@
         myRating,
       ] = values;
 
+      // Get saved rating from localStorage
+      const savedRating = getAdventureRating(googlePlaceId, name, index);
+      const currentRating = savedRating || myRating || 0;
+
       // Get state color
       const stateUpper = (state || "").trim().toUpperCase();
 
@@ -6227,9 +6367,6 @@
       card.dataset.city = (city || "").toLowerCase();
       card.dataset.tags = (tags || "").toLowerCase();
       card.dataset.difficulty = (difficulty || "").toLowerCase();
-
-      // Escape single quotes in directions URL for onclick
-      const escapedDirections = directions ? directions.replace(/'/g, "\\'") : '';
 
       // Build card HTML
       card.innerHTML = `
@@ -6286,18 +6423,27 @@
 
         <div class="adventure-card-footer">
           <div class="card-action-btns">
-            <button class="card-btn" onclick="showCardDetails(${index})">
+            <button class="card-btn card-details-btn" data-index="${index}">
               <span>📖</span> Details
             </button>
-            ${escapedDirections ? `
-              <button class="card-btn card-btn-primary" onclick="window.open('${escapedDirections}', '_blank')">
+            ${directions ? `
+              <button class="card-btn card-btn-primary card-directions-btn" data-directions="${directions}">
                 <span>🗺️</span> Directions
               </button>
             ` : ''}
           </div>
-          <button class="card-favorite" onclick="toggleCardFavorite(${index})" title="Add to favorites">
-            ⭐
-          </button>
+          <div class="card-favorite-rating-container">
+            <div class="card-rating" data-index="${index}" title="Rate this place">
+              <span class="rating-star ${currentRating >= 1 ? 'filled' : ''}" data-rating="1">⭐</span>
+              <span class="rating-star ${currentRating >= 2 ? 'filled' : ''}" data-rating="2">⭐</span>
+              <span class="rating-star ${currentRating >= 3 ? 'filled' : ''}" data-rating="3">⭐</span>
+              <span class="rating-star ${currentRating >= 4 ? 'filled' : ''}" data-rating="4">⭐</span>
+              <span class="rating-star ${currentRating >= 5 ? 'filled' : ''}" data-rating="5">⭐</span>
+            </div>
+            <button class="card-favorite card-favorite-btn" data-index="${index}" title="Add to favorites">
+              🤍
+            </button>
+          </div>
         </div>
       `;
 
@@ -6310,16 +6456,59 @@
         });
       });
 
+      // Add details button click handler
+      const detailsBtn = card.querySelector('.card-details-btn');
+      if (detailsBtn) {
+        detailsBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showCardDetails(index);
+        });
+      }
+
+      // Add directions button click handler
+      const directionsBtn = card.querySelector('.card-directions-btn');
+      if (directionsBtn) {
+        directionsBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const url = directionsBtn.getAttribute('data-directions');
+          if (url) {
+            window.open(url, '_blank');
+          }
+        });
+      }
+
+      // Add favorite button click handler
+      const favoriteBtn = card.querySelector('.card-favorite-btn');
+      if (favoriteBtn) {
+        favoriteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleCardFavorite(index);
+        });
+      }
+
+      // Add rating stars click handlers
+      const ratingStars = card.querySelectorAll('.rating-star');
+      ratingStars.forEach(star => {
+        star.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const rating = parseInt(star.getAttribute('data-rating'));
+          setAdventureRating(index, rating);
+        });
+      });
+
       // Add click handler to card to open details modal
       card.addEventListener('click', (e) => {
-        // Don't trigger if clicking on a button
-        if (!e.target.closest('button')) {
+        // Don't trigger if clicking on a button or rating star
+        if (!e.target.closest('button') && !e.target.closest('.rating-star')) {
           showCardDetails(index);
         }
       });
 
       cardsGrid.appendChild(card);
     });
+
+    // Update favorite buttons after rendering
+    updateCardFavoriteButtons();
 
     console.log(`✓ Rendered ${pageAdventures.length} cards for page ${currentPage}`);
   }
@@ -6484,14 +6673,63 @@
    */
   function toggleCardFavorite(index) {
     event.stopPropagation();
-    const card = document.querySelector(`.adventure-card[data-index="${index}"]`);
-    if (card) {
-      const favoriteBtn = card.querySelector('.card-favorite');
-      favoriteBtn.classList.toggle('active');
 
-      // Could save to localStorage or Excel here
-      console.log(`Toggled favorite for adventure ${index}`);
+    // Get the adventure data
+    const adventure = totalFilteredAdventures[index];
+    if (!adventure) {
+      console.error("Adventure not found at index:", index);
+      return;
     }
+
+    const values = adventure.row.values[0];
+    const [name, googlePlaceId] = values;
+
+    // Use googlePlaceId as unique identifier, fallback to name+index
+    const adventureId = googlePlaceId || `${name}_${index}`;
+
+    // Toggle favorite status
+    const favIndex = favorites.indexOf(adventureId);
+    if (favIndex > -1) {
+      favorites.splice(favIndex, 1);
+      showToast('Removed from favorites', 'success', 1500);
+    } else {
+      favorites.push(adventureId);
+      showToast('Added to favorites', 'success', 1500);
+    }
+
+    // Save to localStorage
+    localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
+
+    // Update the button UI
+    updateCardFavoriteButtons();
+
+    console.log(`✓ Toggled favorite for: ${name} (ID: ${adventureId})`);
+  }
+
+  /**
+   * Update all card favorite buttons to reflect current favorites
+   */
+  function updateCardFavoriteButtons() {
+    document.querySelectorAll('.card-favorite-btn').forEach(btn => {
+      const cardIndex = parseInt(btn.getAttribute('data-index'));
+      const adventure = totalFilteredAdventures[cardIndex];
+
+      if (adventure) {
+        const values = adventure.row.values[0];
+        const [name, googlePlaceId] = values;
+        const adventureId = googlePlaceId || `${name}_${cardIndex}`;
+
+        if (favorites.includes(adventureId)) {
+          btn.classList.add('active');
+          btn.textContent = '💖';
+          btn.title = 'Remove from favorites';
+        } else {
+          btn.classList.remove('active');
+          btn.textContent = '🤍';
+          btn.title = 'Add to favorites';
+        }
+      }
+    });
   }
 
   /**
@@ -8582,7 +8820,8 @@
     filterCity: '',
     filterTags: '',
     filterCost: '',
-    quickFilters: new Set()
+    quickFilters: new Set(),
+    showFavoritesOnly: false
   };
 
   /**
@@ -8797,7 +9036,24 @@
   function initQuickFilters() {
     const quickButtons = document.querySelectorAll(".quick-filter-btn");
 
+    // Handle favorites filter button separately
+    const favoritesBtn = document.getElementById("favoritesFilterBtn");
+    if (favoritesBtn) {
+      favoritesBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        activeFilters.showFavoritesOnly = !activeFilters.showFavoritesOnly;
+        favoritesBtn.classList.toggle("active");
+
+        applyFilters();
+        updateBreadcrumbMenu();
+        updateFiltersIndicator();
+      });
+    }
+
     quickButtons.forEach(btn => {
+      // Skip the favorites button (handled above)
+      if (btn.id === "favoritesFilterBtn") return;
+
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         const tag = btn.getAttribute("data-tag");
@@ -8850,36 +9106,56 @@
    * Apply All Active Filters
    */
   function applyFilters() {
-    console.log("📋 Applying filters...", activeFilters);
+    console.log("📋 Applying filters to all adventures...", activeFilters);
 
-    const adventureCards = document.querySelectorAll(".adventure-card");
-    let visibleCount = 0;
+    if (!window.adventuresData || window.adventuresData.length === 0) {
+      console.warn("No adventures data available for filtering");
+      return;
+    }
 
-    adventureCards.forEach(card => {
+    // Filter the complete dataset
+    const filteredData = window.adventuresData.filter((row, index) => {
+      const values = row.values[0];
+      const [
+        name,
+        googlePlaceId,
+        website,
+        tags,
+        driveTime,
+        hoursOfOperation,
+        activityDuration,
+        difficulty,
+        trailLength,
+        state,
+        city,
+        address,
+        phoneNumber,
+        googleRating,
+        cost,
+        directions,
+        description
+      ] = values;
+
       let visible = true;
 
-      // Extract card data
-      const titleEl = card.querySelector(".adventure-card-title");
-      const locationEl = card.querySelector(".adventure-card-location");
-      const difficultyEl = card.querySelector("[data-difficulty]");
-      const tagsEl = card.querySelector(".adventure-card-tags");
-
-      const title = titleEl?.textContent.toLowerCase() || "";
-      const location = locationEl?.textContent.toLowerCase() || "";
-      const difficulty = difficultyEl?.getAttribute("data-difficulty") || "";
-      const tagsText = tagsEl?.textContent.toLowerCase() || "";
+      const titleLower = (name || "").toLowerCase();
+      const tagsLower = (tags || "").toLowerCase();
+      const stateLower = (state || "").toLowerCase();
+      const cityLower = (city || "").toLowerCase();
+      const difficultyLower = (difficulty || "").toLowerCase();
+      const costLower = (cost || "").toLowerCase();
 
       // Apply search name filter
       if (activeFilters.searchName) {
         const searchTerm = activeFilters.searchName.toLowerCase();
-        if (!title.includes(searchTerm)) {
+        if (!titleLower.includes(searchTerm)) {
           visible = false;
         }
       }
 
       // Apply difficulty filter
       if (visible && activeFilters.filterDifficulty) {
-        if (difficulty.toLowerCase() !== activeFilters.filterDifficulty.toLowerCase()) {
+        if (difficultyLower !== activeFilters.filterDifficulty.toLowerCase()) {
           visible = false;
         }
       }
@@ -8887,7 +9163,7 @@
       // Apply state filter
       if (visible && activeFilters.filterState) {
         const stateTerm = activeFilters.filterState.toLowerCase();
-        if (!location.includes(stateTerm)) {
+        if (stateLower !== stateTerm) {
           visible = false;
         }
       }
@@ -8895,7 +9171,7 @@
       // Apply city filter
       if (visible && activeFilters.filterCity) {
         const cityTerm = activeFilters.filterCity.toLowerCase();
-        if (!location.includes(cityTerm)) {
+        if (cityLower !== cityTerm) {
           visible = false;
         }
       }
@@ -8903,7 +9179,7 @@
       // Apply tags filter
       if (visible && activeFilters.filterTags) {
         const tagTerm = activeFilters.filterTags.toLowerCase();
-        if (!tagsText.includes(tagTerm)) {
+        if (!tagsLower.includes(tagTerm)) {
           visible = false;
         }
       }
@@ -8911,32 +9187,42 @@
       // Apply cost filter
       if (visible && activeFilters.filterCost) {
         const costTerm = activeFilters.filterCost.toLowerCase();
-        if (!tagsText.includes(costTerm)) {
+        if (!costLower.includes(costTerm)) {
           visible = false;
         }
       }
 
       // Apply quick filters (OR logic - match any active quick filter)
       if (visible && activeFilters.quickFilters.size > 0) {
-        const cardTags = tagsText.split(",").map(t => t.trim().toLowerCase());
+        const tagsList = tagsLower.split(",").map(t => t.trim());
         const hasMatch = Array.from(activeFilters.quickFilters).some(qf => {
-          return cardTags.some(ct => ct.includes(qf.toLowerCase()));
+          return tagsList.some(tag => tag.includes(qf.toLowerCase()));
         });
-        visible = hasMatch;
+        if (!hasMatch) {
+          visible = false;
+        }
       }
 
-      // Show or hide card
-      card.style.display = visible ? "block" : "none";
-      if (visible) visibleCount++;
+      // Apply favorites filter
+      if (visible && activeFilters.showFavoritesOnly) {
+        const adventureId = googlePlaceId || `${name}_${index}`;
+        if (!favorites.includes(adventureId)) {
+          visible = false;
+        }
+      }
+
+      return visible;
     });
 
-    // Update results count
-    const resultsCount = document.getElementById("resultsCount");
-    if (resultsCount) {
-      resultsCount.textContent = `${visibleCount} adventures`;
-    }
+    console.log(`✓ Filtered ${filteredData.length} adventures from ${window.adventuresData.length} total`);
 
-    console.log(`✓ Filters applied - ${visibleCount} adventures visible`);
+    // Re-render cards with filtered data and reset to page 1
+    renderAdventureCards(filteredData);
+
+    // Update results count
+    updateResultsCount(filteredData.length);
+
+    console.log(`✓ Filters applied - showing ${filteredData.length} adventures`);
   }
 
   /**
@@ -8951,28 +9237,147 @@
       return;
     }
 
-    const filters = [];
+    // Clear existing breadcrumbs
+    container.innerHTML = "";
 
-    if (activeFilters.searchName) filters.push(`🔍 ${activeFilters.searchName}`);
-    if (activeFilters.filterDifficulty) filters.push(`⛰️ ${activeFilters.filterDifficulty}`);
-    if (activeFilters.filterState) filters.push(`📍 ${activeFilters.filterState}`);
-    if (activeFilters.filterCity) filters.push(`🏙️ ${activeFilters.filterCity}`);
-    if (activeFilters.filterTags) filters.push(`🏷️ ${activeFilters.filterTags}`);
-    if (activeFilters.filterCost) filters.push(`💰 ${activeFilters.filterCost}`);
+    let filterCount = 0;
 
+    // Helper function to create a removable breadcrumb
+    function createBreadcrumb(icon, label, value, filterType, filterValue) {
+      const crumb = document.createElement("span");
+      crumb.className = "filter-breadcrumb";
+      crumb.innerHTML = `
+        <span class="filter-breadcrumb-type">${icon} ${label}:</span>
+        <span class="filter-breadcrumb-value">${value}</span>
+        <span class="filter-breadcrumb-remove" title="Remove filter">×</span>
+      `;
+
+      // Add click handler to remove button
+      const removeBtn = crumb.querySelector(".filter-breadcrumb-remove");
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeFilter(filterType, filterValue);
+      });
+
+      return crumb;
+    }
+
+    // Add breadcrumbs for each active filter
+    if (activeFilters.searchName) {
+      container.appendChild(createBreadcrumb("🔍", "Name", activeFilters.searchName, "searchName", null));
+      filterCount++;
+    }
+
+    if (activeFilters.filterDifficulty) {
+      container.appendChild(createBreadcrumb("⛰️", "Difficulty", activeFilters.filterDifficulty, "filterDifficulty", null));
+      filterCount++;
+    }
+
+    if (activeFilters.filterState) {
+      container.appendChild(createBreadcrumb("📍", "State", activeFilters.filterState, "filterState", null));
+      filterCount++;
+    }
+
+    if (activeFilters.filterCity) {
+      container.appendChild(createBreadcrumb("🏙️", "City", activeFilters.filterCity, "filterCity", null));
+      filterCount++;
+    }
+
+    if (activeFilters.filterTags) {
+      container.appendChild(createBreadcrumb("🏷️", "Tags", activeFilters.filterTags, "filterTags", null));
+      filterCount++;
+    }
+
+    if (activeFilters.filterCost) {
+      container.appendChild(createBreadcrumb("💰", "Cost", activeFilters.filterCost, "filterCost", null));
+      filterCount++;
+    }
+
+    // Add breadcrumbs for quick filters
     activeFilters.quickFilters.forEach(qf => {
-      filters.push(`✨ ${qf}`);
+      container.appendChild(createBreadcrumb("✨", "Tag", qf, "quickFilter", qf));
+      filterCount++;
     });
 
-    if (filters.length === 0) {
+    // Add favorites filter breadcrumb
+    if (activeFilters.showFavoritesOnly) {
+      container.appendChild(createBreadcrumb("💖", "Show", "Favorites Only", "showFavoritesOnly", null));
+      filterCount++;
+    }
+
+    // Show/hide menu based on filter count
+    if (filterCount === 0) {
       container.innerHTML = '<span class="breadcrumb-empty">No active filters</span>';
       menu.style.display = "none";
     } else {
-      container.innerHTML = filters.map(f => `<span class="breadcrumb-filter">${f}</span>`).join("");
       menu.style.display = "flex";
     }
 
-    console.log(`✓ Breadcrumb updated with ${filters.length} active filters`);
+    console.log(`✓ Breadcrumb updated with ${filterCount} active filters`);
+  }
+
+  /**
+   * Remove an individual filter
+   */
+  function removeFilter(filterType, filterValue) {
+    console.log(`🗑️ Removing filter: ${filterType}`, filterValue);
+
+    switch (filterType) {
+      case "searchName":
+        activeFilters.searchName = "";
+        const nameInput = document.getElementById("searchName");
+        if (nameInput) nameInput.value = "";
+        break;
+
+      case "filterDifficulty":
+        activeFilters.filterDifficulty = "";
+        const difficultyInput = document.getElementById("filterDifficulty");
+        if (difficultyInput) difficultyInput.value = "";
+        break;
+
+      case "filterState":
+        activeFilters.filterState = "";
+        const stateInput = document.getElementById("filterState");
+        if (stateInput) stateInput.value = "";
+        break;
+
+      case "filterCity":
+        activeFilters.filterCity = "";
+        const cityInput = document.getElementById("filterCity");
+        if (cityInput) cityInput.value = "";
+        break;
+
+      case "filterTags":
+        activeFilters.filterTags = "";
+        const tagsInput = document.getElementById("filterTags");
+        if (tagsInput) tagsInput.value = "";
+        break;
+
+      case "filterCost":
+        activeFilters.filterCost = "";
+        const costInput = document.getElementById("filterCost");
+        if (costInput) costInput.value = "";
+        break;
+
+      case "quickFilter":
+        activeFilters.quickFilters.delete(filterValue);
+        // Also update the quick filter button state
+        const quickBtn = document.querySelector(`.quick-filter-btn[data-tag="${filterValue}"]`);
+        if (quickBtn) quickBtn.classList.remove("active");
+        break;
+
+      case "showFavoritesOnly":
+        activeFilters.showFavoritesOnly = false;
+        // Also update the favorites filter button state
+        const favoritesBtn = document.getElementById("favoritesFilterBtn");
+        if (favoritesBtn) favoritesBtn.classList.remove("active");
+        break;
+    }
+
+    // Re-apply filters and update UI
+    applyFilters();
+    updateBreadcrumbMenu();
+    updateFiltersIndicator();
   }
 
   /**
@@ -8998,6 +9403,7 @@
       (activeFilters.filterCity ? 1 : 0) +
       (activeFilters.filterTags ? 1 : 0) +
       (activeFilters.filterCost ? 1 : 0) +
+      (activeFilters.showFavoritesOnly ? 1 : 0) +
       activeFilters.quickFilters.size;
 
     if (badge) {
@@ -9046,7 +9452,8 @@
       filterCity: '',
       filterTags: '',
       filterCost: '',
-      quickFilters: new Set()
+      quickFilters: new Set(),
+      showFavoritesOnly: false
     };
 
     // Reapply filters (shows all)
