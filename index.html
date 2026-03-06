@@ -7312,80 +7312,92 @@
         </div>
       `;
 
-      // Add tag click handlers
-      card.querySelectorAll('.tag-pill').forEach(tagPill => {
-        tagPill.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const tag = tagPill.getAttribute('data-tag');
-          filterByTag(tag);
-        });
-      });
-
-      // Add details button click handler
-      const detailsBtn = card.querySelector('.card-details-btn');
-      if (detailsBtn) {
-        detailsBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          // Store the row object directly for editing
-          currentEditingRow = row;
-          showCardDetails(actualIndex);  // ✅ Use actualIndex
-        });
-      }
-
-      // Add directions button click handler
-      const directionsBtn = card.querySelector('.card-directions-btn');
-      if (directionsBtn) {
-        directionsBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const url = directionsBtn.getAttribute('data-directions');
-          if (url) {
-            window.open(url, '_blank');
-          }
-        });
-      }
-
-      // Add favorite button click handler
-      const favoriteBtn = card.querySelector('.card-favorite-btn');
-      if (favoriteBtn) {
-        favoriteBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          toggleCardFavorite(actualIndex, e, card);  // ✅ Use actualIndex
-        });
-      }
-
-      // Add rating stars click handlers
-      const ratingStars = card.querySelectorAll('.rating-star');
-      ratingStars.forEach(star => {
-        star.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const rating = parseInt(star.getAttribute('data-rating'));
-          setAdventureRating(actualIndex, rating, card);  // ✅ Use actualIndex
-        });
-      });
-
-      // Add clear rating handler (right-click on stars)
-      const ratingContainer = card.querySelector('.card-rating');
-      if (ratingContainer) {
-        ratingContainer.addEventListener('contextmenu', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          clearAdventureRating(actualIndex, card);  // ✅ Use actualIndex
-        });
-      }
-
-      // Add click handler to card to open details modal
-      card.addEventListener('click', (e) => {
-        // Don't trigger if clicking on a button or rating star
-        if (!e.target.closest('button') && !e.target.closest('.rating-star')) {
-          showCardDetails(actualIndex);  // ✅ Use actualIndex
-        }
-      });
-
+      // Don't add individual event listeners - use delegation instead (see below)
       cardsGrid.appendChild(card);
     });
 
-    // Update favorite buttons after rendering
+    // Update favorite buttons visual state after rendering
     updateCardFavoriteButtons();
+
+    // IMPORTANT: Remove old delegated listeners before adding new ones
+    // Create a new cardsGrid listener that handles ALL card interactions
+    // Clone and replace to remove old listeners
+    const newCardsGrid = cardsGrid.cloneNode(false);
+    cardsGrid.parentNode.replaceChild(newCardsGrid, cardsGrid);
+    const freshCardsGrid = document.getElementById("adventureCardsGrid");
+
+    // Restore children to the fresh grid
+    while (cardsGrid.firstChild) {
+      freshCardsGrid.appendChild(cardsGrid.firstChild);
+    }
+
+    // Add SINGLE delegated event listener for ALL card interactions
+    // This eliminates duplicate listeners and the favorite multiplication bug
+    freshCardsGrid.addEventListener('click', (e) => {
+      const tagPill = e.target.closest('.tag-pill');
+      if (tagPill) {
+        e.stopPropagation();
+        const tag = tagPill.getAttribute('data-tag');
+        filterByTag(tag);
+        return;
+      }
+
+      const detailsBtn = e.target.closest('.card-details-btn');
+      if (detailsBtn) {
+        e.stopPropagation();
+        const card = detailsBtn.closest('.adventure-card');
+        const idx = Number(card.dataset.index);
+        currentEditingRow = totalFilteredAdventures[idx]?.row;
+        showCardDetails(idx);
+        return;
+      }
+
+      const directionsBtn = e.target.closest('.card-directions-btn');
+      if (directionsBtn) {
+        e.stopPropagation();
+        const url = directionsBtn.getAttribute('data-directions');
+        if (url) window.open(url, '_blank');
+        return;
+      }
+
+      const favoriteBtn = e.target.closest('.card-favorite-btn');
+      if (favoriteBtn) {
+        e.stopPropagation();
+        const card = favoriteBtn.closest('.adventure-card');
+        const idx = Number(card.dataset.index);
+        toggleCardFavorite(idx, null, card);
+        return;
+      }
+
+      const ratingStar = e.target.closest('.rating-star');
+      if (ratingStar) {
+        e.stopPropagation();
+        const card = ratingStar.closest('.adventure-card');
+        const idx = Number(card.dataset.index);
+        const rating = parseInt(ratingStar.getAttribute('data-rating'));
+        setAdventureRating(idx, rating, card);
+        return;
+      }
+
+      // Card click for details (if not clicking button)
+      const card = e.target.closest('.adventure-card');
+      if (card && !e.target.closest('button') && !e.target.closest('.rating-star')) {
+        const idx = Number(card.dataset.index);
+        showCardDetails(idx);
+      }
+    }, false);
+
+    // Right-click handler for clear rating
+    freshCardsGrid.addEventListener('contextmenu', (e) => {
+      const ratingContainer = e.target.closest('.card-rating');
+      if (ratingContainer) {
+        e.preventDefault();
+        e.stopPropagation();
+        const card = ratingContainer.closest('.adventure-card');
+        const idx = Number(card.dataset.index);
+        clearAdventureRating(idx, card);
+      }
+    }, false);
 
     console.log(`✓ Rendered ${pageAdventures.length} cards for page ${currentPage}`);
   }
