@@ -7613,10 +7613,12 @@
         content: `
           <div class="modal-detail-section">
             <h3>📍 Location</h3>
-            <p><strong>City:</strong> ${city || "N/A"}</p>
+            <p><strong>Address:</strong> ${address || "Not available"}</p>
+            <p><strong>Drive Time:</strong> ${driveTime || "N/A"}</p>
+            <p><strong>Phone Number:</strong> ${phoneNumber ? `<a href="tel:${String(phoneNumber).replace(/\s+/g, '')}">${phoneNumber}</a>` : "Not available"}</p>
             <p><strong>State:</strong> ${state || "N/A"}</p>
-            ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
-            ${driveTime ? `<p><strong>Drive Time:</strong> ${driveTime}</p>` : ''}
+            <p><strong>City:</strong> ${city || "N/A"}</p>
+            <p><strong>Website:</strong> ${website ? `<a href="${website}" target="_blank" rel="noopener">Visit Website</a>` : "Not available"}</p>
           </div>
 
           ${description ? `
@@ -7653,14 +7655,15 @@
         id: "contact",
         label: "🔗 Contact",
         content: `
-          ${(phoneNumber || website || directions || links || links2) ? `
+          ${(phoneNumber || address || website || directions || links || links2) ? `
             <div class="modal-detail-section">
               <h3>Contact & Links</h3>
               ${phoneNumber ? `<p><strong>Phone:</strong> ${phoneNumber}</p>` : ''}
-              ${website ? `<p><strong>Website:</strong> <a href="${website}" target="_blank">${website}</a></p>` : ''}
-              ${directions ? `<p><strong>Directions:</strong> <a href="${directions}" target="_blank">Get Directions</a></p>` : ''}
-              ${links ? `<p><strong>Link:</strong> <a href="${links}" target="_blank">${links}</a></p>` : ''}
-              ${links2 ? `<p><strong>Additional Link:</strong> <a href="${links2}" target="_blank">${links2}</a></p>` : ''}
+              ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
+              ${website ? `<p><strong>Website:</strong> <a href="${website}" target="_blank" rel="noopener">${website}</a></p>` : ''}
+              ${directions ? `<p><strong>Directions:</strong> <a href="${directions}" target="_blank" rel="noopener">Get Directions</a></p>` : ''}
+              ${links ? `<p><strong>Link:</strong> <a href="${links}" target="_blank" rel="noopener">${links}</a></p>` : ''}
+              ${links2 ? `<p><strong>Additional Link:</strong> <a href="${links2}" target="_blank" rel="noopener">${links2}</a></p>` : ''}
             </div>
           ` : '<p>No contact information available</p>'}
         `
