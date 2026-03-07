@@ -4877,8 +4877,8 @@
         <button id="btnPopulateMissing" class="automation-btn">Populate Missing Fields</button>
         <button id="btnRefreshHours" class="automation-btn">Refresh Hours Only</button>
         <button id="btnRefreshAll" class="automation-btn">Refresh All Fields</button>
-        <button id="btnRefreshPlaceIds" class="automation-btn" style="background: #0ea5e9; border-color: #0ea5e9; color: white;">🔄 Refresh Place IDs</button>
-        <button id="btnSearchPlaceIds" class="automation-btn" style="background: #10b981; border-color: #10b981; color: white;">🔍 Search Place IDs</button>
+        <button id="btnRefreshPlaceIds" class="automation-btn" style="background: #0ea5e9; border-color: #0ea5e9; color: white; cursor: pointer; pointer-events: auto; position: relative; z-index: 100;">🔄 Refresh Place IDs</button>
+        <button id="btnSearchPlaceIds" class="automation-btn" style="background: #10b981; border-color: #10b981; color: white; cursor: pointer; pointer-events: auto; position: relative; z-index: 100;">🔍 Search Place IDs</button>
       </div>
 
       <!-- Skip Value Setting -->
@@ -11793,6 +11793,16 @@ COMMON ISSUES:
       // Get dry run status (no default to true - respect toggle state)
       const isDryRun = () => dryRunToggle?.classList.contains('on') ?? true;
 
+      // DIAGNOSTIC: Add mouseenter to verify buttons are actually receiving events
+      [freshBtnPopulateMissing, freshBtnRefreshHours, freshBtnRefreshAll, freshBtnSearchPlaceIds, freshBtnRefreshPlaceIds].forEach((btn, idx) => {
+        btn.addEventListener('mouseenter', () => {
+          console.log(`✓ Mouse entered button ${idx + 1}: ${btn.textContent}`);
+        });
+        btn.addEventListener('mouseleave', () => {
+          console.log(`✓ Mouse left button ${idx + 1}`);
+        });
+      });
+
       // Button 1: Populate Missing Fields
       freshBtnPopulateMissing.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -11832,6 +11842,40 @@ COMMON ISSUES:
         console.log('✓ Refresh Place IDs clicked - Dry Run:', isDryRun());
         await runGoogleAutomation('refreshPlaceIds', isDryRun());
       }, { passive: false });
+
+      // DIAGNOSTIC: Log button states after initialization
+      console.log('✓ Button diagnostic:', {
+        populateMissing: {
+          exists: !!freshBtnPopulateMissing,
+          disabled: freshBtnPopulateMissing?.disabled,
+          visible: freshBtnPopulateMissing?.offsetParent !== null,
+          styles: window.getComputedStyle(freshBtnPopulateMissing)?.pointerEvents
+        },
+        refreshHours: {
+          exists: !!freshBtnRefreshHours,
+          disabled: freshBtnRefreshHours?.disabled,
+          visible: freshBtnRefreshHours?.offsetParent !== null,
+          styles: window.getComputedStyle(freshBtnRefreshHours)?.pointerEvents
+        },
+        refreshAll: {
+          exists: !!freshBtnRefreshAll,
+          disabled: freshBtnRefreshAll?.disabled,
+          visible: freshBtnRefreshAll?.offsetParent !== null,
+          styles: window.getComputedStyle(freshBtnRefreshAll)?.pointerEvents
+        },
+        searchPlaceIds: {
+          exists: !!freshBtnSearchPlaceIds,
+          disabled: freshBtnSearchPlaceIds?.disabled,
+          visible: freshBtnSearchPlaceIds?.offsetParent !== null,
+          styles: window.getComputedStyle(freshBtnSearchPlaceIds)?.pointerEvents
+        },
+        refreshPlaceIds: {
+          exists: !!freshBtnRefreshPlaceIds,
+          disabled: freshBtnRefreshPlaceIds?.disabled,
+          visible: freshBtnRefreshPlaceIds?.offsetParent !== null,
+          styles: window.getComputedStyle(freshBtnRefreshPlaceIds)?.pointerEvents
+        }
+      });
 
       // Initialize skip value controls
       const skipInput = document.getElementById('automationSkipInput');
@@ -11875,6 +11919,17 @@ COMMON ISSUES:
       }
 
       console.log('✓ Automation buttons initialized successfully');
+
+      // CRITICAL: Ensure parent containers don't block pointer events
+      const automationCard = document.querySelector('.automation-card');
+      const automationBody = document.querySelector('.automation-body');
+      const automationButtons = document.querySelector('.automation-buttons');
+      
+      if (automationCard) automationCard.style.pointerEvents = 'auto';
+      if (automationBody) automationBody.style.pointerEvents = 'auto';
+      if (automationButtons) automationButtons.style.pointerEvents = 'auto';
+
+      console.log('✓ Parent container pointer-events verified');
     }
 
     /**
