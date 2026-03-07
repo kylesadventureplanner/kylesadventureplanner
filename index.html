@@ -10580,6 +10580,7 @@ undefined
       const actionEl = document.getElementById('automationProgressAction');
       const logEl = document.getElementById('automationProgressLog');
       const statusEl = document.getElementById('automationProgressStatus');
+      const previewEl = document.getElementById('automationProgressPreview');
 
       if (titleEl) titleEl.textContent = 'Google Data Automation';
       if (actionEl) actionEl.textContent = title + (isDryRun ? ' (Dry Run)' : '');
@@ -10587,6 +10588,11 @@ undefined
       if (statusEl) {
         statusEl.textContent = 'Starting...';
         statusEl.className = 'automation-progress-status running';
+      }
+
+      // Show preview section initially
+      if (previewEl) {
+        previewEl.style.display = 'block';
       }
 
       setAutomationProgress(0, 1);
@@ -10617,6 +10623,12 @@ undefined
     function addAutomationLog(message, type = 'info') {
       const logEl = document.getElementById('automationProgressLog');
       if (!logEl) return;
+
+      // Hide preview section once actual processing starts
+      const previewEl = document.getElementById('automationProgressPreview');
+      if (previewEl && message && /^\[\d+\/\d+\]\s+Processing:/.test(message)) {
+        previewEl.style.display = 'none';
+      }
 
       const timestamp = new Date().toLocaleTimeString();
       const icons = {
@@ -10689,6 +10701,207 @@ undefined
     /**
      * Run Google automation with visual progress
      */
+    /**
+     * Check if a Place ID is valid (non-empty string)
+     */
+    function isValidPlaceId(placeId) {
+      return placeId && String(placeId).trim().length > 0 && placeId !== 'undefined' && placeId !== 'null';
+    }
+
+    /**
+     * Analyze which locations will be updated and what changes will be made
+     */
+    function analyzeAutomationChanges(actionType) {
+      const changes = [];
+      const skipped = [];
+
+      if (!window.adventuresData || window.adventuresData.length === 0) {
+        return { changes, skipped };
+      }
+
+      const targetCount = Math.min(10, window.adventuresData.length);
+
+      for (let i = 0; i < targetCount; i++) {
+        const row = window.adventuresData[i];
+        const values = row.values[0];
+        const name = values[0] || 'Unknown';
+        const placeId = values[1];
+        const hoursOfOperation = values[5];
+        const website = values[2];
+        const phoneNumber = values[12];
+        const address = values[11];
+        const rating = values[13];
+
+        const locationChanges = {
+          name,
+          placeId,
+          updates: [],
+          skipped: null
+        };
+
+        // For actions that need Place ID
+        if (['refreshHours', 'refreshAll', 'populateMissing'].includes(actionType)) {
+          if (!isValidPlaceId(placeId)) {
+            locationChanges.skipped = 'missing-place-id';
+            skipped.push(locationChanges);
+            continue;
+          }
+        }
+
+        if (actionType === 'searchPlaceIds' && !isValidPlaceId(placeId)) {
+          locationChanges.updates.push({
+            field: 'Google Place ID',
+            oldValue: '(empty)',
+            newValue: '(would be populated from search)',
+            status: 'would-update'
+          });
+        } else if (actionType === 'refreshHours' && isValidPlaceId(placeId)) {
+          if (!hoursOfOperation) {
+            locationChanges.updates.push({
+              field: 'Hours of Operation',
+              oldValue: '(empty)',
+              newValue: '(fetched from Google)',
+              status: 'would-update'
+            });
+          }
+        } else if (actionType === 'refreshAll' && isValidPlaceId(placeId)) {
+          const fieldsToCheck = [
+            { index: 5, name: 'Hours of Operation', value: hoursOfOperation },
+            { index: 2, name: 'Website', value: website },
+            { index: 12, name: 'Phone Number', value: phoneNumber },
+            { index: 11, name: 'Address', value: address },
+            { index: 13, name: 'Google Rating', value: rating }
+          ];
+
+          fieldsToCheck.forEach(field => {
+            if (!field.value) {
+              locationChanges.updates.push({
+                field: field.name,
+                oldValue: '(empty)',
+                newValue: '(fetched from Google)',
+                status: 'would-update'
+              });
+            }
+          });
+        } else if (actionType === 'populateMissing' && isValidPlaceId(placeId)) {
+          const fieldsToCheck = [
+            { index: 5, name: 'Hours of Operation', value: hoursOfOperation },
+            { index: 2, name: 'Website', value: website },
+            { index: 12, name: 'Phone Number', value: phoneNumber },
+            { index: 11, name: 'Address', value: address }
+          ];
+
+          fieldsToCheck.forEach(field => {
+            if (!field.value) {
+              locationChanges.updates.push({
+                field: field.name,
+                oldValue: '(empty)',
+                newValue: '(fetched from Google)',
+                status: 'would-update'
+              });
+            }
+          });
+        }
+
+        if (locationChanges.updates.length > 0) {
+          changes.push(locationChanges);
+        }
+      }
+
+      return { changes, skipped };
+    }
+
+    /**
+     * Show detailed preview of what will be updated
+     */
+    function showAutomationPreview(actionType) {
+      const previewEl = document.getElementById('automationPreviewList');
+      if (!previewEl) return;
+
+      const { changes, skipped } = analyzeAutomationChanges(actionType);
+
+      if (changes.length === 0 && skipped.length === 0) {
+        previewEl.innerHTML = `
+          <div style="padding: 12px; color: #9ca3af; font-style: italic;">
+            No locations would be updated by this action. All relevant fields appear to be populated or unavailable.
+          </div>
+        `;
+        return;
+      }
+
+      let html = `<div style="padding: 8px 0;">`;
+
+      // Show locations that WILL be updated
+      if (changes.length > 0) {
+        html += `<div style="margin-bottom: 16px;">`;
+        html += `<div style="font-size: 12px; font-weight: 600; color: #059669; margin-bottom: 8px;">✓ Will Be Updated (${changes.length})</div>`;
+
+        changes.forEach((change) => {
+          html += `
+            <div style="background: #ecfdf5; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+              <div style="font-weight: 600; color: #1d4ed8; margin-bottom: 8px; font-size: 14px;">
+                📍 ${change.name}
+                <span style="color: #10b981; margin-left: 8px; font-size: 12px;">✓ Has Place ID</span>
+              </div>
+              <div style="margin-left: 12px; border-left: 2px solid #d1fae5; padding-left: 8px;">
+                ${change.updates.map(update => `
+                  <div style="font-size: 12px; margin-bottom: 6px; color: #4b5563;">
+                    <span style="font-weight: 600; color: #2563eb;">${update.field}:</span>
+                    <span style="color: #9ca3af;">${update.oldValue}</span>
+                    <span style="color: #6b7280; margin: 0 4px;">→</span>
+                    <span style="color: #10b981; font-weight: 500;">${update.newValue}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      // Show locations that CANNOT be updated
+      if (skipped.length > 0) {
+        html += `<div style="margin-bottom: 12px;">`;
+        html += `<div style="font-size: 12px; font-weight: 600; color: #dc2626; margin-bottom: 8px;">✗ Cannot Update (${skipped.length})</div>`;
+
+        skipped.forEach((skip) => {
+          const reasonText = skip.skipped === 'missing-place-id' 
+            ? '❌ Missing Google Place ID - Cannot fetch data without Place ID'
+            : '❌ Invalid Google Place ID - Place ID is invalid';
+          
+          const reasonBg = skip.skipped === 'missing-place-id' 
+            ? '#fef2f2' 
+            : '#fef2f2';
+          const reasonBorder = skip.skipped === 'missing-place-id' 
+            ? '#fca5a5' 
+            : '#fca5a5';
+          const reasonColor = skip.skipped === 'missing-place-id' 
+            ? '#dc2626' 
+            : '#dc2626';
+
+          html += `
+            <div style="background: ${reasonBg}; border: 1px solid ${reasonBorder}; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+              <div style="font-weight: 600; color: #7f1d1d; margin-bottom: 8px; font-size: 14px;">
+                📍 ${skip.name}
+              </div>
+              <div style="margin-left: 12px; border-left: 2px solid #fecaca; padding-left: 8px;">
+                <div style="font-size: 12px; color: ${reasonColor}; font-weight: 500;">
+                  ${reasonText}
+                </div>
+                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">
+                  <strong>What to do:</strong> Add a Google Place ID to this location first using the "Search Place IDs" button.
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+      previewEl.innerHTML = html;
+    }
+
     async function runGoogleAutomation(actionType, isDryRun) {
       const actionTitles = {
         populateMissing: 'Populate Missing Fields',
@@ -10700,6 +10913,9 @@ undefined
       const title = actionTitles[actionType] || 'Google Automation';
 
       showAutomationProgress(title, isDryRun);
+
+      // Show preview of changes BEFORE starting
+      showAutomationPreview(actionType);
 
       try {
         addAutomationLog(`Starting ${title.toLowerCase()}...`, 'info');
@@ -11161,6 +11377,13 @@ undefined
         </div>
         <div id="automationProgressPercent" class="automation-progress-percent">0%</div>
       </div>
+    </div>
+    <!-- Preview Section (shows before automation starts) -->
+    <div id="automationProgressPreview" style="background: #f0fdf4; border-bottom: 1px solid #d1d5db; padding: 12px 16px; max-height: 200px; overflow-y: auto; display: none;">
+      <div style="font-size: 13px; font-weight: 600; color: #047857; margin-bottom: 10px;">
+        📋 Preview: Locations to Update
+      </div>
+      <div id="automationPreviewList"></div>
     </div>
     <div id="automationProgressLog" class="automation-progress-log"></div>
   </div>
