@@ -7776,32 +7776,32 @@
    */
   function renderStarRating(rating) {
     if (!rating) return '<span style="color: #9ca3af;">No rating</span>';
-    
+
     const numRating = parseFloat(rating);
     if (isNaN(numRating)) return '<span style="color: #9ca3af;">No rating</span>';
-    
+
     let starsHtml = '';
     const fullStars = Math.floor(numRating);
     const hasHalfStar = numRating % 1 >= 0.5;
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-    
+
     // Full stars
     for (let i = 0; i < fullStars; i++) {
       starsHtml += '<span style="color: #fbbf24; font-size: 16px;">★</span>';
     }
-    
+
     // Half star
     if (hasHalfStar) {
       starsHtml += '<span style="color: #fbbf24; font-size: 16px;">⯨</span>';
     }
-    
+
     // Empty stars
     for (let i = 0; i < emptyStars; i++) {
       starsHtml += '<span style="color: #d1d5db; font-size: 16px;">☆</span>';
     }
-    
+
     starsHtml += ` <span style="color: #6b7280; font-size: 13px; margin-left: 4px;">(${numRating.toFixed(1)})</span>`;
-    
+
     return starsHtml;
   }
 
