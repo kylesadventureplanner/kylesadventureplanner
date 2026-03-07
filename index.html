@@ -7414,7 +7414,7 @@
       const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
       // Check if has valid Place ID
-      const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 && 
+      const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 &&
                         googlePlaceId !== 'undefined' && googlePlaceId !== 'null' &&
                         googlePlaceId !== 'SKIP' && !String(googlePlaceId).toUpperCase().includes('SKIP');
 
@@ -7584,10 +7584,10 @@
         const placeId = directionsBtn.getAttribute('data-placeid');
         const address = directionsBtn.getAttribute('data-address');
         const name = directionsBtn.getAttribute('data-name');
-        
+
         // Generate Google Maps directions URL
         let mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=';
-        
+
         if (placeId && placeId.trim()) {
           // Use Place ID for most accurate directions
           mapsUrl += `&destination_place_id=${encodeURIComponent(placeId)}`;
@@ -7598,7 +7598,7 @@
           // Fall back to name search
           mapsUrl += encodeURIComponent(name);
         }
-        
+
         window.open(mapsUrl, '_blank');
         return;
       }
@@ -10806,7 +10806,7 @@ undefined
 
       if (modal) modal.classList.remove('visible');
       if (backdrop) backdrop.classList.remove('visible');
-      
+
       // Hide and remove apply button when closing
       if (applyBtn) applyBtn.style.display = 'none';
     }
@@ -10820,7 +10820,7 @@ undefined
 
       // Check if button already exists
       let applyBtn = document.getElementById('automationApplyBtn');
-      
+
       if (!applyBtn) {
         // Create the button
         applyBtn = document.createElement('button');
@@ -10828,7 +10828,7 @@ undefined
         applyBtn.className = 'automation-btn-primary';
         applyBtn.innerHTML = '✅ Apply Changes Now';
         applyBtn.style.cssText = 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;';
-        
+
         applyBtn.onmouseover = () => {
           applyBtn.style.transform = 'translateY(-2px)';
           applyBtn.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
@@ -10837,22 +10837,22 @@ undefined
           applyBtn.style.transform = 'translateY(0)';
           applyBtn.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
         };
-        
+
         applyBtn.onclick = async () => {
           // Confirm with user
           if (confirm('Apply all changes to Excel? This will update your spreadsheet with the previewed changes.')) {
             applyBtn.disabled = true;
             applyBtn.innerHTML = '⏳ Applying...';
             applyBtn.style.opacity = '0.6';
-            
+
             // Run the automation for real (not dry run)
             await runGoogleAutomation(actionType, false);
-            
+
             // Hide the button after applying
             applyBtn.style.display = 'none';
           }
         };
-        
+
         // Insert before the close button
         const closeBtn = footer.querySelector('.automation-btn-secondary');
         if (closeBtn) {
@@ -10861,7 +10861,7 @@ undefined
           footer.appendChild(applyBtn);
         }
       }
-      
+
       // Show the button
       applyBtn.style.display = 'inline-block';
       applyBtn.disabled = false;
@@ -11770,6 +11770,401 @@ undefined
 </div>
 
 <div id="automationProgressBackdrop" class="modal-backdrop" style="z-index: 2000;"></div>
+
+
+<script>
+  (function () {
+    const GA_COL = {
+      PLACE_ID: 1,
+      WEBSITE: 2,
+      HOURS: 5,
+      ADDRESS: 11,
+      PHONE: 12,
+      RATING: 13,
+      DIRECTIONS: 15
+    };
+
+    function gaStr(v) {
+      return String(v == null ? "" : v).trim();
+    }
+
+    function gaEmpty(v) {
+      return gaStr(v) === "";
+    }
+
+    function gaNormalizeHours(hours) {
+      if (!hours) return "";
+      if (typeof hours === "string") return hours;
+      if (Array.isArray(hours?.weekdayDescriptions) && hours.weekdayDescriptions.length) {
+        return hours.weekdayDescriptions.join(" | ");
+      }
+      if (Array.isArray(hours?.weekdayText) && hours.weekdayText.length) {
+        return hours.weekdayText.join(" | ");
+      }
+      return "";
+    }
+
+    function gaBuildDirections(placeId, address, name) {
+      const pid = gaStr(placeId);
+      const addr = gaStr(address);
+      const nm = gaStr(name);
+      if (pid) {
+        return "https://www.google.com/maps/dir/?api=1&destination_place_id=" + encodeURIComponent(pid);
+      }
+      const q = addr || nm;
+      if (!q) return "";
+      return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(q);
+    }
+
+    function gaPlaceIdStatus(placeId) {
+      const raw = gaStr(placeId);
+      const skipValue = gaStr(window.automationSkipValue).toUpperCase();
+
+      if (skipValue && raw.toUpperCase() === skipValue) {
+        return { status: "skip-by-user", value: raw, reason: "Place ID matches configured skip value" };
+      }
+
+      if (!raw) {
+        return { status: "missing-place-id", value: "", reason: "Place ID is empty" };
+      }
+
+      const upper = raw.toUpperCase();
+      if (["N/A", "NA", "NONE", "NULL", "UNDEFINED", "SKIP"].includes(upper)) {
+        return { status: "invalid-place-id", value: raw, reason: "Place ID contains a placeholder value" };
+      }
+
+      if (/\s/.test(raw) || raw.length < 8) {
+        return { status: "invalid-place-id", value: raw, reason: "Place ID format appears invalid" };
+      }
+
+      return { status: "valid", value: raw, reason: "OK" };
+    }
+
+    function gaFieldPlan(actionType, values) {
+      const website = gaStr(values[GA_COL.WEBSITE]);
+      const hours = gaStr(values[GA_COL.HOURS]);
+      const address = gaStr(values[GA_COL.ADDRESS]);
+      const phone = gaStr(values[GA_COL.PHONE]);
+      const rating = gaStr(values[GA_COL.RATING]);
+      const directions = gaStr(values[GA_COL.DIRECTIONS]);
+
+      if (actionType === "refreshHours") {
+        return [{ field: "Hours of Operation", col: GA_COL.HOURS, oldValue: hours }];
+      }
+
+      if (actionType === "refreshAll") {
+        return [
+          { field: "Hours of Operation", col: GA_COL.HOURS, oldValue: hours },
+          { field: "Website", col: GA_COL.WEBSITE, oldValue: website },
+          { field: "Phone Number", col: GA_COL.PHONE, oldValue: phone },
+          { field: "Address", col: GA_COL.ADDRESS, oldValue: address },
+          { field: "Google Rating", col: GA_COL.RATING, oldValue: rating },
+          { field: "Directions", col: GA_COL.DIRECTIONS, oldValue: directions }
+        ];
+      }
+
+      if (actionType === "populateMissing") {
+        const missing = [];
+        if (gaEmpty(hours)) missing.push({ field: "Hours of Operation", col: GA_COL.HOURS, oldValue: "" });
+        if (gaEmpty(website)) missing.push({ field: "Website", col: GA_COL.WEBSITE, oldValue: "" });
+        if (gaEmpty(phone)) missing.push({ field: "Phone Number", col: GA_COL.PHONE, oldValue: "" });
+        if (gaEmpty(address)) missing.push({ field: "Address", col: GA_COL.ADDRESS, oldValue: "" });
+        if (gaEmpty(rating)) missing.push({ field: "Google Rating", col: GA_COL.RATING, oldValue: "" });
+        if (gaEmpty(directions)) missing.push({ field: "Directions", col: GA_COL.DIRECTIONS, oldValue: "" });
+        return missing;
+      }
+
+      if (actionType === "searchPlaceIds") {
+        const placeId = gaStr(values[GA_COL.PLACE_ID]);
+        if (gaEmpty(placeId)) {
+          return [{ field: "Google Place ID", col: GA_COL.PLACE_ID, oldValue: "" }];
+        }
+      }
+
+      return [];
+    }
+
+    async function gaPatchRow(rowIndex, currentValues, updatesByCol) {
+      const merged = Array.isArray(currentValues) ? currentValues.slice() : [];
+      Object.keys(updatesByCol).forEach((k) => {
+        merged[Number(k)] = updatesByCol[k];
+      });
+
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values: [merged] })
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(`Excel PATCH failed (${response.status})${text ? `: ${text}` : ""}`);
+      }
+    }
+
+    window.analyzeAutomationChanges = function (actionType) {
+      const changes = [];
+      const skipped = [];
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      const previewLimit = Math.min(rows.length, 40);
+
+      for (let i = 0; i < previewLimit; i++) {
+        const row = rows[i];
+        const values = row?.values?.[0] || [];
+        const name = gaStr(values[0]) || "Unknown";
+        const pidInfo = gaPlaceIdStatus(values[GA_COL.PLACE_ID]);
+
+        if (pidInfo.status === "skip-by-user") {
+          skipped.push({ name, skipped: "skip-by-user" });
+          continue;
+        }
+
+        if (actionType !== "searchPlaceIds" && pidInfo.status !== "valid") {
+          skipped.push({ name, skipped: pidInfo.status });
+          continue;
+        }
+
+        const plan = gaFieldPlan(actionType, values);
+        if (!plan.length) {
+          if (actionType === "populateMissing") {
+            skipped.push({ name, skipped: "no-missing-fields" });
+          }
+          continue;
+        }
+
+        changes.push({
+          name,
+          placeId: gaStr(values[GA_COL.PLACE_ID]),
+          updates: plan.map((p) => ({
+            field: p.field,
+            oldValue: p.oldValue || "(empty)",
+            newValue: actionType === "searchPlaceIds" ? "(found via search)" : "(fetched from Google)",
+            status: "would-update"
+          }))
+        });
+      }
+
+      return { changes, skipped };
+    };
+
+    window.runGoogleAutomation = async function (actionType, isDryRun) {
+      const actionTitles = {
+        populateMissing: "Populate Missing Fields",
+        refreshHours: "Refresh Hours Only",
+        refreshAll: "Refresh All Fields",
+        searchPlaceIds: "Search Place IDs"
+      };
+
+      const title = actionTitles[actionType] || "Google Automation";
+      showAutomationProgress(title, isDryRun);
+      showAutomationPreview(actionType);
+
+      if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) {
+        addAutomationLog("No adventure data loaded. Please sign in and load data first.", "error");
+        updateAutomationStatus("Error: No data loaded", false, true);
+        return;
+      }
+
+      if (!accessToken && !isDryRun) {
+        addAutomationLog("Not signed in. Sign in before applying changes.", "error");
+        updateAutomationStatus("Error: Not authenticated", false, true);
+        return;
+      }
+
+      addAutomationLog(`Starting ${title.toLowerCase()}...`, "info");
+      if (isDryRun) addAutomationLog("DRY RUN MODE: No changes will be written to Excel", "warning");
+
+      const rows = window.adventuresData;
+      const total = rows.length;
+      let processed = 0;
+      let updated = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      updateAutomationStatus(`Processing 0 of ${total} adventures...`);
+      setAutomationProgress(0, total);
+
+      for (let i = 0; i < total; i++) {
+        const row = rows[i];
+        const values = row?.values?.[0] || [];
+        const name = gaStr(values[0]) || `Row ${i + 1}`;
+        const city = gaStr(values[10]);
+        const state = gaStr(values[9]);
+
+        processed++;
+        addAutomationLog(`[${processed}/${total}] Processing: ${name}`, "progress");
+
+        try {
+          let placeId = gaStr(values[GA_COL.PLACE_ID]);
+          const pidInfo = gaPlaceIdStatus(placeId);
+
+          if (pidInfo.status === "skip-by-user") {
+            skipped++;
+            addAutomationLog(`  -> Skipped: ${pidInfo.reason}`, "warning");
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          if (actionType === "searchPlaceIds") {
+            if (pidInfo.status === "valid") {
+              skipped++;
+              addAutomationLog("  -> Skipped: Place ID already exists", "info");
+              updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+              setAutomationProgress(processed, total);
+              continue;
+            }
+
+            const query = [name, city, state].filter(Boolean).join(" ");
+            if (!query) {
+              skipped++;
+              addAutomationLog("  -> Skipped: not enough data to search Place ID", "warning");
+              updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+              setAutomationProgress(processed, total);
+              continue;
+            }
+
+            addAutomationLog(`  -> Searching Place ID for: ${query}`, "info");
+            const results = await searchPlaces(query);
+            if (!Array.isArray(results) || !results.length || !gaStr(results[0].placeId)) {
+              skipped++;
+              addAutomationLog("  -> No Place ID found", "warning");
+              updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+              setAutomationProgress(processed, total);
+              continue;
+            }
+
+            placeId = gaStr(results[0].placeId);
+            const updates = {};
+            updates[GA_COL.PLACE_ID] = placeId;
+            if (gaEmpty(values[GA_COL.DIRECTIONS])) {
+              updates[GA_COL.DIRECTIONS] = gaBuildDirections(placeId, gaStr(values[GA_COL.ADDRESS]), name);
+            }
+
+            if (isDryRun) {
+              updated++;
+              addAutomationLog(`  -> [DRY RUN] Would set Place ID: ${placeId}`, "warning");
+            } else {
+              await gaPatchRow(i, values, updates);
+              updated++;
+              addAutomationLog(`  -> Updated Place ID: ${placeId}`, "success");
+            }
+
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          if (pidInfo.status !== "valid") {
+            skipped++;
+            addAutomationLog(`  -> Skipped: ${pidInfo.reason}`, "warning");
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          const details = await getPlaceDetails(placeId);
+          const fetched = {
+            hours: gaNormalizeHours(details?.hours),
+            website: gaStr(details?.website),
+            phone: gaStr(details?.phone),
+            address: gaStr(details?.address),
+            rating: details?.rating == null ? "" : String(details.rating),
+            directions: gaBuildDirections(placeId, gaStr(details?.address) || gaStr(values[GA_COL.ADDRESS]), name)
+          };
+
+          const updates = {};
+          const changedFields = [];
+
+          function setIfNeeded(col, newVal, fieldName, onlyIfMissing) {
+            if (gaEmpty(newVal)) return;
+            const currentVal = gaStr(values[col]);
+            if (onlyIfMissing) {
+              if (!gaEmpty(currentVal)) return;
+            } else {
+              if (currentVal === gaStr(newVal)) return;
+            }
+            updates[col] = newVal;
+            changedFields.push(fieldName);
+          }
+
+          if (actionType === "populateMissing") {
+            setIfNeeded(GA_COL.HOURS, fetched.hours, "Hours of Operation", true);
+            setIfNeeded(GA_COL.WEBSITE, fetched.website, "Website", true);
+            setIfNeeded(GA_COL.PHONE, fetched.phone, "Phone Number", true);
+            setIfNeeded(GA_COL.ADDRESS, fetched.address, "Address", true);
+            setIfNeeded(GA_COL.RATING, fetched.rating, "Google Rating", true);
+            setIfNeeded(GA_COL.DIRECTIONS, fetched.directions, "Directions", true);
+          } else if (actionType === "refreshHours") {
+            setIfNeeded(GA_COL.HOURS, fetched.hours, "Hours of Operation", false);
+          } else if (actionType === "refreshAll") {
+            setIfNeeded(GA_COL.HOURS, fetched.hours, "Hours of Operation", false);
+            setIfNeeded(GA_COL.WEBSITE, fetched.website, "Website", false);
+            setIfNeeded(GA_COL.PHONE, fetched.phone, "Phone Number", false);
+            setIfNeeded(GA_COL.ADDRESS, fetched.address, "Address", false);
+            setIfNeeded(GA_COL.RATING, fetched.rating, "Google Rating", false);
+            setIfNeeded(GA_COL.DIRECTIONS, fetched.directions, "Directions", false);
+          }
+
+          if (!Object.keys(updates).length) {
+            skipped++;
+            addAutomationLog("  -> No fields needed updating", "info");
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          if (isDryRun) {
+            updated++;
+            addAutomationLog(`  -> [DRY RUN] Would update: ${changedFields.join(", ")}`, "warning");
+          } else {
+            await gaPatchRow(i, values, updates);
+            updated++;
+            addAutomationLog(`  -> Updated: ${changedFields.join(", ")}`, "success");
+          }
+        } catch (err) {
+          errors++;
+          addAutomationLog(`  -> Error: ${err.message}`, "error");
+        }
+
+        updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+        setAutomationProgress(processed, total);
+      }
+
+      setAutomationProgress(total, total);
+      addAutomationLog("", "info");
+      addAutomationLog("=== SUMMARY ===", "info");
+      addAutomationLog(`Total processed: ${processed}`, "success");
+      addAutomationLog(`${isDryRun ? "Would update" : "Updated"}: ${updated}`, isDryRun ? "warning" : "success");
+      addAutomationLog(`Skipped: ${skipped}`, "info");
+      addAutomationLog(`Errors: ${errors}`, errors > 0 ? "error" : "success");
+
+      if (isDryRun) {
+        addAutomationLog("", "info");
+        addAutomationLog("Dry run complete. No Excel changes were made.", "warning");
+        updateAutomationStatus("Dry run complete - Ready to apply changes", true, false);
+        showApplyChangesButton(actionType);
+      } else {
+        if (updated > 0) {
+          try {
+            await loadTable();
+          } catch (reloadErr) {
+            addAutomationLog(`Reload warning: ${reloadErr.message}`, "warning");
+          }
+        }
+        updateAutomationStatus("Automation complete", true, false);
+      }
+
+      const toastType = errors > 0 ? "warning" : "success";
+      const toastMsg = `${title}: ${updated} ${isDryRun ? "planned" : "updated"}, ${skipped} skipped${errors ? `, ${errors} errors` : ""}`;
+      showToast(toastMsg, toastType, 4000);
+    };
+  })();
+</script>
 
 </body>
 </html>
