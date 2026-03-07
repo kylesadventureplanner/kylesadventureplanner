@@ -7109,7 +7109,7 @@
       const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
       // Check if has valid Place ID
-      const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 && 
+      const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 &&
                         googlePlaceId !== 'undefined' && googlePlaceId !== 'null' &&
                         googlePlaceId !== 'SKIP' && !String(googlePlaceId).toUpperCase().includes('SKIP');
 
@@ -7413,6 +7413,11 @@
       // Parse tags
       const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
+      // Check if has valid Place ID
+      const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 && 
+                        googlePlaceId !== 'undefined' && googlePlaceId !== 'null' &&
+                        googlePlaceId !== 'SKIP' && !String(googlePlaceId).toUpperCase().includes('SKIP');
+
       // Create card element
       const card = document.createElement("div");
       card.className = "adventure-card";
@@ -7451,6 +7456,38 @@
         <div class="adventure-card-body">
           ${description ? `<div class="card-description">${description}</div>` : ''}
 
+          ${address ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">📍</span>
+              <span class="card-info-label">Address:</span>
+              <span class="card-info-value">${address}</span>
+            </div>
+          ` : ''}
+
+          ${phoneNumber ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">📞</span>
+              <span class="card-info-label">Phone:</span>
+              <span class="card-info-value"><a href="tel:${phoneNumber}" style="color: #1d4ed8; text-decoration: none;">${phoneNumber}</a></span>
+            </div>
+          ` : ''}
+
+          ${website ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">🌐</span>
+              <span class="card-info-label">Website:</span>
+              <span class="card-info-value"><a href="${website.startsWith('http') ? website : 'https://' + website}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: none;">Visit Site ↗</a></span>
+            </div>
+          ` : ''}
+
+          ${hasPlaceId ? `
+            <div class="card-info-row">
+              <span class="card-info-icon">🗺️</span>
+              <span class="card-info-label">Google Maps:</span>
+              <span class="card-info-value"><a href="https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${googlePlaceId}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: none;">View ↗</a></span>
+            </div>
+          ` : ''}
+
           ${hoursOfOperation ? `
             <div class="card-info-row">
               <span class="card-info-icon">🕐</span>
@@ -7481,8 +7518,8 @@
             <button class="card-btn card-details-btn" data-index="${actualIndex}">
               <span>📖</span> Details
             </button>
-            ${directions ? `
-              <button class="card-btn card-btn-primary card-directions-btn" data-directions="${directions}">
+            ${(hasPlaceId || address || name) ? `
+              <button class="card-btn card-btn-primary card-directions-btn" data-placeid="${googlePlaceId || ''}" data-address="${address || ''}" data-name="${name || ''}">
                 <span>🗺️</span> Directions
               </button>
             ` : ''}
@@ -7544,8 +7581,25 @@
       const directionsBtn = e.target.closest('.card-directions-btn');
       if (directionsBtn) {
         e.stopPropagation();
-        const url = directionsBtn.getAttribute('data-directions');
-        if (url) window.open(url, '_blank');
+        const placeId = directionsBtn.getAttribute('data-placeid');
+        const address = directionsBtn.getAttribute('data-address');
+        const name = directionsBtn.getAttribute('data-name');
+        
+        // Generate Google Maps directions URL
+        let mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=';
+        
+        if (placeId && placeId.trim()) {
+          // Use Place ID for most accurate directions
+          mapsUrl += `&destination_place_id=${encodeURIComponent(placeId)}`;
+        } else if (address && address.trim()) {
+          // Use address if Place ID not available
+          mapsUrl += encodeURIComponent(address);
+        } else if (name && name.trim()) {
+          // Fall back to name search
+          mapsUrl += encodeURIComponent(name);
+        }
+        
+        window.open(mapsUrl, '_blank');
         return;
       }
 
@@ -9351,16 +9405,13 @@
     // Change Edit button to Save button
     editBtn.textContent = "💾 Save Changes";
     editBtn.classList.add("primary");
-    // Remove old handler and add new one
-    editBtn.replaceWith(editBtn.cloneNode(true));
-    const newEditBtn = document.getElementById("rowDetailEditBtn");
-    newEditBtn.addEventListener("click", saveEditedData);
+    editBtn.disabled = false;
+    // Replace handler with save handler
+    editBtn.onclick = saveEditedData;
 
     // Change Close button to Cancel button
     closeBtn.textContent = "Cancel";
-    closeBtn.replaceWith(closeBtn.cloneNode(true));
-    const newCloseBtn = document.getElementById("rowDetailCloseFooterBtn");
-    newCloseBtn.addEventListener("click", cancelEdit);
+    closeBtn.onclick = cancelEdit;
 
     // Make all value fields editable
     const valueElements = modal.querySelectorAll(".row-detail-value");
@@ -9442,7 +9493,6 @@
     try {
       // Disable save button during save
       editBtn.disabled = true;
-      editBtn.textContent = "💾 Saving...";
       editBtn.textContent = "💾 Saving...";
 
       // Collect edited values
@@ -9590,22 +9640,23 @@
     }
 
     if (closeFooterBtn) {
-      closeFooterBtn.addEventListener("click", () => closeRowDetailModal());
+      closeFooterBtn.onclick = () => closeRowDetailModal();
     }
 
     if (editBtn) {
-      editBtn.addEventListener("click", () => {
+      // Use onclick to replace any previous handler (prevents duplicates)
+      editBtn.onclick = () => {
         enableEditMode();
-      });
+      };
     }
 
     // Close modal on backdrop click
     if (backdrop) {
-      backdrop.addEventListener("click", (e) => {
+      backdrop.onclick = (e) => {
         if (e.target === backdrop) {
           closeRowDetailModal();
         }
-      });
+      };
     }
 
     console.log("✅ Row detail modal initialized successfully");
@@ -10751,9 +10802,71 @@ undefined
     function closeAutomationProgress() {
       const modal = document.getElementById('automationProgressModal');
       const backdrop = document.getElementById('automationProgressBackdrop');
+      const applyBtn = document.getElementById('automationApplyBtn');
 
       if (modal) modal.classList.remove('visible');
       if (backdrop) backdrop.classList.remove('visible');
+      
+      // Hide and remove apply button when closing
+      if (applyBtn) applyBtn.style.display = 'none';
+    }
+
+    /**
+     * Show "Apply Changes" button after dry run completes
+     */
+    function showApplyChangesButton(actionType) {
+      const footer = document.querySelector('.automation-progress-footer');
+      if (!footer) return;
+
+      // Check if button already exists
+      let applyBtn = document.getElementById('automationApplyBtn');
+      
+      if (!applyBtn) {
+        // Create the button
+        applyBtn = document.createElement('button');
+        applyBtn.id = 'automationApplyBtn';
+        applyBtn.className = 'automation-btn-primary';
+        applyBtn.innerHTML = '✅ Apply Changes Now';
+        applyBtn.style.cssText = 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;';
+        
+        applyBtn.onmouseover = () => {
+          applyBtn.style.transform = 'translateY(-2px)';
+          applyBtn.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+        };
+        applyBtn.onmouseout = () => {
+          applyBtn.style.transform = 'translateY(0)';
+          applyBtn.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+        };
+        
+        applyBtn.onclick = async () => {
+          // Confirm with user
+          if (confirm('Apply all changes to Excel? This will update your spreadsheet with the previewed changes.')) {
+            applyBtn.disabled = true;
+            applyBtn.innerHTML = '⏳ Applying...';
+            applyBtn.style.opacity = '0.6';
+            
+            // Run the automation for real (not dry run)
+            await runGoogleAutomation(actionType, false);
+            
+            // Hide the button after applying
+            applyBtn.style.display = 'none';
+          }
+        };
+        
+        // Insert before the close button
+        const closeBtn = footer.querySelector('.automation-btn-secondary');
+        if (closeBtn) {
+          footer.insertBefore(applyBtn, closeBtn);
+        } else {
+          footer.appendChild(applyBtn);
+        }
+      }
+      
+      // Show the button
+      applyBtn.style.display = 'inline-block';
+      applyBtn.disabled = false;
+      applyBtn.innerHTML = '✅ Apply Changes Now';
+      applyBtn.style.opacity = '1';
     }
 
     /**
@@ -10924,7 +11037,7 @@ undefined
     function showAutomationPreview(actionType) {
       const { changes, skipped } = analyzeAutomationChanges(actionType);
       const previewContainer = document.getElementById('automationProgressPreview');
-      
+
       if (!previewContainer) return;
 
       if (changes.length === 0 && skipped.length === 0) {
@@ -10941,12 +11054,12 @@ undefined
       const canUpdate = changes.length;
       const cannotUpdate = skipped.length;
       const alreadyPopulated = totalToProcess - canUpdate - cannotUpdate;
-      
+
       // Calculate percentages
       const updatePercent = totalToProcess > 0 ? Math.round((canUpdate / totalToProcess) * 100) : 0;
       const cannotPercent = totalToProcess > 0 ? Math.round((cannotUpdate / totalToProcess) * 100) : 0;
       const populatedPercent = totalToProcess > 0 ? Math.round((alreadyPopulated / totalToProcess) * 100) : 0;
-      
+
       let summaryHTML = `
         <div style="padding: 0;">
           <!-- Stats Cards -->
@@ -10986,19 +11099,19 @@ undefined
               <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Total Locations</div>
             </div>
           </div>
-          
+
           <!-- Summary Text Box -->
           <div style="background: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px;">
             <div style="font-size: 11px; color: #6b7280; line-height: 1.6;">
               <div><strong>Summary:</strong></div>
-              <div>This automation will update <strong>${canUpdate}</strong> location(s). 
+              <div>This automation will update <strong>${canUpdate}</strong> location(s).
               <strong>${cannotUpdate}</strong> location(s) cannot be updated (missing/invalid Place ID).
               <strong>${alreadyPopulated}</strong> location(s) are already fully populated or excluded.</div>
             </div>
           </div>
         </div>
       `;
-      
+
       // UPDATED TAB - List of places that will be updated
       let updatedHTML = `<div style="padding: 0;">`;
       if (changes.length === 0) {
@@ -11023,7 +11136,7 @@ undefined
         });
       }
       updatedHTML += `</div>`;
-      
+
       // CANNOT UPDATE TAB - List of places that cannot be updated
       let cannotUpdateHTML = `<div style="padding: 0;">`;
       if (skipped.length === 0) {
@@ -11032,7 +11145,7 @@ undefined
         cannotUpdateHTML += `<div style="font-size: 12px; color: #6b7280; margin-bottom: 12px;"><strong>${skipped.length}</strong> location(s) cannot be updated:</div>`;
         skipped.forEach((skip, idx) => {
           let reasonBg, reasonBorder, reasonColor, reasonText;
-          
+
           if (skip.skipped === 'skip-by-user') {
             reasonBg = '#fffbeb';
             reasonBorder = '#fcd34d';
@@ -11044,7 +11157,7 @@ undefined
             reasonColor = '#dc2626';
             reasonText = '❌ Missing Google Place ID';
           }
-          
+
           cannotUpdateHTML += `
             <div style="background: ${reasonBg}; border: 1px solid ${reasonBorder}; border-radius: 6px; padding: 10px; margin-bottom: 8px;">
               <div style="font-weight: 600; color: #1f2937; font-size: 13px; margin-bottom: 4px;">
@@ -11058,7 +11171,7 @@ undefined
         });
       }
       cannotUpdateHTML += `</div>`;
-      
+
       // Update tab contents
       document.getElementById('previewTabSummaryContent').innerHTML = summaryHTML;
       document.getElementById('previewTabUpdatedContent').innerHTML = updatedHTML;
@@ -11076,13 +11189,13 @@ undefined
           document.querySelectorAll('.preview-tab-content').forEach(content => {
             content.style.display = 'none';
           });
-          
+
           // Remove active state from all tabs
           tabs.forEach(t => {
             t.style.color = '#6b7280';
             t.style.borderBottom = '2px solid transparent';
           });
-          
+
           // Show clicked tab
           if (tab.id === 'previewTabSummary') {
             document.getElementById('previewTabSummaryContent').style.display = 'block';
@@ -11091,7 +11204,7 @@ undefined
           } else if (tab.id === 'previewTabCannotUpdate') {
             document.getElementById('previewTabCannotUpdateContent').style.display = 'block';
           }
-          
+
           // Mark tab as active
           tab.style.color = '#059669';
           tab.style.borderBottom = '2px solid #059669';
@@ -11223,8 +11336,13 @@ undefined
 
         if (isDryRun) {
           addAutomationLog('', 'info');
-          addAutomationLog('DRY RUN COMPLETE - No changes were made to Excel', 'warning');
-          updateAutomationStatus('Dry run complete - No changes made', true);
+          addAutomationLog('✅ DRY RUN COMPLETE - No changes were made to Excel', 'warning');
+          addAutomationLog('', 'info');
+          addAutomationLog('📋 Ready to apply changes? Click "Apply Changes Now" button below.', 'info');
+          updateAutomationStatus('Dry run complete - Ready to apply changes', true);
+
+          // Show "Apply Changes" button after dry run
+          showApplyChangesButton(actionType);
         } else {
           addAutomationLog('', 'info');
           addAutomationLog('NOTE: Full automation not yet implemented. This is a demo.', 'warning');
@@ -11260,8 +11378,8 @@ undefined
         return;
       }
 
-      // Get dry run status
-      const isDryRun = () => dryRunToggle?.classList.contains('on') || true;
+      // Get dry run status (no default to true - respect toggle state)
+      const isDryRun = () => dryRunToggle?.classList.contains('on') ?? true;
 
       // Button 1: Populate Missing Fields
       btnPopulateMissing.addEventListener('click', async () => {
@@ -11621,7 +11739,7 @@ undefined
       <div style="font-size: 13px; font-weight: 600; color: #047857; padding: 12px 16px; margin-bottom: 0; border-bottom: 1px solid #d1d5db;">
         📋 Preview: Locations to Update
       </div>
-      
+
       <!-- Preview Tabs -->
       <div style="display: flex; gap: 0; border-bottom: 2px solid #d1d5db; padding: 0 16px; background: white;">
         <button id="previewTabSummary" class="preview-tab active" style="padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 12px; font-weight: 600; color: #059669; border-bottom: 2px solid #059669; margin-bottom: -2px; transition: all 0.2s;">
@@ -11634,14 +11752,14 @@ undefined
           ❌ Cannot Update
         </button>
       </div>
-      
+
       <!-- Tab Content -->
       <div style="max-height: 250px; overflow-y: auto; padding: 12px 16px;">
         <div id="previewTabSummaryContent" class="preview-tab-content" style="display: block;"></div>
         <div id="previewTabUpdatedContent" class="preview-tab-content" style="display: none;"></div>
         <div id="previewTabCannotUpdateContent" class="preview-tab-content" style="display: none;"></div>
       </div>
-      
+
       <div id="automationPreviewList" style="display: none;"></div>
     </div>
     <div id="automationProgressLog" class="automation-progress-log"></div>
