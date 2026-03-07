@@ -10781,9 +10781,12 @@ undefined
         return { changes, skipped };
       }
 
-      const targetCount = Math.min(10, window.adventuresData.length);
+      // Analyze all locations, but limit display to first 20 in preview for performance
+      const allLocations = window.adventuresData.length;
+      const displayLimit = Math.min(20, allLocations);  // Show up to 20 in preview
+      const analyzeLimit = allLocations;  // But analyze ALL for automation
 
-      for (let i = 0; i < targetCount; i++) {
+      for (let i = 0; i < analyzeLimit; i++) {
         const row = window.adventuresData[i];
         const values = row.values[0];
         const name = values[0] || 'Unknown';
@@ -10793,6 +10796,17 @@ undefined
         const phoneNumber = values[12];
         const address = values[11];
         const rating = values[13];
+
+        // Only add to displayed results if within display limit
+        // But still analyze all for the actual automation counts
+        if (i >= displayLimit) {
+          // Still check skip condition for ALL locations
+          if (shouldSkipLocation(placeId)) {
+            continue;  // Skip tracking but continue analysis
+          }
+          // For all other locations beyond display limit, skip the detailed tracking
+          continue;
+        }
 
         const locationChanges = {
           name,
@@ -11012,10 +11026,10 @@ undefined
         }
 
         const totalAdventures = window.adventuresData.length;
-        const targetCount = Math.min(5, totalAdventures);
+        const targetCount = totalAdventures;  // Process ALL locations, not just 5
 
         addAutomationLog(`Found ${totalAdventures} adventures to process`, 'info');
-        addAutomationLog(`Demo scope: processing ${targetCount} adventures this run`, 'warning');
+        addAutomationLog(`Processing all ${targetCount} adventures this run...`, 'info');
         updateAutomationStatus(`Processing 0 of ${targetCount} adventures...`);
         setAutomationProgress(0, targetCount);
 
