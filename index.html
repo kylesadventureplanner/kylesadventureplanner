@@ -6188,8 +6188,8 @@
     updateBreadcrumbMenu();
     initBreadcrumbResetBtn();
     initDryRunToggle();
+    initAutomationButtons();
     initModalCloseButtons();
-    // Note: initAutomationButtons() is called in window.load event listener
 
     console.log("=== APP INITIALIZATION COMPLETE ===");
   }
@@ -10266,6 +10266,56 @@
       const isOn = toggle.classList.contains("on");
       console.log("Dry Run mode:", isOn ? "ON" : "OFF");
     });
+    }
+
+    // ============================================================
+    // INITIALIZE AUTOMATION BUTTONS
+    // ============================================================
+    /**
+     * Initialize Automation Buttons
+     */
+    function initAutomationButtons() {
+      console.log('Initializing automation buttons...');
+      
+      const btnPopulateMissing = document.getElementById('btnPopulateMissing');
+      const btnRefreshHours = document.getElementById('btnRefreshHours');
+      const btnRefreshAll = document.getElementById('btnRefreshAll');
+      const btnSearchPlaceIds = document.getElementById('btnSearchPlaceIds');
+      const dryRunToggle = document.getElementById('dryRunToggle');
+
+      if (!btnPopulateMissing || !btnRefreshHours || !btnRefreshAll || !btnSearchPlaceIds) {
+        console.warn('Some automation buttons not found in DOM');
+        return;
+      }
+
+      // Get dry run status
+      const isDryRun = () => dryRunToggle?.classList.contains('on') || true;
+
+      // Button 1: Populate Missing Fields
+      btnPopulateMissing.addEventListener('click', () => {
+        console.log('Populate Missing Fields clicked - Dry Run:', isDryRun());
+        showToast('Populating missing fields' + (isDryRun() ? ' (dry run)' : ''), 'info', 3000);
+      });
+
+      // Button 2: Refresh Hours Only
+      btnRefreshHours.addEventListener('click', () => {
+        console.log('Refresh Hours Only clicked - Dry Run:', isDryRun());
+        showToast('Refreshing hours only' + (isDryRun() ? ' (dry run)' : ''), 'info', 3000);
+      });
+
+      // Button 3: Refresh All Fields
+      btnRefreshAll.addEventListener('click', () => {
+        console.log('Refresh All Fields clicked - Dry Run:', isDryRun());
+        showToast('Refreshing all fields' + (isDryRun() ? ' (dry run)' : ''), 'info', 3000);
+      });
+
+      // Button 4: Search Place IDs
+      btnSearchPlaceIds.addEventListener('click', () => {
+        console.log('Search Place IDs clicked - Dry Run:', isDryRun());
+        showToast('Searching for place IDs' + (isDryRun() ? ' (dry run)' : ''), 'info', 3000);
+      });
+
+      console.log('✓ Automation buttons initialized successfully');
     }
 
     // ============================================================
