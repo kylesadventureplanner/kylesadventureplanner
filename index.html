@@ -10934,11 +10934,11 @@ undefined
       // Test 3: Test actual Places API call
       if (typeof google !== 'undefined' && google.maps && google.maps.places && google.maps.places.Place) {
         try {
-          // Try fetching a well-known place
-          const testPlaceId = 'ChIJN1t_tDeuEmsRUsoyG83frY4'; // Google Sydney office
+          // Try fetching a well-known, stable place (Google headquarters - very unlikely to change)
+          const testPlaceId = 'ChIJj61dQgK6j4AR4GeTYWZsKWw'; // Google headquarters, Mountain View, CA
 
           addResult('⏳', 'Testing Places API Access',
-            `Attempting to fetch place details for test Place ID:\n${testPlaceId}`);
+            `Attempting to fetch place details for test Place ID:\n${testPlaceId}\n(Testing with Google headquarters)`);
 
           const { Place } = await google.maps.importLibrary("places");
           const place = new Place({
@@ -10952,7 +10952,7 @@ undefined
 
           if (place.displayName) {
             addResult('✅', 'Places API Access: SUCCESS',
-              `Successfully fetched place details:\n"${place.displayName}"\n\nThe Places API (New) is properly configured and accessible.`);
+              `Successfully fetched place details:\n"${place.displayName}"\nAddress: ${place.formattedAddress || 'N/A'}\n\n✨ The Places API (New) is properly configured and accessible!\n\nYour automation buttons should now work correctly.`);
           } else {
             addResult('⚠️', 'Places API Partial Success',
               'Connected to Places API but received incomplete data.\n\nThis may indicate restricted field access.', true);
