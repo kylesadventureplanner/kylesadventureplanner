@@ -11478,10 +11478,14 @@ COMMON ISSUES:
       }
       cannotUpdateHTML += `</div>`;
 
-      // Update tab contents
-      document.getElementById('previewTabSummaryContent').innerHTML = summaryHTML;
-      document.getElementById('previewTabUpdatedContent').innerHTML = updatedHTML;
-      document.getElementById('previewTabCannotUpdateContent').innerHTML = cannotUpdateHTML;
+      // Update tab contents (with null checks)
+      const summaryContent = document.getElementById('previewTabSummaryContent');
+      const updatedContent = document.getElementById('previewTabUpdatedContent');
+      const cannotUpdateContent = document.getElementById('previewTabCannotUpdateContent');
+
+      if (summaryContent) summaryContent.innerHTML = summaryHTML;
+      if (updatedContent) updatedContent.innerHTML = updatedHTML;
+      if (cannotUpdateContent) cannotUpdateContent.innerHTML = cannotUpdateHTML;
     }
 
     /**
