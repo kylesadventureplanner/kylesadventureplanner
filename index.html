@@ -1246,6 +1246,9 @@
       align-items: center;
       gap: var(--space-sm);
       box-shadow: var(--shadow-sm);
+      position: relative;
+      z-index: 10;
+      pointer-events: auto;
     }
 
     .card-btn:hover {
@@ -1268,6 +1271,20 @@
       border-color: var(--primary-dark);
       color: white;
       box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .card-google-place-btn {
+      background: linear-gradient(135deg, #ea4335 0%, #fbbc04 50%, #34a853 100%);
+      color: white;
+      border-color: #ea4335;
+      box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
+    }
+
+    .card-google-place-btn:hover {
+      background: linear-gradient(135deg, #d33426 0%, #e6a800 50%, #2d8f46 100%);
+      box-shadow: 0 8px 20px rgba(234, 67, 53, 0.4);
+      color: white;
       transform: translateY(-2px);
     }
 
@@ -7578,14 +7595,6 @@
             </div>
           ` : ''}
 
-          ${hasPlaceId ? `
-            <div class="card-info-row">
-              <span class="card-info-icon">🗺️</span>
-              <span class="card-info-label">Google Maps:</span>
-              <span class="card-info-value"><a href="https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${googlePlaceId}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: none;">View ↗</a></span>
-            </div>
-          ` : ''}
-
           ${hoursOfOperation ? `
             <div class="card-info-row">
               <span class="card-info-icon">🕐</span>
@@ -7619,6 +7628,11 @@
             ${(hasPlaceId || address || name) ? `
               <button class="card-btn card-btn-primary card-directions-btn" data-placeid="${googlePlaceId || ''}" data-address="${address || ''}" data-name="${name || ''}">
                 <span>🗺️</span> Directions
+              </button>
+            ` : ''}
+            ${hasPlaceId ? `
+              <button class="card-btn card-google-place-btn" data-placeid="${googlePlaceId}">
+                <span>🔗</span> Google
               </button>
             ` : ''}
           </div>
@@ -7684,20 +7698,32 @@
         const name = directionsBtn.getAttribute('data-name');
 
         // Generate Google Maps directions URL
-        let mapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=';
+        let mapsUrl = 'https://www.google.com/maps/dir/?api=1';
 
         if (placeId && placeId.trim()) {
           // Use Place ID for most accurate directions
           mapsUrl += `&destination_place_id=${encodeURIComponent(placeId)}`;
         } else if (address && address.trim()) {
           // Use address if Place ID not available
-          mapsUrl += encodeURIComponent(address);
+          mapsUrl += `&destination=${encodeURIComponent(address)}`;
         } else if (name && name.trim()) {
           // Fall back to name search
-          mapsUrl += encodeURIComponent(name);
+          mapsUrl += `&destination=${encodeURIComponent(name)}`;
         }
 
+        console.log('Opening directions:', mapsUrl);
         window.open(mapsUrl, '_blank');
+        return;
+      }
+
+      const googlePlaceBtn = e.target.closest('.card-google-place-btn');
+      if (googlePlaceBtn) {
+        e.stopPropagation();
+        const placeId = googlePlaceBtn.getAttribute('data-placeid');
+        if (placeId && placeId.trim()) {
+          const googleUrl = `https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${encodeURIComponent(placeId)}`;
+          window.open(googleUrl, '_blank');
+        }
         return;
       }
 
@@ -7741,6 +7767,42 @@
     }, false);
 
     console.log(`✓ Rendered ${pageAdventures.length} cards for page ${currentPage}`);
+  }
+
+  /**
+   * Helper function to render visual star rating from numeric value
+   * @param {string|number} rating - Rating value (e.g., "4.5" or 4.5)
+   * @returns {string} HTML string with star icons
+   */
+  function renderStarRating(rating) {
+    if (!rating) return '<span style="color: #9ca3af;">No rating</span>';
+    
+    const numRating = parseFloat(rating);
+    if (isNaN(numRating)) return '<span style="color: #9ca3af;">No rating</span>';
+    
+    let starsHtml = '';
+    const fullStars = Math.floor(numRating);
+    const hasHalfStar = numRating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+    
+    // Full stars
+    for (let i = 0; i < fullStars; i++) {
+      starsHtml += '<span style="color: #fbbf24; font-size: 16px;">★</span>';
+    }
+    
+    // Half star
+    if (hasHalfStar) {
+      starsHtml += '<span style="color: #fbbf24; font-size: 16px;">⯨</span>';
+    }
+    
+    // Empty stars
+    for (let i = 0; i < emptyStars; i++) {
+      starsHtml += '<span style="color: #d1d5db; font-size: 16px;">☆</span>';
+    }
+    
+    starsHtml += ` <span style="color: #6b7280; font-size: 13px; margin-left: 4px;">(${numRating.toFixed(1)})</span>`;
+    
+    return starsHtml;
   }
 
   /**
@@ -7854,7 +7916,7 @@
             ${difficulty ? `<p><strong>Difficulty:</strong> ${difficulty}</p>` : ''}
             ${trailLength ? `<p><strong>Trail Length:</strong> ${trailLength}</p>` : ''}
             ${cost ? `<p><strong>Cost:</strong> ${cost}</p>` : ''}
-            ${googleRating ? `<p><strong>Google Rating:</strong> ${googleRating}</p>` : ''}
+            ${googleRating ? `<p><strong>Google Rating:</strong> ${renderStarRating(googleRating)}</p>` : ''}
           </div>
         `
       },
@@ -11478,14 +11540,10 @@ COMMON ISSUES:
       }
       cannotUpdateHTML += `</div>`;
 
-      // Update tab contents (with null checks)
-      const summaryContent = document.getElementById('previewTabSummaryContent');
-      const updatedContent = document.getElementById('previewTabUpdatedContent');
-      const cannotUpdateContent = document.getElementById('previewTabCannotUpdateContent');
-
-      if (summaryContent) summaryContent.innerHTML = summaryHTML;
-      if (updatedContent) updatedContent.innerHTML = updatedHTML;
-      if (cannotUpdateContent) cannotUpdateContent.innerHTML = cannotUpdateHTML;
+      // Update tab contents
+      document.getElementById('previewTabSummaryContent').innerHTML = summaryHTML;
+      document.getElementById('previewTabUpdatedContent').innerHTML = updatedHTML;
+      document.getElementById('previewTabCannotUpdateContent').innerHTML = cannotUpdateHTML;
     }
 
     /**
