@@ -4787,6 +4787,201 @@
     });
   </script>
 
+  <script>
+    (function () {
+    function safeStr(v) {
+      return String(v == null ? "" : v).trim();
+    }
+
+    function buildDirectionsFromPlaceId(placeId) {
+      const pid = safeStr(placeId);
+      if (!pid) return "";
+      return "https://www.google.com/maps/dir/?api=1&destination_place_id=" + encodeURIComponent(pid);
+    }
+
+    async function patchRowValues(rowIndex, currentValues, updatesByCol) {
+      const merged = Array.isArray(currentValues) ? currentValues.slice() : [];
+      Object.keys(updatesByCol).forEach((k) => {
+        merged[Number(k)] = updatesByCol[k];
+      });
+
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values: [merged] })
+      });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(`Excel PATCH failed (${response.status})${text ? `: ${text}` : ""}`);
+      }
+    }
+
+    async function runRefreshPlaceIdsAutomation(isDryRun) {
+      const title = "Refresh Place IDs";
+      showAutomationProgress(title, isDryRun);
+
+      if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) {
+        addAutomationLog("No adventure data loaded. Please sign in and load data first.", "error");
+        updateAutomationStatus("Error: No data loaded", false, true);
+        return;
+      }
+
+      if (!accessToken && !isDryRun) {
+        addAutomationLog("Not signed in. Sign in before applying changes.", "error");
+        updateAutomationStatus("Error: Not authenticated", false, true);
+        return;
+      }
+
+      const rows = window.adventuresData;
+      const total = rows.length;
+      let processed = 0;
+      let updated = 0;
+      let skipped = 0;
+      let errors = 0;
+
+      addAutomationLog("Starting refresh place ids...", "info");
+      if (isDryRun) addAutomationLog("DRY RUN MODE: No changes will be written to Excel", "warning");
+      updateAutomationStatus(`Processing 0 of ${total} adventures...`);
+      setAutomationProgress(0, total);
+
+      const skipValue = safeStr(window.automationSkipValue).toUpperCase();
+
+      for (let i = 0; i < total; i++) {
+        const row = rows[i];
+        const values = row?.values?.[0] || [];
+        const name = safeStr(values[0]) || `Row ${i + 1}`;
+        const oldPlaceId = safeStr(values[1]);
+        const city = safeStr(values[10]);
+        const state = safeStr(values[9]);
+
+        processed++;
+        addAutomationLog(`[${processed}/${total}] Processing: ${name}`, "progress");
+
+        try {
+          if (skipValue && oldPlaceId.toUpperCase() === skipValue) {
+            skipped++;
+            addAutomationLog("  -> Skipped: Place ID matches configured skip value", "warning");
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          const query = [name, city, state].filter(Boolean).join(" ");
+          if (!query) {
+            skipped++;
+            addAutomationLog("  -> Skipped: not enough data to refresh Place ID", "warning");
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          addAutomationLog(`  -> Searching Place ID for: ${query}`, "info");
+          const results = await searchPlaces(query);
+          const refreshedPlaceId = safeStr(results?.[0]?.placeId);
+
+          if (!refreshedPlaceId) {
+            skipped++;
+            addAutomationLog("  -> No Place ID found", "warning");
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          const updates = {};
+          if (oldPlaceId !== refreshedPlaceId) {
+            updates[1] = refreshedPlaceId;
+          }
+
+          const currentDirections = safeStr(values[15]);
+          const refreshedDirections = buildDirectionsFromPlaceId(refreshedPlaceId);
+          if (refreshedDirections && (oldPlaceId !== refreshedPlaceId || !currentDirections) && currentDirections !== refreshedDirections) {
+            updates[15] = refreshedDirections;
+          }
+
+          if (!Object.keys(updates).length) {
+            skipped++;
+            addAutomationLog("  -> Place ID already current", "info");
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          if (isDryRun) {
+            updated++;
+            addAutomationLog(`  -> [DRY RUN] Would refresh Place ID: ${oldPlaceId || "(empty)"} -> ${refreshedPlaceId}`, "warning");
+          } else {
+            await patchRowValues(i, values, updates);
+            updated++;
+            addAutomationLog(`  -> Refreshed Place ID: ${oldPlaceId || "(empty)"} -> ${refreshedPlaceId}`, "success");
+          }
+        } catch (err) {
+          errors++;
+          addAutomationLog(`  -> Error: ${err.message}`, "error");
+        }
+
+        updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+        setAutomationProgress(processed, total);
+      }
+
+      setAutomationProgress(total, total);
+      addAutomationLog("", "info");
+      addAutomationLog("=== SUMMARY ===", "info");
+      addAutomationLog(`Total processed: ${processed}`, "success");
+      addAutomationLog(`${isDryRun ? "Would update" : "Updated"}: ${updated}`, isDryRun ? "warning" : "success");
+      addAutomationLog(`Skipped: ${skipped}`, "info");
+      addAutomationLog(`Errors: ${errors}`, errors > 0 ? "error" : "success");
+
+      if (isDryRun) {
+        updateAutomationStatus("Dry run complete - Ready to apply changes", true, false);
+        showApplyChangesButton("refreshPlaceIds");
+      } else {
+        if (updated > 0) {
+          try {
+            await loadTable();
+          } catch (reloadErr) {
+            addAutomationLog(`Reload warning: ${reloadErr.message}`, "warning");
+          }
+        }
+        updateAutomationStatus("Automation complete", true, false);
+      }
+
+      const toastType = errors > 0 ? "warning" : "success";
+      showToast(`${title}: ${updated} ${isDryRun ? "planned" : "updated"}, ${skipped} skipped${errors ? `, ${errors} errors` : ""}`, toastType, 4000);
+    }
+
+    const originalRunGoogleAutomation = window.runGoogleAutomation;
+    window.runGoogleAutomation = async function (actionType, isDryRun) {
+      if (actionType === "refreshPlaceIds") {
+        return runRefreshPlaceIdsAutomation(isDryRun);
+      }
+      return originalRunGoogleAutomation(actionType, isDryRun);
+    };
+
+    function wireRefreshPlaceIdsButton() {
+      const btn = document.getElementById("btnRefreshPlaceIds");
+      const dryRunToggle = document.getElementById("dryRunToggle");
+      if (!btn || btn.dataset.refreshBound === "1") return;
+
+      const isDryRun = () => dryRunToggle?.classList.contains("on") ?? true;
+      btn.addEventListener("click", async () => {
+        await window.runGoogleAutomation("refreshPlaceIds", isDryRun());
+      });
+      btn.dataset.refreshBound = "1";
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", wireRefreshPlaceIdsButton);
+    } else {
+      wireRefreshPlaceIdsButton();
+    }
+    })();
+  </script>
+
   <!-- Google Data Automation -->
   <div class="card automation-card">
     <div class="automation-header">
@@ -4805,6 +5000,7 @@
         <button id="btnPopulateMissing" class="automation-btn">Populate Missing Fields</button>
         <button id="btnRefreshHours" class="automation-btn">Refresh Hours Only</button>
         <button id="btnRefreshAll" class="automation-btn">Refresh All Fields</button>
+        <button id="btnRefreshPlaceIds" class="automation-btn" style="background: #0ea5e9; border-color: #0ea5e9; color: white;">🔄 Refresh Place IDs</button>
         <button id="btnSearchPlaceIds" class="automation-btn" style="background: #10b981; border-color: #10b981; color: white;">🔍 Search Place IDs</button>
       </div>
 
@@ -11641,9 +11837,10 @@ COMMON ISSUES:
       const btnRefreshHours = document.getElementById('btnRefreshHours');
       const btnRefreshAll = document.getElementById('btnRefreshAll');
       const btnSearchPlaceIds = document.getElementById('btnSearchPlaceIds');
+      const btnRefreshPlaceIds = document.getElementById('btnRefreshPlaceIds');
       const dryRunToggle = document.getElementById('dryRunToggle');
 
-      if (!btnPopulateMissing || !btnRefreshHours || !btnRefreshAll || !btnSearchPlaceIds) {
+      if (!btnPopulateMissing || !btnRefreshHours || !btnRefreshAll || !btnSearchPlaceIds || !btnRefreshPlaceIds) {
         console.warn('Some automation buttons not found in DOM');
         return;
       }
@@ -11673,6 +11870,12 @@ COMMON ISSUES:
       btnSearchPlaceIds.addEventListener('click', async () => {
         console.log('Search Place IDs clicked - Dry Run:', isDryRun());
         await runGoogleAutomation('searchPlaceIds', isDryRun());
+      });
+
+      // Button 5: Refresh Place IDs
+      btnRefreshPlaceIds.addEventListener('click', async () => {
+        console.log('Refresh Place IDs clicked - Dry Run:', isDryRun());
+        await runGoogleAutomation('refreshPlaceIds', isDryRun());
       });
 
       // Initialize skip value controls
@@ -12269,7 +12472,7 @@ COMMON ISSUES:
           continue;
         }
 
-        if (actionType !== "searchPlaceIds" && pidInfo.status !== "valid") {
+        if (actionType !== "searchPlaceIds" && actionType !== "refreshPlaceIds" && pidInfo.status !== "valid") {
           skipped.push({ name, skipped: pidInfo.status });
           continue;
         }
@@ -12302,7 +12505,8 @@ COMMON ISSUES:
         populateMissing: "Populate Missing Fields",
         refreshHours: "Refresh Hours Only",
         refreshAll: "Refresh All Fields",
-        searchPlaceIds: "Search Place IDs"
+        searchPlaceIds: "Search Place IDs",
+        refreshPlaceIds: "Refresh Place IDs"
       };
 
       const title = actionTitles[actionType] || "Google Automation";
@@ -12336,7 +12540,7 @@ COMMON ISSUES:
       setAutomationProgress(0, total);
 
       // Preflight once for GetPlace actions so blocked keys do not spam errors per row.
-      if (actionType !== "searchPlaceIds") {
+      if (actionType !== "searchPlaceIds" && actionType !== "refreshPlaceIds") {
         const preflightRow = rows.find((r) => {
           const v = r?.values?.[0] || [];
           return gaPlaceIdStatus(v[GA_COL.PLACE_ID]).status === "valid";
@@ -12435,6 +12639,59 @@ COMMON ISSUES:
               await gaPatchRow(i, values, updates);
               updated++;
               addAutomationLog(`  -> Updated Place ID: ${placeId}`, "success");
+            }
+
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
+          if (actionType === "refreshPlaceIds") {
+            // Refresh the Place ID via text search
+            const query = [name, city, state].filter(Boolean).join(" ");
+            if (!query) {
+              skipped++;
+              addAutomationLog("  -> Skipped: not enough data to refresh Place ID", "warning");
+              updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+              setAutomationProgress(processed, total);
+              continue;
+            }
+
+            addAutomationLog(`  -> Refreshing Place ID for: ${query}`, "info");
+            const results = await searchPlaces(query);
+            if (!Array.isArray(results) || !results.length || !gaStr(results[0].placeId)) {
+              skipped++;
+              addAutomationLog("  -> No Place ID found in search", "warning");
+              updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+              setAutomationProgress(processed, total);
+              continue;
+            }
+
+            const newPlaceId = gaStr(results[0].placeId);
+            const oldPlaceId = gaStr(values[GA_COL.PLACE_ID]);
+
+            if (oldPlaceId === newPlaceId) {
+              skipped++;
+              addAutomationLog("  -> Place ID already current", "info");
+              updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+              setAutomationProgress(processed, total);
+              continue;
+            }
+
+            const updates = {};
+            updates[GA_COL.PLACE_ID] = newPlaceId;
+            const newDirections = gaBuildDirections(newPlaceId, gaStr(values[GA_COL.ADDRESS]), name);
+            if (newDirections && (oldPlaceId !== newPlaceId || gaEmpty(values[GA_COL.DIRECTIONS]))) {
+              updates[GA_COL.DIRECTIONS] = newDirections;
+            }
+
+            if (isDryRun) {
+              updated++;
+              addAutomationLog(`  -> [DRY RUN] Would refresh Place ID: ${oldPlaceId || "(empty)"} -> ${newPlaceId}`, "warning");
+            } else {
+              await gaPatchRow(i, values, updates);
+              updated++;
+              addAutomationLog(`  -> Refreshed Place ID: ${oldPlaceId || "(empty)"} -> ${newPlaceId}`, "success");
             }
 
             updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
