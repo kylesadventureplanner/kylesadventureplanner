@@ -419,10 +419,26 @@
       padding: 5px 12px;
       font-size: 12px;
       cursor: pointer;
+      position: relative;
+      z-index: 100;
+      pointer-events: auto;
+      transition: all 0.2s ease;
     }
 
     .automation-btn:hover {
       background: var(--blue-bg);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .automation-btn:active {
+      transform: translateY(0);
+    }
+
+    .automation-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
     }
 
     .dry-run-toggle {
@@ -2383,10 +2399,12 @@
       align-items: center;
       justify-content: center;
       z-index: 50;
+      pointer-events: none; /* CRITICAL: Don't block clicks when hidden */
     }
 
     .modal-backdrop.visible {
       display: flex;
+      pointer-events: auto; /* Allow clicks when visible */
     }
 
     .modal {
@@ -4568,11 +4586,13 @@
       z-index: 1001;
       opacity: 0;
       transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none; /* CRITICAL: Don't block clicks when hidden */
     }
 
     .modal-backdrop.visible {
       display: block;
       opacity: 1;
+      pointer-events: auto; /* Allow clicks when visible */
     }
 
   </style>
@@ -10963,11 +10983,21 @@
       const backdrop = document.getElementById('automationProgressBackdrop');
       const applyBtn = document.getElementById('automationApplyBtn');
 
-      if (modal) modal.classList.remove('visible');
-      if (backdrop) backdrop.classList.remove('visible');
+      if (modal) {
+        modal.classList.remove('visible');
+        modal.style.display = 'none'; // CRITICAL: Force display none
+      }
+      if (backdrop) {
+        backdrop.classList.remove('visible');
+        backdrop.style.display = 'none'; // CRITICAL: Force display none to prevent blocking clicks
+      }
 
       // Hide and remove apply button when closing
-      if (applyBtn) applyBtn.style.display = 'none';
+      if (applyBtn) {
+        applyBtn.style.display = 'none';
+      }
+
+      console.log('✓ Automation modal closed and backdrop removed');
     }
 
     // ============================================================
@@ -11747,38 +11777,61 @@ COMMON ISSUES:
         return;
       }
 
+      // CRITICAL FIX: Clone and replace buttons to remove all old event listeners
+      const cleanButton = (btn) => {
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+        return clone;
+      };
+
+      const freshBtnPopulateMissing = cleanButton(btnPopulateMissing);
+      const freshBtnRefreshHours = cleanButton(btnRefreshHours);
+      const freshBtnRefreshAll = cleanButton(btnRefreshAll);
+      const freshBtnSearchPlaceIds = cleanButton(btnSearchPlaceIds);
+      const freshBtnRefreshPlaceIds = cleanButton(btnRefreshPlaceIds);
+
       // Get dry run status (no default to true - respect toggle state)
       const isDryRun = () => dryRunToggle?.classList.contains('on') ?? true;
 
       // Button 1: Populate Missing Fields
-      btnPopulateMissing.addEventListener('click', async () => {
-        console.log('Populate Missing Fields clicked - Dry Run:', isDryRun());
+      freshBtnPopulateMissing.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('✓ Populate Missing Fields clicked - Dry Run:', isDryRun());
         await runGoogleAutomation('populateMissing', isDryRun());
-      });
+      }, { passive: false });
 
       // Button 2: Refresh Hours Only
-      btnRefreshHours.addEventListener('click', async () => {
-        console.log('Refresh Hours Only clicked - Dry Run:', isDryRun());
+      freshBtnRefreshHours.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('✓ Refresh Hours Only clicked - Dry Run:', isDryRun());
         await runGoogleAutomation('refreshHours', isDryRun());
-      });
+      }, { passive: false });
 
       // Button 3: Refresh All Fields
-      btnRefreshAll.addEventListener('click', async () => {
-        console.log('Refresh All Fields clicked - Dry Run:', isDryRun());
+      freshBtnRefreshAll.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('✓ Refresh All Fields clicked - Dry Run:', isDryRun());
         await runGoogleAutomation('refreshAll', isDryRun());
-      });
+      }, { passive: false });
 
       // Button 4: Search Place IDs
-      btnSearchPlaceIds.addEventListener('click', async () => {
-        console.log('Search Place IDs clicked - Dry Run:', isDryRun());
+      freshBtnSearchPlaceIds.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('✓ Search Place IDs clicked - Dry Run:', isDryRun());
         await runGoogleAutomation('searchPlaceIds', isDryRun());
-      });
+      }, { passive: false });
 
       // Button 5: Refresh Place IDs
-      btnRefreshPlaceIds.addEventListener('click', async () => {
-        console.log('Refresh Place IDs clicked - Dry Run:', isDryRun());
+      freshBtnRefreshPlaceIds.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('✓ Refresh Place IDs clicked - Dry Run:', isDryRun());
         await runGoogleAutomation('refreshPlaceIds', isDryRun());
-      });
+      }, { passive: false });
 
       // Initialize skip value controls
       const skipInput = document.getElementById('automationSkipInput');
