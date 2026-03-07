@@ -4844,6 +4844,18 @@
       <div class="dry-run-note">
         Dry Run ON: changes are previewed but not written to Excel. Turn off to apply updates.
       </div>
+
+      <!-- API Diagnostic Button -->
+      <div style="margin-top: 12px; display: flex; justify-content: center;">
+        <button
+          id="apiDiagnosticBtn"
+          style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;"
+          onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
+          onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';"
+        >
+          🔬 Test Google API Configuration
+        </button>
+      </div>
     </div>
   </div>
 
@@ -5397,8 +5409,34 @@
      instead of the deprecated PlacesService
   */
 
-  // Initialize Google services
-  let geocoderService = null;
+    // Initialize Google services
+    let geocoderService = null;
+    let placesConfigErrorLogged = false;
+
+    function classifyPlacesError(error) {
+    const raw = String(error?.message || error || "");
+    const upper = raw.toUpperCase();
+    const permissionDenied = upper.includes("PERMISSION_DENIED") && (
+      upper.includes("PLACES_GET_PLACE") ||
+      upper.includes("PLACES.SEARCHBYTEXT") ||
+      upper.includes("PLACES.GOOGLEAPIS.COM") ||
+      upper.includes("BLOCKED")
+    );
+
+    return {
+      raw,
+      permissionDenied,
+      advice: "Enable Places API (New), check API key restrictions/referrers, ensure billing is enabled, and confirm key+API are in the same Google Cloud project."
+    };
+    }
+
+    function buildPlacesConfigError(operation, details) {
+    const err = new Error(`Google Places API blocked during ${operation}. ${details.advice}`);
+    err.code = "PLACES_PERMISSION_DENIED";
+    err.isFatalPlacesConfigError = true;
+    err.details = details.raw;
+    return err;
+    }
 
   /**
    * Initialize Google Maps services
@@ -5480,6 +5518,14 @@
       };
 
     } catch (error) {
+      const details = classifyPlacesError(error);
+      if (details.permissionDenied) {
+        if (!placesConfigErrorLogged) {
+          placesConfigErrorLogged = true;
+          console.error("Google Places permission/config error:", details.raw);
+        }
+        throw buildPlacesConfigError("GetPlace", details);
+      }
       console.error("Error fetching place details:", error);
       throw new Error(`Places API error: ${error.message}`);
     }
@@ -5530,6 +5576,14 @@
       return formattedResults;
 
     } catch (error) {
+      const details = classifyPlacesError(error);
+      if (details.permissionDenied) {
+        if (!placesConfigErrorLogged) {
+          placesConfigErrorLogged = true;
+          console.error("Google Places permission/config error:", details.raw);
+        }
+        throw buildPlacesConfigError("SearchByText", details);
+      }
       console.error("Error searching places:", error);
       throw new Error(`Text search error: ${error.message}`);
     }
@@ -6483,6 +6537,7 @@
     initBreadcrumbResetBtn();
     initDryRunToggle();
     initAutomationButtons();
+    initApiDiagnosticButton();
     initModalCloseButtons();
 
     console.log("=== APP INITIALIZATION COMPLETE ===");
@@ -10811,6 +10866,215 @@ undefined
       if (applyBtn) applyBtn.style.display = 'none';
     }
 
+    // ============================================================
+    // API DIAGNOSTIC FUNCTIONS
+    // ============================================================
+
+    /**
+     * Run comprehensive Google API diagnostics
+     */
+    async function runApiDiagnostic() {
+      const modal = document.getElementById('apiDiagnosticModal');
+      const backdrop = document.getElementById('apiDiagnosticBackdrop');
+      const resultsEl = document.getElementById('apiDiagnosticResults');
+      const copyBtn = document.getElementById('copyDiagnosticBtn');
+
+      if (!modal || !backdrop || !resultsEl) return;
+
+      // Show modal
+      modal.style.display = 'flex';
+      backdrop.style.display = 'block';
+      copyBtn.style.display = 'none';
+
+      const results = [];
+      let hasErrors = false;
+
+      function addResult(icon, title, message, isError = false) {
+        if (isError) hasErrors = true;
+        const color = isError ? '#ef4444' : '#10b981';
+        const bgColor = isError ? '#fee2e2' : '#d1fae5';
+        results.push({
+          html: `
+            <div style="margin-bottom: 16px; padding: 12px 16px; background: ${bgColor}; border-left: 4px solid ${color}; border-radius: 6px;">
+              <div style="font-weight: 700; color: ${color}; margin-bottom: 6px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 16px;">${icon}</span>
+                <span>${title}</span>
+              </div>
+              <div style="color: #374151; font-size: 12px; white-space: pre-wrap; font-family: 'SF Mono', monospace;">${message}</div>
+            </div>
+          `,
+          text: `${icon} ${title}\n${message}\n`
+        });
+      }
+
+      resultsEl.innerHTML = '<div style="text-align: center; padding: 20px; color: #6b7280;">🔄 Running diagnostics...</div>';
+
+      // Test 1: Check if Google Maps is loaded
+      await new Promise(r => setTimeout(r, 100));
+      
+      if (typeof google === 'undefined' || !google.maps) {
+        addResult('❌', 'Google Maps Not Loaded', 
+          'The Google Maps JavaScript API is not loaded.\n\nCheck that the script tag is present and the API key is valid.', true);
+      } else {
+        addResult('✅', 'Google Maps API Loaded', 
+          'Google Maps JavaScript API is successfully loaded.');
+      }
+
+      // Test 2: Check if Places Library is loaded
+      if (typeof google !== 'undefined' && google.maps) {
+        if (!google.maps.places) {
+          addResult('❌', 'Places Library Not Loaded', 
+            'The Places library is not loaded.\n\nAdd libraries=places to your Google Maps script URL.', true);
+        } else {
+          addResult('✅', 'Places Library Loaded', 
+            'Google Maps Places library is available.');
+        }
+      }
+
+      // Test 3: Test actual Places API call
+      if (typeof google !== 'undefined' && google.maps && google.maps.places && google.maps.places.Place) {
+        try {
+          // Try fetching a well-known place
+          const testPlaceId = 'ChIJN1t_tDeuEmsRUsoyG83frY4'; // Google Sydney office
+          
+          addResult('⏳', 'Testing Places API Access', 
+            `Attempting to fetch place details for test Place ID:\n${testPlaceId}`);
+
+          const { Place } = await google.maps.importLibrary("places");
+          const place = new Place({
+            id: testPlaceId,
+            requestedLanguage: 'en'
+          });
+
+          await place.fetchFields({
+            fields: ['displayName', 'formattedAddress']
+          });
+
+          if (place.displayName) {
+            addResult('✅', 'Places API Access: SUCCESS', 
+              `Successfully fetched place details:\n"${place.displayName}"\n\nThe Places API (New) is properly configured and accessible.`);
+          } else {
+            addResult('⚠️', 'Places API Partial Success', 
+              'Connected to Places API but received incomplete data.\n\nThis may indicate restricted field access.', true);
+          }
+
+        } catch (err) {
+          let errorMsg = String(err.message || err);
+          let remediation = '';
+
+          if (errorMsg.includes('PERMISSION_DENIED') || errorMsg.includes('blocked')) {
+            hasErrors = true;
+            remediation = `
+📋 REMEDIATION STEPS:
+
+1. Go to Google Cloud Console:
+   https://console.cloud.google.com/
+
+2. Select your project
+
+3. Enable "Places API (New)":
+   https://console.cloud.google.com/marketplace/product/google/places-backend.googleapis.com
+
+4. Ensure billing is enabled for your project
+
+5. Check API Key restrictions:
+   • Navigate to: APIs & Services → Credentials
+   • Click on your API key
+   • Under "API restrictions":
+     - Select "Restrict key"
+     - Enable: Places API (New)
+     - Enable: Maps JavaScript API
+   • Under "Website restrictions" (if applicable):
+     - Add your domain/origin (including port for localhost)
+
+6. Wait 2-5 minutes for changes to propagate
+
+7. Re-run this diagnostic
+
+COMMON ISSUES:
+• Using "Places API" instead of "Places API (New)"
+• API key restrictions blocking the new Places API
+• Billing not enabled on the project
+• Wrong referrer restrictions
+            `;
+          } else if (errorMsg.includes('API key')) {
+            remediation = '\n\nCheck that your API key is valid and has not expired.';
+          } else if (errorMsg.includes('quota')) {
+            remediation = '\n\nYou may have exceeded your API quota. Check your Google Cloud Console billing/quotas.';
+          }
+
+          addResult('❌', 'Places API Access: FAILED', 
+            `Error: ${errorMsg}${remediation}`, true);
+        }
+      }
+
+      // Test 4: Check Distance Matrix Service
+      if (typeof google !== 'undefined' && google.maps && google.maps.DistanceMatrixService) {
+        addResult('✅', 'Distance Matrix Service Available', 
+          'Google Maps Distance Matrix Service is loaded and ready.');
+      } else {
+        addResult('⚠️', 'Distance Matrix Service Not Found', 
+          'Distance Matrix Service is not available.\n\nThis is needed for drive time calculations.', true);
+      }
+
+      // Test 5: Check Geocoding Service
+      if (typeof google !== 'undefined' && google.maps && google.maps.Geocoder) {
+        addResult('✅', 'Geocoding Service Available', 
+          'Google Maps Geocoding Service is loaded and ready.');
+      } else {
+        addResult('⚠️', 'Geocoding Service Not Found', 
+          'Geocoding Service is not available.\n\nThis is needed for address lookups.', true);
+      }
+
+      // Build final HTML
+      const summaryIcon = hasErrors ? '❌' : '✅';
+      const summaryText = hasErrors ? 'Issues Detected' : 'All Tests Passed';
+      const summaryColor = hasErrors ? '#ef4444' : '#10b981';
+
+      const summaryHTML = `
+        <div style="margin-bottom: 24px; padding: 16px; background: linear-gradient(135deg, ${summaryColor}15 0%, ${summaryColor}05 100%); border: 2px solid ${summaryColor}; border-radius: 8px; text-align: center;">
+          <div style="font-size: 32px; margin-bottom: 8px;">${summaryIcon}</div>
+          <div style="font-size: 18px; font-weight: 700; color: ${summaryColor};">${summaryText}</div>
+        </div>
+      `;
+
+      resultsEl.innerHTML = summaryHTML + results.map(r => r.html).join('');
+
+      // Store results for copying
+      window._lastDiagnosticResults = results.map(r => r.text).join('\n');
+      copyBtn.style.display = 'inline-flex';
+    }
+
+    /**
+     * Close API diagnostic modal
+     */
+    function closeApiDiagnostic() {
+      const modal = document.getElementById('apiDiagnosticModal');
+      const backdrop = document.getElementById('apiDiagnosticBackdrop');
+
+      if (modal) modal.style.display = 'none';
+      if (backdrop) backdrop.style.display = 'none';
+    }
+
+    /**
+     * Copy diagnostic results to clipboard
+     */
+    function copyDiagnosticResults() {
+      const text = window._lastDiagnosticResults || 'No results available';
+      
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyDiagnosticBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✅ Copied!';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy to clipboard');
+      });
+    }
+
     /**
      * Show "Apply Changes" button after dry run completes
      */
@@ -11449,6 +11713,24 @@ undefined
       console.log('✓ Automation buttons initialized successfully');
     }
 
+    /**
+     * Initialize API Diagnostic Button
+     */
+    function initApiDiagnosticButton() {
+      const btn = document.getElementById('apiDiagnosticBtn');
+      if (!btn) {
+        console.warn('API diagnostic button not found in DOM');
+        return;
+      }
+
+      btn.addEventListener('click', async () => {
+        console.log('🔬 API Diagnostic button clicked');
+        await runApiDiagnostic();
+      });
+
+      console.log('✓ API diagnostic button initialized');
+    }
+
     // ============================================================
     // CANONICAL FAVORITES / RATINGS OVERRIDES (final)
     // ============================================================
@@ -11771,6 +12053,39 @@ undefined
 
 <div id="automationProgressBackdrop" class="modal-backdrop" style="z-index: 2000;"></div>
 
+<!-- API Diagnostic Modal -->
+<div id="apiDiagnosticModal" class="automation-progress-modal" style="display: none; z-index: 2100; max-width: 700px;">
+  <div class="automation-progress-header">
+    <h3 style="margin: 0; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+      🔬 Google API Configuration Test
+    </h3>
+    <button
+      onclick="closeApiDiagnostic()"
+      style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s;"
+      onmouseover="this.style.background='#f3f4f6'; this.style.color='#1f2937';"
+      onmouseout="this.style.background='none'; this.style.color='#6b7280';"
+    >
+      ×
+    </button>
+  </div>
+  <div class="automation-progress-body" style="padding: 20px;">
+    <div id="apiDiagnosticResults" style="font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 13px; line-height: 1.8;">
+      <div style="text-align: center; padding: 40px 20px; color: #6b7280;">
+        <div style="font-size: 48px; margin-bottom: 12px;">🔄</div>
+        <div style="font-size: 15px; font-weight: 600; color: #374151;">Running diagnostics...</div>
+      </div>
+    </div>
+  </div>
+  <div class="automation-progress-footer">
+    <button class="automation-btn-secondary" onclick="closeApiDiagnostic()">Close</button>
+    <button id="copyDiagnosticBtn" class="automation-btn-primary" onclick="copyDiagnosticResults()" style="display: none;">
+      📋 Copy Results
+    </button>
+  </div>
+</div>
+
+<div id="apiDiagnosticBackdrop" class="modal-backdrop" style="z-index: 2050;"></div>
+
 
 <script>
   (function () {
@@ -11984,9 +12299,44 @@ undefined
       let updated = 0;
       let skipped = 0;
       let errors = 0;
+      let abortedByPlacesConfig = false;
 
       updateAutomationStatus(`Processing 0 of ${total} adventures...`);
       setAutomationProgress(0, total);
+
+      // Preflight once for GetPlace actions so blocked keys do not spam errors per row.
+      if (actionType !== "searchPlaceIds") {
+        const preflightRow = rows.find((r) => {
+          const v = r?.values?.[0] || [];
+          return gaPlaceIdStatus(v[GA_COL.PLACE_ID]).status === "valid";
+        });
+
+        if (preflightRow) {
+          try {
+            const pv = preflightRow.values?.[0] || [];
+            await getPlaceDetails(gaStr(pv[GA_COL.PLACE_ID]));
+            addAutomationLog("Places API preflight passed.", "success");
+          } catch (preflightErr) {
+            if (preflightErr?.isFatalPlacesConfigError) {
+              abortedByPlacesConfig = true;
+              errors++;
+              addAutomationLog("Google Places API is blocked for this key/project.", "error");
+              addAutomationLog(preflightErr.message, "error");
+              addAutomationLog("Fix in Google Cloud: enable Places API (New), verify API key restrictions/referrers, and ensure billing is active.", "warning");
+              updateAutomationStatus("Blocked: Google Places API permission/config required", false, true);
+              setAutomationProgress(total, total);
+            } else {
+              throw preflightErr;
+            }
+          }
+        }
+      }
+
+      if (abortedByPlacesConfig) {
+        addAutomationLog("Run stopped early to prevent repeated blocked requests.", "warning");
+        showToast(`${title}: blocked by Google Places API permission/config`, "error", 5000);
+        return;
+      }
 
       for (let i = 0; i < total; i++) {
         const row = rows[i];
@@ -12128,6 +12478,13 @@ undefined
           }
         } catch (err) {
           errors++;
+          if (err?.isFatalPlacesConfigError) {
+            abortedByPlacesConfig = true;
+            addAutomationLog(`  -> Fatal Places API config error: ${err.message}`, "error");
+            addAutomationLog("Stopping run to avoid repeated blocked requests.", "warning");
+            updateAutomationStatus("Blocked: Google Places API permission/config required", false, true);
+            break;
+          }
           addAutomationLog(`  -> Error: ${err.message}`, "error");
         }
 
@@ -12142,6 +12499,11 @@ undefined
       addAutomationLog(`${isDryRun ? "Would update" : "Updated"}: ${updated}`, isDryRun ? "warning" : "success");
       addAutomationLog(`Skipped: ${skipped}`, "info");
       addAutomationLog(`Errors: ${errors}`, errors > 0 ? "error" : "success");
+
+      if (abortedByPlacesConfig) {
+        showToast(`${title}: stopped early - Google Places API permission/config issue`, "error", 5000);
+        return;
+      }
 
       if (isDryRun) {
         addAutomationLog("", "info");
