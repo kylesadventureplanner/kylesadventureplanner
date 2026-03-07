@@ -6536,7 +6536,45 @@
     }
   });
 
-  // ...existing code...
+    /**
+     * Generate Contact Tab Content
+     */
+    function generateContactTab(data) {
+    return `
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📞 Phone Number</div>
+        <div class="row-detail-value">
+          ${data.phoneNumber ? `<a href="tel:${data.phoneNumber.replace(/\s+/g, '')}" style="color: #1d4ed8; text-decoration: none; font-weight: 600;">${data.phoneNumber}</a>` : '<span class="row-detail-empty">Not available</span>'}
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">📍 Address</div>
+        <div class="row-detail-value">
+          ${data.address ? `<span style="color: #4b5563; line-height: 1.6;">${data.address}</span>` : '<span class="row-detail-empty">Not available</span>'}
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">🌐 Website</div>
+        <div class="row-detail-value">
+          ${data.website ? `<a href="${data.website}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: none; font-weight: 600;">Visit Website ↗</a>` : '<span class="row-detail-empty">Not available</span>'}
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">🗺️ Directions</div>
+        <div class="row-detail-value">
+          ${data.directions ? `<a href="${data.directions}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: none; font-weight: 600;">Get Directions ↗</a>` : '<span class="row-detail-empty">Not available</span>'}
+        </div>
+      </div>
+      <div class="row-detail-section">
+        <div class="row-detail-section-title">⭐ Google Rating</div>
+        <div class="row-detail-value">
+          ${data.googleRating ? `<span style="color: #f59e0b; font-weight: 600;">${data.googleRating}</span>` : '<span class="row-detail-empty">Not available</span>'}
+        </div>
+      </div>
+    `;
+    }
+
+    // ...existing code...
   function initIphoneToggle() {
     const btn = document.getElementById("iphoneToggleBtn");
     if (!btn) {
@@ -9543,6 +9581,33 @@
         ${data.tags ? `<div class="row-detail-tags-list">${data.tags.split(",").map(tag => `<span class="row-detail-tag">${tag.trim()}</span>`).join("")}</div>` : '<span class="row-detail-empty">No tags</span>'}
       </div>
       <div class="row-detail-section">
+        <div class="row-detail-section-title">📍 Location</div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Address</div>
+          <div class="row-detail-value">${data.address || '<span class="row-detail-empty">Not available</span>'}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Drive Time</div>
+          <div class="row-detail-value">${data.driveTime || "N/A"}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Phone Number</div>
+          <div class="row-detail-value">${data.phoneNumber ? `<a href="tel:${data.phoneNumber.replace(/\s+/g, '')}" style="color: #1d4ed8; text-decoration: none; font-weight: 600;">${data.phoneNumber}</a>` : '<span class="row-detail-empty">Not available</span>'}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">State</div>
+          <div class="row-detail-value">${data.state || "N/A"}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">City</div>
+          <div class="row-detail-value">${data.city || "N/A"}</div>
+        </div>
+        <div class="row-detail-field">
+          <div class="row-detail-label">Website</div>
+          <div class="row-detail-value">${data.website ? `<a href="${data.website}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: none; font-weight: 600;">Visit Website ↗</a>` : '<span class="row-detail-empty">Not available</span>'}</div>
+        </div>
+      </div>
+      <div class="row-detail-section">
         <div class="row-detail-field">
           <div class="row-detail-label">Activity</div>
           <div class="row-detail-value">${data.tags?.split(",")[0] || "N/A"}</div>
@@ -9620,32 +9685,7 @@
   /**
    * Generate Contact Tab Content
    */
-  function generateContactTab(data) {
-    return `
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">🌐 Website</div>
-        ${data.website ? `<div class="row-detail-value"><a href="${data.website}" target="_blank" rel="noopener">Visit Website ↗</a></div>` : '<span class="row-detail-empty">No website available</span>'}
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📞 Contact Info</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Phone</div>
-          <div class="row-detail-value">${data.phoneNumber || '<span class="row-detail-empty">Not available</span>'}</div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">⭐ Reviews & Ratings</div>
-        <div class="row-detail-field">
-          <div class="row-detail-label">Google Rating</div>
-          <div class="row-detail-value">${data.googleRating || '<span class="row-detail-empty">Not available</span>'}</div>
-        </div>
-      </div>
-      <div class="row-detail-section">
-        <div class="row-detail-section-title">📍 Location ID</div>
-        <div class="row-detail-value" style="font-family: monospace; font-size: 12px; color: #6b7280;">${data.googlePlaceId || '<span class="row-detail-empty">Not available</span>'}</div>
-      </div>
-    `;
-  }
+undefined
 
   /**
    * Generate Links Tab Content
