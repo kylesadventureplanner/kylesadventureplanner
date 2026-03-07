@@ -413,32 +413,72 @@
 
     .automation-btn {
       border-radius: 999px;
-      border: 1px solid var(--blue-border);
+      border: 2px solid var(--blue-border);
       background: white;
       color: var(--blue-strong);
-      padding: 5px 12px;
-      font-size: 12px;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 500;
       cursor: pointer;
       position: relative;
       z-index: 100;
-      pointer-events: auto;
+      pointer-events: auto !important;
       transition: all 0.2s ease;
+      min-height: 40px;
+      min-width: 120px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      user-select: none;
     }
 
     .automation-btn:hover {
       background: var(--blue-bg);
-      transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border-color: var(--blue-strong);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .automation-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
     }
 
     .automation-btn:active {
       transform: translateY(0);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .automation-btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
-      pointer-events: none;
+      pointer-events: none !important;
+    }
+
+    /* Colored button variants */
+    #btnRefreshPlaceIds {
+      background: #0ea5e9;
+      color: white;
+      border-color: #0ea5e9;
+    }
+
+    #btnRefreshPlaceIds:hover {
+      background: #0284c7;
+      border-color: #0284c7;
+      box-shadow: 0 4px 8px rgba(14, 165, 233, 0.3);
+    }
+
+    #btnSearchPlaceIds {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+
+    #btnSearchPlaceIds:hover {
+      background: #059669;
+      border-color: #059669;
+      box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
     }
 
     .dry-run-toggle {
@@ -1169,6 +1209,33 @@
 
     .card-info-row:hover {
       background: var(--neutral-100);
+    }
+
+    .card-info-row a,
+    .card-info-value a {
+      pointer-events: auto !important;
+      position: relative;
+      z-index: 10;
+      color: #1d4ed8;
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .card-info-row a:hover,
+    .card-info-value a:hover {
+      color: #1e40af;
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+
+    .card-info-row a:focus,
+    .card-info-value a:focus {
+      outline: 2px solid #3b82f6;
+      outline-offset: 2px;
+      border-radius: 2px;
     }
 
     .card-info-icon {
@@ -4877,41 +4944,9 @@
         <button id="btnPopulateMissing" class="automation-btn">Populate Missing Fields</button>
         <button id="btnRefreshHours" class="automation-btn">Refresh Hours Only</button>
         <button id="btnRefreshAll" class="automation-btn">Refresh All Fields</button>
-        <button id="btnRefreshPlaceIds" class="automation-btn" style="background: #0ea5e9; border-color: #0ea5e9; color: white; cursor: pointer; pointer-events: auto; position: relative; z-index: 100;">🔄 Refresh Place IDs</button>
-        <button id="btnSearchPlaceIds" class="automation-btn" style="background: #10b981; border-color: #10b981; color: white; cursor: pointer; pointer-events: auto; position: relative; z-index: 100;">🔍 Search Place IDs</button>
-      </div>
-
-      <!-- Skip Value Setting -->
-      <div style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; margin-top: 12px;">
-        <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 8px;">
-          ⊘ Skip Locations by Place ID Value
-        </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input
-            id="automationSkipInput"
-            type="text"
-            placeholder="Enter value to skip (e.g., SKIP, DO NOT UPDATE, MANUAL ONLY)"
-            style="flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px;"
-          />
-          <button
-            id="automationSkipSetBtn"
-            style="padding: 8px 16px; background: #6366f1; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;"
-          >
-            Set Skip Value
-          </button>
-          <button
-            id="automationSkipClearBtn"
-            style="padding: 8px 16px; background: #9ca3af; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;"
-          >
-            Clear
-          </button>
-        </div>
-        <div
-          id="automationSkipStatus"
-          style="font-size: 11px; color: #6b7280; margin-top: 6px; display: none;"
-        >
-          <!-- Status message appears here -->
-        </div>
+        <button id="btnRefreshPlaceIds" class="automation-btn">🔄 Refresh Place IDs</button>
+        <button id="btnSearchPlaceIds" class="automation-btn">🔍 Search Place IDs</button>
+        <button id="btnAddPlace" class="automation-btn">➕ Add New Place</button>
       </div>
 
       <div class="dry-run-note">
@@ -6773,8 +6808,73 @@
               backdrop.style.display = 'none';
               backdrop.style.pointerEvents = 'none';
               backdrop.style.opacity = '0';
+              backdrop.style.zIndex = '-1';  // Push behind everything
+            } else {
+              // Ensure visible backdrops don't block interactions
+              backdrop.style.pointerEvents = 'auto';
+              backdrop.style.zIndex = '998';
             }
           });
+
+          // CRITICAL: Restore all page buttons to clickable state
+          window.ensureButtonsClickable();
+        };
+
+        // Restore button accessibility across the entire page
+        window.ensureButtonsClickable = function() {
+          // Automation buttons
+          const automationButtons = document.querySelectorAll('.automation-btn');
+          automationButtons.forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.style.zIndex = '100';
+            btn.disabled = false;
+          });
+
+          // Quick filter buttons
+          const quickFilterBtns = document.querySelectorAll('.quick-filter-btn');
+          quickFilterBtns.forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.disabled = false;
+          });
+
+          // Control panel buttons
+          const controlButtons = document.querySelectorAll('.control-panel-card button');
+          controlButtons.forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.disabled = false;
+          });
+
+          // Sort buttons
+          const sortBtns = document.querySelectorAll('[id*="sort"], .sort-btn, [class*="sort"]');
+          sortBtns.forEach(btn => {
+            if (btn.tagName === 'BUTTON') {
+              btn.style.pointerEvents = 'auto';
+              btn.disabled = false;
+            }
+          });
+
+          // Pagination buttons
+          const paginationBtns = document.querySelectorAll('.pagination-btn, [id*="pagination"] button');
+          paginationBtns.forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.disabled = false;
+          });
+
+          // Card action buttons (Details, Edit, etc)
+          const cardBtns = document.querySelectorAll('.card-btn, .action-btn');
+          cardBtns.forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.disabled = false;
+          });
+
+          // Links (make sure they're clickable)
+          const links = document.querySelectorAll('a');
+          links.forEach(link => {
+            link.style.pointerEvents = 'auto';
+            link.style.zIndex = '10';
+          });
+
+          console.log('✓ All page buttons restored to clickable state');
         };
 
         closeAutomationProgress = function() {
@@ -6821,10 +6921,6 @@
 
           const buttonsWrap = document.querySelector('.automation-buttons');
           const dryRunToggle = document.getElementById('dryRunToggle');
-          const skipInput = document.getElementById('automationSkipInput');
-          const skipSetBtn = document.getElementById('automationSkipSetBtn');
-          const skipClearBtn = document.getElementById('automationSkipClearBtn');
-          const skipStatus = document.getElementById('automationSkipStatus');
 
           if (!buttonsWrap) {
             console.warn('Automation button container not found in DOM');
@@ -6844,56 +6940,56 @@
 
           if (buttonsWrap.dataset.bound !== '1') {
             buttonsWrap.addEventListener('click', async (e) => {
-              const btn = e.target.closest('button.automation-btn');
-              if (!btn) return;
-
-              const action = actionById[btn.id];
-              if (!action) return;
-
+              // Prevent default and stop propagation FIRST
               e.preventDefault();
               e.stopPropagation();
+
+              // Find the closest button element
+              const btn = e.target.closest('button.automation-btn');
+              if (!btn) {
+                console.log('Click detected but no automation-btn found');
+                return;
+              }
+
+              // Handle Add Place button
+              if (btn.id === 'btnAddPlace') {
+                window.openAddPlaceModal();
+                return;
+              }
+
+              // Validate button ID maps to an action
+              const action = actionById[btn.id];
+              if (!action) {
+                console.warn(`No action found for button ID: ${btn.id}`);
+                return;
+              }
+
+              // Clear any stale modals
               window.clearStaleModalBackdrops();
 
-              console.log(`✓ ${btn.id} clicked - Dry Run:`, isDryRun());
+              // Log and execute
+              console.log(`✓ Button clicked: ${btn.id} (text: "${btn.textContent}") - Dry Run:`, isDryRun());
               await runGoogleAutomation(action, isDryRun());
             }, true);
 
+            // Add explicit hover feedback logging
             buttonsWrap.addEventListener('mouseover', (e) => {
               const btn = e.target.closest('button.automation-btn');
-              if (btn) console.log(`✓ Hover ${btn.id}`);
+              if (btn) {
+                console.log(`✓ Mouse over: ${btn.id}`);
+              }
+            }, true);
+
+            buttonsWrap.addEventListener('mouseout', (e) => {
+              const btn = e.target.closest('button.automation-btn');
+              if (btn) {
+                console.log(`✓ Mouse out: ${btn.id}`);
+              }
             }, true);
 
             buttonsWrap.dataset.bound = '1';
           }
 
-          if (skipSetBtn && skipSetBtn.dataset.bound !== '1') {
-            skipSetBtn.addEventListener('click', () => {
-              const value = skipInput?.value.trim();
-              if (value) {
-                setAutomationSkipValue(value);
-                showToast(`✓ Skip value set to: "${value}"`, 'success', 2000);
-                if (skipStatus) {
-                  skipStatus.textContent = `✓ Will skip locations where Place ID = "${window.automationSkipValue}"`;
-                  skipStatus.style.display = 'block';
-                  skipStatus.style.color = '#059669';
-                }
-              } else {
-                showToast('❌ Please enter a skip value', 'error', 2000);
-              }
-            });
-            skipSetBtn.dataset.bound = '1';
-          }
-
-          if (skipClearBtn && skipClearBtn.dataset.bound !== '1') {
-            skipClearBtn.addEventListener('click', () => {
-              window.automationSkipValue = '';
-              localStorage.removeItem('automationSkipValue');
-              if (skipInput) skipInput.value = '';
-              if (skipStatus) skipStatus.style.display = 'none';
-              showToast('✓ Skip value cleared', 'info', 2000);
-            });
-            skipClearBtn.dataset.bound = '1';
-          }
 
           if (window.automationSkipValue && skipStatus && skipInput) {
             skipInput.value = window.automationSkipValue;
@@ -10763,6 +10859,12 @@
     // Re-render cards with filtered data and reset to page 1
     renderAdventureCards(filteredData);
 
+    // Post-render safety: clear stale overlays and re-enable click targets.
+    requestAnimationFrame(() => {
+      window.clearStaleModalBackdrops?.();
+      window.ensureButtonsClickable?.();
+    });
+
     // Update results count
     updateResultsCount(filteredData.length);
 
@@ -12228,6 +12330,250 @@ COMMON ISSUES:
     };
 
     // ============================================================
+    // ADD NEW PLACE FUNCTIONALITY
+    // ============================================================
+    function strVal(value) {
+      return String(value == null ? "" : value).trim();
+    }
+
+    function extractPlaceIdFromUrl(raw) {
+      const text = strVal(raw);
+      const match = text.match(/\bChI[A-Za-z0-9_-]{6,}\b/);
+      if (match) return match[0];
+      const queryMatch = text.match(/[?&]query_place_id=([^&#]+)/i);
+      if (queryMatch) return decodeURIComponent(queryMatch[1]);
+      const pidMatch = text.match(/place_id[:=]([^&#]+)/i);
+      if (pidMatch) return decodeURIComponent(pidMatch[1]);
+      return "";
+    }
+
+    async function resolvePlaceIdFromInput(inputType, inputValue) {
+      const value = strVal(inputValue);
+      if (!value) throw new Error("Please enter a value.");
+
+      if (inputType === "placeId") {
+        return extractPlaceIdFromUrl(value) || value;
+      }
+
+      if (inputType === "placeUrl") {
+        const fromUrl = extractPlaceIdFromUrl(value);
+        if (fromUrl) return fromUrl;
+        const placeNameMatch = value.match(/\/maps\/place\/([^/?#]+)/i);
+        if (placeNameMatch && placeNameMatch[1]) {
+          const query = decodeURIComponent(placeNameMatch[1]).replace(/\+/g, " ");
+          const placeResults = await searchPlaces(query);
+          if (placeResults && placeResults[0] && strVal(placeResults[0].placeId)) {
+            return strVal(placeResults[0].placeId);
+          }
+        }
+        throw new Error("Could not resolve Place ID from URL.");
+      }
+
+      if (inputType === "website") {
+        let queryText = value;
+        try {
+          const normalized = value.indexOf("http") === 0 ? value : ("https://" + value);
+          const u = new URL(normalized);
+          queryText = u.hostname.replace(/^www\./i, "");
+        } catch (_err) {
+          // fallback to raw value
+        }
+        const websiteResults = await searchPlaces(queryText);
+        if (websiteResults && websiteResults[0] && strVal(websiteResults[0].placeId)) {
+          return strVal(websiteResults[0].placeId);
+        }
+        throw new Error("No place found from website input.");
+      }
+
+      const nameResults = await searchPlaces(value);
+      if (nameResults && nameResults[0] && strVal(nameResults[0].placeId)) {
+        return strVal(nameResults[0].placeId);
+      }
+      throw new Error("No place found from name input.");
+    }
+
+    function inferCityStateFromAddress(address) {
+      const parts = strVal(address).split(",").map(function (p) { return strVal(p); }).filter(Boolean);
+      const city = parts.length >= 3 ? parts[parts.length - 3] : "";
+      const stateZip = parts.length >= 2 ? parts[parts.length - 2] : "";
+      const m = stateZip.match(/\b([A-Z]{2})\b/);
+      return {
+        city: city,
+        state: m ? m[1] : ""
+      };
+    }
+
+    function normalizeOperationHours(hours) {
+      if (!hours) return "";
+      if (typeof hours === "string") return hours;
+      if (Array.isArray(hours.weekdayDescriptions)) return hours.weekdayDescriptions.join(" | ");
+      if (Array.isArray(hours.weekdayText)) return hours.weekdayText.join(" | ");
+      return "";
+    }
+
+    function buildDirectionsUrl(placeId, address, name) {
+      const pid = strVal(placeId);
+      if (pid) {
+        return "https://www.google.com/maps/dir/?api=1&destination_place_id=" + encodeURIComponent(pid);
+      }
+      const destination = strVal(address) || strVal(name);
+      if (!destination) return "";
+      return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(destination);
+    }
+
+    function buildExcelRow(placeId, details) {
+      const row = new Array(23).fill("");
+      const name = strVal(details && details.name);
+      const address = strVal(details && details.address);
+      const cityState = inferCityStateFromAddress(address);
+
+      row[0] = name;
+      row[1] = strVal(placeId);
+      row[2] = strVal(details && details.website);
+      row[5] = normalizeOperationHours(details && details.hours);
+      row[9] = cityState.state;
+      row[10] = cityState.city;
+      row[11] = address;
+      row[12] = strVal(details && details.phone);
+      row[13] = details && details.rating != null ? String(details.rating) : "";
+      row[15] = buildDirectionsUrl(placeId, address, name);
+      row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
+
+      return row;
+    }
+
+    function placeExistsInData(newRow) {
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      const targetPlaceId = strVal(newRow[1]);
+      if (!targetPlaceId) return false;
+      return rows.some(function (r) {
+        const vals = (r && r.values && r.values[0]) || [];
+        return strVal(vals[1]) === targetPlaceId;
+      });
+    }
+
+    async function addRowToExcel(rowValues) {
+      if (!window.accessToken) throw new Error("Please sign in first.");
+      const url = "https://graph.microsoft.com/v1.0/me/drive/root:/" + window.filePath + ":/workbook/tables/" + window.tableName + "/rows/add";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + window.accessToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values: [rowValues] })
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(function () { return ""; });
+        throw new Error("Excel add row failed (" + res.status + ")" + (text ? (": " + text) : ""));
+      }
+    }
+
+    function setAddPlaceStatus(msg, type) {
+      const el = document.getElementById("addPlaceStatus");
+      if (!el) return;
+      const palette = {
+        info: ["#eff6ff", "#93c5fd", "#1d4ed8"],
+        success: ["#ecfdf5", "#86efac", "#047857"],
+        error: ["#fef2f2", "#fca5a5", "#b91c1c"]
+      }[type] || ["#eff6ff", "#93c5fd", "#1d4ed8"];
+      el.style.display = "block";
+      el.style.background = palette[0];
+      el.style.border = "1px solid " + palette[1];
+      el.style.color = palette[2];
+      el.textContent = msg;
+    }
+
+    window.openAddPlaceModal = function () {
+      const modal = document.getElementById("addPlaceModal");
+      const backdrop = document.getElementById("addPlaceBackdrop");
+      const status = document.getElementById("addPlaceStatus");
+      const input = document.getElementById("addPlaceInputValue");
+      if (status) status.style.display = "none";
+      if (input) input.value = "";
+      if (modal) modal.style.display = "flex";
+      if (backdrop) backdrop.style.display = "block";
+    };
+
+    window.closeAddPlaceModal = function () {
+      const modal = document.getElementById("addPlaceModal");
+      const backdrop = document.getElementById("addPlaceBackdrop");
+      if (modal) modal.style.display = "none";
+      if (backdrop) backdrop.style.display = "none";
+    };
+
+    window.submitAddPlace = async function () {
+      const type = strVal(document.getElementById("addPlaceInputType") && document.getElementById("addPlaceInputType").value) || "placeName";
+      const value = strVal(document.getElementById("addPlaceInputValue") && document.getElementById("addPlaceInputValue").value);
+      const submitBtn = document.getElementById("addPlaceSubmitBtn");
+
+      if (!window.accessToken) {
+        setAddPlaceStatus("Please sign in before adding a place.", "error");
+        return;
+      }
+
+      if (!value) {
+        setAddPlaceStatus("Please enter a value.", "error");
+        return;
+      }
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Adding...";
+        }
+
+        setAddPlaceStatus("Resolving Place ID...", "info");
+        const placeId = await resolvePlaceIdFromInput(type, value);
+
+        setAddPlaceStatus("Fetching Google place details...", "info");
+        const details = await getPlaceDetails(placeId);
+        const row = buildExcelRow(placeId, details);
+
+        if (placeExistsInData(row)) {
+          throw new Error("This place already exists in your Excel table.");
+        }
+
+        setAddPlaceStatus("Adding row to Excel...", "info");
+        await addRowToExcel(row);
+
+        setAddPlaceStatus("Place added successfully.", "success");
+        if (typeof showToast === "function") {
+          showToast("Added " + (row[0] || "new place") + " to Excel", "success", 3000);
+        }
+
+        if (typeof loadTable === "function") {
+          await loadTable();
+        }
+
+        setTimeout(function () {
+          window.closeAddPlaceModal();
+        }, 600);
+      } catch (err) {
+        setAddPlaceStatus("Add failed: " + err.message, "error");
+        if (typeof showToast === "function") {
+          showToast("Add failed: " + err.message, "error", 4500);
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Add Place to Excel";
+        }
+      }
+    };
+
+    // Bind backdrop click handler for Add Place modal
+    (function () {
+      const backdrop = document.getElementById("addPlaceBackdrop");
+      if (backdrop && !backdrop.dataset.addPlaceBound) {
+        backdrop.addEventListener("click", function () {
+          window.closeAddPlaceModal();
+        });
+        backdrop.dataset.addPlaceBound = "1";
+      }
+    })();
+
+    // ============================================================
     // INITIALIZE APP ON PAGE LOAD
     // ============================================================
   // Call initialization function when DOM is ready
@@ -12239,6 +12585,7 @@ COMMON ISSUES:
     initializeApp();
   }
 </script>
+
 
 <!-- Row Detail Modal with Tabs (opened by double-clicking a row) -->
 <div id="rowDetailModal" class="row-detail-modal">
@@ -12359,6 +12706,38 @@ COMMON ISSUES:
 </div>
 
 <div id="apiDiagnosticBackdrop" class="modal-backdrop" style="z-index: 2050;"></div>
+
+<!-- Add New Place Modal -->
+<div id="addPlaceModal" class="automation-progress-modal" style="display: none; z-index: 2200; max-width: 640px;">
+  <div class="automation-progress-header">
+    <h3 style="margin: 0; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">➕ Add New Place</h3>
+    <button
+      onclick="closeAddPlaceModal()"
+      style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px;"
+    >×</button>
+  </div>
+  <div class="automation-progress-body" style="padding: 16px; background: #fff;">
+    <div style="display: grid; gap: 10px;">
+      <label for="addPlaceInputType" style="font-size: 12px; font-weight: 600; color: #374151;">Input Type</label>
+      <select id="addPlaceInputType" class="filter-select">
+        <option value="placeId">Google Place ID</option>
+        <option value="placeUrl">Google Place URL</option>
+        <option value="website">Website URL</option>
+        <option value="placeName">Place Name</option>
+      </select>
+
+      <label for="addPlaceInputValue" style="font-size: 12px; font-weight: 600; color: #374151;">Value</label>
+      <input id="addPlaceInputValue" class="filter-input" type="text" placeholder="Enter one value to resolve the place" />
+
+      <div id="addPlaceStatus" style="display: none; padding: 10px 12px; border-radius: 8px; font-size: 12px;"></div>
+    </div>
+  </div>
+  <div class="automation-progress-footer">
+    <button class="automation-btn-secondary" onclick="closeAddPlaceModal()">Cancel</button>
+    <button id="addPlaceSubmitBtn" class="automation-btn-secondary" style="border-color: #10b981; color: #047857;" onclick="submitAddPlace()">Add Place to Excel</button>
+  </div>
+</div>
+<div id="addPlaceBackdrop" class="modal-backdrop" style="z-index: 2150;"></div>
 
 
 <script>
@@ -12864,12 +13243,124 @@ COMMON ISSUES:
         updateAutomationStatus("Automation complete", true, false);
       }
 
-      const toastType = errors > 0 ? "warning" : "success";
-      const toastMsg = `${title}: ${updated} ${isDryRun ? "planned" : "updated"}, ${skipped} skipped${errors ? `, ${errors} errors` : ""}`;
-      showToast(toastMsg, toastType, 4000);
+    const toastType = errors > 0 ? "warning" : "success";
+    const toastMsg = `${title}: ${updated} ${isDryRun ? "planned" : "updated"}, ${skipped} skipped${errors ? `, ${errors} errors` : ""}`;
+    showToast(toastMsg, toastType, 4000);
+
+    window.clearStaleModalBackdrops?.();
+    window.ensureButtonsClickable?.();
     };
   })();
 </script>
 
+// ...existing code...
+<script>
+  (function () {
+    function isDryRunOn() {
+      return document.getElementById('dryRunToggle')?.classList.contains('on') ?? true;
+    }
+
+    function installSafeAutomationClickHandler() {
+      const wrap = document.querySelector('.automation-buttons');
+      if (!wrap) return;
+      if (wrap.dataset.safeBound === '1') return;
+
+      // Replace node to clear previously bound delegated handlers.
+      const clone = wrap.cloneNode(true);
+      wrap.parentNode.replaceChild(clone, wrap);
+
+      const actionById = {
+        btnPopulateMissing: 'populateMissing',
+        btnRefreshHours: 'refreshHours',
+        btnRefreshAll: 'refreshAll',
+        btnSearchPlaceIds: 'searchPlaceIds',
+        btnRefreshPlaceIds: 'refreshPlaceIds'
+      };
+
+      clone.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button.automation-btn');
+        if (!btn) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const action = actionById[btn.id];
+        if (!action) return;
+
+        window.clearStaleModalBackdrops?.();
+        await window.runGoogleAutomation?.(action, isDryRunOn());
+      }, true);
+
+      clone.dataset.safeBound = '1';
+    }
+
+    function bindCardLinkGuard(grid) {
+      if (!grid || grid.dataset.linkGuardBound === '1') return;
+
+      // Let links navigate naturally and block card/detail delegated click handlers.
+      grid.addEventListener('click', (e) => {
+        if (!e.target.closest('a')) return;
+        e.stopImmediatePropagation();
+      }, true);
+
+      grid.dataset.linkGuardBound = '1';
+    }
+
+    function installCardLinkGuardPatch() {
+      const originalRenderPaginatedCards = window.renderPaginatedCards;
+      if (typeof originalRenderPaginatedCards === 'function' && !window.__cardLinkGuardPatched) {
+        window.renderPaginatedCards = function () {
+          originalRenderPaginatedCards();
+          bindCardLinkGuard(document.getElementById('adventureCardsGrid'));
+        };
+        window.__cardLinkGuardPatched = true;
+      }
+
+      bindCardLinkGuard(document.getElementById('adventureCardsGrid'));
+    }
+
+    window.ensureButtonsClickable = function () {
+      const selectors = [
+        '.automation-btn',
+        '.quick-filter-btn',
+        '.control-panel-card button',
+        '.pagination-btn',
+        '.card-btn',
+        '.action-btn',
+        'a'
+      ];
+
+      selectors.forEach((selector) => {
+        document.querySelectorAll(selector).forEach((el) => {
+          el.style.pointerEvents = 'auto';
+        });
+      });
+
+      document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+        if (!backdrop.classList.contains('visible')) {
+          backdrop.style.pointerEvents = 'none';
+          backdrop.style.display = 'none';
+          backdrop.style.opacity = '0';
+          backdrop.style.zIndex = '-1';
+        }
+      });
+    };
+
+    const originalInitAutomationButtons = window.initAutomationButtons;
+    window.initAutomationButtons = function () {
+      if (typeof originalInitAutomationButtons === 'function') {
+        originalInitAutomationButtons();
+      }
+      installSafeAutomationClickHandler();
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      installSafeAutomationClickHandler();
+      installCardLinkGuardPatch();
+      window.ensureButtonsClickable?.();
+    });
+  })();
+</script>
+<script src="./automation_enhancements_v7_0_90.js"></script>
 </body>
 </html>
