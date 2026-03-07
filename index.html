@@ -5422,10 +5422,12 @@
       upper.includes("PLACES.GOOGLEAPIS.COM") ||
       upper.includes("BLOCKED")
     );
+    const notFound = upper.includes("PLACES_GET_PLACE") && upper.includes("NOT_FOUND");
 
     return {
       raw,
       permissionDenied,
+      notFound,
       advice: "Enable Places API (New), check API key restrictions/referrers, ensure billing is enabled, and confirm key+API are in the same Google Cloud project."
     };
     }
@@ -6668,6 +6670,11 @@
     `;
     }
 
+    // ...existing code...
+        function isInvalidPlaceIdError(error) {
+        const details = classifyPlacesError(error);
+        return !!details.notFound;
+        }
     // ...existing code...
   function initIphoneToggle() {
     const btn = document.getElementById("iphoneToggleBtn");
@@ -9849,7 +9856,6 @@
   /**
    * Generate Contact Tab Content
    */
-undefined
 
   /**
    * Generate Links Tab Content
@@ -11731,6 +11737,26 @@ COMMON ISSUES:
       console.log('✓ API diagnostic button initialized');
     }
 
+    // Ensure Details always uses stable source index even when cards are filtered/sorted/paginated.
+    const __legacyShowCardDetails = showCardDetails;
+    showCardDetails = function(index) {
+      const filteredIndex = Number(index);
+      const entry = Array.isArray(totalFilteredAdventures) ? totalFilteredAdventures[filteredIndex] : null;
+
+      if (entry && entry.row) {
+        let sourceIndex = Number.isInteger(entry.sourceIndex) ? entry.sourceIndex : -1;
+        if (sourceIndex < 0 && Array.isArray(window.adventuresData)) {
+          sourceIndex = window.adventuresData.indexOf(entry.row);
+        }
+
+        if (sourceIndex >= 0) {
+          return __legacyShowCardDetails(sourceIndex);
+        }
+      }
+
+      return __legacyShowCardDetails(filteredIndex);
+    };
+
     // ============================================================
     // CANONICAL FAVORITES / RATINGS OVERRIDES (final)
     // ============================================================
@@ -12155,6 +12181,11 @@ COMMON ISSUES:
       return { status: "valid", value: raw, reason: "OK" };
     }
 
+    function isInvalidPlaceIdError(error) {
+      const details = classifyPlacesError(error);
+      return !!details.notFound;
+    }
+
     function gaFieldPlan(actionType, values) {
       const website = gaStr(values[GA_COL.WEBSITE]);
       const hours = gaStr(values[GA_COL.HOURS]);
@@ -12325,6 +12356,8 @@ COMMON ISSUES:
               addAutomationLog("Fix in Google Cloud: enable Places API (New), verify API key restrictions/referrers, and ensure billing is active.", "warning");
               updateAutomationStatus("Blocked: Google Places API permission/config required", false, true);
               setAutomationProgress(total, total);
+            } else if (isInvalidPlaceIdError(preflightErr)) {
+              addAutomationLog("Preflight skipped: first valid-looking Place ID is stale (NOT_FOUND). Continuing with per-row handling.", "warning");
             } else {
               throw preflightErr;
             }
@@ -12477,6 +12510,14 @@ COMMON ISSUES:
             addAutomationLog(`  -> Updated: ${changedFields.join(", ")}`, "success");
           }
         } catch (err) {
+          if (isInvalidPlaceIdError(err)) {
+            skipped++;
+            addAutomationLog("  -> Skipped: Place ID is no longer valid (Google NOT_FOUND)", "warning");
+            updateAutomationStatus(`Processed ${processed} of ${total} adventures...`);
+            setAutomationProgress(processed, total);
+            continue;
+          }
+
           errors++;
           if (err?.isFatalPlacesConfigError) {
             abortedByPlacesConfig = true;
