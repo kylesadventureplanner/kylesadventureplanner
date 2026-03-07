@@ -10873,7 +10873,7 @@ undefined
     /**
      * Run comprehensive Google API diagnostics
      */
-    async function runApiDiagnostic() {
+    window.runApiDiagnostic = async function() {
       const modal = document.getElementById('apiDiagnosticModal');
       const backdrop = document.getElementById('apiDiagnosticBackdrop');
       const resultsEl = document.getElementById('apiDiagnosticResults');
@@ -10911,22 +10911,22 @@ undefined
 
       // Test 1: Check if Google Maps is loaded
       await new Promise(r => setTimeout(r, 100));
-      
+
       if (typeof google === 'undefined' || !google.maps) {
-        addResult('❌', 'Google Maps Not Loaded', 
+        addResult('❌', 'Google Maps Not Loaded',
           'The Google Maps JavaScript API is not loaded.\n\nCheck that the script tag is present and the API key is valid.', true);
       } else {
-        addResult('✅', 'Google Maps API Loaded', 
+        addResult('✅', 'Google Maps API Loaded',
           'Google Maps JavaScript API is successfully loaded.');
       }
 
       // Test 2: Check if Places Library is loaded
       if (typeof google !== 'undefined' && google.maps) {
         if (!google.maps.places) {
-          addResult('❌', 'Places Library Not Loaded', 
+          addResult('❌', 'Places Library Not Loaded',
             'The Places library is not loaded.\n\nAdd libraries=places to your Google Maps script URL.', true);
         } else {
-          addResult('✅', 'Places Library Loaded', 
+          addResult('✅', 'Places Library Loaded',
             'Google Maps Places library is available.');
         }
       }
@@ -10936,8 +10936,8 @@ undefined
         try {
           // Try fetching a well-known place
           const testPlaceId = 'ChIJN1t_tDeuEmsRUsoyG83frY4'; // Google Sydney office
-          
-          addResult('⏳', 'Testing Places API Access', 
+
+          addResult('⏳', 'Testing Places API Access',
             `Attempting to fetch place details for test Place ID:\n${testPlaceId}`);
 
           const { Place } = await google.maps.importLibrary("places");
@@ -10951,10 +10951,10 @@ undefined
           });
 
           if (place.displayName) {
-            addResult('✅', 'Places API Access: SUCCESS', 
+            addResult('✅', 'Places API Access: SUCCESS',
               `Successfully fetched place details:\n"${place.displayName}"\n\nThe Places API (New) is properly configured and accessible.`);
           } else {
-            addResult('⚠️', 'Places API Partial Success', 
+            addResult('⚠️', 'Places API Partial Success',
               'Connected to Places API but received incomplete data.\n\nThis may indicate restricted field access.', true);
           }
 
@@ -11003,26 +11003,26 @@ COMMON ISSUES:
             remediation = '\n\nYou may have exceeded your API quota. Check your Google Cloud Console billing/quotas.';
           }
 
-          addResult('❌', 'Places API Access: FAILED', 
+          addResult('❌', 'Places API Access: FAILED',
             `Error: ${errorMsg}${remediation}`, true);
         }
       }
 
       // Test 4: Check Distance Matrix Service
       if (typeof google !== 'undefined' && google.maps && google.maps.DistanceMatrixService) {
-        addResult('✅', 'Distance Matrix Service Available', 
+        addResult('✅', 'Distance Matrix Service Available',
           'Google Maps Distance Matrix Service is loaded and ready.');
       } else {
-        addResult('⚠️', 'Distance Matrix Service Not Found', 
+        addResult('⚠️', 'Distance Matrix Service Not Found',
           'Distance Matrix Service is not available.\n\nThis is needed for drive time calculations.', true);
       }
 
       // Test 5: Check Geocoding Service
       if (typeof google !== 'undefined' && google.maps && google.maps.Geocoder) {
-        addResult('✅', 'Geocoding Service Available', 
+        addResult('✅', 'Geocoding Service Available',
           'Google Maps Geocoding Service is loaded and ready.');
       } else {
-        addResult('⚠️', 'Geocoding Service Not Found', 
+        addResult('⚠️', 'Geocoding Service Not Found',
           'Geocoding Service is not available.\n\nThis is needed for address lookups.', true);
       }
 
@@ -11048,7 +11048,7 @@ COMMON ISSUES:
     /**
      * Close API diagnostic modal
      */
-    function closeApiDiagnostic() {
+    window.closeApiDiagnostic = function() {
       const modal = document.getElementById('apiDiagnosticModal');
       const backdrop = document.getElementById('apiDiagnosticBackdrop');
 
@@ -11059,9 +11059,9 @@ COMMON ISSUES:
     /**
      * Copy diagnostic results to clipboard
      */
-    function copyDiagnosticResults() {
+    window.copyDiagnosticResults = function() {
       const text = window._lastDiagnosticResults || 'No results available';
-      
+
       navigator.clipboard.writeText(text).then(() => {
         const btn = document.getElementById('copyDiagnosticBtn');
         const originalText = btn.innerHTML;
@@ -11716,7 +11716,7 @@ COMMON ISSUES:
     /**
      * Initialize API Diagnostic Button
      */
-    function initApiDiagnosticButton() {
+    window.initApiDiagnosticButton = function() {
       const btn = document.getElementById('apiDiagnosticBtn');
       if (!btn) {
         console.warn('API diagnostic button not found in DOM');
@@ -11725,7 +11725,7 @@ COMMON ISSUES:
 
       btn.addEventListener('click', async () => {
         console.log('🔬 API Diagnostic button clicked');
-        await runApiDiagnostic();
+        await window.runApiDiagnostic();
       });
 
       console.log('✓ API diagnostic button initialized');
