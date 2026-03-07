@@ -4318,34 +4318,37 @@
       left: 50%;
       transform: translate(-50%, -50%) scale(0.95);
       background: white;
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-2xl);
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
       z-index: 1002;
-      max-width: 90%;
-      max-height: 90vh;
-      width: 650px;
-      overflow-y: auto;
+      max-width: 95%;
+      max-height: 95vh;
+      width: 900px;
+      overflow: hidden;
       opacity: 0;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       border: 1px solid var(--neutral-100);
+      display: flex;
+      flex-direction: column;
     }
 
     #rowDetailModal.visible {
-      display: block;
+      display: flex;
       opacity: 1;
       transform: translate(-50%, -50%) scale(1);
     }
 
     .row-detail-header {
-      padding: var(--space-2xl);
+      padding: 32px;
       border-bottom: 1px solid var(--neutral-200);
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       gap: var(--space-lg);
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(14, 165, 233, 0.02) 100%);
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
       position: relative;
       z-index: 10;
+      flex-shrink: 0;
     }
 
     .row-detail-title-section {
@@ -4353,31 +4356,34 @@
     }
 
     .row-detail-adventure-name {
-      margin: 0 0 var(--space-md) 0;
-      font-size: 28px;
+      margin: 0 0 12px 0;
+      font-size: 32px;
       font-weight: 700;
       color: var(--neutral-900);
       letter-spacing: -0.5px;
+      line-height: 1.2;
     }
 
     .row-detail-location {
       display: flex;
-      gap: var(--space-lg);
-      font-size: 14px;
+      gap: 24px;
+      font-size: 15px;
       color: var(--neutral-600);
       font-weight: 500;
     }
 
     .row-detail-close-btn {
-      background: transparent;
+      background: rgba(0, 0, 0, 0.05);
       border: none;
       font-size: 24px;
       cursor: pointer;
       padding: var(--space-md);
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       display: flex;
       align-items: center;
+      border-radius: 12px;
+      transition: all 0.2s;
       justify-content: center;
       color: var(--neutral-500);
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -4387,23 +4393,24 @@
 
     .row-detail-close-btn:hover {
       color: var(--neutral-900);
-      background: var(--neutral-100);
-      transform: rotate(90deg);
+      background: rgba(0, 0, 0, 0.1);
+      transform: rotate(90deg) scale(1.05);
     }
 
     .row-detail-tabs {
       display: flex;
-      gap: var(--space-sm);
-      padding: var(--space-lg) var(--space-2xl);
+      gap: 8px;
+      padding: 0 32px;
       border-bottom: 2px solid var(--neutral-200);
       overflow-x: auto;
       background: white;
       position: relative;
       z-index: 9;
+      flex-shrink: 0;
     }
 
     .row-detail-tab-btn {
-      padding: var(--space-md) var(--space-lg);
+      padding: 16px 24px;
       border: none;
       background: transparent;
       color: var(--neutral-600);
@@ -4413,29 +4420,26 @@
       border-bottom: 3px solid transparent;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       white-space: nowrap;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-size: 13px;
+      letter-spacing: 0.3px;
+      position: relative;
     }
 
     .row-detail-tab-btn:hover {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
+      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.05);
     }
 
     .row-detail-tab-btn.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
-
-    .row-detail-tab-btn.active {
-      color: var(--blue-strong);
-      border-bottom-color: var(--blue-strong);
-      font-weight: 600;
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.08);
     }
 
     .row-detail-content {
-      padding: var(--space-2xl);
+      padding: 32px;
+      flex: 1;
+      overflow-y: auto;
+      background: white;
     }
 
     .row-detail-tab-pane {
@@ -4487,48 +4491,49 @@
 
     .row-detail-footer {
       display: flex;
-      gap: var(--space-lg);
-      padding: var(--space-xl) var(--space-2xl);
+      gap: 12px;
+      padding: 24px 32px;
       border-top: 1px solid var(--neutral-200);
-      background: var(--neutral-50);
+      background: #f9fafb;
       position: sticky;
       bottom: 0;
       z-index: 8;
+      flex-shrink: 0;
     }
 
     .row-detail-footer-btn {
       flex: 1;
-      padding: 12px 20px;
+      padding: 14px 28px;
       border: 2px solid var(--neutral-300);
       background: white;
       color: var(--neutral-700);
-      border-radius: var(--radius-md);
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: var(--shadow-sm);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .row-detail-footer-btn:hover {
-      background: var(--primary-light);
-      border-color: var(--primary);
-      color: var(--primary);
-      box-shadow: var(--shadow-md);
-      transform: translateY(-2px);
+      background: #f0f9ff;
+      border-color: #3b82f6;
+      color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+      transform: translateY(-1px);
     }
 
     .row-detail-footer-btn.primary {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       color: white;
-      border-color: var(--primary);
+      border-color: #3b82f6;
       box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
 
     .row-detail-footer-btn.primary:hover {
-      background: linear-gradient(135deg, var(--primary-dark) 0%, #0284c7 100%);
-      border-color: var(--primary-dark);
-      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      border-color: #2563eb;
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
       transform: translateY(-2px);
     }
 
@@ -4540,9 +4545,9 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       z-index: 1001;
       opacity: 0;
       transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -7103,6 +7108,11 @@
       // Parse tags
       const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
+      // Check if has valid Place ID
+      const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 && 
+                        googlePlaceId !== 'undefined' && googlePlaceId !== 'null' &&
+                        googlePlaceId !== 'SKIP' && !String(googlePlaceId).toUpperCase().includes('SKIP');
+
       // Create card element
       const card = document.createElement("div");
       card.className = "adventure-card";
@@ -7117,7 +7127,18 @@
       // Build card HTML
       card.innerHTML = `
         <div class="adventure-card-header">
-          <div class="adventure-card-title">${name || "Unnamed Adventure"}</div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-md);">
+            <div class="adventure-card-title" style="flex: 1;">${name || "Unnamed Adventure"}</div>
+            ${hasPlaceId ? `
+              <div class="place-id-badge" title="Google Place ID: ${googlePlaceId}" style="background: #dcfce7; border: 1px solid #86efac; color: #166534; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; margin-left: 12px; display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 10px;">✓</span> Place ID
+              </div>
+            ` : `
+              <div class="place-id-badge-missing" title="No Google Place ID" style="background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; margin-left: 12px; display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 10px;">✗</span> No ID
+              </div>
+            `}
+          </div>
           <div class="adventure-card-location">
             <span class="location-icon">📍</span>
             <span>${city || "Unknown"}${state ? ', ' + stateUpper : ''}</span>
@@ -10629,6 +10650,9 @@ undefined
         previewEl.style.display = 'block';
       }
 
+      // Initialize tab functionality
+      initPreviewTabs();
+
       setAutomationProgress(0, 1);
 
       if (modal) modal.classList.add('visible');
@@ -10895,105 +10919,184 @@ undefined
     }
 
     /**
-     * Show detailed preview of what will be updated
+     * Show detailed preview of what will be updated with tabs
      */
     function showAutomationPreview(actionType) {
-      const previewEl = document.getElementById('automationPreviewList');
-      if (!previewEl) return;
-
       const { changes, skipped } = analyzeAutomationChanges(actionType);
+      const previewContainer = document.getElementById('automationProgressPreview');
+      
+      if (!previewContainer) return;
 
       if (changes.length === 0 && skipped.length === 0) {
-        previewEl.innerHTML = `
-          <div style="padding: 12px; color: #9ca3af; font-style: italic;">
+        previewContainer.innerHTML = `
+          <div style="padding: 12px 16px; color: #9ca3af; font-style: italic;">
             No locations would be updated by this action. All relevant fields appear to be populated or unavailable.
           </div>
         `;
         return;
       }
 
-      let html = `<div style="padding: 8px 0;">`;
-
-      // Show locations that WILL be updated
-      if (changes.length > 0) {
-        html += `<div style="margin-bottom: 16px;">`;
-        html += `<div style="font-size: 12px; font-weight: 600; color: #059669; margin-bottom: 8px;">✓ Will Be Updated (${changes.length})</div>`;
-
-        changes.forEach((change) => {
-          html += `
-            <div style="background: #ecfdf5; border: 1px solid #86efac; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-              <div style="font-weight: 600; color: #1d4ed8; margin-bottom: 8px; font-size: 14px;">
-                📍 ${change.name}
-                <span style="color: #10b981; margin-left: 8px; font-size: 12px;">✓ Has Place ID</span>
+      // SUMMARY TAB
+      const totalToProcess = window.adventuresData.length;
+      const canUpdate = changes.length;
+      const cannotUpdate = skipped.length;
+      const alreadyPopulated = totalToProcess - canUpdate - cannotUpdate;
+      
+      // Calculate percentages
+      const updatePercent = totalToProcess > 0 ? Math.round((canUpdate / totalToProcess) * 100) : 0;
+      const cannotPercent = totalToProcess > 0 ? Math.round((cannotUpdate / totalToProcess) * 100) : 0;
+      const populatedPercent = totalToProcess > 0 ? Math.round((alreadyPopulated / totalToProcess) * 100) : 0;
+      
+      let summaryHTML = `
+        <div style="padding: 0;">
+          <!-- Stats Cards -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
+            <div style="background: #ecfdf5; border: 1px solid #86efac; border-radius: 8px; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: #059669;">${canUpdate}</div>
+                <div style="font-size: 16px; font-weight: 600; color: #059669;">${updatePercent}%</div>
               </div>
-              <div style="margin-left: 12px; border-left: 2px solid #d1fae5; padding-left: 8px;">
-                ${change.updates.map(update => `
-                  <div style="font-size: 12px; margin-bottom: 6px; color: #4b5563;">
-                    <span style="font-weight: 600; color: #2563eb;">${update.field}:</span>
-                    <span style="color: #9ca3af;">${update.oldValue}</span>
-                    <span style="color: #6b7280; margin: 0 4px;">→</span>
-                    <span style="color: #10b981; font-weight: 500;">${update.newValue}</span>
+              <div style="background: #d1fae5; border-radius: 4px; height: 6px; margin-bottom: 8px;">
+                <div style="background: #059669; height: 100%; width: ${updatePercent}%; border-radius: 4px; transition: width 0.6s ease;"></div>
+              </div>
+              <div style="font-size: 11px; color: #6b7280;">Will Be Updated</div>
+            </div>
+            <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: #dc2626;">${cannotUpdate}</div>
+                <div style="font-size: 16px; font-weight: 600; color: #dc2626;">${cannotPercent}%</div>
+              </div>
+              <div style="background: #fecaca; border-radius: 4px; height: 6px; margin-bottom: 8px;">
+                <div style="background: #dc2626; height: 100%; width: ${cannotPercent}%; border-radius: 4px; transition: width 0.6s ease;"></div>
+              </div>
+              <div style="font-size: 11px; color: #6b7280;">Cannot Update</div>
+            </div>
+            <div style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: #6b7280;">${alreadyPopulated}</div>
+                <div style="font-size: 16px; font-weight: 600; color: #6b7280;">${populatedPercent}%</div>
+              </div>
+              <div style="background: #e5e7eb; border-radius: 4px; height: 6px; margin-bottom: 8px;">
+                <div style="background: #6b7280; height: 100%; width: ${populatedPercent}%; border-radius: 4px; transition: width 0.6s ease;"></div>
+              </div>
+              <div style="font-size: 11px; color: #6b7280;">Already Populated</div>
+            </div>
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px;">
+              <div style="font-size: 24px; font-weight: 700; color: #0284c7;">${totalToProcess}</div>
+              <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">Total Locations</div>
+            </div>
+          </div>
+          
+          <!-- Summary Text Box -->
+          <div style="background: #f9fafb; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px;">
+            <div style="font-size: 11px; color: #6b7280; line-height: 1.6;">
+              <div><strong>Summary:</strong></div>
+              <div>This automation will update <strong>${canUpdate}</strong> location(s). 
+              <strong>${cannotUpdate}</strong> location(s) cannot be updated (missing/invalid Place ID).
+              <strong>${alreadyPopulated}</strong> location(s) are already fully populated or excluded.</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // UPDATED TAB - List of places that will be updated
+      let updatedHTML = `<div style="padding: 0;">`;
+      if (changes.length === 0) {
+        updatedHTML += `<div style="padding: 12px; color: #9ca3af; font-style: italic;">No locations will be updated.</div>`;
+      } else {
+        updatedHTML += `<div style="font-size: 12px; color: #6b7280; margin-bottom: 12px;"><strong>${changes.length}</strong> location(s) will be updated:</div>`;
+        changes.forEach((change, idx) => {
+          updatedHTML += `
+            <div style="background: #ecfdf5; border: 1px solid #86efac; border-radius: 6px; padding: 10px; margin-bottom: 8px;">
+              <div style="font-weight: 600; color: #1d4ed8; font-size: 13px; margin-bottom: 6px;">
+                ${idx + 1}. ${change.name}
+              </div>
+              <div style="margin-left: 8px; border-left: 2px solid #d1fae5; padding-left: 8px;">
+                ${change.updates.map(u => `
+                  <div style="font-size: 11px; color: #6b7280; margin-bottom: 2px;">
+                    <span style="font-weight: 500; color: #2563eb;">${u.field}:</span> ${u.oldValue} → <span style="color: #10b981;">${u.newValue}</span>
                   </div>
                 `).join('')}
               </div>
             </div>
           `;
         });
-        html += `</div>`;
       }
-
-      // Show locations that CANNOT be updated
-      if (skipped.length > 0) {
-        html += `<div style="margin-bottom: 12px;">`;
-        html += `<div style="font-size: 12px; font-weight: 600; color: #dc2626; margin-bottom: 8px;">⊘ Skipped (${skipped.length})</div>`;
-
-        skipped.forEach((skip) => {
-          let reasonText, actionText, reasonBg, reasonBorder, reasonColor, icon;
-
+      updatedHTML += `</div>`;
+      
+      // CANNOT UPDATE TAB - List of places that cannot be updated
+      let cannotUpdateHTML = `<div style="padding: 0;">`;
+      if (skipped.length === 0) {
+        cannotUpdateHTML += `<div style="padding: 12px; color: #9ca3af; font-style: italic;">All locations can be updated.</div>`;
+      } else {
+        cannotUpdateHTML += `<div style="font-size: 12px; color: #6b7280; margin-bottom: 12px;"><strong>${skipped.length}</strong> location(s) cannot be updated:</div>`;
+        skipped.forEach((skip, idx) => {
+          let reasonBg, reasonBorder, reasonColor, reasonText;
+          
           if (skip.skipped === 'skip-by-user') {
-            reasonText = `⊘ Manually Skipped - Place ID contains "${window.automationSkipValue}"`;
-            actionText = `This location was marked to skip. Update the Place ID field if you want to include it.`;
             reasonBg = '#fffbeb';
             reasonBorder = '#fcd34d';
             reasonColor = '#b45309';
-            icon = '⊘';
-          } else if (skip.skipped === 'missing-place-id') {
-            reasonText = '❌ Missing Google Place ID - Cannot fetch data without Place ID';
-            actionText = 'Add a Google Place ID to this location first using the "Search Place IDs" button.';
-            reasonBg = '#fef2f2';
-            reasonBorder = '#fca5a5';
-            reasonColor = '#dc2626';
-            icon = '❌';
+            reasonText = `⊘ Manually Skipped (Place ID = "${window.automationSkipValue}")`;
           } else {
-            reasonText = '❌ Invalid Google Place ID - Place ID is invalid';
-            actionText = 'Update or add a valid Google Place ID to this location.';
             reasonBg = '#fef2f2';
             reasonBorder = '#fca5a5';
             reasonColor = '#dc2626';
-            icon = '❌';
+            reasonText = '❌ Missing Google Place ID';
           }
-
-          html += `
-            <div style="background: ${reasonBg}; border: 1px solid ${reasonBorder}; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-              <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px; font-size: 14px;">
-                📍 ${skip.name}
+          
+          cannotUpdateHTML += `
+            <div style="background: ${reasonBg}; border: 1px solid ${reasonBorder}; border-radius: 6px; padding: 10px; margin-bottom: 8px;">
+              <div style="font-weight: 600; color: #1f2937; font-size: 13px; margin-bottom: 4px;">
+                ${idx + 1}. ${skip.name}
               </div>
-              <div style="margin-left: 12px; border-left: 2px solid ${reasonBorder}; padding-left: 8px;">
-                <div style="font-size: 12px; color: ${reasonColor}; font-weight: 500; margin-bottom: 4px;">
-                  ${reasonText}
-                </div>
-                <div style="font-size: 11px; color: #6b7280;">
-                  ${actionText}
-                </div>
+              <div style="font-size: 11px; color: ${reasonColor}; margin-left: 8px;">
+                ${reasonText}
               </div>
             </div>
           `;
         });
-        html += `</div>`;
       }
+      cannotUpdateHTML += `</div>`;
+      
+      // Update tab contents
+      document.getElementById('previewTabSummaryContent').innerHTML = summaryHTML;
+      document.getElementById('previewTabUpdatedContent').innerHTML = updatedHTML;
+      document.getElementById('previewTabCannotUpdateContent').innerHTML = cannotUpdateHTML;
+    }
 
-      html += `</div>`;
-      previewEl.innerHTML = html;
+    /**
+     * Handle preview tab switching
+     */
+    function initPreviewTabs() {
+      const tabs = document.querySelectorAll('.preview-tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          // Hide all tabs
+          document.querySelectorAll('.preview-tab-content').forEach(content => {
+            content.style.display = 'none';
+          });
+          
+          // Remove active state from all tabs
+          tabs.forEach(t => {
+            t.style.color = '#6b7280';
+            t.style.borderBottom = '2px solid transparent';
+          });
+          
+          // Show clicked tab
+          if (tab.id === 'previewTabSummary') {
+            document.getElementById('previewTabSummaryContent').style.display = 'block';
+          } else if (tab.id === 'previewTabUpdated') {
+            document.getElementById('previewTabUpdatedContent').style.display = 'block';
+          } else if (tab.id === 'previewTabCannotUpdate') {
+            document.getElementById('previewTabCannotUpdateContent').style.display = 'block';
+          }
+          
+          // Mark tab as active
+          tab.style.color = '#059669';
+          tab.style.borderBottom = '2px solid #059669';
+        });
+      });
     }
 
     async function runGoogleAutomation(actionType, isDryRun) {
@@ -11514,11 +11617,32 @@ undefined
       </div>
     </div>
     <!-- Preview Section (shows before automation starts) -->
-    <div id="automationProgressPreview" style="background: #f0fdf4; border-bottom: 1px solid #d1d5db; padding: 12px 16px; max-height: 200px; overflow-y: auto; display: none;">
-      <div style="font-size: 13px; font-weight: 600; color: #047857; margin-bottom: 10px;">
+    <div id="automationProgressPreview" style="background: #f0fdf4; border-bottom: 1px solid #d1d5db; display: none;">
+      <div style="font-size: 13px; font-weight: 600; color: #047857; padding: 12px 16px; margin-bottom: 0; border-bottom: 1px solid #d1d5db;">
         📋 Preview: Locations to Update
       </div>
-      <div id="automationPreviewList"></div>
+      
+      <!-- Preview Tabs -->
+      <div style="display: flex; gap: 0; border-bottom: 2px solid #d1d5db; padding: 0 16px; background: white;">
+        <button id="previewTabSummary" class="preview-tab active" style="padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 12px; font-weight: 600; color: #059669; border-bottom: 2px solid #059669; margin-bottom: -2px; transition: all 0.2s;">
+          📊 Summary
+        </button>
+        <button id="previewTabUpdated" class="preview-tab" style="padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 12px; font-weight: 600; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;">
+          ✅ Updated
+        </button>
+        <button id="previewTabCannotUpdate" class="preview-tab" style="padding: 12px 16px; border: none; background: none; cursor: pointer; font-size: 12px; font-weight: 600; color: #6b7280; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s;">
+          ❌ Cannot Update
+        </button>
+      </div>
+      
+      <!-- Tab Content -->
+      <div style="max-height: 250px; overflow-y: auto; padding: 12px 16px;">
+        <div id="previewTabSummaryContent" class="preview-tab-content" style="display: block;"></div>
+        <div id="previewTabUpdatedContent" class="preview-tab-content" style="display: none;"></div>
+        <div id="previewTabCannotUpdateContent" class="preview-tab-content" style="display: none;"></div>
+      </div>
+      
+      <div id="automationPreviewList" style="display: none;"></div>
     </div>
     <div id="automationProgressLog" class="automation-progress-log"></div>
   </div>
