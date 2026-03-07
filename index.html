@@ -6744,6 +6744,204 @@
     }
 
     // ...existing code...
+        // ============================================================
+        // CANONICAL AUTOMATION BUTTON + BACKDROP HOTFIX
+        // ============================================================
+        window.clearStaleModalBackdrops = function() {
+          const pairs = [
+            ['automationProgressBackdrop', 'automationProgressModal'],
+            ['apiDiagnosticBackdrop', 'apiDiagnosticModal'],
+            ['rowDetailModalBackdrop', 'rowDetailModal'],
+            ['automationModalBackdrop', 'automationModal'],
+            ['ratingModalBackdrop', 'ratingModal'],
+            ['notesModalBackdrop', 'notesModal'],
+            ['pricingSearchModalBackdrop', 'pricingSearchModal'],
+            ['loadingOverlay', null]
+          ];
+
+          pairs.forEach(([backdropId, modalId]) => {
+            const backdrop = document.getElementById(backdropId);
+            if (!backdrop) return;
+
+            const modal = modalId ? document.getElementById(modalId) : null;
+            const modalVisible = modal
+              ? (modal.classList.contains('visible') || getComputedStyle(modal).display !== 'none')
+              : false;
+
+            if (!modalVisible) {
+              backdrop.classList.remove('visible');
+              backdrop.style.display = 'none';
+              backdrop.style.pointerEvents = 'none';
+              backdrop.style.opacity = '0';
+            }
+          });
+        };
+
+        closeAutomationProgress = function() {
+          const modal = document.getElementById('automationProgressModal');
+          const applyBtn = document.getElementById('automationApplyBtn');
+
+          if (modal) {
+            modal.classList.remove('visible');
+            modal.style.display = 'none';
+          }
+          window.clearStaleModalBackdrops();
+          if (applyBtn) applyBtn.style.display = 'none';
+
+          console.log('✓ Automation modal closed and backdrop removed');
+        };
+
+        const __closeApiDiagnosticPatched = function() {
+          const modal = document.getElementById('apiDiagnosticModal');
+          if (modal) modal.style.display = 'none';
+          window.clearStaleModalBackdrops();
+        };
+        window.closeApiDiagnostic = __closeApiDiagnosticPatched;
+
+        closeRowDetailModal = function() {
+          const modal = document.getElementById('rowDetailModal');
+          const backdrop = document.getElementById('rowDetailModalBackdrop');
+
+          if (modal) {
+            modal.classList.remove('visible');
+            modal.style.display = 'none';
+          }
+          if (backdrop) {
+            backdrop.classList.remove('visible');
+            backdrop.style.display = 'none';
+            backdrop.style.pointerEvents = 'none';
+          }
+
+          window.clearStaleModalBackdrops();
+          currentEditingRow = null;
+        };
+
+        initAutomationButtons = function() {
+          console.log('Initializing automation buttons... (delegated)');
+
+          const buttonsWrap = document.querySelector('.automation-buttons');
+          const dryRunToggle = document.getElementById('dryRunToggle');
+          const skipInput = document.getElementById('automationSkipInput');
+          const skipSetBtn = document.getElementById('automationSkipSetBtn');
+          const skipClearBtn = document.getElementById('automationSkipClearBtn');
+          const skipStatus = document.getElementById('automationSkipStatus');
+
+          if (!buttonsWrap) {
+            console.warn('Automation button container not found in DOM');
+            return;
+          }
+
+          window.clearStaleModalBackdrops();
+
+          const isDryRun = () => dryRunToggle?.classList.contains('on') ?? true;
+          const actionById = {
+            btnPopulateMissing: 'populateMissing',
+            btnRefreshHours: 'refreshHours',
+            btnRefreshAll: 'refreshAll',
+            btnSearchPlaceIds: 'searchPlaceIds',
+            btnRefreshPlaceIds: 'refreshPlaceIds'
+          };
+
+          if (buttonsWrap.dataset.bound !== '1') {
+            buttonsWrap.addEventListener('click', async (e) => {
+              const btn = e.target.closest('button.automation-btn');
+              if (!btn) return;
+
+              const action = actionById[btn.id];
+              if (!action) return;
+
+              e.preventDefault();
+              e.stopPropagation();
+              window.clearStaleModalBackdrops();
+
+              console.log(`✓ ${btn.id} clicked - Dry Run:`, isDryRun());
+              await runGoogleAutomation(action, isDryRun());
+            }, true);
+
+            buttonsWrap.addEventListener('mouseover', (e) => {
+              const btn = e.target.closest('button.automation-btn');
+              if (btn) console.log(`✓ Hover ${btn.id}`);
+            }, true);
+
+            buttonsWrap.dataset.bound = '1';
+          }
+
+          if (skipSetBtn && skipSetBtn.dataset.bound !== '1') {
+            skipSetBtn.addEventListener('click', () => {
+              const value = skipInput?.value.trim();
+              if (value) {
+                setAutomationSkipValue(value);
+                showToast(`✓ Skip value set to: "${value}"`, 'success', 2000);
+                if (skipStatus) {
+                  skipStatus.textContent = `✓ Will skip locations where Place ID = "${window.automationSkipValue}"`;
+                  skipStatus.style.display = 'block';
+                  skipStatus.style.color = '#059669';
+                }
+              } else {
+                showToast('❌ Please enter a skip value', 'error', 2000);
+              }
+            });
+            skipSetBtn.dataset.bound = '1';
+          }
+
+          if (skipClearBtn && skipClearBtn.dataset.bound !== '1') {
+            skipClearBtn.addEventListener('click', () => {
+              window.automationSkipValue = '';
+              localStorage.removeItem('automationSkipValue');
+              if (skipInput) skipInput.value = '';
+              if (skipStatus) skipStatus.style.display = 'none';
+              showToast('✓ Skip value cleared', 'info', 2000);
+            });
+            skipClearBtn.dataset.bound = '1';
+          }
+
+          if (window.automationSkipValue && skipStatus && skipInput) {
+            skipInput.value = window.automationSkipValue;
+            skipStatus.textContent = `✓ Will skip locations where Place ID = "${window.automationSkipValue}"`;
+            skipStatus.style.display = 'block';
+            skipStatus.style.color = '#059669';
+          }
+
+          const automationCard = document.querySelector('.automation-card');
+          const automationBody = document.querySelector('.automation-body');
+          if (automationCard) automationCard.style.pointerEvents = 'auto';
+          if (automationBody) automationBody.style.pointerEvents = 'auto';
+          buttonsWrap.style.pointerEvents = 'auto';
+
+          console.log('✓ Automation buttons initialized successfully (delegated)');
+        };
+
+    // ...existing code...
+        // Centralized cleanup for stale overlays that can intercept clicks.
+        function clearStaleModalBackdrops() {
+          const backdropModalPairs = [
+            ['automationProgressBackdrop', 'automationProgressModal'],
+            ['apiDiagnosticBackdrop', 'apiDiagnosticModal'],
+            ['rowDetailModalBackdrop', 'rowDetailModal'],
+            ['automationModalBackdrop', 'automationModal'],
+            ['ratingModalBackdrop', 'ratingModal'],
+            ['notesModalBackdrop', 'notesModal'],
+            ['pricingSearchModalBackdrop', 'pricingSearchModal'],
+            ['loadingOverlay', null]
+          ];
+
+          backdropModalPairs.forEach(([backdropId, modalId]) => {
+            const backdrop = document.getElementById(backdropId);
+            if (!backdrop) return;
+
+            const modal = modalId ? document.getElementById(modalId) : null;
+            const modalVisible = modal
+              ? (modal.classList.contains('visible') || getComputedStyle(modal).display !== 'none')
+              : false;
+
+            if (!modalVisible) {
+              backdrop.classList.remove('visible');
+              backdrop.style.display = 'none';
+              backdrop.style.pointerEvents = 'none';
+              backdrop.style.opacity = '0';
+            }
+          });
+        }
         function isInvalidPlaceIdError(error) {
         const details = classifyPlacesError(error);
         return !!details.notFound;
@@ -11759,178 +11957,15 @@ COMMON ISSUES:
     // ============================================================
     // INITIALIZE AUTOMATION BUTTONS
     // ============================================================
-    /**
-     * Initialize Automation Buttons
-     */
-    function initAutomationButtons() {
-      console.log('Initializing automation buttons...');
-
-      const btnPopulateMissing = document.getElementById('btnPopulateMissing');
-      const btnRefreshHours = document.getElementById('btnRefreshHours');
-      const btnRefreshAll = document.getElementById('btnRefreshAll');
-      const btnSearchPlaceIds = document.getElementById('btnSearchPlaceIds');
-      const btnRefreshPlaceIds = document.getElementById('btnRefreshPlaceIds');
-      const dryRunToggle = document.getElementById('dryRunToggle');
-
-      if (!btnPopulateMissing || !btnRefreshHours || !btnRefreshAll || !btnSearchPlaceIds || !btnRefreshPlaceIds) {
-        console.warn('Some automation buttons not found in DOM');
-        return;
-      }
-
-      // CRITICAL FIX: Clone and replace buttons to remove all old event listeners
-      const cleanButton = (btn) => {
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-        return clone;
-      };
-
-      const freshBtnPopulateMissing = cleanButton(btnPopulateMissing);
-      const freshBtnRefreshHours = cleanButton(btnRefreshHours);
-      const freshBtnRefreshAll = cleanButton(btnRefreshAll);
-      const freshBtnSearchPlaceIds = cleanButton(btnSearchPlaceIds);
-      const freshBtnRefreshPlaceIds = cleanButton(btnRefreshPlaceIds);
-
-      // Get dry run status (no default to true - respect toggle state)
-      const isDryRun = () => dryRunToggle?.classList.contains('on') ?? true;
-
-      // DIAGNOSTIC: Add mouseenter to verify buttons are actually receiving events
-      [freshBtnPopulateMissing, freshBtnRefreshHours, freshBtnRefreshAll, freshBtnSearchPlaceIds, freshBtnRefreshPlaceIds].forEach((btn, idx) => {
-        btn.addEventListener('mouseenter', () => {
-          console.log(`✓ Mouse entered button ${idx + 1}: ${btn.textContent}`);
-        });
-        btn.addEventListener('mouseleave', () => {
-          console.log(`✓ Mouse left button ${idx + 1}`);
-        });
-      });
-
-      // Button 1: Populate Missing Fields
-      freshBtnPopulateMissing.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('✓ Populate Missing Fields clicked - Dry Run:', isDryRun());
-        await runGoogleAutomation('populateMissing', isDryRun());
-      }, { passive: false });
-
-      // Button 2: Refresh Hours Only
-      freshBtnRefreshHours.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('✓ Refresh Hours Only clicked - Dry Run:', isDryRun());
-        await runGoogleAutomation('refreshHours', isDryRun());
-      }, { passive: false });
-
-      // Button 3: Refresh All Fields
-      freshBtnRefreshAll.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('✓ Refresh All Fields clicked - Dry Run:', isDryRun());
-        await runGoogleAutomation('refreshAll', isDryRun());
-      }, { passive: false });
-
-      // Button 4: Search Place IDs
-      freshBtnSearchPlaceIds.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('✓ Search Place IDs clicked - Dry Run:', isDryRun());
-        await runGoogleAutomation('searchPlaceIds', isDryRun());
-      }, { passive: false });
-
-      // Button 5: Refresh Place IDs
-      freshBtnRefreshPlaceIds.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('✓ Refresh Place IDs clicked - Dry Run:', isDryRun());
-        await runGoogleAutomation('refreshPlaceIds', isDryRun());
-      }, { passive: false });
-
-      // DIAGNOSTIC: Log button states after initialization
-      console.log('✓ Button diagnostic:', {
-        populateMissing: {
-          exists: !!freshBtnPopulateMissing,
-          disabled: freshBtnPopulateMissing?.disabled,
-          visible: freshBtnPopulateMissing?.offsetParent !== null,
-          styles: window.getComputedStyle(freshBtnPopulateMissing)?.pointerEvents
-        },
-        refreshHours: {
-          exists: !!freshBtnRefreshHours,
-          disabled: freshBtnRefreshHours?.disabled,
-          visible: freshBtnRefreshHours?.offsetParent !== null,
-          styles: window.getComputedStyle(freshBtnRefreshHours)?.pointerEvents
-        },
-        refreshAll: {
-          exists: !!freshBtnRefreshAll,
-          disabled: freshBtnRefreshAll?.disabled,
-          visible: freshBtnRefreshAll?.offsetParent !== null,
-          styles: window.getComputedStyle(freshBtnRefreshAll)?.pointerEvents
-        },
-        searchPlaceIds: {
-          exists: !!freshBtnSearchPlaceIds,
-          disabled: freshBtnSearchPlaceIds?.disabled,
-          visible: freshBtnSearchPlaceIds?.offsetParent !== null,
-          styles: window.getComputedStyle(freshBtnSearchPlaceIds)?.pointerEvents
-        },
-        refreshPlaceIds: {
-          exists: !!freshBtnRefreshPlaceIds,
-          disabled: freshBtnRefreshPlaceIds?.disabled,
-          visible: freshBtnRefreshPlaceIds?.offsetParent !== null,
-          styles: window.getComputedStyle(freshBtnRefreshPlaceIds)?.pointerEvents
-        }
-      });
-
-      // Initialize skip value controls
-      const skipInput = document.getElementById('automationSkipInput');
-      const skipSetBtn = document.getElementById('automationSkipSetBtn');
-      const skipClearBtn = document.getElementById('automationSkipClearBtn');
-      const skipStatus = document.getElementById('automationSkipStatus');
-
-      // Set skip value
-      skipSetBtn?.addEventListener('click', () => {
-        const value = skipInput?.value.trim();
-        if (value) {
-          setAutomationSkipValue(value);
-          showToast(`✓ Skip value set to: "${value}"`, 'success', 2000);
-          if (skipStatus) {
-            skipStatus.textContent = `✓ Will skip locations where Place ID = "${window.automationSkipValue}"`;
-            skipStatus.style.display = 'block';
-            skipStatus.style.color = '#059669';
-          }
-          console.log('✓ Skip value configured:', value);
-        } else {
-          showToast('❌ Please enter a skip value', 'error', 2000);
-        }
-      });
-
-      // Clear skip value
-      skipClearBtn?.addEventListener('click', () => {
-        window.automationSkipValue = '';
-        localStorage.removeItem('automationSkipValue');
-        if (skipInput) skipInput.value = '';
-        if (skipStatus) skipStatus.style.display = 'none';
-        showToast('✓ Skip value cleared', 'info', 2000);
-        console.log('✓ Skip value cleared');
-      });
-
-      // Display current skip value if set
-      if (window.automationSkipValue && skipStatus && skipInput) {
-        skipInput.value = window.automationSkipValue;
-        skipStatus.textContent = `✓ Will skip locations where Place ID = "${window.automationSkipValue}"`;
-        skipStatus.style.display = 'block';
-        skipStatus.style.color = '#059669';
-      }
-
-      console.log('✓ Automation buttons initialized successfully');
-
-      // CRITICAL: Ensure parent containers don't block pointer events
-      const automationCard = document.querySelector('.automation-card');
-      const automationBody = document.querySelector('.automation-body');
-      const automationButtons = document.querySelector('.automation-buttons');
-      
-      if (automationCard) automationCard.style.pointerEvents = 'auto';
-      if (automationBody) automationBody.style.pointerEvents = 'auto';
-      if (automationButtons) automationButtons.style.pointerEvents = 'auto';
-
-      console.log('✓ Parent container pointer-events verified');
-    }
+    // ============================================================
+    // NOTE: Old initAutomationButtons function removed
+    // (lines 11961-12131) - Superseded by canonical delegated
+    // implementation at line 6819, which uses:
+    // - Single delegated listener on .automation-buttons container
+    // - dataset.bound guards for idempotent binding
+    // - Stale backdrop cleanup integration
+    // This ensures only ONE active implementation exists.
+    // ============================================================
 
     /**
      * Initialize API Diagnostic Button
