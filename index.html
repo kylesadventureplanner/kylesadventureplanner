@@ -409,6 +409,7 @@
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 8px;
+      pointer-events: auto;
     }
 
     .automation-btn {
@@ -431,29 +432,131 @@
       justify-content: center;
       white-space: nowrap;
       user-select: none;
+      flex-shrink: 0;
+      outline: none;
+      background-clip: padding-box;
+      /* Touch-friendly for mobile */
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
     }
 
-    .automation-btn:hover {
+    .automation-btn:hover:not(:disabled):not(.loading) {
       background: var(--blue-bg);
       border-color: var(--blue-strong);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      border-width: 2px;
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.1);
+      font-weight: 600;
+    }
+
+    .automation-btn:active:not(:disabled):not(.loading) {
+      transform: translateY(-1px) scale(0.98);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(59, 130, 246, 0.2);
     }
 
     .automation-btn:focus {
       outline: none;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
     }
 
-    .automation-btn:active {
-      transform: translateY(0);
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    .automation-btn:focus-visible {
+      outline: 3px solid var(--blue-strong);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
     }
 
     .automation-btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
       pointer-events: none !important;
+    }
+
+    /* Loading state */
+    .automation-btn.loading {
+      cursor: wait;
+      opacity: 0.9;
+      pointer-events: none;
+      background: var(--blue-bg) !important;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .automation-btn.loading::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border: 2.5px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      opacity: 1;
+      right: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Success state */
+    .automation-btn.success {
+      background: #10b981 !important;
+      border-color: #059669 !important;
+      color: white !important;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+      font-weight: 600;
+    }
+
+    .automation-btn.success::before {
+      content: '✓ ';
+      margin-right: 4px;
+      font-weight: bold;
+    }
+
+    /* Error state */
+    .automation-btn.error {
+      background: #ef4444 !important;
+      border-color: #dc2626 !important;
+      color: white !important;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+      font-weight: 600;
+    }
+
+    /* Tooltip styling */
+    .automation-btn[data-tooltip] {
+      position: relative;
+    }
+
+    .automation-btn[data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      margin-bottom: 12px;
+      z-index: 1000;
+      pointer-events: none;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .automation-btn[data-tooltip]:hover::before {
+      content: '';
+      position: absolute;
+      bottom: calc(100% - 2px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #1f2937;
+      z-index: 1000;
+      pointer-events: none;
     }
 
     /* Colored button variants */
@@ -463,10 +566,11 @@
       border-color: #0ea5e9;
     }
 
-    #btnRefreshPlaceIds:hover {
+    #btnRefreshPlaceIds:hover:not(:disabled):not(.loading) {
       background: #0284c7;
       border-color: #0284c7;
-      box-shadow: 0 4px 8px rgba(14, 165, 233, 0.3);
+      box-shadow: 0 8px 16px rgba(14, 165, 233, 0.5), 0 0 0 3px rgba(14, 165, 233, 0.15);
+      transform: translateY(-3px) scale(1.02);
     }
 
     #btnSearchPlaceIds {
@@ -475,10 +579,69 @@
       border-color: #10b981;
     }
 
-    #btnSearchPlaceIds:hover {
+    #btnSearchPlaceIds:hover:not(:disabled):not(.loading) {
       background: #059669;
       border-color: #059669;
-      box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+      box-shadow: 0 8px 16px rgba(16, 185, 129, 0.5), 0 0 0 3px rgba(16, 185, 129, 0.15);
+      transform: translateY(-3px) scale(1.02);
+    }
+
+    /* Additional button variants with enhanced feedback */
+    #btnPopulateMissing {
+      background: white;
+      color: var(--blue-strong);
+      border-color: var(--blue-border);
+    }
+
+    #btnPopulateMissing:hover:not(:disabled):not(.loading) {
+      background: var(--blue-bg);
+      border-color: var(--blue-strong);
+      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.1);
+      transform: translateY(-3px) scale(1.02);
+    }
+
+    #btnRefreshHours {
+      background: white;
+      color: var(--blue-strong);
+      border-color: var(--blue-border);
+    }
+
+    #btnRefreshHours:hover:not(:disabled):not(.loading) {
+      background: var(--blue-bg);
+      border-color: var(--blue-strong);
+      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.1);
+      transform: translateY(-3px) scale(1.02);
+    }
+
+    #btnRefreshAll {
+      background: white;
+      color: var(--blue-strong);
+      border-color: var(--blue-border);
+    }
+
+    #btnRefreshAll:hover:not(:disabled):not(.loading) {
+      background: var(--blue-bg);
+      border-color: var(--blue-strong);
+      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.1);
+      transform: translateY(-3px) scale(1.02);
+    }
+
+    #btnAddPlace {
+      background: #8b5cf6;
+      color: white;
+      border-color: #8b5cf6;
+    }
+
+    #btnAddPlace:hover:not(:disabled):not(.loading) {
+      background: #7c3aed;
+      border-color: #7c3aed;
+      box-shadow: 0 8px 16px rgba(139, 92, 246, 0.5), 0 0 0 3px rgba(139, 92, 246, 0.15);
+      transform: translateY(-3px) scale(1.02);
+    }
+
+    /* Enhanced focus and active indicators */
+    .automation-btn:active:focus-visible {
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(59, 130, 246, 0.2);
     }
 
     .dry-run-toggle {
@@ -1881,28 +2044,26 @@
       border-radius: 8px !important;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(29, 78, 216, 0.3) !important;
       z-index: 99999 !important;
-      min-width: 280px !important;
-      display: none !important;
+      min-width: 320px !important;
+      display: flex !important;
       flex-direction: column !important;
       overflow: visible !important;
       pointer-events: auto !important;
-      visibility: hidden !important;
-      opacity: 0 !important;
-      transition: opacity 0.2s, visibility 0.2s !important;
+      opacity: 1 !important;
       margin: 0 !important;
       padding: 0 !important;
-      top: auto !important;
-      left: auto !important;
-      right: auto !important;
-      bottom: auto !important;
-      transform: none !important;
+      animation: slideIn 0.15s ease-out !important;
     }
 
-    #contextMenu.visible {
-      display: flex !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      pointer-events: auto !important;
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
     }
 
     /* Tag Context Menu for individual tag selection */
@@ -1922,46 +2083,45 @@
       cursor: pointer;
       font-size: 13px;
       color: #374151;
-      transition: all 0.15s;
+      transition: all 0.15s ease;
       border-bottom: 1px solid #f3f4f6;
       display: flex;
       align-items: center;
-      gap: 8px;
-      white-space: nowrap;
-    }
-
-    .context-menu-item:last-child {
-      border-bottom: none;
+      gap: 10px;
+      white-space: normal;
+      word-wrap: break-word;
     }
 
     .context-menu-item:hover {
       background: #eff6ff;
       color: #1d4ed8;
+      padding-left: 18px;
+    }
+
+    .context-menu-item:active {
+      background: #dbeafe;
+      transform: scale(0.98);
+    }
+
+    .context-menu-item:last-child {
+      border-bottom: none;
     }
 
     .context-menu-icon {
       font-size: 14px;
       font-weight: 600;
       min-width: 20px;
+      text-align: center;
+      flex-shrink: 0;
     }
 
-    .context-menu-item:last-child {
-      border-bottom: none;
-    }
-
-    .context-menu-item:hover {
-      background: #f3f4f6;
-      color: #1d4ed8;
-      padding-left: 16px;
+    .context-menu-item.danger {
+      color: #dc2626;
     }
 
     .context-menu-item.danger:hover {
       background: #fee2e2;
-      color: #dc2626;
-    }
-
-    .context-menu-icon {
-      font-size: 14px;
+      color: #991b1b;
     }
 
     /* Mobile / iPhone view overrides */
@@ -6917,7 +7077,7 @@
         };
 
         initAutomationButtons = function() {
-          console.log('Initializing automation buttons... (delegated)');
+          console.log('Initializing automation buttons with enhanced features...');
 
           const buttonsWrap = document.querySelector('.automation-buttons');
           const dryRunToggle = document.getElementById('dryRunToggle');
@@ -6927,87 +7087,234 @@
             return;
           }
 
-          window.clearStaleModalBackdrops();
+          // Safely clear stale modals
+          if (typeof window.clearStaleModalBackdrops === 'function') {
+            window.clearStaleModalBackdrops();
+          }
 
           const isDryRun = () => dryRunToggle?.classList.contains('on') ?? true;
-          const actionById = {
-            btnPopulateMissing: 'populateMissing',
-            btnRefreshHours: 'refreshHours',
-            btnRefreshAll: 'refreshAll',
-            btnSearchPlaceIds: 'searchPlaceIds',
-            btnRefreshPlaceIds: 'refreshPlaceIds'
+
+          // Button metadata with descriptions and keyboard shortcuts
+          const buttonMetadata = {
+            btnPopulateMissing: {
+              action: 'populateMissing',
+              label: 'Populate Missing Fields',
+              tooltip: 'Auto-fill empty fields from Google Places API',
+              shortcut: 'Alt+P'
+            },
+            btnRefreshHours: {
+              action: 'refreshHours',
+              label: 'Refresh Hours Only',
+              tooltip: 'Update operating hours from Google Places',
+              shortcut: 'Alt+H'
+            },
+            btnRefreshAll: {
+              action: 'refreshAll',
+              label: 'Refresh All Fields',
+              tooltip: 'Update all fields from Google Places API',
+              shortcut: 'Alt+A'
+            },
+            btnSearchPlaceIds: {
+              action: 'searchPlaceIds',
+              label: '🔍 Search Place IDs',
+              tooltip: 'Find and save Google Place IDs for locations',
+              shortcut: 'Alt+S'
+            },
+            btnRefreshPlaceIds: {
+              action: 'refreshPlaceIds',
+              label: '🔄 Refresh Place IDs',
+              tooltip: 'Refresh cached Place IDs from Google',
+              shortcut: 'Alt+R'
+            },
+            btnAddPlace: {
+              label: '➕ Add New Place',
+              tooltip: 'Add a new location to your Excel file',
+              shortcut: 'Alt+N'
+            }
           };
 
-          if (buttonsWrap.dataset.bound !== '1') {
-            buttonsWrap.addEventListener('click', async (e) => {
-              // Prevent default and stop propagation FIRST
-              e.preventDefault();
-              e.stopPropagation();
-
-              // Find the closest button element
-              const btn = e.target.closest('button.automation-btn');
-              if (!btn) {
-                console.log('Click detected but no automation-btn found');
-                return;
-              }
-
-              // Handle Add Place button
-              if (btn.id === 'btnAddPlace') {
-                window.openAddPlaceModal();
-                return;
-              }
-
-              // Validate button ID maps to an action
-              const action = actionById[btn.id];
-              if (!action) {
-                console.warn(`No action found for button ID: ${btn.id}`);
-                return;
-              }
-
-              // Clear any stale modals
-              window.clearStaleModalBackdrops();
-
-              // Log and execute
-              console.log(`✓ Button clicked: ${btn.id} (text: "${btn.textContent}") - Dry Run:`, isDryRun());
-              await runGoogleAutomation(action, isDryRun());
-            }, true);
-
-            // Add explicit hover feedback logging
-            buttonsWrap.addEventListener('mouseover', (e) => {
-              const btn = e.target.closest('button.automation-btn');
-              if (btn) {
-                console.log(`✓ Mouse over: ${btn.id}`);
-              }
-            }, true);
-
-            buttonsWrap.addEventListener('mouseout', (e) => {
-              const btn = e.target.closest('button.automation-btn');
-              if (btn) {
-                console.log(`✓ Mouse out: ${btn.id}`);
-              }
-            }, true);
-
-            buttonsWrap.dataset.bound = '1';
+          // Remove any previously bound listeners by cloning the element
+          if (buttonsWrap.dataset.bound === '1') {
+            const clone = buttonsWrap.cloneNode(true);
+            buttonsWrap.parentNode.replaceChild(clone, buttonsWrap);
+            attachButtonListeners(clone, buttonMetadata, isDryRun);
+            return;
           }
 
-
-          if (window.automationSkipValue && skipStatus && skipInput) {
-            skipInput.value = window.automationSkipValue;
-            skipStatus.textContent = `✓ Will skip locations where Place ID = "${window.automationSkipValue}"`;
-            skipStatus.style.display = 'block';
-            skipStatus.style.color = '#059669';
-          }
-
-          const automationCard = document.querySelector('.automation-card');
-          const automationBody = document.querySelector('.automation-body');
-          if (automationCard) automationCard.style.pointerEvents = 'auto';
-          if (automationBody) automationBody.style.pointerEvents = 'auto';
-          buttonsWrap.style.pointerEvents = 'auto';
-
-          console.log('✓ Automation buttons initialized successfully (delegated)');
+          attachButtonListeners(buttonsWrap, buttonMetadata, isDryRun);
         };
 
-    // ...existing code...
+        function attachButtonListeners(container, buttonMetadata, isDryRun) {
+          // Setup button attributes and accessibility
+          const buttons = container.querySelectorAll('button.automation-btn');
+          buttons.forEach(btn => {
+            const meta = buttonMetadata[btn.id];
+            if (meta) {
+              // Add accessibility attributes
+              btn.setAttribute('aria-label', meta.label);
+              if (meta.tooltip) {
+                btn.setAttribute('data-tooltip', meta.tooltip);
+                btn.setAttribute('title', meta.tooltip);
+              }
+              if (meta.shortcut) {
+                btn.setAttribute('data-shortcut', meta.shortcut);
+              }
+              btn.setAttribute('type', 'button');
+              btn.dataset.processing = 'false';
+            }
+          });
+
+          // Attach event listeners with proper event handling
+          container.addEventListener('click', handleAutomationButtonClick, false);
+          container.addEventListener('keydown', handleKeyboardShortcuts, false);
+          container.addEventListener('mouseenter', handleMouseEnter, true);
+          container.addEventListener('mouseleave', handleMouseLeave, true);
+
+          // Prevent accidental double-clicks
+          container.addEventListener('dblclick', (e) => e.preventDefault(), false);
+
+          container.dataset.bound = '1';
+          console.log('✓ Automation button listeners attached with accessibility & shortcuts');
+
+          function handleAutomationButtonClick(e) {
+            const btn = e.target.closest('button.automation-btn');
+            if (!btn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Prevent action if button is already loading or disabled
+            if (btn.classList.contains('loading') || btn.disabled || btn.dataset.processing === 'true') {
+              console.warn(`Button ${btn.id} is already processing`);
+              return;
+            }
+
+            executeButtonAction(btn, buttonMetadata, isDryRun);
+          }
+
+          function handleKeyboardShortcuts(e) {
+            // Check if Alt key is pressed
+            if (!e.altKey) return;
+
+            const buttons = container.querySelectorAll('button.automation-btn');
+            buttons.forEach(btn => {
+              const shortcut = btn.getAttribute('data-shortcut');
+              if (shortcut) {
+                const keyChar = shortcut.split('+')[1];
+                if (keyChar && e.key.toUpperCase() === keyChar) {
+                  e.preventDefault();
+                  if (!btn.classList.contains('loading') && !btn.disabled && btn.dataset.processing !== 'true') {
+                    console.log(`Keyboard shortcut triggered: ${shortcut}`);
+                    executeButtonAction(btn, buttonMetadata, isDryRun);
+                  }
+                }
+              }
+            });
+          }
+
+          function handleMouseEnter(e) {
+            const btn = e.target.closest('button.automation-btn');
+            if (btn && !btn.disabled && !btn.classList.contains('loading')) {
+              btn.style.cursor = 'pointer';
+            }
+          }
+
+          function handleMouseLeave(e) {
+            const btn = e.target.closest('button.automation-btn');
+            if (btn) {
+              btn.style.cursor = 'default';
+            }
+          }
+
+          function executeButtonAction(btn, metadata, isDryRunFn) {
+            const meta = metadata[btn.id];
+            if (!meta) {
+              console.warn(`No metadata for button ${btn.id}`);
+              return;
+            }
+
+            // Set loading state
+            setButtonLoading(btn, true);
+            console.log(`✓ Executing: ${meta.label}`);
+
+            // Handle Add Place button
+            if (btn.id === 'btnAddPlace') {
+              setButtonLoading(btn, false);
+              window.openAddPlaceModal();
+              return;
+            }
+
+            // Execute automation
+            try {
+              window.clearStaleModalBackdrops();
+              console.log(`Dry Run: ${isDryRunFn()}`);
+
+              // Track button state
+              btn.dataset.processing = 'true';
+
+              // Get the automation function
+              const automationFunc = window[`run${meta.action.charAt(0).toUpperCase()}${meta.action.slice(1)}`] || window.runGoogleAutomation;
+
+              Promise.resolve(automationFunc(meta.action, isDryRunFn()))
+                .then(() => {
+                  setButtonSuccess(btn, meta.label);
+                  setTimeout(() => setButtonLoading(btn, false), 2000);
+                })
+                .catch((err) => {
+                  setButtonError(btn, meta.label, err);
+                  setTimeout(() => setButtonLoading(btn, false), 3000);
+                })
+                .finally(() => {
+                  btn.dataset.processing = 'false';
+                });
+            } catch (err) {
+              console.error(`Error executing ${meta.label}:`, err);
+              setButtonError(btn, meta.label, err);
+              setButtonLoading(btn, false);
+              btn.dataset.processing = 'false';
+            }
+          }
+
+          function setButtonLoading(btn, isLoading) {
+            if (isLoading) {
+              btn.classList.add('loading');
+              btn.disabled = true;
+              btn.setAttribute('aria-busy', 'true');
+              btn.setAttribute('aria-label', `${btn.getAttribute('aria-label')} - Processing...`);
+            } else {
+              btn.classList.remove('loading', 'success', 'error');
+              btn.disabled = false;
+              btn.setAttribute('aria-busy', 'false');
+              const meta = buttonMetadata[btn.id];
+              if (meta) btn.setAttribute('aria-label', meta.label);
+            }
+          }
+
+          function setButtonSuccess(btn, label) {
+            btn.classList.remove('loading');
+            btn.classList.add('success');
+            console.log(`✓ ${label} completed successfully`);
+          }
+
+          function setButtonError(btn, label, err) {
+            btn.classList.remove('loading');
+            btn.classList.add('error');
+            console.error(`✗ ${label} failed:`, err);
+          }
+        }
+
+          // Ensure pointer events are enabled on automation containers
+          const automationCard = document.querySelector('.automation-card');
+          const automationBody = document.querySelector('.automation-body');
+          const automationButtonsContainer = document.querySelector('.automation-buttons');
+
+          if (automationCard) automationCard.style.pointerEvents = 'auto';
+          if (automationBody) automationBody.style.pointerEvents = 'auto';
+          if (automationButtonsContainer) automationButtonsContainer.style.pointerEvents = 'auto';
+
+          console.log('✓ Automation buttons fully initialized with enhanced features');
+        }
+
         // Centralized cleanup for stale overlays that can intercept clicks.
         function clearStaleModalBackdrops() {
           const backdropModalPairs = [
@@ -8068,16 +8375,24 @@
       }
     }, false);
 
-    // Right-click handler for clear rating
+    // Right-click handler for comprehensive context menu filtering
     freshCardsGrid.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
       const ratingContainer = e.target.closest('.card-rating');
       if (ratingContainer) {
-        e.preventDefault();
-        e.stopPropagation();
         const idx = Number(ratingContainer.getAttribute('data-index'));
         const card = ratingContainer.closest('.adventure-card');
         clearAdventureRating(idx, card);
+        return;
       }
+
+      // Get the card and find what element was clicked
+      const card = e.target.closest('.adventure-card');
+      if (!card) return;
+
+      showContextMenu(e, card);
     }, false);
 
     console.log(`✓ Rendered ${pageAdventures.length} cards for page ${currentPage}`);
@@ -8442,16 +8757,20 @@
       }
 
       // Apply context filters
-      for (const filter of filterState.contextFilters) {
-        const fieldIndex = getFieldIndexByKey(filter.key);
-        if (fieldIndex >= 0) {
-          const fieldValue = (values[fieldIndex] || "").toLowerCase();
-          const filterValue = filter.value.toLowerCase();
+      if (filterState.contextFilters && filterState.contextFilters.length > 0) {
+        for (const filter of filterState.contextFilters) {
+          const fieldIndex = getFieldIndexByKey(filter.field);
+          if (fieldIndex >= 0) {
+            const fieldValue = (values[fieldIndex] || "").toLowerCase();
+            const filterValue = filter.value.toLowerCase();
 
-          if (filter.operation === 'equals') {
-            if (!fieldValue.includes(filterValue)) return false;
-          } else if (filter.operation === 'not-equals') {
-            if (fieldValue.includes(filterValue)) return false;
+            if (filter.operator === 'contains') {
+              if (!fieldValue.includes(filterValue)) return false;
+            } else if (filter.operator === 'notcontains') {
+              if (fieldValue.includes(filterValue)) return false;
+            } else if (filter.operator === 'equals') {
+              if (fieldValue !== filterValue) return false;
+            }
           }
         }
       }
@@ -8471,7 +8790,11 @@
       'state': 9,
       'city': 10,
       'difficulty': 7,
-      'cost': 14
+      'cost': 14,
+      'address': 11,
+      'phone': 12,
+      'hours': 5,
+      'location': 10 // defaults to city, but handled specially in context menu
     };
     return fieldMap[key] ?? -1;
   }
@@ -9120,6 +9443,192 @@
         }
       });
     });
+  }
+
+  /* ============================================================
+     CONTEXT MENU FILTERING - Right-click to filter by cell value
+     ============================================================ */
+
+  function showContextMenu(e, card) {
+    const clickedElement = e.target;
+    let fieldValue = null;
+    let fieldName = null;
+    let filterField = null;
+
+    // Determine what was clicked
+    if (clickedElement.closest('.adventure-card-title')) {
+      fieldName = 'Name';
+      fieldValue = card.querySelector('.adventure-card-title')?.textContent?.trim();
+      filterField = 'name';
+    } else if (clickedElement.closest('.adventure-card-location') || clickedElement.textContent?.includes(',')) {
+      // Check if it's city or state
+      const locationText = card.querySelector('.adventure-card-location')?.textContent?.trim();
+      if (locationText) {
+        const [city, state] = locationText.split(',').map(s => s.trim());
+        if (clickedElement.closest('.adventure-card-location')) {
+          fieldName = 'Location';
+          fieldValue = locationText;
+          filterField = 'location';
+        }
+      }
+    } else if (clickedElement.closest('.tag-pill')) {
+      fieldName = 'Tag';
+      fieldValue = clickedElement.closest('.tag-pill')?.getAttribute('data-tag');
+      filterField = 'tag';
+    } else if (clickedElement.closest('.card-info-row')) {
+      const row = clickedElement.closest('.card-info-row');
+      const icon = row?.querySelector('.card-info-icon')?.textContent?.trim();
+      const value = row?.textContent?.replace(icon, '')?.trim();
+
+      if (icon === '📍') {
+        fieldName = 'Address';
+        fieldValue = value;
+        filterField = 'address';
+      } else if (icon === '💬') {
+        fieldName = 'Difficulty';
+        fieldValue = value;
+        filterField = 'difficulty';
+      } else if (icon === '🕐') {
+        fieldName = 'Hours';
+        fieldValue = value;
+        filterField = 'hours';
+      } else if (icon === '💰') {
+        fieldName = 'Cost';
+        fieldValue = value;
+        filterField = 'cost';
+      } else if (icon === '☎️') {
+        fieldName = 'Phone';
+        fieldValue = value;
+        filterField = 'phone';
+      }
+    }
+
+    if (!fieldValue || !filterField) {
+      // Generic right-click - show general options
+      showGeneralContextMenu(e, card);
+      return;
+    }
+
+    // Build and show context menu
+    const menu = document.createElement('div');
+    menu.id = 'contextMenu';
+    menu.className = 'visible';
+    menu.style.position = 'fixed';
+    menu.style.top = e.clientY + 'px';
+    menu.style.left = e.clientX + 'px';
+    menu.style.zIndex = '99999';
+
+    menu.innerHTML = `
+      <div class="context-menu-header">
+        <strong>${fieldName}</strong>: ${fieldValue}
+      </div>
+      <div class="context-menu-item" onclick="addToContextFilter('${filterField}', '${fieldValue.replace(/'/g, "\\'")}', 'contains')">
+        <span class="context-menu-icon">✓</span> Contains "${fieldValue}"
+      </div>
+      <div class="context-menu-item" onclick="addToContextFilter('${filterField}', '${fieldValue.replace(/'/g, "\\'")}', 'notcontains')">
+        <span class="context-menu-icon">✗</span> Does NOT Contain "${fieldValue}"
+      </div>
+      <div class="context-menu-item" onclick="addToContextFilter('${filterField}', '${fieldValue.replace(/'/g, "\\'")}', 'equals')">
+        <span class="context-menu-icon">⭐</span> Equals "${fieldValue}"
+      </div>
+      <div class="context-menu-item" onclick="removeFromContextFilter('${filterField}', '${fieldValue.replace(/'/g, "\\'")}')">
+        <span class="context-menu-icon">−</span> Remove "${fieldValue}" from Filter
+      </div>
+      <div class="context-menu-item danger" onclick="clearAllContextFilters()">
+        <span class="context-menu-icon">⚠️</span> Clear All Filters
+      </div>
+    `;
+
+    // Remove old menu if exists
+    document.getElementById('contextMenu')?.remove();
+    document.body.appendChild(menu);
+
+    // Close menu on click elsewhere
+    setTimeout(() => {
+      document.addEventListener('click', closeContextMenu, { once: true });
+      document.addEventListener('contextmenu', closeContextMenu, { once: true });
+    }, 100);
+  }
+
+  function showGeneralContextMenu(e, card) {
+    const menu = document.createElement('div');
+    menu.id = 'contextMenu';
+    menu.className = 'visible';
+    menu.style.position = 'fixed';
+    menu.style.top = e.clientY + 'px';
+    menu.style.left = e.clientX + 'px';
+    menu.style.zIndex = '99999';
+
+    menu.innerHTML = `
+      <div class="context-menu-header">
+        Card Options
+      </div>
+      <div class="context-menu-item" onclick="applyFiltersNow()">
+        <span class="context-menu-icon">🔍</span> Apply Current Filters
+      </div>
+      <div class="context-menu-item" onclick="clearAllContextFilters()">
+        <span class="context-menu-icon">⚠️</span> Clear All Filters
+      </div>
+    `;
+
+    // Remove old menu if exists
+    document.getElementById('contextMenu')?.remove();
+    document.body.appendChild(menu);
+
+    // Close menu on click elsewhere
+    setTimeout(() => {
+      document.addEventListener('click', closeContextMenu, { once: true });
+      document.addEventListener('contextmenu', closeContextMenu, { once: true });
+    }, 100);
+  }
+
+  function closeContextMenu() {
+    const menu = document.getElementById('contextMenu');
+    if (menu) menu.remove();
+  }
+
+  function addToContextFilter(field, value, operator) {
+    closeContextMenu();
+
+    // Add to context filters
+    filterState.contextFilters = filterState.contextFilters || [];
+    filterState.contextFilters.push({
+      field,
+      value,
+      operator // 'contains', 'notcontains', 'equals'
+    });
+
+    console.log(`✓ Added filter: ${field} ${operator} "${value}"`);
+    applyFiltersNow();
+    updateBreadcrumbMenu();
+  }
+
+  function removeFromContextFilter(field, value) {
+    closeContextMenu();
+
+    filterState.contextFilters = filterState.contextFilters || [];
+    filterState.contextFilters = filterState.contextFilters.filter(f =>
+      !(f.field === field && f.value === value)
+    );
+
+    console.log(`✓ Removed filter: ${field} "${value}"`);
+    applyFiltersNow();
+    updateBreadcrumbMenu();
+  }
+
+  function clearAllContextFilters() {
+    closeContextMenu();
+    filterState.contextFilters = [];
+    console.log('✓ All context filters cleared');
+    applyFiltersNow();
+    updateBreadcrumbMenu();
+    showToast('All filters cleared', 'success', 1500);
+  }
+
+  function applyFiltersNow() {
+    // Apply context filters in addition to regular filters
+    applyFilters();
+    renderAllCards();
   }
 
   /***********************
