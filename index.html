@@ -4788,7 +4788,7 @@
   </script>
 
   <script>
-    (function () {
+    // Helper functions for Google automation
     function safeStr(v) {
       return String(v == null ? "" : v).trim();
     }
@@ -4820,10 +4820,6 @@
         throw new Error(`Excel PATCH failed (${response.status})${text ? `: ${text}` : ""}`);
       }
     }
-
-
-    // Old duplicate code removed - refreshPlaceIds is now handled in main runGoogleAutomation function
-    })();
   </script>
 
   <!-- Google Data Automation -->
