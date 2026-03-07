@@ -4802,6 +4802,40 @@
         <button id="btnRefreshAll" class="automation-btn">Refresh All Fields</button>
         <button id="btnSearchPlaceIds" class="automation-btn" style="background: #10b981; border-color: #10b981; color: white;">🔍 Search Place IDs</button>
       </div>
+
+      <!-- Skip Value Setting -->
+      <div style="background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; margin-top: 12px;">
+        <div style="font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 8px;">
+          ⊘ Skip Locations by Place ID Value
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input
+            id="automationSkipInput"
+            type="text"
+            placeholder="Enter value to skip (e.g., SKIP, DO NOT UPDATE, MANUAL ONLY)"
+            style="flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px;"
+          />
+          <button
+            id="automationSkipSetBtn"
+            style="padding: 8px 16px; background: #6366f1; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;"
+          >
+            Set Skip Value
+          </button>
+          <button
+            id="automationSkipClearBtn"
+            style="padding: 8px 16px; background: #9ca3af; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;"
+          >
+            Clear
+          </button>
+        </div>
+        <div
+          id="automationSkipStatus"
+          style="font-size: 11px; color: #6b7280; margin-top: 6px; display: none;"
+        >
+          <!-- Status message appears here -->
+        </div>
+      </div>
+
       <div class="dry-run-note">
         Dry Run ON: changes are previewed but not written to Excel. Turn off to apply updates.
       </div>
@@ -10702,10 +10736,38 @@ undefined
      * Run Google automation with visual progress
      */
     /**
+     * Global setting for skip value in Place ID field
+     * Users can set this to skip locations with specific values
+     * Example: "SKIP", "DO NOT UPDATE", "MANUAL ONLY", etc.
+     */
+    window.automationSkipValue = localStorage.getItem('automationSkipValue') || '';
+
+    /**
+     * Set the skip value for automation
+     */
+    function setAutomationSkipValue(value) {
+      window.automationSkipValue = String(value).trim().toUpperCase();
+      localStorage.setItem('automationSkipValue', window.automationSkipValue);
+      console.log(`✓ Automation skip value set to: "${window.automationSkipValue}"`);
+    }
+
+    /**
      * Check if a Place ID is valid (non-empty string)
      */
     function isValidPlaceId(placeId) {
       return placeId && String(placeId).trim().length > 0 && placeId !== 'undefined' && placeId !== 'null';
+    }
+
+    /**
+     * Check if a location should be skipped based on Place ID value
+     */
+    function shouldSkipLocation(placeId) {
+      if (!window.automationSkipValue || window.automationSkipValue === '') {
+        return false; // No skip value set, don't skip
+      }
+
+      const placeIdString = String(placeId).trim().toUpperCase();
+      return placeIdString === window.automationSkipValue;
     }
 
     /**
@@ -10738,6 +10800,13 @@ undefined
           updates: [],
           skipped: null
         };
+
+        // Check if location should be skipped by user setting
+        if (shouldSkipLocation(placeId)) {
+          locationChanges.skipped = 'skip-by-user';
+          skipped.push(locationChanges);
+          continue;
+        }
 
         // For actions that need Place ID
         if (['refreshHours', 'refreshAll', 'populateMissing'].includes(actionType)) {
@@ -10862,34 +10931,45 @@ undefined
       // Show locations that CANNOT be updated
       if (skipped.length > 0) {
         html += `<div style="margin-bottom: 12px;">`;
-        html += `<div style="font-size: 12px; font-weight: 600; color: #dc2626; margin-bottom: 8px;">✗ Cannot Update (${skipped.length})</div>`;
+        html += `<div style="font-size: 12px; font-weight: 600; color: #dc2626; margin-bottom: 8px;">⊘ Skipped (${skipped.length})</div>`;
 
         skipped.forEach((skip) => {
-          const reasonText = skip.skipped === 'missing-place-id' 
-            ? '❌ Missing Google Place ID - Cannot fetch data without Place ID'
-            : '❌ Invalid Google Place ID - Place ID is invalid';
-          
-          const reasonBg = skip.skipped === 'missing-place-id' 
-            ? '#fef2f2' 
-            : '#fef2f2';
-          const reasonBorder = skip.skipped === 'missing-place-id' 
-            ? '#fca5a5' 
-            : '#fca5a5';
-          const reasonColor = skip.skipped === 'missing-place-id' 
-            ? '#dc2626' 
-            : '#dc2626';
+          let reasonText, actionText, reasonBg, reasonBorder, reasonColor, icon;
+
+          if (skip.skipped === 'skip-by-user') {
+            reasonText = `⊘ Manually Skipped - Place ID contains "${window.automationSkipValue}"`;
+            actionText = `This location was marked to skip. Update the Place ID field if you want to include it.`;
+            reasonBg = '#fffbeb';
+            reasonBorder = '#fcd34d';
+            reasonColor = '#b45309';
+            icon = '⊘';
+          } else if (skip.skipped === 'missing-place-id') {
+            reasonText = '❌ Missing Google Place ID - Cannot fetch data without Place ID';
+            actionText = 'Add a Google Place ID to this location first using the "Search Place IDs" button.';
+            reasonBg = '#fef2f2';
+            reasonBorder = '#fca5a5';
+            reasonColor = '#dc2626';
+            icon = '❌';
+          } else {
+            reasonText = '❌ Invalid Google Place ID - Place ID is invalid';
+            actionText = 'Update or add a valid Google Place ID to this location.';
+            reasonBg = '#fef2f2';
+            reasonBorder = '#fca5a5';
+            reasonColor = '#dc2626';
+            icon = '❌';
+          }
 
           html += `
             <div style="background: ${reasonBg}; border: 1px solid ${reasonBorder}; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-              <div style="font-weight: 600; color: #7f1d1d; margin-bottom: 8px; font-size: 14px;">
+              <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px; font-size: 14px;">
                 📍 ${skip.name}
               </div>
-              <div style="margin-left: 12px; border-left: 2px solid #fecaca; padding-left: 8px;">
-                <div style="font-size: 12px; color: ${reasonColor}; font-weight: 500;">
+              <div style="margin-left: 12px; border-left: 2px solid ${reasonBorder}; padding-left: 8px;">
+                <div style="font-size: 12px; color: ${reasonColor}; font-weight: 500; margin-bottom: 4px;">
                   ${reasonText}
                 </div>
-                <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">
-                  <strong>What to do:</strong> Add a Google Place ID to this location first using the "Search Place IDs" button.
+                <div style="font-size: 11px; color: #6b7280;">
+                  ${actionText}
                 </div>
               </div>
             </div>
@@ -11089,6 +11169,47 @@ undefined
         console.log('Search Place IDs clicked - Dry Run:', isDryRun());
         await runGoogleAutomation('searchPlaceIds', isDryRun());
       });
+
+      // Initialize skip value controls
+      const skipInput = document.getElementById('automationSkipInput');
+      const skipSetBtn = document.getElementById('automationSkipSetBtn');
+      const skipClearBtn = document.getElementById('automationSkipClearBtn');
+      const skipStatus = document.getElementById('automationSkipStatus');
+
+      // Set skip value
+      skipSetBtn?.addEventListener('click', () => {
+        const value = skipInput?.value.trim();
+        if (value) {
+          setAutomationSkipValue(value);
+          showToast(`✓ Skip value set to: "${value}"`, 'success', 2000);
+          if (skipStatus) {
+            skipStatus.textContent = `✓ Will skip locations where Place ID = "${window.automationSkipValue}"`;
+            skipStatus.style.display = 'block';
+            skipStatus.style.color = '#059669';
+          }
+          console.log('✓ Skip value configured:', value);
+        } else {
+          showToast('❌ Please enter a skip value', 'error', 2000);
+        }
+      });
+
+      // Clear skip value
+      skipClearBtn?.addEventListener('click', () => {
+        window.automationSkipValue = '';
+        localStorage.removeItem('automationSkipValue');
+        if (skipInput) skipInput.value = '';
+        if (skipStatus) skipStatus.style.display = 'none';
+        showToast('✓ Skip value cleared', 'info', 2000);
+        console.log('✓ Skip value cleared');
+      });
+
+      // Display current skip value if set
+      if (window.automationSkipValue && skipStatus && skipInput) {
+        skipInput.value = window.automationSkipValue;
+        skipStatus.textContent = `✓ Will skip locations where Place ID = "${window.automationSkipValue}"`;
+        skipStatus.style.display = 'block';
+        skipStatus.style.color = '#059669';
+      }
 
       console.log('✓ Automation buttons initialized successfully');
     }
