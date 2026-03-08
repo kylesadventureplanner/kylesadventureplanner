@@ -7488,6 +7488,12 @@
 
           function executeButtonAction(btn, meta, isDryRunFn) {
             console.log(`✓ Button clicked: ${btn.id} - ${meta.label}`);
+            console.log(`📊 Button details:`, {
+              id: btn.id,
+              label: meta.label,
+              action: meta.action,
+              hasAction: !!meta.action
+            });
 
             // CRITICAL: Clear any overlays that might interfere
             if (typeof window.clearStaleModalBackdrops === 'function') {
@@ -7499,21 +7505,27 @@
 
             // Handle Add Place button
             if (btn.id === 'btnAddPlace') {
-              console.log('✓ Add Place button clicked');
+              console.log('✅ DETECTED btnAddPlace - Taking special handling path');
+              console.log('🛑 Clearing loading state immediately');
               setButtonLoading(btn, false);
 
               try {
+                console.log('🔍 Checking if openAddPlaceModal function exists...');
                 if (typeof window.openAddPlaceModal === 'function') {
+                  console.log('✅ openAddPlaceModal function found - calling it now...');
                   window.openAddPlaceModal();
-                  console.log('✓ openAddPlaceModal() called successfully');
+                  console.log('✅ openAddPlaceModal() call completed');
                 } else {
                   console.error('❌ openAddPlaceModal function not found');
                 }
               } catch (err) {
                 console.error('❌ Error opening Add Place modal:', err);
               }
+              console.log('🛑 RETURNING from executeButtonAction - NO automation should run after this');
               return;
             }
+
+            console.log('⚙️  This is NOT btnAddPlace - proceeding with automation...');
 
             // Execute automation
             try {
@@ -13794,6 +13806,9 @@ COMMON ISSUES:
     }
 
     window.openAddPlaceModal = function () {
+      console.log('🚀 openAddPlaceModal() CALLED - Starting to open Add New Place modal');
+      console.log('📍 Stack trace:', new Error().stack);
+
       // Check if Google Places API is available
       if (!window.google?.maps?.places?.Place) {
         const errorMsg = "⚠️ Google Places API is not available. Please check:\n\n" +
@@ -13810,34 +13825,46 @@ COMMON ISSUES:
         return;
       }
 
+      console.log('✓ Google Places API is available');
+
       const modal = document.getElementById("addPlaceModal");
       const backdrop = document.getElementById("addPlaceBackdrop");
       const status = document.getElementById("addPlaceStatus");
       const input = document.getElementById("addPlaceInputValue");
-      
+
+      console.log('✓ Modal elements found:', {
+        modal: !!modal,
+        backdrop: !!backdrop,
+        status: !!status,
+        input: !!input
+      });
+
       if (status) status.style.display = "none";
       if (input) input.value = "";
       if (modal) {
+        console.log('✓ Setting modal to display flex');
         modal.style.display = "flex";
         modal.style.zIndex = "2200"; // Ensure it's on top
-        
+
         // CRITICAL: Prevent click events from bubbling out of the modal
         modal.addEventListener('click', function(e) {
           e.stopPropagation();
         }, { once: false, capture: true });
       }
       if (backdrop) {
+        console.log('✓ Setting backdrop to display block');
         backdrop.style.display = "block";
         backdrop.style.zIndex = "2150";
       }
-      
-      console.log('✅ Add Place modal opened successfully');
+
+      console.log('✅ Add Place modal opened successfully - FUNCTION COMPLETE');
+      console.log('⚠️  If you see automation running after this, there is a bug in the button handler!');
     };
 
     window.closeAddPlaceModal = function () {
       const modal = document.getElementById("addPlaceModal");
       const backdrop = document.getElementById("addPlaceBackdrop");
-      
+
       if (modal) {
         modal.style.display = "none";
         // Clear the input
@@ -13847,7 +13874,7 @@ COMMON ISSUES:
       if (backdrop) {
         backdrop.style.display = "none";
       }
-      
+
       console.log('✅ Add Place modal closed');
     };
 
