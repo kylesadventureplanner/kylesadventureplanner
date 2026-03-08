@@ -5074,39 +5074,132 @@
   </script>
 
   <script>
-    // Helper functions for Google automation
-    function safeStr(v) {
-      return String(v == null ? "" : v).trim();
+    (function () {
+    function bindCardLinkGuard(grid) {
+      if (!grid || grid.dataset.linkGuardBound === '1') return;
+
+      // Let links navigate naturally and block card/detail delegated click handlers.
+      grid.addEventListener('click', (e) => {
+        if (!e.target.closest('a')) return;
+        e.stopImmediatePropagation();
+      }, true);
+
+      grid.dataset.linkGuardBound = '1';
     }
 
-    function buildDirectionsFromPlaceId(placeId) {
-      const pid = safeStr(placeId);
-      if (!pid) return "";
-      return "https://www.google.com/maps/dir/?api=1&destination_place_id=" + encodeURIComponent(pid);
-    }
-
-    async function patchRowValues(rowIndex, currentValues, updatesByCol) {
-      const merged = Array.isArray(currentValues) ? currentValues.slice() : [];
-      Object.keys(updatesByCol).forEach((k) => {
-        merged[Number(k)] = updatesByCol[k];
-      });
-
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows/itemAt(index=${rowIndex})`;
-      const response = await fetch(url, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ values: [merged] })
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-        throw new Error(`Excel PATCH failed (${response.status})${text ? `: ${text}` : ""}`);
+    function installCardLinkGuardPatch() {
+      const originalRenderPaginatedCards = window.renderPaginatedCards;
+      if (typeof originalRenderPaginatedCards === 'function' && !window.__cardLinkGuardPatched) {
+        window.renderPaginatedCards = function () {
+          originalRenderPaginatedCards();
+          bindCardLinkGuard(document.getElementById('adventureCardsGrid'));
+        };
+        window.__cardLinkGuardPatched = true;
       }
+
+      bindCardLinkGuard(document.getElementById('adventureCardsGrid'));
     }
-  </script>
+
+    window.ensureButtonsClickable = function () {
+      const selectors = [
+        '.auth-btn',
+        '.automation-btn',
+        '.quick-filter-btn',
+        '.control-panel-card button',
+        '.pagination-btn',
+        '.card-btn',
+        '.action-btn',
+        'a'
+      ];
+
+      selectors.forEach((selector) => {
+        document.querySelectorAll(selector).forEach((el) => {
+          el.style.pointerEvents = 'auto';
+          if (el.tagName !== 'A') {
+            el.style.position = el.style.position || 'relative';
+            el.style.zIndex = '2';
+          }
+        });
+      });
+
+      // Route clicks to the full button surface, even if icons/spans are nested.
+      document.querySelectorAll('.automation-btn *, .card-btn *, .action-btn *').forEach((el) => {
+        el.style.pointerEvents = 'none';
+      });
+
+      document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+        if (!backdrop.classList.contains('visible')) {
+          backdrop.style.pointerEvents = 'none';
+          backdrop.style.display = 'none';
+          backdrop.style.opacity = '0';
+          backdrop.style.zIndex = '-1';
+        }
+      });
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      installCardLinkGuardPatch();
+      window.ensureButtonsClickable?.();
+
+      // Keep Apply button labeling consistent when shown dynamically.
+      const observer = new MutationObserver(() => {
+        const applyBtn = document.getElementById('automationApplyBtn');
+        if (applyBtn && /apply changes now/i.test(applyBtn.textContent || '')) {
+          applyBtn.textContent = '✅ Apply Dry Run Changes';
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+      // Initialize reliability features
+      initNetworkMonitoring();
+      initSessionManagement();
+      initAPITimeouts();
+    });
+
+    // ============================================================
+    // NETWORK STATUS MONITORING
+    // ============================================================
+    function initNetworkMonitoring() {
+      const statusDiv = document.getElementById('networkStatus');
+      const statusIcon = document.getElementById('networkStatusIcon');
+      const statusText = document.getElementById('networkStatusText');
+      let isOnline = navigator.onLine;
+
+      // Check online/offline status
+      window.addEventListener('online', () => {
+        isOnline = true;
+        statusDiv.style.display = 'none';
+        console.log('✅ Network connection restored');
+        showToast('✅ Connection restored', 'success', 3000);
+      });
+
+      window.addEventListener('offline', () => {
+        isOnline = false;
+        statusDiv.style.display = 'block';
+        statusIcon.textContent = '🔴';
+        statusText.textContent = 'No Connection';
+        console.warn('⚠️ Network connection lost');
+        showToast('⚠️ No internet connection', 'warning', 5000);
+      });
+
+      // Periodic connection check (every 30 seconds)
+      setInterval(() => {
+        if (navigator.onLine !== isOnline) {
+          if (navigator.onLine) {
+            isOnline = true;
+            statusDiv.style.display = 'none';
+          } else {
+            isOnline = false;
+            statusDiv.style.display = 'block';
+          }
+        }
+      }, 30000);
+    }
+
+  })();
+</script>
+
+  <!-- Google Data Automation -->
 
   <!-- Google Data Automation -->
   <div class="card automation-card">
@@ -14346,7 +14439,6 @@ COMMON ISSUES:
   })();
 </script>
 
-// ...existing code...
 <script>
   (function () {
     function isDryRunOn() {
