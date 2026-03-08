@@ -5152,8 +5152,8 @@
 
       // Initialize reliability features
       initNetworkMonitoring();
-      initSessionManagement();
-      initAPITimeouts();
+      window.initSessionManagement?.();
+      window.initAPITimeouts?.();
     });
 
     // ============================================================
@@ -9029,6 +9029,9 @@
       return;
     }
 
+    // Persist source index on the modal so edit mode can recover reliably.
+    modal.dataset.currentRowIndex = String(index);
+
     modalTitle.textContent = name || "Adventure Details";
 
     // Define tabs
@@ -10894,10 +10897,23 @@
   /**
    * Enable Edit Mode - Convert modal to editable form
    */
-  function enableEditMode() {
+    function enableEditMode() {
     const modal = document.getElementById("rowDetailModal");
     const editBtn = document.getElementById("rowDetailEditBtn");
     const closeBtn = document.getElementById("rowDetailCloseFooterBtn");
+
+    // Recover row selection if a stale handler cleared in-memory pointers.
+    if (!currentEditingRow) {
+      let recoveredIndex = Number.isInteger(currentEditingRowIndex) ? currentEditingRowIndex : -1;
+      if ((!Number.isInteger(recoveredIndex) || recoveredIndex < 0) && modal?.dataset.currentRowIndex) {
+        const parsed = Number(modal.dataset.currentRowIndex);
+        if (Number.isInteger(parsed) && parsed >= 0) recoveredIndex = parsed;
+      }
+      if (Number.isInteger(recoveredIndex) && recoveredIndex >= 0 && window.adventuresData?.[recoveredIndex]) {
+        currentEditingRowIndex = recoveredIndex;
+        currentEditingRow = window.adventuresData[recoveredIndex];
+      }
+    }
 
     if (!currentEditingRow) {
       console.error("❌ No row selected for editing - currentEditingRow is null");
@@ -10905,7 +10921,35 @@
       return;
     }
 
-    const rowData = rowDataMap.get(currentEditingRow);
+    let rowData = rowDataMap.get(currentEditingRow);
+    if (!rowData && currentEditingRow?.values?.[0]) {
+      const values = currentEditingRow.values[0];
+      rowData = {
+        name: values[0],
+        googlePlaceId: values[1],
+        website: values[2],
+        tags: values[3],
+        driveTime: values[4],
+        hoursOfOperation: values[5],
+        activityDuration: values[6],
+        difficulty: values[7],
+        trailLength: values[8],
+        state: values[9],
+        city: values[10],
+        address: values[11],
+        phoneNumber: values[12],
+        googleRating: values[13],
+        cost: values[14],
+        directions: values[15],
+        description: values[16],
+        nearby: values[17],
+        links: values[18],
+        links2: values[19],
+        notes: values[20],
+        myRating: values[21]
+      };
+      rowDataMap.set(currentEditingRow, rowData);
+    }
     if (!rowData) {
       console.error("❌ No data found for current row in rowDataMap");
       console.error("   rowDataMap size:", rowDataMap.size);
@@ -14556,9 +14600,9 @@ COMMON ISSUES:
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
       // Initialize reliability features
-      initNetworkMonitoring();
-      initSessionManagement();
-      initAPITimeouts();
+      initNetworkMonitoring?.();
+      initSessionManagement?.();
+      initAPITimeouts?.();
     });
 
     // ============================================================
