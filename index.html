@@ -7466,8 +7466,17 @@
 
             // Handle Add Place button
             if (btn.id === 'btnAddPlace') {
+              console.log('✓ Add Place button clicked');
+              console.log('  Button element:', btn);
+              console.log('  openAddPlaceModal function exists:', typeof window.openAddPlaceModal);
               setButtonLoading(btn, false);
-              window.openAddPlaceModal();
+
+              try {
+                window.openAddPlaceModal();
+                console.log('✓ openAddPlaceModal() called successfully');
+              } catch (err) {
+                console.error('❌ Error opening Add Place modal:', err);
+              }
               return;
             }
 
@@ -10898,9 +10907,19 @@
    * Enable Edit Mode - Convert modal to editable form
    */
     function enableEditMode() {
+    console.log('⚠️ enableEditMode() called');
+    console.trace('Stack trace:');
+
     const modal = document.getElementById("rowDetailModal");
     const editBtn = document.getElementById("rowDetailEditBtn");
     const closeBtn = document.getElementById("rowDetailCloseFooterBtn");
+
+    // DEFENSIVE: Don't allow edit mode if Add Place modal is open
+    const addPlaceModal = document.getElementById("addPlaceModal");
+    if (addPlaceModal && addPlaceModal.style.display === "flex") {
+      console.log("✓ Ignoring enableEditMode - Add Place modal is open");
+      return;
+    }
 
     // Recover row selection if a stale handler cleared in-memory pointers.
     if (!currentEditingRow) {
