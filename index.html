@@ -8381,6 +8381,9 @@
                 <span>🔗</span> Google
               </button>
             ` : ''}
+            <button class="card-btn card-similar-btn" data-index="${actualIndex}" title="Find similar adventures">
+              <span>🔍</span> Similar
+            </button>
           </div>
           <div class="card-favorite-rating-container">
             <div class="card-rating" data-index="${actualIndex}" title="Rate this place">
@@ -8488,6 +8491,22 @@
         return;
       }
 
+      const similarBtn = e.target.closest('.card-similar-btn');
+      if (similarBtn) {
+        e.stopPropagation();
+        const idx = Number(similarBtn.getAttribute('data-index'));
+        showSimilarAdventures(idx);
+        return;
+      }
+
+      const nearbyBtn = e.target.closest('.card-nearby-btn');
+      if (nearbyBtn) {
+        e.stopPropagation();
+        const idx = Number(nearbyBtn.getAttribute('data-index'));
+        showNearbyAdventures(idx);
+        return;
+      }
+
       const favoriteBtn = e.target.closest('.card-favorite-btn');
       if (favoriteBtn) {
         e.stopPropagation();
@@ -8572,6 +8591,258 @@
     starsHtml += ` <span style="color: #6b7280; font-size: 13px; margin-left: 4px;">(${numRating.toFixed(1)})</span>`;
 
     return starsHtml;
+  }
+
+  /**
+   * Calculate similarity score between two adventures
+   * @param {Object} adventure1 - First adventure data
+   * @param {Object} adventure2 - Second adventure data
+   * @returns {number} Similarity score (0-100)
+   */
+  function calculateSimilarity(adventure1, adventure2) {
+    let score = 0;
+    const values1 = adventure1.row.values[0];
+    const values2 = adventure2.row.values[0];
+
+    // Extract data for comparison
+    const tags1 = (values1[3] || '').toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
+    const tags2 = (values2[3] || '').toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
+    const state1 = (values1[9] || '').trim().toLowerCase();
+    const state2 = (values2[9] || '').trim().toLowerCase();
+    const city1 = (values1[10] || '').trim().toLowerCase();
+    const city2 = (values2[10] || '').trim().toLowerCase();
+    const difficulty1 = (values1[7] || '').trim().toLowerCase();
+    const difficulty2 = (values2[7] || '').trim().toLowerCase();
+    const cost1 = (values1[14] || '').trim();
+    const cost2 = (values2[14] || '').trim();
+
+    // 1. TAGS SIMILARITY (40 points max) - Most important
+    if (tags1.length > 0 && tags2.length > 0) {
+      const commonTags = tags1.filter(tag => tags2.includes(tag));
+      const allTags = new Set([...tags1, ...tags2]);
+      const tagSimilarity = commonTags.length / allTags.size;
+      score += tagSimilarity * 40;
+    }
+
+    // 2. LOCATION SIMILARITY (25 points max)
+    if (city1 && city2 && city1 === city2) {
+      score += 25; // Same city
+    } else if (state1 && state2 && state1 === state2) {
+      score += 15; // Same state but different city
+    }
+
+    // 3. DIFFICULTY SIMILARITY (15 points max)
+    if (difficulty1 && difficulty2) {
+      if (difficulty1 === difficulty2) {
+        score += 15; // Exact match
+      } else if (
+        (difficulty1.includes('easy') && difficulty2.includes('moderate')) ||
+        (difficulty1.includes('moderate') && difficulty2.includes('easy')) ||
+        (difficulty1.includes('moderate') && difficulty2.includes('hard')) ||
+        (difficulty1.includes('hard') && difficulty2.includes('moderate'))
+      ) {
+        score += 8; // Adjacent difficulty
+      }
+    }
+
+    // 4. COST SIMILARITY (10 points max)
+    if (cost1 && cost2) {
+      if (cost1 === cost2) {
+        score += 10; // Exact match
+      } else {
+        // Similar cost range
+        const costValue1 = cost1.length; // $ = 1, $$ = 2, etc.
+        const costValue2 = cost2.length;
+        const costDiff = Math.abs(costValue1 - costValue2);
+        if (costDiff === 1) {
+          score += 5; // One level apart
+        }
+      }
+    }
+
+    // 5. ACTIVITY TYPE BONUS (10 points max)
+    // Check for similar activity keywords in tags and names
+    const activityKeywords = ['hiking', 'waterfall', 'restaurant', 'museum', 'park', 'trail', 'beach', 'mountain', 'lake'];
+    const name1 = (values1[0] || '').toLowerCase();
+    const name2 = (values2[0] || '').toLowerCase();
+    const combined1 = [...tags1, name1].join(' ');
+    const combined2 = [...tags2, name2].join(' ');
+
+    let keywordMatches = 0;
+    activityKeywords.forEach(keyword => {
+      if (combined1.includes(keyword) && combined2.includes(keyword)) {
+        keywordMatches++;
+      }
+    });
+
+    if (keywordMatches > 0) {
+      score += Math.min(10, keywordMatches * 3);
+    }
+
+    return Math.min(100, Math.round(score));
+  }
+
+  /**
+   * Show similar adventures based on the selected adventure
+   * @param {number} index - Index of the reference adventure in totalFilteredAdventures
+   */
+  function showSimilarAdventures(index) {
+    if (!totalFilteredAdventures[index]) {
+      console.error('Adventure not found at index:', index);
+      showToast('❌ Could not find adventure details', 'error');
+      return;
+    }
+
+    const referenceAdventure = totalFilteredAdventures[index];
+    const referenceName = referenceAdventure.row.values[0][0] || 'this adventure';
+
+    console.log(`🔍 Finding similar adventures to: ${referenceName}`);
+
+    // Calculate similarity scores for all other adventures
+    const similarAdventures = totalFilteredAdventures
+      .map((adventure, idx) => {
+        if (idx === index) return null; // Skip the reference adventure itself
+
+        const score = calculateSimilarity(referenceAdventure, adventure);
+        return {
+          adventure,
+          score,
+          index: idx
+        };
+      })
+      .filter(item => item !== null && item.score > 10) // Only keep items with meaningful similarity (>10%)
+      .sort((a, b) => b.score - a.score) // Sort by score descending
+      .slice(0, 10); // Top 10 matches
+
+    if (similarAdventures.length === 0) {
+      showToast(`No similar adventures found to "${referenceName}"`, 'info', 4000);
+      return;
+    }
+
+    // Create and show modal with similar adventures
+    showSimilarAdventuresModal(referenceName, similarAdventures);
+
+    console.log(`✓ Found ${similarAdventures.length} similar adventures`);
+    showToast(`✓ Found ${similarAdventures.length} similar adventures`, 'success', 3000);
+  }
+
+  /**
+   * Show modal with similar adventures
+   */
+  function showSimilarAdventuresModal(referenceName, similarAdventures) {
+    // Create modal HTML
+    const modalHTML = `
+      <div id="similarAdventuresModal" class="row-detail-modal" style="display: flex;">
+        <div class="row-detail-header">
+          <div class="row-detail-title-section">
+            <h1 class="row-detail-adventure-name">Adventures Similar to "${referenceName}"</h1>
+            <div class="row-detail-location">🔍 ${similarAdventures.length} matches found</div>
+          </div>
+          <button class="row-detail-close-btn" onclick="closeSimilarAdventuresModal()">X</button>
+        </div>
+
+        <div class="row-detail-content" style="padding: 24px;">
+          <div style="display: grid; gap: 16px;">
+            ${similarAdventures.map(item => {
+              const values = item.adventure.row.values[0];
+              const name = values[0] || 'Unnamed';
+              const city = values[10] || 'Unknown';
+              const state = values[9] || '';
+              const tags = values[3] || '';
+              const difficulty = values[7] || '';
+              const cost = values[14] || '';
+              const description = values[16] || '';
+
+              const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+              // Similarity bar color
+              let barColor = '#22c55e'; // green
+              if (item.score < 30) barColor = '#ef4444'; // red
+              else if (item.score < 50) barColor = '#f59e0b'; // orange
+              else if (item.score < 70) barColor = '#eab308'; // yellow
+
+              return `
+                <div class="similar-adventure-item" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s;" onclick="event.stopPropagation(); closeSimilarAdventuresModal(); showCardDetails(${item.index});" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'; this.style.borderColor='#3b82f6';" onmouseout="this.style.boxShadow='none'; this.style.borderColor='#e5e7eb';">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <div style="flex: 1;">
+                      <h3 style="font-size: 18px; font-weight: 700; color: #1f2937; margin: 0 0 4px 0;">${name}</h3>
+                      <div style="font-size: 14px; color: #6b7280;">
+                        <span>📍</span> ${city}${state ? ', ' + state : ''}
+                      </div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div style="font-size: 24px; font-weight: 700; color: ${barColor};">${item.score}%</div>
+                      <div style="font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px;">Match</div>
+                    </div>
+                  </div>
+
+                  ${description ? `
+                    <div style="font-size: 14px; color: #4b5563; margin-bottom: 12px; line-height: 1.5;">
+                      ${description.length > 120 ? description.substring(0, 120) + '...' : description}
+                    </div>
+                  ` : ''}
+
+                  <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                    ${difficulty ? `<span style="padding: 4px 10px; background: #fef3c7; color: #92400e; border-radius: 6px; font-size: 12px; font-weight: 600;">⛰️ ${difficulty}</span>` : ''}
+                    ${cost ? `<span style="padding: 4px 10px; background: #dbeafe; color: #1e40af; border-radius: 6px; font-size: 12px; font-weight: 600;">💰 ${cost}</span>` : ''}
+                  </div>
+
+                  ${tagList.length > 0 ? `
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                      ${tagList.slice(0, 5).map(tag => `
+                        <span style="padding: 3px 8px; background: #f3f4f6; color: #374151; border-radius: 4px; font-size: 11px; font-weight: 500;">${tag}</span>
+                      `).join('')}
+                      ${tagList.length > 5 ? `<span style="padding: 3px 8px; background: #f3f4f6; color: #6b7280; border-radius: 4px; font-size: 11px;">+${tagList.length - 5} more</span>` : ''}
+                    </div>
+                  ` : ''}
+
+                  <div style="width: 100%; height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 12px; overflow: hidden;">
+                    <div style="width: ${item.score}%; height: 100%; background: ${barColor}; transition: width 0.3s;"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="row-detail-footer">
+          <button class="row-detail-footer-btn" onclick="closeSimilarAdventuresModal()">Close</button>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('similarAdventuresModal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Add modal to page
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer.firstElementChild);
+
+    // Show backdrop
+    const backdrop = document.getElementById('rowDetailModalBackdrop');
+    if (backdrop) {
+      backdrop.style.display = 'block';
+      backdrop.onclick = () => closeSimilarAdventuresModal();
+    }
+  }
+
+  /**
+   * Close similar adventures modal
+   */
+  function closeSimilarAdventuresModal() {
+    const modal = document.getElementById('similarAdventuresModal');
+    if (modal) {
+      modal.remove();
+    }
+
+    const backdrop = document.getElementById('rowDetailModalBackdrop');
+    if (backdrop) {
+      backdrop.style.display = 'none';
+    }
   }
 
   /**
@@ -10580,7 +10851,7 @@
       }
 
       valueEl.innerHTML = inputHTML;
-      
+
       // Ensure the container itself doesn't block pointer events
       valueEl.style.pointerEvents = 'auto';
     });
@@ -10590,7 +10861,7 @@
     if (modalContent) {
       // Remove any existing click handlers that might block input interaction
       modalContent.style.pointerEvents = 'auto';
-      
+
       // Add event listener to allow clicks to propagate to inputs
       modalContent.addEventListener('click', (e) => {
         // Allow clicks on input, textarea, select elements
