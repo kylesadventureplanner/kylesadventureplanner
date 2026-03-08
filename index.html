@@ -14912,7 +14912,7 @@ COMMON ISSUES:
         } else {
           // For visible backdrops, allow clicks to pass through to content
           backdrop.style.pointerEvents = 'auto';
-          
+
           // Find all buttons/links inside and ensure they're clickable
           const buttons = backdrop.querySelectorAll('button, a, [role="button"]');
           buttons.forEach(btn => {
@@ -14973,7 +14973,7 @@ COMMON ISSUES:
     // ============================================================
     window.openAddPlaceModal = function() {
       console.log('🆕 Opening Add New Place modal');
-      
+
       const backdrop = document.createElement('div');
       backdrop.className = 'modal-backdrop visible';
       backdrop.id = 'addPlaceBackdrop';
@@ -14991,7 +14991,7 @@ COMMON ISSUES:
         z-index: 10000;
         padding: 20px;
       `;
-      
+
       const modal = document.createElement('div');
       modal.style.cssText = `
         background: white;
@@ -15005,99 +15005,113 @@ COMMON ISSUES:
         position: relative;
         z-index: 10001;
       `;
-      
+
       modal.innerHTML = `
         <div style="margin-bottom: 24px;">
           <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #1f2937;">➕ Add New Place</h2>
           <p style="margin: 0; color: #6b7280; font-size: 14px;">Enter any of the following to add a new location:</p>
         </div>
-        
+
         <div style="display: flex; flex-direction: column; gap: 16px;">
           <div>
             <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px;">Place Name</label>
             <input id="addPlaceName" type="text" placeholder="e.g., Starbucks Downtown" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;" />
           </div>
-          
+
           <div>
             <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px;">Google Place ID (optional)</label>
             <input id="addPlaceId" type="text" placeholder="e.g., ChIJ..." style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;" />
           </div>
-          
+
           <div>
             <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px;">Website URL (optional)</label>
             <input id="addPlaceWebsite" type="url" placeholder="e.g., https://example.com" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;" />
           </div>
-          
+
           <div>
             <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px;">Google Maps URL (optional)</label>
             <input id="addPlaceGoogleUrl" type="url" placeholder="e.g., https://maps.google.com/?cid=..." style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; box-sizing: border-box;" />
           </div>
         </div>
-        
+
         <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
           <button id="cancelAddPlace" style="padding: 10px 20px; background: white; color: #6b7280; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; min-width: 100px; pointer-events: auto; z-index: 10002;">Cancel</button>
           <button id="submitAddPlace" style="padding: 10px 20px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); transition: all 0.2s; min-width: 100px; pointer-events: auto; z-index: 10002;">Add Place</button>
         </div>
       `;
-      
+
       backdrop.appendChild(modal);
       document.body.appendChild(backdrop);
-      
-      // CRITICAL: Make backdrop NOT block clicks to buttons
-      backdrop.style.pointerEvents = 'none';
-      modal.style.pointerEvents = 'auto';
-      
+
+      // CRITICAL FIX: Allow backdrop to listen for clicks, but don't interfere with content
+      // Backdrop MUST have pointer-events: auto to work, modal and buttons override it
+      backdrop.style.pointerEvents = 'auto';  // ← Allow backdrop clicks
+      modal.style.pointerEvents = 'auto';     // ← Modal is clickable
+      modal.style.position = 'relative';
+      modal.style.zIndex = '10001';
+
       const cancelBtn = document.getElementById('cancelAddPlace');
       const submitBtn = document.getElementById('submitAddPlace');
       const inputs = modal.querySelectorAll('input');
-      
-      // Enable pointer events for all interactive elements
+
+      // Ensure all interactive elements are clickable
       cancelBtn.style.pointerEvents = 'auto';
+      cancelBtn.style.position = 'relative';
+      cancelBtn.style.zIndex = '10002';
+
       submitBtn.style.pointerEvents = 'auto';
-      inputs.forEach(input => { input.style.pointerEvents = 'auto'; });
-      
-      // Cancel button handler
-      cancelBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('🔴 Cancel button clicked');
-        backdrop.remove();
-      }, false);
-      
-      // Click outside modal to close
+      submitBtn.style.position = 'relative';
+      submitBtn.style.zIndex = '10002';
+
+      inputs.forEach(input => {
+        input.style.pointerEvents = 'auto';
+        input.style.position = 'relative';
+        input.style.zIndex = '10001';
+      });
+
+      // Click outside modal to close - test for ONLY the backdrop, not modal content
       backdrop.addEventListener('click', (e) => {
+        // Only close if clicking the backdrop itself (not modal or elements inside)
         if (e.target === backdrop) {
-          console.log('🔴 Clicked outside modal');
+          console.log('🔴 Clicked outside modal - closing');
           backdrop.remove();
         }
-      }, false);
-      
-      // Submit button handler
-      submitBtn.addEventListener('click', async (e) => {
+      }, true);  // Use capturing phase to catch it early
+
+      // Cancel button handler - simple and direct
+      cancelBtn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🔴 Cancel button clicked - closing modal');
+        backdrop.remove();
+      };
+
+      // Submit button handler - simple and direct
+      submitBtn.onclick = async function(e) {
         e.preventDefault();
         e.stopPropagation();
         console.log('✅ Submit button clicked');
-        
+
         const name = document.getElementById('addPlaceName').value.trim();
         const placeId = document.getElementById('addPlaceId').value.trim();
         const website = document.getElementById('addPlaceWebsite').value.trim();
         const googleUrl = document.getElementById('addPlaceGoogleUrl').value.trim();
-        
+
         if (!name && !placeId && !website && !googleUrl) {
           showToast('❌ Please enter at least one field', 'error', 3000);
           return;
         }
-        
+
         showToast('🔄 Adding new place...', 'info', 2000);
         backdrop.remove();
-        
+
         try {
           showToast('✅ Place added successfully! (Feature in development)', 'success', 3000);
         } catch (error) {
           console.error('Error adding place:', error);
           showToast('❌ Failed to add place: ' + error.message, 'error', 5000);
         }
-      }, false);
+      };
     };
 
     // ============================================================
@@ -15228,7 +15242,7 @@ COMMON ISSUES:
           btn.dataset.keyboardBound = 'true';
         }
       });
-      
+
       // Continuously ensure clickability every 100ms while buttons exist
       setInterval(() => {
         document.querySelectorAll('button:not([disabled])').forEach(btn => {
