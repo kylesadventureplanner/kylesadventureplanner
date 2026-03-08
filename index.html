@@ -3835,6 +3835,80 @@
       font-size: 12px;
     }
 
+    .error-count.no-errors {
+      background: #10b981;
+      color: white;
+    }
+
+    .error-count.no-errors::before {
+      content: '✓';
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .error-count.no-errors::after {
+      content: '';
+    }
+
+    /* ============================================================
+       TOOLTIP SYSTEM - Professional hover tooltips
+       ============================================================ */
+    [data-tooltip] {
+      position: relative;
+    }
+
+    [data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 12px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      white-space: nowrap;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      animation: tooltipFadeIn 0.2s ease-out;
+    }
+
+    [data-tooltip]:hover::before {
+      content: '';
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #1f2937;
+      z-index: 10000;
+    }
+
+    @keyframes tooltipFadeIn {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    /* Tooltip positioning fixes for edge cases */
+    [data-tooltip]:hover {
+      z-index: 9999;
+    }
+
+    /* Ensure tooltips don't interfere with buttons */
+    button[data-tooltip],
+    a[data-tooltip] {
+      outline: none;
+    }
+
     .toggle-icon {
       margin-left: auto;
       transition: transform 0.3s ease;
@@ -5167,6 +5241,103 @@
       window.initSessionManagement?.();
       window.initAPITimeouts?.();
     });
+
+    // ============================================================
+    // ADD NEW PLACE MODAL
+    // ============================================================
+    window.openAddPlaceModal = function() {
+      console.log('🆕 Opening Add New Place modal');
+
+      const modal = createAddPlaceModal();
+      document.body.appendChild(modal);
+
+      // Show modal
+      setTimeout(() => {
+        modal.classList.add('visible');
+      }, 10);
+    };
+
+    function createAddPlaceModal() {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop visible';
+      backdrop.style.cssText = 'display: flex; align-items: center; justify-content: center; z-index: 10000;';
+
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);';
+
+      modal.innerHTML = `
+        <div style="margin-bottom: 24px;">
+          <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #1f2937;">➕ Add New Place</h2>
+          <p style="margin: 0; color: #6b7280; font-size: 14px;">Enter any of the following to add a new location:</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px;">Place Name</label>
+            <input id="addPlaceName" type="text" placeholder="e.g., Starbucks Downtown" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" />
+          </div>
+
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px;">Google Place ID (optional)</label>
+            <input id="addPlaceId" type="text" placeholder="e.g., ChIJ..." style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" />
+          </div>
+
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px;">Website URL (optional)</label>
+            <input id="addPlaceWebsite" type="url" placeholder="e.g., https://example.com" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" />
+          </div>
+
+          <div>
+            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #374151; font-size: 14px;">Google Maps URL (optional)</label>
+            <input id="addPlaceGoogleUrl" type="url" placeholder="e.g., https://maps.google.com/?cid=..." style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px;" />
+          </div>
+        </div>
+
+        <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button id="cancelAddPlace" style="padding: 10px 20px; background: white; color: #6b7280; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Cancel</button>
+          <button id="submitAddPlace" style="padding: 10px 20px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); transition: all 0.2s;">Add Place</button>
+        </div>
+      `;
+
+      backdrop.appendChild(modal);
+
+      // Event listeners
+      document.getElementById('cancelAddPlace').addEventListener('click', () => {
+        backdrop.remove();
+      });
+
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+          backdrop.remove();
+        }
+      });
+
+      document.getElementById('submitAddPlace').addEventListener('click', async () => {
+        const name = document.getElementById('addPlaceName').value.trim();
+        const placeId = document.getElementById('addPlaceId').value.trim();
+        const website = document.getElementById('addPlaceWebsite').value.trim();
+        const googleUrl = document.getElementById('addPlaceGoogleUrl').value.trim();
+
+        if (!name && !placeId && !website && !googleUrl) {
+          showToast('❌ Please enter at least one field', 'error', 3000);
+          return;
+        }
+
+        showToast('🔄 Adding new place...', 'info', 2000);
+        backdrop.remove();
+
+        try {
+          // Here you would call your function to add to Excel
+          // For now, just show success
+          showToast('✅ Place added successfully! (Feature in development)', 'success', 3000);
+        } catch (error) {
+          console.error('Error adding place:', error);
+          showToast('❌ Failed to add place: ' + error.message, 'error', 5000);
+        }
+      });
+
+      return backdrop;
+    }
 
     // ============================================================
     // NETWORK STATUS MONITORING
@@ -14746,9 +14917,14 @@ COMMON ISSUES:
     };
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Initialize all clickable buttons with proper event handling
+      initializeAllButtons();
       installSafeAutomationClickHandler();
       installCardLinkGuardPatch();
       window.ensureButtonsClickable?.();
+
+      // Add comprehensive tooltips to all interactive elements
+      addComprehensiveTooltips();
 
       // Keep Apply button labeling consistent when shown dynamically.
       const observer = new MutationObserver(() => {
@@ -14756,6 +14932,8 @@ COMMON ISSUES:
         if (applyBtn && /apply changes now/i.test(applyBtn.textContent || '')) {
           applyBtn.textContent = '✅ Apply Dry Run Changes';
         }
+        // Re-add tooltips when new elements are added
+        addComprehensiveTooltips();
       });
       observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
@@ -14764,6 +14942,252 @@ COMMON ISSUES:
       initSessionManagement?.();
       initAPITimeouts?.();
     });
+
+    // ============================================================
+    // COMPREHENSIVE TOOLTIP SYSTEM
+    // ============================================================
+    function addComprehensiveTooltips() {
+      // Add tooltips to elements that don't have them yet
+      const tooltipMap = {
+        // Pagination buttons
+        '#prevPageBtn, #prevPageBtnTop': 'Go to previous page',
+        '#nextPageBtn, #nextPageBtnTop': 'Go to next page',
+
+        // Card action buttons
+        '.card-action-btn[onclick*="Details"]': 'View full details',
+        '.card-action-btn[onclick*="directions"]': 'Get directions in Google Maps',
+        '.card-favorite-btn': 'Add to favorites',
+        '.rating-star': 'Click to rate this location',
+        '.rating-clear-btn': 'Clear your rating',
+
+        // Sort controls
+        '#sortBy': 'Choose how to sort the adventures',
+        '#sortOrderBtn': 'Toggle between ascending and descending order',
+
+        // Group by controls
+        '#groupBy': 'Group adventures by this category',
+        '#groupBySecondary': 'Add a second level of grouping',
+
+        // Filter inputs
+        '#searchName': 'Search by adventure name',
+        '#filterDifficulty': 'Filter by difficulty level',
+        '#filterState': 'Filter by state (SC, NC, GA, etc.)',
+        '#filterCity': 'Filter by city name',
+        '#filterTags': 'Filter by tags (Restaurant, Nature, etc.)',
+        '#filterCost': 'Filter by cost (Free, $, $$, etc.)',
+
+        // Tab buttons
+        '.app-tab-btn': 'Switch to this tab',
+        '.row-detail-tab-btn': 'View this information',
+
+        // Dry run toggle
+        '#dryRunToggle': 'Toggle between preview mode and live updates',
+
+        // API diagnostic
+        '#apiDiagnosticBtn': 'Test your Google Maps API configuration'
+      };
+
+      Object.entries(tooltipMap).forEach(([selector, tooltip]) => {
+        document.querySelectorAll(selector).forEach(el => {
+          if (!el.hasAttribute('data-tooltip') && !el.hasAttribute('title')) {
+            el.setAttribute('data-tooltip', tooltip);
+          }
+        });
+      });
+
+      // Add tooltips to dynamically generated card buttons
+      document.querySelectorAll('.adventure-card').forEach(card => {
+        // Details button
+        const detailsBtn = card.querySelector('[onclick*="showCardDetails"]');
+        if (detailsBtn && !detailsBtn.hasAttribute('data-tooltip')) {
+          detailsBtn.setAttribute('data-tooltip', 'View full details for this location');
+        }
+
+        // Directions link
+        const directionsLink = card.querySelector('a[href*="google.com/maps"]');
+        if (directionsLink && !directionsLink.hasAttribute('data-tooltip')) {
+          directionsLink.setAttribute('data-tooltip', 'Get directions in Google Maps');
+        }
+
+        // Phone link
+        const phoneLink = card.querySelector('a[href^="tel:"]');
+        if (phoneLink && !phoneLink.hasAttribute('data-tooltip')) {
+          phoneLink.setAttribute('data-tooltip', 'Call this location');
+        }
+
+        // Website link
+        const websiteLink = card.querySelector('a[href^="http"]:not([href*="google.com"])');
+        if (websiteLink && !websiteLink.hasAttribute('data-tooltip')) {
+          websiteLink.setAttribute('data-tooltip', 'Visit website');
+        }
+
+        // Favorite button
+        const favoriteBtn = card.querySelector('.card-favorite-btn');
+        if (favoriteBtn && !favoriteBtn.hasAttribute('data-tooltip')) {
+          favoriteBtn.setAttribute('data-tooltip', 'Toggle favorite');
+        }
+
+        // Show similar button
+        const similarBtn = card.querySelector('[onclick*="showSimilar"]');
+        if (similarBtn && !similarBtn.hasAttribute('data-tooltip')) {
+          similarBtn.setAttribute('data-tooltip', 'Find similar locations');
+        }
+
+        // Show nearby button
+        const nearbyBtn = card.querySelector('[onclick*="showNearby"]');
+        if (nearbyBtn && !nearbyBtn.hasAttribute('data-tooltip')) {
+          nearbyBtn.setAttribute('data-tooltip', 'Find nearby locations');
+        }
+      });
+    }
+
+    // ============================================================
+    // COMPREHENSIVE BUTTON INITIALIZATION
+    // ============================================================
+    function initializeAllButtons() {
+      // Initialize quick filter buttons
+      initializeQuickFilterButtons();
+
+      // Initialize control panel buttons
+      initializeControlPanelButtons();
+
+      // Ensure all buttons have proper pointer events
+      document.querySelectorAll('button, a, [role="button"]').forEach(el => {
+        el.style.pointerEvents = 'auto';
+        el.style.cursor = 'pointer';
+      });
+
+      // Add keyboard support (Enter key)
+      document.querySelectorAll('button:not([disabled])').forEach(btn => {
+        if (!btn.dataset.keyboardBound) {
+          btn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              btn.click();
+            }
+          });
+          btn.dataset.keyboardBound = 'true';
+        }
+      });
+    }
+
+    function initializeQuickFilterButtons() {
+      const quickFilterBtns = document.querySelectorAll('.quick-filter-btn');
+      quickFilterBtns.forEach(btn => {
+        if (!btn.dataset.quickFilterBound) {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const tag = btn.getAttribute('data-tag');
+            const filter = btn.getAttribute('data-filter');
+
+            console.log(`🎯 Quick filter clicked:`, { tag, filter });
+
+            // Toggle active state
+            const isActive = btn.classList.contains('active');
+
+            if (isActive) {
+              btn.classList.remove('active');
+              // Remove the filter
+              if (tag) {
+                const tagsInput = document.getElementById('filterTags');
+                if (tagsInput) {
+                  const tags = tagsInput.value.split(',').map(t => t.trim());
+                  const updatedTags = tags.filter(t => t.toLowerCase() !== tag.toLowerCase());
+                  tagsInput.value = updatedTags.join(', ');
+                }
+              }
+              if (filter === 'favorites') {
+                // Remove favorites filter
+                const favBadge = btn.closest('.quick-filters-container')?.getAttribute('data-favorites-active');
+                if (favBadge) {
+                  btn.closest('.quick-filters-container')?.removeAttribute('data-favorites-active');
+                }
+              }
+            } else {
+              btn.classList.add('active');
+              // Add the filter
+              if (tag) {
+                const tagsInput = document.getElementById('filterTags');
+                if (tagsInput) {
+                  const currentTags = tagsInput.value.trim();
+                  tagsInput.value = currentTags ? `${currentTags}, ${tag}` : tag;
+                }
+              }
+              if (filter === 'favorites') {
+                btn.closest('.quick-filters-container')?.setAttribute('data-favorites-active', 'true');
+              }
+            }
+
+            // Apply filters
+            applyFilters();
+          });
+          btn.dataset.quickFilterBound = 'true';
+        }
+      });
+    }
+
+    function initializeControlPanelButtons() {
+      // Find Near Me button
+      const findNearMeBtn = document.getElementById('findNearMeBtn');
+      if (findNearMeBtn && !findNearMeBtn.dataset.bound) {
+        findNearMeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('📍 Find Near Me clicked');
+          initFindNearMe?.();
+        });
+        findNearMeBtn.dataset.bound = 'true';
+      }
+
+      // iPhone Toggle button
+      const iphoneToggleBtn = document.getElementById('iphoneToggleBtn');
+      if (iphoneToggleBtn && !iphoneToggleBtn.dataset.bound) {
+        iphoneToggleBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('📱 iPhone View toggled');
+          initIphoneToggle?.();
+        });
+        iphoneToggleBtn.dataset.bound = 'true';
+      }
+
+      // Reset All Filters buttons
+      document.querySelectorAll('#resetAllFiltersTop, #resetAllFiltersBottom').forEach(btn => {
+        if (!btn.dataset.bound) {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔄 Reset All Filters clicked');
+            resetAllFilters?.();
+          });
+          btn.dataset.bound = 'true';
+        }
+      });
+
+      // Filter input fields
+      document.querySelectorAll('.filter-input, .filter-select').forEach(input => {
+        if (!input.dataset.bound) {
+          input.addEventListener('change', () => {
+            console.log('🔍 Filter changed:', input.id);
+            applyFilters?.();
+          });
+          input.addEventListener('input', debounce(() => {
+            applyFilters?.();
+          }, 300));
+          input.dataset.bound = 'true';
+        }
+      });
+    }
+
+    function debounce(func, delay) {
+      let timeoutId;
+      return function(...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+      };
+    }
 
     // ============================================================
     // NETWORK STATUS MONITORING
@@ -14904,6 +15328,67 @@ COMMON ISSUES:
         )
       ]);
     };
+
+    // ============================================================
+    // ERROR MONITORING & ERROR NOTIFICATION BAR
+    // ============================================================
+    let errorCount = 0;
+    const errorBar = document.getElementById('errorNotificationBar');
+    const errorCountEl = document.getElementById('errorCount');
+
+    // Override console.error to track errors
+    const originalError = console.error;
+    window.console.error = function() {
+      originalError.apply(console, arguments);
+      errorCount++;
+      updateErrorBar();
+    };
+
+    // Track uncaught errors
+    window.addEventListener('error', (event) => {
+      errorCount++;
+      updateErrorBar();
+    });
+
+    // Track unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      errorCount++;
+      updateErrorBar();
+    });
+
+    function updateErrorBar() {
+      if (!errorCountEl) return;
+
+      if (errorCount === 0) {
+        // Show green checkmark when no errors
+        errorCountEl.classList.add('no-errors');
+        errorCountEl.textContent = '';
+        if (errorBar) {
+          errorBar.classList.add('collapsed');
+          errorBar.querySelector('.error-header span:first-child').textContent = '✅ No Errors';
+        }
+      } else {
+        // Show red circle with error count
+        errorCountEl.classList.remove('no-errors');
+        errorCountEl.textContent = errorCount;
+        if (errorBar) {
+          errorBar.classList.remove('collapsed');
+          errorBar.querySelector('.error-header span:first-child').textContent = '⚠️ Errors Detected';
+        }
+      }
+    }
+
+    // Initialize error bar on load
+    document.addEventListener('DOMContentLoaded', () => {
+      updateErrorBar();
+    });
+
+    // Also update on startup
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', updateErrorBar);
+    } else {
+      updateErrorBar();
+    }
 
     // ============================================================
     // PERFORMANCE MONITORING & INITIALIZATION SUMMARY
