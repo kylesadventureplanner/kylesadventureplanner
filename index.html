@@ -4929,18 +4929,18 @@
 
   <div class="header-right">
     <span id="authStatus">Not signed in</span>
-    <button id="signInBtn" class="auth-btn">Sign In</button>
-    <button id="signOutBtn" class="auth-btn" style="display:none;">Sign Out</button>
+    <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account" data-tooltip="Sign in with your Microsoft account">Sign In</button>
+    <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account" data-tooltip="Sign out of your account">Sign Out</button>
   </div>
 </header>
 <div class="app-container">
   <!-- Tab Navigation -->
   <div class="app-tabs-nav" id="appTabsNav">
-    <button class="app-tab-btn active" data-tab="adventure-planner">🏔️ Adventure Planner</button>
-    <button class="app-tab-btn" data-tab="birding">🐦 Birding Locations</button>
-    <button class="app-tab-btn" data-tab="recipes">👨‍🍳 Recipes</button>
-    <button class="app-tab-btn" data-tab="garden">🌱 Garden Planner</button>
-    <button class="app-tab-btn" data-tab="budget">💰 Budget Planner</button>
+    <button class="app-tab-btn active" data-tab="adventure-planner" title="Browse and manage adventures" data-tooltip="Browse and manage adventures">🏔️ Adventure Planner</button>
+    <button class="app-tab-btn" data-tab="birding" title="View birding locations" data-tooltip="View birding locations">🐦 Birding Locations</button>
+    <button class="app-tab-btn" data-tab="recipes" title="View recipes" data-tooltip="View recipes">👨‍🍳 Recipes</button>
+    <button class="app-tab-btn" data-tab="garden" title="Manage garden planner" data-tooltip="Manage garden planner">🌱 Garden Planner</button>
+    <button class="app-tab-btn" data-tab="budget" title="Manage budget planner" data-tooltip="Manage budget planner">💰 Budget Planner</button>
   </div>
 
   <!-- Tab Content -->
@@ -4949,7 +4949,7 @@
     <div class="app-tab-pane active" data-tab="adventure-planner" id="adventurePlannerTab">
       <header>
         <h1>Adventure Planner</h1>
-        <button id="iphoneToggleBtn" class="iphone-toggle-btn">
+        <button id="iphoneToggleBtn" class="iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
           📱 iPhone View
         </button>
       </header>
@@ -4970,10 +4970,10 @@
         🎛️ Control Panel
       </div>
       <div style="display: flex; gap: 8px;">
-        <button id="findNearMeBtn" class="find-near-me-btn">
+        <button id="findNearMeBtn" class="find-near-me-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location">
           📍 Find Near Me
         </button>
-        <button id="resetAllFiltersTop" class="pill-button reset">Reset All Filters</button>
+        <button id="resetAllFiltersTop" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
       </div>
     </div>
     <div class="control-panel-grid">
@@ -5035,23 +5035,23 @@
       <div class="card-title">
         🎛️ Common Filters
       </div>
-      <button id="resetAllFiltersBottom" class="pill-button reset">Reset All Filters</button>
+      <button id="resetAllFiltersBottom" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
     </div>
     <div class="quick-filters-container">
-      <button id="favoritesFilterBtn" class="quick-filter-btn favorites-filter-btn" data-filter="favorites">
+      <button id="favoritesFilterBtn" class="quick-filter-btn favorites-filter-btn" data-filter="favorites" title="Show only your favorite locations" data-tooltip="Show only your favorite locations">
         💖 My Favorites
       </button>
-      <button class="quick-filter-btn" data-tag="restaurant">🍽️ Restaurant</button>
-      <button class="quick-filter-btn" data-tag="animals">🐾 Animals</button>
-      <button class="quick-filter-btn" data-tag="hiking">⛰️ Hiking</button>
-      <button class="quick-filter-btn" data-tag="garden center">🌸 Garden Center</button>
-      <button class="quick-filter-btn" data-tag="orchards">🍎 Orchards</button>
-      <button class="quick-filter-btn" data-tag="ziplining">🪂 Ziplining</button>
-      <button class="quick-filter-btn" data-tag="market">🛒 Market</button>
-      <button class="quick-filter-btn" data-tag="scenic drive">🛣️ Scenic Drive</button>
-      <button class="quick-filter-btn" data-tag="nature">🌳 Nature</button>
-      <button class="quick-filter-btn" data-tag="attractions">⭐ Attractions</button>
-      <button class="quick-filter-btn" data-tag="used book store">📚 Used Book Store</button>
+      <button class="quick-filter-btn" data-tag="restaurant" title="Filter by Restaurant" data-tooltip="Filter by Restaurant">🍽️ Restaurant</button>
+      <button class="quick-filter-btn" data-tag="animals" title="Filter by Animals" data-tooltip="Filter by Animals">🐾 Animals</button>
+      <button class="quick-filter-btn" data-tag="hiking" title="Filter by Hiking" data-tooltip="Filter by Hiking">⛰️ Hiking</button>
+      <button class="quick-filter-btn" data-tag="garden center" title="Filter by Garden Center" data-tooltip="Filter by Garden Center">🌸 Garden Center</button>
+      <button class="quick-filter-btn" data-tag="orchards" title="Filter by Orchards" data-tooltip="Filter by Orchards">🍎 Orchards</button>
+      <button class="quick-filter-btn" data-tag="ziplining" title="Filter by Ziplining" data-tooltip="Filter by Ziplining">🪂 Ziplining</button>
+      <button class="quick-filter-btn" data-tag="market" title="Filter by Market" data-tooltip="Filter by Market">🛒 Market</button>
+      <button class="quick-filter-btn" data-tag="scenic drive" title="Filter by Scenic Drive" data-tooltip="Filter by Scenic Drive">🛣️ Scenic Drive</button>
+      <button class="quick-filter-btn" data-tag="nature" title="Filter by Nature" data-tooltip="Filter by Nature">🌳 Nature</button>
+      <button class="quick-filter-btn" data-tag="attractions" title="Filter by Attractions" data-tooltip="Filter by Attractions">⭐ Attractions</button>
+      <button class="quick-filter-btn" data-tag="used book store" title="Filter by Used Book Store" data-tooltip="Filter by Used Book Store">📚 Used Book Store</button>
     </div>
   </div>
 
@@ -5228,12 +5228,12 @@
     </div>
     <div class="automation-body">
       <div class="automation-buttons">
-        <button id="btnPopulateMissing" class="automation-btn">Populate Missing Fields</button>
-        <button id="btnRefreshHours" class="automation-btn">Refresh Hours Only</button>
-        <button id="btnRefreshAll" class="automation-btn">Refresh All Fields</button>
-        <button id="btnRefreshPlaceIds" class="automation-btn">🔄 Refresh Place IDs</button>
-        <button id="btnSearchPlaceIds" class="automation-btn">🔍 Search Place IDs</button>
-        <button id="btnAddPlace" class="automation-btn">➕ Add New Place</button>
+        <button id="btnPopulateMissing" class="automation-btn" title="Fill in missing data fields from Google Places" data-tooltip="Fill in missing data fields from Google Places">Populate Missing Fields</button>
+        <button id="btnRefreshHours" class="automation-btn" title="Update operating hours from Google Places" data-tooltip="Update operating hours from Google Places">Refresh Hours Only</button>
+        <button id="btnRefreshAll" class="automation-btn" title="Update all fields from Google Places API" data-tooltip="Update all fields from Google Places API">Refresh All Fields</button>
+        <button id="btnRefreshPlaceIds" class="automation-btn" title="Refresh cached Place IDs from Google" data-tooltip="Refresh cached Place IDs from Google">🔄 Refresh Place IDs</button>
+        <button id="btnSearchPlaceIds" class="automation-btn" title="Find and save Google Place IDs for locations" data-tooltip="Find and save Google Place IDs for locations">🔍 Search Place IDs</button>
+        <button id="btnAddPlace" class="automation-btn" title="Add a new location to your Excel file" data-tooltip="Add a new location to your Excel file">➕ Add New Place</button>
       </div>
 
       <div class="dry-run-note">
@@ -5244,6 +5244,8 @@
       <div style="margin-top: 12px; display: flex; justify-content: center;">
         <button
           id="apiDiagnosticBtn"
+          title="Verify Google Maps API access and configuration"
+          data-tooltip="Verify Google Maps API access and configuration"
           style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;"
           onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';"
@@ -8539,32 +8541,32 @@
 
         <div class="adventure-card-footer">
           <div class="card-action-btns">
-            <button class="card-btn card-details-btn" data-index="${actualIndex}">
+            <button class="card-btn card-details-btn" data-index="${actualIndex}" title="View full details and information" data-tooltip="View full details and information">
               <span>📖</span> Details
             </button>
             ${(hasPlaceId || address || name) ? `
-              <button class="card-btn card-btn-primary card-directions-btn" data-placeid="${googlePlaceId || ''}" data-address="${address || ''}" data-name="${name || ''}">
+              <button class="card-btn card-btn-primary card-directions-btn" data-placeid="${googlePlaceId || ''}" data-address="${address || ''}" data-name="${name || ''}" title="Get directions to this location" data-tooltip="Get directions to this location">
                 <span>🗺️</span> Directions
               </button>
             ` : ''}
             ${hasPlaceId ? `
-              <button class="card-btn card-google-place-btn" data-placeid="${googlePlaceId}">
+              <button class="card-btn card-google-place-btn" data-placeid="${googlePlaceId}" title="Open on Google Maps" data-tooltip="Open on Google Maps">
                 <span>🔗</span> Google
               </button>
             ` : ''}
-            <button class="card-btn card-similar-btn" data-index="${actualIndex}" title="Find similar adventures">
+            <button class="card-btn card-similar-btn" data-index="${actualIndex}" title="Find similar adventures" data-tooltip="Find similar adventures">
               <span>🔍</span> Similar
             </button>
           </div>
           <div class="card-favorite-rating-container">
-            <div class="card-rating" data-index="${actualIndex}" title="Rate this place">
-              <span class="rating-star ${currentRating >= 1 ? 'filled' : ''}" data-rating="1">⭐</span>
-              <span class="rating-star ${currentRating >= 2 ? 'filled' : ''}" data-rating="2">⭐</span>
-              <span class="rating-star ${currentRating >= 3 ? 'filled' : ''}" data-rating="3">⭐</span>
-              <span class="rating-star ${currentRating >= 4 ? 'filled' : ''}" data-rating="4">⭐</span>
-              <span class="rating-star ${currentRating >= 5 ? 'filled' : ''}" data-rating="5">⭐</span>
+            <div class="card-rating" data-index="${actualIndex}" title="Rate this place (click stars). Right-click to clear rating.">
+              <span class="rating-star ${currentRating >= 1 ? 'filled' : ''}" data-rating="1" title="1 star">⭐</span>
+              <span class="rating-star ${currentRating >= 2 ? 'filled' : ''}" data-rating="2" title="2 stars">⭐</span>
+              <span class="rating-star ${currentRating >= 3 ? 'filled' : ''}" data-rating="3" title="3 stars">⭐</span>
+              <span class="rating-star ${currentRating >= 4 ? 'filled' : ''}" data-rating="4" title="4 stars">⭐</span>
+              <span class="rating-star ${currentRating >= 5 ? 'filled' : ''}" data-rating="5" title="5 stars">⭐</span>
             </div>
-            <button class="card-favorite card-favorite-btn" data-index="${actualIndex}" title="Add to favorites">
+            <button class="card-favorite card-favorite-btn" data-index="${actualIndex}" title="Add to favorites. Click to toggle." data-tooltip="Add to favorites. Click to toggle.">
               🤍
             </button>
           </div>
@@ -9497,22 +9499,6 @@
     }
   // ...existing code...
 
-  function initQuickFilters() {
-    const quickButtons = document.querySelectorAll(".quick-filter-btn");
-    quickButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tag = btn.getAttribute("data-tag");
-        if (filterState.quickTags.has(tag)) {
-          filterState.quickTags.delete(tag);
-          btn.classList.remove("active");
-        } else {
-          filterState.quickTags.add(tag);
-          btn.classList.add("active");
-        }
-        applyFilters();
-      });
-    });
-  }
 
   function initResetButtons() {
     const topReset = document.getElementById("resetAllFiltersTop");
@@ -14683,6 +14669,13 @@ COMMON ISSUES:
 
         const action = actionById[btn.id];
         if (!action) return;
+
+        // Special handling for Add Place modal
+        if (btn.id === 'btnAddPlace' && action === 'openAddPlaceModal') {
+          console.log('✅ SPECIAL HANDLER: Opening Add Place modal');
+          window.openAddPlaceModal?.();
+          return;
+        }
 
         window.clearStaleModalBackdrops?.();
         await window.runGoogleAutomation?.(action, isDryRunOn());
