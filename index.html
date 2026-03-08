@@ -409,7 +409,10 @@
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 8px;
-      pointer-events: auto;
+      pointer-events: auto !important;
+      position: relative;
+      z-index: 200;
+      isolation: isolate;
     }
 
     .automation-btn {
@@ -420,9 +423,9 @@
       padding: 10px 20px;
       font-size: 13px;
       font-weight: 500;
-      cursor: pointer;
+      cursor: pointer !important;
       position: relative;
-      z-index: 100;
+      z-index: 201;
       pointer-events: auto !important;
       transition: all 0.2s ease;
       min-height: 40px;
@@ -438,6 +441,9 @@
       /* Touch-friendly for mobile */
       -webkit-touch-callout: none;
       -webkit-user-select: none;
+      /* Ensure click events work */
+      -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1);
+      touch-action: manipulation;
     }
 
     .automation-btn:hover:not(:disabled):not(.loading) {
@@ -447,11 +453,17 @@
       transform: translateY(-3px) scale(1.02);
       box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.1);
       font-weight: 600;
+      /* Add immediate visual feedback */
+      transition: all 0.1s ease-out;
     }
 
     .automation-btn:active:not(:disabled):not(.loading) {
       transform: translateY(-1px) scale(0.98);
       box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(59, 130, 246, 0.2);
+      /* Instant feedback on click */
+      transition: all 0.05s ease-out;
+      background: var(--blue-strong) !important;
+      color: white !important;
     }
 
     .automation-btn:focus {
@@ -7170,6 +7182,7 @@
             ['ratingModalBackdrop', 'ratingModal'],
             ['notesModalBackdrop', 'notesModal'],
             ['pricingSearchModalBackdrop', 'pricingSearchModal'],
+            ['addPlaceBackdrop', 'addPlaceModal'],
             ['loadingOverlay', null]
           ];
 
@@ -7195,9 +7208,21 @@
             }
           });
 
-          // CRITICAL: Restore all page buttons to clickable state
-          window.ensureButtonsClickable();
+          // CRITICAL: Also check for any orphaned backdrops
+          document.querySelectorAll('.modal-backdrop, [id$="Backdrop"]').forEach(backdrop => {
+            if (backdrop.style.display === 'none' || !backdrop.offsetParent) {
+              backdrop.style.pointerEvents = 'none';
+              backdrop.style.zIndex = '-1';
+            }
+          });
         };
+
+        // CRITICAL: Periodic cleanup to prevent stale overlays from blocking buttons
+        setInterval(() => {
+          if (typeof window.clearStaleModalBackdrops === 'function') {
+            window.clearStaleModalBackdrops();
+          }
+        }, 2000); // Run every 2 seconds
 
         // Restore button accessibility across the entire page
         window.ensureButtonsClickable = function() {
@@ -7306,6 +7331,11 @@
         initAutomationButtons = function() {
           console.log('Initializing automation buttons with enhanced features...');
 
+          // CRITICAL: Clear any stale backdrops that might block clicks
+          if (typeof window.clearStaleModalBackdrops === 'function') {
+            window.clearStaleModalBackdrops();
+          }
+
           const buttonsWrap = document.querySelector('.automation-buttons');
           const dryRunToggle = document.getElementById('dryRunToggle');
 
@@ -7314,10 +7344,10 @@
             return;
           }
 
-          // Safely clear stale modals
-          if (typeof window.clearStaleModalBackdrops === 'function') {
-            window.clearStaleModalBackdrops();
-          }
+          // CRITICAL: Ensure container has proper pointer events
+          buttonsWrap.style.pointerEvents = 'auto';
+          buttonsWrap.style.position = 'relative';
+          buttonsWrap.style.zIndex = '200';
 
           const isDryRun = () => dryRunToggle?.classList.contains('on') ?? true;
 
@@ -7360,19 +7390,15 @@
             }
           };
 
-          // Remove any previously bound listeners by cloning the element
-          if (buttonsWrap.dataset.bound === '1') {
-            const clone = buttonsWrap.cloneNode(true);
-            buttonsWrap.parentNode.replaceChild(clone, buttonsWrap);
-            attachButtonListeners(clone, buttonMetadata, isDryRun);
-            return;
-          }
+          // CRITICAL: Remove ALL previous event listeners
+          const newContainer = buttonsWrap.cloneNode(true);
+          buttonsWrap.parentNode.replaceChild(newContainer, buttonsWrap);
 
-          attachButtonListeners(buttonsWrap, buttonMetadata, isDryRun);
+          attachButtonListeners(newContainer, buttonMetadata, isDryRun);
         };
 
         function attachButtonListeners(container, buttonMetadata, isDryRun) {
-          // Setup button attributes and accessibility
+          // CRITICAL: Ensure each button has proper attributes and styling
           const buttons = container.querySelectorAll('button.automation-btn');
           buttons.forEach(btn => {
             const meta = buttonMetadata[btn.id];
@@ -7388,92 +7414,101 @@
               }
               btn.setAttribute('type', 'button');
               btn.dataset.processing = 'false';
+
+              // CRITICAL: Ensure button is clickable
+              btn.style.pointerEvents = 'auto';
+              btn.style.cursor = 'pointer';
+              btn.style.zIndex = '201';
+              btn.style.position = 'relative';
             }
           });
 
-          // Attach event listeners with proper event handling
-          container.addEventListener('click', handleAutomationButtonClick, false);
-          container.addEventListener('keydown', handleKeyboardShortcuts, false);
-          container.addEventListener('mouseenter', handleMouseEnter, true);
-          container.addEventListener('mouseleave', handleMouseLeave, true);
+          // CRITICAL: Use individual button listeners instead of delegation to avoid conflicts
+          buttons.forEach(btn => {
+            const meta = buttonMetadata[btn.id];
+            if (!meta) return;
 
-          // Prevent accidental double-clicks
-          container.addEventListener('dblclick', (e) => e.preventDefault(), false);
+            // Remove any existing listeners by cloning
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
 
-          container.dataset.bound = '1';
-          console.log('✓ Automation button listeners attached with accessibility & shortcuts');
+            // Add click listener
+            newBtn.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
 
-          function handleAutomationButtonClick(e) {
-            const btn = e.target.closest('button.automation-btn');
-            if (!btn) return;
+              // Prevent action if button is already loading or disabled
+              if (newBtn.classList.contains('loading') ||
+                  newBtn.disabled ||
+                  newBtn.dataset.processing === 'true') {
+                console.warn(`Button ${newBtn.id} is already processing`);
+                return;
+              }
 
-            e.preventDefault();
-            e.stopPropagation();
+              executeButtonAction(newBtn, meta, isDryRun);
+            }, { passive: false, capture: true });
 
-            // Prevent action if button is already loading or disabled
-            if (btn.classList.contains('loading') || btn.disabled || btn.dataset.processing === 'true') {
-              console.warn(`Button ${btn.id} is already processing`);
-              return;
-            }
+            // Add visual feedback on hover
+            newBtn.addEventListener('mouseenter', function() {
+              if (!newBtn.disabled && !newBtn.classList.contains('loading')) {
+                newBtn.style.cursor = 'pointer';
+              }
+            });
 
-            executeButtonAction(btn, buttonMetadata, isDryRun);
-          }
+            newBtn.addEventListener('mouseleave', function() {
+              if (!newBtn.disabled && !newBtn.classList.contains('loading')) {
+                newBtn.style.cursor = 'pointer';
+              }
+            });
+          });
 
-          function handleKeyboardShortcuts(e) {
-            // Check if Alt key is pressed
+          // Keyboard shortcuts (global listener)
+          document.addEventListener('keydown', function(e) {
             if (!e.altKey) return;
 
-            const buttons = container.querySelectorAll('button.automation-btn');
             buttons.forEach(btn => {
               const shortcut = btn.getAttribute('data-shortcut');
               if (shortcut) {
                 const keyChar = shortcut.split('+')[1];
                 if (keyChar && e.key.toUpperCase() === keyChar) {
                   e.preventDefault();
-                  if (!btn.classList.contains('loading') && !btn.disabled && btn.dataset.processing !== 'true') {
+                  const meta = buttonMetadata[btn.id];
+                  if (meta && !btn.classList.contains('loading') && !btn.disabled && btn.dataset.processing !== 'true') {
                     console.log(`Keyboard shortcut triggered: ${shortcut}`);
-                    executeButtonAction(btn, buttonMetadata, isDryRun);
+                    executeButtonAction(btn, meta, isDryRun);
                   }
                 }
               }
             });
-          }
+          });
 
-          function handleMouseEnter(e) {
-            const btn = e.target.closest('button.automation-btn');
-            if (btn && !btn.disabled && !btn.classList.contains('loading')) {
-              btn.style.cursor = 'pointer';
-            }
-          }
+          container.dataset.bound = '1';
+          console.log('✓ Automation button listeners attached with accessibility & shortcuts');
 
-          function handleMouseLeave(e) {
-            const btn = e.target.closest('button.automation-btn');
-            if (btn) {
-              btn.style.cursor = 'default';
-            }
-          }
+          function executeButtonAction(btn, meta, isDryRunFn) {
+            console.log(`✓ Button clicked: ${btn.id} - ${meta.label}`);
 
-          function executeButtonAction(btn, metadata, isDryRunFn) {
-            const meta = metadata[btn.id];
-            if (!meta) {
-              console.warn(`No metadata for button ${btn.id}`);
-              return;
+            // CRITICAL: Clear any overlays that might interfere
+            if (typeof window.clearStaleModalBackdrops === 'function') {
+              window.clearStaleModalBackdrops();
             }
 
             // Set loading state
             setButtonLoading(btn, true);
-            console.log(`✓ Executing: ${meta.label}`);
 
             // Handle Add Place button
             if (btn.id === 'btnAddPlace') {
               console.log('✓ Add Place button clicked');
-              console.log('  Button element:', btn);
-              console.log('  openAddPlaceModal function exists:', typeof window.openAddPlaceModal);
               setButtonLoading(btn, false);
 
               try {
-                window.openAddPlaceModal();
-                console.log('✓ openAddPlaceModal() called successfully');
+                if (typeof window.openAddPlaceModal === 'function') {
+                  window.openAddPlaceModal();
+                  console.log('✓ openAddPlaceModal() called successfully');
+                } else {
+                  console.error('❌ openAddPlaceModal function not found');
+                }
               } catch (err) {
                 console.error('❌ Error opening Add Place modal:', err);
               }
@@ -7482,7 +7517,6 @@
 
             // Execute automation
             try {
-              window.clearStaleModalBackdrops();
               console.log(`Dry Run: ${isDryRunFn()}`);
 
               // Track button state
@@ -7490,6 +7524,10 @@
 
               // Get the automation function
               const automationFunc = window[`run${meta.action.charAt(0).toUpperCase()}${meta.action.slice(1)}`] || window.runGoogleAutomation;
+
+              if (!automationFunc) {
+                throw new Error(`Automation function not found for ${meta.action}`);
+              }
 
               Promise.resolve(automationFunc(meta.action, isDryRunFn()))
                 .then(() => {
@@ -7515,11 +7553,15 @@
             if (isLoading) {
               btn.classList.add('loading');
               btn.disabled = true;
+              btn.style.cursor = 'wait';
+              btn.style.pointerEvents = 'none';
               btn.setAttribute('aria-busy', 'true');
               btn.setAttribute('aria-label', `${btn.getAttribute('aria-label')} - Processing...`);
             } else {
               btn.classList.remove('loading', 'success', 'error');
               btn.disabled = false;
+              btn.style.cursor = 'pointer';
+              btn.style.pointerEvents = 'auto';
               btn.setAttribute('aria-busy', 'false');
               const meta = buttonMetadata[btn.id];
               if (meta) btn.setAttribute('aria-label', meta.label);
@@ -7529,13 +7571,18 @@
           function setButtonSuccess(btn, label) {
             btn.classList.remove('loading');
             btn.classList.add('success');
-            console.log(`✓ ${label} completed successfully`);
+            btn.disabled = false;
+            btn.style.pointerEvents = 'none';
+            btn.setAttribute('aria-label', `${label} - Complete`);
           }
 
-          function setButtonError(btn, label, err) {
+          function setButtonError(btn, label, error) {
             btn.classList.remove('loading');
             btn.classList.add('error');
-            console.error(`✗ ${label} failed:`, err);
+            btn.disabled = false;
+            btn.style.pointerEvents = 'none';
+            btn.setAttribute('aria-label', `${label} - Error: ${error?.message || 'Unknown error'}`);
+            console.error(`Button error for ${label}:`, error);
           }
         }
 
@@ -10921,6 +10968,19 @@
       return;
     }
 
+    // DEFENSIVE: Don't allow edit mode if any automation is running
+    const automationModal = document.getElementById("automationProgressModal");
+    if (automationModal && automationModal.classList.contains('visible')) {
+      console.log("✓ Ignoring enableEditMode - Automation is running");
+      return;
+    }
+
+    // DEFENSIVE: Don't allow edit mode if row detail modal isn't even open
+    if (!modal || modal.style.display === 'none' || !modal.classList.contains('visible')) {
+      console.log("✓ Ignoring enableEditMode - Row detail modal is not open");
+      return;
+    }
+
     // Recover row selection if a stale handler cleared in-memory pointers.
     if (!currentEditingRow) {
       let recoveredIndex = Number.isInteger(currentEditingRowIndex) ? currentEditingRowIndex : -1;
@@ -13734,21 +13794,61 @@ COMMON ISSUES:
     }
 
     window.openAddPlaceModal = function () {
+      // Check if Google Places API is available
+      if (!window.google?.maps?.places?.Place) {
+        const errorMsg = "⚠️ Google Places API is not available. Please check:\n\n" +
+          "1. Enable 'Places API (New)' in Google Cloud Console\n" +
+          "2. Verify API key restrictions allow this domain\n" +
+          "3. Ensure billing is enabled for your project\n" +
+          "4. Confirm API key and Places API are in the same project";
+
+        if (typeof showToast === 'function') {
+          showToast("Google Places API Not Available", "error", 5000);
+        }
+        alert(errorMsg);
+        console.error("❌ Cannot open Add Place modal - Google Places API not available");
+        return;
+      }
+
       const modal = document.getElementById("addPlaceModal");
       const backdrop = document.getElementById("addPlaceBackdrop");
       const status = document.getElementById("addPlaceStatus");
       const input = document.getElementById("addPlaceInputValue");
+      
       if (status) status.style.display = "none";
       if (input) input.value = "";
-      if (modal) modal.style.display = "flex";
-      if (backdrop) backdrop.style.display = "block";
+      if (modal) {
+        modal.style.display = "flex";
+        modal.style.zIndex = "2200"; // Ensure it's on top
+        
+        // CRITICAL: Prevent click events from bubbling out of the modal
+        modal.addEventListener('click', function(e) {
+          e.stopPropagation();
+        }, { once: false, capture: true });
+      }
+      if (backdrop) {
+        backdrop.style.display = "block";
+        backdrop.style.zIndex = "2150";
+      }
+      
+      console.log('✅ Add Place modal opened successfully');
     };
 
     window.closeAddPlaceModal = function () {
       const modal = document.getElementById("addPlaceModal");
       const backdrop = document.getElementById("addPlaceBackdrop");
-      if (modal) modal.style.display = "none";
-      if (backdrop) backdrop.style.display = "none";
+      
+      if (modal) {
+        modal.style.display = "none";
+        // Clear the input
+        const input = document.getElementById("addPlaceInputValue");
+        if (input) input.value = "";
+      }
+      if (backdrop) {
+        backdrop.style.display = "none";
+      }
+      
+      console.log('✅ Add Place modal closed');
     };
 
     window.submitAddPlace = async function () {
@@ -14232,6 +14332,27 @@ COMMON ISSUES:
               addAutomationLog(preflightErr.message, "error");
               addAutomationLog("Fix in Google Cloud: enable Places API (New), verify API key restrictions/referrers, and ensure billing is active.", "warning");
               updateAutomationStatus("Blocked: Google Places API permission/config required", false, true);
+
+              // Show user-friendly notification
+              if (typeof showToast === 'function') {
+                showToast("⚠️ Google Places API Blocked - Check Console for Details", "error", 8000);
+              }
+
+              // Show detailed alert
+              setTimeout(() => {
+                alert(
+                  "🚫 Google Places API Access Blocked\n\n" +
+                  "The Google Places API is not properly configured for this project.\n\n" +
+                  "REQUIRED FIXES:\n" +
+                  "1. Go to Google Cloud Console (console.cloud.google.com)\n" +
+                  "2. Enable 'Places API (New)' (not just 'Places API')\n" +
+                  "3. Check API key restrictions - ensure this domain is allowed\n" +
+                  "4. Verify billing is enabled for your project\n" +
+                  "5. Confirm API key and Places API are in the same project\n\n" +
+                  "See the automation log for more details."
+                );
+              }, 500);
+
               setAutomationProgress(total, total);
             } else if (isInvalidPlaceIdError(preflightErr)) {
               addAutomationLog("Preflight skipped: first valid-looking Place ID is stale (NOT_FOUND). Continuing with per-row handling.", "warning");
