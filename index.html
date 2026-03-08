@@ -10017,6 +10017,12 @@
       return;
     }
 
+    // Safety check for fieldInfo
+    if (!fieldInfo || !fieldInfo.name) {
+      console.error("❌ Context menu: fieldInfo is missing or invalid", fieldInfo);
+      return;
+    }
+
     // Set header
     header.textContent = `Filter: ${fieldInfo.name}`;
     console.log("Set header to:", header.textContent);
@@ -10555,28 +10561,46 @@
 
       if (fieldName === "Description" || fieldName === "Nearby Attractions") {
         // Multi-line textarea for long text
-        inputHTML = `<textarea class="edit-textarea" style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">${currentValue}</textarea>`;
+        inputHTML = `<textarea class="edit-textarea" style="width: 100%; min-height: 100px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; pointer-events: auto; cursor: text;">${currentValue}</textarea>`;
       } else if (fieldName === "Difficulty") {
         // Dropdown for difficulty
         const difficulties = ["Easy", "Moderate", "Hard"];
-        inputHTML = `<select class="edit-select" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+        inputHTML = `<select class="edit-select" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; pointer-events: auto; cursor: pointer;">
           ${difficulties.map(d => `<option value="${d}" ${currentValue.toUpperCase().includes(d.toUpperCase()) ? "selected" : ""}>${d}</option>`).join("")}
         </select>`;
       } else if (fieldName === "Cost") {
         // Dropdown for cost
         const costs = ["Free", "$", "$$", "$$$", "$$$$"];
-        inputHTML = `<select class="edit-select" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+        inputHTML = `<select class="edit-select" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; pointer-events: auto; cursor: pointer;">
           ${costs.map(c => `<option value="${c}" ${currentValue === c ? "selected" : ""}>${c}</option>`).join("")}
         </select>`;
       } else {
         // Regular text input
-        inputHTML = `<input type="text" class="edit-input" value="${currentValue.replace(/"/g, '&quot;')}" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">`;
+        inputHTML = `<input type="text" class="edit-input" value="${currentValue.replace(/"/g, '&quot;')}" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; pointer-events: auto; cursor: text;">`;
       }
 
       valueEl.innerHTML = inputHTML;
+      
+      // Ensure the container itself doesn't block pointer events
+      valueEl.style.pointerEvents = 'auto';
     });
 
-    console.log("✅ Edit mode enabled");
+    // Ensure modal content allows clicks on input fields
+    const modalContent = modal.querySelector('.row-detail-content');
+    if (modalContent) {
+      // Remove any existing click handlers that might block input interaction
+      modalContent.style.pointerEvents = 'auto';
+      
+      // Add event listener to allow clicks to propagate to inputs
+      modalContent.addEventListener('click', (e) => {
+        // Allow clicks on input, textarea, select elements
+        if (e.target.matches('input, textarea, select')) {
+          e.stopPropagation(); // Prevent modal from handling this click
+        }
+      }, true); // Use capture phase
+    }
+
+    console.log("✅ Edit mode enabled - inputs are now editable");
   }
 
   /**
