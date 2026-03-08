@@ -1401,6 +1401,16 @@
       border-radius: 2px;
     }
 
+    .card-address-copy {
+      cursor: copy;
+      text-decoration: underline dotted;
+      text-underline-offset: 2px;
+    }
+
+    .card-address-copy:hover {
+      color: #1d4ed8;
+    }
+
     .card-info-icon {
       font-size: 16px;
       min-width: 24px;
@@ -8321,7 +8331,7 @@
             <div class="card-info-row">
               <span class="card-info-icon">📍</span>
               <span class="card-info-label">Address:</span>
-              <span class="card-info-value">${address}</span>
+              <span class="card-info-value"><span class="card-address-copy" data-address="${String(address).replace(/"/g, '&quot;')}" title="Click to copy address">${address}</span></span>
             </div>
           ` : ''}
 
@@ -8427,6 +8437,20 @@
         e.stopPropagation();
         const tag = tagPill.getAttribute('data-tag');
         filterByTag(tag);
+        return;
+      }
+
+      const addressCopy = e.target.closest('.card-address-copy');
+      if (addressCopy) {
+        e.stopPropagation();
+        const address = addressCopy.getAttribute('data-address') || addressCopy.textContent || '';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(address)
+            .then(() => showToast('Address copied', 'success', 1200))
+            .catch(() => showToast('Could not copy address', 'error', 1500));
+        } else {
+          showToast('Clipboard not available in this browser', 'warning', 2000);
+        }
         return;
       }
 
@@ -12712,7 +12736,7 @@ COMMON ISSUES:
         applyBtn = document.createElement('button');
         applyBtn.id = 'automationApplyBtn';
         applyBtn.className = 'automation-btn-primary';
-        applyBtn.innerHTML = '✅ Apply Changes Now';
+        applyBtn.innerHTML = '✅ Apply Dry Run Changes';
         applyBtn.style.cssText = 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s;';
 
         applyBtn.onmouseover = () => {
@@ -12751,7 +12775,7 @@ COMMON ISSUES:
       // Show the button
       applyBtn.style.display = 'inline-block';
       applyBtn.disabled = false;
-      applyBtn.innerHTML = '✅ Apply Changes Now';
+      applyBtn.innerHTML = '✅ Apply Dry Run Changes';
       applyBtn.style.opacity = '1';
     }
 
@@ -13224,7 +13248,7 @@ COMMON ISSUES:
           addAutomationLog('', 'info');
           addAutomationLog('✅ DRY RUN COMPLETE - No changes were made to Excel', 'warning');
           addAutomationLog('', 'info');
-          addAutomationLog('📋 Ready to apply changes? Click "Apply Changes Now" button below.', 'info');
+          addAutomationLog('📋 Ready to apply changes? Click "Apply Dry Run Changes" button below.', 'info');
           updateAutomationStatus('Dry run complete - Ready to apply changes', true);
 
           // Show "Apply Changes" button after dry run
@@ -14343,7 +14367,8 @@ COMMON ISSUES:
         btnRefreshHours: 'refreshHours',
         btnRefreshAll: 'refreshAll',
         btnSearchPlaceIds: 'searchPlaceIds',
-        btnRefreshPlaceIds: 'refreshPlaceIds'
+        btnRefreshPlaceIds: 'refreshPlaceIds',
+        btnAddPlace: 'openAddPlaceModal'
       };
 
       clone.addEventListener('click', async (e) => {
@@ -14428,6 +14453,15 @@ COMMON ISSUES:
       installSafeAutomationClickHandler();
       installCardLinkGuardPatch();
       window.ensureButtonsClickable?.();
+
+      // Keep Apply button labeling consistent when shown dynamically.
+      const observer = new MutationObserver(() => {
+        const applyBtn = document.getElementById('automationApplyBtn');
+        if (applyBtn && /apply changes now/i.test(applyBtn.textContent || '')) {
+          applyBtn.textContent = '✅ Apply Dry Run Changes';
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
       // Initialize reliability features
       initNetworkMonitoring();
@@ -14600,6 +14634,5 @@ COMMON ISSUES:
 
 
 </script>
-<script src="./automation_enhancements_v7_0_90.js"></script>
 </body>
 </html>
