@@ -10630,12 +10630,12 @@
     try {
       // Build update array with only the specific column changed
       const excelRow = sourceRow.values[0].slice(); // Copy current row
-      
+
       // Ensure row has 24 columns (0-23)
       while (excelRow.length < 24) {
         excelRow.push('');
       }
-      
+
       excelRow[columnIndex] = value;
 
       // Update Excel via Microsoft Graph API
@@ -10660,7 +10660,7 @@
         sourceRow.values[0].push('');
       }
       sourceRow.values[0][columnIndex] = value;
-      
+
       console.log(`✓ Excel column ${columnIndex} updated to:`, value);
       return true;
 
@@ -10779,12 +10779,12 @@
 
     const adventure = totalFilteredAdventures[filteredIndex];
     const currentValues = adventure.row.values[0];
-    
+
     // Ensure row has enough columns
     while (currentValues.length < 24) {
       currentValues.push('');
     }
-    
+
     const currentFavoriteStatus = currentValues[22]; // Column 22: Favorite Status
 
     // Determine new favorite state
@@ -10825,12 +10825,12 @@
 
       const adventure = totalFilteredAdventures[idx];
       const values = adventure.row.values[0];
-      
+
       // Ensure row has enough columns
       while (values.length < 24) {
         values.push('');
       }
-      
+
       const favoriteStatus = values[22]; // Column 22
       const isFavorite = (favoriteStatus || '').toLowerCase() === 'true' || favoriteStatus === '1' || favoriteStatus === 1;
 
@@ -14248,6 +14248,11 @@ COMMON ISSUES:
     // API TIMEOUT HANDLING
     // ============================================================
     const API_TIMEOUT = 30000; // 30 seconds
+
+    function initAPITimeouts() {
+      console.log('✓ API timeout handling initialized (30s timeout)');
+      // Timeout handling is set up below via fetch override
+    }
 
     window.fetchWithTimeout = function(url, options = {}) {
       return Promise.race([
