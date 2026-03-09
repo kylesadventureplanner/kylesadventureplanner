@@ -309,6 +309,182 @@
     .status-dot.connected {
       background: var(--success);
     }
+
+    .add-place-panel {
+      border: 2px solid var(--neutral-200);
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: -6px;
+      margin-bottom: 8px;
+      display: none;
+    }
+
+    .add-place-panel.visible {
+      display: block;
+    }
+
+    .add-place-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .add-place-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--neutral-600);
+      margin-bottom: 6px;
+    }
+
+    .add-place-input,
+    .add-place-select {
+      width: 100%;
+      border: 1px solid var(--neutral-200);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--neutral-800);
+      background: #fff;
+    }
+
+    .add-place-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .panel-btn {
+      border: 1px solid var(--neutral-200);
+      background: #fff;
+      color: var(--neutral-600);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .panel-btn.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .add-place-status {
+      margin-top: 10px;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      display: none;
+    }
+
+    .add-place-status.info {
+      display: block;
+      background: #eff6ff;
+      color: var(--primary-dark);
+      border: 1px solid #93c5fd;
+    }
+
+    .add-place-status.success {
+      display: block;
+      background: #ecfdf5;
+      color: #047857;
+      border: 1px solid #86efac;
+    }
+
+    .add-place-status.error {
+      display: block;
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+    }
+
+    .recent-places {
+      margin-top: 12px;
+      border-top: 1px solid var(--neutral-200);
+      padding-top: 10px;
+      display: none;
+    }
+
+    .recent-places.visible {
+      display: block;
+    }
+
+    .recent-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--neutral-600);
+      font-weight: 600;
+    }
+
+    .recent-clear-btn {
+      border: 1px solid var(--neutral-200);
+      background: #fff;
+      color: var(--neutral-600);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .recent-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .recent-item {
+      border: 1px solid var(--neutral-200);
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recent-meta {
+      min-width: 0;
+      display: grid;
+      gap: 2px;
+    }
+
+    .recent-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--neutral-800);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .recent-sub {
+      font-size: 11px;
+      color: var(--neutral-600);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .recent-use-btn {
+      border: 1px solid var(--primary);
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
   </style>
 </head>
 <body>
@@ -392,6 +568,37 @@
         </button>
       </div>
 
+      <div id="addPlacePanel" class="add-place-panel" aria-live="polite">
+        <div class="add-place-grid">
+          <div class="add-place-field">
+            <label for="addPlaceType">Input Type</label>
+            <select id="addPlaceType" class="add-place-select">
+              <option value="placeName">Place Name</option>
+              <option value="placeId">Google Place ID</option>
+              <option value="website">Website URL</option>
+              <option value="placeUrl">Google Place URL</option>
+            </select>
+          </div>
+          <div class="add-place-field">
+            <label for="addPlaceValue">Value</label>
+            <input id="addPlaceValue" class="add-place-input" type="text" placeholder="Enter one value to resolve the place" />
+          </div>
+        </div>
+        <div class="add-place-actions">
+          <button id="addPlaceCancelBtn" class="panel-btn" onclick="closeAddPlacePanel()">Cancel</button>
+          <button id="addPlaceSubmitBtn" class="panel-btn primary" onclick="submitAddPlaceFromPanel()">Add Place</button>
+        </div>
+        <div id="addPlaceStatus" class="add-place-status"></div>
+
+        <div id="recentPlacesSection" class="recent-places">
+          <div class="recent-header">
+            <span>Recently Added</span>
+            <button class="recent-clear-btn" onclick="clearRecentPlaces()">Clear</button>
+          </div>
+          <div id="recentPlacesList" class="recent-list"></div>
+        </div>
+      </div>
+
       <!-- Diagnostic Section -->
       <div class="diagnostic-section">
         <button class="diagnostic-btn" onclick="runDiagnostic()">
@@ -472,13 +679,12 @@
 
       try {
         // Call automation function in main window
-        const automationFunc = mainWindow[`run${capitalize(action)}`] || mainWindow.runGoogleAutomation;
-
-        if (!automationFunc) {
-          throw new Error(`Automation function not found: ${action}`);
+        // All automation actions go through runGoogleAutomation(actionType, isDryRun)
+        if (!mainWindow.runGoogleAutomation) {
+          throw new Error('runGoogleAutomation function not found in main window');
         }
 
-        Promise.resolve(automationFunc(action, isDryRun))
+        Promise.resolve(mainWindow.runGoogleAutomation(action, isDryRun))
           .then(() => {
             setStatus(`✅ ${action} completed successfully!`, 'success');
             setButtonState(button, 'success');
@@ -493,42 +699,6 @@
         setStatus(`❌ Error: ${err.message}`, 'error');
         setButtonState(button, 'error');
         setTimeout(() => setButtonState(button, 'normal'), 4000);
-      }
-    }
-
-    // Handle add place
-    function handleAddPlace() {
-      if (!checkConnection()) return;
-
-      try {
-        if (typeof mainWindow.openAddPlaceModal === 'function') {
-          mainWindow.openAddPlaceModal();
-          mainWindow.focus();
-          setStatus('Opening Add Place modal in main window...', 'info');
-        } else {
-          throw new Error('openAddPlaceModal function not found in main window');
-        }
-      } catch (err) {
-        setStatus(`❌ Error: ${err.message}`, 'error');
-      }
-    }
-
-    // Run diagnostic
-    function runDiagnostic() {
-      if (!checkConnection()) return;
-
-      setStatus('<span class="spinner"></span>Running API diagnostic...', 'info');
-
-      try {
-        if (typeof mainWindow.runApiDiagnostic === 'function') {
-          mainWindow.runApiDiagnostic();
-          mainWindow.focus();
-          setStatus('API diagnostic opened in main window', 'info');
-        } else {
-          throw new Error('runApiDiagnostic function not found');
-        }
-      } catch (err) {
-        setStatus(`❌ Error: ${err.message}`, 'error');
       }
     }
 
@@ -554,9 +724,209 @@
       }
     }
 
-    // Utility function
-    function capitalize(str) {
-      return str.charAt(0).toUpperCase() + str.slice(1);
+    // Add Place panel functions
+    function setAddPlaceStatus(message, type) {
+      const statusEl = document.getElementById('addPlaceStatus');
+      if (!statusEl) return;
+      statusEl.className = `add-place-status ${type || 'info'}`;
+      statusEl.textContent = message || '';
+    }
+
+    function openAddPlacePanel() {
+      const panel = document.getElementById('addPlacePanel');
+      const input = document.getElementById('addPlaceValue');
+      if (!panel) return;
+
+      panel.classList.add('visible');
+      setAddPlaceStatus('Enter a value and click Add Place.', 'info');
+
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+
+    function closeAddPlacePanel() {
+      const panel = document.getElementById('addPlacePanel');
+      const input = document.getElementById('addPlaceValue');
+      const statusEl = document.getElementById('addPlaceStatus');
+      if (panel) panel.classList.remove('visible');
+      if (input) input.value = '';
+      if (statusEl) {
+        statusEl.className = 'add-place-status';
+        statusEl.textContent = '';
+      }
+    }
+
+    function requireMainFunction(name) {
+      if (!mainWindow || mainWindow.closed) throw new Error('Main window is not connected');
+      const fn = mainWindow[name];
+      if (typeof fn !== 'function') {
+        throw new Error(`${name} is not available in main window`);
+      }
+      return fn;
+    }
+
+    async function submitAddPlaceFromPanel() {
+      if (!checkConnection()) return;
+
+      const submitBtn = document.getElementById('addPlaceSubmitBtn');
+      const typeEl = document.getElementById('addPlaceType');
+      const valueEl = document.getElementById('addPlaceValue');
+      const inputType = typeEl ? typeEl.value : 'placeName';
+      const inputValue = valueEl ? valueEl.value.trim() : '';
+
+      if (!inputValue) {
+        setAddPlaceStatus('Please enter a value first.', 'error');
+        return;
+      }
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Adding...';
+        }
+
+        setAddPlaceStatus('Resolving Place ID...', 'info');
+        const resolvePlaceIdFromInput = requireMainFunction('resolvePlaceIdFromInput');
+        const getPlaceDetails = requireMainFunction('getPlaceDetails');
+        const buildExcelRow = requireMainFunction('buildExcelRow');
+        const placeExistsInData = requireMainFunction('placeExistsInData');
+        const addRowToExcel = requireMainFunction('addRowToExcel');
+        const loadTable = requireMainFunction('loadTable');
+
+        const placeId = await resolvePlaceIdFromInput(inputType, inputValue);
+
+        setAddPlaceStatus('Fetching Google place details...', 'info');
+        const details = await getPlaceDetails(placeId);
+
+        const row = buildExcelRow(placeId, details);
+        if (placeExistsInData(row)) {
+          throw new Error('This place already exists in your Excel table.');
+        }
+
+        if (isDryRun) {
+          setAddPlaceStatus(`Dry run: would add \"${row[0] || 'New Place'}\" (Place ID: ${placeId})`, 'success');
+          setStatus('Dry run complete for Add Place (no Excel write).', 'success');
+        } else {
+          setAddPlaceStatus('Writing new row to Excel...', 'info');
+          await addRowToExcel(row);
+          await loadTable();
+          setAddPlaceStatus(`Added \"${row[0] || 'New Place'}\" successfully.`, 'success');
+          setStatus('Add Place completed and table refreshed.', 'success');
+
+          if (typeof mainWindow.showToast === 'function') {
+            mainWindow.showToast(`Added ${row[0] || 'new place'} to Excel`, 'success', 3000);
+          }
+        }
+
+        addRecentPlace({
+          name: row[0] || '',
+          placeId: placeId || '',
+          inputType,
+          inputValue,
+          dryRun: !!isDryRun,
+          when: new Date().toLocaleTimeString()
+        });
+      } catch (err) {
+        setAddPlaceStatus(`Add failed: ${err.message}`, 'error');
+        setStatus(`❌ Add Place error: ${err.message}`, 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Add Place';
+        }
+      }
+    }
+
+    // Recent Places functions
+    let recentPlaces = [];
+    const RECENT_PLACES_KEY = 'automationRecentPlaces';
+    const RECENT_PLACES_MAX = 6;
+
+    function loadRecentPlaces() {
+      try {
+        const raw = localStorage.getItem(RECENT_PLACES_KEY);
+        recentPlaces = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(recentPlaces)) recentPlaces = [];
+      } catch (_err) {
+        recentPlaces = [];
+      }
+      renderRecentPlaces();
+    }
+
+    function saveRecentPlaces() {
+      try {
+        localStorage.setItem(RECENT_PLACES_KEY, JSON.stringify(recentPlaces));
+      } catch (_err) {
+        // no-op for storage failures
+      }
+    }
+
+    function renderRecentPlaces() {
+      const section = document.getElementById('recentPlacesSection');
+      const list = document.getElementById('recentPlacesList');
+      if (!section || !list) return;
+
+      if (!recentPlaces.length) {
+        section.classList.remove('visible');
+        list.innerHTML = '';
+        return;
+      }
+
+      section.classList.add('visible');
+      list.innerHTML = recentPlaces.map((item, idx) => {
+        const label = item.name || item.inputValue || 'Unknown Place';
+        const placeId = item.placeId || 'no-place-id';
+        const mode = item.dryRun ? 'dry run' : 'saved';
+        const when = item.when || '';
+        return `
+          <div class="recent-item">
+            <div class="recent-meta">
+              <div class="recent-name" title="${label}">${label}</div>
+              <div class="recent-sub" title="${placeId}">${placeId} • ${mode}${when ? ` • ${when}` : ''}</div>
+            </div>
+            <button class="recent-use-btn" onclick="useRecentPlace(${idx})">Use</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addRecentPlace(item) {
+      const key = `${item.placeId || ''}|${item.inputValue || ''}|${item.inputType || ''}`;
+      recentPlaces = recentPlaces.filter((p) => `${p.placeId || ''}|${p.inputValue || ''}|${p.inputType || ''}` !== key);
+      recentPlaces.unshift(item);
+      if (recentPlaces.length > RECENT_PLACES_MAX) recentPlaces.length = RECENT_PLACES_MAX;
+      saveRecentPlaces();
+      renderRecentPlaces();
+    }
+
+    function useRecentPlace(index) {
+      const entry = recentPlaces[index];
+      if (!entry) return;
+      const typeEl = document.getElementById('addPlaceType');
+      const valueEl = document.getElementById('addPlaceValue');
+      if (typeEl && entry.inputType) typeEl.value = entry.inputType;
+      if (valueEl) {
+        valueEl.value = entry.inputValue || entry.name || entry.placeId || '';
+        valueEl.focus();
+        valueEl.select();
+      }
+      setAddPlaceStatus('Loaded recent place into the form.', 'info');
+    }
+
+    function clearRecentPlaces() {
+      recentPlaces = [];
+      saveRecentPlaces();
+      renderRecentPlaces();
+      setAddPlaceStatus('Recent places cleared.', 'info');
+    }
+
+    // Handle add place
+    function handleAddPlace() {
+      if (!checkConnection()) return;
+      openAddPlacePanel();
+      setStatus('Add Place panel opened in this popup.', 'info');
     }
 
     // Keyboard shortcuts
@@ -579,9 +949,35 @@
       }
     });
 
+    // Enter submits Add Place when the inline panel input is focused.
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      const panel = document.getElementById('addPlacePanel');
+      const input = document.getElementById('addPlaceValue');
+      if (!panel || !panel.classList.contains('visible')) return;
+      if (!input || document.activeElement !== input) return;
+      e.preventDefault();
+      submitAddPlaceFromPanel();
+    });
+
     // Check connection periodically
     setInterval(checkConnection, 2000);
     checkConnection();
+    loadRecentPlaces();
+
+    // Defensive redirect: if legacy code calls opener.openAddPlaceModal,
+    // route it back into this popup so Add Place never opens in the main window.
+    if (mainWindow && !mainWindow.closed) {
+      mainWindow.openAddPlaceModal = function() {
+        try {
+          window.focus();
+          openAddPlacePanel();
+          setStatus('Add Place panel opened in this popup.', 'info');
+        } catch (_err) {
+          // Ignore cross-window focus issues.
+        }
+      };
+    }
 
     // Notify main window
     if (mainWindow && !mainWindow.closed) {
