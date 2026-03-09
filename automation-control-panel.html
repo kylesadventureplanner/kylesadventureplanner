@@ -636,8 +636,23 @@
 
       if (mainWindow && !mainWindow.closed) {
         // Check if main window is authenticated
-        const isAuth = mainWindow.isAuthenticated && mainWindow.isAuthenticated();
-
+        const hasIsAuthFunc = typeof mainWindow.isAuthenticated === 'function';
+        let isAuth = false;
+        
+        if (hasIsAuthFunc) {
+          isAuth = mainWindow.isAuthenticated();
+        } else {
+          // Fallback for older versions
+          isAuth = !!(mainWindow.accessToken && mainWindow.activeAccount);
+        }
+        
+        console.log('🔗 Connection check:', {
+          hasIsAuthFunc,
+          isAuth,
+          accessToken: mainWindow.accessToken ? 'present' : 'missing',
+          activeAccount: mainWindow.activeAccount ? 'present' : 'missing'
+        });
+        
         if (isAuth) {
           dot.classList.add('connected');
           text.textContent = 'Connected & Signed In';
@@ -796,7 +811,24 @@
         }
 
         // Check if main window is authenticated
-        if (!mainWindow.isAuthenticated || !mainWindow.isAuthenticated()) {
+        console.log('🔍 Auth Check:', {
+          hasIsAuthenticatedFunc: typeof mainWindow.isAuthenticated === 'function',
+          isAuthenticated: mainWindow.isAuthenticated ? mainWindow.isAuthenticated() : 'function not found',
+          hasAccessToken: !!mainWindow.accessToken,
+          hasActiveAccount: !!mainWindow.activeAccount
+        });
+
+        // Use isAuthenticated function if available, otherwise check accessToken directly
+        let isAuth = false;
+        if (typeof mainWindow.isAuthenticated === 'function') {
+          isAuth = mainWindow.isAuthenticated();
+        } else {
+          // Fallback: directly check auth state (for older versions)
+          isAuth = !!(mainWindow.accessToken && mainWindow.activeAccount);
+          console.warn('⚠️ Using fallback auth check - please reload the main window to get isAuthenticated() function');
+        }
+        
+        if (!isAuth) {
           throw new Error('Please sign in first. Click "Sign In" in the main Adventure Finder window.');
         }
 
