@@ -6616,6 +6616,11 @@
     showToast('✓ Successfully signed out!', 'success', 2000);
   }
 
+  // Helper function for popup window to check authentication status
+  function isAuthenticated() {
+    return !!(accessToken && activeAccount);
+  }
+
   /***********************
    * UX IMPROVEMENTS     *
    ***********************/
