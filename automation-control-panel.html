@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Automation Control Panel</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e40af;
+      --primary-light: #dbeafe;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --neutral-100: #f3f4f6;
+      --neutral-200: #e5e7eb;
+      --neutral-600: #4b5563;
+      --neutral-800: #1f2937;
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      max-width: 600px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel-header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .panel-body {
+      padding: 24px;
+    }
+
+    .dry-run-section {
+      background: var(--primary-light);
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dry-run-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: var(--neutral-800);
+    }
+
+    .dry-run-toggle {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      background: #cbd5e1;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .dry-run-toggle.on {
+      background: var(--success);
+    }
+
+    .dry-run-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 12px;
+      transition: transform 0.3s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .dry-run-toggle.on .dry-run-thumb {
+      transform: translateX(24px);
+    }
+
+    .info-box {
+      background: #fef3c7;
+      border-left: 4px solid var(--warning);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 14px;
+      color: var(--neutral-800);
+      line-height: 1.5;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .automation-btn {
+      background: white;
+      border: 2px solid var(--primary);
+      color: var(--primary-dark);
+      padding: 16px 20px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-align: left;
+      box-shadow: var(--shadow-md);
+    }
+
+    .automation-btn:hover:not(:disabled) {
+      background: var(--primary-light);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .automation-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .automation-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .automation-btn.loading {
+      background: var(--neutral-100);
+      cursor: wait;
+    }
+
+    .automation-btn.success {
+      background: #d1fae5;
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .automation-btn.error {
+      background: #fee2e2;
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .btn-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .btn-content {
+      flex: 1;
+    }
+
+    .btn-title {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .btn-desc {
+      font-size: 12px;
+      opacity: 0.8;
+      font-weight: 400;
+    }
+
+    .btn-shortcut {
+      background: var(--neutral-200);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--neutral-600);
+      flex-shrink: 0;
+    }
+
+    .diagnostic-section {
+      border-top: 2px solid var(--neutral-200);
+      padding-top: 24px;
+      margin-top: 24px;
+    }
+
+    .diagnostic-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px 20px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .diagnostic-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .diagnostic-btn:active {
+      transform: translateY(0);
+    }
+
+    .status-section {
+      margin-top: 24px;
+      padding: 16px;
+      background: var(--neutral-100);
+      border-radius: 12px;
+      min-height: 60px;
+    }
+
+    .status-message {
+      font-size: 14px;
+      color: var(--neutral-600);
+      line-height: 1.5;
+    }
+
+    .status-message.info {
+      color: var(--primary);
+    }
+
+    .status-message.success {
+      color: var(--success);
+    }
+
+    .status-message.error {
+      color: var(--danger);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      border-left-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .footer {
+      padding: 16px 24px;
+      background: var(--neutral-100);
+      border-top: 1px solid var(--neutral-200);
+      text-align: center;
+      font-size: 13px;
+      color: var(--neutral-600);
+    }
+
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+    }
+
+    .status-dot.connected {
+      background: var(--success);
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="panel-header">
+      <span style="font-size: 24px;">🔄</span>
+      <h1>Google Automation Control Panel</h1>
+    </div>
+
+    <div class="panel-body">
+      <!-- Dry Run Toggle -->
+      <div class="dry-run-section">
+        <div class="dry-run-label">
+          <span>🔒</span>
+          <span id="dryRunLabel">Dry Run Mode: ON</span>
+        </div>
+        <div id="dryRunToggle" class="dry-run-toggle on" onclick="toggleDryRun()">
+          <div class="dry-run-thumb"></div>
+        </div>
+      </div>
+
+      <!-- Info Box -->
+      <div class="info-box" id="infoBox">
+        ℹ️ <strong>Dry Run ON:</strong> Changes are previewed but not written to Excel. Turn off to apply updates.
+      </div>
+
+      <!-- Automation Buttons -->
+      <div class="button-grid">
+        <button class="automation-btn" id="btnPopulateMissing" onclick="handleAutomation('populateMissing', this)">
+          <span class="btn-icon">📝</span>
+          <div class="btn-content">
+            <div class="btn-title">Populate Missing Fields</div>
+            <div class="btn-desc">Auto-fill empty fields from Google Places</div>
+          </div>
+          <span class="btn-shortcut">Alt+P</span>
+        </button>
+
+        <button class="automation-btn" id="btnRefreshHours" onclick="handleAutomation('refreshHours', this)">
+          <span class="btn-icon">🕐</span>
+          <div class="btn-content">
+            <div class="btn-title">Refresh Hours Only</div>
+            <div class="btn-desc">Update operating hours from Google Places</div>
+          </div>
+          <span class="btn-shortcut">Alt+H</span>
+        </button>
+
+        <button class="automation-btn" id="btnRefreshAll" onclick="handleAutomation('refreshAll', this)">
+          <span class="btn-icon">🔄</span>
+          <div class="btn-content">
+            <div class="btn-title">Refresh All Fields</div>
+            <div class="btn-desc">Update all fields from Google Places API</div>
+          </div>
+          <span class="btn-shortcut">Alt+A</span>
+        </button>
+
+        <button class="automation-btn" id="btnSearchPlaceIds" onclick="handleAutomation('searchPlaceIds', this)">
+          <span class="btn-icon">🔍</span>
+          <div class="btn-content">
+            <div class="btn-title">Search Place IDs</div>
+            <div class="btn-desc">Find and save Google Place IDs for locations</div>
+          </div>
+          <span class="btn-shortcut">Alt+S</span>
+        </button>
+
+        <button class="automation-btn" id="btnRefreshPlaceIds" onclick="handleAutomation('refreshPlaceIds', this)">
+          <span class="btn-icon">🔄</span>
+          <div class="btn-content">
+            <div class="btn-title">Refresh Place IDs</div>
+            <div class="btn-desc">Refresh cached Place IDs from Google</div>
+          </div>
+          <span class="btn-shortcut">Alt+R</span>
+        </button>
+
+        <button class="automation-btn" id="btnAddPlace" onclick="handleAddPlace()">
+          <span class="btn-icon">➕</span>
+          <div class="btn-content">
+            <div class="btn-title">Add New Place</div>
+            <div class="btn-desc">Add a new location to your Excel file</div>
+          </div>
+          <span class="btn-shortcut">Alt+N</span>
+        </button>
+      </div>
+
+      <!-- Diagnostic Section -->
+      <div class="diagnostic-section">
+        <button class="diagnostic-btn" onclick="runDiagnostic()">
+          <span>🔬</span>
+          <span>Test Google API Configuration</span>
+        </button>
+      </div>
+
+      <!-- Status Section -->
+      <div class="status-section">
+        <div id="statusMessage" class="status-message">
+          Ready to automate. Select an action above to begin.
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="connection-status">
+        <span class="status-dot" id="connectionDot"></span>
+        <span id="connectionText">Connecting to main window...</span>
+      </div>
+      <div>Adventure Finder v7.0 • Google Automation Panel</div>
+    </div>
+  </div>
+
+  <script>
+    // Communication with parent window
+    let mainWindow = window.opener;
+    let isDryRun = true;
+
+    // Check connection to main window
+    function checkConnection() {
+      const dot = document.getElementById('connectionDot');
+      const text = document.getElementById('connectionText');
+
+      if (mainWindow && !mainWindow.closed) {
+        dot.classList.add('connected');
+        text.textContent = 'Connected to Adventure Finder';
+        return true;
+      } else {
+        dot.classList.remove('connected');
+        text.textContent = 'Main window disconnected';
+        setStatus('Please keep the main Adventure Finder window open.', 'error');
+        return false;
+      }
+    }
+
+    // Toggle dry run mode
+    function toggleDryRun() {
+      isDryRun = !isDryRun;
+      const toggle = document.getElementById('dryRunToggle');
+      const label = document.getElementById('dryRunLabel');
+      const infoBox = document.getElementById('infoBox');
+
+      if (isDryRun) {
+        toggle.classList.add('on');
+        label.textContent = 'Dry Run Mode: ON';
+        infoBox.innerHTML = 'ℹ️ <strong>Dry Run ON:</strong> Changes are previewed but not written to Excel. Turn off to apply updates.';
+        infoBox.style.background = '#fef3c7';
+        infoBox.style.borderLeftColor = 'var(--warning)';
+      } else {
+        toggle.classList.remove('on');
+        label.textContent = 'Dry Run Mode: OFF';
+        infoBox.innerHTML = '⚠️ <strong>Dry Run OFF:</strong> Changes will be written directly to Excel. Use with caution!';
+        infoBox.style.background = '#fee2e2';
+        infoBox.style.borderLeftColor = 'var(--danger)';
+      }
+
+      setStatus(`Dry Run mode: ${isDryRun ? 'ON' : 'OFF'}`, 'info');
+    }
+
+    // Handle automation action
+    function handleAutomation(action, button) {
+      if (!checkConnection()) return;
+
+      setStatus(`<span class="spinner"></span>Starting ${action}...`, 'info');
+      setButtonState(button, 'loading');
+
+      try {
+        // Call automation function in main window
+        const automationFunc = mainWindow[`run${capitalize(action)}`] || mainWindow.runGoogleAutomation;
+
+        if (!automationFunc) {
+          throw new Error(`Automation function not found: ${action}`);
+        }
+
+        Promise.resolve(automationFunc(action, isDryRun))
+          .then(() => {
+            setStatus(`✅ ${action} completed successfully!`, 'success');
+            setButtonState(button, 'success');
+            setTimeout(() => setButtonState(button, 'normal'), 3000);
+          })
+          .catch((err) => {
+            setStatus(`❌ Error: ${err.message}`, 'error');
+            setButtonState(button, 'error');
+            setTimeout(() => setButtonState(button, 'normal'), 4000);
+          });
+      } catch (err) {
+        setStatus(`❌ Error: ${err.message}`, 'error');
+        setButtonState(button, 'error');
+        setTimeout(() => setButtonState(button, 'normal'), 4000);
+      }
+    }
+
+    // Handle add place
+    function handleAddPlace() {
+      if (!checkConnection()) return;
+
+      try {
+        if (typeof mainWindow.openAddPlaceModal === 'function') {
+          mainWindow.openAddPlaceModal();
+          mainWindow.focus();
+          setStatus('Opening Add Place modal in main window...', 'info');
+        } else {
+          throw new Error('openAddPlaceModal function not found in main window');
+        }
+      } catch (err) {
+        setStatus(`❌ Error: ${err.message}`, 'error');
+      }
+    }
+
+    // Run diagnostic
+    function runDiagnostic() {
+      if (!checkConnection()) return;
+
+      setStatus('<span class="spinner"></span>Running API diagnostic...', 'info');
+
+      try {
+        if (typeof mainWindow.runApiDiagnostic === 'function') {
+          mainWindow.runApiDiagnostic();
+          mainWindow.focus();
+          setStatus('API diagnostic opened in main window', 'info');
+        } else {
+          throw new Error('runApiDiagnostic function not found');
+        }
+      } catch (err) {
+        setStatus(`❌ Error: ${err.message}`, 'error');
+      }
+    }
+
+    // Set status message
+    function setStatus(message, type = 'info') {
+      const statusEl = document.getElementById('statusMessage');
+      statusEl.innerHTML = message;
+      statusEl.className = `status-message ${type}`;
+    }
+
+    // Set button state
+    function setButtonState(button, state) {
+      button.classList.remove('loading', 'success', 'error');
+      button.disabled = false;
+
+      if (state === 'loading') {
+        button.classList.add('loading');
+        button.disabled = true;
+      } else if (state === 'success') {
+        button.classList.add('success');
+      } else if (state === 'error') {
+        button.classList.add('error');
+      }
+    }
+
+    // Utility function
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (!e.altKey) return;
+
+      const shortcuts = {
+        'P': 'btnPopulateMissing',
+        'H': 'btnRefreshHours',
+        'A': 'btnRefreshAll',
+        'S': 'btnSearchPlaceIds',
+        'R': 'btnRefreshPlaceIds',
+        'N': 'btnAddPlace'
+      };
+
+      const buttonId = shortcuts[e.key.toUpperCase()];
+      if (buttonId) {
+        e.preventDefault();
+        document.getElementById(buttonId).click();
+      }
+    });
+
+    // Check connection periodically
+    setInterval(checkConnection, 2000);
+    checkConnection();
+
+    // Notify main window
+    if (mainWindow && !mainWindow.closed) {
+      setStatus('Control panel ready. Select an action to begin.', 'success');
+    }
+  </script>
+</body>
+</html>
+
