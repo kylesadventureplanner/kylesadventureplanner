@@ -15584,9 +15584,12 @@ COMMON ISSUES:
       const left = (screen.width - width) / 2;
       const top = (screen.height - height) / 2;
 
+      // Cache-bust popup URL so reopening always loads latest script/content.
+      const popupUrl = `automation-control-panel.html?cb=${Date.now()}`;
+
       // Open popup window
       automationPanelWindow = window.open(
-        'automation-control-panel.html',
+        popupUrl,
         'AutomationControlPanel',
         `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
       );
