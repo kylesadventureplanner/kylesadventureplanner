@@ -5134,48 +5134,6 @@
         </div>
       </div>
 
-      <!-- Google Data Automation -->
-      <div class="card automation-card">
-        <div class="automation-header">
-          <div class="automation-header-title">
-            🔄 Google Data Automation
-          </div>
-          <div id="dryRunToggle" class="dry-run-toggle on">
-            <span>Dry Run</span>
-            <div class="dry-run-switch">
-              <div class="dry-run-switch-thumb"></div>
-            </div>
-          </div>
-        </div>
-        <div class="automation-body">
-          <div class="automation-buttons">
-            <button id="btnPopulateMissing" class="automation-btn" title="Fill in missing data fields from Google Places" data-tooltip="Fill in missing data fields from Google Places">Populate Missing Fields</button>
-            <button id="btnRefreshHours" class="automation-btn" title="Update operating hours from Google Places" data-tooltip="Update operating hours from Google Places">Refresh Hours Only</button>
-            <button id="btnRefreshAll" class="automation-btn" title="Update all fields from Google Places API" data-tooltip="Update all fields from Google Places API">Refresh All Fields</button>
-            <button id="btnRefreshPlaceIds" class="automation-btn" title="Refresh cached Place IDs from Google" data-tooltip="Refresh cached Place IDs from Google">🔄 Refresh Place IDs</button>
-            <button id="btnSearchPlaceIds" class="automation-btn" title="Find and save Google Place IDs for locations" data-tooltip="Find and save Google Place IDs for locations">🔍 Search Place IDs</button>
-            <button id="btnAddPlace" class="automation-btn" title="Add a new location to your Excel file" data-tooltip="Add a new location to your Excel file">➕ Add New Place</button>
-          </div>
-
-          <div class="dry-run-note">
-            Dry Run ON: changes are previewed but not written to Excel. Turn off to apply updates.
-          </div>
-
-          <!-- API Diagnostic Button -->
-          <div style="margin-top: 12px; display: flex; justify-content: center;">
-            <button
-              id="apiDiagnosticBtn"
-              title="Verify Google Maps API access and configuration"
-              data-tooltip="Verify Google Maps API access and configuration"
-              style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;"
-              onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
-              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';"
-            >
-              🔬 Test Google API Configuration
-            </button>
-          </div>
-        </div>
-      </div>
 
       <!-- Autofill Datalists -->
       <datalist id="nameList"></datalist>
