@@ -14179,7 +14179,7 @@ COMMON ISSUES:
     });
   }
 
-  async function addRowToExcel(rowValues) {
+  async function addRowToExcel(rowValues, retryCount = 0) {
     if (!window.accessToken) throw new Error("Please sign in first.");
 
     // Use the session-less rows endpoint that's more reliable across windows
@@ -14197,6 +14197,18 @@ COMMON ISSUES:
     });
 
     if (!res.ok) {
+      // If 401 (token expired) and we haven't retried yet, try to refresh token
+      if (res.status === 401 && retryCount === 0 && typeof window.refreshAccessToken === "function") {
+        console.log("🔄 Token expired (401), attempting refresh...");
+        try {
+          await window.refreshAccessToken();
+          return await addRowToExcel(rowValues, 1); // Retry once
+        } catch (refreshErr) {
+          console.error("❌ Token refresh failed:", refreshErr.message);
+          throw new Error("Authentication token expired. Please sign in again.");
+        }
+      }
+
       const text = await res.text().catch(function () { return ""; });
       throw new Error("Excel add row failed (" + res.status + ")" + (text ? (": " + text) : ""));
     }
