@@ -14035,26 +14035,26 @@ COMMON ISSUES:
 
   async function addRowToExcel(rowValues) {
     if (!window.accessToken) throw new Error("Please sign in first.");
-    
+
     // Use the session-less rows endpoint that's more reliable across windows
     const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${window.filePath}:/workbook/tables/${window.tableName}/rows`;
-    
+
     const res = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + window.accessToken,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         values: [rowValues]
       })
     });
-    
+
     if (!res.ok) {
       const text = await res.text().catch(function () { return ""; });
       throw new Error("Excel add row failed (" + res.status + ")" + (text ? (": " + text) : ""));
     }
-    
+
     return await res.json();
   }
 
