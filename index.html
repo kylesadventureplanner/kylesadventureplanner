@@ -14037,7 +14037,7 @@ COMMON ISSUES:
     if (!window.accessToken) throw new Error("Please sign in first.");
 
     // Use the session-less rows endpoint that's more reliable across windows
-    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${window.filePath}:/workbook/tables/${window.tableName}/rows`;
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
 
     const res = await fetch(url, {
       method: "POST",
