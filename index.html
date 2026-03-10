@@ -7442,6 +7442,152 @@
   }
 
   // ...existing code...
+    async function addRowToExcel(rowValues) {
+    if (!window.accessToken) throw new Error("Please sign in first.");
+
+    // Use the session-less rows endpoint that's more reliable across windows
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + window.accessToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        values: [rowValues]
+      })
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(function () { return ""; });
+      throw new Error("Excel add row failed (" + res.status + ")" + (text ? (": " + text) : ""));
+    }
+
+    return await res.json();
+    }
+
+    async function addRowToExcelFallback(rowValues) {
+    const token = accessToken || window.accessToken;
+    if (!token) throw new Error("Please sign in first.");
+
+    const workbookBase = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook`;
+    const failures = [];
+
+    function trimBody(body) {
+      const text = strVal(body);
+      return text.length > 320 ? text.slice(0, 320) + "..." : text;
+    }
+
+    async function tryPost(url, label) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values: [rowValues] })
+      });
+
+      if (res.ok) {
+        return await res.json().catch(function () { return {}; });
+      }
+
+      const body = await res.text().catch(function () { return ""; });
+      failures.push({
+        label: label,
+        url: url,
+        status: res.status,
+        body: trimBody(body)
+      });
+      return null;
+    }
+
+    let tableCandidates = [];
+
+    const tablesUrl = `${workbookBase}/tables?$top=200`;
+    const tablesRes = await fetch(tablesUrl, {
+      headers: { Authorization: "Bearer " + token }
+    });
+
+    if (tablesRes.ok) {
+      const tablesJson = await tablesRes.json().catch(function () { return {}; });
+      const tableList = Array.isArray(tablesJson.value) ? tablesJson.value : [];
+      const exact = tableList.find(function (t) { return strVal(t && t.name) === strVal(tableName); });
+      const ci = tableList.find(function (t) {
+        return strVal(t && t.name).toLowerCase() === strVal(tableName).toLowerCase();
+      });
+
+      if (exact || ci) {
+        const t = exact || ci;
+        tableCandidates.push({
+          name: strVal(t && t.name),
+          id: strVal(t && t.id)
+        });
+      }
+
+      if (!tableCandidates.length && tableList.length) {
+        const first = tableList[0];
+        tableCandidates.push({
+          name: strVal(first && first.name),
+          id: strVal(first && first.id)
+        });
+      }
+    } else {
+      const tableLookupBody = await tablesRes.text().catch(function () { return ""; });
+      failures.push({
+        label: "table-lookup",
+        url: tablesUrl,
+        status: tablesRes.status,
+        body: trimBody(tableLookupBody)
+      });
+    }
+
+    const attempts = [];
+    const seen = new Set();
+
+    function addAttempt(url, label) {
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      attempts.push({ url: url, label: label });
+    }
+
+    const candidate = tableCandidates[0] || { name: strVal(tableName), id: "" };
+
+    addAttempt(
+      `${workbookBase}/tables/${encodeURIComponent(candidate.name || strVal(tableName))}/rows`,
+      `rows-by-name:${candidate.name || strVal(tableName)}`
+    );
+
+    if (candidate.id) {
+      addAttempt(
+        `${workbookBase}/tables/${encodeURIComponent(candidate.id)}/rows`,
+        `rows-by-id:${candidate.id}`
+      );
+    }
+
+    addAttempt(
+      `${workbookBase}/tables/${encodeURIComponent(strVal(tableName))}/rows`,
+      `rows-by-config-name:${strVal(tableName)}`
+    );
+
+    for (let i = 0; i < attempts.length; i++) {
+      const result = await tryPost(attempts[i].url, attempts[i].label);
+      if (result) return result;
+    }
+
+    const details = failures.map(function (f) {
+      return `[${f.label}] ${f.status} ${f.url}` + (f.body ? ` :: ${f.body}` : "");
+    }).join(" | ");
+
+    throw new Error(
+      `Excel add row failed (404/itemNotFound fallback exhausted). filePath="${filePath}", tableName="${tableName}". Attempts: ${details || "none"}`
+    );
+    }
+
+    // Canonical override for all callers (including popup flow)
+    window.addRowToExcel = addRowToExcelFallback;
+  // ...existing code...
   // ============================================================
   // CANONICAL AUTOMATION BUTTON + BACKDROP HOTFIX
   // ============================================================
@@ -14179,7 +14325,7 @@ COMMON ISSUES:
       }
 
       setAddPlaceStatus("Adding row to Excel...", "info");
-      await addRowToExcel(row);
+      await window.addRowToExcel(row);
 
       setAddPlaceStatus("Place added successfully.", "success");
       if (typeof showToast === "function") {
