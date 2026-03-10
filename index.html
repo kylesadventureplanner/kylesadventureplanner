@@ -7488,7 +7488,7 @@
           // Refresh failed, fall through to error below
         }
       }
-      
+
       // Re-throw with original error details
       const errorText = err.error?.message ? (": " + err.error.message) : "";
       throw new Error("Excel add row failed (" + err.error?.status + ")" + errorText);
@@ -7534,11 +7534,11 @@
               },
               body: JSON.stringify({ values: [rowValues] })
             });
-            
+
             if (retryRes.ok) {
               return await retryRes.json().catch(function () { return {}; });
             }
-            
+
             const retryBody = await retryRes.text().catch(function () { return ""; });
             failures.push({
               label: label + "-retry",
@@ -7609,7 +7609,7 @@
             const retryTablesRes = await fetch(tablesUrl, {
               headers: { Authorization: "Bearer " + token }
             });
-            
+
             if (retryTablesRes.ok) {
               const tablesJson = await retryTablesRes.json().catch(function () { return {}; });
               const tableList = Array.isArray(tablesJson.value) ? tablesJson.value : [];
@@ -7647,7 +7647,7 @@
           // Token refresh failed, fall through
         }
       }
-      
+
       if (!tableCandidates.length) {
         const tableLookupBody = await tablesRes.text().catch(function () { return ""; });
         failures.push({
@@ -14282,22 +14282,42 @@ COMMON ISSUES:
   }
 
   function buildExcelRow(placeId, details) {
-    const row = new Array(23).fill("");
+    // Excel table has 24 columns (0-23):
+    // 0: Name, 1: Google Place ID, 2: Website, 3: Tags, 4: Drive Time,
+    // 5: Hours of Operation, 6: Activity Duration, 7: Difficulty, 8: Trail Length,
+    // 9: State, 10: City, 11: Address, 12: Phone Number, 13: Google Rating,
+    // 14: Cost, 15: Directions, 16: Description, 17: Nearby, 18: Links, 19: Links 2,
+    // 20: Notes, 21: My Rating, 22: Favorite Status, 23: Google URL
+    
+    const row = new Array(24).fill(""); // Changed from 23 to 24
     const name = strVal(details && details.name);
     const address = strVal(details && details.address);
     const cityState = inferCityStateFromAddress(address);
 
-    row[0] = name;
-    row[1] = strVal(placeId);
-    row[2] = strVal(details && details.website);
-    row[5] = normalizeOperationHours(details && details.hours);
-    row[9] = cityState.state;
-    row[10] = cityState.city;
-    row[11] = address;
-    row[12] = strVal(details && details.phone);
-    row[13] = details && details.rating != null ? String(details.rating) : "";
-    row[15] = buildDirectionsUrl(placeId, address, name);
-    row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
+    row[0] = name;                          // Name
+    row[1] = strVal(placeId);               // Google Place ID
+    row[2] = strVal(details && details.website); // Website
+    // row[3] = Tags (leave empty - user fills in)
+    // row[4] = Drive Time (leave empty - user fills in)
+    row[5] = normalizeOperationHours(details && details.hours); // Hours of Operation
+    // row[6] = Activity Duration (leave empty - user fills in)
+    // row[7] = Difficulty (leave empty - user fills in)
+    // row[8] = Trail Length (leave empty - user fills in)
+    row[9] = cityState.state;               // State
+    row[10] = cityState.city;               // City
+    row[11] = address;                      // Address
+    row[12] = strVal(details && details.phone); // Phone Number
+    row[13] = details && details.rating != null ? String(details.rating) : ""; // Google Rating
+    // row[14] = Cost (leave empty - user fills in)
+    row[15] = buildDirectionsUrl(placeId, address, name); // Directions URL
+    // row[16] = Description (leave empty - user fills in)
+    // row[17] = Nearby (leave empty - user fills in)
+    row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId)); // Links (Google Maps)
+    // row[19] = Links 2 (leave empty - user fills in)
+    // row[20] = Notes (leave empty - user fills in)
+    // row[21] = My Rating (leave empty - user fills in)
+    // row[22] = Favorite Status (leave empty - user fills in)
+    row[23] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId)); // Google URL
 
     return row;
   }
