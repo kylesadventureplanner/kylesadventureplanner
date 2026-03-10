@@ -7443,36 +7443,65 @@
 
   // ...existing code...
     async function addRowToExcel(rowValues) {
-    if (!window.accessToken) throw new Error("Please sign in first.");
+    let token = window.accessToken;
+    if (!token) throw new Error("Please sign in first.");
 
     // Use the session-less rows endpoint that's more reliable across windows
     const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + window.accessToken,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        values: [rowValues]
-      })
-    });
+    const makeRequest = async (authToken) => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + authToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          values: [rowValues]
+        })
+      });
 
-    if (!res.ok) {
-      const text = await res.text().catch(function () { return ""; });
-      throw new Error("Excel add row failed (" + res.status + ")" + (text ? (": " + text) : ""));
+      if (!res.ok) {
+        const text = await res.text().catch(function () { return ""; });
+        const errorInfo = {
+          status: res.status,
+          message: text
+        };
+        throw { error: errorInfo, shouldRetry: res.status === 401 };
+      }
+
+      return await res.json();
+    };
+
+    // Try initial request
+    try {
+      return await makeRequest(token);
+    } catch (err) {
+      // If 401 (unauthorized), try to refresh token and retry once
+      if (err.shouldRetry) {
+        try {
+          const refreshed = await window.rehydrateAuthState?.();
+          if (refreshed && window.accessToken) {
+            return await makeRequest(window.accessToken);
+          }
+        } catch (_refreshErr) {
+          // Refresh failed, fall through to error below
+        }
+      }
+      
+      // Re-throw with original error details
+      const errorText = err.error?.message ? (": " + err.error.message) : "";
+      throw new Error("Excel add row failed (" + err.error?.status + ")" + errorText);
     }
-
-    return await res.json();
     }
 
     async function addRowToExcelFallback(rowValues) {
-    const token = accessToken || window.accessToken;
+    let token = accessToken || window.accessToken;
     if (!token) throw new Error("Please sign in first.");
 
     const workbookBase = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook`;
     const failures = [];
+    let tokenRefreshAttempted = false;
 
     function trimBody(body) {
       const text = strVal(body);
@@ -7488,6 +7517,41 @@
         },
         body: JSON.stringify({ values: [rowValues] })
       });
+
+      // Handle 401 with token refresh (only once)
+      if (res.status === 401 && !tokenRefreshAttempted) {
+        tokenRefreshAttempted = true;
+        try {
+          const refreshed = await window.rehydrateAuthState?.();
+          if (refreshed && (accessToken || window.accessToken)) {
+            token = accessToken || window.accessToken;
+            // Retry this request with refreshed token
+            const retryRes = await fetch(url, {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + token,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({ values: [rowValues] })
+            });
+            
+            if (retryRes.ok) {
+              return await retryRes.json().catch(function () { return {}; });
+            }
+            
+            const retryBody = await retryRes.text().catch(function () { return ""; });
+            failures.push({
+              label: label + "-retry",
+              url: url,
+              status: retryRes.status,
+              body: trimBody(retryBody)
+            });
+            return null;
+          }
+        } catch (_refreshErr) {
+          // Token refresh failed, fall through to normal error handling
+        }
+      }
 
       if (res.ok) {
         return await res.json().catch(function () { return {}; });
@@ -7534,13 +7598,65 @@
         });
       }
     } else {
-      const tableLookupBody = await tablesRes.text().catch(function () { return ""; });
-      failures.push({
-        label: "table-lookup",
-        url: tablesUrl,
-        status: tablesRes.status,
-        body: trimBody(tableLookupBody)
-      });
+      // Handle 401 on table lookup too
+      if (tablesRes.status === 401 && !tokenRefreshAttempted) {
+        tokenRefreshAttempted = true;
+        try {
+          const refreshed = await window.rehydrateAuthState?.();
+          if (refreshed && (accessToken || window.accessToken)) {
+            token = accessToken || window.accessToken;
+            // Retry table lookup
+            const retryTablesRes = await fetch(tablesUrl, {
+              headers: { Authorization: "Bearer " + token }
+            });
+            
+            if (retryTablesRes.ok) {
+              const tablesJson = await retryTablesRes.json().catch(function () { return {}; });
+              const tableList = Array.isArray(tablesJson.value) ? tablesJson.value : [];
+              const exact = tableList.find(function (t) { return strVal(t && t.name) === strVal(tableName); });
+              const ci = tableList.find(function (t) {
+                return strVal(t && t.name).toLowerCase() === strVal(tableName).toLowerCase();
+              });
+
+              if (exact || ci) {
+                const t = exact || ci;
+                tableCandidates.push({
+                  name: strVal(t && t.name),
+                  id: strVal(t && t.id)
+                });
+              }
+
+              if (!tableCandidates.length && tableList.length) {
+                const first = tableList[0];
+                tableCandidates.push({
+                  name: strVal(first && first.name),
+                  id: strVal(first && first.id)
+                });
+              }
+            } else {
+              const retryBody = await retryTablesRes.text().catch(function () { return ""; });
+              failures.push({
+                label: "table-lookup-retry",
+                url: tablesUrl,
+                status: retryTablesRes.status,
+                body: trimBody(retryBody)
+              });
+            }
+          }
+        } catch (_refreshErr) {
+          // Token refresh failed, fall through
+        }
+      }
+      
+      if (!tableCandidates.length) {
+        const tableLookupBody = await tablesRes.text().catch(function () { return ""; });
+        failures.push({
+          label: "table-lookup",
+          url: tablesUrl,
+          status: tablesRes.status,
+          body: trimBody(tableLookupBody)
+        });
+      }
     }
 
     const attempts = [];
@@ -8338,7 +8454,8 @@
   */
   async function loadTable() {
     // Check if user is authenticated (has access token)
-    if (!accessToken) return;
+    let token = accessToken;
+    if (!token) return;
 
     try {
       // Show loading indicator
@@ -8350,9 +8467,25 @@
       const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
 
       // Make API request with authentication header
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` }, // Pass token for authentication
+      let response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }, // Pass token for authentication
       });
+
+      // Handle 401 with token refresh (once)
+      if (response.status === 401) {
+        try {
+          const refreshed = await window.rehydrateAuthState?.();
+          if (refreshed && accessToken) {
+            token = accessToken;
+            // Retry with refreshed token
+            response = await fetch(url, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          }
+        } catch (_refreshErr) {
+          // Token refresh failed, fall through to error handling
+        }
+      }
 
       // Parse JSON response from API
       const data = await response.json();
