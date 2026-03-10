@@ -6394,7 +6394,13 @@
   };
 
   /* Initialize MSAL with the configuration above */
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    /* Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly */
+    const msalInitPromise = msalInstance.initialize().catch(error => {
+    console.error("MSAL initialization failed:", error);
+    throw error;
+    });
 
   /* Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly */
   msalInstance.initialize().catch(error => {
@@ -6418,9 +6424,15 @@
   */
 
   // Authentication state
-  let accessToken = null;           // JWT token for Microsoft API requests
-  let activeAccount = null;         // Current logged-in user account
-  let isConnectedToExcel = false;   // Whether Excel connection is working
+    let accessToken = null;           // JWT token for Microsoft API requests
+    let activeAccount = null;         // Current logged-in user account
+    let isConnectedToExcel = false;   // Whether Excel connection is working
+
+    function syncAuthGlobals() {
+    // Keep legacy helpers and popup window checks in sync with current auth state.
+    window.accessToken = accessToken || null;
+    window.activeAccount = activeAccount || null;
+    }
 
   // Excel file configuration
   const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx"; // Where the Excel file is stored in OneDrive
@@ -6499,9 +6511,10 @@
      WHY: We need authentication to access the user's OneDrive Excel file
           without storing their password directly.
   */
-  async function signIn() {
+    async function signIn() {
     try {
       showLoading('Signing in...');
+      await msalInitPromise;
       console.log("=== SIGN-IN PROCESS STARTED ===");
       console.log("MSAL Instance:", msalInstance);
       console.log("Login Request:", loginRequest);
@@ -6525,6 +6538,8 @@
       console.log("Step 2 SUCCESS: Token acquired", tokenResponse);
 
       accessToken = tokenResponse.accessToken; // Store token globally
+      syncAuthGlobals();
+      console.log("Access token stored globally");
       console.log("Access token stored globally");
       isConnectedToExcel = true;                // Mark as connected
 
@@ -6590,7 +6605,7 @@
     console.log("✅ Page initialization complete");
   });
 
-  async function signOut() {
+    async function signOut() {
     showLoading('Signing out...');
     const account = msalInstance.getActiveAccount();
     if (!account) {
@@ -6605,6 +6620,7 @@
 
     accessToken = null;
     activeAccount = null;
+    syncAuthGlobals();
     isConnectedToExcel = false;
     document.getElementById("authStatus").textContent = "Not signed in";
     document.getElementById("signInBtn").style.display = "inline-block";
@@ -6617,9 +6633,99 @@
   }
 
   // Helper function for popup window to check authentication status
-  function isAuthenticated() {
-    return !!(accessToken && activeAccount);
-  }
+      function isAuthenticated() {
+        return !!(accessToken && activeAccount);
+      }
+
+      window.getPopupAuthState = function () {
+        const cachedAccount = activeAccount || msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
+        if (!cachedAccount) return { isAuthenticated: false, reason: 'no-account' };
+        if (!accessToken) return { isAuthenticated: false, reason: 'no-token' };
+        return { isAuthenticated: true, reason: 'ok' };
+      };
+
+      window.rehydrateAuthState = async function () {
+        try {
+          await msalInitPromise;
+          if (activeAccount && accessToken) {
+            syncAuthGlobals();
+            return true;
+          }
+
+          const cached = msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
+          if (!cached) {
+            syncAuthGlobals();
+            return false;
+          }
+
+          activeAccount = cached;
+          msalInstance.setActiveAccount(activeAccount);
+
+          const tokenResponse = await msalInstance.acquireTokenSilent({
+            ...loginRequest,
+            account: activeAccount
+          });
+
+          accessToken = tokenResponse?.accessToken || null;
+          syncAuthGlobals();
+          return !!accessToken;
+        } catch (_err) {
+          syncAuthGlobals();
+          return false;
+        }
+      };
+
+      async function bootstrapAuthFromCache() {
+        const restored = await window.rehydrateAuthState();
+        if (!restored) return;
+
+        isConnectedToExcel = true;
+        const authStatus = document.getElementById("authStatus");
+        const signInBtn = document.getElementById("signInBtn");
+        const signOutBtn = document.getElementById("signOutBtn");
+
+        if (authStatus && activeAccount?.username) {
+          authStatus.textContent = `Signed in as ${activeAccount.username}`;
+        }
+        if (signInBtn) signInBtn.style.display = "none";
+        if (signOutBtn) signOutBtn.style.display = "inline-block";
+        updateConnectionStatus(true);
+      }
+
+      window.addEventListener("load", async () => {
+        // Initialize Google Maps services
+        initializeGoogleServices();
+        await bootstrapAuthFromCache();
+
+        console.log("✅ Page initialization complete");
+      });
+
+    window.getPopupAuthState = function () {
+    if (!activeAccount) return { isAuthenticated: false, reason: 'no-account' };
+    if (!accessToken) return { isAuthenticated: false, reason: 'no-token' };
+    return { isAuthenticated: true, reason: 'ok' };
+    };
+
+    window.rehydrateAuthState = async function () {
+    try {
+      if (activeAccount && accessToken) return true;
+      const cached = msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
+      if (!cached) return false;
+
+      activeAccount = cached;
+      msalInstance.setActiveAccount(activeAccount);
+
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        ...loginRequest,
+        account: activeAccount
+      });
+
+      accessToken = tokenResponse?.accessToken || null;
+      return !!accessToken;
+    } catch (_err) {
+      return false;
+    }
+    };
 
   /***********************
    * UX IMPROVEMENTS     *
@@ -14032,7 +14138,7 @@ COMMON ISSUES:
     console.log('✅ Add Place modal closed');
   };
 
-  window.submitAddPlace = async function () {
+    window.submitAddPlace = async function () {
     const type = strVal(document.getElementById("addPlaceInputType") && document.getElementById("addPlaceInputType").value) || "placeName";
     const value = strVal(document.getElementById("addPlaceInputValue") && document.getElementById("addPlaceInputValue").value);
     const submitBtn = document.getElementById("addPlaceSubmitBtn");
