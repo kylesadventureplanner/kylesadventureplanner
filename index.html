@@ -7488,7 +7488,7 @@
       return result;
     } catch (err) {
       const isInvalidArgument = err.error?.message?.includes("InvalidArgument") || err.error?.message?.includes("invalidArgument");
-      
+
       console.error(`❌ [EXCEL ADD] Failed (${err.error?.status}). InvalidArgument: ${isInvalidArgument}, RetryCount: ${retryCount}`);
       console.error(`   Response: ${(err.error?.message || "").substring(0, 200)}`);
 
@@ -8300,8 +8300,11 @@
   */
   async function loadTable() {
     // Check if user is authenticated (has access token)
-    let token = accessToken;
-    if (!token) return;
+    let token = window.accessToken;
+    if (!token) {
+      console.log("⚠️  loadTable: No access token available. User not authenticated.");
+      return;
+    }
 
     try {
       // Show loading indicator
@@ -8319,18 +8322,29 @@
 
       // Handle 401 with token refresh (once)
       if (response.status === 401) {
+        console.log("⚠️  Token returned 401 - attempting refresh...");
         try {
           const refreshed = await window.rehydrateAuthState?.();
-          if (refreshed && accessToken) {
-            token = accessToken;
+          if (refreshed && window.accessToken) {
+            console.log("✅ Token refreshed successfully");
+            token = window.accessToken;
             // Retry with refreshed token
             response = await fetch(url, {
               headers: { Authorization: `Bearer ${token}` }
             });
+          } else {
+            console.error("❌ Token refresh failed - rehydrateAuthState returned:", refreshed);
           }
         } catch (_refreshErr) {
+          console.error("❌ Token refresh threw error:", _refreshErr);
           // Token refresh failed, fall through to error handling
         }
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "No error details");
+        console.error(`❌ API returned ${response.status}: ${errorText}`);
+        throw new Error(`API request failed with status ${response.status}`);
       }
 
       // Parse JSON response from API
@@ -8339,6 +8353,8 @@
         // noinspection ExceptionCaughtLocallyJS - Error is intentionally thrown to be caught by try-catch below
         throw new Error("No data returned from Excel file");
       }
+
+      console.log(`✓ Received ${data.value.length} rows from Excel`);
 
       // Calculate city counts for display next to city names
       calculateCityCounts(data.value);
