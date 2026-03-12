@@ -14282,43 +14282,59 @@ COMMON ISSUES:
   }
 
   function buildExcelRow(placeId, details) {
-    // Excel table has 24 columns (0-23):
+    // Excel table column mapping (24 columns expected):
     // 0: Name, 1: Google Place ID, 2: Website, 3: Tags, 4: Drive Time,
     // 5: Hours of Operation, 6: Activity Duration, 7: Difficulty, 8: Trail Length,
     // 9: State, 10: City, 11: Address, 12: Phone Number, 13: Google Rating,
     // 14: Cost, 15: Directions, 16: Description, 17: Nearby, 18: Links, 19: Links 2,
     // 20: Notes, 21: My Rating, 22: Favorite Status, 23: Google URL
     
-    const row = new Array(24).fill(""); // Changed from 23 to 24
+    // Determine actual column count from Excel table
+    let actualColumnCount = 24;
+    if (window.adventuresData && window.adventuresData.length > 0) {
+      const firstRow = window.adventuresData[0];
+      if (firstRow && firstRow.values && firstRow.values[0]) {
+        actualColumnCount = firstRow.values[0].length;
+        console.log(`📊 Excel table detected: ${actualColumnCount} columns. Building row to match.`);
+      }
+    } else {
+      // Data not loaded yet - try 24, but will fallback
+      console.log(`⚠️ Excel table data not loaded. Will attempt with 24 columns (may need fallback to 23 or 22).`);
+    }
+    
+    // Create row with detected column count, default to 24
+    const row = new Array(actualColumnCount).fill("");
     const name = strVal(details && details.name);
     const address = strVal(details && details.address);
     const cityState = inferCityStateFromAddress(address);
 
-    row[0] = name;                          // Name
-    row[1] = strVal(placeId);               // Google Place ID
-    row[2] = strVal(details && details.website); // Website
+    // Populate columns - safely check bounds
+    if (actualColumnCount > 0) row[0] = name;                          // Name
+    if (actualColumnCount > 1) row[1] = strVal(placeId);               // Google Place ID
+    if (actualColumnCount > 2) row[2] = strVal(details && details.website); // Website
     // row[3] = Tags (leave empty - user fills in)
     // row[4] = Drive Time (leave empty - user fills in)
-    row[5] = normalizeOperationHours(details && details.hours); // Hours of Operation
+    if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours); // Hours of Operation
     // row[6] = Activity Duration (leave empty - user fills in)
     // row[7] = Difficulty (leave empty - user fills in)
     // row[8] = Trail Length (leave empty - user fills in)
-    row[9] = cityState.state;               // State
-    row[10] = cityState.city;               // City
-    row[11] = address;                      // Address
-    row[12] = strVal(details && details.phone); // Phone Number
-    row[13] = details && details.rating != null ? String(details.rating) : ""; // Google Rating
+    if (actualColumnCount > 9) row[9] = cityState.state;               // State
+    if (actualColumnCount > 10) row[10] = cityState.city;               // City
+    if (actualColumnCount > 11) row[11] = address;                      // Address
+    if (actualColumnCount > 12) row[12] = strVal(details && details.phone); // Phone Number
+    if (actualColumnCount > 13) row[13] = details && details.rating != null ? String(details.rating) : ""; // Google Rating
     // row[14] = Cost (leave empty - user fills in)
-    row[15] = buildDirectionsUrl(placeId, address, name); // Directions URL
+    if (actualColumnCount > 15) row[15] = buildDirectionsUrl(placeId, address, name); // Directions URL
     // row[16] = Description (leave empty - user fills in)
     // row[17] = Nearby (leave empty - user fills in)
-    row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId)); // Links (Google Maps)
+    if (actualColumnCount > 18) row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId)); // Links (Google Maps)
     // row[19] = Links 2 (leave empty - user fills in)
     // row[20] = Notes (leave empty - user fills in)
     // row[21] = My Rating (leave empty - user fills in)
     // row[22] = Favorite Status (leave empty - user fills in)
-    row[23] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId)); // Google URL
+    if (actualColumnCount > 23) row[23] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId)); // Google URL
 
+    console.log(`📤 buildExcelRow: Created row with ${row.length} columns (table expects ${actualColumnCount} columns). Values filled: ${row.filter(v => v !== "").length} / ${row.length}`);
     return row;
   }
 
