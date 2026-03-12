@@ -485,6 +485,142 @@
       flex-shrink: 0;
     }
 
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid var(--neutral-200);
+      padding-bottom: 8px;
+    }
+
+    .mode-tab {
+      border: none;
+      background: transparent;
+      color: var(--neutral-600);
+      padding: 8px 12px;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .mode-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .mode-content {
+      display: none;
+    }
+
+    .mode-content.visible {
+      display: block;
+    }
+
+    .batch-textarea {
+      width: 100%;
+      border: 1px solid var(--neutral-200);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      color: var(--neutral-800);
+      background: #fff;
+      font-family: 'Monaco', 'Courier New', monospace;
+      min-height: 100px;
+      max-height: 200px;
+      resize: vertical;
+    }
+
+    .batch-hint {
+      font-size: 11px;
+      color: var(--neutral-600);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .batch-progress {
+      margin-top: 12px;
+      display: none;
+    }
+
+    .batch-progress.visible {
+      display: block;
+    }
+
+    .batch-progress-bar {
+      width: 100%;
+      height: 20px;
+      background: var(--neutral-200);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .batch-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: white;
+      font-weight: 600;
+    }
+
+    .batch-results {
+      margin-top: 12px;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      max-height: 150px;
+      overflow-y: auto;
+      background: #f9fafb;
+      border: 1px solid var(--neutral-200);
+    }
+
+    .batch-result-item {
+      padding: 6px 0;
+      border-bottom: 1px solid var(--neutral-200);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .batch-result-item:last-child {
+      border-bottom: none;
+    }
+
+    .batch-result-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .batch-result-text {
+      flex: 1;
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .batch-result-text.success {
+      color: var(--success);
+    }
+
+    .batch-result-text.error {
+      color: var(--danger);
+    }
+
+    .batch-summary {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--neutral-200);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--neutral-800);
+    }
+
   </style>
 </head>
 <body>
@@ -569,33 +705,81 @@
       </div>
 
       <div id="addPlacePanel" class="add-place-panel" aria-live="polite">
-        <div class="add-place-grid">
-          <div class="add-place-field">
-            <label for="addPlaceType">Input Type</label>
-            <select id="addPlaceType" class="add-place-select">
-              <option value="placeName">Place Name</option>
-              <option value="placeId">Google Place ID</option>
-              <option value="website">Website URL</option>
-              <option value="placeUrl">Google Place URL</option>
-            </select>
-          </div>
-          <div class="add-place-field">
-            <label for="addPlaceValue">Value</label>
-            <input id="addPlaceValue" class="add-place-input" type="text" placeholder="Enter one value to resolve the place" />
-          </div>
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+          <button class="mode-tab active" onclick="switchAddMode('single')">
+            <span style="margin-right: 4px;">➕</span>Single Place
+          </button>
+          <button class="mode-tab" onclick="switchAddMode('batch')">
+            <span style="margin-right: 4px;">📦</span>Batch Add
+          </button>
         </div>
-        <div class="add-place-actions">
-          <button id="addPlaceCancelBtn" class="panel-btn" onclick="closeAddPlacePanel()">Cancel</button>
-          <button id="addPlaceSubmitBtn" class="panel-btn primary" onclick="submitAddPlaceFromPanel()">Add Place</button>
-        </div>
-        <div id="addPlaceStatus" class="add-place-status"></div>
 
-        <div id="recentPlacesSection" class="recent-places">
-          <div class="recent-header">
-            <span>Recently Added</span>
-            <button class="recent-clear-btn" onclick="clearRecentPlaces()">Clear</button>
+        <!-- Single Mode -->
+        <div id="singleMode" class="mode-content visible">
+          <div class="add-place-grid">
+            <div class="add-place-field">
+              <label for="addPlaceType">Input Type</label>
+              <select id="addPlaceType" class="add-place-select">
+                <option value="placeName">Place Name</option>
+                <option value="placeId">Google Place ID</option>
+                <option value="website">Website URL</option>
+                <option value="placeUrl">Google Place URL</option>
+              </select>
+            </div>
+            <div class="add-place-field">
+              <label for="addPlaceValue">Value</label>
+              <input id="addPlaceValue" class="add-place-input" type="text" placeholder="Enter one value to resolve the place" />
+            </div>
           </div>
-          <div id="recentPlacesList" class="recent-list"></div>
+          <div class="add-place-actions">
+            <button id="addPlaceCancelBtn" class="panel-btn" onclick="closeAddPlacePanel()">Cancel</button>
+            <button id="addPlaceSubmitBtn" class="panel-btn primary" onclick="submitAddPlaceFromPanel()">Add Place</button>
+          </div>
+          <div id="addPlaceStatus" class="add-place-status"></div>
+
+          <div id="recentPlacesSection" class="recent-places">
+            <div class="recent-header">
+              <span>Recently Added</span>
+              <button class="recent-clear-btn" onclick="clearRecentPlaces()">Clear</button>
+            </div>
+            <div id="recentPlacesList" class="recent-list"></div>
+          </div>
+        </div>
+
+        <!-- Batch Mode -->
+        <div id="batchMode" class="mode-content">
+          <div class="add-place-grid">
+            <div class="add-place-field">
+              <label for="batchPlaceType">Input Type (applies to all)</label>
+              <select id="batchPlaceType" class="add-place-select">
+                <option value="placeName">Place Name</option>
+                <option value="placeId">Google Place ID</option>
+                <option value="website">Website URL</option>
+                <option value="placeUrl">Google Place URL</option>
+              </select>
+            </div>
+            <div class="add-place-field">
+              <label for="batchPlaceValues">Values (one per line or comma-separated)</label>
+              <textarea id="batchPlaceValues" class="batch-textarea" placeholder="Example&#10;Restaurant A&#10;Restaurant B&#10;Restaurant C"></textarea>
+              <div class="batch-hint">💡 Enter multiple places separated by new lines or commas. Each will be processed sequentially.</div>
+            </div>
+          </div>
+
+          <div class="add-place-actions">
+            <button id="batchPlaceCancelBtn" class="panel-btn" onclick="closeAddPlacePanel()">Cancel</button>
+            <button id="batchPlaceSubmitBtn" class="panel-btn primary" onclick="submitBatchAddPlaces()">Add All Places</button>
+          </div>
+
+          <div id="batchProgress" class="batch-progress">
+            <div class="batch-progress-bar">
+              <div id="batchProgressFill" class="batch-progress-fill" style="width: 0%;">0/0</div>
+            </div>
+            <div id="batchResults" class="batch-results"></div>
+            <div id="batchSummary" class="batch-summary"></div>
+          </div>
+
+          <div id="batchStatus" class="add-place-status"></div>
         </div>
       </div>
 
@@ -795,6 +979,42 @@
       statusEl.textContent = message || '';
     }
 
+    function setBatchStatus(message, type) {
+      const statusEl = document.getElementById('batchStatus');
+      if (!statusEl) return;
+      statusEl.className = `add-place-status ${type || 'info'}`;
+      statusEl.textContent = message || '';
+    }
+
+    function switchAddMode(mode) {
+      // Update tab active state
+      const tabs = document.querySelectorAll('.mode-tab');
+      tabs.forEach(tab => tab.classList.remove('active'));
+      event.target.closest('.mode-tab').classList.add('active');
+
+      // Show/hide content
+      const singleMode = document.getElementById('singleMode');
+      const batchMode = document.getElementById('batchMode');
+
+      if (mode === 'single') {
+        singleMode.classList.add('visible');
+        batchMode.classList.remove('visible');
+        const input = document.getElementById('addPlaceValue');
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      } else if (mode === 'batch') {
+        singleMode.classList.remove('visible');
+        batchMode.classList.add('visible');
+        const textarea = document.getElementById('batchPlaceValues');
+        if (textarea) {
+          textarea.focus();
+          textarea.select();
+        }
+      }
+    }
+
     function openAddPlacePanel() {
       const panel = document.getElementById('addPlacePanel');
       const input = document.getElementById('addPlaceValue');
@@ -812,13 +1032,23 @@
     function closeAddPlacePanel() {
       const panel = document.getElementById('addPlacePanel');
       const input = document.getElementById('addPlaceValue');
+      const textarea = document.getElementById('batchPlaceValues');
       const statusEl = document.getElementById('addPlaceStatus');
+      const batchStatusEl = document.getElementById('batchStatus');
+      const progressEl = document.getElementById('batchProgress');
+
       if (panel) panel.classList.remove('visible');
       if (input) input.value = '';
+      if (textarea) textarea.value = '';
       if (statusEl) {
         statusEl.className = 'add-place-status';
         statusEl.textContent = '';
       }
+      if (batchStatusEl) {
+        batchStatusEl.className = 'add-place-status';
+        batchStatusEl.textContent = '';
+      }
+      if (progressEl) progressEl.classList.remove('visible');
     }
 
     function requireMainFunction(name) {
@@ -909,6 +1139,209 @@
         }
       }
     }
+
+    async function submitBatchAddPlaces() {
+      if (!checkConnection()) return;
+
+      const submitBtn = document.getElementById('batchPlaceSubmitBtn');
+      const typeEl = document.getElementById('batchPlaceType');
+      const textareaEl = document.getElementById('batchPlaceValues');
+      const inputType = typeEl ? typeEl.value : 'placeName';
+      const inputText = textareaEl ? textareaEl.value.trim() : '';
+
+      if (!inputText) {
+        setBatchStatus('Please enter at least one value.', 'error');
+        return;
+      }
+
+      // Parse input - support both comma-separated and newline-separated
+      const values = inputText
+        .split(/[\n,]+/)
+        .map(v => v.trim())
+        .filter(v => v.length > 0);
+
+      if (values.length === 0) {
+        setBatchStatus('No valid values found to process.', 'error');
+        return;
+      }
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Processing...';
+        }
+
+        // Check if main window is authenticated
+        const authState = await ensureMainAuthReady();
+        if (!authState.isAuthenticated) {
+          throw new Error('Please sign in first. Click "Sign In" in the main Adventure Finder window.');
+        }
+
+        // Show progress UI
+        const progressEl = document.getElementById('batchProgress');
+        const resultsEl = document.getElementById('batchResults');
+        const summaryEl = document.getElementById('batchSummary');
+        if (progressEl) progressEl.classList.add('visible');
+
+        setBatchStatus(`Processing ${values.length} place(s)...`, 'info');
+        setStatus(`<span class="spinner"></span>Batch adding ${values.length} place(s)...`, 'info');
+
+        // Get required functions
+        const resolvePlaceIdFromInput = requireMainFunction('resolvePlaceIdFromInput');
+        const getPlaceDetails = requireMainFunction('getPlaceDetails');
+        const buildExcelRow = requireMainFunction('buildExcelRow');
+        const placeExistsInData = requireMainFunction('placeExistsInData');
+        const addRowToExcel = requireMainFunction('addRowToExcel');
+        const loadTable = requireMainFunction('loadTable');
+
+        const results = [];
+        let successCount = 0;
+        let failureCount = 0;
+        const skippedPlaces = [];
+
+        for (let i = 0; i < values.length; i++) {
+          const inputValue = values[i];
+          const progress = i + 1;
+          const progressPercent = Math.round((progress / values.length) * 100);
+
+          // Update progress bar
+          const fillEl = document.getElementById('batchProgressFill');
+          if (fillEl) {
+            fillEl.style.width = progressPercent + '%';
+            fillEl.textContent = `${progress}/${values.length}`;
+          }
+
+          try {
+            // Resolve Place ID
+            const placeId = await resolvePlaceIdFromInput(inputType, inputValue);
+
+            // Get place details
+            const details = await getPlaceDetails(placeId);
+
+            // Build Excel row
+            const row = buildExcelRow(placeId, details);
+            const placeName = row[0] || 'Unknown Place';
+
+            // Check if place already exists
+            if (placeExistsInData(row)) {
+              skippedPlaces.push(inputValue);
+              results.push({
+                status: 'skipped',
+                name: placeName,
+                input: inputValue,
+                reason: 'Already exists in table'
+              });
+              failureCount++;
+            } else {
+              if (!isDryRun) {
+                await addRowToExcel(row);
+              }
+
+              results.push({
+                status: isDryRun ? 'preview' : 'success',
+                name: placeName,
+                input: inputValue,
+                placeId: placeId
+              });
+              successCount++;
+
+              addRecentPlace({
+                name: placeName,
+                placeId: placeId || '',
+                inputType,
+                inputValue,
+                dryRun: !!isDryRun,
+                when: new Date().toLocaleTimeString()
+              });
+            }
+          } catch (err) {
+            results.push({
+              status: 'error',
+              input: inputValue,
+              error: err.message
+            });
+            failureCount++;
+          }
+
+          // Render results incrementally
+          renderBatchResults(results);
+        }
+
+        // Final refresh
+        if (!isDryRun) {
+          await loadTable();
+        }
+
+        // Display final summary
+        let summaryText = `✅ Completed: ${successCount} added`;
+        if (failureCount > 0) summaryText += `, ⚠️ ${failureCount} failed`;
+        if (isDryRun) summaryText += ' (dry run - not written)';
+
+        if (summaryEl) {
+          summaryEl.textContent = summaryText;
+        }
+
+        setBatchStatus(summaryText, successCount > failureCount ? 'success' : 'error');
+        setStatus(summaryText, successCount > failureCount ? 'success' : 'error');
+
+        if (typeof mainWindow.showToast === 'function') {
+          mainWindow.showToast(`Added ${successCount} place(s) to Excel`, successCount > 0 ? 'success' : 'error', 3000);
+        }
+      } catch (err) {
+        setBatchStatus(`Batch add failed: ${err.message}`, 'error');
+        setStatus(`❌ Batch add error: ${err.message}`, 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Add All Places';
+        }
+      }
+    }
+
+    function renderBatchResults(results) {
+      const resultsEl = document.getElementById('batchResults');
+      if (!resultsEl) return;
+
+      resultsEl.innerHTML = results.map((result, idx) => {
+        let icon = '❓';
+        let statusClass = '';
+
+        if (result.status === 'success') {
+          icon = '✅';
+          statusClass = 'success';
+        } else if (result.status === 'preview') {
+          icon = '👁️';
+          statusClass = 'success';
+        } else if (result.status === 'error') {
+          icon = '❌';
+          statusClass = 'error';
+        } else if (result.status === 'skipped') {
+          icon = '⏭️';
+          statusClass = 'error';
+        }
+
+        let text = '';
+        if (result.status === 'error') {
+          text = `<strong>${result.input}</strong>: ${result.error}`;
+        } else if (result.status === 'skipped') {
+          text = `<strong>${result.input}</strong>: ${result.reason}`;
+        } else if (result.status === 'preview') {
+          text = `<strong>${result.name}</strong> (preview only)`;
+        } else {
+          text = `<strong>${result.name}</strong>`;
+          if (result.placeId) text += ` <code style="font-size: 10px; color: #666;">(${result.placeId})</code>`;
+        }
+
+        return `
+          <div class="batch-result-item">
+            <span class="batch-result-icon">${icon}</span>
+            <span class="batch-result-text ${statusClass}">${text}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ...existing code...
 
     // Recent Places functions
     let recentPlaces = [];
