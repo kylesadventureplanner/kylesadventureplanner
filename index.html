@@ -4927,7 +4927,7 @@
   <!--suppress HtmlUnknownTarget -->
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
-  
+
   <!-- Tag Management System (v7.0.112+) -->
   <script src="tag-manager.js"></script>
   <script src="tag-ui-manager.js"></script>
@@ -8657,7 +8657,7 @@
             ` : ''}
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <button class="tag-manager-btn" onclick="tagUIManager.openModal('${googlePlaceId}', ${JSON.stringify(tagList)})" title="Manage tags for this place">
+            <button class="tag-manager-btn" onclick="tagUIManager.openModal('${googlePlaceId}')" title="Manage tags for this place">
               🏷️
             </button>
             <button class="card-favorite" onclick="toggleCardFavorite(${index})" title="Add to favorites">
@@ -8988,7 +8988,7 @@
               <span class="rating-star ${currentRating >= 4 ? 'filled' : ''}" data-rating="4" title="4 stars">⭐</span>
               <span class="rating-star ${currentRating >= 5 ? 'filled' : ''}" data-rating="5" title="5 stars">⭐</span>
             </div>
-            <button class="tag-manager-btn" onclick="tagUIManager.openModal('${googlePlaceId}', ${JSON.stringify(tagList)})" title="Manage tags for this place">
+            <button class="tag-manager-btn" onclick="tagUIManager.openModal('${googlePlaceId}')" title="Manage tags for this place">
               🏷️
             </button>
             <button class="card-favorite card-favorite-btn" data-index="${actualIndex}" title="Add to favorites. Click to toggle." data-tooltip="Add to favorites. Click to toggle.">
