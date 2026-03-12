@@ -14284,7 +14284,7 @@ COMMON ISSUES:
   function buildExcelRow(placeId, details) {
     // Determine actual column count from existing Excel table rows
     let actualColumnCount = 22; // Default to 22 as fallback
-    
+
     if (window.adventuresData && window.adventuresData.length > 0) {
       // Inspect first existing row to get the exact column count
       const firstRow = window.adventuresData[0];
@@ -14298,7 +14298,7 @@ COMMON ISSUES:
     } else {
       console.log(`⚠️ Data not loaded yet. Using default column count: ${actualColumnCount}`);
     }
-    
+
     // Create row with exact column count
     const row = new Array(actualColumnCount).fill("");
     const name = strVal(details && details.name);
@@ -14312,7 +14312,7 @@ COMMON ISSUES:
     // 9: State, 10: City, 11: Address, 12: Phone Number, 13: Google Rating,
     // 14: Cost, 15: Directions, 16: Description, 17: Nearby, 18: Links, 19: Links 2,
     // 20: Notes, 21: My Rating, 22: Favorite Status, 23: Google URL
-    
+
     if (actualColumnCount > 0) row[0] = name;
     if (actualColumnCount > 1) row[1] = strVal(placeId);
     if (actualColumnCount > 2) row[2] = strVal(details && details.website);
@@ -14327,6 +14327,10 @@ COMMON ISSUES:
     if (actualColumnCount > 23) row[23] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
 
     console.log(`📤 buildExcelRow: Creating row with ${actualColumnCount} columns. Populated: ${row.filter(v => v !== "").length} fields`);
+    
+    // Store metadata for retry logic (if row needs to be trimmed)
+    row._columnCount = actualColumnCount;
+    
     return row;
   }
 
@@ -14370,7 +14374,30 @@ COMMON ISSUES:
         }
       }
 
+      // If InvalidArgument error (column mismatch), try trimming trailing empty columns
       const text = await res.text().catch(function () { return ""; });
+      if (res.status === 400 && text.includes("InvalidArgument") && retryCount < 3) {
+        // Attempt to trim trailing empty columns
+        const originalLen = rowValues.length;
+        let trimmedRow = rowValues.slice(); // Clone array
+        
+        // Find last non-empty column
+        let lastFilledIndex = -1;
+        for (let i = trimmedRow.length - 1; i >= 0; i--) {
+          if (trimmedRow[i] !== "" && trimmedRow[i] !== null && trimmedRow[i] !== undefined) {
+            lastFilledIndex = i;
+            break;
+          }
+        }
+        
+        // Trim to last non-empty column + 1 buffer
+        if (lastFilledIndex >= 0 && lastFilledIndex < trimmedRow.length - 1) {
+          trimmedRow = trimmedRow.slice(0, lastFilledIndex + 2);
+          console.log(`🔧 Retrying with trimmed row: ${originalLen} → ${trimmedRow.length} columns (retry #${retryCount + 1})`);
+          return await addRowToExcel(trimmedRow, retryCount + 1);
+        }
+      }
+
       throw new Error("Excel add row failed (" + res.status + ")" + (text ? (": " + text) : ""));
     }
 
