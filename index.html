@@ -4930,7 +4930,25 @@
 
   <!-- Tag Management System (v7.0.112+) -->
   <script src="tag-manager.js"></script>
+  <script>
+    // Verify tag-manager.js loaded
+    if (typeof window.tagManager !== 'undefined') {
+      console.log('✅ tag-manager.js loaded successfully');
+    } else {
+      console.error('❌ tag-manager.js FAILED TO LOAD');
+    }
+  </script>
   <script src="tag-ui-manager.js"></script>
+  <script>
+    // Verify tag-ui-manager.js loaded
+    setTimeout(() => {
+      if (typeof window.tagUIManager !== 'undefined') {
+        console.log('✅ tag-ui-manager.js loaded successfully');
+      } else {
+        console.warn('⚠️ tag-ui-manager.js still loading or failed...');
+      }
+    }, 500);
+  </script>
 </head>
 <body>
 <!-- Toast Notifications Container -->
@@ -15996,24 +16014,31 @@ COMMON ISSUES:
     // Wrapper function to safely open tag manager, handles undefined case
     window.openTagManager = function(placeId) {
       if (typeof window.tagUIManager === 'undefined') {
-        console.error('❌ Tag Manager not loaded. Trying again...');
+        console.warn('⏳ Tag Manager still initializing, retrying in 1 second...');
         setTimeout(() => {
           if (typeof window.tagUIManager !== 'undefined') {
+            console.log('✅ Tag Manager now available, opening modal...');
             window.tagUIManager.openModal(placeId);
           } else {
-            console.error('❌ Tag Manager still not available. Please refresh the page.');
-            alert('Tag Manager is loading. Please try again in a moment.');
+            console.error('❌ Tag Manager failed to load after retry');
+            alert('Tag Manager is still loading. Please wait a moment and try again.');
           }
-        }, 500);
+        }, 1000);
         return;
       }
       window.tagUIManager.openModal(placeId);
     };
 
     // Verify tag manager loaded
-    setTimeout(() => {
+    let tagManagerCheckCount = 0;
+    const tagManagerCheckInterval = setInterval(() => {
+      tagManagerCheckCount++;
       if (typeof window.tagManager !== 'undefined' && typeof window.tagUIManager !== 'undefined') {
-        console.log('✅ Tag Management System (v7.0.112+) initialized successfully');
+        console.log('✅ Tag Management System (v7.0.112+) fully initialized');
+        clearInterval(tagManagerCheckInterval);
+      } else if (tagManagerCheckCount > 10) {
+        console.warn('⚠️ Tag Manager initialization taking longer than expected');
+        clearInterval(tagManagerCheckInterval);
       }
     }, 100);
 
