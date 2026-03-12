@@ -7442,9 +7442,17 @@
   }
 
   // ...existing code...
-    async function addRowToExcel(rowValues) {
+    async function addRowToExcel(rowValues, retryCount = 0) {
     let token = window.accessToken;
     if (!token) throw new Error("Please sign in first.");
+
+    // DIAGNOSTIC: Log what we're sending on first attempt
+    if (retryCount === 0) {
+      console.log(`📊 [EXCEL ADD] Attempt ${retryCount + 1}:`);
+      console.log(`   Row length: ${rowValues.length}`);
+      console.log(`   Row data: [${rowValues.map((v, i) => `${i}:"${v}"`).join(', ')}]`);
+      console.log(`   Filled cells: ${rowValues.filter(v => v !== "" && v !== null && v !== undefined).length}`);
+    }
 
     // Use the session-less rows endpoint that's more reliable across windows
     const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
@@ -7475,14 +7483,50 @@
 
     // Try initial request
     try {
-      return await makeRequest(token);
+      const result = await makeRequest(token);
+      console.log(`✅ [EXCEL ADD] Success! Row added (attempt ${retryCount + 1})`);
+      return result;
     } catch (err) {
-      // If 401 (unauthorized), try to refresh token and retry once
-      if (err.shouldRetry) {
+      const isInvalidArgument = err.error?.message?.includes("InvalidArgument") || err.error?.message?.includes("invalidArgument");
+      
+      console.error(`❌ [EXCEL ADD] Failed (${err.error?.status}). InvalidArgument: ${isInvalidArgument}, RetryCount: ${retryCount}`);
+      console.error(`   Response: ${(err.error?.message || "").substring(0, 200)}`);
+
+      // If InvalidArgument error (column mismatch), try trimming trailing empty columns
+      if (err.error?.status === 400 && isInvalidArgument && retryCount < 3) {
+        const originalLen = rowValues.length;
+        let trimmedRow = rowValues.slice(); // Clone array
+
+        // Find last non-empty column
+        let lastFilledIndex = -1;
+        for (let i = trimmedRow.length - 1; i >= 0; i--) {
+          if (trimmedRow[i] !== "" && trimmedRow[i] !== null && trimmedRow[i] !== undefined) {
+            lastFilledIndex = i;
+            break;
+          }
+        }
+
+        // Trim to last non-empty column + 1 buffer
+        if (lastFilledIndex >= 0 && lastFilledIndex < trimmedRow.length - 1) {
+          trimmedRow = trimmedRow.slice(0, lastFilledIndex + 2);
+          console.log(`🔧 [RETRY] Attempt ${retryCount + 1}: Trimming row ${originalLen} → ${trimmedRow.length} columns`);
+          return await addRowToExcel(trimmedRow, retryCount + 1);
+        } else if (lastFilledIndex >= 0 && trimmedRow.length > 15) {
+          // Even if no trailing empties, try cutting more aggressively
+          const cutTo = Math.max(15, lastFilledIndex + 1);
+          trimmedRow = trimmedRow.slice(0, cutTo);
+          console.log(`🔧 [RETRY] Attempt ${retryCount + 1}: Aggressively cutting to ${cutTo} columns (was ${originalLen})`);
+          return await addRowToExcel(trimmedRow, retryCount + 1);
+        }
+      }
+
+      // If 401 (unauthorized), try to refresh token and retry once (only on first attempt)
+      if (err.shouldRetry && retryCount === 0) {
         try {
+          console.log("🔄 Token expired (401), attempting refresh...");
           const refreshed = await window.rehydrateAuthState?.();
           if (refreshed && window.accessToken) {
-            return await makeRequest(window.accessToken);
+            return await addRowToExcel(rowValues, retryCount + 1);
           }
         } catch (_refreshErr) {
           // Refresh failed, fall through to error below
@@ -7495,215 +7539,17 @@
     }
     }
 
-    async function addRowToExcelFallback(rowValues) {
-    let token = accessToken || window.accessToken;
-    if (!token) throw new Error("Please sign in first.");
-
-    const workbookBase = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook`;
-    const failures = [];
-    let tokenRefreshAttempted = false;
-
-    function trimBody(body) {
-      const text = strVal(body);
-      return text.length > 320 ? text.slice(0, 320) + "..." : text;
-    }
-
-    async function tryPost(url, label) {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ values: [rowValues] })
+    function placeExistsInData(newRow) {
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      const targetPlaceId = strVal(newRow[1]);
+      if (!targetPlaceId) return false;
+      return rows.some(function (row) {
+        const vals = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
+        return strVal(vals[1]) === targetPlaceId;
       });
-
-      // Handle 401 with token refresh (only once)
-      if (res.status === 401 && !tokenRefreshAttempted) {
-        tokenRefreshAttempted = true;
-        try {
-          const refreshed = await window.rehydrateAuthState?.();
-          if (refreshed && (accessToken || window.accessToken)) {
-            token = accessToken || window.accessToken;
-            // Retry this request with refreshed token
-            const retryRes = await fetch(url, {
-              method: "POST",
-              headers: {
-                Authorization: "Bearer " + token,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({ values: [rowValues] })
-            });
-
-            if (retryRes.ok) {
-              return await retryRes.json().catch(function () { return {}; });
-            }
-
-            const retryBody = await retryRes.text().catch(function () { return ""; });
-            failures.push({
-              label: label + "-retry",
-              url: url,
-              status: retryRes.status,
-              body: trimBody(retryBody)
-            });
-            return null;
-          }
-        } catch (_refreshErr) {
-          // Token refresh failed, fall through to normal error handling
-        }
-      }
-
-      if (res.ok) {
-        return await res.json().catch(function () { return {}; });
-      }
-
-      const body = await res.text().catch(function () { return ""; });
-      failures.push({
-        label: label,
-        url: url,
-        status: res.status,
-        body: trimBody(body)
-      });
-      return null;
     }
 
-    let tableCandidates = [];
-
-    const tablesUrl = `${workbookBase}/tables?$top=200`;
-    const tablesRes = await fetch(tablesUrl, {
-      headers: { Authorization: "Bearer " + token }
-    });
-
-    if (tablesRes.ok) {
-      const tablesJson = await tablesRes.json().catch(function () { return {}; });
-      const tableList = Array.isArray(tablesJson.value) ? tablesJson.value : [];
-      const exact = tableList.find(function (t) { return strVal(t && t.name) === strVal(tableName); });
-      const ci = tableList.find(function (t) {
-        return strVal(t && t.name).toLowerCase() === strVal(tableName).toLowerCase();
-      });
-
-      if (exact || ci) {
-        const t = exact || ci;
-        tableCandidates.push({
-          name: strVal(t && t.name),
-          id: strVal(t && t.id)
-        });
-      }
-
-      if (!tableCandidates.length && tableList.length) {
-        const first = tableList[0];
-        tableCandidates.push({
-          name: strVal(first && first.name),
-          id: strVal(first && first.id)
-        });
-      }
-    } else {
-      // Handle 401 on table lookup too
-      if (tablesRes.status === 401 && !tokenRefreshAttempted) {
-        tokenRefreshAttempted = true;
-        try {
-          const refreshed = await window.rehydrateAuthState?.();
-          if (refreshed && (accessToken || window.accessToken)) {
-            token = accessToken || window.accessToken;
-            // Retry table lookup
-            const retryTablesRes = await fetch(tablesUrl, {
-              headers: { Authorization: "Bearer " + token }
-            });
-
-            if (retryTablesRes.ok) {
-              const tablesJson = await retryTablesRes.json().catch(function () { return {}; });
-              const tableList = Array.isArray(tablesJson.value) ? tablesJson.value : [];
-              const exact = tableList.find(function (t) { return strVal(t && t.name) === strVal(tableName); });
-              const ci = tableList.find(function (t) {
-                return strVal(t && t.name).toLowerCase() === strVal(tableName).toLowerCase();
-              });
-
-              if (exact || ci) {
-                const t = exact || ci;
-                tableCandidates.push({
-                  name: strVal(t && t.name),
-                  id: strVal(t && t.id)
-                });
-              }
-
-              if (!tableCandidates.length && tableList.length) {
-                const first = tableList[0];
-                tableCandidates.push({
-                  name: strVal(first && first.name),
-                  id: strVal(first && first.id)
-                });
-              }
-            } else {
-              const retryBody = await retryTablesRes.text().catch(function () { return ""; });
-              failures.push({
-                label: "table-lookup-retry",
-                url: tablesUrl,
-                status: retryTablesRes.status,
-                body: trimBody(retryBody)
-              });
-            }
-          }
-        } catch (_refreshErr) {
-          // Token refresh failed, fall through
-        }
-      }
-
-      if (!tableCandidates.length) {
-        const tableLookupBody = await tablesRes.text().catch(function () { return ""; });
-        failures.push({
-          label: "table-lookup",
-          url: tablesUrl,
-          status: tablesRes.status,
-          body: trimBody(tableLookupBody)
-        });
-      }
-    }
-
-    const attempts = [];
-    const seen = new Set();
-
-    function addAttempt(url, label) {
-      if (!url || seen.has(url)) return;
-      seen.add(url);
-      attempts.push({ url: url, label: label });
-    }
-
-    const candidate = tableCandidates[0] || { name: strVal(tableName), id: "" };
-
-    addAttempt(
-      `${workbookBase}/tables/${encodeURIComponent(candidate.name || strVal(tableName))}/rows`,
-      `rows-by-name:${candidate.name || strVal(tableName)}`
-    );
-
-    if (candidate.id) {
-      addAttempt(
-        `${workbookBase}/tables/${encodeURIComponent(candidate.id)}/rows`,
-        `rows-by-id:${candidate.id}`
-      );
-    }
-
-    addAttempt(
-      `${workbookBase}/tables/${encodeURIComponent(strVal(tableName))}/rows`,
-      `rows-by-config-name:${strVal(tableName)}`
-    );
-
-    for (let i = 0; i < attempts.length; i++) {
-      const result = await tryPost(attempts[i].url, attempts[i].label);
-      if (result) return result;
-    }
-
-    const details = failures.map(function (f) {
-      return `[${f.label}] ${f.status} ${f.url}` + (f.body ? ` :: ${f.body}` : "");
-    }).join(" | ");
-
-    throw new Error(
-      `Excel add row failed (404/itemNotFound fallback exhausted). filePath="${filePath}", tableName="${tableName}". Attempts: ${details || "none"}`
-    );
-    }
-
-    // Canonical override for all callers (including popup flow)
-    window.addRowToExcel = addRowToExcelFallback;
-  // ...existing code...
+    // ...existing code...
   // ============================================================
   // CANONICAL AUTOMATION BUTTON + BACKDROP HOTFIX
   // ============================================================
@@ -14385,10 +14231,10 @@ COMMON ISSUES:
       // If InvalidArgument error (column mismatch), try trimming trailing empty columns
       const text = await res.text().catch(function () { return ""; });
       const isInvalidArgument = text.includes("InvalidArgument") || text.includes("invalidArgument");
-      
+
       console.error(`❌ [EXCEL ADD] Failed (${res.status}). InvalidArgument: ${isInvalidArgument}, RetryCount: ${retryCount}`);
       console.error(`   Response: ${text.substring(0, 200)}`);
-      
+
       if (res.status === 400 && isInvalidArgument && retryCount < 3) {
         // Attempt to trim trailing empty columns
         const originalLen = rowValues.length;
