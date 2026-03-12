@@ -25,6 +25,20 @@ class TagUIManager {
   }
 
   /**
+   * Escape HTML special characters to prevent XSS
+   */
+  escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+  }
+
+  /**
    * Create CSS for tag UI components
    */
   createStyles() {
@@ -763,10 +777,18 @@ class TagUIManager {
     } else {
       tagList.innerHTML = tags.map(tag => `
         <span class="tag-pill">
-          ${tag}
-          <button class="tag-pill-remove" onclick="tagUIManager.removeTag('${tag}')">×</button>
+          ${this.escapeHtml(tag)}
+          <button class="tag-pill-remove" data-tag="${this.escapeHtml(tag)}">×</button>
         </span>
       `).join('');
+
+      // Attach event listeners to remove buttons
+      tagList.querySelectorAll('.tag-pill-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const tag = e.target.dataset.tag;
+          this.removeTag(tag);
+        });
+      });
     }
   }
 
@@ -792,10 +814,18 @@ class TagUIManager {
     }
 
     suggestionsDiv.innerHTML = matching.map(tag => `
-      <div class="tag-suggestion" onclick="tagUIManager.selectSuggestion('${tag}')">
-        ${tag}
+      <div class="tag-suggestion" data-tag="${this.escapeHtml(tag)}">
+        ${this.escapeHtml(tag)}
       </div>
     `).join('');
+
+    // Attach event listeners to suggestion items
+    suggestionsDiv.querySelectorAll('.tag-suggestion').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const tag = e.target.dataset.tag;
+        this.selectSuggestion(tag);
+      });
+    });
 
     suggestionsDiv.classList.add('visible');
   }
@@ -858,13 +888,28 @@ class TagUIManager {
       recListFull.innerHTML = '<span class="tag-recommended-empty">All recommendations already added</span>';
     } else {
       const html = availableRecs.map(tag => `
-        <span class="tag-recommended-pill" onclick="tagUIManager.addRecommendedTag('${tag}')">
-          + ${tag}
+        <span class="tag-recommended-pill" data-tag="${this.escapeHtml(tag)}">
+          + ${this.escapeHtml(tag)}
         </span>
       `).join('');
 
       recList.innerHTML = html;
       recListFull.innerHTML = html;
+
+      // Attach event listeners to recommended pills
+      recList.querySelectorAll('.tag-recommended-pill').forEach(pill => {
+        pill.addEventListener('click', (e) => {
+          const tag = e.target.closest('.tag-recommended-pill').dataset.tag;
+          this.addRecommendedTag(tag);
+        });
+      });
+
+      recListFull.querySelectorAll('.tag-recommended-pill').forEach(pill => {
+        pill.addEventListener('click', (e) => {
+          const tag = e.target.closest('.tag-recommended-pill').dataset.tag;
+          this.addRecommendedTag(tag);
+        });
+      });
     }
   }
 
