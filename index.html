@@ -4962,6 +4962,23 @@
       }
     }, 500);
   </script>
+
+  <!-- Tag Management Systems -->
+  <script src="tag-manager.js"></script>
+  <script src="tag-ui-manager.js"></script>
+  <script src="tag-config.js"></script>
+  <script src="tag-hierarchy.js"></script>
+  <script src="tag-hierarchy-ui.js"></script>
+
+  <!-- Automation Systems -->
+  <script src="tag-automation-system.js"></script>
+  <script src="location-history-manager.js"></script>
+
+  <!-- Visualization -->
+  <script src="city-visualizer.js"></script>
+
+  <!-- Backup Manager System -->
+  <script src="backup-manager.js"></script>
 </head>
 <body>
 <!-- Toast Notifications Container -->
@@ -5063,9 +5080,14 @@
     <div class="app-tab-pane active" data-tab="adventure-planner" id="adventurePlannerTab">
       <header>
         <h1>Adventure Planner</h1>
-        <button id="iphoneToggleBtn" class="iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
-          📱 iPhone View
-        </button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button id="backupAppBtn" class="iphone-toggle-btn" title="Backup all app files with timestamp" data-tooltip="Backup all app files with timestamp" onclick="backupManager.showBackupModal()">
+            💾 Backup App
+          </button>
+          <button id="iphoneToggleBtn" class="iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
+            📱 iPhone View
+          </button>
+        </div>
       </header>
 
       <div class="status-bar">
@@ -5083,7 +5105,13 @@
           <div class="card-title">
             🎛️ Control Panel
           </div>
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="autoTagBtn" class="find-near-me-btn" title="Auto-generate tag recommendations for all locations" onclick="automationSystem.showSummaryModal(automationSystem.analyzeAllLocations(window.adventuresData))">
+              🏷️ Auto-Tag All
+            </button>
+            <button id="locationHistoryBtn" class="find-near-me-btn" title="View and sort locations by when they were added" onclick="locationHistoryManager.createLocationListUI('locationHistoryContainer'); document.getElementById('locationHistoryModal').style.display='block';">
+              📅 Location History
+            </button>
             <button id="findNearMeBtn" class="find-near-me-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location">
               📍 Find Near Me
             </button>
