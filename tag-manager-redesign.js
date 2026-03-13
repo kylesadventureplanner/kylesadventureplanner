@@ -62,13 +62,19 @@ window.fixTagManagerDesign = function() {
       width: 90% !important;
       max-height: 80vh !important;
       overflow: hidden !important;
-      display: flex !important;
+      display: none !important;
       flex-direction: column !important;
       animation: slideUp 0.3s ease-out !important;
       margin: 0 !important;
       padding: 0 !important;
       border: none !important;
       box-sizing: border-box !important;
+      pointer-events: none !important;
+    }
+
+    #tagManagerModal.visible {
+      display: flex !important;
+      pointer-events: auto !important;
     }
 
     /* Remove all weird circular backgrounds */
@@ -535,9 +541,46 @@ function addTagFromSuggestion(tag) {
 
 // Apply fix when page loads
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', fixTagManagerDesign);
+  document.addEventListener('DOMContentLoaded', function() {
+    // Apply styles
+    fixTagManagerDesign();
+
+    // Make absolutely sure backdrop and modal are hidden
+    setTimeout(() => {
+      const backdrop = document.getElementById('tagManagerBackdrop');
+      const modal = document.getElementById('tagManagerModal');
+
+      if (backdrop) {
+        backdrop.classList.remove('visible');
+        backdrop.style.display = 'none !important';
+        backdrop.style.pointerEvents = 'none !important';
+      }
+
+      if (modal) {
+        modal.classList.remove('visible');
+        modal.style.display = 'none !important';
+      }
+    }, 200);
+  });
 } else {
   fixTagManagerDesign();
+
+  // Make absolutely sure backdrop and modal are hidden
+  setTimeout(() => {
+    const backdrop = document.getElementById('tagManagerBackdrop');
+    const modal = document.getElementById('tagManagerModal');
+
+    if (backdrop) {
+      backdrop.classList.remove('visible');
+      backdrop.style.display = 'none !important';
+      backdrop.style.pointerEvents = 'none !important';
+    }
+
+    if (modal) {
+      modal.classList.remove('visible');
+      modal.style.display = 'none !important';
+    }
+  }, 200);
 }
 
 // Also apply when tag manager is opened
