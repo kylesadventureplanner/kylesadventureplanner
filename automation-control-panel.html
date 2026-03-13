@@ -685,13 +685,22 @@
           <span class="btn-shortcut">Alt+S</span>
         </button>
 
-        <button class="automation-btn" id="btnRefreshPlaceIds" onclick="handleAutomation('refreshPlaceIds', this)">
+        <button class="automation-btn" id="btnRefreshPlaceIds" onclick="window.handleRefreshPlaceIds ? window.handleRefreshPlaceIds() : handleAutomation('refreshPlaceIds', this)">
           <span class="btn-icon">🔄</span>
           <div class="btn-content">
             <div class="btn-title">Refresh Place IDs</div>
             <div class="btn-desc">Refresh cached Place IDs from Google</div>
           </div>
           <span class="btn-shortcut">Alt+R</span>
+        </button>
+
+        <button class="automation-btn" id="btnBulkAddChain" onclick="window.handleBulkAddChainLocations ? window.handleBulkAddChainLocations() : alert('System loading...')">
+          <span class="btn-icon">🏪📦</span>
+          <div class="btn-content">
+            <div class="btn-title">Bulk Add Chain Locations</div>
+            <div class="btn-desc">Add multiple chain locations via Place ID</div>
+          </div>
+          <span class="btn-shortcut">Alt+B</span>
         </button>
 
         <button class="automation-btn" id="btnAddPlace" onclick="handleAddPlace()">
