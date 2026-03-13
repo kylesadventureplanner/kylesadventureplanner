@@ -568,8 +568,92 @@ class LocationHistoryManager {
     };
     return String(text).replace(/[&<>"']/g, m => map[m]);
   }
+
+  /**
+   * Open location history modal
+   */
+  openModal() {
+    const backdrop = document.createElement('div');
+    backdrop.id = 'locationHistoryBackdrop';
+    backdrop.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    const modal = document.createElement('div');
+    modal.id = 'locationHistoryModal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      max-width: 700px;
+      width: 90%;
+      max-height: 80vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s ease-out;
+    `;
+
+    modal.innerHTML = `
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0;">
+        <h2 style="font-size: 18px; font-weight: 700; margin: 0;">📅 Location History</h2>
+        <button onclick="this.closest('#locationHistoryBackdrop').remove()" style="background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 0; width: 36px; height: 36px;">✕</button>
+      </div>
+      <div style="padding: 24px; overflow-y: auto; flex: 1;" id="locationHistoryContent">
+        <p style="text-align: center; color: #9ca3af;">Loading location history...</p>
+      </div>
+      <style>
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translate(-50%, -40%);
+          }
+          to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+          }
+        }
+      </style>
+    `;
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    // Close on backdrop click
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) {
+        backdrop.remove();
+      }
+    };
+
+    // Populate content
+    this.createLocationListUI('locationHistoryContent');
+  }
 }
 
 // Create global instance
 window.locationHistoryManager = new LocationHistoryManager();
+
+/**
+ * Global function to open location history modal
+ */
+window.openLocationHistoryModal = function() {
+  if (window.locationHistoryManager) {
+    window.locationHistoryManager.openModal();
+  }
+};
 

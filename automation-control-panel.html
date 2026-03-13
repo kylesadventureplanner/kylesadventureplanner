@@ -1953,6 +1953,52 @@
       }
     }
 
+    // Handle Auto-Tag All Locations
+    window.handleAutoTagAll = function() {
+      try {
+        // Get adventure data from main window
+        let adventuresData = window.adventuresData;
+        if (!adventuresData && mainWindow && mainWindow.adventuresData) {
+          adventuresData = mainWindow.adventuresData;
+        }
+
+        if (!adventuresData) {
+          setStatus('⚠️ No adventure data loaded yet. Please refresh the main window.', 'error');
+          return;
+        }
+
+        // Make sure automation system exists
+        if (!mainWindow.automationSystem) {
+          setStatus('⚠️ Auto-tag system not found in main window.', 'error');
+          return;
+        }
+
+        setStatus('🔄 Analyzing locations...', 'info');
+
+        // Analyze all locations
+        const analysis = mainWindow.automationSystem.analyzeAllLocations(adventuresData);
+
+        // Check if there are recommendations
+        if (analysis.recommendedTags.size === 0) {
+          setStatus('✅ All locations already have optimal tags!', 'success');
+          alert('Great! All locations already have the best tags. No new recommendations.');
+          return;
+        }
+
+        // Show summary modal
+        mainWindow.automationSystem.showSummaryModal(analysis);
+
+        // Update status
+        const totalTags = Array.from(analysis.recommendedTags.values())
+          .reduce((sum, loc) => sum + loc.recommended.length, 0);
+        setStatus(`✓ Found ${analysis.recommendedTags.size} locations to update with ${totalTags} recommended tags`, 'success');
+
+      } catch (err) {
+        console.error('Error in handleAutoTagAll:', err);
+        setStatus(`❌ Error: ${err.message}`, 'error');
+      }
+    };
+
     document.addEventListener('keydown', function(e) {
       if (!e.altKey) return;
 
@@ -1963,7 +2009,8 @@
         'S': 'btnSearchPlaceIds',
         'R': 'btnRefreshPlaceIds',
         'N': 'btnAddPlace',
-        'C': 'btnAddChainLocation'
+        'C': 'btnAddChainLocation',
+        'T': 'btnAutoTagAll'
       };
 
       const buttonId = shortcuts[e.key.toUpperCase()];
