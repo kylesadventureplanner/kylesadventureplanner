@@ -4949,6 +4949,19 @@
       }
     }, 500);
   </script>
+
+  <!-- City Visualizer System (v7.0.116+) -->
+  <script src="city-visualizer.js"></script>
+  <script>
+    // Verify city-visualizer.js loaded
+    setTimeout(() => {
+      if (typeof window.CityVisualizer !== 'undefined') {
+        console.log('✅ city-visualizer.js loaded successfully');
+      } else {
+        console.warn('⚠️ city-visualizer.js still loading or failed...');
+      }
+    }, 500);
+  </script>
 </head>
 <body>
 <!-- Toast Notifications Container -->
@@ -7564,10 +7577,28 @@
     function placeExistsInData(newRow) {
       const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
       const targetPlaceId = strVal(newRow[1]);
+      const targetAddress = strVal(newRow[11]); // Column 11 is address
+
       if (!targetPlaceId) return false;
+
+      // Allow multiple locations for chain stores with different addresses
+      // Only consider it a duplicate if BOTH Place ID AND address match
       return rows.some(function (row) {
         const vals = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
-        return strVal(vals[1]) === targetPlaceId;
+        const existingPlaceId = strVal(vals[1]);
+        const existingAddress = strVal(vals[11]);
+
+        // If Place IDs match AND addresses also match (or both empty), it's a true duplicate
+        if (existingPlaceId === targetPlaceId) {
+          // If we have both addresses, they must differ for it to NOT be a duplicate
+          if (targetAddress && existingAddress) {
+            return existingAddress === targetAddress;
+          }
+          // If either address is empty, consider it a duplicate (same place, address unknown)
+          return !targetAddress || !existingAddress;
+        }
+
+        return false;
       });
     }
 
@@ -8818,6 +8849,28 @@
   }
 
   /**
+   * Get combined tags for a place (Excel tags + Tag Manager tags)
+   * Integrates the tag manager system with the existing Excel-based tags
+   * @param {string} googlePlaceId - The place's Google Place ID
+   * @param {string} excelTags - Tags from Excel (comma-separated)
+   * @returns {Array} Combined array of unique tags
+   */
+  function getTagsForPlace(googlePlaceId, excelTags) {
+    // Start with Excel tags
+    const excelTagList = excelTags ? excelTags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    // Get tags from tag manager if it exists
+    let managedTags = [];
+    if (window.tagManager && googlePlaceId && String(googlePlaceId).trim().length > 0) {
+      managedTags = window.tagManager.getTagsForPlace(googlePlaceId) || [];
+    }
+
+    // Combine and deduplicate
+    const allTags = [...new Set([...excelTagList, ...managedTags])];
+    return allTags;
+  }
+
+  /**
    * Render cards for current page
    */
   function renderPaginatedCards() {
@@ -8884,8 +8937,8 @@
       // Get state color
       const stateUpper = (state || "").trim().toUpperCase();
 
-      // Parse tags
-      const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+      // Parse tags - NOW INTEGRATED WITH TAG MANAGER
+      const tagList = getTagsForPlace(googlePlaceId, tags);
 
       // Check if has valid Place ID
       const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 &&
@@ -14229,10 +14282,28 @@ COMMON ISSUES:
   function placeExistsInData(newRow) {
     const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
     const targetPlaceId = strVal(newRow[1]);
+    const targetAddress = strVal(newRow[11]); // Column 11 is address
+
     if (!targetPlaceId) return false;
+
+    // Allow multiple locations for chain stores with different addresses
+    // Only consider it a duplicate if BOTH Place ID AND address match
     return rows.some(function (r) {
       const vals = (r && r.values && r.values[0]) || [];
-      return strVal(vals[1]) === targetPlaceId;
+      const existingPlaceId = strVal(vals[1]);
+      const existingAddress = strVal(vals[11]);
+
+      // If Place IDs match AND addresses also match (or both empty), it's a true duplicate
+      if (existingPlaceId === targetPlaceId) {
+        // If we have both addresses, they must differ for it to NOT be a duplicate
+        if (targetAddress && existingAddress) {
+          return existingAddress === targetAddress;
+        }
+        // If either address is empty, consider it a duplicate (same place, address unknown)
+        return !targetAddress || !existingAddress;
+      }
+
+      return false;
     });
   }
 
@@ -14433,7 +14504,7 @@ COMMON ISSUES:
       const row = buildExcelRow(placeId, details);
 
       if (placeExistsInData(row)) {
-        throw new Error("This place already exists in your Excel table.");
+        throw new Error("This location already exists in your Excel table. (Same Place ID and address detected. To add a different location of a chain store, use a different address.)");
       }
 
       setAddPlaceStatus("Adding row to Excel...", "info");
