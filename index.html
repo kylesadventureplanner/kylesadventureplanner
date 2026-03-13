@@ -16113,6 +16113,102 @@ COMMON ISSUES:
       }
     }, 100);
 
+    // ============================================================
+    // CITY VISUALIZER BUTTON INJECTION (v7.0.116+)
+    // ============================================================
+
+    window.addCityViewerButton = function() {
+      // Try to find common button container locations
+      const possibleContainers = [
+        document.getElementById('controls'),
+        document.getElementById('toolbarButtons'),
+        document.getElementById('actionButtons'),
+        document.querySelector('.control-panel'),
+        document.querySelector('.toolbar'),
+        document.querySelector('.actions-bar'),
+        document.querySelector('[class*="toolbar"]'),
+        document.querySelector('[class*="control"]'),
+        document.querySelector('[class*="action"]'),
+      ].filter(el => el !== null);
+
+      // If no container found, create one at the top of the page
+      if (possibleContainers.length === 0) {
+        console.log('ℹ️ Creating new toolbar for City Visualizer button');
+        const toolbar = document.createElement('div');
+        toolbar.id = 'cityViewerToolbar';
+        toolbar.style.cssText = `
+          padding: var(--space-lg);
+          margin-bottom: var(--space-lg);
+          display: flex;
+          gap: var(--space-md);
+          background: var(--neutral-50);
+          border-radius: var(--radius-md);
+          border: 1px solid var(--neutral-200);
+        `;
+        document.body.insertBefore(toolbar, document.body.firstChild);
+        possibleContainers.push(toolbar);
+      }
+
+      const container = possibleContainers[0];
+
+      // Check if button already exists
+      if (document.getElementById('cityViewerBtn')) {
+        console.log('ℹ️ City Visualizer button already exists');
+        return;
+      }
+
+      // Create City Visualizer button
+      const btn = document.createElement('button');
+      btn.id = 'cityViewerBtn';
+      btn.textContent = '🏙️ City Viewer';
+      btn.title = 'View and explore locations by city';
+      btn.style.cssText = `
+        padding: var(--space-md) var(--space-lg);
+        border-radius: var(--radius-md);
+        background: var(--primary);
+        color: white;
+        border: 1px solid var(--primary);
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        font-family: var(--font-sans);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-sm);
+      `;
+
+      btn.onmouseover = function() {
+        this.style.background = 'var(--primary-dark)';
+        this.style.borderColor = 'var(--primary-dark)';
+        this.style.transform = 'translateY(-1px)';
+        this.style.boxShadow = 'var(--shadow-md)';
+      };
+
+      btn.onmouseout = function() {
+        this.style.background = 'var(--primary)';
+        this.style.borderColor = 'var(--primary)';
+        this.style.transform = 'none';
+        this.style.boxShadow = 'none';
+      };
+
+      btn.onclick = function() {
+        window.openCityVisualizer();
+      };
+
+      container.appendChild(btn);
+      console.log('✅ City Visualizer button added successfully');
+    };
+
+    // Try to add button when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(window.addCityViewerButton, 500);
+      });
+    } else {
+      setTimeout(window.addCityViewerButton, 500);
+    }
+
   })();
 
 </script>
