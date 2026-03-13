@@ -891,9 +891,40 @@ class TagUIManager {
    * Update current tags display
    */
   updateCurrentTags() {
-    if (!this.currentPlaceId || !window.tagManager) return;
+    if (!this.currentPlaceId) return;
 
-    const tags = window.tagManager.getTagsForPlace(this.currentPlaceId);
+    // Get tags from BOTH sources:
+    // 1. Excel tags (stored in adventure data)
+    // 2. Tag Manager tags (stored in localStorage)
+
+    let tags = [];
+    let excelTags = '';
+
+    // Find the place in adventure data to get Excel tags
+    if (window.adventuresData && Array.isArray(window.adventuresData)) {
+      const place = window.adventuresData.find(row => {
+        const vals = (row && row.values && row.values[0]) || [];
+        return vals[1] === this.currentPlaceId;
+      });
+
+      if (place) {
+        const vals = place.values[0];
+        excelTags = vals[3] || ''; // Column 3 is tags
+      }
+    }
+
+    // Parse Excel tags
+    const excelTagList = excelTags ? excelTags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    // Get tags from tag manager
+    let managedTags = [];
+    if (window.tagManager) {
+      managedTags = window.tagManager.getTagsForPlace(this.currentPlaceId) || [];
+    }
+
+    // Combine and deduplicate
+    tags = [...new Set([...excelTagList, ...managedTags])];
+
     const tagList = document.getElementById('tagCurrentList');
 
     if (tags.length === 0) {
