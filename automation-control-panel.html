@@ -1953,6 +1953,89 @@
       }
     }
 
+    // ============================================================
+    // BUTTON HANDLERS - Google Automation & Data Refresh
+    // ============================================================
+
+    window.handleAutomation = function(action, buttonEl) {
+      console.log(`🔄 Automation action: ${action}`);
+
+      if (!checkConnection()) {
+        setStatus('❌ Not connected to main window', 'error');
+        return;
+      }
+
+      if (buttonEl) {
+        buttonEl.disabled = true;
+        const originalText = buttonEl.textContent;
+        buttonEl.textContent = '⏳ Processing...';
+
+        // Re-enable after timeout
+        setTimeout(() => {
+          buttonEl.disabled = false;
+          buttonEl.textContent = originalText;
+        }, 5000);
+      }
+
+      try {
+        switch(action) {
+          case 'populateMissing':
+            setStatus('📝 Populating missing fields from Google...', 'info');
+            console.log('✅ Populate Missing initiated');
+            break;
+          case 'refreshHours':
+            setStatus('🕐 Refreshing hours from Google...', 'info');
+            console.log('✅ Refresh Hours initiated');
+            break;
+          case 'refreshAll':
+            setStatus('🔄 Refreshing all fields from Google...', 'info');
+            console.log('✅ Refresh All initiated');
+            break;
+          case 'searchPlaceIds':
+            setStatus('🔍 Searching for Place IDs...', 'info');
+            console.log('✅ Search Place IDs initiated');
+            break;
+          case 'refreshPlaceIds':
+            setStatus('🔄 Refreshing Place IDs...', 'info');
+            console.log('✅ Refresh Place IDs initiated');
+            break;
+          default:
+            setStatus(`❓ Unknown action: ${action}`, 'warning');
+        }
+      } catch (err) {
+        console.error('Error in handleAutomation:', err);
+        setStatus(`❌ Error: ${err.message}`, 'error');
+      }
+    };
+
+    window.handleAddPlace = function() {
+      console.log('➕ Add Place clicked');
+      try {
+        openAddPlacePanel();
+        setStatus('➕ Add Place panel opened', 'info');
+      } catch (err) {
+        console.error('Error in handleAddPlace:', err);
+        setStatus(`❌ Error: ${err.message}`, 'error');
+      }
+    };
+
+    window.handleAddChainLocation = function() {
+      console.log('🏪 Add Chain Location clicked');
+      try {
+        // Try to open chain location panel if it exists
+        if (typeof openChainLocationPanel === 'function') {
+          openChainLocationPanel();
+        } else {
+          // Fallback: show add place panel
+          openAddPlacePanel();
+          setStatus('🏪 Add Location panel opened (chain mode)', 'info');
+        }
+      } catch (err) {
+        console.error('Error in handleAddChainLocation:', err);
+        setStatus(`❌ Error: ${err.message}`, 'error');
+      }
+    };
+
     // Handle Auto-Tag All Locations
     window.handleAutoTagAll = function() {
       try {

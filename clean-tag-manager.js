@@ -788,31 +788,63 @@
   };
 
   // Override old tag manager openModal function BEFORE old system runs
-  if (window.tagUIManager) {
-    window.tagUIManager.openModal = function(placeId, characteristics) {
-      window.cleanTagManager.openModal(placeId, placeId);
-    };
-    // Also override closeModal
-    window.tagUIManager.closeModal = function() {
-      window.cleanTagManager.closeModal();
-    };
-  }
+  console.log('🔧 Setting up tag manager overrides...');
+
+  // Wait for tagUIManager to exist before overriding
+  const setupOverrides = function() {
+    if (window.tagUIManager) {
+      console.log('✅ Found tagUIManager, setting up overrides');
+      const originalOpenModal = window.tagUIManager.openModal;
+
+      window.tagUIManager.openModal = function(placeId, characteristics) {
+        console.log('🏷️ Tag button clicked, opening clean tag manager for:', placeId);
+        window.cleanTagManager.openModal(placeId, placeId);
+      };
+
+      window.tagUIManager.closeModal = function() {
+        console.log('✖️ Closing tag manager');
+        window.cleanTagManager.closeModal();
+      };
+
+      return true;
+    } else {
+      console.log('⏳ tagUIManager not ready yet, will retry...');
+      return false;
+    }
+  };
 
   // Initialize on page load
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+      console.log('📦 DOMContentLoaded firing');
       hideOldSystem();
       window.cleanTagManager.init();
-      hideOldSystem(); // Call again to ensure it stays hidden
+
+      // Try to set up overrides
+      let overrideAttempts = 0;
+      const overrideCheckInterval = setInterval(() => {
+        overrideAttempts++;
+        if (setupOverrides()) {
+          clearInterval(overrideCheckInterval);
+        } else if (overrideAttempts > 50) {
+          console.error('❌ Failed to override tagUIManager after multiple attempts');
+          clearInterval(overrideCheckInterval);
+        }
+      }, 50);
+
+      hideOldSystem();
     });
   } else {
+    console.log('📦 DOM already ready');
     hideOldSystem();
     window.cleanTagManager.init();
+    setupOverrides();
     hideOldSystem();
   }
 
   // Watch for any attempts to show old system and block them
   setTimeout(() => {
+    console.log('🔍 Setting up mutation observer to block old system');
     const observer = new MutationObserver(() => {
       hideOldSystem();
     });
@@ -822,6 +854,7 @@
 
     if (backdrop) observer.observe(backdrop, { attributes: true, attributeFilter: ['class', 'style'] });
     if (modal) observer.observe(modal, { attributes: true, attributeFilter: ['class', 'style'] });
+    console.log('✅ Mutation observer set up');
   }, 500);
 })();
 
