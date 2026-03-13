@@ -47,30 +47,11 @@ class TagUIManager {
     const style = document.createElement('style');
     style.id = 'tagManagerStyles';
     style.textContent = `
-      /* Tag Manager Modal */
-      #tagManagerModal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        border: 2px solid #3b82f6;
-        border-radius: 12px;
-        box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
-        z-index: 1001;
-        max-width: 600px;
-        width: 90%;
-        max-height: 80vh;
-        display: none;
-        flex-direction: column;
-        overflow: hidden;
-        animation: slideUp 0.3s ease-out;
-      }
+      /* ============================================================
+         TAG MANAGER MODAL STYLING - MATCHES APP DESIGN SYSTEM
+         ============================================================ */
 
-      #tagManagerModal.visible {
-        display: flex;
-      }
-
+      /* Animations */
       @keyframes slideUp {
         from {
           opacity: 0;
@@ -82,172 +63,9 @@ class TagUIManager {
         }
       }
 
-      #tagManagerBackdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
-        display: none;
-      }
-
-      #tagManagerBackdrop.visible {
-        display: block;
-      }
-
-      /* Modal Header */
-      .tag-modal-header {
-        padding: 20px;
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #1e40af;
-      }
-
-      .tag-modal-title {
-        font-size: 18px;
-        font-weight: 700;
-        margin: 0;
-      }
-
-      .tag-modal-subtitle {
-        font-size: 12px;
-        opacity: 0.9;
-        margin-top: 4px;
-      }
-
-      .tag-modal-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 24px;
-        cursor: pointer;
-        padding: 0;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        transition: all 0.2s;
-      }
-
-      .tag-modal-close:hover {
-        background: rgba(255, 255, 255, 0.2);
-        transform: scale(1.1);
-      }
-
-      /* Modal Body */
-      .tag-modal-body {
-        padding: 20px;
-        flex: 1;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      /* Tabs */
-      .tag-tabs {
-        display: flex;
-        gap: 8px;
-        border-bottom: 2px solid #e5e7eb;
-        margin-bottom: 16px;
-      }
-
-      .tag-tab {
-        padding: 12px 16px;
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-weight: 600;
-        color: #6b7280;
-        border-bottom: 3px solid transparent;
-        transition: all 0.2s;
-        font-size: 14px;
-      }
-
-      .tag-tab.active {
-        color: #3b82f6;
-        border-bottom-color: #3b82f6;
-      }
-
-      .tag-tab:hover {
-        color: #1e40af;
-      }
-
-      /* Tag Input Section */
-      .tag-input-section {
-        display: flex;
-        gap: 8px;
-      }
-
-      .tag-input {
-        flex: 1;
-        padding: 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        font-size: 14px;
-        font-family: inherit;
-        transition: all 0.2s;
-      }
-
-      .tag-input:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-      }
-
-      .tag-input-suggestions {
-        position: absolute;
-        background: white;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        max-height: 200px;
-        overflow-y: auto;
-        width: 100%;
-        z-index: 1010;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        display: none;
-      }
-
-      .tag-input-suggestions.visible {
-        display: block;
-      }
-
-      .tag-suggestion {
-        padding: 8px 12px;
-        cursor: pointer;
-        transition: all 0.1s;
-      }
-
-      .tag-suggestion:hover {
-        background: #f3f4f6;
-      }
-
-      .tag-suggestion.selected {
-        background: #dbeafe;
-        color: #1e40af;
-      }
-
-      /* Tag Pill */
-      .tag-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: #dbeafe;
-        color: #1e40af;
-        padding: 8px 12px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-weight: 600;
-        border: 1px solid #93c5fd;
-        transition: all 0.2s;
-        animation: tagPop 0.3s ease-out;
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
 
       @keyframes tagPop {
@@ -261,203 +79,464 @@ class TagUIManager {
         }
       }
 
-      .tag-pill:hover {
-        background: #bfdbfe;
-        border-color: #60a5fa;
+      /* Backdrop */
+      #tagManagerBackdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 1000;
+        display: none;
+        animation: fadeIn 0.2s ease-out;
       }
 
-      .tag-pill-remove {
-        cursor: pointer;
-        font-size: 16px;
-        opacity: 0.6;
-        transition: all 0.2s;
-        padding: 0;
+      #tagManagerBackdrop.visible {
+        display: block;
+      }
+
+      /* Modal Container */
+      #tagManagerModal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-2xl);
+        z-index: 1001;
+        max-width: 650px;
+        width: 90%;
+        max-height: 85vh;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid var(--neutral-200);
+      }
+
+      #tagManagerModal.visible {
+        display: flex;
+      }
+
+      /* Modal Header */
+      .tag-modal-header {
+        padding: var(--space-xl);
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(14, 165, 233, 0.02) 100%);
+        border-bottom: 1px solid var(--neutral-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+
+      .tag-modal-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0;
+        color: var(--neutral-900);
+        letter-spacing: -0.3px;
+      }
+
+      .tag-modal-subtitle {
+        font-size: 12px;
+        color: var(--neutral-500);
+        margin-top: var(--space-sm);
+        font-weight: 500;
+      }
+
+      .tag-modal-close {
         background: none;
         border: none;
-        color: inherit;
+        color: var(--neutral-500);
+        font-size: 24px;
+        cursor: pointer;
+        padding: var(--space-sm);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-md);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
-      .tag-pill-remove:hover {
-        opacity: 1;
-        transform: scale(1.2);
+      .tag-modal-close:hover {
+        background: var(--neutral-100);
+        color: var(--neutral-700);
+        transform: scale(1.1);
       }
 
-      /* Current Tags Display */
-      .tag-current-section {
+      /* Modal Body */
+      .tag-modal-body {
+        padding: var(--space-xl);
+        flex: 1;
+        overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: var(--space-lg);
       }
 
-      .tag-current-label {
-        font-size: 13px;
+      /* Tabs */
+      .tag-tabs {
+        display: flex;
+        gap: var(--space-md);
+        border-bottom: 2px solid var(--neutral-200);
+        margin-bottom: var(--space-lg);
+      }
+
+      .tag-tab {
+        padding: var(--space-md) var(--space-lg);
+        background: none;
+        border: none;
+        cursor: pointer;
         font-weight: 600;
-        color: #374151;
+        color: var(--neutral-500);
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 14px;
+        position: relative;
+        margin-bottom: -2px;
+      }
+
+      .tag-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+
+      .tag-tab:hover {
+        color: var(--primary-dark);
+      }
+
+      /* Sections */
+      .tag-current-section,
+      .tag-recommended-section,
+      .tag-batch-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+      }
+
+      /* Section Labels */
+      .tag-current-label,
+      .tag-recommended-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--neutral-700);
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
 
+      /* Tag Input Section */
+      .tag-input-section {
+        display: flex;
+        gap: var(--space-sm);
+        position: relative;
+      }
+
+      .tag-input {
+        flex: 1;
+        padding: var(--space-md) var(--space-lg);
+        border: 1px solid var(--neutral-300);
+        background: white;
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        font-family: var(--font-sans);
+        color: var(--neutral-900);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .tag-input::placeholder {
+        color: var(--neutral-400);
+      }
+
+      .tag-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        background: white;
+      }
+
+      /* Tag Suggestions Dropdown */
+      .tag-input-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--neutral-200);
+        border-top: none;
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+        max-height: 220px;
+        overflow-y: auto;
+        z-index: 1010;
+        box-shadow: var(--shadow-lg);
+        display: none;
+        animation: fadeIn 0.15s ease-out;
+        margin-top: -1px;
+      }
+
+      .tag-input-suggestions.visible {
+        display: block;
+      }
+
+      .tag-suggestion {
+        padding: var(--space-md) var(--space-lg);
+        cursor: pointer;
+        transition: all 0.1s;
+        border-bottom: 1px solid var(--neutral-100);
+        color: var(--neutral-700);
+        font-size: 14px;
+      }
+
+      .tag-suggestion:last-child {
+        border-bottom: none;
+      }
+
+      .tag-suggestion:hover {
+        background: var(--neutral-50);
+        color: var(--primary);
+        padding-left: calc(var(--space-lg) + 4px);
+      }
+
+      .tag-suggestion.selected {
+        background: var(--primary-light);
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      /* Current Tags List */
       .tag-current-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        min-height: 32px;
-        padding: 8px;
-        background: #f9fafb;
-        border-radius: 6px;
-        border: 1px solid #e5e7eb;
+        gap: var(--space-sm);
+        min-height: 44px;
+        padding: var(--space-md) var(--space-lg);
+        background: var(--neutral-50);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--neutral-200);
+        align-items: center;
       }
 
       .tag-current-empty {
-        color: #9ca3af;
+        color: var(--neutral-400);
+        font-size: 14px;
         font-style: italic;
         display: flex;
         align-items: center;
         height: 32px;
       }
 
-      /* Recommended Tags */
-      .tag-recommended-section {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .tag-recommended-label {
+      /* Tag Pill */
+      .tag-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-sm);
+        background: linear-gradient(135deg, var(--primary-light) 0%, rgba(59, 130, 246, 0.05) 100%);
+        color: var(--primary-dark);
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-full);
         font-size: 13px;
         font-weight: 600;
-        color: #374151;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        border: 1px solid var(--primary);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: tagPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
 
+      .tag-pill:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary-dark);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+      }
+
+      .tag-pill-remove {
+        cursor: pointer;
+        font-size: 16px;
+        opacity: 0.7;
+        transition: all 0.2s;
+        padding: 0;
+        background: none;
+        border: none;
+        color: inherit;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+      }
+
+      .tag-pill:hover .tag-pill-remove {
+        opacity: 1;
+      }
+
+      .tag-pill-remove:hover {
+        transform: scale(1.3);
+      }
+
+      /* Recommended Tags */
       .tag-recommended-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        padding: 8px;
-        background: #f0fdf4;
-        border-radius: 6px;
-        border: 1px solid #bbf7d0;
+        gap: var(--space-sm);
+        padding: var(--space-lg);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.02) 0%, rgba(16, 185, 129, 0.01) 100%);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--accent-success);
+        border-opacity: 0.3;
+        min-height: 50px;
+        align-items: center;
+      }
+
+      .tag-recommended-empty {
+        color: var(--neutral-500);
+        font-size: 14px;
+        font-style: italic;
       }
 
       .tag-recommended-pill {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        background: #ecfdf5;
-        color: #047857;
-        padding: 6px 10px;
-        border-radius: 16px;
-        font-size: 12px;
+        gap: var(--space-sm);
+        background: linear-gradient(135deg, var(--accent-success) 0%, rgba(16, 185, 129, 0.8) 100%);
+        color: white;
+        padding: var(--space-sm) var(--space-md);
+        border-radius: var(--radius-full);
+        font-size: 13px;
         font-weight: 600;
-        border: 1px solid #6ee7b7;
+        border: none;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow-sm);
       }
 
       .tag-recommended-pill:hover {
-        background: #d1fae5;
-        border-color: #10b981;
-        transform: scale(1.05);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        filter: brightness(1.1);
       }
 
-      .tag-recommended-empty {
-        color: #6b7280;
-        font-style: italic;
+      .tag-recommended-pill:active {
+        transform: translateY(0);
+        box-shadow: var(--shadow-sm);
       }
 
-      /* Batch Selection */
+      /* Batch Mode */
       .tag-batch-section {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: var(--space-lg);
       }
 
       .tag-batch-info {
-        background: #fef3c7;
-        border: 1px solid #fbbf24;
-        padding: 12px;
-        border-radius: 6px;
-        font-size: 13px;
-        color: #92400e;
+        background: linear-gradient(135deg, var(--accent-warning) 0%, rgba(245, 158, 11, 0.8) 100%);
+        border: 1px solid var(--accent-warning);
+        padding: var(--space-lg);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        color: #78350f;
+        font-weight: 500;
+        box-shadow: var(--shadow-sm);
       }
 
       .tag-batch-places {
         max-height: 200px;
         overflow-y: auto;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        padding: 8px;
-        background: #f9fafb;
+        border: 1px solid var(--neutral-200);
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        background: var(--neutral-50);
       }
 
       .tag-batch-place {
-        padding: 8px;
+        padding: var(--space-md) var(--space-lg);
         background: white;
-        border-radius: 4px;
-        margin-bottom: 4px;
-        font-size: 13px;
+        border-radius: var(--radius-sm);
+        margin-bottom: var(--space-sm);
+        font-size: 14px;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--space-md);
+        border: 1px solid var(--neutral-200);
+        transition: all 0.2s;
+      }
+
+      .tag-batch-place:hover {
+        background: var(--neutral-50);
+        border-color: var(--primary);
       }
 
       .tag-batch-place input[type="checkbox"] {
         cursor: pointer;
         width: 18px;
         height: 18px;
+        accent-color: var(--primary);
       }
 
       /* Modal Footer */
       .tag-modal-footer {
-        padding: 16px 20px;
-        border-top: 1px solid #e5e7eb;
+        padding: var(--space-lg) var(--space-xl);
+        border-top: 1px solid var(--neutral-200);
         display: flex;
-        gap: 12px;
+        gap: var(--space-md);
         justify-content: flex-end;
         flex-wrap: wrap;
+        background: var(--neutral-50);
       }
 
+      /* Buttons */
       .tag-btn {
-        padding: 10px 16px;
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
+        padding: var(--space-md) var(--space-xl);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--neutral-300);
         background: white;
-        color: #374151;
+        color: var(--neutral-700);
         cursor: pointer;
         font-size: 14px;
         font-weight: 600;
-        transition: all 0.2s;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        font-family: var(--font-sans);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 100px;
       }
 
-      .tag-btn:hover {
-        background: #f3f4f6;
-        border-color: #9ca3af;
+      .tag-btn:hover:not(:disabled) {
+        background: var(--neutral-100);
+        border-color: var(--neutral-400);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
       }
 
+      .tag-btn:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      /* Primary Button */
       .tag-btn.primary {
-        background: #3b82f6;
+        background: var(--primary);
         color: white;
-        border-color: #3b82f6;
+        border-color: var(--primary);
       }
 
-      .tag-btn.primary:hover {
-        background: #2563eb;
-        border-color: #2563eb;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      .tag-btn.primary:hover:not(:disabled) {
+        background: var(--primary-dark);
+        border-color: var(--primary-dark);
+        box-shadow: var(--shadow-lg);
       }
 
+      /* Danger Button */
       .tag-btn.danger {
-        background: #fee2e2;
-        color: #dc2626;
-        border-color: #fca5a5;
+        background: linear-gradient(135deg, var(--accent-danger) 0%, rgba(239, 68, 68, 0.8) 100%);
+        color: white;
+        border-color: var(--accent-danger);
       }
 
-      .tag-btn.danger:hover {
-        background: #fecaca;
-        border-color: #f87171;
+      .tag-btn.danger:hover:not(:disabled) {
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1), var(--shadow-lg);
+        transform: translateY(-1px);
       }
 
       .tag-btn:disabled {
@@ -468,44 +547,54 @@ class TagUIManager {
       /* Statistics */
       .tag-stats {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        gap: 12px;
-        margin-top: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: var(--space-lg);
+        margin-top: var(--space-lg);
       }
 
       .tag-stat-card {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        padding: 12px;
-        border-radius: 6px;
+        background: white;
+        border: 1px solid var(--neutral-200);
+        padding: var(--space-lg);
+        border-radius: var(--radius-md);
         text-align: center;
+        transition: all 0.2s;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .tag-stat-card:hover {
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary);
+        transform: translateY(-2px);
       }
 
       .tag-stat-value {
-        font-size: 20px;
+        font-size: 24px;
         font-weight: 700;
-        color: #3b82f6;
+        color: var(--primary);
       }
 
       .tag-stat-label {
         font-size: 11px;
-        color: #6b7280;
-        margin-top: 4px;
+        color: var(--neutral-500);
+        margin-top: var(--space-sm);
         text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
       }
 
-      /* Tag Manager Button (in table) */
+      /* Tag Manager Button (in cards/table) */
       .tag-manager-btn {
-        border-radius: 50%;
-        border: 1px solid #d1d5db;
-        background: #f3f4f6;
-        color: #374151;
-        padding: 6px;
+        border-radius: var(--radius-full);
+        border: 1px solid var(--neutral-300);
+        background: var(--neutral-100);
+        color: var(--neutral-600);
+        padding: var(--space-sm);
         font-size: 16px;
         cursor: pointer;
-        transition: all 0.2s;
-        width: 32px;
-        height: 32px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        width: 36px;
+        height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -513,18 +602,45 @@ class TagUIManager {
       }
 
       .tag-manager-btn:hover {
-        background: #e5e7eb;
-        border-color: #6b7280;
+        background: var(--neutral-200);
+        border-color: var(--neutral-400);
         transform: scale(1.1);
+        box-shadow: var(--shadow-md);
       }
 
       .tag-manager-btn.has-tags {
-        background: #dbeafe;
-        border-color: #3b82f6;
-        color: #1e40af;
+        background: var(--primary-light);
+        border-color: var(--primary);
+        color: var(--primary-dark);
       }
 
-      /* Mobile responsiveness */
+      /* Scrollbar styling */
+      .tag-modal-body::-webkit-scrollbar,
+      .tag-batch-places::-webkit-scrollbar,
+      .tag-input-suggestions::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .tag-modal-body::-webkit-scrollbar-track,
+      .tag-batch-places::-webkit-scrollbar-track,
+      .tag-input-suggestions::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .tag-modal-body::-webkit-scrollbar-thumb,
+      .tag-batch-places::-webkit-scrollbar-thumb,
+      .tag-input-suggestions::-webkit-scrollbar-thumb {
+        background: var(--neutral-300);
+        border-radius: 3px;
+      }
+
+      .tag-modal-body::-webkit-scrollbar-thumb:hover,
+      .tag-batch-places::-webkit-scrollbar-thumb:hover,
+      .tag-input-suggestions::-webkit-scrollbar-thumb:hover {
+        background: var(--neutral-400);
+      }
+
+      /* Mobile Responsiveness */
       @media (max-width: 768px) {
         #tagManagerModal {
           max-width: 95%;
@@ -532,15 +648,17 @@ class TagUIManager {
         }
 
         .tag-modal-header {
-          padding: 16px;
+          padding: var(--space-lg);
         }
 
         .tag-modal-body {
-          padding: 16px;
+          padding: var(--space-lg);
+          gap: var(--space-md);
         }
 
         .tag-modal-footer {
-          flex-direction: column;
+          padding: var(--space-lg);
+          flex-direction: column-reverse;
         }
 
         .tag-btn {
@@ -552,8 +670,14 @@ class TagUIManager {
         }
 
         .tag-tab {
-          padding: 10px 12px;
-          font-size: 12px;
+          padding: var(--space-md) var(--space-lg);
+          font-size: 13px;
+          flex: 1;
+          min-width: 120px;
+        }
+
+        .tag-stats {
+          grid-template-columns: repeat(2, 1fr);
         }
       }
     `;
@@ -942,6 +1066,15 @@ class TagUIManager {
     if (window.tagManager) {
       window.tagManager.saveTags();
     }
+
+    // Refresh card display if renderPaginatedCards exists (integrate with main app)
+    if (typeof window.renderPaginatedCards === 'function') {
+      console.log('🔄 Refreshing card display after tag changes...');
+      setTimeout(() => {
+        window.renderPaginatedCards();
+      }, 100);
+    }
+
     this.closeModal();
   }
 
