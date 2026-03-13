@@ -797,35 +797,47 @@
         <div style="margin-bottom: 12px; padding: 10px; background: #fef3c7; border-radius: 8px; border-left: 4px solid var(--warning);">
           <div style="font-size: 12px; font-weight: 600; color: #92400e;">💡 Chain Location Feature</div>
           <div style="font-size: 11px; color: #78350f; margin-top: 4px; line-height: 1.4;">
-            Add a new location of an existing chain store. The location must have a different address than existing entries.
+            Find existing chain location, then add new location by Google Place ID. All details will be auto-populated!
           </div>
         </div>
 
         <div class="add-place-grid">
           <div class="add-place-field">
-            <label for="chainSearchType">Search Existing Location By</label>
-            <select id="chainSearchType" class="add-place-select">
-              <option value="placeName">Place Name</option>
-              <option value="placeId">Google Place ID</option>
-            </select>
+            <label for="chainSearchValue">Find Existing Location</label>
+            <input
+              id="chainSearchValue"
+              class="add-place-input"
+              type="text"
+              placeholder="Type to search existing locations..."
+              oninput="updateChainSuggestions(this.value)"
+            />
+            <div id="chainSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 1010; box-shadow: 0 10px 15px rgba(0,0,0,0.1); display: none; margin-top: -1px;">
+            </div>
           </div>
           <div class="add-place-field">
-            <label for="chainSearchValue">Existing Location (to find the chain)</label>
-            <input id="chainSearchValue" class="add-place-input" type="text" placeholder="Enter name or Place ID of existing location" />
+            <label for="chainNewLocationPlaceId">New Location Google Place ID</label>
+            <input
+              id="chainNewLocationPlaceId"
+              class="add-place-input"
+              type="text"
+              placeholder="Paste Google Place ID (ChIJ...)"
+            />
+            <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">💡 Get Place ID from Google Maps or search results</div>
           </div>
           <div class="add-place-field">
-            <label for="chainNewLocation">New Location Name</label>
-            <input id="chainNewLocation" class="add-place-input" type="text" placeholder="Enter the new location name or address" />
-          </div>
-          <div class="add-place-field">
-            <label for="chainNewAddress">New Location Address</label>
-            <input id="chainNewAddress" class="add-place-input" type="text" placeholder="Enter the complete address (different from existing)" />
+            <label for="chainNewLocationName">New Location Name (optional)</label>
+            <input
+              id="chainNewLocationName"
+              class="add-place-input"
+              type="text"
+              placeholder="Leave blank to use auto-lookup name"
+            />
           </div>
         </div>
 
         <div class="add-place-actions">
           <button id="chainLocationCancelBtn" class="panel-btn" onclick="closeChainLocationPanel()">Cancel</button>
-          <button id="chainLocationSubmitBtn" class="panel-btn primary" onclick="submitChainLocation()">Add Chain Location</button>
+          <button id="chainLocationSubmitBtn" class="panel-btn primary" onclick="submitChainLocationV2()">Add Chain Location</button>
         </div>
 
         <div id="chainLocationStatus" class="add-place-status"></div>
@@ -1747,7 +1759,191 @@
       }
     }
 
-    // Keyboard shortcuts
+    // ============================================================
+    // CHAIN LOCATION V2 - ENHANCED WITH DYNAMIC SEARCH & PLACE ID
+    // ============================================================
+
+    /**
+     * Update chain suggestions dynamically as user types
+     */
+    function updateChainSuggestions(searchTerm) {
+      const suggestionsDiv = document.getElementById('chainSuggestions');
+      if (!suggestionsDiv) return;
+
+      if (!searchTerm || searchTerm.trim().length < 2) {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+
+      // Search in adventure data for matching locations
+      if (!mainWindow || mainWindow.closed || !mainWindow.adventuresData) {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+
+      const searchLower = searchTerm.toLowerCase();
+      const matches = mainWindow.adventuresData.filter(row => {
+        const vals = (row && row.values && row.values[0]) || [];
+        const name = (vals[0] || '').toLowerCase();
+        const city = (vals[10] || '').toLowerCase();
+        return name.includes(searchLower) || city.includes(searchLower);
+      }).slice(0, 8); // Limit to 8 suggestions
+
+      if (matches.length === 0) {
+        suggestionsDiv.innerHTML = '<div style="padding: 10px; color: #9ca3af; font-size: 13px;">No locations found</div>';
+        suggestionsDiv.style.display = 'block';
+        return;
+      }
+
+      suggestionsDiv.innerHTML = matches.map((row, idx) => {
+        const vals = row.values[0] || [];
+        const name = vals[0] || 'Unknown';
+        const city = vals[10] || '';
+        const placeId = vals[1] || '';
+        return `
+          <div onclick="selectChainLocation('${placeId}', '${name}', '${city}')"
+               style="padding: 10px 12px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: background 0.2s; font-size: 13px;">
+            <div style="font-weight: 600; color: #1f2937;">${name}</div>
+            <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">${city} • ID: ${placeId.substring(0, 15)}...</div>
+          </div>
+        `;
+      }).join('');
+
+      suggestionsDiv.style.display = 'block';
+    }
+
+    /**
+     * Select a chain location from suggestions
+     */
+    function selectChainLocation(placeId, name, city) {
+      const searchValueEl = document.getElementById('chainSearchValue');
+      const suggestionsDiv = document.getElementById('chainSuggestions');
+
+      if (searchValueEl) {
+        searchValueEl.value = `${name} (${city})`;
+        searchValueEl.dataset.selectedPlaceId = placeId;
+      }
+
+      if (suggestionsDiv) {
+        suggestionsDiv.style.display = 'none';
+      }
+
+      setChainLocationStatus(`Selected: ${name}. Now enter the new location Google Place ID.`, 'info');
+    }
+
+    /**
+     * Submit chain location with Place ID lookup (V2)
+     */
+    async function submitChainLocationV2() {
+      if (!checkConnection()) return;
+
+      const submitBtn = document.getElementById('chainLocationSubmitBtn');
+      const searchValueEl = document.getElementById('chainSearchValue');
+      const newPlaceIdEl = document.getElementById('chainNewLocationPlaceId');
+      const newNameEl = document.getElementById('chainNewLocationName');
+
+      const existingPlaceId = searchValueEl ? searchValueEl.dataset.selectedPlaceId : '';
+      const newPlaceId = newPlaceIdEl ? newPlaceIdEl.value.trim() : '';
+      const newName = newNameEl ? newNameEl.value.trim() : '';
+
+      // Validation
+      if (!existingPlaceId) {
+        setChainLocationStatus('Please select an existing location from the dropdown.', 'error');
+        return;
+      }
+
+      if (!newPlaceId) {
+        setChainLocationStatus('Please enter the Google Place ID for the new location.', 'error');
+        return;
+      }
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Processing...';
+        }
+
+        // Check authentication
+        const authState = await ensureMainAuthReady();
+        if (!authState.isAuthenticated) {
+          throw new Error('Please sign in first. Click "Sign In" in the main Adventure Finder window.');
+        }
+
+        setChainLocationStatus('Looking up new location details from Google...', 'info');
+        setStatus('<span class="spinner"></span>Getting new location details...', 'info');
+
+        // Get required functions
+        const getPlaceDetails = requireMainFunction('getPlaceDetails');
+        const buildExcelRow = requireMainFunction('buildExcelRow');
+        const placeExistsInData = requireMainFunction('placeExistsInData');
+        const addRowToExcel = requireMainFunction('addRowToExcel');
+        const loadTable = requireMainFunction('loadTable');
+
+        // Step 1: Get details for new location using the Place ID
+        setChainLocationStatus('Fetching details for new location...', 'info');
+        const newDetails = await getPlaceDetails(newPlaceId);
+
+        // Step 2: Build Excel row with new Place ID
+        const newRow = buildExcelRow(newPlaceId, newDetails);
+
+        // Step 3: Override name if provided
+        if (newName) {
+          newRow[0] = newName;
+        }
+
+        const chainName = newRow[0] || 'Unknown Chain';
+
+        // Step 4: Check if location already exists
+        if (placeExistsInData(newRow)) {
+          throw new Error('This location already exists in your data. Try a different Place ID.');
+        }
+
+        // Step 5: Add to Excel
+        setChainLocationStatus('Adding new location to Excel...', 'info');
+        if (!isDryRun) {
+          await addRowToExcel(newRow);
+        }
+
+        // Step 6: Reload data
+        if (typeof loadTable === 'function') {
+          await loadTable();
+        }
+
+        // Store in recent chains
+        const now = new Date().toLocaleTimeString();
+        addRecentChain({
+          chainName: chainName,
+          newLocation: chainName,
+          newAddress: newRow[11] || 'Auto-populated',
+          searchType: 'placeName',
+          placeId: newPlaceId,
+          when: now
+        });
+
+        const resultMsg = isDryRun
+          ? `✅ Chain location ready (preview): ${chainName}`
+          : `✅ Chain location added: ${chainName}`;
+
+        setChainLocationStatus(resultMsg, 'success');
+        setStatus(resultMsg, 'success');
+
+        // Close panel after success
+        setTimeout(() => {
+          closeChainLocationPanel();
+        }, 2000);
+
+      } catch (err) {
+        const errorMsg = `❌ Error: ${err.message}`;
+        setChainLocationStatus(errorMsg, 'error');
+        setStatus(errorMsg, 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Add Chain Location';
+        }
+      }
+    }
+
     document.addEventListener('keydown', function(e) {
       if (!e.altKey) return;
 

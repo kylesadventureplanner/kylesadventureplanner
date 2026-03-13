@@ -310,6 +310,191 @@ class TagManager {
       return { success: false, error: e.message };
     }
   }
+
+  /**
+   * ========== HIERARCHY SUPPORT METHODS ==========
+   * These methods work with TAG_HIERARCHY to provide category-based organization
+   */
+
+  /**
+   * Get tags organized by category hierarchy
+   * @returns {object} Nested structure of categories and tags
+   */
+  getTagsByHierarchy() {
+    if (typeof TAG_HIERARCHY === 'undefined') return null;
+
+    const result = {};
+    const categories = TAG_HIERARCHY.getAllCategories();
+
+    for (const category of categories) {
+      const tags = TAG_HIERARCHY.getTagsInCategory(category);
+      result[category] = tags;
+    }
+    return result;
+  }
+
+  /**
+   * Get category information for a specific tag
+   * @param {string} tagName
+   * @returns {object} Category, subcategory, and icons
+   */
+  getTagCategoryInfo(tagName) {
+    if (typeof TAG_HIERARCHY === 'undefined') return null;
+    return TAG_HIERARCHY.getTagCategory(tagName);
+  }
+
+  /**
+   * Get related tags (same category, different subcategory)
+   * @param {string} tagName
+   * @returns {array} Related tags
+   */
+  getRelatedTags(tagName) {
+    if (typeof TAG_HIERARCHY === 'undefined') return [];
+    return TAG_HIERARCHY.getRelatedTags(tagName);
+  }
+
+  /**
+   * Get sibling tags (same subcategory)
+   * @param {string} tagName
+   * @returns {array} Sibling tags
+   */
+  getSiblingTags(tagName) {
+    if (typeof TAG_HIERARCHY === 'undefined') return [];
+    return TAG_HIERARCHY.getSiblingTags(tagName);
+  }
+
+  /**
+   * Get tag affinity scores for intelligent recommendations
+   * @param {string} tagName
+   * @returns {object} Map of tags with affinity scores
+   */
+  getTagAffinities(tagName) {
+    if (typeof TAG_HIERARCHY === 'undefined') return {};
+    return TAG_HIERARCHY.getTagAffinities(tagName);
+  }
+
+  /**
+   * Suggest tags based on existing tags on a place
+   * Considers hierarchy and affinity
+   * @param {string} placeIdentifier
+   * @param {number} limit How many suggestions to return
+   * @returns {array} Suggested tag names with scores
+   */
+  suggestTagsForPlace(placeIdentifier, limit = 5) {
+    const existingTags = this.getTagsForPlace(placeIdentifier);
+    if (existingTags.length === 0) return [];
+
+    const suggestions = new Map();
+
+    // For each existing tag, get related tags
+    for (const tag of existingTags) {
+      const relatedTags = this.getRelatedTags(tag);
+      const siblingTags = this.getSiblingTags(tag);
+      const affinities = this.getTagAffinities(tag);
+
+      // Add related and sibling tags as suggestions
+      [...relatedTags, ...siblingTags].forEach(sugTag => {
+        if (!existingTags.includes(sugTag)) {
+          const currentScore = suggestions.get(sugTag) || 0;
+          const newScore = currentScore + (affinities[sugTag] || 0.5);
+          suggestions.set(sugTag, newScore);
+        }
+      });
+    }
+
+    // Sort by score and return top N
+    return Array.from(suggestions.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([tag, score]) => ({ tag, score: Math.round(score * 100) / 100 }));
+  }
+
+  /**
+   * Get all tags in a specific category
+   * @param {string} categoryName
+   * @returns {array} Tags in the category
+   */
+  getTagsInCategory(categoryName) {
+    if (typeof TAG_HIERARCHY === 'undefined') return [];
+    return TAG_HIERARCHY.getTagsInCategory(categoryName);
+  }
+
+  /**
+   * Filter places by tag hierarchy
+   * More flexible than simple tag matching
+   * @param {array} places Array of places with tags
+   * @param {array} tagsToMatch Tags to filter by
+   * @param {string} matchMode 'any' or 'all'
+   * @returns {array} Filtered places
+   */
+  filterPlacesByTagHierarchy(places, tagsToMatch, matchMode = 'any') {
+    if (!tagsToMatch || tagsToMatch.length === 0) return places;
+
+    return places.filter(place => {
+      const placeTags = this.getTagsForPlace(place.id || place.name);
+
+      if (matchMode === 'all') {
+        return tagsToMatch.every(tag => placeTags.includes(tag));
+      } else {
+        return tagsToMatch.some(tag => placeTags.includes(tag));
+      }
+    });
+  }
+
+  /**
+   * Get tag hierarchy statistics
+   * Useful for analytics and UI optimization
+   * @returns {object} Statistics about tag usage
+   */
+  getHierarchyStats() {
+    if (typeof TAG_HIERARCHY === 'undefined') return null;
+
+    const stats = {
+      totalCategories: TAG_HIERARCHY.getAllCategories().length,
+      totalTags: 0,
+      tagsByCategory: {},
+      mostUsedTags: [],
+      leastUsedTags: [],
+      categoryCoverage: {}
+    };
+
+    // Count tags by category
+    for (const category of TAG_HIERARCHY.getAllCategories()) {
+      const tags = TAG_HIERARCHY.getTagsInCategory(category);
+      stats.totalTags += tags.length;
+      stats.tagsByCategory[category] = tags.length;
+
+      // Count places using tags in this category
+      let categoryUsageCount = 0;
+      for (const tag of tags) {
+        for (const [placeId, placeTags] of this.tags.entries()) {
+          if (placeTags.includes(tag)) categoryUsageCount++;
+        }
+      }
+      stats.categoryCoverage[category] = categoryUsageCount;
+    }
+
+    // Find most/least used tags
+    const tagUsage = new Map();
+    for (const [placeId, tags] of this.tags.entries()) {
+      for (const tag of tags) {
+        const count = (tagUsage.get(tag) || 0) + 1;
+        tagUsage.set(tag, count);
+      }
+    }
+
+    stats.mostUsedTags = Array.from(tagUsage.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([tag, count]) => ({ tag, count }));
+
+    stats.leastUsedTags = Array.from(tagUsage.entries())
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, 10)
+      .map(([tag, count]) => ({ tag, count }));
+
+    return stats;
+  }
 }
 
 // Create global instance

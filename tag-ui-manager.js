@@ -596,26 +596,25 @@ class TagUIManager {
 
       /* Tag Manager Button (in cards/table) */
       .tag-manager-btn {
-        border-radius: var(--radius-full);
+        border-radius: var(--radius-md);
         border: 1px solid var(--neutral-300);
         background: var(--neutral-100);
         color: var(--neutral-600);
-        padding: var(--space-sm);
-        font-size: 16px;
+        padding: var(--space-md) var(--space-lg);
+        font-size: 14px;
+        font-weight: 600;
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        width: 36px;
-        height: 36px;
-        display: flex;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        position: relative;
+        gap: var(--space-sm);
       }
 
       .tag-manager-btn:hover {
         background: var(--neutral-200);
         border-color: var(--neutral-400);
-        transform: scale(1.1);
+        transform: translateY(-2px);
         box-shadow: var(--shadow-md);
       }
 
@@ -623,6 +622,13 @@ class TagUIManager {
         background: var(--primary-light);
         border-color: var(--primary);
         color: var(--primary-dark);
+      }
+
+      .tag-manager-btn.has-tags:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary-dark);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
       }
 
       /* Scrollbar styling */
