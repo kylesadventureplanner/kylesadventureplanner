@@ -64,209 +64,145 @@
 
       /* NEW CLEAN TAG MANAGER */
       .clean-tag-manager-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 9999;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        animation: fadeIn 0.2s ease-out;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+        z-index: 999999 !important;
+        display: none !important;
+        align-items: center !important;
+        justify-content: center !important;
+        animation: fadeIn 0.2s ease-out !important;
+        pointer-events: auto !important;
       }
 
       .clean-tag-manager-backdrop.visible {
-        display: flex;
+        display: flex !important;
       }
 
       .clean-tag-manager-modal {
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        max-width: 700px;
-        width: 90%;
-        max-height: 85vh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        animation: slideUp 0.3s ease-out;
+        background: white !important;
+        border-radius: 16px !important;
+        box-shadow: 0 25px 75px rgba(0, 0, 0, 0.4) !important;
+        max-width: 700px !important;
+        width: 90% !important;
+        max-height: 85vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        animation: slideUp 0.3s ease-out !important;
+        border: none !important;
+        margin: auto !important;
+        z-index: 999999 !important;
       }
 
       /* Header */
       .clean-tag-manager-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        padding: 24px !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 12px !important;
+        flex-shrink: 0 !important;
       }
 
       .clean-tag-manager-title {
-        font-size: 20px;
-        font-weight: 700;
-        margin: 0;
+        font-size: 20px !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
       }
 
       .clean-tag-manager-subtitle {
-        font-size: 12px;
-        opacity: 0.9;
-        margin-top: 4px;
+        font-size: 12px !important;
+        opacity: 0.9 !important;
+        margin-top: 4px !important;
       }
 
       .clean-tag-manager-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 28px;
-        cursor: pointer;
-        padding: 0;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-        border-radius: 8px;
+        background: none !important;
+        border: none !important;
+        color: white !important;
+        font-size: 28px !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        width: 36px !important;
+        height: 36px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        transition: all 0.2s !important;
+        border-radius: 8px !important;
+        flex-shrink: 0 !important;
       }
 
       .clean-tag-manager-close:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.2) !important;
       }
 
       /* Body */
       .clean-tag-manager-body {
-        padding: 24px;
-        overflow-y: auto;
-        flex: 1;
+        padding: 24px !important;
+        overflow-y: auto !important;
+        flex: 1 !important;
+        background: white !important;
       }
 
       /* Tabs */
       .clean-tag-tabs {
-        display: flex;
-        gap: 12px;
-        border-bottom: 2px solid #e5e7eb;
-        margin-bottom: 20px;
-        padding-bottom: 0;
+        display: flex !important;
+        gap: 12px !important;
+        border-bottom: 2px solid #e5e7eb !important;
+        margin-bottom: 20px !important;
+        padding-bottom: 0 !important;
       }
 
       .clean-tag-tab {
-        background: none;
-        border: none;
-        padding: 12px 16px;
-        font-weight: 600;
-        font-size: 14px;
-        color: #6b7280;
-        cursor: pointer;
-        border-bottom: 3px solid transparent;
-        transition: all 0.2s;
-        margin-bottom: -2px;
+        background: none !important;
+        border: none !important;
+        padding: 12px 16px !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        color: #6b7280 !important;
+        cursor: pointer !important;
+        border-bottom: 3px solid transparent !important;
+        transition: all 0.2s !important;
+        margin-bottom: -2px !important;
       }
 
       .clean-tag-tab:hover {
-        color: #667eea;
+        color: #667eea !important;
       }
 
       .clean-tag-tab.active {
-        color: #667eea;
-        border-bottom-color: #667eea;
-      }
-
-      /* Section */
-      .clean-tag-section {
-        margin-bottom: 24px;
-      }
-
-      .clean-tag-section-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #1f2937;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 12px;
-      }
-
-      /* Current tags display */
-      .clean-tag-display {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
-        min-height: 60px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: flex-start;
-      }
-
-      .clean-tag-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-        color: #1e40af;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 13px;
-        font-weight: 600;
-        animation: tagPop 0.2s ease-out;
-      }
-
-      .clean-tag-remove {
-        background: none;
-        border: none;
-        color: #1e40af;
-        cursor: pointer;
-        font-size: 16px;
-        padding: 0;
-        width: 18px;
-        height: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-      }
-
-      .clean-tag-remove:hover {
-        background: rgba(30, 64, 175, 0.1);
-        border-radius: 50%;
-      }
-
-      .clean-tag-item.recommended {
-        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-        color: #065f46;
-        border: 1px solid #10b981;
-      }
-
-      .clean-tag-item.recommended .clean-tag-remove {
-        color: #065f46;
+        color: #667eea !important;
+        border-bottom-color: #667eea !important;
       }
 
       /* Input */
       .clean-tag-input-wrapper {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 16px;
+        display: flex !important;
+        gap: 8px !important;
+        margin-bottom: 16px !important;
       }
 
       .clean-tag-input {
-        flex: 1;
-        padding: 12px 16px;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        font-size: 14px;
-        font-family: inherit;
-        transition: all 0.2s;
+        flex: 1 !important;
+        padding: 12px 16px !important;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 8px !important;
+        font-size: 14px !important;
+        font-family: inherit !important;
+        transition: all 0.2s !important;
       }
 
       .clean-tag-input:focus {
-        outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        outline: none !important;
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
       }
 
       /* Recommendations */
@@ -325,55 +261,56 @@
 
       /* Footer */
       .clean-tag-manager-footer {
-        padding: 16px 24px;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-        flex-wrap: wrap;
+        padding: 16px 24px !important;
+        background: #f9fafb !important;
+        border-top: 1px solid #e5e7eb !important;
+        display: flex !important;
+        gap: 12px !important;
+        justify-content: flex-end !important;
+        flex-wrap: wrap !important;
+        flex-shrink: 0 !important;
       }
 
       .clean-tag-btn {
-        padding: 10px 16px;
-        border-radius: 8px;
-        border: none;
-        font-weight: 600;
-        font-size: 14px;
-        cursor: pointer;
-        transition: all 0.2s;
+        padding: 10px 16px !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        cursor: pointer !important;
+        transition: all 0.2s !important;
       }
 
       .clean-tag-btn.secondary {
-        background: white;
-        color: #1f2937;
-        border: 2px solid #e5e7eb;
+        background: white !important;
+        color: #1f2937 !important;
+        border: 2px solid #e5e7eb !important;
       }
 
       .clean-tag-btn.secondary:hover {
-        background: #f3f4f6;
-        border-color: #d1d5db;
+        background: #f3f4f6 !important;
+        border-color: #d1d5db !important;
       }
 
       .clean-tag-btn.danger {
-        background: white;
-        color: #dc2626;
-        border: 2px solid #fecaca;
+        background: white !important;
+        color: #dc2626 !important;
+        border: 2px solid #fecaca !important;
       }
 
       .clean-tag-btn.danger:hover {
-        background: #fee2e2;
+        background: #fee2e2 !important;
       }
 
       .clean-tag-btn.primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
       }
 
       .clean-tag-btn.primary:hover {
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+        transform: translateY(-2px) !important;
       }
 
       /* Animations */
