@@ -1,18 +1,501 @@
 /**
  * CLEAN TAG MANAGER - COMPLETE REDESIGN
  * =====================================
- * Completely new tag manager UI with no weird backgrounds
- * Clean, professional, and fully functional
+ * Clean tag manager with inline styles to avoid conflicts
+ * Fully functional with smart recommendations
  *
- * Version: v7.0.118
+ * Version: v7.0.119
  * Date: March 13, 2026
  */
 
 (function() {
-  // Immediately hide the old tag manager system
+  console.log('🏷️ Initializing Clean Tag Manager v7.0.119');
+
+  /**
+   * Hide old tag manager system
+   */
   const hideOldSystem = function() {
-    // Hide old styles
-    const oldStyle = document.getElementById('tagManagerStyles');
+    const backdrop = document.getElementById('tagManagerBackdrop');
+    const modal = document.getElementById('tagManagerModal');
+
+    if (backdrop) {
+      backdrop.style.display = 'none !important';
+      backdrop.style.visibility = 'hidden !important';
+      backdrop.classList.remove('visible');
+    }
+    if (modal) {
+      modal.style.display = 'none !important';
+      modal.style.visibility = 'hidden !important';
+      modal.classList.remove('visible');
+    }
+  };
+
+  /**
+   * Create modal HTML
+   */
+  const createCleanModal = function() {
+    // Check if already created
+    if (document.getElementById('cleanTagManagerBackdrop')) return;
+
+    // Create backdrop
+    const backdrop = document.createElement('div');
+    backdrop.id = 'cleanTagManagerBackdrop';
+    backdrop.style.cssText = `
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: rgba(0, 0, 0, 0.5) !important;
+      z-index: 999999 !important;
+      display: none !important;
+      align-items: center !important;
+      justify-content: center !important;
+    `;
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'cleanTagManagerModal';
+    modal.style.cssText = `
+      background: white !important;
+      border-radius: 16px !important;
+      box-shadow: 0 25px 75px rgba(0, 0, 0, 0.4) !important;
+      max-width: 700px !important;
+      width: 90% !important;
+      max-height: 85vh !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+      z-index: 999999 !important;
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+      ">
+        <div>
+          <div style="font-size: 20px; font-weight: 700; margin: 0;">🏷️ Tag Manager</div>
+          <div id="cleanTagSubtitle" style="font-size: 12px; opacity: 0.9; margin-top: 4px;"></div>
+        </div>
+        <button id="cleanTagClose" style="
+          background: none;
+          border: none;
+          color: white;
+          font-size: 28px;
+          cursor: pointer;
+          padding: 0;
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">✕</button>
+      </div>
+
+      <div style="
+        padding: 24px;
+        overflow-y: auto;
+        flex: 1;
+        background: white;
+      ">
+        <div style="margin-bottom: 24px;">
+          <div style="
+            font-size: 13px;
+            font-weight: 700;
+            color: #1f2937;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+          ">Current Tags</div>
+          
+          <div id="cleanTagDisplay" style="
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            min-height: 60px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: flex-start;
+          ">
+            <div style="width: 100%; text-align: center; color: #9ca3af;">No tags yet</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+          <div style="
+            font-size: 13px;
+            font-weight: 700;
+            color: #1f2937;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+          ">Add New Tag</div>
+          
+          <div style="display: flex; gap: 8px;">
+            <input 
+              id="cleanTagInput" 
+              type="text" 
+              placeholder="Type tag name..." 
+              style="
+                flex: 1;
+                padding: 12px 16px;
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                font-size: 14px;
+              "
+            />
+            <button id="cleanTagAddBtn" style="
+              padding: 12px 16px;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-weight: 600;
+              cursor: pointer;
+            ">Add</button>
+          </div>
+        </div>
+
+        <div>
+          <div style="
+            font-size: 13px;
+            font-weight: 700;
+            color: #065f46;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+          ">✨ Suggested Tags</div>
+          
+          <div style="
+            background: #f0fdf4;
+            border: 2px solid #dcfce7;
+            border-radius: 12px;
+            padding: 16px;
+          ">
+            <div style="
+              font-size: 13px;
+              font-weight: 700;
+              color: #065f46;
+              margin-bottom: 12px;
+            ">📍 Recommendations based on location</div>
+            
+            <div id="cleanTagSuggestions" style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 8px;
+            ">
+              <div style="width: 100%; text-align: center; color: #9ca3af; font-size: 13px;">Loading recommendations...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="
+        padding: 16px 24px;
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+      ">
+        <button id="cleanTagCancelBtn" style="
+          padding: 10px 16px;
+          background: white;
+          color: #1f2937;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+        ">Cancel</button>
+        <button id="cleanTagClearBtn" style="
+          padding: 10px 16px;
+          background: white;
+          color: #dc2626;
+          border: 2px solid #fecaca;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+        ">Clear All</button>
+        <button id="cleanTagSaveBtn" style="
+          padding: 10px 16px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+        ">Save Changes</button>
+      </div>
+    `;
+
+    backdrop.appendChild(modal);
+    backdrop.style.display = 'none';
+    document.body.appendChild(backdrop);
+
+    // Setup event listeners
+    document.getElementById('cleanTagClose').onclick = () => window.cleanTagManager.closeModal();
+    document.getElementById('cleanTagCancelBtn').onclick = () => window.cleanTagManager.closeModal();
+    document.getElementById('cleanTagClearBtn').onclick = () => window.cleanTagManager.clearAllTags();
+    document.getElementById('cleanTagSaveBtn').onclick = () => window.cleanTagManager.saveAndClose();
+    document.getElementById('cleanTagAddBtn').onclick = () => window.cleanTagManager.addTagFromInput();
+
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) {
+        window.cleanTagManager.closeModal();
+      }
+    };
+
+    console.log('✅ Clean tag manager modal created');
+  };
+
+  /**
+   * Clean Tag Manager System
+   */
+  window.cleanTagManager = {
+    currentPlaceId: null,
+    currentTags: [],
+
+    init: function() {
+      console.log('📦 Initializing clean tag manager...');
+      hideOldSystem();
+      createCleanModal();
+      console.log('✅ Clean tag manager initialized');
+    },
+
+    openModal: function(placeId, placeName) {
+      console.log('🏷️ Opening tag manager for:', placeId, placeName);
+
+      this.currentPlaceId = placeId;
+      this.currentTags = [];
+
+      const subtitle = document.getElementById('cleanTagSubtitle');
+      if (subtitle) {
+        subtitle.textContent = placeName || `Place ID: ${placeId.substring(0, 30)}...`;
+      }
+
+      // Load current tags from tag manager
+      this.loadCurrentTags();
+
+      // Load recommendations
+      this.loadRecommendations();
+
+      // Show modal
+      const backdrop = document.getElementById('cleanTagManagerBackdrop');
+      if (backdrop) {
+        backdrop.style.display = 'flex !important';
+      }
+    },
+
+    closeModal: function() {
+      console.log('✖️ Closing tag manager');
+      const backdrop = document.getElementById('cleanTagManagerBackdrop');
+      if (backdrop) {
+        backdrop.style.display = 'none !important';
+      }
+    },
+
+    loadCurrentTags: function() {
+      console.log('📥 Loading current tags for:', this.currentPlaceId);
+
+      if (!this.currentPlaceId || !window.tagManager) {
+        console.warn('⚠️ No place ID or tag manager');
+        this.currentTags = [];
+        return;
+      }
+
+      try {
+        const tags = window.tagManager.getTagsForPlace(this.currentPlaceId);
+        this.currentTags = Array.isArray(tags) ? tags : [];
+        console.log('✅ Loaded tags:', this.currentTags);
+      } catch (err) {
+        console.error('❌ Error loading tags:', err);
+        this.currentTags = [];
+      }
+
+      this.renderCurrentTags();
+    },
+
+    renderCurrentTags: function() {
+      console.log('🎨 Rendering tags:', this.currentTags);
+
+      const display = document.getElementById('cleanTagDisplay');
+      if (!display) return;
+
+      if (this.currentTags.length === 0) {
+        display.innerHTML = '<div style="width: 100%; text-align: center; color: #9ca3af;">No tags yet</div>';
+        return;
+      }
+
+      display.innerHTML = this.currentTags.map(tag => `
+        <div style="
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+          color: #1e40af;
+          padding: 6px 12px;
+          border-radius: 20px;
+          font-size: 13px;
+          font-weight: 600;
+        ">
+          ${this.escapeHtml(tag)}
+          <button onclick="window.cleanTagManager.removeTag('${tag}')" style="
+            background: none;
+            border: none;
+            color: #1e40af;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">✕</button>
+        </div>
+      `).join('');
+    },
+
+    addTagFromInput: function() {
+      const input = document.getElementById('cleanTagInput');
+      if (!input || !input.value.trim()) return;
+
+      const tag = input.value.trim();
+      if (!this.currentTags.includes(tag)) {
+        this.currentTags.push(tag);
+        this.renderCurrentTags();
+        input.value = '';
+      }
+    },
+
+    removeTag: function(tag) {
+      this.currentTags = this.currentTags.filter(t => t !== tag);
+      this.renderCurrentTags();
+    },
+
+    clearAllTags: function() {
+      if (confirm('Clear all tags from this location?')) {
+        this.currentTags = [];
+        this.renderCurrentTags();
+      }
+    },
+
+    loadRecommendations: function() {
+      console.log('💡 Loading recommendations...');
+
+      const suggestions = document.getElementById('cleanTagSuggestions');
+      if (!suggestions) return;
+
+      let recommendations = this.generateSmartRecommendations();
+
+      if (recommendations.length === 0) {
+        suggestions.innerHTML = '<div style="width: 100%; text-align: center; color: #9ca3af; font-size: 13px;">No additional recommendations</div>';
+        return;
+      }
+
+      suggestions.innerHTML = recommendations.map(tag => `
+        <button onclick="window.cleanTagManager.addSuggestedTag('${tag}')" style="
+          background: white;
+          border: 2px solid #86efac;
+          color: #15803d;
+          padding: 6px 12px;
+          border-radius: 16px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        ">
+          ${tag} +
+        </button>
+      `).join('');
+    },
+
+    generateSmartRecommendations: function() {
+      if (!window.adventuresData || !this.currentPlaceId) {
+        return this.getDefaultRecommendations();
+      }
+
+      const place = window.adventuresData.find(p => p[0] === this.currentPlaceId);
+      if (!place) {
+        return this.getDefaultRecommendations();
+      }
+
+      const recommendations = new Set();
+      const name = (place[1] || '').toLowerCase();
+      const type = (place[4] || '').toLowerCase();
+      const address = (place[11] || '').toLowerCase();
+      const excludedTags = new Set(['City Center', 'city center', 'downtown', 'urban', 'commercial']);
+
+      // Smart recommendation rules
+      const rules = [
+        { keywords: ['restaurant', 'cafe', 'coffee', 'diner', 'bistro', 'pizza', 'sushi', 'burger', 'grill', 'pub', 'bar'], tags: ['Restaurant', 'Dining', 'Food Scene', 'Local Favorite'] },
+        { keywords: ['park', 'trail', 'hiking', 'nature', 'forest', 'river', 'mountain', 'waterfall', 'lake', 'outdoor'], tags: ['Outdoor', 'Nature', 'Scenic', 'Family-Friendly', 'Wildlife'] },
+        { keywords: ['gym', 'athletic', 'sports', 'fitness', 'court', 'field', 'stadium'], tags: ['Sports', 'Recreation', 'Athletic', 'Active'] },
+        { keywords: ['beach', 'water', 'river', 'lake', 'kayak', 'boat', 'swim'], tags: ['Water-Based', 'Beach', 'Swimming', 'Scenic'] },
+        { keywords: ['museum', 'historical', 'historic', 'monument', 'gallery', 'cultural'], tags: ['Historical', 'Cultural', 'Educational', 'Must-Visit'] },
+        { keywords: ['shop', 'mall', 'store', 'market', 'retail'], tags: ['Shopping', 'Local Business', 'Unique Find'] },
+      ];
+
+      rules.forEach(rule => {
+        if (rule.keywords.some(kw => name.includes(kw) || type.includes(kw) || address.includes(kw))) {
+          rule.tags.forEach(tag => {
+            if (!excludedTags.has(tag) && !this.currentTags.includes(tag)) {
+              recommendations.add(tag);
+            }
+          });
+        }
+      });
+
+      if (recommendations.size === 0) {
+        return this.getDefaultRecommendations();
+      }
+
+      return Array.from(recommendations).slice(0, 6);
+    },
+
+    getDefaultRecommendations: function() {
+      const defaults = ['Outdoor', 'Scenic', 'Family-Friendly', 'Worth Visiting', 'Relaxing', 'Adventure'];
+      return defaults.filter(tag => !this.currentTags.includes(tag) && tag !== 'City Center').slice(0, 6);
+    },
+
+    addSuggestedTag: function(tag) {
+      if (!this.currentTags.includes(tag)) {
+        this.currentTags.push(tag);
+        this.renderCurrentTags();
+      }
+    },
+
+    saveAndClose: function() {
+      console.log('💾 Saving tags:', this.currentTags);
+
+      if (this.currentPlaceId && window.tagManager) {
+        window.tagManager.setTagsForPlace(this.currentPlaceId, this.currentTags);
+        window.tagManager.saveTags();
+        console.log('✅ Tags saved');
+      }
+      this.closeModal();
+    },
+
+    escapeHtml: function(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+  };
+
+  // Initialize
+  setTimeout(() => {
+    window.cleanTagManager.init();
+  });
+})();
     if (oldStyle) {
       oldStyle.innerHTML = `
         #tagManagerBackdrop { display: none !important; visibility: hidden !important; }
