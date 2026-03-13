@@ -682,29 +682,120 @@ window.closeCityVisualizer = function() {
 };
 
 /**
- * Filter adventures by city
+ * Filter adventures by city - Enhanced version with multiple strategies
  */
 window.filterByCity = function(cityKey) {
   console.log(`🔍 Filtering by city: ${cityKey}`);
 
-  // Close the visualizer
+  // Close the visualizer first
   window.closeCityVisualizer();
 
-  // Apply city filter if filter system exists
-  if (typeof applyFilters === 'function') {
-    const [city, state] = cityKey.split(', ');
+  const [city, state] = cityKey.split(', ');
+  console.log(`Attempting to filter: ${city}, ${state}`);
 
-    // Set filter values
-    const citySelect = document.getElementById('city');
-    const stateSelect = document.getElementById('state');
+  try {
+    // Strategy 1: Try parent/main window context
+    if (window.opener && !window.opener.closed) {
+      console.log('📍 Detected opener window - attempting communication');
 
-    if (citySelect) citySelect.value = city;
-    if (stateSelect) stateSelect.value = state;
+      // Try direct filterByCity if it exists
+      if (typeof window.opener.filterByCity === 'function') {
+        console.log('✅ Found opener.filterByCity function');
+        window.opener.filterByCity(cityKey);
+        window.opener.focus();
+        return;
+      }
 
-    // Apply filters
-    applyFilters();
+      // Try triggering search in main window
+      try {
+        const mainDoc = window.opener.document;
 
-    console.log(`✅ Filtered by city: ${cityKey}`);
+        // Find any search/filter input
+        const searchInputs = mainDoc.querySelectorAll(
+          'input[type="text"], input[placeholder*="search"], input[placeholder*="Search"], input[data-search]'
+        );
+
+        if (searchInputs.length > 0) {
+          const searchInput = searchInputs[0];
+          console.log('✅ Found search input in main window');
+          searchInput.value = city;
+          searchInput.focus();
+
+          // Trigger input events
+          ['input', 'change', 'keyup'].forEach(event => {
+            searchInput.dispatchEvent(new Event(event, { bubbles: true }));
+          });
+
+          window.opener.focus();
+          return;
+        }
+      } catch (e) {
+        console.log('⚠️ Could not access main window search:', e.message);
+      }
+    }
+
+    // Strategy 2: Current window applyFilters if available
+    if (typeof applyFilters === 'function') {
+      console.log('✅ Found applyFilters function');
+
+      const citySelect = document.getElementById('city') || document.querySelector('[name="city"]');
+      const stateSelect = document.getElementById('state') || document.querySelector('[name="state"]');
+
+      if (citySelect || stateSelect) {
+        if (citySelect) {
+          citySelect.value = city;
+          citySelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (stateSelect) {
+          stateSelect.value = state;
+          stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        applyFilters();
+        console.log(`✅ Successfully filtered by: ${cityKey}`);
+        return;
+      }
+    }
+
+    // Strategy 3: Direct data search and display
+    if (window.adventuresData && Array.isArray(window.adventuresData)) {
+      console.log('📊 Searching in adventure data');
+
+      const matchingLocations = window.adventuresData.filter(row => {
+        const vals = (row && row.values && row.values[0]) || [];
+        const rowCity = (vals[10] || '').toLowerCase().trim();
+        const rowState = (vals[9] || '').toLowerCase().trim();
+        return rowCity === city.toLowerCase().trim() &&
+               rowState === state.toLowerCase().trim();
+      });
+
+      if (matchingLocations.length > 0) {
+        console.log(`✅ Found ${matchingLocations.length} locations in ${city}, ${state}`);
+
+        // Show results
+        const locationNames = matchingLocations
+          .map(row => (row.values[0] || [])[0] || 'Unnamed')
+          .filter(Boolean)
+          .slice(0, 10);
+
+        const message = `Found ${matchingLocations.length} location${matchingLocations.length !== 1 ? 's' : ''} in ${city}, ${state}:\n\n${locationNames.join('\n')}${matchingLocations.length > 10 ? '\n... and more' : ''}`;
+
+        alert(message);
+        console.log('✅ City filter applied successfully');
+        return;
+      } else {
+        console.log(`❌ No locations found for ${city}, ${state}`);
+        alert(`No locations found for ${city}, ${state}`);
+        return;
+      }
+    }
+
+    // If all strategies fail
+    console.error('❌ No filtering mechanism available');
+    alert(`Unable to filter by ${city}, ${state}.\n\nPlease use the search feature in the main window or check the browser console for details.`);
+
+  } catch (error) {
+    console.error('❌ Error filtering by city:', error);
+    alert(`Error filtering by ${city}, ${state}: ${error.message}`);
   }
 };
 

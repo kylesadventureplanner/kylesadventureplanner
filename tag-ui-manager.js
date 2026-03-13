@@ -123,15 +123,16 @@ class TagUIManager {
       /* Modal Header */
       .tag-modal-header {
         padding: var(--space-xl);
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(14, 165, 233, 0.02) 100%);
-        border-bottom: 1px solid var(--neutral-200);
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(14, 165, 233, 0.03) 100%);
+        border-bottom: 2px solid var(--neutral-200);
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        gap: var(--space-lg);
       }
 
       .tag-modal-title {
-        font-size: 20px;
+        font-size: 22px;
         font-weight: 700;
         margin: 0;
         color: var(--neutral-900);
@@ -143,6 +144,7 @@ class TagUIManager {
         color: var(--neutral-500);
         margin-top: var(--space-sm);
         font-weight: 500;
+        letter-spacing: 0.3px;
       }
 
       .tag-modal-close {
@@ -159,6 +161,7 @@ class TagUIManager {
         justify-content: center;
         border-radius: var(--radius-md);
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        flex-shrink: 0;
       }
 
       .tag-modal-close:hover {
@@ -182,6 +185,7 @@ class TagUIManager {
         display: flex;
         gap: var(--space-md);
         border-bottom: 2px solid var(--neutral-200);
+        padding-bottom: var(--space-sm);
         margin-bottom: var(--space-lg);
       }
 
@@ -191,7 +195,7 @@ class TagUIManager {
         border: none;
         cursor: pointer;
         font-weight: 600;
-        color: var(--neutral-500);
+        color: var(--neutral-600);
         border-bottom: 3px solid transparent;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         font-size: 14px;
@@ -204,8 +208,8 @@ class TagUIManager {
         border-bottom-color: var(--primary);
       }
 
-      .tag-tab:hover {
-        color: var(--primary-dark);
+      .tag-tab:hover:not(.active) {
+        color: var(--neutral-700);
       }
 
       /* Sections */
@@ -244,6 +248,7 @@ class TagUIManager {
         font-family: var(--font-sans);
         color: var(--neutral-900);
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow-sm);
       }
 
       .tag-input::placeholder {
@@ -253,7 +258,7 @@ class TagUIManager {
       .tag-input:focus {
         outline: none;
         border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(59, 130, 246, 0.15);
         background: white;
       }
 
@@ -332,7 +337,7 @@ class TagUIManager {
         display: inline-flex;
         align-items: center;
         gap: var(--space-sm);
-        background: linear-gradient(135deg, var(--primary-light) 0%, rgba(59, 130, 246, 0.05) 100%);
+        background: linear-gradient(135deg, var(--primary-light) 0%, rgba(59, 130, 246, 0.08) 100%);
         color: var(--primary-dark);
         padding: var(--space-sm) var(--space-md);
         border-radius: var(--radius-full);
@@ -341,13 +346,14 @@ class TagUIManager {
         border: 1px solid var(--primary);
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         animation: tagPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
       }
 
       .tag-pill:hover {
         background: var(--primary);
         color: white;
         border-color: var(--primary-dark);
-        box-shadow: var(--shadow-md);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         transform: translateY(-2px);
       }
 
@@ -399,7 +405,7 @@ class TagUIManager {
         display: inline-flex;
         align-items: center;
         gap: var(--space-sm);
-        background: linear-gradient(135deg, var(--accent-success) 0%, rgba(16, 185, 129, 0.8) 100%);
+        background: linear-gradient(135deg, var(--accent-success) 0%, rgba(16, 185, 129, 0.85) 100%);
         color: white;
         padding: var(--space-sm) var(--space-md);
         border-radius: var(--radius-full);
@@ -408,18 +414,18 @@ class TagUIManager {
         border: none;
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
       }
 
       .tag-recommended-pill:hover {
         transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-        filter: brightness(1.1);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        filter: brightness(1.08);
       }
 
       .tag-recommended-pill:active {
         transform: translateY(0);
-        box-shadow: var(--shadow-sm);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
       }
 
       /* Batch Mode */
@@ -477,12 +483,12 @@ class TagUIManager {
       /* Modal Footer */
       .tag-modal-footer {
         padding: var(--space-lg) var(--space-xl);
-        border-top: 1px solid var(--neutral-200);
+        border-top: 2px solid var(--neutral-200);
         display: flex;
         gap: var(--space-md);
         justify-content: flex-end;
         flex-wrap: wrap;
-        background: var(--neutral-50);
+        background: linear-gradient(135deg, var(--neutral-50) 0%, rgba(243, 244, 246, 0.5) 100%);
       }
 
       /* Buttons */
@@ -501,17 +507,19 @@ class TagUIManager {
         align-items: center;
         justify-content: center;
         min-width: 100px;
+        box-shadow: var(--shadow-sm);
       }
 
       .tag-btn:hover:not(:disabled) {
         background: var(--neutral-100);
         border-color: var(--neutral-400);
-        transform: translateY(-1px);
+        transform: translateY(-2px);
         box-shadow: var(--shadow-md);
       }
 
       .tag-btn:active:not(:disabled) {
         transform: translateY(0);
+        box-shadow: var(--shadow-sm);
       }
 
       /* Primary Button */
@@ -519,12 +527,14 @@ class TagUIManager {
         background: var(--primary);
         color: white;
         border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
       }
 
       .tag-btn.primary:hover:not(:disabled) {
         background: var(--primary-dark);
         border-color: var(--primary-dark);
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        transform: translateY(-2px);
       }
 
       /* Danger Button */
@@ -532,11 +542,12 @@ class TagUIManager {
         background: linear-gradient(135deg, var(--accent-danger) 0%, rgba(239, 68, 68, 0.8) 100%);
         color: white;
         border-color: var(--accent-danger);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
       }
 
       .tag-btn.danger:hover:not(:disabled) {
-        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1), var(--shadow-lg);
-        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        transform: translateY(-2px);
       }
 
       .tag-btn:disabled {

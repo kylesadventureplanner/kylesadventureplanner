@@ -702,6 +702,15 @@
           </div>
           <span class="btn-shortcut">Alt+N</span>
         </button>
+
+        <button class="automation-btn" id="btnAddChainLocation" onclick="handleAddChainLocation()">
+          <span class="btn-icon">🏪</span>
+          <div class="btn-content">
+            <div class="btn-title">Add Chain Location</div>
+            <div class="btn-desc">Add another location of an existing chain store</div>
+          </div>
+          <span class="btn-shortcut">Alt+C</span>
+        </button>
       </div>
 
       <div id="addPlacePanel" class="add-place-panel" aria-live="polite">
@@ -780,6 +789,53 @@
           </div>
 
           <div id="batchStatus" class="add-place-status"></div>
+        </div>
+      </div>
+
+      <!-- Chain Location Panel -->
+      <div id="chainLocationPanel" class="add-place-panel" aria-live="polite">
+        <div style="margin-bottom: 12px; padding: 10px; background: #fef3c7; border-radius: 8px; border-left: 4px solid var(--warning);">
+          <div style="font-size: 12px; font-weight: 600; color: #92400e;">💡 Chain Location Feature</div>
+          <div style="font-size: 11px; color: #78350f; margin-top: 4px; line-height: 1.4;">
+            Add a new location of an existing chain store. The location must have a different address than existing entries.
+          </div>
+        </div>
+
+        <div class="add-place-grid">
+          <div class="add-place-field">
+            <label for="chainSearchType">Search Existing Location By</label>
+            <select id="chainSearchType" class="add-place-select">
+              <option value="placeName">Place Name</option>
+              <option value="placeId">Google Place ID</option>
+            </select>
+          </div>
+          <div class="add-place-field">
+            <label for="chainSearchValue">Existing Location (to find the chain)</label>
+            <input id="chainSearchValue" class="add-place-input" type="text" placeholder="Enter name or Place ID of existing location" />
+          </div>
+          <div class="add-place-field">
+            <label for="chainNewLocation">New Location Name</label>
+            <input id="chainNewLocation" class="add-place-input" type="text" placeholder="Enter the new location name or address" />
+          </div>
+          <div class="add-place-field">
+            <label for="chainNewAddress">New Location Address</label>
+            <input id="chainNewAddress" class="add-place-input" type="text" placeholder="Enter the complete address (different from existing)" />
+          </div>
+        </div>
+
+        <div class="add-place-actions">
+          <button id="chainLocationCancelBtn" class="panel-btn" onclick="closeChainLocationPanel()">Cancel</button>
+          <button id="chainLocationSubmitBtn" class="panel-btn primary" onclick="submitChainLocation()">Add Chain Location</button>
+        </div>
+
+        <div id="chainLocationStatus" class="add-place-status"></div>
+
+        <div id="chainRecentSection" class="recent-places" style="margin-top: 12px;">
+          <div class="recent-header">
+            <span>Recently Added Chains</span>
+            <button class="recent-clear-btn" onclick="clearRecentChains()">Clear</button>
+          </div>
+          <div id="chainRecentList" class="recent-list"></div>
         </div>
       </div>
 
@@ -1433,6 +1489,264 @@
       setStatus('Add Place panel opened in this popup.', 'info');
     }
 
+    // ============================================================
+    // CHAIN LOCATION WORKFLOW
+    // ============================================================
+
+    let recentChains = [];
+    const RECENT_CHAINS_KEY = 'automationRecentChains';
+    const RECENT_CHAINS_MAX = 6;
+
+    function loadRecentChains() {
+      try {
+        const raw = localStorage.getItem(RECENT_CHAINS_KEY);
+        recentChains = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(recentChains)) recentChains = [];
+      } catch (_err) {
+        recentChains = [];
+      }
+      renderRecentChains();
+    }
+
+    function saveRecentChains() {
+      try {
+        localStorage.setItem(RECENT_CHAINS_KEY, JSON.stringify(recentChains));
+      } catch (_err) {
+        // no-op for storage failures
+      }
+    }
+
+    function renderRecentChains() {
+      const section = document.getElementById('chainRecentSection');
+      const list = document.getElementById('chainRecentList');
+      if (!section || !list) return;
+
+      if (!recentChains.length) {
+        section.classList.remove('visible');
+        list.innerHTML = '';
+        return;
+      }
+
+      section.classList.add('visible');
+      list.innerHTML = recentChains.map((item, idx) => {
+        const label = item.chainName || item.newLocation || 'Unknown Chain';
+        const address = item.newAddress || 'No address';
+        const when = item.when || '';
+        return `
+          <div class="recent-item">
+            <div class="recent-meta">
+              <div class="recent-name" title="${label}">${label}</div>
+              <div class="recent-sub" title="${address}">${address}${when ? ` • ${when}` : ''}</div>
+            </div>
+            <button class="recent-use-btn" onclick="useRecentChain(${idx})">Use</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addRecentChain(item) {
+      const key = `${item.chainName || ''}|${item.newLocation || ''}`;
+      recentChains = recentChains.filter((p) => `${p.chainName || ''}|${p.newLocation || ''}` !== key);
+      recentChains.unshift(item);
+      if (recentChains.length > RECENT_CHAINS_MAX) recentChains.length = RECENT_CHAINS_MAX;
+      saveRecentChains();
+      renderRecentChains();
+    }
+
+    function useRecentChain(index) {
+      const entry = recentChains[index];
+      if (!entry) return;
+      const searchTypeEl = document.getElementById('chainSearchType');
+      const searchValueEl = document.getElementById('chainSearchValue');
+      const newLocationEl = document.getElementById('chainNewLocation');
+      const newAddressEl = document.getElementById('chainNewAddress');
+
+      if (searchTypeEl) searchTypeEl.value = entry.searchType || 'placeName';
+      if (searchValueEl) searchValueEl.value = entry.chainName || '';
+      if (newLocationEl) newLocationEl.value = entry.newLocation || '';
+      if (newAddressEl) newAddressEl.value = entry.newAddress || '';
+
+      if (searchValueEl) {
+        searchValueEl.focus();
+        searchValueEl.select();
+      }
+      setChainLocationStatus('Loaded recent chain into the form.', 'info');
+    }
+
+    function clearRecentChains() {
+      recentChains = [];
+      saveRecentChains();
+      renderRecentChains();
+      setChainLocationStatus('Recent chains cleared.', 'info');
+    }
+
+    function setChainLocationStatus(message, type) {
+      const statusEl = document.getElementById('chainLocationStatus');
+      if (!statusEl) return;
+      statusEl.className = `add-place-status ${type || 'info'}`;
+      statusEl.textContent = message || '';
+    }
+
+    function openChainLocationPanel() {
+      const panel = document.getElementById('chainLocationPanel');
+      if (!panel) return;
+
+      panel.classList.add('visible');
+      loadRecentChains();
+      setChainLocationStatus('Enter the existing location and new location details below.', 'info');
+
+      const input = document.getElementById('chainSearchValue');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }
+
+    function closeChainLocationPanel() {
+      const panel = document.getElementById('chainLocationPanel');
+      const searchValueEl = document.getElementById('chainSearchValue');
+      const newLocationEl = document.getElementById('chainNewLocation');
+      const newAddressEl = document.getElementById('chainNewAddress');
+      const statusEl = document.getElementById('chainLocationStatus');
+
+      if (panel) panel.classList.remove('visible');
+      if (searchValueEl) searchValueEl.value = '';
+      if (newLocationEl) newLocationEl.value = '';
+      if (newAddressEl) newAddressEl.value = '';
+      if (statusEl) {
+        statusEl.className = 'add-place-status';
+        statusEl.textContent = '';
+      }
+    }
+
+    function handleAddChainLocation() {
+      if (!checkConnection()) return;
+      openChainLocationPanel();
+      setStatus('Chain Location panel opened in this popup.', 'info');
+    }
+
+    async function submitChainLocation() {
+      if (!checkConnection()) return;
+
+      const submitBtn = document.getElementById('chainLocationSubmitBtn');
+      const searchTypeEl = document.getElementById('chainSearchType');
+      const searchValueEl = document.getElementById('chainSearchValue');
+      const newLocationEl = document.getElementById('chainNewLocation');
+      const newAddressEl = document.getElementById('chainNewAddress');
+
+      const searchType = searchTypeEl ? searchTypeEl.value : 'placeName';
+      const searchValue = searchValueEl ? searchValueEl.value.trim() : '';
+      const newLocation = newLocationEl ? newLocationEl.value.trim() : '';
+      const newAddress = newAddressEl ? newAddressEl.value.trim() : '';
+
+      // Validation
+      if (!searchValue) {
+        setChainLocationStatus('Please enter the existing location to find the chain.', 'error');
+        return;
+      }
+      if (!newLocation) {
+        setChainLocationStatus('Please enter the new location name.', 'error');
+        return;
+      }
+      if (!newAddress) {
+        setChainLocationStatus('Please enter the new location address (must be different).', 'error');
+        return;
+      }
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Processing...';
+        }
+
+        // Check authentication
+        const authState = await ensureMainAuthReady();
+        if (!authState.isAuthenticated) {
+          throw new Error('Please sign in first. Click "Sign In" in the main Adventure Finder window.');
+        }
+
+        setChainLocationStatus('Finding existing location...', 'info');
+        setStatus('<span class="spinner"></span>Adding chain location...', 'info');
+
+        // Get required functions
+        const resolvePlaceIdFromInput = requireMainFunction('resolvePlaceIdFromInput');
+        const getPlaceDetails = requireMainFunction('getPlaceDetails');
+        const buildExcelRow = requireMainFunction('buildExcelRow');
+        const placeExistsInData = requireMainFunction('placeExistsInData');
+        const addRowToExcel = requireMainFunction('addRowToExcel');
+        const loadTable = requireMainFunction('loadTable');
+
+        // Step 1: Find the existing location to get the Place ID (chain identifier)
+        const existingPlaceId = await resolvePlaceIdFromInput(searchType, searchValue);
+        setChainLocationStatus(`Found existing location. Now adding new location with ID: ${existingPlaceId.substring(0, 20)}...`, 'info');
+
+        // Step 2: Get details for the new location
+        const details = await getPlaceDetails(existingPlaceId);
+
+        // Step 3: Build Excel row but override address
+        const row = buildExcelRow(existingPlaceId, details);
+
+        // Override address with new address
+        row[11] = newAddress;
+
+        // Update name if provided
+        if (newLocation && newLocation !== searchValue) {
+          row[0] = newLocation;
+        }
+
+        const chainName = row[0] || 'Unknown Chain';
+
+        // Step 4: Check if this exact location already exists
+        if (placeExistsInData(row)) {
+          throw new Error('This chain location already exists (same Place ID and address). Please use a different address.');
+        }
+
+        // Step 5: Add to Excel
+        setChainLocationStatus('Verified unique location. Adding to Excel...', 'info');
+        if (!isDryRun) {
+          await addRowToExcel(row);
+        }
+
+        // Step 6: Reload data
+        if (typeof loadTable === 'function') {
+          await loadTable();
+        }
+
+        // Store in recent chains
+        const now = new Date().toLocaleTimeString();
+        addRecentChain({
+          chainName: chainName,
+          newLocation: newLocation,
+          newAddress: newAddress,
+          searchType: searchType,
+          placeId: existingPlaceId,
+          when: now
+        });
+
+        const resultMsg = isDryRun
+          ? `✅ Chain location ready (preview mode): ${chainName} at ${newAddress}`
+          : `✅ Chain location added: ${chainName} at ${newAddress}`;
+
+        setChainLocationStatus(resultMsg, 'success');
+        setStatus(resultMsg, 'success');
+
+        // Close panel after success
+        setTimeout(() => {
+          closeChainLocationPanel();
+        }, 2000);
+
+      } catch (err) {
+        const errorMsg = `❌ Error: ${err.message}`;
+        setChainLocationStatus(errorMsg, 'error');
+        setStatus(errorMsg, 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Add Chain Location';
+        }
+      }
+    }
+
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
       if (!e.altKey) return;
@@ -1443,7 +1757,8 @@
         'A': 'btnRefreshAll',
         'S': 'btnSearchPlaceIds',
         'R': 'btnRefreshPlaceIds',
-        'N': 'btnAddPlace'
+        'N': 'btnAddPlace',
+        'C': 'btnAddChainLocation'
       };
 
       const buttonId = shortcuts[e.key.toUpperCase()];
@@ -1468,6 +1783,7 @@
     setInterval(checkConnection, 2000);
     checkConnection();
     loadRecentPlaces();
+    loadRecentChains();
 
     // Defensive redirect: if legacy code calls opener.openAddPlaceModal,
     // route it back into this popup so Add Place never opens in the main window.
