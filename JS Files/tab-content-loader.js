@@ -16,7 +16,7 @@
 
 class TabContentLoader {
   constructor() {
-    this.tabsPath = 'tabs/';
+    this.tabsPath = 'HTML Files/tabs/';  // ← FIXED: Correct path to tabs folder
     this.loadedTabs = new Set();
     this.loadingTabs = new Set();
     this.tabCache = new Map();
@@ -34,34 +34,39 @@ class TabContentLoader {
     // Tab definitions with priority
     this.tabs = {
       'adventure-planner': {
-        file: 'adventure-planner-tab.html',
+        file: null,  // ← No file needed - already in index!
         element: 'adventurePlannerTab',
-        priority: 1,  // Load first
-        preload: true // Load on init
+        priority: 1,
+        preload: true,
+        isInlineContent: true  // ← Mark as inline
       },
       'birding': {
         file: 'birding-locations-tab.html',
         element: 'birdingTab',
         priority: 2,
-        preload: false // Load on demand
+        preload: false,
+        isInlineContent: false
       },
       'recipes': {
         file: 'recipes-tab.html',
         element: 'recipesTab',
         priority: 3,
-        preload: false
+        preload: false,
+        isInlineContent: false
       },
       'garden': {
         file: 'garden-planner-tab.html',
         element: 'gardenTab',
         priority: 4,
-        preload: false
+        preload: false,
+        isInlineContent: false
       },
       'budget': {
         file: 'budget-planner-tab.html',
         element: 'budgetTab',
         priority: 5,
-        preload: false
+        preload: false,
+        isInlineContent: false
       }
     };
 
@@ -211,6 +216,17 @@ class TabContentLoader {
       if (!tabInfo) {
         console.error(`❌ Tab not found: ${tabId}`);
         this.loadingTabs.delete(tabId);
+        return;
+      }
+
+      // ← NEW: Handle inline content (already in index)
+      if (tabInfo.isInlineContent) {
+        console.log(`✅ Using inline content for tab: ${tabId}`);
+        const loadTime = performance.now() - startTime;
+        this.loadTimes.set(tabId, loadTime);
+        this.loadedTabs.add(tabId);
+        this.loadingTabs.delete(tabId);
+        this.initializeTab(tabId);
         return;
       }
 
