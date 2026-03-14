@@ -6792,9 +6792,12 @@
       info: 'ℹ'
     };
 
+    // Ensure message is not empty - provide default if needed
+    const displayMessage = message || 'Operation completed';
+
     toast.innerHTML = `
       <span class="toast-icon">${iconMap[type]}</span>
-      <span>${message}</span>
+      <span>${displayMessage}</span>
       <button class="toast-close">×</button>
     `;
 
