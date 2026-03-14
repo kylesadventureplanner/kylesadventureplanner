@@ -16277,7 +16277,13 @@ COMMON ISSUES:
     setTimeout(() => {
       if (window.cleanTagManager && typeof window.cleanTagManager.openModal === 'function') {
         window.cleanTagManager.openModal(id, id);
-  })();
+      } else if (window.tagUIManager && typeof window.tagUIManager.openModal === 'function') {
+        window.tagUIManager.openModal(id);
+      } else {
+        alert('Tag Manager is still loading. Please wait a moment and try again.');
+      }
+    }, 300);
+  }
 
 </script>
 <script>
@@ -16290,14 +16296,14 @@ COMMON ISSUES:
 
     function ensureTagManagerReady() {
       if (tagManagerReady) return;
-      
+
       // Check if cleanTagManager exists and has init method
       if (window.cleanTagManager && typeof window.cleanTagManager.openModal === 'function') {
         tagManagerReady = true;
         console.log('✅ Tag Manager is ready');
         return true;
       }
-      
+
       tagManagerCheckAttempts++;
       if (tagManagerCheckAttempts < maxAttempts) {
         setTimeout(ensureTagManagerReady, 100);
@@ -16313,7 +16319,7 @@ COMMON ISSUES:
     // Main openTagManager function
     window.openTagManager = function (placeId) {
       const id = String(placeId || '').trim();
-      
+
       if (!id) {
         if (typeof window.showToast === 'function') {
           window.showToast('No Place ID available for this location', 'warning', 2500);
