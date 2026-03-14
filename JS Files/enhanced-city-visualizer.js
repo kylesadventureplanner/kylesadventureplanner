@@ -86,6 +86,12 @@ class EnhancedCityVisualizer {
 
     // Group by city and calculate distance
     this.adventuresData.forEach((adventure, idx) => {
+      // Add safety check for adventure structure
+      if (!adventure || !adventure.row || !adventure.row.values || !adventure.row.values[0]) {
+        console.warn('⚠️ Invalid adventure data at index:', idx);
+        return; // Skip this adventure
+      }
+
       const values = adventure.row.values[0];
       const city = (values[10] || 'Unknown City').trim();
       const state = (values[9] || '').trim();
