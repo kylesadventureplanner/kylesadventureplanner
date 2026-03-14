@@ -16073,6 +16073,193 @@ COMMON ISSUES:
    * Edit Mode contains all management, automation, and backup features
    */
   /**
+   * Add a single new place to the app
+   * Called from Edit Mode
+   */
+  window.addNewPlace = function(name, placeId, website) {
+    console.log('➕ Adding new place:', { name, placeId, website });
+
+    if (!name && !placeId && !website) {
+      showToast('❌ Please provide at least one field', 'error', 3000);
+      return false;
+    }
+
+    try {
+      // Create new row data for Excel
+      const newRow = [
+        name || '',                    // Name
+        placeId || '',                 // Google Place ID
+        website || '',                 // Website
+        '',                            // Tags (empty initially)
+        '',                            // Drive Time
+        '',                            // Hours of Operation
+        '',                            // Activity Duration
+        '',                            // Difficulty
+        '',                            // Trail Length
+        '',                            // State
+        '',                            // City
+        '',                            // Address
+        '',                            // Phone
+        '',                            // Rating
+        '',                            // Cost
+        '',                            // Directions
+        '',                            // Description
+        '',                            // Nearby
+        '',                            // Links
+        '',                            // Links 2
+        '',                            // Notes
+        '',                            // My Rating
+        '',                            // Favorite
+        ''                             // Google URL
+      ];
+
+      // Add to local data
+      if (window.adventuresData) {
+        window.adventuresData.push({ row: { values: [newRow] }, index: window.adventuresData.length });
+        console.log('✅ Place added to local data');
+        showToast(`✅ Successfully added: ${name || placeId || 'New Place'}`, 'success', 3000);
+
+        // Refresh the display
+        if (typeof window.renderPaginatedCards === 'function') {
+          window.renderPaginatedCards();
+        }
+
+        return true;
+      } else {
+        console.warn('⚠️ adventuresData not available');
+        showToast('⏳ Loading data, please try again...', 'warning', 3000);
+        return false;
+      }
+    } catch (err) {
+      console.error('❌ Error adding place:', err);
+      showToast(`❌ Error: ${err.message}`, 'error', 3000);
+      return false;
+    }
+  };
+
+  /**
+   * Bulk add multiple places
+   * Called from Edit Mode
+   */
+  window.bulkAddPlaces = function(placeNames) {
+    console.log('📦 Bulk adding places:', placeNames);
+
+    if (!placeNames || placeNames.length === 0) {
+      showToast('❌ No places to add', 'error', 3000);
+      return false;
+    }
+
+    try {
+      let addedCount = 0;
+
+      placeNames.forEach(name => {
+        if (name && name.trim()) {
+          const newRow = [
+            name.trim(),               // Name
+            '',                        // Google Place ID
+            '',                        // Website
+            '',                        // Tags
+            '',                        // Drive Time
+            '',                        // Hours of Operation
+            '',                        // Activity Duration
+            '',                        // Difficulty
+            '',                        // Trail Length
+            '',                        // State
+            '',                        // City
+            '',                        // Address
+            '',                        // Phone
+            '',                        // Rating
+            '',                        // Cost
+            '',                        // Directions
+            '',                        // Description
+            '',                        // Nearby
+            '',                        // Links
+            '',                        // Links 2
+            '',                        // Notes
+            '',                        // My Rating
+            '',                        // Favorite
+            ''                         // Google URL
+          ];
+
+          if (window.adventuresData) {
+            window.adventuresData.push({ row: { values: [newRow] }, index: window.adventuresData.length });
+            addedCount++;
+          }
+        }
+      });
+
+      if (addedCount > 0) {
+        console.log(`✅ Added ${addedCount} place(s)`);
+        showToast(`✅ Successfully added ${addedCount} place(s)!`, 'success', 3000);
+
+        // Refresh the display
+        if (typeof window.renderPaginatedCards === 'function') {
+          window.renderPaginatedCards();
+        }
+
+        return true;
+      } else {
+        showToast('❌ No valid places to add', 'error', 3000);
+        return false;
+      }
+    } catch (err) {
+      console.error('❌ Error adding places:', err);
+      showToast(`❌ Error: ${err.message}`, 'error', 3000);
+      return false;
+    }
+  };
+
+  /**
+   * Find and display similar locations
+   * Called from Edit Mode
+   */
+  window.findSimilarLocations = function(searchTerm) {
+    console.log('🔍 Finding similar locations for:', searchTerm);
+
+    if (!searchTerm || !searchTerm.trim()) {
+      showToast('❌ Please enter a location name or ID', 'error', 3000);
+      return false;
+    }
+
+    try {
+      // Find the location index
+      let foundIndex = -1;
+
+      if (window.adventuresData) {
+        for (let i = 0; i < window.adventuresData.length; i++) {
+          const adventure = window.adventuresData[i];
+          const name = (adventure.row.values[0][0] || '').toLowerCase();
+          const search = searchTerm.toLowerCase();
+
+          if (name.includes(search) || search.includes(name)) {
+            foundIndex = i;
+            break;
+          }
+        }
+      }
+
+      if (foundIndex >= 0) {
+        // Call the showSimilarAdventures function
+        if (typeof window.showSimilarAdventures === 'function') {
+          window.showSimilarAdventures(foundIndex);
+          showToast(`✅ Found similar locations to: ${searchTerm}`, 'success', 3000);
+          return true;
+        } else {
+          showToast('⏳ Similar finder not ready, please try again', 'warning', 3000);
+          return false;
+        }
+      } else {
+        showToast(`❌ Location not found: ${searchTerm}`, 'error', 3000);
+        return false;
+      }
+    } catch (err) {
+      console.error('❌ Error finding similar:', err);
+      showToast(`❌ Error: ${err.message}`, 'error', 3000);
+      return false;
+    }
+  };
+
+  /**
    * Wrapper functions for automation handlers
    * These prevent errors if enhanced-automation-features.js hasn't loaded yet
    */
