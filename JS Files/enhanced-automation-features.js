@@ -13,14 +13,41 @@
 (function() {
   console.log('🚀 Enhanced Automation Features v7.0.114 Loading');
 
+  /**
+   * Cross-context utility - gets data from window or opener
+   */
+  function getFromContext(prop) {
+    if (window[prop]) return window[prop];
+    if (window.opener && !window.opener.closed && window.opener[prop]) {
+      return window.opener[prop];
+    }
+    return null;
+  }
+
+  /**
+   * Cross-context utility - shows toast in current or opener window
+   */
+  function showToastCrossContext(message, type = 'info', duration = 3000) {
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type, duration);
+    } else if (window.opener && typeof window.opener.showToast === 'function') {
+      window.opener.showToast(message, type, duration);
+    }
+  }
+
   // ============================================================
   // 1. REFRESH PLACE IDS BUTTON - ENHANCED
   // ============================================================
   window.handleRefreshPlaceIds = function() {
     console.log('🔄 Refreshing Place IDs...');
 
-    if (!window.mainWindow) {
-      alert('❌ Not connected to main window');
+    // Don't require mainWindow - handle gracefully
+    // This allows the function to work in both popup and tab contexts
+    if (!window.adventuresData && !window.mainWindow?.adventuresData) {
+      console.warn('⚠️ No locations data available');
+      if (typeof displayStatus === 'function') {
+        displayStatus('refresh-status', '⚠️ No locations to refresh', 'error');
+      }
       return;
     }
 
@@ -263,16 +290,14 @@
       addBtn.textContent = 'Processing...';
 
       try {
-        // Check if main window functions exist
-        if (!window.opener || window.opener.closed) {
-          throw new Error('Main window not connected');
-        }
-
-        const mainWindow = window.opener;
+        // Check if main window functions exist or use current context
+        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
 
         // Verify required functions exist
-        if (typeof mainWindow.getPlaceDetails !== 'function') {
-          throw new Error('Main window functions not available');
+        if (typeof mainWindow.getPlaceDetails !== 'function' && typeof getFromContext('getPlaceDetails') !== 'function') {
+          // If not available, show message and continue anyway
+          console.log('⚠️ Some functions not available, using available resources');
+        }
         }
 
         let successCount = 0;

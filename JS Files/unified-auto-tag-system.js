@@ -13,6 +13,28 @@
   console.log('🏷️ Unified Auto-Tag System Loading...');
 
   /**
+   * Cross-context utility - gets data from window or opener
+   */
+  function getFromContext(prop) {
+    if (window[prop]) return window[prop];
+    if (window.opener && !window.opener.closed && window.opener[prop]) {
+      return window.opener[prop];
+    }
+    return null;
+  }
+
+  /**
+   * Cross-context utility - shows toast in current or opener window
+   */
+  function showToastCrossContext(message, type = 'info', duration = 3000) {
+    if (typeof window.showToast === 'function') {
+      window.showToast(message, type, duration);
+    } else if (window.opener && typeof window.opener.showToast === 'function') {
+      window.opener.showToast(message, type, duration);
+    }
+  }
+
+  /**
    * Auto-tag all locations using clean tag manager recommendations
    */
   window.autoTagAllLocationsUnified = async function(options = {}) {
@@ -25,35 +47,21 @@
 
     console.log('🏷️ Starting unified auto-tag for all locations...');
 
-    // Get cleanTagManager - check window and opener
-    let tagManager = window.cleanTagManager;
-    if (!tagManager && window.opener) {
-      tagManager = window.opener.cleanTagManager;
-      console.log('📍 Found cleanTagManager in parent window');
-    }
+    // Get cleanTagManager from context
+    let tagManager = getFromContext('cleanTagManager');
 
     if (!tagManager) {
       console.error('❌ Clean Tag Manager not loaded');
-      if (window.showToast) window.showToast('❌ Tag system not ready', 'error', 3000);
-      if (window.opener && window.opener.showToast) {
-        window.opener.showToast('❌ Tag system not ready', 'error', 3000);
-      }
+      showToastCrossContext('❌ Tag system not ready', 'error', 3000);
       return { success: 0, failed: 0, skipped: 0 };
     }
 
-    // Get adventuresData - check window and opener
-    let adventuresData = window.adventuresData;
-    if (!adventuresData && window.opener) {
-      adventuresData = window.opener.adventuresData;
-      console.log('📍 Found adventuresData in parent window');
-    }
+    // Get adventuresData from context
+    let adventuresData = getFromContext('adventuresData');
 
     if (!adventuresData || adventuresData.length === 0) {
       console.warn('⚠️ No locations to tag');
-      if (window.showToast) window.showToast('⚠️ No locations found', 'warning', 2000);
-      if (window.opener && window.opener.showToast) {
-        window.opener.showToast('⚠️ No locations found', 'warning', 2000);
-      }
+      showToastCrossContext('⚠️ No locations found', 'warning', 2000);
       return { success: 0, failed: 0, skipped: 0 };
     }
 
@@ -152,10 +160,7 @@
       }
 
       // Refresh table if available
-      let loadTable = window.loadTable;
-      if (!loadTable && window.opener) {
-        loadTable = window.opener.loadTable;
-      }
+      let loadTable = getFromContext('loadTable');
 
       if (loadTable && typeof loadTable === 'function') {
         await loadTable();
@@ -165,9 +170,8 @@
       return results;
 
     } catch (err) {
-      console.error('❌ Error in auto-tag all:', err);
-      if (window.showToast) {
-        window.showToast(`❌ Error: ${err.message}`, 'error', 3000);
+      console.error('❌ Error during auto-tag:', err);
+      showToastCrossContext(`❌ Error: ${err.message}`, 'error', 3000);
       }
       if (window.opener && window.opener.showToast) {
         window.opener.showToast(`❌ Error: ${err.message}`, 'error', 3000);
