@@ -325,6 +325,7 @@
     <div class="tabs-nav">
       <button class="tab-btn active" data-tab="backup" onclick="switchTab('backup')">💾 Backup</button>
       <button class="tab-btn" data-tab="automation" onclick="switchTab('automation')">🔄 Automation</button>
+      <button class="tab-btn" data-tab="places" onclick="switchTab('places')">➕ Add Places</button>
       <button class="tab-btn" data-tab="history" onclick="switchTab('history')">📅 Location History</button>
     </div>
 
@@ -434,6 +435,91 @@
                 🔍 Search
               </button>
               <div id="search-status" style="margin-top: 12px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Location History Tab -->
+    <div id="history-tab" class="tab-content">
+
+    <!-- Add Places Tab -->
+    <div id="places-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">➕ Add New Places</div>
+        </div>
+        <div style="padding: 16px;">
+          <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+            Add new locations to your adventure finder. You can add a single place or multiple places at once.
+          </p>
+
+          <!-- Add Single Place -->
+          <div class="card" style="border: 1px solid #3b82f6; background: #eff6ff; margin-bottom: 12px;">
+            <div class="card-header">
+              <div class="card-title" style="color: #1e40af;">➕ Add Single Place</div>
+            </div>
+            <div style="padding: 12px;">
+              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+                Add a single location by entering the place name, Google Place ID, or website.
+              </p>
+              <div class="input-group">
+                <label>Place Name:</label>
+                <input type="text" id="singlePlaceName" placeholder="e.g., Starbucks Downtown">
+              </div>
+              <div class="input-group">
+                <label>Google Place ID (optional):</label>
+                <input type="text" id="singlePlaceId" placeholder="e.g., ChIJ...">
+              </div>
+              <div class="input-group">
+                <label>Website URL (optional):</label>
+                <input type="url" id="singlePlaceWebsite" placeholder="e.g., https://example.com">
+              </div>
+              <button class="button button-primary" onclick="addSinglePlace()" style="width: 100%; padding: 12px;">
+                ➕ Add Place
+              </button>
+              <div id="single-place-status" style="margin-top: 12px;"></div>
+            </div>
+          </div>
+
+          <!-- Bulk Add Places -->
+          <div class="card" style="border: 1px solid #8b5cf6; background: #faf5ff; margin-bottom: 12px;">
+            <div class="card-header">
+              <div class="card-title" style="color: #6d28d9;">📦 Bulk Add Places</div>
+            </div>
+            <div style="padding: 12px;">
+              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+                Add multiple locations at once. Enter place names, one per line.
+              </p>
+              <div class="input-group">
+                <label>Place Names (one per line):</label>
+                <textarea id="bulkPlaceNames" rows="4" placeholder="Starbucks Downtown&#10;Local Coffee Shop&#10;Restaurant Name..."></textarea>
+              </div>
+              <button class="button button-primary" onclick="bulkAddPlaces()" style="width: 100%; padding: 12px;">
+                📦 Add Multiple Places
+              </button>
+              <div id="bulk-place-status" style="margin-top: 12px;"></div>
+            </div>
+          </div>
+
+          <!-- Find Similar Locations -->
+          <div class="card" style="border: 1px solid #ec4899; background: #fdf2f8; margin-bottom: 12px;">
+            <div class="card-header">
+              <div class="card-title" style="color: #be185d;">🔍 Find Similar Locations</div>
+            </div>
+            <div style="padding: 12px;">
+              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+                Search for locations similar to one in your list.
+              </p>
+              <div class="input-group">
+                <label>Location Name or ID:</label>
+                <input type="text" id="similarSearchInput" placeholder="Search for a location...">
+              </div>
+              <button class="button button-primary" onclick="findSimilarLocations()" style="width: 100%; padding: 12px;">
+                🔍 Find Similar
+              </button>
+              <div id="similar-status" style="margin-top: 12px;"></div>
             </div>
           </div>
         </div>
@@ -627,6 +713,107 @@
         const message = '❌ Search system not available';
         displayStatus('search-status', message, 'error');
         showToast(message, 'error');
+      }
+    }
+
+    /**
+     * Add Single Place
+     */
+    function addSinglePlace() {
+      const name = document.getElementById('singlePlaceName').value.trim();
+      const placeId = document.getElementById('singlePlaceId').value.trim();
+      const website = document.getElementById('singlePlaceWebsite').value.trim();
+
+      if (!name && !placeId && !website) {
+        displayStatus('single-place-status', '❌ Please enter at least one field', 'error');
+        return;
+      }
+
+      displayStatus('single-place-status', '<span class="spinner"></span> Adding place...', 'info');
+
+      // Call main window function if available
+      if (typeof window.opener !== 'undefined' && window.opener && typeof window.opener.addNewPlace === 'function') {
+        try {
+          window.opener.addNewPlace(name, placeId, website);
+          displayStatus('single-place-status', `✅ Successfully added: ${name}`, 'success');
+          showToast(`✅ Added: ${name}`, 'success');
+          // Clear inputs
+          document.getElementById('singlePlaceName').value = '';
+          document.getElementById('singlePlaceId').value = '';
+          document.getElementById('singlePlaceWebsite').value = '';
+        } catch (err) {
+          const message = `❌ Error: ${err.message}`;
+          displayStatus('single-place-status', message, 'error');
+          showToast(message, 'error');
+        }
+      } else {
+        const message = '⏳ Main window not available - please ensure browse tab is open';
+        displayStatus('single-place-status', message, 'info');
+        showToast(message, 'info');
+      }
+    }
+
+    /**
+     * Bulk Add Places
+     */
+    function bulkAddPlaces() {
+      const input = document.getElementById('bulkPlaceNames').value;
+      const placeNames = input.split('\n').map(name => name.trim()).filter(name => name);
+
+      if (placeNames.length === 0) {
+        displayStatus('bulk-place-status', '❌ Please enter at least one place name', 'error');
+        return;
+      }
+
+      displayStatus('bulk-place-status', `<span class="spinner"></span> Adding ${placeNames.length} place(s)...`, 'info');
+
+      if (typeof window.opener !== 'undefined' && window.opener && typeof window.opener.bulkAddPlaces === 'function') {
+        try {
+          window.opener.bulkAddPlaces(placeNames);
+          const message = `✅ Successfully added ${placeNames.length} place(s)!`;
+          displayStatus('bulk-place-status', message, 'success');
+          showToast(message, 'success');
+          document.getElementById('bulkPlaceNames').value = '';
+        } catch (err) {
+          const message = `❌ Error: ${err.message}`;
+          displayStatus('bulk-place-status', message, 'error');
+          showToast(message, 'error');
+        }
+      } else {
+        const message = '⏳ Main window not available - please ensure browse tab is open';
+        displayStatus('bulk-place-status', message, 'info');
+        showToast(message, 'info');
+      }
+    }
+
+    /**
+     * Find Similar Locations
+     */
+    function findSimilarLocations() {
+      const searchTerm = document.getElementById('similarSearchInput').value.trim();
+
+      if (!searchTerm) {
+        displayStatus('similar-status', '❌ Please enter a location name or ID', 'error');
+        return;
+      }
+
+      displayStatus('similar-status', '<span class="spinner"></span> Finding similar locations...', 'info');
+
+      if (typeof window.opener !== 'undefined' && window.opener && typeof window.opener.findSimilarLocations === 'function') {
+        try {
+          window.opener.findSimilarLocations(searchTerm);
+          displayStatus('similar-status', `✅ Searching for locations similar to: ${searchTerm}`, 'success');
+          showToast(`✅ Searching for similar locations...`, 'success');
+          document.getElementById('similarSearchInput').value = '';
+        } catch (err) {
+          const message = `❌ Error: ${err.message}`;
+          displayStatus('similar-status', message, 'error');
+          showToast(message, 'error');
+        }
+      } else {
+        const message = '⏳ Main window not available - please ensure browse tab is open';
+        displayStatus('similar-status', message, 'info');
+        showToast(message, 'info');
       }
     }
 
