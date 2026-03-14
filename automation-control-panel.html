@@ -2193,10 +2193,89 @@
       };
     }
 
-    // Notify main window
-    if (mainWindow && !mainWindow.closed) {
-      setStatus('Control panel ready. Select an action to begin.', 'success');
-    }
+
+    // ============================================================
+    // BUTTON HANDLER FUNCTIONS (Global)
+    // ============================================================
+
+    window.handleAddPlace = function() {
+      openAddPlacePanel();
+    };
+
+    window.handleAddChainLocation = function() {
+      const panel = document.getElementById('chainLocationPanel');
+      if (!panel) return;
+      panel.classList.add('visible');
+      setStatus('Chain Location panel opened. Select an existing location to link.', 'info');
+      const searchInput = document.getElementById('chainSearchValue');
+      if (searchInput) {
+        searchInput.focus();
+      }
+    };
+
+    window.handleBulkAddChainLocations = function() {
+      // Open the Add Place panel in Batch mode
+      const panel = document.getElementById('addPlacePanel');
+      if (!panel) return;
+      panel.classList.add('visible');
+
+      // Switch to batch mode
+      const tabs = document.querySelectorAll('.mode-tab');
+      tabs.forEach(tab => tab.classList.remove('active'));
+      if (tabs.length > 1) tabs[1].classList.add('active');
+
+      const singleMode = document.getElementById('singleMode');
+      const batchMode = document.getElementById('batchMode');
+      if (singleMode) singleMode.classList.remove('visible');
+      if (batchMode) batchMode.classList.add('visible');
+
+      setStatus('Batch Add Chain Locations panel opened. Enter Place IDs or names.', 'info');
+      const textarea = document.getElementById('batchPlaceValues');
+      if (textarea) {
+        textarea.focus();
+        textarea.select();
+      }
+    };
+
+    window.handleAutoTagAll = function() {
+      if (!checkConnection()) return;
+      if (!mainWindow || typeof mainWindow.runGoogleAutomation !== 'function') {
+        setStatus('❌ Main automation function not available', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnAutoTagAll');
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+      }
+
+      try {
+        setStatus('🏷️ Auto-tagging all locations...', 'info');
+        mainWindow.runGoogleAutomation('autoTagAll', isDryRun)
+          .then(() => {
+            setStatus('✅ Auto-tagging completed! Check your locations for new tags.', 'success');
+            if (typeof mainWindow.showToast === 'function') {
+              mainWindow.showToast('✅ Auto-tagging completed', 'success', 3000);
+            }
+          })
+          .catch((err) => {
+            setStatus(`❌ Error: ${err.message}`, 'error');
+          })
+          .finally(() => {
+            if (btn) {
+              btn.disabled = false;
+              btn.classList.remove('loading');
+            }
+          });
+      } catch (err) {
+        setStatus(`❌ Error: ${err.message}`, 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('loading');
+        }
+      }
+    };
   </script>
 
   <!-- Enhanced Automation Features with Bulk Add Chain, Refresh Place IDs, etc. -->

@@ -72,18 +72,23 @@
         display: none !important;
       }
       #cleanTagManagerBackdrop {
-        position: fixed;
-        inset: 0;
+        position: fixed !important;
+        inset: 0 !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
         background: rgba(15, 23, 42, 0.45);
         backdrop-filter: blur(2px);
-        z-index: 1000500;
+        z-index: 999999 !important;
         display: none;
         align-items: center;
         justify-content: center;
         padding: 20px;
       }
       #cleanTagManagerBackdrop.visible {
-        display: flex;
+        display: flex !important;
+        z-index: 999999 !important;
       }
       #cleanTagManagerModal {
         width: min(760px, 96vw);
@@ -96,7 +101,7 @@
         flex-direction: column;
         overflow: hidden;
         position: relative;
-        z-index: 1000501;
+        z-index: 1000000 !important;
       }
       .ctm-header {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -208,13 +213,23 @@
       }
       .ctm-suggestion {
         border: 1px solid #34d399;
-        border-radius: 999px;
+        border-radius: 12px;
         background: #fff;
         color: #047857;
-        padding: 6px 10px;
+        padding: 8px 10px;
         font-weight: 600;
         font-size: 12px;
         cursor: pointer;
+        transition: all 0.2s;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .ctm-suggestion:hover {
+        background: #f0fdf4;
+        border-color: #10b981;
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.15);
       }
       .ctm-footer {
         padding: 14px 20px;
@@ -494,36 +509,247 @@
     },
 
     buildRecommendations() {
-      const recs = new Set();
+      const recs = new Map(); // Use Map to track confidence scores
       const row = this.getRowForCurrentPlace();
       const values = row?.values?.[0] || [];
 
-      const text = [values[0], values[3], values[10], values[11], values[16]]
-        .map((v) => String(v || '').toLowerCase())
-        .join(' ');
+      // Extract all relevant text fields (Name, Tags, City, Address, Description)
+      const name = String(values[0] || '').toLowerCase();
+      const existingTags = String(values[3] || '').toLowerCase();
+      const city = String(values[10] || '').toLowerCase();
+      const address = String(values[11] || '').toLowerCase();
+      const description = String(values[16] || '').toLowerCase();
+      const googleRating = parseFloat(values[13]) || 0;
 
+      // Combine all text for analysis
+      const fullText = `${name} ${existingTags} ${city} ${address} ${description}`;
+
+      // ENHANCED CATEGORY RULES with confidence scoring
       const ruleMap = [
-        { keys: ['hike', 'trail', 'mountain', 'waterfall'], tags: ['Outdoor', 'Hiking', 'Nature', 'Scenic'] },
-        { keys: ['restaurant', 'cafe', 'coffee', 'diner', 'food'], tags: ['Restaurant', 'Dining', 'Local Favorite'] },
-        { keys: ['park', 'lake', 'river', 'forest'], tags: ['Family-Friendly', 'Nature', 'Relaxing'] },
-        { keys: ['museum', 'historic', 'history', 'gallery'], tags: ['Cultural', 'Historical', 'Educational'] },
-        { keys: ['shop', 'market', 'store', 'mall'], tags: ['Shopping', 'Market', 'Local Business'] }
+        // Outdoor & Nature Categories
+        {
+          keys: ['hike', 'trail', 'hiking', 'trekking', 'mountain', 'alpine'],
+          tags: ['Hiking', 'Outdoor', 'Nature', 'Scenic', 'Adventure'],
+          confidence: 0.95
+        },
+        {
+          keys: ['waterfall', 'cascade', 'falls'],
+          tags: ['Waterfall', 'Nature', 'Scenic', 'Photography', 'Outdoor'],
+          confidence: 0.9
+        },
+        {
+          keys: ['park', 'garden', 'botanical', 'arboretum'],
+          tags: ['Park', 'Nature', 'Family-Friendly', 'Relaxing', 'Scenic'],
+          confidence: 0.85
+        },
+        {
+          keys: ['lake', 'river', 'stream', 'pond', 'creek', 'water'],
+          tags: ['Water Activity', 'Nature', 'Scenic', 'Family-Friendly'],
+          confidence: 0.8
+        },
+        {
+          keys: ['forest', 'woods', 'woodland', 'grove'],
+          tags: ['Nature', 'Hiking', 'Outdoor', 'Relaxing', 'Scenic'],
+          confidence: 0.85
+        },
+        {
+          keys: ['beach', 'shore', 'coast', 'seaside'],
+          tags: ['Beach', 'Outdoor', 'Family-Friendly', 'Scenic', 'Relaxing'],
+          confidence: 0.9
+        },
+        {
+          keys: ['camping', 'camp site'],
+          tags: ['Camping', 'Outdoor', 'Adventure', 'Family-Friendly'],
+          confidence: 0.9
+        },
+
+        // Dining & Food Categories
+        {
+          keys: ['restaurant', 'bistro', 'steakhouse', 'grill'],
+          tags: ['Restaurant', 'Dining', 'Local Favorite', 'Worth Visiting'],
+          confidence: 0.95
+        },
+        {
+          keys: ['cafe', 'coffee', 'espresso', 'tea house'],
+          tags: ['Cafe', 'Coffee', 'Local Favorite', 'Relaxing'],
+          confidence: 0.9
+        },
+        {
+          keys: ['diner', 'fast food', 'quick bite'],
+          tags: ['Casual Dining', 'Quick Service'],
+          confidence: 0.8
+        },
+        {
+          keys: ['bakery', 'pastry'],
+          tags: ['Bakery', 'Local Favorite', 'Worth Visiting'],
+          confidence: 0.85
+        },
+        {
+          keys: ['brewery', 'winery', 'distillery', 'bar', 'pub'],
+          tags: ['Beverage', 'Adult Experience', 'Local Favorite'],
+          confidence: 0.85
+        },
+        {
+          keys: ['food truck', 'street food'],
+          tags: ['Quick Service', 'Casual Dining', 'Local Favorite'],
+          confidence: 0.8
+        },
+
+        // Shopping & Market Categories
+        {
+          keys: ['shop', 'store', 'retail', 'boutique'],
+          tags: ['Shopping', 'Local Business', 'Worth Visiting'],
+          confidence: 0.8
+        },
+        {
+          keys: ['market', 'farmer market', 'farmers market'],
+          tags: ['Market', 'Local Business', 'Family-Friendly', 'Worth Visiting'],
+          confidence: 0.9
+        },
+        {
+          keys: ['mall', 'shopping center'],
+          tags: ['Shopping', 'Family-Friendly'],
+          confidence: 0.75
+        },
+
+        // Cultural & Historical Categories
+        {
+          keys: ['museum', 'gallery', 'exhibition', 'exhibit'],
+          tags: ['Museum', 'Cultural', 'Historical', 'Educational', 'Indoor Activity'],
+          confidence: 0.9
+        },
+        {
+          keys: ['historic', 'history', 'monument', 'landmark', 'heritage'],
+          tags: ['Historical', 'Cultural', 'Worth Visiting', 'Educational'],
+          confidence: 0.85
+        },
+        {
+          keys: ['art', 'artist', 'sculpture', 'craft'],
+          tags: ['Cultural', 'Artistic', 'Local Business'],
+          confidence: 0.8
+        },
+
+        // Sports & Recreation Categories
+        {
+          keys: ['gym', 'fitness', 'yoga', 'pilates'],
+          tags: ['Fitness', 'Health & Wellness'],
+          confidence: 0.85
+        },
+        {
+          keys: ['sport', 'athletic', 'court', 'field', 'stadium'],
+          tags: ['Sports', 'Active', 'Family-Friendly'],
+          confidence: 0.8
+        },
+        {
+          keys: ['bowling', 'arcade', 'recreation'],
+          tags: ['Entertainment', 'Family-Friendly', 'Fun'],
+          confidence: 0.8
+        },
+
+        // Entertainment Categories
+        {
+          keys: ['movie', 'cinema', 'theater', 'theatre'],
+          tags: ['Entertainment', 'Family-Friendly', 'Indoor Activity'],
+          confidence: 0.9
+        },
+        {
+          keys: ['music', 'concert', 'live performance'],
+          tags: ['Entertainment', 'Local Favorite', 'Worth Visiting'],
+          confidence: 0.85
+        },
+        {
+          keys: ['amusement', 'theme park', 'carnival'],
+          tags: ['Entertainment', 'Family-Friendly', 'Fun', 'Adventure'],
+          confidence: 0.9
+        },
+
+        // Accommodation Categories
+        {
+          keys: ['hotel', 'motel', 'inn', 'resort'],
+          tags: ['Accommodation', 'Travel-Friendly'],
+          confidence: 0.85
+        },
+        {
+          keys: ['bed & breakfast', 'bed and breakfast', 'airbnb'],
+          tags: ['Accommodation', 'Local Experience'],
+          confidence: 0.8
+        }
       ];
 
+      // Apply rule-based recommendations
       ruleMap.forEach((rule) => {
-        if (rule.keys.some((k) => text.includes(k))) {
-          rule.tags.forEach((tag) => recs.add(tag));
+        const matchCount = rule.keys.filter((k) => {
+          // Check for word boundaries to avoid partial matches
+          const regex = new RegExp(`\\b${k}\\b`, 'i');
+          return regex.test(fullText);
+        }).length;
+
+        if (matchCount > 0) {
+          const scoreBoost = matchCount > 1 ? 1.1 : 1.0; // Boost if multiple matches
+          rule.tags.forEach((tag) => {
+            const existingScore = recs.get(tag) || 0;
+            recs.set(tag, Math.max(existingScore, rule.confidence * scoreBoost));
+          });
         }
       });
 
-      if (!recs.size) {
-        ['Worth Visiting', 'Adventure', 'Scenic', 'Family-Friendly'].forEach((t) => recs.add(t));
+      // Rating-based recommendations
+      if (googleRating >= 4.7) {
+        recs.set('Top Rated', Math.max(recs.get('Top Rated') || 0, 0.95));
+        recs.set('Worth Visiting', Math.max(recs.get('Worth Visiting') || 0, 0.9));
+      } else if (googleRating >= 4.3) {
+        recs.set('Highly Recommended', Math.max(recs.get('Highly Recommended') || 0, 0.85));
       }
 
-      return Array.from(recs)
-        .filter((tag) => !this.currentTags.includes(tag))
-        .filter((tag) => !EXCLUDED_RECOMMENDATIONS.has(String(tag).toLowerCase()))
-        .slice(0, 10);
+      // Family-friendly inference based on keywords
+      const familyKeywords = ['family', 'kids', 'child', 'playground', 'park', 'children', 'school', 'educational'];
+      if (familyKeywords.some((k) => fullText.includes(k))) {
+        recs.set('Family-Friendly', Math.max(recs.get('Family-Friendly') || 0, 0.8));
+      }
+
+      // Relaxing/peaceful inference
+      const relaxingKeywords = ['relax', 'peaceful', 'quiet', 'serene', 'tranquil', 'spa', 'wellness'];
+      if (relaxingKeywords.some((k) => fullText.includes(k))) {
+        recs.set('Relaxing', Math.max(recs.get('Relaxing') || 0, 0.8));
+      }
+
+      // Remove excluded recommendations and current tags
+      const filtered = Array.from(recs.entries())
+        .filter(([tag]) => !this.currentTags.includes(tag))
+        .filter(([tag]) => !EXCLUDED_RECOMMENDATIONS.has(String(tag).toLowerCase()))
+        .sort((a, b) => b[1] - a[1]) // Sort by confidence (highest first)
+        .slice(0, 8); // Limit to top 8 recommendations
+
+      return filtered.map(([tag, confidence]) => ({
+        tag,
+        confidence: confidence,
+        description: this.getTagDescription(tag)
+      }));
+    },
+
+    getTagDescription(tag) {
+      const descriptions = {
+        'Hiking': '🥾 Great for hiking activities',
+        'Outdoor': '🌳 Outdoor experience',
+        'Nature': '🌲 Natural environment',
+        'Scenic': '📸 Beautiful views & photography',
+        'Adventure': '🎒 Adventure activities',
+        'Waterfall': '💧 Features waterfall(s)',
+        'Family-Friendly': '👨‍👩‍👧‍👦 Good for families',
+        'Restaurant': '🍽️ Dining establishment',
+        'Cafe': '☕ Coffee/beverage venue',
+        'Shopping': '🛍️ Shopping opportunity',
+        'Museum': '🏛️ Museum or gallery',
+        'Historical': '📜 Historical significance',
+        'Entertainment': '🎭 Entertainment venue',
+        'Beach': '🏖️ Beach location',
+        'Park': '🏞️ Park or recreational area',
+        'Relaxing': '😌 Peaceful & relaxing',
+        'Worth Visiting': '⭐ Popular & recommended',
+        'Top Rated': '🌟 Highly rated location',
+        'Highly Recommended': '👍 Strong reviews'
+      };
+      return descriptions[tag] || '';
     },
 
     renderSuggestions() {
@@ -536,7 +762,25 @@
         return;
       }
 
-      wrap.innerHTML = recs.map((tag) => `<button type="button" class="ctm-suggestion" data-suggest-tag="${esc(tag)}">${esc(tag)} +</button>`).join('');
+      wrap.innerHTML = recs.map((rec) => {
+        const confidencePercent = Math.round(rec.confidence * 100);
+        const confidenceBar = '█'.repeat(Math.round(rec.confidence * 5)) + '░'.repeat(5 - Math.round(rec.confidence * 5));
+        return `
+          <button 
+            type="button" 
+            class="ctm-suggestion" 
+            data-suggest-tag="${esc(rec.tag)}"
+            title="${rec.description ? rec.description : 'Recommended tag'}"
+          >
+            <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-start;">
+              <span>${esc(rec.tag)} +</span>
+              <span style="font-size: 11px; opacity: 0.8;">${confidenceBar} ${confidencePercent}%</span>
+              ${rec.description ? `<span style="font-size: 10px; opacity: 0.7;">${esc(rec.description)}</span>` : ''}
+            </div>
+          </button>
+        `;
+      }).join('');
+
       wrap.querySelectorAll('[data-suggest-tag]').forEach((btn) => {
         btn.addEventListener('click', () => {
           this.addTag(btn.getAttribute('data-suggest-tag'));
