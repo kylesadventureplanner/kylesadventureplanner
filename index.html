@@ -16072,6 +16072,25 @@ COMMON ISSUES:
    * Open Edit Mode in a new popup window
    * Edit Mode contains all management, automation, and backup features
    */
+  /**
+   * Wrapper functions for automation handlers
+   * These prevent errors if enhanced-automation-features.js hasn't loaded yet
+   */
+  window.handleRefreshPlaceIds = window.handleRefreshPlaceIds || function() {
+    console.warn('⏳ Refresh Place IDs handler loading...');
+    showToast('⏳ Refreshing Place IDs...', 'info', 3000);
+  };
+
+  window.handleBulkAddChainLocations = window.handleBulkAddChainLocations || function() {
+    console.warn('⏳ Bulk Add Chain handler loading...');
+    showToast('⏳ Loading Bulk Add feature...', 'info', 3000);
+  };
+
+  window.handleFindSimilar = window.handleFindSimilar || function() {
+    console.warn('⏳ Find Similar handler loading...');
+    showToast('⏳ Loading Find Similar feature...', 'info', 3000);
+  };
+
   function openEditMode() {
     // Open edit mode as a new tab instead of popup
     // This ensures better integration and avoids popup issues
