@@ -424,7 +424,29 @@
       </div>
     </div>
 
-    <!-- Backup & History Card -->
+    <!-- Backup Section - Embedded -->
+    <div class="card" id="backupSection" style="display: none;">
+      <div class="card-header">
+        <div class="card-title">💾 Backup App</div>
+        <button onclick="toggleBackupSection(false)" style="background: none; border: none; font-size: 20px; cursor: pointer;">✕</button>
+      </div>
+      <div id="backupContent" style="padding: 16px;">
+        <p style="color: #6b7280; margin-bottom: 16px;">Loading backup interface...</p>
+      </div>
+    </div>
+
+    <!-- Location History Section - Embedded -->
+    <div class="card" id="locationHistorySection" style="display: none;">
+      <div class="card-header">
+        <div class="card-title">📅 Location History</div>
+        <button onclick="toggleLocationHistorySection(false)" style="background: none; border: none; font-size: 20px; cursor: pointer;">✕</button>
+      </div>
+      <div id="locationHistoryContent" style="padding: 16px;">
+        <p style="color: #6b7280; margin-bottom: 16px;">Loading location history interface...</p>
+      </div>
+    </div>
+
+    <!-- Data Management Buttons -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">💾 Data Management</div>
@@ -433,7 +455,7 @@
         <div style="display: flex; flex-wrap: wrap; gap: 12px;">
           <button
             id="backupAppBtn"
-            onclick="backupManager && backupManager.showBackupModal()"
+            onclick="toggleBackupSection(true)"
             class="find-near-me-btn"
             title="Backup all app files with timestamp"
             style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;"
@@ -442,7 +464,7 @@
           </button>
           <button
             id="locationHistoryBtn"
-            onclick="openLocationHistoryModal && openLocationHistoryModal()"
+            onclick="toggleLocationHistorySection(true)"
             class="find-near-me-btn"
             title="View and sort locations by when they were added"
             style="background: #dbeafe; color: #1e40af; border: 1px solid #60a5fa;"
@@ -541,6 +563,209 @@
     }
 
     /**
+     * Toggle Backup Section visibility
+     */
+    function toggleBackupSection(show) {
+      const section = document.getElementById('backupSection');
+      const content = document.getElementById('backupContent');
+
+      if (show) {
+        section.style.display = 'block';
+
+        // Load backup UI content
+        if (window.opener && window.opener.backupManager) {
+          window.backupManager = window.opener.backupManager;
+
+          // Get the backup content from the manager
+          const backupHTML = `
+            <div style="color: #6b7280; line-height: 1.6;">
+              <p style="margin-bottom: 12px;">
+                Click the button below to create a timestamped backup of all your app files,
+                HTML files, JavaScript files, and Excel data.
+              </p>
+              <button
+                id="createBackupBtn"
+                onclick="window.backupManager && window.backupManager.showBackupModal()"
+                style="
+                  padding: 12px 24px;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  color: white;
+                  border: none;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  font-size: 14px;
+                  transition: all 0.2s;
+                "
+                onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 16px rgba(102, 126, 234, 0.4)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';"
+              >
+                🚀 Create Backup Now
+              </button>
+              <p style="margin-top: 16px; font-size: 13px; color: #9ca3af;">
+                Backups are timestamped and saved with all necessary files included.
+              </p>
+            </div>
+          `;
+          content.innerHTML = backupHTML;
+        } else {
+          content.innerHTML = '<p style="color: #ef4444;">⚠️ Backup manager not available. Please ensure main window is open.</p>';
+        }
+      } else {
+        section.style.display = 'none';
+      }
+    }
+
+    /**
+     * Toggle Location History Section visibility
+     */
+    function toggleLocationHistorySection(show) {
+      const section = document.getElementById('locationHistorySection');
+      const content = document.getElementById('locationHistoryContent');
+
+      if (show) {
+        section.style.display = 'block';
+
+        // Load location history content
+        if (window.opener && window.opener.locationHistoryManager) {
+          window.locationHistoryManager = window.opener.locationHistoryManager;
+
+          // Get the history list
+          const historyHTML = `
+            <div style="color: #6b7280; line-height: 1.6;">
+              <p style="margin-bottom: 12px;">
+                View and sort your locations by the date they were added to the app.
+              </p>
+              <div id="locationHistoryControls" style="margin-bottom: 16px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">Sort by:</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                  <button class="sort-btn" onclick="sortLocationHistory('newest')" style="
+                    padding: 8px 16px;
+                    border: 2px solid #60a5fa;
+                    background: #dbeafe;
+                    color: #1e40af;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-size: 13px;
+                  ">🆕 Newest First</button>
+                  <button class="sort-btn" onclick="sortLocationHistory('oldest')" style="
+                    padding: 8px 16px;
+                    border: 2px solid #e5e7eb;
+                    background: white;
+                    color: #6b7280;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-size: 13px;
+                  ">🕐 Oldest First</button>
+                  <button class="sort-btn" onclick="sortLocationHistory('name')" style="
+                    padding: 8px 16px;
+                    border: 2px solid #e5e7eb;
+                    background: white;
+                    color: #6b7280;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-size: 13px;
+                  ">📝 Alphabetical</button>
+                </div>
+              </div>
+              <div id="locationHistoryList" style="max-height: 400px; overflow-y: auto; padding: 12px; background: #f9fafb; border-radius: 6px;">
+                <p style="color: #9ca3af; text-align: center;">Loading location history...</p>
+              </div>
+              <p style="margin-top: 16px; font-size: 13px; color: #9ca3af;">
+                Use sorting options to quickly find recently added locations.
+              </p>
+            </div>
+          `;
+          content.innerHTML = historyHTML;
+
+          // Load the actual location history data
+          setTimeout(() => {
+            loadLocationHistoryIntoEditMode();
+          }, 100);
+        } else {
+          content.innerHTML = '<p style="color: #ef4444;">⚠️ Location history manager not available. Please ensure main window is open.</p>';
+        }
+      } else {
+        section.style.display = 'none';
+      }
+    }
+
+    /**
+     * Load location history data into edit mode
+     */
+    function loadLocationHistoryIntoEditMode() {
+      const listContainer = document.getElementById('locationHistoryList');
+
+      if (!window.locationHistoryManager) {
+        listContainer.innerHTML = '<p style="color: #ef4444;">Error: Location history manager not loaded</p>';
+        return;
+      }
+
+      try {
+        // Get sorted locations from manager
+        const history = window.locationHistoryManager.getSortedLocations('newest');
+
+        if (!history || history.length === 0) {
+          listContainer.innerHTML = '<p style="color: #9ca3af; text-align: center;">No location history available yet</p>';
+          return;
+        }
+
+        const historyHTML = history.map((location, index) => `
+          <div style="
+            padding: 12px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          ">
+            <div>
+              <div style="font-weight: 600; color: #111827;">📍 ${location.name || 'Unknown'}</div>
+              <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+                Added: ${new Date(location.timestamp).toLocaleDateString()} ${new Date(location.timestamp).toLocaleTimeString()}
+              </div>
+            </div>
+            <div style="font-size: 12px; background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 4px; font-weight: 600;">
+              ${index === 0 ? '🆕 Latest' : index < 5 ? 'Recent' : 'Older'}
+            </div>
+          </div>
+        `).join('');
+
+        listContainer.innerHTML = historyHTML;
+      } catch (error) {
+        console.error('Error loading location history:', error);
+        listContainer.innerHTML = '<p style="color: #ef4444;">Error loading history: ' + error.message + '</p>';
+      }
+    }
+
+    /**
+     * Sort location history
+     */
+    function sortLocationHistory(sortBy) {
+      if (!window.locationHistoryManager) return;
+
+      // Update button states
+      document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.borderColor = '#e5e7eb';
+        btn.style.color = '#6b7280';
+      });
+
+      // Highlight active button
+      event.target.style.background = '#dbeafe';
+      event.target.style.borderColor = '#60a5fa';
+      event.target.style.color = '#1e40af';
+
+      // Reload with new sort
+      loadLocationHistoryIntoEditMode();
+    }
+
+    /**
      * Initialize Edit Mode
      */
     document.addEventListener('DOMContentLoaded', function() {
@@ -549,22 +774,33 @@
       // Check if backup-manager is available from parent window
       if (window.opener && window.opener.backupManager) {
         window.backupManager = window.opener.backupManager;
+        console.log('✅ Backup manager available');
       }
 
-      // Check if other utilities are available
-      if (window.opener && window.opener.openLocationHistoryModal) {
-        window.openLocationHistoryModal = window.opener.openLocationHistoryModal;
+      // Check if location history manager is available
+      if (window.opener && window.opener.locationHistoryManager) {
+        window.locationHistoryManager = window.opener.locationHistoryManager;
+        console.log('✅ Location history manager available');
       }
     });
 
     // Keyboard shortcut to close (Escape key)
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
-        window.close();
+        const backupSection = document.getElementById('backupSection');
+        const historySection = document.getElementById('locationHistorySection');
+
+        // Close any open sections first
+        if (backupSection && backupSection.style.display !== 'none') {
+          backupSection.style.display = 'none';
+        } else if (historySection && historySection.style.display !== 'none') {
+          historySection.style.display = 'none';
+        } else {
+          // If nothing was displayed, close the window
+          window.close();
+        }
       }
     });
   </script>
 </body>
 </html>
-
-e
