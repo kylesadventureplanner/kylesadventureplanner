@@ -497,11 +497,31 @@
      * Open Detailed Automation Panel
      */
     function openDetailedAutomationPanel() {
-      if (window.opener && window.opener.openAutomationControlPanel) {
-        window.opener.openAutomationControlPanel();
-        window.close();
-      } else {
-        alert('Please make sure the main Adventure Finder window is still open.');
+      const width = 650;
+      const height = 800;
+      const left = (screen.width - width) / 2;
+      const top = (screen.height - height) / 2;
+
+      // Construct URL for automation panel
+      // Both files are in HTML Files/ directory, so just use filename
+      const popupUrl = `automation-control-panel.html?cb=${Date.now()}`;
+
+      try {
+        const automationWindow = window.open(
+          popupUrl,
+          'AutomationControlPanel',
+          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+        );
+
+        if (automationWindow) {
+          automationWindow.focus();
+          console.log('✅ Automation Control Panel opened');
+        } else {
+          alert('Unable to open Automation Panel. Please check if popups are blocked.');
+        }
+      } catch (error) {
+        console.error('Error opening automation panel:', error);
+        alert('Error opening Automation Panel: ' + error.message);
       }
     }
 
