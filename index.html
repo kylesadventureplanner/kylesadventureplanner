@@ -4964,12 +4964,12 @@
   </script>
 
   <!-- Tag Management Systems -->
-    <script src="JS Files/clean-tag-manager.js"></script>
+  <script src="JS Files/clean-tag-manager.js"></script>
 
-    <!-- Unified Auto-Tag System using advanced recommendations -->
-    <script src="JS Files/unified-auto-tag-system.js"></script>
-    <script src="JS Files/tag-button-injector.js"></script>
-    <script src="JS Files/tag-config.js"></script>
+  <!-- Unified Auto-Tag System using advanced recommendations -->
+  <script src="JS Files/unified-auto-tag-system.js"></script>
+  <script src="JS Files/tag-button-injector.js"></script>
+  <script src="JS Files/tag-config.js"></script>
   <script src="JS Files/tag-hierarchy.js"></script>
   <script src="JS Files/tag-hierarchy-ui.js"></script>
 
@@ -4978,8 +4978,8 @@
   <script src="JS Files/location-history-manager.js"></script>
 
   <!-- Visualization -->
-      <!-- Visualization -->
-        <script src="JS Files/enhanced-city-viewer.js"></script>
+  <!-- Visualization -->
+  <script src="JS Files/enhanced-city-viewer.js"></script>
 
   <!-- Button & UI Handlers -->
   <script src="JS Files/button-handlers.js"></script>
@@ -5075,9 +5075,10 @@
   </div>
 
   <div class="header-right">
+    <button id="editModeBtn" class="auth-btn" title="Open Edit Mode" onclick="openEditMode()" style="background: #667eea; color: white; margin-right: 8px;">📝 Edit</button>
     <span id="authStatus">Not signed in</span>
-    <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account" data-tooltip="Sign in with your Microsoft account">Sign In</button>
-    <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account" data-tooltip="Sign out of your account">Sign Out</button>
+    <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
+    <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
   </div>
 </header>
 <div class="app-container">
@@ -5478,11 +5479,11 @@
             Control Google Places automation features in a dedicated popup window for better reliability
           </p>
           <button
-            id="openAutomationPanel"
-            onclick="openAutomationControlPanel()"
-            style="padding: 16px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s;"
-            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 12px rgba(0,0,0,0.15)';"
-            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)';"
+                  id="openAutomationPanel"
+                  onclick="openAutomationControlPanel()"
+                  style="padding: 16px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s;"
+                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 12px rgba(0,0,0,0.15)';"
+                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)';"
           >
             <span style="font-size: 24px;">🚀</span>
             <span>Open Automation Control Panel</span>
@@ -6473,13 +6474,13 @@
   };
 
   /* Initialize MSAL with the configuration above */
-    const msalInstance = new msal.PublicClientApplication(msalConfig);
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    /* Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly */
-    const msalInitPromise = msalInstance.initialize().catch(error => {
+  /* Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly */
+  const msalInitPromise = msalInstance.initialize().catch(error => {
     console.error("MSAL initialization failed:", error);
     throw error;
-    });
+  });
 
   /* Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly */
   msalInstance.initialize().catch(error => {
@@ -6503,15 +6504,15 @@
   */
 
   // Authentication state
-    let accessToken = null;           // JWT token for Microsoft API requests
-    let activeAccount = null;         // Current logged-in user account
-    let isConnectedToExcel = false;   // Whether Excel connection is working
+  let accessToken = null;           // JWT token for Microsoft API requests
+  let activeAccount = null;         // Current logged-in user account
+  let isConnectedToExcel = false;   // Whether Excel connection is working
 
-    function syncAuthGlobals() {
+  function syncAuthGlobals() {
     // Keep legacy helpers and popup window checks in sync with current auth state.
     window.accessToken = accessToken || null;
     window.activeAccount = activeAccount || null;
-    }
+  }
 
   // Excel file configuration
   const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx"; // Where the Excel file is stored in OneDrive
@@ -6590,7 +6591,7 @@
      WHY: We need authentication to access the user's OneDrive Excel file
           without storing their password directly.
   */
-    async function signIn() {
+  async function signIn() {
     try {
       showLoading('Signing in...');
       await msalInitPromise;
@@ -6684,7 +6685,7 @@
     console.log("✅ Page initialization complete");
   });
 
-    async function signOut() {
+  async function signOut() {
     showLoading('Signing out...');
     const account = msalInstance.getActiveAccount();
     if (!account) {
@@ -6712,80 +6713,80 @@
   }
 
   // Helper function for popup window to check authentication status
-      function isAuthenticated() {
-        return !!(accessToken && activeAccount);
+  function isAuthenticated() {
+    return !!(accessToken && activeAccount);
+  }
+
+  window.getPopupAuthState = function () {
+    const cachedAccount = activeAccount || msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
+    if (!cachedAccount) return { isAuthenticated: false, reason: 'no-account' };
+    if (!accessToken) return { isAuthenticated: false, reason: 'no-token' };
+    return { isAuthenticated: true, reason: 'ok' };
+  };
+
+  window.rehydrateAuthState = async function () {
+    try {
+      await msalInitPromise;
+      if (activeAccount && accessToken) {
+        syncAuthGlobals();
+        return true;
       }
 
-      window.getPopupAuthState = function () {
-        const cachedAccount = activeAccount || msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
-        if (!cachedAccount) return { isAuthenticated: false, reason: 'no-account' };
-        if (!accessToken) return { isAuthenticated: false, reason: 'no-token' };
-        return { isAuthenticated: true, reason: 'ok' };
-      };
-
-      window.rehydrateAuthState = async function () {
-        try {
-          await msalInitPromise;
-          if (activeAccount && accessToken) {
-            syncAuthGlobals();
-            return true;
-          }
-
-          const cached = msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
-          if (!cached) {
-            syncAuthGlobals();
-            return false;
-          }
-
-          activeAccount = cached;
-          msalInstance.setActiveAccount(activeAccount);
-
-          const tokenResponse = await msalInstance.acquireTokenSilent({
-            ...loginRequest,
-            account: activeAccount
-          });
-
-          accessToken = tokenResponse?.accessToken || null;
-          syncAuthGlobals();
-          return !!accessToken;
-        } catch (_err) {
-          syncAuthGlobals();
-          return false;
-        }
-      };
-
-      async function bootstrapAuthFromCache() {
-        const restored = await window.rehydrateAuthState();
-        if (!restored) return;
-
-        isConnectedToExcel = true;
-        const authStatus = document.getElementById("authStatus");
-        const signInBtn = document.getElementById("signInBtn");
-        const signOutBtn = document.getElementById("signOutBtn");
-
-        if (authStatus && activeAccount?.username) {
-          authStatus.textContent = `Signed in as ${activeAccount.username}`;
-        }
-        if (signInBtn) signInBtn.style.display = "none";
-        if (signOutBtn) signOutBtn.style.display = "inline-block";
-        updateConnectionStatus(true);
+      const cached = msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
+      if (!cached) {
+        syncAuthGlobals();
+        return false;
       }
 
-      window.addEventListener("load", async () => {
-        // Initialize Google Maps services
-        initializeGoogleServices();
-        await bootstrapAuthFromCache();
+      activeAccount = cached;
+      msalInstance.setActiveAccount(activeAccount);
 
-        console.log("✅ Page initialization complete");
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        ...loginRequest,
+        account: activeAccount
       });
 
-    window.getPopupAuthState = function () {
+      accessToken = tokenResponse?.accessToken || null;
+      syncAuthGlobals();
+      return !!accessToken;
+    } catch (_err) {
+      syncAuthGlobals();
+      return false;
+    }
+  };
+
+  async function bootstrapAuthFromCache() {
+    const restored = await window.rehydrateAuthState();
+    if (!restored) return;
+
+    isConnectedToExcel = true;
+    const authStatus = document.getElementById("authStatus");
+    const signInBtn = document.getElementById("signInBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
+
+    if (authStatus && activeAccount?.username) {
+      authStatus.textContent = `Signed in as ${activeAccount.username}`;
+    }
+    if (signInBtn) signInBtn.style.display = "none";
+    if (signOutBtn) signOutBtn.style.display = "inline-block";
+    updateConnectionStatus(true);
+  }
+
+  window.addEventListener("load", async () => {
+    // Initialize Google Maps services
+    initializeGoogleServices();
+    await bootstrapAuthFromCache();
+
+    console.log("✅ Page initialization complete");
+  });
+
+  window.getPopupAuthState = function () {
     if (!activeAccount) return { isAuthenticated: false, reason: 'no-account' };
     if (!accessToken) return { isAuthenticated: false, reason: 'no-token' };
     return { isAuthenticated: true, reason: 'ok' };
-    };
+  };
 
-    window.rehydrateAuthState = async function () {
+  window.rehydrateAuthState = async function () {
     try {
       if (activeAccount && accessToken) return true;
       const cached = msalInstance.getActiveAccount() || (msalInstance.getAllAccounts?.()[0] || null);
@@ -6804,7 +6805,7 @@
     } catch (_err) {
       return false;
     }
-    };
+  };
 
   /***********************
    * UX IMPROVEMENTS     *
@@ -7521,7 +7522,7 @@
   }
 
   // ...existing code...
-    async function addRowToExcel(rowValues, retryCount = 0) {
+  async function addRowToExcel(rowValues, retryCount = 0) {
     let token = window.accessToken;
     if (!token) throw new Error("Please sign in first.");
 
@@ -7616,37 +7617,37 @@
       const errorText = err.error?.message ? (": " + err.error.message) : "";
       throw new Error("Excel add row failed (" + err.error?.status + ")" + errorText);
     }
-    }
+  }
 
-    function placeExistsInData(newRow) {
-      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
-      const targetPlaceId = strVal(newRow[1]);
-      const targetAddress = strVal(newRow[11]); // Column 11 is address
+  function placeExistsInData(newRow) {
+    const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+    const targetPlaceId = strVal(newRow[1]);
+    const targetAddress = strVal(newRow[11]); // Column 11 is address
 
-      if (!targetPlaceId) return false;
+    if (!targetPlaceId) return false;
 
-      // Allow multiple locations for chain stores with different addresses
-      // Only consider it a duplicate if BOTH Place ID AND address match
-      return rows.some(function (row) {
-        const vals = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
-        const existingPlaceId = strVal(vals[1]);
-        const existingAddress = strVal(vals[11]);
+    // Allow multiple locations for chain stores with different addresses
+    // Only consider it a duplicate if BOTH Place ID AND address match
+    return rows.some(function (row) {
+      const vals = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
+      const existingPlaceId = strVal(vals[1]);
+      const existingAddress = strVal(vals[11]);
 
-        // If Place IDs match AND addresses also match (or both empty), it's a true duplicate
-        if (existingPlaceId === targetPlaceId) {
-          // If we have both addresses, they must differ for it to NOT be a duplicate
-          if (targetAddress && existingAddress) {
-            return existingAddress === targetAddress;
-          }
-          // If either address is empty, consider it a duplicate (same place, address unknown)
-          return !targetAddress || !existingAddress;
+      // If Place IDs match AND addresses also match (or both empty), it's a true duplicate
+      if (existingPlaceId === targetPlaceId) {
+        // If we have both addresses, they must differ for it to NOT be a duplicate
+        if (targetAddress && existingAddress) {
+          return existingAddress === targetAddress;
         }
+        // If either address is empty, consider it a duplicate (same place, address unknown)
+        return !targetAddress || !existingAddress;
+      }
 
-        return false;
-      });
-    }
+      return false;
+    });
+  }
 
-    // ...existing code...
+  // ...existing code...
   // ============================================================
   // CANONICAL AUTOMATION BUTTON + BACKDROP HOTFIX
   // ============================================================
@@ -14519,7 +14520,7 @@ COMMON ISSUES:
     console.log('✅ Add Place modal closed');
   };
 
-    window.submitAddPlace = async function () {
+  window.submitAddPlace = async function () {
     const type = strVal(document.getElementById("addPlaceInputType") && document.getElementById("addPlaceInputType").value) || "placeName";
     const value = strVal(document.getElementById("addPlaceInputValue") && document.getElementById("addPlaceInputValue").value);
     const submitBtn = document.getElementById("addPlaceSubmitBtn");
@@ -16081,9 +16082,9 @@ COMMON ISSUES:
 
       // Open popup window
       automationPanelWindow = window.open(
-        popupUrl,
-        'AutomationControlPanel',
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+              popupUrl,
+              'AutomationControlPanel',
+              `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
       );
 
       if (automationPanelWindow) {
@@ -16365,6 +16366,37 @@ COMMON ISSUES:
 
     console.log('✅ Tag Manager wrapper initialized');
   })();
+
+  /**
+   * Open Edit Mode in a new popup window
+   * Edit Mode contains all management, automation, and backup features
+   */
+  function openEditMode() {
+    const width = 1200;
+    const height = 900;
+    const left = (screen.width - width) / 2;
+    const top = (screen.height - height) / 2;
+
+    // Open HTML Files/automation-control-panel.html as edit mode
+    const editModeWindow = window.open(
+            'HTML Files/edit-mode.html',
+            'AdventurePlannerEditMode',
+            `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no`
+    );
+
+    if (!editModeWindow) {
+      alert('Unable to open Edit Mode. Please check your popup blocker settings.');
+    } else {
+      editModeWindow.focus();
+    }
+  }
+
+  // Add keyboard shortcut for Edit Mode
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'E') {
+      openEditMode();
+    }
+  });
 </script>
 </body>
 </html>
