@@ -1,0 +1,638 @@
+/* ============================================================
+   TAG STYLES - SHARED ACROSS ALL PAGES
+   ============================================================
+*/
+
+.tag-pill {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  margin: var(--space-xs) var(--space-sm) var(--space-xs) 0;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tag-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+  letter-spacing: 0.5px;
+}
+
+/* Tag color variants for different category types */
+.tag-restaurant {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.tag-restaurant::before { content: "🍽️ "; }
+
+.tag-animals {
+  background: #dcfce7;
+  color: #166534;
+}
+.tag-animals::before { content: "🐾 "; }
+
+.tag-hiking {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.tag-hiking::before { content: "⛰️ "; }
+
+.tag-garden-center {
+  background: #fef3c7;
+  color: #78350f;
+}
+.tag-garden-center::before { content: "🌸 "; }
+
+.tag-orchards {
+  background: #fef9c3;
+  color: #78350f;
+}
+.tag-orchards::before { content: "🍎 "; }
+
+.tag-ziplining {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-ziplining::before { content: "🪂 "; }
+
+.tag-market {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.tag-market::before { content: "🛒 "; }
+
+.tag-scenic-drive {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-scenic-drive::before { content: "🛣️ "; }
+
+.tag-nature {
+  background: #dcfce7;
+  color: #166534;
+}
+.tag-nature::before { content: "🌳 "; }
+
+.tag-attractions {
+  background: #e5e7eb;
+  color: #374151;
+}
+.tag-attractions::before { content: "⭐ "; }
+
+.tag-used-book-store {
+  background: #fef3c7;
+  color: #78350f;
+}
+.tag-used-book-store::before { content: "📚 "; }
+
+.tag-entertainment,
+.tag-music {
+  background: #fce7f3;
+  color: #831843;
+}
+.tag-entertainment::before,
+.tag-music::before { content: "🎵 "; }
+
+.tag-online-shop,
+.tag-local-shop {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+.tag-online-shop::before,
+.tag-local-shop::before { content: "🛍️ "; }
+
+.tag-grocery-market {
+  background: #dcfce7;
+  color: #166534;
+}
+.tag-grocery-market::before { content: "🛒 "; }
+
+.tag-nursery,
+.tag-garden {
+  background: #fef3c7;
+  color: #78350f;
+}
+.tag-nursery::before,
+.tag-garden::before { content: "🌱 "; }
+
+.tag-drive-up,
+.tag-drive-through {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-drive-up::before,
+.tag-drive-through::before { content: "🚗 "; }
+
+.tag-waterfall,
+.tag-waterfalls {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-waterfall::before,
+.tag-waterfalls::before { content: "💧 "; }
+
+.tag-camping,
+.tag-hiking-camping {
+  background: #d4fc79;
+  color: #365314;
+}
+.tag-camping::before,
+.tag-hiking-camping::before { content: "⛺ "; }
+
+.tag-farms,
+.tag-petting-zoos,
+.tag-farm,
+.tag-farms-petting-zoos {
+  background: #fef9c3;
+  color: #78350f;
+}
+.tag-farms::before,
+.tag-petting-zoos::before,
+.tag-farm::before,
+.tag-farms-petting-zoos::before { content: "🚜 "; }
+
+.tag-goat-cheese-farm,
+.tag-cheese-shop {
+  background: #fef3c7;
+  color: #78350f;
+}
+.tag-goat-cheese-farm::before,
+.tag-cheese-shop::before { content: "🧀 "; }
+
+.tag-butcher-shop {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.tag-butcher-shop::before { content: "🥩 "; }
+
+.tag-climbing,
+.tag-climbing-course {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-climbing::before,
+.tag-climbing-course::before { content: "🧗 "; }
+
+.tag-ziplining-rappelling,
+.tag-rappelling {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-ziplining-rappelling::before,
+.tag-rappelling::before { content: "🪂 "; }
+
+.tag-arts-and-crafts,
+.tag-arts,
+.tag-crafts {
+  background: #fce7f3;
+  color: #831843;
+}
+.tag-arts-and-crafts::before,
+.tag-arts::before,
+.tag-crafts::before { content: "🎨 "; }
+
+.tag-aquariums {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-aquariums::before { content: "🐠 "; }
+
+.tag-live-music {
+  background: #fce7f3;
+  color: #831843;
+}
+.tag-live-music::before { content: "🎤 "; }
+
+.tag-flea-market {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.tag-flea-market::before { content: "🏪 "; }
+
+.tag-turkish-coffee,
+.tag-coffee {
+  background: #fef3c7;
+  color: #78350f;
+}
+.tag-turkish-coffee::before,
+.tag-coffee::before { content: "☕ "; }
+
+.tag-traditional-middle-eastern-food {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.tag-traditional-middle-eastern-food::before { content: "🍽️ "; }
+
+.tag-german-pretzels,
+.tag-pretzels {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.tag-german-pretzels::before,
+.tag-pretzels::before { content: "🥨 "; }
+
+.tag-german-pub,
+.tag-pub {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.tag-german-pub::before,
+.tag-pub::before { content: "🍺 "; }
+
+.tag-mexican-ice-cream,
+.tag-ice-cream {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.tag-mexican-ice-cream::before,
+.tag-ice-cream::before { content: "🍦 "; }
+
+.tag-take-out-only,
+.tag-takeout {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+.tag-take-out-only::before,
+.tag-takeout::before { content: "📦 "; }
+
+.tag-european-market,
+.tag-polish-deli {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.tag-european-market::before,
+.tag-polish-deli::before { content: "🇪🇺 "; }
+
+.tag-scenic {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-scenic::before { content: "🌅 "; }
+
+/* Default style for unknown tags */
+[class*="tag-"] {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  margin: 1px 2px 1px 0;
+  color: #111827;
+  background: #f3f4f6;
+}
+
+/* ============================================================
+   STATE BADGE
+============================================================ */
+
+.state-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+/* ============================================================
+   FAVORITE BUTTON
+============================================================ */
+
+.favorite-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 4px 8px;
+  opacity: 0.6;
+}
+
+.favorite-btn:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.favorite-btn.active {
+  opacity: 1;
+  animation: starPulse 0.3s ease-out;
+}
+
+@keyframes starPulse {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ============================================================
+   FIND NEAR ME FEATURE
+============================================================ */
+
+.find-near-me-btn {
+  border-radius: 999px;
+  border: 1px solid #10b981;
+  background: #ecfdf5;
+  color: #047857;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.find-near-me-btn:hover {
+  background: #d1fae5;
+}
+
+.find-near-me-btn.loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.distance-pill {
+  display: inline-block;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #047857;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ============================================================
+   BREADCRUMB FILTER MENU
+============================================================ */
+
+#breadcrumbFilterMenu {
+  display: none;
+  padding: 12px 16px;
+  background: #e0f2fe;
+  border: 1px solid #60a5fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 100;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+#breadcrumbFilterMenu.visible {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+#breadcrumbFilterMenu.visible.filters-active {
+  background: var(--mint-bg);
+  border-color: var(--mint-border);
+}
+
+#breadcrumbContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+}
+
+.breadcrumb-reset-btn {
+  border-radius: 999px;
+  border: 1px solid var(--mint-border);
+  background: white;
+  color: var(--mint-strong);
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.breadcrumb-reset-btn:hover {
+  background: var(--mint-bg);
+  border-color: var(--mint-strong);
+}
+
+.breadcrumb-reset-btn:active {
+  transform: scale(0.95);
+}
+
+/* ============================================================
+   NOTES FEATURE
+============================================================ */
+
+.notes-btn {
+  border-radius: 50%;
+  border: 1px solid #9ca3af;
+  background: #f3f4f6;
+  color: #374151;
+  padding: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.notes-btn:hover {
+  background: #e5e7eb;
+  border-color: #6b7280;
+  transform: scale(1.1);
+}
+
+.notes-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: #1f2937;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 100;
+  max-width: 200px;
+  white-space: normal;
+  width: max-content;
+}
+
+.notes-btn:hover[data-tooltip]::after {
+  opacity: 1;
+}
+
+/* ============================================================
+   RATING FEATURE
+============================================================ */
+
+.rating-btn {
+  border-radius: 6px;
+  border: 1px solid #fbbf24;
+  background: #fffbeb;
+  color: #d97706;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rating-btn:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+/* ============================================================
+   MODAL BACKDROPS
+============================================================ */
+
+#ratingModalBackdrop,
+#notesModalBackdrop,
+#pricingSearchModalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+}
+
+#ratingModalBackdrop.visible,
+#notesModalBackdrop.visible,
+#pricingSearchModalBackdrop.visible {
+  display: block;
+}
+
+/* ============================================================
+   HISTORY CONTROLS
+============================================================ */
+
+.history-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.history-button {
+  padding: 6px 12px;
+  background: white;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-button:hover:not(:disabled) {
+  background: #f9fafb;
+  color: #374151;
+  border-color: #9ca3af;
+}
+
+.history-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   SORT INDICATOR
+============================================================ */
+
+.sort-indicator {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+th:hover .sort-indicator {
+  opacity: 0.7;
+}
+
+.sort-indicator.active {
+  opacity: 1;
+}
+
+/* ============================================================
+   SEARCH HIGHLIGHT
+============================================================ */
+
+mark {
+  background-color: #fef3c7;
+  color: #92400e;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVENESS
+============================================================ */
+
+body.mobile-view .control-panel-grid {
+  grid-template-columns: 1fr;
+}
+
+body.mobile-view .quick-filters-container {
+  flex-direction: column;
+}
+
+body.mobile-view .quick-filter-btn,
+body.mobile-view .pill-button.reset,
+body.mobile-view .automation-btn {
+  width: 100%;
+  text-align: center;
+}
+
+body.mobile-view table {
+  font-size: 12px;
+}
+
+body.mobile-view th,
+body.mobile-view td {
+  padding: 6px 6px;
+}
+
+body.mobile-view .iphone-toggle-btn {
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  table {
+    font-size: 10px;
+  }
+
+  th, td {
+    padding: 4px 3px;
+  }
+}
+
