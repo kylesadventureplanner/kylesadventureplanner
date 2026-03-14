@@ -2239,18 +2239,28 @@
 
     window.handleAutoTagAll = function() {
       if (!checkConnection()) return;
-      if (!mainWindow || typeof mainWindow.runGoogleAutomation !== 'function') {
-        setStatus('❌ Main automation function not available', 'error');
-        return;
-      }
 
-      const btn = document.getElementById('btnAutoTagAll');
-      if (btn) {
-        btn.disabled = true;
-        btn.classList.add('loading');
-      }
+      // Use unified auto-tag system if available, fall back to old system
+      if (mainWindow && typeof mainWindow.autoTagAllLocationsUnified === 'function') {
+        setStatus('🏷️ Auto-tagging all locations with smart recommendations...', 'info');
 
-      try {
+        mainWindow.autoTagAllLocationsUnified({
+          minConfidence: 0.75,
+          autoAcceptAbove: 0.90,
+          showProgress: true,
+          dryRun: isDryRun
+        })
+          .then((results) => {
+            setStatus(`✅ Auto-tagging completed! Tagged ${results.success} locations.`, 'success');
+            if (typeof mainWindow.showToast === 'function') {
+              mainWindow.showToast(`✅ Tagged ${results.success} locations!`, 'success', 3000);
+            }
+          })
+          .catch((err) => {
+            setStatus(`❌ Error: ${err.message}`, 'error');
+          });
+      } else if (mainWindow && typeof mainWindow.runGoogleAutomation === 'function') {
+        // Fallback to original system
         setStatus('🏷️ Auto-tagging all locations...', 'info');
         mainWindow.runGoogleAutomation('autoTagAll', isDryRun)
           .then(() => {
@@ -2261,19 +2271,9 @@
           })
           .catch((err) => {
             setStatus(`❌ Error: ${err.message}`, 'error');
-          })
-          .finally(() => {
-            if (btn) {
-              btn.disabled = false;
-              btn.classList.remove('loading');
-            }
           });
-      } catch (err) {
-        setStatus(`❌ Error: ${err.message}`, 'error');
-        if (btn) {
-          btn.disabled = false;
-          btn.classList.remove('loading');
-        }
+      } else {
+        setStatus('❌ Auto-tag system not available', 'error');
       }
     };
   </script>

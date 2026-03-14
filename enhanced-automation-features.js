@@ -256,44 +256,113 @@
       }
 
       const statusDiv = document.getElementById('bulkChainStatus');
+      const addBtn = document.getElementById('bulkChainAddBtn');
+
       statusDiv.innerHTML = '<div style="color: #667eea; font-weight: 600;">⏳ Processing...</div>';
+      addBtn.disabled = true;
+      addBtn.textContent = 'Processing...';
 
       try {
+        // Check if main window functions exist
+        if (!window.opener || window.opener.closed) {
+          throw new Error('Main window not connected');
+        }
+
+        const mainWindow = window.opener;
+
+        // Verify required functions exist
+        if (typeof mainWindow.getPlaceDetails !== 'function') {
+          throw new Error('Main window functions not available');
+        }
+
         let successCount = 0;
+        let errorCount = 0;
         const results = [];
 
         for (const placeId of placeIds) {
           try {
             console.log(`📍 Processing: ${placeId}`);
+
+            // Call main window function to get place details
+            const details = await mainWindow.getPlaceDetails(placeId);
+
+            // Build Excel row
+            const buildExcelRow = mainWindow.buildExcelRow;
+            const row = buildExcelRow(placeId, details);
+
+            // Check if place already exists
+            const placeExistsInData = mainWindow.placeExistsInData;
+            if (placeExistsInData(row)) {
+              results.push({
+                placeId: placeId,
+                status: '⏭️ Already exists',
+                icon: '⏭️'
+              });
+              errorCount++;
+              continue;
+            }
+
+            // Add to Excel
+            const addRowToExcel = mainWindow.addRowToExcel;
+            await addRowToExcel(row);
+
             results.push({
               placeId: placeId,
-              status: '✅ Added',
+              placeName: row[0] || 'Unknown',
+              status: '✅ Added to Excel',
               icon: '✅'
             });
             successCount++;
+
           } catch (err) {
+            console.error(`❌ Error processing ${placeId}:`, err);
             results.push({
               placeId: placeId,
-              status: '❌ Error',
+              status: `❌ ${err.message}`,
               icon: '❌'
             });
+            errorCount++;
           }
         }
 
+        // Reload table in main window
+        if (mainWindow.loadTable && typeof mainWindow.loadTable === 'function') {
+          await mainWindow.loadTable();
+        }
+
+        // Show detailed results
         statusDiv.innerHTML = `
           <div style="background: #ecfdf5; border: 2px solid #10b981; border-radius: 12px; padding: 16px;">
-            <div style="font-weight: 600; color: #10b981; margin-bottom: 8px;">✅ ${successCount} locations will be added</div>
-            <div style="font-size: 12px; color: #065f46;">
-              ${results.map(r => `<div>${r.icon} ${r.placeId}: ${r.status}</div>`).join('')}
+            <div style="font-weight: 600; color: #10b981; margin-bottom: 8px;">✅ Added: ${successCount} | ❌ Errors: ${errorCount}</div>
+            <div style="font-size: 12px; color: #065f46; max-height: 250px; overflow-y: auto;">
+              ${results.map(r => `
+                <div style="padding: 6px 0; border-bottom: 1px solid rgba(16, 185, 129, 0.2);">
+                  <div>${r.icon} <strong>${r.placeId}</strong></div>
+                  ${r.placeName ? `<div style="margin-left: 20px; font-size: 11px; color: #047857;">${r.placeName}</div>` : ''}
+                  <div style="margin-left: 20px; font-size: 11px;">${r.status}</div>
+                </div>
+              `).join('')}
             </div>
           </div>
         `;
 
-        alert(`✅ Successfully queued ${successCount} chain locations for import!`);
-        backdrop.remove();
+        addBtn.textContent = 'Complete!';
+        addBtn.style.background = '#10b981';
+
+        if (mainWindow.showToast && typeof mainWindow.showToast === 'function') {
+          mainWindow.showToast(`✅ Successfully added ${successCount} locations to Excel!`, 'success', 4000);
+        }
+
+        // Auto-close after 3 seconds
+        setTimeout(() => {
+          backdrop.remove();
+        }, 3000);
+
       } catch (err) {
         console.error('❌ Error:', err);
         statusDiv.innerHTML = `<div style="color: #ef4444; font-weight: 600;">❌ Error: ${err.message}</div>`;
+        addBtn.disabled = false;
+        addBtn.textContent = 'Try Again';
       }
     };
 
