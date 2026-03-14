@@ -5098,9 +5098,6 @@
       <header>
         <h1>Adventure Planner</h1>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button id="backupAppBtn" class="iphone-toggle-btn" title="Backup all app files with timestamp" data-tooltip="Backup all app files with timestamp" onclick="backupManager.showBackupModal()">
-            💾 Backup App
-          </button>
           <button id="iphoneToggleBtn" class="iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
             📱 iPhone View
           </button>
@@ -5123,12 +5120,6 @@
             🎛️ Control Panel
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button id="autoTagBtn" class="find-near-me-btn" title="Auto-generate tag recommendations for all locations" onclick="automationSystem.showSummaryModal(automationSystem.analyzeAllLocations(window.adventuresData))">
-              🏷️ Auto-Tag All
-            </button>
-            <button id="locationHistoryBtn" class="find-near-me-btn" title="View and sort locations by when they were added" onclick="openLocationHistoryModal()">
-              📅 Location History
-            </button>
             <button id="findNearMeBtn" class="find-near-me-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location">
               📍 Find Near Me
             </button>
@@ -5467,32 +5458,6 @@
         })();
       </script>
 
-      <!-- Google Data Automation - Popup Control Panel -->
-      <div class="card automation-card">
-        <div class="automation-header">
-          <div class="automation-header-title">
-            🔄 Google Data Automation
-          </div>
-        </div>
-        <div class="automation-body" style="text-align: center; padding: 32px 24px;">
-          <p style="margin-bottom: 20px; color: var(--neutral-600); font-size: 14px;">
-            Control Google Places automation features in a dedicated popup window for better reliability
-          </p>
-          <button
-                  id="openAutomationPanel"
-                  onclick="openAutomationControlPanel()"
-                  style="padding: 16px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.2s;"
-                  onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 12px rgba(0,0,0,0.15)';"
-                  onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)';"
-          >
-            <span style="font-size: 24px;">🚀</span>
-            <span>Open Automation Control Panel</span>
-          </button>
-          <p style="margin-top: 16px; color: var(--neutral-500); font-size: 12px;">
-            Keyboard shortcut: <kbd style="background: var(--neutral-200); padding: 4px 8px; border-radius: 4px; font-weight: 600;">Ctrl+Alt+A</kbd>
-          </p>
-        </div>
-      </div>
 
       <!-- Breadcrumb Filter Menu (Active Filters Display) - Positioned above table -->
       <div id="breadcrumbFilterMenu" class="breadcrumb-filter-menu">
@@ -9873,56 +9838,7 @@
   /* ============================================================
      FILTERING FUNCTIONS
      ============================================================ */
-  function applyFilters() {
-    if (!window.adventuresData) {
-      console.warn("No adventures data available for filtering");
-      return;
-    }
-
-    console.log("Applying filters...");
-    const filteredData = window.adventuresData.filter(row => {
-      const values = row.values[0];
-      const [name, , , tags, , , , , , state, city] = values;
-
-      // Apply filter logic
-      if (filterState.name && !name.toLowerCase().includes(filterState.name.toLowerCase())) {
-        return false;
-      }
-      if (filterState.tags && !tags.toLowerCase().includes(filterState.tags.toLowerCase())) {
-        return false;
-      }
-      if (filterState.state && state.toLowerCase() !== filterState.state.toLowerCase()) {
-        return false;
-      }
-      if (filterState.city && city.toLowerCase() !== filterState.city.toLowerCase()) {
-        return false;
-      }
-
-      // Apply context filters
-      if (filterState.contextFilters && filterState.contextFilters.length > 0) {
-        for (const filter of filterState.contextFilters) {
-          const fieldIndex = getFieldIndexByKey(filter.field);
-          if (fieldIndex >= 0) {
-            const fieldValue = (values[fieldIndex] || "").toLowerCase();
-            const filterValue = filter.value.toLowerCase();
-
-            if (filter.operator === 'contains') {
-              if (!fieldValue.includes(filterValue)) return false;
-            } else if (filter.operator === 'notcontains') {
-              if (fieldValue.includes(filterValue)) return false;
-            } else if (filter.operator === 'equals') {
-              if (fieldValue !== filterValue) return false;
-            }
-          }
-        }
-      }
-
-      return true;
-    });
-
-    renderAdventureCards(filteredData);
-    updateResultsCount(filteredData.length);
-  }
+  // ...existing code...
 
   function getFieldIndexByKey(key) {
     const fieldMap = {
@@ -10091,221 +10007,6 @@
     showToast('✓ All filters cleared', 'success', 2000);
   }
 
-  /* OLD TABLE-BASED APPLY FILTERS - DISABLED FOR CARD VIEW
-  function applyFilters() {
-  const tbody = document.querySelector("#adventureTableBody");
-  const rows = Array.from(tbody.querySelectorAll("tr"));
-
-  // Filter logic
-  const filteredRows = rows.filter((row) => {
-    const name = row.cells[1]?.textContent.toLowerCase() || "";
-    const difficulty = (row.dataset.difficulty || "").toLowerCase();
-    const state = (row.dataset.state || "").toLowerCase();
-    const city = normalizeCityValue(row.dataset.city || "");
-    const tags = (row.dataset.tags || "").toLowerCase();
-    const cost = (row.dataset.cost || "").toLowerCase();
-
-    // Name filter
-    if (filterState.name && !name.includes(filterState.name)) {
-      return false;
-    }
-
-    // Difficulty filter
-    if (filterState.difficulty && !difficulty.includes(filterState.difficulty.toLowerCase())) {
-      return false;
-    }
-
-    // State filter
-    if (filterState.state && !state.includes(filterState.state)) {
-      return false;
-    }
-
-    // City filter
-    if (filterState.city && !city.includes(filterState.city)) {
-      return false;
-    }
-
-    // Tags filter (check if any tag matches)
-    if (filterState.tags) {
-      const tagsArray = tags.split(",").map(t => t.trim().toLowerCase());
-      const filterTagLower = filterState.tags.toLowerCase().trim();
-      // Check if any individual tag matches the filter
-      if (!tagsArray.some(t => t === filterTagLower || t.includes(filterTagLower))) {
-        return false;
-      }
-    }
-
-    // Cost filter
-    if (filterState.cost && !cost.includes(filterState.cost)) {
-      return false;
-    }
-
-    // Quick tags filter (check if row has any of the selected quick tags)
-    if (filterState.quickTags.size > 0) {
-      const rowTags = tags.split(",").map(t => t.trim().toLowerCase());
-      const hasQuickTag = Array.from(filterState.quickTags).some(qtag =>
-        rowTags.some(rt => rt.includes(qtag.toLowerCase()))
-      );
-      if (!hasQuickTag) {
-        return false;
-      }
-    }
-
-    // Context menu filters (right-click filters) with multi-select support
-    if (filterState.contextFilters && filterState.contextFilters.length > 0) {
-      // Group filters by field key for OR logic within same field
-      const filtersByField = {};
-      filterState.contextFilters.forEach(filter => {
-        if (!filtersByField[filter.key]) {
-          filtersByField[filter.key] = [];
-        }
-        filtersByField[filter.key].push(filter);
-      });
-
-      // Check each field group - ALL fields must match (AND), but within a field any value can match (OR)
-      for (const [fieldKey, filtersForField] of Object.entries(filtersByField)) {
-        let rowValue = "";
-        switch (fieldKey) {
-          case "name":
-            rowValue = row.cells[1]?.textContent.toLowerCase() || "";
-            break;
-          case "tags":
-            rowValue = tags;
-            break;
-          case "driveTime":
-            rowValue = row.cells[4]?.textContent.toLowerCase() || "";
-            break;
-          case "state":
-            rowValue = state;
-            break;
-          case "city":
-            rowValue = city;
-            break;
-          case "hours":
-            rowValue = row.cells[13]?.textContent.toLowerCase() || "";
-            break;
-          case "cost":
-            rowValue = cost;
-            break;
-        }
-
-        // For this field, check if ANY of the filter values match (OR logic)
-        const includeFilters = filtersForField.filter(f => f.operation === "equals");
-        const excludeFilters = filtersForField.filter(f => f.operation === "not-equals");
-
-        // Check include filters (OR - any match is good)
-        if (includeFilters.length > 0) {
-          const matchesAny = includeFilters.some(filter => {
-            const rawFilterValue = filter.value.toLowerCase().trim();
-            const filterValue = fieldKey === "city" ? normalizeCityValue(rawFilterValue) : rawFilterValue;
-
-            // Special handling for tags - check individual tags instead of using includes on raw string
-            if (fieldKey === "tags") {
-              const rowTagsArray = rowValue.split(",").map(t => t.trim().toLowerCase());
-              const doesMatch = rowTagsArray.includes(filterValue);
-              console.log(`🔍 Tag filter check: rowTags=[${rowTagsArray.join(", ")}], filterValue="${filterValue}", matches=${doesMatch}`);
-              return doesMatch;
-            }
-
-            // For other fields, use includes
-            const doesInclude = rowValue.includes(filterValue);
-            return doesInclude;
-          });
-          if (!matchesAny) {
-            return false; // No match found for include filters
-          }
-        }
-
-        // Check exclude filters (AND - all must NOT match)
-        if (excludeFilters.length > 0) {
-          const matchesAny = excludeFilters.some(filter => {
-            const rawFilterValue = filter.value.toLowerCase().trim();
-            const filterValue = fieldKey === "city" ? normalizeCityValue(rawFilterValue) : rawFilterValue;
-
-            // Special handling for tags - check individual tags instead of using includes on raw string
-            if (fieldKey === "tags") {
-              const rowTagsArray = rowValue.split(",").map(t => t.trim().toLowerCase());
-              return rowTagsArray.includes(filterValue);
-            }
-
-            // For other fields, use includes
-            return rowValue.includes(filterValue);
-          });
-          if (matchesAny) {
-            return false; // Found a match that should be excluded
-          }
-        }
-      }
-    }
-
-    return true;
-  });
-
-  // Show/hide rows based on filter
-  rows.forEach((row) => {
-    row.style.display = filteredRows.includes(row) ? "" : "none";
-  });
-
-  // Show empty state if no results
-  const visibleRowCount = filteredRows.length;
-  if (visibleRowCount === 0) {
-    const hasActiveFilters = filterState.name || filterState.difficulty || filterState.state ||
-                            filterState.city || filterState.tags || filterState.cost ||
-                            filterState.quickTags.size > 0 || filterState.contextFilters.length > 0;
-    if (hasActiveFilters) {
-      showEmptyState('no-results');
-    }
-  } else {
-    // Re-initialize favorite buttons on visible rows
-    addFavoriteButtonsToTable();
-    // Add sort indicators to columns
-    addSortIndicators();
-  }
-
-  // Update filter state indicators
-  const anyFilterActive =
-          filterState.name ||
-          filterState.difficulty ||
-          filterState.state ||
-          filterState.city ||
-          filterState.tags ||
-          filterState.cost ||
-          filterState.groupBy ||
-          filterState.quickTags.size > 0;
-
-  const controlPanelCard = document.getElementById("controlPanelCard");
-  const quickFiltersCard = document.getElementById("quickFiltersCard");
-  const badge = document.getElementById("filtersActiveBadge");
-
-  if (anyFilterActive) {
-    controlPanelCard.classList.add("filters-active");
-    quickFiltersCard.classList.add("filters-active");
-    badge.classList.add("visible");
-  } else {
-    controlPanelCard.classList.remove("filters-active");
-    quickFiltersCard.classList.remove("filters-active");
-    badge.classList.remove("visible");
-  }
-
-  // Generate autofill suggestions for filter fields
-  updateFilterSuggestions(filteredRows);
-
-  // Keep breadcrumb chips synced with all active filter sources
-  updateBreadcrumbMenu();
-
-  // Apply multi-level grouping if enabled
-  if (filterState.groupBy) {
-    applyMultiLevelGrouping(filteredRows);
-  }
-
-  // Save filter state to history for undo/redo
-  saveFilterState();
-
-  // CRITICAL: Re-initialize context menu to ensure right-click keeps working after DOM updates
-  // The context menu event listener needs to be reattached when table rows are shown/hidden
-  initContextMenu();
-  }
-  END OF OLD TABLE-BASED APPLY FILTERS */
 
   /**
    * Apply multi-level grouping to table rows
@@ -16372,23 +16073,10 @@ COMMON ISSUES:
    * Edit Mode contains all management, automation, and backup features
    */
   function openEditMode() {
-    const width = 1200;
-    const height = 900;
-    const left = (screen.width - width) / 2;
-    const top = (screen.height - height) / 2;
-
-    // Open HTML Files/automation-control-panel.html as edit mode
-    const editModeWindow = window.open(
-            'HTML Files/edit-mode.html',
-            'AdventurePlannerEditMode',
-            `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no`
-    );
-
-    if (!editModeWindow) {
-      alert('Unable to open Edit Mode. Please check your popup blocker settings.');
-    } else {
-      editModeWindow.focus();
-    }
+    // Open edit mode as a new tab instead of popup
+    // This ensures better integration and avoids popup issues
+    const editModeUrl = 'HTML Files/edit-mode-new.html';
+    window.open(editModeUrl, '_blank');
   }
 
   // Add keyboard shortcut for Edit Mode
@@ -16398,5 +16086,9 @@ COMMON ISSUES:
     }
   });
 </script>
+
+<!-- Tab Content Loader - Dynamically loads tab content from separate HTML files -->
+<script src="JS Files/tab-content-loader.js"></script>
+
 </body>
 </html>
