@@ -556,6 +556,7 @@
      * Tab switching
      */
     function switchTab(tabName) {
+      // Hide all tabs and remove active class
       document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
       });
@@ -563,8 +564,18 @@
         btn.classList.remove('active');
       });
 
-      document.getElementById(`${tabName}-tab`).classList.add('active');
-      event.target.classList.add('active');
+      // Show selected tab and activate button
+      const tabElement = document.getElementById(`${tabName}-tab`);
+      if (tabElement) {
+        tabElement.classList.add('active');
+      }
+
+      // Find and activate the correct button
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabName) {
+          btn.classList.add('active');
+        }
+      });
     }
 
     /**
