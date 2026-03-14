@@ -123,37 +123,12 @@
   // ============================================================
   // 3. SEARCH PLACE IDS BUTTON FIX
   // ============================================================
-  window.handleSearchPlaceIds = function() {
-    console.log('🔍 Search Place IDs initiated');
-
-    if (!window.adventuresData || window.adventuresData.length === 0) {
-      alert('No locations to search');
-      return;
-    }
-
-    try {
-      console.log(`Searching Place IDs for ${window.adventuresData.length} locations...`);
-
-      let foundCount = 0;
-      let missingCount = 0;
-
-      window.adventuresData.forEach(place => {
-        const placeId = place[0];
-        if (placeId && placeId.startsWith('ChI')) {
-          foundCount++;
-        } else {
-          missingCount++;
-        }
-      });
-
-      console.log(`✅ Search complete: ${foundCount} with IDs, ${missingCount} missing`);
-      alert(`✅ Search Complete!\n\nLocations with Place IDs: ${foundCount}\nLocations needing IDs: ${missingCount}`);
-
-    } catch (err) {
-      console.error('Error in Search Place IDs:', err);
-      alert('Error: ' + err.message);
-    }
-  };
+  function fixSearchPlaceIdsButton() {
+    // Do not overwrite handlers here; popup/control-panel scripts own button wiring.
+    if (window.__searchPlaceIdsFixApplied) return;
+    window.__searchPlaceIdsFixApplied = true;
+    console.log('ℹ️ Search Place IDs handler left unchanged (managed by primary automation scripts)');
+  }
 
   // ============================================================
   // 3B. FIND SIMILAR BUTTON HANDLER
@@ -275,11 +250,7 @@
           console.log('✅ Location History ready');
         }
 
-        // Update Search Place IDs button if it exists
-        const searchPlaceIdsBtn = document.getElementById('btnSearchPlaceIds');
-        if (searchPlaceIdsBtn) {
-          searchPlaceIdsBtn.onclick = () => window.handleSearchPlaceIds();
-        }
+        // Keep primary automation button handlers intact (no overrides here).
 
         document.dispatchEvent(new Event('AppReady'));
       }, 1000);
@@ -294,4 +265,3 @@
   }
 
 })();
-

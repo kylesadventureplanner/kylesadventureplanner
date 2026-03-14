@@ -676,7 +676,7 @@
           <span class="btn-shortcut">Alt+A</span>
         </button>
 
-        <button class="automation-btn" id="btnSearchPlaceIds" onclick="handleAutomation('searchPlaceIds', this)">
+        <button class="automation-btn" id="btnSearchPlaceIds" onclick="handleSearchPlaceIds()">
           <span class="btn-icon">🔍</span>
           <div class="btn-content">
             <div class="btn-title">Search Place IDs</div>
@@ -685,7 +685,7 @@
           <span class="btn-shortcut">Alt+S</span>
         </button>
 
-        <button class="automation-btn" id="btnRefreshPlaceIds" onclick="window.handleRefreshPlaceIds ? window.handleRefreshPlaceIds() : handleAutomation('refreshPlaceIds', this)">
+        <button class="automation-btn" id="btnRefreshPlaceIds" onclick="handleRefreshPlaceIds()">
           <span class="btn-icon">🔄</span>
           <div class="btn-content">
             <div class="btn-title">Refresh Place IDs</div>
@@ -694,7 +694,7 @@
           <span class="btn-shortcut">Alt+R</span>
         </button>
 
-        <button class="automation-btn" id="btnBulkAddChain" onclick="window.handleBulkAddChainLocations ? window.handleBulkAddChainLocations() : alert('System loading...')">
+        <button class="automation-btn" id="btnBulkAddChain" onclick="handleBulkAddChainLocations()">
           <span class="btn-icon">🏪📦</span>
           <div class="btn-content">
             <div class="btn-title">Bulk Add Chain Locations</div>
@@ -1427,7 +1427,6 @@
       }).join('');
     }
 
-    // ...existing code...
 
     // Recent Places functions
     let recentPlaces = [];
@@ -1966,128 +1965,178 @@
     // BUTTON HANDLERS - Google Automation & Data Refresh
     // ============================================================
 
-    window.handleAutomation = function(action, buttonEl) {
-      console.log(`🔄 Automation action: ${action}`);
+    function showResultModal(title, summaryRows, detailRows) {
+      const backdrop = document.createElement('div');
+      backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:80vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35);';
+      modal.innerHTML = `
+        <div style="padding:14px 18px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+          <strong>${title}</strong>
+          <button id="resultModalCloseBtn" style="border:none;background:transparent;font-size:20px;cursor:pointer;">×</button>
+        </div>
+        <div style="padding:14px 18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;">
+          ${summaryRows.map((r) => `<div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;"><div style="font-size:12px;color:#6b7280">${r.label}</div><div style="font-size:22px;font-weight:700;color:${r.color}">${r.value}</div></div>`).join('')}
+        </div>
+        <div style="padding:0 18px 16px 18px;">
+          <div style="font-size:12px;color:#6b7280;margin-bottom:8px;">Details</div>
+          <div style="border:1px solid #e5e7eb;border-radius:10px;max-height:44vh;overflow:auto;">
+            ${detailRows.length ? detailRows.map((d) => `<div style=\"padding:9px 12px;border-bottom:1px solid #f3f4f6;font-size:12px;\">${d}</div>`).join('') : '<div style="padding:12px;font-size:12px;color:#6b7280;">No details.</div>'}
+          </div>
+        </div>`;
+      backdrop.appendChild(modal);
+      document.body.appendChild(backdrop);
+      const close = () => backdrop.remove();
+      modal.querySelector('#resultModalCloseBtn').onclick = close;
+      backdrop.onclick = (e) => { if (e.target === backdrop) close(); };
+    }
 
+    window.handleAutomation = async function(action, buttonEl) {
+      console.log(`🔄 Automation action: ${action}`);
       if (!checkConnection()) {
         setStatus('❌ Not connected to main window', 'error');
         return;
       }
+      if (!mainWindow || typeof mainWindow.runGoogleAutomation !== 'function') {
+        setStatus('❌ Main automation function not available', 'error');
+        return;
+      }
 
+      const originalText = buttonEl ? buttonEl.innerHTML : '';
       if (buttonEl) {
         buttonEl.disabled = true;
-        const originalText = buttonEl.textContent;
-        buttonEl.textContent = '⏳ Processing...';
-
-        // Re-enable after timeout
-        setTimeout(() => {
-          buttonEl.disabled = false;
-          buttonEl.textContent = originalText;
-        }, 5000);
+        buttonEl.classList.add('loading');
       }
 
       try {
-        switch(action) {
-          case 'populateMissing':
-            setStatus('📝 Populating missing fields from Google...', 'info');
-            console.log('✅ Populate Missing initiated');
-            break;
-          case 'refreshHours':
-            setStatus('🕐 Refreshing hours from Google...', 'info');
-            console.log('✅ Refresh Hours initiated');
-            break;
-          case 'refreshAll':
-            setStatus('🔄 Refreshing all fields from Google...', 'info');
-            console.log('✅ Refresh All initiated');
-            break;
-          case 'searchPlaceIds':
-            setStatus('🔍 Searching for Place IDs...', 'info');
-            console.log('✅ Search Place IDs initiated');
-            break;
-          case 'refreshPlaceIds':
-            setStatus('🔄 Refreshing Place IDs...', 'info');
-            console.log('✅ Refresh Place IDs initiated');
-            break;
-          default:
-            setStatus(`❓ Unknown action: ${action}`, 'warning');
-        }
+        setStatus(`⏳ Running ${action}...`, 'info');
+        await mainWindow.runGoogleAutomation(action, isDryRun);
+        setStatus(`✅ ${action} completed`, 'success');
       } catch (err) {
         console.error('Error in handleAutomation:', err);
         setStatus(`❌ Error: ${err.message}`, 'error');
+      } finally {
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.classList.remove('loading');
+          buttonEl.innerHTML = originalText;
+        }
       }
     };
 
-    window.handleAddPlace = function() {
-      console.log('➕ Add Place clicked');
+    window.handleSearchPlaceIds = async function() {
+      if (!checkConnection()) return;
+      if (!mainWindow || typeof mainWindow.runGoogleAutomation !== 'function') {
+        setStatus('❌ Main automation function not available', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btnSearchPlaceIds');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+      }
+
       try {
-        openAddPlacePanel();
-        setStatus('➕ Add Place panel opened', 'info');
+        const before = (typeof mainWindow.analyzeAutomationChanges === 'function')
+          ? mainWindow.analyzeAutomationChanges('searchPlaceIds')
+          : { changes: [], skipped: [] };
+
+        setStatus('🔍 Searching Place IDs...', 'info');
+        await mainWindow.runGoogleAutomation('searchPlaceIds', isDryRun);
+
+        const after = (typeof mainWindow.analyzeAutomationChanges === 'function')
+          ? mainWindow.analyzeAutomationChanges('searchPlaceIds')
+          : { changes: [], skipped: [] };
+
+        const resolved = Math.max(0, (before.changes?.length || 0) - (after.changes?.length || 0));
+        const pending = after.changes?.length || 0;
+        const skipped = after.skipped?.length || 0;
+
+        const details = [
+          ...((after.changes || []).slice(0, 60).map((c) => `⏳ Pending Search: ${c.name}`)),
+          ...((after.skipped || []).slice(0, 60).map((s) => `⏭️ Skipped: ${s.name || 'Unknown'}`))
+        ];
+
+        showResultModal(
+          isDryRun ? 'Search Place IDs (Dry Run)' : 'Search Place IDs Complete',
+          [
+            { label: 'Resolved', value: resolved, color: '#10b981' },
+            { label: 'Pending', value: pending, color: '#f59e0b' },
+            { label: 'Skipped', value: skipped, color: '#6b7280' }
+          ],
+          details
+        );
+
+        setStatus('✅ Search Place IDs complete', 'success');
       } catch (err) {
-        console.error('Error in handleAddPlace:', err);
+        console.error('Error in handleSearchPlaceIds:', err);
         setStatus(`❌ Error: ${err.message}`, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('loading');
+          btn.innerHTML = originalHtml;
+        }
       }
     };
 
-    window.handleAddChainLocation = function() {
-      console.log('🏪 Add Chain Location clicked');
-      try {
-        // Try to open chain location panel if it exists
-        if (typeof openChainLocationPanel === 'function') {
-          openChainLocationPanel();
-        } else {
-          // Fallback: show add place panel
-          openAddPlacePanel();
-          setStatus('🏪 Add Location panel opened (chain mode)', 'info');
-        }
-      } catch (err) {
-        console.error('Error in handleAddChainLocation:', err);
-        setStatus(`❌ Error: ${err.message}`, 'error');
+    window.handleRefreshPlaceIds = async function() {
+      if (!checkConnection()) return;
+      if (!mainWindow || typeof mainWindow.runGoogleAutomation !== 'function') {
+        setStatus('❌ Main automation function not available', 'error');
+        return;
       }
-    };
 
-    // Handle Auto-Tag All Locations
-    window.handleAutoTagAll = function() {
+      const btn = document.getElementById('btnRefreshPlaceIds');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+      }
+
       try {
-        // Get adventure data from main window
-        let adventuresData = window.adventuresData;
-        if (!adventuresData && mainWindow && mainWindow.adventuresData) {
-          adventuresData = mainWindow.adventuresData;
-        }
+        const before = (typeof mainWindow.analyzeAutomationChanges === 'function')
+          ? mainWindow.analyzeAutomationChanges('refreshPlaceIds')
+          : { changes: [], skipped: [] };
 
-        if (!adventuresData) {
-          setStatus('⚠️ No adventure data loaded yet. Please refresh the main window.', 'error');
-          return;
-        }
+        setStatus('🔄 Refreshing Place IDs...', 'info');
+        await mainWindow.runGoogleAutomation('refreshPlaceIds', isDryRun);
 
-        // Make sure automation system exists
-        if (!mainWindow.automationSystem) {
-          setStatus('⚠️ Auto-tag system not found in main window.', 'error');
-          return;
-        }
+        const after = (typeof mainWindow.analyzeAutomationChanges === 'function')
+          ? mainWindow.analyzeAutomationChanges('refreshPlaceIds')
+          : { changes: [], skipped: [] };
 
-        setStatus('🔄 Analyzing locations...', 'info');
+        const refreshed = Math.max(0, (before.changes?.length || 0) - (after.changes?.length || 0));
+        const pending = after.changes?.length || 0;
+        const skipped = after.skipped?.length || 0;
 
-        // Analyze all locations
-        const analysis = mainWindow.automationSystem.analyzeAllLocations(adventuresData);
+        const details = [
+          ...((after.changes || []).slice(0, 60).map((c) => `⏳ Pending Refresh: ${c.name}`)),
+          ...((after.skipped || []).slice(0, 60).map((s) => `⏭️ Skipped: ${s.name || 'Unknown'}`))
+        ];
 
-        // Check if there are recommendations
-        if (analysis.recommendedTags.size === 0) {
-          setStatus('✅ All locations already have optimal tags!', 'success');
-          alert('Great! All locations already have the best tags. No new recommendations.');
-          return;
-        }
+        showResultModal(
+          isDryRun ? 'Refresh Place IDs (Dry Run)' : 'Refresh Place IDs Complete',
+          [
+            { label: 'Refreshed', value: refreshed, color: '#10b981' },
+            { label: 'Pending', value: pending, color: '#f59e0b' },
+            { label: 'Skipped', value: skipped, color: '#6b7280' }
+          ],
+          details
+        );
 
-        // Show summary modal
-        mainWindow.automationSystem.showSummaryModal(analysis);
-
-        // Update status
-        const totalTags = Array.from(analysis.recommendedTags.values())
-          .reduce((sum, loc) => sum + loc.recommended.length, 0);
-        setStatus(`✓ Found ${analysis.recommendedTags.size} locations to update with ${totalTags} recommended tags`, 'success');
-
+        setStatus('✅ Refresh Place IDs complete', 'success');
       } catch (err) {
-        console.error('Error in handleAutoTagAll:', err);
+        console.error('Error in handleRefreshPlaceIds:', err);
         setStatus(`❌ Error: ${err.message}`, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('loading');
+          btn.innerHTML = originalHtml;
+        }
       }
     };
 
@@ -2100,6 +2149,7 @@
         'A': 'btnRefreshAll',
         'S': 'btnSearchPlaceIds',
         'R': 'btnRefreshPlaceIds',
+        'B': 'btnBulkAddChain',
         'N': 'btnAddPlace',
         'C': 'btnAddChainLocation',
         'T': 'btnAutoTagAll'
@@ -2147,6 +2197,30 @@
     if (mainWindow && !mainWindow.closed) {
       setStatus('Control panel ready. Select an action to begin.', 'success');
     }
+  </script>
+
+  <!-- Enhanced Automation Features with Bulk Add Chain, Refresh Place IDs, etc. -->
+  <script src="enhanced-automation-features.js"></script>
+
+  <!-- Ensure functions are available in popup context -->
+  <script>
+    console.log('✅ Automation Control Panel scripts loaded');
+    console.log('  - handleBulkAddChainLocations:', typeof window.handleBulkAddChainLocations);
+    console.log('  - handleRefreshPlaceIds:', typeof window.handleRefreshPlaceIds);
+
+    // If handlers aren't available yet, wait for them
+    let handlerCheckAttempts = 0;
+    const checkHandlers = setInterval(() => {
+      handlerCheckAttempts++;
+      if (typeof window.handleBulkAddChainLocations === 'function' &&
+          typeof window.handleRefreshPlaceIds === 'function') {
+        console.log('✅ All automation handlers loaded successfully');
+        clearInterval(checkHandlers);
+      } else if (handlerCheckAttempts > 20) {
+        console.warn('⚠️ Some handlers may not have loaded');
+        clearInterval(checkHandlers);
+      }
+    }, 50);
   </script>
 </body>
 </html>

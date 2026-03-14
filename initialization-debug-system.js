@@ -65,28 +65,42 @@
   const registerButtons = function() {
     console.log('\n🔘 REGISTERING BUTTON HANDLERS:\n');
 
-    // Refresh Place IDs button
+    // Refresh Place IDs button - with fallback
     const refreshBtn = document.getElementById('btnRefreshPlaceIds');
-    if (refreshBtn && window.handleRefreshPlaceIds) {
-      refreshBtn.onclick = () => window.handleRefreshPlaceIds();
+    if (refreshBtn) {
+      const origOnClick = refreshBtn.onclick;
+      refreshBtn.onclick = function() {
+        if (typeof window.handleRefreshPlaceIds === 'function') {
+          window.handleRefreshPlaceIds();
+        } else if (typeof origOnClick === 'function') {
+          origOnClick.call(this);
+        } else {
+          console.warn('⚠️ Refresh Place IDs handler not available');
+        }
+      };
       logInit('🔘 Refresh Place IDs button registered');
-    } else if (refreshBtn) {
-      console.warn('⚠️ Refresh Place IDs button found but handler not available');
     }
 
-    // Bulk Add Chain button
+    // Bulk Add Chain button - with fallback
     const bulkChainBtn = document.getElementById('btnBulkAddChain');
-    if (bulkChainBtn && window.handleBulkAddChainLocations) {
-      bulkChainBtn.onclick = () => window.handleBulkAddChainLocations();
+    if (bulkChainBtn) {
+      const origOnClick = bulkChainBtn.onclick;
+      bulkChainBtn.onclick = function() {
+        if (typeof window.handleBulkAddChainLocations === 'function') {
+          window.handleBulkAddChainLocations();
+        } else if (typeof origOnClick === 'function') {
+          origOnClick.call(this);
+        } else {
+          console.warn('⚠️ Bulk Add Chain handler not available');
+        }
+      };
       logInit('🔘 Bulk Add Chain button registered');
-    } else if (bulkChainBtn) {
-      console.warn('⚠️ Bulk Add Chain button found but handler not available');
     }
 
     // Find Similar button - on main page
     const similarBtns = document.querySelectorAll('[onclick*="similar"], [class*="similar"]');
-    if (similarBtns.length > 0 && window.handleFindSimilar) {
-      logInit(`🔘 Found ${similarBtns.length} Find Similar buttons, handlers ready`);
+    if (similarBtns.length > 0) {
+      logInit(`🔘 Found ${similarBtns.length} Find Similar buttons, checking handlers...`);
     }
   };
 

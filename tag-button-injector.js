@@ -11,20 +11,44 @@
 (function() {
   console.log('📌 Initializing Tag Button Injector...');
 
-  /**
-   * Open tag manager for a place
-   */
+/**
+ * Open tag manager for a place with proper initialization check
+ */
   window.openTagManagerForPlace = function(placeId, placeName) {
     console.log('🏷️ Opening tag manager for place:', placeId, placeName);
 
-    if (window.cleanTagManager) {
-      window.cleanTagManager.openModal(placeId, placeName);
-    } else if (window.tagUIManager) {
-      window.tagUIManager.openModal(placeId, placeName);
-    } else {
-      console.error('❌ Tag manager not available');
-      alert('Tag manager is loading. Please try again in a moment.');
+    // Try cleanTagManager first
+    if (window.cleanTagManager && typeof window.cleanTagManager.openModal === 'function') {
+      try {
+        window.cleanTagManager.openModal(placeId, placeName);
+        return;
+      } catch (e) {
+        console.error('Error opening clean tag manager:', e);
+      }
     }
+
+    // Fallback to tagUIManager
+    if (window.tagUIManager && typeof window.tagUIManager.openModal === 'function') {
+      try {
+        window.tagUIManager.openModal(placeId, placeName);
+        return;
+      } catch (e) {
+        console.error('Error opening tag UI manager:', e);
+      }
+    }
+
+    // Try window.openTagManager wrapper
+    if (typeof window.openTagManager === 'function') {
+      try {
+        window.openTagManager(placeId);
+        return;
+      } catch (e) {
+        console.error('Error opening tag manager via wrapper:', e);
+      }
+    }
+
+    console.error('❌ No tag manager available');
+    alert('Tag manager is not ready. Please try again in a moment.');
   };
 
   /**
@@ -115,34 +139,25 @@
    * Initialize
    */
   function init() {
-    // Wait for clean tag manager to be ready
-    const checkReady = setInterval(() => {
-      if (window.cleanTagManager && window.cleanTagManager.openModal) {
-        clearInterval(checkReady);
-        console.log('✅ Tag Button Injector ready');
+    console.log('🎯 Tag Button Injector initializing...');
 
-        // Initial injection
-        setTimeout(() => {
-          injectTagButtons();
-          watchForNewRows();
-        }, 500);
-      }
-    }, 100);
+    // First pass - inject what we can immediately
+    let initialCount = injectTagButtons();
+    console.log(`📌 Initial injection: ${initialCount} buttons`);
 
-    // Fallback timeout
-    setTimeout(() => {
-      clearInterval(checkReady);
-      console.log('⏳ Starting tag button injection anyway...');
-      injectTagButtons();
-      watchForNewRows();
-    }, 5000);
+    // Watch for new rows continuously
+    watchForNewRows();
+
+    console.log('✅ Tag Button Injector ready (no wait needed)');
   }
 
-  // Start when DOM is ready
+  // Start when DOM is ready - no long timeout needed
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(init, 100);
+    });
   } else {
-    setTimeout(init, 500);
+    setTimeout(init, 100);
   }
 })();
 

@@ -582,7 +582,7 @@ class LocationHistoryManager {
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.5);
-      z-index: 9999;
+      z-index: 200000;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -598,7 +598,7 @@ class LocationHistoryManager {
       background: white;
       border-radius: 16px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      z-index: 10000;
+      z-index: 200001;
       max-width: 700px;
       width: 90%;
       max-height: 80vh;
@@ -656,4 +656,3 @@ window.openLocationHistoryModal = function() {
     window.locationHistoryManager.openModal();
   }
 };
-

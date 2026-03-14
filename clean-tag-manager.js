@@ -1,1280 +1,625 @@
 /**
- * CLEAN TAG MANAGER - COMPLETE REDESIGN
- * =====================================
- * Clean tag manager with inline styles to avoid conflicts
- * Fully functional with smart recommendations
- *
- * Version: v7.0.119
- * Date: March 13, 2026
+ * CLEAN TAG MANAGER
+ * Single-source implementation to avoid old modal/circle regressions.
+ * Version: v7.0.120
  */
 
-(function() {
-  console.log('🏷️ Initializing Clean Tag Manager v7.0.119');
+(function () {
+  const EXCLUDED_RECOMMENDATIONS = new Set([
+    'city center',
+    'downtown',
+    'urban',
+    'commercial'
+  ]);
 
-  /**
-   * Hide old tag manager system
-   */
-  const hideOldSystem = function() {
-    const backdrop = document.getElementById('tagManagerBackdrop');
-    const modal = document.getElementById('tagManagerModal');
+  function esc(text) {
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
-    if (backdrop) {
-      backdrop.style.display = 'none !important';
-      backdrop.style.visibility = 'hidden !important';
-      backdrop.classList.remove('visible');
-    }
-    if (modal) {
-      modal.style.display = 'none !important';
-      modal.style.visibility = 'hidden !important';
-      modal.classList.remove('visible');
-    }
-  };
+  function hideLegacyTagModal() {
+    const legacyBackdrop = document.getElementById('tagManagerBackdrop');
+    const legacyModal = document.getElementById('tagManagerModal');
 
-  /**
-   * Create modal HTML
-   */
-  const createCleanModal = function() {
-    // Check if already created
-    if (document.getElementById('cleanTagManagerBackdrop')) return;
-
-    // Create backdrop
-    const backdrop = document.createElement('div');
-    backdrop.id = 'cleanTagManagerBackdrop';
-    backdrop.style.cssText = `
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      background: rgba(0, 0, 0, 0.5) !important;
-      z-index: 999999 !important;
-      display: none !important;
-      align-items: center !important;
-      justify-content: center !important;
-    `;
-
-    // Create modal
-    const modal = document.createElement('div');
-    modal.id = 'cleanTagManagerModal';
-    modal.style.cssText = `
-      background: white !important;
-      border-radius: 16px !important;
-      box-shadow: 0 25px 75px rgba(0, 0, 0, 0.4) !important;
-      max-width: 700px !important;
-      width: 90% !important;
-      max-height: 85vh !important;
-      display: flex !important;
-      flex-direction: column !important;
-      overflow: hidden !important;
-      z-index: 999999 !important;
-    `;
-
-    modal.innerHTML = `
-      <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-shrink: 0;
-      ">
-        <div>
-          <div style="font-size: 20px; font-weight: 700; margin: 0;">🏷️ Tag Manager</div>
-          <div id="cleanTagSubtitle" style="font-size: 12px; opacity: 0.9; margin-top: 4px;"></div>
-        </div>
-        <button id="cleanTagClose" style="
-          background: none;
-          border: none;
-          color: white;
-          font-size: 28px;
-          cursor: pointer;
-          padding: 0;
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">✕</button>
-      </div>
-
-      <div style="
-        padding: 24px;
-        overflow-y: auto;
-        flex: 1;
-        background: white;
-      ">
-        <div style="margin-bottom: 24px;">
-          <div style="
-            font-size: 13px;
-            font-weight: 700;
-            color: #1f2937;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-          ">Current Tags</div>
-          
-          <div id="cleanTagDisplay" style="
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 16px;
-            min-height: 60px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: flex-start;
-          ">
-            <div style="width: 100%; text-align: center; color: #9ca3af;">No tags yet</div>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 24px;">
-          <div style="
-            font-size: 13px;
-            font-weight: 700;
-            color: #1f2937;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-          ">Add New Tag</div>
-          
-          <div style="display: flex; gap: 8px;">
-            <input 
-              id="cleanTagInput" 
-              type="text" 
-              placeholder="Type tag name..." 
-              style="
-                flex: 1;
-                padding: 12px 16px;
-                border: 2px solid #e5e7eb;
-                border-radius: 8px;
-                font-size: 14px;
-              "
-            />
-            <button id="cleanTagAddBtn" style="
-              padding: 12px 16px;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-weight: 600;
-              cursor: pointer;
-            ">Add</button>
-          </div>
-        </div>
-
-        <div>
-          <div style="
-            font-size: 13px;
-            font-weight: 700;
-            color: #065f46;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-          ">✨ Suggested Tags</div>
-          
-          <div style="
-            background: #f0fdf4;
-            border: 2px solid #dcfce7;
-            border-radius: 12px;
-            padding: 16px;
-          ">
-            <div style="
-              font-size: 13px;
-              font-weight: 700;
-              color: #065f46;
-              margin-bottom: 12px;
-            ">📍 Recommendations based on location</div>
-            
-            <div id="cleanTagSuggestions" style="
-              display: flex;
-              flex-wrap: wrap;
-              gap: 8px;
-            ">
-              <div style="width: 100%; text-align: center; color: #9ca3af; font-size: 13px;">Loading recommendations...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="
-        padding: 16px 24px;
-        background: #f9fafb;
-        border-top: 1px solid #e5e7eb;
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-        flex-wrap: wrap;
-        flex-shrink: 0;
-      ">
-        <button id="cleanTagCancelBtn" style="
-          padding: 10px 16px;
-          background: white;
-          color: #1f2937;
-          border: 2px solid #e5e7eb;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-        ">Cancel</button>
-        <button id="cleanTagClearBtn" style="
-          padding: 10px 16px;
-          background: white;
-          color: #dc2626;
-          border: 2px solid #fecaca;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-        ">Clear All</button>
-        <button id="cleanTagSaveBtn" style="
-          padding: 10px 16px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          font-weight: 600;
-          cursor: pointer;
-        ">Save Changes</button>
-      </div>
-    `;
-
-    backdrop.appendChild(modal);
-    backdrop.style.display = 'none';
-    document.body.appendChild(backdrop);
-
-    // Setup event listeners
-    document.getElementById('cleanTagClose').onclick = () => window.cleanTagManager.closeModal();
-    document.getElementById('cleanTagCancelBtn').onclick = () => window.cleanTagManager.closeModal();
-    document.getElementById('cleanTagClearBtn').onclick = () => window.cleanTagManager.clearAllTags();
-    document.getElementById('cleanTagSaveBtn').onclick = () => window.cleanTagManager.saveAndClose();
-    document.getElementById('cleanTagAddBtn').onclick = () => window.cleanTagManager.addTagFromInput();
-
-    backdrop.onclick = (e) => {
-      if (e.target === backdrop) {
-        window.cleanTagManager.closeModal();
-      }
-    };
-
-    console.log('✅ Clean tag manager modal created');
-  };
-
-  /**
-   * Clean Tag Manager System
-   */
-  window.cleanTagManager = {
-    currentPlaceId: null,
-    currentTags: [],
-
-    init: function() {
-      console.log('📦 Initializing clean tag manager...');
-      hideOldSystem();
-      createCleanModal();
-      console.log('✅ Clean tag manager initialized');
-    },
-
-    openModal: function(placeId, placeName) {
-      console.log('🏷️ Opening tag manager for:', placeId, placeName);
-
-      this.currentPlaceId = placeId;
-      this.currentTags = [];
-
-      const subtitle = document.getElementById('cleanTagSubtitle');
-      if (subtitle) {
-        subtitle.textContent = placeName || `Place ID: ${placeId.substring(0, 30)}...`;
-      }
-
-      // Load current tags from tag manager
-      this.loadCurrentTags();
-
-      // Load recommendations
-      this.loadRecommendations();
-
-      // Show modal
-      const backdrop = document.getElementById('cleanTagManagerBackdrop');
-      if (backdrop) {
-        backdrop.style.display = 'flex !important';
-      }
-    },
-
-    closeModal: function() {
-      console.log('✖️ Closing tag manager');
-      const backdrop = document.getElementById('cleanTagManagerBackdrop');
-      if (backdrop) {
-        backdrop.style.display = 'none !important';
-      }
-    },
-
-    loadCurrentTags: function() {
-      console.log('📥 Loading current tags for:', this.currentPlaceId);
-
-      if (!this.currentPlaceId || !window.tagManager) {
-        console.warn('⚠️ No place ID or tag manager');
-        this.currentTags = [];
-        return;
-      }
-
-      try {
-        const tags = window.tagManager.getTagsForPlace(this.currentPlaceId);
-        this.currentTags = Array.isArray(tags) ? tags : [];
-        console.log('✅ Loaded tags:', this.currentTags);
-      } catch (err) {
-        console.error('❌ Error loading tags:', err);
-        this.currentTags = [];
-      }
-
-      this.renderCurrentTags();
-    },
-
-    renderCurrentTags: function() {
-      console.log('🎨 Rendering tags:', this.currentTags);
-
-      const display = document.getElementById('cleanTagDisplay');
-      if (!display) return;
-
-      if (this.currentTags.length === 0) {
-        display.innerHTML = '<div style="width: 100%; text-align: center; color: #9ca3af;">No tags yet</div>';
-        return;
-      }
-
-      display.innerHTML = this.currentTags.map(tag => `
-        <div style="
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-          color: #1e40af;
-          padding: 6px 12px;
-          border-radius: 20px;
-          font-size: 13px;
-          font-weight: 600;
-        ">
-          ${this.escapeHtml(tag)}
-          <button onclick="window.cleanTagManager.removeTag('${tag}')" style="
-            background: none;
-            border: none;
-            color: #1e40af;
-            cursor: pointer;
-            font-size: 16px;
-            padding: 0;
-            width: 18px;
-            height: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          ">✕</button>
-        </div>
-      `).join('');
-    },
-
-    addTagFromInput: function() {
-      const input = document.getElementById('cleanTagInput');
-      if (!input || !input.value.trim()) return;
-
-      const tag = input.value.trim();
-      if (!this.currentTags.includes(tag)) {
-        this.currentTags.push(tag);
-        this.renderCurrentTags();
-        input.value = '';
-      }
-    },
-
-    removeTag: function(tag) {
-      this.currentTags = this.currentTags.filter(t => t !== tag);
-      this.renderCurrentTags();
-    },
-
-    clearAllTags: function() {
-      if (confirm('Clear all tags from this location?')) {
-        this.currentTags = [];
-        this.renderCurrentTags();
-      }
-    },
-
-    loadRecommendations: function() {
-      console.log('💡 Loading recommendations...');
-
-      const suggestions = document.getElementById('cleanTagSuggestions');
-      if (!suggestions) return;
-
-      let recommendations = this.generateSmartRecommendations();
-
-      if (recommendations.length === 0) {
-        suggestions.innerHTML = '<div style="width: 100%; text-align: center; color: #9ca3af; font-size: 13px;">No additional recommendations</div>';
-        return;
-      }
-
-      suggestions.innerHTML = recommendations.map(tag => `
-        <button onclick="window.cleanTagManager.addSuggestedTag('${tag}')" style="
-          background: white;
-          border: 2px solid #86efac;
-          color: #15803d;
-          padding: 6px 12px;
-          border-radius: 16px;
-          font-size: 12px;
-          font-weight: 600;
-          cursor: pointer;
-        ">
-          ${tag} +
-        </button>
-      `).join('');
-    },
-
-    generateSmartRecommendations: function() {
-      if (!window.adventuresData || !this.currentPlaceId) {
-        return this.getDefaultRecommendations();
-      }
-
-      const place = window.adventuresData.find(p => p[0] === this.currentPlaceId);
-      if (!place) {
-        return this.getDefaultRecommendations();
-      }
-
-      const recommendations = new Set();
-      const name = (place[1] || '').toLowerCase();
-      const type = (place[4] || '').toLowerCase();
-      const address = (place[11] || '').toLowerCase();
-      const excludedTags = new Set(['City Center', 'city center', 'downtown', 'urban', 'commercial']);
-
-      // Smart recommendation rules
-      const rules = [
-        { keywords: ['restaurant', 'cafe', 'coffee', 'diner', 'bistro', 'pizza', 'sushi', 'burger', 'grill', 'pub', 'bar'], tags: ['Restaurant', 'Dining', 'Food Scene', 'Local Favorite'] },
-        { keywords: ['park', 'trail', 'hiking', 'nature', 'forest', 'river', 'mountain', 'waterfall', 'lake', 'outdoor'], tags: ['Outdoor', 'Nature', 'Scenic', 'Family-Friendly', 'Wildlife'] },
-        { keywords: ['gym', 'athletic', 'sports', 'fitness', 'court', 'field', 'stadium'], tags: ['Sports', 'Recreation', 'Athletic', 'Active'] },
-        { keywords: ['beach', 'water', 'river', 'lake', 'kayak', 'boat', 'swim'], tags: ['Water-Based', 'Beach', 'Swimming', 'Scenic'] },
-        { keywords: ['museum', 'historical', 'historic', 'monument', 'gallery', 'cultural'], tags: ['Historical', 'Cultural', 'Educational', 'Must-Visit'] },
-        { keywords: ['shop', 'mall', 'store', 'market', 'retail'], tags: ['Shopping', 'Local Business', 'Unique Find'] },
-      ];
-
-      rules.forEach(rule => {
-        if (rule.keywords.some(kw => name.includes(kw) || type.includes(kw) || address.includes(kw))) {
-          rule.tags.forEach(tag => {
-            if (!excludedTags.has(tag) && !this.currentTags.includes(tag)) {
-              recommendations.add(tag);
-            }
-          });
-        }
-      });
-
-      if (recommendations.size === 0) {
-        return this.getDefaultRecommendations();
-      }
-
-      return Array.from(recommendations).slice(0, 6);
-    },
-
-    getDefaultRecommendations: function() {
-      const defaults = ['Outdoor', 'Scenic', 'Family-Friendly', 'Worth Visiting', 'Relaxing', 'Adventure'];
-      return defaults.filter(tag => !this.currentTags.includes(tag) && tag !== 'City Center').slice(0, 6);
-    },
-
-    addSuggestedTag: function(tag) {
-      if (!this.currentTags.includes(tag)) {
-        this.currentTags.push(tag);
-        this.renderCurrentTags();
-      }
-    },
-
-    saveAndClose: function() {
-      console.log('💾 Saving tags:', this.currentTags);
-
-      if (this.currentPlaceId && window.tagManager) {
-        window.tagManager.setTagsForPlace(this.currentPlaceId, this.currentTags);
-        window.tagManager.saveTags();
-        console.log('✅ Tags saved');
-      }
-      this.closeModal();
-    },
-
-    escapeHtml: function(text) {
-      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-      return String(text).replace(/[&<>"']/g, m => map[m]);
-    }
-  };
-
-  // Initialize
-  setTimeout(() => {
-    window.cleanTagManager.init();
-  });
-})();
-    if (oldStyle) {
-      oldStyle.innerHTML = `
-        #tagManagerBackdrop { display: none !important; visibility: hidden !important; }
-        #tagManagerModal { display: none !important; visibility: hidden !important; }
-      `;
+    if (legacyBackdrop) {
+      legacyBackdrop.classList.remove('visible');
+      legacyBackdrop.style.display = 'none';
+      legacyBackdrop.style.visibility = 'hidden';
+      legacyBackdrop.style.pointerEvents = 'none';
+      legacyBackdrop.style.opacity = '0';
+      legacyBackdrop.style.zIndex = '-1';
     }
 
-    // Hide old elements
-    setTimeout(() => {
-      const backdrop = document.getElementById('tagManagerBackdrop');
-      const modal = document.getElementById('tagManagerModal');
-      if (backdrop) {
-        backdrop.style.display = 'none !important';
-        backdrop.style.visibility = 'hidden !important';
-        backdrop.classList.remove('visible');
-      }
-      if (modal) {
-        modal.style.display = 'none !important';
-        modal.style.visibility = 'hidden !important';
-        modal.classList.remove('visible');
-      }
-    }, 100);
-  };
+    if (legacyModal) {
+      legacyModal.classList.remove('visible');
+      legacyModal.style.display = 'none';
+      legacyModal.style.visibility = 'hidden';
+      legacyModal.style.pointerEvents = 'none';
+      legacyModal.style.opacity = '0';
+      legacyModal.style.zIndex = '-1';
+    }
+  }
 
-  // Create completely clean tag manager styles
-  const createCleanStyles = function() {
+  function ensureStyles() {
     if (document.getElementById('cleanTagManagerStyles')) return;
 
     const style = document.createElement('style');
     style.id = 'cleanTagManagerStyles';
     style.textContent = `
-      /* CLEAN TAG MANAGER - NO WEIRD BACKGROUNDS */
-
-      /* Hide the old backdrop completely */
-      #tagManagerBackdrop {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
-      }
-
-      /* Hide the old modal completely */
+      /* Force-hide legacy tag modal to prevent old circular artifact */
+      #tagManagerBackdrop,
       #tagManagerModal {
         display: none !important;
-        opacity: 0 !important;
         visibility: hidden !important;
+        opacity: 0 !important;
         pointer-events: none !important;
+        z-index: -1 !important;
       }
-
-      /* NEW CLEAN TAG MANAGER */
-      .clean-tag-manager-backdrop {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        background: rgba(0, 0, 0, 0.5) !important;
-        z-index: 999999 !important;
+      /* Neutralize legacy pseudo-elements that create circular overlays */
+      #tagManagerBackdrop::before,
+      #tagManagerBackdrop::after,
+      #tagManagerModal::before,
+      #tagManagerModal::after,
+      .tag-manager-modal::before,
+      .tag-manager-modal::after,
+      .tag-manager-content::before,
+      .tag-manager-content::after {
+        content: none !important;
         display: none !important;
-        align-items: center !important;
-        justify-content: center !important;
-        animation: fadeIn 0.2s ease-out !important;
-        pointer-events: auto !important;
       }
-
-      .clean-tag-manager-backdrop.visible {
-        display: flex !important;
+      #cleanTagManagerBackdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(2px);
+        z-index: 1000500;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
       }
-
-      .clean-tag-manager-modal {
-        background: white !important;
-        border-radius: 16px !important;
-        box-shadow: 0 25px 75px rgba(0, 0, 0, 0.4) !important;
-        max-width: 700px !important;
-        width: 90% !important;
-        max-height: 85vh !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
-        animation: slideUp 0.3s ease-out !important;
-        border: none !important;
-        margin: auto !important;
-        z-index: 999999 !important;
+      #cleanTagManagerBackdrop.visible {
+        display: flex;
       }
-
-      /* Header */
-      .clean-tag-manager-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        padding: 24px !important;
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        gap: 12px !important;
-        flex-shrink: 0 !important;
+      #cleanTagManagerModal {
+        width: min(760px, 96vw);
+        max-height: 90vh;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        z-index: 1000501;
       }
-
-      .clean-tag-manager-title {
-        font-size: 20px !important;
-        font-weight: 700 !important;
-        margin: 0 !important;
-      }
-
-      .clean-tag-manager-subtitle {
-        font-size: 12px !important;
-        opacity: 0.9 !important;
-        margin-top: 4px !important;
-      }
-
-      .clean-tag-manager-close {
-        background: none !important;
-        border: none !important;
-        color: white !important;
-        font-size: 28px !important;
-        cursor: pointer !important;
-        padding: 0 !important;
-        width: 36px !important;
-        height: 36px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        transition: all 0.2s !important;
-        border-radius: 8px !important;
-        flex-shrink: 0 !important;
-      }
-
-      .clean-tag-manager-close:hover {
-        background: rgba(255, 255, 255, 0.2) !important;
-      }
-
-      /* Body */
-      .clean-tag-manager-body {
-        padding: 24px !important;
-        overflow-y: auto !important;
-        flex: 1 !important;
-        background: white !important;
-      }
-
-      /* Tabs */
-      .clean-tag-tabs {
-        display: flex !important;
-        gap: 12px !important;
-        border-bottom: 2px solid #e5e7eb !important;
-        margin-bottom: 20px !important;
-        padding-bottom: 0 !important;
-      }
-
-      .clean-tag-tab {
-        background: none !important;
-        border: none !important;
-        padding: 12px 16px !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        color: #6b7280 !important;
-        cursor: pointer !important;
-        border-bottom: 3px solid transparent !important;
-        transition: all 0.2s !important;
-        margin-bottom: -2px !important;
-      }
-
-      .clean-tag-tab:hover {
-        color: #667eea !important;
-      }
-
-      .clean-tag-tab.active {
-        color: #667eea !important;
-        border-bottom-color: #667eea !important;
-      }
-
-      /* Input */
-      .clean-tag-input-wrapper {
-        display: flex !important;
-        gap: 8px !important;
-        margin-bottom: 16px !important;
-      }
-
-      .clean-tag-input {
-        flex: 1 !important;
-        padding: 12px 16px !important;
-        border: 2px solid #e5e7eb !important;
-        border-radius: 8px !important;
-        font-size: 14px !important;
-        font-family: inherit !important;
-        transition: all 0.2s !important;
-      }
-
-      .clean-tag-input:focus {
-        outline: none !important;
-        border-color: #667eea !important;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
-      }
-
-      /* Recommendations */
-      .clean-tag-recommendations {
-        background: #f0fdf4;
-        border: 2px solid #dcfce7;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
-      }
-
-      .clean-tag-recommendations-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #065f46;
-        margin-bottom: 12px;
+      .ctm-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: #fff;
+        padding: 16px 20px;
         display: flex;
         align-items: center;
-        gap: 6px;
+        justify-content: space-between;
+        gap: 12px;
       }
-
-      .clean-tag-suggestions {
+      .ctm-title { font-size: 22px; font-weight: 700; margin: 0; }
+      .ctm-subtitle { font-size: 12px; opacity: 0.95; margin-top: 2px; }
+      .ctm-close {
+        background: transparent;
+        border: 0;
+        color: #fff;
+        font-size: 30px;
+        line-height: 1;
+        cursor: pointer;
+        width: 36px;
+        height: 36px;
+      }
+      .ctm-body {
+        padding: 18px 20px;
+        overflow: auto;
+        background: #fff;
         display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .ctm-section-title {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        color: #374151;
+        margin-bottom: 8px;
+      }
+      .ctm-tag-box {
+        min-height: 52px;
+        border: 1px solid #d1d5db;
+        border-radius: 12px;
+        background: #f9fafb;
+        padding: 10px;
+        display: flex;
+        gap: 8px;
         flex-wrap: wrap;
+        align-items: center;
+      }
+      .ctm-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        border: 1px solid #60a5fa;
+        background: #eff6ff;
+        color: #1e40af;
+        font-weight: 600;
+        font-size: 13px;
+        padding: 6px 10px;
+      }
+      .ctm-pill button {
+        border: 0;
+        background: transparent;
+        color: #1e40af;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 13px;
+      }
+      .ctm-row {
+        display: flex;
         gap: 8px;
       }
-
-      .clean-tag-suggestion {
-        background: white;
-        border: 2px solid #86efac;
-        color: #15803d;
-        padding: 6px 12px;
-        border-radius: 16px;
-        font-size: 12px;
-        font-weight: 600;
+      .ctm-row input {
+        flex: 1;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        font-size: 14px;
+      }
+      .ctm-btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-weight: 700;
         cursor: pointer;
-        transition: all 0.2s;
       }
-
-      .clean-tag-suggestion:hover {
-        background: #dcfce7;
-        transform: translateY(-2px);
+      .ctm-btn-primary {
+        background: #3b82f6;
+        color: #fff;
       }
-
-      /* Empty state */
-      .clean-tag-empty {
-        text-align: center;
-        padding: 32px 16px;
-        color: #9ca3af;
+      .ctm-btn-secondary {
+        background: #fff;
+        border: 1px solid #d1d5db;
+        color: #374151;
       }
-
-      .clean-tag-empty-icon {
-        font-size: 48px;
-        margin-bottom: 12px;
+      .ctm-btn-danger {
+        background: #ef4444;
+        color: #fff;
       }
-
-      /* Footer */
-      .clean-tag-manager-footer {
-        padding: 16px 24px !important;
-        background: #f9fafb !important;
-        border-top: 1px solid #e5e7eb !important;
-        display: flex !important;
-        gap: 12px !important;
-        justify-content: flex-end !important;
-        flex-wrap: wrap !important;
-        flex-shrink: 0 !important;
+      .ctm-suggestions {
+        border: 1px solid #86efac;
+        border-radius: 12px;
+        background: #f0fdf4;
+        padding: 10px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
       }
-
-      .clean-tag-btn {
-        padding: 10px 16px !important;
-        border-radius: 8px !important;
-        border: none !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        cursor: pointer !important;
-        transition: all 0.2s !important;
+      .ctm-suggestion {
+        border: 1px solid #34d399;
+        border-radius: 999px;
+        background: #fff;
+        color: #047857;
+        padding: 6px 10px;
+        font-weight: 600;
+        font-size: 12px;
+        cursor: pointer;
       }
-
-      .clean-tag-btn.secondary {
-        background: white !important;
-        color: #1f2937 !important;
-        border: 2px solid #e5e7eb !important;
+      .ctm-footer {
+        padding: 14px 20px;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
       }
-
-      .clean-tag-btn.secondary:hover {
-        background: #f3f4f6 !important;
-        border-color: #d1d5db !important;
-      }
-
-      .clean-tag-btn.danger {
-        background: white !important;
-        color: #dc2626 !important;
-        border: 2px solid #fecaca !important;
-      }
-
-      .clean-tag-btn.danger:hover {
-        background: #fee2e2 !important;
-      }
-
-      .clean-tag-btn.primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
-        border: none !important;
-      }
-
-      .clean-tag-btn.primary:hover {
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
-        transform: translateY(-2px) !important;
-      }
-
-      /* Animations */
-      @keyframes slideUp {
-        from {
-          opacity: 0;
-          transform: translate(-50%, -40%);
-        }
-        to {
-          opacity: 1;
-          transform: translate(-50%, -50%);
-        }
-      }
-
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-
-      @keyframes tagPop {
-        from {
-          opacity: 0;
-          transform: scale(0.8);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
+      .ctm-empty {
+        color: #6b7280;
+        font-size: 13px;
+        font-style: italic;
       }
     `;
 
     document.head.appendChild(style);
-  };
+  }
 
-  /**
-   * Create clean tag manager modal
-   */
-  const createCleanModal = function() {
-    // Create backdrop
+  function parseExcelTags(rawTags) {
+    return String(rawTags || '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+
+  function getExcelTagsForPlace(placeId) {
+    const id = String(placeId || '').trim();
+    if (!id) return [];
+
+    const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+    const normalizedId = id.toLowerCase();
+    const row = rows.find((r) => {
+      const pid = String(r?.values?.[0]?.[1] || '').trim();
+      return pid && pid.toLowerCase() === normalizedId;
+    });
+
+    const rawTags = row?.values?.[0]?.[3] || '';
+    return parseExcelTags(rawTags);
+  }
+
+  function getContextualExcelTags(placeId) {
+    const normalizedId = String(placeId || '').trim().toLowerCase();
+
+    // Prefer currently edited row if it matches the active Place ID.
+    const currentRowTags = window.currentEditingRow?.values?.[0]?.[3];
+    const currentRowPid = String(window.currentEditingRow?.values?.[0]?.[1] || '').trim().toLowerCase();
+    if (currentRowTags && currentRowPid && currentRowPid === normalizedId) {
+      return parseExcelTags(currentRowTags);
+    }
+
+    // Fallback: read tags already rendered on card dataset for this Place ID.
+    const cards = Array.from(document.querySelectorAll('.adventure-card[data-google-place-id]'));
+    const card = cards.find((el) => String(el.getAttribute('data-google-place-id') || '').trim().toLowerCase() === normalizedId);
+    if (card) {
+      return parseExcelTags(card.getAttribute('data-tags') || '');
+    }
+
+    return [];
+  }
+
+  function mergeUniqueTags(...tagLists) {
+    const seen = new Set();
+    const merged = [];
+    tagLists.flat().forEach((tag) => {
+      const value = String(tag || '').trim();
+      const key = value.toLowerCase();
+      if (!value || seen.has(key)) return;
+      seen.add(key);
+      merged.push(value);
+    });
+    return merged.sort((a, b) => a.localeCompare(b));
+  }
+
+  function patchLegacyOpenersToClean() {
+    // If legacy UI manager is used anywhere, route it to clean manager.
+    if (!window.tagUIManager || window.tagUIManager.__cleanPatched) return;
+    const legacyOpen = window.tagUIManager.openModal;
+
+    window.tagUIManager.openModal = function (placeId, placeName) {
+      if (window.cleanTagManager && typeof window.cleanTagManager.openModal === 'function') {
+        window.cleanTagManager.openModal(placeId, placeName || placeId);
+        return;
+      }
+      if (typeof legacyOpen === 'function') {
+        legacyOpen.call(window.tagUIManager, placeId, placeName);
+      }
+    };
+
+    window.tagUIManager.__cleanPatched = true;
+  }
+
+  function ensureDom() {
+    if (document.getElementById('cleanTagManagerBackdrop')) return;
+
     const backdrop = document.createElement('div');
-    backdrop.className = 'clean-tag-manager-backdrop';
     backdrop.id = 'cleanTagManagerBackdrop';
 
-    // Create modal
-    const modal = document.createElement('div');
-    modal.className = 'clean-tag-manager-modal';
-    modal.id = 'cleanTagManagerModal';
-
-    modal.innerHTML = `
-      <div class="clean-tag-manager-header">
-        <div>
-          <div class="clean-tag-manager-title">🏷️ Tag Manager</div>
-          <div class="clean-tag-manager-subtitle" id="cleanTagSubtitle"></div>
-        </div>
-        <button class="clean-tag-manager-close" onclick="window.cleanTagManager.closeModal()">✕</button>
-      </div>
-
-      <div class="clean-tag-manager-body">
-        <!-- Tabs -->
-        <div class="clean-tag-tabs">
-          <button class="clean-tag-tab active" onclick="window.cleanTagManager.switchTab('single')">
-            Single Place
-          </button>
-          <button class="clean-tag-tab" onclick="window.cleanTagManager.switchTab('recommendations')">
-            💡 Recommendations
-          </button>
+    backdrop.innerHTML = `
+      <div id="cleanTagManagerModal" role="dialog" aria-modal="true" aria-label="Tag Manager">
+        <div class="ctm-header">
+          <div>
+            <h2 class="ctm-title">Tag Manager</h2>
+            <div id="ctmSubtitle" class="ctm-subtitle"></div>
+          </div>
+          <button id="ctmClose" class="ctm-close" aria-label="Close">&times;</button>
         </div>
 
-        <!-- Single Place Tab -->
-        <div id="cleanTabSingle">
-          <div class="clean-tag-section">
-            <div class="clean-tag-section-title">Current Tags</div>
-            <div class="clean-tag-display" id="cleanTagDisplay">
-              <div class="clean-tag-empty" style="width: 100%; text-align: center;">No tags yet</div>
+        <div class="ctm-body">
+          <div>
+            <div class="ctm-section-title">Current Tags</div>
+            <div id="ctmCurrentTags" class="ctm-tag-box"></div>
+          </div>
+
+          <div>
+            <div class="ctm-section-title">Add Tag</div>
+            <div class="ctm-row">
+              <input id="ctmInput" type="text" list="ctmTagOptions" placeholder="Type a tag and press Enter" autocomplete="off" />
+              <datalist id="ctmTagOptions"></datalist>
+              <button id="ctmAdd" class="ctm-btn ctm-btn-primary">Add Tag</button>
             </div>
           </div>
 
-          <div class="clean-tag-section">
-            <div class="clean-tag-section-title">Add New Tag</div>
-            <div class="clean-tag-input-wrapper">
-              <input
-                type="text"
-                id="cleanTagInput"
-                class="clean-tag-input"
-                placeholder="Type tag name..."
-                autocomplete="off"
-              />
-              <button class="clean-tag-btn primary" onclick="window.cleanTagManager.addTagFromInput()">Add</button>
-            </div>
-          </div>
-
-          <div class="clean-tag-section">
-            <div class="clean-tag-section-title">✨ Suggested Tags</div>
-            <div class="clean-tag-recommendations">
-              <div class="clean-tag-recommendations-title">📍 Recommendations based on location</div>
-              <div class="clean-tag-suggestions" id="cleanTagSuggestions">
-                <div style="width: 100%; text-align: center; color: #9ca3af; font-size: 13px;">
-                  Load a place to see recommendations
-                </div>
-              </div>
-            </div>
+          <div>
+            <div class="ctm-section-title">Suggested Tags</div>
+            <div id="ctmSuggestions" class="ctm-suggestions"></div>
           </div>
         </div>
 
-        <!-- Recommendations Tab -->
-        <div id="cleanTabRecommendations" style="display: none;">
-          <div class="clean-tag-section">
-            <div class="clean-tag-section-title">Recommended Tags</div>
-            <div class="clean-tag-recommendations">
-              <div class="clean-tag-recommendations-title">Smart suggestions based on place type</div>
-              <div class="clean-tag-suggestions" id="cleanAllRecommendations">
-                <div style="width: 100%; text-align: center; color: #9ca3af; font-size: 13px;">
-                  Load a place to see detailed recommendations
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="ctm-footer">
+          <button id="ctmCancel" class="ctm-btn ctm-btn-secondary">Cancel</button>
+          <button id="ctmClear" class="ctm-btn ctm-btn-danger">Clear All Tags</button>
+          <button id="ctmSave" class="ctm-btn ctm-btn-primary">Save Changes</button>
         </div>
-      </div>
-
-      <div class="clean-tag-manager-footer">
-        <button class="clean-tag-btn secondary" onclick="window.cleanTagManager.closeModal()">Cancel</button>
-        <button class="clean-tag-btn danger" onclick="window.cleanTagManager.clearAllTags()">Clear All</button>
-        <button class="clean-tag-btn primary" onclick="window.cleanTagManager.saveAndClose()">Save Changes</button>
       </div>
     `;
 
-    backdrop.appendChild(modal);
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) window.cleanTagManager.closeModal();
+    });
+
     document.body.appendChild(backdrop);
 
-    // Close on backdrop click
-    backdrop.onclick = (e) => {
-      if (e.target === backdrop) {
-        window.cleanTagManager.closeModal();
-      }
-    };
-  };
+    document.getElementById('ctmClose').addEventListener('click', () => window.cleanTagManager.closeModal());
+    document.getElementById('ctmCancel').addEventListener('click', () => window.cleanTagManager.closeModal());
+    document.getElementById('ctmClear').addEventListener('click', () => window.cleanTagManager.clearAllTags());
+    document.getElementById('ctmSave').addEventListener('click', () => window.cleanTagManager.saveAndClose());
+    document.getElementById('ctmAdd').addEventListener('click', () => window.cleanTagManager.addTagFromInput());
 
-  /**
-   * Clean Tag Manager System
-   */
+    const input = document.getElementById('ctmInput');
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        window.cleanTagManager.addTagFromInput();
+      }
+    });
+  }
+
   window.cleanTagManager = {
     currentPlaceId: null,
-    currentTab: 'single',
     currentTags: [],
 
-    init: function() {
-      createCleanStyles();
-      createCleanModal();
-      this.attachEventListeners();
+    init() {
+      ensureStyles();
+      ensureDom();
+      hideLegacyTagModal();
+      this.startLegacyGuard();
+      patchLegacyOpenersToClean();
+      console.log('Clean Tag Manager initialized');
     },
 
-    attachEventListeners: function() {
-      const input = document.getElementById('cleanTagInput');
-      if (input) {
-        input.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') {
-            this.addTagFromInput();
-          }
-        });
+    startLegacyGuard() {
+      if (this._legacyGuardObserver) return;
 
-        input.addEventListener('input', (e) => {
-          this.updateSuggestions(e.target.value);
-        });
+      const enforceHidden = () => {
+        hideLegacyTagModal();
+        patchLegacyOpenersToClean();
+      };
+
+      enforceHidden();
+      this._legacyGuardObserver = new MutationObserver(enforceHidden);
+      this._legacyGuardObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+      });
+    },
+
+    openModal(placeId, placeName) {
+      hideLegacyTagModal();
+      this.currentPlaceId = String(placeId || '').trim();
+      if (!this.currentPlaceId) {
+        if (typeof window.showToast === 'function') {
+          window.showToast('No Place ID found for this location', 'warning', 2500);
+        }
+        return;
       }
-    },
 
-    openModal: function(placeId, placeName) {
-      this.currentPlaceId = placeId;
-      this.currentTab = 'single';
-
-      const subtitle = document.getElementById('cleanTagSubtitle');
+      const subtitle = document.getElementById('ctmSubtitle');
       if (subtitle) {
-        subtitle.textContent = placeName || `Place ID: ${placeId.substring(0, 30)}...`;
+        subtitle.textContent = placeName || `Place ID: ${this.currentPlaceId}`;
       }
 
       this.loadCurrentTags();
-      this.loadRecommendations();
-
-      const backdrop = document.getElementById('cleanTagManagerBackdrop');
-      if (backdrop) {
-        backdrop.classList.add('visible');
-      }
-    },
-
-    closeModal: function() {
-      const backdrop = document.getElementById('cleanTagManagerBackdrop');
-      if (backdrop) {
-        backdrop.classList.remove('visible');
-      }
-    },
-
-    switchTab: function(tab) {
-      this.currentTab = tab;
-
-      // Hide all tabs
-      const singleTab = document.getElementById('cleanTabSingle');
-      const recommendationsTab = document.getElementById('cleanTabRecommendations');
-
-      if (singleTab) singleTab.style.display = 'none';
-      if (recommendationsTab) recommendationsTab.style.display = 'none';
-
-      // Show selected tab
-      if (tab === 'single' && singleTab) singleTab.style.display = 'block';
-      if (tab === 'recommendations' && recommendationsTab) recommendationsTab.style.display = 'block';
-
-      // Update tab buttons
-      const tabs = document.querySelectorAll('.clean-tag-tab');
-      tabs.forEach(t => t.classList.remove('active'));
-      event.target.classList.add('active');
-    },
-
-    loadCurrentTags: function() {
-      if (!this.currentPlaceId || !window.tagManager) return;
-
-      const tags = window.tagManager.getTagsForPlace(this.currentPlaceId) || [];
-      this.currentTags = tags;
       this.renderCurrentTags();
+      this.renderSuggestions();
+      this.renderAutocomplete();
+
+      const backdrop = document.getElementById('cleanTagManagerBackdrop');
+      if (backdrop) backdrop.classList.add('visible');
+
+      const input = document.getElementById('ctmInput');
+      if (input) input.focus();
     },
 
-    renderCurrentTags: function() {
-      const display = document.getElementById('cleanTagDisplay');
-      if (!display) return;
+    closeModal() {
+      const backdrop = document.getElementById('cleanTagManagerBackdrop');
+      if (backdrop) backdrop.classList.remove('visible');
+    },
 
-      if (this.currentTags.length === 0) {
-        display.innerHTML = '<div class="clean-tag-empty" style="width: 100%; text-align: center;">No tags yet</div>';
+    loadCurrentTags() {
+      if (!this.currentPlaceId) {
+        this.currentTags = [];
         return;
       }
 
-      display.innerHTML = this.currentTags.map(tag => `
-        <span class="clean-tag-item">
-          ${this.escapeHtml(tag)}
-          <button class="clean-tag-remove" onclick="window.cleanTagManager.removeTag('${tag}')">✕</button>
+      const managedTags = (window.tagManager && typeof window.tagManager.getTagsForPlace === 'function')
+        ? (window.tagManager.getTagsForPlace(this.currentPlaceId) || [])
+        : [];
+
+      const excelTags = getExcelTagsForPlace(this.currentPlaceId);
+      const contextualTags = getContextualExcelTags(this.currentPlaceId);
+      this.currentTags = mergeUniqueTags(excelTags, contextualTags, managedTags);
+    },
+
+    renderCurrentTags() {
+      const wrap = document.getElementById('ctmCurrentTags');
+      if (!wrap) return;
+
+      if (!this.currentTags.length) {
+        wrap.innerHTML = '<span class="ctm-empty">No tags yet</span>';
+        return;
+      }
+
+      wrap.innerHTML = this.currentTags.map((tag) => `
+        <span class="ctm-pill">
+          ${esc(tag)}
+          <button type="button" data-remove-tag="${esc(tag)}">&times;</button>
         </span>
       `).join('');
+
+      wrap.querySelectorAll('[data-remove-tag]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const tag = btn.getAttribute('data-remove-tag');
+          this.removeTag(tag);
+        });
+      });
     },
 
-    addTagFromInput: function() {
-      const input = document.getElementById('cleanTagInput');
-      if (!input || !input.value.trim()) return;
-
-      const tag = input.value.trim();
-      if (!this.currentTags.includes(tag)) {
-        this.currentTags.push(tag);
-        this.renderCurrentTags();
-        input.value = '';
-      }
+    renderAutocomplete() {
+      const options = document.getElementById('ctmTagOptions');
+      if (!options) return;
+      const all = (window.tagManager && typeof window.tagManager.getAllTags === 'function')
+        ? window.tagManager.getAllTags()
+        : [];
+      const filtered = all.filter((tag) => !this.currentTags.includes(tag));
+      options.innerHTML = filtered.map((tag) => `<option value="${esc(tag)}"></option>`).join('');
     },
 
-    removeTag: function(tag) {
-      this.currentTags = this.currentTags.filter(t => t !== tag);
-      this.renderCurrentTags();
+    getRowForCurrentPlace() {
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      return rows.find((row) => {
+        const values = row?.values?.[0] || [];
+        return String(values[1] || '').trim() === this.currentPlaceId;
+      }) || null;
     },
 
-    clearAllTags: function() {
-      if (confirm('Clear all tags from this location?')) {
-        this.currentTags = [];
-        this.renderCurrentTags();
-      }
-    },
+    buildRecommendations() {
+      const recs = new Set();
+      const row = this.getRowForCurrentPlace();
+      const values = row?.values?.[0] || [];
 
-    loadRecommendations: function() {
-      // Smart recommendation engine based on place analysis
-      const suggestions = document.getElementById('cleanTagSuggestions');
-      if (!suggestions || !this.currentPlaceId) return;
+      const text = [values[0], values[3], values[10], values[11], values[16]]
+        .map((v) => String(v || '').toLowerCase())
+        .join(' ');
 
-      let recommendations = this.generateSmartRecommendations();
-
-      if (recommendations.length === 0) {
-        suggestions.innerHTML = '<div style="width: 100%; text-align: center; color: #9ca3af; font-size: 13px;">No additional recommendations</div>';
-        return;
-      }
-
-      suggestions.innerHTML = recommendations.map(tag => `
-        <button class="clean-tag-suggestion" onclick="window.cleanTagManager.addSuggestedTag('${tag}')">
-          ${tag} +
-        </button>
-      `).join('');
-    },
-
-    generateSmartRecommendations: function() {
-      // Get place data from adventure data
-      if (!window.adventuresData || !this.currentPlaceId) {
-        return this.getDefaultRecommendations();
-      }
-
-      const place = window.adventuresData.find(p => p[0] === this.currentPlaceId);
-      if (!place) {
-        return this.getDefaultRecommendations();
-      }
-
-      const recommendations = new Set();
-
-      // Extract place characteristics
-      const name = (place[1] || '').toLowerCase();
-      const type = (place[4] || '').toLowerCase();
-      const address = (place[11] || '').toLowerCase();
-
-      // Keywords to exclude
-      const excludedTags = new Set(['City Center', 'city center', 'downtown', 'urban', 'commercial']);
-
-      // Smart recommendation rules
-      const recommendationRules = [
-        // Restaurant indicators
-        {
-          keywords: ['restaurant', 'cafe', 'coffee', 'diner', 'bistro', 'pizza', 'sushi', 'burger', 'grill', 'pub', 'bar'],
-          tags: ['Restaurant', 'Dining', 'Food Scene', 'Local Favorite']
-        },
-        // Outdoor/Nature indicators
-        {
-          keywords: ['park', 'trail', 'hiking', 'nature', 'forest', 'river', 'mountain', 'waterfall', 'lake', 'outdoor'],
-          tags: ['Outdoor', 'Nature', 'Scenic', 'Family-Friendly', 'Wildlife']
-        },
-        // Sports/Recreation indicators
-        {
-          keywords: ['gym', 'athletic', 'sports', 'fitness', 'court', 'field', 'stadium', 'recreation'],
-          tags: ['Sports', 'Recreation', 'Athletic', 'Active']
-        },
-        // Water/Beach indicators
-        {
-          keywords: ['beach', 'water', 'river', 'lake', 'kayak', 'boat', 'swim', 'fishing'],
-          tags: ['Water-Based', 'Beach', 'Swimming', 'Scenic']
-        },
-        // Historical/Cultural indicators
-        {
-          keywords: ['museum', 'historical', 'historic', 'monument', 'gallery', 'cultural', 'heritage'],
-          tags: ['Historical', 'Cultural', 'Educational', 'Must-Visit']
-        },
-        // Shopping/Retail indicators
-        {
-          keywords: ['shop', 'mall', 'store', 'market', 'retail', 'boutique'],
-          tags: ['Shopping', 'Local Business', 'Unique Find']
-        },
-        // Entertainment indicators
-        {
-          keywords: ['theater', 'cinema', 'movie', 'entertainment', 'music', 'concert', 'show'],
-          tags: ['Entertainment', 'Night Life', 'Social']
-        },
-        // Photography indicators
-        {
-          keywords: ['scenic', 'vista', 'overlook', 'viewpoint', 'waterfall', 'landscape', 'sunset'],
-          tags: ['Photography', 'Scenic', 'Instagram-Worthy']
-        }
+      const ruleMap = [
+        { keys: ['hike', 'trail', 'mountain', 'waterfall'], tags: ['Outdoor', 'Hiking', 'Nature', 'Scenic'] },
+        { keys: ['restaurant', 'cafe', 'coffee', 'diner', 'food'], tags: ['Restaurant', 'Dining', 'Local Favorite'] },
+        { keys: ['park', 'lake', 'river', 'forest'], tags: ['Family-Friendly', 'Nature', 'Relaxing'] },
+        { keys: ['museum', 'historic', 'history', 'gallery'], tags: ['Cultural', 'Historical', 'Educational'] },
+        { keys: ['shop', 'market', 'store', 'mall'], tags: ['Shopping', 'Market', 'Local Business'] }
       ];
 
-      // Apply recommendation rules
-      recommendationRules.forEach(rule => {
-        if (rule.keywords.some(keyword => name.includes(keyword) || type.includes(keyword) || address.includes(keyword))) {
-          rule.tags.forEach(tag => {
-            if (!excludedTags.has(tag) && !this.currentTags.includes(tag)) {
-              recommendations.add(tag);
-            }
-          });
+      ruleMap.forEach((rule) => {
+        if (rule.keys.some((k) => text.includes(k))) {
+          rule.tags.forEach((tag) => recs.add(tag));
         }
       });
 
-      // If no specific recommendations, use defaults
-      if (recommendations.size === 0) {
-        return this.getDefaultRecommendations();
+      if (!recs.size) {
+        ['Worth Visiting', 'Adventure', 'Scenic', 'Family-Friendly'].forEach((t) => recs.add(t));
       }
 
-      // Convert to array and remove already assigned tags
-      return Array.from(recommendations).filter(tag => !this.currentTags.includes(tag)).slice(0, 6);
+      return Array.from(recs)
+        .filter((tag) => !this.currentTags.includes(tag))
+        .filter((tag) => !EXCLUDED_RECOMMENDATIONS.has(String(tag).toLowerCase()))
+        .slice(0, 10);
     },
 
-    getDefaultRecommendations: function() {
-      const defaults = [
-        'Outdoor',
-        'Scenic',
-        'Family-Friendly',
-        'Worth Visiting',
-        'Relaxing',
-        'Adventure'
-      ];
+    renderSuggestions() {
+      const wrap = document.getElementById('ctmSuggestions');
+      if (!wrap) return;
 
-      // Filter out already assigned tags and excluded tags
-      return defaults.filter(tag =>
-        !this.currentTags.includes(tag) &&
-        tag !== 'City Center'
-      ).slice(0, 6);
-    },
-
-    addSuggestedTag: function(tag) {
-      if (!this.currentTags.includes(tag)) {
-        this.currentTags.push(tag);
-        this.renderCurrentTags();
+      const recs = this.buildRecommendations();
+      if (!recs.length) {
+        wrap.innerHTML = '<span class="ctm-empty">All recommendations already added</span>';
+        return;
       }
+
+      wrap.innerHTML = recs.map((tag) => `<button type="button" class="ctm-suggestion" data-suggest-tag="${esc(tag)}">${esc(tag)} +</button>`).join('');
+      wrap.querySelectorAll('[data-suggest-tag]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.addTag(btn.getAttribute('data-suggest-tag'));
+        });
+      });
     },
 
-    saveAndClose: function() {
-      if (this.currentPlaceId && window.tagManager) {
-        window.tagManager.setTagsForPlace(this.currentPlaceId, this.currentTags);
-        window.tagManager.saveTags();
+    addTag(tag) {
+      const clean = String(tag || '').trim();
+      if (!clean) return;
+      if (this.currentTags.includes(clean)) return;
+      this.currentTags.push(clean);
+      this.currentTags.sort((a, b) => a.localeCompare(b));
+      this.renderCurrentTags();
+      this.renderSuggestions();
+      this.renderAutocomplete();
+      const input = document.getElementById('ctmInput');
+      if (input) input.value = '';
+    },
+
+    addTagFromInput() {
+      const input = document.getElementById('ctmInput');
+      if (!input) return;
+      this.addTag(input.value);
+    },
+
+    removeTag(tag) {
+      this.currentTags = this.currentTags.filter((t) => t !== tag);
+      this.renderCurrentTags();
+      this.renderSuggestions();
+      this.renderAutocomplete();
+    },
+
+    clearAllTags() {
+      this.currentTags = [];
+      this.renderCurrentTags();
+      this.renderSuggestions();
+      this.renderAutocomplete();
+    },
+
+    saveAndClose() {
+      if (!window.tagManager || !this.currentPlaceId) {
+        this.closeModal();
+        return;
+      }
+      window.tagManager.setTagsForPlace(this.currentPlaceId, this.currentTags);
+      window.tagManager.saveTags();
+      if (typeof window.showToast === 'function') {
+        window.showToast('Tags saved', 'success', 1500);
       }
       this.closeModal();
-    },
 
-    updateSuggestions: function(value) {
-      // Could add autocomplete logic here
-    },
-
-    escapeHtml: function(text) {
-      const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-      };
-      return String(text).replace(/[&<>"']/g, m => map[m]);
+      // Refresh visible cards to reflect new tags.
+      if (typeof window.renderPaginatedCards === 'function') {
+        window.renderPaginatedCards();
+      }
     }
   };
 
-  // Override old tag manager openModal function BEFORE old system runs
-  console.log('🔧 Setting up tag manager overrides...');
-
-  // Wait for tagUIManager to exist before overriding
-  const setupOverrides = function() {
-    if (window.tagUIManager) {
-      console.log('✅ Found tagUIManager, setting up overrides');
-      const originalOpenModal = window.tagUIManager.openModal;
-
-      window.tagUIManager.openModal = function(placeId, characteristics) {
-        console.log('🏷️ Tag button clicked, opening clean tag manager for:', placeId);
-        window.cleanTagManager.openModal(placeId, placeId);
-      };
-
-      window.tagUIManager.closeModal = function() {
-        console.log('✖️ Closing tag manager');
-        window.cleanTagManager.closeModal();
-      };
-
-      return true;
-    } else {
-      console.log('⏳ tagUIManager not ready yet, will retry...');
-      return false;
-    }
-  };
-
-  // Initialize on page load
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log('📦 DOMContentLoaded firing');
-      hideOldSystem();
+  // Ensure initialization happens
+  function ensureInit() {
+    if (window.cleanTagManager._initialized) return;
+    try {
       window.cleanTagManager.init();
-
-      // Try to set up overrides
-      let overrideAttempts = 0;
-      const overrideCheckInterval = setInterval(() => {
-        overrideAttempts++;
-        if (setupOverrides()) {
-          clearInterval(overrideCheckInterval);
-        } else if (overrideAttempts > 50) {
-          console.error('❌ Failed to override tagUIManager after multiple attempts');
-          clearInterval(overrideCheckInterval);
-        }
-      }, 50);
-
-      hideOldSystem();
-    });
-  } else {
-    console.log('📦 DOM already ready');
-    hideOldSystem();
-    window.cleanTagManager.init();
-    setupOverrides();
-    hideOldSystem();
+      window.cleanTagManager._initialized = true;
+      console.log('✅ Clean Tag Manager initialized successfully');
+    } catch (e) {
+      console.error('❌ Clean Tag Manager initialization error:', e);
+    }
   }
 
-  // Watch for any attempts to show old system and block them
-  setTimeout(() => {
-    console.log('🔍 Setting up mutation observer to block old system');
-    const observer = new MutationObserver(() => {
-      hideOldSystem();
-    });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => ensureInit());
+  } else {
+    ensureInit();
+  }
 
-    const backdrop = document.getElementById('tagManagerBackdrop');
-    const modal = document.getElementById('tagManagerModal');
-
-    if (backdrop) observer.observe(backdrop, { attributes: true, attributeFilter: ['class', 'style'] });
-    if (modal) observer.observe(modal, { attributes: true, attributeFilter: ['class', 'style'] });
-    console.log('✅ Mutation observer set up');
-  }, 500);
+  // Also ensure init on first openModal call
+  const origOpenModal = window.cleanTagManager.openModal;
+  window.cleanTagManager.openModal = function(placeId, placeName) {
+    if (!window.cleanTagManager._initialized) {
+      ensureInit();
+    }
+    return origOpenModal.call(this, placeId, placeName);
+  };
 })();
-
