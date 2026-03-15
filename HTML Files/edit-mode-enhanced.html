@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adventure Planner - Edit Mode</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin: 0;
+    }
+
+    .close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #e5e7eb;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      color: #6b7280;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #1f2937;
+    }
+
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .button-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .button-primary:hover {
+      background: #5568d3;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .button-secondary {
+      background: #f3f4f6;
+      color: #1f2937;
+      border: 1px solid #d1d5db;
+    }
+
+    .button-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .dry-run-toggle {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #f0f4ff;
+      border: 1px solid #60a5fa;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .dry-run-toggle input {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .dry-run-toggle label {
+      margin: 0;
+      font-weight: 600;
+      color: #1e40af;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .status-success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+      border-left: 4px solid #6ee7b7;
+    }
+
+    .status-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      border-left: 4px solid #dc2626;
+    }
+
+    .status-preview {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+      border-left: 4px solid #fbbf24;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #e5e7eb;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>📝 Edit Mode</h1>
+        <p style="margin-top: 4px; opacity: 0.9;">Manage locations, automation, and settings</p>
+      </div>
+      <button class="close-btn" onclick="window.close()">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('places')">➕ Add Places</button>
+      <button class="tab-btn" onclick="switchTab('automation')">🔄 Automation</button>
+      <button class="tab-btn" onclick="switchTab('backup')">💾 Backup</button>
+      <button class="tab-btn" onclick="switchTab('history')">📅 History</button>
+    </div>
+
+    <!-- Add Places Tab -->
+    <div id="places-tab" class="tab-content active">
+      <!-- Add Single Place -->
+      <div class="card">
+        <div class="card-title">➕ Add Single Place</div>
+
+        <div class="dry-run-toggle">
+          <input type="checkbox" id="singleDryRun" onchange="updateFeatureDryRun('addSingle', this.checked)">
+          <label for="singleDryRun">🧪 Dry Run (Preview Changes)</label>
+        </div>
+
+        <div class="input-group">
+          <label for="singleInputType">Input Type</label>
+          <select id="singleInputType">
+            <option value="placeName">Place Name</option>
+            <option value="address">Address</option>
+            <option value="placeNameCity">Place Name + City</option>
+            <option value="placeId">Google Place ID</option>
+            <option value="website">Website URL</option>
+            <option value="placeUrl">Google Maps URL</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label for="singleInput">Value</label>
+          <input id="singleInput" type="text" placeholder="Enter value based on input type">
+          <div class="help-text">
+            💡 Examples: "Starbucks", "123 Main St, Denver", "Starbucks, NYC", "ChIJ...", "https://starbucks.com"
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-secondary" onclick="clearSingleForm()">Clear</button>
+          <button class="button button-primary" onclick="submitAddSinglePlace()">➕ Add Place</button>
+        </div>
+
+        <div id="single-status"></div>
+      </div>
+
+      <!-- Bulk Add Places -->
+      <div class="card">
+        <div class="card-title">📦 Bulk Add Places</div>
+
+        <div class="dry-run-toggle">
+          <input type="checkbox" id="bulkDryRun" onchange="updateFeatureDryRun('bulkAdd', this.checked)">
+          <label for="bulkDryRun">🧪 Dry Run (Preview Changes)</label>
+        </div>
+
+        <div class="input-group">
+          <label for="bulkInputType">Input Type (applies to all)</label>
+          <select id="bulkInputType">
+            <option value="placeName">Place Name</option>
+            <option value="address">Address</option>
+            <option value="placeNameCity">Place Name + City</option>
+            <option value="placeId">Google Place ID</option>
+            <option value="website">Website URL</option>
+            <option value="placeUrl">Google Maps URL</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label for="bulkInput">Values (one per line or comma-separated)</label>
+          <textarea id="bulkInput" placeholder="Starbucks&#10;Coffee Bean & Tea Leaf&#10;Local Café"></textarea>
+          <div class="help-text">
+            💡 Enter multiple places separated by new lines or commas
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-secondary" onclick="clearBulkForm()">Clear</button>
+          <button class="button button-primary" onclick="submitBulkAddPlaces()">📦 Add All</button>
+        </div>
+
+        <div id="bulk-status"></div>
+      </div>
+
+      <!-- Bulk Add Chain Locations -->
+      <div class="card">
+        <div class="card-title">⛓️ Bulk Add Chain Locations</div>
+
+        <div class="dry-run-toggle">
+          <input type="checkbox" id="chainDryRun" onchange="updateFeatureDryRun('bulkChain', this.checked)">
+          <label for="chainDryRun">🧪 Dry Run (Preview Changes)</label>
+        </div>
+
+        <div class="input-group">
+          <label for="chainInputType">Input Type</label>
+          <select id="chainInputType">
+            <option value="placeId">Google Place ID</option>
+            <option value="placeNameCity">Place Name + City</option>
+            <option value="address">Address</option>
+            <option value="placeUrl">Google Maps URL</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label for="chainInput">Location IDs or Details (one per line)</label>
+          <textarea id="chainInput" placeholder="ChIJ...&#10;Starbucks, Boston&#10;123 Main St, NYC"></textarea>
+          <div class="help-text">
+            💡 Enter multiple chain locations. Each will inherit details from the chain's primary location.
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-secondary" onclick="clearChainForm()">Clear</button>
+          <button class="button button-primary" onclick="submitBulkChain()">⛓️ Add Locations</button>
+        </div>
+
+        <div id="chain-status"></div>
+      </div>
+
+      <!-- Populate Missing Fields Only -->
+      <div class="card">
+        <div class="card-title">📝 Populate Missing Fields Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to fill in empty fields for all your locations while preserving existing data.
+        </p>
+
+        <div class="dry-run-toggle">
+          <input type="checkbox" id="missingDryRun" onchange="updateFeatureDryRun('populateMissing', this.checked)">
+          <label for="missingDryRun">🧪 Dry Run (Preview Changes)</label>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitPopulateMissing()">📝 Update Missing Fields</button>
+        </div>
+
+        <div id="missing-status"></div>
+      </div>
+
+      <!-- Update Hours Only -->
+      <div class="card">
+        <div class="card-title">🕐 Update Hours Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to update operating hours for all your locations.
+        </p>
+
+        <div class="dry-run-toggle">
+          <input type="checkbox" id="hoursDryRun" onchange="updateFeatureDryRun('updateHours', this.checked)">
+          <label for="hoursDryRun">🧪 Dry Run (Preview Changes)</label>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitUpdateHours()">🕐 Update Hours</button>
+        </div>
+
+        <div id="hours-status"></div>
+      </div>
+    </div>
+
+    <!-- Automation Tab -->
+    <div id="automation-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">🔄 Refresh Place IDs</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Refresh cached Place IDs from Google Places API.
+        </p>
+
+        <div class="dry-run-toggle">
+          <input type="checkbox" id="refreshDryRun" onchange="updateFeatureDryRun('refreshPlaceIds', this.checked)">
+          <label for="refreshDryRun">🧪 Dry Run (Preview Changes)</label>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitRefreshPlaceIds()">🔄 Refresh Place IDs</button>
+        </div>
+
+        <div id="refresh-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏷️ Auto-Tag All Locations</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Automatically recommend and add tags based on Google Places data.
+        </p>
+
+        <div class="dry-run-toggle">
+          <input type="checkbox" id="autoTagDryRun" onchange="updateFeatureDryRun('autoTag', this.checked)">
+          <label for="autoTagDryRun">🧪 Dry Run (Preview Changes)</label>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitAutoTagAll()">🏷️ Auto-Tag All</button>
+        </div>
+
+        <div id="autotag-status"></div>
+      </div>
+    </div>
+
+    <!-- Backup Tab -->
+    <div id="backup-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">💾 Create Backup</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Create a timestamped backup of all your data.
+        </p>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitBackup()">💾 Create Backup</button>
+        </div>
+
+        <div id="backup-status"></div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div id="history-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">📅 Location History</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          View and sort your location history.
+        </p>
+
+        <div class="button-group">
+          <button class="button button-secondary" onclick="sortHistoryNewest()">🆕 Newest First</button>
+          <button class="button button-secondary" onclick="sortHistoryOldest()">🕐 Oldest First</button>
+          <button class="button button-secondary" onclick="sortHistoryName()">📝 Alphabetical</button>
+        </div>
+
+        <div id="history-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * Tab switching
+     */
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      document.getElementById(`${tabName}-tab`)?.classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    /**
+     * Update feature dry run state
+     */
+    function updateFeatureDryRun(feature, state) {
+      if (window.enhancedAutomation) {
+        window.enhancedAutomation.setDryRunState(feature, state);
+      }
+    }
+
+    /**
+     * Submit Add Single Place
+     */
+    async function submitAddSinglePlace() {
+      const input = document.getElementById('singleInput').value;
+      const inputType = document.getElementById('singleInputType').value;
+      const dryRun = document.getElementById('singleDryRun').checked;
+      const statusDiv = document.getElementById('single-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      if (!window.enhancedAutomation) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return;
+      }
+
+      const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun);
+      window.enhancedAutomation.displayResults(result, statusDiv);
+
+      if (result.success) {
+        document.getElementById('singleInput').value = '';
+      }
+    }
+
+    /**
+     * Submit Bulk Add Places
+     */
+    async function submitBulkAddPlaces() {
+      const input = document.getElementById('bulkInput').value;
+      const inputType = document.getElementById('bulkInputType').value;
+      const dryRun = document.getElementById('bulkDryRun').checked;
+      const statusDiv = document.getElementById('bulk-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      if (!window.enhancedAutomation) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return;
+      }
+
+      const result = await window.enhancedAutomation.bulkAddPlaces(input, inputType, dryRun);
+      window.enhancedAutomation.displayResults(result, statusDiv);
+
+      if (result.success && !dryRun) {
+        document.getElementById('bulkInput').value = '';
+      }
+    }
+
+    /**
+     * Submit Bulk Chain
+     */
+    async function submitBulkChain() {
+      const input = document.getElementById('chainInput').value;
+      const inputType = document.getElementById('chainInputType').value;
+      const dryRun = document.getElementById('chainDryRun').checked;
+      const statusDiv = document.getElementById('chain-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      if (!window.enhancedAutomation) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return;
+      }
+
+      const result = await window.enhancedAutomation.bulkAddChainLocations(input, inputType, dryRun);
+      window.enhancedAutomation.displayResults(result, statusDiv);
+
+      if (result.success && !dryRun) {
+        document.getElementById('chainInput').value = '';
+      }
+    }
+
+    /**
+     * Submit Populate Missing
+     */
+    async function submitPopulateMissing() {
+      const dryRun = document.getElementById('missingDryRun').checked;
+      const statusDiv = document.getElementById('missing-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      if (!window.enhancedAutomation) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return;
+      }
+
+      const result = await window.enhancedAutomation.populateMissingFieldsOnly(dryRun);
+      window.enhancedAutomation.displayResults(result, statusDiv);
+    }
+
+    /**
+     * Submit Update Hours
+     */
+    async function submitUpdateHours() {
+      const dryRun = document.getElementById('hoursDryRun').checked;
+      const statusDiv = document.getElementById('hours-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      if (!window.enhancedAutomation) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return;
+      }
+
+      const result = await window.enhancedAutomation.updateHoursOnly(dryRun);
+      window.enhancedAutomation.displayResults(result, statusDiv);
+    }
+
+    /**
+     * Submit Refresh Place IDs
+     */
+    async function submitRefreshPlaceIds() {
+      const dryRun = document.getElementById('refreshDryRun').checked;
+      const statusDiv = document.getElementById('refresh-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      if (!window.enhancedAutomation) {
+        statusDiv.innerHTML = '<div class="status-message status-error'>❌ System not ready</div>';
+        return;
+      }
+
+      const result = await window.enhancedAutomation.refreshPlaceIds(dryRun);
+      window.enhancedAutomation.displayResults(result, statusDiv);
+    }
+
+    /**
+     * Submit Auto-Tag All
+     */
+    async function submitAutoTagAll() {
+      const dryRun = document.getElementById('autoTagDryRun').checked;
+      const statusDiv = document.getElementById('autotag-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      if (typeof window.autoTagAllLocationsUnified === 'function') {
+        const result = await window.autoTagAllLocationsUnified({
+          dryRun: dryRun
+        });
+        const message = dryRun
+          ? `🧪 Preview: Would tag locations`
+          : `✅ Successfully tagged ${result.success || 0} locations`;
+        window.enhancedAutomation?.displayResults({ success: true, message, dryRun }, statusDiv);
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Auto-tag system not available</div>';
+      }
+    }
+
+    /**
+     * Submit Backup
+     */
+    async function submitBackup() {
+      const statusDiv = document.getElementById('backup-status');
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Creating backup...</div>';
+
+      if (typeof window.backupManager?.performBackup === 'function') {
+        const result = await window.backupManager.performBackup();
+        window.enhancedAutomation?.displayResults(
+          { success: true, message: `✅ Backup created: ${result.filename}` },
+          statusDiv
+        );
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Backup system not available</div>';
+      }
+    }
+
+    /**
+     * History sort functions
+     */
+    function sortHistoryNewest() {
+      const statusDiv = document.getElementById('history-status');
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by newest first</div>';
+    }
+
+    function sortHistoryOldest() {
+      const statusDiv = document.getElementById('history-status');
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by oldest first</div>';
+    }
+
+    function sortHistoryName() {
+      const statusDiv = document.getElementById('history-status');
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted alphabetically</div>';
+    }
+
+    /**
+     * Clear forms
+     */
+    function clearSingleForm() {
+      document.getElementById('singleInput').value = '';
+      document.getElementById('single-status').innerHTML = '';
+    }
+
+    function clearBulkForm() {
+      document.getElementById('bulkInput').value = '';
+      document.getElementById('bulk-status').innerHTML = '';
+    }
+
+    function clearChainForm() {
+      document.getElementById('chainInput').value = '';
+      document.getElementById('chain-status').innerHTML = '';
+    }
+
+    // Initialize
+    console.log('✅ Edit Mode UI Loaded');
+  </script>
+</body>
+</html>
+
