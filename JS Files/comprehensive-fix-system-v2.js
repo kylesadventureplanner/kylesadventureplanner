@@ -72,27 +72,22 @@
   window.openCityViewerWindow = function() {
     console.log('🌆 Opening City Viewer in new tab...');
     try {
-      const width = 1200;
-      const height = 900;
-
+      // Open in new tab using standard tab opening (not popup)
       const cityViewerUrl = 'HTML Files/city-viewer-window.html';
+      const newTab = window.open(cityViewerUrl, '_blank');
 
-      const newWindow = window.open(
-        cityViewerUrl,
-        'CityViewer',
-        `width=${width},height=${height},scrollbars=yes,resizable=yes`
-      );
-
-      if (!newWindow) {
-        console.warn('⚠️ Pop-up may be blocked');
-        window.alert('Please allow pop-ups to open the City Viewer');
+      if (!newTab) {
+        console.warn('⚠️ Pop-up blocker may be active');
+        alert('Please allow new tabs/windows. Your browser may be blocking pop-ups.');
         return;
       }
 
-      console.log('✅ City Viewer window opened');
+      // Focus the new tab
+      newTab.focus();
+      console.log('✅ City Viewer opened in new tab');
     } catch (error) {
       console.error('❌ Error opening City Viewer:', error);
-      window.alert('Error opening City Viewer: ' + error.message);
+      alert('Error opening City Viewer: ' + error.message);
     }
   };
 
@@ -102,27 +97,22 @@
   window.openFindNearMeWindow = function() {
     console.log('📍 Opening Find Near Me in new tab...');
     try {
-      const width = 1000;
-      const height = 900;
-
+      // Open in new tab using standard tab opening (not popup)
       const findNearMeUrl = 'HTML Files/find-near-me-window.html';
+      const newTab = window.open(findNearMeUrl, '_blank');
 
-      const newWindow = window.open(
-        findNearMeUrl,
-        'FindNearMe',
-        `width=${width},height=${height},scrollbars=yes,resizable=yes`
-      );
-
-      if (!newWindow) {
-        console.warn('⚠️ Pop-up may be blocked');
-        window.alert('Please allow pop-ups to open Find Near Me');
+      if (!newTab) {
+        console.warn('⚠️ Pop-up blocker may be active');
+        alert('Please allow new tabs/windows. Your browser may be blocking pop-ups.');
         return;
       }
 
-      console.log('✅ Find Near Me window opened');
+      // Focus the new tab
+      newTab.focus();
+      console.log('✅ Find Near Me opened in new tab');
     } catch (error) {
       console.error('❌ Error opening Find Near Me:', error);
-      window.alert('Error opening Find Near Me: ' + error.message);
+      alert('Error opening Find Near Me: ' + error.message);
     }
   };
 
