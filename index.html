@@ -1949,7 +1949,68 @@
 
 
     /* Find Near Me Feature */
-    .find-near-me-btn {
+      .edit-mode-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+      }
+
+      .edit-mode-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+      }
+
+      .find-near-me-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+      }
+
+      .find-near-me-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+      }
+
+      .city-viewer-btn {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+      }
+
+      .city-viewer-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+      }
       border-radius: 999px;
       border: 1px solid #10b981;
       background: #ecfdf5;
@@ -18148,66 +18209,59 @@ window.applyClosingSoonFilter = function() {
   applyFilters();
 };
 
-// ===========================================================================
-// 13. UPDATE FILTER LOGIC TO INCLUDE OPEN TODAY & CLOSING SOON
-// ===========================================================================
+// ============================================================
+// 13. INITIALIZE ACTION BUTTONS
+// ============================================================
 
-// Store original applyFilters function
-const originalApplyFilters = window.applyFilters;
+window.initializeActionButtons = function() {
+  console.log('🔘 Initializing action buttons...');
 
-/**
- * Enhanced applyFilters with open today and closing soon support
- */
-window.applyFilters = function() {
-  if (typeof originalApplyFilters === 'function') {
-    // Call original filter logic
-    originalApplyFilters();
-  }
-
-  // Apply additional filters
-  if (!window.totalFilteredAdventures) {
-    console.warn('⚠️ filteredAdventures not set yet');
-    return;
-  }
-
-  let filtered = [...window.totalFilteredAdventures];
-
-  // Apply open today filter
-  if (activeFilters.quickFilters && activeFilters.quickFilters.has('openToday')) {
-    filtered = filtered.filter(adventure => {
-      const hours = adventure.hours || (adventure.values && adventure.values[0][19]);
-      const isOpen = window.cityViewerEnhancements?.isOpenToday(hours);
-      return isOpen === true; // Only true (open), not null or false
-    });
-    console.log(`✅ Open Today filter: ${filtered.length} locations open`);
-  }
-
-  // Apply closing soon filter
-  if (activeFilters.quickFilters && activeFilters.quickFilters.has('closingSoon')) {
-    filtered = filtered.filter(adventure => {
-      const hours = adventure.hours || (adventure.values && adventure.values[0][19]);
-      const isClosing = window.cityViewerEnhancements?.isClosingSoon(hours);
-      return isClosing === true;
-    });
-    console.log(`⏰ Closing Soon filter: ${filtered.length} locations closing soon`);
-  }
-
-  // Update global filtered adventures
-  window.totalFilteredAdventures = filtered;
-
-  // Re-render cards
-  if (typeof renderPaginatedCards === 'function') {
-    renderPaginatedCards();
+  // Add buttons to adventure list if they don't exist
+  const actionsDiv = document.getElementById('adventureListActions');
+  if (actionsDiv && actionsDiv.children.length === 0) {
+    actionsDiv.innerHTML = `
+      <button class="edit-mode-btn" onclick="openEditModeWindow()" title="Open Edit Mode">
+        📝 Edit Mode
+      </button>
+      <button class="find-near-me-btn" onclick="openFindNearMeWindow()" title="Find nearby adventures">
+        📍 Find Near Me
+      </button>
+      <button class="city-viewer-btn" onclick="openCityViewerWindow()" title="View cities">
+        🌆 City Viewer
+      </button>
+    `;
+    console.log('✅ Action buttons added');
   }
 };
 
+// Initialize on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', window.initializeActionButtons);
+} else {
+  window.initializeActionButtons();
+}
+
+// Re-initialize periodically in case DOM changes
+setTimeout(window.initializeActionButtons, 1000);
+
 // ===========================================================================
-// 14. INITIALIZATION COMPLETE
+// 14. START FIND NEAR ME - Opens in new window
 // ===========================================================================
-console.log('✅ ALL STABILITY SYSTEMS ACTIVATED - v7.0.128+');
+window.startFindNearMe = function() {
+  console.log('📍 Starting Find Near Me...');
+  window.openFindNearMeWindow();
+};
+
+// ===========================================================================
+// 15. INITIALIZATION COMPLETE
+// ===========================================================================
+console.log('✅ ALL STABILITY SYSTEMS ACTIVATED - v7.0.130+');
 console.log('📊 Systems: ErrorRecovery, NetworkResilience, SessionManager, ResponseValidator, APIMonitor, FeatureAvailability, CityViewerEnhancements');
 console.log('🛡️ App is now production-ready with enterprise-grade reliability');
 </script>
+
+<!-- Comprehensive Fix System v2 (v7.0.130) - Fixes pagination, dry run, refresh place IDs -->
+<script src="JS Files/comprehensive-fix-system-v2.js"></script>
 
 </body>
 </html>
