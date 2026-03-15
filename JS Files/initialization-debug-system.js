@@ -98,6 +98,50 @@
     }
 
     // Find Similar button - on main page
+    const similarBtns = document.querySelectorAll('[class*="similar"]');
+    if (similarBtns.length > 0) {
+      logInit(`🔘 ${similarBtns.length} Similar buttons found`);
+    }
+
+    // Sign In button - CRITICAL
+    const signInBtn = document.getElementById('signInBtn');
+    if (signInBtn) {
+      signInBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🔐🔐🔐 SIGN IN BUTTON CLICKED 🔐🔐🔐');
+        console.log('typeof signIn:', typeof signIn);
+        console.log('msalInstance:', typeof msalInstance !== 'undefined' ? 'EXISTS' : 'MISSING');
+
+        if (typeof signIn === 'function') {
+          console.log('✅ Calling signIn() function');
+          signIn();
+        } else {
+          console.error('❌ signIn function not found!');
+          console.error('Available window functions:', Object.keys(window).filter(k => k.includes('sign') || k.includes('Sign')));
+        }
+      });
+      logInit('🔐 Sign In button registered');
+    } else {
+      console.error('❌ Sign In button (id="signInBtn") NOT FOUND');
+    }
+
+    // Sign Out button
+    const signOutBtn = document.getElementById('signOutBtn');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🔐 SIGN OUT BUTTON CLICKED');
+        if (typeof signOut === 'function') {
+          signOut();
+        } else {
+          console.error('❌ signOut function not found!');
+        }
+      });
+      logInit('🔐 Sign Out button registered');
+    }
+
     const similarBtns = document.querySelectorAll('[onclick*="similar"], [class*="similar"]');
     if (similarBtns.length > 0) {
       logInit(`🔘 Found ${similarBtns.length} Find Similar buttons, checking handlers...`);
