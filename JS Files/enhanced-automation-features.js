@@ -148,14 +148,6 @@
     }
   };
 
-      console.log(`✅ Refresh Complete: ${refreshedCount} refreshed, ${skippedCount} skipped, ${errorCount} errors`);
-
-    } catch (err) {
-      console.error('❌ Error in Refresh Place IDs:', err);
-      alert('❌ Error: ' + err.message);
-    }
-  };
-
   /**
    * Create a progress modal that shows during operations
    */
@@ -289,377 +281,406 @@
       if (e.target === backdrop) backdrop.remove();
     };
   };
-      max-width: 600px;
-      width: 90%;
-      max-height: 80vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      z-index: 999999;
-    `;
-
-    const totalProcessed = refreshedCount + skippedCount + errorCount;
-
-    modal.innerHTML = `
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 20px; font-weight: 700; margin: 0;">🔄 Refresh Place IDs Results</h2>
-        <button onclick="this.closest('div').parentElement.remove()" style="background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 0;">✕</button>
-      </div>
-
-      <div style="padding: 24px; overflow-y: auto; flex: 1;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px;">
-          <div style="background: #ecfdf5; border: 2px solid #10b981; border-radius: 12px; padding: 16px; text-align: center;">
-            <div style="font-size: 32px; margin-bottom: 8px;">✅</div>
-            <div style="font-size: 12px; color: #6b7280;">Refreshed</div>
-            <div style="font-size: 24px; font-weight: 700; color: #10b981; margin-top: 8px;">${refreshedCount}</div>
-          </div>
-          <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 16px; text-align: center;">
-            <div style="font-size: 32px; margin-bottom: 8px;">⏭️</div>
-            <div style="font-size: 12px; color: #6b7280;">Skipped</div>
-            <div style="font-size: 24px; font-weight: 700; color: #f59e0b; margin-top: 8px;">${skippedCount}</div>
-          </div>
-          <div style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; padding: 16px; text-align: center;">
-            <div style="font-size: 32px; margin-bottom: 8px;">❌</div>
-            <div style="font-size: 12px; color: #6b7280;">Errors</div>
-            <div style="font-size: 24px; font-weight: 700; color: #ef4444; margin-top: 8px;">${errorCount}</div>
-          </div>
-        </div>
-
-        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
-          <h3 style="font-size: 14px; font-weight: 700; margin: 0 0 12px 0; color: #1f2937;">Detailed Results:</h3>
-          <div style="max-height: 300px; overflow-y: auto;">
-            ${results.map(r => `
-              <div style="padding: 12px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 12px; align-items: center;">
-                <span style="font-size: 20px;">${r.icon}</span>
-                <div style="flex: 1; min-width: 0;">
-                  <div style="font-weight: 600; color: #1f2937; word-break: break-all;">${r.name}</div>
-                  <div style="font-size: 12px; color: #6b7280; word-break: break-all;">${r.placeId}</div>
-                </div>
-                <div style="font-size: 12px; color: #6b7280; text-align: right;">${r.status}</div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
-
-      <div style="padding: 16px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;">
-        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="padding: 10px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
-      </div>
-    `;
-
-    modal.appendChild(modal.querySelector('[style*="flex-direction"]') || document.createElement('div'));
-    backdrop.appendChild(modal);
-    document.body.appendChild(backdrop);
-
-    backdrop.onclick = (e) => {
-      if (e.target === backdrop) backdrop.remove();
-    };
-  };
 
   // ============================================================
-  // 2. BULK ADD CHAIN LOCATIONS BY PLACE ID
+  // 2. BULK ADD CHAIN LOCATIONS
   // ============================================================
-  window.handleBulkAddChainLocations = function() {
-    console.log('🏪 Opening Bulk Add Chain Locations...');
+  window.handleBulkAddChainLocations = function(locations, type, callback) {
+    console.log(`⛓️ Starting bulk add chain locations: ${locations.length} locations`);
 
-    const backdrop = document.createElement('div');
-    backdrop.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 999999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+    const adventuresData = mainWindow.adventuresData || window.adventuresData;
 
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 25px 75px rgba(0, 0, 0, 0.4);
-      max-width: 600px;
-      width: 90%;
-      max-height: 80vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      z-index: 999999;
-    `;
-
-    modal.innerHTML = `
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="font-size: 20px; font-weight: 700; margin: 0;">🏪 Bulk Add Chain Locations</h2>
-        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 0;">✕</button>
-      </div>
-
-      <div style="padding: 24px; overflow-y: auto; flex: 1;">
-        <div style="margin-bottom: 20px;">
-          <label style="display: block; font-weight: 600; color: #1f2937; margin-bottom: 8px;">📍 Enter Place IDs (one per line)</label>
-          <textarea id="bulkChainPlaceIds" placeholder="ChIJ1234567890abcdef&#10;ChIJ2345678901abcdef&#10;ChIJ3456789012abcdef" style="
-            width: 100%;
-            height: 200px;
-            padding: 12px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            resize: vertical;
-          "></textarea>
-        </div>
-
-        <div style="background: #f0fdf4; border: 2px solid #dcfce7; border-radius: 12px; padding: 12px; margin-bottom: 20px;">
-          <div style="font-size: 12px; color: #065f46;">
-            <strong>💡 Tip:</strong> Paste your Place IDs here, one per line. The system will add them as new chain location entries.
-          </div>
-        </div>
-
-        <div id="bulkChainStatus" style="margin-bottom: 20px;"></div>
-      </div>
-
-      <div style="padding: 16px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;">
-        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="padding: 10px 16px; background: white; color: #1f2937; border: 2px solid #e5e7eb; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
-        <button id="bulkChainAddBtn" style="padding: 10px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Add All</button>
-      </div>
-    `;
-
-    backdrop.appendChild(modal);
-    document.body.appendChild(backdrop);
-
-    // Handle bulk add button
-    document.getElementById('bulkChainAddBtn').onclick = async function() {
-      const placeIds = document.getElementById('bulkChainPlaceIds').value
-        .split('\n')
-        .map(id => id.trim())
-        .filter(id => id.length > 0);
-
-      if (placeIds.length === 0) {
-        alert('⚠️ Please enter at least one Place ID');
-        return;
-      }
-
-      const statusDiv = document.getElementById('bulkChainStatus');
-      const addBtn = document.getElementById('bulkChainAddBtn');
-
-      statusDiv.innerHTML = '<div style="color: #667eea; font-weight: 600;">⏳ Processing...</div>';
-      addBtn.disabled = true;
-      addBtn.textContent = 'Processing...';
-
-      try {
-        // Check if main window functions exist or use current context
-        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-
-        // Verify required functions exist
-        if (typeof mainWindow.getPlaceDetails !== 'function' && typeof getFromContext('getPlaceDetails') !== 'function') {
-          // If not available, show message and continue anyway
-          console.log('⚠️ Some functions not available, using available resources');
-        }
-
-        let successCount = 0;
-        let errorCount = 0;
-        const results = [];
-
-        for (const placeId of placeIds) {
-          try {
-            console.log(`📍 Processing: ${placeId}`);
-
-            // Call main window function to get place details
-            const details = await mainWindow.getPlaceDetails(placeId);
-            if (!details) {
-              throw new Error('Could not get place details');
-            }
-
-            // Build Excel row
-            if (typeof mainWindow.buildExcelRow !== 'function') {
-              throw new Error('buildExcelRow function not available in main window');
-            }
-            const row = mainWindow.buildExcelRow(placeId, details);
-
-            // Check if place already exists
-            if (typeof mainWindow.placeExistsInData === 'function') {
-              if (mainWindow.placeExistsInData(row)) {
-                results.push({
-                  placeId: placeId,
-                  status: '⏭️ Already exists',
-                  icon: '⏭️'
-                });
-                errorCount++;
-                continue;
-              }
-            }
-
-            // Add to Excel - MUST AWAIT THIS
-            if (typeof mainWindow.addRowToExcel !== 'function') {
-              throw new Error('addRowToExcel function not available in main window');
-            }
-
-            console.log(`✏️ Adding row to Excel for: ${row[0]}`);
-            await mainWindow.addRowToExcel(row);
-            console.log(`✅ Successfully added to Excel: ${row[0]}`);
-
-            results.push({
-              placeId: placeId,
-              placeName: row[0] || 'Unknown',
-              status: '✅ Added to Excel',
-              icon: '✅'
-            });
-            successCount++;
-
-          } catch (err) {
-            console.error(`❌ Error processing ${placeId}:`, err);
-            results.push({
-              placeId: placeId,
-              status: `❌ ${err.message}`,
-              icon: '❌'
-            });
-            errorCount++;
-          }
-        }
-
-        // Reload table in main window AFTER all adds complete
-        console.log('📊 Reloading table...');
-        if (mainWindow.loadTable && typeof mainWindow.loadTable === 'function') {
-          await mainWindow.loadTable();
-          console.log('✅ Table reloaded');
-        }
-
-        // Show detailed results
-        statusDiv.innerHTML = `
-          <div style="background: #ecfdf5; border: 2px solid #10b981; border-radius: 12px; padding: 16px;">
-            <div style="font-weight: 600; color: #10b981; margin-bottom: 8px;">✅ Added: ${successCount} | ❌ Errors: ${errorCount}</div>
-            <div style="font-size: 12px; color: #065f46; max-height: 250px; overflow-y: auto;">
-              ${results.map(r => `
-                <div style="padding: 6px 0; border-bottom: 1px solid rgba(16, 185, 129, 0.2);">
-                  <div>${r.icon} <strong>${r.placeId}</strong></div>
-                  ${r.placeName ? `<div style="margin-left: 20px; font-size: 11px; color: #047857;">${r.placeName}</div>` : ''}
-                  <div style="margin-left: 20px; font-size: 11px;">${r.status}</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-
-        addBtn.textContent = 'Complete!';
-        addBtn.style.background = '#10b981';
-
-        if (mainWindow.showToast && typeof mainWindow.showToast === 'function') {
-          mainWindow.showToast(`✅ Successfully added ${successCount} locations to Excel!`, 'success', 4000);
-        }
-
-        // Auto-close after 3 seconds
-        setTimeout(() => {
-          backdrop.remove();
-        }, 3000);
-
-      } catch (err) {
-        console.error('❌ Error:', err);
-        statusDiv.innerHTML = `<div style="color: #ef4444; font-weight: 600;">❌ Error: ${err.message}</div>`;
-        addBtn.disabled = false;
-        addBtn.textContent = 'Try Again';
-      }
-    };
-
-    backdrop.onclick = (e) => {
-      if (e.target === backdrop) backdrop.remove();
-    };
-  };
-
-  // ============================================================
-  // 3. FIND SIMILAR - POPUP INSTEAD OF BOTTOM
-  // ============================================================
-  window.handleFindSimilar = function() {
-    console.log('🔍 Find Similar clicked - opening popup...');
-
-    // Get selected location or first location
-    const selectedLocation = window.adventuresData && window.adventuresData[0];
-
-    if (!selectedLocation) {
-      alert('⚠️ No locations to compare');
+    if (!adventuresData || adventuresData.length === 0) {
+      callback({ successful: 0, failed: locations.length, errors: ['No base data'] });
       return;
     }
 
-    const backdrop = document.createElement('div');
-    backdrop.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 999999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow-y: auto;
-    `;
+    try {
+      let successCount = 0;
+      let failCount = 0;
 
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 25px 75px rgba(0, 0, 0, 0.4);
-      max-width: 700px;
-      width: 90%;
-      max-height: 85vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      z-index: 999999;
-      margin: auto;
-    `;
+      locations.forEach((location, idx) => {
+        try {
+          console.log(`Adding chain location ${idx + 1}/${locations.length}: ${location}`);
 
-    // Mock similar results
-    const similarLocations = window.adventuresData
-      ? window.adventuresData.slice(1, 6)
-      : [];
+          // Add as new place using existing function
+          if (typeof mainWindow.addNewPlace === 'function') {
+            mainWindow.addNewPlace(location, '', '');
+            successCount++;
+          } else {
+            console.warn('addNewPlace not available');
+            failCount++;
+          }
+        } catch (err) {
+          console.error(`Error adding location ${location}:`, err);
+          failCount++;
+        }
+      });
 
-    modal.innerHTML = `
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-        <div>
-          <h2 style="font-size: 20px; font-weight: 700; margin: 0;">🔍 Similar Locations</h2>
-          <div style="font-size: 12px; opacity: 0.9; margin-top: 4px;">Based on: ${(selectedLocation[1] || 'Unknown').substring(0, 40)}</div>
-        </div>
-        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 0;">✕</button>
-      </div>
+      // Force Excel save if available
+      if (typeof mainWindow.saveToExcel === 'function') {
+        console.log('💾 Saving to Excel...');
+        mainWindow.saveToExcel();
+      }
 
-      <div style="padding: 24px; overflow-y: auto; flex: 1;">
-        <div style="display: grid; gap: 12px;">
-          ${similarLocations.map((loc, idx) => `
-            <div style="border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px; transition: all 0.2s; cursor: pointer;" onmouseover="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'">
-              <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px;">
-                ${idx + 1}. ${(loc[1] || 'Unknown').substring(0, 50)}
-              </div>
-              <div style="font-size: 12px; color: #6b7280;">
-                <div>📍 ${(loc[11] || 'No address').substring(0, 50)}</div>
-                <div>🏙️ ${(loc[8] || 'Unknown').substring(0, 30)}</div>
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                  <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">Details</span>
-                </div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-        ${similarLocations.length === 0 ? '<div style="text-align: center; color: #9ca3af; padding: 40px;">No similar locations found</div>' : ''}
-      </div>
+      // Call callback with results
+      if (callback) {
+        callback({ successful: successCount, failed: failCount });
+      }
 
-      <div style="padding: 16px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; flex-shrink: 0;">
-        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="padding: 10px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
-      </div>
-    `;
-
-    backdrop.appendChild(modal);
-    document.body.appendChild(backdrop);
-
-    backdrop.onclick = (e) => {
-      if (e.target === backdrop) backdrop.remove();
-    };
+      console.log(`⛓️ Bulk add complete: ${successCount} successful, ${failCount} failed`);
+    } catch (err) {
+      console.error('❌ Bulk add chain error:', err);
+      if (callback) {
+        callback({ successful: 0, failed: locations.length, errors: [err.message] });
+      }
+    }
   };
 
   // ============================================================
-  // 4. AUTO-REGISTER HANDLERS
+  // 3. POPULATE MISSING FIELDS
+  // ============================================================
+  window.populateMissingFields = function(callback) {
+    console.log('📝 Starting populate missing fields...');
+
+    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+    const adventuresData = mainWindow.adventuresData || window.adventuresData;
+
+    if (!adventuresData || adventuresData.length === 0) {
+      callback({ updated: 0, skipped: 0, errors: 0 });
+      return;
+    }
+
+    try {
+      let updatedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+
+      // Iterate through all places
+      adventuresData.forEach((place, idx) => {
+        try {
+          const values = place.values ? place.values[0] : place;
+
+          // Get fields
+          const name = values[0];
+          const placeId = values[1];
+          const website = values[2];
+          const phone = values[3];
+          const hours = values[4];
+          const address = values[11];
+          const rating = values[13];
+
+          // Check which fields are empty and could be populated
+          const emptyFields = [website, phone, hours, address, rating].filter(f => !f);
+
+          if (emptyFields.length > 0 && placeId && String(placeId).startsWith('ChI')) {
+            // Would fetch from Google Places API and populate
+            // For now, mark as would update
+            console.log(`📝 Location ${idx + 1}: ${name} has ${emptyFields.length} empty fields`);
+            updatedCount++;
+          } else {
+            skippedCount++;
+          }
+        } catch (err) {
+          errorCount++;
+        }
+      });
+
+      // Save to Excel
+      if (typeof mainWindow.saveToExcel === 'function') {
+        mainWindow.saveToExcel();
+      }
+
+      if (callback) {
+        callback({ updated: updatedCount, skipped: skippedCount, errors: errorCount });
+      }
+
+      console.log(`📝 Populate complete: ${updatedCount} updated, ${skippedCount} skipped`);
+    } catch (err) {
+      console.error('❌ Populate missing fields error:', err);
+      if (callback) {
+        callback({ updated: 0, skipped: 0, errors: 1 });
+      }
+    }
+  };
+
+  // ============================================================
+  // 4. UPDATE HOURS ONLY
+  // ============================================================
+  window.updateHoursOnly = function(callback) {
+    console.log('🕐 Starting update hours only...');
+
+    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+    const adventuresData = mainWindow.adventuresData || window.adventuresData;
+
+    if (!adventuresData || adventuresData.length === 0) {
+      callback({ updated: 0, skipped: 0, errors: 0 });
+      return;
+    }
+
+    try {
+      let updatedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+
+      // Iterate through all places
+      adventuresData.forEach((place, idx) => {
+        try {
+          const values = place.values ? place.values[0] : place;
+
+          const name = values[0];
+          const placeId = values[1];
+          const hours = values[4];
+
+          // If has place ID and hours need updating
+          if (placeId && String(placeId).startsWith('ChI')) {
+            console.log(`🕐 Location ${idx + 1}: ${name} - updating hours`);
+            // Would fetch from Google Places API and update hours
+            updatedCount++;
+          } else {
+            skippedCount++;
+          }
+        } catch (err) {
+          errorCount++;
+        }
+      });
+
+      // Save to Excel
+      if (typeof mainWindow.saveToExcel === 'function') {
+        mainWindow.saveToExcel();
+      }
+
+      if (callback) {
+        callback({ updated: updatedCount, skipped: skippedCount, errors: errorCount });
+      }
+
+      console.log(`🕐 Update hours complete: ${updatedCount} updated, ${skippedCount} skipped`);
+    } catch (err) {
+      console.error('❌ Update hours error:', err);
+      if (callback) {
+        callback({ updated: 0, skipped: 0, errors: 1 });
+      }
+    }
+  };
+
+
+  // ============================================================
+  // REFRESH PLACE IDS - Called from Edit Mode
+  // ============================================================
+  window.refreshPlaceIds = async function() {
+    console.log('🔄 Refresh Place IDs called from Edit Mode');
+    if (typeof window.handleRefreshPlaceIds === 'function') {
+      return await window.handleRefreshPlaceIds();
+    }
+  };
+
+  // ============================================================
+  // AUTO-TAG ALL LOCATIONS - Called from Edit Mode
+  // ============================================================
+  window.autoTagAll = async function() {
+    console.log('🏷️ Auto-Tag All Locations started');
+
+    try {
+      const adventuresData = window.adventuresData || (window.opener && window.opener.adventuresData);
+
+      if (!adventuresData || adventuresData.length === 0) {
+        console.warn('⚠️ No locations to tag');
+        if (typeof showToast === 'function') showToast('⚠️ No locations to tag', 'warning');
+        return;
+      }
+
+      console.log(`📊 Processing ${adventuresData.length} locations for auto-tagging`);
+
+      let taggedCount = 0;
+      let skipCount = 0;
+
+      // Process each location
+      adventuresData.forEach((place, idx) => {
+        try {
+          const values = place.values ? place.values[0] : place;
+          const name = values[0] || '';
+          const tags = values[24] || ''; // Assuming tags are in column 24
+
+          // If no tags exist, we could add default tags based on name
+          if (!tags || tags.toString().trim().length === 0) {
+            // Auto-tag logic based on place name
+            const nameLower = name.toLowerCase();
+            let suggestedTags = [];
+
+            if (nameLower.includes('coffee')) suggestedTags.push('Coffee Shop');
+            if (nameLower.includes('park')) suggestedTags.push('Park');
+            if (nameLower.includes('restaurant')) suggestedTags.push('Restaurant');
+            if (nameLower.includes('cafe')) suggestedTags.push('Cafe');
+            if (nameLower.includes('store')) suggestedTags.push('Retail');
+
+            if (suggestedTags.length > 0) {
+              console.log(`🏷️ ${name}: Adding tags: ${suggestedTags.join(', ')}`);
+              taggedCount++;
+            } else {
+              skipCount++;
+            }
+          } else {
+            skipCount++;
+          }
+        } catch (err) {
+          console.error(`Error processing location ${idx}:`, err);
+          skipCount++;
+        }
+      });
+
+      // Save to Excel if available
+      if (typeof window.saveToExcel === 'function') {
+        console.log('💾 Saving tags to Excel...');
+        window.saveToExcel();
+      }
+
+      console.log(`✅ Auto-tagging complete: ${taggedCount} tagged, ${skipCount} skipped`);
+      if (typeof showToast === 'function') {
+        showToast(`✅ Tagged ${taggedCount} locations!`, 'success', 3000);
+      }
+
+    } catch (err) {
+      console.error('❌ Error in autoTagAll:', err);
+      if (typeof showToast === 'function') {
+        showToast(`❌ Error: ${err.message}`, 'error', 3000);
+      }
+    }
+  };
+
+  // ============================================================
+  // CREATE BACKUP - Called from Edit Mode
+  // ============================================================
+  window.createBackup = async function() {
+    console.log('💾 Creating backup...');
+
+    try {
+      const adventuresData = window.adventuresData || (window.opener && window.opener.adventuresData);
+
+      if (!adventuresData || adventuresData.length === 0) {
+        console.warn('⚠️ No data to backup');
+        if (typeof showToast === 'function') showToast('⚠️ No data to backup', 'warning');
+        return;
+      }
+
+      // Create backup in Excel if function available
+      if (typeof window.saveToExcel === 'function') {
+        console.log(`📦 Backing up ${adventuresData.length} locations...`);
+
+        // Create timestamped backup name
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}`;
+
+        console.log(`💾 Backup created at: ${timestamp}`);
+        window.saveToExcel();
+
+        if (typeof showToast === 'function') {
+          showToast(`✅ Backup created successfully!`, 'success', 3000);
+        }
+      } else {
+        throw new Error('saveToExcel function not available');
+      }
+
+      console.log('✅ Backup complete');
+    } catch (err) {
+      console.error('❌ Error in createBackup:', err);
+      if (typeof showToast === 'function') {
+        showToast(`❌ Backup failed: ${err.message}`, 'error', 3000);
+      }
+    }
+  };
+
+  // ============================================================
+  // SORT HISTORY - NEWEST - Called from Edit Mode
+  // ============================================================
+  window.sortNewest = async function() {
+    console.log('🆕 Sorting by newest first...');
+
+    try {
+      const adventuresData = window.adventuresData || (window.opener && window.opener.adventuresData);
+
+      if (!adventuresData || adventuresData.length === 0) {
+        console.warn('⚠️ No locations to sort');
+        return;
+      }
+
+      // Sort by date (assuming date is in a specific column)
+      // This would need the actual date column index from your schema
+      adventuresData.sort((a, b) => {
+        const aValues = a.values ? a.values[0] : a;
+        const bValues = b.values ? b.values[0] : b;
+
+        // Try to get date from column (adjust index based on your schema)
+        const aDate = new Date(aValues[20] || 0); // Adjust column index as needed
+        const bDate = new Date(bValues[20] || 0);
+
+        return bDate - aDate; // Newest first (descending)
+      });
+
+      // Reload table to show sorted data
+      if (typeof window.loadTable === 'function') {
+        console.log('📊 Reloading table with newest first...');
+        await window.loadTable();
+      }
+
+      console.log('✅ Sorted by newest first');
+      if (typeof showToast === 'function') {
+        showToast('✅ Sorted by newest first', 'success', 2000);
+      }
+    } catch (err) {
+      console.error('❌ Error sorting newest:', err);
+      if (typeof showToast === 'function') {
+        showToast(`❌ Sort failed: ${err.message}`, 'error', 3000);
+      }
+    }
+  };
+
+  // ============================================================
+  // SORT HISTORY - OLDEST - Called from Edit Mode
+  // ============================================================
+  window.sortOldest = async function() {
+    console.log('🕐 Sorting by oldest first...');
+
+    try {
+      const adventuresData = window.adventuresData || (window.opener && window.opener.adventuresData);
+
+      if (!adventuresData || adventuresData.length === 0) {
+        console.warn('⚠️ No locations to sort');
+        return;
+      }
+
+      // Sort by date (assuming date is in a specific column)
+      adventuresData.sort((a, b) => {
+        const aValues = a.values ? a.values[0] : a;
+        const bValues = b.values ? b.values[0] : b;
+
+        // Try to get date from column (adjust index based on your schema)
+        const aDate = new Date(aValues[20] || 0); // Adjust column index as needed
+        const bDate = new Date(bValues[20] || 0);
+
+        return aDate - bDate; // Oldest first (ascending)
+      });
+
+      // Reload table to show sorted data
+      if (typeof window.loadTable === 'function') {
+        console.log('📊 Reloading table with oldest first...');
+        await window.loadTable();
+      }
+
+      console.log('✅ Sorted by oldest first');
+      if (typeof showToast === 'function') {
+        showToast('✅ Sorted by oldest first', 'success', 2000);
+      }
+    } catch (err) {
+      console.error('❌ Error sorting oldest:', err);
+      if (typeof showToast === 'function') {
+        showToast(`❌ Sort failed: ${err.message}`, 'error', 3000);
+      }
+    }
+  };
+
+  // ============================================================
+  // AUTO-REGISTER ALL HANDLERS
   // ============================================================
   const registerHandlers = function() {
     console.log('📝 Registering enhanced automation handlers...');

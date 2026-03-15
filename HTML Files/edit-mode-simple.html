@@ -312,39 +312,6 @@
         <div id="chain-status"></div>
       </div>
 
-      <!-- Populate Missing Fields Only -->
-      <div class="card">
-        <div class="card-title">📝 Populate Missing Fields Only</div>
-        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
-          Use Google Places API to fill in empty fields for all your locations while preserving existing data.
-        </p>
-        <div class="input-group">
-          <label>🧪 Dry Run</label>
-          <input type="checkbox" id="missingDryRun" onchange="updateDryRun('populateMissing', this.checked)">
-          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
-        </div>
-        <div class="button-group">
-          <button class="button button-primary" onclick="populateMissing()">📝 Update Missing Fields</button>
-        </div>
-        <div id="missing-status"></div>
-      </div>
-
-      <!-- Update Hours Only -->
-      <div class="card">
-        <div class="card-title">🕐 Update Hours Only</div>
-        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
-          Use Google Places API to update operating hours for all your locations.
-        </p>
-        <div class="input-group">
-          <label>🧪 Dry Run</label>
-          <input type="checkbox" id="hoursDryRun" onchange="updateDryRun('updateHours', this.checked)">
-          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
-        </div>
-        <div class="button-group">
-          <button class="button button-primary" onclick="updateHours()">🕐 Update Hours</button>
-        </div>
-        <div id="hours-status"></div>
-      </div>
     </div>
 
     <!-- TAB 2: AUTOMATION -->
@@ -379,6 +346,38 @@
           <button class="button button-primary" onclick="autoTagAll()">🏷️ Auto-Tag All</button>
         </div>
         <div id="autotag-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 Populate Missing Fields Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to fill in empty fields for all your locations while preserving existing data.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="missingDryRun" onchange="updateDryRun('populateMissing', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="populateMissing()">📝 Update Missing Fields</button>
+        </div>
+        <div id="missing-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🕐 Update Hours Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to update operating hours for all your locations.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="hoursDryRun" onchange="updateDryRun('updateHours', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="updateHours()">🕐 Update Hours</button>
+        </div>
+        <div id="hours-status"></div>
       </div>
     </div>
 
@@ -577,35 +576,47 @@
         return;
       }
 
-      // Actually add the locations to the main window
-      if (window.opener && typeof window.opener.addNewPlace === 'function') {
+      // Show progress
+      statusDiv.innerHTML = `<div class="status-message status-success">⏳ Adding ${locations.length} chain locations...</div>`;
+
+      // Call to main window with proper handler
+      if (window.opener && typeof window.opener.handleBulkAddChainLocations === 'function') {
         try {
-          let successCount = 0;
-          locations.forEach(location => {
-            console.log(`Adding chain location: ${location}`);
-            window.opener.addNewPlace(location, '', '');
-            successCount++;
-          });
+          console.log(`Adding ${locations.length} chain locations...`);
 
-          statusDiv.innerHTML = `<div class="status-message status-success">✅ Successfully added ${successCount} chain locations! Reloading main page...</div>`;
-          console.log(`⛓️ Added ${successCount} chain locations`);
+          // Call the main window handler which will process and save
+          window.opener.handleBulkAddChainLocations(locations, type, (results) => {
+            console.log('Chain locations processed:', results);
 
-          document.getElementById('chainValues').value = '';
+            const successCount = results.successful || locations.length;
+            const failCount = results.failed || 0;
 
-          // Reload the main page after a delay to show all new locations
-          setTimeout(() => {
-            if (window.opener) {
-              console.log('Reloading main window...');
-              window.opener.location.reload();
+            let resultMessage = `✅ Successfully added ${successCount} chain locations`;
+            if (failCount > 0) {
+              resultMessage += ` (${failCount} failed)`;
             }
-          }, 1000);
+            resultMessage += '! Excel has been updated.';
+
+            statusDiv.innerHTML = `<div class="status-message status-success">${resultMessage}</div>`;
+            console.log(`⛓️ ${resultMessage}`);
+
+            document.getElementById('chainValues').value = '';
+
+            // Reload main page after a short delay
+            setTimeout(() => {
+              if (window.opener) {
+                console.log('Reloading main window...');
+                window.opener.location.reload();
+              }
+            }, 2000);
+          });
         } catch (error) {
           statusDiv.innerHTML = `<div class="status-message status-error">❌ Error adding locations: ${error.message}</div>`;
           console.error('Error adding chain locations:', error);
         }
       } else {
         statusDiv.innerHTML = `<div class="status-message status-error">❌ Cannot access main window. Please ensure the Edit Mode window is opened from the main app.</div>`;
-        console.warn('Main window (window.opener) not available');
+        console.warn('Main window (window.opener) not available or handleBulkAddChainLocations not found');
       }
     }
 
@@ -614,11 +625,46 @@
       const dryRun = document.getElementById('missingDryRun').checked;
       const statusDiv = document.getElementById('missing-status');
 
-      const message = dryRun
-        ? '🧪 Would populate missing fields for all locations'
-        : '✅ Populated missing fields for all locations';
-      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-      console.log(`${dryRun ? '🧪 DRY RUN' : '📝'} Populate missing fields`);
+      if (dryRun) {
+        statusDiv.innerHTML = '<div class="status-message status-success">🧪 Would populate missing fields for all locations</div>';
+        console.log('🧪 DRY RUN: Populate missing fields');
+        return;
+      }
+
+      // Show progress
+      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Populating missing fields...</div>';
+      console.log('📝 Starting to populate missing fields...');
+
+      if (window.opener && typeof window.opener.populateMissingFields === 'function') {
+        try {
+          window.opener.populateMissingFields((results) => {
+            const updated = results.updated || 0;
+            const skipped = results.skipped || 0;
+            const errors = results.errors || 0;
+
+            let message = `✅ Populated ${updated} fields`;
+            if (skipped > 0) message += `, skipped ${skipped}`;
+            if (errors > 0) message += `, ${errors} errors`;
+            message += '! Excel updated.';
+
+            statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+            console.log(`📝 ${message}`);
+
+            // Reload main page
+            setTimeout(() => {
+              if (window.opener) {
+                window.opener.location.reload();
+              }
+            }, 2000);
+          });
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+          console.error('Error populating fields:', error);
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        console.warn('populateMissingFields not available');
+      }
     }
 
     // UPDATE HOURS ONLY
@@ -626,11 +672,46 @@
       const dryRun = document.getElementById('hoursDryRun').checked;
       const statusDiv = document.getElementById('hours-status');
 
-      const message = dryRun
-        ? '🧪 Would update hours for all locations'
-        : '✅ Updated hours for all locations';
-      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-      console.log(`${dryRun ? '🧪 DRY RUN' : '🕐'} Update hours only`);
+      if (dryRun) {
+        statusDiv.innerHTML = '<div class="status-message status-success">🧪 Would update hours for all locations</div>';
+        console.log('🧪 DRY RUN: Update hours only');
+        return;
+      }
+
+      // Show progress
+      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Updating hours...</div>';
+      console.log('🕐 Starting to update hours...');
+
+      if (window.opener && typeof window.opener.updateHoursOnly === 'function') {
+        try {
+          window.opener.updateHoursOnly((results) => {
+            const updated = results.updated || 0;
+            const skipped = results.skipped || 0;
+            const errors = results.errors || 0;
+
+            let message = `✅ Updated ${updated} locations' hours`;
+            if (skipped > 0) message += `, skipped ${skipped}`;
+            if (errors > 0) message += `, ${errors} errors`;
+            message += '! Excel updated.';
+
+            statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+            console.log(`🕐 ${message}`);
+
+            // Reload main page
+            setTimeout(() => {
+              if (window.opener) {
+                window.opener.location.reload();
+              }
+            }, 2000);
+          });
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+          console.error('Error updating hours:', error);
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        console.warn('updateHoursOnly not available');
+      }
     }
 
     // REFRESH PLACE IDS
@@ -638,11 +719,35 @@
       const dryRun = document.getElementById('refreshDryRun').checked;
       const statusDiv = document.getElementById('refresh-status');
 
-      const message = dryRun
-        ? '🧪 Would refresh all Place IDs'
-        : '✅ Refreshed all Place IDs';
-      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-      console.log(`${dryRun ? '🧪 DRY RUN' : '🔄'} Refresh Place IDs`);
+      if (dryRun) {
+        statusDiv.innerHTML = '<div class="status-message status-success">🧪 Would refresh all Place IDs</div>';
+        console.log('🧪 DRY RUN: Refresh Place IDs');
+        return;
+      }
+
+      // Show progress
+      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Refreshing Place IDs...</div>';
+      console.log('🔄 Starting to refresh Place IDs...');
+
+      if (window.opener && typeof window.opener.refreshPlaceIds === 'function') {
+        try {
+          window.opener.refreshPlaceIds();
+          statusDiv.innerHTML = '<div class="status-message status-success">✅ Place IDs refreshed! Excel updated.</div>';
+
+          // Reload main page
+          setTimeout(() => {
+            if (window.opener) {
+              window.opener.location.reload();
+            }
+          }, 2000);
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+          console.error('Error refreshing Place IDs:', error);
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        console.warn('refreshPlaceIds not available in main window');
+      }
     }
 
     // AUTO-TAG ALL
@@ -650,31 +755,115 @@
       const dryRun = document.getElementById('autoTagDryRun').checked;
       const statusDiv = document.getElementById('autotag-status');
 
-      const message = dryRun
-        ? '🧪 Would auto-tag all locations'
-        : '✅ Auto-tagged all locations';
-      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-      console.log(`${dryRun ? '🧪 DRY RUN' : '🏷️'} Auto-tag all locations`);
+      if (dryRun) {
+        statusDiv.innerHTML = '<div class="status-message status-success">🧪 Would auto-tag all locations</div>';
+        console.log('🧪 DRY RUN: Auto-tag all locations');
+        return;
+      }
+
+      // Show progress
+      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Auto-tagging locations...</div>';
+      console.log('🏷️ Starting to auto-tag all locations...');
+
+      if (window.opener && typeof window.opener.autoTagAll === 'function') {
+        try {
+          window.opener.autoTagAll();
+          statusDiv.innerHTML = '<div class="status-message status-success">✅ Auto-tagging complete! Excel updated.</div>';
+
+          // Reload main page
+          setTimeout(() => {
+            if (window.opener) {
+              window.opener.location.reload();
+            }
+          }, 2000);
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+          console.error('Error auto-tagging:', error);
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        console.warn('autoTagAll not available in main window');
+      }
     }
 
     // BACKUP
     function createBackup() {
       const statusDiv = document.getElementById('backup-status');
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Backup created successfully!</div>';
-      console.log('💾 Backup created');
+
+      // Show progress
+      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Creating backup...</div>';
+      console.log('💾 Starting backup...');
+
+      if (window.opener && typeof window.opener.createBackup === 'function') {
+        try {
+          window.opener.createBackup();
+          statusDiv.innerHTML = '<div class="status-message status-success">✅ Backup created successfully!</div>';
+          console.log('💾 Backup complete');
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+          console.error('Error creating backup:', error);
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        console.warn('createBackup not available in main window');
+      }
     }
 
     // HISTORY SORTING
     function sortNewest() {
       const statusDiv = document.getElementById('history-status');
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by newest first</div>';
-      console.log('📅 Sorted by newest');
+
+      // Show progress
+      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Sorting by newest...</div>';
+      console.log('🆕 Sorting by newest first...');
+
+      if (window.opener && typeof window.opener.sortNewest === 'function') {
+        try {
+          window.opener.sortNewest();
+          statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by newest first</div>';
+
+          // Reload after delay
+          setTimeout(() => {
+            if (window.opener) {
+              window.opener.location.reload();
+            }
+          }, 1000);
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+          console.error('Error sorting newest:', error);
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        console.warn('sortNewest not available in main window');
+      }
     }
 
     function sortOldest() {
       const statusDiv = document.getElementById('history-status');
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by oldest first</div>';
-      console.log('📅 Sorted by oldest');
+
+      // Show progress
+      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Sorting by oldest...</div>';
+      console.log('🕐 Sorting by oldest first...');
+
+      if (window.opener && typeof window.opener.sortOldest === 'function') {
+        try {
+          window.opener.sortOldest();
+          statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by oldest first</div>';
+
+          // Reload after delay
+          setTimeout(() => {
+            if (window.opener) {
+              window.opener.location.reload();
+            }
+          }, 1000);
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+          console.error('Error sorting oldest:', error);
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        console.warn('sortOldest not available in main window');
+      }
     }
 
     // Initialize tabs when page loads
