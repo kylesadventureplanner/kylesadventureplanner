@@ -621,7 +621,7 @@
     }
 
     /**
-     * Submit Bulk Chain
+     * Submit Bulk Chain - ENHANCED with Google Places API
      */
     async function submitBulkChain() {
       const input = document.getElementById('chainInput').value;
@@ -629,55 +629,74 @@
       const dryRun = document.getElementById('chainDryRun').checked;
       const statusDiv = document.getElementById('chain-status');
 
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      if (!window.enhancedAutomation) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+      if (!input.trim()) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
         return;
       }
 
-      const result = await window.enhancedAutomation.bulkAddChainLocations(input, inputType, dryRun);
-      window.enhancedAutomation.displayResults(result, statusDiv);
+      const locations = input.split('\n').filter(l => l.trim());
 
-      if (result.success && !dryRun) {
-        document.getElementById('chainInput').value = '';
+      if (locations.length === 0) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
+        return;
+      }
+
+      // Use the new enhanced function
+      if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
+        const result = await window.handleBulkAddChainLocationsEnhanced(locations, inputType, statusDiv, dryRun);
+
+        if (result.success && !dryRun) {
+          // Clear input only on successful non-dry-run
+          document.getElementById('chainInput').value = '';
+        }
+      } else if (window.enhancedAutomation) {
+        // Fallback to old system if new one not available
+        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+        const result = await window.enhancedAutomation.bulkAddChainLocations(input, inputType, dryRun);
+        window.enhancedAutomation.displayResults(result, statusDiv);
+
+        if (result.success && !dryRun) {
+          document.getElementById('chainInput').value = '';
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
       }
     }
 
     /**
-     * Submit Populate Missing
+     * Submit Populate Missing - ENHANCED
      */
     async function submitPopulateMissing() {
       const dryRun = document.getElementById('missingDryRun').checked;
       const statusDiv = document.getElementById('missing-status');
 
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      if (!window.enhancedAutomation) {
+      if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
+        await window.handlePopulateMissingFieldsEnhanced(statusDiv, dryRun);
+      } else if (window.enhancedAutomation) {
+        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+        const result = await window.enhancedAutomation.populateMissingFieldsOnly(dryRun);
+        window.enhancedAutomation.displayResults(result, statusDiv);
+      } else {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
-        return;
       }
-
-      const result = await window.enhancedAutomation.populateMissingFieldsOnly(dryRun);
-      window.enhancedAutomation.displayResults(result, statusDiv);
     }
 
     /**
-     * Submit Update Hours
+     * Submit Update Hours - ENHANCED
      */
     async function submitUpdateHours() {
       const dryRun = document.getElementById('hoursDryRun').checked;
       const statusDiv = document.getElementById('hours-status');
 
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      if (!window.enhancedAutomation) {
+      if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
+        await window.handleUpdateHoursOnlyEnhanced(statusDiv, dryRun);
+      } else if (window.enhancedAutomation) {
+        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+        const result = await window.enhancedAutomation.updateHoursOnly(dryRun);
+        window.enhancedAutomation.displayResults(result, statusDiv);
+      } else {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
-        return;
       }
-
-      const result = await window.enhancedAutomation.updateHoursOnly(dryRun);
-      window.enhancedAutomation.displayResults(result, statusDiv);
     }
 
     /**
@@ -690,7 +709,7 @@
       statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
 
       if (!window.enhancedAutomation) {
-        statusDiv.innerHTML = '<div class="status-message status-error'>❌ System not ready</div>';
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
         return;
       }
 

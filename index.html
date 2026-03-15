@@ -4993,8 +4993,7 @@
   <!-- Backup Manager System -->
   <script src="JS Files/backup-manager.js"></script>
 
-  <!-- Enhanced Automation Features (v7.0.114) -->
-  <script src="JS Files/enhanced-automation-features.js"></script>
+  <!-- Enhanced Automation Features (v2.0 - Latest) -->
   <script src="JS Files/enhanced-automation-features-v2.js"></script>
 
   <!-- Comprehensive Fix System (v7.0.113) -->
@@ -5002,6 +5001,12 @@
 
   <!-- Initialization & Debug System (v7.0.114) -->
   <script src="JS Files/initialization-debug-system.js"></script>
+
+  <!-- Bulk Operations Complete Fix (v7.0.122) -->
+  <script src="JS Files/bulk-operations-complete-fix.js"></script>
+
+  <!-- Legacy Automation Integration (v7.0.122) - from old automation-control-panel.html -->
+  <script src="JS Files/legacy-automation-integration.js"></script>
 </head>
 <body>
 <!-- Toast Notifications Container -->
@@ -7610,7 +7615,91 @@
     `;
   }
 
-  // ...existing code...
+    /**
+     * Add Test Google Places API button to the page
+     */
+    window.addTestGoogleAPIButton = function() {
+    console.log('🧪 Adding Test Google API button...');
+
+    try {
+      // Try to find a suitable container
+      let container = document.querySelector('.controls') ||
+                      document.querySelector('[class*="control"]') ||
+                      document.querySelector('nav') ||
+                      document.querySelector('header') ||
+                      document.querySelector('#app');
+
+      if (!container) {
+        // Create a container if none exists
+        container = document.createElement('div');
+        container.id = 'test-controls';
+        container.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1000; display: flex; gap: 10px;';
+        document.body.appendChild(container);
+      }
+
+      // Create test button
+      const btn = document.createElement('button');
+      btn.id = 'testGoogleAPIBtn';
+      btn.textContent = '🧪 Test Google API';
+      btn.style.cssText = `
+        padding: 10px 16px;
+        background: #667eea;
+        color: white;
+        border: 1px solid #667eea;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        transition: all 0.2s;
+      `;
+
+      btn.onmouseover = function() {
+        this.style.background = '#5568d3';
+        this.style.borderColor = '#5568d3';
+        this.style.transform = 'scale(1.05)';
+        this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+      };
+
+      btn.onmouseout = function() {
+        this.style.background = '#667eea';
+        this.style.borderColor = '#667eea';
+        this.style.transform = 'none';
+        this.style.boxShadow = 'none';
+      };
+
+      btn.onclick = async function() {
+        console.log('🧪 Test button clicked');
+        btn.disabled = true;
+        btn.textContent = '⏳ Testing...';
+
+        const result = await window.testGooglePlacesAPI();
+
+        btn.textContent = result ? '✅ Test Passed' : '❌ Test Failed';
+        btn.disabled = false;
+
+        setTimeout(() => {
+          btn.textContent = '🧪 Test Google API';
+        }, 3000);
+      };
+
+      container.appendChild(btn);
+      console.log('✅ Test Google API button added');
+
+    } catch (err) {
+      console.error('❌ Error adding test button:', err);
+    }
+    };
+
+    // Add button when page loads
+    if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(window.addTestGoogleAPIButton, 1000);
+    });
+    } else {
+    setTimeout(window.addTestGoogleAPIButton, 500);
+    }
+
+    // ...existing code...
   async function addRowToExcel(rowValues, retryCount = 0) {
     let token = window.accessToken;
     if (!token) throw new Error("Please sign in first.");
@@ -16667,13 +16756,191 @@ COMMON ISSUES:
     }
   };
 
+  /**
+   * Open the Enhanced City Visualizer modal
+   */
+  window.openEnhancedCityVisualizer = function() {
+    console.log('🏙️ Opening City Visualizer...');
+
+    try {
+      // Create instance if it doesn't exist
+      if (!window.enhancedCityViz) {
+        console.log('📦 Creating new EnhancedCityVisualizer instance...');
+        window.enhancedCityViz = new EnhancedCityVisualizer();
+      }
+
+      // Show the modal
+      if (typeof window.enhancedCityViz.show === 'function') {
+        window.enhancedCityViz.show();
+        console.log('✅ City Visualizer opened');
+      } else {
+        console.error('❌ EnhancedCityVisualizer.show() method not found');
+      }
+    } catch (err) {
+      console.error('❌ Error opening City Visualizer:', err);
+      if (typeof showToast === 'function') {
+        showToast('❌ Error opening City Visualizer', 'error', 3000);
+      }
+    }
+  };
+
+  /**
+   * Close the Enhanced City Visualizer modal
+   */
+  window.closeEnhancedCityVisualizer = function() {
+    console.log('Closing City Visualizer...');
+
+    try {
+      if (window.enhancedCityViz && typeof window.enhancedCityViz.hide === 'function') {
+        window.enhancedCityViz.hide();
+        console.log('✅ City Visualizer closed');
+      }
+    } catch (err) {
+      console.error('❌ Error closing City Visualizer:', err);
+    }
+  };
+
+  /**
+   * Verify rows were actually added to Excel
+   */
+  window.verifyRowsInExcel = async function(expectedCount) {
+    console.log(`🔍 Verifying ${expectedCount} rows in Excel...`);
+
+    try {
+      const token = window.accessToken;
+      if (!token) {
+        console.error('❌ No access token');
+        return false;
+      }
+
+      // Get current row count from Excel
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${window.filePath}:/workbook/tables/${window.tableName}/rows`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.error(`❌ Verification failed with status ${response.status}`);
+        return false;
+      }
+
+      const data = await response.json();
+      const currentRowCount = data.value ? data.value.length : 0;
+
+      console.log(`📊 Current Excel row count: ${currentRowCount}`);
+
+      if (currentRowCount >= expectedCount) {
+        console.log(`✅ Verification PASSED - rows exist in Excel`);
+        return true;
+      } else {
+        console.error(`❌ Verification FAILED - only ${currentRowCount} rows found, expected ${expectedCount}`);
+        return false;
+      }
+    } catch (err) {
+      console.error('❌ Verification error:', err);
+      return false;
+    }
+  };
+
+  /**
+   * Lookup location details from Google Places API
+   */
+  window.lookupPlaceDetails = async function(placeId) {
+    console.log(`🔍 Looking up details for Place ID: ${placeId}`);
+
+    try {
+      if (!window.google || !window.google.maps) {
+        console.warn('⚠️ Google Maps API not available');
+        return { placeId };
+      }
+
+      const service = new google.maps.places.PlacesService(document.createElement('div'));
+
+      return new Promise((resolve) => {
+        service.getDetails({ placeId, fields: [
+          'name', 'formatted_address', 'formatted_phone_number',
+          'website', 'opening_hours', 'rating', 'url'
+        ]}, (place, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+            console.log(`✅ Found place: ${place.name}`);
+            resolve({
+              name: place.name || '',
+              address: place.formatted_address || '',
+              phone: place.formatted_phone_number || '',
+              website: place.website || '',
+              hours: place.opening_hours?.weekday_text?.join('\n') || '',
+              rating: place.rating || '',
+              googleUrl: place.url || '',
+              placeId: placeId
+            });
+          } else {
+            console.warn(`⚠️ Could not fetch details for ${placeId}`);
+            resolve({ placeId });
+          }
+        });
+      });
+    } catch (err) {
+      console.error('❌ Error looking up place details:', err);
+      return { placeId };
+    }
+  };
+
+  /**
+   * Test Google Places API
+   */
+  window.testGooglePlacesAPI = async function() {
+    console.log('🧪 Testing Google Places API...');
+
+    try {
+      if (!window.google || !window.google.maps) {
+        console.error('❌ Google Maps API not loaded');
+        if (typeof showToast === 'function') {
+          showToast('❌ Google Maps API not loaded', 'error', 3000);
+        }
+        return false;
+      }
+
+      // Test with a known place ID (Starbucks Times Square)
+      const testPlaceId = 'ChIJV2xW2Z3iWYgR7p8y7Z9E9nA';
+
+      console.log(`Testing with Place ID: ${testPlaceId}`);
+      const details = await window.lookupPlaceDetails(testPlaceId);
+
+      console.log('📋 API Response:', details);
+
+      if (details.name) {
+        if (typeof showToast === 'function') {
+          showToast(`✅ API Working! Found: ${details.name}`, 'success', 3000);
+        }
+        console.log('✅ Google Places API is working!');
+        return true;
+      } else {
+        if (typeof showToast === 'function') {
+          showToast('⚠️ API responded but missing data', 'warning', 3000);
+        }
+        return false;
+      }
+    } catch (err) {
+      console.error('❌ API Test failed:', err);
+      if (typeof showToast === 'function') {
+        showToast(`❌ API Error: ${err.message}`, 'error', 3000);
+      }
+      return false;
+    }
+  };
+
   window.handleRefreshPlaceIds = window.handleRefreshPlaceIds || function() {
     console.warn('⏳ Refresh Place IDs handler loading...');
     showToast('⏳ Refreshing Place IDs...', 'info', 3000);
   };
 
-  window.handleBulkAddChainLocations = window.handleBulkAddChainLocations || function(locations, type, callback) {
-    console.log(`⛓️ Bulk Add Chain Locations: Processing ${locations.length} locations...`);
+  window.handleBulkAddChainLocations = window.handleBulkAddChainLocations || async function(locations, type, callback) {
+    console.log(`⛓️ Bulk Add Chain Locations: Processing ${locations.length} locations with API lookup...`);
 
     try {
       if (!window.adventuresData) {
@@ -16686,38 +16953,49 @@ COMMON ISSUES:
       let failCount = 0;
       const errors = [];
       const addedLocations = [];
+      const initialCount = window.adventuresData.length;
 
-      // Add all locations to data FIRST (without rendering each time)
-      locations.forEach((location, idx) => {
+      console.log(`📊 Starting with ${initialCount} locations in Excel`);
+
+      // Add all locations with Google Places API lookup
+      for (let idx = 0; idx < locations.length; idx++) {
         try {
-          console.log(`📍 Adding location ${idx + 1}/${locations.length}: ${location}`);
+          const location = locations[idx];
+          console.log(`📍 Processing location ${idx + 1}/${locations.length}: ${location}`);
 
-          // Create new row data for Excel
+          // Try to lookup details from Google Places API
+          let placeDetails = { placeId: location };
+          if (typeof window.lookupPlaceDetails === 'function') {
+            placeDetails = await window.lookupPlaceDetails(location);
+            console.log(`✅ Got details for ${location}:`, placeDetails);
+          }
+
+          // Create enhanced row data with API details
           const newRow = [
-            location || '',                 // Name or Place ID
-            location || '',                 // Google Place ID
-            '',                             // Website
-            '',                             // Tags
-            '',                             // Drive Time
-            '',                             // Hours
-            '',                             // Duration
-            '',                             // Difficulty
-            '',                             // Trail Length
-            '',                             // State
-            '',                             // City
-            '',                             // Address
-            '',                             // Phone
-            '',                             // Rating
-            '',                             // Cost
-            '',                             // Directions
-            '',                             // Description
-            '',                             // Nearby
-            '',                             // Links
-            '',                             // Links 2
-            '',                             // Notes
-            '',                             // My Rating
-            '',                             // Favorite
-            ''                              // Google URL
+            placeDetails.name || location || '',        // Name
+            location || '',                              // Google Place ID
+            placeDetails.website || '',                  // Website
+            '',                                          // Tags
+            '',                                          // Drive Time
+            placeDetails.hours || '',                    // Hours
+            '',                                          // Duration
+            '',                                          // Difficulty
+            '',                                          // Trail Length
+            '',                                          // State
+            '',                                          // City
+            placeDetails.address || '',                  // Address
+            placeDetails.phone || '',                    // Phone
+            placeDetails.rating || '',                   // Rating
+            '',                                          // Cost
+            '',                                          // Directions
+            '',                                          // Description
+            '',                                          // Nearby
+            '',                                          // Links
+            '',                                          // Links 2
+            '',                                          // Notes
+            '',                                          // My Rating
+            '',                                          // Favorite
+            placeDetails.googleUrl || ''                 // Google URL
           ];
 
           // Add to local data
@@ -16726,23 +17004,35 @@ COMMON ISSUES:
             index: window.adventuresData.length
           });
 
-          addedLocations.push(location);
+          addedLocations.push({
+            name: placeDetails.name || location,
+            details: placeDetails
+          });
           successCount++;
-          console.log(`✅ Location ${idx + 1} added to data`);
+          console.log(`✅ Location ${idx + 1} added with details`);
 
         } catch (err) {
-          console.error(`❌ Error adding location ${idx + 1}:`, err);
+          console.error(`❌ Error processing location ${idx + 1}:`, err);
           failCount++;
           errors.push(`Location ${idx + 1}: ${err.message}`);
         }
-      });
+
+        // Small delay to prevent API rate limiting
+        if (idx < locations.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      console.log(`📊 Added ${successCount} locations to memory`);
 
       // NOW save all to Excel at once
       console.log('💾 Saving to Excel...');
+      let excelSaved = false;
       if (typeof window.saveToExcel === 'function') {
         try {
-          window.saveToExcel();
+          await window.saveToExcel();
           console.log(`✅ Saved ${successCount} locations to Excel`);
+          excelSaved = true;
         } catch (excelErr) {
           console.error('❌ Error saving to Excel:', excelErr);
           errors.push(`Excel save failed: ${excelErr.message}`);
@@ -16751,7 +17041,22 @@ COMMON ISSUES:
         console.warn('⚠️ saveToExcel function not available');
       }
 
-      // NOW refresh the card display (once, not for each location)
+      // Verify rows actually exist in Excel
+      console.log('🔍 Verifying rows in Excel...');
+      let verificationPassed = false;
+      if (typeof window.verifyRowsInExcel === 'function' && excelSaved) {
+        const expectedTotal = initialCount + successCount;
+        verificationPassed = await window.verifyRowsInExcel(expectedTotal);
+
+        if (verificationPassed) {
+          console.log(`✅ VERIFICATION PASSED - All ${expectedTotal} rows confirmed in Excel`);
+        } else {
+          console.error(`❌ VERIFICATION FAILED - Rows may not have been saved properly`);
+          errors.push(`Verification failed - rows may not exist in Excel`);
+        }
+      }
+
+      // Refresh the card display
       console.log('📊 Refreshing card display...');
       if (typeof window.renderPaginatedCards === 'function') {
         try {
@@ -16759,10 +17064,9 @@ COMMON ISSUES:
           console.log('✅ Card display refreshed');
         } catch (renderErr) {
           console.error('❌ Error refreshing cards:', renderErr);
-          // Try alternative refresh methods
           if (typeof window.loadTable === 'function') {
             try {
-              window.loadTable();
+              await window.loadTable();
               console.log('✅ Table refreshed (fallback)');
             } catch (tableErr) {
               console.error('❌ Error refreshing table:', tableErr);
@@ -16771,20 +17075,24 @@ COMMON ISSUES:
         }
       }
 
-      // Call callback with results
+      // Call callback with detailed results
       if (callback) {
         callback({
           successful: successCount,
           failed: failCount,
+          verified: verificationPassed,
+          details: addedLocations,
           errors: errors.length > 0 ? errors : undefined
         });
       }
 
-      console.log(`✅ Bulk add complete: ${successCount} successful, ${failCount} failed`);
+      console.log(`✅ Bulk add complete: ${successCount} successful, ${failCount} failed, ${verificationPassed ? 'VERIFIED' : 'NOT VERIFIED'}`);
 
       if (typeof showToast === 'function') {
-        if (failCount === 0) {
-          showToast(`✅ Successfully added ${successCount} locations!`, 'success', 3000);
+        if (failCount === 0 && verificationPassed) {
+          showToast(`✅ Successfully added ${successCount} locations (VERIFIED in Excel)!`, 'success', 3000);
+        } else if (failCount === 0) {
+          showToast(`✅ Added ${successCount} locations (verification pending)`, 'success', 3000);
         } else {
           showToast(`⚠️ Added ${successCount}, failed ${failCount}`, 'warning', 3000);
         }
@@ -16795,6 +17103,7 @@ COMMON ISSUES:
         callback({
           successful: 0,
           failed: locations.length,
+          verified: false,
           errors: [error.message, error.stack?.substring(0, 200)]
         });
       }
