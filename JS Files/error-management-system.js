@@ -122,10 +122,12 @@
       }
 
       const recentErrors = this.getRecentErrors(20);
+      const self = this;
+
       let html = '<div style="padding: 16px;">' +
         '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">' +
         '<div style="font-weight: 700; color: #ef4444;">❌ ' + this.errors.length + ' Error' + (this.errors.length !== 1 ? 's' : '') + '</div>' +
-        '<button onclick="window.errorManager.clearAllErrors(); window.errorManager.updateDisplay();" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">🗑️ Clear All</button>' +
+        '<button id="error-clear-all-btn" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">🗑️ Clear All</button>' +
         '</div>';
 
       html += '<div style="max-height: 400px; overflow-y: auto; border: 1px solid #fca5a5; border-radius: 8px; background: #fef2f2;">';
@@ -144,13 +146,32 @@
         '<div style="margin-top: 12px; padding: 12px; background: #fee2e2; border-radius: 6px; font-size: 12px; color: #7f1d1d;">' +
         '💡 Errors are logged automatically. Click "Copy All" to share error details for debugging.' +
         '</div>' +
-        '<button onclick="' +
-        'const text = window.errorManager.errors.map(e => e.timestamp + \" [\" + e.type + \"] \" + e.message).join(\"\\n\"); ' +
-        'navigator.clipboard.writeText(text).then(() => alert(\"✅ Errors copied!\")).catch(() => alert(\"❌ Copy failed\"));' +
-        '" style="width: 100%; margin-top: 12px; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">📋 Copy All Errors</button>' +
+        '<button id="error-copy-all-btn" style="width: 100%; margin-top: 12px; padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">📋 Copy All Errors</button>' +
         '</div>';
 
       this.displayElement.innerHTML = html;
+
+      // Attach event listeners after HTML is rendered
+      const clearBtn = document.getElementById('error-clear-all-btn');
+      const copyBtn = document.getElementById('error-copy-all-btn');
+
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          self.clearAllErrors();
+          self.updateDisplay();
+        };
+      }
+
+      if (copyBtn) {
+        copyBtn.onclick = () => {
+          const text = self.errors.map(e => e.timestamp + ' [' + e.type + '] ' + e.message).join('\n');
+          navigator.clipboard.writeText(text).then(() => {
+            alert('✅ Errors copied to clipboard!');
+          }).catch(() => {
+            alert('❌ Failed to copy errors');
+          });
+        };
+      }
     }
 
     /**

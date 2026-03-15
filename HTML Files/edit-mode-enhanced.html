@@ -755,6 +755,38 @@
     }
 
     /**
+     * Update dry run toggle appearance and state
+     */
+    function updateDryRunToggle(checkbox, feature) {
+      console.log(`🧪 Dry Run Toggle Changed: ${feature} = ${checkbox.checked}`);
+
+      const toggleId = checkbox.id.replace('DryRun', '') + 'DryRunToggle';
+      const statusId = checkbox.id.replace('DryRun', '') + 'DryRunStatus';
+      const toggle = document.getElementById(toggleId);
+      const status = document.getElementById(statusId);
+
+      if (checkbox.checked) {
+        if (toggle) toggle.classList.add('enabled');
+        if (status) {
+          status.textContent = 'ENABLED';
+          status.classList.remove('off');
+          status.classList.add('on');
+        }
+      } else {
+        if (toggle) toggle.classList.remove('enabled');
+        if (status) {
+          status.textContent = 'DISABLED';
+          status.classList.remove('on');
+          status.classList.add('off');
+        }
+      }
+
+      if (window.enhancedAutomation) {
+        window.enhancedAutomation.setDryRunState(feature, checkbox.checked);
+      }
+    }
+
+    /**
      * Update feature dry run state
      */
     function updateFeatureDryRun(feature, state) {

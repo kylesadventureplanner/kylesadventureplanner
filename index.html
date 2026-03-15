@@ -4987,6 +4987,12 @@
   <!-- Visualization -->
   <script src="JS Files/enhanced-city-viewer.js"></script>
 
+  <!-- City Viewer Enhancements (v7.0.128) - Drive time, dynamic filters, hours checking -->
+  <script src="JS Files/city-viewer-enhancements-v2.js"></script>
+
+  <!-- City Viewer Integration (v7.0.128) - Integrates enhancements into city viewer -->
+  <script src="JS Files/city-viewer-integration-v2.js"></script>
+
   <!-- Button & UI Handlers -->
   <script src="JS Files/button-handlers.js"></script>
 
@@ -5205,6 +5211,12 @@
         <div class="quick-filters-container">
           <button id="favoritesFilterBtn" class="quick-filter-btn favorites-filter-btn" data-filter="favorites" title="Show only your favorite locations" data-tooltip="Show only your favorite locations">
             💖 My Favorites
+          </button>
+          <button id="openTodayFilterBtn" class="quick-filter-btn" data-filter="openToday" title="Show only places open today" data-tooltip="Show only places open today" onclick="applyOpenTodayFilter()">
+            🟢 Open Today
+          </button>
+          <button id="closingSoonFilterBtn" class="quick-filter-btn" data-filter="closingSoon" title="Show places closing within 2 hours" data-tooltip="Show places closing within 2 hours" onclick="applyClosingSoonFilter()">
+            ⏰ Closing Soon (2hrs)
           </button>
           <button class="quick-filter-btn" data-tag="restaurant" title="Filter by Restaurant" data-tooltip="Filter by Restaurant">🍽️ Restaurant</button>
           <button class="quick-filter-btn" data-tag="animals" title="Filter by Animals" data-tooltip="Filter by Animals">🐾 Animals</button>
@@ -6207,7 +6219,7 @@
   /**
    * Get place details from NEW Google Places API using Place ID
    * @param {string} placeId - The Google Place ID
-   * @returns {Promise} - Promise resolving to place details object
+   * @returns {Promise} - Promise resolving to place details object or null if invalid
    *
    * EXAMPLE:
    * const details = await getPlaceDetails('ChIJK...');
@@ -6215,6 +6227,12 @@
    */
   async function getPlaceDetails(placeId) {
     try {
+      // Validate Place ID before attempting fetch
+      if (!placeId || typeof placeId !== 'string' || placeId.trim() === '' || placeId === 'SKIP' || placeId === 'undefined') {
+        console.warn(`⚠️ Skipping invalid Place ID: "${placeId}"`);
+        return null;
+      }
+
       if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
         throw new Error("Google Maps Places API not loaded");
       }
@@ -6261,6 +6279,15 @@
       };
 
     } catch (error) {
+      // Handle specific error types gracefully
+      const errorMsg = error.message || '';
+
+      if (errorMsg.includes('NOT_FOUND') || errorMsg.includes('no longer valid') || errorMsg.includes('INVALID_ARGUMENT')) {
+        console.warn(`⚠️ Place ID no longer valid or invalid: "${placeId}". This can happen when Google updates their database. Use the "Refresh Place IDs" feature in Edit Mode to get fresh IDs.`);
+        // Return null instead of throwing - this allows the app to continue gracefully
+        return null;
+      }
+
       const details = classifyPlacesError(error);
       if (details.permissionDenied) {
         if (!placesConfigErrorLogged) {
@@ -6269,8 +6296,10 @@
         }
         throw buildPlacesConfigError("GetPlace", details);
       }
-      console.error("Error fetching place details:", error);
-      throw new Error(`Places API error: ${error.message}`);
+
+      console.warn("⚠️ Error fetching place details (continuing without details):", error.message);
+      // Return null to allow graceful degradation
+      return null;
     }
   }
 
@@ -18072,10 +18101,111 @@ window.openEditModeWindow = function() {
 };
 
 // ===========================================================================
-// 10. INITIALIZATION COMPLETE
+// 12. OPEN TODAY & CLOSING SOON FILTERS
 // ===========================================================================
-console.log('✅ ALL STABILITY SYSTEMS ACTIVATED - v7.0.113+');
-console.log('📊 Systems: ErrorRecovery, NetworkResilience, SessionManager, ResponseValidator, APIMonitor, FeatureAvailability');
+window.applyOpenTodayFilter = function() {
+  console.log('🟢 Applying Open Today filter...');
+
+  const btn = document.getElementById('openTodayFilterBtn');
+  const isActive = btn && btn.classList.contains('active');
+
+  if (isActive) {
+    // Remove filter
+    if (btn) btn.classList.remove('active');
+    activeFilters.quickFilters.delete('openToday');
+    showToast('🔄 Open Today filter cleared', 'info', 2000);
+  } else {
+    // Apply filter
+    if (btn) btn.classList.add('active');
+    activeFilters.quickFilters.add('openToday');
+    showToast('🟢 Showing only places open today', 'success', 2000);
+  }
+
+  applyFilters();
+};
+
+/**
+ * Apply closing soon filter (within 2 hours)
+ */
+window.applyClosingSoonFilter = function() {
+  console.log('⏰ Applying Closing Soon filter...');
+
+  const btn = document.getElementById('closingSoonFilterBtn');
+  const isActive = btn && btn.classList.contains('active');
+
+  if (isActive) {
+    // Remove filter
+    if (btn) btn.classList.remove('active');
+    activeFilters.quickFilters.delete('closingSoon');
+    showToast('🔄 Closing Soon filter cleared', 'info', 2000);
+  } else {
+    // Apply filter
+    if (btn) btn.classList.add('active');
+    activeFilters.quickFilters.add('closingSoon');
+    showToast('⏰ Showing places closing within 2 hours', 'success', 2000);
+  }
+
+  applyFilters();
+};
+
+// ===========================================================================
+// 13. UPDATE FILTER LOGIC TO INCLUDE OPEN TODAY & CLOSING SOON
+// ===========================================================================
+
+// Store original applyFilters function
+const originalApplyFilters = window.applyFilters;
+
+/**
+ * Enhanced applyFilters with open today and closing soon support
+ */
+window.applyFilters = function() {
+  if (typeof originalApplyFilters === 'function') {
+    // Call original filter logic
+    originalApplyFilters();
+  }
+
+  // Apply additional filters
+  if (!window.totalFilteredAdventures) {
+    console.warn('⚠️ filteredAdventures not set yet');
+    return;
+  }
+
+  let filtered = [...window.totalFilteredAdventures];
+
+  // Apply open today filter
+  if (activeFilters.quickFilters && activeFilters.quickFilters.has('openToday')) {
+    filtered = filtered.filter(adventure => {
+      const hours = adventure.hours || (adventure.values && adventure.values[0][19]);
+      const isOpen = window.cityViewerEnhancements?.isOpenToday(hours);
+      return isOpen === true; // Only true (open), not null or false
+    });
+    console.log(`✅ Open Today filter: ${filtered.length} locations open`);
+  }
+
+  // Apply closing soon filter
+  if (activeFilters.quickFilters && activeFilters.quickFilters.has('closingSoon')) {
+    filtered = filtered.filter(adventure => {
+      const hours = adventure.hours || (adventure.values && adventure.values[0][19]);
+      const isClosing = window.cityViewerEnhancements?.isClosingSoon(hours);
+      return isClosing === true;
+    });
+    console.log(`⏰ Closing Soon filter: ${filtered.length} locations closing soon`);
+  }
+
+  // Update global filtered adventures
+  window.totalFilteredAdventures = filtered;
+
+  // Re-render cards
+  if (typeof renderPaginatedCards === 'function') {
+    renderPaginatedCards();
+  }
+};
+
+// ===========================================================================
+// 14. INITIALIZATION COMPLETE
+// ===========================================================================
+console.log('✅ ALL STABILITY SYSTEMS ACTIVATED - v7.0.128+');
+console.log('📊 Systems: ErrorRecovery, NetworkResilience, SessionManager, ResponseValidator, APIMonitor, FeatureAvailability, CityViewerEnhancements');
 console.log('🛡️ App is now production-ready with enterprise-grade reliability');
 </script>
 
