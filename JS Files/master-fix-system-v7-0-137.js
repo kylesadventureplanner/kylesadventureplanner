@@ -221,26 +221,10 @@ if (isEditMode) {
 // ============================================================
 
 /**
- * Watch for city viewer modal attempts and redirect
+ * showModal interceptor already handled by final-fix-v7-0-139
+ * This prevents duplicate declaration errors
  */
-const originalShowModal = HTMLElement.prototype.showModal;
-if (originalShowModal) {
-  HTMLElement.prototype.showModal = function() {
-    console.log(`🔍 showModal called on: ${this.id || this.className}`);
-
-    // If it's a city viewer modal, convert to tab
-    if (this.id?.includes('city') || this.textContent?.includes('City Viewer')) {
-      console.log('🌆 Detected city viewer modal - opening in tab instead');
-      window.openCityViewerInTab?.();
-      return;
-    }
-
-    // Otherwise, show normally
-    return originalShowModal.call(this);
-  };
-}
-
-console.log('✅ Modal interceptor installed');
+console.log('✅ Modal interceptor handled by final-fix-v7-0-139');
 
 /**
  * Override City Viewer window opening
@@ -261,7 +245,7 @@ window.openCityViewerInTab = function() {
 window.openCityViewerWindow = window.openCityViewerInTab;
 window.viewCityDetails = window.openCityViewerInTab;
 
-console.log('✅ City Viewer functions overridden');
+console.log('✅ City Viewer functions set as backup');
 
 // ============================================================
 // 5. VERIFICATION SYSTEM

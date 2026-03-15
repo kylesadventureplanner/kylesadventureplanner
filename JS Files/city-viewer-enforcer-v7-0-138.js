@@ -72,23 +72,10 @@ console.log('✅ City Viewer tab opener installed');
 // ============================================================
 
 /**
- * Intercept modal opens
+ * Modal interceptor already handled by final-fix-v7-0-139
+ * This prevents duplicate declaration errors
  */
-const originalShowModal = HTMLElement.prototype.showModal;
-if (originalShowModal) {
-  HTMLElement.prototype.showModal = function() {
-    console.log(`🔍 showModal attempted on: ${this.id || this.className}`);
-
-    if (this.id?.includes('city') || this.textContent?.includes('City Viewer')) {
-      console.log('🌆 Intercepted City Viewer modal - opening in tab instead');
-      window.openCityViewerWindow();
-      return;
-    }
-
-    return originalShowModal.call(this);
-  };
-  console.log('✅ Modal interceptor installed');
-}
+console.log('✅ Modal interceptor handled by final-fix-v7-0-139');
 
 // ============================================================
 // 3. GEOLOCATION & DRIVE TIME SYSTEM
