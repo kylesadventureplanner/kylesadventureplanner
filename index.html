@@ -16583,9 +16583,92 @@ COMMON ISSUES:
     showToast('⏳ Refreshing Place IDs...', 'info', 3000);
   };
 
-  window.handleBulkAddChainLocations = window.handleBulkAddChainLocations || function() {
-    console.warn('⏳ Bulk Add Chain handler loading...');
-    showToast('⏳ Loading Bulk Add feature...', 'info', 3000);
+  window.handleBulkAddChainLocations = window.handleBulkAddChainLocations || function(locations, type, callback) {
+    console.log(`⛓️ Bulk Add Chain Locations: Processing ${locations.length} locations...`);
+
+    try {
+      if (!window.adventuresData) {
+        console.error('❌ adventuresData not available');
+        if (callback) callback({ successful: 0, failed: locations.length, errors: ['adventuresData not available'] });
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+      const errors = [];
+
+      locations.forEach((location, idx) => {
+        try {
+          console.log(`📍 Adding location ${idx + 1}/${locations.length}: ${location}`);
+
+          // Use the existing addNewPlace function
+          if (typeof window.addNewPlace === 'function') {
+            window.addNewPlace(location, '', '');
+            successCount++;
+          } else {
+            console.warn('addNewPlace function not available');
+            failCount++;
+            errors.push(`Location ${idx + 1}: addNewPlace function not available`);
+          }
+        } catch (err) {
+          console.error(`❌ Error adding location ${idx + 1}:`, err);
+          failCount++;
+          errors.push(`Location ${idx + 1}: ${err.message}`);
+        }
+      });
+
+      // Force save to Excel
+      console.log('💾 Saving to Excel...');
+      if (typeof window.saveToExcel === 'function') {
+        try {
+          window.saveToExcel();
+          console.log('✅ Saved to Excel');
+        } catch (excelErr) {
+          console.error('❌ Error saving to Excel:', excelErr);
+          errors.push(`Excel save failed: ${excelErr.message}`);
+        }
+      } else {
+        console.warn('⚠️ saveToExcel function not available');
+      }
+
+      // Trigger table refresh
+      if (typeof window.loadTable === 'function') {
+        try {
+          window.loadTable();
+          console.log('📊 Table refreshed');
+        } catch (tableErr) {
+          console.error('❌ Error refreshing table:', tableErr);
+        }
+      }
+
+      // Call callback with results
+      if (callback) {
+        callback({
+          successful: successCount,
+          failed: failCount,
+          errors: errors.length > 0 ? errors : undefined
+        });
+      }
+
+      console.log(`✅ Bulk add complete: ${successCount} successful, ${failCount} failed`);
+
+      if (typeof showToast === 'function') {
+        if (failCount === 0) {
+          showToast(`✅ Successfully added ${successCount} locations!`, 'success', 3000);
+        } else {
+          showToast(`⚠️ Added ${successCount}, failed ${failCount}`, 'warning', 3000);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Exception in handleBulkAddChainLocations:', error);
+      if (callback) {
+        callback({
+          successful: 0,
+          failed: locations.length,
+          errors: [error.message, error.stack?.substring(0, 200)]
+        });
+      }
+    }
   };
 
   window.handleFindSimilar = window.handleFindSimilar || function() {

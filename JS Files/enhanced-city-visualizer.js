@@ -1182,63 +1182,212 @@ class EnhancedCityVisualizer {
     document.getElementById('enhancedCityVisualizerBackdrop').classList.remove('visible');
     document.getElementById('enhancedCityVisualizerModal').classList.remove('visible');
   }
+
+  /**
+   * Display location details inline within city viewer
+   */
+  displayLocationDetailsInline(index, values) {
+    const detailView = document.getElementById('cityDetailView');
+    if (!detailView) {
+      console.error('Detail view element not found');
+      return;
+    }
+
+    // Extract data from values array (flexible parsing)
+    const name = values[0] || 'Unknown Location';
+    const placeId = values[1] || '';
+    const website = values[2] || '';
+    const phone = values[3] || '';
+    const hours = values[4] || '';
+    const difficulty = values[5] || '';
+    const activityType = values[6] || '';
+    const trailLength = values[7] || '';
+    const city = values[10] || '';
+    const state = values[9] || '';
+    const address = values[11] || '';
+    const rating = values[13] || '';
+    const notes = values[20] || '';
+    const tags = (values[24] || '').split(',').map(t => t.trim()).filter(Boolean);
+
+    // Create details display HTML
+    const detailsHTML = `
+      <div class="enhanced-location-details-view">
+        <div class="enhanced-location-details-header">
+          <button class="enhanced-city-back-btn" onclick="window.enhancedCityViz.currentView = 'cityDetail'; document.getElementById('cityListView').style.display = 'none'; document.getElementById('cityDetailView').style.display = 'block'; window.enhancedCityViz.viewCityDetails(window.enhancedCityViz.selectedCity.name);">← Back to Locations</button>
+          <h2 class="enhanced-location-details-title">${name}</h2>
+        </div>
+
+        <div class="enhanced-location-details-content">
+          <!-- Main Info Card -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px 0; font-size: 24px;">${name}</h3>
+            <p style="margin: 0; opacity: 0.9;">${city}, ${state}</p>
+          </div>
+
+          <!-- Quick Stats -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+            ${rating ? `
+              <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 12px; border-radius: 6px;">
+                <div style="font-size: 12px; color: #6b7280;">Rating</div>
+                <div style="font-size: 18px; font-weight: 700; color: #10b981;">⭐ ${rating}</div>
+              </div>
+            ` : ''}
+            ${difficulty ? `
+              <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; border-radius: 6px;">
+                <div style="font-size: 12px; color: #6b7280;">Difficulty</div>
+                <div style="font-size: 18px; font-weight: 700; color: #f59e0b;">⛰️ ${difficulty}</div>
+              </div>
+            ` : ''}
+            ${trailLength ? `
+              <div style="background: #dbeafe; border-left: 4px solid #3b82f6; padding: 12px; border-radius: 6px;">
+                <div style="font-size: 12px; color: #6b7280;">Trail Length</div>
+                <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">📏 ${trailLength}</div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Contact Info -->
+          ${phone || website ? `
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <h4 style="margin: 0 0 12px 0; color: #1f2937; font-weight: 600;">📞 Contact Information</h4>
+              ${phone ? `<div style="margin-bottom: 8px;"><strong>Phone:</strong> <a href="tel:${phone}" style="color: #667eea; text-decoration: none;">${phone}</a></div>` : ''}
+              ${website ? `<div><strong>Website:</strong> <a href="${website}" target="_blank" style="color: #667eea; text-decoration: none;" title="${website}">${website.substring(0, 40)}...</a></div>` : ''}
+            </div>
+          ` : ''}
+
+          <!-- Location Details -->
+          <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <h4 style="margin: 0 0 12px 0; color: #1f2937; font-weight: 600;">📍 Location Details</h4>
+            ${address ? `<div style="margin-bottom: 8px;"><strong>Address:</strong> ${address}</div>` : ''}
+            ${placeId ? `<div style="margin-bottom: 8px;"><strong>Place ID:</strong> <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${placeId}</code></div>` : ''}
+            ${city ? `<div><strong>City:</strong> ${city}, ${state}</div>` : ''}
+          </div>
+
+          <!-- Hours -->
+          ${hours ? `
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <h4 style="margin: 0 0 12px 0; color: #1f2937; font-weight: 600;">🕐 Hours</h4>
+              <pre style="margin: 0; font-family: inherit; white-space: pre-wrap; word-wrap: break-word; font-size: 13px; color: #4b5563;">${hours}</pre>
+            </div>
+          ` : ''}
+
+          <!-- Tags -->
+          ${tags.length > 0 ? `
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <h4 style="margin: 0 0 12px 0; color: #1f2937; font-weight: 600;">🏷️ Tags</h4>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                ${tags.map(tag => `
+                  <span style="background: #dbeafe; color: #1e40af; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;">
+                    ${tag}
+                  </span>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Notes -->
+          ${notes ? `
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+              <h4 style="margin: 0 0 12px 0; color: #1f2937; font-weight: 600;">📝 Notes</h4>
+              <p style="margin: 0; color: #4b5563; line-height: 1.6;">${notes}</p>
+            </div>
+          ` : ''}
+
+          <!-- Additional Info -->
+          ${activityType ? `
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;">
+              <h4 style="margin: 0 0 12px 0; color: #1f2937; font-weight: 600;">🎯 Activity Type</h4>
+              <p style="margin: 0; color: #4b5563;">${activityType}</p>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    detailView.innerHTML = detailsHTML;
+    document.getElementById('cityListView').style.display = 'none';
+    detailView.style.display = 'block';
+
+    console.log(`✅ Displaying location details for: ${name}`);
+  }
+
+  // ...existing code...
 }
 
-// Global functions
-window.openEnhancedCityVisualizer = function() {
-  if (!window.enhancedCityViz) {
-    window.enhancedCityViz = new EnhancedCityVisualizer();
+/**
+ * Safely extract values from adventure data with flexible structure handling
+ */
+window.getSafeAdventureValues = function(adventure) {
+  // Try multiple data structure patterns
+
+  // Pattern 1: adventure.row.values[0]
+  if (adventure?.row?.values?.[0] && Array.isArray(adventure.row.values[0])) {
+    return adventure.row.values[0];
   }
-  window.enhancedCityViz.show();
-};
 
-window.closeEnhancedCityVisualizer = function() {
-  window.enhancedCityViz?.hide();
-};
-
-window.viewCityDetails = function(cityName) {
-  window.enhancedCityViz?.viewCityDetails(cityName);
-};
-
-window.backToCityList = function() {
-  if (window.enhancedCityViz) {
-    window.enhancedCityViz.currentView = 'cityList';
-    document.getElementById('cityListView').style.display = 'grid';
-    document.getElementById('cityDetailView').style.display = 'none';
-    document.getElementById('citysearch').value = '';
-    window.enhancedCityViz.renderCityList();
+  // Pattern 2: adventure.values[0]
+  if (adventure?.values?.[0] && Array.isArray(adventure.values[0])) {
+    return adventure.values[0];
   }
+
+  // Pattern 3: adventure.values is directly an array
+  if (adventure?.values && Array.isArray(adventure.values) && adventure.values.length > 0 && Array.isArray(adventure.values[0])) {
+    return adventure.values[0];
+  }
+
+  // Pattern 4: adventure is directly an array
+  if (Array.isArray(adventure) && adventure.length > 0) {
+    return adventure;
+  }
+
+  // Pattern 5: adventure.data
+  if (adventure?.data && Array.isArray(adventure.data)) {
+    return adventure.data;
+  }
+
+  console.warn('⚠️ Could not parse adventure data structure:', adventure);
+  return null;
 };
 
 window.showLocationDetails = function(index) {
   try {
     // Safely access adventure data
     if (!window.adventuresData || !window.adventuresData[index]) {
-      console.warn(`Location index ${index} not found`);
+      console.warn(`⚠️ Location index ${index} not found`);
       return;
     }
 
     const adventure = window.adventuresData[index];
 
-    // Safely access row data
-    if (!adventure || !adventure.row || !adventure.row.values || !adventure.row.values[0]) {
-      console.error('Invalid adventure data structure:', adventure);
+    // Use flexible parsing
+    const values = window.getSafeAdventureValues(adventure);
+
+    if (!values || !Array.isArray(values)) {
+      console.error('❌ Invalid adventure data structure. Attempted to parse:', adventure);
+      window.showToast('❌ Error: Invalid location data structure', 'error', 3000);
       return;
     }
 
-    const values = adventure.row.values[0];
     const name = values[0] || 'Unknown Location';
+    const city = values[10] || 'Unknown City';
+    const state = values[9] || '';
 
-    window.closeEnhancedCityVisualizer();
+    console.log(`📍 Showing details for: ${name} (${city}, ${state})`);
 
-    if (typeof window.showCardDetails === 'function') {
-      window.showCardDetails(index);
+    // Display details within city viewer instead of closing it
+    if (window.enhancedCityViz) {
+      window.enhancedCityViz.displayLocationDetailsInline(index, values);
     } else {
-      window.showToast(`📌 ${name} selected`, 'info', 2000);
+      // Fallback: show details in separate view if city viewer not available
+      if (typeof window.showCardDetails === 'function') {
+        window.showCardDetails(index);
+      } else {
+        window.showToast(`📌 ${name}`, 'info', 2000);
+      }
     }
   } catch (error) {
-    console.error('Error in showLocationDetails:', error);
-    window.showToast('Error opening location details', 'error', 2000);
+    console.error('❌ Error in showLocationDetails:', error);
+    window.showToast('❌ Error opening location details', 'error', 3000);
   }
 };
 

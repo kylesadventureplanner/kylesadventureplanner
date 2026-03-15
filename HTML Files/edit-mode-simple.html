@@ -199,6 +199,125 @@
       color: #6b7280;
       margin-top: 4px;
     }
+
+    /* ENHANCED STATUS DISPLAY */
+    .status-container {
+      margin-top: 16px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .status-header {
+      padding: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-header.success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+
+    .status-header.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #dc2626;
+    }
+
+    .status-header.progress {
+      background: #dbeafe;
+      color: #1e40af;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.3);
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .status-details {
+      background: #f9fafb;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      color: #1f2937;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .detail-item {
+      padding: 8px;
+      border-bottom: 1px solid #e5e7eb;
+      margin-bottom: 8px;
+    }
+
+    .detail-item.success {
+      background: #ecfdf5;
+      border-left: 3px solid #10b981;
+      padding-left: 12px;
+    }
+
+    .detail-item.error {
+      background: #fef2f2;
+      border-left: 3px solid #dc2626;
+      padding-left: 12px;
+    }
+
+    .detail-item.warning {
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      padding-left: 12px;
+    }
+
+    .detail-item.info {
+      background: #f0f9ff;
+      border-left: 3px solid #0ea5e9;
+      padding-left: 12px;
+    }
+
+    .detail-label {
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      color: #6b7280;
+      margin-left: 16px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #0ea5e9);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
   </style>
 </head>
 <body>
@@ -474,6 +593,125 @@
       console.log(`🧪 Dry run for ${feature}: ${state}`);
     }
 
+    // UTILITY: Create detailed status display with results
+    function createStatusDisplay(title, icon, details, isError = false) {
+      const statusClass = isError ? 'error' : 'success';
+      const container = document.createElement('div');
+      container.className = 'status-container';
+
+      const header = document.createElement('div');
+      header.className = `status-header ${statusClass}`;
+
+      const titleSpan = document.createElement('span');
+      titleSpan.textContent = `${icon} ${title}`;
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.textContent = '📋 Copy';
+      copyBtn.onclick = (e) => {
+        e.stopPropagation();
+        const text = details.map(d => {
+          if (typeof d === 'object') {
+            return `${d.label}: ${d.value}`;
+          }
+          return d;
+        }).join('\n');
+
+        navigator.clipboard.writeText(text).then(() => {
+          const origText = copyBtn.textContent;
+          copyBtn.textContent = '✅ Copied!';
+          setTimeout(() => {
+            copyBtn.textContent = origText;
+          }, 2000);
+        }).catch(() => {
+          alert('Failed to copy to clipboard');
+        });
+      };
+
+      header.appendChild(titleSpan);
+      header.appendChild(copyBtn);
+      container.appendChild(header);
+
+      const detailsDiv = document.createElement('div');
+      detailsDiv.className = 'status-details';
+
+      details.forEach((detail, idx) => {
+        if (typeof detail === 'object') {
+          const item = document.createElement('div');
+          item.className = `detail-item ${detail.type || 'info'}`;
+
+          const label = document.createElement('div');
+          label.className = 'detail-label';
+          label.textContent = detail.label;
+
+          const value = document.createElement('div');
+          value.className = 'detail-value';
+          value.textContent = detail.value;
+
+          item.appendChild(label);
+          item.appendChild(value);
+          detailsDiv.appendChild(item);
+        } else {
+          const item = document.createElement('div');
+          item.className = 'detail-item info';
+          item.textContent = detail;
+          detailsDiv.appendChild(item);
+        }
+      });
+
+      container.appendChild(detailsDiv);
+      return container;
+    }
+
+    // UTILITY: Format detailed results
+    function formatResults(title, icon, data) {
+      const details = [];
+      details.push({ label: '⏱️ Timestamp', value: new Date().toLocaleTimeString(), type: 'info' });
+
+      if (data.status) {
+        details.push({ label: '📊 Status', value: data.status, type: data.success ? 'success' : 'error' });
+      }
+
+      if (data.counts) {
+        Object.entries(data.counts).forEach(([key, value]) => {
+          let icon = '➖';
+          if (key.includes('success') || key.includes('added')) icon = '✅';
+          else if (key.includes('error') || key.includes('failed')) icon = '❌';
+          else if (key.includes('skip')) icon = '⏭️';
+
+          details.push({
+            label: `${icon} ${key}`,
+            value: value.toString(),
+            type: key.includes('error') ? 'error' : 'success'
+          });
+        });
+      }
+
+      if (data.items && data.items.length > 0) {
+        details.push({ label: '📋 Details', value: '', type: 'info' });
+        data.items.forEach(item => {
+          details.push({
+            label: `  ${item.icon} ${item.name}`,
+            value: item.status,
+            type: item.type || 'info'
+          });
+        });
+      }
+
+      if (data.errors && data.errors.length > 0) {
+        details.push({ label: '🚨 Errors', value: '', type: 'error' });
+        data.errors.forEach(error => {
+          details.push({
+            label: `  ❌ Error`,
+            value: error,
+            type: 'error'
+          });
+        });
+      }
+
+      return createStatusDisplay(title, icon, details, !data.success);
+    }
+
     // ADD SINGLE PLACE
     function addSinglePlace() {
       const type = document.getElementById('singleType').value;
@@ -565,19 +803,48 @@
 
       const locations = values.split('\n').filter(v => v.trim());
       if (locations.length === 0) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter at least one location</div>';
+        const errorDisplay = formatResults('⛓️ Bulk Add Chain Locations - Error', '❌', {
+          success: false,
+          status: 'No locations provided',
+          errors: ['Please enter at least one location in the textarea']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
         return;
       }
 
       if (dryRun) {
-        const message = `🧪 Would add ${locations.length} chain locations`;
-        statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-        console.log(`${message}\n${locations.map(l => `  • ${l}`).join('\n')}`);
+        const previewDisplay = formatResults('⛓️ Bulk Add Chain Locations - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run - Would add these locations',
+          counts: {
+            'Preview Count': locations.length,
+            'Type': type
+          },
+          items: locations.map((loc, idx) => ({
+            icon: '📍',
+            name: `Location ${idx + 1}`,
+            status: loc.substring(0, 50),
+            type: 'info'
+          }))
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
         return;
       }
 
       // Show progress
-      statusDiv.innerHTML = `<div class="status-message status-success">⏳ Adding ${locations.length} chain locations...</div>`;
+      const progressDisplay = formatResults('⛓️ Bulk Add Chain Locations - Processing', '⏳', {
+        success: true,
+        status: `Processing ${locations.length} locations...`,
+        counts: {
+          'Total Locations': locations.length,
+          'Status': 'In Progress'
+        }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+      console.log(`Adding ${locations.length} chain locations...`);
 
       // Call to main window with proper handler
       if (window.opener && typeof window.opener.handleBulkAddChainLocations === 'function') {
@@ -588,17 +855,47 @@
           window.opener.handleBulkAddChainLocations(locations, type, (results) => {
             console.log('Chain locations processed:', results);
 
-            const successCount = results.successful || locations.length;
+            const successCount = results.successful || 0;
             const failCount = results.failed || 0;
+            const totalCount = locations.length;
 
-            let resultMessage = `✅ Successfully added ${successCount} chain locations`;
-            if (failCount > 0) {
-              resultMessage += ` (${failCount} failed)`;
+            const items = locations.slice(0, 20).map((loc, idx) => ({
+              icon: idx < successCount ? '✅' : '❌',
+              name: `Location ${idx + 1}`,
+              status: loc.substring(0, 60),
+              type: idx < successCount ? 'success' : 'error'
+            }));
+
+            if (locations.length > 20) {
+              items.push({
+                icon: '...',
+                name: `... and ${locations.length - 20} more`,
+                status: 'Listed above',
+                type: 'info'
+              });
             }
-            resultMessage += '! Excel has been updated.';
 
-            statusDiv.innerHTML = `<div class="status-message status-success">${resultMessage}</div>`;
-            console.log(`⛓️ ${resultMessage}`);
+            const errors = results.errors || [];
+            const resultDisplay = formatResults(
+              '⛓️ Bulk Add Chain Locations - Complete',
+              successCount === totalCount ? '✅' : '⚠️',
+              {
+                success: failCount === 0,
+                status: failCount === 0 ? 'All locations added successfully!' : `Added with some errors`,
+                counts: {
+                  'Total Requested': totalCount,
+                  'Successfully Added': successCount,
+                  'Failed': failCount,
+                  'Excel Saved': 'Yes'
+                },
+                items: items,
+                errors: errors.length > 0 ? errors : null
+              }
+            );
+
+            statusDiv.innerHTML = '';
+            statusDiv.appendChild(resultDisplay);
+            console.log(`⛓️ Processing complete: ${successCount} successful, ${failCount} failed`);
 
             document.getElementById('chainValues').value = '';
 
@@ -608,14 +905,44 @@
                 console.log('Reloading main window...');
                 window.opener.location.reload();
               }
-            }, 2000);
+            }, 3000);
           });
         } catch (error) {
-          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error adding locations: ${error.message}</div>`;
           console.error('Error adding chain locations:', error);
+
+          const errorDisplay = formatResults(
+            '⛓️ Bulk Add Chain Locations - Error',
+            '❌',
+            {
+              success: false,
+              status: 'Exception occurred during processing',
+              errors: [
+                error.message,
+                error.stack ? `Stack: ${error.stack.substring(0, 200)}...` : 'No stack trace available'
+              ]
+            }
+          );
+
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
         }
       } else {
-        statusDiv.innerHTML = `<div class="status-message status-error">❌ Cannot access main window. Please ensure the Edit Mode window is opened from the main app.</div>`;
+        const errorDisplay = formatResults(
+          '⛓️ Bulk Add Chain Locations - Error',
+          '❌',
+          {
+            success: false,
+            status: 'Cannot access main window',
+            errors: [
+              'The main application window is not available',
+              'Make sure Edit Mode is opened from the main app',
+              'Check that window.opener is not null or closed'
+            ]
+          }
+        );
+
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
         console.warn('Main window (window.opener) not available or handleBulkAddChainLocations not found');
       }
     }
@@ -626,13 +953,28 @@
       const statusDiv = document.getElementById('missing-status');
 
       if (dryRun) {
-        statusDiv.innerHTML = '<div class="status-message status-success">🧪 Would populate missing fields for all locations</div>';
-        console.log('🧪 DRY RUN: Populate missing fields');
+        const previewDisplay = formatResults('📝 Populate Missing Fields - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run Mode - No changes will be made',
+          counts: {
+            'Mode': 'Preview Only'
+          }
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
         return;
       }
 
       // Show progress
-      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Populating missing fields...</div>';
+      const progressDisplay = formatResults('📝 Populate Missing Fields - Processing', '⏳', {
+        success: true,
+        status: 'Scanning locations and fetching missing data...',
+        counts: {
+          'Status': 'In Progress'
+        }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
       console.log('📝 Starting to populate missing fields...');
 
       if (window.opener && typeof window.opener.populateMissingFields === 'function') {
@@ -642,27 +984,61 @@
             const skipped = results.skipped || 0;
             const errors = results.errors || 0;
 
-            let message = `✅ Populated ${updated} fields`;
-            if (skipped > 0) message += `, skipped ${skipped}`;
-            if (errors > 0) message += `, ${errors} errors`;
-            message += '! Excel updated.';
+            const resultDisplay = formatResults(
+              '📝 Populate Missing Fields - Complete',
+              errors === 0 ? '✅' : '⚠️',
+              {
+                success: errors === 0,
+                status: errors === 0 ? 'All fields populated successfully' : 'Completed with some errors',
+                counts: {
+                  'Fields Updated': updated,
+                  'Locations Skipped': skipped,
+                  'Errors': errors,
+                  'Excel Saved': 'Yes'
+                }
+              }
+            );
 
-            statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-            console.log(`📝 ${message}`);
+            statusDiv.innerHTML = '';
+            statusDiv.appendChild(resultDisplay);
+            console.log(`📝 Populate complete: ${updated} updated, ${skipped} skipped, ${errors} errors`);
 
             // Reload main page
             setTimeout(() => {
               if (window.opener) {
                 window.opener.location.reload();
               }
-            }, 2000);
+            }, 3000);
           });
         } catch (error) {
-          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
           console.error('Error populating fields:', error);
+
+          const errorDisplay = formatResults(
+            '📝 Populate Missing Fields - Error',
+            '❌',
+            {
+              success: false,
+              status: 'Exception occurred during processing',
+              errors: [error.message]
+            }
+          );
+
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
         }
       } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        const errorDisplay = formatResults(
+          '📝 Populate Missing Fields - Error',
+          '❌',
+          {
+            success: false,
+            status: 'Cannot access main window',
+            errors: ['The function populateMissingFields is not available in the main window']
+          }
+        );
+
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
         console.warn('populateMissingFields not available');
       }
     }
@@ -673,13 +1049,28 @@
       const statusDiv = document.getElementById('hours-status');
 
       if (dryRun) {
-        statusDiv.innerHTML = '<div class="status-message status-success">🧪 Would update hours for all locations</div>';
-        console.log('🧪 DRY RUN: Update hours only');
+        const previewDisplay = formatResults('🕐 Update Hours Only - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run Mode - No changes will be made',
+          counts: {
+            'Mode': 'Preview Only'
+          }
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
         return;
       }
 
       // Show progress
-      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Updating hours...</div>';
+      const progressDisplay = formatResults('🕐 Update Hours Only - Processing', '⏳', {
+        success: true,
+        status: 'Fetching and updating operating hours...',
+        counts: {
+          'Status': 'In Progress'
+        }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
       console.log('🕐 Starting to update hours...');
 
       if (window.opener && typeof window.opener.updateHoursOnly === 'function') {
@@ -689,27 +1080,61 @@
             const skipped = results.skipped || 0;
             const errors = results.errors || 0;
 
-            let message = `✅ Updated ${updated} locations' hours`;
-            if (skipped > 0) message += `, skipped ${skipped}`;
-            if (errors > 0) message += `, ${errors} errors`;
-            message += '! Excel updated.';
+            const resultDisplay = formatResults(
+              '🕐 Update Hours Only - Complete',
+              errors === 0 ? '✅' : '⚠️',
+              {
+                success: errors === 0,
+                status: errors === 0 ? 'All hours updated successfully' : 'Completed with some errors',
+                counts: {
+                  'Hours Updated': updated,
+                  'Locations Skipped': skipped,
+                  'Errors': errors,
+                  'Excel Saved': 'Yes'
+                }
+              }
+            );
 
-            statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-            console.log(`🕐 ${message}`);
+            statusDiv.innerHTML = '';
+            statusDiv.appendChild(resultDisplay);
+            console.log(`🕐 Update hours complete: ${updated} updated, ${skipped} skipped, ${errors} errors`);
 
             // Reload main page
             setTimeout(() => {
               if (window.opener) {
                 window.opener.location.reload();
               }
-            }, 2000);
+            }, 3000);
           });
         } catch (error) {
-          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
           console.error('Error updating hours:', error);
+
+          const errorDisplay = formatResults(
+            '🕐 Update Hours Only - Error',
+            '❌',
+            {
+              success: false,
+              status: 'Exception occurred during processing',
+              errors: [error.message]
+            }
+          );
+
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
         }
       } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
+        const errorDisplay = formatResults(
+          '🕐 Update Hours Only - Error',
+          '❌',
+          {
+            success: false,
+            status: 'Cannot access main window',
+            errors: ['The function updateHoursOnly is not available in the main window']
+          }
+        );
+
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
         console.warn('updateHoursOnly not available');
       }
     }
@@ -720,33 +1145,55 @@
       const statusDiv = document.getElementById('refresh-status');
 
       if (dryRun) {
-        statusDiv.innerHTML = '<div class="status-message status-success">🧪 Would refresh all Place IDs</div>';
-        console.log('🧪 DRY RUN: Refresh Place IDs');
+        const previewDisplay = formatResults('🔄 Refresh Place IDs - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run Mode - No changes will be made',
+          counts: { 'Mode': 'Preview Only' }
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
         return;
       }
 
-      // Show progress
-      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Refreshing Place IDs...</div>';
-      console.log('🔄 Starting to refresh Place IDs...');
+      const progressDisplay = formatResults('🔄 Refresh Place IDs - Processing', '⏳', {
+        success: true,
+        status: 'Refreshing Place IDs from Google Places API...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
 
       if (window.opener && typeof window.opener.refreshPlaceIds === 'function') {
         try {
           window.opener.refreshPlaceIds();
-          statusDiv.innerHTML = '<div class="status-message status-success">✅ Place IDs refreshed! Excel updated.</div>';
+          const resultDisplay = formatResults('🔄 Refresh Place IDs - Complete', '✅', {
+            success: true,
+            status: 'Place IDs refreshed successfully',
+            counts: { 'Status': 'Complete', 'Excel Saved': 'Yes' }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
 
-          // Reload main page
           setTimeout(() => {
-            if (window.opener) {
-              window.opener.location.reload();
-            }
-          }, 2000);
+            if (window.opener) window.opener.location.reload();
+          }, 3000);
         } catch (error) {
-          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-          console.error('Error refreshing Place IDs:', error);
+          const errorDisplay = formatResults('🔄 Refresh Place IDs - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
         }
       } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
-        console.warn('refreshPlaceIds not available in main window');
+        const errorDisplay = formatResults('🔄 Refresh Place IDs - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['refreshPlaceIds function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
       }
     }
 
@@ -756,33 +1203,55 @@
       const statusDiv = document.getElementById('autotag-status');
 
       if (dryRun) {
-        statusDiv.innerHTML = '<div class="status-message status-success">🧪 Would auto-tag all locations</div>';
-        console.log('🧪 DRY RUN: Auto-tag all locations');
+        const previewDisplay = formatResults('🏷️ Auto-Tag All - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run Mode - No changes will be made',
+          counts: { 'Mode': 'Preview Only' }
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
         return;
       }
 
-      // Show progress
-      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Auto-tagging locations...</div>';
-      console.log('🏷️ Starting to auto-tag all locations...');
+      const progressDisplay = formatResults('🏷️ Auto-Tag All Locations - Processing', '⏳', {
+        success: true,
+        status: 'Scanning locations and generating tags...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
 
       if (window.opener && typeof window.opener.autoTagAll === 'function') {
         try {
           window.opener.autoTagAll();
-          statusDiv.innerHTML = '<div class="status-message status-success">✅ Auto-tagging complete! Excel updated.</div>';
+          const resultDisplay = formatResults('🏷️ Auto-Tag All - Complete', '✅', {
+            success: true,
+            status: 'Locations tagged successfully',
+            counts: { 'Status': 'Complete', 'Excel Saved': 'Yes' }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
 
-          // Reload main page
           setTimeout(() => {
-            if (window.opener) {
-              window.opener.location.reload();
-            }
-          }, 2000);
+            if (window.opener) window.opener.location.reload();
+          }, 3000);
         } catch (error) {
-          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-          console.error('Error auto-tagging:', error);
+          const errorDisplay = formatResults('🏷️ Auto-Tag All - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
         }
       } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
-        console.warn('autoTagAll not available in main window');
+        const errorDisplay = formatResults('🏷️ Auto-Tag All - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['autoTagAll function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
       }
     }
 
@@ -790,79 +1259,133 @@
     function createBackup() {
       const statusDiv = document.getElementById('backup-status');
 
-      // Show progress
-      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Creating backup...</div>';
-      console.log('💾 Starting backup...');
+      const progressDisplay = formatResults('💾 Create Backup - Processing', '⏳', {
+        success: true,
+        status: 'Creating backup of all location data...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
 
       if (window.opener && typeof window.opener.createBackup === 'function') {
         try {
           window.opener.createBackup();
-          statusDiv.innerHTML = '<div class="status-message status-success">✅ Backup created successfully!</div>';
-          console.log('💾 Backup complete');
+          const resultDisplay = formatResults('💾 Create Backup - Complete', '✅', {
+            success: true,
+            status: 'Backup created successfully',
+            counts: { 'Status': 'Complete', 'Timestamp': new Date().toLocaleString() }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
         } catch (error) {
-          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-          console.error('Error creating backup:', error);
+          const errorDisplay = formatResults('💾 Create Backup - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
         }
       } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
-        console.warn('createBackup not available in main window');
+        const errorDisplay = formatResults('💾 Create Backup - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['createBackup function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
       }
     }
 
-    // HISTORY SORTING
+    // SORT NEWEST
     function sortNewest() {
       const statusDiv = document.getElementById('history-status');
 
-      // Show progress
-      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Sorting by newest...</div>';
-      console.log('🆕 Sorting by newest first...');
+      const progressDisplay = formatResults('🆕 Sort by Newest - Processing', '⏳', {
+        success: true,
+        status: 'Sorting locations by newest first...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
 
       if (window.opener && typeof window.opener.sortNewest === 'function') {
         try {
           window.opener.sortNewest();
-          statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by newest first</div>';
+          const resultDisplay = formatResults('🆕 Sort by Newest - Complete', '✅', {
+            success: true,
+            status: 'Locations sorted by newest first',
+            counts: { 'Status': 'Complete' }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
 
-          // Reload after delay
           setTimeout(() => {
-            if (window.opener) {
-              window.opener.location.reload();
-            }
-          }, 1000);
+            if (window.opener) window.opener.location.reload();
+          }, 2000);
         } catch (error) {
-          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-          console.error('Error sorting newest:', error);
+          const errorDisplay = formatResults('🆕 Sort by Newest - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
         }
       } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
-        console.warn('sortNewest not available in main window');
+        const errorDisplay = formatResults('🆕 Sort by Newest - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['sortNewest function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
       }
     }
 
+    // SORT OLDEST
     function sortOldest() {
       const statusDiv = document.getElementById('history-status');
 
-      // Show progress
-      statusDiv.innerHTML = '<div class="status-message status-success">⏳ Sorting by oldest...</div>';
-      console.log('🕐 Sorting by oldest first...');
+      const progressDisplay = formatResults('🕐 Sort by Oldest - Processing', '⏳', {
+        success: true,
+        status: 'Sorting locations by oldest first...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
 
       if (window.opener && typeof window.opener.sortOldest === 'function') {
         try {
           window.opener.sortOldest();
-          statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by oldest first</div>';
+          const resultDisplay = formatResults('🕐 Sort by Oldest - Complete', '✅', {
+            success: true,
+            status: 'Locations sorted by oldest first',
+            counts: { 'Status': 'Complete' }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
 
-          // Reload after delay
           setTimeout(() => {
-            if (window.opener) {
-              window.opener.location.reload();
-            }
-          }, 1000);
+            if (window.opener) window.opener.location.reload();
+          }, 2000);
         } catch (error) {
-          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-          console.error('Error sorting oldest:', error);
+          const errorDisplay = formatResults('🕐 Sort by Oldest - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
         }
       } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Cannot access main window. Please ensure Edit Mode is opened from the main app.</div>';
-        console.warn('sortOldest not available in main window');
+        const errorDisplay = formatResults('🕐 Sort by Oldest - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['sortOldest function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
       }
     }
 
