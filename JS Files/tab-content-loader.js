@@ -139,7 +139,13 @@ class TabContentLoader {
     document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
 
     // Show selected tab
-    const tabPane = document.querySelector(`[data-tab="${tabId}"]`);
+    const tabPane = document.querySelector(`.app-tab-pane[data-tab="${tabId}"]`);
+
+    if (!tabPane) {
+      console.error(`❌ Tab pane not found for tab: ${tabId}`);
+      return;
+    }
+
     tabPane.classList.add('active');
 
     // Show loading indicator if not already loaded

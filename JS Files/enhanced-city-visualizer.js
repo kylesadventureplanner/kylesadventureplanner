@@ -38,7 +38,26 @@ class EnhancedCityVisualizer {
     this.createStyles();
     this.createMarkup();
     this.attachEventListeners();
-    this.populateCityData();
+
+    // Check if data is available
+    if (this.adventuresData && this.adventuresData.length > 0) {
+      this.populateCityData();
+      console.log(`✅ City Visualizer initialized with ${this.adventuresData.length} adventures`);
+    } else {
+      console.log('⏳ Waiting for adventure data...');
+      // Wait for data to load
+      const checkDataInterval = setInterval(() => {
+        if (window.adventuresData && window.adventuresData.length > 0) {
+          this.adventuresData = window.adventuresData;
+          this.populateCityData();
+          console.log(`✅ City data populated: ${this.adventuresData.length} adventures`);
+          clearInterval(checkDataInterval);
+        }
+      }, 500);
+
+      // Stop checking after 30 seconds
+      setTimeout(() => clearInterval(checkDataInterval), 30000);
+    }
   }
 
   /**
@@ -86,13 +105,27 @@ class EnhancedCityVisualizer {
 
     // Group by city and calculate distance
     this.adventuresData.forEach((adventure, idx) => {
-      // Add safety check for adventure structure
-      if (!adventure || !adventure.row || !adventure.row.values || !adventure.row.values[0]) {
-        console.warn('⚠️ Invalid adventure data at index:', idx);
-        return; // Skip this adventure
+      // Try multiple data structure patterns
+      let values = null;
+
+      // Pattern 1: adventure.row.values[0]
+      if (adventure?.row?.values?.[0]) {
+        values = adventure.row.values[0];
+      }
+      // Pattern 2: adventure.values
+      else if (adventure?.values?.[0]) {
+        values = adventure.values[0];
+      }
+      // Pattern 3: adventure is directly an array
+      else if (Array.isArray(adventure) && adventure.length > 0) {
+        values = adventure;
       }
 
-      const values = adventure.row.values[0];
+      // If no valid data found, skip
+      if (!values || !Array.isArray(values)) {
+        return; // Skip silently - not an error
+      }
+
       const city = (values[10] || 'Unknown City').trim();
       const state = (values[9] || '').trim();
       const tags = (values[3] || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
@@ -624,6 +657,8 @@ class EnhancedCityVisualizer {
 
     let cities = Array.from(this.cityGroups.values());
 
+    console.log(`📊 City Visualizer: ${this.cityGroups.size} cities, ${cities.length} after filtering`);
+
     // Filter by search term
     if (searchTerm) {
       cities = cities.filter(city =>
@@ -643,6 +678,22 @@ class EnhancedCityVisualizer {
     }
 
     const listView = document.getElementById('cityListView');
+
+    // Show empty state if no cities
+    if (cities.length === 0) {
+      listView.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
+          <p style="font-size: 48px; margin: 0;">🏜️</p>
+          <p style="color: #6b7280; font-weight: 600; margin-top: 16px;">No cities found</p>
+          <p style="color: #9ca3af; font-size: 14px; margin-top: 8px;">
+            ${this.cityGroups.size === 0 ? 'Loading location data...' : 'Try adjusting your search filters'}
+          </p>
+        </div>
+      `;
+      console.warn('⚠️ No cities to display. City groups size:', this.cityGroups.size);
+      return;
+    }
+
     listView.innerHTML = cities.map(city => `
       <div class="enhanced-city-card" onclick="window.viewCityDetails('${city.name.replace(/'/g, "\\'")}')">
         <h3 class="enhanced-city-card-name">${city.name}</h3>
@@ -666,6 +717,8 @@ class EnhancedCityVisualizer {
         </div>
       </div>
     `).join('');
+
+    console.log(`✅ Rendered ${cities.length} cities`);
   }
 
   /**
@@ -765,7 +818,21 @@ class EnhancedCityVisualizer {
     document.getElementById('enhancedCityVisualizerBackdrop').classList.add('visible');
     document.getElementById('enhancedCityVisualizerModal').classList.add('visible');
     this.currentView = 'cityList';
+
+    // Refresh data in case it's been updated
+    this.refreshData();
     this.renderCityList();
+  }
+
+  /**
+   * Refresh data from main window
+   */
+  refreshData() {
+    if (window.adventuresData && window.adventuresData.length > 0) {
+      this.adventuresData = window.adventuresData;
+      // Re-populate city groups with fresh data
+      this.populateCityData();
+    }
   }
 
   /**
