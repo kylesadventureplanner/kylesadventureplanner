@@ -511,28 +511,42 @@
      * Tab switching
      */
     function switchTab(tabName, buttonElement) {
+      console.log(`🔄 switchTab called with: ${tabName}, buttonElement:`, buttonElement);
+
       // Hide all tabs
-      document.querySelectorAll('.tab-content').forEach(tab => {
+      const tabs = document.querySelectorAll('.tab-content');
+      console.log(`Found ${tabs.length} tab-content elements`);
+
+      tabs.forEach(tab => {
         tab.classList.remove('active');
       });
 
       // Remove active class from all buttons
-      document.querySelectorAll('.tab-btn').forEach(btn => {
+      const buttons = document.querySelectorAll('.tab-btn');
+      console.log(`Found ${buttons.length} tab-btn elements`);
+
+      buttons.forEach(btn => {
         btn.classList.remove('active');
       });
 
       // Show the selected tab
       const tabElement = document.getElementById(`${tabName}-tab`);
+      console.log(`Looking for element with id: ${tabName}-tab, found:`, tabElement);
+
       if (tabElement) {
         tabElement.classList.add('active');
         console.log(`✅ Tab switched to: ${tabName}`);
       } else {
         console.error(`❌ Tab not found: ${tabName}-tab`);
+        return;
       }
 
       // Activate the clicked button
       if (buttonElement) {
         buttonElement.classList.add('active');
+        console.log(`✅ Button activated:`, buttonElement);
+      } else {
+        console.warn(`⚠️ No button element provided`);
       }
     }
 
@@ -749,6 +763,26 @@
 
     // Initialize
     console.log('✅ Edit Mode UI Loaded');
+    console.log('📋 Available functions:', {
+      switchTab: typeof switchTab,
+      updateFeatureDryRun: typeof updateFeatureDryRun,
+      submitAddSinglePlace: typeof submitAddSinglePlace,
+      enhancedAutomation: typeof window.enhancedAutomation
+    });
+  </script>
+
+  <!-- Load Enhanced Automation Features -->
+  <script src="../JS Files/enhanced-automation-features-v2.js"></script>
+
+  <script>
+    // Verify enhanced automation loaded
+    setTimeout(() => {
+      if (window.enhancedAutomation) {
+        console.log('✅ Enhanced Automation Features loaded successfully');
+      } else {
+        console.warn('⚠️ Enhanced Automation Features not yet available');
+      }
+    }, 500);
   </script>
 </body>
 </html>
