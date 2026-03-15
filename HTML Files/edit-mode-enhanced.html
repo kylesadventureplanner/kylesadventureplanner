@@ -892,32 +892,38 @@
     }
 
     /**
-     * Submit Refresh Place IDs - Uses main window's comprehensive function
+     * Submit Refresh Place IDs
      */
     async function submitRefreshPlaceIds() {
+      console.log('🔄 submitRefreshPlaceIds called from edit mode');
       const dryRun = document.getElementById('refreshDryRun')?.checked || false;
       const statusDiv = document.getElementById('refresh-status');
 
       if (!statusDiv) {
-        alert('Error: Status div not found');
+        console.error('❌ refresh-status div not found');
         return;
       }
 
-      console.log(`🔄 Starting Refresh Place IDs (Dry Run: ${dryRun})...`);
+      statusDiv.innerHTML = '<div class="status-message" style="background: #dbeafe; color: #1e40af; border-left: 4px solid #1e40af; padding: 16px; border-radius: 8px;"><span style="display: inline-block; width: 20px; height: 20px; border: 3px solid #e5e7eb; border-top-color: #1e40af; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px;"></span>🔄 Initializing refresh...</div>';
 
       try {
-        // Call the main window's comprehensive function
-        if (window.opener && window.opener.refreshPlaceIdsWithProgress) {
+        // Call the main window's refresh function
+        if (window.opener && window.opener.refreshPlaceIdsFromEditMode) {
+          console.log('✅ Calling opener.refreshPlaceIdsFromEditMode');
+          await window.opener.refreshPlaceIdsFromEditMode(dryRun);
+        } else if (window.opener && window.opener.refreshPlaceIdsWithProgress) {
+          console.log('✅ Calling opener.refreshPlaceIdsWithProgress');
           await window.opener.refreshPlaceIdsWithProgress(dryRun);
-        } else if (window.refreshPlaceIdsWithProgress) {
-          await window.refreshPlaceIdsWithProgress(dryRun);
+        } else if (window.refreshPlaceIdsFromEditMode) {
+          console.log('✅ Calling local refreshPlaceIdsFromEditMode');
+          await window.refreshPlaceIdsFromEditMode(dryRun);
         } else {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: Refresh function not available in main window</div>';
-          console.error('❌ refreshPlaceIdsWithProgress not found');
+          statusDiv.innerHTML = '<div class="status-message status-error" style="padding: 16px; border-radius: 8px;">❌ Error: Refresh function not available. Make sure the main window is open.</div>';
+          console.error('❌ No refresh function found');
         }
       } catch (error) {
         console.error('❌ Error:', error);
-        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+        statusDiv.innerHTML = `<div class="status-message status-error" style="padding: 16px; border-radius: 8px;">❌ Error: ${error.message}</div>`;
       }
     }
 
