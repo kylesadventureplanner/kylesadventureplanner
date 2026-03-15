@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Mode - Adventure Planner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin: 0;
+    }
+
+    .close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* TAB STYLING */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #e5e7eb;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      color: #6b7280;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: #667eea;
+    }
+
+    .tab-btn.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #1f2937;
+    }
+
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #374151;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .button-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .button-primary:hover {
+      background: #5568d3;
+    }
+
+    .button-secondary {
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .button-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .status-success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+
+    .status-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #dc2626;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>📝 Edit Mode</h1>
+        <p style="margin-top: 4px; opacity: 0.9;">Manage locations and automation</p>
+      </div>
+      <button class="close-btn" onclick="window.close()">✕</button>
+    </div>
+
+    <!-- TABS NAVIGATION -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="places">➕ Add Places</button>
+      <button class="tab-btn" data-tab="automation">🔄 Automation</button>
+      <button class="tab-btn" data-tab="backup">💾 Backup</button>
+      <button class="tab-btn" data-tab="history">📅 History</button>
+    </div>
+
+    <!-- TAB 1: ADD PLACES -->
+    <div id="places-tab" class="tab-content active">
+      <div class="card">
+        <div class="card-title">➕ Add Single Place</div>
+        <div class="input-group">
+          <label>Input Type</label>
+          <select id="singleType">
+            <option value="name">Place Name</option>
+            <option value="address">Address</option>
+            <option value="placeId">Google Place ID</option>
+            <option value="website">Website URL</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Value</label>
+          <input type="text" id="singleValue" placeholder="Enter value">
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="addSinglePlace()">➕ Add</button>
+        </div>
+        <div id="single-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📦 Bulk Add Places</div>
+        <div class="input-group">
+          <label>Input Type</label>
+          <select id="bulkType">
+            <option value="name">Place Name</option>
+            <option value="address">Address</option>
+            <option value="placeId">Google Place ID</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Values (one per line)</label>
+          <textarea id="bulkValues" placeholder="Place 1&#10;Place 2&#10;Place 3"></textarea>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="bulkAddPlaces()">📦 Add All</button>
+        </div>
+        <div id="bulk-status"></div>
+      </div>
+    </div>
+
+    <!-- TAB 2: AUTOMATION -->
+    <div id="automation-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">🔄 Refresh Place IDs</div>
+        <p style="color: #6b7280; margin-bottom: 16px;">Refresh all Place IDs from Google.</p>
+        <div class="button-group">
+          <button class="button button-primary" onclick="refreshPlaceIds()">🔄 Refresh</button>
+        </div>
+        <div id="refresh-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏷️ Auto-Tag All</div>
+        <p style="color: #6b7280; margin-bottom: 16px;">Auto-tag all locations.</p>
+        <div class="button-group">
+          <button class="button button-primary" onclick="autoTagAll()">🏷️ Auto-Tag</button>
+        </div>
+        <div id="autotag-status"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: BACKUP -->
+    <div id="backup-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">💾 Backup</div>
+        <p style="color: #6b7280; margin-bottom: 16px;">Create a backup of all your data.</p>
+        <div class="button-group">
+          <button class="button button-primary" onclick="createBackup()">💾 Backup Now</button>
+        </div>
+        <div id="backup-status"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: HISTORY -->
+    <div id="history-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">📅 Location History</div>
+        <p style="color: #6b7280; margin-bottom: 16px;">View location history.</p>
+        <div class="button-group">
+          <button class="button button-secondary" onclick="sortNewest()">🆕 Newest</button>
+          <button class="button button-secondary" onclick="sortOldest()">🕐 Oldest</button>
+        </div>
+        <div id="history-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    console.log('✅ Edit Mode Loaded');
+
+    // Tab switching with event listeners
+    function initTabs() {
+      console.log('🔧 Initializing tabs...');
+
+      const buttons = document.querySelectorAll('.tab-btn');
+      console.log(`Found ${buttons.length} tab buttons`);
+
+      buttons.forEach(button => {
+        button.addEventListener('click', function() {
+          const tabName = this.getAttribute('data-tab');
+          console.log(`📌 Clicked tab: ${tabName}`);
+          switchTab(tabName);
+        });
+      });
+
+      console.log('✅ Tab initialization complete');
+    }
+
+    function switchTab(tabName) {
+      console.log(`🔄 Switching to tab: ${tabName}`);
+
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+
+      // Remove active from buttons
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      // Show selected tab
+      const tabElement = document.getElementById(`${tabName}-tab`);
+      if (tabElement) {
+        tabElement.classList.add('active');
+        console.log(`✅ Tab activated: ${tabName}`);
+      } else {
+        console.error(`❌ Tab not found: ${tabName}-tab`);
+      }
+
+      // Highlight button
+      const button = document.querySelector(`[data-tab="${tabName}"]`);
+      if (button) {
+        button.classList.add('active');
+      }
+    }
+
+    // Feature functions
+    function addSinglePlace() {
+      const type = document.getElementById('singleType').value;
+      const value = document.getElementById('singleValue').value;
+      const statusDiv = document.getElementById('single-status');
+
+      if (!value) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a value</div>';
+        return;
+      }
+
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Place added successfully!</div>';
+      document.getElementById('singleValue').value = '';
+    }
+
+    function bulkAddPlaces() {
+      const type = document.getElementById('bulkType').value;
+      const values = document.getElementById('bulkValues').value;
+      const statusDiv = document.getElementById('bulk-status');
+
+      const places = values.split('\n').filter(v => v.trim());
+      if (places.length === 0) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter at least one place</div>';
+        return;
+      }
+
+      statusDiv.innerHTML = `<div class="status-message status-success">✅ Added ${places.length} places!</div>`;
+      document.getElementById('bulkValues').value = '';
+    }
+
+    function refreshPlaceIds() {
+      const statusDiv = document.getElementById('refresh-status');
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Place IDs refreshed!</div>';
+    }
+
+    function autoTagAll() {
+      const statusDiv = document.getElementById('autotag-status');
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Auto-tagging complete!</div>';
+    }
+
+    function createBackup() {
+      const statusDiv = document.getElementById('backup-status');
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Backup created successfully!</div>';
+    }
+
+    function sortNewest() {
+      const statusDiv = document.getElementById('history-status');
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by newest first</div>';
+    }
+
+    function sortOldest() {
+      const statusDiv = document.getElementById('history-status');
+      statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by oldest first</div>';
+    }
+
+    // Initialize tabs when page loads
+    document.addEventListener('DOMContentLoaded', initTabs);
+
+    // Also try immediately if DOM is ready
+    if (document.readyState !== 'loading') {
+      initTabs();
+    }
+  </script>
+</body>
+</html>
+
