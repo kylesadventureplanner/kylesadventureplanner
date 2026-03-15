@@ -7342,8 +7342,25 @@
       console.log("✓ Sign In button found - Attaching event listener");
       signInBtn.addEventListener("click", (e) => {
         e.preventDefault();
-        console.log("✓ Sign In button CLICKED - Calling signIn() function");
-        signIn();
+        e.stopPropagation();
+        console.log("✓✓✓ Sign In button CLICKED");
+        console.log("typeof signIn:", typeof signIn);
+        console.log("signIn function:", signIn);
+        console.log("msalInstance:", msalInstance);
+        console.log("msalInitPromise:", msalInitPromise);
+
+        if (typeof signIn === 'function') {
+          console.log("✓ signIn is a function, calling it now...");
+          try {
+            signIn();
+            console.log("✓ signIn() called successfully");
+          } catch (err) {
+            console.error("✗ Error calling signIn():", err);
+          }
+        } else {
+          console.error("✗ CRITICAL: signIn is NOT a function!");
+          console.error("Available functions:", Object.keys(window).filter(k => typeof window[k] === 'function').slice(0, 20));
+        }
       });
       console.log("✓ Event listener successfully attached to Sign In button");
     } else {
