@@ -234,6 +234,8 @@
       <input type="text" class="search-box" id="searchBox" placeholder="Search cities..." onkeyup="filterCities()">
       <button class="sort-btn" id="sortByNameBtn" onclick="sortBy('name')">Sort A-Z</button>
       <button class="sort-btn active" id="sortByCountBtn" onclick="sortBy('count')">Sort by Count</button>
+      <button class="sort-btn" id="sortByDistanceBtn" onclick="sortBy('distance')" title="Sort by drive time (requires location permission)">🚗 Sort by Drive Time</button>
+      <button class="sort-btn" id="getLocationBtn" onclick="enableDriveTimes()" title="Get your location to show drive times">📍 Show My Drive Times</button>
     </div>
 
     <div id="cityGrid" class="city-grid">
@@ -324,6 +326,72 @@
           <button class="city-btn">View Locations</button>
         </div>
       `).join('');
+
+      // Add drive time if available
+      resultHTML = resultHTML.replace(
+        '<div class="city-btn">View Locations</div>',
+        function() {
+          const card = event?.target?.closest?.('.city-card');
+          const driveTime = card?.dataset?.driveTime;
+          return driveTime ? `<div style="font-size: 14px; color: #0891b2; font-weight: 600; margin-bottom: 12px;">🚗 ${driveTime}</div><div class="city-btn">View Locations</div>` : '<div class="city-btn">View Locations</div>';
+        }
+      );
+    }
+
+    function renderCities() {
+      const grid = document.getElementById('cityGrid');
+
+      if (Object.keys(citiesData).length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-state-icon">🏙️</div>
+            <div class="empty-state-text">No cities found</div>
+            <div style="font-size: 14px; color: #9ca3af;">Load adventure data in the main window to see cities here</div>
+          </div>
+        `;
+        return;
+      }
+
+      let citiesArray = Object.values(citiesData);
+
+      // Sort
+      if (currentSort === 'name') {
+        citiesArray.sort((a, b) => a.city.localeCompare(b.city));
+      } else if (currentSort === 'count') {
+        citiesArray.sort((a, b) => b.count - a.count);
+      } else if (currentSort === 'distance') {
+        citiesArray.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+      }
+
+      // Filter
+      const searchTerm = document.getElementById('searchBox')?.value?.toLowerCase() || '';
+      if (searchTerm) {
+        citiesArray = citiesArray.filter(c =>
+          c.city.toLowerCase().includes(searchTerm) ||
+          c.state.toLowerCase().includes(searchTerm)
+        );
+      }
+
+      grid.innerHTML = citiesArray.map(city => {
+        const driveTimeHtml = city.distance !== undefined
+          ? `<div style="font-size: 13px; color: #0891b2; font-weight: 600; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">🚗 ${city.driveTime || 'calculating...'}</div>`
+          : '';
+
+        return `
+          <div class="city-card" onclick="viewCity('${city.city}', '${city.state}')">
+            <div class="city-name">${city.city}</div>
+            <div class="city-state">${city.state}</div>
+            <div class="city-stats">
+              <div class="stat">
+                <div class="stat-label">📍 Locations</div>
+                <div class="stat-value">${city.count}</div>
+              </div>
+            </div>
+            ${driveTimeHtml}
+            <button class="city-btn">View Locations</button>
+          </div>
+        `;
+      }).join('');
     }
 
     function filterCities() {
@@ -334,7 +402,79 @@
       currentSort = type;
       document.getElementById('sortByNameBtn').classList.toggle('active', type === 'name');
       document.getElementById('sortByCountBtn').classList.toggle('active', type === 'count');
+      document.getElementById('sortByDistanceBtn').classList.toggle('active', type === 'distance');
       renderCities();
+    }
+
+    /**
+     * Enable drive time calculations
+     */
+    async function enableDriveTimes() {
+      console.log('📍 Getting user location...');
+
+      const btn = document.getElementById('getLocationBtn');
+      btn.disabled = true;
+      btn.textContent = '📍 Getting location...';
+
+      try {
+        if (!navigator.geolocation) {
+          throw new Error('Geolocation not supported');
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+
+            console.log(`✅ User location: ${userLat}, ${userLng}`);
+
+            // Calculate distance for each city
+            Object.values(citiesData).forEach(city => {
+              if (city.latitude && city.longitude) {
+                const cityLat = parseFloat(city.latitude);
+                const cityLng = parseFloat(city.longitude);
+
+                // Haversine formula
+                const R = 3959; // miles
+                const dLat = (cityLat - userLat) * Math.PI / 180;
+                const dLng = (cityLng - userLng) * Math.PI / 180;
+                const a =
+                  Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(userLat * Math.PI / 180) * Math.cos(cityLat * Math.PI / 180) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = R * c;
+
+                // Estimate drive time (60 mph average)
+                const hours = Math.floor(distance / 60);
+                const minutes = Math.round((distance / 60 - hours) * 60);
+
+                city.distance = distance;
+                city.driveTime = hours > 0
+                  ? `${hours}h ${minutes}m (${distance.toFixed(1)} mi)`
+                  : `${minutes}m (${distance.toFixed(1)} mi)`;
+              }
+            });
+
+            console.log('✅ Drive times calculated');
+            btn.disabled = false;
+            btn.textContent = '✅ Drive times enabled';
+            renderCities();
+
+          },
+          (error) => {
+            console.error('❌ Location error:', error.message);
+            btn.disabled = false;
+            btn.textContent = '📍 Location failed - try again';
+            alert('Could not get your location. Please check permissions.');
+          }
+        );
+      } catch (error) {
+        console.error('❌ Error:', error);
+        btn.disabled = false;
+        btn.textContent = '📍 Error - try again';
+        alert('Error: ' + error.message);
+      }
     }
 
     function viewCity(city, state) {
@@ -350,9 +490,12 @@
       alert(`Found ${locations.length} locations in ${city}, ${state}.\n\nThis feature will show detailed location list.`);
     }
 
-    // Initialize when page loads
-    window.addEventListener('load', init);
+    console.log('✅ City Viewer window loaded');
   </script>
+
+  <!-- City Viewer Enforcer (v7.0.138) - Drive time calculations -->
+  <script src="../../JS Files/city-viewer-enforcer-v7-0-138.js"></script>
+
 </body>
 </html>
 
