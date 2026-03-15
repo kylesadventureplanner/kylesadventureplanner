@@ -141,11 +141,6 @@
       });
       logInit('🔐 Sign Out button registered');
     }
-
-    const similarBtns = document.querySelectorAll('[onclick*="similar"], [class*="similar"]');
-    if (similarBtns.length > 0) {
-      logInit(`🔘 Found ${similarBtns.length} Find Similar buttons, checking handlers...`);
-    }
   };
 
   // ============================================================

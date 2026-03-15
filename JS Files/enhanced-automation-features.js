@@ -298,7 +298,6 @@
           // If not available, show message and continue anyway
           console.log('⚠️ Some functions not available, using available resources');
         }
-        }
 
         let successCount = 0;
         let errorCount = 0;
