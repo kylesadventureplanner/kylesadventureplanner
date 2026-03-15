@@ -5010,6 +5010,9 @@
 
   <!-- Bulk Add Chain Locations - FIXED (v7.0.123) with Real Progress Updates -->
   <script src="JS Files/bulk-add-chain-locations-fixed.js"></script>
+
+  <!-- Error Management System (v7.0.125) - Centralized error tracking -->
+  <script src="JS Files/error-management-system.js"></script>
 </head>
 <body>
 <!-- Toast Notifications Container -->
@@ -5135,9 +5138,6 @@
             🎛️ Control Panel
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button id="findNearMeBtn" class="find-near-me-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location">
-              📍 Find Near Me
-            </button>
             <button id="resetAllFiltersTop" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
           </div>
         </div>
@@ -5503,7 +5503,15 @@
           align-items: center;
           border-bottom: 1px solid #e5e7eb;
         ">
-          <!-- Buttons will be added here by JavaScript -->
+          <!-- Edit Mode Button -->
+          <button id="editModeBtn" class="card-btn card-btn-primary" title="Open Edit Mode to manage your data" onclick="openEditModeWindow()">
+            📝 Edit Mode
+          </button>
+
+          <!-- Find Near Me Button -->
+          <button id="findNearMeBtn" class="find-near-me-btn" title="Find adventures near your current location" onclick="startFindNearMe()">
+            📍 Find Near Me
+          </button>
         </div>
 
         <div class="view-controls">
@@ -17826,6 +17834,240 @@ window.isValidUrl = function(string) {
     return true;
   } catch (err) {
     return false;
+  }
+};
+
+// ===========================================================================
+// 10. FIND NEAR ME FEATURE - Find adventures near current location
+// ===========================================================================
+window.startFindNearMe = async function() {
+  console.log('🗺️ Find Near Me feature starting...');
+
+  const btn = document.getElementById('findNearMeBtn');
+  if (btn) {
+    btn.classList.add('loading');
+    btn.disabled = true;
+  }
+
+  try {
+    // Get user's current location
+    if (!navigator.geolocation) {
+      throw new Error('Geolocation is not supported by your browser');
+    }
+
+    showToast('📍 Getting your location...', 'info', 3000);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        console.log(`📍 User location: ${userLat}, ${userLng}`);
+        showToast(`📍 Found your location! Searching nearby adventures...`, 'success', 3000);
+
+        // Find adventures near user location (within 50 miles)
+        const nearbyAdventures = filterAdventuresByDistance(userLat, userLng, 50);
+
+        if (nearbyAdventures.length === 0) {
+          showToast('❌ No adventures found within 50 miles', 'warning', 3000);
+          console.log('❌ No nearby adventures');
+        } else {
+          showToast(`✅ Found ${nearbyAdventures.length} adventures near you!`, 'success', 5000);
+          console.log(`✅ Found ${nearbyAdventures.length} nearby adventures`);
+
+          // Auto-apply distance filter to show only nearby results
+          applyNearbyAdventuresFilter(nearbyAdventures);
+        }
+
+        if (btn) {
+          btn.classList.remove('loading');
+          btn.disabled = false;
+        }
+      },
+      (error) => {
+        console.error('❌ Geolocation error:', error);
+        let errorMsg = 'Failed to get location';
+
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMsg = 'Location permission denied. Please enable location access in your browser.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMsg = 'Location information is unavailable.';
+            break;
+          case error.TIMEOUT:
+            errorMsg = 'Location request timed out. Please try again.';
+            break;
+        }
+
+        showToast(`❌ ${errorMsg}`, 'error', 5000);
+
+        if (btn) {
+          btn.classList.remove('loading');
+          btn.disabled = false;
+        }
+      }
+    );
+
+  } catch (error) {
+    console.error('❌ Find Near Me error:', error);
+    showToast(`❌ Error: ${error.message}`, 'error', 5000);
+
+    if (btn) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+};
+
+/**
+ * Calculate distance between two coordinates using Haversine formula
+ */
+window.calculateDistance = function(lat1, lon1, lat2, lon2) {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+};
+
+/**
+ * Filter adventures by distance from user location
+ */
+window.filterAdventuresByDistance = function(userLat, userLng, maxMiles) {
+  const data = window.adventuresData || [];
+  const nearby = [];
+
+  data.forEach(adventure => {
+    let lat, lng;
+
+    // Handle different data structures
+    if (adventure.values && adventure.values[0]) {
+      const row = adventure.values[0];
+      // Assuming latitude is around column 10-12, longitude around 11-13
+      // Adjust based on your actual Excel structure
+      lat = parseFloat(row[10] || row[11]);
+      lng = parseFloat(row[11] || row[12]);
+    } else {
+      lat = parseFloat(adventure.latitude);
+      lng = parseFloat(adventure.longitude);
+    }
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+      const distance = window.calculateDistance(userLat, userLng, lat, lng);
+      if (distance <= maxMiles) {
+        nearby.push({
+          ...adventure,
+          distance: distance.toFixed(1)
+        });
+      }
+    }
+  });
+
+  // Sort by distance
+  return nearby.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+};
+
+/**
+ * Apply nearby adventures filter to the UI
+ */
+window.applyNearbyAdventuresFilter = function(nearbyAdventures) {
+  console.log('🔍 Applying nearby adventures filter...');
+
+  // Store filtered results
+  window.filteredNearbyAdventures = nearbyAdventures;
+
+  // Set a flag to indicate nearby filter is active
+  window.isNearbyFilterActive = true;
+
+  // Re-render cards with nearby results
+  if (typeof renderPaginatedCards === 'function') {
+    // Create a temporary override for the display
+    const originalData = window.adventuresData;
+    window.adventuresData = nearbyAdventures;
+    renderPaginatedCards();
+    window.adventuresData = originalData;
+  }
+
+  // Scroll to results
+  const grid = document.getElementById('adventureCardsGrid');
+  if (grid) {
+    setTimeout(() => {
+      grid.scrollIntoView({ behavior: 'smooth' });
+    }, 500);
+  }
+};
+
+/**
+ * Clear nearby filter
+ */
+window.clearNearbyFilter = function() {
+  console.log('🗑️ Clearing nearby adventures filter...');
+  window.isNearbyFilterActive = false;
+  window.filteredNearbyAdventures = [];
+
+  // Re-render all cards
+  if (typeof renderPaginatedCards === 'function') {
+    renderPaginatedCards();
+  }
+
+  showToast('🔄 Filter cleared', 'info', 2000);
+};
+
+// ===========================================================================
+// 11. EDIT MODE WINDOW - Opens in new window
+// ===========================================================================
+window.openEditModeWindow = function() {
+  console.log('📝 Opening Edit Mode window...');
+
+  try {
+    const width = 1100;
+    const height = 900;
+    const left = Math.max(0, (screen.width - width) / 2);
+    const top = Math.max(0, (screen.height - height) / 2);
+
+    const editModeUrl = 'HTML Files/edit-mode-enhanced.html';
+
+    const editWindow = window.open(
+      editModeUrl,
+      'EditMode',
+      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+
+    if (!editWindow) {
+      showToast('❌ Failed to open Edit Mode. Check if pop-ups are blocked.', 'error', 5000);
+      console.error('❌ Failed to open Edit Mode window');
+      return;
+    }
+
+    // Wait for window to load
+    editWindow.addEventListener('load', () => {
+      console.log('✅ Edit Mode window loaded');
+      showToast('✅ Edit Mode opened', 'success', 2000);
+    });
+
+    // Handle window closed
+    const checkWindow = setInterval(() => {
+      if (editWindow.closed) {
+        clearInterval(checkWindow);
+        console.log('📝 Edit Mode window closed');
+        showToast('📝 Edit Mode closed', 'info', 2000);
+
+        // Optional: Refresh data if changes were made
+        if (editWindow.changesWereMade) {
+          console.log('🔄 Refreshing data after Edit Mode changes...');
+          // Add your refresh logic here
+        }
+      }
+    }, 500);
+
+  } catch (error) {
+    console.error('❌ Error opening Edit Mode:', error);
+    showToast(`❌ Error: ${error.message}`, 'error', 5000);
   }
 };
 

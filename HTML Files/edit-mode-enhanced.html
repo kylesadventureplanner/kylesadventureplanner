@@ -192,25 +192,103 @@
       gap: 12px;
       padding: 12px;
       background: #f0f4ff;
-      border: 1px solid #60a5fa;
-      border-radius: 8px;
+      border: 2px solid #60a5fa;
+      border-radius: 12px;
       margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      background: linear-gradient(135deg, #f0f4ff 0%, #fef3c7 100%);
     }
 
-    .dry-run-toggle input {
-      width: 20px;
-      height: 20px;
+    .dry-run-toggle::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
+      pointer-events: none;
+    }
+
+    .dry-run-toggle.enabled {
+      background: linear-gradient(135deg, #dcfce7 0%, #fef3c7 100%);
+      border-color: #10b981;
+    }
+
+    .dry-run-toggle input[type="checkbox"] {
+      display: none;
+    }
+
+    .toggle-slider {
+      position: relative;
+      width: 60px;
+      height: 32px;
+      background: #e5e7eb;
+      border-radius: 16px;
       cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid #9ca3af;
+      flex-shrink: 0;
+    }
+
+    .toggle-slider::after {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    input[type="checkbox"]:checked + .toggle-slider {
+      background: #10b981;
+      border-color: #059669;
+    }
+
+    input[type="checkbox"]:checked + .toggle-slider::after {
+      left: 32px;
     }
 
     .dry-run-toggle label {
       margin: 0;
-      font-weight: 600;
+      font-weight: 700;
       color: #1e40af;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+      flex: 1;
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .dry-run-status {
+      font-weight: 700;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+      position: relative;
+      z-index: 1;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .dry-run-status.off {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .dry-run-status.on {
+      background: #dcfce7;
+      color: #166534;
     }
 
     .status-message {
@@ -288,9 +366,11 @@
       <div class="card">
         <div class="card-title">➕ Add Single Place</div>
 
-        <div class="dry-run-toggle">
-          <input type="checkbox" id="singleDryRun" onchange="updateFeatureDryRun('addSingle', this.checked)">
-          <label for="singleDryRun">🧪 Dry Run (Preview Changes)</label>
+        <div class="dry-run-toggle" id="singleDryRunToggle">
+          <input type="checkbox" id="singleDryRun" onchange="updateDryRunToggle(this, 'addSingle')">
+          <div class="toggle-slider"></div>
+          <label for="singleDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="singleDryRunStatus">DISABLED</div>
         </div>
 
         <div class="input-group">
@@ -325,9 +405,11 @@
       <div class="card">
         <div class="card-title">📦 Bulk Add Places</div>
 
-        <div class="dry-run-toggle">
-          <input type="checkbox" id="bulkDryRun" onchange="updateFeatureDryRun('bulkAdd', this.checked)">
-          <label for="bulkDryRun">🧪 Dry Run (Preview Changes)</label>
+        <div class="dry-run-toggle" id="bulkDryRunToggle">
+          <input type="checkbox" id="bulkDryRun" onchange="updateDryRunToggle(this, 'bulkAdd')">
+          <div class="toggle-slider"></div>
+          <label for="bulkDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="bulkDryRunStatus">DISABLED</div>
         </div>
 
         <div class="input-group">
@@ -362,9 +444,11 @@
       <div class="card">
         <div class="card-title">⛓️ Bulk Add Chain Locations</div>
 
-        <div class="dry-run-toggle">
-          <input type="checkbox" id="chainDryRun" onchange="updateFeatureDryRun('bulkChain', this.checked)">
-          <label for="chainDryRun">🧪 Dry Run (Preview Changes)</label>
+        <div class="dry-run-toggle" id="chainDryRunToggle">
+          <input type="checkbox" id="chainDryRun" onchange="updateDryRunToggle(this, 'bulkChain')">
+          <div class="toggle-slider"></div>
+          <label for="chainDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="chainDryRunStatus">DISABLED</div>
         </div>
 
         <div class="input-group">
@@ -400,9 +484,11 @@
           Use Google Places API to fill in empty fields for all your locations while preserving existing data.
         </p>
 
-        <div class="dry-run-toggle">
-          <input type="checkbox" id="missingDryRun" onchange="updateFeatureDryRun('populateMissing', this.checked)">
-          <label for="missingDryRun">🧪 Dry Run (Preview Changes)</label>
+        <div class="dry-run-toggle" id="missingDryRunToggle">
+          <input type="checkbox" id="missingDryRun" onchange="updateDryRunToggle(this, 'populateMissing')">
+          <div class="toggle-slider"></div>
+          <label for="missingDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="missingDryRunStatus">DISABLED</div>
         </div>
 
         <div class="button-group">
@@ -419,9 +505,11 @@
           Use Google Places API to update operating hours for all your locations.
         </p>
 
-        <div class="dry-run-toggle">
-          <input type="checkbox" id="hoursDryRun" onchange="updateFeatureDryRun('updateHours', this.checked)">
-          <label for="hoursDryRun">🧪 Dry Run (Preview Changes)</label>
+        <div class="dry-run-toggle" id="hoursDryRunToggle">
+          <input type="checkbox" id="hoursDryRun" onchange="updateDryRunToggle(this, 'updateHours')">
+          <div class="toggle-slider"></div>
+          <label for="hoursDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="hoursDryRunStatus">DISABLED</div>
         </div>
 
         <div class="button-group">
@@ -434,15 +522,31 @@
 
     <!-- Automation Tab -->
     <div id="automation-tab" class="tab-content">
+      <!-- Test Google API Button -->
+      <div class="card">
+        <div class="card-title">🧪 Test Google Places API</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Test your Google Places API connection. This will verify your API key is correctly configured.
+        </p>
+
+        <div class="button-group">
+          <button class="button button-secondary" onclick="testGooglePlacesAPI()">🧪 Test API Connection</button>
+        </div>
+
+        <div id="api-test-status"></div>
+      </div>
+
       <div class="card">
         <div class="card-title">🔄 Refresh Place IDs</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Refresh cached Place IDs from Google Places API.
         </p>
 
-        <div class="dry-run-toggle">
-          <input type="checkbox" id="refreshDryRun" onchange="updateFeatureDryRun('refreshPlaceIds', this.checked)">
-          <label for="refreshDryRun">🧪 Dry Run (Preview Changes)</label>
+        <div class="dry-run-toggle" id="refreshDryRunToggle">
+          <input type="checkbox" id="refreshDryRun" onchange="updateDryRunToggle(this, 'refreshPlaceIds')">
+          <div class="toggle-slider"></div>
+          <label for="refreshDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="refreshDryRunStatus">DISABLED</div>
         </div>
 
         <div class="button-group">
@@ -458,9 +562,11 @@
           Automatically recommend and add tags based on Google Places data.
         </p>
 
-        <div class="dry-run-toggle">
-          <input type="checkbox" id="autoTagDryRun" onchange="updateFeatureDryRun('autoTag', this.checked)">
-          <label for="autoTagDryRun">🧪 Dry Run (Preview Changes)</label>
+        <div class="dry-run-toggle" id="autoTagDryRunToggle">
+          <input type="checkbox" id="autoTagDryRun" onchange="updateDryRunToggle(this, 'autoTag')">
+          <div class="toggle-slider"></div>
+          <label for="autoTagDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="autoTagDryRunStatus">DISABLED</div>
         </div>
 
         <div class="button-group">
@@ -561,6 +667,91 @@
       });
 
       console.log('✅ Tab listeners initialized successfully');
+    }
+
+    /**
+     * Update feature dry run state and toggle appearance
+     */
+    function updateDryRunToggle(checkbox, feature) {
+      const toggleId = checkbox.id.replace('DryRun', '') + 'DryRunToggle';
+      const statusId = checkbox.id.replace('DryRun', '') + 'DryRunStatus';
+      const toggle = document.getElementById(toggleId);
+      const status = document.getElementById(statusId);
+
+      if (checkbox.checked) {
+        toggle.classList.add('enabled');
+        status.textContent = 'ENABLED';
+        status.classList.remove('off');
+        status.classList.add('on');
+      } else {
+        toggle.classList.remove('enabled');
+        status.textContent = 'DISABLED';
+        status.classList.remove('on');
+        status.classList.add('off');
+      }
+
+      if (window.enhancedAutomation) {
+        window.enhancedAutomation.setDryRunState(feature, checkbox.checked);
+      }
+    }
+
+    /**
+     * Test Google Places API Connection
+     */
+    function testGooglePlacesAPI() {
+      const statusDiv = document.getElementById('api-test-status');
+      statusDiv.innerHTML = '<div class="status-message" style="background: #f3f4f6; color: #1f2937;"><span class="spinner"></span> Testing API connection...</div>';
+
+      try {
+        // Test 1: Check if API key exists
+        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+        const hasApiKey = mainWindow.GOOGLE_PLACES_API_KEY || mainWindow.googlePlacesApiKey;
+
+        if (!hasApiKey) {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: No Google API key found. Please configure your API key in settings.</div>';
+          console.error('❌ No Google API key found');
+          return;
+        }
+
+        // Test 2: Simple fetch test to verify API endpoint
+        console.log('🧪 Testing Google Places API endpoint...');
+
+        const testUrl = 'https://places.googleapis.com/v1/places:searchText?key=' + hasApiKey;
+
+        fetch(testUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-FieldMask': 'places.displayName'
+          },
+          body: JSON.stringify({
+            textQuery: 'Starbucks'
+          })
+        })
+        .then(response => {
+          if (response.status === 403 || response.status === 401) {
+            throw new Error('API key invalid or not activated. Check Google Cloud Console.');
+          }
+          if (response.status === 400) {
+            throw new Error('Bad request. Check API configuration.');
+          }
+          if (!response.ok) {
+            throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('✅ Google Places API is working!', data);
+          statusDiv.innerHTML = '<div class="status-message status-success">✅ Success! Google Places API is connected and working correctly.</div>';
+        })
+        .catch(error => {
+          console.error('❌ API Test Error:', error);
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ API Error: ' + error.message + '<br><br>💡 To fix this:<br>1. Go to Google Cloud Console<br>2. Enable "Places API" for your project<br>3. Ensure your API key has the necessary permissions<br>4. Check CORS settings</div>';
+        });
+      } catch (err) {
+        console.error('❌ Test error:', err);
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: ' + err.message + '</div>';
+      }
     }
 
     /**
