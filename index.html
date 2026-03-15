@@ -8651,17 +8651,36 @@
    * @param {Array} adventuresArray - Array of adventure row data from Excel
    */
   function renderAdventureCards(adventuresArray) {
+    console.log('🎨 renderAdventureCards() called with', adventuresArray.length, 'items');
+
     const cardsGrid = document.getElementById("adventureCardsGrid");
     if (!cardsGrid) {
-      console.error("Adventure cards grid container not found!");
-      return;
+      console.error("❌ Adventure cards grid container NOT FOUND!");
+      console.error("Attempted to find element with id='adventureCardsGrid'");
+      // Try to find it with alternative selectors
+      const alternativeGrid = document.querySelector('.adventure-cards-grid');
+      if (alternativeGrid) {
+        console.log("✅ Found alternative grid element using querySelector");
+      } else {
+        console.error("❌ Could not find grid with any selector!");
+        return;
+      }
+    }
+
+    // Ensure grid is visible
+    if (cardsGrid) {
+      cardsGrid.style.display = 'grid';
+      cardsGrid.style.opacity = '1';
     }
 
     // Clear existing cards
-    cardsGrid.innerHTML = "";
+    if (cardsGrid) {
+      cardsGrid.innerHTML = "";
+    }
 
     // If no adventures, show empty state
     if (!adventuresArray || adventuresArray.length === 0) {
+      console.warn('⚠️ No adventures to display');
       showEmptyState('No adventures found', '🏞️');
       const paginationControls = document.getElementById("paginationControls");
       const paginationControlsTop = document.getElementById("paginationControlsTop");
@@ -8671,6 +8690,7 @@
     }
 
     // CRITICAL: Reset pagination state before rendering
+    console.log('🔄 Resetting pagination state...');
     currentPage = 1;  // Reset to first page
     totalFilteredAdventures = [];  // Clear previous data
 
@@ -9062,16 +9082,24 @@
    * Render cards for current page
    */
   function renderPaginatedCards() {
+    console.log(`🎨 renderPaginatedCards() - page ${currentPage}, items=${totalFilteredAdventures.length}`);
+
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const pageAdventures = totalFilteredAdventures.slice(startIndex, endIndex);
 
     const cardsGrid = document.getElementById("adventureCardsGrid");
     if (!cardsGrid) {
-      console.error("adventureCardsGrid not found");
+      console.error("❌ CRITICAL: adventureCardsGrid not found in renderPaginatedCards!");
+      console.error("This means the cards container is missing from the DOM");
       return;
     }
 
+    // Ensure grid is visible
+    cardsGrid.style.display = 'grid';
+    cardsGrid.style.opacity = '1';
+
+    // Clear previous cards
     cardsGrid.innerHTML = "";
 
     // Render each card for this page

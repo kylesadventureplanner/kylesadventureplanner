@@ -36,20 +36,21 @@
   }
 
   // ============================================================
-  // 1. REFRESH PLACE IDS BUTTON - ENHANCED
+  // 1. REFRESH PLACE IDS BUTTON - ENHANCED WITH REAL FUNCTIONALITY
   // ============================================================
-  window.handleRefreshPlaceIds = function() {
-    console.log('🔄 Refreshing Place IDs...');
+  window.handleRefreshPlaceIds = async function() {
+    console.log('🔄 Starting real Place ID refresh...');
 
-    // Don't require mainWindow - handle gracefully
-    // This allows the function to work in both popup and tab contexts
-    if (!window.adventuresData && !window.mainWindow?.adventuresData) {
-      console.warn('⚠️ No locations data available');
-      if (typeof displayStatus === 'function') {
-        displayStatus('refresh-status', '⚠️ No locations to refresh', 'error');
-      }
+    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+    const adventuresData = mainWindow.adventuresData || window.adventuresData;
+
+    if (!adventuresData || adventuresData.length === 0) {
+      alert('⚠️ No locations to refresh');
       return;
     }
+
+    // Show progress modal
+    const { backdrop, modal, statusDiv, addBtn } = createProgressModal('🔄 Refreshing Place IDs', 'Processing...');
 
     try {
       let refreshedCount = 0;
@@ -57,47 +58,95 @@
       let skippedCount = 0;
       const refreshResults = [];
 
-      if (!window.adventuresData || window.adventuresData.length === 0) {
-        alert('⚠️ No locations to refresh');
-        return;
-      }
+      for (let i = 0; i < adventuresData.length; i++) {
+        const place = adventuresData[i];
+        const values = place.values ? place.values[0] : place;
 
-      // Simulate refresh process with results tracking
-      window.adventuresData.forEach((place, index) => {
-        const placeName = place[1] || 'Unknown';
-        const placeId = place[0];
+        const placeName = values[0] || 'Unknown';
+        const currentPlaceId = values[1];
+        const address = values[11] || '';
+
+        // Update progress display
+        updateProgressModal(statusDiv, `Processing ${i + 1}/${adventuresData.length}: ${placeName}...`);
 
         try {
-          if (placeId && placeId.startsWith('ChI')) {
+          // If place already has a valid ID, check if we need to refresh it
+          if (currentPlaceId && String(currentPlaceId).startsWith('ChI')) {
+            console.log(`✅ ${placeName} already has valid Place ID: ${currentPlaceId}`);
+            refreshResults.push({
+              name: placeName,
+              placeId: currentPlaceId,
+              status: '✅ Already valid',
+              icon: '✅'
+            });
             refreshedCount++;
-            refreshResults.push({
-              name: placeName,
-              placeId: placeId,
-              status: '✅ Refreshed',
-              icon: '🔄'
-            });
+          } else if (placeName && address && typeof mainWindow.searchPlaceByNameAndAddress === 'function') {
+            // Try to find Place ID using name and address
+            console.log(`🔍 Searching for Place ID: ${placeName}`);
+            const searchResult = await mainWindow.searchPlaceByNameAndAddress(placeName, address);
+
+            if (searchResult && searchResult.placeId) {
+              // Update in Excel
+              if (typeof mainWindow.updatePlaceIdInExcel === 'function') {
+                await mainWindow.updatePlaceIdInExcel(i, searchResult.placeId);
+              }
+
+              refreshResults.push({
+                name: placeName,
+                placeId: searchResult.placeId,
+                status: '✅ Found & updated',
+                icon: '🔄'
+              });
+              refreshedCount++;
+            } else {
+              refreshResults.push({
+                name: placeName,
+                placeId: 'N/A',
+                status: '⏭️ Not found',
+                icon: '❌'
+              });
+              skippedCount++;
+            }
           } else {
-            skippedCount++;
             refreshResults.push({
               name: placeName,
-              placeId: placeId || 'N/A',
-              status: '⏭️ Skipped (No ID)',
-              icon: '❌'
+              placeId: 'N/A',
+              status: '⏭️ Skipped',
+              icon: '⏭️'
             });
+            skippedCount++;
           }
         } catch (err) {
-          errorCount++;
+          console.error(`❌ Error processing ${placeName}:`, err);
           refreshResults.push({
             name: placeName,
             placeId: 'ERROR',
-            status: '❌ Error',
-            icon: '⚠️'
+            status: `❌ ${err.message.substring(0, 30)}...`,
+            icon: '❌'
           });
+          errorCount++;
         }
-      });
+      }
 
-      // Show results in modal popup
-      showRefreshResultsModal(refreshedCount, skippedCount, errorCount, refreshResults);
+      // Reload table to show updates
+      if (typeof mainWindow.loadTable === 'function') {
+        console.log('📊 Reloading table with updated data...');
+        await mainWindow.loadTable();
+      }
+
+      // Show final results
+      showRefreshResultsModal(refreshedCount, skippedCount, errorCount, refreshResults, backdrop, modal);
+
+      addBtn.textContent = '✅ Complete!';
+      addBtn.style.background = '#10b981';
+
+    } catch (err) {
+      console.error('❌ Refresh error:', err);
+      statusDiv.innerHTML = `<div style="color: #ef4444; font-weight: 600;">❌ Error: ${err.message}</div>`;
+      addBtn.disabled = false;
+      addBtn.textContent = 'Try Again';
+    }
+  };
 
       console.log(`✅ Refresh Complete: ${refreshedCount} refreshed, ${skippedCount} skipped, ${errorCount} errors`);
 
@@ -108,9 +157,9 @@
   };
 
   /**
-   * Show refresh results in modal
+   * Create a progress modal that shows during operations
    */
-  const showRefreshResultsModal = function(refreshedCount, skippedCount, errorCount, results) {
+  function createProgressModal(title, message) {
     const backdrop = document.createElement('div');
     backdrop.style.cssText = `
       position: fixed;
@@ -130,6 +179,116 @@
       background: white;
       border-radius: 16px;
       box-shadow: 0 25px 75px rgba(0, 0, 0, 0.4);
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      z-index: 999999;
+    `;
+
+    const statusDiv = document.createElement('div');
+    statusDiv.style.cssText = `padding: 24px; overflow-y: auto; flex: 1;`;
+    statusDiv.innerHTML = `<div style="color: #667eea; font-weight: 600;">⏳ ${message}</div>`;
+
+    const headerDiv = document.createElement('div');
+    headerDiv.style.cssText = `background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center;`;
+    headerDiv.innerHTML = `
+      <h2 style="font-size: 20px; font-weight: 700; margin: 0;">${title}</h2>
+      <div style="font-size: 12px; opacity: 0.9;">Processing...</div>
+    `;
+
+    const footerDiv = document.createElement('div');
+    footerDiv.style.cssText = `padding: 16px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;`;
+
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = `padding: 10px 16px; background: #667eea; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;`;
+    addBtn.textContent = 'Processing...';
+    addBtn.disabled = true;
+
+    footerDiv.appendChild(addBtn);
+
+    modal.appendChild(headerDiv);
+    modal.appendChild(statusDiv);
+    modal.appendChild(footerDiv);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    return { backdrop, modal, statusDiv, addBtn };
+  }
+
+  /**
+   * Update progress modal text
+   */
+  function updateProgressModal(statusDiv, message) {
+    statusDiv.innerHTML = `<div style="color: #667eea; font-weight: 600;">⏳ ${message}</div>`;
+  }
+
+  /**
+   * Show refresh results in modal
+   */
+  const showRefreshResultsModal = function(refreshedCount, skippedCount, errorCount, results, backdrop, modal) {
+    // Update the existing modal instead of creating new ones
+    if (!modal) {
+      console.error('No modal provided to showRefreshResultsModal');
+      return;
+    }
+
+    const totalProcessed = refreshedCount + skippedCount + errorCount;
+
+    // Update modal content
+    modal.innerHTML = `
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 24px; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="font-size: 20px; font-weight: 700; margin: 0;">✅ Refresh Complete!</h2>
+        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 0;">✕</button>
+      </div>
+
+      <div style="padding: 24px; overflow-y: auto; flex: 1;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px;">
+          <div style="background: #ecfdf5; border: 2px solid #10b981; border-radius: 12px; padding: 16px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 8px;">✅</div>
+            <div style="font-size: 12px; color: #6b7280;">Refreshed</div>
+            <div style="font-size: 24px; font-weight: 700; color: #10b981; margin-top: 8px;">${refreshedCount}</div>
+          </div>
+          <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 16px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 8px;">⏭️</div>
+            <div style="font-size: 12px; color: #6b7280;">Skipped</div>
+            <div style="font-size: 24px; font-weight: 700; color: #f59e0b; margin-top: 8px;">${skippedCount}</div>
+          </div>
+          <div style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; padding: 16px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 8px;">❌</div>
+            <div style="font-size: 12px; color: #6b7280;">Errors</div>
+            <div style="font-size: 24px; font-weight: 700; color: #ef4444; margin-top: 8px;">${errorCount}</div>
+          </div>
+        </div>
+
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;">
+          <h3 style="font-size: 14px; font-weight: 700; margin: 0 0 12px 0; color: #1f2937;">Detailed Results:</h3>
+          <div style="max-height: 300px; overflow-y: auto;">
+            ${results.map(r => `
+              <div style="padding: 12px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 12px; align-items: center;">
+                <span style="font-size: 20px;">${r.icon}</span>
+                <div style="flex: 1; min-width: 0;">
+                  <div style="font-weight: 600; color: #1f2937; word-break: break-all;">${r.name}</div>
+                  <div style="font-size: 12px; color: #6b7280; word-break: break-all;">${r.placeId}</div>
+                </div>
+                <div style="font-size: 12px; color: #6b7280; text-align: right;">${r.status}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div style="padding: 16px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;">
+        <button onclick="this.closest('div').parentElement.parentElement.remove()" style="padding: 10px 16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
+      </div>
+    `;
+
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+  };
       max-width: 600px;
       width: 90%;
       max-height: 80vh;
