@@ -15,6 +15,18 @@
 console.log('🚀 MASTER FIX SYSTEM v7.0.137 LOADING...');
 
 // ============================================================
+// 0. DETECT WINDOW TYPE
+// ============================================================
+
+const isEditMode = window.location.pathname.includes('edit-mode') ||
+                   document.title.includes('Edit Mode') ||
+                   document.querySelector('[id*="add-places"]') !== null;
+
+const isMainWindow = !isEditMode;
+
+console.log(`📍 Detected window type: ${isEditMode ? 'EDIT MODE' : 'MAIN WINDOW'}`);
+
+// ============================================================
 // 1. CAPTURE AND OVERRIDE window.open FOR CITY VIEWER
 // ============================================================
 
@@ -72,13 +84,19 @@ window.locationExists = function(name, city, state) {
 console.log('✅ Duplicate prevention installed');
 
 // ============================================================
-// 3. DRY RUN TOGGLE SYSTEM - BULLETPROOF
+// 3. DRY RUN TOGGLE SYSTEM - ONLY IN EDIT MODE
 // ============================================================
 
 /**
- * Force initialize ALL dry run toggles
+ * Force initialize ALL dry run toggles - ONLY IN EDIT MODE
  */
 function forceDryRunToggles() {
+  // Only run in edit mode
+  if (isMainWindow) {
+    console.log('⏭️ Skipping toggle init - not in edit mode');
+    return;
+  }
+
   console.log('🧪 FORCE INITIALIZING DRY RUN TOGGLES...');
 
   const toggleIds = [
@@ -96,7 +114,7 @@ function forceDryRunToggles() {
   toggleIds.forEach(id => {
     const checkbox = document.getElementById(id);
     if (!checkbox) {
-      console.warn(`⏭️ Not found: ${id}`);
+      console.log(`⏭️ Not found (expected in edit mode): ${id}`);
       return;
     }
 
@@ -138,7 +156,9 @@ function forceDryRunToggles() {
     }, { capture: true, passive: false });
   });
 
-  console.log(`✅ Processed ${found}/${toggleIds.length} toggles`);
+  if (found > 0) {
+    console.log(`✅ Processed ${found}/${toggleIds.length} toggles`);
+  }
 }
 
 /**
@@ -170,28 +190,31 @@ function updateToggleState(checkboxId, isChecked) {
   }
 }
 
-// Initialize immediately
-console.log('Initializing toggles now...');
-forceDryRunToggles();
-
-// Re-initialize on different events
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('Re-initializing after DOMContentLoaded...');
-    setTimeout(forceDryRunToggles, 100);
-  });
+// Initialize immediately (only in edit mode)
+if (isEditMode) {
+  console.log('Initializing toggles now...');
+  forceDryRunToggles();
 }
 
-window.addEventListener('load', () => {
-  console.log('Re-initializing after window load...');
-  setTimeout(forceDryRunToggles, 100);
-});
+// Re-initialize on different events
+if (isEditMode) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('Re-initializing after DOMContentLoaded...');
+      setTimeout(forceDryRunToggles, 100);
+    });
+  }
 
-// Repeated initialization
-setInterval(() => {
-  console.log('Periodic toggle check...');
-  forceDryRunToggles();
-}, 2000);
+  window.addEventListener('load', () => {
+    console.log('Re-initializing after window load...');
+    setTimeout(forceDryRunToggles, 100);
+  });
+
+  // Repeated initialization (only in edit mode)
+  setInterval(() => {
+    forceDryRunToggles();
+  }, 2000);
+}
 
 // ============================================================
 // 4. CITY VIEWER MODAL DETECTION AND FIX
@@ -262,17 +285,19 @@ function verifySystems() {
     console.log(`${exists ? '✅' : '❌'} ${name}`);
   });
 
-  // Check toggles
-  const toggleIds = [
-    'singleDryRun', 'bulkDryRun', 'chainDryRun',
-    'missingDryRun', 'hoursDryRun', 'refreshDryRun', 'autoTagDryRun'
-  ];
+  // Check toggles only in edit mode
+  if (isEditMode) {
+    const toggleIds = [
+      'singleDryRun', 'bulkDryRun', 'chainDryRun',
+      'missingDryRun', 'hoursDryRun', 'refreshDryRun', 'autoTagDryRun'
+    ];
 
-  let togglesFound = 0;
-  toggleIds.forEach(id => {
-    if (document.getElementById(id)) togglesFound++;
-  });
-  console.log(`🧪 Toggles found: ${togglesFound}/${toggleIds.length}`);
+    let togglesFound = 0;
+    toggleIds.forEach(id => {
+      if (document.getElementById(id)) togglesFound++;
+    });
+    console.log(`🧪 Toggles found: ${togglesFound}/${toggleIds.length}`);
+  }
 }
 
 // Verify on load
@@ -282,13 +307,14 @@ if (document.readyState === 'loading') {
   verifySystems();
 }
 
-// Verify periodically
+// Verify periodically (but only log edit mode toggle status in edit mode)
 setInterval(verifySystems, 5000);
 
 console.log('✅ MASTER FIX SYSTEM v7.0.137 READY');
+console.log(`📍 Window Type: ${isEditMode ? 'EDIT MODE' : 'MAIN WINDOW'}`);
 console.log('  - window.open interceptor installed');
 console.log('  - Duplicate prevention active');
-console.log('  - Dry run toggles bulletproof');
+console.log(isEditMode ? '  - Dry run toggles bulletproof' : '  - Dry run toggles (not in main window)');
 console.log('  - City Viewer modal detector active');
 console.log('  - Verification system running');
 console.log('🚀 All systems go!');
