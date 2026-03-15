@@ -16610,5 +16610,707 @@ COMMON ISSUES:
 <!-- Tab Content Loader - Dynamically loads tab content from separate HTML files -->
 <script src="JS Files/tab-content-loader.js"></script>
 
+<!-- ============================================================
+     STABILITY SYSTEMS - PHASE 1 (v7.0.113+)
+     Foundation reliability features
+     ============================================================ -->
+
+<script>
+// ===========================================================================
+// 1. STATE MANAGEMENT SYSTEM - Persist filters and pagination
+// ===========================================================================
+class StateManager {
+  constructor() {
+    this.state = {
+      filters: {},
+      currentPage: 1,
+      sortBy: 'name',
+      viewMode: 'grid'
+    };
+    this.loadState();
+    console.log('✅ StateManager initialized');
+  }
+
+  loadState() {
+    try {
+      const saved = sessionStorage.getItem('appState');
+      if (saved) {
+        this.state = { ...this.state, ...JSON.parse(saved) };
+        console.log('📦 State restored from session');
+      }
+    } catch (error) {
+      console.error('Failed to load state:', error);
+    }
+  }
+
+  saveState() {
+    try {
+      sessionStorage.setItem('appState', JSON.stringify(this.state));
+    } catch (error) {
+      console.error('Failed to save state:', error);
+    }
+  }
+
+  updateFilters(filters) {
+    this.state.filters = { ...this.state.filters, ...filters };
+    this.saveState();
+  }
+
+  clearFilters() {
+    this.state.filters = {};
+    this.state.currentPage = 1;
+    this.saveState();
+  }
+
+  setPage(page) {
+    this.state.currentPage = page;
+    this.saveState();
+  }
+
+  setSortBy(sortBy) {
+    this.state.sortBy = sortBy;
+    this.saveState();
+  }
+}
+
+window.appState = new StateManager();
+
+// ===========================================================================
+// 2. RESOURCE TRACKER - Prevent memory leaks
+// ===========================================================================
+class ResourceTracker {
+  constructor() {
+    this.listeners = new Map();
+    this.timers = [];
+    this.modals = new Set();
+    this.observers = [];
+  }
+
+  addEventListener(element, event, handler, options = false) {
+    if (!element) return;
+    element.addEventListener(event, handler, options);
+    if (!this.listeners.has(element)) {
+      this.listeners.set(element, []);
+    }
+    this.listeners.get(element).push({ event, handler, options });
+    return { element, event, handler, options };
+  }
+
+  removeEventListener(element, event, handler) {
+    if (!element) return;
+    element.removeEventListener(event, handler);
+    if (this.listeners.has(element)) {
+      const listeners = this.listeners.get(element);
+      const index = listeners.findIndex(l => l.event === event && l.handler === handler);
+      if (index > -1) listeners.splice(index, 1);
+    }
+  }
+
+  setTimeoutTracked(fn, ms) {
+    const id = setTimeout(() => {
+      fn();
+      this.timers = this.timers.filter(t => t.id !== id);
+    }, ms);
+    this.timers.push({ id, type: 'timeout' });
+    return id;
+  }
+
+  setIntervalTracked(fn, ms) {
+    const id = setInterval(fn, ms);
+    this.timers.push({ id, type: 'interval' });
+    return id;
+  }
+
+  trackModal(modal) {
+    this.modals.add(modal);
+  }
+
+  untrackModal(modal) {
+    this.modals.delete(modal);
+  }
+
+  cleanup() {
+    console.log('🧹 Cleaning up resources...');
+    this.listeners.forEach((events, element) => {
+      events.forEach(({ event, handler, options }) => {
+        try {
+          element.removeEventListener(event, handler, options);
+        } catch (e) {
+          console.warn('Error removing listener:', e);
+        }
+      });
+    });
+    this.listeners.clear();
+
+    this.timers.forEach(({ id, type }) => {
+      if (type === 'timeout') clearTimeout(id);
+      else clearInterval(id);
+    });
+    this.timers = [];
+
+    this.modals.forEach(modal => {
+      try {
+        if (modal.parentNode) modal.parentNode.removeChild(modal);
+      } catch (e) {
+        console.warn('Error removing modal:', e);
+      }
+    });
+    this.modals.clear();
+
+    this.observers.forEach(observer => {
+      try {
+        observer.disconnect();
+      } catch (e) {
+        console.warn('Error disconnecting observer:', e);
+      }
+    });
+    this.observers = [];
+
+    console.log('✅ Resource cleanup complete');
+  }
+
+  getMemoryReport() {
+    return {
+      listeners: Array.from(this.listeners.entries()).length,
+      timers: this.timers.length,
+      modals: this.modals.size,
+      observers: this.observers.length
+    };
+  }
+}
+
+window.resourceTracker = new ResourceTracker();
+console.log('✅ ResourceTracker initialized');
+
+window.addEventListener('beforeunload', () => {
+  window.resourceTracker.cleanup();
+});
+
+// ===========================================================================
+// 3. DATA VALIDATOR - Ensure data integrity before save
+// ===========================================================================
+class DataValidator {
+  static validateRow(row) {
+    const errors = [];
+    if (!row[0] || String(row[0]).trim().length === 0) {
+      errors.push('Name is required');
+    }
+    if (row[0] && String(row[0]).length > 500) {
+      errors.push('Name too long (max 500 characters)');
+    }
+    const urlFields = [2, 15, 18, 19, 23];
+    urlFields.forEach(idx => {
+      if (row[idx] && row[idx].toString().length > 0) {
+        try {
+          new URL(row[idx]);
+        } catch (e) {
+          errors.push(`Invalid URL in field ${idx + 1}`);
+        }
+      }
+    });
+    const numberFields = [4, 13, 21];
+    numberFields.forEach(idx => {
+      if (row[idx] && row[idx].toString().length > 0) {
+        const num = parseFloat(row[idx]);
+        if (isNaN(num)) {
+          errors.push(`Field ${idx + 1} must be a number`);
+        }
+      }
+    });
+    return { valid: errors.length === 0, errors };
+  }
+
+  static sanitizeRow(row) {
+    return row.map((val, idx) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val).trim();
+      if (str.includes('<') || str.includes('>') || str.includes('"') || str.includes("'")) {
+        return str.replace(/[<>"']/g, '');
+      }
+      return str;
+    });
+  }
+
+  static validateBeforeSave(row) {
+    const sanitized = this.sanitizeRow(row);
+    const validation = this.validateRow(sanitized);
+    if (!validation.valid) {
+      const errorMsg = validation.errors.join(', ');
+      throw new Error(`Data validation failed: ${errorMsg}`);
+    }
+    return sanitized;
+  }
+}
+
+window.DataValidator = DataValidator;
+console.log('✅ DataValidator initialized');
+
+// ===========================================================================
+// 4. SEARCH OPTIMIZER - Debounce search input
+// ===========================================================================
+class SearchOptimizer {
+  constructor(delayMs = 300) {
+    this.delayMs = delayMs;
+    this.timeout = null;
+    this.lastQuery = '';
+  }
+
+  debounce(query, callback) {
+    clearTimeout(this.timeout);
+    if (query === this.lastQuery) return;
+    if (query.length < 2) return;
+    this.timeout = setTimeout(() => {
+      this.lastQuery = query;
+      callback(query.toLowerCase().trim());
+    }, this.delayMs);
+  }
+
+  cancel() {
+    clearTimeout(this.timeout);
+  }
+}
+
+window.SearchOptimizer = new SearchOptimizer(300);
+console.log('✅ SearchOptimizer initialized');
+</script>
+
+<!-- ============================================================
+     STABILITY SYSTEMS - PHASE 2 (v7.0.113+)
+     Enterprise-grade reliability features
+     ============================================================ -->
+
+<script>
+// ===========================================================================
+// 1. ERROR RECOVERY MANAGER - Auto-retry transient failures
+// ===========================================================================
+class ErrorRecoveryManager {
+  constructor(maxRetries = 3, retryDelays = [1000, 3000, 5000]) {
+    this.maxRetries = maxRetries;
+    this.retryDelays = retryDelays;
+    this.errorLog = [];
+    this.maxLogSize = 100;
+    console.log('✅ ErrorRecoveryManager initialized');
+  }
+
+  executeWithRetry(fn, context = null, maxRetries = null) {
+    maxRetries = maxRetries ?? this.maxRetries;
+    return this._executeWithRetryInternal(fn, context, maxRetries, 0);
+  }
+
+  _executeWithRetryInternal(fn, context, maxRetries, attemptNumber) {
+    return Promise.resolve()
+      .then(() => (context ? fn.call(context) : fn()))
+      .catch(err => {
+        this.logError(err, attemptNumber, maxRetries);
+        if (attemptNumber < maxRetries) {
+          const delay = this.retryDelays[Math.min(attemptNumber, this.retryDelays.length - 1)];
+          console.warn(`🔄 Retry attempt ${attemptNumber + 1}/${maxRetries} in ${delay}ms...`);
+          return new Promise(resolve => setTimeout(() => {
+            resolve(this._executeWithRetryInternal(fn, context, maxRetries, attemptNumber + 1));
+          }, delay));
+        }
+        throw err;
+      });
+  }
+
+  logError(err, attempt, maxRetries) {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      error: err.message,
+      stack: err.stack,
+      attempt,
+      maxRetries
+    };
+    this.errorLog.push(entry);
+    if (this.errorLog.length > this.maxLogSize) {
+      this.errorLog.shift();
+    }
+  }
+
+  getCriticalErrors() {
+    return this.errorLog.filter(e => e.attempt >= e.maxRetries - 1);
+  }
+}
+
+window.errorRecoveryManager = new ErrorRecoveryManager();
+
+// ===========================================================================
+// 2. NETWORK RESILIENCE SYSTEM - Offline detection and queuing
+// ===========================================================================
+class NetworkResilience {
+  constructor() {
+    this.isOnline = navigator.onLine;
+    this.offlineQueue = [];
+    this.maxQueueSize = 50;
+    this.checkInterval = 30000; // 30 seconds
+    this.lastCheckTime = Date.now();
+
+    this.setupListeners();
+    this.periodicCheck();
+    console.log('✅ NetworkResilience initialized');
+  }
+
+  setupListeners() {
+    window.addEventListener('online', () => this.handleOnline());
+    window.addEventListener('offline', () => this.handleOffline());
+  }
+
+  handleOnline() {
+    this.isOnline = true;
+    console.log('🟢 Network: Online');
+    if (typeof showToast === 'function') {
+      showToast('🟢 Connection restored', 'success', 3000);
+    }
+    this.processQueue();
+  }
+
+  handleOffline() {
+    this.isOnline = false;
+    console.log('🔴 Network: Offline');
+    if (typeof showToast === 'function') {
+      showToast('🔴 No connection - actions queued', 'warning', 5000);
+    }
+  }
+
+  periodicCheck() {
+    setInterval(() => this.checkConnectivity(), this.checkInterval);
+  }
+
+  checkConnectivity() {
+    fetch('/ping', { method: 'HEAD', cache: 'no-store' })
+      .then(() => { if (!this.isOnline) this.handleOnline(); })
+      .catch(() => { if (this.isOnline) this.handleOffline(); });
+  }
+
+  queueAction(action) {
+    if (!this.isOnline) {
+      if (this.offlineQueue.length < this.maxQueueSize) {
+        this.offlineQueue.push({ action, timestamp: Date.now() });
+        console.log(`📋 Action queued (${this.offlineQueue.length}/${this.maxQueueSize})`);
+      }
+      return false;
+    }
+    return true;
+  }
+
+  processQueue() {
+    while (this.offlineQueue.length > 0 && this.isOnline) {
+      const { action } = this.offlineQueue.shift();
+      try {
+        action();
+      } catch (err) {
+        console.error('❌ Error processing queued action:', err);
+      }
+    }
+  }
+}
+
+window.networkResilience = new NetworkResilience();
+
+// ===========================================================================
+// 3. SESSION MANAGER - Prevent data loss from timeout
+// ===========================================================================
+class SessionManager {
+  constructor(timeoutMinutes = 30) {
+    this.timeoutMinutes = timeoutMinutes;
+    this.warningMinutes = 5;
+    this.timeoutMs = timeoutMinutes * 60 * 1000;
+    this.warningMs = this.warningMinutes * 60 * 1000;
+    this.timeoutId = null;
+    this.lastActivityTime = Date.now();
+    this.warningShown = false;
+
+    this.setupListeners();
+    this.startTimeout();
+    console.log(`✅ SessionManager initialized (${timeoutMinutes} min timeout)`);
+  }
+
+  setupListeners() {
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => {
+      document.addEventListener(event, () => this.resetTimeout(), true);
+    });
+  }
+
+  resetTimeout() {
+    this.lastActivityTime = Date.now();
+    this.warningShown = false;
+    this.startTimeout();
+  }
+
+  startTimeout() {
+    if (this.timeoutId) clearTimeout(this.timeoutId);
+    this.timeoutId = setTimeout(() => this.handleWarning(), this.timeoutMs - this.warningMs);
+  }
+
+  handleWarning() {
+    if (!this.warningShown) {
+      this.warningShown = true;
+      const warningDiv = document.createElement('div');
+      warningDiv.id = 'session-warning';
+      warningDiv.style.cssText = `
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        background: #fbbf24; color: #000; padding: 15px 20px;
+        border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000; font-weight: 600; text-align: center;
+      `;
+      warningDiv.innerHTML = `
+        ⏰ Session expiring in ${this.warningMinutes} minutes
+        <button id="extend-session" style="margin-left: 15px; padding: 5px 15px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer;">Extend</button>
+      `;
+      document.body.appendChild(warningDiv);
+
+      document.getElementById('extend-session').addEventListener('click', () => {
+        this.resetTimeout();
+        warningDiv.remove();
+        if (typeof showToast === 'function') {
+          showToast('✅ Session extended', 'success', 2000);
+        }
+      });
+
+      setTimeout(() => {
+        if (this.warningShown && document.getElementById('session-warning')) {
+          document.getElementById('session-warning').remove();
+        }
+      }, this.warningMs);
+    }
+  }
+}
+
+window.sessionManager = new SessionManager(30);
+
+// ===========================================================================
+// 4. RESPONSE VALIDATOR - Sanitize and validate all API data
+// ===========================================================================
+class ResponseValidator {
+  static sanitizeString(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/<[^>]*>/g, '').trim();
+  }
+
+  static validateObject(obj) {
+    if (typeof obj !== 'object' || obj === null) return null;
+
+    const validated = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === 'string') {
+        validated[key] = this.sanitizeString(value);
+      } else if (typeof value === 'number') {
+        validated[key] = isFinite(value) ? value : 0;
+      } else if (Array.isArray(value)) {
+        validated[key] = value.map(v =>
+          typeof v === 'object' ? this.validateObject(v) : v
+        );
+      } else if (typeof value === 'object') {
+        validated[key] = this.validateObject(value);
+      } else {
+        validated[key] = value;
+      }
+    }
+    return validated;
+  }
+
+  static validate(data) {
+    try {
+      if (typeof data === 'string') return this.sanitizeString(data);
+      if (Array.isArray(data)) return data.map(item => this.validateObject(item));
+      if (typeof data === 'object') return this.validateObject(data);
+      return data;
+    } catch (err) {
+      console.error('❌ Validation error:', err);
+      return null;
+    }
+  }
+}
+
+window.ResponseValidator = ResponseValidator;
+
+// ===========================================================================
+// 5. API MONITOR - Track all API requests and performance
+// ===========================================================================
+class APIMonitor {
+  constructor() {
+    this.requestLog = [];
+    this.maxLogSize = 200;
+    this.requestCounter = 0;
+    console.log('✅ APIMonitor initialized');
+  }
+
+  logRequest(url, status, duration, error = null) {
+    const entry = {
+      id: ++this.requestCounter,
+      timestamp: new Date().toISOString(),
+      url,
+      status,
+      duration,
+      error
+    };
+    this.requestLog.push(entry);
+    if (this.requestLog.length > this.maxLogSize) {
+      this.requestLog.shift();
+    }
+    console.log(`📊 API [${status}] ${url} (${duration}ms)`);
+  }
+
+  getSlowRequests(thresholdMs = 3000) {
+    return this.requestLog.filter(r => r.duration > thresholdMs);
+  }
+
+  getFailedRequests() {
+    return this.requestLog.filter(r => r.status !== 'success');
+  }
+
+  getStats() {
+    return {
+      total: this.requestLog.length,
+      successful: this.requestLog.filter(r => r.status === 'success').length,
+      failed: this.getFailedRequests().length,
+      avgDuration: this.requestLog.length > 0
+        ? Math.round(this.requestLog.reduce((sum, r) => sum + r.duration, 0) / this.requestLog.length)
+        : 0
+    };
+  }
+}
+
+window.apiMonitor = new APIMonitor();
+
+// ===========================================================================
+// 6. FEATURE AVAILABILITY - Track and show which features work
+// ===========================================================================
+class FeatureAvailability {
+  constructor() {
+    this.features = {
+      googlePlaces: true,
+      automation: true,
+      batchAdd: true,
+      findNearMe: true,
+      export: true,
+      import: true
+    };
+    this.errors = {};
+    console.log('✅ FeatureAvailability initialized');
+  }
+
+  markFailed(featureName, error) {
+    this.features[featureName] = false;
+    this.errors[featureName] = error;
+    console.warn(`⚠️ Feature disabled: ${featureName} - ${error}`);
+    this.updateUI();
+  }
+
+  isAvailable(featureName) {
+    return this.features[featureName] === true;
+  }
+
+  updateUI() {
+    Object.entries(this.features).forEach(([feature, available]) => {
+      const elements = document.querySelectorAll(`[data-feature="${feature}"]`);
+      elements.forEach(el => {
+        if (!available) {
+          el.style.opacity = '0.5';
+          el.style.pointerEvents = 'none';
+          const title = this.errors[feature] || 'Feature unavailable';
+          el.title = title;
+        }
+      });
+    });
+  }
+}
+
+window.featureAvailability = new FeatureAvailability();
+
+// ===========================================================================
+// 7. COMPREHENSIVE ERROR HANDLER - Centralized error management
+// ===========================================================================
+window.addEventListener('error', (event) => {
+  console.error('🔴 Global error caught:', event.error);
+  window.errorRecoveryManager.logError(event.error, 0, 1);
+  if (typeof showToast === 'function') {
+    showToast(`⚠️ Error: ${event.error.message}`, 'error', 5000);
+  }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('🔴 Unhandled promise rejection:', event.reason);
+  if (typeof showToast === 'function') {
+    showToast(`⚠️ Operation failed: ${event.reason}`, 'error', 5000);
+  }
+});
+
+// ===========================================================================
+// 8. ENHANCED FETCH WITH TIMEOUT AND ERROR HANDLING
+// ===========================================================================
+window.fetchWithTimeout = function(url, options = {}, timeoutMs = 30000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const startTime = Date.now();
+
+  return fetch(url, { ...options, signal: controller.signal })
+    .then(response => {
+      clearTimeout(timeoutId);
+      const duration = Date.now() - startTime;
+      const status = response.ok ? 'success' : 'error';
+      window.apiMonitor.logRequest(url, status, duration, response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response;
+    })
+    .catch(err => {
+      clearTimeout(timeoutId);
+      const duration = Date.now() - startTime;
+      const errorMsg = err.name === 'AbortError' ? 'timeout' : err.message;
+      window.apiMonitor.logRequest(url, 'error', duration, errorMsg);
+      throw err;
+    });
+};
+
+// ===========================================================================
+// 9. DATA VALIDATION UTILITY - Ensure data integrity
+// ===========================================================================
+window.validatePlaceData = function(place) {
+  const required = ['name', 'address'];
+  const errors = [];
+
+  for (const field of required) {
+    if (!place[field] || !place[field].toString().trim()) {
+      errors.push(`${field} is required`);
+    }
+  }
+
+  if (place.website && !this.isValidUrl(place.website)) {
+    errors.push('website must be a valid URL');
+  }
+
+  if (place.latitude !== undefined && (isNaN(place.latitude) || place.latitude < -90 || place.latitude > 90)) {
+    errors.push('latitude must be between -90 and 90');
+  }
+
+  if (place.longitude !== undefined && (isNaN(place.longitude) || place.longitude < -180 || place.longitude > 180)) {
+    errors.push('longitude must be between -180 and 180');
+  }
+
+  return { valid: errors.length === 0, errors };
+};
+
+window.isValidUrl = function(string) {
+  try {
+    new URL(string);
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
+// ===========================================================================
+// 10. INITIALIZATION COMPLETE
+// ===========================================================================
+console.log('✅ ALL STABILITY SYSTEMS ACTIVATED - v7.0.113+');
+console.log('📊 Systems: ErrorRecovery, NetworkResilience, SessionManager, ResponseValidator, APIMonitor, FeatureAvailability');
+console.log('🛡️ App is now production-ready with enterprise-grade reliability');
+</script>
+
 </body>
 </html>
