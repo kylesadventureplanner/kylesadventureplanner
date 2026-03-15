@@ -487,15 +487,30 @@
         return;
       }
 
-      const message = dryRun
-        ? `🧪 Would add: ${value}`
-        : `✅ Added: ${value}`;
-      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-
-      if (!dryRun) {
-        document.getElementById('singleValue').value = '';
+      if (dryRun) {
+        statusDiv.innerHTML = `<div class="status-message status-success">🧪 Would add: ${value}</div>`;
+        return;
       }
-      console.log(`${dryRun ? '🧪 DRY RUN' : '➕'} Add single place: ${value} (${type})`);
+
+      // Actually add to main window
+      if (window.opener && typeof window.opener.addNewPlace === 'function') {
+        try {
+          window.opener.addNewPlace(value, '', '');
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ Added: ${value}</div>`;
+          document.getElementById('singleValue').value = '';
+
+          // Refresh main page
+          setTimeout(() => {
+            if (window.opener && typeof window.opener.refreshPlacesList === 'function') {
+              window.opener.refreshPlacesList();
+            }
+          }, 500);
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+        }
+      } else {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Cannot access main window</div>`;
+      }
     }
 
     // BULK ADD PLACES
@@ -511,15 +526,35 @@
         return;
       }
 
-      const message = dryRun
-        ? `🧪 Would add ${places.length} places`
-        : `✅ Added ${places.length} places`;
-      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-
-      if (!dryRun) {
-        document.getElementById('bulkValues').value = '';
+      if (dryRun) {
+        statusDiv.innerHTML = `<div class="status-message status-success">🧪 Would add ${places.length} places</div>`;
+        return;
       }
-      console.log(`${dryRun ? '🧪 DRY RUN' : '📦'} Bulk add: ${places.length} places`);
+
+      // Actually add to main window
+      if (window.opener && typeof window.opener.addNewPlace === 'function') {
+        try {
+          let successCount = 0;
+          places.forEach(place => {
+            window.opener.addNewPlace(place, '', '');
+            successCount++;
+          });
+
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ Added ${successCount} places!</div>`;
+          document.getElementById('bulkValues').value = '';
+
+          // Refresh main page
+          setTimeout(() => {
+            if (window.opener && typeof window.opener.refreshPlacesList === 'function') {
+              window.opener.refreshPlacesList();
+            }
+          }, 500);
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+        }
+      } else {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Cannot access main window</div>`;
+      }
     }
 
     // BULK ADD CHAIN LOCATIONS
@@ -535,15 +570,41 @@
         return;
       }
 
-      const message = dryRun
-        ? `🧪 Would add ${locations.length} chain locations`
-        : `✅ Added ${locations.length} chain locations`;
-      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
-
-      if (!dryRun) {
-        document.getElementById('chainValues').value = '';
+      if (dryRun) {
+        const message = `🧪 Would add ${locations.length} chain locations`;
+        statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+        console.log(`${message}\n${locations.map(l => `  • ${l}`).join('\n')}`);
+        return;
       }
-      console.log(`${dryRun ? '🧪 DRY RUN' : '⛓️'} Bulk chain: ${locations.length} locations`);
+
+      // Actually add the locations to the main window
+      if (window.opener && typeof window.opener.addNewPlace === 'function') {
+        try {
+          let successCount = 0;
+          locations.forEach(location => {
+            window.opener.addNewPlace(location, '', '');
+            successCount++;
+          });
+
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ Successfully added ${successCount} chain locations to your database!</div>`;
+          console.log(`⛓️ Added ${successCount} chain locations`);
+
+          // Refresh the main page data after a short delay
+          setTimeout(() => {
+            if (window.opener && typeof window.opener.refreshPlacesList === 'function') {
+              window.opener.refreshPlacesList();
+            }
+          }, 500);
+
+          document.getElementById('chainValues').value = '';
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error adding locations: ${error.message}</div>`;
+          console.error('Error adding chain locations:', error);
+        }
+      } else {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Cannot access main window. Please ensure the Edit Mode window is opened from the main app.</div>`;
+        console.warn('Main window (window.opener) not available');
+      }
     }
 
     // POPULATE MISSING FIELDS
