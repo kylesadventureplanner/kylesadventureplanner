@@ -5076,7 +5076,6 @@
   </div>
 
   <div class="header-right">
-    <button id="editModeBtn" class="auth-btn" title="Open Edit Mode" onclick="openEditMode()" style="background: #667eea; color: white; margin-right: 8px;">📝 Edit</button>
     <span id="authStatus">Not signed in</span>
     <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
     <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
@@ -5478,6 +5477,20 @@
             </div>
           </div>
         </div>
+
+        <!-- Action Buttons -->
+        <div id="adventureListActions" style="
+          display: flex;
+          gap: 12px;
+          padding: 12px 0;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+          align-items: center;
+          border-bottom: 1px solid #e5e7eb;
+        ">
+          <!-- Buttons will be added here by JavaScript -->
+        </div>
+
         <div class="view-controls">
           <div class="sort-controls">
             <label for="sortBy" class="sort-label">Sort by:</label>
@@ -15868,38 +15881,13 @@ COMMON ISSUES:
     // ============================================================
 
     window.addCityViewerButton = function() {
-      // Try to find common button container locations
-      const possibleContainers = [
-        document.getElementById('controls'),
-        document.getElementById('toolbarButtons'),
-        document.getElementById('actionButtons'),
-        document.querySelector('.control-panel'),
-        document.querySelector('.toolbar'),
-        document.querySelector('.actions-bar'),
-        document.querySelector('[class*="toolbar"]'),
-        document.querySelector('[class*="control"]'),
-        document.querySelector('[class*="action"]'),
-      ].filter(el => el !== null);
+      // Find the Adventure List actions container
+      const container = document.getElementById('adventureListActions');
 
-      // If no container found, create one at the top of the page
-      if (possibleContainers.length === 0) {
-        console.log('ℹ️ Creating new toolbar for City Visualizer button');
-        const toolbar = document.createElement('div');
-        toolbar.id = 'cityViewerToolbar';
-        toolbar.style.cssText = `
-          padding: var(--space-lg);
-          margin-bottom: var(--space-lg);
-          display: flex;
-          gap: var(--space-md);
-          background: var(--neutral-50);
-          border-radius: var(--radius-md);
-          border: 1px solid var(--neutral-200);
-        `;
-        document.body.insertBefore(toolbar, document.body.firstChild);
-        possibleContainers.push(toolbar);
+      if (!container) {
+        console.warn('⚠️ Adventure List actions container not found');
+        return;
       }
-
-      const container = possibleContainers[0];
 
       // Check if button already exists
       if (document.getElementById('cityViewerBtn')) {
@@ -15913,31 +15901,31 @@ COMMON ISSUES:
       btn.textContent = '🏙️ City Viewer';
       btn.title = 'View and explore locations by city';
       btn.style.cssText = `
-        padding: var(--space-md) var(--space-lg);
-        border-radius: var(--radius-md);
-        background: var(--primary);
+        padding: 10px 16px;
+        border-radius: 6px;
+        background: #667eea;
         color: white;
-        border: 1px solid var(--primary);
+        border: 1px solid #667eea;
         cursor: pointer;
         font-weight: 600;
         font-size: 14px;
-        font-family: var(--font-sans);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         display: inline-flex;
         align-items: center;
-        gap: var(--space-sm);
+        gap: 8px;
       `;
 
       btn.onmouseover = function() {
-        this.style.background = 'var(--primary-dark)';
-        this.style.borderColor = 'var(--primary-dark)';
+        this.style.background = '#5568d3';
+        this.style.borderColor = '#5568d3';
         this.style.transform = 'translateY(-1px)';
-        this.style.boxShadow = 'var(--shadow-md)';
+        this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
       };
 
       btn.onmouseout = function() {
-        this.style.background = 'var(--primary)';
-        this.style.borderColor = 'var(--primary)';
+        this.style.background = '#667eea';
+        this.style.borderColor = '#667eea';
         this.style.transform = 'none';
         this.style.boxShadow = 'none';
       };
@@ -15947,7 +15935,7 @@ COMMON ISSUES:
       };
 
       container.appendChild(btn);
-      console.log('✅ City Visualizer button added successfully');
+      console.log('✅ City Visualizer button added to Adventure List');
     };
 
     // Try to add button when DOM is ready
@@ -15957,6 +15945,75 @@ COMMON ISSUES:
       });
     } else {
       setTimeout(window.addCityViewerButton, 500);
+    }
+
+    /**
+     * Add Edit button to Adventure List actions
+     */
+    window.addEditButton = function() {
+      // Find the Adventure List actions container
+      const container = document.getElementById('adventureListActions');
+
+      if (!container) {
+        console.warn('⚠️ Adventure List actions container not found');
+        return;
+      }
+
+      // Check if button already exists
+      if (document.getElementById('editModeBtn')) {
+        console.log('ℹ️ Edit Mode button already exists');
+        return;
+      }
+
+      // Create Edit Mode button
+      const btn = document.createElement('button');
+      btn.id = 'editModeBtn';
+      btn.textContent = '📝 Edit';
+      btn.title = 'Open Edit Mode';
+      btn.onclick = function() {
+        window.openEditMode();
+      };
+      btn.style.cssText = `
+        padding: 10px 16px;
+        border-radius: 6px;
+        background: #667eea;
+        color: white;
+        border: 1px solid #667eea;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      `;
+
+      btn.onmouseover = function() {
+        this.style.background = '#5568d3';
+        this.style.borderColor = '#5568d3';
+        this.style.transform = 'translateY(-1px)';
+        this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+      };
+
+      btn.onmouseout = function() {
+        this.style.background = '#667eea';
+        this.style.borderColor = '#667eea';
+        this.style.transform = 'none';
+        this.style.boxShadow = 'none';
+      };
+
+      container.appendChild(btn);
+      console.log('✅ Edit Mode button added to Adventure List');
+    };
+
+    // Add Edit button when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(window.addEditButton, 500);
+      });
+    } else {
+      setTimeout(window.addEditButton, 500);
     }
 
   })();
