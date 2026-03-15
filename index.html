@@ -6671,6 +6671,76 @@
     console.log("✅ Page initialization complete");
   });
 
+  async function signIn() {
+    try {
+      showLoading('Signing in with Microsoft...');
+
+      // Wait for MSAL to be initialized
+      await msalInitPromise;
+
+      // Check if there's already an active account
+      const accounts = msalInstance.getAllAccounts();
+
+      if (accounts.length > 0) {
+        // User already has an account, use it
+        msalInstance.setActiveAccount(accounts[0]);
+        activeAccount = accounts[0];
+      } else {
+        // No account found, need to login
+        try {
+          // Attempt silent login first
+          const response = await msalInstance.acquireTokenSilent(loginRequest);
+          accessToken = response.accessToken;
+          activeAccount = msalInstance.getActiveAccount();
+        } catch (error) {
+          // Silent login failed, use popup
+          console.log('Silent login failed, using popup...');
+          const response = await msalInstance.loginPopup(loginRequest);
+          accessToken = response.accessToken;
+          activeAccount = response.account;
+          msalInstance.setActiveAccount(response.account);
+        }
+      }
+
+      // Get access token
+      if (!accessToken) {
+        try {
+          const response = await msalInstance.acquireTokenSilent(loginRequest);
+          accessToken = response.accessToken;
+        } catch (error) {
+          console.log('Getting token from popup...');
+          const response = await msalInstance.acquireTokenPopup(loginRequest);
+          accessToken = response.accessToken;
+        }
+      }
+
+      // Update UI
+      syncAuthGlobals();
+      document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
+      document.getElementById("signInBtn").style.display = "none";
+      document.getElementById("signOutBtn").style.display = "inline-block";
+      updateConnectionStatus(true);
+
+      hideLoading();
+      showToast('✅ Successfully signed in!', 'success', 2000);
+
+      // Trigger data load after successful sign in
+      setTimeout(() => {
+        loadExcelData();
+      }, 500);
+
+    } catch (error) {
+      console.error('Sign in error:', error);
+      hideLoading();
+
+      if (error.errorCode === 'user_cancelled') {
+        showToast('Sign in cancelled', 'warning', 2000);
+      } else {
+        showToast('❌ Sign in failed: ' + error.message, 'error', 3000);
+      }
+    }
+  }
+
   async function signOut() {
     showLoading('Signing out...');
     const account = msalInstance.getActiveAccount();
