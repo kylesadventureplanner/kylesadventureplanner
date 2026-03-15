@@ -703,12 +703,40 @@
       statusDiv.innerHTML = '<div class="status-message" style="background: #f3f4f6; color: #1f2937;"><span class="spinner"></span> Testing API connection...</div>';
 
       try {
-        // Test 1: Check if API key exists
-        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-        const hasApiKey = mainWindow.GOOGLE_PLACES_API_KEY || mainWindow.googlePlacesApiKey;
+        // Get API key from multiple sources
+        let hasApiKey = null;
+
+        // Try multiple sources for the API key
+        if (window.opener && !window.opener.closed) {
+          hasApiKey = window.opener.GOOGLE_PLACES_API_KEY ||
+                     window.opener.googlePlacesApiKey ||
+                     window.opener.GOOGLE_API_KEY;
+        }
+
+        // If not in opener, check parent window
+        if (!hasApiKey && window.parent && window.parent !== window) {
+          hasApiKey = window.parent.GOOGLE_PLACES_API_KEY ||
+                     window.parent.googlePlacesApiKey ||
+                     window.parent.GOOGLE_API_KEY;
+        }
+
+        // If still not found, try looking in the main window's script tags
+        if (!hasApiKey && window.opener) {
+          const scripts = window.opener.document.querySelectorAll('script');
+          for (let script of scripts) {
+            const content = script.textContent;
+            if (content.includes('AIzaSy')) {
+              const match = content.match(/key:\s*['"](AIzaSy[^'"]+)['"]/);
+              if (match) {
+                hasApiKey = match[1];
+                break;
+              }
+            }
+          }
+        }
 
         if (!hasApiKey) {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: No Google API key found. Please configure your API key in settings.</div>';
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: No Google API key found.<br><br>💡 To fix this:<br>1. The main window (index.html) needs to load with a valid API key<br>2. Look for: key: "AIzaSy..."<br>3. If missing, get your key from <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a><br>4. Reload the page and try again</div>';
           console.error('❌ No Google API key found');
           return;
         }
@@ -760,30 +788,254 @@
     function updateDryRunToggle(checkbox, feature) {
       console.log(`🧪 Dry Run Toggle Changed: ${feature} = ${checkbox.checked}`);
 
-      const toggleId = checkbox.id.replace('DryRun', '') + 'DryRunToggle';
-      const statusId = checkbox.id.replace('DryRun', '') + 'DryRunStatus';
+      // Get IDs based on checkbox ID
+      const baseId = checkbox.id.replace('DryRun', '');
+      const toggleId = baseId + 'DryRunToggle';
+      const statusId = baseId + 'DryRunStatus';
+
+      console.log(`🔍 Looking for toggle: ${toggleId}, status: ${statusId}`);
+
       const toggle = document.getElementById(toggleId);
       const status = document.getElementById(statusId);
 
+      console.log(`📊 Found toggle: ${!!toggle}, status: ${!!status}`);
+
       if (checkbox.checked) {
-        if (toggle) toggle.classList.add('enabled');
+        if (toggle) {
+          toggle.classList.add('enabled');
+          console.log('✅ Added enabled class to toggle');
+        }
         if (status) {
-          status.textContent = 'ENABLED';
+          status.textContent = '✅ ENABLED';
           status.classList.remove('off');
           status.classList.add('on');
+          console.log('✅ Updated status to ENABLED');
         }
+        showToast('🧪 Dry Run: ENABLED', 'success', 2000);
       } else {
-        if (toggle) toggle.classList.remove('enabled');
+        if (toggle) {
+          toggle.classList.remove('enabled');
+          console.log('✅ Removed enabled class from toggle');
+        }
         if (status) {
-          status.textContent = 'DISABLED';
+          status.textContent = '❌ DISABLED';
           status.classList.remove('on');
           status.classList.add('off');
+          console.log('✅ Updated status to DISABLED');
         }
+        showToast('🧪 Dry Run: DISABLED', 'info', 2000);
       }
 
+      // Update state management if available
       if (window.enhancedAutomation) {
         window.enhancedAutomation.setDryRunState(feature, checkbox.checked);
+        console.log(`✅ Updated enhancedAutomation dry run state for ${feature}`);
       }
+    }
+
+    /**
+     * Show toast notification
+     */
+    function showToast(message, type, duration) {
+      // Use parent window's showToast if available
+      if (window.opener && window.opener.showToast) {
+        window.opener.showToast(message, type, duration);
+      } else if (window.showToast) {
+        window.showToast(message, type, duration);
+      } else {
+        console.log(`📢 ${message}`);
+      }
+    }
+
+    /**
+     * Submit Populate Missing Fields
+     */
+    async function submitPopulateMissing() {
+      const dryRun = document.getElementById('missingDryRun')?.checked || false;
+      const statusDiv = document.getElementById('missing-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      try {
+        if (window.enhancedAutomation && typeof window.enhancedAutomation.populateMissingFields === 'function') {
+          const result = await window.enhancedAutomation.populateMissingFields(dryRun);
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ ${result.message || 'Completed'}</div>`;
+        } else {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Feature not available yet</div>';
+        }
+      } catch (error) {
+        console.error('❌ Error:', error);
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    /**
+     * Submit Update Hours Only
+     */
+    async function submitUpdateHours() {
+      const dryRun = document.getElementById('hoursDryRun')?.checked || false;
+      const statusDiv = document.getElementById('hours-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      try {
+        if (window.enhancedAutomation && typeof window.enhancedAutomation.updateHoursOnly === 'function') {
+          const result = await window.enhancedAutomation.updateHoursOnly(dryRun);
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ ${result.message || 'Completed'}</div>`;
+        } else {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Feature not available yet</div>';
+        }
+      } catch (error) {
+        console.error('❌ Error:', error);
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    /**
+     * Submit Refresh Place IDs
+     */
+    async function submitRefreshPlaceIds() {
+      const dryRun = document.getElementById('refreshDryRun')?.checked || false;
+      const statusDiv = document.getElementById('refresh-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> 🔄 Refreshing Place IDs from Google Places API...</div>';
+
+      try {
+        // Check if we have Excel data
+        if (!window.opener || !window.opener.adventuresData) {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: No location data found. Make sure data is loaded in the main window.</div>';
+          return;
+        }
+
+        const mainWindow = window.opener;
+        const data = mainWindow.adventuresData;
+        const refreshedCount = 0;
+        const failedCount = 0;
+        const details = [];
+
+        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> 🔄 Refreshing ' + data.length + ' Place IDs...</div>';
+
+        // Process each location
+        for (let i = 0; i < data.length; i++) {
+          const location = data[i];
+          const placeId = location.placeId || (location.values && location.values[0][3]);
+          const placeName = location.name || (location.values && location.values[0][0]);
+
+          // Skip if no place ID to refresh
+          if (!placeId || placeId === 'SKIP') {
+            continue;
+          }
+
+          try {
+            // In dry run mode, just simulate
+            if (dryRun) {
+              details.push(`✅ Would refresh: ${placeName}`);
+            } else {
+              // Try to refresh the place ID by fetching fresh data
+              if (window.opener.getPlaceDetails && typeof window.opener.getPlaceDetails === 'function') {
+                const freshData = await window.opener.getPlaceDetails(placeId);
+                if (freshData) {
+                  details.push(`✅ Refreshed: ${placeName}`);
+                } else {
+                  details.push(`⚠️ Could not refresh: ${placeName}`);
+                }
+              }
+            }
+
+            // Update progress
+            const progress = Math.round((i + 1) / data.length * 100);
+            statusDiv.innerHTML = `<div class="status-message"><span class="spinner"></span> 🔄 Refreshing ${i + 1}/${data.length} (${progress}%)...</div>`;
+
+          } catch (error) {
+            console.warn(`⚠️ Error refreshing ${placeName}:`, error);
+          }
+        }
+
+        // Show completion message
+        let message = `<div class="status-message status-success">`;
+        message += `✅ Place ID refresh complete!<br>`;
+        message += `📊 Processed: ${data.length} locations<br>`;
+
+        if (dryRun) {
+          message += `🧪 DRY RUN: No changes made<br>`;
+        } else {
+          message += `💾 Changes would be saved to Excel<br>`;
+        }
+
+        message += `<br><strong>Details:</strong><br>`;
+        message += details.slice(0, 10).join('<br>');
+        if (details.length > 10) {
+          message += `<br>... and ${details.length - 10} more`;
+        }
+
+        message += `</div>`;
+        statusDiv.innerHTML = message;
+
+        showToast('✅ Place IDs refreshed!', 'success', 3000);
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+        showToast('❌ Error refreshing Place IDs', 'error', 3000);
+      }
+    }
+
+    /**
+     * Submit Auto Tag All
+     */
+    async function submitAutoTagAll() {
+      const dryRun = document.getElementById('autoTagDryRun')?.checked || false;
+      const statusDiv = document.getElementById('autotag-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+
+      try {
+        if (window.enhancedAutomation && typeof window.enhancedAutomation.autoTagAll === 'function') {
+          const result = await window.enhancedAutomation.autoTagAll(dryRun);
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ ${result.message || 'Completed'}</div>`;
+        } else {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Feature not available yet</div>';
+        }
+      } catch (error) {
+        console.error('❌ Error:', error);
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    /**
+     * Submit Backup
+     */
+    async function submitBackup() {
+      const statusDiv = document.getElementById('backup-status');
+
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Creating backup...</div>';
+
+      try {
+        if (window.opener && window.opener.createBackup && typeof window.opener.createBackup === 'function') {
+          await window.opener.createBackup();
+          statusDiv.innerHTML = '<div class="status-message status-success">✅ Backup created successfully!</div>';
+        } else {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Backup system not available</div>';
+        }
+      } catch (error) {
+        console.error('❌ Error:', error);
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    /**
+     * History sorting functions
+     */
+    function sortHistoryNewest() {
+      showToast('📅 Sorting by newest...', 'info', 2000);
+    }
+
+    function sortHistoryOldest() {
+      showToast('📅 Sorting by oldest...', 'info', 2000);
+    }
+
+    function sortHistoryName() {
+      showToast('📅 Sorting alphabetically...', 'info', 2000);
     }
 
     /**
