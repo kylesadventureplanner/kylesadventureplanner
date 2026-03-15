@@ -172,25 +172,44 @@ class EnhancedAutomationFeatures {
 
     console.log(`${dryRun ? '🧪 DRY RUN' : '➕'} Adding place: ${validation.description}`);
 
-    // For now, simulate the addition
-    // In production, this would call Google Places API and add to Excel
-    const newPlace = {
-      name: inputType === 'placeName' ? input : `Place from ${inputType}`,
-      input: input,
-      inputType: inputType,
-      timestamp: new Date().toLocaleString()
-    };
-
     if (!dryRun) {
-      if (typeof window.addNewPlace === 'function') {
-        window.addNewPlace(newPlace.name, '', '');
-        return { success: true, message: `✅ Added: ${newPlace.name}` };
+      try {
+        // Get main window for Excel functions
+        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+
+        // Get place details from Google
+        if (typeof mainWindow.getPlaceDetails === 'function') {
+          const details = await mainWindow.getPlaceDetails(input);
+
+          // Build Excel row
+          if (typeof mainWindow.buildExcelRow === 'function') {
+            const row = mainWindow.buildExcelRow(input, details);
+
+            // Add to Excel
+            if (typeof mainWindow.addRowToExcel === 'function') {
+              await mainWindow.addRowToExcel(row);
+              return {
+                success: true,
+                message: `✅ Added: ${row[0] || 'Place'}`,
+                placeName: row[0] || 'Place'
+              };
+            } else {
+              throw new Error('addRowToExcel function not available');
+            }
+          } else {
+            throw new Error('buildExcelRow function not available');
+          }
+        } else {
+          throw new Error('getPlaceDetails function not available');
+        }
+      } catch (error) {
+        return { success: false, error: error.message };
       }
     }
 
     return {
       success: true,
-      message: `${dryRun ? '🧪 Preview' : '✅ Added'}: ${newPlace.name}`,
+      message: `🧪 Preview: ${validation.description}`,
       dryRun: true
     };
   }
@@ -209,6 +228,9 @@ class EnhancedAutomationFeatures {
     let successful = 0;
     let failed = 0;
 
+    // Get main window for Excel functions
+    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+
     for (const place of places) {
       const validation = this.validatePlaceInput(place, inputType);
 
@@ -219,13 +241,38 @@ class EnhancedAutomationFeatures {
       }
 
       if (!dryRun) {
-        if (typeof window.addNewPlace === 'function') {
-          window.addNewPlace(place, '', '');
-        }
-      }
+        try {
+          // Get place details from Google
+          if (typeof mainWindow.getPlaceDetails === 'function') {
+            const details = await mainWindow.getPlaceDetails(place);
 
-      results.push({ place, success: true, description: validation.description });
-      successful++;
+            // Build Excel row
+            if (typeof mainWindow.buildExcelRow === 'function') {
+              const row = mainWindow.buildExcelRow(place, details);
+
+              // Add to Excel
+              if (typeof mainWindow.addRowToExcel === 'function') {
+                await mainWindow.addRowToExcel(row);
+                results.push({ place, success: true, description: validation.description, name: row[0] });
+                successful++;
+              } else {
+                throw new Error('addRowToExcel function not available');
+              }
+            } else {
+              throw new Error('buildExcelRow function not available');
+            }
+          } else {
+            throw new Error('getPlaceDetails function not available');
+          }
+        } catch (error) {
+          results.push({ place, success: false, error: error.message });
+          failed++;
+        }
+      } else {
+        // Dry run mode
+        results.push({ place, success: true, description: `[DRY RUN] ${validation.description}` });
+        successful++;
+      }
     }
 
     return {
@@ -235,7 +282,7 @@ class EnhancedAutomationFeatures {
       failed,
       results,
       dryRun,
-      summary: `${dryRun ? '🧪 Preview' : '✅ Processed'}: ${successful}/${places.length} places`
+      summary: `${dryRun ? '🧪 Preview' : '✅ Added'}: ${successful}/${places.length} places`
     };
   }
 
@@ -253,6 +300,9 @@ class EnhancedAutomationFeatures {
     let successful = 0;
     let failed = 0;
 
+    // Get main window for Excel functions
+    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+
     for (const location of locations) {
       const validation = this.validatePlaceInput(location, inputType);
 
@@ -263,13 +313,38 @@ class EnhancedAutomationFeatures {
       }
 
       if (!dryRun) {
-        if (typeof window.batchAddChainLocations === 'function') {
-          window.batchAddChainLocations([location]);
-        }
-      }
+        try {
+          // Get place details from Google
+          if (typeof mainWindow.getPlaceDetails === 'function') {
+            const details = await mainWindow.getPlaceDetails(location);
 
-      results.push({ location, success: true, description: validation.description });
-      successful++;
+            // Build Excel row
+            if (typeof mainWindow.buildExcelRow === 'function') {
+              const row = mainWindow.buildExcelRow(location, details);
+
+              // Add to Excel
+              if (typeof mainWindow.addRowToExcel === 'function') {
+                await mainWindow.addRowToExcel(row);
+                results.push({ location, success: true, description: validation.description });
+                successful++;
+              } else {
+                throw new Error('addRowToExcel function not available');
+              }
+            } else {
+              throw new Error('buildExcelRow function not available');
+            }
+          } else {
+            throw new Error('getPlaceDetails function not available');
+          }
+        } catch (error) {
+          results.push({ location, success: false, error: error.message });
+          failed++;
+        }
+      } else {
+        // Dry run - just validate
+        results.push({ location, success: true, description: `[DRY RUN] Would add: ${validation.description}` });
+        successful++;
+      }
     }
 
     return {

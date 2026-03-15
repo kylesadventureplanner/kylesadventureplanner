@@ -158,6 +158,24 @@ class EnhancedCityVisualizer {
       'Laurel Park,NC': { lat: 35.3000, lng: -82.6667 },
       'Cedar Mountain,NC': { lat: 35.2111, lng: -82.7367 },
       'Lenoir,NC': { lat: 35.9142, lng: -81.5403 },
+      // Additional mountain area cities
+      'Cherokee,NC': { lat: 35.4969, lng: -83.3156 },
+      'Bryson City,NC': { lat: 35.4328, lng: -83.4414 },
+      'Maggie Valley,NC': { lat: 35.3817, lng: -83.1814 },
+      'Highlands,NC': { lat: 35.0514, lng: -83.2002 },
+      'Canton,NC': { lat: 35.5406, lng: -82.9386 },
+      'Scaly Mountain,NC': { lat: 35.0614, lng: -83.1328 },
+      'Sylva,NC': { lat: 35.3728, lng: -83.2169 },
+      'Blowing Rock,NC': { lat: 36.1289, lng: -81.6814 },
+      'Sugar Grove,NC': { lat: 36.1328, lng: -81.8436 },
+      'Saluda,NC': { lat: 35.2306, lng: -82.4358 },
+      'Barnardsville,NC': { lat: 35.6533, lng: -82.3658 },
+      'Lake Lure,NC': { lat: 35.4481, lng: -82.2169 },
+      'Concord,NC': { lat: 35.4088, lng: -80.5956 },
+      'Sunset,SC': { lat: 34.7808, lng: -82.5856 },
+      'Gatlinburg,TN': { lat: 35.7142, lng: -83.5111 },
+      'Pigeon Forge,TN': { lat: 35.7847, lng: -83.5806 },
+      'Sevierville,TN': { lat: 35.8761, lng: -83.5603 },
     };
 
     // Try exact match first

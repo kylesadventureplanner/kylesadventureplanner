@@ -6449,13 +6449,13 @@
      HOW IT WORKS:
      - clientId: Unique identifier for this app (registered in Azure)
      - authority: Microsoft login endpoint URL
-     - redirectUri: Where to send user after login (back to this page)
+     - redirectUri: NOT used with loginPopup() - only for loginRedirect()
   */
   const msalConfig = {
     auth: {
       clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",              // App ID in Azure
       authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc", // Tenant directory
-      redirectUri: window.location.origin,                            // Return to current page after login
+      // Note: NOT setting redirectUri here because we're using loginPopup() not loginRedirect()
     },
   };
 
@@ -6468,12 +6468,19 @@
     throw error;
   });
 
-  /* CRITICAL: Handle redirect from Microsoft login - MUST be called before any login attempts */
+  /* CRITICAL: Handle redirect from Microsoft login - only process if actually redirected back */
   msalInitPromise.then(() => {
-    console.log("🔐 Handling redirect promise from Microsoft login...");
-    return msalInstance.handleRedirectPromise();
+    console.log("🔐 Checking for redirect from Microsoft...");
+    // Only process redirects if we have a code parameter (indicates we're returning from Microsoft login)
+    if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
+      console.log("📍 Detected redirect from Microsoft, processing...");
+      return msalInstance.handleRedirectPromise();
+    } else {
+      console.log("✅ No redirect detected, skipping handleRedirectPromise");
+      return Promise.resolve();
+    }
   }).then(() => {
-    console.log("✅ Redirect promise handled successfully");
+    console.log("✅ Redirect handled (if any)");
 
     // Check if user is already logged in after redirect
     const accounts = msalInstance.getAllAccounts();
@@ -6605,8 +6612,7 @@
     try {
       // Prevent multiple simultaneous sign-in attempts
       if (isSigningIn) {
-        console.warn("⚠️ Sign-in already in progress, ignoring duplicate request");
-        showToast('⏳ Sign-in already in progress...', 'warning', 2000);
+        console.log("⏳ Sign-in already in progress");
         return;
       }
 
@@ -14470,10 +14476,6 @@ COMMON ISSUES:
   // ============================================================
   // Call initialization function when DOM is ready
   // FIXED: Use only ONE initialization method to avoid conflicts
-
-  // TEST: Log immediately to verify script is executing
-  console.warn("⚠️⚠️⚠️ CRITICAL TEST: If you see this message, the page JavaScript is loading!");
-  console.log("📋 Initialization Script Starting - readyState:", document.readyState);
 
   if (document.readyState === 'loading') {
     // DOM is still loading
