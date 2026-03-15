@@ -14399,6 +14399,9 @@ COMMON ISSUES:
   // ============================================================
   // Call initialization function when DOM is ready
   // FIXED: Use only ONE initialization method to avoid conflicts
+
+  // TEST: Log immediately to verify script is executing
+  console.warn("⚠️⚠️⚠️ CRITICAL TEST: If you see this message, the page JavaScript is loading!");
   console.log("📋 Initialization Script Starting - readyState:", document.readyState);
 
   if (document.readyState === 'loading') {
