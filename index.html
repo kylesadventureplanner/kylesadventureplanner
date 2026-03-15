@@ -16575,9 +16575,98 @@ COMMON ISSUES:
   };
 
   /**
-   * Wrapper functions for automation handlers
-   * These prevent errors if enhanced-automation-features.js hasn't loaded yet
+   * CRITICAL: Save new locations to Excel via Microsoft Graph API
+   * This function takes new locations from adventuresData and appends them to the Excel table
    */
+  window.saveToExcel = async function() {
+    console.log('💾 Saving data to Excel...');
+
+    try {
+      const token = window.accessToken;
+      if (!token) {
+        console.error('❌ No access token - user not authenticated');
+        throw new Error('User not authenticated. Please sign in.');
+      }
+
+      if (!window.adventuresData || window.adventuresData.length === 0) {
+        console.warn('⚠️ No data to save');
+        return true;
+      }
+
+      // Build URL to add rows to Excel table
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${window.filePath}:/workbook/tables/${window.tableName}/rows`;
+
+      // Convert adventuresData to proper row format
+      const rowsToAdd = window.adventuresData.map(item => {
+        // Extract values from the data structure
+        const values = item.row?.values?.[0] || item.values?.[0] || item;
+        return Array.isArray(values) ? values : Object.values(values || {});
+      });
+
+      console.log(`📝 Preparing to save ${rowsToAdd.length} rows to Excel...`);
+
+      // Add rows to the table
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          values: rowsToAdd
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'No error details');
+        console.error(`❌ Excel API returned ${response.status}: ${errorText}`);
+
+        // Try token refresh if 401
+        if (response.status === 401 && typeof window.rehydrateAuthState === 'function') {
+          console.log('⚠️ Token expired - attempting refresh...');
+          const refreshed = await window.rehydrateAuthState();
+          if (refreshed) {
+            console.log('✅ Token refreshed - retrying save...');
+            return await window.saveToExcel(); // Recursive retry
+          }
+        }
+
+        throw new Error(`Failed to save to Excel: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log(`✅ Successfully saved ${rowsToAdd.length} rows to Excel`);
+      return true;
+
+    } catch (err) {
+      console.error('❌ Error saving to Excel:', err);
+      if (typeof showToast === 'function') {
+        showToast(`❌ Error saving to Excel: ${err.message}`, 'error', 3000);
+      }
+      throw err;
+    }
+  };
+
+  /**
+   * Reload data from Excel to sync with server
+   */
+  window.reloadDataFromSheets = async function() {
+    console.log('🔄 Reloading data from Excel...');
+
+    try {
+      // Just call loadTable which does a full refresh from Excel
+      if (typeof window.loadTable === 'function') {
+        await window.loadTable();
+        console.log('✅ Data reloaded from Excel');
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('❌ Error reloading data:', err);
+      return false;
+    }
+  };
+
   window.handleRefreshPlaceIds = window.handleRefreshPlaceIds || function() {
     console.warn('⏳ Refresh Place IDs handler loading...');
     showToast('⏳ Refreshing Place IDs...', 'info', 3000);
@@ -16596,20 +16685,51 @@ COMMON ISSUES:
       let successCount = 0;
       let failCount = 0;
       const errors = [];
+      const addedLocations = [];
 
+      // Add all locations to data FIRST (without rendering each time)
       locations.forEach((location, idx) => {
         try {
           console.log(`📍 Adding location ${idx + 1}/${locations.length}: ${location}`);
 
-          // Use the existing addNewPlace function
-          if (typeof window.addNewPlace === 'function') {
-            window.addNewPlace(location, '', '');
-            successCount++;
-          } else {
-            console.warn('addNewPlace function not available');
-            failCount++;
-            errors.push(`Location ${idx + 1}: addNewPlace function not available`);
-          }
+          // Create new row data for Excel
+          const newRow = [
+            location || '',                 // Name or Place ID
+            location || '',                 // Google Place ID
+            '',                             // Website
+            '',                             // Tags
+            '',                             // Drive Time
+            '',                             // Hours
+            '',                             // Duration
+            '',                             // Difficulty
+            '',                             // Trail Length
+            '',                             // State
+            '',                             // City
+            '',                             // Address
+            '',                             // Phone
+            '',                             // Rating
+            '',                             // Cost
+            '',                             // Directions
+            '',                             // Description
+            '',                             // Nearby
+            '',                             // Links
+            '',                             // Links 2
+            '',                             // Notes
+            '',                             // My Rating
+            '',                             // Favorite
+            ''                              // Google URL
+          ];
+
+          // Add to local data
+          window.adventuresData.push({
+            row: { values: [newRow] },
+            index: window.adventuresData.length
+          });
+
+          addedLocations.push(location);
+          successCount++;
+          console.log(`✅ Location ${idx + 1} added to data`);
+
         } catch (err) {
           console.error(`❌ Error adding location ${idx + 1}:`, err);
           failCount++;
@@ -16617,12 +16737,12 @@ COMMON ISSUES:
         }
       });
 
-      // Force save to Excel
+      // NOW save all to Excel at once
       console.log('💾 Saving to Excel...');
       if (typeof window.saveToExcel === 'function') {
         try {
           window.saveToExcel();
-          console.log('✅ Saved to Excel');
+          console.log(`✅ Saved ${successCount} locations to Excel`);
         } catch (excelErr) {
           console.error('❌ Error saving to Excel:', excelErr);
           errors.push(`Excel save failed: ${excelErr.message}`);
@@ -16631,13 +16751,23 @@ COMMON ISSUES:
         console.warn('⚠️ saveToExcel function not available');
       }
 
-      // Trigger table refresh
-      if (typeof window.loadTable === 'function') {
+      // NOW refresh the card display (once, not for each location)
+      console.log('📊 Refreshing card display...');
+      if (typeof window.renderPaginatedCards === 'function') {
         try {
-          window.loadTable();
-          console.log('📊 Table refreshed');
-        } catch (tableErr) {
-          console.error('❌ Error refreshing table:', tableErr);
+          window.renderPaginatedCards();
+          console.log('✅ Card display refreshed');
+        } catch (renderErr) {
+          console.error('❌ Error refreshing cards:', renderErr);
+          // Try alternative refresh methods
+          if (typeof window.loadTable === 'function') {
+            try {
+              window.loadTable();
+              console.log('✅ Table refreshed (fallback)');
+            } catch (tableErr) {
+              console.error('❌ Error refreshing table:', tableErr);
+            }
+          }
         }
       }
 
