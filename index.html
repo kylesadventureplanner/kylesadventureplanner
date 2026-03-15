@@ -6468,9 +6468,30 @@
     throw error;
   });
 
-  /* Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly */
-  msalInstance.initialize().catch(error => {
-    console.error("MSAL initialization failed:", error);
+  /* CRITICAL: Handle redirect from Microsoft login - MUST be called before any login attempts */
+  msalInitPromise.then(() => {
+    console.log("🔐 Handling redirect promise from Microsoft login...");
+    return msalInstance.handleRedirectPromise();
+  }).then(() => {
+    console.log("✅ Redirect promise handled successfully");
+
+    // Check if user is already logged in after redirect
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      console.log("✅ User already logged in from redirect:", accounts[0].username);
+      activeAccount = accounts[0];
+      msalInstance.setActiveAccount(activeAccount);
+      syncAuthGlobals();
+      isConnectedToExcel = true;
+
+      // Update UI
+      document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
+      document.getElementById("signInBtn").style.display = "none";
+      document.getElementById("signOutBtn").style.display = "inline-block";
+      updateConnectionStatus(true);
+    }
+  }).catch(error => {
+    console.error("⚠️ Error handling redirect:", error);
   });
 
   /* Define what permissions (scopes) we need from Microsoft */
@@ -6591,7 +6612,12 @@
 
       isSigningIn = true;
       showLoading('Signing in...');
+
+      // Wait for MSAL initialization and redirect handling to complete
+      console.log("⏳ Waiting for MSAL to be ready...");
       await msalInitPromise;
+      console.log("✅ MSAL is ready");
+
       console.log("=== SIGN-IN PROCESS STARTED ===");
       console.log("MSAL Instance:", msalInstance);
       console.log("Login Request:", loginRequest);
@@ -6617,56 +6643,61 @@
           document.getElementById("signOutBtn").style.display = "inline-block";
           updateConnectionStatus(true);
 
+          await loadTable();
+          initFindNearMe();
+          initContextMenu();
+          initRowDetailModal();
+
           hideLoading();
           showToast('✓ Successfully signed in!', 'success', 3000);
           isSigningIn = false;
           return;
         } catch (silentError) {
-          console.log("Silent login failed, will try popup...", silentError);
+          console.log("⚠️ Silent login failed, will try popup...", silentError.message);
         }
       }
 
-      // Step 1: Show Microsoft login popup and get login response
+      // No existing account, show login popup
       console.log("Step 1: Calling msalInstance.loginPopup()");
       const loginResponse = await msalInstance.loginPopup(loginRequest);
       console.log("Step 1 SUCCESS: Login response received", loginResponse);
 
-      activeAccount = loginResponse.account;  // Store which account logged in
+      activeAccount = loginResponse.account;
       console.log("Active account set:", activeAccount);
-      msalInstance.setActiveAccount(activeAccount); // Set as active account
+      msalInstance.setActiveAccount(activeAccount);
       console.log("Active account confirmed in MSAL");
 
-      // Step 2: Get access token (needed for all Microsoft Graph API calls)
+      // Get access token
       console.log("Step 2: Calling acquireTokenSilent()");
       const tokenResponse = await msalInstance.acquireTokenSilent({
-        ...loginRequest,  // Use same permissions as login
+        ...loginRequest,
         account: activeAccount,
       });
       console.log("Step 2 SUCCESS: Token acquired", tokenResponse);
 
-      accessToken = tokenResponse.accessToken; // Store token globally
+      accessToken = tokenResponse.accessToken;
       syncAuthGlobals();
       console.log("Access token stored globally");
-      isConnectedToExcel = true;                // Mark as connected
+      isConnectedToExcel = true;
 
-      // Step 3: Update UI to show logged-in state
+      // Update UI
       console.log("Step 3: Updating UI to show logged-in state");
       document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
-      document.getElementById("signInBtn").style.display = "none";     // Hide Sign In button
-      document.getElementById("signOutBtn").style.display = "inline-block"; // Show Sign Out button
-      updateConnectionStatus(true); // Update status dot to green
+      document.getElementById("signInBtn").style.display = "none";
+      document.getElementById("signOutBtn").style.display = "inline-block";
+      updateConnectionStatus(true);
       console.log("Step 3 SUCCESS: UI updated");
 
-      // Step 4: Load adventure data from Excel file into the table
+      // Load adventure data
       console.log("Step 4: Loading adventure data from Excel");
       await loadTable();
       console.log("Step 4 SUCCESS: Table data loaded");
 
-      // Step 5: Initialize all UI features now that user is logged in
+      // Initialize UI features
       console.log("Step 5: Initializing UI features");
-      initFindNearMe();      // Set up Find Places Near Me button
-      initContextMenu();     // Set up Right-Click Context Menu (must be after table loads)
-      initRowDetailModal();  // Set up Row Detail Modal buttons (Close, Edit, X)
+      initFindNearMe();
+      initContextMenu();
+      initRowDetailModal();
       console.log("Step 5 SUCCESS: All UI features initialized");
 
       console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
@@ -6687,20 +6718,17 @@
 
       let userMessage = "Sign-in failed. Check console for details.";
 
-      // Provide specific error messages for common MSAL errors
       if (error.name === "BrowserAuthError") {
         if (error.code === "popup_window_error") {
           userMessage = "Could not open login popup. Please check if popups are blocked.";
         } else if (error.code === "user_cancelled") {
           userMessage = "Login was cancelled. Please try again.";
         } else if (error.message && error.message.includes("interaction_in_progress")) {
-          userMessage = "A login is already in progress. Please wait or refresh the page.";
-          console.log("💡 This usually means: multiple sign-in attempts or a redirect is pending.");
+          userMessage = "A login is already in progress. Please wait a moment and try again.";
+          console.log("💡 This usually means: multiple sign-in attempts or a redirect is pending. Try refreshing the page.");
         }
       } else if (error.name === "BrowserConfigurationAuthError") {
         userMessage = "MSAL configuration error. Please check credentials in the code.";
-      } else if (error.name === "BrowserAuthError") {
-        userMessage = "Browser authentication error: " + error.message;
       }
 
       showToast('✕ ' + userMessage, 'error', 5000);
