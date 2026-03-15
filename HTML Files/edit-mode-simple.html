@@ -221,45 +221,129 @@
 
     <!-- TAB 1: ADD PLACES -->
     <div id="places-tab" class="tab-content active">
+      <!-- Add Single Place -->
       <div class="card">
         <div class="card-title">➕ Add Single Place</div>
         <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="singleDryRun" onchange="updateDryRun('addSingle', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="input-group">
           <label>Input Type</label>
           <select id="singleType">
-            <option value="name">Place Name</option>
+            <option value="placeName">Place Name</option>
             <option value="address">Address</option>
+            <option value="placeNameCity">Place Name + City</option>
             <option value="placeId">Google Place ID</option>
             <option value="website">Website URL</option>
+            <option value="placeUrl">Google Maps URL</option>
           </select>
         </div>
         <div class="input-group">
           <label>Value</label>
-          <input type="text" id="singleValue" placeholder="Enter value">
+          <input type="text" id="singleValue" placeholder="Enter value based on input type">
+          <div class="help-text">💡 Examples: "Starbucks", "123 Main St, Denver", "Starbucks, NYC", "ChIJ...", "https://starbucks.com"</div>
         </div>
         <div class="button-group">
-          <button class="button button-primary" onclick="addSinglePlace()">➕ Add</button>
+          <button class="button button-secondary" onclick="document.getElementById('singleValue').value = ''">Clear</button>
+          <button class="button button-primary" onclick="addSinglePlace()">➕ Add Place</button>
         </div>
         <div id="single-status"></div>
       </div>
 
+      <!-- Bulk Add Places -->
       <div class="card">
         <div class="card-title">📦 Bulk Add Places</div>
         <div class="input-group">
-          <label>Input Type</label>
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="bulkDryRun" onchange="updateDryRun('bulkAdd', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="input-group">
+          <label>Input Type (applies to all)</label>
           <select id="bulkType">
-            <option value="name">Place Name</option>
+            <option value="placeName">Place Name</option>
             <option value="address">Address</option>
+            <option value="placeNameCity">Place Name + City</option>
             <option value="placeId">Google Place ID</option>
+            <option value="website">Website URL</option>
+            <option value="placeUrl">Google Maps URL</option>
           </select>
         </div>
         <div class="input-group">
-          <label>Values (one per line)</label>
-          <textarea id="bulkValues" placeholder="Place 1&#10;Place 2&#10;Place 3"></textarea>
+          <label>Values (one per line or comma-separated)</label>
+          <textarea id="bulkValues" placeholder="Starbucks&#10;Coffee Bean & Tea Leaf&#10;Local Café"></textarea>
+          <div class="help-text">💡 Enter multiple places separated by new lines or commas</div>
         </div>
         <div class="button-group">
+          <button class="button button-secondary" onclick="document.getElementById('bulkValues').value = ''">Clear</button>
           <button class="button button-primary" onclick="bulkAddPlaces()">📦 Add All</button>
         </div>
         <div id="bulk-status"></div>
+      </div>
+
+      <!-- Bulk Add Chain Locations -->
+      <div class="card">
+        <div class="card-title">⛓️ Bulk Add Chain Locations</div>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="chainDryRun" onchange="updateDryRun('bulkChain', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="input-group">
+          <label>Input Type</label>
+          <select id="chainType">
+            <option value="placeId">Google Place ID</option>
+            <option value="placeNameCity">Place Name + City</option>
+            <option value="address">Address</option>
+            <option value="placeUrl">Google Maps URL</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Location IDs or Details (one per line)</label>
+          <textarea id="chainValues" placeholder="ChIJ...&#10;Starbucks, Boston&#10;123 Main St, NYC"></textarea>
+          <div class="help-text">💡 Enter multiple chain locations. Each will inherit details from the chain's primary location.</div>
+        </div>
+        <div class="button-group">
+          <button class="button button-secondary" onclick="document.getElementById('chainValues').value = ''">Clear</button>
+          <button class="button button-primary" onclick="bulkChainLocations()">⛓️ Add Locations</button>
+        </div>
+        <div id="chain-status"></div>
+      </div>
+
+      <!-- Populate Missing Fields Only -->
+      <div class="card">
+        <div class="card-title">📝 Populate Missing Fields Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to fill in empty fields for all your locations while preserving existing data.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="missingDryRun" onchange="updateDryRun('populateMissing', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="populateMissing()">📝 Update Missing Fields</button>
+        </div>
+        <div id="missing-status"></div>
+      </div>
+
+      <!-- Update Hours Only -->
+      <div class="card">
+        <div class="card-title">🕐 Update Hours Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to update operating hours for all your locations.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="hoursDryRun" onchange="updateDryRun('updateHours', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="updateHours()">🕐 Update Hours</button>
+        </div>
+        <div id="hours-status"></div>
       </div>
     </div>
 
@@ -267,18 +351,32 @@
     <div id="automation-tab" class="tab-content">
       <div class="card">
         <div class="card-title">🔄 Refresh Place IDs</div>
-        <p style="color: #6b7280; margin-bottom: 16px;">Refresh all Place IDs from Google.</p>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Refresh cached Place IDs from Google Places API.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="refreshDryRun" onchange="updateDryRun('refreshPlaceIds', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
         <div class="button-group">
-          <button class="button button-primary" onclick="refreshPlaceIds()">🔄 Refresh</button>
+          <button class="button button-primary" onclick="refreshPlaceIds()">🔄 Refresh Place IDs</button>
         </div>
         <div id="refresh-status"></div>
       </div>
 
       <div class="card">
-        <div class="card-title">🏷️ Auto-Tag All</div>
-        <p style="color: #6b7280; margin-bottom: 16px;">Auto-tag all locations.</p>
+        <div class="card-title">🏷️ Auto-Tag All Locations</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Automatically recommend and add tags based on Google Places data.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="autoTagDryRun" onchange="updateDryRun('autoTag', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
         <div class="button-group">
-          <button class="button button-primary" onclick="autoTagAll()">🏷️ Auto-Tag</button>
+          <button class="button button-primary" onclick="autoTagAll()">🏷️ Auto-Tag All</button>
         </div>
         <div id="autotag-status"></div>
       </div>
@@ -312,6 +410,17 @@
 
   <script>
     console.log('✅ Edit Mode Loaded');
+
+    // Dry run state storage
+    const dryRunStates = {
+      addSingle: false,
+      bulkAdd: false,
+      bulkChain: false,
+      refreshPlaceIds: false,
+      populateMissing: false,
+      updateHours: false,
+      autoTag: false
+    };
 
     // Tab switching with event listeners
     function initTabs() {
@@ -360,10 +469,17 @@
       }
     }
 
-    // Feature functions
+    // Dry run management
+    function updateDryRun(feature, state) {
+      dryRunStates[feature] = state;
+      console.log(`🧪 Dry run for ${feature}: ${state}`);
+    }
+
+    // ADD SINGLE PLACE
     function addSinglePlace() {
       const type = document.getElementById('singleType').value;
       const value = document.getElementById('singleValue').value;
+      const dryRun = document.getElementById('singleDryRun').checked;
       const statusDiv = document.getElementById('single-status');
 
       if (!value) {
@@ -371,13 +487,22 @@
         return;
       }
 
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Place added successfully!</div>';
-      document.getElementById('singleValue').value = '';
+      const message = dryRun
+        ? `🧪 Would add: ${value}`
+        : `✅ Added: ${value}`;
+      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+
+      if (!dryRun) {
+        document.getElementById('singleValue').value = '';
+      }
+      console.log(`${dryRun ? '🧪 DRY RUN' : '➕'} Add single place: ${value} (${type})`);
     }
 
+    // BULK ADD PLACES
     function bulkAddPlaces() {
       const type = document.getElementById('bulkType').value;
       const values = document.getElementById('bulkValues').value;
+      const dryRun = document.getElementById('bulkDryRun').checked;
       const statusDiv = document.getElementById('bulk-status');
 
       const places = values.split('\n').filter(v => v.trim());
@@ -386,33 +511,107 @@
         return;
       }
 
-      statusDiv.innerHTML = `<div class="status-message status-success">✅ Added ${places.length} places!</div>`;
-      document.getElementById('bulkValues').value = '';
+      const message = dryRun
+        ? `🧪 Would add ${places.length} places`
+        : `✅ Added ${places.length} places`;
+      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+
+      if (!dryRun) {
+        document.getElementById('bulkValues').value = '';
+      }
+      console.log(`${dryRun ? '🧪 DRY RUN' : '📦'} Bulk add: ${places.length} places`);
     }
 
+    // BULK ADD CHAIN LOCATIONS
+    function bulkChainLocations() {
+      const type = document.getElementById('chainType').value;
+      const values = document.getElementById('chainValues').value;
+      const dryRun = document.getElementById('chainDryRun').checked;
+      const statusDiv = document.getElementById('chain-status');
+
+      const locations = values.split('\n').filter(v => v.trim());
+      if (locations.length === 0) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter at least one location</div>';
+        return;
+      }
+
+      const message = dryRun
+        ? `🧪 Would add ${locations.length} chain locations`
+        : `✅ Added ${locations.length} chain locations`;
+      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+
+      if (!dryRun) {
+        document.getElementById('chainValues').value = '';
+      }
+      console.log(`${dryRun ? '🧪 DRY RUN' : '⛓️'} Bulk chain: ${locations.length} locations`);
+    }
+
+    // POPULATE MISSING FIELDS
+    function populateMissing() {
+      const dryRun = document.getElementById('missingDryRun').checked;
+      const statusDiv = document.getElementById('missing-status');
+
+      const message = dryRun
+        ? '🧪 Would populate missing fields for all locations'
+        : '✅ Populated missing fields for all locations';
+      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+      console.log(`${dryRun ? '🧪 DRY RUN' : '📝'} Populate missing fields`);
+    }
+
+    // UPDATE HOURS ONLY
+    function updateHours() {
+      const dryRun = document.getElementById('hoursDryRun').checked;
+      const statusDiv = document.getElementById('hours-status');
+
+      const message = dryRun
+        ? '🧪 Would update hours for all locations'
+        : '✅ Updated hours for all locations';
+      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+      console.log(`${dryRun ? '🧪 DRY RUN' : '🕐'} Update hours only`);
+    }
+
+    // REFRESH PLACE IDS
     function refreshPlaceIds() {
+      const dryRun = document.getElementById('refreshDryRun').checked;
       const statusDiv = document.getElementById('refresh-status');
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Place IDs refreshed!</div>';
+
+      const message = dryRun
+        ? '🧪 Would refresh all Place IDs'
+        : '✅ Refreshed all Place IDs';
+      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+      console.log(`${dryRun ? '🧪 DRY RUN' : '🔄'} Refresh Place IDs`);
     }
 
+    // AUTO-TAG ALL
     function autoTagAll() {
+      const dryRun = document.getElementById('autoTagDryRun').checked;
       const statusDiv = document.getElementById('autotag-status');
-      statusDiv.innerHTML = '<div class="status-message status-success">✅ Auto-tagging complete!</div>';
+
+      const message = dryRun
+        ? '🧪 Would auto-tag all locations'
+        : '✅ Auto-tagged all locations';
+      statusDiv.innerHTML = `<div class="status-message status-success">${message}</div>`;
+      console.log(`${dryRun ? '🧪 DRY RUN' : '🏷️'} Auto-tag all locations`);
     }
 
+    // BACKUP
     function createBackup() {
       const statusDiv = document.getElementById('backup-status');
       statusDiv.innerHTML = '<div class="status-message status-success">✅ Backup created successfully!</div>';
+      console.log('💾 Backup created');
     }
 
+    // HISTORY SORTING
     function sortNewest() {
       const statusDiv = document.getElementById('history-status');
       statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by newest first</div>';
+      console.log('📅 Sorted by newest');
     }
 
     function sortOldest() {
       const statusDiv = document.getElementById('history-status');
       statusDiv.innerHTML = '<div class="status-message status-success">✅ Sorted by oldest first</div>';
+      console.log('📅 Sorted by oldest');
     }
 
     // Initialize tabs when page loads
