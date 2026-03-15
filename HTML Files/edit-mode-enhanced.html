@@ -276,10 +276,10 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab-btn active" data-tab="places" onclick="switchTab('places', this)">➕ Add Places</button>
-      <button class="tab-btn" data-tab="automation" onclick="switchTab('automation', this)">🔄 Automation</button>
-      <button class="tab-btn" data-tab="backup" onclick="switchTab('backup', this)">💾 Backup</button>
-      <button class="tab-btn" data-tab="history" onclick="switchTab('history', this)">📅 History</button>
+      <button class="tab-btn active" data-tab="places">➕ Add Places</button>
+      <button class="tab-btn" data-tab="automation">🔄 Automation</button>
+      <button class="tab-btn" data-tab="backup">💾 Backup</button>
+      <button class="tab-btn" data-tab="history">📅 History</button>
     </div>
 
     <!-- Add Places Tab -->
@@ -508,46 +508,59 @@
 
   <script>
     /**
-     * Tab switching
+     * Tab switching - SIMPLIFIED VERSION
      */
-    function switchTab(tabName, buttonElement) {
-      console.log(`🔄 switchTab called with: ${tabName}, buttonElement:`, buttonElement);
+    function switchTab(tabName) {
+      console.log(`🔄 SWITCHING TAB TO: ${tabName}`);
 
       // Hide all tabs
-      const tabs = document.querySelectorAll('.tab-content');
-      console.log(`Found ${tabs.length} tab-content elements`);
-
-      tabs.forEach(tab => {
+      document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
       });
 
-      // Remove active class from all buttons
-      const buttons = document.querySelectorAll('.tab-btn');
-      console.log(`Found ${buttons.length} tab-btn elements`);
-
-      buttons.forEach(btn => {
+      // Remove active from all buttons
+      document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
       });
 
-      // Show the selected tab
+      // Show selected tab
       const tabElement = document.getElementById(`${tabName}-tab`);
-      console.log(`Looking for element with id: ${tabName}-tab, found:`, tabElement);
-
-      if (tabElement) {
-        tabElement.classList.add('active');
-        console.log(`✅ Tab switched to: ${tabName}`);
-      } else {
-        console.error(`❌ Tab not found: ${tabName}-tab`);
+      if (!tabElement) {
+        console.error(`❌ Tab element not found: ${tabName}-tab`);
         return;
       }
 
-      // Activate the clicked button
-      if (buttonElement) {
-        buttonElement.classList.add('active');
-        console.log(`✅ Button activated:`, buttonElement);
-      } else {
-        console.warn(`⚠️ No button element provided`);
+      tabElement.classList.add('active');
+      console.log(`✅ Showed tab: ${tabName}-tab`);
+
+      // Highlight the button
+      const button = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+      if (button) {
+        button.classList.add('active');
+        console.log(`✅ Highlighted button for: ${tabName}`);
       }
+    }
+
+    // Setup tab click listeners when page loads
+    function initializeTabs() {
+      console.log('🔧 Initializing tab listeners...');
+
+      const tabButtons = document.querySelectorAll('.tab-btn');
+      console.log(`Found ${tabButtons.length} tab buttons`);
+
+      tabButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const tabName = this.getAttribute('data-tab');
+          console.log(`📌 Tab button clicked: ${tabName}`);
+
+          switchTab(tabName);
+        });
+      });
+
+      console.log('✅ Tab listeners initialized successfully');
     }
 
     /**
@@ -763,8 +776,21 @@
 
     // Initialize
     console.log('✅ Edit Mode UI Loaded');
+
+    // Initialize tabs
+    document.addEventListener('DOMContentLoaded', initializeTabs);
+
+    // Also try immediately in case DOM is already ready
+    if (document.readyState === 'loading') {
+      console.log('📄 Page still loading, waiting for DOMContentLoaded...');
+    } else {
+      console.log('📄 Page already loaded, initializing tabs now...');
+      initializeTabs();
+    }
+
     console.log('📋 Available functions:', {
       switchTab: typeof switchTab,
+      initializeTabs: typeof initializeTabs,
       updateFeatureDryRun: typeof updateFeatureDryRun,
       submitAddSinglePlace: typeof submitAddSinglePlace,
       enhancedAutomation: typeof window.enhancedAutomation
