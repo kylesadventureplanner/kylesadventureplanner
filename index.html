@@ -1294,6 +1294,8 @@
       background: linear-gradient(90deg, var(--primary) 0%, var(--accent-info) 100%);
       opacity: 0;
       transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 1;
     }
 
     .adventure-card:hover::before {
@@ -1515,8 +1517,11 @@
       gap: var(--space-sm);
       box-shadow: var(--shadow-sm);
       position: relative;
-      z-index: 10;
+      z-index: 100;
       pointer-events: auto;
+      text-decoration: none;
+      white-space: nowrap;
+      user-select: none;
     }
 
     .card-btn:hover {
@@ -8961,7 +8966,9 @@
       const currentRating = Number(myRating) || 0;
 
       // Get favorite status from Excel column (no more localStorage)
-      const isFavorite = (favoriteStatus || '').toLowerCase() === 'true' || favoriteStatus === '1' || favoriteStatus === 1;
+      // Safely handle undefined, null, or non-string values
+      const favStatusStr = String(favoriteStatus || '').trim().toLowerCase();
+      const isFavorite = favStatusStr === 'true' || favStatusStr === '1' || favoriteStatus === 1;
 
       // Get state color
       const stateUpper = (state || "").trim().toUpperCase();
@@ -9120,6 +9127,14 @@
     // Add SINGLE delegated event listener for ALL card interactions
     // This eliminates duplicate listeners and the favorite multiplication bug
     freshCardsGrid.addEventListener('click', (e) => {
+      // CRITICAL: Ensure all button clicks are properly handled
+      // Stop propagation immediately for any button click
+      const clickedButton = e.target.closest('button[class*="card-btn"], button[class*="card-favorite"], button.tag-manager-btn');
+      if (clickedButton) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+
       const tagPill = e.target.closest('.tag-pill');
       if (tagPill) {
         e.stopPropagation();
@@ -9266,7 +9281,50 @@
       showContextMenu(e, card);
     }, false);
 
+    // CRITICAL: Ensure all buttons are clickable after rendering
+    ensureAllButtonsClickable();
+
     console.log(`✓ Rendered ${pageAdventures.length} cards for page ${currentPage}`);
+  }
+
+  /**
+   * Ensure all card buttons are clickable and not blocked by overlays or z-index issues
+   */
+  function ensureAllButtonsClickable() {
+    const cardsGrid = document.getElementById('adventureCardsGrid');
+    if (!cardsGrid) return;
+
+    // Fix all card buttons
+    const buttons = cardsGrid.querySelectorAll('button[class*="card-btn"], button[class*="card-favorite"]');
+    buttons.forEach(btn => {
+      btn.style.pointerEvents = 'auto';
+      btn.style.cursor = 'pointer';
+      btn.style.position = 'relative';
+      btn.style.zIndex = '100';
+    });
+
+    // Fix card footer to ensure buttons are not hidden
+    const footers = cardsGrid.querySelectorAll('.adventure-card-footer');
+    footers.forEach(footer => {
+      footer.style.position = 'relative';
+      footer.style.zIndex = '50';
+      footer.style.pointerEvents = 'auto';
+    });
+
+    // Fix rating containers
+    const ratingContainers = cardsGrid.querySelectorAll('.card-favorite-rating-container');
+    ratingContainers.forEach(container => {
+      container.style.position = 'relative';
+      container.style.zIndex = '100';
+      container.style.pointerEvents = 'auto';
+    });
+
+    // Ensure card itself doesn't block clicks
+    const cards = cardsGrid.querySelectorAll('.adventure-card');
+    cards.forEach(card => {
+      card.style.overflow = 'visible';
+      card.style.position = 'relative';
+    });
   }
 
   /**
@@ -9442,18 +9500,20 @@
    * Show modal with similar adventures
    */
   function showSimilarAdventuresModal(referenceName, similarAdventures) {
-    // Create modal HTML
+    // Create modal HTML with proper ID for similar modal
     const modalHTML = `
-      <div id="similarAdventuresModal" class="row-detail-modal" style="display: flex;">
-        <div class="row-detail-header">
-          <div class="row-detail-title-section">
-            <h1 class="row-detail-adventure-name">Adventures Similar to "${referenceName}"</h1>
-            <div class="row-detail-location">🔍 ${similarAdventures.length} matches found</div>
+      <div id="similarAdventuresModal" class="row-detail-modal modal" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 700px; max-height: 80vh; overflow: auto; z-index: 1002; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+        <div class="row-detail-header" style="padding: 24px; border-bottom: 1px solid #e5e7eb;">
+          <div class="row-detail-title-section" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h1 class="row-detail-adventure-name" style="font-size: 20px; font-weight: 700; margin: 0 0 8px 0;">Adventures Similar to "${referenceName}"</h1>
+              <div class="row-detail-location" style="color: #6b7280;">🔍 ${similarAdventures.length} matches found</div>
+            </div>
+            <button class="row-detail-close-btn" onclick="closeSimilarAdventuresModal()" style="background: #f3f4f6; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;">×</button>
           </div>
-          <button class="row-detail-close-btn" onclick="closeSimilarAdventuresModal()">X</button>
         </div>
 
-        <div class="row-detail-content" style="padding: 24px;">
+        <div class="row-detail-content" style="padding: 24px; max-height: 60vh; overflow-y: auto;">
           <div style="display: grid; gap: 16px;">
             ${similarAdventures.map(item => {
       const values = item.adventure.row.values[0];
@@ -9517,8 +9577,8 @@
           </div>
         </div>
 
-        <div class="row-detail-footer">
-          <button class="row-detail-footer-btn" onclick="closeSimilarAdventuresModal()">Close</button>
+        <div class="row-detail-footer" style="padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #f9fafb; display: flex; gap: 12px; justify-content: flex-end;">
+          <button class="row-detail-footer-btn" onclick="closeSimilarAdventuresModal()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
         </div>
       </div>
     `;
@@ -9529,18 +9589,19 @@
       existingModal.remove();
     }
 
-    // Add modal to page
-    const modalContainer = document.createElement('div');
-    modalContainer.innerHTML = modalHTML;
-    document.body.appendChild(modalContainer.firstElementChild);
-
     // Show backdrop
     const backdrop = document.getElementById('rowDetailModalBackdrop');
     if (backdrop) {
-      backdrop.style.display = 'block';
+      backdrop.style.display = 'flex';
+      backdrop.classList.add('visible');
       backdrop.onclick = () => closeSimilarAdventuresModal();
     }
-  }
+
+    // Add modal to body
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer.firstElementChild);
+  }  }
 
   /**
    * Close similar adventures modal

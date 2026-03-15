@@ -79,7 +79,7 @@ class EnhancedCityVisualizer {
    * Get approximate coordinates for a city (simplified - would use geocoding API in production)
    */
   getApproximateCoordinates(city, state) {
-    // This is a simplified lookup - in production you'd use Google Places API
+    // Comprehensive city coordinates database
     const cityCoordinates = {
       'Hendersonville,NC': { lat: 35.3395, lng: -82.4637 },
       'Asheville,NC': { lat: 35.5951, lng: -82.5515 },
@@ -87,9 +87,45 @@ class EnhancedCityVisualizer {
       'Columbia,SC': { lat: 34.0007, lng: -81.0348 },
       'Charlotte,NC': { lat: 35.2271, lng: -80.8431 },
       'Raleigh,NC': { lat: 35.7796, lng: -78.6382 },
+      'Durham,NC': { lat: 35.9940, lng: -78.8986 },
+      'Chapel Hill,NC': { lat: 35.9132, lng: -79.0558 },
+      'Greensboro,NC': { lat: 36.0726, lng: -79.7920 },
+      'Winston-Salem,NC': { lat: 36.0999, lng: -80.2442 },
+      'Boone,NC': { lat: 36.2173, lng: -81.6846 },
+      'Morganton,NC': { lat: 35.7391, lng: -81.6891 },
+      'Hickory,NC': { lat: 35.7356, lng: -81.3312 },
+      'Statesville,NC': { lat: 35.7799, lng: -80.8846 },
+      'Gastonia,NC': { lat: 35.2630, lng: -81.1861 },
+      'Spartanburg,SC': { lat: 34.9526, lng: -81.9322 },
+      'Clemson,SC': { lat: 34.6834, lng: -82.8374 },
+      'Sumter,SC': { lat: 34.1762, lng: -81.2010 },
+      'Charleston,SC': { lat: 32.7765, lng: -79.9318 },
+      'Atlanta,GA': { lat: 33.7490, lng: -84.3880 },
+      'Knoxville,TN': { lat: 35.9606, lng: -83.9207 },
+      'Nashville,TN': { lat: 36.1627, lng: -86.7816 },
+      'Chattanooga,TN': { lat: 35.0456, lng: -85.2672 },
+      'Johnson City,TN': { lat: 36.3193, lng: -82.3554 },
+      'Kingsport,TN': { lat: 36.5478, lng: -82.5679 },
     };
-    const key = `${city},${state}`;
-    return cityCoordinates[key] || { lat: 35.3395, lng: -82.4637 };
+
+    // Try exact match first
+    let key = `${city},${state}`;
+    if (cityCoordinates[key]) {
+      return cityCoordinates[key];
+    }
+
+    // Try with just city name (case-insensitive)
+    const cityLower = city.toLowerCase();
+    for (const [coordKey, coords] of Object.entries(cityCoordinates)) {
+      if (coordKey.toLowerCase().startsWith(cityLower)) {
+        return coords;
+      }
+    }
+
+    // If not found, try to estimate based on state
+    // Default to Hendersonville, NC but log the missing city
+    console.warn(`⚠️ City coordinates not found for: ${city}, ${state}. Using default coordinates.`);
+    return { lat: 35.3395, lng: -82.4637 };
   }
 
   /**
@@ -871,8 +907,21 @@ window.backToCityList = function() {
 };
 
 window.showLocationDetails = function(index) {
-  if (window.adventuresData && window.adventuresData[index]) {
+  try {
+    // Safely access adventure data
+    if (!window.adventuresData || !window.adventuresData[index]) {
+      console.warn(`Location index ${index} not found`);
+      return;
+    }
+
     const adventure = window.adventuresData[index];
+
+    // Safely access row data
+    if (!adventure || !adventure.row || !adventure.row.values || !adventure.row.values[0]) {
+      console.error('Invalid adventure data structure:', adventure);
+      return;
+    }
+
     const values = adventure.row.values[0];
     const name = values[0] || 'Unknown Location';
 
@@ -883,6 +932,9 @@ window.showLocationDetails = function(index) {
     } else {
       window.showToast(`📌 ${name} selected`, 'info', 2000);
     }
+  } catch (error) {
+    console.error('Error in showLocationDetails:', error);
+    window.showToast('Error opening location details', 'error', 2000);
   }
 };
 

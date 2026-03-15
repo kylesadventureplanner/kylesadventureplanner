@@ -499,12 +499,12 @@
           statusDiv.innerHTML = `<div class="status-message status-success">✅ Added: ${value}</div>`;
           document.getElementById('singleValue').value = '';
 
-          // Refresh main page
+          // Reload main page after a delay to show the new place
           setTimeout(() => {
-            if (window.opener && typeof window.opener.refreshPlacesList === 'function') {
-              window.opener.refreshPlacesList();
+            if (window.opener) {
+              window.opener.location.reload();
             }
-          }, 500);
+          }, 1000);
         } catch (error) {
           statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
         }
@@ -540,15 +540,15 @@
             successCount++;
           });
 
-          statusDiv.innerHTML = `<div class="status-message status-success">✅ Added ${successCount} places!</div>`;
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ Added ${successCount} places! Reloading main page...</div>`;
           document.getElementById('bulkValues').value = '';
 
-          // Refresh main page
+          // Reload main page after a delay to show all new places
           setTimeout(() => {
-            if (window.opener && typeof window.opener.refreshPlacesList === 'function') {
-              window.opener.refreshPlacesList();
+            if (window.opener) {
+              window.opener.location.reload();
             }
-          }, 500);
+          }, 1000);
         } catch (error) {
           statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
         }
@@ -582,21 +582,23 @@
         try {
           let successCount = 0;
           locations.forEach(location => {
+            console.log(`Adding chain location: ${location}`);
             window.opener.addNewPlace(location, '', '');
             successCount++;
           });
 
-          statusDiv.innerHTML = `<div class="status-message status-success">✅ Successfully added ${successCount} chain locations to your database!</div>`;
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ Successfully added ${successCount} chain locations! Reloading main page...</div>`;
           console.log(`⛓️ Added ${successCount} chain locations`);
 
-          // Refresh the main page data after a short delay
-          setTimeout(() => {
-            if (window.opener && typeof window.opener.refreshPlacesList === 'function') {
-              window.opener.refreshPlacesList();
-            }
-          }, 500);
-
           document.getElementById('chainValues').value = '';
+
+          // Reload the main page after a delay to show all new locations
+          setTimeout(() => {
+            if (window.opener) {
+              console.log('Reloading main window...');
+              window.opener.location.reload();
+            }
+          }, 1000);
         } catch (error) {
           statusDiv.innerHTML = `<div class="status-message status-error">❌ Error adding locations: ${error.message}</div>`;
           console.error('Error adding chain locations:', error);
