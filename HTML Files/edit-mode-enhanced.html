@@ -573,7 +573,7 @@
     }
 
     /**
-     * Submit Add Single Place
+     * Submit Add Single Place - WITH PROGRESS TRACKING
      */
     async function submitAddSinglePlace() {
       const input = document.getElementById('singleInput').value;
@@ -581,23 +581,35 @@
       const dryRun = document.getElementById('singleDryRun').checked;
       const statusDiv = document.getElementById('single-status');
 
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      if (!window.enhancedAutomation) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+      if (!input.trim()) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a location</div>';
         return;
       }
 
-      const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun);
-      window.enhancedAutomation.displayResults(result, statusDiv);
+      // Try new progress tracking system first
+      if (typeof window.handleAddSinglePlaceWithProgress === 'function') {
+        const result = await window.handleAddSinglePlaceWithProgress(input, inputType, statusDiv, dryRun);
+        if (result.success) {
+          document.getElementById('singleInput').value = '';
+        }
+        return;
+      }
 
-      if (result.success) {
-        document.getElementById('singleInput').value = '';
+      // Fallback to enhanced automation
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+      if (window.enhancedAutomation) {
+        const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun);
+        window.enhancedAutomation.displayResults(result, statusDiv);
+        if (result.success) {
+          document.getElementById('singleInput').value = '';
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
       }
     }
 
     /**
-     * Submit Bulk Add Places
+     * Submit Bulk Add Places - WITH PROGRESS TRACKING
      */
     async function submitBulkAddPlaces() {
       const input = document.getElementById('bulkInput').value;
@@ -605,23 +617,42 @@
       const dryRun = document.getElementById('bulkDryRun').checked;
       const statusDiv = document.getElementById('bulk-status');
 
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      if (!window.enhancedAutomation) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+      if (!input.trim()) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
         return;
       }
 
-      const result = await window.enhancedAutomation.bulkAddPlaces(input, inputType, dryRun);
-      window.enhancedAutomation.displayResults(result, statusDiv);
+      const locations = input.split('\n').filter(l => l.trim());
 
-      if (result.success && !dryRun) {
-        document.getElementById('bulkInput').value = '';
+      if (locations.length === 0) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
+        return;
+      }
+
+      // Try new progress tracking system first
+      if (typeof window.handleBulkAddPlacesWithProgress === 'function') {
+        const result = await window.handleBulkAddPlacesWithProgress(locations, inputType, statusDiv, dryRun);
+        if (result.success && !dryRun) {
+          document.getElementById('bulkInput').value = '';
+        }
+        return;
+      }
+
+      // Fallback to enhanced automation
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+      if (window.enhancedAutomation) {
+        const result = await window.enhancedAutomation.bulkAddPlaces(input, inputType, dryRun);
+        window.enhancedAutomation.displayResults(result, statusDiv);
+        if (result.success && !dryRun) {
+          document.getElementById('bulkInput').value = '';
+        }
+      } else {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
       }
     }
 
     /**
-     * Submit Bulk Chain - ENHANCED with Google Places API
+     * Submit Bulk Chain - ENHANCED WITH REAL PROGRESS UPDATES
      */
     async function submitBulkChain() {
       const input = document.getElementById('chainInput').value;
@@ -641,16 +672,31 @@
         return;
       }
 
-      // Use the new enhanced function
+      // Try new fixed function first (with real progress)
+      if (typeof window.handleBulkAddChainLocationsFixed === 'function') {
+        console.log('🔄 Using FIXED bulk add with real progress updates');
+        const result = await window.handleBulkAddChainLocationsFixed(locations, inputType, statusDiv, dryRun);
+
+        if (result.success && !dryRun) {
+          document.getElementById('chainInput').value = '';
+        }
+        return;
+      }
+
+      // Fallback: Try enhanced function
       if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
+        console.log('🔄 Using enhanced bulk add');
         const result = await window.handleBulkAddChainLocationsEnhanced(locations, inputType, statusDiv, dryRun);
 
         if (result.success && !dryRun) {
-          // Clear input only on successful non-dry-run
           document.getElementById('chainInput').value = '';
         }
-      } else if (window.enhancedAutomation) {
-        // Fallback to old system if new one not available
+        return;
+      }
+
+      // Final fallback: Old system
+      if (window.enhancedAutomation) {
+        console.log('🔄 Using fallback automation system');
         statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
         const result = await window.enhancedAutomation.bulkAddChainLocations(input, inputType, dryRun);
         window.enhancedAutomation.displayResults(result, statusDiv);
@@ -658,74 +704,111 @@
         if (result.success && !dryRun) {
           document.getElementById('chainInput').value = '';
         }
-      } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return;
       }
+
+      statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
     }
 
     /**
-     * Submit Populate Missing - ENHANCED
+     * Submit Populate Missing - WITH PROGRESS TRACKING
      */
     async function submitPopulateMissing() {
       const dryRun = document.getElementById('missingDryRun').checked;
       const statusDiv = document.getElementById('missing-status');
 
+      // Try new progress tracking system first
+      if (typeof window.handlePopulateMissingWithProgress === 'function') {
+        await window.handlePopulateMissingWithProgress(statusDiv, dryRun);
+        return;
+      }
+
+      // Try enhanced function
       if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
         await window.handlePopulateMissingFieldsEnhanced(statusDiv, dryRun);
-      } else if (window.enhancedAutomation) {
+        return;
+      }
+
+      // Fallback to old system
+      if (window.enhancedAutomation) {
         statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
         const result = await window.enhancedAutomation.populateMissingFieldsOnly(dryRun);
         window.enhancedAutomation.displayResults(result, statusDiv);
-      } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return;
       }
+
+      statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
     }
 
     /**
-     * Submit Update Hours - ENHANCED
+     * Submit Update Hours - WITH PROGRESS TRACKING
      */
     async function submitUpdateHours() {
       const dryRun = document.getElementById('hoursDryRun').checked;
       const statusDiv = document.getElementById('hours-status');
 
+      // Try new progress tracking system first
+      if (typeof window.handleUpdateHoursWithProgress === 'function') {
+        await window.handleUpdateHoursWithProgress(statusDiv, dryRun);
+        return;
+      }
+
+      // Try enhanced function
       if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
         await window.handleUpdateHoursOnlyEnhanced(statusDiv, dryRun);
-      } else if (window.enhancedAutomation) {
+        return;
+      }
+
+      // Fallback to old system
+      if (window.enhancedAutomation) {
         statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
         const result = await window.enhancedAutomation.updateHoursOnly(dryRun);
         window.enhancedAutomation.displayResults(result, statusDiv);
-      } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return;
       }
+
+      statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
     }
 
     /**
-     * Submit Refresh Place IDs
+     * Submit Refresh Place IDs - WITH PROGRESS TRACKING
      */
     async function submitRefreshPlaceIds() {
       const dryRun = document.getElementById('refreshDryRun').checked;
       const statusDiv = document.getElementById('refresh-status');
 
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      if (!window.enhancedAutomation) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+      // Try new progress tracking system first
+      if (typeof window.handleRefreshPlaceIdsWithProgress === 'function') {
+        await window.handleRefreshPlaceIdsWithProgress(statusDiv, dryRun);
         return;
       }
 
-      const result = await window.enhancedAutomation.refreshPlaceIds(dryRun);
-      window.enhancedAutomation.displayResults(result, statusDiv);
+      // Fallback to enhanced automation
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+      if (window.enhancedAutomation) {
+        const result = await window.enhancedAutomation.refreshPlaceIds(dryRun);
+        window.enhancedAutomation.displayResults(result, statusDiv);
+        return;
+      }
+
+      statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
     }
 
     /**
-     * Submit Auto-Tag All
+     * Submit Auto-Tag All - WITH PROGRESS TRACKING
      */
     async function submitAutoTagAll() {
       const dryRun = document.getElementById('autoTagDryRun').checked;
       const statusDiv = document.getElementById('autotag-status');
 
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+      // Try new progress tracking system first
+      if (typeof window.handleAutoTagWithProgress === 'function') {
+        await window.handleAutoTagWithProgress(statusDiv, dryRun);
+        return;
+      }
 
+      // Try unified auto-tag system
+      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
       if (typeof window.autoTagAllLocationsUnified === 'function') {
         const result = await window.autoTagAllLocationsUnified({
           dryRun: dryRun
@@ -734,9 +817,10 @@
           ? `🧪 Preview: Would tag locations`
           : `✅ Successfully tagged ${result.success || 0} locations`;
         window.enhancedAutomation?.displayResults({ success: true, message, dryRun }, statusDiv);
-      } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Auto-tag system not available</div>';
+        return;
       }
+
+      statusDiv.innerHTML = '<div class="status-message status-error">❌ Auto-tag system not available</div>';
     }
 
     /**
