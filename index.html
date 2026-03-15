@@ -7471,6 +7471,7 @@
     initResetButtons();
     initMoreLessButtons();
     initRowSelection();
+    initPaginationButtons();  // Initialize pagination button handlers
     // initContextMenu(); // NOTE: Moved to after table loads in signIn()
     updateBreadcrumbMenu();
     initBreadcrumbResetBtn();
@@ -8669,14 +8670,17 @@
       return;
     }
 
+    // CRITICAL: Reset pagination state before rendering
+    currentPage = 1;  // Reset to first page
+    totalFilteredAdventures = [];  // Clear previous data
+
     // Store all adventures with their SOURCE indices for pagination
     totalFilteredAdventures = adventuresArray.map((row) => ({
       row,
       sourceIndex: window.adventuresData ? window.adventuresData.indexOf(row) : -1,
     }));
 
-    // Reset to first page
-    currentPage = 1;
+    console.log(`✅ Pagination reset: page=${currentPage}, total items=${totalFilteredAdventures.length}`);
 
     // Render first page
     renderPaginatedCards();
@@ -8979,6 +8983,57 @@
       renderPaginatedCards();
       updatePaginationControls();
     }, 100);
+  }
+
+  /**
+   * Initialize pagination button listeners
+   */
+  function initPaginationButtons() {
+    console.log('🔘 Initializing pagination buttons...');
+
+    // Bottom pagination buttons
+    const prevBtn = document.getElementById("prevPageBtn");
+    const nextBtn = document.getElementById("nextPageBtn");
+
+    // Top pagination buttons
+    const prevBtnTop = document.getElementById("prevPageBtnTop");
+    const nextBtnTop = document.getElementById("nextPageBtnTop");
+
+    // Set up event listeners for bottom buttons
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        console.log('◀️ Previous page clicked');
+        changePage(-1);
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        console.log('▶️ Next page clicked');
+        changePage(1);
+      });
+    }
+
+    // Set up event listeners for top buttons
+    if (prevBtnTop) {
+      prevBtnTop.addEventListener('click', function(e) {
+        e.preventDefault();
+        console.log('◀️ Previous page clicked (top)');
+        changePage(-1);
+      });
+    }
+
+    if (nextBtnTop) {
+      nextBtnTop.addEventListener('click', function(e) {
+        e.preventDefault();
+        console.log('▶️ Next page clicked (top)');
+        changePage(1);
+      });
+    }
+
+    console.log('✅ Pagination buttons initialized');
   }
 
   /**

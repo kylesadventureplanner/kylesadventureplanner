@@ -309,26 +309,37 @@
 
             // Call main window function to get place details
             const details = await mainWindow.getPlaceDetails(placeId);
-
-            // Build Excel row
-            const buildExcelRow = mainWindow.buildExcelRow;
-            const row = buildExcelRow(placeId, details);
-
-            // Check if place already exists
-            const placeExistsInData = mainWindow.placeExistsInData;
-            if (placeExistsInData(row)) {
-              results.push({
-                placeId: placeId,
-                status: '⏭️ Already exists',
-                icon: '⏭️'
-              });
-              errorCount++;
-              continue;
+            if (!details) {
+              throw new Error('Could not get place details');
             }
 
-            // Add to Excel
-            const addRowToExcel = mainWindow.addRowToExcel;
-            await addRowToExcel(row);
+            // Build Excel row
+            if (typeof mainWindow.buildExcelRow !== 'function') {
+              throw new Error('buildExcelRow function not available in main window');
+            }
+            const row = mainWindow.buildExcelRow(placeId, details);
+
+            // Check if place already exists
+            if (typeof mainWindow.placeExistsInData === 'function') {
+              if (mainWindow.placeExistsInData(row)) {
+                results.push({
+                  placeId: placeId,
+                  status: '⏭️ Already exists',
+                  icon: '⏭️'
+                });
+                errorCount++;
+                continue;
+              }
+            }
+
+            // Add to Excel - MUST AWAIT THIS
+            if (typeof mainWindow.addRowToExcel !== 'function') {
+              throw new Error('addRowToExcel function not available in main window');
+            }
+
+            console.log(`✏️ Adding row to Excel for: ${row[0]}`);
+            await mainWindow.addRowToExcel(row);
+            console.log(`✅ Successfully added to Excel: ${row[0]}`);
 
             results.push({
               placeId: placeId,
@@ -349,9 +360,11 @@
           }
         }
 
-        // Reload table in main window
+        // Reload table in main window AFTER all adds complete
+        console.log('📊 Reloading table...');
         if (mainWindow.loadTable && typeof mainWindow.loadTable === 'function') {
           await mainWindow.loadTable();
+          console.log('✅ Table reloaded');
         }
 
         // Show detailed results
