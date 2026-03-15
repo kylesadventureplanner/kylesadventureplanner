@@ -7327,9 +7327,12 @@
   // Enhanced initialization with better error handling
   function initializeApp() {
 
-    // Log initialization start
-    console.log("=== APP INITIALIZATION STARTED ===");
+    // Log initialization start - GUARANTEED TO LOG IF THIS FUNCTION RUNS
+    console.log("=== ✅✅✅ APP INITIALIZATION FUNCTION CALLED ===");
+    console.log("Time:", new Date().toLocaleTimeString());
     console.log("DOM Content Loaded - All elements should be ready");
+    console.log("signInBtn element:", document.getElementById("signInBtn"));
+    console.log("signOutBtn element:", document.getElementById("signOutBtn"));
 
     // Initialize authentication buttons
     const signInBtn = document.getElementById("signInBtn");
@@ -7467,7 +7470,8 @@
   });
 
   // Use DOMContentLoaded to ensure all DOM elements are ready
-  document.addEventListener("DOMContentLoaded", initializeApp);
+  // REMOVED: This was causing duplicate initialization
+  // document.addEventListener("DOMContentLoaded", initializeApp);
 
   // Initialize keyboard shortcuts for debugging
   document.addEventListener("keydown", (e) => {
@@ -14394,13 +14398,23 @@ COMMON ISSUES:
   // INITIALIZE APP ON PAGE LOAD
   // ============================================================
   // Call initialization function when DOM is ready
+  // FIXED: Use only ONE initialization method to avoid conflicts
+  console.log("📋 Initialization Script Starting - readyState:", document.readyState);
+
   if (document.readyState === 'loading') {
     // DOM is still loading
-    document.addEventListener('DOMContentLoaded', initializeApp);
+    console.log("📋 DOM still loading, attaching DOMContentLoaded listener");
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("📋 DOMContentLoaded fired, calling initializeApp()");
+      initializeApp();
+    });
   } else {
     // DOM is already loaded
+    console.log("📋 DOM already loaded, calling initializeApp() immediately");
     initializeApp();
   }
+
+  console.log("📋 Initialization Script Setup Complete");
 </script>
 
 
