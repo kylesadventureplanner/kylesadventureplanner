@@ -6577,13 +6577,54 @@
      WHY: We need authentication to access the user's OneDrive Excel file
           without storing their password directly.
   */
+  // Flag to prevent duplicate sign-in attempts
+  let isSigningIn = false;
+
   async function signIn() {
     try {
+      // Prevent multiple simultaneous sign-in attempts
+      if (isSigningIn) {
+        console.warn("⚠️ Sign-in already in progress, ignoring duplicate request");
+        showToast('⏳ Sign-in already in progress...', 'warning', 2000);
+        return;
+      }
+
+      isSigningIn = true;
       showLoading('Signing in...');
       await msalInitPromise;
       console.log("=== SIGN-IN PROCESS STARTED ===");
       console.log("MSAL Instance:", msalInstance);
       console.log("Login Request:", loginRequest);
+
+      // Check if there's an active account already
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        console.log("✅ Found existing account, using silent login...");
+        msalInstance.setActiveAccount(accounts[0]);
+        activeAccount = accounts[0];
+
+        try {
+          const tokenResponse = await msalInstance.acquireTokenSilent({
+            ...loginRequest,
+            account: activeAccount,
+          });
+          accessToken = tokenResponse.accessToken;
+          syncAuthGlobals();
+          isConnectedToExcel = true;
+
+          document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
+          document.getElementById("signInBtn").style.display = "none";
+          document.getElementById("signOutBtn").style.display = "inline-block";
+          updateConnectionStatus(true);
+
+          hideLoading();
+          showToast('✓ Successfully signed in!', 'success', 3000);
+          isSigningIn = false;
+          return;
+        } catch (silentError) {
+          console.log("Silent login failed, will try popup...", silentError);
+        }
+      }
 
       // Step 1: Show Microsoft login popup and get login response
       console.log("Step 1: Calling msalInstance.loginPopup()");
@@ -6605,7 +6646,6 @@
 
       accessToken = tokenResponse.accessToken; // Store token globally
       syncAuthGlobals();
-      console.log("Access token stored globally");
       console.log("Access token stored globally");
       isConnectedToExcel = true;                // Mark as connected
 
@@ -6633,8 +6673,10 @@
 
       hideLoading();
       showToast('✓ Successfully signed in!', 'success', 3000);
+      isSigningIn = false;
 
     } catch (error) {
+      isSigningIn = false;
       hideLoading();
       console.error("=== SIGN-IN ERROR ===");
       console.error("Error object:", error);
@@ -6651,8 +6693,9 @@
           userMessage = "Could not open login popup. Please check if popups are blocked.";
         } else if (error.code === "user_cancelled") {
           userMessage = "Login was cancelled. Please try again.";
-        } else if (error.code === "interaction_in_progress") {
-          userMessage = "An interaction is already in progress. Please wait.";
+        } else if (error.message && error.message.includes("interaction_in_progress")) {
+          userMessage = "A login is already in progress. Please wait or refresh the page.";
+          console.log("💡 This usually means: multiple sign-in attempts or a redirect is pending.");
         }
       } else if (error.name === "BrowserConfigurationAuthError") {
         userMessage = "MSAL configuration error. Please check credentials in the code.";
