@@ -7080,6 +7080,59 @@
   }
 
   /* ============================================================
+     MICROSOFT AUTHENTICATION LIBRARY (MSAL) SETUP
+     ============================================================
+     MSAL handles OAuth2 authentication with Microsoft 365.
+  */
+  const msalConfig = {
+    auth: {
+      clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
+      authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
+    },
+  };
+
+  // Initialize MSAL with the configuration above
+  const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+  // Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly
+  const msalInitPromise = msalInstance.initialize().catch(error => {
+    console.error("MSAL initialization failed:", error);
+    throw error;
+  });
+
+  // Handle redirect from Microsoft login
+  msalInitPromise.then(() => {
+    if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
+      return msalInstance.handleRedirectPromise();
+    }
+    return Promise.resolve();
+  }).catch(error => {
+    console.error("⚠️ Error handling redirect:", error);
+  });
+
+  // Define what permissions (scopes) we need from Microsoft
+  const loginRequest = {
+    scopes: [
+      "User.Read",
+      "Files.ReadWrite",
+      "Sites.ReadWrite.All",
+    ],
+  };
+
+  /* ============================================================
+     AUTHENTICATION STATE VARIABLES
+     ============================================================
+  */
+  let accessToken = null;
+  let activeAccount = null;
+  let isConnectedToExcel = false;
+
+  function syncAuthGlobals() {
+    window.accessToken = accessToken || null;
+    window.activeAccount = activeAccount || null;
+  }
+
+  /* ============================================================
      SIGN IN FUNCTION - MICROSOFT AUTHENTICATION
      ============================================================
      This function handles the entire login process:
@@ -7269,6 +7322,29 @@
   // These must be accessible from HTML onclick handlers
   window.signIn = signIn;
   window.signOut = signOut;
+
+  // GUARANTEE these exports persist even after archived JS loads
+  // Re-export immediately and after a short delay
+  setTimeout(() => {
+    if (!window.signIn || typeof window.signIn !== 'function') {
+      console.warn('⚠️ window.signIn was overwritten, re-exporting...');
+      window.signIn = signIn;
+    }
+    if (!window.signOut || typeof window.signOut !== 'function') {
+      console.warn('⚠️ window.signOut was overwritten, re-exporting...');
+      window.signOut = signOut;
+    }
+  }, 100);
+
+  // Also set up a checker for the debug system
+  window.getAuthFunctions = function() {
+    return {
+      signIn: window.signIn,
+      signOut: window.signOut,
+      signInExists: typeof window.signIn === 'function',
+      signOutExists: typeof window.signOut === 'function'
+    };
+  };
 
   // Helper function for popup window to check authentication status
   function isAuthenticated() {
