@@ -7253,6 +7253,11 @@
     showToast('✓ Successfully signed out!', 'success', 2000);
   }
 
+  // IMMEDIATE EXPORT - Must happen right after functions defined
+  window.signIn = signIn;
+  window.signOut = signOut;
+  console.log('✅ IMMEDIATE: window.signIn and window.signOut exported (right after function definitions)');
+
   // Helper function for popup window to check authentication status
   function isAuthenticated() {
     return !!(accessToken && activeAccount);
@@ -18842,6 +18847,55 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
 <!-- Wave 0 Compatibility Wrapper (no-delete alias guardrails) - MUST LOAD LAST -->
 <script src="Archived-Files/JS/wave0-compatibility-wrapper.js"></script>
+
+<!-- DIRECT SIGN IN/OUT POLYFILL - Guarantees buttons work -->
+<script>
+  // This script runs AFTER all other scripts and directly attaches handlers
+  // to the Sign In and Sign Out buttons to ensure they work
+
+  setTimeout(() => {
+    const signInBtn = document.getElementById('signInBtn');
+    const signOutBtn = document.getElementById('signOutBtn');
+
+    if (signInBtn) {
+      signInBtn.onclick = function(e) {
+        e.preventDefault();
+        console.log('🔐 Direct handler: Sign In button clicked');
+
+        // Try to call signIn directly from window
+        if (typeof window.signIn === 'function') {
+          window.signIn();
+        } else if (typeof signIn === 'function') {
+          // Try to call from local scope (if in same context)
+          signIn();
+        } else {
+          console.error('❌ signIn function not available');
+          alert('Sign In function not found. Please refresh the page.');
+        }
+      };
+      console.log('✅ Direct Sign In handler attached');
+    }
+
+    if (signOutBtn) {
+      signOutBtn.onclick = function(e) {
+        e.preventDefault();
+        console.log('🔐 Direct handler: Sign Out button clicked');
+
+        // Try to call signOut directly from window
+        if (typeof window.signOut === 'function') {
+          window.signOut();
+        } else if (typeof signOut === 'function') {
+          // Try to call from local scope
+          signOut();
+        } else {
+          console.error('❌ signOut function not available');
+          alert('Sign Out function not found. Please refresh the page.');
+        }
+      };
+      console.log('✅ Direct Sign Out handler attached');
+    }
+  }, 500);
+</script>
 
 </body>
 </html>
