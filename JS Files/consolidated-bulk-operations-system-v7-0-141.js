@@ -52,8 +52,18 @@ function delay(ms) {
  */
 async function getPlaceDetailsFromAPI(placeId) {
   try {
-    if (!window.accessToken) {
-      throw new Error('Not authenticated');
+    // Google Places API only needs the API key, not accessToken
+    if (!window.GOOGLE_PLACES_API_KEY) {
+      console.warn(`⚠️ Google Places API key not configured. Cannot fetch details for ${placeId}`);
+      return {
+        website: '',
+        phone: '',
+        hours: '',
+        address: '',
+        rating: '',
+        directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`,
+        note: 'API_KEY_NOT_SET'
+      };
     }
 
     const response = await fetch(
@@ -676,7 +686,22 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
       console.log('💾 Note: Data is updated in memory. Return to main window and save manually using Ctrl+S or refresh.');
     }
 
+    // Check if Google Places API key is configured
+    const apiKeyMissing = !window.GOOGLE_PLACES_API_KEY;
+    const apiKeyWarning = apiKeyMissing ? `
+      <div style="padding: 12px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; margin-bottom: 12px; color: #7f1d1d;">
+        <strong>⚠️ GOOGLE PLACES API NOT CONFIGURED:</strong> No data could be fetched from Google to populate fields.
+        <br><br>To fix this:
+        <ol style="margin: 8px 0; padding-left: 20px;">
+          <li>Set up a Google Places API key</li>
+          <li>Initialize window.GOOGLE_PLACES_API_KEY with your key</li>
+          <li>Try again</li>
+        </ol>
+      </div>
+    ` : '';
+
     const resultHTML = `
+      ${apiKeyWarning}
       <div style="padding: 16px; background: ${errorCount === 0 ? '#ecfdf5' : '#fef3c7'}; border: 1px solid ${errorCount === 0 ? '#6ee7b7' : '#fbbf24'}; border-radius: 8px;">
         <div style="font-weight: 600; color: ${errorCount === 0 ? '#047857' : '#92400e'}; margin-bottom: 12px; font-size: 15px;">
           ${dryRun ? '🧪 DRY RUN COMPLETE' : '✅ POPULATE COMPLETE'}

@@ -69,6 +69,23 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       console.log('✅ Initialized filteredAdventures');
     }
 
+    // ⚠️ IMPORTANT: Initialize Google Places API Key
+    // This is REQUIRED for the Populate Missing Fields feature to work
+    // If you don't have an API key, get one from https://console.cloud.google.com
+    // Steps:
+    // 1. Create a project
+    // 2. Enable "Places API"
+    // 3. Go to Credentials and create an API key
+    // 4. Replace 'YOUR_GOOGLE_PLACES_API_KEY_HERE' with your actual key
+
+    if (!window.GOOGLE_PLACES_API_KEY) {
+      // TODO: Replace this with your actual Google Places API key
+      window.GOOGLE_PLACES_API_KEY = 'AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc';
+      console.log('⚠️ GOOGLE_PLACES_API_KEY placeholder set. Update with real key for Populate Missing Fields to work.');
+    } else {
+      console.log('✅ GOOGLE_PLACES_API_KEY initialized');
+    }
+
     console.log('✅ Global variables initialized');
   }
 
