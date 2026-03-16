@@ -8,6 +8,22 @@
 (function() {
   console.log('🚀 Error Management System v7.0.125 Loading...');
 
+  function appendToBodySafe(el) {
+    if (!el) return;
+    if (document.body) {
+      document.body.appendChild(el);
+      return;
+    }
+
+    const onReady = () => {
+      if (document.body && !el.isConnected) {
+        document.body.appendChild(el);
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', onReady, { once: true });
+  }
+
   class ErrorManager {
     constructor() {
       this.errors = [];
@@ -182,7 +198,7 @@
         const container = document.createElement('div');
         container.id = 'error-report-container';
         container.style.cssText = 'position: fixed; bottom: 20px; right: 20px; width: 400px; background: white; border: 2px solid #fca5a5; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 99999; max-height: 600px; display: none;';
-        document.body.appendChild(container);
+        appendToBodySafe(container);
         this.displayElement = container;
       }
       return this.displayElement;
@@ -252,7 +268,7 @@
   toggleBtn.onmouseover = () => toggleBtn.style.background = '#dc2626';
   toggleBtn.onmouseout = () => toggleBtn.style.background = '#ef4444';
 
-  document.body.appendChild(toggleBtn);
+  appendToBodySafe(toggleBtn);
 
   // Show toggle when errors occur
   const originalLogError = window.errorManager.logError.bind(window.errorManager);
@@ -268,4 +284,3 @@
   console.log('  - Error display and clearing');
   console.log('  - Copy errors functionality');
 })();
-

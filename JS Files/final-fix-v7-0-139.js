@@ -127,24 +127,24 @@ console.log('✅ City Viewer new tab opener installed');
 // 3. INTERCEPT window.open GLOBALLY
 // ============================================================
 
-const originalOpen = window.open;
+const originalOpenV139 = window.open;
 window.open = function(url, target, features) {
   console.log(`🔍 window.open intercepted: ${url?.substring?.(0, 50)}...`);
 
   // If it's City Viewer, force new tab
   if (url && url.includes('city-viewer')) {
     console.log('🌆 Redirecting City Viewer to new tab');
-    return originalOpen(url, '_blank', 'noopener,noreferrer');
+    return originalOpenV139(url, '_blank', 'noopener,noreferrer');
   }
 
   // If it's Find Near Me, force new tab
   if (url && url.includes('find-near-me')) {
     console.log('📍 Redirecting Find Near Me to new tab');
-    return originalOpen(url, '_blank', 'noopener,noreferrer');
+    return originalOpenV139(url, '_blank', 'noopener,noreferrer');
   }
 
   // Everything else - use original
-  return originalOpen.apply(this, arguments);
+  return originalOpenV139.apply(this, arguments);
 };
 
 console.log('✅ window.open interceptor installed');
@@ -185,8 +185,8 @@ console.log('✅ City Viewer button monitor started');
 // ============================================================
 
 // Intercept ALL showModal calls
-const originalShowModal = HTMLElement.prototype.showModal;
-if (originalShowModal) {
+const originalShowModalV139 = HTMLElement.prototype.showModal;
+if (originalShowModalV139) {
   HTMLElement.prototype.showModal = function() {
     const isCity = this.id?.includes('city') ||
                    this.className?.includes('city') ||
@@ -199,8 +199,8 @@ if (originalShowModal) {
       return;
     }
 
-    // For other modals, use original
-    return originalShowModal.call(this);
+    // For non-city modals, use original
+    return originalShowModalV139.call(this);
   };
 
   console.log('✅ showModal interceptor installed');
@@ -224,4 +224,3 @@ if (isMainPage) {
   console.log('✅ Toggle warnings will be suppressed');
   console.log('✅ City Viewer will open in new tab');
 }
-

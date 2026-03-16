@@ -249,20 +249,7 @@
           </div>
 
           <!-- Copy Button -->
-          <button onclick="
-            const text = \`BULK ADD RESULTS - ${new Date().toLocaleString()}
-Status: ${dryRun ? 'DRY RUN' : 'COMPLETED'}
-Success: ${successCount} | Failed: ${failCount} | Skipped: ${skippedCount}
-Time: ${elapsed} seconds
-
-DETAILS:
-${results.map((r, i) => \`\${i + 1}. \${r.success ? '✅' : '❌'} \${r.location} - \${r.status || r.error || 'Added'}\`).join('\\n')}\`;
-            navigator.clipboard.writeText(text).then(() => {
-              alert('✅ Results copied to clipboard!');
-            }).catch(() => {
-              alert('❌ Could not copy to clipboard');
-            });
-          " style="
+          <button id="bulkAddCopyResultsBtn" style="
             padding: 10px 16px;
             background: #3b82f6;
             color: white;
@@ -279,6 +266,32 @@ ${results.map((r, i) => \`\${i + 1}. \${r.success ? '✅' : '❌'} \${r.location
       `;
 
       displayElement.innerHTML = resultHTML;
+
+      const copyBtn = displayElement.querySelector('#bulkAddCopyResultsBtn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          const header = [
+            `BULK ADD RESULTS - ${new Date().toLocaleString()}`,
+            `Status: ${dryRun ? 'DRY RUN' : 'COMPLETED'}`,
+            `Success: ${successCount} | Failed: ${failCount} | Skipped: ${skippedCount}`,
+            `Time: ${elapsed} seconds`,
+            '',
+            'DETAILS:'
+          ];
+          const detailLines = results.map((r, i) => {
+            const icon = r.success ? '✅' : '❌';
+            const msg = r.status || r.error || 'Added';
+            return `${i + 1}. ${icon} ${r.location} - ${msg}`;
+          });
+          const text = header.concat(detailLines).join('\n');
+
+          navigator.clipboard.writeText(text).then(() => {
+            alert('✅ Results copied to clipboard!');
+          }).catch(() => {
+            alert('❌ Could not copy to clipboard');
+          });
+        });
+      }
 
       return {
         success: failCount === 0,
@@ -376,4 +389,3 @@ ${results.map((r, i) => \`\${i + 1}. \${r.success ? '✅' : '❌'} \${r.location
   console.log('  - Detailed error reporting');
   console.log('  - Copy results functionality');
 })();
-

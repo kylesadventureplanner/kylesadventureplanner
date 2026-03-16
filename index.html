@@ -2011,22 +2011,43 @@
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
       }
-      border-radius: 999px;
-      border: 1px solid #10b981;
-      background: #ecfdf5;
-      color: #047857;
-      padding: 6px 12px;
-      font-size: 12px;
-      cursor: pointer;
-      font-weight: 500;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
 
-    .find-near-me-btn:hover {
-      background: #d1fae5;
-    }
+      /* Find Near Me button styles */
+      .find-near-me-btn-mini {
+        border-radius: 999px;
+        border: 1px solid #10b981;
+        background: #ecfdf5;
+        color: #047857;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .find-near-me-btn-mini:hover {
+        background: #d1fae5;
+      }
+
+      .find-near-me-btn {
+        border-radius: 999px;
+        border: 1px solid #10b981;
+        background: #ecfdf5;
+        color: #047857;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .find-near-me-btn:hover {
+        background: #d1fae5;
+      }
 
     .find-near-me-btn.loading {
       opacity: 0.6;
@@ -18280,6 +18301,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
 <!-- City Viewer Enforcer (v7.0.138) - Ensures new tab, adds drive times -->
 <script src="JS Files/city-viewer-enforcer-v7-0-138.js"></script>
+
+<!-- Wave 0 Compatibility Wrapper (no-delete alias guardrails) - MUST LOAD LAST -->
+<script src="JS Files/wave0-compatibility-wrapper.js"></script>
 
 </body>
 </html>

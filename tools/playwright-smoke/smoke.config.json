@@ -1,0 +1,28 @@
+{
+  "baseDir": "kylesadventureplanner",
+  "serverPort": 4173,
+  "mainPage": "index.html",
+  "automationPage": "HTML Files/automation-control-panel.html",
+  "timeoutMs": 12000,
+  "settleMs": 1200,
+  "failOnJsIssues": false,
+  "allowConsoleErrorPatterns": [
+    "Failed to load resource",
+    "ERR_FILE_NOT_FOUND",
+    "GeolocationPositionError",
+    "Location error"
+  ],
+  "allowPageErrorPatterns": [],
+  "coreButtons": [
+    { "name": "Edit", "selector": "#editModeBtn" },
+    { "name": "Find Near Me", "selector": "#findNearMeBtn" },
+    { "name": "City Viewer", "selector": "#cityViewerBtn, .city-viewer-btn" }
+  ],
+  "automationButtons": [
+    "#btnPopulateMissing",
+    "#btnRefreshHours",
+    "#btnRefreshPlaceIds",
+    "#btnSearchPlaceIds",
+    "#btnAddPlace"
+  ]
+}

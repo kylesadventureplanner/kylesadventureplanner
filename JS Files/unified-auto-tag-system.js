@@ -172,10 +172,6 @@
     } catch (err) {
       console.error('❌ Error during auto-tag:', err);
       showToastCrossContext(`❌ Error: ${err.message}`, 'error', 3000);
-      }
-      if (window.opener && window.opener.showToast) {
-        window.opener.showToast(`❌ Error: ${err.message}`, 'error', 3000);
-      }
       return results;
     }
   };
@@ -375,4 +371,3 @@
   console.log('   Call: window.autoTagAllLocationsUnified()');
 
 })();
-
