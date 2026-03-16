@@ -22,6 +22,9 @@
     window.GOOGLE_PLACES_API_KEY = 'AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc';
   </script>
 
+  <!-- MSAL Browser Library - Required for Microsoft Authentication -->
+  <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
+
   <style>
     /* ============================================================
        COLOR SYSTEM & DESIGN TOKENS
@@ -6928,74 +6931,8 @@
     }
   }
 
-  /* ============================================================
-     MICROSOFT AUTHENTICATION LIBRARY (MSAL) SETUP
-     ============================================================
-     MSAL handles OAuth2 authentication with Microsoft 365.
-
-     HOW IT WORKS:
-     - clientId: Unique identifier for this app (registered in Azure)
-     - authority: Microsoft login endpoint URL
-     - redirectUri: NOT used with loginPopup() - only for loginRedirect()
-  */
-  const msalConfig = {
-    auth: {
-      clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",              // App ID in Azure
-      authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc", // Tenant directory
-      // Note: NOT setting redirectUri here because we're using loginPopup() not loginRedirect()
-    },
-  };
-
-  /* Initialize MSAL with the configuration above */
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-  /* Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly */
-  const msalInitPromise = msalInstance.initialize().catch(error => {
-    console.error("MSAL initialization failed:", error);
-    throw error;
-  });
-
-  /* CRITICAL: Handle redirect from Microsoft login - only process if actually redirected back */
-  msalInitPromise.then(() => {
-    console.log("🔐 Checking for redirect from Microsoft...");
-    // Only process redirects if we have a code parameter (indicates we're returning from Microsoft login)
-    if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
-      console.log("📍 Detected redirect from Microsoft, processing...");
-      return msalInstance.handleRedirectPromise();
-    } else {
-      console.log("✅ No redirect detected, skipping handleRedirectPromise");
-      return Promise.resolve();
-    }
-  }).then(() => {
-    console.log("✅ Redirect handled (if any)");
-
-    // Check if user is already logged in after redirect
-    const accounts = msalInstance.getAllAccounts();
-    if (accounts.length > 0) {
-      console.log("✅ User already logged in from redirect:", accounts[0].username);
-      activeAccount = accounts[0];
-      msalInstance.setActiveAccount(activeAccount);
-      syncAuthGlobals();
-      isConnectedToExcel = true;
-
-      // Update UI
-      document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
-      document.getElementById("signInBtn").style.display = "none";
-      document.getElementById("signOutBtn").style.display = "inline-block";
-      updateConnectionStatus(true);
-    }
-  }).catch(error => {
-    console.error("⚠️ Error handling redirect:", error);
-  });
-
-  /* Define what permissions (scopes) we need from Microsoft */
-  const loginRequest = {
-    scopes: [
-      "User.Read",              // Read user's profile information
-      "Files.ReadWrite",        // Read and write files (for Excel)
-      "Sites.ReadWrite.All",    // Access SharePoint sites (for Excel Online)
-    ],
-  };
+  // NOTE: MSAL setup is now defined later in the file (see line ~7086)
+  // This prevents duplicate declarations and ensures MSAL library is loaded first
 
   /* ============================================================
      GLOBAL STATE VARIABLES
