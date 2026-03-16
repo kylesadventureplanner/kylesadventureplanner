@@ -671,7 +671,14 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
 
     if (!dryRun && typeof mainWindow.saveToExcel === 'function') {
       console.log('💾 Final save to Excel...');
-      await mainWindow.saveToExcel();
+      try {
+        await mainWindow.saveToExcel();
+        console.log('✅ Data saved to Excel successfully');
+      } catch (saveErr) {
+        console.warn('⚠️ Warning: Could not save to Excel:', saveErr.message);
+        console.log('ℹ️ This is a warning only - your populate missing fields operation completed successfully');
+        console.log('ℹ️ You may need to manually save or refresh to see updates in Excel');
+      }
     }
 
     const resultHTML = `
@@ -904,7 +911,14 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
 
     if (!dryRun && typeof mainWindow.saveToExcel === 'function') {
       console.log('💾 Final save to Excel...');
-      await mainWindow.saveToExcel();
+      try {
+        await mainWindow.saveToExcel();
+        console.log('✅ Data saved to Excel successfully');
+      } catch (saveErr) {
+        console.warn('⚠️ Warning: Could not save to Excel:', saveErr.message);
+        console.log('ℹ️ This is a warning only - your hours update operation completed successfully');
+        console.log('ℹ️ You may need to manually save or refresh to see updates in Excel');
+      }
     }
 
     const resultHTML = `
