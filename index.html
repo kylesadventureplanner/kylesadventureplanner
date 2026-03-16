@@ -5015,40 +5015,38 @@
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
-  <!-- Tag Management System (v7.0.112+) -->
-  <script src="Archived-Files/JS/tag-manager.js"></script>
+  <!-- Tag Management System (v7.0.112+) - DEPRECATED: Now using consolidated-tag-system-v7-0-141.js -->
+  <!-- <script src="Archived-Files/JS/tag-manager.js"></script> -->
   <script>
-    // Verify tag-manager.js loaded
-    if (typeof window.tagManager !== 'undefined') {
-      console.log('✅ tag-manager.js loaded successfully');
-    } else {
-      console.error('❌ tag-manager.js FAILED TO LOAD');
-    }
+    // DEPRECATED: tag-manager check - now using consolidated system
+    // if (typeof window.tagManager !== 'undefined') {
+    //   console.log('✅ tag-manager.js loaded successfully');
+    // }
   </script>
-  <script src="Archived-Files/JS/tag-ui-manager.js"></script>
+  <!-- <script src="Archived-Files/JS/tag-ui-manager.js"></script> -->
   <script>
-    // Verify tag-ui-manager.js loaded
-    setTimeout(() => {
-      if (typeof window.tagUIManager !== 'undefined') {
-        console.log('✅ tag-ui-manager.js loaded successfully');
-      } else {
-        console.warn('⚠️ tag-ui-manager.js still loading or failed...');
-      }
-    }, 500);
+    // DEPRECATED: tag-ui-manager check disabled - using consolidated tag system in v7.0.141
+    // setTimeout(() => {
+    //   if (typeof window.tagUIManager !== 'undefined') {
+    //     console.log('✅ tag-ui-manager.js loaded successfully');
+    //   } else {
+    //     console.warn('⚠️ tag-ui-manager.js still loading or failed...');
+    //   }
+    // }, 500);
   </script>
 
-  <!-- City Visualizer System (v7.0.116+) -->
-  <script src="Archived-Files/JS/city-visualizer.js"></script>
-  <script src="Archived-Files/JS/enhanced-city-visualizer.js"></script>
+  <!-- City Visualizer System (v7.0.116+) - DEPRECATED: Now using consolidated-city-viewer-system-v7-0-141.js -->
+  <!-- <script src="Archived-Files/JS/city-visualizer.js"></script> -->
+  <!-- <script src="Archived-Files/JS/enhanced-city-visualizer.js"></script> -->
   <script>
-    // Verify city-visualizer.js loaded
-    setTimeout(() => {
-      if (typeof window.CityVisualizer !== 'undefined') {
-        console.log('✅ city-visualizer.js loaded successfully');
-      } else {
-        console.warn('⚠️ city-visualizer.js still loading or failed...');
-      }
-    }, 500);
+    // DEPRECATED: city-visualizer check disabled - using consolidated city viewer system in v7.0.141
+    // setTimeout(() => {
+    //   if (typeof window.CityVisualizer !== 'undefined') {
+    //     console.log('✅ city-visualizer.js loaded successfully');
+    //   } else {
+    //     console.warn('⚠️ city-visualizer.js still loading or failed...');
+    //   }
+    // }, 500);
   </script>
 
   <!-- Tag Management Systems -->
@@ -5098,6 +5096,29 @@
 
   <!-- Bulk Add Chain Locations - FIXED (v7.0.123) with Real Progress Updates -->
   <script src="Archived-Files/JS/bulk-add-chain-locations-fixed.js"></script>
+
+  <!-- ============================================================ -->
+  <!-- CONSOLIDATED SYSTEMS (v7.0.141) - Core Application Systems -->
+  <!-- ============================================================ -->
+  <!-- These consolidated files contain all core functionality -->
+
+  <!-- Automation System - Google Places automation and bulk operations -->
+  <script src="JS Files/consolidated-automation-system-v7-0-141.js"></script>
+
+  <!-- Bulk Operations System - Bulk add, populate missing fields, update hours -->
+  <script src="JS Files/consolidated-bulk-operations-system-v7-0-141.js"></script>
+
+  <!-- City Viewer System - City viewing, geolocation, drive times (INCLUDES EnhancedCityVisualizer) -->
+  <script src="JS Files/consolidated-city-viewer-system-v7-0-141.js"></script>
+
+  <!-- Tag System - Tag management, styling, automation -->
+  <script src="JS Files/consolidated-tag-system-v7-0-141.js"></script>
+
+  <!-- Comprehensive Fix System - Global fixes, pagination, window management -->
+  <script src="JS Files/consolidated-comprehensive-fix-system-v7-0-141.js"></script>
+
+  <!-- Debug & Error System - Error management and debugging -->
+  <script src="JS Files/consolidated-debug-error-system-v7-0-141.js"></script>
 
   <!-- Error Management System (v7.0.125) - Centralized error tracking -->
   <script src="Archived-Files/JS/error-management-system.js"></script>
@@ -16335,18 +16356,9 @@ COMMON ISSUES:
       window.tagUIManager.openModal(placeId);
     };
 
-    // Verify tag manager loaded
-    let tagManagerCheckCount = 0;
-    const tagManagerCheckInterval = setInterval(() => {
-      tagManagerCheckCount++;
-      if (typeof window.tagManager !== 'undefined' && typeof window.tagUIManager !== 'undefined') {
-        console.log('✅ Tag Management System (v7.0.112+) fully initialized');
-        clearInterval(tagManagerCheckInterval);
-      } else if (tagManagerCheckCount > 10) {
-        console.warn('⚠️ Tag Manager initialization taking longer than expected');
-        clearInterval(tagManagerCheckInterval);
-      }
-    }, 100);
+    // TAG MANAGER CHECK - DISABLED in v7.0.141
+    // Now using consolidated tag system instead of individual tagManager/tagUIManager
+    // console.log('✅ Tag Management System (v7.0.141+) using consolidated tag system');
 
     // ============================================================
     // CITY VISUALIZER BUTTON INJECTION (v7.0.116+)
