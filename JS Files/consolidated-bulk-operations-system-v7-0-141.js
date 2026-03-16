@@ -544,13 +544,14 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
       try {
         if (i > 0) await delay(PLACES_API_DELAY_MS);
 
-        const name = values[COLS.NAME] || '';
-        const placeId = values[COLS.PLACE_ID] || '';
-        const website = values[COLS.WEBSITE] || '';
-        const phone = values[COLS.PHONE] || '';
-        const hours = values[COLS.HOURS] || '';
-        const address = values[COLS.ADDRESS] || '';
-        const rating = values[COLS.RATING] || '';
+        // Ensure all values are strings and trim them
+        const name = (values[COLS.NAME] || '').toString().trim();
+        const placeId = (values[COLS.PLACE_ID] || '').toString().trim();
+        const website = (values[COLS.WEBSITE] || '').toString().trim();
+        const phone = (values[COLS.PHONE] || '').toString().trim();
+        const hours = (values[COLS.HOURS] || '').toString().trim();
+        const address = (values[COLS.ADDRESS] || '').toString().trim();
+        const rating = (values[COLS.RATING] || '').toString().trim();
 
         const emptyFields = [];
         if (!website) emptyFields.push('Website');
@@ -561,7 +562,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
 
         if (emptyFields.length === 0) {
           results.push({
-            name,
+            name: name || '(no name)',
             status: 'complete',
             message: 'All fields populated'
           });
@@ -569,9 +570,9 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
           continue;
         }
 
-        if (!placeId || !String(placeId).startsWith('ChI')) {
+        if (!placeId || !placeId.startsWith('ChI')) {
           results.push({
-            name,
+            name: name || '(no name)',
             status: 'skipped',
             message: `Missing fields: ${emptyFields.join(', ')} - but no valid Place ID`
           });
@@ -622,16 +623,16 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
         }
 
         results.push({
-          name,
+          name: name || '(no name)',
           status: 'updated',
           missingFields: emptyFields,
           correctedFields: fieldsCorrected,
-          message: `Would update: ${fieldsCorrected.join(', ') || 'no data available'}`
+          message: `${fieldsCorrected.length > 0 ? 'Corrected' : 'Attempted'}: ${fieldsCorrected.join(', ') || 'no API data'}`
         });
       } catch (err) {
-        console.error(`❌ Error processing ${values[0]}:`, err);
+        console.error(`❌ Error processing ${name || '(unknown)'}:`, err);
         results.push({
-          name: values[COLS.NAME],
+          name: name || '(unknown)',
           status: 'error',
           message: err.message
         });
