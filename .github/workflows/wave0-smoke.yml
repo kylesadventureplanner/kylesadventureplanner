@@ -26,18 +26,18 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: kylesadventureplanner/tools/playwright-smoke/package-lock.json
+          cache-dependency-path: kylesadventureplanner/tools-folder/playwright-smoke/package-lock.json
 
       - name: Install Playwright smoke dependencies
-        working-directory: kylesadventureplanner/tools/playwright-smoke
+        working-directory: kylesadventureplanner/tools-folder/playwright-smoke
         run: npm install
 
       - name: Install Chromium for Playwright
-        working-directory: kylesadventureplanner/tools/playwright-smoke
+        working-directory: kylesadventureplanner/tools-folder/playwright-smoke
         run: npx playwright install --with-deps chromium
 
       - name: Run combined smoke gates
-        working-directory: kylesadventureplanner/tools/playwright-smoke
+        working-directory: kylesadventureplanner/tools-folder/playwright-smoke
         run: npm run smoke:all
 
       - name: Upload smoke reports

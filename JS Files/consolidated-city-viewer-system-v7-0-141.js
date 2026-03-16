@@ -701,6 +701,7 @@ class EnhancedCityVisualizer {
    */
   getApproximateCoordinates(city, state) {
     const cityCoordinates = {
+      // Major cities
       'Hendersonville,NC': { lat: 35.3395, lng: -82.4637 },
       'Asheville,NC': { lat: 35.5951, lng: -82.5515 },
       'Greenville,SC': { lat: 34.8526, lng: -82.3940 },
@@ -719,6 +720,61 @@ class EnhancedCityVisualizer {
       'Gatlinburg,TN': { lat: 35.7142, lng: -83.5111 },
       'Pigeon Forge,TN': { lat: 35.7847, lng: -83.5806 },
       'Sevierville,TN': { lat: 35.8761, lng: -83.5603 },
+      // NC Mountain Region
+      'Flat Rock,NC': { lat: 35.2800, lng: -82.5500 },
+      'Swannanoa,NC': { lat: 35.6300, lng: -82.3500 },
+      'Black Mountain,NC': { lat: 35.6233, lng: -82.3178 },
+      'Brevard,NC': { lat: 35.2333, lng: -82.7333 },
+      'East Flat Rock,NC': { lat: 35.2817, lng: -82.5500 },
+      'Fletcher,NC': { lat: 35.4183, lng: -82.5833 },
+      'Arden,NC': { lat: 35.3850, lng: -82.6200 },
+      'Weaverville,NC': { lat: 35.6667, lng: -82.5167 },
+      'Woodfin,NC': { lat: 35.6617, lng: -82.6 },
+      'Etowah,NC': { lat: 35.1183, lng: -82.6833 },
+      'Horse Shoe,NC': { lat: 35.3650, lng: -82.6850 },
+      'Laurel Park,NC': { lat: 35.2933, lng: -82.5233 },
+      'Cedar Mountain,NC': { lat: 35.1633, lng: -82.3533 },
+      // SC Upstate
+      'Spartanburg,SC': { lat: 34.9526, lng: -81.9323 },
+      'Landrum,SC': { lat: 34.8817, lng: -82.1300 },
+      'Campobello,SC': { lat: 34.9800, lng: -82.1450 },
+      'Greer,SC': { lat: 34.9717, lng: -82.2233 },
+      'Inman,SC': { lat: 34.9950, lng: -82.1050 },
+      'Taylors,SC': { lat: 34.8900, lng: -82.3650 },
+      'Drayton,SC': { lat: 34.8950, lng: -82.2800 },
+      'Moore,SC': { lat: 34.8767, lng: -82.3967 },
+      'Simpsonville,SC': { lat: 34.7417, lng: -82.2600 },
+      'Easley,SC': { lat: 34.8050, lng: -82.6167 },
+      // TN Region
+      'Townsend,TN': { lat: 35.6842, lng: -83.6533 },
+      'Baxter,TN': { lat: 35.9633, lng: -84.6200 },
+      'Mascot,TN': { lat: 35.9817, lng: -83.7950 },
+      'Mount Cammerer,TN': { lat: 35.7467, lng: -83.3600 },
+      'Greenback,TN': { lat: 35.8333, lng: -84.4833 },
+      'Roan Mountain,TN': { lat: 36.1850, lng: -82.0700 },
+      'Vonore,TN': { lat: 35.5583, lng: -84.3417 },
+      // Other NC
+      'Pineville,NC': { lat: 35.1617, lng: -80.8650 },
+      'Columbus,NC': { lat: 35.2650, lng: -82.6383 },
+      'Smithfield,NC': { lat: 35.5050, lng: -78.3700 },
+      'Burnsville,NC': { lat: 36.1567, lng: -82.2433 },
+      'Zirconia,NC': { lat: 35.2450, lng: -82.8183 },
+      'Dillsboro,NC': { lat: 35.3783, lng: -83.2417 },
+      'Andrews,NC': { lat: 34.6750, lng: -83.8583 },
+      'Hillsborough,NC': { lat: 36.0708, lng: -79.2975 },
+      'Rutherfordton,NC': { lat: 35.3783, lng: -82.2817 },
+      'Tryon,NC': { lat: 35.2167, lng: -82.2683 },
+      'Mill Spring,NC': { lat: 35.3350, lng: -82.2333 },
+      'Gastonia,NC': { lat: 35.2624, lng: -81.1865 },
+      'Lenoir,NC': { lat: 36.1717, lng: -81.5417 },
+      // GA Region
+      'Hartwell,GA': { lat: 34.3517, lng: -82.9417 },
+      'Cleveland,GA': { lat: 34.5833, lng: -83.7667 },
+      'Blue Ridge,GA': { lat: 34.2850, lng: -84.1433 },
+      // KY Region
+      'Stearns,KY': { lat: 36.7283, lng: -84.3483 },
+      // MN Region
+      'Minneapolis,MN': { lat: 44.9778, lng: -93.2650 },
     };
 
     let key = `${city},${state}`;
@@ -736,7 +792,7 @@ class EnhancedCityVisualizer {
     const missingKey = `${city},${state}`;
     window.__cityCoordinateWarningCache = window.__cityCoordinateWarningCache || new Set();
     if (!window.__cityCoordinateWarningCache.has(missingKey)) {
-      console.warn(`⚠️ City coordinates not found for: ${city}, ${state}. Using default.`);
+      console.log(`📍 Using default coordinates for: ${city}, ${state}`);
       window.__cityCoordinateWarningCache.add(missingKey);
     }
     return { lat: 35.3395, lng: -82.4637 };
@@ -1155,6 +1211,7 @@ window.closeEnhancedCityVisualizer = function() {
   }
 };
 
+// Define early to prevent "not a function" errors
 window.viewCityDetailsEnhanced = function(cityName) {
   console.log(`📍 Viewing details for: ${cityName}`);
   // Can be extended to show location details
