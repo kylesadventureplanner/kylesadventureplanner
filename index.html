@@ -5016,7 +5016,7 @@
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
   <!-- Tag Management System (v7.0.112+) -->
-  <script src="JS Files/tag-manager.js"></script>
+  <script src="Archived-Files/JS/tag-manager.js"></script>
   <script>
     // Verify tag-manager.js loaded
     if (typeof window.tagManager !== 'undefined') {
@@ -5025,7 +5025,7 @@
       console.error('❌ tag-manager.js FAILED TO LOAD');
     }
   </script>
-  <script src="JS Files/tag-ui-manager.js"></script>
+  <script src="Archived-Files/JS/tag-ui-manager.js"></script>
   <script>
     // Verify tag-ui-manager.js loaded
     setTimeout(() => {
@@ -5038,8 +5038,8 @@
   </script>
 
   <!-- City Visualizer System (v7.0.116+) -->
-  <script src="JS Files/city-visualizer.js"></script>
-  <script src="JS Files/enhanced-city-visualizer.js"></script>
+  <script src="Archived-Files/JS/city-visualizer.js"></script>
+  <script src="Archived-Files/JS/enhanced-city-visualizer.js"></script>
   <script>
     // Verify city-visualizer.js loaded
     setTimeout(() => {
@@ -5055,25 +5055,25 @@
   <script src="JS Files/clean-tag-manager.js"></script>
 
   <!-- Unified Auto-Tag System using advanced recommendations -->
-  <script src="JS Files/unified-auto-tag-system.js"></script>
-  <script src="JS Files/tag-button-injector.js"></script>
-  <script src="JS Files/tag-config.js"></script>
-  <script src="JS Files/tag-hierarchy.js"></script>
-  <script src="JS Files/tag-hierarchy-ui.js"></script>
+  <script src="Archived-Files/JS/unified-auto-tag-system.js"></script>
+  <script src="Archived-Files/JS/tag-button-injector.js"></script>
+  <script src="Archived-Files/JS/tag-config.js"></script>
+  <script src="Archived-Files/JS/tag-hierarchy.js"></script>
+  <script src="Archived-Files/JS/tag-hierarchy-ui.js"></script>
 
   <!-- Automation Systems -->
-  <script src="JS Files/tag-automation-system.js"></script>
+  <script src="Archived-Files/JS/tag-automation-system.js"></script>
   <script src="JS Files/location-history-manager.js"></script>
 
   <!-- Visualization -->
   <!-- Visualization -->
-  <script src="JS Files/enhanced-city-viewer.js"></script>
+  <script src="Archived-Files/JS/enhanced-city-viewer.js"></script>
 
   <!-- City Viewer Enhancements (v7.0.128) - Drive time, dynamic filters, hours checking -->
-  <script src="JS Files/city-viewer-enhancements-v2.js"></script>
+  <script src="Archived-Files/JS/city-viewer-enhancements-v2.js"></script>
 
   <!-- City Viewer Integration (v7.0.128) - Integrates enhancements into city viewer -->
-  <script src="JS Files/city-viewer-integration-v2.js"></script>
+  <script src="Archived-Files/JS/city-viewer-integration-v2.js"></script>
 
   <!-- Button & UI Handlers -->
   <script src="JS Files/button-handlers.js"></script>
@@ -5082,25 +5082,25 @@
   <script src="JS Files/backup-manager.js"></script>
 
   <!-- Enhanced Automation Features (v2.0 - Latest) -->
-  <script src="JS Files/enhanced-automation-features-v2.js"></script>
+  <script src="Archived-Files/JS/enhanced-automation-features-v2.js"></script>
 
   <!-- Comprehensive Fix System (v7.0.113) -->
-  <script src="JS Files/comprehensive-fix-system.js"></script>
+  <script src="Archived-Files/JS/comprehensive-fix-system.js"></script>
 
   <!-- Initialization & Debug System (v7.0.114) -->
-  <script src="JS Files/initialization-debug-system.js"></script>
+  <script src="Archived-Files/JS/initialization-debug-system.js"></script>
 
   <!-- Bulk Operations Complete Fix (v7.0.122) -->
-  <script src="JS Files/bulk-operations-complete-fix.js"></script>
+  <script src="Archived-Files/JS/bulk-operations-complete-fix.js"></script>
 
   <!-- Legacy Automation Integration (v7.0.122) - from old automation-control-panel.html -->
-  <script src="JS Files/legacy-automation-integration.js"></script>
+  <script src="Archived-Files/JS/legacy-automation-integration.js"></script>
 
   <!-- Bulk Add Chain Locations - FIXED (v7.0.123) with Real Progress Updates -->
-  <script src="JS Files/bulk-add-chain-locations-fixed.js"></script>
+  <script src="Archived-Files/JS/bulk-add-chain-locations-fixed.js"></script>
 
   <!-- Error Management System (v7.0.125) - Centralized error tracking -->
-  <script src="JS Files/error-management-system.js"></script>
+  <script src="Archived-Files/JS/error-management-system.js"></script>
 </head>
 <body>
 <!-- Toast Notifications Container -->
@@ -12836,14 +12836,18 @@
 
       btn.addEventListener("click", (e) => {
         e.preventDefault();
-        const tag = btn.getAttribute("data-tag");
+        const tagAttr = btn.getAttribute("data-tag");
+        const tag = typeof tagAttr === "string" ? tagAttr.trim() : "";
 
         btn.classList.toggle("active");
 
-        if (btn.classList.contains("active")) {
-          activeFilters.quickFilters.add(tag);
-        } else {
-          activeFilters.quickFilters.delete(tag);
+        // Only track quick filters that map to an actual tag value.
+        if (tag) {
+          if (btn.classList.contains("active")) {
+            activeFilters.quickFilters.add(tag);
+          } else {
+            activeFilters.quickFilters.delete(tag);
+          }
         }
 
         applyFilters();
@@ -12975,8 +12979,11 @@
       // Apply quick filters (OR logic - match any active quick filter)
       if (visible && activeFilters.quickFilters.size > 0) {
         const tagsList = tagsLower.split(",").map(t => t.trim());
-        const hasMatch = Array.from(activeFilters.quickFilters).some(qf => {
-          return tagsList.some(tag => tag.includes(qf.toLowerCase()));
+        const normalizedQuickFilters = Array.from(activeFilters.quickFilters)
+          .map(qf => String(qf || "").trim().toLowerCase())
+          .filter(Boolean);
+        const hasMatch = normalizedQuickFilters.some(qf => {
+          return tagsList.some(tag => tag.includes(qf));
         });
         if (!hasMatch) {
           visible = false;
@@ -18130,51 +18137,27 @@ window.clearNearbyFilter = function() {
 };
 
 // ===========================================================================
-// 11. EDIT MODE WINDOW - Opens in new window
+// 11. EDIT MODE WINDOW - Opens in new tab
 // ===========================================================================
 window.openEditModeWindow = function() {
-  console.log('📝 Opening Edit Mode window...');
+  console.log('📝 Opening Edit Mode in new tab...');
 
   try {
-    const width = 1100;
-    const height = 900;
-    const left = Math.max(0, (screen.width - width) / 2);
-    const top = Math.max(0, (screen.height - height) / 2);
-
     const editModeUrl = 'HTML Files/edit-mode-enhanced.html';
 
-    const editWindow = window.open(
-      editModeUrl,
-      'EditMode',
-      `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
+    // Open in new tab (not window)
+    const editTab = window.open(editModeUrl, '_blank');
 
-    if (!editWindow) {
+    if (!editTab) {
       showToast('❌ Failed to open Edit Mode. Check if pop-ups are blocked.', 'error', 5000);
-      console.error('❌ Failed to open Edit Mode window');
+      console.error('❌ Failed to open Edit Mode tab');
       return;
     }
 
-    // Wait for window to load
-    editWindow.addEventListener('load', () => {
-      console.log('✅ Edit Mode window loaded');
-      showToast('✅ Edit Mode opened', 'success', 2000);
-    });
-
-    // Handle window closed
-    const checkWindow = setInterval(() => {
-      if (editWindow.closed) {
-        clearInterval(checkWindow);
-        console.log('📝 Edit Mode window closed');
-        showToast('📝 Edit Mode closed', 'info', 2000);
-
-        // Optional: Refresh data if changes were made
-        if (editWindow.changesWereMade) {
-          console.log('🔄 Refreshing data after Edit Mode changes...');
-          // Add your refresh logic here
-        }
-      }
-    }, 500);
+    // Focus the new tab
+    editTab.focus();
+    console.log('✅ Edit Mode opened in new tab');
+    showToast('✅ Edit Mode opened in new tab', 'success', 2000);
 
   } catch (error) {
     console.error('❌ Error opening Edit Mode:', error);
@@ -18266,11 +18249,26 @@ if (document.readyState === 'loading') {
 setTimeout(window.initializeActionButtons, 1000);
 
 // ===========================================================================
-// 14. START FIND NEAR ME - Opens in new window
+// 14. START FIND NEAR ME - Opens in new tab
 // ===========================================================================
 window.startFindNearMe = function() {
-  console.log('📍 Starting Find Near Me...');
-  window.openFindNearMeWindow();
+  console.log('📍 Starting Find Near Me in new tab...');
+  try {
+    const findNearMeUrl = 'HTML Files/find-near-me-window.html';
+    const newTab = window.open(findNearMeUrl, '_blank');
+
+    if (!newTab) {
+      showToast('❌ Unable to open Find Near Me. Please allow pop-ups.', 'error', 5000);
+      console.error('❌ Failed to open Find Near Me tab');
+      return;
+    }
+
+    newTab.focus();
+    console.log('✅ Find Near Me opened in new tab');
+  } catch (error) {
+    console.error('❌ Error opening Find Near Me:', error);
+    showToast(`❌ Error: ${error.message}`, 'error', 5000);
+  }
 };
 
 // ===========================================================================
@@ -18282,28 +18280,31 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 </script>
 
 <!-- DEEP DIVE FIX (v7.0.140) - DRY RUN TOGGLES & CITY VIEWER - LOADS FIRST -->
-<script src="JS Files/deep-dive-fix-v7-0-140.js"></script>
+<script src="Archived-Files/JS/deep-dive-fix-v7-0-140.js"></script>
 
 <!-- FINAL FIX (v7.0.139) - Suppress warnings, guarantee City Viewer new tab - LOADS SECOND -->
-<script src="JS Files/final-fix-v7-0-139.js"></script>
+<script src="Archived-Files/JS/final-fix-v7-0-139.js"></script>
 
 <!-- MASTER FIX SYSTEM (v7.0.137) - LOADS SECOND - Intercepts and fixes everything -->
-<script src="JS Files/master-fix-system-v7-0-137.js"></script>
+<script src="Archived-Files/JS/master-fix-system-v7-0-137.js"></script>
 
 <!-- Comprehensive Fix System v2 (v7.0.130) - Fixes pagination, dry run, refresh place IDs -->
-<script src="JS Files/comprehensive-fix-system-v2.js"></script>
+<script src="Archived-Files/JS/comprehensive-fix-system-v2.js"></script>
 
 <!-- Final Fixes (v7.0.132) - viewCityDetails, coordinates, refresh Place IDs -->
-<script src="JS Files/final-fixes-v7-0-132.js"></script>
+<script src="Archived-Files/JS/final-fixes-v7-0-132.js"></script>
+
+<!-- Refresh Place IDs Fix (v7.0.141) - Ensures refresh functionality works properly -->
+<script src="Archived-Files/JS/fix-refresh-place-ids-v7-0-141.js"></script>
 
 <!-- Comprehensive Final Fix (v7.0.136) - City Viewer tab, duplicates, dry run toggle -->
-<script src="JS Files/comprehensive-final-fix-v7-0-136.js"></script>
+<script src="Archived-Files/JS/comprehensive-final-fix-v7-0-136.js"></script>
 
 <!-- City Viewer Enforcer (v7.0.138) - Ensures new tab, adds drive times -->
-<script src="JS Files/city-viewer-enforcer-v7-0-138.js"></script>
+<script src="Archived-Files/JS/city-viewer-enforcer-v7-0-138.js"></script>
 
 <!-- Wave 0 Compatibility Wrapper (no-delete alias guardrails) - MUST LOAD LAST -->
-<script src="JS Files/wave0-compatibility-wrapper.js"></script>
+<script src="Archived-Files/JS/wave0-compatibility-wrapper.js"></script>
 
 </body>
 </html>
