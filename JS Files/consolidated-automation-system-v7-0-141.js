@@ -51,8 +51,12 @@ class EnhancedAutomationFeatures {
    */
   createDryRunToggle(featureName, initialState = false) {
     const container = document.createElement('div');
+    container.className = 'dry-run-toggle';
+    if (initialState) {
+      container.classList.add('on');
+    }
     container.style.cssText = `
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 12px;
       padding: 12px;
@@ -60,8 +64,11 @@ class EnhancedAutomationFeatures {
       border-radius: 8px;
       border: 1px solid #60a5fa;
       margin-bottom: 12px;
+      cursor: pointer;
+      user-select: none;
     `;
 
+    // Create label with text
     const label = document.createElement('label');
     label.style.cssText = `
       display: flex;
@@ -71,6 +78,7 @@ class EnhancedAutomationFeatures {
       color: #1e40af;
       cursor: pointer;
       margin: 0;
+      user-select: none;
     `;
 
     const checkbox = document.createElement('input');
@@ -83,8 +91,71 @@ class EnhancedAutomationFeatures {
       cursor: pointer;
     `;
 
+    const labelText = document.createTextNode('🧪 Dry Run (Preview Changes)');
     label.appendChild(checkbox);
-    label.appendChild(document.createTextNode('🧪 Dry Run (Preview Changes)'));
+    label.appendChild(labelText);
+
+    // Create custom switch for better UX
+    const switchElement = document.createElement('div');
+    switchElement.className = 'dry-run-switch';
+    switchElement.style.cssText = `
+      width: 32px;
+      height: 18px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      position: relative;
+      transition: background 0.2s;
+      cursor: pointer;
+      flex-shrink: 0;
+    `;
+
+    const switchThumb = document.createElement('div');
+    switchThumb.className = 'dry-run-switch-thumb';
+    switchThumb.style.cssText = `
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: white;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      pointer-events: none;
+    `;
+
+    switchElement.appendChild(switchThumb);
+
+    // Toggle function
+    const toggle = () => {
+      checkbox.checked = !checkbox.checked;
+      container.classList.toggle('on');
+
+      // Update switch colors
+      if (checkbox.checked) {
+        switchElement.style.background = '#60a5fa';
+      } else {
+        switchElement.style.background = '#e5e7eb';
+      }
+
+      // Trigger change event
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    // Add click handlers to all clickable areas
+    container.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggle();
+    });
+
+    // Prevent double-toggle on checkbox click
+    checkbox.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    // Add to label
+    label.appendChild(switchElement);
     container.appendChild(label);
 
     return { container, checkbox };

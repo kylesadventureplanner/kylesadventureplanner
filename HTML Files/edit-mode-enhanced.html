@@ -1139,15 +1139,15 @@
       const dryRun = document.getElementById('missingDryRun').checked;
       const statusDiv = document.getElementById('missing-status');
 
-      // Try new progress tracking system first
-      if (typeof window.handlePopulateMissingWithProgress === 'function') {
-        await window.handlePopulateMissingWithProgress(statusDiv, dryRun);
+      // Try enhanced function first (preferred)
+      if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
+        await window.handlePopulateMissingFieldsEnhanced(statusDiv, dryRun);
         return;
       }
 
-      // Try enhanced function
-      if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
-        await window.handlePopulateMissingFieldsEnhanced(statusDiv, dryRun);
+      // Fallback to standard function
+      if (typeof window.handlePopulateMissingFields === 'function') {
+        await window.handlePopulateMissingFields(statusDiv, dryRun);
         return;
       }
 
