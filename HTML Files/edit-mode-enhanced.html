@@ -476,48 +476,6 @@
 
         <div id="chain-status"></div>
       </div>
-
-      <!-- Populate Missing Fields Only -->
-      <div class="card">
-        <div class="card-title">📝 Populate Missing Fields Only</div>
-        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
-          Use Google Places API to fill in empty fields for all your locations while preserving existing data.
-        </p>
-
-        <div class="dry-run-toggle" id="missingDryRunToggle">
-          <input type="checkbox" id="missingDryRun" onchange="updateDryRunToggle(this, 'populateMissing')">
-          <div class="toggle-slider"></div>
-          <label for="missingDryRun">🧪 Dry Run Mode</label>
-          <div class="dry-run-status off" id="missingDryRunStatus">DISABLED</div>
-        </div>
-
-        <div class="button-group">
-          <button class="button button-primary" onclick="submitPopulateMissing()">📝 Update Missing Fields</button>
-        </div>
-
-        <div id="missing-status"></div>
-      </div>
-
-      <!-- Update Hours Only -->
-      <div class="card">
-        <div class="card-title">🕐 Update Hours Only</div>
-        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
-          Use Google Places API to update operating hours for all your locations.
-        </p>
-
-        <div class="dry-run-toggle" id="hoursDryRunToggle">
-          <input type="checkbox" id="hoursDryRun" onchange="updateDryRunToggle(this, 'updateHours')">
-          <div class="toggle-slider"></div>
-          <label for="hoursDryRun">🧪 Dry Run Mode</label>
-          <div class="dry-run-status off" id="hoursDryRunStatus">DISABLED</div>
-        </div>
-
-        <div class="button-group">
-          <button class="button button-primary" onclick="submitUpdateHours()">🕐 Update Hours</button>
-        </div>
-
-        <div id="hours-status"></div>
-      </div>
     </div>
 
     <!-- Automation Tab -->
@@ -574,6 +532,48 @@
         </div>
 
         <div id="autotag-status"></div>
+      </div>
+
+      <!-- Populate Missing Fields Only -->
+      <div class="card">
+        <div class="card-title">📝 Populate Missing Fields Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to fill in empty fields for all your locations while preserving existing data.
+        </p>
+
+        <div class="dry-run-toggle" id="missingDryRunToggle">
+          <input type="checkbox" id="missingDryRun" onchange="updateDryRunToggle(this, 'populateMissing')">
+          <div class="toggle-slider"></div>
+          <label for="missingDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="missingDryRunStatus">DISABLED</div>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitPopulateMissing()">📝 Update Missing Fields</button>
+        </div>
+
+        <div id="missing-status"></div>
+      </div>
+
+      <!-- Update Hours Only -->
+      <div class="card">
+        <div class="card-title">🕐 Update Hours Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to update operating hours for all your locations.
+        </p>
+
+        <div class="dry-run-toggle" id="hoursDryRunToggle">
+          <input type="checkbox" id="hoursDryRun" onchange="updateDryRunToggle(this, 'updateHours')">
+          <div class="toggle-slider"></div>
+          <label for="hoursDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="hoursDryRunStatus">DISABLED</div>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitUpdateHours()">🕐 Update Hours</button>
+        </div>
+
+        <div id="hours-status"></div>
       </div>
     </div>
 

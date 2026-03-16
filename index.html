@@ -806,16 +806,18 @@
       box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
     }
 
-    .find-near-me-btn {
-      border-color: #10b981;
-      color: #10b981;
-    }
+      .find-near-me-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+      }
 
-    .find-near-me-btn:hover {
-      background: #10b981;
-      border-color: #10b981;
-      box-shadow: 0 8px 16px rgba(16, 185, 129, 0.4);
-    }
+      .find-near-me-btn:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        border-color: #059669;
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+      }
 
     .city-viewer-btn {
       border-color: #f59e0b;
@@ -6158,6 +6160,35 @@
   };
 
   // Intercept console.log to capture logs
+  const originalConsoleLog = console.log;
+  console.log = function(...args) {
+    const message = args.join(' ');
+    addDebugLog('log', message);
+    originalConsoleLog.apply(console, args);
+  };
+
+  // Global error handler - catches uncaught errors
+  window.addEventListener('error', (event) => {
+    const errorMsg = `${event.message || 'Unknown error'} at ${event.filename || 'unknown file'}:${event.lineno || '?'}`;
+    logErrorToBar('error', '🔴 Global error caught: ' + event.message, errorMsg);
+    addDebugLog('error', errorMsg);
+  });
+
+  // Global unhandled promise rejection handler
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason?.message || String(event.reason || 'Unknown rejection');
+    logErrorToBar('error', 'Unhandled Promise Rejection', reason);
+    addDebugLog('error', 'Unhandled Promise Rejection: ' + reason);
+  });
+
+  // Set up DOMContentLoaded listener for error bar interactions
+  document.addEventListener('DOMContentLoaded', () => {
+    const errorHeader = document.querySelector('.error-header');
+    if (errorHeader) {
+      errorHeader.addEventListener('click', toggleErrorBar);
+    }
+  });
+
   // ============================================================
   // DATA VALIDATION & ERROR PREVENTION
   // ============================================================
@@ -6380,181 +6411,7 @@
     window.__toastAnimationsAdded = true;
   }
 
-  // ============================================================
-  // UNIFIED ERROR NOTIFICATION BAR SYSTEM
-  // ============================================================
 
-  // Error tracking
-  window.errorLog = [];
-
-  /**
-   * Unified error notification function
-   * Displays errors in the error notification bar
-   */
-  window.logErrorToBar = function(type, message, details = '') {
-    const errorBar = document.getElementById('errorNotificationBar');
-    const errorPanel = document.getElementById('errorDetailsPanel');
-    const errorCount = document.getElementById('errorCount');
-
-    if (!errorBar || !errorPanel) {
-      console.error(`[${type}] ${message}${details ? ': ' + details : ''}`);
-      return;
-    }
-
-    // Add to error log
-    window.errorLog.push({
-      type,
-      message,
-      details,
-      timestamp: new Date().toLocaleTimeString()
-    });
-
-    // Limit error log size
-    if (window.errorLog.length > 50) {
-      window.errorLog.shift();
-    }
-
-    // Update error count
-    errorCount.textContent = window.errorLog.length;
-
-    // Add error to panel
-    const errorItem = document.createElement('div');
-    errorItem.className = `error-item error-${type}`;
-    errorItem.style.cssText = `
-      padding: 8px 12px;
-      border-left: 3px solid;
-      margin-bottom: 4px;
-      font-size: 12px;
-      border-radius: 4px;
-    `;
-
-    const colors = {
-      error: { bg: '#fee2e2', border: '#dc2626', text: '#7f1d1d' },
-      warning: { bg: '#fef3c7', border: '#d97706', text: '#78350f' },
-      info: { bg: '#dbeafe', border: '#0284c7', text: '#0c2340' }
-    };
-
-    const color = colors[type] || colors.info;
-    errorItem.style.background = color.bg;
-    errorItem.style.borderColor = color.border;
-    errorItem.style.color = color.text;
-
-    const icon = { error: '❌', warning: '⚠️', info: 'ℹ️' }[type] || '❌';
-    errorItem.innerHTML = `
-      <strong>${icon} ${type.toUpperCase()}</strong><br>
-      ${message}
-      ${details ? `<br><small>${details}</small>` : ''}
-    `;
-
-    errorPanel.insertBefore(errorItem, errorPanel.firstChild);
-
-    // Show error bar
-    errorBar.classList.remove('collapsed');
-    errorBar.style.display = 'block';
-  };
-
-  /**
-   * Toggle error notification bar
-   */
-  window.toggleErrorBar = function() {
-    const errorBar = document.getElementById('errorNotificationBar');
-    if (errorBar) {
-      errorBar.classList.toggle('collapsed');
-      const isCollapsed = errorBar.classList.contains('collapsed');
-      const panel = document.getElementById('errorDetailsPanel');
-      if (panel) {
-        panel.style.display = isCollapsed ? 'none' : 'block';
-      }
-    }
-  };
-
-  /**
-   * Clear all errors from notification bar
-   */
-  window.clearErrorNotifications = function() {
-    window.errorLog = [];
-    const errorCount = document.getElementById('errorCount');
-    const errorPanel = document.getElementById('errorDetailsPanel');
-    if (errorCount) errorCount.textContent = '0';
-    if (errorPanel) errorPanel.innerHTML = '';
-    const errorBar = document.getElementById('errorNotificationBar');
-    if (errorBar) errorBar.classList.add('collapsed');
-  };
-
-  /**
-   * Debug logging utility
-   */
-  window.addDebugLog = function(type, message) {
-    const debugContent = document.getElementById('debugConsoleContent');
-    if (!debugContent) return;
-
-    const logItem = document.createElement('div');
-    logItem.className = `debug-log-item log-${type}`;
-    logItem.style.cssText = `
-      padding: 4px 8px;
-      border-bottom: 1px solid #e5e7eb;
-      font-size: 11px;
-      font-family: monospace;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    `;
-
-    const timestamp = new Date().toLocaleTimeString();
-    logItem.textContent = `[${timestamp}] [${type}] ${message}`;
-    debugContent.appendChild(logItem);
-
-    // Keep only last 500 logs
-    while (debugContent.children.length > 500) {
-      debugContent.removeChild(debugContent.firstChild);
-    }
-
-    // Auto-scroll to bottom
-    debugContent.scrollTop = debugContent.scrollHeight;
-  };
-
-  /**
-   * Toggle debug console
-   */
-  window.toggleDebugConsole = function() {
-    const debugConsole = document.getElementById('debuggingConsole');
-    if (debugConsole) {
-      debugConsole.classList.toggle('collapsed');
-      const content = document.querySelector('.debug-console-content');
-      if (content) {
-        content.style.display = debugConsole.classList.contains('collapsed') ? 'none' : 'block';
-      }
-    }
-  };
-
-  // ============================================================
-  // ERROR LOGGING & REPORTING
-  // ============================================================
-
-  const originalConsoleLog = console.log;
-  console.log = function(...args) {
-    const message = args.join(' ');
-    addDebugLog('log', message);
-    originalConsoleLog.apply(console, args);
-  };
-
-  // Catch uncaught errors
-  window.addEventListener('error', (event) => {
-    logErrorToBar('error', event.message, `File: ${event.filename}, Line: ${event.lineno}`);
-  });
-
-  // Catch uncaught promise rejections
-  window.addEventListener('unhandledrejection', (event) => {
-    logErrorToBar('error', 'Unhandled Promise Rejection', event.reason?.message || String(event.reason));
-  });
-
-  // Add click handler to error notification bar header for collapse/expand
-  document.addEventListener('DOMContentLoaded', () => {
-    const errorBar = document.getElementById('errorNotificationBar');
-    const errorHeader = document.querySelector('.error-header');
-    if (errorHeader) {
-      errorHeader.addEventListener('click', toggleErrorBar);
-    }
-  });
 
   /* ============================================================
      DATA LOAD INDICATOR
@@ -6767,9 +6624,40 @@
           'rating',
           'userRatingCount',
           'reviews',
-          'photos'
+          'photos',
+          'businessStatus',
+          'types',
+          'utcOffsetMinutes'
         ]
       });
+
+      // Extract business type from types array
+      let businessType = '';
+      const typeMap = {
+        'restaurant': '🍽️ Restaurant',
+        'cafe': '☕ Cafe',
+        'bar': '🍺 Bar',
+        'hotel': '🏨 Hotel',
+        'lodging': '🛏️ Lodging',
+        'park': '🌳 Park',
+        'hiking_area': '🥾 Hiking',
+        'museum': '🏛️ Museum',
+        'shopping_mall': '🛍️ Shopping',
+        'gym': '💪 Gym',
+        'hospital': '🏥 Hospital',
+        'pharmacy': '💊 Pharmacy',
+        'store': '🏪 Store',
+        'supermarket': '🛒 Supermarket'
+      };
+
+      if (Array.isArray(place.types) && place.types.length > 0) {
+        for (let type of place.types) {
+          if (typeMap[type]) {
+            businessType = typeMap[type];
+            break;
+          }
+        }
+      }
 
       // Return formatted place details
       return {
@@ -6785,7 +6673,14 @@
           lng: place.location.lng()
         } : null,
         reviews: place.reviews || [],
-        photos: place.photos || []
+        photos: place.photos ? place.photos.slice(0, 3).map(p => ({
+          url: p.getURI ? p.getURI({maxWidth: 800, maxHeight: 600}) : '',
+          attributions: p.attributions || []
+        })) : [],
+        businessStatus: place.businessStatus || 'UNKNOWN',
+        businessType: businessType,
+        types: Array.isArray(place.types) ? place.types : [],
+        timezone: place.utcOffsetMinutes ? `UTC${place.utcOffsetMinutes >= 0 ? '+' : ''}${place.utcOffsetMinutes / 60}` : ''
       };
 
     } catch (error) {
@@ -6815,12 +6710,7 @@
 
   /**
    * Search for places using text search (NEW API)
-   * @param {string} query - Search query (e.g., "coffee near Columbia, SC")
-   * @returns {Promise} - Promise resolving to array of place results
-   *
-   * EXAMPLE:
-   * const results = await searchPlaces("hiking trails near Greenville SC");
-   * results.forEach(place => console.log(place.name, place.formatted_address));
+   * Enhanced with better result filtering and additional data
    */
   async function searchPlaces(query) {
     try {
@@ -6833,7 +6723,19 @@
 
       const request = {
         textQuery: query,
-        fields: ['displayName', 'formattedAddress', 'location', 'rating', 'id'],
+        fields: [
+          'displayName',
+          'formattedAddress',
+          'location',
+          'rating',
+          'userRatingCount',
+          'id',
+          'businessStatus',
+          'types',
+          'internationalPhoneNumber',
+          'websiteURI',
+          'photos'
+        ],
         language: 'en'
       };
 
@@ -6843,17 +6745,47 @@
         return [];
       }
 
-      // Format results to match expected structure
-      const formattedResults = places.map(place => ({
-        placeId: place.id,
-        name: place.displayName || '',
-        address: place.formattedAddress || '',
-        coordinates: place.location ? {
-          lat: place.location.lat(),
-          lng: place.location.lng()
-        } : null,
-        rating: place.rating || null
-      }));
+      // Format results with enhanced data and rank by relevance
+      const formattedResults = places
+        .map(place => {
+          // Calculate relevance score for ranking
+          let relevanceScore = 0;
+
+          // Favor permanently open businesses
+          if (place.businessStatus === 'OPERATIONAL') relevanceScore += 10;
+
+          // Favor places with reviews
+          if (place.userRatingCount && place.userRatingCount > 5) relevanceScore += 5;
+          if (place.userRatingCount && place.userRatingCount > 50) relevanceScore += 5;
+
+          // Favor places with ratings
+          if (place.rating && place.rating >= 4.0) relevanceScore += 3;
+
+          // Favor places with photos
+          if (place.photos && place.photos.length > 0) relevanceScore += 2;
+
+          return {
+            placeId: place.id,
+            name: place.displayName || '',
+            address: place.formattedAddress || '',
+            coordinates: place.location ? {
+              lat: place.location.lat(),
+              lng: place.location.lng()
+            } : null,
+            rating: place.rating || null,
+            reviewCount: place.userRatingCount || 0,
+            phone: place.internationalPhoneNumber || '',
+            website: place.websiteURI || '',
+            businessStatus: place.businessStatus || 'UNKNOWN',
+            types: Array.isArray(place.types) ? place.types : [],
+            photos: place.photos ? place.photos.map(p => ({
+              url: p.getURI ? p.getURI({maxWidth: 400, maxHeight: 300}) : '',
+              attributions: p.attributions || []
+            })) : [],
+            relevanceScore: relevanceScore
+          };
+        })
+        .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
       return formattedResults;
 
@@ -12318,15 +12250,30 @@
   /**
    * Set adventure rating (replaces localStorage-based function)
    */
-  function setAdventureRating(filteredIndex, rating, cardElement) {
-    if (filteredIndex < 0 || !totalFilteredAdventures[filteredIndex]) return;
+  async function setAdventureRating(filteredIndex, rating, cardElement) {
+    console.log(`⭐ setAdventureRating called: index=${filteredIndex}, rating=${rating}`);
 
-    // Update Excel with new rating
-    updateExcelRating(filteredIndex, rating);
+    if (filteredIndex < 0 || !totalFilteredAdventures[filteredIndex]) {
+      console.warn('Invalid index for rating:', filteredIndex);
+      return;
+    }
+
+    // Update Excel with new rating and wait for completion
+    console.log(`📊 Updating Excel with rating ${rating} for index ${filteredIndex}`);
+    const success = await updateExcelRating(filteredIndex, rating);
+
+    if (!success) {
+      console.error('Failed to save rating to Excel');
+      showToast('Failed to save rating', 'error', 2000);
+      return;
+    }
+
+    console.log(`✅ Rating saved to Excel successfully`);
 
     // Update UI immediately for responsiveness
     if (cardElement) {
       const stars = cardElement.querySelectorAll('.rating-star');
+      console.log(`🎨 Found ${stars.length} stars to update`);
       stars.forEach((star, index) => {
         if (index < rating) {
           star.classList.add('filled');
@@ -12336,22 +12283,38 @@
       });
     }
 
-    // Re-render the current page to reflect changes
+    // Re-render the current page to reflect changes after Excel is updated
+    console.log(`🔄 Re-rendering cards...`);
     setTimeout(() => renderPaginatedCards(), 100);
   }
 
   /**
    * Clear adventure rating
    */
-  function clearAdventureRating(filteredIndex, cardElement) {
-    if (filteredIndex < 0 || !totalFilteredAdventures[filteredIndex]) return;
+  async function clearAdventureRating(filteredIndex, cardElement) {
+    console.log(`🗑️ clearAdventureRating called: index=${filteredIndex}`);
 
-    // Clear rating in Excel (set to 0)
-    updateExcelRating(filteredIndex, 0);
+    if (filteredIndex < 0 || !totalFilteredAdventures[filteredIndex]) {
+      console.warn('Invalid index for clear rating:', filteredIndex);
+      return;
+    }
+
+    // Clear rating in Excel (set to 0) and wait for completion
+    console.log(`📊 Clearing rating in Excel for index ${filteredIndex}`);
+    const success = await updateExcelRating(filteredIndex, 0);
+
+    if (!success) {
+      console.error('Failed to clear rating in Excel');
+      showToast('Failed to clear rating', 'error', 2000);
+      return;
+    }
+
+    console.log(`✅ Rating cleared in Excel successfully`);
 
     // Update UI immediately
     if (cardElement) {
       const stars = cardElement.querySelectorAll('.rating-star');
+      console.log(`🎨 Removing filled class from ${stars.length} stars`);
       stars.forEach(star => {
         star.classList.remove('filled');
       });
@@ -12360,6 +12323,7 @@
     showToast('Rating cleared', 'success', 1500);
 
     // Re-render the current page to reflect changes
+    console.log(`🔄 Re-rendering cards after clear...`);
     setTimeout(() => renderPaginatedCards(), 100);
   }
 
@@ -12429,7 +12393,7 @@
       }
 
       const favoriteStatus = values[22]; // Column 22
-      const isFavorite = (favoriteStatus || '').toLowerCase() === 'true' || favoriteStatus === '1' || favoriteStatus === 1;
+      const isFavorite = String(favoriteStatus || '').trim().toLowerCase() === 'true' || favoriteStatus === '1' || favoriteStatus === 1;
 
       btn.textContent = isFavorite ? '💖' : '🤍';
       btn.title = isFavorite ? 'Remove from favorites' : 'Add to favorites';
@@ -14732,12 +14696,17 @@ COMMON ISSUES:
     if (!value) throw new Error("Please enter a value.");
 
     if (inputType === "placeId") {
-      return extractPlaceIdFromUrl(value) || value;
+      const extracted = extractPlaceIdFromUrl(value) || value;
+      if (!extracted || extracted.length < 5) {
+        throw new Error("Invalid Place ID format. A Place ID should start with 'ChI' and be at least 20 characters long.");
+      }
+      return extracted;
     }
 
     if (inputType === "placeUrl") {
       const fromUrl = extractPlaceIdFromUrl(value);
       if (fromUrl) return fromUrl;
+
       const placeNameMatch = value.match(/\/maps\/place\/([^/?#]+)/i);
       if (placeNameMatch && placeNameMatch[1]) {
         const query = decodeURIComponent(placeNameMatch[1]).replace(/\+/g, " ");
@@ -14746,7 +14715,7 @@ COMMON ISSUES:
           return strVal(placeResults[0].placeId);
         }
       }
-      throw new Error("Could not resolve Place ID from URL.");
+      throw new Error("Could not extract valid Place ID from URL. Copy the full Google Maps URL including the place name.");
     }
 
     if (inputType === "website") {
@@ -14756,40 +14725,136 @@ COMMON ISSUES:
         const u = new URL(normalized);
         queryText = u.hostname.replace(/^www\./i, "");
       } catch (_err) {
-        // fallback to raw value
+        queryText = value;
       }
       const websiteResults = await searchPlaces(queryText);
       if (websiteResults && websiteResults[0] && strVal(websiteResults[0].placeId)) {
         return strVal(websiteResults[0].placeId);
       }
-      throw new Error("No place found from website input.");
+      throw new Error(`No place found for website '${value}'. Try searching by place name instead or use a Google Maps URL.`);
     }
 
-    const nameResults = await searchPlaces(value);
-    if (nameResults && nameResults[0] && strVal(nameResults[0].placeId)) {
-      return strVal(nameResults[0].placeId);
+    // Default: search by place name with refinement
+    let searchResults = await searchPlaces(value);
+
+    if (!searchResults || searchResults.length === 0) {
+      // Try adding common location hints if not already included
+      let refinedSearches = [];
+      if (!value.toLowerCase().includes("near") && !value.toLowerCase().includes("in")) {
+        refinedSearches.push(value + " in South Carolina");
+        refinedSearches.push(value + " near me");
+      }
+
+      for (let refinedQuery of refinedSearches) {
+        searchResults = await searchPlaces(refinedQuery);
+        if (searchResults && searchResults.length > 0) {
+          console.log(`✅ Refined search found result: ${refinedQuery}`);
+          break;
+        }
+      }
     }
-    throw new Error("No place found from name input.");
+
+    if (searchResults && searchResults[0] && strVal(searchResults[0].placeId)) {
+      return strVal(searchResults[0].placeId);
+    }
+
+    throw new Error(`"${value}" not found. Try:\n1. Being more specific: "Starbucks on Main Street, Columbia SC"\n2. Using a Google Maps URL directly\n3. Including the business type: "Italian restaurant downtown"`);
   }
 
   function inferCityStateFromAddress(address) {
-    const parts = strVal(address).split(",").map(function (p) { return strVal(p); }).filter(Boolean);
-    const city = parts.length >= 3 ? parts[parts.length - 3] : "";
-    const stateZip = parts.length >= 2 ? parts[parts.length - 2] : "";
-    const m = stateZip.match(/\b([A-Z]{2})\b/);
-    return {
-      city: city,
-      state: m ? m[1] : ""
-    };
+    const addressStr = strVal(address);
+    if (!addressStr) return { city: "", state: "" };
+
+    const parts = addressStr.split(",").map(p => strVal(p)).filter(Boolean);
+
+    let city = "";
+    let state = "";
+
+    // Try to extract state/ZIP code
+    // Usually in last or second-to-last part
+    for (let i = parts.length - 1; i >= Math.max(0, parts.length - 3); i--) {
+      const part = parts[i];
+
+      // Look for 2-letter state code
+      const stateMatch = part.match(/\b([A-Z]{2})\b(?:\s+\d{5})?/);
+      if (stateMatch) {
+        state = stateMatch[1];
+        // City is usually before the state
+        if (i > 0) {
+          city = parts[i - 1];
+        }
+        break;
+      }
+    }
+
+    // If state not found, try to extract from last part
+    if (!state && parts.length >= 2) {
+      const lastPart = parts[parts.length - 1];
+      // Check for US states
+      const usStates = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'];
+      for (let stateCode of usStates) {
+        if (lastPart.includes(stateCode)) {
+          state = stateCode;
+          if (parts.length >= 2) {
+            city = parts[parts.length - 2];
+          }
+          break;
+        }
+      }
+    }
+
+    // Fallback: if parts are available, estimate city
+    if (!city && parts.length >= 3) {
+      city = parts[parts.length - 3]; // Usually 3rd from end for US addresses
+    }
+
+    return { city, state };
   }
 
-  function normalizeOperationHours(hours) {
-    if (!hours) return "";
-    if (typeof hours === "string") return hours;
-    if (Array.isArray(hours.weekdayDescriptions)) return hours.weekdayDescriptions.join(" | ");
-    if (Array.isArray(hours.weekdayText)) return hours.weekdayText.join(" | ");
-    return "";
+  function validateSearchQuality(searchResults, originalQuery) {
+    if (!searchResults || searchResults.length === 0) {
+      return { quality: "none", suggestion: `No results found for "${originalQuery}". Try being more specific or using a different search term.` };
+    }
+
+    const topResult = searchResults[0];
+
+    // Check if result is closed/permanently closed
+    if (topResult.businessStatus === 'CLOSED_PERMANENTLY') {
+      return { quality: "poor", suggestion: `The top result "${topResult.name}" is permanently closed. Try the next result or search again.` };
+    }
+
+    // Check if has good reviews
+    if (topResult.reviewCount === 0) {
+      return { quality: "fair", suggestion: `"${topResult.name}" has no reviews yet. Consider verifying details before adding.` };
+    }
+
+    // Check if has good rating
+    if (topResult.rating && topResult.rating < 3.0) {
+      return { quality: "fair", suggestion: `"${topResult.name}" has a low rating (${topResult.rating}⭐). Verify it's the correct location.` };
+    }
+
+    // All good
+    return { quality: "good", suggestion: `Found "${topResult.name}" - looks like a good match!` };
   }
+
+  function buildSearchSuggestions(query) {
+    const suggestions = [];
+    const lower = query.toLowerCase();
+
+    // Suggest adding location if not included
+    if (!lower.includes(" in ") && !lower.includes(" near ") && !lower.includes(",")) {
+      suggestions.push(`"${query} in Columbia SC"`);
+    }
+
+    // Suggest adding business type if seems generic
+    if (lower.length < 5 || /^\d+$/.test(query)) {
+      suggestions.push(`Try including business type: "${query} restaurant" or "${query} park"`);
+    }
+
+    return suggestions;
+  }
+
+  // ...existing code...
 
   function buildDirectionsUrl(placeId, address, name) {
     const pid = strVal(placeId);
@@ -14803,7 +14868,7 @@ COMMON ISSUES:
 
   function buildExcelRow(placeId, details) {
     // Determine actual column count from existing Excel table rows
-    let actualColumnCount = 22; // Default to 22 as fallback
+    let actualColumnCount = 24; // Default to 24 (includes all columns)
 
     if (window.adventuresData && window.adventuresData.length > 0) {
       // Inspect first existing row to get the exact column count
@@ -14812,11 +14877,8 @@ COMMON ISSUES:
         const firstRowValues = firstRow.values[0];
         if (Array.isArray(firstRowValues)) {
           actualColumnCount = firstRowValues.length;
-          console.log(`📊 DETECTED: Excel table has ${actualColumnCount} columns (from existing row)`);
         }
       }
-    } else {
-      console.log(`⚠️ Data not loaded yet. Using default column count: ${actualColumnCount}`);
     }
 
     // Create row with exact column count
@@ -14825,7 +14887,24 @@ COMMON ISSUES:
     const address = strVal(details && details.address);
     const cityState = inferCityStateFromAddress(address);
 
-    // Populate columns - safely check bounds
+    // Validation: Check if we have minimum required data
+    if (!name || !address) {
+      console.warn("⚠️ WARNING: Missing required place data (name or address)");
+    }
+
+    // Build description with rich info
+    let description = "";
+    if (details && details.businessType) {
+      description = details.businessType;
+    }
+    if (details && details.rating) {
+      description += ` | Rating: ${details.rating}⭐`;
+    }
+    if (details && details.userRatingsTotal) {
+      description += ` (${details.userRatingsTotal} reviews)`;
+    }
+
+    // Populate columns
     // Column mapping:
     // 0: Name, 1: Google Place ID, 2: Website, 3: Tags, 4: Drive Time,
     // 5: Hours of Operation, 6: Activity Duration, 7: Difficulty, 8: Trail Length,
@@ -14836,6 +14915,7 @@ COMMON ISSUES:
     if (actualColumnCount > 0) row[0] = name;
     if (actualColumnCount > 1) row[1] = strVal(placeId);
     if (actualColumnCount > 2) row[2] = strVal(details && details.website);
+    if (actualColumnCount > 3) row[3] = details && details.businessType ? details.businessType.replace(/^[🙏-🏛️]\s/, '') : "";
     if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
     if (actualColumnCount > 9) row[9] = cityState.state;
     if (actualColumnCount > 10) row[10] = cityState.city;
@@ -14843,13 +14923,28 @@ COMMON ISSUES:
     if (actualColumnCount > 12) row[12] = strVal(details && details.phone);
     if (actualColumnCount > 13) row[13] = details && details.rating != null ? String(details.rating) : "";
     if (actualColumnCount > 15) row[15] = buildDirectionsUrl(placeId, address, name);
+    if (actualColumnCount > 16) row[16] = description;
     if (actualColumnCount > 18) row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
+    if (actualColumnCount > 20) {
+      // Column 20: Notes - add info about business status and data quality
+      let notes = "";
+      if (details && details.businessStatus) {
+        notes = `Status: ${details.businessStatus}`;
+      }
+      if (details && details.userRatingsTotal) {
+        notes += (notes ? " | " : "") + `${details.userRatingsTotal} Google reviews`;
+      }
+      if (details && details.timezone) {
+        notes += (notes ? " | " : "") + `Timezone: ${details.timezone}`;
+      }
+      if (notes) row[20] = notes;
+    }
     if (actualColumnCount > 23) row[23] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
 
-    console.log(`📤 buildExcelRow: Creating row with ${actualColumnCount} columns. Populated: ${row.filter(v => v !== "").length} fields`);
-
-    // Store metadata for retry logic (if row needs to be trimmed)
+    // Store metadata for retry logic
     row._columnCount = actualColumnCount;
+    row._placeId = placeId;
+    row._coordinates = details && details.coordinates ? details.coordinates : null;
 
     return row;
   }
@@ -15056,58 +15151,133 @@ COMMON ISSUES:
     const submitBtn = document.getElementById("addPlaceSubmitBtn");
 
     if (!window.accessToken) {
-      setAddPlaceStatus("Please sign in before adding a place.", "error");
+      setAddPlaceStatus("❌ Please sign in before adding a place.", "error");
       return;
     }
 
     if (!value) {
-      setAddPlaceStatus("Please enter a value.", "error");
+      setAddPlaceStatus("❌ Please enter a value.", "error");
       return;
     }
 
-    try {
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Adding...";
-      }
-
-      setAddPlaceStatus("Resolving Place ID...", "info");
-      const placeId = await resolvePlaceIdFromInput(type, value);
-
-      setAddPlaceStatus("Fetching Google place details...", "info");
-      const details = await getPlaceDetails(placeId);
-      const row = buildExcelRow(placeId, details);
-
-      if (placeExistsInData(row)) {
-        throw new Error("This location already exists in your Excel table. (Same Place ID and address detected. To add a different location of a chain store, use a different address.)");
-      }
-
-      setAddPlaceStatus("Adding row to Excel...", "info");
-      await window.addRowToExcel(row);
-
-      setAddPlaceStatus("Place added successfully.", "success");
-      if (typeof showToast === "function") {
-        showToast("Added " + (row[0] || "new place") + " to Excel", "success", 3000);
-      }
-
-      if (typeof loadTable === "function") {
-        await loadTable();
-      }
-
-      setTimeout(function () {
-        window.closeAddPlaceModal();
-      }, 600);
-    } catch (err) {
-      setAddPlaceStatus("Add failed: " + err.message, "error");
-      if (typeof showToast === "function") {
-        showToast("Add failed: " + err.message, "error", 4500);
-      }
-    } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Add Place to Excel";
-      }
+    // Validate input length for better search results
+    if (value.length < 2) {
+      setAddPlaceStatus("❌ Please enter at least 2 characters.", "error");
+      return;
     }
+
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    const attemptAdd = async () => {
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = retryCount > 0 ? `Retrying (${retryCount}/${maxRetries})...` : "Adding...";
+        }
+
+        setAddPlaceStatus("🔍 Resolving Place ID...", "info");
+        let placeId;
+        try {
+          placeId = await resolvePlaceIdFromInput(type, value);
+        } catch (err) {
+          // Provide helpful suggestions based on input type
+          let suggestion = "";
+          if (type === "placeName" && !value.includes(",")) {
+            suggestion = " Try adding a city or state (e.g., 'Starbucks, Columbia SC').";
+          } else if (type === "website" && !value.includes(".")) {
+            suggestion = " Make sure it's a valid domain (e.g., 'starbucks.com').";
+          }
+          throw new Error(err.message + suggestion);
+        }
+
+        if (!placeId) {
+          throw new Error("Could not find a valid Place ID for this location.");
+        }
+
+        setAddPlaceStatus("📊 Fetching Google place details...", "info");
+        let details = await getPlaceDetails(placeId);
+
+        if (!details) {
+          // If no details available, create minimal record with Place ID
+          console.warn("⚠️ Could not fetch full details, using minimal data");
+          details = {
+            name: value,
+            address: "Address not available",
+            phone: "",
+            website: "",
+            rating: null,
+            userRatingsTotal: 0,
+            businessType: "",
+            businessStatus: "UNKNOWN"
+          };
+        }
+
+        setAddPlaceStatus("📝 Building row with Google data...", "info");
+        const row = buildExcelRow(placeId, details);
+
+        // Validate row has required data
+        if (!strVal(row[0])) {
+          throw new Error("Place name is missing - cannot add to Excel.");
+        }
+        if (!strVal(row[11])) {
+          throw new Error("Address is missing - cannot add to Excel.");
+        }
+
+        setAddPlaceStatus("🔎 Checking for duplicates...", "info");
+        if (placeExistsInData(row)) {
+          throw new Error("This location already exists (same Place ID & address). To add a different location of a chain, modify the address.");
+        }
+
+        setAddPlaceStatus("💾 Adding to Excel...", "info");
+        await window.addRowToExcel(row);
+
+        const placeName = strVal(row[0]) || "New place";
+        const placeCity = strVal(row[10]) || "";
+        setAddPlaceStatus(`✅ ${placeName}${placeCity ? ' in ' + placeCity : ''} added successfully!`, "success");
+
+        if (typeof showToast === "function") {
+          showToast(`✅ Added ${placeName} to Excel`, "success", 3000);
+        }
+
+        if (typeof loadTable === "function") {
+          await loadTable();
+        }
+
+        setTimeout(function () {
+          window.closeAddPlaceModal();
+        }, 600);
+
+      } catch (err) {
+        const errorMsg = err.message || String(err);
+
+        // Retry logic for specific errors
+        if (retryCount < maxRetries && (
+          errorMsg.includes("rate limit") ||
+          errorMsg.includes("timeout") ||
+          errorMsg.includes("temporarily") ||
+          errorMsg.includes("TRY_AGAIN")
+        )) {
+          retryCount++;
+          console.warn(`⚠️ Retrying due to temporary error (${retryCount}/${maxRetries})...`);
+          setAddPlaceStatus(`⏳ Retrying (${retryCount}/${maxRetries})...`, "info");
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          return attemptAdd();
+        }
+
+        setAddPlaceStatus(`❌ ${errorMsg}`, "error");
+        if (typeof showToast === "function") {
+          showToast(`❌ ${errorMsg}`, "error", 5000);
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Add Place to Excel";
+        }
+      }
+    };
+
+    return attemptAdd();
   };
 
   // Bind backdrop click handler for Add Place modal
