@@ -6309,8 +6309,9 @@
   }
 
   // Add CSS animations if not already in stylesheet
-  if (!document.querySelector('style:contains("slideIn")')) {
+  if (!window.__toastAnimationsAdded) {
     const style = document.createElement('style');
+    style.id = 'toast-animations';
     style.textContent = `
       @keyframes slideIn {
         from {
@@ -6334,6 +6335,7 @@
       }
     `;
     document.head.appendChild(style);
+    window.__toastAnimationsAdded = true;
   }
 
   // ============================================================
