@@ -237,6 +237,30 @@ class EnhancedAutomationFeatures {
     this.dryRunStates[feature] = !this.dryRunStates[feature];
     return this.dryRunStates[feature];
   }
+
+  /**
+   * Refresh Place IDs - callable from edit mode
+   */
+  async refreshPlaceIds(dryRun = false) {
+    console.log(`🔄 Enhanced Automation: Refreshing Place IDs (Dry Run: ${dryRun})`);
+    if (typeof window.refreshPlaceIdsWithProgress === 'function') {
+      return await window.refreshPlaceIdsWithProgress(dryRun);
+    }
+    return { success: false, error: 'Refresh system not available' };
+  }
+
+  /**
+   * Display results from operations
+   */
+  displayResults(result, statusDiv) {
+    if (!statusDiv) return;
+
+    if (result.success) {
+      statusDiv.innerHTML = `<div class="status-message status-success">✅ ${result.message || 'Operation completed successfully'}</div>`;
+    } else {
+      statusDiv.innerHTML = `<div class="status-message status-error">❌ ${result.error || 'Operation failed'}</div>`;
+    }
+  }
 }
 
 // Create global instance

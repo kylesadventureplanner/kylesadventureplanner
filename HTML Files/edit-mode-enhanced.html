@@ -1199,19 +1199,20 @@
       const dryRun = document.getElementById('refreshDryRun').checked;
       const statusDiv = document.getElementById('refresh-status');
 
-      // Try new progress tracking system first
+      // Use the consolidated system function
+      if (typeof window.refreshPlaceIdsWithProgress === 'function') {
+        await window.refreshPlaceIdsWithProgress(dryRun);
+        statusDiv.innerHTML = '<div class="status-message status-success">✅ Place IDs refreshed successfully</div>';
+        return;
+      }
+
+      // Fallback to the edit mode handler
       if (typeof window.handleRefreshPlaceIdsWithProgress === 'function') {
         await window.handleRefreshPlaceIdsWithProgress(statusDiv, dryRun);
         return;
       }
 
-      // Fallback to enhanced automation
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-      if (window.enhancedAutomation) {
-        const result = await window.enhancedAutomation.refreshPlaceIds(dryRun);
-        window.enhancedAutomation.displayResults(result, statusDiv);
-        return;
-      }
+      statusDiv.innerHTML = '<div class="status-message status-error">❌ Refresh system not available</div>';
 
       statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
     }
@@ -1322,21 +1323,7 @@
     });
   </script>
 
-  <!-- Load Enhanced Automation Features -->
-  <script src="../../Archived-Files/JS/enhanced-automation-features-v2.js"></script>
-
-  <script>
-    // Verify enhanced automation loaded
-    setTimeout(() => {
-      if (window.enhancedAutomation) {
-        console.log('✅ Enhanced Automation Features loaded successfully');
-      } else {
-        console.warn('⚠️ Enhanced Automation Features not yet available');
-      }
-    }, 500);
-  </script>
-
-  <!-- Consolidated Systems (v7.0.141) -->
+  <!-- Consolidated Systems (v7.0.141) - All functionality included -->
   <script src="../../JS Files/consolidated-city-viewer-system-v7-0-141.js"></script>
   <script src="../../JS Files/consolidated-tag-system-v7-0-141.js"></script>
   <script src="../../JS Files/consolidated-automation-system-v7-0-141.js"></script>
