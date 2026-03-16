@@ -397,6 +397,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       let skipped = 0;
       const details = [];
       const errors = [];
+      const m365Updates = [];  // TRACK CHANGES FOR SYNC
 
       for (let i = 0; i < data.length; i++) {
         const location = data[i];
@@ -445,6 +446,12 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                     name: placeName,
                     action: 'Refreshed from Google API'
                   });
+                  // TRACK UPDATE FOR SYNC
+                  m365Updates.push({
+                    rowIndex: i,
+                    placeId: placeId,
+                    data: freshData
+                  });
                   console.log(`✅ Refreshed: ${placeName}`);
                 } else {
                   failed++;
@@ -481,6 +488,18 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         }
       }
 
+      // NEW: SYNC CHANGES BACK TO PARENT WINDOW
+      if (!dryRun && m365Updates.length > 0) {
+        console.log(`📝 Syncing ${m365Updates.length} updates back to parent window...`);
+        for (const update of m365Updates) {
+          if (mainWindow.adventuresData && mainWindow.adventuresData[update.rowIndex]) {
+            Object.assign(mainWindow.adventuresData[update.rowIndex], update.data);
+            console.log(`✅ Synced row ${update.rowIndex}: ${update.placeId}`);
+          }
+        }
+        console.log(`✅ All updates synced to parent window`);
+      }
+
       let resultHTML = '<div class="status-message status-success" style="background: #ecfdf5; color: #047857; border-left: 4px solid #10b981; padding: 16px; border-radius: 8px;">';
       resultHTML += '<strong>✅ Refresh Complete!</strong><br><br>';
       resultHTML += `📊 <strong>Results:</strong><br>`;
@@ -491,6 +510,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
       if (dryRun) {
         resultHTML += `<br>🧪 <strong>DRY RUN MODE - No changes made</strong>`;
+      } else if (m365Updates.length > 0) {
+        resultHTML += `<br>📝 <strong>✅ Data synced to parent window!</strong><br>`;
+        resultHTML += `<span style="font-size: 12px; color: #059669;">Close this window and press Ctrl+S to save to Excel</span>`;
       }
 
       resultHTML += '<br><br><strong>Details:</strong><br>';

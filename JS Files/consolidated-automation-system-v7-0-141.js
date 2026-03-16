@@ -555,22 +555,96 @@ window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async
           }
         }
 
-        // ATTEMPT 3: Fallback to saveToExcel() - the standard method used by bulk operations
+        // ATTEMPT 3: Fallback to saveToExcel() or sync to parent window
         if (!m365Status) {
           try {
-            if (typeof mainWindow.saveToExcel === 'function') {
+            // Check if we have parent window access
+            if (mainWindow && mainWindow !== window && mainWindow.adventuresData) {
+              console.log(`📝 Syncing ${m365Updates.length} records back to parent window...`);
+
+              // Update parent's adventuresData array with our changes
+              let syncCount = 0;
+              for (const update of m365Updates) {
+                if (mainWindow.adventuresData[update.rowIndex]) {
+                  Object.assign(mainWindow.adventuresData[update.rowIndex], update);
+                  syncCount++;
+                  console.log(`✅ Synced row ${update.rowIndex}: ${update.placeName || 'Unknown'}`);
+                }
+              }
+
+              console.log(`✅ Successfully synced ${syncCount}/${m365Updates.length} records to parent window`);
+
+              // Now try to trigger the parent window's save function
+              // Check for various save function names that might exist
+              let saveTriggered = false;
+
+              // Try #1: Direct saveToExcel function
+              if (typeof mainWindow.saveToExcel === 'function') {
+                console.log('🔄 Calling mainWindow.saveToExcel()...');
+                try {
+                  await mainWindow.saveToExcel();
+                  m365Status = `<br>✅ EXCEL AUTO-SAVED: ${syncCount} records saved to Excel automatically`;
+                  m365Count = syncCount;
+                  saveTriggered = true;
+                  console.log('✅ Excel saved successfully via saveToExcel()');
+                } catch (err) {
+                  console.warn('⚠️ saveToExcel() threw error:', err.message);
+                }
+              }
+
+              // Try #2: handleSaveData function
+              if (!saveTriggered && typeof mainWindow.handleSaveData === 'function') {
+                console.log('🔄 Calling mainWindow.handleSaveData()...');
+                try {
+                  await mainWindow.handleSaveData();
+                  m365Status = `<br>✅ EXCEL AUTO-SAVED: ${syncCount} records saved to Excel automatically`;
+                  m365Count = syncCount;
+                  saveTriggered = true;
+                  console.log('✅ Excel saved successfully via handleSaveData()');
+                } catch (err) {
+                  console.warn('⚠️ handleSaveData() threw error:', err.message);
+                }
+              }
+
+              // Try #3: triggerSave function
+              if (!saveTriggered && typeof mainWindow.triggerSave === 'function') {
+                console.log('🔄 Calling mainWindow.triggerSave()...');
+                try {
+                  mainWindow.triggerSave();
+                  m365Status = `<br>✅ EXCEL AUTO-SAVED: ${syncCount} records saved to Excel automatically`;
+                  m365Count = syncCount;
+                  saveTriggered = true;
+                  console.log('✅ Excel saved successfully via triggerSave()');
+                } catch (err) {
+                  console.warn('⚠️ triggerSave() threw error:', err.message);
+                }
+              }
+
+              // If no auto-save function exists, show synced message
+              if (!saveTriggered) {
+                console.log('ℹ️ No auto-save function found in parent window');
+                m365Status = `<br>✅ DATA SYNCED: ${syncCount} records synced to parent window`;
+                console.log('ℹ️ Parent window is aware of changes. You should save with Ctrl+S to persist to Excel.');
+              }
+
+              m365Count = syncCount;
+            }
+            // If no parent window, try direct Office.js save
+            else if (typeof mainWindow.saveToExcel === 'function') {
               console.log(`📝 Saving ${m365Updates.length} updated records to Excel using saveToExcel()...`);
               await mainWindow.saveToExcel();
               m365Status = `<br>✅ EXCEL SAVED: ${m365Updates.length} rows saved to Excel`;
               m365Count = m365Updates.length;
               console.log(`✅ Excel save successful via saveToExcel()`);
-            } else {
-              m365Status = `<br>📌 Data persisted in memory (${m365Updates.length} records). Return to Excel and save manually with Ctrl+S`;
+            }
+            // Last resort
+            else {
+              m365Status = `<br>📌 Data persisted in memory (${m365Updates.length} records). Return to main window and save with Ctrl+S`;
               console.log('ℹ️ Not in Office Add-in context. Data updated in memory. User should save manually in Excel.');
             }
           } catch (saveErr) {
-            m365Status = `<br>⚠️ Save error: ${saveErr.message}. Data persisted in memory. Return to main window and save with Ctrl+S.`;
-            console.warn('⚠️ saveToExcel() error:', saveErr);
+            m365Status = `<br>⚠️ Sync error: ${saveErr.message}. Data partially updated in memory.`;
+            console.warn('⚠️ Sync error:', saveErr);
           }
         }
       } catch (m365Error) {
@@ -588,6 +662,28 @@ window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async
     resultHTML += `⏭️ Skipped: ${skipped}<br>`;
     resultHTML += `📍 Total: ${data.length}<br>`;
     resultHTML += m365Status; // Add M365 status
+
+    // Add instruction based on save status
+    if (m365Status && m365Status.includes('AUTO-SAVED')) {
+      resultHTML += `<br><br><strong style="color: #10b981;">✅ Auto-Save Successful!</strong><br>`;
+      resultHTML += `<span style="background: #d1fae5; padding: 12px; border-radius: 6px; display: block; margin-top: 8px;">
+        Your changes have been automatically saved to Excel!<br>
+        You may close this window or continue working.
+      </span>`;
+    } else if (m365Status && m365Status.includes('DATA SYNCED')) {
+      resultHTML += `<br><br><strong style="color: #f59e0b;">⚠️ Manual Save Required</strong><br>`;
+      resultHTML += `<span style="background: #fef3c7; padding: 12px; border-radius: 6px; display: block; margin-top: 8px;">
+        1️⃣ <strong>Close this Edit Mode window</strong><br>
+        2️⃣ <strong>Return to the main Adventure Planner window</strong><br>
+        3️⃣ <strong>Save your changes</strong> using <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px;">Ctrl+S</code> (or <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px;">Cmd+S</code> on Mac)<br>
+        4️⃣ Wait for the save confirmation
+      </span>`;
+    } else if (m365Status && m365Status.includes('Data persisted')) {
+      resultHTML += `<br><br><strong style="color: #f59e0b;">⚠️ In-Memory Update Only</strong><br>`;
+      resultHTML += `<span style="background: #fef3c7; padding: 12px; border-radius: 6px; display: block; margin-top: 8px;">
+        Changes are in memory. Please return to the main window and press <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 3px;">Ctrl+S</code> to save to Excel.
+      </span>`;
+    }
 
     if (dryRun) {
       resultHTML += `<br>🧪 <strong>DRY RUN MODE - No changes made</strong>`;
