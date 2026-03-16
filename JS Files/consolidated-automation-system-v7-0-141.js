@@ -383,6 +383,7 @@ window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async
     let skipped = 0;
     const details = [];
     const errors = [];
+    const m365Updates = []; // Collect updates for M365 batch write
 
     for (let i = 0; i < data.length; i++) {
       const location = data[i];
@@ -426,6 +427,18 @@ window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async
               const freshData = await mainWindow.getPlaceDetails(placeId);
               if (freshData) {
                 successful++;
+                // Collect data for M365 batch write
+                m365Updates.push({
+                  rowIndex: i,
+                  name: placeName,
+                  placeId: placeId,
+                  website: freshData.website || '',
+                  phone: freshData.phone || '',
+                  hours: freshData.hours || '',
+                  address: freshData.address || '',
+                  rating: freshData.rating || '',
+                  directions: freshData.directions || ''
+                });
                 details.push({
                   status: 'success',
                   name: placeName,
@@ -466,6 +479,30 @@ window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async
       }
     }
 
+    // Batch write to M365 Excel if we have updates and not in dry run
+    let m365Status = '';
+    if (!dryRun && m365Updates.length > 0) {
+      console.log(`📝 Writing ${m365Updates.length} updates to M365 Excel...`);
+      try {
+        if (typeof mainWindow.writeBatchPlacesToM365 === 'function') {
+          const writeResult = await mainWindow.writeBatchPlacesToM365(m365Updates);
+          if (writeResult && writeResult.success) {
+            m365Status = `<br>✅ M365 EXCEL UPDATED: ${writeResult.successCount} rows updated`;
+            console.log(`✅ M365 Excel batch write successful: ${writeResult.successCount}/${writeResult.totalCount}`);
+          } else {
+            m365Status = `<br>⚠️ M365 Excel write: ${writeResult ? writeResult.message : 'Office.js not available'}`;
+            console.warn('⚠️ M365 Excel write not available');
+          }
+        } else {
+          m365Status = `<br>⚠️ M365 write function not available`;
+          console.warn('⚠️ writeBatchPlacesToM365 function not found');
+        }
+      } catch (m365Error) {
+        m365Status = `<br>⚠️ M365 Excel write error: ${m365Error.message}`;
+        console.warn('⚠️ M365 Excel write error:', m365Error);
+      }
+    }
+
     // Show final results
     let resultHTML = '<div class="status-message status-success" style="background: #ecfdf5; color: #047857; border-left: 4px solid #10b981; padding: 16px; border-radius: 8px;">';
     resultHTML += '<strong>✅ Refresh Complete!</strong><br><br>';
@@ -474,6 +511,7 @@ window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async
     resultHTML += `❌ Failed: ${failed}<br>`;
     resultHTML += `⏭️ Skipped: ${skipped}<br>`;
     resultHTML += `📍 Total: ${data.length}<br>`;
+    resultHTML += m365Status; // Add M365 status
 
     if (dryRun) {
       resultHTML += `<br>🧪 <strong>DRY RUN MODE - No changes made</strong>`;
