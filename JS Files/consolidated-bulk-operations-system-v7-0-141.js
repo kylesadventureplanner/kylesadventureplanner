@@ -77,7 +77,24 @@ async function getPlaceDetailsFromAPI(placeId) {
     );
 
     if (!response.ok) {
-      throw new Error(`Google Places API error: ${response.status}`);
+      // Log more detail about the API error
+      const errorText = await response.text();
+      console.warn(`⚠️ Google Places API Error ${response.status} for ${placeId}:`, errorText.substring(0, 200));
+
+      // Try fallback function if available
+      if (window.opener && typeof window.opener.getPlaceDetails === 'function') {
+        try {
+          const fallbackResult = await window.opener.getPlaceDetails(placeId);
+          if (fallbackResult) {
+            console.log(`✅ Fallback: Got data for ${placeId}`);
+            return fallbackResult;
+          }
+        } catch (fallbackErr) {
+          console.warn(`⚠️ Fallback also failed for ${placeId}`);
+        }
+      }
+
+      throw new Error(`API Error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -90,14 +107,15 @@ async function getPlaceDetailsFromAPI(placeId) {
       directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
     };
   } catch (err) {
-    console.warn(`⚠️ Could not fetch place details for ${placeId}:`, err.message);
+    console.warn(`⚠️ Could not fetch place details for ${placeId}: ${err.message}`);
     return {
       website: '',
       phone: '',
       hours: '',
       address: '',
       rating: '',
-      directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
+      directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`,
+      note: 'API_FAILED'
     };
   }
 }
@@ -680,9 +698,29 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
       }
     }
 
-    // Skip Excel save from Edit Mode - it causes 404 errors due to context issues
-    // User can manually save from the main Adventure Planner window
-    if (!dryRun) {
+    // Auto-save data to spreadsheet if not in dry run mode
+    if (!dryRun && updatedCount > 0) {
+      try {
+        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+
+        // Try to save using available save functions
+        if (typeof mainWindow.saveData === 'function') {
+          console.log('💾 Saving data to spreadsheet...');
+          mainWindow.saveData();
+        } else if (typeof mainWindow.saveAdventures === 'function') {
+          console.log('💾 Saving adventures to spreadsheet...');
+          mainWindow.saveAdventures();
+        } else if (typeof mainWindow.save === 'function') {
+          console.log('💾 Triggering save function...');
+          mainWindow.save();
+        } else {
+          console.log('💾 No save function found. Data updated in memory. Please return to main window and save manually using Ctrl+S.');
+        }
+      } catch (saveErr) {
+        console.warn('⚠️ Auto-save failed (this is okay):', saveErr.message);
+        console.log('💾 Data updated in memory. Please return to main window and save manually using Ctrl+S or use Ctrl+S in this window.');
+      }
+    } else if (!dryRun) {
       console.log('💾 Note: Data is updated in memory. Return to main window and save manually using Ctrl+S or refresh.');
     }
 
@@ -690,13 +728,15 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
     const apiKeyMissing = !window.GOOGLE_PLACES_API_KEY;
     const apiKeyWarning = apiKeyMissing ? `
       <div style="padding: 12px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; margin-bottom: 12px; color: #7f1d1d;">
-        <strong>⚠️ GOOGLE PLACES API NOT CONFIGURED:</strong> No data could be fetched from Google to populate fields.
-        <br><br>To fix this:
-        <ol style="margin: 8px 0; padding-left: 20px;">
-          <li>Set up a Google Places API key</li>
-          <li>Initialize window.GOOGLE_PLACES_API_KEY with your key</li>
-          <li>Try again</li>
+        <strong>⚠️ GOOGLE PLACES API NOT CONFIGURED:</strong> Limited data could be fetched from Google to populate fields.
+        <br><br><strong>To fix this:</strong>
+        <ol style="margin: 8px 0; padding-left: 20px; font-size: 12px;">
+          <li>Get a Google Places API key from <a href="https://console.cloud.google.com" target="_blank" style="color: #1e40af;">Google Cloud Console</a></li>
+          <li>Enable the Places API and Maps API in your project</li>
+          <li>Set window.GOOGLE_PLACES_API_KEY = 'YOUR_KEY_HERE' before running this operation</li>
+          <li>Retry the populate missing fields operation</li>
         </ol>
+        <br><strong>Status:</strong> ${errorCount > 0 ? '❌ API calls failed - will use fallback data' : '✅ Operation completed with available data'}
       </div>
     ` : '';
 
