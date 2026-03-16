@@ -7316,36 +7316,6 @@
     showToast('✓ Successfully signed out!', 'success', 2000);
   }
 
-  // ============================================================
-  // EXPORT AUTHENTICATION FUNCTIONS TO WINDOW OBJECT
-  // ============================================================
-  // These must be accessible from HTML onclick handlers
-  window.signIn = signIn;
-  window.signOut = signOut;
-
-  // GUARANTEE these exports persist even after archived JS loads
-  // Re-export immediately and after a short delay
-  setTimeout(() => {
-    if (!window.signIn || typeof window.signIn !== 'function') {
-      console.warn('⚠️ window.signIn was overwritten, re-exporting...');
-      window.signIn = signIn;
-    }
-    if (!window.signOut || typeof window.signOut !== 'function') {
-      console.warn('⚠️ window.signOut was overwritten, re-exporting...');
-      window.signOut = signOut;
-    }
-  }, 100);
-
-  // Also set up a checker for the debug system
-  window.getAuthFunctions = function() {
-    return {
-      signIn: window.signIn,
-      signOut: window.signOut,
-      signInExists: typeof window.signIn === 'function',
-      signOutExists: typeof window.signOut === 'function'
-    };
-  };
-
   // Helper function for popup window to check authentication status
   function isAuthenticated() {
     return !!(accessToken && activeAccount);
@@ -18847,6 +18817,36 @@ if (document.readyState === 'loading') {
 
 // Re-initialize periodically in case DOM changes
 setTimeout(window.initializeActionButtons, 1000);
+
+// ============================================================
+// FINAL: EXPORT AUTHENTICATION FUNCTIONS - MUST BE AT END
+// ============================================================
+// These exports must happen AFTER all functions are defined
+// and right before archived JS files load
+if (typeof signIn === 'function') {
+  window.signIn = signIn;
+  console.log('✅ window.signIn exported');
+}
+if (typeof signOut === 'function') {
+  window.signOut = signOut;
+  console.log('✅ window.signOut exported');
+}
+if (typeof msalInstance !== 'undefined') {
+  window.msalInstance = msalInstance;
+  console.log('✅ window.msalInstance exported');
+}
+
+// Re-export after a small delay to ensure archived JS doesn't override
+setTimeout(() => {
+  if (typeof signIn === 'function' && (!window.signIn || typeof window.signIn !== 'function')) {
+    window.signIn = signIn;
+    console.log('⚠️ Re-exported window.signIn (was overwritten)');
+  }
+  if (typeof signOut === 'function' && (!window.signOut || typeof window.signOut !== 'function')) {
+    window.signOut = signOut;
+    console.log('⚠️ Re-exported window.signOut (was overwritten)');
+  }
+}, 100);
 
 // ===========================================================================
 // 14. START FIND NEAR ME - Opens in new tab
