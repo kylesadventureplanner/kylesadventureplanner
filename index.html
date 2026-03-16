@@ -698,6 +698,103 @@
       color: #6b7280;
     }
 
+    /* ============================================================
+       ACTION BUTTONS - Edit Mode, Find Near Me, City Viewer
+       ============================================================
+       Unified styling for all action buttons in adventure list
+    */
+    .edit-mode-btn,
+    .find-near-me-btn,
+    .city-viewer-btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: 2px solid var(--primary);
+      background: white;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .edit-mode-btn:hover,
+    .find-near-me-btn:hover,
+    .city-viewer-btn:hover {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .edit-mode-btn:active,
+    .find-near-me-btn:active,
+    .city-viewer-btn:active {
+      transform: translateY(0);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .edit-mode-btn:focus-visible,
+    .find-near-me-btn:focus-visible,
+    .city-viewer-btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .edit-mode-btn:disabled,
+    .find-near-me-btn:disabled,
+    .city-viewer-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Specific button styling for variety if needed */
+    .edit-mode-btn {
+      border-color: #667eea;
+      color: #667eea;
+    }
+
+    .edit-mode-btn:hover {
+      background: #667eea;
+      border-color: #667eea;
+      box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .find-near-me-btn {
+      border-color: #10b981;
+      color: #10b981;
+    }
+
+    .find-near-me-btn:hover {
+      background: #10b981;
+      border-color: #10b981;
+      box-shadow: 0 8px 16px rgba(16, 185, 129, 0.4);
+    }
+
+    .city-viewer-btn {
+      border-color: #f59e0b;
+      color: #f59e0b;
+    }
+
+    .city-viewer-btn:hover {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      box-shadow: 0 8px 16px rgba(245, 158, 11, 0.4);
+    }
+
+    /* Container for action buttons */
+    #adventureListActions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
     /* Table Wrapper - Container for scrollable table */
     .table-wrapper {
       width: 100%;
@@ -6120,6 +6217,272 @@
   }
 
   // ============================================================
+  // UNIFIED TOAST NOTIFICATION SYSTEM
+  // ============================================================
+  /**
+   * Unified toast notification function for all notifications
+   * @param {string} message - The message to display
+   * @param {string} type - 'success', 'error', 'warning', 'info'
+   * @param {number} duration - How long to show in milliseconds (default 3000)
+   */
+  window.showToast = function(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toastContainer') || createToastContainer();
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.style.cssText = `
+      animation: slideIn 0.3s ease-out;
+      margin-bottom: 8px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      max-width: 400px;
+    `;
+
+    // Set color based on type
+    const colors = {
+      success: { bg: '#d1fae5', border: '#6ee7b7', text: '#065f46' },
+      error: { bg: '#fee2e2', border: '#fca5a5', text: '#7f1d1d' },
+      warning: { bg: '#fef3c7', border: '#fcd34d', text: '#78350f' },
+      info: { bg: '#dbeafe', border: '#93c5fd', text: '#0c2340' }
+    };
+
+    const color = colors[type] || colors.info;
+    toast.style.background = color.bg;
+    toast.style.borderLeft = `4px solid ${color.border}`;
+    toast.style.color = color.text;
+
+    // Icon based on type
+    const icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+
+    toast.textContent = `${icons[type] || ''} ${message}`;
+    container.appendChild(toast);
+
+    // Auto-remove after duration
+    const timeoutId = setTimeout(() => {
+      toast.style.animation = 'slideOut 0.3s ease-in';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+
+    // Allow manual dismiss
+    toast.addEventListener('click', () => {
+      clearTimeout(timeoutId);
+      toast.style.animation = 'slideOut 0.3s ease-in';
+      setTimeout(() => toast.remove(), 300);
+    });
+
+    return toast;
+  };
+
+  /**
+   * Create toast container if it doesn't exist
+   */
+  function createToastContainer() {
+    let container = document.getElementById('toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000;
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 8px;
+        pointer-events: auto;
+      `;
+      document.body.appendChild(container);
+    }
+    return container;
+  }
+
+  // Add CSS animations if not already in stylesheet
+  if (!document.querySelector('style:contains("slideIn")')) {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // ============================================================
+  // UNIFIED ERROR NOTIFICATION BAR SYSTEM
+  // ============================================================
+
+  // Error tracking
+  window.errorLog = [];
+
+  /**
+   * Unified error notification function
+   * Displays errors in the error notification bar
+   */
+  window.logErrorToBar = function(type, message, details = '') {
+    const errorBar = document.getElementById('errorNotificationBar');
+    const errorPanel = document.getElementById('errorDetailsPanel');
+    const errorCount = document.getElementById('errorCount');
+
+    if (!errorBar || !errorPanel) {
+      console.error(`[${type}] ${message}${details ? ': ' + details : ''}`);
+      return;
+    }
+
+    // Add to error log
+    window.errorLog.push({
+      type,
+      message,
+      details,
+      timestamp: new Date().toLocaleTimeString()
+    });
+
+    // Limit error log size
+    if (window.errorLog.length > 50) {
+      window.errorLog.shift();
+    }
+
+    // Update error count
+    errorCount.textContent = window.errorLog.length;
+
+    // Add error to panel
+    const errorItem = document.createElement('div');
+    errorItem.className = `error-item error-${type}`;
+    errorItem.style.cssText = `
+      padding: 8px 12px;
+      border-left: 3px solid;
+      margin-bottom: 4px;
+      font-size: 12px;
+      border-radius: 4px;
+    `;
+
+    const colors = {
+      error: { bg: '#fee2e2', border: '#dc2626', text: '#7f1d1d' },
+      warning: { bg: '#fef3c7', border: '#d97706', text: '#78350f' },
+      info: { bg: '#dbeafe', border: '#0284c7', text: '#0c2340' }
+    };
+
+    const color = colors[type] || colors.info;
+    errorItem.style.background = color.bg;
+    errorItem.style.borderColor = color.border;
+    errorItem.style.color = color.text;
+
+    const icon = { error: '❌', warning: '⚠️', info: 'ℹ️' }[type] || '❌';
+    errorItem.innerHTML = `
+      <strong>${icon} ${type.toUpperCase()}</strong><br>
+      ${message}
+      ${details ? `<br><small>${details}</small>` : ''}
+    `;
+
+    errorPanel.insertBefore(errorItem, errorPanel.firstChild);
+
+    // Show error bar
+    errorBar.classList.remove('collapsed');
+    errorBar.style.display = 'block';
+  };
+
+  /**
+   * Toggle error notification bar
+   */
+  window.toggleErrorBar = function() {
+    const errorBar = document.getElementById('errorNotificationBar');
+    if (errorBar) {
+      errorBar.classList.toggle('collapsed');
+      const isCollapsed = errorBar.classList.contains('collapsed');
+      const panel = document.getElementById('errorDetailsPanel');
+      if (panel) {
+        panel.style.display = isCollapsed ? 'none' : 'block';
+      }
+    }
+  };
+
+  /**
+   * Clear all errors from notification bar
+   */
+  window.clearErrorNotifications = function() {
+    window.errorLog = [];
+    const errorCount = document.getElementById('errorCount');
+    const errorPanel = document.getElementById('errorDetailsPanel');
+    if (errorCount) errorCount.textContent = '0';
+    if (errorPanel) errorPanel.innerHTML = '';
+    const errorBar = document.getElementById('errorNotificationBar');
+    if (errorBar) errorBar.classList.add('collapsed');
+  };
+
+  /**
+   * Debug logging utility
+   */
+  window.addDebugLog = function(type, message) {
+    const debugContent = document.getElementById('debugConsoleContent');
+    if (!debugContent) return;
+
+    const logItem = document.createElement('div');
+    logItem.className = `debug-log-item log-${type}`;
+    logItem.style.cssText = `
+      padding: 4px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 11px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    `;
+
+    const timestamp = new Date().toLocaleTimeString();
+    logItem.textContent = `[${timestamp}] [${type}] ${message}`;
+    debugContent.appendChild(logItem);
+
+    // Keep only last 500 logs
+    while (debugContent.children.length > 500) {
+      debugContent.removeChild(debugContent.firstChild);
+    }
+
+    // Auto-scroll to bottom
+    debugContent.scrollTop = debugContent.scrollHeight;
+  };
+
+  /**
+   * Toggle debug console
+   */
+  window.toggleDebugConsole = function() {
+    const debugConsole = document.getElementById('debuggingConsole');
+    if (debugConsole) {
+      debugConsole.classList.toggle('collapsed');
+      const content = document.querySelector('.debug-console-content');
+      if (content) {
+        content.style.display = debugConsole.classList.contains('collapsed') ? 'none' : 'block';
+      }
+    }
+  };
+
+  // ============================================================
   // ERROR LOGGING & REPORTING
   // ============================================================
 
@@ -7759,88 +8122,9 @@
   }
 
     /**
-     * Add Test Google Places API button to the page
+     * Test Google Places API button - DISABLED/REMOVED
+     * This functionality is now available in Edit Mode instead
      */
-    window.addTestGoogleAPIButton = function() {
-    console.log('🧪 Adding Test Google API button...');
-
-    try {
-      // Try to find a suitable container
-      let container = document.querySelector('.controls') ||
-                      document.querySelector('[class*="control"]') ||
-                      document.querySelector('nav') ||
-                      document.querySelector('header') ||
-                      document.querySelector('#app');
-
-      if (!container) {
-        // Create a container if none exists
-        container = document.createElement('div');
-        container.id = 'test-controls';
-        container.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1000; display: flex; gap: 10px;';
-        document.body.appendChild(container);
-      }
-
-      // Create test button
-      const btn = document.createElement('button');
-      btn.id = 'testGoogleAPIBtn';
-      btn.textContent = '🧪 Test Google API';
-      btn.style.cssText = `
-        padding: 10px 16px;
-        background: #667eea;
-        color: white;
-        border: 1px solid #667eea;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 13px;
-        transition: all 0.2s;
-      `;
-
-      btn.onmouseover = function() {
-        this.style.background = '#5568d3';
-        this.style.borderColor = '#5568d3';
-        this.style.transform = 'scale(1.05)';
-        this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
-      };
-
-      btn.onmouseout = function() {
-        this.style.background = '#667eea';
-        this.style.borderColor = '#667eea';
-        this.style.transform = 'none';
-        this.style.boxShadow = 'none';
-      };
-
-      btn.onclick = async function() {
-        console.log('🧪 Test button clicked');
-        btn.disabled = true;
-        btn.textContent = '⏳ Testing...';
-
-        const result = await window.testGooglePlacesAPI();
-
-        btn.textContent = result ? '✅ Test Passed' : '❌ Test Failed';
-        btn.disabled = false;
-
-        setTimeout(() => {
-          btn.textContent = '🧪 Test Google API';
-        }, 3000);
-      };
-
-      container.appendChild(btn);
-      console.log('✅ Test Google API button added');
-
-    } catch (err) {
-      console.error('❌ Error adding test button:', err);
-    }
-    };
-
-    // Add button when page loads
-    if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(window.addTestGoogleAPIButton, 1000);
-    });
-    } else {
-    setTimeout(window.addTestGoogleAPIButton, 500);
-    }
 
     // ...existing code...
   async function addRowToExcel(rowValues, retryCount = 0) {
