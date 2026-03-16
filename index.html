@@ -7085,7 +7085,7 @@
   // Flag to prevent duplicate sign-in attempts
   let isSigningIn = false;
 
-  async function signIn() {
+  window.signIn = async function() {
     try {
       // Prevent multiple simultaneous sign-in attempts
       if (isSigningIn) {
@@ -7226,7 +7226,7 @@
   });
 
 
-  async function signOut() {
+  window.signOut = async function() {
     showLoading('Signing out...');
     const account = msalInstance.getActiveAccount();
     if (!account) {
@@ -7251,12 +7251,9 @@
     clearSelection();
     hideLoading();
     showToast('✓ Successfully signed out!', 'success', 2000);
-  }
+  };
 
-  // IMMEDIATE EXPORT - Must happen right after functions defined
-  window.signIn = signIn;
-  window.signOut = signOut;
-  console.log('✅ IMMEDIATE: window.signIn and window.signOut exported (right after function definitions)');
+  console.log('✅ window.signIn and window.signOut are now directly defined as global functions');
 
   // Helper function for popup window to check authentication status
   function isAuthenticated() {
