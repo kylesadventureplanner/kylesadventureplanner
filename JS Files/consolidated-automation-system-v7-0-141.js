@@ -479,27 +479,103 @@ window.refreshPlaceIdsWithProgress = window.refreshPlaceIdsWithProgress || async
       }
     }
 
-    // Batch write to M365 Excel if we have updates and not in dry run
+    // STEP 1: Update in-memory data with refreshed details
+    console.log(`💾 Updating in-memory data with ${m365Updates.length} refreshed records...`);
+    for (const update of m365Updates) {
+      if (update.rowIndex >= 0 && update.rowIndex < data.length) {
+        const location = data[update.rowIndex];
+        if (location.values && location.values[0]) {
+          // Update the values array with fresh data
+          location.values[0][1] = update.placeId;   // Place ID (Column B)
+          location.values[0][2] = update.website;   // Website (Column C)
+          location.values[0][3] = update.phone;     // Phone (Column D)
+          location.values[0][4] = update.hours;     // Hours (Column E)
+          location.values[0][11] = update.address;  // Address (Column L)
+          location.values[0][13] = update.rating;   // Rating (Column N)
+          location.values[0][15] = update.directions; // Directions (Column P)
+        } else if (location.placeId !== undefined) {
+          // Direct property update if not using values array
+          location.placeId = update.placeId;
+          location.website = update.website;
+          location.phone = update.phone;
+          location.hours = update.hours;
+          location.address = update.address;
+          location.rating = update.rating;
+          location.directions = update.directions;
+        }
+      }
+    }
+    console.log(`✅ In-memory data updated with ${m365Updates.length} records`);
+
+    // STEP 2: Batch write to M365 Excel using the same proven method as bulk add operations
     let m365Status = '';
+    let m365Count = 0;
     if (!dryRun && m365Updates.length > 0) {
       console.log(`📝 Writing ${m365Updates.length} updates to M365 Excel...`);
       try {
+        // ATTEMPT 1: Try writeBatchPlacesToM365 (Office.js context - Excel Add-in mode)
         if (typeof mainWindow.writeBatchPlacesToM365 === 'function') {
-          const writeResult = await mainWindow.writeBatchPlacesToM365(m365Updates);
-          if (writeResult && writeResult.success) {
-            m365Status = `<br>✅ M365 EXCEL UPDATED: ${writeResult.successCount} rows updated`;
-            console.log(`✅ M365 Excel batch write successful: ${writeResult.successCount}/${writeResult.totalCount}`);
-          } else {
-            m365Status = `<br>⚠️ M365 Excel write: ${writeResult ? writeResult.message : 'Office.js not available'}`;
-            console.warn('⚠️ M365 Excel write not available');
+          try {
+            const writeResult = await mainWindow.writeBatchPlacesToM365(m365Updates);
+            if (writeResult && writeResult.success) {
+              m365Status = `<br>✅ M365 EXCEL UPDATED: ${writeResult.successCount} rows updated`;
+              m365Count = writeResult.successCount;
+              console.log(`✅ M365 Excel batch write successful: ${writeResult.successCount}/${writeResult.totalCount}`);
+            } else if (writeResult && writeResult.message) {
+              m365Status = `<br>⚠️ M365 write: ${writeResult.message}. Data persisted in memory.`;
+              console.warn('⚠️ M365 write result:', writeResult);
+            }
+          } catch (m365DirectError) {
+            m365Status = `<br>⚠️ M365 batch write error: ${m365DirectError.message}. Data persisted in memory.`;
+            console.warn('⚠️ M365 batch write error:', m365DirectError);
           }
-        } else {
-          m365Status = `<br>⚠️ M365 write function not available`;
-          console.warn('⚠️ writeBatchPlacesToM365 function not found');
+        }
+
+        // ATTEMPT 2: If no batch function, try individual updates via Office context
+        if (!m365Status && typeof Office !== 'undefined' && typeof Excel !== 'undefined') {
+          try {
+            console.log('📝 Attempting individual Excel updates via Office.js...');
+            let successCount = 0;
+            for (const update of m365Updates) {
+              try {
+                await mainWindow.writeUpdatedPlaceToM365(update.rowIndex, update);
+                successCount++;
+              } catch (err) {
+                console.warn(`⚠️ Could not update row ${update.rowIndex}:`, err.message);
+              }
+            }
+            if (successCount > 0) {
+              m365Status = `<br>✅ M365 EXCEL UPDATED: ${successCount} rows updated`;
+              m365Count = successCount;
+              console.log(`✅ Individual Excel updates successful: ${successCount}/${m365Updates.length}`);
+            }
+          } catch (officeErr) {
+            m365Status = `<br>⚠️ Office context error: ${officeErr.message}. Data persisted in memory.`;
+            console.warn('⚠️ Office context error:', officeErr);
+          }
+        }
+
+        // ATTEMPT 3: Fallback to saveToExcel() - the standard method used by bulk operations
+        if (!m365Status) {
+          try {
+            if (typeof mainWindow.saveToExcel === 'function') {
+              console.log(`📝 Saving ${m365Updates.length} updated records to Excel using saveToExcel()...`);
+              await mainWindow.saveToExcel();
+              m365Status = `<br>✅ EXCEL SAVED: ${m365Updates.length} rows saved to Excel`;
+              m365Count = m365Updates.length;
+              console.log(`✅ Excel save successful via saveToExcel()`);
+            } else {
+              m365Status = `<br>📌 Data persisted in memory (${m365Updates.length} records). Return to Excel and save manually with Ctrl+S`;
+              console.log('ℹ️ Not in Office Add-in context. Data updated in memory. User should save manually in Excel.');
+            }
+          } catch (saveErr) {
+            m365Status = `<br>⚠️ Save error: ${saveErr.message}. Data persisted in memory. Return to main window and save with Ctrl+S.`;
+            console.warn('⚠️ saveToExcel() error:', saveErr);
+          }
         }
       } catch (m365Error) {
-        m365Status = `<br>⚠️ M365 Excel write error: ${m365Error.message}`;
-        console.warn('⚠️ M365 Excel write error:', m365Error);
+        m365Status = `<br>⚠️ M365 write error: ${m365Error.message}. Data persisted in memory.`;
+        console.warn('⚠️ M365 write error:', m365Error);
       }
     }
 
