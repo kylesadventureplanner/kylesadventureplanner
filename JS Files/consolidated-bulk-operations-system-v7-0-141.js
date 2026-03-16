@@ -699,22 +699,40 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
             return `${idx + 1}. ${statusIcon} ${r.name} - ${r.message}`;
           }).join('\n')}
         </div>
-        <button onclick="
-          const text = \`Populate Missing Fields Results (${new Date().toLocaleString()})\nStatus: ${dryRun ? 'DRY RUN' : 'COMPLETED'}\n- Updated: ${updatedCount}\n- Skipped: ${skippedCount}\n- Errors: ${errorCount}\n\n${results.map((r, i) => {
-            if (r.status === 'updated') {
-              return \`\${i + 1}. ✅ \${r.name} - Missing: \${r.missingFields.join(', ')} Corrected: \${r.correctedFields.join(', ') || 'none'}\`;
-            }
-            return \`\${i + 1}. \${r.status === 'error' ? '❌' : r.status === 'complete' ? '✔️' : '⏭️'} \${r.name} - \${r.message}\`;
-          }).join('\n')}\`;
-          navigator.clipboard.writeText(text).then(() => {
-            alert('✅ Results copied to clipboard!');
-          });
-        " style="padding: 8px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+        <button id="populateResultsCopyBtn" style="padding: 8px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
           📋 Copy Results to Clipboard
         </button>
       </div>
     `;
     updateDisplay(resultHTML);
+
+    // Add copy button handler after DOM update
+    setTimeout(() => {
+      const copyBtn = document.getElementById('populateResultsCopyBtn');
+      if (copyBtn) {
+        copyBtn.onclick = () => {
+          const resultsSummary = `Populate Missing Fields Results (${new Date().toLocaleString()})
+Status: ${dryRun ? 'DRY RUN' : 'COMPLETED'}
+- Updated: ${updatedCount}
+- Skipped: ${skippedCount}
+- Errors: ${errorCount}
+
+${results.map((r, i) => {
+            if (r.status === 'updated') {
+              return `${i + 1}. ✅ ${r.name} - Missing: ${r.missingFields.join(', ')} Corrected: ${r.correctedFields.join(', ') || 'none'}`;
+            }
+            return `${i + 1}. ${r.status === 'error' ? '❌' : r.status === 'complete' ? '✔️' : '⏭️'} ${r.name} - ${r.message}`;
+          }).join('\n')}`;
+
+          navigator.clipboard.writeText(resultsSummary).then(() => {
+            alert('✅ Results copied to clipboard!');
+          }).catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard');
+          });
+        };
+      }
+    }, 0);
 
     return {
       success: errorCount === 0,
@@ -914,22 +932,40 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
             return `${idx + 1}. ${statusIcon} ${r.name} - ${r.message}`;
           }).join('\n')}
         </div>
-        <button onclick="
-          const text = \`Update Hours Results (${new Date().toLocaleString()})\nStatus: ${dryRun ? 'DRY RUN' : 'COMPLETED'}\n- Updated: ${updatedCount}\n- Skipped: ${skippedCount}\n- Errors: ${errorCount}\n\n${results.map((r, i) => {
-            if (r.status === 'updated') {
-              return \`\${i + 1}. ✅ \${r.name} - Old: \${r.oldHours} New: \${r.newHours}\`;
-            }
-            return \`\${i + 1}. \${r.status === 'error' ? '❌' : '⏭️'} \${r.name} - \${r.message}\`;
-          }).join('\n')}\`;
-          navigator.clipboard.writeText(text).then(() => {
-            alert('✅ Results copied to clipboard!');
-          });
-        " style="padding: 8px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+        <button id="hoursResultsCopyBtn" style="padding: 8px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
           📋 Copy Results to Clipboard
         </button>
       </div>
     `;
     updateDisplay(resultHTML);
+
+    // Add copy button handler after DOM update
+    setTimeout(() => {
+      const copyBtn = document.getElementById('hoursResultsCopyBtn');
+      if (copyBtn) {
+        copyBtn.onclick = () => {
+          const resultsSummary = `Update Hours Results (${new Date().toLocaleString()})
+Status: ${dryRun ? 'DRY RUN' : 'COMPLETED'}
+- Updated: ${updatedCount}
+- Skipped: ${skippedCount}
+- Errors: ${errorCount}
+
+${results.map((r, i) => {
+            if (r.status === 'updated') {
+              return `${i + 1}. ✅ ${r.name} - Old: ${r.oldHours} New: ${r.newHours}`;
+            }
+            return `${i + 1}. ${r.status === 'error' ? '❌' : '⏭️'} ${r.name} - ${r.message}`;
+          }).join('\n')}`;
+
+          navigator.clipboard.writeText(resultsSummary).then(() => {
+            alert('✅ Results copied to clipboard!');
+          }).catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard');
+          });
+        };
+      }
+    }, 0);
 
     return {
       success: errorCount === 0,
