@@ -48,6 +48,35 @@ function delay(ms) {
 }
 
 /**
+ * Helper: Update data in Google Sheet via Apps Script
+ */
+function updateSheetData(updateRanges) {
+  return new Promise((resolve, reject) => {
+    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+
+    // Check if Apps Script is available
+    if (typeof mainWindow.google !== 'undefined' &&
+        typeof mainWindow.google.script !== 'undefined' &&
+        typeof mainWindow.google.script.run !== 'undefined') {
+      console.log(`💾 Sending ${updateRanges.length} range updates to Google Sheet...`);
+
+      mainWindow.google.script.run
+        .withSuccessHandler((result) => {
+          console.log('✅ Google Sheet updated successfully:', result);
+          resolve({ success: true, message: result });
+        })
+        .withFailureHandler((error) => {
+          console.warn('⚠️ Google Sheet update error:', error);
+          reject({ success: false, error: error });
+        })
+        .updateAdventuresData(updateRanges);
+    } else {
+      reject({ success: false, error: 'Apps Script not available' });
+    }
+  });
+}
+
+/**
  * Helper: Get place details from Google Places API
  */
 async function getPlaceDetailsFromAPI(placeId) {
@@ -66,20 +95,16 @@ async function getPlaceDetailsFromAPI(placeId) {
       };
     }
 
-    const response = await fetch(
-      `https://places.googleapis.com/v1/places/${placeId}?fields=displayName,nationalPhoneNumber,websiteUri,openingHours,formattedAddress,rating,types&key=${window.GOOGLE_PLACES_API_KEY}`,
-      {
-        method: 'GET',
-        headers: {
-          'X-Goog-FieldMask': 'displayName,nationalPhoneNumber,websiteUri,openingHours,formattedAddress,rating'
-        }
-      }
-    );
+    const apiUrl = `https://places.googleapis.com/v1/places/${placeId}?fields=displayName,nationalPhoneNumber,websiteUri,openingHours,formattedAddress,rating,types&key=${window.GOOGLE_PLACES_API_KEY}`;
+
+    const response = await fetch(apiUrl, {
+      method: 'GET'
+    });
 
     if (!response.ok) {
       // Log more detail about the API error
       const errorText = await response.text();
-      console.warn(`⚠️ Google Places API Error ${response.status} for ${placeId}:`, errorText.substring(0, 200));
+      console.warn(`⚠️ Could not fetch place details for ${placeId}: Google Places API error: ${response.status}`);
 
       // Try fallback function if available
       if (window.opener && typeof window.opener.getPlaceDetails === 'function') {
@@ -127,15 +152,11 @@ async function getPlaceDetailsFromAPIWithFallback(placeId) {
   try {
     if (window.GOOGLE_PLACES_API_KEY) {
       try {
-        const response = await fetch(
-          `https://places.googleapis.com/v1/places/${placeId}?fields=displayName,nationalPhoneNumber,websiteUri,openingHours,formattedAddress,rating,types&key=${window.GOOGLE_PLACES_API_KEY}`,
-          {
-            method: 'GET',
-            headers: {
-              'X-Goog-FieldMask': 'displayName,nationalPhoneNumber,websiteUri,openingHours,formattedAddress,rating'
-            }
-          }
-        );
+        const apiUrl = `https://places.googleapis.com/v1/places/${placeId}?fields=displayName,nationalPhoneNumber,websiteUri,openingHours,formattedAddress,rating,types&key=${window.GOOGLE_PLACES_API_KEY}`;
+
+        const response = await fetch(apiUrl, {
+          method: 'GET'
+        });
 
         if (response.ok) {
           const data = await response.json();
@@ -703,8 +724,24 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
       try {
         const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
 
+        // Prepare updated data for saving
+        const updatedData = [];
+        for (let i = 0; i < adventuresData.length; i++) {
+          const place = adventuresData[i];
+          const values = place.values ? place.values[0] : place;
+          if (values) {
+            updatedData.push({
+              rowIndex: i,
+              values: values
+            });
+          }
+        }
+
         // Try to save using available save functions
-        if (typeof mainWindow.saveData === 'function') {
+        if (typeof mainWindow.saveUpdatedData === 'function') {
+          console.log('💾 Saving updated data to spreadsheet...');
+          mainWindow.saveUpdatedData(updatedData);
+        } else if (typeof mainWindow.saveData === 'function') {
           console.log('💾 Saving data to spreadsheet...');
           mainWindow.saveData();
         } else if (typeof mainWindow.saveAdventures === 'function') {
@@ -969,9 +1006,45 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
       }
     }
 
-    // Skip Excel save from Edit Mode - it causes 404 errors due to context issues
-    // User can manually save from the main Adventure Planner window
-    if (!dryRun) {
+    // Auto-save data to spreadsheet if not in dry run mode
+    if (!dryRun && updatedCount > 0) {
+      try {
+        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+
+        // Prepare updated data for saving
+        const updatedData = [];
+        for (let i = 0; i < adventuresData.length; i++) {
+          const place = adventuresData[i];
+          const values = place.values ? place.values[0] : place;
+          if (values) {
+            updatedData.push({
+              rowIndex: i,
+              values: values
+            });
+          }
+        }
+
+        // Try to save using available save functions
+        if (typeof mainWindow.saveUpdatedData === 'function') {
+          console.log('💾 Saving updated data to spreadsheet...');
+          mainWindow.saveUpdatedData(updatedData);
+        } else if (typeof mainWindow.saveData === 'function') {
+          console.log('💾 Saving data to spreadsheet...');
+          mainWindow.saveData();
+        } else if (typeof mainWindow.saveAdventures === 'function') {
+          console.log('💾 Saving adventures to spreadsheet...');
+          mainWindow.saveAdventures();
+        } else if (typeof mainWindow.save === 'function') {
+          console.log('💾 Triggering save function...');
+          mainWindow.save();
+        } else {
+          console.log('💾 No save function found. Data updated in memory. Please return to main window and save manually using Ctrl+S.');
+        }
+      } catch (saveErr) {
+        console.warn('⚠️ Auto-save failed (this is okay):', saveErr.message);
+        console.log('💾 Data updated in memory. Please return to main window and save manually using Ctrl+S or use Ctrl+S in this window.');
+      }
+    } else if (!dryRun) {
       console.log('💾 Note: Data is updated in memory. Return to main window and save manually using Ctrl+S or refresh.');
     }
 
@@ -1058,6 +1131,192 @@ ${results.map((r, i) => {
 window.handleUpdateHoursOnlyEnhanced = window.handleUpdateHoursOnly;
 
 console.log('✅ Update Hours Only ready');
+
+// ============================================================
+// SECTION 6: M365 EXCEL WRITE INTEGRATION
+// ============================================================
+// Provides methods to write refreshed data back to M365 Excel
+
+/**
+ * Write updated place details back to M365 Excel row
+ * Uses the same Office.js approach as bulk add operations
+ */
+window.writeUpdatedPlaceToM365 = async function(rowIndex, placeData) {
+  return new Promise((resolve, reject) => {
+    try {
+      // Get reference to main window if in edit mode
+      const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+
+      // Check if Office.js context is available
+      if (typeof Office !== 'undefined' &&
+          typeof Office.onReady !== 'undefined' &&
+          typeof Excel !== 'undefined') {
+
+        Excel.run(async (context) => {
+          try {
+            const sheet = context.workbook.worksheets.getActiveWorksheet();
+
+            // Calculate the actual row number (assuming row 1 is headers)
+            const excelRow = rowIndex + 2;
+
+            // Build the range of cells to update
+            const range = sheet.getRange(`A${excelRow}:P${excelRow}`);
+
+            // Prepare the data in column order matching COLS definition
+            const rowData = [[
+              placeData.name || '',           // Column A (NAME)
+              placeData.placeId || '',        // Column B (PLACE_ID)
+              placeData.website || '',        // Column C (WEBSITE)
+              placeData.phone || '',          // Column D (PHONE)
+              placeData.hours || '',          // Column E (HOURS)
+              '',                             // Column F (unused)
+              '',                             // Column G (unused)
+              '',                             // Column H (unused)
+              '',                             // Column I (unused)
+              '',                             // Column J (unused)
+              '',                             // Column K (unused)
+              placeData.address || '',        // Column L (ADDRESS)
+              '',                             // Column M (unused)
+              placeData.rating || '',         // Column N (RATING)
+              '',                             // Column O (unused)
+              placeData.directions || ''      // Column P (DIRECTIONS)
+            ]];
+
+            range.values = rowData;
+
+            await context.sync();
+
+            console.log(`✅ Updated M365 row ${excelRow}: ${placeData.name}`);
+            resolve({
+              success: true,
+              message: `Updated row ${excelRow}`,
+              rowIndex,
+              location: placeData.name
+            });
+
+          } catch (err) {
+            console.error(`❌ Error updating M365 row ${rowIndex}:`, err);
+            reject({
+              success: false,
+              error: err.message,
+              rowIndex
+            });
+          }
+        });
+
+      } else {
+        // Office.js not available - provide guidance
+        console.warn(`⚠️ Office.js not available for row ${rowIndex}`);
+        resolve({
+          success: false,
+          message: 'Office.js context not available. Data updates available in browser memory only.',
+          rowIndex,
+          note: 'User should manually copy-paste results to Excel'
+        });
+      }
+
+    } catch (error) {
+      console.error(`❌ Error in writeUpdatedPlaceToM365:`, error);
+      reject({
+        success: false,
+        error: error.message,
+        rowIndex
+      });
+    }
+  });
+};
+
+/**
+ * Batch write multiple updated rows to M365 Excel
+ */
+window.writeBatchPlacesToM365 = async function(placesData) {
+  console.log(`📝 Writing ${placesData.length} place updates to M365 Excel...`);
+
+  return new Promise((resolve, reject) => {
+    try {
+      if (typeof Office !== 'undefined' &&
+          typeof Excel !== 'undefined') {
+
+        Excel.run(async (context) => {
+          try {
+            const sheet = context.workbook.worksheets.getActiveWorksheet();
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < placesData.length; i++) {
+              const placeData = placesData[i];
+              const excelRow = placeData.rowIndex + 2;
+
+              try {
+                const range = sheet.getRange(`A${excelRow}:P${excelRow}`);
+
+                const rowData = [[
+                  placeData.name || '',
+                  placeData.placeId || '',
+                  placeData.website || '',
+                  placeData.phone || '',
+                  placeData.hours || '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  '',
+                  placeData.address || '',
+                  '',
+                  placeData.rating || '',
+                  '',
+                  placeData.directions || ''
+                ]];
+
+                range.values = rowData;
+                successCount++;
+
+              } catch (err) {
+                console.warn(`⚠️ Skipped row ${excelRow}:`, err.message);
+                failCount++;
+              }
+            }
+
+            await context.sync();
+
+            console.log(`✅ Batch write complete: ${successCount} updated, ${failCount} failed`);
+            resolve({
+              success: true,
+              successCount,
+              failCount,
+              totalCount: placesData.length
+            });
+
+          } catch (err) {
+            console.error(`❌ Error in batch write:`, err);
+            reject({
+              success: false,
+              error: err.message
+            });
+          }
+        });
+
+      } else {
+        console.warn(`⚠️ Office.js not available for batch write`);
+        resolve({
+          success: false,
+          message: 'Office.js context not available',
+          note: 'Data available in browser memory. User should copy-paste to Excel.'
+        });
+      }
+
+    } catch (error) {
+      console.error(`❌ Error in writeBatchPlacesToM365:`, error);
+      reject({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+};
+
+console.log('✅ M365 Excel Write Integration ready');
 
 // ============================================================
 // INITIALIZATION
