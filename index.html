@@ -17133,8 +17133,15 @@ COMMON ISSUES:
         return true;
       }
 
+      // Set default file path and table name if not already set
+      // These are the standard values for the Adventure Planner Excel file
+      const filePath = window.filePath || '/Adventure%20Planner.xlsx';
+      const tableName = window.tableName || 'MyList';
+
+      console.log(`📝 Using Excel file: ${filePath}, table: ${tableName}`);
+
       // Build URL to add rows to Excel table
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${window.filePath}:/workbook/tables/${window.tableName}/rows`;
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
 
       // Convert adventuresData to proper row format
       const rowsToAdd = window.adventuresData.map(item => {
