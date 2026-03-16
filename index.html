@@ -7263,6 +7263,13 @@
     showToast('✓ Successfully signed out!', 'success', 2000);
   }
 
+  // ============================================================
+  // EXPORT AUTHENTICATION FUNCTIONS TO WINDOW OBJECT
+  // ============================================================
+  // These must be accessible from HTML onclick handlers
+  window.signIn = signIn;
+  window.signOut = signOut;
+
   // Helper function for popup window to check authentication status
   function isAuthenticated() {
     return !!(accessToken && activeAccount);
