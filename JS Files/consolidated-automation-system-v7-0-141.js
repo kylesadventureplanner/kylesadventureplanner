@@ -261,6 +261,17 @@ class EnhancedAutomationFeatures {
       statusDiv.innerHTML = `<div class="status-message status-error">❌ ${result.error || 'Operation failed'}</div>`;
     }
   }
+
+  /**
+   * Populate Missing Fields Only - callable from edit mode
+   */
+  async populateMissingFieldsOnly(dryRun = false) {
+    console.log(`📝 Enhanced Automation: Populating missing fields (Dry Run: ${dryRun})`);
+    if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
+      return await window.handlePopulateMissingFieldsEnhanced(null, dryRun);
+    }
+    return { success: false, error: 'Populate missing fields system not available' };
+  }
 }
 
 // Create global instance

@@ -21,6 +21,24 @@
 console.log('🌆 Consolidated City Viewer System v7.0.141 Loading...');
 
 // ============================================================
+// DEFENSIVE FUNCTION DEFINITIONS
+// ============================================================
+// These are defined early to prevent "not a function" errors
+// when called from HTML inline onclick handlers before full script loads
+
+window.viewCityDetailsEnhanced = window.viewCityDetailsEnhanced || function(cityName) {
+  console.log(`📍 Viewing details for: ${cityName}`);
+};
+
+window.openCityViewerWindow = window.openCityViewerWindow || function() {
+  console.log('🌆 Opening City Viewer...');
+};
+
+window.closeEnhancedCityVisualizer = window.closeEnhancedCityVisualizer || function() {
+  console.log('🌆 Closing City Visualizer...');
+};
+
+// ============================================================
 // SECTION 1: CITY VIEWER TAB OPENER (Enforced New Tab)
 // ============================================================
 
@@ -1211,11 +1229,8 @@ window.closeEnhancedCityVisualizer = function() {
   }
 };
 
-// Define early to prevent "not a function" errors
-window.viewCityDetailsEnhanced = function(cityName) {
-  console.log(`📍 Viewing details for: ${cityName}`);
-  // Can be extended to show location details
-};
+// viewCityDetailsEnhanced is defined early (line 29) to prevent timing issues
+// See defensive function definitions at top of file
 
 console.log('✅ Enhanced City Visualizer ready');
 
