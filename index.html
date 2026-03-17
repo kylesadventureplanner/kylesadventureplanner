@@ -5546,7 +5546,7 @@
          await window.renderAdventureCards();
 
          // Update connection status to show we're connected to Excel backend
-         updateConnectionStatus(true);
+         window.updateConnectionStatus?.(true);
 
          // Show success message
          window.showToast?.('✅ Adventure data loaded successfully', 'success', 2000);
