@@ -443,6 +443,20 @@ console.log('✅ Error Management System ready');
         try {
           await window.signIn();
           logSuccess('Sign in completed');
+
+          // Safety net: if cards didn't load, call loadTable explicitly
+          setTimeout(async () => {
+            const cardsGrid = document.getElementById('adventureCardsGrid');
+            const hasCards = cardsGrid && cardsGrid.children.length > 0;
+            const hasData = window.adventuresData && window.adventuresData.length > 0;
+
+            if (!hasCards && !hasData) {
+              logSuccess('No cards rendered yet — calling window.loadTable() as safety net...');
+              if (typeof window.loadTable === 'function') {
+                try { await window.loadTable(); } catch (e) { logError('error', 'Safety-net loadTable failed', e?.message); }
+              }
+            }
+          }, 1500);
         } catch (error) {
           logError('error', 'Sign in failed', error?.message || error);
         }
@@ -710,14 +724,18 @@ function replaceAuthButton(buttonId) {
 }
 
 function bootstrapAuthEarly() {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            ensureFallbackAuth();
-        }, { once: true });
+    // Wait for the full page load so the real window.signIn from index.html
+    // has been exported before we decide whether to create a fallback.
+    if (document.readyState === 'complete') {
+        // Page already loaded — check after a short delay to let inline scripts finish
+        setTimeout(() => ensureFallbackAuth(), 200);
         return;
     }
 
-    ensureFallbackAuth();
+    window.addEventListener('load', () => {
+        // Give inline scripts ~200ms to export window.signIn after load fires
+        setTimeout(() => ensureFallbackAuth(), 200);
+    }, { once: true });
 }
 
 let fallbackMsalInitPromise = null;
@@ -754,9 +772,24 @@ function updateFallbackAuthUI(account) {
 }
 
 async function loadSignedInData() {
+    logSuccess('loadSignedInData called - loading adventure data...');
+
     if (typeof window.loadTable === 'function') {
-        await window.loadTable();
+        logSuccess('Calling window.loadTable()...');
+        try {
+            await window.loadTable();
+            logSuccess('window.loadTable() completed');
+        } catch (err) {
+            logError('error', 'window.loadTable() threw error', err?.message || err);
+        }
+    } else if (typeof window.renderAdventureCards === 'function' && window.adventuresData?.length) {
+        // loadTable not available but we have data — just re-render
+        logSuccess('Calling renderAdventureCards() with existing data...');
+        window.renderAdventureCards(window.adventuresData);
+    } else {
+        logError('warn', 'No loadTable or renderAdventureCards available. Cards may not render.');
     }
+
     if (typeof window.initFindNearMe === 'function') window.initFindNearMe();
     if (typeof window.initContextMenu === 'function') window.initContextMenu();
     if (typeof window.initRowDetailModal === 'function') window.initRowDetailModal();
