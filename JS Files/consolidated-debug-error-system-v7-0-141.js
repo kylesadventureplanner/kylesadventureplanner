@@ -815,124 +815,21 @@ async function rehydrateFallbackAuth() {
 }
 
 async function ensureFallbackAuth(forceRecreate = false) {
-    if (!ENABLE_FALLBACK_AUTH) {
-        logDebug('Fallback auth is disabled. Native window.signIn/window.signOut are required.');
-        return false;
-    }
+    // FALLBACK AUTH DISABLED - Early auth initialization in index.html now handles all auth
+    // This function is kept for backward compatibility but no longer creates fallback auth handlers
 
-    // If real auth handlers already exist, do not override them with fallback handlers.
-    if (!forceRecreate &&
-        typeof window.signIn === 'function' &&
-        typeof window.signOut === 'function') {
-        logDebug('Fallback auth skipped override: existing window.signIn/window.signOut preserved');
+    logDebug('🔐 Fallback auth system disabled - using native early-init auth from index.html');
+
+    // Verify that native auth exists
+    if (typeof window.signIn === 'function' && typeof window.signOut === 'function') {
+        logSuccess('✅ Native auth functions confirmed available (window.signIn & window.signOut)');
         return true;
     }
 
-    if (forceRecreate) {
-        fallbackMsalInitPromise = null;
-        fallbackMsalInstance = null;
-    }
-
-    if (fallbackMsalInitPromise) {
-        return fallbackMsalInitPromise;
-    }
-
-    if (!window.msal?.PublicClientApplication) {
-        logError('error', 'MSAL browser library is not available for fallback auth');
-        fallbackNotify('Microsoft sign-in library is missing on the page.', 'error', 6000);
-        return false;
-    }
-
-    fallbackMsalInitPromise = (async () => {
-        try {
-            fallbackMsalInstance = window.msalInstance || new window.msal.PublicClientApplication(FALLBACK_MSAL_CONFIG);
-            await fallbackMsalInstance.initialize();
-
-            if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
-                try {
-                    await fallbackMsalInstance.handleRedirectPromise();
-                } catch (redirectError) {
-                    logError('warn', 'Fallback redirect handling warning', redirectError?.message || redirectError);
-                }
-            }
-
-            window.msalInstance = fallbackMsalInstance;
-
-            window.rehydrateAuthState = async function () {
-                await ensureFallbackAuth();
-                return rehydrateFallbackAuth();
-            };
-
-            if (typeof window.signIn !== 'function') {
-                window.signIn = async function () {
-                    await ensureFallbackAuth();
-
-                    const existingAccount = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
-                    if (existingAccount) {
-                        fallbackMsalInstance.setActiveAccount(existingAccount);
-                        try {
-                            const silentToken = await fallbackMsalInstance.acquireTokenSilent({
-                                ...FALLBACK_LOGIN_REQUEST,
-                                account: existingAccount
-                            });
-                            syncFallbackAuthState(silentToken?.accessToken || null, existingAccount);
-                            updateFallbackAuthUI(existingAccount);
-                            await loadSignedInData();
-                            fallbackNotify('✓ Successfully signed in!', 'success', 3000);
-                            return;
-                        } catch (_silentError) {
-                            logError('warn', 'Silent token acquisition failed, continuing to popup auth');
-                        }
-                    }
-
-                    const loginResponse = await fallbackMsalInstance.loginPopup(FALLBACK_LOGIN_REQUEST);
-                    const account = loginResponse?.account || fallbackMsalInstance.getActiveAccount();
-                    if (!account) {
-                        throw new Error('Microsoft account was not returned by loginPopup');
-                    }
-
-                    fallbackMsalInstance.setActiveAccount(account);
-                    const tokenResponse = await fallbackMsalInstance.acquireTokenSilent({
-                        ...FALLBACK_LOGIN_REQUEST,
-                        account
-                    });
-
-                    syncFallbackAuthState(tokenResponse?.accessToken || null, account);
-                    updateFallbackAuthUI(account);
-                    await loadSignedInData();
-                    fallbackNotify('✓ Successfully signed in!', 'success', 3000);
-                };
-            }
-
-            if (typeof window.signOut !== 'function') {
-                window.signOut = async function () {
-                    await ensureFallbackAuth();
-                    const account = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
-                    syncFallbackAuthState(null, null);
-                    updateFallbackAuthUI(null);
-
-                    if (account) {
-                        await fallbackMsalInstance.logoutPopup({
-                            account,
-                            postLogoutRedirectUri: window.location.origin
-                        });
-                    }
-                };
-            }
-
-            const restored = await rehydrateFallbackAuth();
-            logSuccess(`Fallback auth bootstrap ready${restored ? ' (restored cached session)' : ''}`);
-            return true;
-        } catch (error) {
-            fallbackMsalInitPromise = null;
-            logError('error', 'Fallback auth bootstrap failed', error?.message || error);
-            fallbackNotify(`Microsoft sign-in setup failed: ${error?.message || error}`, 'error', 6000);
-            return false;
-        }
-    })();
-
-    return fallbackMsalInitPromise;
+    logError('warn', '⚠️ Native auth functions not available - early init may have failed');
+    return false;
 }
+
 
 function checkAndFixSignIn() {
     if (typeof window.signIn !== 'function') {

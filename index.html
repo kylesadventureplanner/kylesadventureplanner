@@ -5159,6 +5159,38 @@
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
+  <!-- Early Auth Initialization - Define signIn/signOut before debug system loads -->
+  <script>
+    console.log('🔐 Early auth initialization: Setting up placeholder auth functions...');
+
+    // Initialize placeholder auth functions that will be replaced by main script
+    if (typeof window.signIn === 'undefined') {
+      window.signIn = async function() {
+        console.warn('⚠️ Placeholder signIn called - waiting for real auth initialization');
+        // Wait a bit for real auth to load, then try again
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (typeof window.realSignIn === 'function') {
+          return window.realSignIn();
+        }
+        console.error('❌ Real signIn not available yet');
+      };
+    }
+
+    if (typeof window.signOut === 'undefined') {
+      window.signOut = async function() {
+        console.warn('⚠️ Placeholder signOut called - waiting for real auth initialization');
+        // Wait a bit for real auth to load, then try again
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (typeof window.realSignOut === 'function') {
+          return window.realSignOut();
+        }
+        console.error('❌ Real signOut not available yet');
+      };
+    }
+
+    console.log('✅ Early auth initialization complete');
+  </script>
+
   <!-- Tag Management System (v7.0.112+) - DEPRECATED: Now using consolidated-tag-system-v7-0-141.js -->
   <!-- <script src="Archived-Files/JS/tag-manager.js"></script> -->
   <script>
@@ -7244,6 +7276,33 @@
   };
 
   console.log('✅ window.signIn and window.signOut are now directly defined as global functions');
+  console.log('📍 AUTH DEFINITION POINT: window.signIn type:', typeof window.signIn);
+  console.log('📍 AUTH DEFINITION POINT: window.signOut type:', typeof window.signOut);
+
+  // Store real auth functions so placeholder functions can call them
+  window.realSignIn = window.signIn;
+  window.realSignOut = window.signOut;
+  console.log('✅ Stored window.realSignIn - type:', typeof window.realSignIn);
+  console.log('✅ Stored window.realSignOut - type:', typeof window.realSignOut);
+  console.log('🔐 Real auth functions registered: window.realSignIn and window.realSignOut ready for fallback auth');
+
+  // Verify this is the REAL auth, not the placeholder
+  if (window.__earlyAuthInit) {
+    console.log('🔄 REPLACED early auth placeholder with REAL authentication');
+    window.__earlyAuthInit = false;
+  }
+
+  // IMMEDIATELY preserve signIn and signOut to prevent overwriting
+  if (typeof window.signIn === 'function') {
+    window.__nativeSignIn = window.signIn;
+    window.nativeSignIn = window.signIn;
+    console.log('✅ Preserved window.signIn as __nativeSignIn and nativeSignIn');
+  }
+  if (typeof window.signOut === 'function') {
+    window.__nativeSignOut = window.signOut;
+    window.nativeSignOut = window.signOut;
+    console.log('✅ Preserved window.signOut as __nativeSignOut and nativeSignOut');
+  }
 
   // Helper function for popup window to check authentication status
   function isAuthenticated() {
@@ -18757,18 +18816,13 @@ if (document.readyState === 'loading') {
 setTimeout(window.initializeActionButtons, 1000);
 
 // ============================================================
-// FINAL: EXPORT AUTHENTICATION FUNCTIONS - MUST BE AT END
+// FINAL: AUTHENTICATION EXPORT - CLEANUP
 // ============================================================
-// These exports must happen AFTER all functions are defined
-// and right before archived JS files load
-if (typeof signIn === 'function') {
-  window.signIn = signIn;
-  console.log('✅ window.signIn exported');
-}
-if (typeof signOut === 'function') {
-  window.signOut = signOut;
-  console.log('✅ window.signOut exported');
-}
+// DO NOT re-export window.signIn here - it's already defined at line 7078
+// These lines were OVERWRITING the real auth with undefined!
+// Removed: if (typeof signIn === 'function') { window.signIn = signIn; }
+
+console.log('✅ Auth setup complete - using real window.signIn from line 7078');
 if (typeof msalInstance !== 'undefined') {
   window.msalInstance = msalInstance;
   console.log('✅ window.msalInstance exported');
