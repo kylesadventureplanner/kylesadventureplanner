@@ -5545,6 +5545,9 @@
          // Render the cards to the grid
          await window.renderAdventureCards();
 
+         // Update connection status to show we're connected to Excel backend
+         updateConnectionStatus(true);
+
          // Show success message
          window.showToast?.('✅ Adventure data loaded successfully', 'success', 2000);
 
@@ -10241,6 +10244,9 @@
       card.innerHTML = `
         <div class="adventure-card-header">
           <div class="adventure-card-title">${name || "Unnamed Adventure"}</div>
+          ${googlePlaceId && googlePlaceId !== 'undefined' && googlePlaceId !== 'null' && googlePlaceId !== 'SKIP' ? `
+            <div class="adventure-card-place-id-subtitle" style="font-size: 0.85rem; font-weight: normal; color: #6b7280; margin-top: -4px;">Google Place ID: ${googlePlaceId}</div>
+          ` : ''}
           <div class="adventure-card-location">
             <span class="location-icon">📍</span>
             <span>${city || "Unknown"}${state ? ', ' + stateUpper : ''}</span>
