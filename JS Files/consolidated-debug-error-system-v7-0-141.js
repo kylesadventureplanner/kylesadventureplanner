@@ -424,75 +424,18 @@ console.log('✅ Error Management System ready');
       logInit(`🔘 ${similarBtns.length} Similar buttons found`);
     }
 
-    // Sign In button - CRITICAL
-    const signInBtn = replaceAuthButton('signInBtn');
+    // Auth buttons: do not clone or attach listeners here.
+    // Native index.html bindings keep sole ownership of sign-in/out behavior.
+    const signInBtn = document.getElementById('signInBtn');
     if (signInBtn) {
-      signInBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        logDebug('🔐🔐🔐 SIGN IN BUTTON CLICKED 🔐🔐🔐');
-        logDebug(`typeof signIn: ${typeof window.signIn}`);
-        logDebug(`msalInstance: ${window.msalInstance ? 'EXISTS' : 'MISSING'}`);
-
-        // Use app-provided auth first; only bootstrap fallback on demand.
-        if (typeof window.signIn !== 'function') {
-          const initialized = await ensureFallbackAuth();
-          if (!initialized || typeof window.signIn !== 'function') {
-            logError('error', '❌ signIn function unavailable after fallback bootstrap');
-            return;
-          }
-        }
-
-        try {
-          await window.signIn();
-          logSuccess('Sign in completed');
-
-          // Safety net: if cards didn't load, call loadTable explicitly
-          setTimeout(async () => {
-            const cardsGrid = document.getElementById('adventureCardsGrid');
-            const hasCards = cardsGrid && cardsGrid.children.length > 0;
-            const hasData = window.adventuresData && window.adventuresData.length > 0;
-
-            if (!hasCards && !hasData) {
-              logSuccess('No cards rendered yet — calling window.loadTable() as safety net...');
-              if (typeof window.loadTable === 'function') {
-                try { await window.loadTable(); } catch (e) { logError('error', 'Safety-net loadTable failed', e?.message); }
-              }
-            }
-          }, 1500);
-        } catch (error) {
-          logError('error', 'Sign in failed', error?.message || error);
-        }
-      });
-      logInit('🔐 Sign In button registered');
+      logInit('🔐 Sign In button detected (native binding preserved)');
     } else {
       console.error('❌ Sign In button (id="signInBtn") NOT FOUND');
     }
 
-    const signOutBtn = replaceAuthButton('signOutBtn');
+    const signOutBtn = document.getElementById('signOutBtn');
     if (signOutBtn) {
-      signOutBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        logDebug('🔐 SIGN OUT BUTTON CLICKED');
-
-        // Use app-provided auth first; only bootstrap fallback on demand.
-        if (typeof window.signOut !== 'function') {
-          const initialized = await ensureFallbackAuth();
-          if (!initialized || typeof window.signOut !== 'function') {
-            logError('error', '❌ signOut function unavailable after fallback bootstrap');
-            return;
-          }
-        }
-
-        try {
-          await window.signOut();
-          logSuccess('Sign out completed');
-        } catch (error) {
-          logError('error', 'Sign out failed', error?.message || error);
-        }
-      });
-      logInit('🔐 Sign Out button registered');
+      logInit('🔐 Sign Out button detected (native binding preserved)');
     }
   };
 
@@ -689,6 +632,9 @@ const FALLBACK_LOGIN_REQUEST = {
     scopes: ["User.Read", "Files.ReadWrite", "Sites.ReadWrite.All"]
 };
 
+// Keep fallback auth disabled unless explicitly turned on for emergency recovery.
+const ENABLE_FALLBACK_AUTH = false;
+
 function logDebug(message, details) {
     if (typeof details === 'undefined') {
         console.log(message);
@@ -717,17 +663,6 @@ function logError(level, message, details) {
     }
 }
 
-function replaceAuthButton(buttonId) {
-    const original = document.getElementById(buttonId);
-    if (!original) return null;
-    if (original.dataset.authOwned === '1') return original;
-
-    const clone = original.cloneNode(true);
-    clone.onclick = null;
-    clone.dataset.authOwned = '1';
-    original.replaceWith(clone);
-    return clone;
-}
 
 function bootstrapAuthEarly() {
     // Do not eagerly create fallback handlers during startup.
@@ -880,6 +815,11 @@ async function rehydrateFallbackAuth() {
 }
 
 async function ensureFallbackAuth(forceRecreate = false) {
+    if (!ENABLE_FALLBACK_AUTH) {
+        logDebug('Fallback auth is disabled. Native window.signIn/window.signOut are required.');
+        return false;
+    }
+
     // If real auth handlers already exist, do not override them with fallback handlers.
     if (!forceRecreate &&
         typeof window.signIn === 'function' &&
@@ -996,7 +936,7 @@ async function ensureFallbackAuth(forceRecreate = false) {
 
 function checkAndFixSignIn() {
     if (typeof window.signIn !== 'function') {
-        logDebug('signIn not ready yet - fallback bootstrap deferred until user action');
+        logDebug('signIn not ready yet - waiting for native app auth export');
     } else {
         logSuccess('signIn function exists');
     }
