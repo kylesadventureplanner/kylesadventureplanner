@@ -10176,14 +10176,14 @@
 
       // Extract adventure data from Excel columns
       // Column indices (0-based):
-      // 0: Name, 1: Google Place ID, 2: Website, 3: Tags, 4: Drive Time,
+      // 0: Google Place ID, 1: Name, 2: Website, 3: Tags, 4: Drive Time,
       // 5: Hours of Operation, 6: Activity Duration, 7: Difficulty, 8: Trail Length,
       // 9: State, 10: City, 11: Address, 12: Phone Number, 13: Google Rating,
       // 14: Cost, 15: Directions, 16: Description, 17: Nearby, 18: Links, 19: Links 2,
       // 20: Notes, 21: My Rating, 22: Favorite Status, 23: Google URL
       const [
-        name,              // 0
-        googlePlaceId,     // 1
+        googlePlaceId,     // 0
+        name,              // 1
         website,           // 2
         tags,              // 3
         driveTime,         // 4
@@ -10324,9 +10324,9 @@
                 <span>🗺️</span> Directions
               </button>
             ` : ''}
-            ${hasPlaceId ? `
-              <button class="card-btn card-google-place-btn" data-placeid="${googlePlaceId}" title="Open on Google Maps" data-tooltip="Open on Google Maps">
-                <span>🔗</span> Google
+            ${(address || name) ? `
+              <button class="card-btn card-google-place-btn" data-placeid="${googlePlaceId || ''}" data-address="${address || ''}" data-name="${name || ''}" title="View on Google Maps" data-tooltip="View on Google Maps">
+                <span>📍</span> Google View
               </button>
             ` : ''}
             <button class="card-btn card-similar-btn" data-index="${actualIndex}" title="Find similar adventures" data-tooltip="Find similar adventures">
@@ -10450,9 +10450,21 @@
       const googlePlaceBtn = e.target.closest('.card-google-place-btn');
       if (googlePlaceBtn) {
         e.stopPropagation();
-        const placeId = googlePlaceBtn.getAttribute('data-placeid');
-        if (placeId && placeId.trim()) {
-          const googleUrl = `https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${encodeURIComponent(placeId)}`;
+        const address = googlePlaceBtn.getAttribute('data-address');
+        const name = googlePlaceBtn.getAttribute('data-name');
+
+        // Use address and name for more reliable Google Maps search
+        let searchQuery = '';
+        if (address && name) {
+          searchQuery = `${encodeURIComponent(name)}+${encodeURIComponent(address)}`;
+        } else if (address) {
+          searchQuery = encodeURIComponent(address);
+        } else if (name) {
+          searchQuery = encodeURIComponent(name);
+        }
+
+        if (searchQuery) {
+          const googleUrl = `https://www.google.com/maps/search/${searchQuery}`;
           window.open(googleUrl, '_blank');
 
           // Save the Google URL to Excel column 23 (Google URL)
