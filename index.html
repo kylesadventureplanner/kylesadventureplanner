@@ -9050,6 +9050,11 @@
     }
   }
 
+  // Export loadTable and getPlaceDetails to window so popup windows and external
+  // scripts can call them after authentication.
+  window.loadTable = loadTable;
+  window.getPlaceDetails = getPlaceDetails;
+
   /**
    * Show skeleton loading cards while data is being fetched
    * @param {number} count - Number of skeleton cards to show

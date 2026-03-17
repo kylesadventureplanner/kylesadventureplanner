@@ -792,7 +792,16 @@ async function rehydrateFallbackAuth() {
 }
 
 async function ensureFallbackAuth(forceRecreate = false) {
-    if (!forceRecreate && typeof window.signIn === 'function' && typeof window.signOut === 'function' && window.msalInstance) {
+    // If the real app already has working signIn/signOut bound to its own MSAL
+    // instance, do NOT overwrite them — just confirm they're available.
+    if (!forceRecreate &&
+        typeof window.signIn === 'function' &&
+        typeof window.signOut === 'function' &&
+        window.msalInstance &&
+        typeof window.msalInstance.getAllAccounts === 'function') {
+        // Real auth is already in place. Expose a no-op fallback promise so
+        // callers that await ensureFallbackAuth() still get a resolved value.
+        fallbackMsalInstance = window.msalInstance;
         return true;
     }
 
