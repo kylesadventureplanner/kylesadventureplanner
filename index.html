@@ -5917,7 +5917,149 @@
 
 <script>
   console.log('🎬 MAIN SCRIPT BLOCK STARTING - timestamp:', new Date().toLocaleTimeString());
-  console.log('   About to define window.signIn at line ~7078');
+
+  // ============================================================
+  // EARLY AUTH SETUP - Define real auth FIRST before anything else
+  // ============================================================
+  // This MUST run immediately so button handlers can find it
+
+  // Flag to prevent duplicate sign-in attempts
+  let isSigningIn = false;
+
+  // Define what permissions (scopes) we need from Microsoft
+  const loginRequest = {
+    scopes: [
+      "User.Read",
+      "Files.ReadWrite",
+      "Sites.ReadWrite.All",
+    ],
+  };
+
+  // Real auth function - defined EARLY so it's immediately available
+  window.signIn = async function() {
+    try {
+      if (isSigningIn) {
+        console.log("⏳ Sign-in already in progress");
+        return;
+      }
+
+      isSigningIn = true;
+      showLoading('Signing in...');
+
+      await msalInitPromise;
+      console.log("✅ MSAL is ready");
+
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        console.log("✅ Found existing account, using silent login...");
+        msalInstance.setActiveAccount(accounts[0]);
+        activeAccount = accounts[0];
+
+        try {
+          const tokenResponse = await msalInstance.acquireTokenSilent({
+            ...loginRequest,
+            account: activeAccount,
+          });
+          accessToken = tokenResponse.accessToken;
+          syncAuthGlobals();
+          isConnectedToExcel = true;
+
+          document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
+          document.getElementById("signInBtn").style.display = "none";
+          document.getElementById("signOutBtn").style.display = "inline-block";
+          updateConnectionStatus(true);
+
+          await loadTable();
+          initFindNearMe();
+          initContextMenu();
+          initRowDetailModal();
+
+          hideLoading();
+          showToast('✓ Successfully signed in!', 'success', 3000);
+          isSigningIn = false;
+          return;
+        } catch (silentError) {
+          console.log("⚠️ Silent login failed, will try popup...", silentError.message);
+        }
+      }
+
+      const loginResponse = await msalInstance.loginPopup(loginRequest);
+      activeAccount = loginResponse.account;
+      msalInstance.setActiveAccount(activeAccount);
+
+      const tokenResponse = await msalInstance.acquireTokenSilent({
+        ...loginRequest,
+        account: activeAccount,
+      });
+
+      accessToken = tokenResponse.accessToken;
+      syncAuthGlobals();
+      isConnectedToExcel = true;
+
+      document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
+      document.getElementById("signInBtn").style.display = "none";
+      document.getElementById("signOutBtn").style.display = "inline-block";
+      updateConnectionStatus(true);
+
+      await loadTable();
+      initFindNearMe();
+      initContextMenu();
+      initRowDetailModal();
+
+      hideLoading();
+      showToast('✓ Successfully signed in!', 'success', 3000);
+      isSigningIn = false;
+
+    } catch (error) {
+      isSigningIn = false;
+      hideLoading();
+      console.error("❌ SIGN-IN ERROR:", error.message);
+
+      let userMessage = "Sign-in failed. Check console for details.";
+      if (error.name === "BrowserAuthError" && error.code === "popup_window_error") {
+        userMessage = "Could not open login popup. Please check if popups are blocked.";
+      } else if (error.name === "BrowserAuthError" && error.code === "user_cancelled") {
+        userMessage = "Login was cancelled. Please try again.";
+      }
+
+      showToast('✕ ' + userMessage, 'error', 5000);
+    }
+  };
+
+  // Real sign out function
+  window.signOut = async function() {
+    showLoading('Signing out...');
+    const account = msalInstance.getActiveAccount();
+    if (!account) {
+      hideLoading();
+      return;
+    }
+
+    await msalInstance.logoutPopup({
+      account,
+      postLogoutRedirectUri: window.location.origin,
+    });
+
+    accessToken = null;
+    activeAccount = null;
+    syncAuthGlobals();
+    isConnectedToExcel = false;
+    document.getElementById("authStatus").textContent = "Not signed in";
+    document.getElementById("signInBtn").style.display = "inline-block";
+    document.getElementById("signOutBtn").style.display = "none";
+    updateConnectionStatus(false);
+    document.querySelector("#adventureTableBody").innerHTML = "";
+    clearSelection();
+    hideLoading();
+    showToast('✓ Successfully signed out!', 'success', 2000);
+  };
+
+  // Register real auth functions for placeholders to delegate to
+  window.realSignIn = window.signIn;
+  window.realSignOut = window.signOut;
+  console.log('✅ REAL AUTH FUNCTIONS DEFINED AND REGISTERED - Available immediately!');
+
+  console.log('   About to define ERROR TRACKING and other systems');
 
   /* ============================================================
      ERROR TRACKING & ERROR NOTIFICATION BAR
@@ -7082,166 +7224,15 @@
     console.error("⚠️ Error handling redirect:", error);
   });
 
-  // Define what permissions (scopes) we need from Microsoft
-  const loginRequest = {
-    scopes: [
-      "User.Read",
-      "Files.ReadWrite",
-      "Sites.ReadWrite.All",
-    ],
-  };
+   // DUPLICATE loginRequest REMOVED - moved to top of script (~line 5937)
+   // Real auth functions already defined at top of script
+  // NOTE: OLD DUPLICATE AUTH REMOVED
+  // Real window.signIn and window.signOut now defined at TOP of script (~line 5950-6050)
+  // Removed: let isSigningIn, window.signIn, window.addEventListener, window.signOut
+  // Removed: All duplicate registrations and preservation code
 
-  // NOTE: Authentication state variables (accessToken, activeAccount, etc.)
-  // are already defined earlier. Do not redeclare here.
-
-  /* ============================================================
-     SIGN IN FUNCTION - MICROSOFT AUTHENTICATION
-     ============================================================
-     This function handles the entire login process:
-     1. Shows Microsoft login popup
-     2. User enters Office 365 credentials
-     3. Gets access token for API calls
-     4. Loads adventure data from Excel
-     5. Initializes all UI features
-
-     WHY: We need authentication to access the user's OneDrive Excel file
-          without storing their password directly.
-  */
-  // Flag to prevent duplicate sign-in attempts
-  let isSigningIn = false;
-
-  window.signIn = async function() {
-    try {
-      // Prevent multiple simultaneous sign-in attempts
-      if (isSigningIn) {
-        console.log("⏳ Sign-in already in progress");
-        return;
-      }
-
-      isSigningIn = true;
-      showLoading('Signing in...');
-
-      // Wait for MSAL initialization and redirect handling to complete
-      console.log("⏳ Waiting for MSAL to be ready...");
-      await msalInitPromise;
-      console.log("✅ MSAL is ready");
-
-      console.log("=== SIGN-IN PROCESS STARTED ===");
-      console.log("MSAL Instance:", msalInstance);
-      console.log("Login Request:", loginRequest);
-
-      // Check if there's an active account already
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length > 0) {
-        console.log("✅ Found existing account, using silent login...");
-        msalInstance.setActiveAccount(accounts[0]);
-        activeAccount = accounts[0];
-
-        try {
-          const tokenResponse = await msalInstance.acquireTokenSilent({
-            ...loginRequest,
-            account: activeAccount,
-          });
-          accessToken = tokenResponse.accessToken;
-          syncAuthGlobals();
-          isConnectedToExcel = true;
-
-          document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
-          document.getElementById("signInBtn").style.display = "none";
-          document.getElementById("signOutBtn").style.display = "inline-block";
-          updateConnectionStatus(true);
-
-          await loadTable();
-          initFindNearMe();
-          initContextMenu();
-          initRowDetailModal();
-
-          hideLoading();
-          showToast('✓ Successfully signed in!', 'success', 3000);
-          isSigningIn = false;
-          return;
-        } catch (silentError) {
-          console.log("⚠️ Silent login failed, will try popup...", silentError.message);
-        }
-      }
-
-      // No existing account, show login popup
-      console.log("Step 1: Calling msalInstance.loginPopup()");
-      const loginResponse = await msalInstance.loginPopup(loginRequest);
-      console.log("Step 1 SUCCESS: Login response received", loginResponse);
-
-      activeAccount = loginResponse.account;
-      console.log("Active account set:", activeAccount);
-      msalInstance.setActiveAccount(activeAccount);
-      console.log("Active account confirmed in MSAL");
-
-      // Get access token
-      console.log("Step 2: Calling acquireTokenSilent()");
-      const tokenResponse = await msalInstance.acquireTokenSilent({
-        ...loginRequest,
-        account: activeAccount,
-      });
-      console.log("Step 2 SUCCESS: Token acquired", tokenResponse);
-
-      accessToken = tokenResponse.accessToken;
-      syncAuthGlobals();
-      console.log("Access token stored globally");
-      isConnectedToExcel = true;
-
-      // Update UI
-      console.log("Step 3: Updating UI to show logged-in state");
-      document.getElementById("authStatus").textContent = `Signed in as ${activeAccount.username}`;
-      document.getElementById("signInBtn").style.display = "none";
-      document.getElementById("signOutBtn").style.display = "inline-block";
-      updateConnectionStatus(true);
-      console.log("Step 3 SUCCESS: UI updated");
-
-      // Load adventure data
-      console.log("Step 4: Loading adventure data from Excel");
-      await loadTable();
-      console.log("Step 4 SUCCESS: Table data loaded");
-
-      // Initialize UI features
-      console.log("Step 5: Initializing UI features");
-      initFindNearMe();
-      initContextMenu();
-      initRowDetailModal();
-      console.log("Step 5 SUCCESS: All UI features initialized");
-
-      console.log("=== SIGN-IN PROCESS COMPLETED SUCCESSFULLY ===");
-
-      hideLoading();
-      showToast('✓ Successfully signed in!', 'success', 3000);
-      isSigningIn = false;
-
-    } catch (error) {
-      isSigningIn = false;
-      hideLoading();
-      console.error("=== SIGN-IN ERROR ===");
-      console.error("Error object:", error);
-      console.error("Error name:", error.name);
-      console.error("Error message:", error.message);
-      console.error("Error code:", error.code);
-      console.error("Full stack trace:", error.stack);
-
-      let userMessage = "Sign-in failed. Check console for details.";
-
-      if (error.name === "BrowserAuthError") {
-        if (error.code === "popup_window_error") {
-          userMessage = "Could not open login popup. Please check if popups are blocked.";
-        } else if (error.code === "user_cancelled") {
-          userMessage = "Login was cancelled. Please try again.";
-        } else if (error.message && error.message.includes("interaction_in_progress")) {
-          userMessage = "A login is already in progress. Please wait a moment and try again.";
-          console.log("💡 This usually means: multiple sign-in attempts or a redirect is pending. Try refreshing the page.");
-        }
-      } else if (error.name === "BrowserConfigurationAuthError") {
-        userMessage = "MSAL configuration error. Please check credentials in the code.";
-      }
-
-      showToast('✕ ' + userMessage, 'error', 5000);
-    }
-  }
+   // NOTE: Real signIn function already defined at line 5939
+   // No duplicate needed here
 
   window.addEventListener("load", () => {
     // Initialize Google Maps services
