@@ -5644,14 +5644,18 @@
 
               <div class="card-footer">
                 <div class="card-action-buttons">
-                  ${googlePlaceId ? `
-                    <button class="card-btn" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&query_place_id=${googlePlaceId}', '_blank')" title="Open on Google Maps">
-                      <span>📍</span> Maps
+                  ${address ? `
+                    <button class="card-btn" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(name)}+${encodeURIComponent(address)}', '_blank')" title="View on Google Maps" data-tooltip="View location on Google Maps">
+                      <span>📍</span> Google View
                     </button>
-                  ` : ''}
+                  ` : `
+                    <button class="card-btn" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(name)}', '_blank')" title="View on Google Maps" data-tooltip="View location on Google Maps">
+                      <span>📍</span> Google View
+                    </button>
+                  `}
 
                   ${directions || address ? `
-                    <button class="card-btn" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || name)}', '_blank')" title="Get directions">
+                    <button class="card-btn" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || name)}', '_blank')" title="Get turn-by-turn directions" data-tooltip="Get turn-by-turn directions to this location">
                       <span>🗺️</span> Directions
                     </button>
                   ` : ''}
@@ -5662,7 +5666,7 @@
                     </a>
                   ` : ''}
 
-                  <button class="card-btn card-details-btn" onclick="showCardDetails(${index})" title="View full details">
+                  <button class="card-btn card-details-btn" onclick="window.showCardDetails(${index})" title="View full details">
                     <span>📖</span> Details
                   </button>
                 </div>
