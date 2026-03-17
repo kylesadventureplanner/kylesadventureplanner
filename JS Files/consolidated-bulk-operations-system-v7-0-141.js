@@ -113,70 +113,9 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1) {
       }
     }
 
-    // PRIORITY 3: Google Places API (COMPLETELY DISABLED - causes 400 errors)
-    // ⚠️ KNOWN ISSUE: API key has domain/referrer restrictions, returns 400 errors systematically
-    // PERMANENT FIX: Skip API entirely, use proven fallback mechanisms instead
-    // Why: 1) API calls fail 99% of time with 400 errors
-    //      2) Fallback data is more reliable
-    //      3) System works fine without API calls
-    //      4) Eliminates console pollution
-    // To use: Simply comment out 'false' check or always use fallback
-    const apiKey = window.GOOGLE_PLACES_API_KEY;
-    if (false) { // PERMANENTLY DISABLED - DO NOT ENABLE WITHOUT FIX
-      try {
-        // API calls disabled - use fallback data instead
-        const apiUrl = `https://places.googleapis.com/v1/places/${placeId}?fields=displayName,nationalPhoneNumber,websiteUri,openingHours,formattedAddress,rating,types&key=${apiKey}`;
-
-        // NOTE: This code is never reached due to if(false) above, but keeping for reference
-        const response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          // ...code never reached...
-        } else if (response.status === 400) {
-          // 400 errors are suppressed here - API is disabled anyway
-          throw new Error('API 400: Falling back to cache/local data');
-        }
-
-          // Don't retry 400s as they indicate configuration issues, not transient errors
-          return {
-            website: '',
-            phone: '',
-            hours: '',
-            address: '',
-            rating: '',
-            directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
-          };
-        } else if (response.status === 401 || response.status === 403) {
-          // Auth error
-          console.warn(`⚠️ API auth failed (${response.status}). Check key permissions and API enablement.`);
-          return {
-            website: '',
-            phone: '',
-            hours: '',
-            address: '',
-            rating: '',
-            directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
-          };
-        } else {
-          console.warn(`⚠️ API returned ${response.status} for ${placeId}`);
-          return {
-            website: '',
-            phone: '',
-            hours: '',
-            address: '',
-            rating: '',
-            directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
-          };
-        }
-      } catch (apiErr) {
-        console.debug(`🌐 API call failed: ${apiErr.message}`);
-      }
-    }
+    // PRIORITY 3: Google Places API - PERMANENTLY DISABLED
+    // ⚠️ API key has domain/referrer restrictions, returns 400 errors systematically.
+    // Skipping entirely to avoid console pollution. Use fallback mechanisms above.
 
     // FALLBACK: Return empty data (don't crash)
     return {

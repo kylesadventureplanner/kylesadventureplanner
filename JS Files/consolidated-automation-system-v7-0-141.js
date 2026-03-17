@@ -241,6 +241,87 @@ class EnhancedAutomationFeatures {
   }
 
   /**
+   * Resolve a place to a Google Place ID + details using available methods.
+   * Tries: mainWindow.getPlaceDetails → getPlaceDetailsFromAPI → Places Text Search API
+   */
+  async _resolvePlaceDetails(input, inputType) {
+    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+    const apiKey = window.GOOGLE_PLACES_API_KEY || mainWindow.GOOGLE_PLACES_API_KEY || '';
+
+    // --- Already have a Place ID ---
+    if (inputType === 'placeId') {
+      if (typeof mainWindow.getPlaceDetails === 'function') {
+        try { return await mainWindow.getPlaceDetails(input); } catch (_) {}
+      }
+      if (typeof getPlaceDetailsFromAPI === 'function') {
+        try { return await getPlaceDetailsFromAPI(input); } catch (_) {}
+      }
+      return { placeId: input, name: input, website: '', phone: '', hours: '', address: '', rating: '', directions: `https://www.google.com/maps/place/?q=place_id:${input}` };
+    }
+
+    // --- Google Maps URL → extract Place ID from URL ---
+    if (inputType === 'placeUrl') {
+      const cidMatch = input.match(/[?&]cid=(\d+)/);
+      const placeIdMatch = input.match(/place_id[=:]([A-Za-z0-9_-]+)/);
+      if (placeIdMatch) {
+        return this._resolvePlaceDetails(placeIdMatch[1], 'placeId');
+      }
+      // Fall through to text search using the URL as query
+    }
+
+    // --- Text search (placeName, address, placeNameCity, website, placeUrl fallthrough) ---
+    let queryText = input;
+    if (inputType === 'website') {
+      try { queryText = new URL(input).hostname.replace(/^www\./, ''); } catch (_) {}
+    }
+
+    // Try mainWindow.findPlaceByText if it exists
+    if (typeof mainWindow.findPlaceByText === 'function') {
+      try {
+        const result = await mainWindow.findPlaceByText(queryText);
+        if (result) return result;
+      } catch (_) {}
+    }
+
+    // Try Google Places Text Search API directly
+    if (apiKey) {
+      try {
+        const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(queryText)}&inputtype=textquery&fields=place_id,name,formatted_address,rating,formatted_phone_number,website,opening_hours&key=${apiKey}`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
+        const resp = await fetch(proxyUrl);
+        if (resp.ok) {
+          const data = await resp.json();
+          const candidate = data.candidates?.[0];
+          if (candidate?.place_id) {
+            return {
+              placeId: candidate.place_id,
+              name: candidate.name || queryText,
+              address: candidate.formatted_address || '',
+              phone: candidate.formatted_phone_number || '',
+              website: candidate.website || '',
+              rating: candidate.rating ? String(candidate.rating) : '',
+              hours: candidate.opening_hours?.weekday_text?.join(' | ') || '',
+              directions: `https://www.google.com/maps/place/?q=place_id:${candidate.place_id}`
+            };
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Graceful fallback — return what we know so the row can still be added
+    return {
+      placeId: '',
+      name: queryText,
+      website: inputType === 'website' ? input : '',
+      phone: '',
+      hours: '',
+      address: inputType === 'address' ? input : '',
+      rating: '',
+      directions: ''
+    };
+  }
+
+  /**
    * Add single place with multiple input methods
    */
   async addSinglePlace(input, inputType, dryRun = false) {
@@ -252,39 +333,91 @@ class EnhancedAutomationFeatures {
 
     console.log(`${dryRun ? '🧪 DRY RUN' : '➕'} Adding place: ${validation.description}`);
 
-    if (!dryRun) {
-      try {
-        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-
-        if (typeof mainWindow.getPlaceDetails === 'function') {
-          const details = await mainWindow.getPlaceDetails(input);
-
-          if (typeof mainWindow.buildExcelRow === 'function') {
-            const row = mainWindow.buildExcelRow(input, details);
-
-            if (typeof mainWindow.addRowToExcel === 'function') {
-              await mainWindow.addRowToExcel(row);
-              return {
-                success: true,
-                message: `✅ Added: ${row[0] || 'Place'}`,
-                placeName: row[0] || 'Place'
-              };
-            } else {
-              throw new Error('addRowToExcel function not available');
-            }
-          } else {
-            throw new Error('buildExcelRow function not available');
-          }
-        } else {
-          throw new Error('getPlaceDetails function not available');
-        }
-      } catch (error) {
-        console.error('❌ Error adding place:', error);
-        return { success: false, error: error.message };
-      }
-    } else {
-      return { success: true, isDryRun: true, message: '🧪 [DRY RUN] Would add place' };
+    if (dryRun) {
+      return { success: true, isDryRun: true, message: `🧪 [DRY RUN] Would add: ${validation.description}` };
     }
+
+    try {
+      const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+
+      // Resolve place details via multiple fallback methods
+      const details = await this._resolvePlaceDetails(input, inputType);
+      console.log('📍 Resolved place details:', details);
+
+      // Try mainWindow.buildExcelRow + addRowToExcel (preferred path)
+      if (typeof mainWindow.buildExcelRow === 'function' && typeof mainWindow.addRowToExcel === 'function') {
+        const row = mainWindow.buildExcelRow(details.name || input, details);
+        await mainWindow.addRowToExcel(row);
+        return {
+          success: true,
+          message: `✅ Added: ${details.name || input}`,
+          placeName: details.name || input,
+          placeId: details.placeId || ''
+        };
+      }
+
+      // Try handleAddSinglePlace on main window
+      if (typeof mainWindow.handleAddSinglePlace === 'function') {
+        const result = await mainWindow.handleAddSinglePlace(details);
+        return result || { success: true, message: `✅ Added: ${details.name || input}` };
+      }
+
+      // Try addSinglePlaceToSheet
+      if (typeof mainWindow.addSinglePlaceToSheet === 'function') {
+        await mainWindow.addSinglePlaceToSheet(details);
+        return { success: true, message: `✅ Added: ${details.name || input}`, placeId: details.placeId || '' };
+      }
+
+      // Last resort: save details to main window adventuresData and trigger save
+      if (mainWindow.adventuresData && Array.isArray(mainWindow.adventuresData)) {
+        mainWindow.adventuresData.push(details);
+        if (typeof mainWindow.saveToExcel === 'function') await mainWindow.saveToExcel();
+        else if (typeof mainWindow.handleSaveData === 'function') await mainWindow.handleSaveData();
+        return { success: true, message: `✅ Added to memory: ${details.name || input}. Save manually if needed.` };
+      }
+
+      return { success: false, error: 'No method available to add place to sheet. Ensure you are signed in and the main window is open.' };
+    } catch (error) {
+      console.error('❌ Error adding place:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Bulk add multiple places (newline-separated list)
+   */
+  async bulkAddPlaces(placesText, inputType, dryRun = false) {
+    const lines = (placesText || '').split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      return { success: false, error: 'No places provided' };
+    }
+
+    console.log(`${dryRun ? '🧪 DRY RUN' : '📦'} Bulk adding ${lines.length} places (type: ${inputType})`);
+
+    const results = { success: true, total: lines.length, added: 0, failed: 0, skipped: 0, details: [] };
+
+    for (const line of lines) {
+      if (!line) { results.skipped++; continue; }
+      try {
+        const result = await this.addSinglePlace(line, inputType, dryRun);
+        if (result.success) {
+          results.added++;
+          results.details.push(`✅ ${result.placeName || line}${result.isDryRun ? ' (dry run)' : ''}`);
+        } else {
+          results.failed++;
+          results.details.push(`❌ ${line}: ${result.error}`);
+        }
+      } catch (err) {
+        results.failed++;
+        results.details.push(`❌ ${line}: ${err.message}`);
+      }
+      // Small delay to avoid rate-limiting
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    results.message = `Added ${results.added}/${results.total} places (${results.failed} failed, ${results.skipped} skipped)`;
+    console.log(`📦 Bulk add complete: ${results.message}`);
+    return results;
   }
 
   /**
