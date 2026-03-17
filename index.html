@@ -1821,7 +1821,7 @@
     /* Adventure Cards Grid - Display loaded adventures */
     .adventure-cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: var(--space-xl);
       padding: var(--space-xl);
       margin-top: var(--space-lg);
@@ -1832,14 +1832,15 @@
       border: 1px solid var(--neutral-200);
       border-radius: var(--radius-lg);
       overflow: hidden;
-      box-shadow: var(--shadow-md);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
+      height: 100%;
     }
 
     .adventure-card:hover {
-      box-shadow: var(--shadow-lg);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
       transform: translateY(-4px);
       border-color: var(--primary);
     }
@@ -1847,20 +1848,37 @@
     .adventure-card .card-header {
       padding: var(--space-lg);
       background: linear-gradient(135deg, #f8f9fa 0%, #f0f4f8 100%);
-      border-bottom: 1px solid var(--neutral-200);
+      border-bottom: 2px solid var(--neutral-200);
+      position: relative;
     }
 
     .adventure-card .card-title {
-      margin: 0 0 var(--space-sm) 0;
+      margin: 0 0 var(--space-xs) 0;
       font-size: 18px;
       font-weight: 700;
       color: var(--neutral-900);
+      line-height: 1.3;
+      word-break: break-word;
     }
 
     .adventure-card .card-location {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--neutral-600);
       margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .adventure-card .card-drive-time {
+      font-size: 12px;
+      color: var(--neutral-500);
+      margin-top: var(--space-xs);
+      padding: 4px 8px;
+      background: rgba(59, 130, 246, 0.08);
+      border-radius: 6px;
+      display: inline-block;
+      width: fit-content;
     }
 
     .adventure-card .card-body {
@@ -1869,6 +1887,17 @@
       display: flex;
       flex-direction: column;
       gap: var(--space-md);
+      overflow: hidden;
+    }
+
+    .adventure-card .card-description {
+      font-size: 13px;
+      color: var(--neutral-600);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .adventure-card .card-tags {
@@ -1879,56 +1908,232 @@
 
     .adventure-card .tag-pill {
       display: inline-block;
-      padding: 4px 10px;
-      background: var(--primary-light);
-      color: var(--primary-dark);
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      color: #1e40af;
       border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .adventure-card .card-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-sm);
+      padding: var(--space-md);
+      background: var(--neutral-50);
+      border-radius: var(--radius-md);
       font-size: 12px;
-      font-weight: 600;
     }
 
-    .adventure-card .card-rating {
-      font-size: 16px;
-      font-weight: 600;
-      color: #f59e0b;
-    }
-
-    .adventure-card .card-cost {
-      font-size: 14px;
+    .adventure-card .card-info-item {
       color: var(--neutral-600);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .adventure-card .card-info-item strong {
+      color: var(--neutral-800);
       font-weight: 600;
     }
 
     .adventure-card .card-footer {
-      padding: var(--space-lg);
+      padding: var(--space-md);
       background: var(--neutral-50);
       border-top: 1px solid var(--neutral-200);
       display: flex;
+      flex-direction: column;
       gap: var(--space-md);
-      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .adventure-card .card-action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-sm);
     }
 
     .adventure-card .card-btn {
-      flex: 1;
-      padding: 10px 14px;
-      background: var(--primary);
+      padding: 10px 12px;
+      background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
       color: white;
       border: none;
       border-radius: var(--radius-md);
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
-      font-size: 14px;
-      min-width: 120px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      position: relative;
+      overflow: hidden;
+      min-height: 40px;
     }
 
     .adventure-card .card-btn:hover {
-      background: var(--primary-dark);
-      box-shadow: var(--shadow-md);
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
       transform: translateY(-2px);
     }
 
+    .adventure-card .card-btn:active {
+      transform: translateY(0);
+    }
+
+    .adventure-card .card-directions-btn {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    }
+
+    .adventure-card .card-directions-btn:hover {
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+      background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    }
+
+    .adventure-card .card-favorite-rating-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      padding-top: var(--space-md);
+      border-top: 1px solid var(--neutral-200);
+    }
+
+    .adventure-card .card-rating {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .adventure-card .rating-star {
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0.3;
+      filter: grayscale(1);
+      padding: 4px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .adventure-card .rating-star:hover,
+    .adventure-card .rating-star:hover ~ .rating-star {
+      opacity: 0.6;
+      filter: grayscale(0.5);
+      background: rgba(245, 158, 11, 0.1);
+      transform: scale(1.1);
+    }
+
+    .adventure-card .rating-star.filled {
+      opacity: 1;
+      filter: grayscale(0);
+    }
+
+    .adventure-card .card-favorite-btn {
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      background: white;
+      border: 2px solid var(--neutral-200);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 20px;
+      flex-shrink: 0;
+      min-width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      position: relative;
+    }
+
+    .adventure-card .card-favorite-btn:hover {
+      border-color: var(--accent-danger);
+      background: #fff5f5;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+      transform: scale(1.05);
+    }
+
+    .adventure-card .card-favorite-btn.active {
+      background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%);
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(255, 107, 157, 0.3);
+    }
+
+    .adventure-card .card-favorite-btn.active:hover {
+      box-shadow: 0 8px 20px rgba(255, 107, 157, 0.4);
+      transform: scale(1.1);
+    }
+
+    /* Tooltips */
+    .adventure-card [title] {
+      position: relative;
+    }
+
+    .adventure-card [title]:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--neutral-900);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      z-index: 1000;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .adventure-card [title]:hover::before {
+      content: '';
+      position: absolute;
+      bottom: 120%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--neutral-900);
+      z-index: 1000;
+      pointer-events: none;
+    }
+
     /* State Badge */
+    .state-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .adventure-cards-grid {
+        grid-template-columns: 1fr;
+        padding: var(--space-lg);
+        gap: var(--space-xl);
+      }
+
+      .adventure-card .card-action-buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .adventure-card-header {
+        padding: var(--space-lg);
+      }
     .state-badge {
       display: inline-block;
       padding: 4px 10px;
@@ -5605,63 +5810,69 @@
             card.dataset.adventureId = adventureId;
             card.innerHTML = `
               <div class="card-header">
-                <h3 class="card-title">${name}</h3>
-                <div class="card-location">📍 ${city}${state ? ', ' + state : ''}</div>
-                ${driveTime ? `<div class="card-drive-time">🚗 ${driveTime}</div>` : ''}
+                <h3 class="card-title" title="${name}">${name}</h3>
+                <div class="card-location" title="${address || 'No address available'}">📍 ${city}${state ? ', ' + state : ''}</div>
+                ${driveTime ? `<div class="card-drive-time" title="Drive time from home">🚗 ${driveTime}</div>` : ''}
               </div>
 
               <div class="card-body">
                 ${tags.length > 0 ? `
                   <div class="card-tags">
-                    ${tags.map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}
+                    ${tags.map(tag => `<span class="tag-pill" title="${tag.trim()}">${tag.trim()}</span>`).join('')}
                   </div>
                 ` : ''}
 
                 ${description ? `
-                  <div class="card-description">${description.substring(0, 150)}${description.length > 150 ? '...' : ''}</div>
+                  <div class="card-description" title="${description}">${description}</div>
                 ` : ''}
 
-                <div class="card-info">
-                  ${difficulty ? `<div class="card-info-item">Difficulty: <strong>${difficulty}</strong></div>` : ''}
-                  ${trailLength ? `<div class="card-info-item">Trail: <strong>${trailLength}</strong></div>` : ''}
-                  ${googleRating ? `<div class="card-info-item">Google Rating: <strong>⭐ ${googleRating}</strong></div>` : ''}
-                  ${cost ? `<div class="card-info-item">Cost: <strong>${cost}</strong></div>` : ''}
-                </div>
+                ${difficulty || trailLength || googleRating || cost ? `
+                  <div class="card-info">
+                    ${difficulty ? `<div class="card-info-item" title="Difficulty level">⛰️ <strong>${difficulty}</strong></div>` : ''}
+                    ${trailLength ? `<div class="card-info-item" title="Trail length">📏 <strong>${trailLength}</strong></div>` : ''}
+                    ${googleRating ? `<div class="card-info-item" title="Google rating">⭐ <strong>${googleRating}</strong></div>` : ''}
+                    ${cost ? `<div class="card-info-item" title="Cost level">💰 <strong>${cost}</strong></div>` : ''}
+                  </div>
+                ` : ''}
               </div>
 
               <div class="card-footer">
                 <div class="card-action-buttons">
                   ${directions || address ? `
-                    <button class="card-btn card-directions-btn" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || name)}', '_blank')" title="Get directions">
-                      <span>🗺️</span> Directions
+                    <button class="card-btn card-directions-btn"
+                            onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || name)}', '_blank')"
+                            title="Open in Google Maps">
+                      🗺️ Map
                     </button>
                   ` : ''}
 
                   ${website ? `
-                    <a href="${website}" target="_blank" class="card-btn" title="Visit website">
-                      <span>🌐</span> Website
+                    <a href="${website}" target="_blank" class="card-btn" title="Visit official website">
+                      🌐 Web
                     </a>
                   ` : ''}
 
-                  <button class="card-btn card-details-btn" onclick="showCardDetails(${index})" title="View full details">
-                    <span>📖</span> Details
+                  <button class="card-btn"
+                          onclick="showCardDetails(${index})"
+                          title="View full details in modal">
+                    📖 Info
                   </button>
                 </div>
 
                 <div class="card-favorite-rating-container">
-                  <div class="card-rating">
+                  <div class="card-rating" title="Click stars to rate">
                     ${[1, 2, 3, 4, 5].map(star => `
                       <span class="rating-star ${currentRating >= star ? 'filled' : ''}"
                             data-rating="${star}"
                             data-index="${index}"
                             onclick="setAdventureRating(${index}, ${star}, this.closest('.adventure-card'))"
-                            title="${star} stars">⭐</span>
+                            title="${star} star${star !== 1 ? 's' : ''}">⭐</span>
                     `).join('')}
                   </div>
 
                   <button class="card-favorite-btn ${isFavorited ? 'active' : ''}"
                           onclick="toggleCardFavorite(${index}, event, this.closest('.adventure-card'))"
-                          title="Add to favorites"
+                          title="${isFavorited ? 'Remove from favorites' : 'Add to favorites'}"
                           data-adventure-id="${adventureId}">
                     ${isFavorited ? '💖' : '🤍'}
                   </button>
