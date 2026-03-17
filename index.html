@@ -7056,18 +7056,8 @@
     ],
   };
 
-  /* ============================================================
-     AUTHENTICATION STATE VARIABLES
-     ============================================================
-  */
-  let accessToken = null;
-  let activeAccount = null;
-  let isConnectedToExcel = false;
-
-  function syncAuthGlobals() {
-    window.accessToken = accessToken || null;
-    window.activeAccount = activeAccount || null;
-  }
+  // NOTE: Authentication state variables (accessToken, activeAccount, etc.)
+  // are already defined earlier. Do not redeclare here.
 
   /* ============================================================
      SIGN IN FUNCTION - MICROSOFT AUTHENTICATION
@@ -18867,15 +18857,33 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       signInBtn.onclick = function(e) {
         e.preventDefault();
         console.log('🔐 Direct handler: Sign In button clicked');
+        console.log('typeof window.signIn:', typeof window.signIn);
+        console.log('typeof window.__nativeSignIn:', typeof window.__nativeSignIn);
+        console.log('typeof window.nativeSignIn:', typeof window.nativeSignIn);
 
-        // Try to call signIn directly from window
+        // Try multiple sources for the signIn function
+        let signInFunc = null;
+
         if (typeof window.signIn === 'function') {
-          window.signIn();
+          signInFunc = window.signIn;
+          console.log('✅ Found window.signIn');
+        } else if (typeof window.__nativeSignIn === 'function') {
+          signInFunc = window.__nativeSignIn;
+          console.log('✅ Found window.__nativeSignIn (using restore)');
+          window.signIn = signInFunc; // Restore it
+        } else if (typeof window.nativeSignIn === 'function') {
+          signInFunc = window.nativeSignIn;
+          console.log('✅ Found window.nativeSignIn (using fallback)');
+          window.signIn = signInFunc; // Restore it
         } else if (typeof signIn === 'function') {
-          // Try to call from local scope (if in same context)
-          signIn();
+          signInFunc = signIn;
+          console.log('✅ Found local signIn');
+        }
+
+        if (signInFunc && typeof signInFunc === 'function') {
+          signInFunc();
         } else {
-          console.error('❌ signIn function not available');
+          console.error('❌ signIn function not available in any scope');
           alert('Sign In function not found. Please refresh the page.');
         }
       };
@@ -18886,15 +18894,33 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       signOutBtn.onclick = function(e) {
         e.preventDefault();
         console.log('🔐 Direct handler: Sign Out button clicked');
+        console.log('typeof window.signOut:', typeof window.signOut);
+        console.log('typeof window.__nativeSignOut:', typeof window.__nativeSignOut);
+        console.log('typeof window.nativeSignOut:', typeof window.nativeSignOut);
 
-        // Try to call signOut directly from window
+        // Try multiple sources for the signOut function
+        let signOutFunc = null;
+
         if (typeof window.signOut === 'function') {
-          window.signOut();
+          signOutFunc = window.signOut;
+          console.log('✅ Found window.signOut');
+        } else if (typeof window.__nativeSignOut === 'function') {
+          signOutFunc = window.__nativeSignOut;
+          console.log('✅ Found window.__nativeSignOut (using restore)');
+          window.signOut = signOutFunc; // Restore it
+        } else if (typeof window.nativeSignOut === 'function') {
+          signOutFunc = window.nativeSignOut;
+          console.log('✅ Found window.nativeSignOut (using fallback)');
+          window.signOut = signOutFunc; // Restore it
         } else if (typeof signOut === 'function') {
-          // Try to call from local scope
-          signOut();
+          signOutFunc = signOut;
+          console.log('✅ Found local signOut');
+        }
+
+        if (signOutFunc && typeof signOutFunc === 'function') {
+          signOutFunc();
         } else {
-          console.error('❌ signOut function not available');
+          console.error('❌ signOut function not available in any scope');
           alert('Sign Out function not found. Please refresh the page.');
         }
       };
