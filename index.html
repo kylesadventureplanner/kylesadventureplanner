@@ -18137,7 +18137,11 @@ class NetworkResilience {
   }
 
   checkConnectivity() {
-    fetch('/ping', { method: 'HEAD', cache: 'no-store' })
+    if (!navigator.onLine) {
+      if (this.isOnline) this.handleOffline();
+      return;
+    }
+    fetch(window.location.origin + '/', { method: 'HEAD', cache: 'no-store' })
       .then(() => { if (!this.isOnline) this.handleOnline(); })
       .catch(() => { if (this.isOnline) this.handleOffline(); });
   }
