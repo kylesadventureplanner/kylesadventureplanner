@@ -6109,7 +6109,7 @@
   });
 
   // ============================================================
-  // LOAD TABLE - Load adventure data after authentication
+  // LOAD TABLE - Load adventure data from Excel via Microsoft Graph API
   // ============================================================
   window.loadTable = async function() {
     try {
@@ -6117,25 +6117,54 @@
 
       if (!accessToken || !activeAccount) {
         console.error('❌ loadTable: No access token or active account');
-        showToast?.('❌ Authentication required. Please sign in again.', 'error', 5000);
+        window.showToast?.('❌ Authentication required. Please sign in again.', 'error', 5000);
         return false;
       }
 
-      // Initialize adventuresData if not exists
-      if (!window.adventuresData) {
-        window.adventuresData = [];
+      const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+      const tableName = "MyList";
+
+      // Build Microsoft Graph API URL
+      const encodedPath = encodeURIComponent(filePath);
+      const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
+
+      console.log(`📍 Fetching from: ${apiUrl}`);
+
+      // Fetch rows from Excel table
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Excel API error: ${response.status} ${response.statusText}`);
       }
 
-      console.log('✅ loadTable: Ready to load data');
+      const data = await response.json();
+      const rows = data.value || [];
+
+      console.log(`✅ Fetched ${rows.length} rows from Excel`);
+
+      // Initialize adventuresData array with proper structure
+      window.adventuresData = rows.map((row, index) => ({
+        values: [row.values[0] || []],  // values array
+        rowId: row.id,
+        index: index
+      }));
+
+      console.log('✅ loadTable: Adventure data ready');
       console.log('📊 Loaded adventures:', window.adventuresData.length);
 
       // Show success message
-      showToast?.('✅ Adventure data loaded successfully', 'success', 2000);
+      window.showToast?.('✅ Adventure data loaded successfully', 'success', 2000);
 
       return true;
     } catch (error) {
       console.error('❌ loadTable error:', error);
-      showToast?.(`❌ Failed to load adventure data: ${error.message}`, 'error', 5000);
+      window.showToast?.(`❌ Failed to load adventure data: ${error.message}`, 'error', 5000);
       return false;
     }
   };
