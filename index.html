@@ -5916,6 +5916,9 @@
 </div>
 
 <script>
+  console.log('🎬 MAIN SCRIPT BLOCK STARTING - timestamp:', new Date().toLocaleTimeString());
+  console.log('   About to define window.signIn at line ~7078');
+
   /* ============================================================
      ERROR TRACKING & ERROR NOTIFICATION BAR
      ============================================================
@@ -18911,74 +18914,41 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       signInBtn.onclick = function(e) {
         e.preventDefault();
         console.log('🔐 Direct handler: Sign In button clicked');
-        console.log('typeof window.signIn:', typeof window.signIn);
-        console.log('typeof window.__nativeSignIn:', typeof window.__nativeSignIn);
-        console.log('typeof window.nativeSignIn:', typeof window.nativeSignIn);
+        console.log('  Checking auth availability at CLICK TIME');
+        console.log('  typeof window.signIn:', typeof window.signIn);
+        console.log('  typeof window.realSignIn:', typeof window.realSignIn);
 
-        // Try multiple sources for the signIn function
-        let signInFunc = null;
-
+        // IMPORTANT: Call window.signIn DIRECTLY by reference, not by capturing it
+        // This ensures we always call the current version, not a stale reference
         if (typeof window.signIn === 'function') {
-          signInFunc = window.signIn;
-          console.log('✅ Found window.signIn');
-        } else if (typeof window.__nativeSignIn === 'function') {
-          signInFunc = window.__nativeSignIn;
-          console.log('✅ Found window.__nativeSignIn (using restore)');
-          window.signIn = signInFunc; // Restore it
-        } else if (typeof window.nativeSignIn === 'function') {
-          signInFunc = window.nativeSignIn;
-          console.log('✅ Found window.nativeSignIn (using fallback)');
-          window.signIn = signInFunc; // Restore it
-        } else if (typeof signIn === 'function') {
-          signInFunc = signIn;
-          console.log('✅ Found local signIn');
-        }
-
-        if (signInFunc && typeof signInFunc === 'function') {
-          signInFunc();
+          console.log('✅ Calling window.signIn directly (dynamic reference)');
+          window.signIn(e);
         } else {
-          console.error('❌ signIn function not available in any scope');
-          alert('Sign In function not found. Please refresh the page.');
+          console.error('❌ window.signIn is not a function. Type:', typeof window.signIn);
+          alert('Sign In function not available. Please refresh the page.');
         }
       };
-      console.log('✅ Direct Sign In handler attached');
+      console.log('✅ Direct Sign In handler attached (using dynamic reference)');
     }
 
     if (signOutBtn) {
       signOutBtn.onclick = function(e) {
         e.preventDefault();
         console.log('🔐 Direct handler: Sign Out button clicked');
-        console.log('typeof window.signOut:', typeof window.signOut);
-        console.log('typeof window.__nativeSignOut:', typeof window.__nativeSignOut);
-        console.log('typeof window.nativeSignOut:', typeof window.nativeSignOut);
+        console.log('  Checking auth availability at CLICK TIME');
+        console.log('  typeof window.signOut:', typeof window.signOut);
 
-        // Try multiple sources for the signOut function
-        let signOutFunc = null;
-
+        // IMPORTANT: Call window.signOut DIRECTLY by reference, not by capturing it
+        // This ensures we always call the current version, not a stale reference
         if (typeof window.signOut === 'function') {
-          signOutFunc = window.signOut;
-          console.log('✅ Found window.signOut');
-        } else if (typeof window.__nativeSignOut === 'function') {
-          signOutFunc = window.__nativeSignOut;
-          console.log('✅ Found window.__nativeSignOut (using restore)');
-          window.signOut = signOutFunc; // Restore it
-        } else if (typeof window.nativeSignOut === 'function') {
-          signOutFunc = window.nativeSignOut;
-          console.log('✅ Found window.nativeSignOut (using fallback)');
-          window.signOut = signOutFunc; // Restore it
-        } else if (typeof signOut === 'function') {
-          signOutFunc = signOut;
-          console.log('✅ Found local signOut');
-        }
-
-        if (signOutFunc && typeof signOutFunc === 'function') {
-          signOutFunc();
+          console.log('✅ Calling window.signOut directly (dynamic reference)');
+          window.signOut(e);
         } else {
-          console.error('❌ signOut function not available in any scope');
-          alert('Sign Out function not found. Please refresh the page.');
+          console.error('❌ window.signOut is not a function. Type:', typeof window.signOut);
+          alert('Sign Out function not available. Please refresh the page.');
         }
       };
-      console.log('✅ Direct Sign Out handler attached');
+      console.log('✅ Direct Sign Out handler attached (using dynamic reference)');
     }
   }, 500);
 </script>
