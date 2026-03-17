@@ -9614,6 +9614,9 @@
       // Render cards instead of table rows
       renderAdventureCards(data.value);
 
+      // Update connection status to show we're connected to Excel backend
+      window.updateConnectionStatus?.(true);
+
       // Update results count
       updateResultsCount(data.value.length);
 
@@ -10179,14 +10182,14 @@
 
       // Extract adventure data from Excel columns
       // Column indices (0-based):
-      // 0: Google Place ID, 1: Name, 2: Website, 3: Tags, 4: Drive Time,
+      // 0: Name, 1: Google Place ID, 2: Website, 3: Tags, 4: Drive Time,
       // 5: Hours of Operation, 6: Activity Duration, 7: Difficulty, 8: Trail Length,
       // 9: State, 10: City, 11: Address, 12: Phone Number, 13: Google Rating,
       // 14: Cost, 15: Directions, 16: Description, 17: Nearby, 18: Links, 19: Links 2,
       // 20: Notes, 21: My Rating, 22: Favorite Status, 23: Google URL
       const [
-        googlePlaceId,     // 0
-        name,              // 1
+        name,              // 0
+        googlePlaceId,     // 1
         website,           // 2
         tags,              // 3
         driveTime,         // 4
