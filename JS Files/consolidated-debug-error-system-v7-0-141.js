@@ -434,10 +434,13 @@ console.log('✅ Error Management System ready');
         logDebug(`typeof signIn: ${typeof window.signIn}`);
         logDebug(`msalInstance: ${window.msalInstance ? 'EXISTS' : 'MISSING'}`);
 
-        const initialized = await ensureFallbackAuth();
-        if (!initialized || typeof window.signIn !== 'function') {
-          logError('error', '❌ signIn function unavailable after fallback bootstrap');
-          return;
+        // Use app-provided auth first; only bootstrap fallback on demand.
+        if (typeof window.signIn !== 'function') {
+          const initialized = await ensureFallbackAuth();
+          if (!initialized || typeof window.signIn !== 'function') {
+            logError('error', '❌ signIn function unavailable after fallback bootstrap');
+            return;
+          }
         }
 
         try {
@@ -473,10 +476,13 @@ console.log('✅ Error Management System ready');
         e.stopPropagation();
         logDebug('🔐 SIGN OUT BUTTON CLICKED');
 
-        const initialized = await ensureFallbackAuth();
-        if (!initialized || typeof window.signOut !== 'function') {
-          logError('error', '❌ signOut function unavailable after fallback bootstrap');
-          return;
+        // Use app-provided auth first; only bootstrap fallback on demand.
+        if (typeof window.signOut !== 'function') {
+          const initialized = await ensureFallbackAuth();
+          if (!initialized || typeof window.signOut !== 'function') {
+            logError('error', '❌ signOut function unavailable after fallback bootstrap');
+            return;
+          }
         }
 
         try {
@@ -724,17 +730,19 @@ function replaceAuthButton(buttonId) {
 }
 
 function bootstrapAuthEarly() {
-    // Wait for the full page load so the real window.signIn from index.html
-    // has been exported before we decide whether to create a fallback.
+    // Do not eagerly create fallback handlers during startup.
+    // The click handlers will bootstrap fallback auth only if native handlers are missing.
     if (document.readyState === 'complete') {
-        // Page already loaded — check after a short delay to let inline scripts finish
-        setTimeout(() => ensureFallbackAuth(), 200);
+        if (typeof window.signIn !== 'function' || typeof window.signOut !== 'function') {
+            logDebug('Native auth handlers not ready at startup; fallback auth will initialize on demand.');
+        }
         return;
     }
 
     window.addEventListener('load', () => {
-        // Give inline scripts ~200ms to export window.signIn after load fires
-        setTimeout(() => ensureFallbackAuth(), 200);
+        if (typeof window.signIn !== 'function' || typeof window.signOut !== 'function') {
+            logDebug('Native auth handlers still missing after load; fallback auth will initialize on demand.');
+        }
     }, { once: true });
 }
 
@@ -987,9 +995,8 @@ async function ensureFallbackAuth(forceRecreate = false) {
 }
 
 function checkAndFixSignIn() {
-    ensureFallbackAuth();
     if (typeof window.signIn !== 'function') {
-        logDebug('signIn not ready yet - fallback bootstrap requested');
+        logDebug('signIn not ready yet - fallback bootstrap deferred until user action');
     } else {
         logSuccess('signIn function exists');
     }
