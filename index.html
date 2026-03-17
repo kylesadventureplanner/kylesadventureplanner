@@ -1818,6 +1818,116 @@
       }
     }
 
+    /* Adventure Cards Grid - Display loaded adventures */
+    .adventure-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--space-xl);
+      padding: var(--space-xl);
+      margin-top: var(--space-lg);
+    }
+
+    .adventure-card {
+      background: white;
+      border: 1px solid var(--neutral-200);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .adventure-card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-4px);
+      border-color: var(--primary);
+    }
+
+    .adventure-card .card-header {
+      padding: var(--space-lg);
+      background: linear-gradient(135deg, #f8f9fa 0%, #f0f4f8 100%);
+      border-bottom: 1px solid var(--neutral-200);
+    }
+
+    .adventure-card .card-title {
+      margin: 0 0 var(--space-sm) 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--neutral-900);
+    }
+
+    .adventure-card .card-location {
+      font-size: 14px;
+      color: var(--neutral-600);
+      margin: 0;
+    }
+
+    .adventure-card .card-body {
+      padding: var(--space-lg);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .adventure-card .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .adventure-card .tag-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .adventure-card .card-rating {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f59e0b;
+    }
+
+    .adventure-card .card-cost {
+      font-size: 14px;
+      color: var(--neutral-600);
+      font-weight: 600;
+    }
+
+    .adventure-card .card-footer {
+      padding: var(--space-lg);
+      background: var(--neutral-50);
+      border-top: 1px solid var(--neutral-200);
+      display: flex;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+
+    .adventure-card .card-btn {
+      flex: 1;
+      padding: 10px 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      min-width: 120px;
+    }
+
+    .adventure-card .card-btn:hover {
+      background: var(--primary-dark);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
     /* State Badge */
     .state-badge {
       display: inline-block;
@@ -6157,6 +6267,9 @@
 
       console.log('✅ loadTable: Adventure data ready');
       console.log('📊 Loaded adventures:', window.adventuresData.length);
+
+      // Render the cards to the grid
+      await renderAdventureCards();
 
       // Show success message
       window.showToast?.('✅ Adventure data loaded successfully', 'success', 2000);
