@@ -771,10 +771,49 @@ function updateFallbackAuthUI(account) {
     }
 }
 
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveSignedInRenderStrategy() {
+    if (typeof window.loadTable === 'function') {
+        return { type: 'loadTable' };
+    }
+
+    if (typeof window.renderAdventureCards === 'function' && Array.isArray(window.adventuresData) && window.adventuresData.length > 0) {
+        return { type: 'renderAdventureCards' };
+    }
+
+    if (typeof window.renderPaginatedCards === 'function') {
+        return { type: 'renderPaginatedCards' };
+    }
+
+    return null;
+}
+
 async function loadSignedInData() {
     logSuccess('loadSignedInData called - loading adventure data...');
 
-    if (typeof window.loadTable === 'function') {
+    let strategy = resolveSignedInRenderStrategy();
+
+    // Give late-bound globals a short window to finish exporting.
+    if (!strategy) {
+        for (let i = 0; i < 6 && !strategy; i += 1) {
+            await delay(150);
+            strategy = resolveSignedInRenderStrategy();
+        }
+    }
+
+    if (!strategy) {
+        const state = {
+            readyState: document.readyState,
+            hasLoadTable: typeof window.loadTable === 'function',
+            hasRenderAdventureCards: typeof window.renderAdventureCards === 'function',
+            hasRenderPaginatedCards: typeof window.renderPaginatedCards === 'function',
+            adventureCount: Array.isArray(window.adventuresData) ? window.adventuresData.length : 0
+        };
+        logError('warn', 'No loadTable/render function available after sign-in. Cards may not render.', JSON.stringify(state));
+    } else if (strategy.type === 'loadTable') {
         logSuccess('Calling window.loadTable()...');
         try {
             await window.loadTable();
@@ -782,12 +821,20 @@ async function loadSignedInData() {
         } catch (err) {
             logError('error', 'window.loadTable() threw error', err?.message || err);
         }
-    } else if (typeof window.renderAdventureCards === 'function' && window.adventuresData?.length) {
-        // loadTable not available but we have data — just re-render
+    } else if (strategy.type === 'renderAdventureCards') {
         logSuccess('Calling renderAdventureCards() with existing data...');
-        window.renderAdventureCards(window.adventuresData);
-    } else {
-        logError('warn', 'No loadTable or renderAdventureCards available. Cards may not render.');
+        try {
+            window.renderAdventureCards(window.adventuresData);
+        } catch (err) {
+            logError('error', 'renderAdventureCards() threw error', err?.message || err);
+        }
+    } else if (strategy.type === 'renderPaginatedCards') {
+        logSuccess('Calling window.renderPaginatedCards()...');
+        try {
+            window.renderPaginatedCards();
+        } catch (err) {
+            logError('error', 'window.renderPaginatedCards() threw error', err?.message || err);
+        }
     }
 
     if (typeof window.initFindNearMe === 'function') window.initFindNearMe();
@@ -825,16 +872,11 @@ async function rehydrateFallbackAuth() {
 }
 
 async function ensureFallbackAuth(forceRecreate = false) {
-    // If the real app already has working signIn/signOut bound to its own MSAL
-    // instance, do NOT overwrite them — just confirm they're available.
+    // If real auth handlers already exist, do not override them with fallback handlers.
     if (!forceRecreate &&
         typeof window.signIn === 'function' &&
-        typeof window.signOut === 'function' &&
-        window.msalInstance &&
-        typeof window.msalInstance.getAllAccounts === 'function') {
-        // Real auth is already in place. Expose a no-op fallback promise so
-        // callers that await ensureFallbackAuth() still get a resolved value.
-        fallbackMsalInstance = window.msalInstance;
+        typeof window.signOut === 'function') {
+        logDebug('Fallback auth skipped override: existing window.signIn/window.signOut preserved');
         return true;
     }
 
@@ -873,58 +915,62 @@ async function ensureFallbackAuth(forceRecreate = false) {
                 return rehydrateFallbackAuth();
             };
 
-            window.signIn = async function () {
-                await ensureFallbackAuth();
+            if (typeof window.signIn !== 'function') {
+                window.signIn = async function () {
+                    await ensureFallbackAuth();
 
-                const existingAccount = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
-                if (existingAccount) {
-                    fallbackMsalInstance.setActiveAccount(existingAccount);
-                    try {
-                        const silentToken = await fallbackMsalInstance.acquireTokenSilent({
-                            ...FALLBACK_LOGIN_REQUEST,
-                            account: existingAccount
-                        });
-                        syncFallbackAuthState(silentToken?.accessToken || null, existingAccount);
-                        updateFallbackAuthUI(existingAccount);
-                        await loadSignedInData();
-                        fallbackNotify('✓ Successfully signed in!', 'success', 3000);
-                        return;
-                    } catch (_silentError) {
-                        logError('warn', 'Silent token acquisition failed, continuing to popup auth');
+                    const existingAccount = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
+                    if (existingAccount) {
+                        fallbackMsalInstance.setActiveAccount(existingAccount);
+                        try {
+                            const silentToken = await fallbackMsalInstance.acquireTokenSilent({
+                                ...FALLBACK_LOGIN_REQUEST,
+                                account: existingAccount
+                            });
+                            syncFallbackAuthState(silentToken?.accessToken || null, existingAccount);
+                            updateFallbackAuthUI(existingAccount);
+                            await loadSignedInData();
+                            fallbackNotify('✓ Successfully signed in!', 'success', 3000);
+                            return;
+                        } catch (_silentError) {
+                            logError('warn', 'Silent token acquisition failed, continuing to popup auth');
+                        }
                     }
-                }
 
-                const loginResponse = await fallbackMsalInstance.loginPopup(FALLBACK_LOGIN_REQUEST);
-                const account = loginResponse?.account || fallbackMsalInstance.getActiveAccount();
-                if (!account) {
-                    throw new Error('Microsoft account was not returned by loginPopup');
-                }
+                    const loginResponse = await fallbackMsalInstance.loginPopup(FALLBACK_LOGIN_REQUEST);
+                    const account = loginResponse?.account || fallbackMsalInstance.getActiveAccount();
+                    if (!account) {
+                        throw new Error('Microsoft account was not returned by loginPopup');
+                    }
 
-                fallbackMsalInstance.setActiveAccount(account);
-                const tokenResponse = await fallbackMsalInstance.acquireTokenSilent({
-                    ...FALLBACK_LOGIN_REQUEST,
-                    account
-                });
-
-                syncFallbackAuthState(tokenResponse?.accessToken || null, account);
-                updateFallbackAuthUI(account);
-                await loadSignedInData();
-                fallbackNotify('✓ Successfully signed in!', 'success', 3000);
-            };
-
-            window.signOut = async function () {
-                await ensureFallbackAuth();
-                const account = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
-                syncFallbackAuthState(null, null);
-                updateFallbackAuthUI(null);
-
-                if (account) {
-                    await fallbackMsalInstance.logoutPopup({
-                        account,
-                        postLogoutRedirectUri: window.location.origin
+                    fallbackMsalInstance.setActiveAccount(account);
+                    const tokenResponse = await fallbackMsalInstance.acquireTokenSilent({
+                        ...FALLBACK_LOGIN_REQUEST,
+                        account
                     });
-                }
-            };
+
+                    syncFallbackAuthState(tokenResponse?.accessToken || null, account);
+                    updateFallbackAuthUI(account);
+                    await loadSignedInData();
+                    fallbackNotify('✓ Successfully signed in!', 'success', 3000);
+                };
+            }
+
+            if (typeof window.signOut !== 'function') {
+                window.signOut = async function () {
+                    await ensureFallbackAuth();
+                    const account = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
+                    syncFallbackAuthState(null, null);
+                    updateFallbackAuthUI(null);
+
+                    if (account) {
+                        await fallbackMsalInstance.logoutPopup({
+                            account,
+                            postLogoutRedirectUri: window.location.origin
+                        });
+                    }
+                };
+            }
 
             const restored = await rehydrateFallbackAuth();
             logSuccess(`Fallback auth bootstrap ready${restored ? ' (restored cached session)' : ''}`);
