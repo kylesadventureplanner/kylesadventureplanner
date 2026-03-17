@@ -5565,53 +5565,112 @@
          // Clear existing cards
          cardsGrid.innerHTML = '';
 
-         // Render each adventure as a card
-         window.adventuresData.forEach((adventure, index) => {
-           const values = adventure.values[0] || [];
+          // Render each adventure as a card
+          window.adventuresData.forEach((adventure, index) => {
+            const values = adventure.values[0] || [];
 
-           // Extract data from columns
-           const name = values[0] || 'Unnamed Adventure';
-           const placeId = values[1] || '';
-           const website = values[2] || '';
-           const tags = (values[3] || '').split(',').filter(t => t.trim());
-           const state = values[9] || '';
-           const city = values[10] || '';
-           const rating = values[13] || '0';
-           const cost = values[14] || '';
+            // Extract data from columns - based on Excel structure
+            const googlePlaceId = values[0] || '';
+            const name = values[1] || 'Unnamed Adventure';
+            const website = values[2] || '';
+            const tags = (values[3] || '').split(',').filter(t => t.trim());
+            const driveTime = values[4] || '';
+            const hoursOfOperation = values[5] || '';
+            const activityDuration = values[6] || '';
+            const difficulty = values[7] || '';
+            const trailLength = values[8] || '';
+            const state = values[9] || '';
+            const city = values[10] || '';
+            const address = values[11] || '';
+            const phoneNumber = values[12] || '';
+            const googleRating = values[13] || '';
+            const cost = values[14] || '';
+            const directions = values[15] || '';
+            const description = values[16] || '';
+            const myRating = values[21] || 0;
+            const favoriteStatus = values[22] || '';
 
-           // Create card HTML
-           const card = document.createElement('div');
-           card.className = 'adventure-card';
-           card.innerHTML = `
-             <div class="card-header">
-               <h3 class="card-title">${name}</h3>
-               <div class="card-location">📍 ${city}${state ? ', ' + state : ''}</div>
-             </div>
-             <div class="card-body">
-               ${tags.length > 0 ? `
-                 <div class="card-tags">
-                   ${tags.map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}
-                 </div>
-               ` : ''}
-               ${rating && rating !== '0' ? `
-                 <div class="card-rating">
-                   ⭐ ${rating}
-                 </div>
-               ` : ''}
-               ${cost ? `
-                 <div class="card-cost">
-                   💰 ${cost}
-                 </div>
-               ` : ''}
-             </div>
-             <div class="card-footer">
-               ${website ? `<a href="${website}" target="_blank" class="card-btn">Visit Website</a>` : ''}
-               <button class="card-btn" onclick="showCardDetails(${index})">View Details</button>
-             </div>
-           `;
+            // Get saved rating for this adventure
+            const adventureId = googlePlaceId || `${name}_${index}`;
+            const savedRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
+            const currentRating = savedRatings[adventureId] || 0;
 
-           cardsGrid.appendChild(card);
-         });
+            // Check if favorited
+            const favorites = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
+            const isFavorited = favorites.includes(adventureId);
+
+            // Create card HTML with ALL features
+            const card = document.createElement('div');
+            card.className = 'adventure-card';
+            card.dataset.adventureId = adventureId;
+            card.innerHTML = `
+              <div class="card-header">
+                <h3 class="card-title">${name}</h3>
+                <div class="card-location">📍 ${city}${state ? ', ' + state : ''}</div>
+                ${driveTime ? `<div class="card-drive-time">🚗 ${driveTime}</div>` : ''}
+              </div>
+
+              <div class="card-body">
+                ${tags.length > 0 ? `
+                  <div class="card-tags">
+                    ${tags.map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}
+                  </div>
+                ` : ''}
+
+                ${description ? `
+                  <div class="card-description">${description.substring(0, 150)}${description.length > 150 ? '...' : ''}</div>
+                ` : ''}
+
+                <div class="card-info">
+                  ${difficulty ? `<div class="card-info-item">Difficulty: <strong>${difficulty}</strong></div>` : ''}
+                  ${trailLength ? `<div class="card-info-item">Trail: <strong>${trailLength}</strong></div>` : ''}
+                  ${googleRating ? `<div class="card-info-item">Google Rating: <strong>⭐ ${googleRating}</strong></div>` : ''}
+                  ${cost ? `<div class="card-info-item">Cost: <strong>${cost}</strong></div>` : ''}
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <div class="card-action-buttons">
+                  ${directions || address ? `
+                    <button class="card-btn card-directions-btn" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || name)}', '_blank')" title="Get directions">
+                      <span>🗺️</span> Directions
+                    </button>
+                  ` : ''}
+
+                  ${website ? `
+                    <a href="${website}" target="_blank" class="card-btn" title="Visit website">
+                      <span>🌐</span> Website
+                    </a>
+                  ` : ''}
+
+                  <button class="card-btn card-details-btn" onclick="showCardDetails(${index})" title="View full details">
+                    <span>📖</span> Details
+                  </button>
+                </div>
+
+                <div class="card-favorite-rating-container">
+                  <div class="card-rating">
+                    ${[1, 2, 3, 4, 5].map(star => `
+                      <span class="rating-star ${currentRating >= star ? 'filled' : ''}"
+                            data-rating="${star}"
+                            data-index="${index}"
+                            onclick="setAdventureRating(${index}, ${star}, this.closest('.adventure-card'))"
+                            title="${star} stars">⭐</span>
+                    `).join('')}
+                  </div>
+
+                  <button class="card-favorite-btn ${isFavorited ? 'active' : ''}"
+                          onclick="toggleCardFavorite(${index}, event, this.closest('.adventure-card'))"
+                          title="Add to favorites"
+                          data-adventure-id="${adventureId}">
+                    ${isFavorited ? '💖' : '🤍'}
+                  </button>
+                </div>
+              </div>
+            `;
+
+            cardsGrid.appendChild(card);
+          });
 
          console.log(`✅ Rendered ${window.adventuresData.length} adventure cards`);
 
@@ -5623,6 +5682,142 @@
 
        } catch (error) {
          console.error('❌ renderAdventureCards error:', error);
+       }
+     };
+
+     // ============================================================
+     // TOGGLE FAVORITE - Handle favorite button clicks
+     // ============================================================
+     window.toggleCardFavorite = function(index, event, cardElement) {
+       try {
+         const adventureId = cardElement?.dataset.adventureId;
+         if (!adventureId) {
+           console.warn('⚠️ No adventure ID found');
+           return;
+         }
+
+         // Get current favorites from localStorage
+         const favorites = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
+         const btn = event.target.closest('.card-favorite-btn');
+
+         if (favorites.includes(adventureId)) {
+           // Remove from favorites
+           favorites.splice(favorites.indexOf(adventureId), 1);
+           btn.textContent = '🤍';
+           btn.classList.remove('active');
+           window.showToast?.('Removed from favorites', 'info', 2000);
+         } else {
+           // Add to favorites
+           favorites.push(adventureId);
+           btn.textContent = '💖';
+           btn.classList.add('active');
+           window.showToast?.('Added to favorites', 'success', 2000);
+         }
+
+         // Save to localStorage
+         localStorage.setItem('adventureFavorites', JSON.stringify(favorites));
+
+       } catch (error) {
+         console.error('❌ toggleCardFavorite error:', error);
+       }
+     };
+
+     // ============================================================
+     // SET ADVENTURE RATING - Handle star rating clicks
+     // ============================================================
+     window.setAdventureRating = function(index, rating, cardElement) {
+       try {
+         const adventureId = cardElement?.dataset.adventureId;
+         if (!adventureId) {
+           console.warn('⚠️ No adventure ID found');
+           return;
+         }
+
+         // Get current ratings from localStorage
+         const ratings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
+
+         // Update rating
+         ratings[adventureId] = rating;
+         localStorage.setItem('adventureRatings', JSON.stringify(ratings));
+
+         // Update visual stars
+         const stars = cardElement?.querySelectorAll('.rating-star');
+         stars?.forEach((star, idx) => {
+           if (idx + 1 <= rating) {
+             star.classList.add('filled');
+           } else {
+             star.classList.remove('filled');
+           }
+         });
+
+         window.showToast?.(`Rated ${rating} stars`, 'success', 2000);
+
+       } catch (error) {
+         console.error('❌ setAdventureRating error:', error);
+       }
+     };
+
+     // ============================================================
+     // SAVE TO EXCEL - Update adventure data in Excel
+     // ============================================================
+     window.saveToExcel = async function(rowId, updatedValues, retryCount = 0) {
+       try {
+         if (!accessToken) {
+           console.error('❌ No access token available for Excel write');
+           throw new Error('User not authenticated. Please sign in.');
+         }
+
+         const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+         const tableName = "MyList";
+         const encodedPath = encodeURIComponent(filePath);
+
+         // Build update request body
+         const requestBody = {
+           values: [updatedValues]
+         };
+
+         // Update row in Excel table
+         const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows/${rowId}`;
+
+         console.log(`📝 Saving to Excel: ${apiUrl}`);
+
+         const response = await fetch(apiUrl, {
+           method: 'PATCH',
+           headers: {
+             'Authorization': `Bearer ${accessToken}`,
+             'Content-Type': 'application/json'
+           },
+           body: JSON.stringify(requestBody)
+         });
+
+         if (!response.ok) {
+           // If 401, token may have expired
+           if (response.status === 401 && retryCount === 0) {
+             console.log('🔄 Token expired, attempting refresh...');
+             try {
+               const tokenResponse = await msalInstance.acquireTokenSilent({
+                 ...loginRequest,
+                 account: activeAccount,
+                 forceRefresh: true
+               });
+               accessToken = tokenResponse.accessToken;
+               syncAuthGlobals();
+               // Retry once with refreshed token
+               return await window.saveToExcel(rowId, updatedValues, 1);
+             } catch (refreshError) {
+               console.error('Token refresh failed:', refreshError);
+             }
+           }
+           throw new Error(`Failed to save to Excel: ${response.status}`);
+         }
+
+         console.log('✅ Successfully saved to Excel');
+         window.showToast?.('✅ Changes saved to Excel', 'success', 2000);
+         return true;
+
+       } catch (error) {
+         console.error('❌ saveToExcel error:', error);
+         throw error;
        }
      };
     </script>
