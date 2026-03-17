@@ -427,19 +427,25 @@ console.log('✅ Error Management System ready');
     // Sign In button - CRITICAL
     const signInBtn = document.getElementById('signInBtn');
     if (signInBtn) {
-      signInBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('🔐🔐🔐 SIGN IN BUTTON CLICKED 🔐🔐🔐');
-        console.log('typeof signIn:', typeof signIn);
-        console.log('msalInstance:', typeof msalInstance !== 'undefined' ? 'EXISTS' : 'MISSING');
+      signInBtn.addEventListener('click', async () => {
+        logDebug('🔐🔐🔐 SIGN IN BUTTON CLICKED 🔐🔐🔐');
+        logDebug(`typeof signIn: ${typeof window.signIn}`);
+        logDebug(`msalInstance: ${window.msalInstance ? 'EXISTS' : 'MISSING'}`);
 
-        if (typeof signIn === 'function') {
-          console.log('✅ Calling signIn() function');
-          signIn();
-        } else {
-          console.error('❌ signIn function not found!');
-          console.error('Available window functions:', Object.keys(window).filter(k => k.includes('sign') || k.includes('Sign')));
+        if (typeof window.signIn !== 'function') {
+          logDebug('Attempting fallback auth bootstrap before sign-in');
+          const initialized = await ensureFallbackAuth();
+          if (!initialized) {
+            logError('error', '❌ signIn function not found after fallback initialization');
+            return;
+          }
+        }
+
+        try {
+          await window.signIn();
+          logSuccess('Sign in completed');
+        } catch (error) {
+          logError('error', 'Sign in failed', error?.message || error);
         }
       });
       logInit('🔐 Sign In button registered');
@@ -644,3 +650,228 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
+const FALLBACK_MSAL_CONFIG = {
+    auth: {
+        clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
+        authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc"
+    }
+};
+
+const FALLBACK_LOGIN_REQUEST = {
+    scopes: ["User.Read", "Files.ReadWrite", "Sites.ReadWrite.All"]
+};
+
+function logDebug(message, details) {
+    if (typeof details === 'undefined') {
+        console.log(message);
+    } else {
+        console.log(message, details);
+    }
+}
+
+function logSuccess(message, details) {
+    if (typeof details === 'undefined') {
+        console.log(`✅ ${message}`);
+    } else {
+        console.log(`✅ ${message}`, details);
+    }
+}
+
+function logError(level, message, details) {
+    const fullMessage = typeof details === 'undefined' ? message : `${message} ${details}`;
+    if (window.errorManager?.logError) {
+        window.errorManager.logError(fullMessage, level || 'general');
+    }
+    if (level === 'warn') {
+        console.warn(fullMessage);
+    } else {
+        console.error(fullMessage);
+    }
+}
+
+let fallbackMsalInitPromise = null;
+let fallbackMsalInstance = null;
+
+function fallbackNotify(message, type = 'info', duration = 4000) {
+    if (typeof window.showToast === 'function') {
+        window.showToast(message, type, duration);
+        return;
+    }
+    console.log(message);
+}
+
+function syncFallbackAuthState(token, account) {
+    window.accessToken = token || null;
+    window.activeAccount = account || null;
+    window.isConnectedToExcel = !!(token && account);
+}
+
+function updateFallbackAuthUI(account) {
+    const authStatus = document.getElementById('authStatus');
+    const signInBtn = document.getElementById('signInBtn');
+    const signOutBtn = document.getElementById('signOutBtn');
+
+    if (authStatus) {
+        authStatus.textContent = account?.username ? `Signed in as ${account.username}` : 'Not signed in';
+    }
+    if (signInBtn) signInBtn.style.display = account ? 'none' : 'inline-block';
+    if (signOutBtn) signOutBtn.style.display = account ? 'inline-block' : 'none';
+
+    if (typeof window.updateConnectionStatus === 'function') {
+        window.updateConnectionStatus(!!account);
+    }
+}
+
+async function loadSignedInData() {
+    if (typeof window.loadTable === 'function') {
+        await window.loadTable();
+    }
+    if (typeof window.initFindNearMe === 'function') window.initFindNearMe();
+    if (typeof window.initContextMenu === 'function') window.initContextMenu();
+    if (typeof window.initRowDetailModal === 'function') window.initRowDetailModal();
+}
+
+async function rehydrateFallbackAuth() {
+    if (!fallbackMsalInstance) return false;
+
+    const cachedAccount = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
+    if (!cachedAccount) {
+        syncFallbackAuthState(null, null);
+        updateFallbackAuthUI(null);
+        return false;
+    }
+
+    fallbackMsalInstance.setActiveAccount(cachedAccount);
+
+    try {
+        const tokenResponse = await fallbackMsalInstance.acquireTokenSilent({
+            ...FALLBACK_LOGIN_REQUEST,
+            account: cachedAccount
+        });
+
+        syncFallbackAuthState(tokenResponse?.accessToken || null, cachedAccount);
+        updateFallbackAuthUI(cachedAccount);
+        return !!tokenResponse?.accessToken;
+    } catch (error) {
+        logError('warn', 'Silent auth restore failed', error?.message || error);
+        syncFallbackAuthState(null, cachedAccount);
+        updateFallbackAuthUI(cachedAccount);
+        return false;
+    }
+}
+
+async function ensureFallbackAuth(forceRecreate = false) {
+    if (!forceRecreate && typeof window.signIn === 'function' && typeof window.signOut === 'function' && window.msalInstance) {
+        return true;
+    }
+
+    if (forceRecreate) {
+        fallbackMsalInitPromise = null;
+        fallbackMsalInstance = null;
+    }
+
+    if (fallbackMsalInitPromise) {
+        return fallbackMsalInitPromise;
+    }
+
+    if (!window.msal?.PublicClientApplication) {
+        logError('error', 'MSAL browser library is not available for fallback auth');
+        fallbackNotify('Microsoft sign-in library is missing on the page.', 'error', 6000);
+        return false;
+    }
+
+    fallbackMsalInitPromise = (async () => {
+        try {
+            fallbackMsalInstance = window.msalInstance || new window.msal.PublicClientApplication(FALLBACK_MSAL_CONFIG);
+            await fallbackMsalInstance.initialize();
+
+            if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
+                try {
+                    await fallbackMsalInstance.handleRedirectPromise();
+                } catch (redirectError) {
+                    logError('warn', 'Fallback redirect handling warning', redirectError?.message || redirectError);
+                }
+            }
+
+            window.msalInstance = fallbackMsalInstance;
+
+            window.rehydrateAuthState = async function () {
+                await ensureFallbackAuth();
+                return rehydrateFallbackAuth();
+            };
+
+            window.signIn = async function () {
+                await ensureFallbackAuth();
+
+                const existingAccount = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
+                if (existingAccount) {
+                    fallbackMsalInstance.setActiveAccount(existingAccount);
+                    try {
+                        const silentToken = await fallbackMsalInstance.acquireTokenSilent({
+                            ...FALLBACK_LOGIN_REQUEST,
+                            account: existingAccount
+                        });
+                        syncFallbackAuthState(silentToken?.accessToken || null, existingAccount);
+                        updateFallbackAuthUI(existingAccount);
+                        await loadSignedInData();
+                        fallbackNotify('✓ Successfully signed in!', 'success', 3000);
+                        return;
+                    } catch (_silentError) {
+                        logError('warn', 'Silent token acquisition failed, continuing to popup auth');
+                    }
+                }
+
+                const loginResponse = await fallbackMsalInstance.loginPopup(FALLBACK_LOGIN_REQUEST);
+                const account = loginResponse?.account || fallbackMsalInstance.getActiveAccount();
+                if (!account) {
+                    throw new Error('Microsoft account was not returned by loginPopup');
+                }
+
+                fallbackMsalInstance.setActiveAccount(account);
+                const tokenResponse = await fallbackMsalInstance.acquireTokenSilent({
+                    ...FALLBACK_LOGIN_REQUEST,
+                    account
+                });
+
+                syncFallbackAuthState(tokenResponse?.accessToken || null, account);
+                updateFallbackAuthUI(account);
+                await loadSignedInData();
+                fallbackNotify('✓ Successfully signed in!', 'success', 3000);
+            };
+
+            window.signOut = async function () {
+                await ensureFallbackAuth();
+                const account = fallbackMsalInstance.getActiveAccount() || fallbackMsalInstance.getAllAccounts?.()[0] || null;
+                syncFallbackAuthState(null, null);
+                updateFallbackAuthUI(null);
+
+                if (account) {
+                    await fallbackMsalInstance.logoutPopup({
+                        account,
+                        postLogoutRedirectUri: window.location.origin
+                    });
+                }
+            };
+
+            const restored = await rehydrateFallbackAuth();
+            logSuccess(`Fallback auth bootstrap ready${restored ? ' (restored cached session)' : ''}`);
+            return true;
+        } catch (error) {
+            fallbackMsalInitPromise = null;
+            logError('error', 'Fallback auth bootstrap failed', error?.message || error);
+            fallbackNotify(`Microsoft sign-in setup failed: ${error?.message || error}`, 'error', 6000);
+            return false;
+        }
+    })();
+
+    return fallbackMsalInitPromise;
+}
+
+function checkAndFixSignIn() {
+    if (typeof window.signIn !== 'function') {
+        logError('error', 'signIn function not available');
+        ensureFallbackAuth();
+    } else {
+        logSuccess('signIn function exists');
+    }
+}
