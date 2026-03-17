@@ -5478,9 +5478,156 @@
      window.realSignOut = realSignOutImpl;
 
      console.log('✅ REAL AUTH FUNCTIONS DEFINED AND READY IMMEDIATELY!');
-   </script>
 
-  <!-- Tag Management System (v7.0.112+) - DEPRECATED: Now using consolidated-tag-system-v7-0-141.js -->
+     // ============================================================
+     // LOAD TABLE - Load adventure data from Excel via Microsoft Graph API
+     // ============================================================
+     window.loadTable = async function() {
+       try {
+         console.log('📥 loadTable: Starting to load adventure data from Excel...');
+
+         if (!accessToken || !activeAccount) {
+           console.error('❌ loadTable: No access token or active account');
+           window.showToast?.('❌ Authentication required. Please sign in again.', 'error', 5000);
+           return false;
+         }
+
+         const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+         const tableName = "MyList";
+
+         // Build Microsoft Graph API URL
+         const encodedPath = encodeURIComponent(filePath);
+         const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
+
+         console.log(`📍 Fetching from: ${apiUrl}`);
+
+         // Fetch rows from Excel table
+         const response = await fetch(apiUrl, {
+           method: 'GET',
+           headers: {
+             'Authorization': `Bearer ${accessToken}`,
+             'Content-Type': 'application/json'
+           }
+         });
+
+         if (!response.ok) {
+           throw new Error(`Excel API error: ${response.status} ${response.statusText}`);
+         }
+
+         const data = await response.json();
+         const rows = data.value || [];
+
+         console.log(`✅ Fetched ${rows.length} rows from Excel`);
+
+         // Initialize adventuresData array with proper structure
+         window.adventuresData = rows.map((row, index) => ({
+           values: [row.values[0] || []],
+           rowId: row.id,
+           index: index
+         }));
+
+         console.log('✅ loadTable: Adventure data ready');
+         console.log('📊 Loaded adventures:', window.adventuresData.length);
+
+         // Render the cards to the grid
+         await window.renderAdventureCards();
+
+         // Show success message
+         window.showToast?.('✅ Adventure data loaded successfully', 'success', 2000);
+
+         return true;
+       } catch (error) {
+         console.error('❌ loadTable error:', error);
+         window.showToast?.(`❌ Failed to load adventure data: ${error.message}`, 'error', 5000);
+         return false;
+       }
+     };
+
+     // ============================================================
+     // RENDER ADVENTURE CARDS - Display loaded data in the grid
+     // ============================================================
+     window.renderAdventureCards = async function() {
+       try {
+         console.log('🎨 renderAdventureCards: Starting to render cards...');
+
+         const cardsGrid = document.getElementById('adventureCardsGrid');
+         if (!cardsGrid) {
+           console.error('❌ Adventure cards grid not found in DOM');
+           return;
+         }
+
+         if (!window.adventuresData || window.adventuresData.length === 0) {
+           console.warn('⚠️ No adventure data to render');
+           cardsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No adventures found. Add some in Edit Mode!</div>';
+           return;
+         }
+
+         // Clear existing cards
+         cardsGrid.innerHTML = '';
+
+         // Render each adventure as a card
+         window.adventuresData.forEach((adventure, index) => {
+           const values = adventure.values[0] || [];
+
+           // Extract data from columns
+           const name = values[0] || 'Unnamed Adventure';
+           const placeId = values[1] || '';
+           const website = values[2] || '';
+           const tags = (values[3] || '').split(',').filter(t => t.trim());
+           const state = values[9] || '';
+           const city = values[10] || '';
+           const rating = values[13] || '0';
+           const cost = values[14] || '';
+
+           // Create card HTML
+           const card = document.createElement('div');
+           card.className = 'adventure-card';
+           card.innerHTML = `
+             <div class="card-header">
+               <h3 class="card-title">${name}</h3>
+               <div class="card-location">📍 ${city}${state ? ', ' + state : ''}</div>
+             </div>
+             <div class="card-body">
+               ${tags.length > 0 ? `
+                 <div class="card-tags">
+                   ${tags.map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}
+                 </div>
+               ` : ''}
+               ${rating && rating !== '0' ? `
+                 <div class="card-rating">
+                   ⭐ ${rating}
+                 </div>
+               ` : ''}
+               ${cost ? `
+                 <div class="card-cost">
+                   💰 ${cost}
+                 </div>
+               ` : ''}
+             </div>
+             <div class="card-footer">
+               ${website ? `<a href="${website}" target="_blank" class="card-btn">Visit Website</a>` : ''}
+               <button class="card-btn" onclick="showCardDetails(${index})">View Details</button>
+             </div>
+           `;
+
+           cardsGrid.appendChild(card);
+         });
+
+         console.log(`✅ Rendered ${window.adventuresData.length} adventure cards`);
+
+         // Update results count
+         const resultsCount = document.getElementById('resultsCount');
+         if (resultsCount) {
+           resultsCount.textContent = `${window.adventuresData.length} adventures`;
+         }
+
+       } catch (error) {
+         console.error('❌ renderAdventureCards error:', error);
+       }
+     };
+    </script>
+
+   <!-- Tag Management System (v7.0.112+) - DEPRECATED: Now using consolidated-tag-system-v7-0-141.js -->
   <!-- <script src="Archived-Files/JS/tag-manager.js"></script> -->
   <script>
     // DEPRECATED: tag-manager check - now using consolidated system
@@ -6219,68 +6366,11 @@
   });
 
   // ============================================================
-  // LOAD TABLE - Load adventure data from Excel via Microsoft Graph API
+  // LOAD TABLE - Already defined in early MSAL script
   // ============================================================
-  window.loadTable = async function() {
-    try {
-      console.log('📥 loadTable: Starting to load adventure data from Excel...');
-
-      if (!accessToken || !activeAccount) {
-        console.error('❌ loadTable: No access token or active account');
-        window.showToast?.('❌ Authentication required. Please sign in again.', 'error', 5000);
-        return false;
-      }
-
-      const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
-      const tableName = "MyList";
-
-      // Build Microsoft Graph API URL
-      const encodedPath = encodeURIComponent(filePath);
-      const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
-
-      console.log(`📍 Fetching from: ${apiUrl}`);
-
-      // Fetch rows from Excel table
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Excel API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const rows = data.value || [];
-
-      console.log(`✅ Fetched ${rows.length} rows from Excel`);
-
-      // Initialize adventuresData array with proper structure
-      window.adventuresData = rows.map((row, index) => ({
-        values: [row.values[0] || []],  // values array
-        rowId: row.id,
-        index: index
-      }));
-
-      console.log('✅ loadTable: Adventure data ready');
-      console.log('📊 Loaded adventures:', window.adventuresData.length);
-
-      // Render the cards to the grid
-      await renderAdventureCards();
-
-      // Show success message
-      window.showToast?.('✅ Adventure data loaded successfully', 'success', 2000);
-
-      return true;
-    } catch (error) {
-      console.error('❌ loadTable error:', error);
-      window.showToast?.(`❌ Failed to load adventure data: ${error.message}`, 'error', 5000);
-      return false;
-    }
-  };
+  // window.loadTable and window.renderAdventureCards are now defined
+  // in the early MSAL initialization script (line ~5482) so they're
+  // available immediately when realSignInImpl() calls them
 
   /* ============================================================
      ERROR TRACKING & ERROR NOTIFICATION BAR
