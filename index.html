@@ -18903,5 +18903,88 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   }, 500);
 </script>
 
+<!-- ...existing code... -->
+<script>
+  // Final auth hardening: restore native handlers if late scripts overwrite globals.
+  (function () {
+    function snapshotNativeAuth() {
+      if (typeof window.signIn === 'function' && !window.__nativeSignIn) {
+        window.__nativeSignIn = window.signIn;
+      }
+      if (typeof window.signOut === 'function' && !window.__nativeSignOut) {
+        window.__nativeSignOut = window.signOut;
+      }
+    }
+
+    function restoreNativeAuth() {
+      if (typeof window.signIn !== 'function' && typeof window.__nativeSignIn === 'function') {
+        window.signIn = window.__nativeSignIn;
+        console.warn('⚠️ Restored window.signIn from native snapshot');
+      }
+      if (typeof window.signOut !== 'function' && typeof window.__nativeSignOut === 'function') {
+        window.signOut = window.__nativeSignOut;
+        console.warn('⚠️ Restored window.signOut from native snapshot');
+      }
+    }
+
+    function bindAuthButtons() {
+      const signInBtn = document.getElementById('signInBtn');
+      const signOutBtn = document.getElementById('signOutBtn');
+
+      if (signInBtn) {
+        signInBtn.onclick = async function (e) {
+          e.preventDefault();
+          restoreNativeAuth();
+          if (typeof window.signIn === 'function') {
+            await window.signIn();
+          } else {
+            console.error('❌ signIn function not available');
+            alert('Sign In function not found. Please refresh the page.');
+          }
+        };
+      }
+
+      if (signOutBtn) {
+        signOutBtn.onclick = async function (e) {
+          e.preventDefault();
+          restoreNativeAuth();
+          if (typeof window.signOut === 'function') {
+            await window.signOut();
+          } else {
+            console.error('❌ signOut function not available');
+            alert('Sign Out function not found. Please refresh the page.');
+          }
+        };
+      }
+    }
+
+    // Capture current native handlers and keep a fallback alias alive.
+    snapshotNativeAuth();
+    if (typeof window.signIn === 'function' && typeof window.nativeSignIn !== 'function') {
+      window.nativeSignIn = window.signIn;
+    }
+    if (typeof window.signOut === 'function' && typeof window.nativeSignOut !== 'function') {
+      window.nativeSignOut = window.signOut;
+    }
+
+    // Re-check after late scripts load.
+    setTimeout(() => {
+      snapshotNativeAuth();
+      restoreNativeAuth();
+      bindAuthButtons();
+    }, 1200);
+
+    window.addEventListener('load', function () {
+      snapshotNativeAuth();
+      restoreNativeAuth();
+      bindAuthButtons();
+      setTimeout(() => {
+        snapshotNativeAuth();
+        restoreNativeAuth();
+        bindAuthButtons();
+      }, 300);
+    }, { once: true });
+  })();
+</script>
 </body>
 </html>
