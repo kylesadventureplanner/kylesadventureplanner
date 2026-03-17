@@ -425,20 +425,19 @@ console.log('✅ Error Management System ready');
     }
 
     // Sign In button - CRITICAL
-    const signInBtn = document.getElementById('signInBtn');
+    const signInBtn = replaceAuthButton('signInBtn');
     if (signInBtn) {
-      signInBtn.addEventListener('click', async () => {
+      signInBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         logDebug('🔐🔐🔐 SIGN IN BUTTON CLICKED 🔐🔐🔐');
         logDebug(`typeof signIn: ${typeof window.signIn}`);
         logDebug(`msalInstance: ${window.msalInstance ? 'EXISTS' : 'MISSING'}`);
 
-        if (typeof window.signIn !== 'function') {
-          logDebug('Attempting fallback auth bootstrap before sign-in');
-          const initialized = await ensureFallbackAuth();
-          if (!initialized) {
-            logError('error', '❌ signIn function not found after fallback initialization');
-            return;
-          }
+        const initialized = await ensureFallbackAuth();
+        if (!initialized || typeof window.signIn !== 'function') {
+          logError('error', '❌ signIn function unavailable after fallback bootstrap');
+          return;
         }
 
         try {
@@ -453,17 +452,24 @@ console.log('✅ Error Management System ready');
       console.error('❌ Sign In button (id="signInBtn") NOT FOUND');
     }
 
-    // Sign Out button
-    const signOutBtn = document.getElementById('signOutBtn');
+    const signOutBtn = replaceAuthButton('signOutBtn');
     if (signOutBtn) {
-      signOutBtn.addEventListener('click', (e) => {
+      signOutBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log('🔐 SIGN OUT BUTTON CLICKED');
-        if (typeof signOut === 'function') {
-          signOut();
-        } else {
-          console.error('❌ signOut function not found!');
+        logDebug('🔐 SIGN OUT BUTTON CLICKED');
+
+        const initialized = await ensureFallbackAuth();
+        if (!initialized || typeof window.signOut !== 'function') {
+          logError('error', '❌ signOut function unavailable after fallback bootstrap');
+          return;
+        }
+
+        try {
+          await window.signOut();
+          logSuccess('Sign out completed');
+        } catch (error) {
+          logError('error', 'Sign out failed', error?.message || error);
         }
       });
       logInit('🔐 Sign Out button registered');
@@ -542,6 +548,8 @@ console.log('✅ Error Management System ready');
   const initialize = function() {
     console.clear();
     console.log('🎯 STARTING v7.0.141 INITIALIZATION DEBUG SYSTEM\n');
+
+    checkAndFixSignIn();
 
     // Check what's loaded
     checkSystems();
@@ -687,6 +695,29 @@ function logError(level, message, details) {
     } else {
         console.error(fullMessage);
     }
+}
+
+function replaceAuthButton(buttonId) {
+    const original = document.getElementById(buttonId);
+    if (!original) return null;
+    if (original.dataset.authOwned === '1') return original;
+
+    const clone = original.cloneNode(true);
+    clone.onclick = null;
+    clone.dataset.authOwned = '1';
+    original.replaceWith(clone);
+    return clone;
+}
+
+function bootstrapAuthEarly() {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            ensureFallbackAuth();
+        }, { once: true });
+        return;
+    }
+
+    ensureFallbackAuth();
 }
 
 let fallbackMsalInitPromise = null;
@@ -868,10 +899,12 @@ async function ensureFallbackAuth(forceRecreate = false) {
 }
 
 function checkAndFixSignIn() {
+    ensureFallbackAuth();
     if (typeof window.signIn !== 'function') {
-        logError('error', 'signIn function not available');
-        ensureFallbackAuth();
+        logDebug('signIn not ready yet - fallback bootstrap requested');
     } else {
         logSuccess('signIn function exists');
     }
 }
+
+bootstrapAuthEarly();
