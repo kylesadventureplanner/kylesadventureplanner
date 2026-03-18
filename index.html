@@ -5586,8 +5586,9 @@
             const values = adventure.values[0] || [];
 
             // Extract data from columns - based on Excel structure
-            const googlePlaceId = values[0] || '';
-            const name = values[1] || 'Unnamed Adventure';
+            // Column order: 0=Name, 1=GooglePlaceId, 2=Website, 3=Tags, etc.
+            const name = values[0] || 'Unnamed Adventure';
+            const googlePlaceId = values[1] || '';
             const website = values[2] || '';
             const tags = (values[3] || '').split(',').filter(t => t.trim());
             const driveTime = values[4] || '';
@@ -10216,6 +10217,17 @@
 
       // Get rating from Excel column (no more localStorage)
       const currentRating = Number(myRating) || 0;
+
+      // DEBUG: Log extracted name and place ID
+      if (pageIndex === 0 || !name) {
+        console.log('🎴 Card being rendered:', {
+          'name (col 0)': name,
+          'googlePlaceId (col 1)': googlePlaceId,
+          'city': city,
+          'address': address,
+          'pageIndex': pageIndex
+        });
+      }
 
       // Get favorite status from Excel column (no more localStorage)
       // Safely handle undefined, null, or non-string values
