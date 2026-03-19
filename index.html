@@ -10048,7 +10048,7 @@
 
         <div class="adventure-card-footer">
           <div class="card-action-btns">
-            <button class="card-btn" onclick="showCardDetails(${index})">
+            <button class="card-btn" onclick="try { window.showCardDetails(${index}); } catch(e) { console.error('Details button error:', e); alert('Error opening details. Please try again.'); }">
               <span>📖</span> Details
             </button>
             ${directions ? `
@@ -10551,9 +10551,28 @@
       const detailsBtn = e.target.closest('.card-details-btn');
       if (detailsBtn) {
         e.stopPropagation();
-        const idx = Number(detailsBtn.getAttribute('data-index'));
-        currentEditingRow = totalFilteredAdventures[idx]?.row;
-        showCardDetails(idx);
+        e.preventDefault();
+        const actualFilteredIndex = Number(detailsBtn.getAttribute('data-index'));
+
+        // Get the actual data index from the filtered adventures array
+        const adventure = totalFilteredAdventures[actualFilteredIndex];
+        if (!adventure) {
+          console.error('Adventure not found at filtered index:', actualFilteredIndex);
+          return;
+        }
+
+        const actualDataIndex = adventure.index;
+        if (actualDataIndex === undefined || actualDataIndex === null) {
+          console.error('Could not find actual data index for adventure');
+          return;
+        }
+
+        try {
+          window.showCardDetails(actualDataIndex);
+        } catch (err) {
+          console.error('Error opening details:', err);
+          alert('Error opening details. Please try again.');
+        }
         return;
       }
 
