@@ -11039,8 +11039,11 @@
    * Show details modal for a specific adventure card
    */
   function showCardDetails(index) {
+    console.log('🔍 showCardDetails called with index:', index);
+
     if (!window.adventuresData || !window.adventuresData[index]) {
-      console.error("Adventure data not found for index:", index);
+      console.error("❌ Adventure data not found for index:", index);
+      alert('Adventure data not found. Please try again.');
       return;
     }
 
@@ -11054,6 +11057,46 @@
       phoneNumber, googleRating, cost, directions, description, nearby,
       links, links2, notes, myRating
     ] = values;
+
+    console.log('✅ Extracted adventure data:', { name, city, address });
+
+    // Create modal elements if they don't exist
+    let modal = document.getElementById("rowDetailModal");
+    let backdrop = document.getElementById("rowDetailModalBackdrop");
+
+    if (!modal || !backdrop) {
+      console.log('📦 Creating modal elements...');
+
+      // Create backdrop
+      if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'rowDetailModalBackdrop';
+        backdrop.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 9999;';
+        document.body.appendChild(backdrop);
+      }
+
+      // Create modal
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'rowDetailModal';
+        modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; z-index: 10000; display: none; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.3);';
+        modal.innerHTML = `
+          <div style="padding: 24px; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
+            <h2 id="rowDetailTitle" style="margin: 0; font-size: 20px; font-weight: 700;"></h2>
+            <button onclick="closeRowDetailModal()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; opacity: 0.8;">×</button>
+          </div>
+          <div style="padding: 24px; flex: 1; overflow-y: auto;">
+            <div id="rowDetailTabsContainer" style="display: flex; gap: 8px; border-bottom: 1px solid #e5e7eb; margin-bottom: 20px; flex-wrap: wrap;"></div>
+            <div id="rowDetailContent" style="min-height: 200px;"></div>
+          </div>
+          <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #f9fafb; display: flex; gap: 12px; justify-content: flex-end;">
+            <button id="rowDetailEditBtn" onclick="enableEditMode()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">✎ Edit</button>
+            <button id="rowDetailCloseFooterBtn" onclick="closeRowDetailModal()" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+    }
 
     // Store current row for editing (CRITICAL FIX)
     currentEditingRow = row;
@@ -11090,17 +11133,17 @@
       newCloseBtn.addEventListener("click", closeRowDetailModal);
     }
 
-    // Use the existing row detail modal
-    const modal = document.getElementById("rowDetailModal");
-    const backdrop = document.getElementById("rowDetailModalBackdrop");
+    // Get modal elements
     const modalTitle = document.getElementById("rowDetailTitle");
     const modalContent = document.getElementById("rowDetailContent");
     const tabsContainer = document.getElementById("rowDetailTabsContainer");
 
     if (!modal || !backdrop || !modalTitle || !modalContent || !tabsContainer) {
-      console.error("Modal elements not found");
+      console.error("❌ Modal elements still not found");
       return;
     }
+
+    console.log('✅ Modal elements ready, populating data...');
 
     // Persist source index on the modal so edit mode can recover reliably.
     modal.dataset.currentRowIndex = String(index);
@@ -11227,9 +11270,61 @@
       });
     });
 
+    // Show modal and backdrop
+    console.log('📊 Showing modal and backdrop...');
+    modal.style.display = 'flex';
+    backdrop.style.display = 'flex';
     modal.classList.add("visible");
     backdrop.classList.add("visible");
+    console.log('✅ Modal displayed successfully!');
   }
+
+  /**
+   * Close the details modal
+   */
+  function closeRowDetailModal() {
+    console.log('🔒 Closing modal...');
+    const modal = document.getElementById("rowDetailModal");
+    const backdrop = document.getElementById("rowDetailModalBackdrop");
+
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove("visible");
+    }
+    if (backdrop) {
+      backdrop.style.display = 'none';
+      backdrop.classList.remove("visible");
+    }
+
+    isInEditMode = false;
+    console.log('✅ Modal closed');
+  }
+
+  /**
+   * Enable edit mode for the current row
+   */
+  function enableEditMode() {
+    console.log('✏️ Enabling edit mode...');
+    isInEditMode = true;
+    // Edit mode implementation would go here
+  }
+
+  /**
+   * Make closeRowDetailModal globally accessible
+   */
+  window.closeRowDetailModal = closeRowDetailModal;
+
+  /**
+   * Make enableEditMode globally accessible
+   */
+  window.enableEditMode = enableEditMode;
+
+  // Add backdrop click handler to close modal
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'rowDetailModalBackdrop') {
+      closeRowDetailModal();
+    }
+  });
 
   // Store the real implementation for the placeholder to call
   window._realShowCardDetails = showCardDetails;
