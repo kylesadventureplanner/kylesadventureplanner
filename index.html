@@ -15247,6 +15247,9 @@ COMMON ISSUES:
     return __legacyShowCardDetails(filteredIndex);
   };
 
+  // Re-export the wrapped function to window
+  window.showCardDetails = showCardDetails;
+
   // ============================================================
   // CANONICAL FAVORITES / RATINGS OVERRIDES (final)
   // ============================================================
