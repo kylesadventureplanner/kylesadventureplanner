@@ -5252,6 +5252,46 @@
      }
 
      console.log('✅ Early auth initialization complete');
+
+     // ============================================================
+     // PLACEHOLDER FUNCTIONS FOR CARD BUTTONS
+     // These are called from inline onclick handlers before the real implementations are defined
+     // They will be replaced by the real implementations later in the script
+     // ============================================================
+
+     if (typeof window.showCardDetails === 'undefined') {
+       window.showCardDetails = function(index) {
+         console.warn('⚠️ Placeholder showCardDetails called - real implementation loading');
+         // Try to call the real one if available
+         if (typeof window._realShowCardDetails === 'function') {
+           return window._realShowCardDetails(index);
+         }
+         // Otherwise queue it to retry
+         console.log('⏳ Queueing showCardDetails call for index:', index);
+         if (!window._queuedCardDetailsCalls) window._queuedCardDetailsCalls = [];
+         window._queuedCardDetailsCalls.push(index);
+       };
+     }
+
+     if (typeof window.setAdventureRating === 'undefined') {
+       window.setAdventureRating = function(index, rating, cardElement) {
+         console.warn('⚠️ Placeholder setAdventureRating called');
+         if (typeof window._realSetAdventureRating === 'function') {
+           return window._realSetAdventureRating(index, rating, cardElement);
+         }
+       };
+     }
+
+     if (typeof window.toggleCardFavorite === 'undefined') {
+       window.toggleCardFavorite = function(index, event, cardElement) {
+         console.warn('⚠️ Placeholder toggleCardFavorite called');
+         if (typeof window._realToggleCardFavorite === 'function') {
+           return window._realToggleCardFavorite(index, event, cardElement);
+         }
+       };
+     }
+
+     console.log('✅ Placeholder card button functions initialized');
    </script>
 
    <!-- MSAL Config & Real Auth - MUST load right after MSAL library before any other scripts -->
@@ -5610,7 +5650,7 @@
                     </a>
                   ` : ''}
 
-                  <button class="card-btn card-details-btn" onclick="window.showCardDetails(${index})" title="View full details">
+                  <button class="card-btn card-details-btn" onclick="try { window.showCardDetails(${index}); } catch(e) { console.error('Error calling showCardDetails:', e); }" title="View full details">
                     <span>📖</span> Details
                   </button>
                 </div>
@@ -5621,13 +5661,13 @@
                       <span class="rating-star ${currentRating >= star ? 'filled' : ''}"
                             data-rating="${star}"
                             data-index="${index}"
-                            onclick="setAdventureRating(${index}, ${star}, this.closest('.adventure-card'))"
+                            onclick="try { window.setAdventureRating(${index}, ${star}, this.closest('.adventure-card')); } catch(e) { console.error('Error calling setAdventureRating:', e); }"
                             title="${star} stars">⭐</span>
                     `).join('')}
                   </div>
 
                   <button class="card-favorite-btn ${isFavorited ? 'active' : ''}"
-                          onclick="toggleCardFavorite(${index}, event, this.closest('.adventure-card'))"
+                          onclick="try { window.toggleCardFavorite(${index}, event, this.closest('.adventure-card')); } catch(e) { console.error('Error calling toggleCardFavorite:', e); }"
                           title="Add to favorites"
                           data-adventure-id="${adventureId}">
                     ${isFavorited ? '💖' : '🤍'}
@@ -5689,6 +5729,10 @@
        }
      };
 
+     // Store real implementations for placeholder functions to call
+     window._realToggleCardFavorite = window.toggleCardFavorite;
+     window._realSetAdventureRating = window.setAdventureRating;
+
      // ============================================================
      // SET ADVENTURE RATING - Handle star rating clicks
      // ============================================================
@@ -5723,6 +5767,9 @@
          console.error('❌ setAdventureRating error:', error);
        }
      };
+
+     // Update the real implementation reference
+     window._realSetAdventureRating = window.setAdventureRating;
 
      // ============================================================
      // SAVE TO EXCEL - Update adventure data in Excel
@@ -11162,8 +11209,20 @@
     backdrop.classList.add("visible");
   }
 
+  // Store the real implementation for the placeholder to call
+  window._realShowCardDetails = showCardDetails;
+
   // Make showCardDetails globally accessible
   window.showCardDetails = showCardDetails;
+
+  // Process any queued card detail calls from placeholder
+  if (window._queuedCardDetailsCalls && window._queuedCardDetailsCalls.length > 0) {
+    console.log('📋 Processing', window._queuedCardDetailsCalls.length, 'queued showCardDetails calls');
+    while (window._queuedCardDetailsCalls.length > 0) {
+      const index = window._queuedCardDetailsCalls.shift();
+      window.showCardDetails(index);
+    }
+  }
 
   /**
    * Toggle favorite status for a card - delegates to canonical implementation
