@@ -1507,17 +1507,17 @@
       display: flex;
       flex-direction: column;
       gap: var(--space-md);
-      pointer-events: none;
+      pointer-events: auto;
       position: relative;
-      z-index: 0;
+      z-index: 1;
     }
 
     /* Card Body Links and Interactive Elements */
     .adventure-card-body a,
     .adventure-card-body .card-address-copy {
-      pointer-events: auto;
+      pointer-events: auto !important;
       position: relative;
-      z-index: 10;
+      z-index: auto;
     }
 
     /* Card Footer */
@@ -1528,20 +1528,22 @@
       flex-direction: column;
       gap: 12px;
       background: #fafafa;
-      pointer-events: auto;
+      pointer-events: auto !important;
       position: relative;
-      z-index: 50;
+      z-index: 10;
       overflow: visible;
     }
 
-    .card-action-btns {
+    .card-action-buttons {
       display: flex;
       gap: var(--space-md);
       flex-wrap: wrap;
-      pointer-events: auto;
+      pointer-events: auto !important;
       position: relative;
-      z-index: 100;
+      z-index: 15;
       width: 100%;
+      margin: 0;
+      padding: 0;
     }
 
     .card-btn {
@@ -1559,12 +1561,13 @@
       gap: var(--space-sm);
       box-shadow: var(--shadow-sm);
       position: relative;
-      z-index: 1000 !important;
+      z-index: 20 !important;
       pointer-events: auto !important;
       text-decoration: none;
       white-space: nowrap;
       user-select: none;
       flex-shrink: 0;
+      touch-action: manipulation;
     }
 
     .card-btn:hover {
@@ -1613,9 +1616,9 @@
       margin-top: var(--space-md);
       padding-top: var(--space-md);
       border-top: 1px solid var(--neutral-100);
-      pointer-events: auto;
+      pointer-events: auto !important;
       position: relative;
-      z-index: 100;
+      z-index: 20;
     }
 
     .card-rating {
@@ -1623,10 +1626,10 @@
       gap: var(--space-sm);
       align-items: center;
       flex: 1;
-      cursor: help;
-      pointer-events: auto;
+      cursor: pointer;
+      pointer-events: auto !important;
       position: relative;
-      z-index: 100;
+      z-index: 25;
     }
 
     .card-rating-tools {
@@ -1673,7 +1676,8 @@
       box-shadow: var(--shadow-sm);
       pointer-events: auto !important;
       position: relative;
-      z-index: 1000 !important;
+      z-index: 30 !important;
+      touch-action: manipulation;
     }
 
     .card-favorite-btn:hover {
@@ -1705,13 +1709,14 @@
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       pointer-events: auto !important;
       position: relative;
-      z-index: 1000 !important;
+      z-index: 30 !important;
       min-width: 48px;
       height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      touch-action: manipulation;
     }
 
     .tag-manager-btn:hover {
@@ -1729,9 +1734,12 @@
       filter: grayscale(1);
       pointer-events: auto !important;
       position: relative;
-      z-index: 1000 !important;
+      z-index: 30 !important;
       display: inline-block;
       line-height: 1;
+      padding: 4px;
+      margin: -4px;
+      touch-action: manipulation;
     }
 
     .rating-star:hover,
@@ -19724,6 +19732,42 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         bindAuthButtons();
       }, 300);
     }, { once: true });
+
+    // ============================================================
+    // EVENT DELEGATION FOR CARD BUTTON CLICKS
+    // Ensures all button clicks are captured reliably
+    // ============================================================
+    document.addEventListener('click', function(e) {
+      const ratingStarElement = e.target.closest('.rating-star');
+      if (ratingStarElement && window.setAdventureRating) {
+        const cardElement = ratingStarElement.closest('.adventure-card');
+        if (cardElement) {
+          const index = ratingStarElement.getAttribute('data-index');
+          const rating = ratingStarElement.getAttribute('data-rating');
+          if (index !== null && rating !== null) {
+            try {
+              window.setAdventureRating(parseInt(index), parseInt(rating), cardElement);
+            } catch(err) {
+              console.error('Event delegation error for rating star:', err);
+            }
+          }
+        }
+      }
+    }, true); // Use capture phase for more reliable capturing
+
+    document.addEventListener('click', function(e) {
+      const favoriteButton = e.target.closest('.card-favorite-btn');
+      if (favoriteButton && window.toggleCardFavorite) {
+        const cardElement = favoriteButton.closest('.adventure-card');
+        if (cardElement) {
+          try {
+            window.toggleCardFavorite(null, e, cardElement);
+          } catch(err) {
+            console.error('Event delegation error for favorite button:', err);
+          }
+        }
+      }
+    }, true); // Use capture phase for more reliable capturing
   })();
 </script>
 </body>
