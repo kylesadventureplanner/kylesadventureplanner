@@ -10048,21 +10048,21 @@
 
         <div class="adventure-card-footer">
           <div class="card-action-btns">
-            <button class="card-btn card-details-btn" data-index="${actualIndex}" title="View full details" aria-label="View adventure details">
+            <button class="card-btn" onclick="try { window.showCardDetails(${index}); } catch(e) { console.error('Details button error:', e); alert('Error opening details. Please try again.'); }">
               <span>📖</span> Details
             </button>
             ${directions ? `
-              <button class="card-btn card-btn-primary card-directions-btn" data-directions="${directions}" title="Get directions" aria-label="Get directions">
+              <button class="card-btn card-btn-primary" onclick="window.open('${directions}', '_blank')">
                 <span>🗺️</span> Directions
               </button>
             ` : ''}
           </div>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <button class="tag-manager-btn" data-place-id="${googlePlaceId}" title="Manage tags" aria-label="Manage tags for this place">
+            <button class="tag-manager-btn" onclick="openTagManager('${googlePlaceId}')" title="Manage tags for this place">
               🏷️
             </button>
-            <button class="card-favorite-btn" data-index="${actualIndex}" data-place-id="${googlePlaceId}" title="Add to favorites" aria-label="Add to favorites">
-              ${isFavorite ? '💖' : '🤍'}
+            <button class="card-favorite" onclick="toggleCardFavorite(${index})" title="Add to favorites">
+              ⭐
             </button>
           </div>
         </div>
@@ -10552,27 +10552,25 @@
       if (detailsBtn) {
         e.stopPropagation();
         e.preventDefault();
-        const filteredIndex = Number(detailsBtn.getAttribute('data-index'));
+        const actualFilteredIndex = Number(detailsBtn.getAttribute('data-index'));
 
-        // Get the adventure object from the filtered array
-        const adventure = totalFilteredAdventures[filteredIndex];
+        // Get the actual data index from the filtered adventures array
+        const adventure = totalFilteredAdventures[actualFilteredIndex];
         if (!adventure) {
-          console.error('❌ Adventure not found at filtered index:', filteredIndex);
+          console.error('Adventure not found at filtered index:', actualFilteredIndex);
           return;
         }
 
-        // Get the actual index in window.adventuresData
-        const actualDataIndex = adventure.sourceIndex;
-        if (actualDataIndex === undefined || actualDataIndex === null || actualDataIndex < 0) {
-          console.error('❌ Could not find actual data index for adventure at filtered index:', filteredIndex);
+        const actualDataIndex = adventure.index;
+        if (actualDataIndex === undefined || actualDataIndex === null) {
+          console.error('Could not find actual data index for adventure');
           return;
         }
 
         try {
-          console.log('📖 Opening details for index:', actualDataIndex);
           window.showCardDetails(actualDataIndex);
         } catch (err) {
-          console.error('❌ Error opening details:', err);
+          console.error('Error opening details:', err);
           alert('Error opening details. Please try again.');
         }
         return;
@@ -10581,27 +10579,34 @@
       const directionsBtn = e.target.closest('.card-directions-btn');
       if (directionsBtn) {
         e.stopPropagation();
-        e.preventDefault();
-        const directionsUrl = directionsBtn.getAttribute('data-directions');
+        const placeId = directionsBtn.getAttribute('data-placeid');
+        const address = directionsBtn.getAttribute('data-address');
+        const name = directionsBtn.getAttribute('data-name');
 
-        if (directionsUrl && directionsUrl.trim()) {
-          console.log('Opening directions:', directionsUrl);
-          window.open(directionsUrl, '_blank');
-        } else {
-          console.warn('No directions URL available');
+        // Generate Google Maps directions URL using address/name (more reliable than Place ID)
+        let mapsUrl = 'https://www.google.com/maps/dir/?api=1';
+        let destination = '';
+
+        if (address && address.trim()) {
+          // Prefer address for most accurate directions
+          destination = address;
+          mapsUrl += `&destination=${encodeURIComponent(address)}`;
+        } else if (name && name.trim()) {
+          // Fall back to name search
+          destination = name;
+          mapsUrl += `&destination=${encodeURIComponent(name)}`;
+        } else if (placeId && placeId.trim()) {
+          // Use Place ID only as last resort
+          mapsUrl += `&destination_place_id=${encodeURIComponent(placeId)}`;
         }
-        return;
-      }
 
-      const tagManagerBtn = e.target.closest('.tag-manager-btn');
-      if (tagManagerBtn) {
-        e.stopPropagation();
-        e.preventDefault();
-        const placeId = tagManagerBtn.getAttribute('data-place-id');
-        if (typeof openTagManager === 'function') {
-          openTagManager(placeId);
-        } else {
-          console.error('Tag manager not available');
+        console.log('Opening directions:', mapsUrl);
+        window.open(mapsUrl, '_blank');
+
+        // Save the generated directions URL to Excel column 15 (Directions)
+        const idx = Number(directionsBtn.closest('.adventure-card').querySelector('.card-details-btn')?.getAttribute('data-index'));
+        if (idx >= 0 && totalFilteredAdventures[idx]) {
+          updateExcelDirections(idx, mapsUrl);
         }
         return;
       }
