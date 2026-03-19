@@ -1507,127 +1507,9 @@
       display: flex;
       flex-direction: column;
       gap: var(--space-md);
-    }
-
-    .card-description {
-      color: var(--neutral-600);
-      font-size: 14px;
-      line-height: 1.6;
-      margin-bottom: var(--space-md);
-    }
-
-    .card-info-row {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-md);
-      font-size: 13px;
-      padding: var(--space-sm) 0;
-      border-radius: var(--radius-sm);
-      padding: var(--space-md) var(--space-sm);
-      background: var(--neutral-50);
-      transition: background 0.2s;
-    }
-
-    .card-info-row:hover {
-      background: var(--neutral-100);
-    }
-
-    .card-info-row a,
-    .card-info-value a {
-      pointer-events: auto !important;
+      pointer-events: auto;
       position: relative;
-      z-index: 10;
-      color: #1d4ed8;
-      text-decoration: none;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .card-info-row a:hover,
-    .card-info-value a:hover {
-      color: #1e40af;
-      text-decoration: underline;
-      text-decoration-thickness: 2px;
-      text-underline-offset: 3px;
-    }
-
-    .card-info-row a:focus,
-    .card-info-value a:focus {
-      outline: 2px solid #3b82f6;
-      outline-offset: 2px;
-      border-radius: 2px;
-    }
-
-    .card-address-copy {
-      cursor: copy;
-      text-decoration: underline dotted;
-      text-underline-offset: 2px;
-    }
-
-    .card-address-copy:hover {
-      color: #1d4ed8;
-    }
-
-    .card-info-icon {
-      font-size: 16px;
-      min-width: 24px;
-      color: var(--primary);
-    }
-
-    .card-info-label {
-      font-weight: 600;
-      color: var(--neutral-600);
-      min-width: 100px;
-    }
-
-    .card-info-value {
-      color: var(--neutral-800);
-      flex: 1;
-      font-weight: 500;
-    }
-
-    /* Search highlighting */
-    .highlight {
-      background: linear-gradient(90deg, #fef08a 0%, #fde047 100%);
-      padding: 2px 4px;
-      border-radius: var(--radius-sm);
-      font-weight: 600;
-      color: var(--neutral-900);
-      box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.2);
-    }
-
-    /* Card entrance animations with stagger effect */
-    .adventure-card {
-      animation: cardEntrance 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
-    }
-
-    .adventure-card:nth-child(1) { animation-delay: 0.05s; }
-    .adventure-card:nth-child(2) { animation-delay: 0.1s; }
-    .adventure-card:nth-child(3) { animation-delay: 0.15s; }
-    .adventure-card:nth-child(4) { animation-delay: 0.2s; }
-    .adventure-card:nth-child(5) { animation-delay: 0.25s; }
-    .adventure-card:nth-child(6) { animation-delay: 0.3s; }
-
-    @keyframes cardEntrance {
-      from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    .card-description {
-      font-size: 14px;
-      color: #4b5563;
-      line-height: 1.6;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      z-index: 1;
     }
 
     /* Card Footer */
@@ -1638,12 +1520,18 @@
       flex-direction: column;
       gap: 12px;
       background: #fafafa;
+      pointer-events: auto;
+      position: relative;
+      z-index: 10;
     }
 
     .card-action-btns {
       display: flex;
       gap: var(--space-md);
       flex-wrap: wrap;
+      pointer-events: auto;
+      position: relative;
+      z-index: 20;
     }
 
     .card-btn {
@@ -1662,7 +1550,7 @@
       box-shadow: var(--shadow-sm);
       position: relative;
       z-index: 100;
-      pointer-events: auto;
+      pointer-events: auto !important;
       text-decoration: none;
       white-space: nowrap;
       user-select: none;
@@ -1714,6 +1602,9 @@
       margin-top: var(--space-md);
       padding-top: var(--space-md);
       border-top: 1px solid var(--neutral-100);
+      pointer-events: auto;
+      position: relative;
+      z-index: 20;
     }
 
     .card-rating {
@@ -1722,6 +1613,9 @@
       align-items: center;
       flex: 1;
       cursor: help;
+      pointer-events: auto;
+      position: relative;
+      z-index: 25;
     }
 
     .card-rating-tools {
@@ -1766,6 +1660,9 @@
       align-items: center;
       justify-content: center;
       box-shadow: var(--shadow-sm);
+      pointer-events: auto !important;
+      position: relative;
+      z-index: 100;
     }
 
     .card-favorite-btn:hover {
@@ -1786,12 +1683,41 @@
       transform: scale(1.12);
     }
 
+    .tag-manager-btn {
+      font-size: 20px;
+      cursor: pointer;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--neutral-300);
+      background: white;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: auto !important;
+      position: relative;
+      z-index: 100;
+      min-width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tag-manager-btn:hover {
+      border-color: var(--primary);
+      background: var(--neutral-50);
+      box-shadow: var(--shadow-md);
+      transform: scale(1.08);
+    }
+
     .rating-star {
       cursor: pointer;
       font-size: 18px;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       opacity: 0.25;
       filter: grayscale(1);
+      pointer-events: auto !important;
+      position: relative;
+      z-index: 30;
     }
 
     .rating-star:hover,
@@ -5586,7 +5512,7 @@
             const values = adventure.values[0] || [];
 
             // Extract data from columns - based on Excel structure
-            // Column order: 0=Name, 1=GooglePlaceId, 2=Website, 3=Tags, etc.
+             // Column order: 0=Name, 1=GooglePlaceId, 2=Website, 3=Tags, etc.
             const name = values[0] || 'Unnamed Adventure';
             const googlePlaceId = values[1] || '';
             const website = values[2] || '';
