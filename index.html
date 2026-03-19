@@ -19877,7 +19877,253 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         }
       }
     }, true); // Use capture phase for more reliable capturing
+
+    // ============================================================
+    // CONSOLIDATED FILTERING SYSTEM v2.0
+    // All filtering logic unified, optimized, and conflict-free
+    // ============================================================
+    console.log('🔧 Initializing Consolidated Filtering System...');
+
+    // Master filter state object
+    const FilterManager = {
+      state: {
+        searchName: '',
+        filterDifficulty: '',
+        filterState: '',
+        filterCity: '',
+        filterTags: '',
+        filterCost: '',
+        showFavoritesOnly: false,
+        quickFilters: new Set()
+      },
+
+      // Initialize all filter inputs and listeners
+      init() {
+        console.log('📋 FilterManager: Initializing...');
+        this.attachInputListeners();
+        this.attachQuickFilterListeners();
+        this.attachResetListeners();
+        console.log('✅ FilterManager: Initialization complete');
+      },
+
+      // Attach listeners to search and filter inputs
+      attachInputListeners() {
+        const inputs = {
+          searchName: document.getElementById('searchName'),
+          filterDifficulty: document.getElementById('filterDifficulty'),
+          filterState: document.getElementById('filterState'),
+          filterCity: document.getElementById('filterCity'),
+          filterTags: document.getElementById('filterTags'),
+          filterCost: document.getElementById('filterCost')
+        };
+
+        // Input event (typing) - update state silently
+        Object.entries(inputs).forEach(([key, element]) => {
+          if (element) {
+            element.addEventListener('input', (e) => {
+              this.state[key] = e.target.value.trim();
+              console.log(`🔤 ${key} updated: "${this.state[key]}"`);
+            });
+
+            // Change event - apply filters
+            element.addEventListener('change', () => {
+              this.state[key] = element.value.trim();
+              this.applyAllFilters();
+            });
+          }
+        });
+      },
+
+      // Attach listeners to quick filter buttons
+      attachQuickFilterListeners() {
+        const quickButtons = document.querySelectorAll('.quick-filter-btn');
+        quickButtons.forEach(btn => {
+          if (btn.id === 'favoritesFilterBtn') {
+            // Favorites button - special handling
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              this.state.showFavoritesOnly = !this.state.showFavoritesOnly;
+              btn.classList.toggle('active');
+              console.log(`💖 Favorites filter: ${this.state.showFavoritesOnly ? 'ON' : 'OFF'}`);
+              this.applyAllFilters();
+            });
+          } else {
+            // Tag filter buttons
+            btn.addEventListener('click', (e) => {
+              e.preventDefault();
+              const tag = btn.getAttribute('data-tag');
+              if (tag) {
+                if (this.state.quickFilters.has(tag)) {
+                  this.state.quickFilters.delete(tag);
+                  btn.classList.remove('active');
+                } else {
+                  this.state.quickFilters.add(tag);
+                  btn.classList.add('active');
+                }
+                console.log(`🏷️ Quick filter: ${tag} (${this.state.quickFilters.size} total)`);
+                this.applyAllFilters();
+              }
+            });
+          }
+        });
+      },
+
+      // Attach listeners to reset buttons
+      attachResetListeners() {
+        const resetButtons = document.querySelectorAll('[data-action="reset-filters"], .pill-button.reset, #breadcrumbResetBtn');
+        resetButtons.forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.resetAllFilters();
+          });
+        });
+      },
+
+      // Apply all active filters
+      applyAllFilters() {
+        console.log('⚡ FilterManager: Applying all active filters...');
+
+        if (!window.adventuresData || window.adventuresData.length === 0) {
+          console.warn('⚠️ No adventure data available');
+          return;
+        }
+
+        // Filter the data
+        const filtered = window.adventuresData.filter((row) => {
+          const values = row.values[0] || [];
+          const [name, , , tags, , , , difficulty, , state, city, , , , , cost] = values;
+
+          let matches = true;
+
+          // Search name filter
+          if (matches && this.state.searchName) {
+            matches = (name || '').toLowerCase().includes(this.state.searchName.toLowerCase());
+          }
+
+          // Difficulty filter
+          if (matches && this.state.filterDifficulty) {
+            matches = (difficulty || '').toLowerCase() === this.state.filterDifficulty.toLowerCase();
+          }
+
+          // State filter
+          if (matches && this.state.filterState) {
+            matches = (state || '').toLowerCase() === this.state.filterState.toLowerCase();
+          }
+
+          // City filter
+          if (matches && this.state.filterCity) {
+            matches = (city || '').toLowerCase() === this.state.filterCity.toLowerCase();
+          }
+
+          // Tags filter
+          if (matches && this.state.filterTags) {
+            matches = (tags || '').toLowerCase().includes(this.state.filterTags.toLowerCase());
+          }
+
+          // Cost filter
+          if (matches && this.state.filterCost) {
+            matches = (cost || '').toLowerCase().includes(this.state.filterCost.toLowerCase());
+          }
+
+          // Quick filters (OR logic)
+          if (matches && this.state.quickFilters.size > 0) {
+            const tagList = (tags || '').split(',').map(t => t.trim().toLowerCase());
+            matches = Array.from(this.state.quickFilters).some(qf =>
+              tagList.some(tag => tag.includes(qf.toLowerCase()))
+            );
+          }
+
+          // Favorites filter
+          if (matches && this.state.showFavoritesOnly) {
+            const favs = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
+            matches = favs.includes(row.dataset?.adventureId || name);
+          }
+
+          return matches;
+        });
+
+        console.log(`📊 Filtered: ${filtered.length} of ${window.adventuresData.length} adventures`);
+
+        // Render filtered results
+        if (typeof renderAdventureCards === 'function') {
+          renderAdventureCards(filtered);
+        }
+
+        // Update UI indicators
+        this.updateIndicators();
+      },
+
+      // Reset all filters
+      resetAllFilters() {
+        console.log('🔄 FilterManager: Resetting all filters...');
+
+        // Clear state
+        this.state.searchName = '';
+        this.state.filterDifficulty = '';
+        this.state.filterState = '';
+        this.state.filterCity = '';
+        this.state.filterTags = '';
+        this.state.filterCost = '';
+        this.state.showFavoritesOnly = false;
+        this.state.quickFilters.clear();
+
+        // Clear input values
+        ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+
+        // Clear button states
+        document.querySelectorAll('.quick-filter-btn, #favoritesFilterBtn').forEach(btn => {
+          btn.classList.remove('active');
+        });
+
+        // Reapply with no filters
+        this.applyAllFilters();
+        console.log('✅ All filters reset');
+      },
+
+      // Update filter indicator badge and breadcrumbs
+      updateIndicators() {
+        const badge = document.getElementById('filtersActiveBadge');
+        const count = (this.state.searchName ? 1 : 0) +
+                     (this.state.filterDifficulty ? 1 : 0) +
+                     (this.state.filterState ? 1 : 0) +
+                     (this.state.filterCity ? 1 : 0) +
+                     (this.state.filterTags ? 1 : 0) +
+                     (this.state.filterCost ? 1 : 0) +
+                     (this.state.showFavoritesOnly ? 1 : 0) +
+                     this.state.quickFilters.size;
+
+        if (badge) {
+          if (count > 0) {
+            badge.textContent = `${count} Filter${count !== 1 ? 's' : ''} Active`;
+            badge.style.display = 'inline-block';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+
+        console.log(`🎯 Filters active: ${count}`);
+      }
+    };
+
+    // Initialize FilterManager when page is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => FilterManager.init());
+    } else {
+      FilterManager.init();
+    }
+
+    // Make FilterManager globally accessible
+    window.FilterManager = FilterManager;
+    window.applyFilters = () => FilterManager.applyAllFilters();
+    window.resetAllFilters = () => FilterManager.resetAllFilters();
+
+    console.log('✅ Consolidated Filtering System Ready');
   })();
 </script>
 </body>
 </html>
+
+
