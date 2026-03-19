@@ -8613,7 +8613,136 @@
      * This functionality is now available in Edit Mode instead
      */
 
-    // ...existing code...
+      /**
+       * Show nearby adventures for a given location
+       */
+      function showNearbyAdventures(index) {
+        if (!totalFilteredAdventures || !totalFilteredAdventures[index]) {
+          console.error("Adventure not found for index:", index);
+          showToast("Could not load nearby adventures", "error");
+          return;
+        }
+
+        const adventure = totalFilteredAdventures[index];
+        const values = adventure.row.values[0];
+        const cityOfOrigin = values[10] || "";
+        const stateOfOrigin = values[9] || "";
+
+        if (!cityOfOrigin) {
+          showToast("City information not available for this location", "warning");
+          return;
+        }
+
+        // Find nearby adventures in the same city/state
+        const nearbyAdventures = totalFilteredAdventures
+          .map((item, idx) => ({
+            adventure: item,
+            index: idx,
+            itemValues: item.row.values[0]
+          }))
+          .filter(item => {
+            const itemCity = item.itemValues[10] || "";
+            const itemState = item.itemValues[9] || "";
+            // Don't include the original adventure
+            return item.index !== index && itemCity.toLowerCase() === cityOfOrigin.toLowerCase();
+          })
+          .slice(0, 10);
+
+        if (nearbyAdventures.length === 0) {
+          showToast(`No other adventures found in ${cityOfOrigin}`, "info", 3000);
+          return;
+        }
+
+        showToast(`Found ${nearbyAdventures.length} adventures in ${cityOfOrigin}`, "success", 2000);
+        console.log(`Found ${nearbyAdventures.length} nearby adventures in ${cityOfOrigin}`);
+      }
+
+      /**
+       * Set rating for an adventure
+       */
+      function setAdventureRating(index, rating, cardElement) {
+        if (!totalFilteredAdventures || !totalFilteredAdventures[index]) {
+          console.error("Adventure not found for index:", index);
+          return;
+        }
+
+        const adventure = totalFilteredAdventures[index];
+        const key = `rating_${adventure.row.values[0][0]}_${adventure.row.values[0][1]}`;
+
+        // Save to localStorage
+        if (rating && rating >= 1 && rating <= 5) {
+          adventureRatings[key] = rating;
+          localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+
+          // Update card UI
+          if (cardElement) {
+            const stars = cardElement.querySelectorAll('.rating-star');
+            stars.forEach((star, idx) => {
+              if (idx < rating) {
+                star.classList.add('filled');
+              } else {
+                star.classList.remove('filled');
+              }
+            });
+          }
+
+          showToast(`✓ Rated ${rating} star${rating !== 1 ? 's' : ''}`, 'success', 1500);
+          console.log(`Set rating to ${rating} for adventure at index ${index}`);
+        }
+      }
+
+      /**
+       * Clear rating for an adventure
+       */
+      function clearAdventureRating(index, cardElement) {
+        if (!totalFilteredAdventures || !totalFilteredAdventures[index]) {
+          console.error("Adventure not found for index:", index);
+          return;
+        }
+
+        const adventure = totalFilteredAdventures[index];
+        const key = `rating_${adventure.row.values[0][0]}_${adventure.row.values[0][1]}`;
+
+        // Remove from localStorage
+        if (adventureRatings[key]) {
+          delete adventureRatings[key];
+          localStorage.setItem('adventureRatings', JSON.stringify(adventureRatings));
+        }
+
+        // Update card UI
+        if (cardElement) {
+          const stars = cardElement.querySelectorAll('.rating-star');
+          stars.forEach(star => {
+            star.classList.remove('filled');
+          });
+        }
+
+        showToast('✓ Rating cleared', 'success', 1200);
+        console.log(`Cleared rating for adventure at index ${index}`);
+      }
+
+      /**
+       * Open tag manager for a place
+       */
+      function openTagManager(placeId) {
+        if (!placeId || placeId === 'undefined' || placeId === '') {
+          showToast('This location does not have a Place ID', 'warning', 2000);
+          return;
+        }
+
+        console.log(`Opening tag manager for place: ${placeId}`);
+
+        // Check if tag manager exists
+        if (window.tagManager) {
+          window.tagManager.showTagUI(placeId);
+          showToast('Tag manager opened', 'info', 1000);
+        } else {
+          showToast('Tag manager is not available', 'error', 2000);
+          console.error('Tag manager not initialized');
+        }
+      }
+
+      // ...existing code...
   async function addRowToExcel(rowValues, retryCount = 0) {
     let token = window.accessToken;
     if (!token) throw new Error("Please sign in first.");
