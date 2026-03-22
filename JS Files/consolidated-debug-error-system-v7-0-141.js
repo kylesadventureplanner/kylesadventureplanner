@@ -207,7 +207,10 @@ class ErrorManager {
 
     for (let error of recentErrors) {
       const requestIdBadge = error.requestId
-        ? '<div style="display: inline-block; margin-top: 6px; padding: 2px 6px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 999px; font-size: 10px; font-weight: 700; color: #991b1b;">' + error.requestId + '</div>'
+        ? '<div title="Request ID: ' + error.requestId + '" style="display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 1px 6px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 999px; font-size: 10px; font-weight: 600; line-height: 1.3; color: #9f1239; max-width: 100%;">' +
+            '<span style="opacity: 0.85; font-weight: 700;">RID</span>' +
+            '<span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; overflow-wrap: anywhere;">' + error.requestId + '</span>' +
+          '</div>'
         : '';
       html += '<div style="padding: 12px; border-bottom: 1px solid #fecaca; display: flex; gap: 8px; align-items: flex-start;">' +
         '<div style="flex-shrink: 0; margin-top: 2px;">❌</div>' +
