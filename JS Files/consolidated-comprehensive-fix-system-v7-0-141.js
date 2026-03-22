@@ -948,6 +948,18 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     if (window.__filterReliabilityBridgeInstalled) return;
     window.__filterReliabilityBridgeInstalled = true;
 
+    const bridgeCounters = window.__filterBridgeDebugCounters || {
+      inputApplied: 0,
+      quickApplied: 0
+    };
+    window.__filterBridgeDebugCounters = bridgeCounters;
+
+    function bumpBridgeCounter(kind, detail = '') {
+      bridgeCounters[kind] = (bridgeCounters[kind] || 0) + 1;
+      const label = kind === 'quickApplied' ? 'bridge quick-filter applied' : 'bridge input applied';
+      console.log(`🔢 ${label}: ${bridgeCounters[kind]}${detail ? ` | ${detail}` : ''}`);
+    }
+
     const textFilterIds = new Set(['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost']);
 
     const syncTextFilterState = (target) => {
@@ -995,12 +1007,14 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
     document.addEventListener('input', (event) => {
       if (!syncTextFilterState(event.target)) return;
-      applyFiltersReliably();
+      const applied = applyFiltersReliably();
+      bumpBridgeCounter('inputApplied', `${event.type}:${event.target.id}${applied ? '' : ':no-apply-fn'}`);
     }, true);
 
     document.addEventListener('change', (event) => {
       if (!syncTextFilterState(event.target)) return;
-      applyFiltersReliably();
+      const applied = applyFiltersReliably();
+      bumpBridgeCounter('inputApplied', `${event.type}:${event.target.id}${applied ? '' : ':no-apply-fn'}`);
     }, true);
 
     document.addEventListener('click', (event) => {
@@ -1019,8 +1033,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
       btn.classList.toggle('active');
 
-      syncQuickFilterButtonsToState();
-      applyFiltersReliably();
+      const synced = syncQuickFilterButtonsToState();
+      const applied = applyFiltersReliably();
+      bumpBridgeCounter('quickApplied', `${btn.id || btn.dataset.tag || 'quick-filter'}${synced ? '' : ':state-sync-failed'}${applied ? '' : ':no-apply-fn'}`);
     }, true);
 
     console.log('✅ Filter reliability bridge installed');
