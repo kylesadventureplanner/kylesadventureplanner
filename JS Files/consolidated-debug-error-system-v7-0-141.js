@@ -222,7 +222,7 @@ class ErrorManager {
         : '';
 
       html += '<div style="padding: 12px; border-bottom: 1px solid #fecaca; display: flex; gap: 8px; align-items: flex-start;">' +
-        '<div style="flex-shrink: 0; margin-top: 2px;">❌</div>' +
+        '<div style="flex-shrink: 0; margin-top: 2px; color: ' + badgeColors.rid + ';">❌</div>' +
         '<div style="flex: 1; min-width: 0;">' +
         '<div style="font-size: 12px; color: #7f1d1d; word-break: break-word;">' + error.message + '</div>' +
         requestIdBadge +
