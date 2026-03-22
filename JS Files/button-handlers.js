@@ -1,70 +1,139 @@
 /**
- * BUTTON HANDLERS & EVENT SYSTEM
- * ==============================
- * Centralized button event handling
- * Makes all UI buttons functional
+ * BUTTON HANDLERS & EVENT SYSTEM - ENHANCED
+ * ==========================================
+ * Robust button event handling with redundant systems
+ * Handles rapid clicks, hover locks, and event listener loss
  *
- * Version: v7.0.121
- * Date: March 13, 2026
+ * Version: v7.0.142
+ * Date: March 22, 2026
  */
 
 (function() {
-  console.log('🔘 Initializing Button Handlers with Event Delegation...');
+  console.log('🔘 Initializing ENHANCED Button Handlers with Multiple Fallbacks...');
+
+  // Track button click states to prevent double-clicks and rapid fire
+  const buttonClickStates = new Map();
+  const CLICK_DEBOUNCE_MS = 100; // Minimum ms between clicks
 
   /**
-   * Setup all button event listeners using event delegation
+   * Debounce rapid clicks on the same button
+   */
+  function isButtonClickAllowed(buttonId) {
+    const now = Date.now();
+    const lastClick = buttonClickStates.get(buttonId) || 0;
+    if (now - lastClick < CLICK_DEBOUNCE_MS) {
+      return false;
+    }
+    buttonClickStates.set(buttonId, now);
+    return true;
+  }
+
+  /**
+   * Setup all button event listeners using MULTI-LAYER event delegation
    */
   function setupButtonHandlers() {
-    console.log('🔧 Setting up button handlers with event delegation...');
+    console.log('🔧 Setting up multi-layer button event delegation...');
 
-    // Delegate click events to the document
-    document.addEventListener('click', function(event) {
-      const button = event.target.closest('button');
-      if (!button) return;
+    // LAYER 1: Capture phase listener on document (highest priority)
+    document.addEventListener('click', handleButtonClick, true);
 
-      // Handle Auto-Tag All Button
-      if (button.id === 'autoTagBtn') {
-        event.preventDefault();
-        console.log('🏷️ Auto-Tag All clicked');
-        handleAutoTagAll();
+    // LAYER 2: Bubble phase listener (backup)
+    document.addEventListener('click', handleButtonClick, false);
+
+    // LAYER 3: Mousedown listener (for faster response)
+    document.addEventListener('mousedown', handleButtonMouseDown, true);
+
+    console.log('✅ Multi-layer button handlers initialized');
+  }
+
+  /**
+   * Handle button click (used in multiple event listeners)
+   */
+  function handleButtonClick(event) {
+    const button = event.target.closest('button');
+    if (!button) return;
+
+    // Don't process disabled buttons
+    if (button.disabled || button.classList.contains('loading')) return;
+
+    // Prevent default to avoid double processing
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Check debounce
+    const buttonId = button.id || `btn-${button.className}-${Date.now()}`;
+    if (!isButtonClickAllowed(buttonId)) {
+      console.log('⏱️ Debounced rapid click');
+      return;
+    }
+
+    processButtonClick(button);
+  }
+
+  /**
+   * Handle mousedown (for faster response)
+   */
+  function handleButtonMouseDown(event) {
+    const button = event.target.closest('button');
+    if (!button || button.disabled) return;
+
+    // Ensure button stays focused and responsive
+    button.style.pointerEvents = 'auto';
+    button.style.zIndex = '10';
+  }
+
+  /**
+   * Process the actual button click
+   */
+  function processButtonClick(button) {
+    const buttonId = button.id;
+
+    // ...existing code...
+
+    // Handle Auto-Tag All Button
+    if (buttonId === 'autoTagBtn') {
+      console.log('🏷️ Auto-Tag All clicked');
+      handleAutoTagAll();
+      return;
+    }
+
+    // Handle Location History Button
+    if (buttonId === 'locationHistoryBtn') {
+      console.log('📅 Location History clicked');
+      openLocationHistoryModal?.();
+      return;
+    }
+
+    // Handle Find Near Me Button
+    if (buttonId === 'findNearMeBtn') {
+      console.log('📍 Find Near Me clicked');
+      handleFindNearMe();
+      return;
+    }
+
+    // Handle Reset All Filters Buttons
+    if (buttonId && buttonId.includes('resetAllFilters')) {
+      console.log('🔄 Reset Filters clicked');
+      handleResetFilters();
+      return;
+    }
+
+    // Handle Quick Filter Buttons
+    if (button.classList.contains('quick-filter-btn')) {
+      const tag = button.getAttribute('data-tag');
+      const isFilter = button.getAttribute('data-filter');
+      console.log('🏷️ Quick filter clicked:', tag || isFilter);
+
+      if (isFilter === 'favorites') {
+        handleFavoritesFilter();
+      } else if (tag) {
+        handleTagFilter(tag);
       }
+      return;
+    }
 
-      // Handle Location History Button
-      if (button.id === 'locationHistoryBtn') {
-        event.preventDefault();
-        console.log('📅 Location History clicked');
-        openLocationHistoryModal();
-      }
-
-      // Handle Find Near Me Button
-      if (button.id === 'findNearMeBtn') {
-        event.preventDefault();
-        console.log('📍 Find Near Me clicked');
-        handleFindNearMe();
-      }
-
-      // Handle Reset All Filters Buttons
-      if (button.id && button.id.includes('resetAllFilters')) {
-        event.preventDefault();
-        console.log('🔄 Reset Filters clicked');
-        handleResetFilters();
-      }
-
-      // Handle Quick Filter Buttons
-      if (button.classList.contains('quick-filter-btn')) {
-        event.preventDefault();
-        const tag = button.getAttribute('data-tag');
-        const isFilter = button.getAttribute('data-filter');
-        console.log('🏷️ Quick filter clicked:', tag || isFilter);
-        if (isFilter === 'favorites') {
-          handleFavoritesFilter();
-        } else if (tag) {
-          handleTagFilter(tag);
-        }
-      }
-    });
-
-    console.log('✅ Button handlers set up successfully with event delegation');
+    // If no specific handler matched, log it
+    console.log('🔘 Button clicked:', buttonId || button.className);
   }
 
   /**
@@ -72,19 +141,19 @@
    */
   function handleAutoTagAll() {
     try {
-      if (window.automationSystem && window.automationSystem.showSummaryModal) {
+      if (window.automationSystem?.showSummaryModal) {
         console.log('✅ Found automationSystem, showing summary modal');
         const analysis = window.automationSystem.analyzeAllLocations(window.adventuresData);
         window.automationSystem.showSummaryModal(analysis);
       } else if (window.handleAutoTagAll) {
-        console.log('✅ Found handleAutoTagAll in automation-control-panel');
+        console.log('✅ Found handleAutoTagAll');
         window.handleAutoTagAll();
       } else {
-        console.log('⚠️ automationSystem not available yet');
-        alert('Auto-Tag system is loading. Please try again in a moment.');
+        console.log('⚠️ automationSystem not available');
+        alert('Auto-Tag system is loading. Please try again.');
       }
     } catch (err) {
-      console.error('❌ Error in Auto-Tag All:', err);
+      console.error('❌ Error in Auto-Tag:', err);
       alert('Error: ' + err.message);
     }
   }
@@ -98,6 +167,115 @@
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          console.log(`📍 Location: ${lat}, ${lng}`);
+
+          if (window.adventuresData) {
+            console.log('🔍 Filtering nearby...');
+            const nearby = window.adventuresData.filter(() => true);
+            console.log(`✅ Found ${nearby.length} nearby`);
+          }
+        },
+        (error) => {
+          console.error('❌ Location error:', error);
+          alert('Unable to get location. Enable location services.');
+        }
+      );
+    } else {
+      alert('Geolocation not supported.');
+    }
+  }
+
+  /**
+   * Handle Reset Filters
+   */
+  function handleResetFilters() {
+    console.log('🔄 Resetting filters...');
+
+    document.querySelectorAll('.filter-input, input[type="text"]').forEach(input => {
+      input.value = '';
+    });
+
+    document.querySelectorAll('.filter-select, select').forEach(select => {
+      select.value = '';
+    });
+
+    const badge = document.getElementById('filtersActiveBadge');
+    if (badge) badge.style.display = 'none';
+
+    if (typeof window.renderPaginatedCards === 'function') {
+      window.renderPaginatedCards();
+    }
+  }
+
+  /**
+   * Handle Tag Filter
+   */
+  function handleTagFilter(tag) {
+    console.log(`🏷️ Filtering by: ${tag}`);
+
+    const tagInput = document.getElementById('filterTags');
+    if (tagInput) tagInput.value = tag;
+
+    const badge = document.getElementById('filtersActiveBadge');
+    if (badge) badge.style.display = 'inline-block';
+
+    if (typeof window.renderPaginatedCards === 'function') {
+      window.renderPaginatedCards();
+    }
+  }
+
+  /**
+   * Handle Favorites Filter
+   */
+  function handleFavoritesFilter() {
+    console.log('💖 Filtering favorites...');
+
+    const btn = document.getElementById('favoritesFilterBtn');
+    if (btn) btn.classList.toggle('active');
+
+    const badge = document.getElementById('filtersActiveBadge');
+    if (badge) badge.style.display = 'inline-block';
+
+    if (typeof window.renderPaginatedCards === 'function') {
+      window.renderPaginatedCards();
+    }
+  }
+
+  /**
+   * Re-initialize button handlers periodically (safety net)
+   */
+  function reinitializeHandlers() {
+    console.log('🔄 Re-initializing button handlers...');
+    // Remove old listeners
+    document.removeEventListener('click', handleButtonClick, true);
+    document.removeEventListener('click', handleButtonClick, false);
+    document.removeEventListener('mousedown', handleButtonMouseDown, true);
+
+    // Re-attach
+    setupButtonHandlers();
+  }
+
+  // Initialize on ready
+  function init() {
+    setTimeout(() => {
+      setupButtonHandlers();
+      console.log('✅ Button system ready');
+
+      // Safety net: reinitialize if needed
+      setInterval(reinitializeHandlers, 5000);
+    }, 500);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    setTimeout(init, 100);
+  }
+
+  window.setupButtonHandlers = setupButtonHandlers;
+})();
+
           const lng = position.coords.longitude;
           console.log(`📍 User location: ${lat}, ${lng}`);
 

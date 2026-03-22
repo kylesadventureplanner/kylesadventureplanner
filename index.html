@@ -1305,6 +1305,22 @@
       content: "🌅 ";
     }
 
+    /* Biking - Paved Trail */
+    .tag-biking-paved-trail {
+      background: #cffafe;
+    }
+    .tag-biking-paved-trail::before {
+      content: "🚴 ";
+    }
+
+    /* Biking - Dirt or Gravel */
+    .tag-biking-dirt-or-gravel {
+      background: #dcfce7;
+    }
+    .tag-biking-dirt-or-gravel::before {
+      content: "🚲 ";
+    }
+
     /* Default style for any unknown tags */
     [class*="tag-"] {
       display: inline-block;
@@ -6060,11 +6076,8 @@
         </div>
       </header>
 
-      <div class="status-bar">
-        <div class="status-left">
-          <div id="connectionDot" class="status-dot disconnected"></div>
-          <div class="status-text" id="connectionText">Not connected to Excel backend</div>
-        </div>
+      <!-- Filters Active Badge -->
+      <div style="padding: 8px 0; margin-bottom: 8px;">
         <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
       </div>
 
@@ -13784,25 +13797,18 @@
   }
 
   /**
-   * Update Connection Status
-   * @param {boolean} connected - Whether connected to Excel backend
+   * Update Connection Status (DEPRECATED)
+   * This function is deprecated - the old status indicator HTML was removed
+   * The new connection status is now handled by window.updateConnectionStatus()
+   * in consolidated-comprehensive-fix-system-v7-0-141.js
+   *
+   * @param {boolean} connected - Whether connected to Excel backend (no longer used)
    */
   function updateConnectionStatus(connected) {
-    const connectionDot = document.getElementById("connectionDot");
-    const connectionText = document.getElementById("connectionText");
-
-    if (connectionDot && connectionText) {
-      if (connected) {
-        connectionDot.classList.add("connected");
-        connectionDot.classList.remove("disconnected");
-        connectionText.textContent = "Connected to Excel backend";
-      } else {
-        connectionDot.classList.add("disconnected");
-        connectionDot.classList.remove("connected");
-        connectionText.textContent = "Not connected to Excel backend";
-      }
-    }
-    console.log(`✓ Connection status updated: ${connected ? 'connected' : 'disconnected'}`);
+    // DEPRECATED: Old connection status indicator removed
+    // New status is displayed at the top of the page via the consolidated system
+    // This function is kept for backward compatibility only
+    console.log(`⚠️ DEPRECATED: Old updateConnectionStatus() called. Use window.updateConnectionStatus() instead.`);
   }
 
   /**

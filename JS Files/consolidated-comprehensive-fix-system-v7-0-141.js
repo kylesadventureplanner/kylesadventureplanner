@@ -641,113 +641,229 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   console.log('✅ Z-Index management ready');
 
   // ============================================================
-  // SECTION: CRITICAL BUTTON RESPONSIVENESS FIX
+  // SECTION: CRITICAL BUTTON RESPONSIVENESS FIX - ENHANCED
   // ============================================================
 
   /**
-   * Ensure buttons are always responsive by fixing pointer-events and z-index issues
-   * This is a critical fix for buttons becoming unresponsive after scrolling
+   * ENHANCED Button responsiveness system
+   * Handles: hover state lockups, scroll issues, event listener loss
    */
   function ensureButtonResponsiveness() {
-    console.log('🔧 Setting up button responsiveness monitor...');
+    console.log('🔧 Setting up ENHANCED button responsiveness monitor...');
 
-    // Fix 1: Monitor for any pointer-events: none on buttons
-    const fixPointerEventsOnButtons = () => {
+    // Track button states to prevent hover locks
+    const buttonStates = new Map();
+
+    /**
+     * Fix 1: Restore hover/active states after interactions
+     */
+    const restoreButtonStates = () => {
       const buttons = document.querySelectorAll('button');
       buttons.forEach(btn => {
-        // Get computed style
+        const key = btn.id || btn.className;
+        const state = buttonStates.get(key);
+
+        // Reset any stuck hover states
+        if (btn.classList.contains('hover') || btn.classList.contains(':hover')) {
+          btn.classList.remove('hover');
+        }
+
+        // Ensure button is not stuck in active state
+        if (btn.matches(':active')) {
+          btn.blur();
+        }
+
+        // Clear any stuck focus
+        if (document.activeElement === btn && btn !== document.body) {
+          setTimeout(() => btn.blur(), 0);
+        }
+      });
+    };
+
+    /**
+     * Fix 2: Monitor for pointer-events: none and fix immediately
+     */
+    const fixPointerEventsOnButtons = () => {
+      const buttons = document.querySelectorAll('button:not(:disabled)');
+      buttons.forEach(btn => {
         const style = window.getComputedStyle(btn);
         const pointerEvents = style.pointerEvents;
 
-        // If pointer-events is blocking, fix it
-        if (pointerEvents === 'none' && !btn.disabled && !btn.classList.contains('loading')) {
-          console.warn(`⚠️ Fixed pointer-events:none on button: ${btn.id || btn.className}`);
-          btn.style.pointerEvents = 'auto';
+        if (pointerEvents === 'none') {
+          btn.style.pointerEvents = 'auto !important';
+          console.warn(`⚠️ Fixed pointer-events:none on: ${btn.id || btn.textContent.slice(0, 20)}`);
         }
 
-        // Ensure all buttons have proper z-index
+        // Ensure z-index is set
         if (!btn.style.zIndex || btn.style.zIndex === 'auto') {
           btn.style.zIndex = '10';
         }
+
+        // Remove any opacity that might block clicks
+        if (style.opacity === '0' && !btn.classList.contains('hidden')) {
+          btn.style.opacity = '1';
+        }
       });
     };
 
-    // Fix 2: Check for overlapping modals or overlays blocking buttons
+    /**
+     * Fix 3: Check for overlapping elements blocking buttons
+     */
     const fixOverlappingElements = () => {
-      const modals = document.querySelectorAll('.modal, [role="dialog"], .overlay');
+      const modals = document.querySelectorAll('.modal, [role="dialog"], .overlay, .modal-backdrop');
       modals.forEach(modal => {
-        // If modal is hidden, ensure it's not blocking
         const style = window.getComputedStyle(modal);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-          modal.style.pointerEvents = 'none';
-          console.log(`✅ Set pointer-events:none on hidden modal`);
+        const isHidden = style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0';
+
+        if (isHidden) {
+          modal.style.pointerEvents = 'none !important';
+          modal.style.display = 'none !important';
         }
       });
     };
 
-    // Fix 3: Ensure card buttons have proper z-index
+    /**
+     * Fix 4: Ensure card buttons are always accessible
+     */
     const fixCardButtonZIndex = () => {
-      const cardBtns = document.querySelectorAll('.card-btn, .card-action-buttons');
+      const cardBtns = document.querySelectorAll('.card-btn, .card-action-buttons, .quick-filter-btn, .pagination-btn');
       cardBtns.forEach(btn => {
-        const parent = btn.closest('.adventure-card');
-        if (parent) {
-          // Ensure card is properly layered
-          if (!parent.style.zIndex || parent.style.zIndex === 'auto') {
-            parent.style.zIndex = '1';
-          }
-          // Ensure button container is on top
-          if (btn.classList.contains('card-action-buttons')) {
-            btn.style.zIndex = '15';
-            btn.style.position = 'relative';
-          } else {
-            btn.style.zIndex = 'auto';
-            btn.style.position = 'relative';
-          }
-        }
+        btn.style.pointerEvents = 'auto !important';
+        btn.style.zIndex = '15 !important';
+        btn.style.position = 'relative';
       });
     };
 
-    // Fix 4: Remove any visibility: hidden or display: none from clickable buttons
-    const fixVisibilityOnButtons = () => {
+    /**
+     * Fix 5: Clear stuck mouse states
+     */
+    const clearStuckMouseStates = () => {
+      // If mouse is not over any button, clear hover states
+      const hoveredBtn = document.querySelector('button:hover');
+      if (!hoveredBtn) {
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(btn => {
+          if (btn.style.backgroundColor || btn.style.boxShadow) {
+            btn.style.backgroundColor = '';
+            btn.style.boxShadow = '';
+          }
+        });
+      }
+    };
+
+    /**
+     * Fix 6: Re-attach event listeners that might be lost
+     */
+    const reattachButtonListeners = () => {
       const buttons = document.querySelectorAll('button');
       buttons.forEach(btn => {
-        // Only fix if button is not actually supposed to be hidden
-        if (!btn.id.includes('hidden') && !btn.className.includes('hidden')) {
-          const style = window.getComputedStyle(btn);
-          if (style.visibility === 'hidden') {
-            btn.style.visibility = 'visible';
-            console.warn(`⚠️ Fixed visibility:hidden on button: ${btn.id || btn.className}`);
-          }
-          if (style.display === 'none') {
-            btn.style.display = 'inline-block';
-            console.warn(`⚠️ Fixed display:none on button: ${btn.id || btn.className}`);
-          }
+        // Ensure button can receive events
+        btn.style.pointerEvents = 'auto';
+
+        // Add mousedown/mouseup handlers to detect stuck states
+        if (!btn._listenersAttached) {
+          btn._listenersAttached = true;
+
+          btn.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+
+          btn.addEventListener('mouseup', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+
+          btn.addEventListener('mouseleave', function(e) {
+            // Clear any stuck states
+            this.blur();
+          });
         }
       });
     };
 
-    // Fix 5: Ensure buttons have proper cursor style
-    const fixButtonCursorStyle = () => {
-      const buttons = document.querySelectorAll('button:not(:disabled)');
-      buttons.forEach(btn => {
-        if (btn.style.cursor !== 'pointer') {
-          btn.style.cursor = 'pointer';
+    /**
+     * Fix 7: Monitor for rapid hover events that might cause issues
+     */
+    const createHoverThrottler = () => {
+      let hoverDebounceTimer = null;
+      let lastHoverTarget = null;
+
+      document.addEventListener('mousemove', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        if (lastHoverTarget !== btn) {
+          // Clear old hover
+          if (lastHoverTarget) {
+            lastHoverTarget.blur();
+          }
+          lastHoverTarget = btn;
         }
-      });
+
+        // Debounce rapid moves
+        clearTimeout(hoverDebounceTimer);
+        hoverDebounceTimer = setTimeout(() => {
+          // Button should be responsive now
+        }, 50);
+      }, { passive: true });
+
+      document.addEventListener('mouseleave', () => {
+        lastHoverTarget = null;
+      }, { passive: true });
     };
 
-    // Run all fixes immediately
+    // Run all critical fixes immediately
     fixPointerEventsOnButtons();
     fixOverlappingElements();
     fixCardButtonZIndex();
-    fixVisibilityOnButtons();
-    fixButtonCursorStyle();
+    clearStuckMouseStates();
+    reattachButtonListeners();
+    createHoverThrottler();
 
-    // Run fixes periodically to catch any new issues
+    // Run comprehensive check every 500ms (more aggressive)
     setInterval(() => {
       fixPointerEventsOnButtons();
       fixOverlappingElements();
       fixCardButtonZIndex();
+      restoreButtonStates();
+    }, 500);
+
+    // Run on scroll with aggressive debounce
+    document.addEventListener('scroll', () => {
+      clearTimeout(window.scrollFixTimeout);
+      window.scrollFixTimeout = setTimeout(() => {
+        fixPointerEventsOnButtons();
+        fixCardButtonZIndex();
+        restoreButtonStates();
+      }, 50);
+    }, { passive: true });
+
+    // Monitor for DOM changes
+    const observer = new MutationObserver(() => {
+      clearTimeout(window.domFixTimeout);
+      window.domFixTimeout = setTimeout(() => {
+        fixPointerEventsOnButtons();
+        fixCardButtonZIndex();
+        reattachButtonListeners();
+      }, 50);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class', 'disabled', 'aria-disabled']
+    });
+
+    // Monitor mouse activity to reset stuck states
+    document.addEventListener('mouseout', () => {
+      clearStuckMouseStates();
+      restoreButtonStates();
+    }, { passive: true });
+
+    console.log('✅ ENHANCED button responsiveness monitor initialized');
+  }
     }, 1000);
 
     // Also run fixes on scroll (since buttons may be re-rendered)
@@ -789,75 +905,189 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   // ============================================================
 
   /**
-   * Inject CSS rules to ensure buttons are never blocked by pointer-events
+   * Inject CSS rules to ensure buttons are NEVER blocked by pointer-events
+   * This is a critical safety net for button responsiveness
    */
   function injectButtonResponsivnessCSS() {
     const style = document.createElement('style');
     style.textContent = `
-      /* Critical: Ensure all buttons remain interactive */
+      /* ============================================================
+         CRITICAL BUTTON RESPONSIVENESS RULES
+         ============================================================ */
+
+      /* ALL buttons must be interactive */
       button {
         pointer-events: auto !important;
         cursor: pointer !important;
         position: relative;
-        z-index: 10;
+        z-index: 10 !important;
+        user-select: none !important;
       }
 
-      /* Ensure disabled buttons still have proper styling */
+      /* Prevent hover state lockup */
+      button:hover {
+        pointer-events: auto !important;
+      }
+
+      /* Prevent active state lockup */
+      button:active {
+        pointer-events: auto !important;
+      }
+
+      /* Focus states must not block */
+      button:focus {
+        pointer-events: auto !important;
+      }
+
+      /* Disabled buttons are exception */
       button:disabled {
         cursor: not-allowed !important;
         pointer-events: none !important;
+        opacity: 0.5 !important;
       }
 
-      /* Card buttons must be accessible */
+      /* ============================================================
+         SPECIFIC BUTTON TYPES
+         ============================================================ */
+
+      /* Card buttons - must be accessible */
       .card-btn {
         pointer-events: auto !important;
-        z-index: 15;
+        z-index: 15 !important;
       }
 
-      /* Button containers must not block */
+      .card-btn:hover,
+      .card-btn:active,
+      .card-btn:focus {
+        pointer-events: auto !important;
+        z-index: 15 !important;
+      }
+
+      /* Button containers */
       .card-action-buttons {
         pointer-events: auto !important;
-        z-index: 15;
+        z-index: 15 !important;
       }
 
-      /* Modals should not block buttons outside them */
+      /* Quick filter buttons */
+      .quick-filter-btn {
+        pointer-events: auto !important;
+        z-index: 10 !important;
+      }
+
+      .quick-filter-btn:hover,
+      .quick-filter-btn:active,
+      .quick-filter-btn:focus {
+        pointer-events: auto !important;
+      }
+
+      /* Pagination buttons */
+      .pagination-btn {
+        pointer-events: auto !important;
+        z-index: 10 !important;
+      }
+
+      .pagination-btn:hover,
+      .pagination-btn:active {
+        pointer-events: auto !important;
+      }
+
+      /* Automation buttons */
+      .automation-btn {
+        pointer-events: auto !important;
+        z-index: 10 !important;
+      }
+
+      .automation-btn:hover,
+      .automation-btn:active,
+      .automation-btn:focus {
+        pointer-events: auto !important;
+      }
+
+      /* Auth buttons */
+      .auth-btn {
+        pointer-events: auto !important;
+        z-index: 10 !important;
+      }
+
+      .auth-btn:hover,
+      .auth-btn:active {
+        pointer-events: auto !important;
+      }
+
+      /* Icon buttons inside buttons */
+      button * {
+        pointer-events: none !important;
+      }
+
+      /* ============================================================
+         MODAL & OVERLAY RULES
+         ============================================================ */
+
+      /* Only hidden modals should block */
       .modal {
         pointer-events: auto !important;
       }
 
       .modal.hidden,
-      .modal:not(.active) {
+      .modal:not(.active),
+      .modal[style*="display: none"],
+      .modal[style*="visibility: hidden"] {
+        pointer-events: none !important;
+        display: none !important;
+        visibility: hidden !important;
+      }
+
+      /* Overlays - only block if visible */
+      .overlay:not(.active),
+      .overlay[style*="display: none"],
+      .overlay[style*="visibility: hidden"] {
         pointer-events: none !important;
       }
 
-      /* Overlays should not block if hidden */
-      .overlay:not(.active) {
+      .modal-backdrop:not(.visible),
+      .modal-backdrop[style*="display: none"] {
         pointer-events: none !important;
       }
 
-      /* Quick filter buttons must be accessible */
-      .quick-filter-btn {
+      /* ============================================================
+         PREVENT STUCK STATES
+         ============================================================ */
+
+      /* Prevent stuck selection state */
+      button.selected {
         pointer-events: auto !important;
       }
 
-      /* Pagination buttons must be accessible */
-      .pagination-btn {
+      /* Prevent stuck loading state from blocking */
+      button.loading {
         pointer-events: auto !important;
       }
 
-      /* Automation buttons must be accessible */
-      .automation-btn {
+      button.loading:hover {
         pointer-events: auto !important;
       }
 
-      /* Auth buttons must be accessible */
-      .auth-btn {
-        pointer-events: auto !important;
+      /* Ensure transition doesn't cause issues */
+      button {
+        transition: all 0.15s ease !important;
+      }
+
+      /* Prevent opacity from making buttons unclickable */
+      button {
+        opacity: 1 !important;
+        visibility: visible !important;
+      }
+
+      button[style*="opacity: 0"],
+      button[style*="visibility: hidden"],
+      button[style*="display: none"] {
+        display: none !important;
       }
     `;
 
     document.head.appendChild(style);
-    console.log('✅ Button responsiveness CSS injected');
+    console.log('✅ ENHANCED button responsiveness CSS injected');
   }
 
   // Inject CSS as soon as possible
