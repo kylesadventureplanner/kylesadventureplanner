@@ -18207,13 +18207,15 @@ COMMON ISSUES:
 
       // Set default file path and table name if not already set
       // These are the standard values for the Adventure Planner Excel file
-      const filePath = window.filePath || '/Adventure%20Planner.xlsx';
+      const fileName = window.fileName || 'Adventure Planner.xlsx';
       const tableName = window.tableName || 'MyList';
 
-      console.log(`📝 Using Excel file: ${filePath}, table: ${tableName}`);
+      console.log(`📝 Using Excel file: ${fileName}, table: ${tableName}`);
 
-      // Build URL to add rows to Excel table
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
+      // Build URL using proper Graph API format with colon-based path
+      // Format: /me/drive/root:/{item-path}:/workbook/tables/{table-id}/rows
+      const encodedPath = encodeURIComponent(fileName);
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
 
       // Convert adventuresData to proper row format
       const rowsToAdd = window.adventuresData.map(item => {
@@ -19554,7 +19556,12 @@ window.openEditModeWindow = function() {
     const editTab = window.open(editModeUrl, '_blank');
 
     if (!editTab) {
-      showToast('❌ Failed to open Edit Mode. Check if pop-ups are blocked.', 'error', 5000);
+      // Use safe showToast call with fallback
+      if (window.showToast && typeof window.showToast === 'function') {
+        window.showToast('❌ Failed to open Edit Mode. Check if pop-ups are blocked.', 'error', 5000);
+      } else {
+        alert('❌ Failed to open Edit Mode. Check if pop-ups are blocked.');
+      }
       console.error('❌ Failed to open Edit Mode tab');
       return;
     }
@@ -19562,11 +19569,20 @@ window.openEditModeWindow = function() {
     // Focus the new tab
     editTab.focus();
     console.log('✅ Edit Mode opened in new tab');
-    showToast('✅ Edit Mode opened in new tab', 'success', 2000);
+
+    // Use safe showToast call with fallback
+    if (window.showToast && typeof window.showToast === 'function') {
+      window.showToast('✅ Edit Mode opened in new tab', 'success', 2000);
+    }
 
   } catch (error) {
     console.error('❌ Error opening Edit Mode:', error);
-    showToast(`❌ Error: ${error.message}`, 'error', 5000);
+    // Use safe showToast call with fallback
+    if (window.showToast && typeof window.showToast === 'function') {
+      window.showToast(`❌ Error: ${error.message}`, 'error', 5000);
+    } else {
+      alert(`❌ Error: ${error.message}`);
+    }
   }
 };
 

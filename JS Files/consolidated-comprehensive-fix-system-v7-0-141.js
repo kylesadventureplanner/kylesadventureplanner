@@ -1529,25 +1529,53 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   console.log('  - Error Handling & Recovery');
   console.log('  - Performance Optimizations');
 
+  // ============================================================
+  // SECTION: EXCEL FILE CONFIGURATION & UTILITIES
+  // ============================================================
+
+  /**
+   * Initialize Excel file configuration
+   * Sets up proper file name and table name for Graph API calls
+   */
+  window.initializeExcelConfig = window.initializeExcelConfig || function() {
+    console.log('🔧 Initializing Excel configuration...');
+
+    try {
+      // Set default file name (not URL-encoded path)
+      if (!window.fileName) {
+        window.fileName = 'Adventure Planner.xlsx';
+        console.log('✅ Set default fileName: Adventure Planner.xlsx');
+      }
+
+      // Set default table name
+      if (!window.tableName) {
+        window.tableName = 'MyList';
+        console.log('✅ Set default tableName: MyList');
+      }
+
+      // Clear any old file path variable that might cause conflicts
+      if (window.filePath && window.filePath.includes('Adventure')) {
+        console.log('⚠️ Clearing old filePath variable to prevent conflicts');
+        delete window.filePath;
+      }
+
+      console.log('✅ Excel configuration ready');
+      console.log(`   fileName: ${window.fileName}`);
+      console.log(`   tableName: ${window.tableName}`);
+
+    } catch (error) {
+      console.error('❌ Error initializing Excel config:', error);
+    }
+  };
+
+  // Initialize Excel config on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.initializeExcelConfig);
+  } else {
+    setTimeout(window.initializeExcelConfig, 100);
+  }
+
+  console.log('✅ Excel utilities ready');
+
 })();
 
-// ============================================================
-// EXPORTS FOR MODULE USE
-// ============================================================
-
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    safeString: window.safeString,
-    safeLowerCase: window.safeLowerCase,
-    safeNumber: window.safeNumber,
-    isEmpty: window.isEmpty,
-    changePage: window.changePage,
-    goToPage: window.goToPage,
-    openCityViewerWindow: window.openCityViewerWindow,
-    openFindNearMeWindow: window.openFindNearMeWindow,
-    openEditModeWindow: window.openEditModeWindow,
-    initializeDryRunSliders: window.initializeDryRunSliders,
-    refreshPlaceIdsWithProgress: window.refreshPlaceIdsWithProgress,
-    fixModalZIndex: window.fixModalZIndex
-  };
-}
