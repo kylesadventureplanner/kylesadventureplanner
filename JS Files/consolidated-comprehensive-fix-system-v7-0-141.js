@@ -924,10 +924,112 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   // SECTION 7: FILTER APPLICATION FIXES
   // ============================================================
 
-  /**
-   * Fixed applyFilters that won't warn
-   */
-  if (!window.applyFiltersFixed) {
+  function ensureFilterManagerState() {
+    if (!window.FilterManager || !window.FilterManager.state) return null;
+    if (!(window.FilterManager.state.quickFilters instanceof Set)) {
+      window.FilterManager.state.quickFilters = new Set();
+    }
+    return window.FilterManager.state;
+  }
+
+  function applyFiltersReliably() {
+    if (window.FilterManager && typeof window.FilterManager.applyAllFilters === 'function') {
+      window.FilterManager.applyAllFilters();
+      return true;
+    }
+    if (typeof window.applyFilters === 'function') {
+      window.applyFilters();
+      return true;
+    }
+    return false;
+  }
+
+  function installFilterReliabilityBridge() {
+    if (window.__filterReliabilityBridgeInstalled) return;
+    window.__filterReliabilityBridgeInstalled = true;
+
+    const textFilterIds = new Set(['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost']);
+
+    const syncTextFilterState = (target) => {
+      const state = ensureFilterManagerState();
+      if (!state || !target || !target.id) return false;
+      if (!textFilterIds.has(target.id)) return false;
+      state[target.id] = (target.value || '').trim();
+      return true;
+    };
+
+    const syncQuickFilterButtonsToState = () => {
+      const state = ensureFilterManagerState();
+      if (!state) return false;
+
+      const nextQuickFilters = new Set();
+      document.querySelectorAll('.quick-filter-btn[data-tag].active').forEach((btn) => {
+        const tag = (btn.dataset.tag || '').toLowerCase().trim();
+        if (tag) nextQuickFilters.add(tag);
+      });
+
+      const openTodayBtn = document.getElementById('openTodayFilterBtn');
+      if (openTodayBtn && openTodayBtn.classList.contains('active')) nextQuickFilters.add('opentoday');
+
+      const closingSoonBtn = document.getElementById('closingSoonFilterBtn');
+      if (closingSoonBtn && closingSoonBtn.classList.contains('active')) nextQuickFilters.add('closingsoon');
+
+      const favoritesBtn = document.getElementById('favoritesFilterBtn');
+      const favoritesActive = !!(favoritesBtn && favoritesBtn.classList.contains('active'));
+
+      state.quickFilters = nextQuickFilters;
+      state.favorites = favoritesActive;
+      state.showFavoritesOnly = favoritesActive;
+
+      if (window.activeFilters) {
+        if (!(window.activeFilters.quickFilters instanceof Set)) {
+          window.activeFilters.quickFilters = new Set();
+        }
+        window.activeFilters.quickFilters = new Set(nextQuickFilters);
+        window.activeFilters.favorites = favoritesActive;
+        window.activeFilters.showFavoritesOnly = favoritesActive;
+      }
+
+      return true;
+    };
+
+    document.addEventListener('input', (event) => {
+      if (!syncTextFilterState(event.target)) return;
+      applyFiltersReliably();
+    }, true);
+
+    document.addEventListener('change', (event) => {
+      if (!syncTextFilterState(event.target)) return;
+      applyFiltersReliably();
+    }, true);
+
+    document.addEventListener('click', (event) => {
+      const btn = event.target && event.target.closest ? event.target.closest('button') : null;
+      if (!btn) return;
+
+      const isTagQuickFilter = btn.classList.contains('quick-filter-btn') && !!btn.dataset.tag;
+      const isFavoritesFilter = btn.id === 'favoritesFilterBtn' || (btn.dataset.filter || '').toLowerCase() === 'favorites';
+      const isOpenToday = btn.id === 'openTodayFilterBtn';
+      const isClosingSoon = btn.id === 'closingSoonFilterBtn';
+      if (!isTagQuickFilter && !isFavoritesFilter && !isOpenToday && !isClosingSoon) return;
+
+      // Own quick-filter click handling to avoid broken or duplicated listener chains.
+      event.preventDefault();
+      event.stopPropagation();
+
+      btn.classList.toggle('active');
+
+      syncQuickFilterButtonsToState();
+      applyFiltersReliably();
+    }, true);
+
+    console.log('✅ Filter reliability bridge installed');
+  }
+
+   /**
+    * Fixed applyFilters that won't warn
+    */
+   if (!window.applyFiltersFixed) {
     window.applyFiltersFixed = true;
 
     const originalApplyFilters = window.applyFilters || (() => {});
@@ -968,6 +1070,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       console.log('✅ Filters applied');
     };
   }
+
+  // Ensure delegated filter listeners are always present, even after dynamic tab loads.
+  installFilterReliabilityBridge();
 
   console.log('✅ Filter application fixes ready');
 
@@ -1121,23 +1226,22 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         // Ensure button can receive events
         btn.style.pointerEvents = 'auto';
 
-        // Add mousedown/mouseup handlers to detect stuck states
         if (!btn._listenersAttached) {
           btn._listenersAttached = true;
 
-          btn.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
+          // Do not cancel native mouse events globally; that can break click chains.
+          btn.addEventListener('mousedown', function() {
+            this.dataset.mouseDownAt = String(Date.now());
           });
 
-          btn.addEventListener('mouseup', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
+          btn.addEventListener('mouseup', function() {
+            delete this.dataset.mouseDownAt;
           });
 
-          btn.addEventListener('mouseleave', function(e) {
+          btn.addEventListener('mouseleave', function() {
             // Clear any stuck states
             this.blur();
+            delete this.dataset.mouseDownAt;
           });
         }
       });
