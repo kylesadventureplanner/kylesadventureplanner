@@ -15,28 +15,176 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return String(value == null ? '' : value).trim();
   }
 
+  function normalizeRawInput(value) {
+    return safeString(value)
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/[<>“”"'`]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function safeDecode(value) {
+    const text = safeString(value);
+    if (!text) return '';
+    try {
+      return decodeURIComponent(text.replace(/\+/g, ' '));
+    } catch (_error) {
+      return text;
+    }
+  }
+
+  function looksLikeUrl(value) {
+    return /^(https?:\/\/|www\.|(?:maps\.app\.goo\.gl|goo\.gl\/maps|google\.[a-z.]+\/maps|maps\.google\.[a-z.]+))/i.test(safeString(value));
+  }
+
+  function normalizeUrlCandidate(value) {
+    const text = safeString(value).replace(/[),.;]+$/g, '');
+    if (!text) return '';
+    if (/^https?:\/\//i.test(text)) return text;
+    if (looksLikeUrl(text)) return `https://${text.replace(/^https?:\/\//i, '')}`;
+    return '';
+  }
+
+  function extractUrlCandidates(raw) {
+    const text = normalizeRawInput(raw);
+    if (!text) return [];
+
+    const candidates = new Set();
+    const urlMatches = text.match(/https?:\/\/[^\s<>"]+/gi) || [];
+    urlMatches.forEach((match) => candidates.add(normalizeUrlCandidate(match)));
+
+    const bareMatches = text.match(/(?:maps\.app\.goo\.gl|goo\.gl\/maps|(?:www\.)?google\.[^\s/]+\/maps[^\s]*|maps\.google\.[^\s/]+[^\s]*)/gi) || [];
+    bareMatches.forEach((match) => candidates.add(normalizeUrlCandidate(match)));
+
+    return Array.from(candidates).filter(Boolean);
+  }
+
+  function parseUrlSafely(value) {
+    const normalized = normalizeUrlCandidate(value);
+    if (!normalized) return null;
+    try {
+      return new URL(normalized);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function unwrapNestedGoogleUrl(rawUrl, depth = 0) {
+    if (depth > 4) return rawUrl;
+    const url = parseUrlSafely(rawUrl);
+    if (!url) return rawUrl;
+
+    const nestedParamNames = ['url', 'u', 'link', 'continue', 'redirect', 'redirect_url', 'redirect_uri'];
+    for (const paramName of nestedParamNames) {
+      const nestedValue = url.searchParams.get(paramName);
+      if (nestedValue && looksLikeUrl(safeDecode(nestedValue))) {
+        return unwrapNestedGoogleUrl(safeDecode(nestedValue), depth + 1);
+      }
+    }
+
+    if (url.pathname === '/url') {
+      const qValue = url.searchParams.get('q');
+      if (qValue && looksLikeUrl(safeDecode(qValue))) {
+        return unwrapNestedGoogleUrl(safeDecode(qValue), depth + 1);
+      }
+    }
+
+    return url.toString();
+  }
+
+  function stripUrlsFromText(raw) {
+    return normalizeRawInput(raw)
+      .replace(/https?:\/\/[^\s<>"]+/gi, ' ')
+      .replace(/(?:maps\.app\.goo\.gl|goo\.gl\/maps|(?:www\.)?google\.[^\s/]+\/maps[^\s]*|maps\.google\.[^\s/]+[^\s]*)/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function cleanExtractedQuery(value) {
+    return safeDecode(value)
+      .replace(/\+/g, ' ')
+      .replace(/\b(shared from|shared via|open in google maps|on google maps)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function getBestTextQueryFromUrl(raw) {
+    const urls = extractUrlCandidates(raw).map((url) => unwrapNestedGoogleUrl(url));
+
+    for (const rawUrl of urls) {
+      const url = parseUrlSafely(rawUrl);
+      if (!url) continue;
+
+      const directQueryParams = ['query', 'q', 'destination', 'daddr'];
+      for (const paramName of directQueryParams) {
+        const value = cleanExtractedQuery(url.searchParams.get(paramName));
+        if (value && !looksLikePlaceId(value) && !looksLikeUrl(value)) {
+          return value;
+        }
+      }
+
+      const path = cleanExtractedQuery(url.pathname);
+      const placePathMatch = path.match(/\/maps\/place\/([^/@?#]+)/i) || path.match(/\/place\/([^/@?#]+)/i);
+      if (placePathMatch && placePathMatch[1]) {
+        return cleanExtractedQuery(placePathMatch[1]);
+      }
+
+      const searchPathMatch = path.match(/\/maps\/search\/([^/?#]+)/i) || path.match(/\/search\/([^/?#]+)/i);
+      if (searchPathMatch && searchPathMatch[1]) {
+        return cleanExtractedQuery(searchPathMatch[1]);
+      }
+    }
+
+    const residualText = stripUrlsFromText(raw);
+    if (residualText && !looksLikeUrl(residualText)) {
+      return residualText;
+    }
+
+    return '';
+  }
+
   function looksLikePlaceId(value) {
     return /^ChI[A-Za-z0-9_-]{6,}$/i.test(safeString(value));
   }
 
+  // Edge cases supported here:
+  // - Full Google Maps place/search URLs with query_place_id/place_id/destination params
+  // - Google redirect wrappers like google.com/url?q=<maps-url>
+  // - Bare pasted URLs mixed with descriptive text
+  // - Shortened hosts like maps.app.goo.gl and goo.gl/maps (best-effort query recovery)
+  // - Plain pasted Place IDs embedded anywhere in the text
   function extractPlaceId(raw) {
-    const text = safeString(raw);
+    const text = normalizeRawInput(raw);
     if (!text) return '';
 
     const directMatch = text.match(/\bChI[A-Za-z0-9_-]{6,}\b/);
     if (directMatch) return directMatch[0];
 
-    const queryPlaceIdMatch = text.match(/[?&]query_place_id=([^&#]+)/i);
-    if (queryPlaceIdMatch) return decodeURIComponent(queryPlaceIdMatch[1]);
+    for (const candidate of extractUrlCandidates(text)) {
+      const expandedCandidate = unwrapNestedGoogleUrl(candidate);
+      const expandedText = safeDecode(expandedCandidate);
 
-    const placeIdMatch = text.match(/place_id[:=]([^&#]+)/i);
-    if (placeIdMatch) return decodeURIComponent(placeIdMatch[1]);
+      const embeddedMatch = expandedText.match(/\bChI[A-Za-z0-9_-]{6,}\b/);
+      if (embeddedMatch) return embeddedMatch[0];
+
+      const url = parseUrlSafely(expandedCandidate);
+      if (!url) continue;
+
+      const placeIdParams = ['query_place_id', 'place_id', 'destination_place_id'];
+      for (const paramName of placeIdParams) {
+        const placeId = safeDecode(url.searchParams.get(paramName));
+        if (looksLikePlaceId(placeId)) return placeId;
+      }
+
+      const hashPlaceId = safeDecode(url.hash).match(/\bChI[A-Za-z0-9_-]{6,}\b/);
+      if (hashPlaceId) return hashPlaceId[0];
+    }
 
     return '';
   }
 
   function extractSearchQuery(inputType, rawInput) {
-    const value = safeString(rawInput);
+    const value = normalizeRawInput(rawInput);
     if (!value) return '';
 
     if (inputType === 'website') {
@@ -49,15 +197,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     }
 
     if (inputType === 'placeUrl') {
-      const placePathMatch = value.match(/\/maps\/place\/([^/?#]+)/i);
-      if (placePathMatch && placePathMatch[1]) {
-        return decodeURIComponent(placePathMatch[1]).replace(/\+/g, ' ');
-      }
-
-      const queryMatch = value.match(/[?&](q|query)=([^&#]+)/i);
-      if (queryMatch && queryMatch[2]) {
-        return decodeURIComponent(queryMatch[2]).replace(/\+/g, ' ');
-      }
+      const extractedQuery = getBestTextQueryFromUrl(value);
+      if (extractedQuery) return extractedQuery;
     }
 
     return value;
