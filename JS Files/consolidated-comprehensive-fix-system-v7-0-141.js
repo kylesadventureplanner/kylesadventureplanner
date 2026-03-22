@@ -69,6 +69,15 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       console.log('✅ Initialized filteredAdventures');
     }
 
+    if (!window.activeFilters) {
+      window.activeFilters = {
+        quickFilters: new Set(),
+        favorites: false,
+        tags: new Set()
+      };
+      console.log('✅ Initialized activeFilters');
+    }
+
     // ⚠️ IMPORTANT: Initialize Google Places API Key
     // This is REQUIRED for the Populate Missing Fields feature to work
     // If you don't have an API key, get one from https://console.cloud.google.com
@@ -496,6 +505,104 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   };
 
   console.log('✅ iPhone View toggle system ready');
+
+  // ============================================================
+  // SECTION 5.3: QUICK FILTER FUNCTIONS
+  // ============================================================
+
+  /**
+   * Apply "Open Today" filter
+   * Shows only places that are open today
+   */
+  window.applyOpenTodayFilter = window.applyOpenTodayFilter || function() {
+    console.log('🟢 Applying Open Today filter...');
+
+    try {
+      const btn = document.getElementById('openTodayFilterBtn');
+      const isActive = btn && btn.classList.contains('active');
+
+      if (isActive) {
+        // Remove filter
+        if (btn) btn.classList.remove('active');
+        if (window.activeFilters && window.activeFilters.quickFilters) {
+          window.activeFilters.quickFilters.delete('openToday');
+        }
+        if (window.showToast) {
+          window.showToast('🔄 Open Today filter cleared', 'info', 2000);
+        }
+      } else {
+        // Apply filter
+        if (btn) btn.classList.add('active');
+        if (window.activeFilters && window.activeFilters.quickFilters) {
+          window.activeFilters.quickFilters.add('openToday');
+        }
+        if (window.showToast) {
+          window.showToast('🟢 Showing only places open today', 'success', 2000);
+        }
+      }
+
+      // Apply filters to update display
+      if (typeof applyFilters === 'function') {
+        applyFilters();
+      }
+
+      console.log('✅ Open Today filter applied');
+
+    } catch (error) {
+      console.error('❌ Error applying Open Today filter:', error);
+      if (window.showToast) {
+        window.showToast('Error applying filter: ' + error.message, 'error', 3000);
+      }
+    }
+  };
+
+  /**
+   * Apply "Closing Soon" filter (within 2 hours)
+   * Shows only places closing soon
+   */
+  window.applyClosingSoonFilter = window.applyClosingSoonFilter || function() {
+    console.log('⏰ Applying Closing Soon filter...');
+
+    try {
+      const btn = document.getElementById('closingSoonFilterBtn');
+      const isActive = btn && btn.classList.contains('active');
+
+      if (isActive) {
+        // Remove filter
+        if (btn) btn.classList.remove('active');
+        if (window.activeFilters && window.activeFilters.quickFilters) {
+          window.activeFilters.quickFilters.delete('closingSoon');
+        }
+        if (window.showToast) {
+          window.showToast('🔄 Closing Soon filter cleared', 'info', 2000);
+        }
+      } else {
+        // Apply filter
+        if (btn) btn.classList.add('active');
+        if (window.activeFilters && window.activeFilters.quickFilters) {
+          window.activeFilters.quickFilters.add('closingSoon');
+        }
+        if (window.showToast) {
+          window.showToast('⏰ Showing places closing within 2 hours', 'success', 2000);
+        }
+      }
+
+      // Apply filters to update display
+      if (typeof applyFilters === 'function') {
+        applyFilters();
+      }
+
+      console.log('✅ Closing Soon filter applied');
+
+    } catch (error) {
+      console.error('❌ Error applying Closing Soon filter:', error);
+      if (window.showToast) {
+        window.showToast('Error applying filter: ' + error.message, 'error', 3000);
+      }
+    }
+  };
+
+  console.log('✅ Quick filter functions ready');
 
   // ============================================================
   // SECTION 5.5: DRY RUN SLIDER FIXES
