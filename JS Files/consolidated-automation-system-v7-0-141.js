@@ -34,7 +34,14 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
   }
 
   function looksLikeUrl(value) {
-    return /^(https?:\/\/|www\.|(?:maps\.app\.goo\.gl|goo\.gl\/maps|google\.[a-z.]+\/maps|maps\.google\.[a-z.]+))/i.test(safeString(value));
+    return /^(https?:\/\/|www\.|(?:maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs|google\.[a-z.]+\/maps|maps\.google\.[a-z.]+))/i.test(safeString(value));
+  }
+
+  function isGoogleShortMapsUrl(value) {
+    const url = parseUrlSafely(value);
+    if (!url) return false;
+    const host = url.hostname.replace(/^www\./i, '').toLowerCase();
+    return host === 'maps.app.goo.gl' || host === 'goo.gl' || host === 'g.co';
   }
 
   function normalizeUrlCandidate(value) {
@@ -90,6 +97,55 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     }
 
     return url.toString();
+  }
+
+  async function tryExpandShortGoogleMapsUrl(rawUrl) {
+    const normalizedUrl = normalizeUrlCandidate(rawUrl);
+    if (!normalizedUrl || !isGoogleShortMapsUrl(normalizedUrl) || typeof fetch !== 'function') {
+      return normalizedUrl || rawUrl;
+    }
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 2500) : null;
+
+    try {
+      const response = await fetch(normalizedUrl, {
+        method: 'GET',
+        redirect: 'follow',
+        cache: 'no-store',
+        credentials: 'omit',
+        signal: controller ? controller.signal : undefined
+      });
+
+      const finalUrl = safeString(response && response.url);
+      if (finalUrl && finalUrl !== normalizedUrl) {
+        console.log(`🔗 Expanded short Google Maps URL: ${normalizedUrl} → ${finalUrl}`);
+        return finalUrl;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Short-link expansion skipped for ${normalizedUrl}:`, error.message);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+
+    return normalizedUrl;
+  }
+
+  async function expandShortGoogleMapsInput(raw) {
+    const original = normalizeRawInput(raw);
+    const candidates = extractUrlCandidates(original);
+    if (candidates.length === 0) return original;
+
+    let expandedInput = original;
+    for (const candidate of candidates) {
+      if (!isGoogleShortMapsUrl(candidate)) continue;
+      const expandedUrl = await tryExpandShortGoogleMapsUrl(candidate);
+      if (expandedUrl && expandedUrl !== candidate) {
+        expandedInput = expandedInput.replace(candidate, expandedUrl);
+      }
+    }
+
+    return expandedInput;
   }
 
   function stripUrlsFromText(raw) {
@@ -151,7 +207,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
   // - Full Google Maps place/search URLs with query_place_id/place_id/destination params
   // - Google redirect wrappers like google.com/url?q=<maps-url>
   // - Bare pasted URLs mixed with descriptive text
-  // - Shortened hosts like maps.app.goo.gl and goo.gl/maps (best-effort query recovery)
+  // - Shortened hosts like maps.app.goo.gl, goo.gl/maps, and g.co/kgs (best-effort expansion/recovery)
   // - Plain pasted Place IDs embedded anywhere in the text
   function extractPlaceId(raw) {
     const text = normalizeRawInput(raw);
@@ -260,16 +316,20 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       throw new Error('Please enter a value.');
     }
 
+    const expandedValue = inputType === 'placeUrl'
+      ? await expandShortGoogleMapsInput(rawValue)
+      : rawValue;
+
     let placeId = '';
     let searchResult = null;
     let details = null;
 
-    const extractedPlaceId = extractPlaceId(rawValue);
-    const queryText = extractSearchQuery(inputType, rawValue);
+    const extractedPlaceId = extractPlaceId(expandedValue);
+    const queryText = extractSearchQuery(inputType, expandedValue);
 
     if (typeof mainWindow.resolvePlaceIdFromInput === 'function') {
       try {
-        placeId = safeString(await mainWindow.resolvePlaceIdFromInput(inputType, rawValue));
+        placeId = safeString(await mainWindow.resolvePlaceIdFromInput(inputType, expandedValue));
       } catch (resolverError) {
         console.warn(`⚠️ resolvePlaceIdFromInput failed for ${inputType}:`, resolverError.message);
       }
@@ -302,9 +362,9 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       }
     }
 
-    const normalized = normalizeResolvedDetails(placeId, details, searchResult, rawValue);
+    const normalized = normalizeResolvedDetails(placeId, details, searchResult, expandedValue);
     if (!normalized.placeId || !normalized.name || !normalized.address) {
-      throw new Error(`Google returned incomplete details for "${rawValue}". No row was added.`);
+      throw new Error(`Google returned incomplete details for "${expandedValue}". No row was added.`);
     }
 
     return normalized;
