@@ -113,192 +113,107 @@
     return editText.includes('save');
   }
 
-  function getAdventureEntry(index) {
-    const num = Number(index);
-    if (!Number.isInteger(num) || num < 0) return null;
-
-    const filtered = Array.isArray(window.totalFilteredAdventures) ? window.totalFilteredAdventures : [];
-    const filteredEntry = filtered[num];
-    if (filteredEntry && filteredEntry.row) {
-      const sourceIndex = Number.isInteger(filteredEntry.sourceIndex)
-        ? filteredEntry.sourceIndex
-        : Array.isArray(window.adventuresData) ? window.adventuresData.indexOf(filteredEntry.row) : -1;
-
-      if (sourceIndex >= 0) {
-        return { row: filteredEntry.row, sourceIndex, filteredIndex: num };
-      }
-    }
-
-    const sourceRow = Array.isArray(window.adventuresData) ? window.adventuresData[num] : null;
-    if (sourceRow) {
-      return {
-        row: sourceRow,
-        sourceIndex: num,
-        filteredIndex: filtered.findIndex((entry) => entry && entry.row === sourceRow)
-      };
-    }
-
-    return null;
-  }
-
-  function formatTags(tags) {
-    return String(tags || '')
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean)
-      .map((tag) => `<span class="tag-pill">${tag}</span>`)
-      .join('');
-  }
-
-  function makeSection(title, body) {
-    return `<div class="modal-detail-section"><h3>${title}</h3>${body}</div>`;
-  }
-
-  function buildRowDetailTabs(values) {
-    const [
-      _name,
-      googlePlaceId,
-      website,
-      tags,
-      driveTime,
-      hoursOfOperation,
-      activityDuration,
-      difficulty,
-      trailLength,
-      state,
-      city,
-      address,
-      phoneNumber,
-      googleRating,
-      cost,
-      directions,
-      description,
-      nearby,
-      links,
-      links2,
-      notes,
-      myRating
-    ] = values;
-
-    return [
-      {
-        id: 'overview',
-        label: '📋 Overview',
-        content: [
-          makeSection('📍 Location', `
-            <p><strong>Address:</strong> ${address || 'Not available'}</p>
-            <p><strong>City:</strong> ${city || 'N/A'}</p>
-            <p><strong>State:</strong> ${state || 'N/A'}</p>
-            <p><strong>Drive Time:</strong> ${driveTime || 'N/A'}</p>
-          `),
-          description ? makeSection('📖 Description', `<p>${description}</p>`) : '',
-          tags ? makeSection('🏷️ Tags', `<div>${formatTags(tags)}</div>`) : ''
-        ].join('')
-      },
-      {
-        id: 'details',
-        label: 'ℹ️ Details',
-        content: makeSection('Adventure Details', `
-          <p><strong>Difficulty:</strong> ${difficulty || 'N/A'}</p>
-          <p><strong>Trail Length:</strong> ${trailLength || 'N/A'}</p>
-          <p><strong>Duration:</strong> ${activityDuration || 'N/A'}</p>
-          <p><strong>Hours:</strong> ${hoursOfOperation || 'N/A'}</p>
-          <p><strong>Cost:</strong> ${cost || 'N/A'}</p>
-          <p><strong>Google Rating:</strong> ${googleRating || 'N/A'}</p>
-          <p><strong>My Rating:</strong> ${myRating || 'N/A'}</p>
-        `)
-      },
-      {
-        id: 'contact',
-        label: '📞 Contact',
-        content: makeSection('Contact & Links', `
-          <p><strong>Phone:</strong> ${phoneNumber ? `<a href="tel:${String(phoneNumber).replace(/\s+/g, '')}">${phoneNumber}</a>` : 'Not available'}</p>
-          <p><strong>Website:</strong> ${website ? `<a href="${website}" target="_blank" rel="noopener">Visit Website</a>` : 'Not available'}</p>
-          <p><strong>Directions:</strong> ${directions ? `<a href="${directions}" target="_blank" rel="noopener">Get Directions</a>` : 'Not available'}</p>
-          <p><strong>Google Place ID:</strong> ${googlePlaceId || 'Not available'}</p>
-          <p><strong>Links:</strong> ${links ? `<a href="${links}" target="_blank" rel="noopener">Open Link</a>` : 'Not available'}</p>
-          <p><strong>More Links:</strong> ${links2 ? `<a href="${links2}" target="_blank" rel="noopener">Open Link</a>` : 'Not available'}</p>
-        `)
-      },
-      {
-        id: 'additional',
-        label: '📌 Additional',
-        content: [
-          nearby ? makeSection('🌟 Nearby Attractions', `<p>${nearby}</p>`) : '',
-          notes ? makeSection('📝 Notes', `<p>${notes}</p>`) : ''
-        ].join('') || makeSection('Additional Info', '<p>No additional information available.</p>')
-      }
-    ];
-  }
-
-  function renderRowDetailFallback(entry) {
+  function captureRowDetailFormSnapshot() {
     const parts = getRowDetailParts();
-    if (!parts.modal || !parts.backdrop || !parts.title || !parts.content || !parts.tabs) {
-      console.warn('⚠️ Row detail modal elements not found for fallback render');
-      return false;
-    }
+    if (!parts.modal) return [];
 
-    const values = entry?.row?.values?.[0];
-    if (!Array.isArray(values)) return false;
+    return Array.from(parts.modal.querySelectorAll('input, select, textarea'))
+      .filter((el) => !el.disabled && el.type !== 'hidden')
+      .map((el, idx) => ({
+        ref: el,
+        id: el.id || '',
+        name: el.name || '',
+        index: idx,
+        type: el.type || '',
+        value: el.value,
+        checked: !!el.checked
+      }));
+  }
 
-    const name = values[0] || 'Adventure Details';
-    const city = values[10] || 'Unknown';
-    const state = values[9] || '';
-    const driveTime = values[4] || 'N/A';
-    const tabs = buildRowDetailTabs(values);
+  function restoreRowDetailFormSnapshot(snapshot) {
+    if (!Array.isArray(snapshot) || snapshot.length === 0) return;
+    const parts = getRowDetailParts();
+    if (!parts.modal) return;
 
-    parts.modal.dataset.currentRowIndex = String(entry.sourceIndex);
-    parts.title.textContent = name;
-    if (parts.location) {
-      parts.location.innerHTML = `<span>📍 ${city}${state ? `, ${state}` : ''}</span><span>⏱️ ${driveTime}</span>`;
-    }
+    snapshot.forEach((field) => {
+      let target = field.ref && field.ref.isConnected ? field.ref : null;
+      if (!target && field.id) {
+        target = parts.modal.querySelector(`#${field.id}`);
+      }
+      if (!target && field.name) {
+        const candidates = parts.modal.querySelectorAll(`[name="${field.name}"]`);
+        target = candidates[field.index] || candidates[0] || null;
+      }
+      if (!target) return;
 
-    parts.tabs.innerHTML = tabs.map((tab, idx) => `
-      <button class="row-detail-tab-btn ${idx === 0 ? 'active' : ''}" data-tab-id="${tab.id}" type="button">${tab.label}</button>
-    `).join('');
+      if (field.type === 'checkbox' || field.type === 'radio') {
+        target.checked = !!field.checked;
+      } else {
+        target.value = field.value;
+      }
 
-    parts.content.innerHTML = tabs.map((tab, idx) => `
-      <div class="row-detail-tab-pane ${idx === 0 ? 'active' : ''}" data-tab-id="${tab.id}">${tab.content}</div>
-    `).join('');
-
-    parts.tabs.querySelectorAll('.row-detail-tab-btn').forEach((button) => {
-      button.addEventListener('click', () => {
-        const tabId = button.getAttribute('data-tab-id');
-        parts.tabs.querySelectorAll('.row-detail-tab-btn').forEach((btn) => btn.classList.remove('active'));
-        parts.content.querySelectorAll('.row-detail-tab-pane').forEach((pane) => pane.classList.remove('active'));
-        button.classList.add('active');
-        const pane = parts.content.querySelector(`.row-detail-tab-pane[data-tab-id="${tabId}"]`);
-        if (pane) pane.classList.add('active');
-      });
+      target.dispatchEvent(new Event('input', { bubbles: true }));
+      target.dispatchEvent(new Event('change', { bubbles: true }));
     });
-
-    parts.modal.style.display = 'flex';
-    parts.modal.classList.add('visible');
-    parts.modal.style.pointerEvents = 'auto';
-    parts.backdrop.style.display = 'block';
-    parts.backdrop.classList.add('visible');
-    parts.backdrop.style.pointerEvents = 'auto';
-    document.body.style.overflow = 'hidden';
-
-    return true;
   }
 
-  function closeRowDetailModalHard() {
+  function clearRowDetailSaveErrorBanner() {
     const parts = getRowDetailParts();
-    if (parts.modal) {
-      parts.modal.classList.remove('visible');
-      parts.modal.style.display = 'none';
-      parts.modal.style.pointerEvents = 'none';
+    if (!parts.modal) return;
+    const banner = parts.modal.querySelector('#rowDetailSaveErrorBanner');
+    if (banner) banner.remove();
+  }
+
+  function setRetryButtonState() {
+    const parts = getRowDetailParts();
+    if (!parts.editBtn) return;
+    parts.editBtn.textContent = '💾 Retry Save';
+    parts.editBtn.style.background = '#dc2626';
+    parts.editBtn.style.color = '#ffffff';
+    parts.editBtn.dataset.rowDetailSaveState = 'retry';
+  }
+
+  function clearRetryButtonState() {
+    const parts = getRowDetailParts();
+    if (!parts.editBtn) return;
+    parts.editBtn.dataset.rowDetailSaveState = '';
+    parts.editBtn.style.background = '';
+    parts.editBtn.style.color = '';
+  }
+
+  function showRowDetailSaveErrorBanner(message) {
+    const parts = getRowDetailParts();
+    if (!parts.modal) return;
+
+    clearRowDetailSaveErrorBanner();
+
+    const banner = document.createElement('div');
+    banner.id = 'rowDetailSaveErrorBanner';
+    banner.style.cssText = 'margin: 12px 0; padding: 10px 12px; border-radius: 8px; border: 1px solid #fca5a5; background: #fef2f2; color: #991b1b; font-size: 12px;';
+    banner.innerHTML = `
+      <div style="font-weight: 700; margin-bottom: 6px;">Save failed. Your edits are still here.</div>
+      <div style="margin-bottom: 8px;">${String(message || 'Unknown save error')}</div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" id="rowDetailRetrySaveBtn" style="padding: 6px 10px; border: none; border-radius: 6px; background: #dc2626; color: #fff; cursor: pointer;">Retry Save</button>
+        <button type="button" id="rowDetailDismissSaveErrorBtn" style="padding: 6px 10px; border: 1px solid #fca5a5; border-radius: 6px; background: #fff; color: #991b1b; cursor: pointer;">Dismiss</button>
+      </div>
+    `;
+
+    const host = parts.content || parts.tabs || parts.modal;
+    if (host && host.parentNode) {
+      host.parentNode.insertBefore(banner, host);
+    } else {
+      parts.modal.prepend(banner);
     }
-    if (parts.backdrop) {
-      parts.backdrop.classList.remove('visible');
-      parts.backdrop.style.display = 'none';
-      parts.backdrop.style.pointerEvents = 'none';
+  }
+
+  function keepRowDetailInEditForRetry() {
+    if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
+      ensureEditingRowFromModalDataset();
     }
-    document.body.style.overflow = '';
-    window.currentEditingRow = null;
-    window.currentEditingRowIndex = null;
-    return true;
+    window.isInEditMode = true;
+    setRetryButtonState();
+    syncRowDetailContextFromGlobals();
   }
 
   function bindRowDetailCloseHandlers() {
@@ -342,16 +257,11 @@
       syncRowDetailContextFromGlobals();
 
       if (isEditModeActive()) {
-        if (typeof window.__rowDetailOriginalSaveEditedData === 'function') {
-          await window.__rowDetailOriginalSaveEditedData();
-          syncRowDetailContextFromGlobals();
-          return;
+        if (typeof window.__rowDetailSafeSaveEditedData === 'function') {
+          await window.__rowDetailSafeSaveEditedData();
         }
-        if (typeof window.saveEditedData === 'function' && window.saveEditedData !== window.__rowDetailSafeSaveEditedData) {
-          await window.saveEditedData();
-          syncRowDetailContextFromGlobals();
-          return;
-        }
+        syncRowDetailContextFromGlobals();
+        return;
       }
 
       if (typeof window.__rowDetailOriginalEnableEditMode === 'function') {
@@ -430,6 +340,25 @@
       event.preventDefault();
       window.closeRowDetailModal();
     }, true);
+
+    // Retry / dismiss controls for save errors.
+    document.addEventListener('click', async (event) => {
+      const retryBtn = event.target && event.target.closest ? event.target.closest('#rowDetailRetrySaveBtn') : null;
+      if (!retryBtn) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof window.__rowDetailSafeSaveEditedData === 'function') {
+        await window.__rowDetailSafeSaveEditedData();
+      }
+    }, true);
+
+    document.addEventListener('click', (event) => {
+      const dismissBtn = event.target && event.target.closest ? event.target.closest('#rowDetailDismissSaveErrorBtn') : null;
+      if (!dismissBtn) return;
+      event.preventDefault();
+      event.stopPropagation();
+      clearRowDetailSaveErrorBanner();
+    }, true);
   }
 
   function installRowDetailFixes() {
@@ -472,6 +401,8 @@
 
       if (typeof originalEnableEdit === 'function') {
         const result = originalEnableEdit();
+        clearRowDetailSaveErrorBanner();
+        clearRetryButtonState();
         syncRowDetailContextFromGlobals();
         return result;
       }
@@ -486,11 +417,41 @@
       if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
         ensureEditingRowFromModalDataset();
       }
-      if (typeof originalSaveEdited === 'function') {
-        const result = await originalSaveEdited();
-        syncRowDetailContextFromGlobals();
-        return result;
+
+      const snapshot = captureRowDetailFormSnapshot();
+      const partsBeforeSave = getRowDetailParts();
+      const saveAttemptedWhileVisible = isVisible(partsBeforeSave.modal);
+
+      try {
+        if (typeof originalSaveEdited === 'function') {
+          const result = await originalSaveEdited();
+          const partsAfterSave = getRowDetailParts();
+          const modalStillVisible = isVisible(partsAfterSave.modal);
+
+          if (result === false || (saveAttemptedWhileVisible && modalStillVisible && window.isInEditMode === false)) {
+            restoreRowDetailFormSnapshot(snapshot);
+            keepRowDetailInEditForRetry();
+            showRowDetailSaveErrorBanner('The save could not be confirmed. Fix any issues and retry.');
+            return false;
+          }
+
+          clearRowDetailSaveErrorBanner();
+          clearRetryButtonState();
+          syncRowDetailContextFromGlobals();
+          return result;
+        }
+      } catch (error) {
+        restoreRowDetailFormSnapshot(snapshot);
+        keepRowDetailInEditForRetry();
+        showRowDetailSaveErrorBanner(error && error.message ? error.message : 'Save failed unexpectedly.');
+        if (window.showToast) {
+          window.showToast('Save failed. Your edits were preserved for retry.', 'error', 3500);
+        }
+        return false;
       }
+
+      keepRowDetailInEditForRetry();
+      showRowDetailSaveErrorBanner('Save function is not available yet.');
       return false;
     };
 
@@ -500,6 +461,8 @@
       }
       if (typeof originalCancelEdit === 'function') {
         const result = originalCancelEdit();
+        clearRowDetailSaveErrorBanner();
+        clearRetryButtonState();
         syncRowDetailContextFromGlobals();
         return result;
       }
