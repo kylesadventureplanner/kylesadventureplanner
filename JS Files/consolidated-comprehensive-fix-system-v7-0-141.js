@@ -71,7 +71,14 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
     if (!window.activeFilters) {
       window.activeFilters = {
+        searchName: '',
+        filterDifficulty: '',
+        filterState: '',
+        filterCity: '',
+        filterTags: '',
+        filterCost: '',
         quickFilters: new Set(),
+        showFavoritesOnly: false,
         favorites: false,
         tags: new Set()
       };
@@ -519,33 +526,46 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
     try {
       const btn = document.getElementById('openTodayFilterBtn');
-      const isActive = btn && btn.classList.contains('active');
 
+      // Prefer unified FilterManager state if present.
+      if (window.FilterManager && window.FilterManager.state) {
+        const set = window.FilterManager.state.quickFilters instanceof Set
+          ? window.FilterManager.state.quickFilters
+          : new Set();
+        window.FilterManager.state.quickFilters = set;
+
+        const isActive = set.has('opentoday') || set.has('openToday');
+        if (isActive) {
+          set.delete('opentoday');
+          set.delete('openToday');
+          if (btn) btn.classList.remove('active');
+          window.showToast && window.showToast('🔄 Open Today filter cleared', 'info', 1500);
+        } else {
+          set.add('opentoday');
+          if (btn) btn.classList.add('active');
+          window.showToast && window.showToast('🟢 Showing only places open today', 'success', 1500);
+        }
+
+        if (typeof window.FilterManager.applyAllFilters === 'function') {
+          window.FilterManager.applyAllFilters();
+          return;
+        }
+      }
+
+      // Legacy fallback path.
+      const isActive = btn && btn.classList.contains('active');
       if (isActive) {
-        // Remove filter
         if (btn) btn.classList.remove('active');
         if (window.activeFilters && window.activeFilters.quickFilters) {
           window.activeFilters.quickFilters.delete('openToday');
         }
-        if (window.showToast) {
-          window.showToast('🔄 Open Today filter cleared', 'info', 2000);
-        }
       } else {
-        // Apply filter
         if (btn) btn.classList.add('active');
         if (window.activeFilters && window.activeFilters.quickFilters) {
           window.activeFilters.quickFilters.add('openToday');
         }
-        if (window.showToast) {
-          window.showToast('🟢 Showing only places open today', 'success', 2000);
-        }
       }
-
-      // Apply filters to update display
-      if (typeof applyFilters === 'function') {
-        applyFilters();
-      }
-
+      if (typeof applyFilters === 'function') applyFilters();
       console.log('✅ Open Today filter applied');
 
     } catch (error) {
@@ -565,33 +585,44 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
     try {
       const btn = document.getElementById('closingSoonFilterBtn');
-      const isActive = btn && btn.classList.contains('active');
 
+      if (window.FilterManager && window.FilterManager.state) {
+        const set = window.FilterManager.state.quickFilters instanceof Set
+          ? window.FilterManager.state.quickFilters
+          : new Set();
+        window.FilterManager.state.quickFilters = set;
+
+        const isActive = set.has('closingsoon') || set.has('closingSoon');
+        if (isActive) {
+          set.delete('closingsoon');
+          set.delete('closingSoon');
+          if (btn) btn.classList.remove('active');
+          window.showToast && window.showToast('🔄 Closing Soon filter cleared', 'info', 1500);
+        } else {
+          set.add('closingsoon');
+          if (btn) btn.classList.add('active');
+          window.showToast && window.showToast('⏰ Showing places closing soon', 'success', 1500);
+        }
+
+        if (typeof window.FilterManager.applyAllFilters === 'function') {
+          window.FilterManager.applyAllFilters();
+          return;
+        }
+      }
+
+      const isActive = btn && btn.classList.contains('active');
       if (isActive) {
-        // Remove filter
         if (btn) btn.classList.remove('active');
         if (window.activeFilters && window.activeFilters.quickFilters) {
           window.activeFilters.quickFilters.delete('closingSoon');
         }
-        if (window.showToast) {
-          window.showToast('🔄 Closing Soon filter cleared', 'info', 2000);
-        }
       } else {
-        // Apply filter
         if (btn) btn.classList.add('active');
         if (window.activeFilters && window.activeFilters.quickFilters) {
           window.activeFilters.quickFilters.add('closingSoon');
         }
-        if (window.showToast) {
-          window.showToast('⏰ Showing places closing within 2 hours', 'success', 2000);
-        }
       }
-
-      // Apply filters to update display
-      if (typeof applyFilters === 'function') {
-        applyFilters();
-      }
-
+      if (typeof applyFilters === 'function') applyFilters();
       console.log('✅ Closing Soon filter applied');
 
     } catch (error) {
@@ -904,6 +935,16 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     window.applyFilters = function() {
       console.log('🔍 Applying filters...');
 
+      // Single source of truth: use FilterManager when available.
+      if (window.FilterManager && typeof window.FilterManager.applyAllFilters === 'function') {
+        try {
+          window.FilterManager.applyAllFilters();
+          return;
+        } catch (fmError) {
+          console.warn('⚠️ FilterManager apply failed, using legacy fallback:', fmError);
+        }
+      }
+
       if (!window.totalFilteredAdventures || !Array.isArray(window.totalFilteredAdventures)) {
         window.totalFilteredAdventures = window.adventuresData ? [...window.adventuresData] : [];
       }
@@ -1183,36 +1224,6 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     }, { passive: true });
 
     console.log('✅ ENHANCED button responsiveness monitor initialized');
-  }
-    }, 1000);
-
-    // Also run fixes on scroll (since buttons may be re-rendered)
-    document.addEventListener('scroll', () => {
-      // Debounce scroll handler
-      clearTimeout(window.scrollFixTimeout);
-      window.scrollFixTimeout = setTimeout(() => {
-        fixPointerEventsOnButtons();
-        fixCardButtonZIndex();
-      }, 100);
-    }, { passive: true });
-
-    // Run fixes when DOM changes
-    const observer = new MutationObserver(() => {
-      clearTimeout(window.domFixTimeout);
-      window.domFixTimeout = setTimeout(() => {
-        fixPointerEventsOnButtons();
-        fixCardButtonZIndex();
-      }, 100);
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class']
-    });
-
-    console.log('✅ Button responsiveness monitor initialized');
   }
 
   // Initialize button responsiveness fixes
@@ -1528,25 +1539,29 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     console.log('🔧 Initializing Excel configuration...');
 
     try {
-      // Set default file name (not URL-encoded path)
-      if (!window.fileName) {
-        window.fileName = 'Adventure Planner.xlsx';
-        console.log('✅ Set default fileName: Adventure Planner.xlsx');
+      // Canonical workbook location used throughout the app.
+      if (!window.filePath || typeof window.filePath !== 'string' || !window.filePath.trim()) {
+        window.filePath = 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+        console.log('✅ Set default filePath:', window.filePath);
       }
 
-      // Set default table name
-      if (!window.tableName) {
+      if (!window.fileName || typeof window.fileName !== 'string' || !window.fileName.trim()) {
+        window.fileName = 'Adventure_Finder_Excel_DB.xlsx';
+        console.log('✅ Set default fileName:', window.fileName);
+      }
+
+      if (!window.tableName || typeof window.tableName !== 'string' || !window.tableName.trim()) {
         window.tableName = 'MyList';
         console.log('✅ Set default tableName: MyList');
       }
 
-      // Clear any old file path variable that might cause conflicts
-      if (window.filePath && window.filePath.includes('Adventure')) {
-        console.log('⚠️ Clearing old filePath variable to prevent conflicts');
-        delete window.filePath;
+      // Never delete/blank a valid active filePath; this caused 404 regressions.
+      if (window.filePath && /adventure/i.test(window.filePath) === false) {
+        console.warn('⚠️ Non-standard filePath detected, keeping as-is:', window.filePath);
       }
 
       console.log('✅ Excel configuration ready');
+      console.log(`   filePath: ${window.filePath}`);
       console.log(`   fileName: ${window.fileName}`);
       console.log(`   tableName: ${window.tableName}`);
 

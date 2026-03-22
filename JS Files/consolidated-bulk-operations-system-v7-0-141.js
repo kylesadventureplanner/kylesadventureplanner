@@ -28,17 +28,59 @@ console.log('🚀 Consolidated Bulk Operations System v7.0.141 Loading...');
 // Rate limiting for Google Places API
 const PLACES_API_DELAY_MS = 100; // 100ms between calls to avoid rate limiting
 
-// Column indices for Excel
+// Column indices for Excel (must match index.html/buildExcelRow schema)
 const COLS = {
   NAME: 0,
   PLACE_ID: 1,
   WEBSITE: 2,
-  PHONE: 3,
-  HOURS: 4,
+  TAGS: 3,
+  DRIVE_TIME: 4,
+  HOURS: 5,
+  STATE: 9,
+  CITY: 10,
   ADDRESS: 11,
+  PHONE: 12,
   RATING: 13,
+  COST: 14,
   DIRECTIONS: 15
 };
+
+function getSchemaColumnCount(mainWindow) {
+  const countFromGlobal = Number(mainWindow?.__excelColumnCount || window.__excelColumnCount || 0);
+  if (Number.isInteger(countFromGlobal) && countFromGlobal > 0) return countFromGlobal;
+
+  const firstRow = mainWindow?.adventuresData?.[0]?.values?.[0] || window.adventuresData?.[0]?.values?.[0];
+  if (Array.isArray(firstRow) && firstRow.length > 0) return firstRow.length;
+
+  return 24;
+}
+
+function normalizeRowForSchema(rowValues, schemaCount) {
+  const normalized = (Array.isArray(rowValues) ? rowValues : []).map((v) => {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number') return String(v);
+    if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+    return String(v);
+  });
+
+  if (normalized.length > schemaCount) return normalized.slice(0, schemaCount);
+  if (normalized.length < schemaCount) return normalized.concat(new Array(schemaCount - normalized.length).fill(''));
+  return normalized;
+}
+
+function buildFallbackSchemaRow(location, placeId, details, schemaCount) {
+  const row = new Array(schemaCount).fill('');
+  row[COLS.NAME] = location || '';
+  row[COLS.PLACE_ID] = placeId || '';
+  row[COLS.WEBSITE] = details?.website || '';
+  row[COLS.HOURS] = details?.hours || '';
+  row[COLS.ADDRESS] = details?.address || '';
+  row[COLS.PHONE] = details?.phone || '';
+  row[COLS.RATING] = details?.rating || '';
+  row[COLS.DIRECTIONS] = details?.directions || `https://www.google.com/maps/place/?q=place_id:${placeId || ''}`;
+  return row;
+}
 
 /**
  * Helper: Delay execution (for rate limiting)
@@ -229,7 +271,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             <div style="font-size: 24px; font-weight: 700; color: #10b981;">✅ ${successCount}</div>
             <div style="font-size: 11px; color: #047857; margin-top: 2px;">Success</div>
           </div>
-          <div style="padding: 10px; background: #fee2e2; border-radius: 6px; text-align: center;">
+          <div style="padding: 10px, background: #fee2e2; border-radius: 6px; text-align: center;">
             <div style="font-size: 24px; font-weight: 700; color: #ef4444;">❌ ${failCount}</div>
             <div style="font-size: 11px; color: #7f1d1d; margin-top: 2px;">Failed</div>
           </div>
@@ -281,25 +323,31 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
           placeId = `place_${i}_${Date.now()}`;
         } else {
           try {
-            details = await getPlaceDetailsFromAPIWithFallback(location);
+            // Use the consolidated helper directly; previous alias was undefined.
+            details = await getPlaceDetailsFromAPI(location);
           } catch (apiErr) {
             console.warn(`⚠️ Could not fetch details for ${location}:`, apiErr.message);
           }
         }
 
         if (!dryRun) {
+          const schemaCount = getSchemaColumnCount(mainWindow);
+
           // Prefer the main app's normalized Excel append path so bulk adds match the real schema.
           if (typeof mainWindow.buildExcelRow === 'function' && typeof mainWindow.addRowToExcel === 'function') {
-            const rowValues = mainWindow.buildExcelRow(placeId, details);
+            const rawRowValues = mainWindow.buildExcelRow(placeId, details);
+            const rowValues = normalizeRowForSchema(rawRowValues, schemaCount);
             await mainWindow.addRowToExcel(rowValues);
 
             if (Array.isArray(mainWindow.adventuresData)) {
               mainWindow.adventuresData.push({ values: [rowValues] });
             }
           } else {
-            const rowValues = typeof mainWindow.buildExcelRow === 'function'
+            const rawRowValues = typeof mainWindow.buildExcelRow === 'function'
               ? mainWindow.buildExcelRow(placeId, details)
-              : [location, placeId || '', details.website || '', '', '', details.hours || '', '', '', '', '', '', details.address || '', details.phone || '', details.rating || '', '', details.directions || ''];
+              : buildFallbackSchemaRow(location, placeId, details, schemaCount);
+
+            const rowValues = normalizeRowForSchema(rawRowValues, schemaCount);
 
             if (Array.isArray(mainWindow.adventuresData)) {
               mainWindow.adventuresData.push({ values: [rowValues] });
