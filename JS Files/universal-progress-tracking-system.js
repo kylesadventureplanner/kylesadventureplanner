@@ -81,7 +81,7 @@
           <!-- Status Cards -->
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
             <div style="padding: 10px; background: #ecfdf5; border-radius: 6px; text-align: center;">
-              <div style="font-size: 24px; font-weight: 700; color: #10b981;">✅ ${this.successCount}</div>
+              <div style="font-size: 24px; font-weight: 700, color: #10b981;">✅ ${this.successCount}</div>
               <div style="font-size: 11px; color: #047857; margin-top: 2px;">Success</div>
             </div>
             <div style="padding: 10px; background: #fee2e2; border-radius: 6px; text-align: center;">
@@ -385,7 +385,10 @@
 
     const result = await resolvedHandler(displayElement, dryRun);
     if (result && typeof result === 'object') return result;
-    return { success: true, message: `${label} completed.` };
+
+    const failMsg = `❌ ${label} handler returned no structured result (strict mode).`;
+    renderDelegationStatus(displayElement, failMsg, true);
+    return { success: false, error: failMsg };
   }
 
   // ============================================================
@@ -447,7 +450,10 @@
       renderDelegationStatus(displayElement, '⏳ Running real refresh-place-ids handler...');
       const result = await refreshFn(dryRun);
       if (result && typeof result === 'object') return result;
-      return { success: true, message: 'Refresh Place IDs completed.' };
+
+      const failMsg = '❌ refresh-place-ids handler returned no structured result (strict mode).';
+      renderDelegationStatus(displayElement, failMsg, true);
+      return { success: false, error: failMsg };
     } catch (err) {
       console.error('❌ Error:', err);
       renderDelegationStatus(displayElement, `❌ ${err.message}`, true);
@@ -477,7 +483,10 @@
       renderDelegationStatus(displayElement, '⏳ Running real auto-tag handler...');
       const result = await fn(dryRun);
       if (result && typeof result === 'object') return result;
-      return { success: true, message: 'Auto-tag completed.' };
+
+      const failMsg = '❌ auto-tag handler returned no structured result (strict mode).';
+      renderDelegationStatus(displayElement, failMsg, true);
+      return { success: false, error: failMsg };
     } catch (err) {
       console.error('❌ Error:', err);
       renderDelegationStatus(displayElement, `❌ ${err.message}`, true);
