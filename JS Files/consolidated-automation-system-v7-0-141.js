@@ -381,86 +381,100 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const diagnostics = createShortLinkDiagnostics(inputType, rawValue);
     diagnostics.log('start', 'Short-link diagnostics enabled', { inputType, inputValue: rawValue });
 
-    const expandedValue = inputType === 'placeUrl'
-      ? await expandShortGoogleMapsInput(rawValue, diagnostics)
-      : rawValue;
+    try {
+      const expandedValue = inputType === 'placeUrl'
+        ? await expandShortGoogleMapsInput(rawValue, diagnostics)
+        : rawValue;
 
-    let placeId = '';
-    let searchResult = null;
-    let details = null;
+      let placeId = '';
+      let searchResult = null;
+      let details = null;
 
-    const extractedPlaceId = extractPlaceId(expandedValue, diagnostics);
-    const queryText = extractSearchQuery(inputType, expandedValue, diagnostics);
+      const extractedPlaceId = extractPlaceId(expandedValue, diagnostics);
+      const queryText = extractSearchQuery(inputType, expandedValue, diagnostics);
 
-    if (typeof mainWindow.resolvePlaceIdFromInput === 'function') {
-      try {
-        diagnostics.log('Place ID extraction', 'Trying main-window resolvePlaceIdFromInput', { input: expandedValue });
-        placeId = safeString(await mainWindow.resolvePlaceIdFromInput(inputType, expandedValue));
-        if (placeId) {
-          diagnostics.log('Place ID extraction', 'main-window resolver returned a Place ID', { placeId });
+      if (typeof mainWindow.resolvePlaceIdFromInput === 'function') {
+        try {
+          diagnostics.log('Place ID extraction', 'Trying main-window resolvePlaceIdFromInput', { input: expandedValue });
+          placeId = safeString(await mainWindow.resolvePlaceIdFromInput(inputType, expandedValue));
+          if (placeId) {
+            diagnostics.log('Place ID extraction', 'main-window resolver returned a Place ID', { placeId });
+          }
+        } catch (resolverError) {
+          console.warn(`⚠️ resolvePlaceIdFromInput failed for ${inputType}:`, resolverError.message);
+          diagnostics.warn('Place ID extraction', 'main-window resolver failed', { error: resolverError.message });
         }
-      } catch (resolverError) {
-        console.warn(`⚠️ resolvePlaceIdFromInput failed for ${inputType}:`, resolverError.message);
-        diagnostics.warn('Place ID extraction', 'main-window resolver failed', { error: resolverError.message });
       }
-    }
 
-    if (!placeId && (inputType === 'placeId' || inputType === 'placeUrl') && extractedPlaceId) {
-      placeId = extractedPlaceId;
-      diagnostics.log('Place ID extraction', 'Using locally extracted Place ID fallback', { placeId });
-    }
-
-    if ((!placeId || !looksLikePlaceId(placeId)) && typeof mainWindow.searchPlaces === 'function' && queryText) {
-      diagnostics.log('query recovery', 'Trying searchPlaces fallback with recovered query', { queryText });
-      const searchResults = await mainWindow.searchPlaces(queryText);
-      if (Array.isArray(searchResults) && searchResults.length > 0) {
-        searchResult = searchResults[0];
-        placeId = safeString(searchResult.placeId || placeId);
-        diagnostics.log('query recovery', 'searchPlaces returned a candidate', { placeId, topResult: searchResult.name || '' });
-      } else {
-        diagnostics.warn('query recovery', 'searchPlaces returned no candidates', { queryText });
+      if (!placeId && (inputType === 'placeId' || inputType === 'placeUrl') && extractedPlaceId) {
+        placeId = extractedPlaceId;
+        diagnostics.log('Place ID extraction', 'Using locally extracted Place ID fallback', { placeId });
       }
-    }
 
-    if (!looksLikePlaceId(placeId)) {
-      diagnostics.warn('Place ID extraction', 'Resolution failed before Google details lookup', { rawValue, expandedValue, queryText });
-      throw new Error(`Could not resolve a valid Google Place ID for "${rawValue}".`);
-    }
-
-    if (typeof mainWindow.getPlaceDetails === 'function') {
-      diagnostics.log('Google detail lookup', 'Fetching Google place details', { placeId });
-      details = await mainWindow.getPlaceDetails(placeId);
-      if (details && safeString(details.name) && safeString(details.address)) {
-        diagnostics.log('Google detail lookup', 'Google details lookup succeeded', { name: details.name, address: details.address });
-      } else {
-        diagnostics.warn('Google detail lookup', 'Google details lookup returned incomplete data', { placeId, details });
+      if ((!placeId || !looksLikePlaceId(placeId)) && typeof mainWindow.searchPlaces === 'function' && queryText) {
+        diagnostics.log('query recovery', 'Trying searchPlaces fallback with recovered query', { queryText });
+        const searchResults = await mainWindow.searchPlaces(queryText);
+        if (Array.isArray(searchResults) && searchResults.length > 0) {
+          searchResult = searchResults[0];
+          placeId = safeString(searchResult.placeId || placeId);
+          diagnostics.log('query recovery', 'searchPlaces returned a candidate', { placeId, topResult: searchResult.name || '' });
+        } else {
+          diagnostics.warn('query recovery', 'searchPlaces returned no candidates', { queryText });
+        }
       }
-    }
 
-    if ((!details || !safeString(details.name) || !safeString(details.address)) && !searchResult && typeof mainWindow.searchPlaces === 'function' && queryText) {
-      diagnostics.log('Google detail lookup', 'Retrying with searchPlaces for incomplete details', { queryText, placeId });
-      const searchResults = await mainWindow.searchPlaces(queryText);
-      if (Array.isArray(searchResults) && searchResults.length > 0) {
-        searchResult = searchResults[0];
-        diagnostics.log('Google detail lookup', 'Recovered candidate from secondary searchPlaces lookup', { topResult: searchResult.name || '', placeId: searchResult.placeId || '' });
-      } else {
-        diagnostics.warn('Google detail lookup', 'Secondary searchPlaces lookup returned no candidates', { queryText });
+      if (!looksLikePlaceId(placeId)) {
+        diagnostics.warn('Place ID extraction', 'Resolution failed before Google details lookup', { rawValue, expandedValue, queryText });
+        throw createTaggedShortLinkError(`Could not resolve a valid Google Place ID for "${rawValue}".`, diagnostics, { stage: 'Place ID extraction' });
       }
+
+      if (typeof mainWindow.getPlaceDetails === 'function') {
+        diagnostics.log('Google detail lookup', 'Fetching Google place details', { placeId });
+        details = await mainWindow.getPlaceDetails(placeId);
+        if (details && safeString(details.name) && safeString(details.address)) {
+          diagnostics.log('Google detail lookup', 'Google details lookup succeeded', { name: details.name, address: details.address });
+        } else {
+          diagnostics.warn('Google detail lookup', 'Google details lookup returned incomplete data', { placeId, details });
+        }
+      }
+
+      if ((!details || !safeString(details.name) || !safeString(details.address)) && !searchResult && typeof mainWindow.searchPlaces === 'function' && queryText) {
+        diagnostics.log('Google detail lookup', 'Retrying with searchPlaces for incomplete details', { queryText, placeId });
+        const searchResults = await mainWindow.searchPlaces(queryText);
+        if (Array.isArray(searchResults) && searchResults.length > 0) {
+          searchResult = searchResults[0];
+          diagnostics.log('Google detail lookup', 'Recovered candidate from secondary searchPlaces lookup', { topResult: searchResult.name || '', placeId: searchResult.placeId || '' });
+        } else {
+          diagnostics.warn('Google detail lookup', 'Secondary searchPlaces lookup returned no candidates', { queryText });
+        }
+      }
+
+      const normalized = normalizeResolvedDetails(placeId, details, searchResult, expandedValue);
+      if (!normalized.placeId || !normalized.name || !normalized.address) {
+        diagnostics.warn('Google detail lookup', 'Normalized result is still incomplete after all fallbacks', normalized);
+        throw createTaggedShortLinkError(`Google returned incomplete details for "${expandedValue}". No row was added.`, diagnostics, { stage: 'Google detail lookup' });
+      }
+
+      diagnostics.log('complete', 'Short-link resolution completed successfully', {
+        placeId: normalized.placeId,
+        name: normalized.name,
+        address: normalized.address
+      });
+
+      return normalized;
+    } catch (error) {
+      if (diagnostics.enabled && (!error || !error.requestId)) {
+        const taggedError = createTaggedShortLinkError(error?.message || String(error), diagnostics, {
+          stage: error?.shortLinkStage || 'resolver',
+          cause: error
+        });
+        diagnostics.warn('complete', 'Short-link resolution failed', { requestId: taggedError.requestId, error: taggedError.message });
+        throw taggedError;
+      }
+
+      diagnostics.warn('complete', 'Short-link resolution failed', { requestId: error?.requestId || diagnostics.id, error: error?.message || String(error) });
+      throw error;
     }
-
-    const normalized = normalizeResolvedDetails(placeId, details, searchResult, expandedValue);
-    if (!normalized.placeId || !normalized.name || !normalized.address) {
-      diagnostics.warn('Google detail lookup', 'Normalized result is still incomplete after all fallbacks', normalized);
-      throw new Error(`Google returned incomplete details for "${expandedValue}". No row was added.`);
-    }
-
-    diagnostics.log('complete', 'Short-link resolution completed successfully', {
-      placeId: normalized.placeId,
-      name: normalized.name,
-      address: normalized.address
-    });
-
-    return normalized;
   };
 
   window.normalizeExcelRowForSchema = window.normalizeExcelRowForSchema || function(rowValues, sourceWindow = getMainWindow()) {
@@ -586,7 +600,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           details
         };
       } catch (error) {
-        console.error('❌ Error adding place:', error);
+        const requestIdPrefix = error?.requestId ? `[${error.requestId}] ` : '';
+        console.error(`❌ Error adding place: ${requestIdPrefix}${error?.message || error}`, error);
         return { success: false, error: error.message };
       }
     }
@@ -598,67 +613,4 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       const results = { success: true, total: lines.length, added: 0, failed: 0, skipped: 0, details: [] };
       for (const line of lines) {
         const result = await this.addSinglePlace(line, inputType, dryRun);
-        if (result.success) {
-          results.added++;
-          results.details.push(`✅ ${result.placeName || line}${result.isDryRun ? ' (dry run)' : ''}`);
-        } else {
-          results.failed++;
-          results.details.push(`❌ ${line}: ${result.error}`);
-        }
-        await new Promise((resolve) => setTimeout(resolve, 150));
-      }
-
-      results.success = results.failed === 0;
-      results.message = `Added ${results.added}/${results.total} places (${results.failed} failed, ${results.skipped} skipped)`;
-      return results;
-    }
-
-    async bulkAddChainLocations(placesText, inputType, dryRun = false) {
-      const lines = (placesText || '').split('\n').map((line) => line.trim()).filter(Boolean);
-      if (lines.length === 0) return { success: false, error: 'No places provided' };
-      if (typeof window.handleBulkAddChainLocationsFixed === 'function') {
-        return await window.handleBulkAddChainLocationsFixed(lines, inputType, document.createElement('div'), dryRun);
-      }
-      if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
-        return await window.handleBulkAddChainLocationsEnhanced(lines, inputType, document.createElement('div'), dryRun);
-      }
-      return { success: false, error: 'Bulk chain add system not available' };
-    }
-
-    async populateMissingFieldsOnly(dryRun = false) {
-      if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
-        return await window.handlePopulateMissingFieldsEnhanced(document.createElement('div'), dryRun);
-      }
-      if (typeof window.handlePopulateMissingFields === 'function') {
-        return await window.handlePopulateMissingFields(document.createElement('div'), dryRun);
-      }
-      return { success: false, error: 'Populate missing fields system not available' };
-    }
-
-    async populateMissingFields(dryRun = false) {
-      return this.populateMissingFieldsOnly(dryRun);
-    }
-
-    async updateHoursOnly(dryRun = false) {
-      if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
-        return await window.handleUpdateHoursOnlyEnhanced(document.createElement('div'), dryRun);
-      }
-      if (typeof window.handleUpdateHoursOnly === 'function') {
-        return await window.handleUpdateHoursOnly(document.createElement('div'), dryRun);
-      }
-      return { success: false, error: 'Update hours system not available' };
-    }
-
-    async autoTagAll(dryRun = false) {
-      if (typeof window.handleAutoTagAll === 'function') {
-        return await window.handleAutoTagAll(dryRun);
-      }
-      return { success: false, error: 'Auto-tag system not available' };
-    }
-  }
-
-  window.EnhancedAutomationFeatures = EnhancedAutomationFeatures;
-  window.enhancedAutomation = window.enhancedAutomation || new EnhancedAutomationFeatures();
-
-  console.log('✅ Consolidated Automation Features System v7.0.141 Loaded');
-})();
+        if

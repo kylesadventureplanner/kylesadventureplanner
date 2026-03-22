@@ -56,6 +56,15 @@ class ErrorManager {
     this.init();
   }
 
+  extractRequestId(message = '', context = {}) {
+    if (context && context.requestId) {
+      return String(context.requestId).trim();
+    }
+
+    const match = String(message || '').match(/\[(SL-[A-Za-z0-9-]+)]/);
+    return match ? match[1] : '';
+  }
+
   /**
    * Initialize error manager
    */
@@ -102,12 +111,17 @@ class ErrorManager {
    */
   logError(message, type = 'general', context = {}) {
     const timestamp = new Date().toLocaleTimeString();
+    const requestId = this.extractRequestId(message, context);
     const error = {
       id: Date.now() + Math.random(),
       timestamp,
       message,
       type,
-      context,
+      context: {
+        ...context,
+        ...(requestId ? { requestId } : {})
+      },
+      requestId,
       seen: false
     };
 
@@ -192,10 +206,14 @@ class ErrorManager {
     html += '<div style="max-height: 400px; overflow-y: auto; border: 1px solid #fca5a5; border-radius: 8px; background: #fef2f2;">';
 
     for (let error of recentErrors) {
+      const requestIdBadge = error.requestId
+        ? '<div style="display: inline-block; margin-top: 6px; padding: 2px 6px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 999px; font-size: 10px; font-weight: 700; color: #991b1b;">' + error.requestId + '</div>'
+        : '';
       html += '<div style="padding: 12px; border-bottom: 1px solid #fecaca; display: flex; gap: 8px; align-items: flex-start;">' +
         '<div style="flex-shrink: 0; margin-top: 2px;">❌</div>' +
         '<div style="flex: 1; min-width: 0;">' +
         '<div style="font-size: 12px; color: #7f1d1d; word-break: break-word;">' + error.message + '</div>' +
+        requestIdBadge +
         '<div style="font-size: 11px; color: #991b1b; margin-top: 4px;">' + error.timestamp + ' [' + error.type + ']</div>' +
         '</div>' +
         '</div>';
@@ -223,7 +241,10 @@ class ErrorManager {
 
     if (copyBtn) {
       copyBtn.onclick = () => {
-        const text = self.errors.map(e => e.timestamp + ' [' + e.type + '] ' + e.message).join('\n');
+        const text = self.errors.map(e => {
+          const requestIdText = e.requestId ? ' [' + e.requestId + ']' : '';
+          return e.timestamp + ' [' + e.type + ']' + requestIdText + ' ' + e.message;
+        }).join('\n');
         navigator.clipboard.writeText(text).then(() => {
           alert('✅ Errors copied to clipboard!');
         }).catch(() => {
