@@ -15,6 +15,35 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return String(value == null ? '' : value).trim();
   }
 
+  function createShortLinkDiagnostics(inputType, inputValue) {
+    const normalizedInput = safeString(inputValue);
+    const shortLinkDetected = inputType === 'placeUrl' && /(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)/i.test(normalizedInput);
+    const requestId = `SL-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
+    return {
+      enabled: shortLinkDetected,
+      id: requestId,
+      inputType,
+      inputValue: normalizedInput,
+      log(stage, message, extra) {
+        if (!this.enabled) return;
+        if (typeof extra === 'undefined') {
+          console.log(`🔎 [${this.id}] ${stage}: ${message}`);
+        } else {
+          console.log(`🔎 [${this.id}] ${stage}: ${message}`, extra);
+        }
+      },
+      warn(stage, message, extra) {
+        if (!this.enabled) return;
+        if (typeof extra === 'undefined') {
+          console.warn(`⚠️ [${this.id}] ${stage}: ${message}`);
+        } else {
+          console.warn(`⚠️ [${this.id}] ${stage}: ${message}`, extra);
+        }
+      }
+    };
+  }
+
   function normalizeRawInput(value) {
     return safeString(value)
       .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -99,11 +128,18 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return url.toString();
   }
 
-  async function tryExpandShortGoogleMapsUrl(rawUrl) {
+  async function tryExpandShortGoogleMapsUrl(rawUrl, diagnostics = null) {
     const normalizedUrl = normalizeUrlCandidate(rawUrl);
     if (!normalizedUrl || !isGoogleShortMapsUrl(normalizedUrl) || typeof fetch !== 'function') {
+      diagnostics?.log('expansion', 'Skipped short-link expansion', {
+        normalizedUrl: normalizedUrl || rawUrl,
+        isShortUrl: !!normalizedUrl && isGoogleShortMapsUrl(normalizedUrl),
+        fetchAvailable: typeof fetch === 'function'
+      });
       return normalizedUrl || rawUrl;
     }
+
+    diagnostics?.log('expansion', 'Attempting short-link expansion', { shortUrl: normalizedUrl });
 
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), 2500) : null;
@@ -120,10 +156,14 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       const finalUrl = safeString(response && response.url);
       if (finalUrl && finalUrl !== normalizedUrl) {
         console.log(`🔗 Expanded short Google Maps URL: ${normalizedUrl} → ${finalUrl}`);
+        diagnostics?.log('expansion', 'Short-link expansion succeeded', { shortUrl: normalizedUrl, expandedUrl: finalUrl });
         return finalUrl;
       }
+
+      diagnostics?.warn('expansion', 'Short-link expansion returned same/fallback URL', { shortUrl: normalizedUrl, expandedUrl: finalUrl || normalizedUrl });
     } catch (error) {
       console.warn(`⚠️ Short-link expansion skipped for ${normalizedUrl}:`, error.message);
+      diagnostics?.warn('expansion', 'Short-link expansion failed', { shortUrl: normalizedUrl, error: error.message });
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
     }
@@ -131,19 +171,27 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return normalizedUrl;
   }
 
-  async function expandShortGoogleMapsInput(raw) {
+  async function expandShortGoogleMapsInput(raw, diagnostics = null) {
     const original = normalizeRawInput(raw);
     const candidates = extractUrlCandidates(original);
-    if (candidates.length === 0) return original;
+    if (candidates.length === 0) {
+      diagnostics?.warn('expansion', 'No URL candidates found inside short-link input');
+      return original;
+    }
 
     let expandedInput = original;
     for (const candidate of candidates) {
       if (!isGoogleShortMapsUrl(candidate)) continue;
-      const expandedUrl = await tryExpandShortGoogleMapsUrl(candidate);
+      const expandedUrl = await tryExpandShortGoogleMapsUrl(candidate, diagnostics);
       if (expandedUrl && expandedUrl !== candidate) {
         expandedInput = expandedInput.replace(candidate, expandedUrl);
       }
     }
+
+    diagnostics?.log('expansion', expandedInput !== original ? 'Expanded input text updated' : 'Expanded input text unchanged', {
+      original,
+      expandedInput
+    });
 
     return expandedInput;
   }
@@ -164,7 +212,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       .trim();
   }
 
-  function getBestTextQueryFromUrl(raw) {
+  function getBestTextQueryFromUrl(raw, diagnostics = null) {
     const urls = extractUrlCandidates(raw).map((url) => unwrapNestedGoogleUrl(url));
 
     for (const rawUrl of urls) {
@@ -175,6 +223,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       for (const paramName of directQueryParams) {
         const value = cleanExtractedQuery(url.searchParams.get(paramName));
         if (value && !looksLikePlaceId(value) && !looksLikeUrl(value)) {
+          diagnostics?.log('query recovery', `Recovered query from URL parameter "${paramName}"`, { query: value, sourceUrl: rawUrl });
           return value;
         }
       }
@@ -182,46 +231,49 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       const path = cleanExtractedQuery(url.pathname);
       const placePathMatch = path.match(/\/maps\/place\/([^/@?#]+)/i) || path.match(/\/place\/([^/@?#]+)/i);
       if (placePathMatch && placePathMatch[1]) {
-        return cleanExtractedQuery(placePathMatch[1]);
+        const query = cleanExtractedQuery(placePathMatch[1]);
+        diagnostics?.log('query recovery', 'Recovered query from /place/ path', { query, sourceUrl: rawUrl });
+        return query;
       }
 
       const searchPathMatch = path.match(/\/maps\/search\/([^/?#]+)/i) || path.match(/\/search\/([^/?#]+)/i);
       if (searchPathMatch && searchPathMatch[1]) {
-        return cleanExtractedQuery(searchPathMatch[1]);
+        const query = cleanExtractedQuery(searchPathMatch[1]);
+        diagnostics?.log('query recovery', 'Recovered query from /search/ path', { query, sourceUrl: rawUrl });
+        return query;
       }
     }
 
     const residualText = stripUrlsFromText(raw);
     if (residualText && !looksLikeUrl(residualText)) {
+      diagnostics?.log('query recovery', 'Recovered query from residual surrounding text', { query: residualText });
       return residualText;
     }
+
+    diagnostics?.warn('query recovery', 'No text query could be recovered from short-link input');
 
     return '';
   }
 
-  function looksLikePlaceId(value) {
-    return /^ChI[A-Za-z0-9_-]{6,}$/i.test(safeString(value));
-  }
-
-  // Edge cases supported here:
-  // - Full Google Maps place/search URLs with query_place_id/place_id/destination params
-  // - Google redirect wrappers like google.com/url?q=<maps-url>
-  // - Bare pasted URLs mixed with descriptive text
-  // - Shortened hosts like maps.app.goo.gl, goo.gl/maps, and g.co/kgs (best-effort expansion/recovery)
-  // - Plain pasted Place IDs embedded anywhere in the text
-  function extractPlaceId(raw) {
+  function extractPlaceId(raw, diagnostics = null) {
     const text = normalizeRawInput(raw);
     if (!text) return '';
 
     const directMatch = text.match(/\bChI[A-Za-z0-9_-]{6,}\b/);
-    if (directMatch) return directMatch[0];
+    if (directMatch) {
+      diagnostics?.log('Place ID extraction', 'Recovered Place ID directly from pasted input', { placeId: directMatch[0] });
+      return directMatch[0];
+    }
 
     for (const candidate of extractUrlCandidates(text)) {
       const expandedCandidate = unwrapNestedGoogleUrl(candidate);
       const expandedText = safeDecode(expandedCandidate);
 
       const embeddedMatch = expandedText.match(/\bChI[A-Za-z0-9_-]{6,}\b/);
-      if (embeddedMatch) return embeddedMatch[0];
+      if (embeddedMatch) {
+        diagnostics?.log('Place ID extraction', 'Recovered Place ID from expanded URL text', { placeId: embeddedMatch[0], sourceUrl: expandedCandidate });
+        return embeddedMatch[0];
+      }
 
       const url = parseUrlSafely(expandedCandidate);
       if (!url) continue;
@@ -229,17 +281,25 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       const placeIdParams = ['query_place_id', 'place_id', 'destination_place_id'];
       for (const paramName of placeIdParams) {
         const placeId = safeDecode(url.searchParams.get(paramName));
-        if (looksLikePlaceId(placeId)) return placeId;
+        if (looksLikePlaceId(placeId)) {
+          diagnostics?.log('Place ID extraction', `Recovered Place ID from URL parameter "${paramName}"`, { placeId, sourceUrl: expandedCandidate });
+          return placeId;
+        }
       }
 
       const hashPlaceId = safeDecode(url.hash).match(/\bChI[A-Za-z0-9_-]{6,}\b/);
-      if (hashPlaceId) return hashPlaceId[0];
+      if (hashPlaceId) {
+        diagnostics?.log('Place ID extraction', 'Recovered Place ID from URL hash', { placeId: hashPlaceId[0], sourceUrl: expandedCandidate });
+        return hashPlaceId[0];
+      }
     }
+
+    diagnostics?.warn('Place ID extraction', 'No Place ID could be extracted from short-link input');
 
     return '';
   }
 
-  function extractSearchQuery(inputType, rawInput) {
+  function extractSearchQuery(inputType, rawInput, diagnostics = null) {
     const value = normalizeRawInput(rawInput);
     if (!value) return '';
 
@@ -253,9 +313,11 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     }
 
     if (inputType === 'placeUrl') {
-      const extractedQuery = getBestTextQueryFromUrl(value);
+      const extractedQuery = getBestTextQueryFromUrl(value, diagnostics);
       if (extractedQuery) return extractedQuery;
     }
+
+    diagnostics?.warn('query recovery', 'Falling back to raw input text as search query', { fallbackQuery: value });
 
     return value;
   }
@@ -316,56 +378,87 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       throw new Error('Please enter a value.');
     }
 
+    const diagnostics = createShortLinkDiagnostics(inputType, rawValue);
+    diagnostics.log('start', 'Short-link diagnostics enabled', { inputType, inputValue: rawValue });
+
     const expandedValue = inputType === 'placeUrl'
-      ? await expandShortGoogleMapsInput(rawValue)
+      ? await expandShortGoogleMapsInput(rawValue, diagnostics)
       : rawValue;
 
     let placeId = '';
     let searchResult = null;
     let details = null;
 
-    const extractedPlaceId = extractPlaceId(expandedValue);
-    const queryText = extractSearchQuery(inputType, expandedValue);
+    const extractedPlaceId = extractPlaceId(expandedValue, diagnostics);
+    const queryText = extractSearchQuery(inputType, expandedValue, diagnostics);
 
     if (typeof mainWindow.resolvePlaceIdFromInput === 'function') {
       try {
+        diagnostics.log('Place ID extraction', 'Trying main-window resolvePlaceIdFromInput', { input: expandedValue });
         placeId = safeString(await mainWindow.resolvePlaceIdFromInput(inputType, expandedValue));
+        if (placeId) {
+          diagnostics.log('Place ID extraction', 'main-window resolver returned a Place ID', { placeId });
+        }
       } catch (resolverError) {
         console.warn(`⚠️ resolvePlaceIdFromInput failed for ${inputType}:`, resolverError.message);
+        diagnostics.warn('Place ID extraction', 'main-window resolver failed', { error: resolverError.message });
       }
     }
 
     if (!placeId && (inputType === 'placeId' || inputType === 'placeUrl') && extractedPlaceId) {
       placeId = extractedPlaceId;
+      diagnostics.log('Place ID extraction', 'Using locally extracted Place ID fallback', { placeId });
     }
 
     if ((!placeId || !looksLikePlaceId(placeId)) && typeof mainWindow.searchPlaces === 'function' && queryText) {
+      diagnostics.log('query recovery', 'Trying searchPlaces fallback with recovered query', { queryText });
       const searchResults = await mainWindow.searchPlaces(queryText);
       if (Array.isArray(searchResults) && searchResults.length > 0) {
         searchResult = searchResults[0];
         placeId = safeString(searchResult.placeId || placeId);
+        diagnostics.log('query recovery', 'searchPlaces returned a candidate', { placeId, topResult: searchResult.name || '' });
+      } else {
+        diagnostics.warn('query recovery', 'searchPlaces returned no candidates', { queryText });
       }
     }
 
     if (!looksLikePlaceId(placeId)) {
+      diagnostics.warn('Place ID extraction', 'Resolution failed before Google details lookup', { rawValue, expandedValue, queryText });
       throw new Error(`Could not resolve a valid Google Place ID for "${rawValue}".`);
     }
 
     if (typeof mainWindow.getPlaceDetails === 'function') {
+      diagnostics.log('Google detail lookup', 'Fetching Google place details', { placeId });
       details = await mainWindow.getPlaceDetails(placeId);
+      if (details && safeString(details.name) && safeString(details.address)) {
+        diagnostics.log('Google detail lookup', 'Google details lookup succeeded', { name: details.name, address: details.address });
+      } else {
+        diagnostics.warn('Google detail lookup', 'Google details lookup returned incomplete data', { placeId, details });
+      }
     }
 
     if ((!details || !safeString(details.name) || !safeString(details.address)) && !searchResult && typeof mainWindow.searchPlaces === 'function' && queryText) {
+      diagnostics.log('Google detail lookup', 'Retrying with searchPlaces for incomplete details', { queryText, placeId });
       const searchResults = await mainWindow.searchPlaces(queryText);
       if (Array.isArray(searchResults) && searchResults.length > 0) {
         searchResult = searchResults[0];
+        diagnostics.log('Google detail lookup', 'Recovered candidate from secondary searchPlaces lookup', { topResult: searchResult.name || '', placeId: searchResult.placeId || '' });
+      } else {
+        diagnostics.warn('Google detail lookup', 'Secondary searchPlaces lookup returned no candidates', { queryText });
       }
     }
 
     const normalized = normalizeResolvedDetails(placeId, details, searchResult, expandedValue);
     if (!normalized.placeId || !normalized.name || !normalized.address) {
+      diagnostics.warn('Google detail lookup', 'Normalized result is still incomplete after all fallbacks', normalized);
       throw new Error(`Google returned incomplete details for "${expandedValue}". No row was added.`);
     }
+
+    diagnostics.log('complete', 'Short-link resolution completed successfully', {
+      placeId: normalized.placeId,
+      name: normalized.name,
+      address: normalized.address
+    });
 
     return normalized;
   };
