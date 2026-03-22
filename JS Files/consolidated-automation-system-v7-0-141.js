@@ -15,6 +15,12 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return String(value == null ? '' : value).trim();
   }
 
+  function buildStrictWrapperMessage(label, code) {
+    const safeLabel = safeString(label || 'unknown-wrapper') || 'unknown-wrapper';
+    const safeCode = safeString(code || 'UNKNOWN') || 'UNKNOWN';
+    return `[STRICT_WRAPPER:${safeCode}] ${safeLabel}`;
+  }
+
   function createShortLinkDiagnostics(inputType, inputValue) {
     const normalizedInput = safeString(inputValue);
     const shortLinkDetected = inputType === 'placeUrl' && /(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)/i.test(normalizedInput);
@@ -636,15 +642,15 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         const result = await window.handleBulkAddChainLocationsFixed(lines, inputType, document.createElement('div'), dryRun);
         return result && typeof result === 'object'
           ? result
-          : { success: false, error: 'bulk-add-chain handler returned no structured result (strict mode).' };
+          : { success: false, error: buildStrictWrapperMessage('bulk-add-chain', 'NON_OBJECT_RESULT') };
       }
       if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
         const result = await window.handleBulkAddChainLocationsEnhanced(lines, inputType, document.createElement('div'), dryRun);
         return result && typeof result === 'object'
           ? result
-          : { success: false, error: 'bulk-add-chain handler returned no structured result (strict mode).' };
+          : { success: false, error: buildStrictWrapperMessage('bulk-add-chain', 'NON_OBJECT_RESULT') };
       }
-      return { success: false, error: 'Bulk chain add system not available' };
+      return { success: false, error: buildStrictWrapperMessage('bulk-add-chain', 'NO_HANDLER') };
     }
 
     async populateMissingFieldsOnly(dryRun = false) {
@@ -652,15 +658,15 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         const result = await window.handlePopulateMissingFieldsEnhanced(document.createElement('div'), dryRun);
         return result && typeof result === 'object'
           ? result
-          : { success: false, error: 'populate-missing handler returned no structured result (strict mode).' };
+          : { success: false, error: buildStrictWrapperMessage('populate-missing', 'NON_OBJECT_RESULT') };
       }
       if (typeof window.handlePopulateMissingFields === 'function') {
         const result = await window.handlePopulateMissingFields(document.createElement('div'), dryRun);
         return result && typeof result === 'object'
           ? result
-          : { success: false, error: 'populate-missing handler returned no structured result (strict mode).' };
+          : { success: false, error: buildStrictWrapperMessage('populate-missing', 'NON_OBJECT_RESULT') };
       }
-      return { success: false, error: 'Populate missing fields system not available' };
+      return { success: false, error: buildStrictWrapperMessage('populate-missing', 'NO_HANDLER') };
     }
 
     async populateMissingFields(dryRun = false) {
@@ -672,15 +678,15 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         const result = await window.handleUpdateHoursOnlyEnhanced(document.createElement('div'), dryRun);
         return result && typeof result === 'object'
           ? result
-          : { success: false, error: 'update-hours handler returned no structured result (strict mode).' };
+          : { success: false, error: buildStrictWrapperMessage('update-hours', 'NON_OBJECT_RESULT') };
       }
       if (typeof window.handleUpdateHoursOnly === 'function') {
         const result = await window.handleUpdateHoursOnly(document.createElement('div'), dryRun);
         return result && typeof result === 'object'
           ? result
-          : { success: false, error: 'update-hours handler returned no structured result (strict mode).' };
+          : { success: false, error: buildStrictWrapperMessage('update-hours', 'NON_OBJECT_RESULT') };
       }
-      return { success: false, error: 'Update hours system not available' };
+      return { success: false, error: buildStrictWrapperMessage('update-hours', 'NO_HANDLER') };
     }
 
     async autoTagAll(dryRun = false) {
@@ -688,15 +694,15 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         const result = await window.handleAutoTagAll(dryRun);
         return result && typeof result === 'object'
           ? result
-          : { success: false, error: 'auto-tag handler returned no structured result (strict mode).' };
+          : { success: false, error: buildStrictWrapperMessage('auto-tag', 'NON_OBJECT_RESULT') };
       }
       if (typeof window.autoTagAllLocationsUnified === 'function') {
         const result = await window.autoTagAllLocationsUnified({ dryRun });
         return result && typeof result === 'object'
           ? result
-          : { success: false, error: 'auto-tag handler returned no structured result (strict mode).' };
+          : { success: false, error: buildStrictWrapperMessage('auto-tag', 'NON_OBJECT_RESULT') };
       }
-      return { success: false, error: 'Auto-tag system not available' };
+      return { success: false, error: buildStrictWrapperMessage('auto-tag', 'NO_HANDLER') };
     }
   }
 

@@ -84,7 +84,7 @@
               <div style="font-size: 24px; font-weight: 700, color: #10b981;">✅ ${this.successCount}</div>
               <div style="font-size: 11px; color: #047857; margin-top: 2px;">Success</div>
             </div>
-            <div style="padding: 10px; background: #fee2e2; border-radius: 6px; text-align: center;">
+            <div style="padding: 10px, background: #fee2e2; border-radius: 6px; text-align: center;">
               <div style="font-size: 24px; font-weight: 700; color: #ef4444;">❌ ${this.failCount}</div>
               <div style="font-size: 11px; color: #7f1d1d; margin-top: 2px;">Failed</div>
             </div>
@@ -371,12 +371,18 @@
     displayElement.innerHTML = `<div style="padding: 12px; background: ${bg}; border: 1px solid ${border}; border-radius: 8px; color: ${color}; font-size: 13px;">${text}</div>`;
   }
 
+  function buildStrictWrapperMessage(label, code) {
+    const safeLabel = String(label || 'unknown-wrapper').trim();
+    const safeCode = String(code || 'UNKNOWN').trim();
+    return `❌ [STRICT_WRAPPER:${safeCode}] ${safeLabel}`;
+  }
+
   async function runRealHandler(displayElement, dryRun, handlers, label) {
     const candidates = Array.isArray(handlers) ? handlers : [];
     const resolvedHandler = candidates.find((fn) => typeof fn === 'function');
 
     if (!resolvedHandler) {
-      const msg = `❌ ${label} handler is not available.`;
+      const msg = buildStrictWrapperMessage(label, 'NO_HANDLER');
       renderDelegationStatus(displayElement, msg, true);
       return { success: false, error: msg };
     }
@@ -386,7 +392,7 @@
     const result = await resolvedHandler(displayElement, dryRun);
     if (result && typeof result === 'object') return result;
 
-    const failMsg = `❌ ${label} handler returned no structured result (strict mode).`;
+    const failMsg = buildStrictWrapperMessage(label, 'NON_OBJECT_RESULT');
     renderDelegationStatus(displayElement, failMsg, true);
     return { success: false, error: failMsg };
   }
@@ -442,7 +448,7 @@
         (typeof window.handleRefreshPlaceIds === 'function' && window.handleRefreshPlaceIds);
 
       if (typeof refreshFn !== 'function') {
-        const msg = '❌ Refresh Place IDs handler is not available.';
+        const msg = buildStrictWrapperMessage('refresh-place-ids', 'NO_HANDLER');
         renderDelegationStatus(displayElement, msg, true);
         return { success: false, error: msg };
       }
@@ -451,7 +457,7 @@
       const result = await refreshFn(dryRun);
       if (result && typeof result === 'object') return result;
 
-      const failMsg = '❌ refresh-place-ids handler returned no structured result (strict mode).';
+      const failMsg = buildStrictWrapperMessage('refresh-place-ids', 'NON_OBJECT_RESULT');
       renderDelegationStatus(displayElement, failMsg, true);
       return { success: false, error: failMsg };
     } catch (err) {
@@ -475,7 +481,7 @@
 
       const fn = autoTagCandidates.find((handler) => typeof handler === 'function');
       if (!fn) {
-        const msg = '❌ Auto-tag handler is not available.';
+        const msg = buildStrictWrapperMessage('auto-tag', 'NO_HANDLER');
         renderDelegationStatus(displayElement, msg, true);
         return { success: false, error: msg };
       }
@@ -484,7 +490,7 @@
       const result = await fn(dryRun);
       if (result && typeof result === 'object') return result;
 
-      const failMsg = '❌ auto-tag handler returned no structured result (strict mode).';
+      const failMsg = buildStrictWrapperMessage('auto-tag', 'NON_OBJECT_RESULT');
       renderDelegationStatus(displayElement, failMsg, true);
       return { success: false, error: failMsg };
     } catch (err) {
