@@ -613,4 +613,95 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       const results = { success: true, total: lines.length, added: 0, failed: 0, skipped: 0, details: [] };
       for (const line of lines) {
         const result = await this.addSinglePlace(line, inputType, dryRun);
-        if
+        if (result && result.success) {
+          results.added++;
+          results.details.push(`✅ ${result.placeName || line}${result.isDryRun ? ' (dry run)' : ''}`);
+        } else {
+          results.failed++;
+          results.details.push(`❌ ${line}: ${(result && result.error) || 'Operation failed'}`);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      results.success = results.failed === 0;
+      results.message = `Added ${results.added}/${results.total} places (${results.failed} failed, ${results.skipped} skipped)`;
+      return results;
+    }
+
+    async bulkAddChainLocations(placesText, inputType, dryRun = false) {
+      const lines = (placesText || '').split('\n').map((line) => line.trim()).filter(Boolean);
+      if (lines.length === 0) return { success: false, error: 'No places provided' };
+
+      if (typeof window.handleBulkAddChainLocationsFixed === 'function') {
+        const result = await window.handleBulkAddChainLocationsFixed(lines, inputType, document.createElement('div'), dryRun);
+        return result && typeof result === 'object'
+          ? result
+          : { success: false, error: 'bulk-add-chain handler returned no structured result (strict mode).' };
+      }
+      if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
+        const result = await window.handleBulkAddChainLocationsEnhanced(lines, inputType, document.createElement('div'), dryRun);
+        return result && typeof result === 'object'
+          ? result
+          : { success: false, error: 'bulk-add-chain handler returned no structured result (strict mode).' };
+      }
+      return { success: false, error: 'Bulk chain add system not available' };
+    }
+
+    async populateMissingFieldsOnly(dryRun = false) {
+      if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
+        const result = await window.handlePopulateMissingFieldsEnhanced(document.createElement('div'), dryRun);
+        return result && typeof result === 'object'
+          ? result
+          : { success: false, error: 'populate-missing handler returned no structured result (strict mode).' };
+      }
+      if (typeof window.handlePopulateMissingFields === 'function') {
+        const result = await window.handlePopulateMissingFields(document.createElement('div'), dryRun);
+        return result && typeof result === 'object'
+          ? result
+          : { success: false, error: 'populate-missing handler returned no structured result (strict mode).' };
+      }
+      return { success: false, error: 'Populate missing fields system not available' };
+    }
+
+    async populateMissingFields(dryRun = false) {
+      return this.populateMissingFieldsOnly(dryRun);
+    }
+
+    async updateHoursOnly(dryRun = false) {
+      if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
+        const result = await window.handleUpdateHoursOnlyEnhanced(document.createElement('div'), dryRun);
+        return result && typeof result === 'object'
+          ? result
+          : { success: false, error: 'update-hours handler returned no structured result (strict mode).' };
+      }
+      if (typeof window.handleUpdateHoursOnly === 'function') {
+        const result = await window.handleUpdateHoursOnly(document.createElement('div'), dryRun);
+        return result && typeof result === 'object'
+          ? result
+          : { success: false, error: 'update-hours handler returned no structured result (strict mode).' };
+      }
+      return { success: false, error: 'Update hours system not available' };
+    }
+
+    async autoTagAll(dryRun = false) {
+      if (typeof window.handleAutoTagAll === 'function') {
+        const result = await window.handleAutoTagAll(dryRun);
+        return result && typeof result === 'object'
+          ? result
+          : { success: false, error: 'auto-tag handler returned no structured result (strict mode).' };
+      }
+      if (typeof window.autoTagAllLocationsUnified === 'function') {
+        const result = await window.autoTagAllLocationsUnified({ dryRun });
+        return result && typeof result === 'object'
+          ? result
+          : { success: false, error: 'auto-tag handler returned no structured result (strict mode).' };
+      }
+      return { success: false, error: 'Auto-tag system not available' };
+    }
+  }
+
+  window.EnhancedAutomationFeatures = EnhancedAutomationFeatures;
+  window.enhancedAutomation = window.enhancedAutomation || new EnhancedAutomationFeatures();
+
+  console.log('✅ Consolidated Automation Features System v7.0.141 Loaded');
+})();
