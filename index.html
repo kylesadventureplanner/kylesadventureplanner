@@ -6113,7 +6113,7 @@
 
 <!-- Error/Warning Notification Bar - Shows console errors and app errors -->
 <div id="errorNotificationBar" class="collapsed">
-  <div class="error-header">
+  <div class="error-header" onclick="toggleErrorBar(); event.stopPropagation();" style="cursor: pointer;" title="Click to expand/collapse errors">
     <span>⚠️ Errors Detected</span>
     <span class="error-count" id="errorCount">0</span>
     <span class="toggle-icon">▼</span>
@@ -6749,6 +6749,12 @@
     updateErrorBar();
   }
 
+  // Global storage for error data
+  let errorDataStore = {
+    allErrors: '',
+    errorItems: {}
+  };
+
   /**
    * Update the error notification bar with current errors
    */
@@ -6769,6 +6775,7 @@
     // Build error details HTML with copy buttons
     let detailsHTML = '';
     let copyAllText = '=== ERROR REPORT ===\n\n';
+    let allErrorsData = [];
 
     errorLog.forEach((error, index) => {
       const typeEmoji = error.type === 'error' ? '❌' : error.type === 'warning' ? '⚠️' : '🔴';
@@ -6778,6 +6785,22 @@
       // Build copy text for this error
       const errorCopyText = `${typeEmoji} ${error.type.toUpperCase()} [${error.timestamp}]\n${error.message}\n${error.stackTrace ? `Details: ${error.stackTrace}` : ''}\n`;
       copyAllText += errorCopyText + '\n---\n\n';
+      allErrorsData.push({id: errorId, text: errorCopyText});
+
+      // Escape HTML special characters for display
+      const escapedMessage = error.message
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+      const escapedStackTrace = error.stackTrace
+        ? error.stackTrace
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          : '';
 
       detailsHTML += `
         <div class="error-item">
@@ -6785,11 +6808,11 @@
             ${typeEmoji} ${error.type.toUpperCase()} [${error.timestamp}]
           </div>
           <div class="error-message">
-            ${error.message}
-            ${error.stackTrace ? `<br><br><strong>Details:</strong><br>${error.stackTrace}` : ''}
+            ${escapedMessage}
+            ${error.stackTrace ? `<br><br><strong>Details:</strong><br><code style="white-space: pre-wrap; word-break: break-word; font-size: 11px; color: #fca5a5;">${escapedStackTrace}</code>` : ''}
           </div>
           <div class="error-debug-buttons">
-            <button class="error-copy-btn" onclick="copyErrorToClipboard('${errorId}', \`${errorCopyText.replace(/`/g, '\\`')}\`)" title="Copy this error">
+            <button class="error-copy-btn" data-error-id="${errorId}" onclick="copyErrorToClipboard(this)" title="Copy this error">
               📋 Copy Error
             </button>
           </div>
@@ -6797,13 +6820,25 @@
       `;
     });
 
+    // Store error data for copy functionality
+    errorDataStore.allErrors = copyAllText;
+    errorDataStore.errorItems = {};
+
+    // Store individual error data
+    errorLog.forEach((error, index) => {
+      const typeEmoji = error.type === 'error' ? '❌' : error.type === 'warning' ? '⚠️' : '🔴';
+      const errorId = `error-${index}`;
+      const errorText = `${typeEmoji} ${error.type.toUpperCase()} [${error.timestamp}]\n${error.message}\n${error.stackTrace ? `Details: ${error.stackTrace}` : ''}\n`;
+      errorDataStore.errorItems[errorId] = errorText;
+    });
+
     // Add copy all button
     detailsHTML += `
       <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2);">
-        <button class="error-copy-btn" onclick="copyErrorToClipboard('all-errors', \`${copyAllText.replace(/`/g, '\\`')}\`)" title="Copy all errors" style="background: rgba(59, 130, 246, 0.3); border-color: #3b82f6;">
+        <button class="error-copy-btn" id="copy-all-errors-btn" data-copy-all="true" onclick="copyAllErrorsToClipboard()" title="Copy all errors" style="background: rgba(59, 130, 246, 0.3); border-color: #3b82f6; width: 100%; margin-bottom: 8px;">
           📋 Copy All Errors
         </button>
-        <button class="error-copy-btn" onclick="clearAllErrors()" title="Clear all errors" style="background: rgba(239, 68, 68, 0.3); border-color: #ef4444;">
+        <button class="error-copy-btn" onclick="clearAllErrors()" title="Clear all errors" style="background: rgba(239, 68, 68, 0.3); border-color: #ef4444; width: 100%;">
           🗑️ Clear All
         </button>
       </div>
@@ -6815,24 +6850,75 @@
   /**
    * Copy error text to clipboard
    */
-  function copyErrorToClipboard(id, text) {
-    navigator.clipboard.writeText(text).then(() => {
-      // Find the button and show feedback
-      const buttons = document.querySelectorAll('.error-copy-btn');
-      buttons.forEach(btn => {
-        if (btn.onclick.toString().includes(id)) {
-          const originalText = btn.textContent;
-          btn.textContent = '✅ Copied!';
-          btn.classList.add('copied');
+  function copyErrorToClipboard(button) {
+    // Get error ID from data attribute
+    const errorId = button.getAttribute('data-error-id');
+    const textToCopy = errorDataStore.errorItems[errorId] || '';
 
-          setTimeout(() => {
-            btn.textContent = originalText;
-            btn.classList.remove('copied');
-          }, 2000);
-        }
-      });
+    if (!textToCopy) {
+      console.error('❌ No error data found for:', errorId);
+      return;
+    }
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      // Show feedback on button
+      const originalText = button.textContent;
+      button.textContent = '✅ Copied!';
+      button.classList.add('copied');
+      button.style.background = 'rgba(16, 185, 129, 0.3)';
+      button.style.borderColor = '#10b981';
+
+      setTimeout(() => {
+        button.textContent = originalText;
+        button.classList.remove('copied');
+        button.style.background = '';
+        button.style.borderColor = '';
+      }, 2000);
     }).catch(err => {
-      alert('Failed to copy: ' + err.message);
+      console.error('❌ Failed to copy to clipboard:', err);
+      if (typeof showToast === 'function') {
+        showToast(`❌ Failed to copy: ${err.message}`, 'error', 3000);
+      } else {
+        alert(`❌ Failed to copy error to clipboard`);
+      }
+    });
+  }
+
+  /**
+   * Copy all errors to clipboard
+   */
+  function copyAllErrorsToClipboard() {
+    const textToCopy = errorDataStore.allErrors;
+
+    if (!textToCopy) {
+      console.error('❌ No errors to copy');
+      return;
+    }
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      // Find and update the button
+      const button = document.getElementById('copy-all-errors-btn');
+      if (button) {
+        const originalText = button.textContent;
+        button.textContent = '✅ Copied!';
+        button.classList.add('copied');
+        button.style.background = 'rgba(16, 185, 129, 0.3)';
+        button.style.borderColor = '#10b981';
+
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove('copied');
+          button.style.background = 'rgba(59, 130, 246, 0.3)';
+          button.style.borderColor = '#3b82f6';
+        }, 2000);
+      }
+    }).catch(err => {
+      console.error('❌ Failed to copy all errors:', err);
+      if (typeof showToast === 'function') {
+        showToast(`❌ Failed to copy: ${err.message}`, 'error', 3000);
+      } else {
+        alert(`❌ Failed to copy errors to clipboard`);
+      }
     });
   }
 
