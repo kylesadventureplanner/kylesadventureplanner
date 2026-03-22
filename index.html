@@ -15888,7 +15888,7 @@ COMMON ISSUES:
 
   function buildExcelRow(placeId, details) {
     // Determine actual column count from existing Excel table rows
-    let actualColumnCount = 24; // Default to 24 (includes all columns)
+    let actualColumnCount = 13; // Conservative default - minimum columns needed
 
     if (window.adventuresData && window.adventuresData.length > 0) {
       // Inspect first existing row to get the exact column count
@@ -15896,10 +15896,13 @@ COMMON ISSUES:
       if (firstRow && Array.isArray(firstRow.values) && firstRow.values.length > 0) {
         const firstRowValues = firstRow.values[0];
         if (Array.isArray(firstRowValues)) {
-          actualColumnCount = firstRowValues.length;
+          // Use the actual column count from existing data, but cap it reasonably
+          actualColumnCount = Math.max(13, Math.min(firstRowValues.length, 24));
         }
       }
     }
+
+    console.log(`📋 buildExcelRow: Using ${actualColumnCount} columns (total available: ${actualColumnCount})`);
 
     // Create row with exact column count
     const row = new Array(actualColumnCount).fill("");
@@ -16001,14 +16004,48 @@ COMMON ISSUES:
     if (!window.accessToken) throw new Error("Please sign in first.");
 
     // Use the session-less rows endpoint that's more reliable across windows
-    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
+    const encodedPath = encodeURIComponent(window.filePath || "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx");
+    const tableName = window.tableName || "MyList";
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
+
+    // Clone and prepare the row - handle all data types
+    let rowToSend = Array.isArray(rowValues) ? rowValues.slice() : Object.values(rowValues || {});
+
+    // Convert all values to strings to ensure Excel compatibility
+    rowToSend = rowToSend.map(v => {
+      if (v === null || v === undefined) return "";
+      if (typeof v === 'string') return v;
+      if (typeof v === 'number') return String(v);
+      if (typeof v === 'boolean') return v ? "TRUE" : "FALSE";
+      return String(v);
+    });
 
     // DIAGNOSTIC: Log what we're sending
     if (retryCount === 0) {
       console.log(`📊 [EXCEL ADD] Attempt ${retryCount + 1}:`);
-      console.log(`   Row length: ${rowValues.length}`);
-      console.log(`   Row data: [${rowValues.map((v, i) => `${i}:"${v}"`).join(', ')}]`);
-      console.log(`   Filled cells: ${rowValues.filter(v => v !== "" && v !== null && v !== undefined).length}`);
+      console.log(`   Original row length: ${rowValues.length}`);
+      console.log(`   Processed row length: ${rowToSend.length}`);
+      const filledCount = rowToSend.filter(v => v !== "").length;
+      console.log(`   Filled cells: ${filledCount}`);
+      if (filledCount <= 10) {
+        console.log(`   Row data: [${rowToSend.map((v, i) => `${i}:"${v}"`).join(', ')}]`);
+      }
+    }
+
+    // OPTIMIZATION: Trim trailing empty cells BEFORE sending to avoid InvalidArgument errors
+    let lastFilledIndex = -1;
+    for (let i = rowToSend.length - 1; i >= 0; i--) {
+      if (rowToSend[i] !== "") {
+        lastFilledIndex = i;
+        break;
+      }
+    }
+
+    // Keep at least the main columns (through address at column 11), or to lastFilledIndex + 1
+    const minColumns = Math.max(12, lastFilledIndex >= 0 ? lastFilledIndex + 1 : 12);
+    if (rowToSend.length > minColumns) {
+      console.log(`🔧 Pre-trimming row from ${rowToSend.length} to ${minColumns} columns to avoid Excel InvalidArgument error`);
+      rowToSend = rowToSend.slice(0, minColumns);
     }
 
     const res = await fetch(url, {
@@ -16018,7 +16055,7 @@ COMMON ISSUES:
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        values: [rowValues]
+        values: [rowToSend]
       })
     });
 
@@ -16028,45 +16065,33 @@ COMMON ISSUES:
         console.log("🔄 Token expired (401), attempting refresh...");
         try {
           await window.refreshAccessToken();
-          return await addRowToExcel(rowValues, 1); // Retry once
+          return await addRowToExcel(rowValues, 1); // Retry once with original values
         } catch (refreshErr) {
           console.error("❌ Token refresh failed:", refreshErr.message);
           throw new Error("Authentication token expired. Please sign in again.");
         }
       }
 
-      // If InvalidArgument error (column mismatch), try trimming trailing empty columns
+      // If InvalidArgument error (column mismatch), try trimming trailing empty columns more aggressively
       const text = await res.text().catch(function () { return ""; });
       const isInvalidArgument = text.includes("InvalidArgument") || text.includes("invalidArgument");
 
       console.error(`❌ [EXCEL ADD] Failed (${res.status}). InvalidArgument: ${isInvalidArgument}, RetryCount: ${retryCount}`);
-      console.error(`   Response: ${text.substring(0, 200)}`);
+      console.error(`   Response: ${text.substring(0, 250)}`);
 
-      if (res.status === 400 && isInvalidArgument && retryCount < 3) {
-        // Attempt to trim trailing empty columns
-        const originalLen = rowValues.length;
-        let trimmedRow = rowValues.slice(); // Clone array
+      if (res.status === 400 && isInvalidArgument && retryCount < 2) {
+        // Attempt to trim more aggressively
+        const originalLen = rowToSend.length;
 
-        // Find last non-empty column
-        let lastFilledIndex = -1;
-        for (let i = trimmedRow.length - 1; i >= 0; i--) {
-          if (trimmedRow[i] !== "" && trimmedRow[i] !== null && trimmedRow[i] !== undefined) {
-            lastFilledIndex = i;
-            break;
+        // Try progressively smaller column counts
+        const columnsToTry = [15, 13, 12, 11];
+
+        for (const colCount of columnsToTry) {
+          if (originalLen > colCount) {
+            const trimmedRow = rowToSend.slice(0, colCount);
+            console.log(`🔧 [RETRY ${retryCount + 1}] Trimming to ${colCount} columns (was ${originalLen})`);
+            return await addRowToExcel(trimmedRow, retryCount + 1);
           }
-        }
-
-        // Trim to last non-empty column + 1 buffer
-        if (lastFilledIndex >= 0 && lastFilledIndex < trimmedRow.length - 1) {
-          trimmedRow = trimmedRow.slice(0, lastFilledIndex + 2);
-          console.log(`🔧 [RETRY] Attempt ${retryCount + 1}: Trimming row ${originalLen} → ${trimmedRow.length} columns`);
-          return await addRowToExcel(trimmedRow, retryCount + 1);
-        } else if (lastFilledIndex >= 0 && trimmedRow.length > 15) {
-          // Even if no trailing empties, try cutting more aggressively
-          const cutTo = Math.max(15, lastFilledIndex + 1);
-          trimmedRow = trimmedRow.slice(0, cutTo);
-          console.log(`🔧 [RETRY] Attempt ${retryCount + 1}: Aggressively cutting to ${cutTo} columns (was ${originalLen})`);
-          return await addRowToExcel(trimmedRow, retryCount + 1);
         }
       }
 
