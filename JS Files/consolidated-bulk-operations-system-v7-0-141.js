@@ -288,53 +288,35 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
         }
 
         if (!dryRun) {
-          const newPlace = {
-            values: [[
-              location,
-              placeId,
-              details.website,
-              details.phone,
-              details.hours,
-              '', '', '', '', '', '',
-              details.address,
-              '',
-              details.rating,
-              '',
-              details.directions
-            ]]
-          };
+          // Prefer the main app's normalized Excel append path so bulk adds match the real schema.
+          if (typeof mainWindow.buildExcelRow === 'function' && typeof mainWindow.addRowToExcel === 'function') {
+            const rowValues = mainWindow.buildExcelRow(placeId, details);
+            await mainWindow.addRowToExcel(rowValues);
 
-          adventuresData.push(newPlace);
-
-          if (adventuresData[adventuresData.length - 1]) {
-            successCount++;
-            results.push({
-              location,
-              placeId,
-              success: true,
-              status: '✅ Added to data'
-            });
+            if (Array.isArray(mainWindow.adventuresData)) {
+              mainWindow.adventuresData.push({ values: [rowValues] });
+            }
           } else {
-            failCount++;
-            results.push({
-              location,
-              placeId,
-              success: false,
-              status: '❌ Failed to add'
-            });
-          }
+            const rowValues = typeof mainWindow.buildExcelRow === 'function'
+              ? mainWindow.buildExcelRow(placeId, details)
+              : [location, placeId || '', details.website || '', '', '', details.hours || '', '', '', '', '', '', details.address || '', details.phone || '', details.rating || '', '', details.directions || ''];
 
-          if (typeof mainWindow.saveToExcel === 'function') {
-            try {
-              // Ensure file path and table name are set for saveToExcel
-              mainWindow.filePath = mainWindow.filePath || "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
-              mainWindow.tableName = mainWindow.tableName || "MyList";
+            if (Array.isArray(mainWindow.adventuresData)) {
+              mainWindow.adventuresData.push({ values: [rowValues] });
+            }
 
+            if (typeof mainWindow.saveToExcel === 'function') {
               await mainWindow.saveToExcel();
-            } catch (saveErr) {
-              console.warn('⚠️ Could not save to Excel:', saveErr.message);
             }
           }
+
+          successCount++;
+          results.push({
+            location,
+            placeId,
+            success: true,
+            status: 'Added successfully'
+          });
         } else {
           successCount++;
           results.push({

@@ -344,39 +344,30 @@ class EnhancedAutomationFeatures {
       const details = await this._resolvePlaceDetails(input, inputType);
       console.log('📍 Resolved place details:', details);
 
-      // Try mainWindow.buildExcelRow + addRowToExcel (preferred path)
+      // Prefer the exact same Excel-row builder and append helper the main app uses.
       if (typeof mainWindow.buildExcelRow === 'function' && typeof mainWindow.addRowToExcel === 'function') {
-        const row = mainWindow.buildExcelRow(details.name || input, details);
-        await mainWindow.addRowToExcel(row);
-        return {
-          success: true,
-          message: `✅ Added: ${details.name || input}`,
-          placeName: details.name || input,
-          placeId: details.placeId || ''
-        };
+        const resolvedPlaceId = details.placeId || input;
+        const rowValues = mainWindow.buildExcelRow(resolvedPlaceId, details);
+        await mainWindow.addRowToExcel(rowValues);
+
+        if (Array.isArray(mainWindow.adventuresData)) {
+          mainWindow.adventuresData.push({ values: [rowValues] });
+        }
+      } else if (typeof mainWindow.saveToExcel === 'function') {
+        const resolvedPlaceId = details.placeId || input;
+        const rowValues = typeof mainWindow.buildExcelRow === 'function'
+          ? mainWindow.buildExcelRow(resolvedPlaceId, details)
+          : [details.name || input, resolvedPlaceId || '', details.website || '', '', '', details.hours || '', '', '', '', '', '', details.address || '', details.phone || '', details.rating || '', '', details.directions || ''];
+
+        if (Array.isArray(mainWindow.adventuresData)) {
+          mainWindow.adventuresData.push({ values: [rowValues] });
+        }
+        await mainWindow.saveToExcel();
+      } else {
+        throw new Error('Main window Excel save helpers are unavailable');
       }
 
-      // Try handleAddSinglePlace on main window
-      if (typeof mainWindow.handleAddSinglePlace === 'function') {
-        const result = await mainWindow.handleAddSinglePlace(details);
-        return result || { success: true, message: `✅ Added: ${details.name || input}` };
-      }
-
-      // Try addSinglePlaceToSheet
-      if (typeof mainWindow.addSinglePlaceToSheet === 'function') {
-        await mainWindow.addSinglePlaceToSheet(details);
-        return { success: true, message: `✅ Added: ${details.name || input}`, placeId: details.placeId || '' };
-      }
-
-      // Last resort: save details to main window adventuresData and trigger save
-      if (mainWindow.adventuresData && Array.isArray(mainWindow.adventuresData)) {
-        mainWindow.adventuresData.push(details);
-        if (typeof mainWindow.saveToExcel === 'function') await mainWindow.saveToExcel();
-        else if (typeof mainWindow.handleSaveData === 'function') await mainWindow.handleSaveData();
-        return { success: true, message: `✅ Added to memory: ${details.name || input}. Save manually if needed.` };
-      }
-
-      return { success: false, error: 'No method available to add place to sheet. Ensure you are signed in and the main window is open.' };
+      return { success: true, message: `✅ Added: ${details.name || input}`, placeName: details.name || input, placeId: details.placeId || '' };
     } catch (error) {
       console.error('❌ Error adding place:', error);
       return { success: false, error: error.message };
