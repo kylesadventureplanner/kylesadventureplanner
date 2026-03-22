@@ -216,6 +216,218 @@
     syncRowDetailContextFromGlobals();
   }
 
+  function logRowDetailSaveDiagnostic(reason, error, context = {}) {
+    const safeContext = {
+      rowIndex: Number.isInteger(window.currentEditingRowIndex) ? window.currentEditingRowIndex : -1,
+      inEditMode: !!window.isInEditMode,
+      ...context
+    };
+
+    const errorMessage = error && error.message ? error.message : '';
+    const stack = error && error.stack ? String(error.stack) : '';
+    const contextText = JSON.stringify(safeContext);
+    const detailText = [contextText, errorMessage, stack].filter(Boolean).join('\n');
+    const barMessage = `Row detail save failure: ${reason}`;
+
+    if (typeof window.logErrorToBar === 'function') {
+      window.logErrorToBar('error', barMessage, detailText);
+    }
+
+    if (window.errorManager && typeof window.errorManager.logError === 'function') {
+      window.errorManager.logError(`${barMessage} | ${contextText}${errorMessage ? ` | ${errorMessage}` : ''}`, 'row-detail-save');
+    }
+
+    console.error(`❌ ${barMessage}`, { reason, context: safeContext, error });
+  }
+
+  function getAdventureEntry(index) {
+    const num = Number(index);
+    if (!Number.isInteger(num) || num < 0) return null;
+
+    const filtered = Array.isArray(window.totalFilteredAdventures) ? window.totalFilteredAdventures : [];
+    const filteredEntry = filtered[num];
+    if (filteredEntry && filteredEntry.row) {
+      const sourceIndex = Number.isInteger(filteredEntry.sourceIndex)
+        ? filteredEntry.sourceIndex
+        : Array.isArray(window.adventuresData) ? window.adventuresData.indexOf(filteredEntry.row) : -1;
+
+      if (sourceIndex >= 0) {
+        return { row: filteredEntry.row, sourceIndex, filteredIndex: num };
+      }
+    }
+
+    const sourceRow = Array.isArray(window.adventuresData) ? window.adventuresData[num] : null;
+    if (sourceRow) {
+      return {
+        row: sourceRow,
+        sourceIndex: num,
+        filteredIndex: filtered.findIndex((entry) => entry && entry.row === sourceRow)
+      };
+    }
+
+    return null;
+  }
+
+  function formatTags(tags) {
+    return String(tags || '')
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean)
+      .map((tag) => `<span class="tag-pill">${tag}</span>`)
+      .join('');
+  }
+
+  function makeSection(title, body) {
+    return `<div class="modal-detail-section"><h3>${title}</h3>${body}</div>`;
+  }
+
+  function buildRowDetailTabs(values) {
+    const [
+      _name,
+      googlePlaceId,
+      website,
+      tags,
+      driveTime,
+      hoursOfOperation,
+      activityDuration,
+      difficulty,
+      trailLength,
+      state,
+      city,
+      address,
+      phoneNumber,
+      googleRating,
+      cost,
+      directions,
+      description,
+      nearby,
+      links,
+      links2,
+      notes,
+      myRating
+    ] = values;
+
+    return [
+      {
+        id: 'overview',
+        label: '📋 Overview',
+        content: [
+          makeSection('📍 Location', `
+            <p><strong>Address:</strong> ${address || 'Not available'}</p>
+            <p><strong>City:</strong> ${city || 'N/A'}</p>
+            <p><strong>State:</strong> ${state || 'N/A'}</p>
+            <p><strong>Drive Time:</strong> ${driveTime || 'N/A'}</p>
+          `),
+          description ? makeSection('📖 Description', `<p>${description}</p>`) : '',
+          tags ? makeSection('🏷️ Tags', `<div>${formatTags(tags)}</div>`) : ''
+        ].join('')
+      },
+      {
+        id: 'details',
+        label: 'ℹ️ Details',
+        content: makeSection('Adventure Details', `
+          <p><strong>Difficulty:</strong> ${difficulty || 'N/A'}</p>
+          <p><strong>Trail Length:</strong> ${trailLength || 'N/A'}</p>
+          <p><strong>Duration:</strong> ${activityDuration || 'N/A'}</p>
+          <p><strong>Hours:</strong> ${hoursOfOperation || 'N/A'}</p>
+          <p><strong>Cost:</strong> ${cost || 'N/A'}</p>
+          <p><strong>Google Rating:</strong> ${googleRating || 'N/A'}</p>
+          <p><strong>My Rating:</strong> ${myRating || 'N/A'}</p>
+        `)
+      },
+      {
+        id: 'contact',
+        label: '📞 Contact',
+        content: makeSection('Contact & Links', `
+          <p><strong>Phone:</strong> ${phoneNumber ? `<a href="tel:${String(phoneNumber).replace(/\s+/g, '')}">${phoneNumber}</a>` : 'Not available'}</p>
+          <p><strong>Website:</strong> ${website ? `<a href="${website}" target="_blank" rel="noopener">Visit Website</a>` : 'Not available'}</p>
+          <p><strong>Directions:</strong> ${directions ? `<a href="${directions}" target="_blank" rel="noopener">Get Directions</a>` : 'Not available'}</p>
+          <p><strong>Google Place ID:</strong> ${googlePlaceId || 'Not available'}</p>
+          <p><strong>Links:</strong> ${links ? `<a href="${links}" target="_blank" rel="noopener">Open Link</a>` : 'Not available'}</p>
+          <p><strong>More Links:</strong> ${links2 ? `<a href="${links2}" target="_blank" rel="noopener">Open Link</a>` : 'Not available'}</p>
+        `)
+      },
+      {
+        id: 'additional',
+        label: '📌 Additional',
+        content: [
+          nearby ? makeSection('🌟 Nearby Attractions', `<p>${nearby}</p>`) : '',
+          notes ? makeSection('📝 Notes', `<p>${notes}</p>`) : ''
+        ].join('') || makeSection('Additional Info', '<p>No additional information available.</p>')
+      }
+    ];
+  }
+
+  function renderRowDetailFallback(entry) {
+    const parts = getRowDetailParts();
+    if (!parts.modal || !parts.backdrop || !parts.title || !parts.content || !parts.tabs) {
+      console.warn('⚠️ Row detail modal elements not found for fallback render');
+      return false;
+    }
+
+    const values = entry && entry.row && entry.row.values ? entry.row.values[0] : null;
+    if (!Array.isArray(values)) return false;
+
+    const name = values[0] || 'Adventure Details';
+    const city = values[10] || 'Unknown';
+    const state = values[9] || '';
+    const driveTime = values[4] || 'N/A';
+    const tabs = buildRowDetailTabs(values);
+
+    parts.modal.dataset.currentRowIndex = String(entry.sourceIndex);
+    parts.title.textContent = name;
+    if (parts.location) {
+      parts.location.innerHTML = `<span>📍 ${city}${state ? `, ${state}` : ''}</span><span>⏱️ ${driveTime}</span>`;
+    }
+
+    parts.tabs.innerHTML = tabs.map((tab, idx) => `
+      <button class="row-detail-tab-btn ${idx === 0 ? 'active' : ''}" data-tab-id="${tab.id}" type="button">${tab.label}</button>
+    `).join('');
+
+    parts.content.innerHTML = tabs.map((tab, idx) => `
+      <div class="row-detail-tab-pane ${idx === 0 ? 'active' : ''}" data-tab-id="${tab.id}">${tab.content}</div>
+    `).join('');
+
+    parts.tabs.querySelectorAll('.row-detail-tab-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const tabId = button.getAttribute('data-tab-id');
+        parts.tabs.querySelectorAll('.row-detail-tab-btn').forEach((btn) => btn.classList.remove('active'));
+        parts.content.querySelectorAll('.row-detail-tab-pane').forEach((pane) => pane.classList.remove('active'));
+        button.classList.add('active');
+        const pane = parts.content.querySelector(`.row-detail-tab-pane[data-tab-id="${tabId}"]`);
+        if (pane) pane.classList.add('active');
+      });
+    });
+
+    parts.modal.style.display = 'flex';
+    parts.modal.classList.add('visible');
+    parts.modal.style.pointerEvents = 'auto';
+    parts.backdrop.style.display = 'block';
+    parts.backdrop.classList.add('visible');
+    parts.backdrop.style.pointerEvents = 'auto';
+    document.body.style.overflow = 'hidden';
+
+    return true;
+  }
+
+  function closeRowDetailModalHard() {
+    const parts = getRowDetailParts();
+    if (parts.modal) {
+      parts.modal.classList.remove('visible');
+      parts.modal.style.display = 'none';
+      parts.modal.style.pointerEvents = 'none';
+    }
+    if (parts.backdrop) {
+      parts.backdrop.classList.remove('visible');
+      parts.backdrop.style.display = 'none';
+      parts.backdrop.style.pointerEvents = 'none';
+    }
+    document.body.style.overflow = '';
+    window.currentEditingRow = null;
+    window.currentEditingRowIndex = null;
+    return true;
+  }
+
   function bindRowDetailCloseHandlers() {
     const parts = getRowDetailParts();
     const closeTargets = [parts.closeBtn, parts.closeFooterBtn].filter(Boolean);
@@ -259,6 +471,8 @@
       if (isEditModeActive()) {
         if (typeof window.__rowDetailSafeSaveEditedData === 'function') {
           await window.__rowDetailSafeSaveEditedData();
+        } else {
+          logRowDetailSaveDiagnostic('safe save wrapper missing', null, { path: 'editButton' });
         }
         syncRowDetailContextFromGlobals();
         return;
@@ -282,7 +496,6 @@
     if (globalDetailDelegatesBound) return;
     globalDetailDelegatesBound = true;
 
-    // Details button click.
     document.addEventListener('click', (event) => {
       const detailsButton = event.target && event.target.closest ? event.target.closest('.card-details-btn') : null;
       if (!detailsButton) return;
@@ -292,7 +505,6 @@
       window.showCardDetails(index);
     }, true);
 
-    // Whole-card click opens details unless clicking interactive controls.
     document.addEventListener('click', (event) => {
       const card = event.target && event.target.closest ? event.target.closest('.adventure-card') : null;
       if (!card) return;
@@ -306,7 +518,6 @@
       window.showCardDetails(index);
     }, true);
 
-    // Similar modal item -> details handoff.
     document.addEventListener('click', (event) => {
       const item = event.target && event.target.closest ? event.target.closest('#similarAdventuresModal .similar-adventure-item') : null;
       if (!item) return;
@@ -323,7 +534,6 @@
       window.showCardDetails(index);
     }, true);
 
-    // Tab switching should not drop context.
     document.addEventListener('click', (event) => {
       const tabButton = event.target && event.target.closest ? event.target.closest('#rowDetailModal .row-detail-tab-btn') : null;
       if (!tabButton) return;
@@ -332,7 +542,6 @@
       setTimeout(syncRowDetailContextFromGlobals, 0);
     }, true);
 
-    // Escape closes row detail modal.
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       const parts = getRowDetailParts();
@@ -341,7 +550,6 @@
       window.closeRowDetailModal();
     }, true);
 
-    // Retry / dismiss controls for save errors.
     document.addEventListener('click', async (event) => {
       const retryBtn = event.target && event.target.closest ? event.target.closest('#rowDetailRetrySaveBtn') : null;
       if (!retryBtn) return;
@@ -349,6 +557,8 @@
       event.stopPropagation();
       if (typeof window.__rowDetailSafeSaveEditedData === 'function') {
         await window.__rowDetailSafeSaveEditedData();
+      } else {
+        logRowDetailSaveDiagnostic('retry clicked but safe save wrapper missing', null, { path: 'retryButton' });
       }
     }, true);
 
@@ -432,6 +642,11 @@
             restoreRowDetailFormSnapshot(snapshot);
             keepRowDetailInEditForRetry();
             showRowDetailSaveErrorBanner('The save could not be confirmed. Fix any issues and retry.');
+            logRowDetailSaveDiagnostic('save returned false or unconfirmed', null, {
+              modalStillVisible,
+              saveAttemptedWhileVisible,
+              path: 'safeSaveResult'
+            });
             return false;
           }
 
@@ -444,6 +659,7 @@
         restoreRowDetailFormSnapshot(snapshot);
         keepRowDetailInEditForRetry();
         showRowDetailSaveErrorBanner(error && error.message ? error.message : 'Save failed unexpectedly.');
+        logRowDetailSaveDiagnostic('exception thrown during save', error, { path: 'safeSaveCatch' });
         if (window.showToast) {
           window.showToast('Save failed. Your edits were preserved for retry.', 'error', 3500);
         }
@@ -452,6 +668,7 @@
 
       keepRowDetailInEditForRetry();
       showRowDetailSaveErrorBanner('Save function is not available yet.');
+      logRowDetailSaveDiagnostic('save function unavailable', null, { path: 'safeSaveMissingFunction' });
       return false;
     };
 
