@@ -216,8 +216,22 @@
     syncRowDetailContextFromGlobals();
   }
 
-  function logRowDetailSaveDiagnostic(reason, error, context = {}) {
+  const ROW_DETAIL_SAVE_CODES = Object.freeze({
+    SAFE_WRAPPER_MISSING: { code: 'RD_SAVE_001', reason: 'safe save wrapper missing' },
+    RETRY_WRAPPER_MISSING: { code: 'RD_SAVE_002', reason: 'retry clicked but safe save wrapper missing' },
+    SAVE_UNCONFIRMED: { code: 'RD_SAVE_003', reason: 'save returned false or unconfirmed' },
+    SAVE_EXCEPTION: { code: 'RD_SAVE_004', reason: 'exception thrown during save' },
+    SAVE_FUNCTION_UNAVAILABLE: { code: 'RD_SAVE_005', reason: 'save function unavailable' },
+    UNKNOWN: { code: 'RD_SAVE_999', reason: 'unknown save diagnostic' }
+  });
+
+  function logRowDetailSaveDiagnostic(reasonOrKey, error, context = {}) {
+    const mapped = ROW_DETAIL_SAVE_CODES[reasonOrKey] || null;
+    const reason = mapped ? mapped.reason : String(reasonOrKey || ROW_DETAIL_SAVE_CODES.UNKNOWN.reason);
+    const diagnosticCode = mapped ? mapped.code : ROW_DETAIL_SAVE_CODES.UNKNOWN.code;
+
     const safeContext = {
+      diagnosticCode,
       rowIndex: Number.isInteger(window.currentEditingRowIndex) ? window.currentEditingRowIndex : -1,
       inEditMode: !!window.isInEditMode,
       ...context
@@ -227,7 +241,7 @@
     const stack = error && error.stack ? String(error.stack) : '';
     const contextText = JSON.stringify(safeContext);
     const detailText = [contextText, errorMessage, stack].filter(Boolean).join('\n');
-    const barMessage = `Row detail save failure: ${reason}`;
+    const barMessage = `[${diagnosticCode}] Row detail save failure: ${reason}`;
 
     if (typeof window.logErrorToBar === 'function') {
       window.logErrorToBar('error', barMessage, detailText);
@@ -237,7 +251,7 @@
       window.errorManager.logError(`${barMessage} | ${contextText}${errorMessage ? ` | ${errorMessage}` : ''}`, 'row-detail-save');
     }
 
-    console.error(`❌ ${barMessage}`, { reason, context: safeContext, error });
+    console.error(`❌ ${barMessage}`, { reason, diagnosticCode, context: safeContext, error });
   }
 
   function getAdventureEntry(index) {
@@ -472,7 +486,7 @@
         if (typeof window.__rowDetailSafeSaveEditedData === 'function') {
           await window.__rowDetailSafeSaveEditedData();
         } else {
-          logRowDetailSaveDiagnostic('safe save wrapper missing', null, { path: 'editButton' });
+          logRowDetailSaveDiagnostic('SAFE_WRAPPER_MISSING', null, { path: 'editButton' });
         }
         syncRowDetailContextFromGlobals();
         return;
@@ -558,7 +572,7 @@
       if (typeof window.__rowDetailSafeSaveEditedData === 'function') {
         await window.__rowDetailSafeSaveEditedData();
       } else {
-        logRowDetailSaveDiagnostic('retry clicked but safe save wrapper missing', null, { path: 'retryButton' });
+        logRowDetailSaveDiagnostic('RETRY_WRAPPER_MISSING', null, { path: 'retryButton' });
       }
     }, true);
 
@@ -642,7 +656,7 @@
             restoreRowDetailFormSnapshot(snapshot);
             keepRowDetailInEditForRetry();
             showRowDetailSaveErrorBanner('The save could not be confirmed. Fix any issues and retry.');
-            logRowDetailSaveDiagnostic('save returned false or unconfirmed', null, {
+            logRowDetailSaveDiagnostic('SAVE_UNCONFIRMED', null, {
               modalStillVisible,
               saveAttemptedWhileVisible,
               path: 'safeSaveResult'
@@ -659,7 +673,7 @@
         restoreRowDetailFormSnapshot(snapshot);
         keepRowDetailInEditForRetry();
         showRowDetailSaveErrorBanner(error && error.message ? error.message : 'Save failed unexpectedly.');
-        logRowDetailSaveDiagnostic('exception thrown during save', error, { path: 'safeSaveCatch' });
+        logRowDetailSaveDiagnostic('SAVE_EXCEPTION', error, { path: 'safeSaveCatch' });
         if (window.showToast) {
           window.showToast('Save failed. Your edits were preserved for retry.', 'error', 3500);
         }
@@ -668,7 +682,7 @@
 
       keepRowDetailInEditForRetry();
       showRowDetailSaveErrorBanner('Save function is not available yet.');
-      logRowDetailSaveDiagnostic('save function unavailable', null, { path: 'safeSaveMissingFunction' });
+      logRowDetailSaveDiagnostic('SAVE_FUNCTION_UNAVAILABLE', null, { path: 'safeSaveMissingFunction' });
       return false;
     };
 
