@@ -868,6 +868,95 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   }
 
   // ============================================================
+  // SECTION: CONNECTION STATUS MANAGEMENT
+  // ============================================================
+
+  /**
+   * Update the connection status indicator
+   * This updates the data load indicator to show if we're connected to Excel
+   */
+  window.updateConnectionStatus = function(isConnected) {
+    console.log(`🔗 Updating connection status: ${isConnected ? '✅ CONNECTED' : '❌ NOT CONNECTED'}`);
+
+    try {
+      const dataLoadIndicator = document.getElementById('dataLoadIndicator');
+      const statusDot = dataLoadIndicator?.querySelector('.status-dot');
+      const dataLoadText = document.getElementById('dataLoadText');
+
+      if (!dataLoadIndicator) {
+        console.warn('⚠️ dataLoadIndicator element not found');
+        return;
+      }
+
+      if (isConnected) {
+        // Connected to Excel
+        if (statusDot) {
+          statusDot.classList.remove('disconnected');
+          statusDot.classList.add('connected');
+          statusDot.style.backgroundColor = '#22c55e'; // Green
+        }
+
+        if (dataLoadText) {
+          dataLoadText.textContent = '✅ Connected to Excel';
+          dataLoadText.style.color = '#22c55e'; // Green
+          dataLoadText.style.fontWeight = '600';
+        }
+
+        dataLoadIndicator.style.borderColor = '#22c55e';
+        dataLoadIndicator.style.backgroundColor = '#f0fdf4'; // Light green background
+        console.log('✅ Connection status updated: CONNECTED');
+      } else {
+        // Not connected to Excel
+        if (statusDot) {
+          statusDot.classList.remove('connected');
+          statusDot.classList.add('disconnected');
+          statusDot.style.backgroundColor = '#ef4444'; // Red
+        }
+
+        if (dataLoadText) {
+          dataLoadText.textContent = '❌ Not connected to Excel';
+          dataLoadText.style.color = '#ef4444'; // Red
+          dataLoadText.style.fontWeight = '600';
+        }
+
+        dataLoadIndicator.style.borderColor = '#ef4444';
+        dataLoadIndicator.style.backgroundColor = '#fef2f2'; // Light red background
+        console.log('❌ Connection status updated: NOT CONNECTED');
+      }
+    } catch (error) {
+      console.error('❌ Error updating connection status:', error);
+    }
+  };
+
+  /**
+   * Initialize connection status on page load
+   * Checks if user is already signed in
+   */
+  function initializeConnectionStatus() {
+    console.log('🔗 Initializing connection status...');
+
+    // Check if there's an existing access token or active account
+    const hasAuth = window.accessToken || window.activeAccount;
+
+    if (hasAuth) {
+      console.log('✅ User already authenticated, marking as connected');
+      window.updateConnectionStatus(true);
+    } else {
+      console.log('❌ User not authenticated, marking as disconnected');
+      window.updateConnectionStatus(false);
+    }
+
+    console.log('✅ Connection status initialized');
+  }
+
+  // Initialize on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeConnectionStatus);
+  } else {
+    setTimeout(initializeConnectionStatus, 100);
+  }
+
+  // ============================================================
   // INITIALIZATION
   // ============================================================
 
