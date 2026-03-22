@@ -1,15 +1,13 @@
 /**
  * BUTTON RELIABILITY LAYER
  * ========================
- * Keeps buttons responsive without hijacking native click handlers.
- * This intentionally avoids preventDefault/stopPropagation so existing
- * filter, detail, modal, and inline button logic can run normally.
+ * Keeps buttons responsive and stabilizes row-detail modal interactions.
  *
  * Version: v7.0.142
  * Date: March 22, 2026
  */
 
-(function() {
+(function () {
   console.log('🔘 Initializing SAFE Button Reliability Layer...');
 
   let rowDetailFixInstalled = false;
@@ -27,6 +25,10 @@
     const button = event.target && event.target.closest ? event.target.closest('button') : null;
     if (!button) return;
     normalizeButton(button);
+  }
+
+  function refreshVisibleButtons() {
+    document.querySelectorAll('button').forEach(normalizeButton);
   }
 
   function getRowDetailParts() {
@@ -95,6 +97,22 @@
     return true;
   }
 
+  function syncRowDetailContextFromGlobals() {
+    const parts = getRowDetailParts();
+    if (!parts.modal) return;
+
+    if (Number.isInteger(window.currentEditingRowIndex) && window.currentEditingRowIndex >= 0) {
+      parts.modal.dataset.currentRowIndex = String(window.currentEditingRowIndex);
+    }
+  }
+
+  function isEditModeActive() {
+    if (window.isInEditMode === true) return true;
+    const parts = getRowDetailParts();
+    const editText = String(parts.editBtn ? parts.editBtn.textContent : '').toLowerCase();
+    return editText.includes('save');
+  }
+
   function getAdventureEntry(index) {
     const num = Number(index);
     if (!Number.isInteger(num) || num < 0) return null;
@@ -107,11 +125,7 @@
         : Array.isArray(window.adventuresData) ? window.adventuresData.indexOf(filteredEntry.row) : -1;
 
       if (sourceIndex >= 0) {
-        return {
-          row: filteredEntry.row,
-          sourceIndex,
-          filteredIndex: num
-        };
+        return { row: filteredEntry.row, sourceIndex, filteredIndex: num };
       }
     }
 
@@ -142,7 +156,7 @@
 
   function buildRowDetailTabs(values) {
     const [
-      name,
+      _name,
       googlePlaceId,
       website,
       tags,
@@ -318,18 +332,34 @@
     const editButton = parts.editBtn;
     if (!editButton || editButton.dataset.rowDetailEditBound === '1') return;
 
-    editButton.addEventListener('click', (event) => {
+    editButton.addEventListener('click', async (event) => {
       event.preventDefault();
       event.stopPropagation();
 
       if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
         ensureEditingRowFromModalDataset();
       }
+      syncRowDetailContextFromGlobals();
+
+      if (isEditModeActive()) {
+        if (typeof window.__rowDetailOriginalSaveEditedData === 'function') {
+          await window.__rowDetailOriginalSaveEditedData();
+          syncRowDetailContextFromGlobals();
+          return;
+        }
+        if (typeof window.saveEditedData === 'function' && window.saveEditedData !== window.__rowDetailSafeSaveEditedData) {
+          await window.saveEditedData();
+          syncRowDetailContextFromGlobals();
+          return;
+        }
+      }
 
       if (typeof window.__rowDetailOriginalEnableEditMode === 'function') {
         window.__rowDetailOriginalEnableEditMode();
+        syncRowDetailContextFromGlobals();
       } else if (typeof window.enableEditMode === 'function' && window.enableEditMode !== window.__rowDetailSafeEnableEditMode) {
         window.enableEditMode();
+        syncRowDetailContextFromGlobals();
       } else if (window.showToast) {
         window.showToast('Edit mode is still loading. Please try again.', 'warning', 2000);
       }
@@ -342,7 +372,7 @@
     if (globalDetailDelegatesBound) return;
     globalDetailDelegatesBound = true;
 
-    // 1) Dedicated Details buttons on cards.
+    // Details button click.
     document.addEventListener('click', (event) => {
       const detailsButton = event.target && event.target.closest ? event.target.closest('.card-details-btn') : null;
       if (!detailsButton) return;
@@ -352,7 +382,7 @@
       window.showCardDetails(index);
     }, true);
 
-    // 2) Card body click should open Details, but never hijack interactive controls.
+    // Whole-card click opens details unless clicking interactive controls.
     document.addEventListener('click', (event) => {
       const card = event.target && event.target.closest ? event.target.closest('.adventure-card') : null;
       if (!card) return;
@@ -366,7 +396,7 @@
       window.showCardDetails(index);
     }, true);
 
-    // 3) Similar modal item -> Details handoff.
+    // Similar modal item -> details handoff.
     document.addEventListener('click', (event) => {
       const item = event.target && event.target.closest ? event.target.closest('#similarAdventuresModal .similar-adventure-item') : null;
       if (!item) return;
@@ -383,7 +413,16 @@
       window.showCardDetails(index);
     }, true);
 
-    // 4) Escape key always closes row details if open.
+    // Tab switching should not drop context.
+    document.addEventListener('click', (event) => {
+      const tabButton = event.target && event.target.closest ? event.target.closest('#rowDetailModal .row-detail-tab-btn') : null;
+      if (!tabButton) return;
+      ensureEditingRowFromModalDataset();
+      syncRowDetailContextFromGlobals();
+      setTimeout(syncRowDetailContextFromGlobals, 0);
+    }, true);
+
+    // Escape closes row detail modal.
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       const parts = getRowDetailParts();
@@ -400,18 +439,22 @@
     const originalShow = typeof window.showCardDetails === 'function' ? window.showCardDetails : null;
     const originalClose = typeof window.closeRowDetailModal === 'function' ? window.closeRowDetailModal : null;
     const originalEnableEdit = typeof window.enableEditMode === 'function' ? window.enableEditMode : null;
+    const originalSaveEdited = typeof window.saveEditedData === 'function' ? window.saveEditedData : null;
+    const originalCancelEdit = typeof window.cancelEdit === 'function' ? window.cancelEdit : null;
 
     window.__rowDetailOriginalShowCardDetails = originalShow;
     window.__rowDetailOriginalClose = originalClose;
     window.__rowDetailOriginalEnableEditMode = originalEnableEdit;
+    window.__rowDetailOriginalSaveEditedData = originalSaveEdited;
+    window.__rowDetailOriginalCancelEdit = originalCancelEdit;
 
-    window.initRowDetailModal = function() {
+    window.initRowDetailModal = function () {
       bindRowDetailCloseHandlers();
       bindRowDetailEditHandler();
       return true;
     };
 
-    window.closeRowDetailModal = function() {
+    window.closeRowDetailModal = function () {
       try {
         if (typeof originalClose === 'function' && originalClose !== window.closeRowDetailModal) {
           originalClose();
@@ -422,13 +465,15 @@
       return closeRowDetailModalHard();
     };
 
-    window.__rowDetailSafeEnableEditMode = function() {
+    window.__rowDetailSafeEnableEditMode = function () {
       if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
         ensureEditingRowFromModalDataset();
       }
 
       if (typeof originalEnableEdit === 'function') {
-        return originalEnableEdit();
+        const result = originalEnableEdit();
+        syncRowDetailContextFromGlobals();
+        return result;
       }
 
       if (window.showToast) {
@@ -437,9 +482,39 @@
       return false;
     };
 
-    window.enableEditMode = window.__rowDetailSafeEnableEditMode;
+    window.__rowDetailSafeSaveEditedData = async function () {
+      if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
+        ensureEditingRowFromModalDataset();
+      }
+      if (typeof originalSaveEdited === 'function') {
+        const result = await originalSaveEdited();
+        syncRowDetailContextFromGlobals();
+        return result;
+      }
+      return false;
+    };
 
-    window.showCardDetails = function(index) {
+    window.__rowDetailSafeCancelEdit = function () {
+      if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
+        ensureEditingRowFromModalDataset();
+      }
+      if (typeof originalCancelEdit === 'function') {
+        const result = originalCancelEdit();
+        syncRowDetailContextFromGlobals();
+        return result;
+      }
+      return window.closeRowDetailModal();
+    };
+
+    window.enableEditMode = window.__rowDetailSafeEnableEditMode;
+    if (typeof originalSaveEdited === 'function') {
+      window.saveEditedData = window.__rowDetailSafeSaveEditedData;
+    }
+    if (typeof originalCancelEdit === 'function') {
+      window.cancelEdit = window.__rowDetailSafeCancelEdit;
+    }
+
+    window.__rowDetailSafeShowCardDetails = function (index) {
       const entry = getAdventureEntry(index);
       if (!entry) {
         console.error('❌ Row detail: could not resolve adventure for index', index);
@@ -449,9 +524,10 @@
       window.currentEditingRow = entry.row;
       window.currentEditingRowIndex = entry.sourceIndex;
       window.initRowDetailModal();
+      syncRowDetailContextFromGlobals();
 
       let opened = false;
-      if (typeof originalShow === 'function' && originalShow !== window.showCardDetails) {
+      if (typeof originalShow === 'function' && originalShow !== window.__rowDetailSafeShowCardDetails) {
         try {
           originalShow(entry.sourceIndex);
           opened = true;
@@ -470,13 +546,31 @@
         if (parts.backdrop) parts.backdrop.style.pointerEvents = 'auto';
       }
 
+      syncRowDetailContextFromGlobals();
       return true;
     };
+
+    window.showCardDetails = window.__rowDetailSafeShowCardDetails;
 
     bindGlobalDetailDelegates();
     bindRowDetailCloseHandlers();
     bindRowDetailEditHandler();
     console.log('✅ Row detail modal runtime fix installed');
+  }
+
+  function reassertRowDetailBindings() {
+    if (typeof window.__rowDetailSafeShowCardDetails === 'function' && window.showCardDetails !== window.__rowDetailSafeShowCardDetails) {
+      window.showCardDetails = window.__rowDetailSafeShowCardDetails;
+    }
+    if (typeof window.__rowDetailSafeEnableEditMode === 'function' && window.enableEditMode !== window.__rowDetailSafeEnableEditMode) {
+      window.enableEditMode = window.__rowDetailSafeEnableEditMode;
+    }
+    if (typeof window.__rowDetailSafeSaveEditedData === 'function' && window.saveEditedData !== window.__rowDetailSafeSaveEditedData) {
+      window.saveEditedData = window.__rowDetailSafeSaveEditedData;
+    }
+    if (typeof window.__rowDetailSafeCancelEdit === 'function' && window.cancelEdit !== window.__rowDetailSafeCancelEdit) {
+      window.cancelEdit = window.__rowDetailSafeCancelEdit;
+    }
   }
 
   function installHandlers() {
@@ -494,10 +588,6 @@
     }, false);
   }
 
-  function refreshVisibleButtons() {
-    document.querySelectorAll('button').forEach(normalizeButton);
-  }
-
   function init() {
     installHandlers();
     refreshVisibleButtons();
@@ -507,16 +597,16 @@
       refreshVisibleButtons();
       bindRowDetailCloseHandlers();
       bindRowDetailEditHandler();
+      reassertRowDetailBindings();
     });
 
     if (document.body) {
       observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    // Re-assert the row detail fix after late inline scripts finish registering globals.
-    setTimeout(installRowDetailFixes, 0);
-    setTimeout(installRowDetailFixes, 300);
-    setTimeout(installRowDetailFixes, 1000);
+    setTimeout(reassertRowDetailBindings, 0);
+    setTimeout(reassertRowDetailBindings, 300);
+    setTimeout(reassertRowDetailBindings, 1000);
 
     console.log('✅ Safe button reliability layer ready');
   }
