@@ -395,7 +395,110 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   console.log('✅ Pagination fixes ready');
 
   // ============================================================
-  // SECTION 5: DRY RUN SLIDER FIXES
+  // SECTION 5: IPHONE VIEW TOGGLE
+  // ============================================================
+
+  /**
+   * Initialize iPhone View toggle functionality
+   * Allows users to switch between standard and mobile (iPhone) view
+   */
+  window.initIphoneToggle = window.initIphoneToggle || function() {
+    console.log('📱 Initializing iPhone View toggle...');
+
+    try {
+      const iphoneToggleBtn = document.getElementById('iphoneToggleBtn');
+
+      if (!iphoneToggleBtn) {
+        console.warn('⚠️ iPhone toggle button not found');
+        return;
+      }
+
+      // Check if already in iPhone view
+      const isIPhoneView = document.body.classList.contains('iphone-view');
+
+      if (isIPhoneView) {
+        iphoneToggleBtn.classList.add('active');
+      } else {
+        iphoneToggleBtn.classList.remove('active');
+      }
+
+      console.log(`📱 iPhone View status: ${isIPhoneView ? '✅ ENABLED' : '❌ DISABLED'}`);
+
+      // Toggle function
+      function toggleIPhoneView() {
+        const body = document.body;
+        const isCurrentlyActive = body.classList.contains('iphone-view');
+
+        if (isCurrentlyActive) {
+          // Disable iPhone view
+          body.classList.remove('iphone-view');
+          iphoneToggleBtn.classList.remove('active');
+          console.log('✅ iPhone View disabled - returning to standard view');
+
+          if (window.showToast) {
+            window.showToast('📱 Switched to standard view', 'info', 2000);
+          }
+
+          // Save preference to localStorage
+          try {
+            localStorage.setItem('iphoneViewEnabled', 'false');
+          } catch (e) {
+            console.warn('⚠️ Could not save iPhone view preference');
+          }
+        } else {
+          // Enable iPhone view
+          body.classList.add('iphone-view');
+          iphoneToggleBtn.classList.add('active');
+          console.log('✅ iPhone View enabled - switching to mobile view');
+
+          if (window.showToast) {
+            window.showToast('📱 Switched to iPhone view', 'info', 2000);
+          }
+
+          // Save preference to localStorage
+          try {
+            localStorage.setItem('iphoneViewEnabled', 'true');
+          } catch (e) {
+            console.warn('⚠️ Could not save iPhone view preference');
+          }
+        }
+
+        // Trigger resize event to notify other components
+        window.dispatchEvent(new Event('resize'));
+        console.log('📐 Resize event dispatched');
+      }
+
+      // Update button click handler
+      iphoneToggleBtn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleIPhoneView();
+      };
+
+      // Also support keyboard event (Escape to toggle back)
+      const escapeHandler = (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('iphone-view')) {
+          console.log('⌨️ Escape pressed - toggling iPhone view off');
+          toggleIPhoneView();
+        }
+      };
+
+      document.addEventListener('keydown', escapeHandler, false);
+
+      console.log('✅ iPhone View toggle initialized');
+
+    } catch (error) {
+      console.error('❌ Error initializing iPhone toggle:', error);
+      if (window.showToast) {
+        window.showToast('Error initializing iPhone view: ' + error.message, 'error', 3000);
+      }
+    }
+  };
+
+  console.log('✅ iPhone View toggle system ready');
+
+  // ============================================================
+  // SECTION 5.5: DRY RUN SLIDER FIXES
   // ============================================================
 
   /**
