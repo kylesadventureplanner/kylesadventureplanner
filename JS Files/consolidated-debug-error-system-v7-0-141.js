@@ -613,6 +613,109 @@ console.log('  - Centralized error tracking');
 console.log('  - Error display and UI');
 console.log('  - Utility functions');
 
+/**
+ * Initialize error bar interactions
+ */
+function initializeErrorBar() {
+  console.log('🔧 Initializing error bar interactions...');
+
+  const errorBar = document.getElementById('errorNotificationBar');
+  const errorHeader = errorBar?.querySelector('.error-header');
+
+  if (!errorHeader) {
+    console.warn('⚠️ Error bar header not found');
+    return;
+  }
+
+  /**
+   * Toggle error bar expanded/collapsed
+   */
+  function toggleErrorBar(e) {
+    e?.stopPropagation();
+
+    if (!errorBar) return;
+
+    const isCollapsed = errorBar.classList.contains('collapsed');
+    console.log(`📊 Toggling error bar: ${isCollapsed ? 'expanding' : 'collapsing'}`);
+
+    if (isCollapsed) {
+      errorBar.classList.remove('collapsed');
+      console.log('✅ Error bar expanded');
+    } else {
+      errorBar.classList.add('collapsed');
+      console.log('✅ Error bar collapsed');
+    }
+  }
+
+  // Make error bar clickable
+  errorHeader.style.cursor = 'pointer';
+  errorHeader.style.pointerEvents = 'auto';
+  errorHeader.style.userSelect = 'none';
+
+  // Add click handler to header (primary)
+  errorHeader.addEventListener('click', toggleErrorBar, true);
+
+  // Add click handler to error bar itself (fallback)
+  errorBar.addEventListener('click', (e) => {
+    if (e.target.closest('.error-header')) {
+      toggleErrorBar(e);
+    }
+  }, true);
+
+  // Ensure error bar is always accessible
+  errorBar.style.pointerEvents = 'auto';
+  errorBar.style.zIndex = '9998';
+
+  // Also add handlers to toggle icon specifically
+  const toggleIcon = errorHeader.querySelector('.toggle-icon');
+  if (toggleIcon) {
+    toggleIcon.style.cursor = 'pointer';
+    toggleIcon.style.pointerEvents = 'auto';
+    toggleIcon.addEventListener('click', toggleErrorBar, true);
+  }
+
+  // Rotate toggle icon based on state
+  const updateToggleIcon = () => {
+    const icon = errorBar.querySelector('.toggle-icon');
+    if (icon) {
+      if (errorBar.classList.contains('collapsed')) {
+        icon.textContent = '▼';
+        icon.style.transform = 'rotate(-90deg)';
+      } else {
+        icon.textContent = '▼';
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+  };
+
+  // Watch for class changes
+  const observer = new MutationObserver(updateToggleIcon);
+  observer.observe(errorBar, { attributes: true, attributeFilter: ['class'] });
+
+  console.log('✅ Error bar interactions initialized');
+}
+
+// Initialize error bar when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeErrorBar);
+} else {
+  setTimeout(initializeErrorBar, 100);
+}
+
+// Also ensure error bar stays responsive
+setInterval(() => {
+  const errorBar = document.getElementById('errorNotificationBar');
+  if (errorBar) {
+    errorBar.style.pointerEvents = 'auto';
+    errorBar.style.zIndex = '9998';
+    const header = errorBar.querySelector('.error-header');
+    if (header) {
+      header.style.pointerEvents = 'auto';
+      header.style.cursor = 'pointer';
+    }
+  }
+}, 1000);
+
 // Export for module use
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {

@@ -4101,11 +4101,12 @@
       font-size: 13px;
       max-height: 300px;
       overflow-y: auto;
-      z-index: 9998;
+      z-index: 9998 !important;
       box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
       transition: all 0.3s ease;
       display: flex;
       flex-direction: column;
+      pointer-events: auto !important;
     }
 
     #errorNotificationBar.collapsed {
@@ -4133,6 +4134,17 @@
       border-bottom: 1px solid rgba(220, 38, 38, 0.3);
       flex-wrap: wrap;
       gap: 8px;
+      pointer-events: auto !important;
+      min-height: 44px;
+    }
+
+    .error-header:hover {
+      pointer-events: auto !important;
+      background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+    }
+
+    .error-header:active {
+      pointer-events: auto !important;
     }
 
     #errorNotificationBar:not(.collapsed) .error-header {
@@ -4143,6 +4155,14 @@
     .error-header span:first-child {
       font-weight: 600;
       font-size: 14px;
+      pointer-events: auto;
+    }
+
+    .error-header .toggle-icon {
+      cursor: pointer;
+      pointer-events: auto !important;
+      transition: transform 0.2s ease;
+      flex-shrink: 0;
     }
 
     .error-count {
@@ -4156,6 +4176,8 @@
       border-radius: 50%;
       font-weight: 700;
       font-size: 12px;
+      pointer-events: auto !important;
+      cursor: pointer;
     }
 
     .error-count.no-errors {
