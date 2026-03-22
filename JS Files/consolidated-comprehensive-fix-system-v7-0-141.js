@@ -1430,47 +1430,34 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
     try {
       const dataLoadIndicator = document.getElementById('dataLoadIndicator');
-      const statusDot = dataLoadIndicator?.querySelector('.status-dot');
       const dataLoadText = document.getElementById('dataLoadText');
 
-      if (!dataLoadIndicator) {
-        console.warn('⚠️ dataLoadIndicator element not found');
+      if (!dataLoadIndicator || !dataLoadText) {
+        console.warn('⚠️ dataLoadIndicator or dataLoadText element not found in DOM');
+        console.warn('  - dataLoadIndicator:', !!dataLoadIndicator);
+        console.warn('  - dataLoadText:', !!dataLoadText);
         return;
       }
 
       if (isConnected) {
         // Connected to Excel
-        if (statusDot) {
-          statusDot.classList.remove('disconnected');
-          statusDot.classList.add('connected');
-          statusDot.style.backgroundColor = '#22c55e'; // Green
-        }
-
-        if (dataLoadText) {
-          dataLoadText.textContent = '✅ Connected to Excel';
-          dataLoadText.style.color = '#22c55e'; // Green
-          dataLoadText.style.fontWeight = '600';
-        }
-
+        dataLoadText.textContent = '✅ Connected to Excel';
+        dataLoadText.style.color = '#22c55e'; // Green
+        dataLoadText.style.fontWeight = '600';
         dataLoadIndicator.style.borderColor = '#22c55e';
-        dataLoadIndicator.style.backgroundColor = '#f0fdf4'; // Light green background
+        dataLoadIndicator.style.backgroundColor = '#f0fdf4'; // Light green
+        dataLoadIndicator.classList.add('connected');
+        dataLoadIndicator.classList.remove('disconnected');
         console.log('✅ Connection status updated: CONNECTED');
       } else {
         // Not connected to Excel
-        if (statusDot) {
-          statusDot.classList.remove('connected');
-          statusDot.classList.add('disconnected');
-          statusDot.style.backgroundColor = '#ef4444'; // Red
-        }
-
-        if (dataLoadText) {
-          dataLoadText.textContent = '❌ Not connected to Excel';
-          dataLoadText.style.color = '#ef4444'; // Red
-          dataLoadText.style.fontWeight = '600';
-        }
-
+        dataLoadText.textContent = '❌ Not connected to Excel';
+        dataLoadText.style.color = '#ef4444'; // Red
+        dataLoadText.style.fontWeight = '600';
         dataLoadIndicator.style.borderColor = '#ef4444';
-        dataLoadIndicator.style.backgroundColor = '#fef2f2'; // Light red background
+        dataLoadIndicator.style.backgroundColor = '#fef2f2'; // Light red
+        dataLoadIndicator.classList.add('disconnected');
+        dataLoadIndicator.classList.remove('connected');
         console.log('❌ Connection status updated: NOT CONNECTED');
       }
     } catch (error) {

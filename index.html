@@ -5519,6 +5519,82 @@
      console.log('✅ REAL AUTH FUNCTIONS DEFINED AND READY IMMEDIATELY!');
 
      // ============================================================
+     // AUTO-LOGIN: Check for existing session on page load
+     // ============================================================
+     async function checkExistingSessionAndLoadData() {
+       try {
+         console.log('🔍 Checking for existing session...');
+
+         // Wait for MSAL to initialize
+         await msalInitPromise;
+
+         // Check for existing accounts
+         const accounts = msalInstance.getAllAccounts();
+         console.log(`📊 Found ${accounts.length} existing account(s)`);
+
+         if (accounts.length > 0) {
+           console.log('✅ User already logged in, attempting to load data...');
+           const account = accounts[0];
+           msalInstance.setActiveAccount(account);
+           activeAccount = account;
+
+           try {
+             // Try to get token silently
+             const tokenResponse = await msalInstance.acquireTokenSilent({
+               ...loginRequest,
+               account: account,
+             });
+
+             accessToken = tokenResponse.accessToken;
+             syncAuthGlobals();
+             isConnectedToExcel = true;
+
+             // Update UI
+             document.getElementById('authStatus').textContent = `Signed in as ${account.username}`;
+             document.getElementById('signInBtn').style.display = 'none';
+             document.getElementById('signOutBtn').style.display = 'inline-block';
+
+             // Update connection status BEFORE loading
+             console.log('🔗 Setting connection status to CONNECTED');
+             window.updateConnectionStatus?.(true);
+
+             // Load data from Excel
+             console.log('📥 Loading adventure data from Excel...');
+             await window.loadTable?.();
+
+             // Initialize other systems
+             window.initFindNearMe?.();
+             window.initContextMenu?.();
+             window.initRowDetailModal?.();
+
+             console.log('✅ Auto-login successful - data loaded and connection status updated');
+           } catch (silentError) {
+             console.warn('⚠️ Could not acquire token silently:', silentError.message);
+             console.log('ℹ️ User will need to sign in again manually');
+             window.updateConnectionStatus?.(false);
+           }
+         } else {
+           console.log('ℹ️ No existing session found');
+           window.updateConnectionStatus?.(false);
+         }
+       } catch (error) {
+         console.error('❌ Error checking existing session:', error);
+         window.updateConnectionStatus?.(false);
+       }
+     }
+
+     // Check for existing session when MSAL is ready
+     msalInitPromise.then(() => {
+       console.log('⏳ MSAL initialized, checking for existing session...');
+       checkExistingSessionAndLoadData();
+     }).catch(error => {
+       console.error('❌ Failed to check session:', error);
+       window.updateConnectionStatus?.(false);
+     });
+
+     console.log('✅ Auto-login check scheduled for when MSAL is ready');
+
+     // ============================================================
      // LOAD TABLE - Load adventure data from Excel via Microsoft Graph API
      // ============================================================
      window.loadTable = async function() {
