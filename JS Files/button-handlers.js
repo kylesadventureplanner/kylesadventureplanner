@@ -181,17 +181,18 @@
     parts.editBtn.style.color = '';
   }
 
-  function showRowDetailSaveErrorBanner(message) {
+  function showRowDetailSaveErrorBanner(message, diagnosticCode = null) {
     const parts = getRowDetailParts();
     if (!parts.modal) return;
 
     clearRowDetailSaveErrorBanner();
 
+    const codePrefix = diagnosticCode ? `[${diagnosticCode}] ` : '';
     const banner = document.createElement('div');
     banner.id = 'rowDetailSaveErrorBanner';
     banner.style.cssText = 'margin: 12px 0; padding: 10px 12px; border-radius: 8px; border: 1px solid #fca5a5; background: #fef2f2; color: #991b1b; font-size: 12px;';
     banner.innerHTML = `
-      <div style="font-weight: 700; margin-bottom: 6px;">Save failed. Your edits are still here.</div>
+      <div style="font-weight: 700; margin-bottom: 6px;">${codePrefix}Save failed. Your edits are still here.</div>
       <div style="margin-bottom: 8px;">${String(message || 'Unknown save error')}</div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button type="button" id="rowDetailRetrySaveBtn" style="padding: 6px 10px; border: none; border-radius: 6px; background: #dc2626; color: #fff; cursor: pointer;">Retry Save</button>
@@ -655,7 +656,8 @@
           if (result === false || (saveAttemptedWhileVisible && modalStillVisible && window.isInEditMode === false)) {
             restoreRowDetailFormSnapshot(snapshot);
             keepRowDetailInEditForRetry();
-            showRowDetailSaveErrorBanner('The save could not be confirmed. Fix any issues and retry.');
+            const unconfirmedCode = ROW_DETAIL_SAVE_CODES.SAVE_UNCONFIRMED.code;
+            showRowDetailSaveErrorBanner('The save could not be confirmed. Fix any issues and retry.', unconfirmedCode);
             logRowDetailSaveDiagnostic('SAVE_UNCONFIRMED', null, {
               modalStillVisible,
               saveAttemptedWhileVisible,
@@ -672,7 +674,8 @@
       } catch (error) {
         restoreRowDetailFormSnapshot(snapshot);
         keepRowDetailInEditForRetry();
-        showRowDetailSaveErrorBanner(error && error.message ? error.message : 'Save failed unexpectedly.');
+        const exceptionCode = ROW_DETAIL_SAVE_CODES.SAVE_EXCEPTION.code;
+        showRowDetailSaveErrorBanner(error && error.message ? error.message : 'Save failed unexpectedly.', exceptionCode);
         logRowDetailSaveDiagnostic('SAVE_EXCEPTION', error, { path: 'safeSaveCatch' });
         if (window.showToast) {
           window.showToast('Save failed. Your edits were preserved for retry.', 'error', 3500);
@@ -681,7 +684,8 @@
       }
 
       keepRowDetailInEditForRetry();
-      showRowDetailSaveErrorBanner('Save function is not available yet.');
+      const unavailableCode = ROW_DETAIL_SAVE_CODES.SAVE_FUNCTION_UNAVAILABLE.code;
+      showRowDetailSaveErrorBanner('Save function is not available yet.', unavailableCode);
       logRowDetailSaveDiagnostic('SAVE_FUNCTION_UNAVAILABLE', null, { path: 'safeSaveMissingFunction' });
       return false;
     };
