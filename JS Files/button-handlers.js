@@ -9,71 +9,62 @@
  */
 
 (function() {
-  console.log('🔘 Initializing Button Handlers...');
+  console.log('🔘 Initializing Button Handlers with Event Delegation...');
 
   /**
-   * Setup all button event listeners
+   * Setup all button event listeners using event delegation
    */
   function setupButtonHandlers() {
-    console.log('🔧 Setting up button handlers...');
+    console.log('🔧 Setting up button handlers with event delegation...');
 
-    // Auto-Tag All Button
-    const autoTagBtn = document.getElementById('autoTagBtn');
-    if (autoTagBtn) {
-      autoTagBtn.addEventListener('click', function(e) {
-        e.preventDefault();
+    // Delegate click events to the document
+    document.addEventListener('click', function(event) {
+      const button = event.target.closest('button');
+      if (!button) return;
+
+      // Handle Auto-Tag All Button
+      if (button.id === 'autoTagBtn') {
+        event.preventDefault();
         console.log('🏷️ Auto-Tag All clicked');
         handleAutoTagAll();
-      });
-    }
+      }
 
-    // Location History Button
-    const locationHistoryBtn = document.getElementById('locationHistoryBtn');
-    if (locationHistoryBtn) {
-      locationHistoryBtn.addEventListener('click', function(e) {
-        e.preventDefault();
+      // Handle Location History Button
+      if (button.id === 'locationHistoryBtn') {
+        event.preventDefault();
         console.log('📅 Location History clicked');
         openLocationHistoryModal();
-      });
-    }
+      }
 
-    // Find Near Me Button
-    const findNearMeBtn = document.getElementById('findNearMeBtn');
-    if (findNearMeBtn) {
-      findNearMeBtn.addEventListener('click', function(e) {
-        e.preventDefault();
+      // Handle Find Near Me Button
+      if (button.id === 'findNearMeBtn') {
+        event.preventDefault();
         console.log('📍 Find Near Me clicked');
         handleFindNearMe();
-      });
-    }
+      }
 
-    // Reset All Filters Buttons
-    const resetBtns = document.querySelectorAll('[id*="resetAllFilters"]');
-    resetBtns.forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
+      // Handle Reset All Filters Buttons
+      if (button.id && button.id.includes('resetAllFilters')) {
+        event.preventDefault();
         console.log('🔄 Reset Filters clicked');
         handleResetFilters();
-      });
-    });
+      }
 
-    // Quick Filter Buttons
-    const quickFilterBtns = document.querySelectorAll('.quick-filter-btn');
-    quickFilterBtns.forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const tag = this.getAttribute('data-tag');
-        const isFilter = this.getAttribute('data-filter');
+      // Handle Quick Filter Buttons
+      if (button.classList.contains('quick-filter-btn')) {
+        event.preventDefault();
+        const tag = button.getAttribute('data-tag');
+        const isFilter = button.getAttribute('data-filter');
         console.log('🏷️ Quick filter clicked:', tag || isFilter);
         if (isFilter === 'favorites') {
           handleFavoritesFilter();
         } else if (tag) {
           handleTagFilter(tag);
         }
-      });
+      }
     });
 
-    console.log('✅ Button handlers set up successfully');
+    console.log('✅ Button handlers set up successfully with event delegation');
   }
 
   /**
@@ -114,7 +105,7 @@
           if (window.adventuresData) {
             console.log('🔍 Filtering nearby locations...');
             // Simple distance calculation (can be improved)
-            const nearby = window.adventuresData.filter(loc => {
+            const nearby = window.adventuresData.filter(() => {
               // This is a simplified version - proper distance calculation would be better
               return true; // Placeholder
             });
@@ -210,25 +201,19 @@
     }
   }
 
-  /**
-   * Initialize when DOM is ready
-   */
+  // Initialize when DOM is ready
   function init() {
-    // Wait a bit for other systems to load
     setTimeout(() => {
       setupButtonHandlers();
-      console.log('✅ Button system initialized');
+      console.log('✅ Button system initialized with event delegation');
     }, 500);
   }
 
-  // Start when DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     setTimeout(init, 100);
   }
 
-  // Expose functions globally
   window.setupButtonHandlers = setupButtonHandlers;
 })();
-
