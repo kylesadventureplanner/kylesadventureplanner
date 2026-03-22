@@ -17545,7 +17545,22 @@ COMMON ISSUES:
           e.preventDefault();
           e.stopPropagation();
           console.log('📱 iPhone View toggled');
-          initIphoneToggle?.();
+          // Call the global function or use fallback
+          if (typeof window.initIphoneToggle === 'function') {
+            window.initIphoneToggle();
+          } else {
+            console.warn('⚠️ initIphoneToggle not available yet, providing inline fallback');
+            const isMobile = document.body.classList.contains('mobile-view');
+            if (isMobile) {
+              document.body.classList.remove('mobile-view');
+              iphoneToggleBtn.classList.remove('active');
+              iphoneToggleBtn.textContent = '📱 iPhone View';
+            } else {
+              document.body.classList.add('mobile-view');
+              iphoneToggleBtn.classList.add('active');
+              iphoneToggleBtn.textContent = '💻 Desktop View';
+            }
+          }
         });
         iphoneToggleBtn.dataset.bound = 'true';
       }
@@ -20472,7 +20487,35 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     window.applyFilters = () => FilterManager.applyAllFilters();
     window.resetAllFilters = () => FilterManager.resetAllFilters();
 
+    // Expose iPhone toggle as global function
+    if (typeof initIphoneToggle === 'function') {
+      window.initIphoneToggle = initIphoneToggle;
+    } else {
+      console.warn('⚠️ initIphoneToggle function not found - creating fallback');
+      window.initIphoneToggle = function() {
+        const btn = document.getElementById("iphoneToggleBtn");
+        if (!btn) {
+          console.error("❌ iPhone toggle button not found");
+          return;
+        }
+        // Toggle mobile view class
+        const isMobile = document.body.classList.contains("mobile-view");
+        if (isMobile) {
+          document.body.classList.remove("mobile-view");
+          btn.classList.remove("active");
+          btn.textContent = "📱 iPhone View";
+          console.log("📱 Switched to desktop view");
+        } else {
+          document.body.classList.add("mobile-view");
+          btn.classList.add("active");
+          btn.textContent = "💻 Desktop View";
+          console.log("📱 Switched to iPhone mobile view");
+        }
+      };
+    }
+
     console.log('✅ Consolidated Filtering System Ready');
+    console.log('✅ iPhone Toggle Available');
   })();
 </script>
 
