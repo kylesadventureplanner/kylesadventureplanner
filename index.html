@@ -18395,14 +18395,48 @@ COMMON ISSUES:
 
       console.log(`📍 Saving to: ${url}`);
 
-      // Convert adventuresData to proper row format
-      const rowsToAdd = window.adventuresData.map(item => {
+      // Convert adventuresData to proper row format and PRE-TRIM columns
+      const rowsToAdd = window.adventuresData.map((item, idx) => {
         // Extract values from the data structure
-        const values = item.row?.values?.[0] || item.values?.[0] || item;
-        return Array.isArray(values) ? values : Object.values(values || {});
+        let values = item.row?.values?.[0] || item.values?.[0] || item;
+
+        // Ensure it's an array
+        if (!Array.isArray(values)) {
+          values = Object.values(values || {});
+        }
+
+        // Convert all values to strings for Excel compatibility
+        const stringValues = values.map(v => {
+          if (v === null || v === undefined) return "";
+          if (typeof v === 'string') return v;
+          if (typeof v === 'number') return String(v);
+          if (typeof v === 'boolean') return v ? "TRUE" : "FALSE";
+          return String(v);
+        });
+
+        // PRE-TRIM trailing empty columns
+        let lastFilledIndex = -1;
+        for (let i = stringValues.length - 1; i >= 0; i--) {
+          if (stringValues[i] !== "") {
+            lastFilledIndex = i;
+            break;
+          }
+        }
+
+        // Keep at least 12 columns (through address) or to lastFilledIndex + 1
+        const minColumns = Math.max(12, lastFilledIndex >= 0 ? lastFilledIndex + 1 : 12);
+        if (stringValues.length > minColumns) {
+          if (idx === 0) {
+            console.log(`🔧 Pre-trimming rows from ${stringValues.length} to ${minColumns} columns`);
+          }
+          return stringValues.slice(0, minColumns);
+        }
+
+        return stringValues;
       });
 
       console.log(`📝 Preparing to save ${rowsToAdd.length} rows to Excel...`);
+      console.log(`📊 First row length: ${rowsToAdd[0]?.length || 0} columns`);
 
       // Add rows to the table
       const response = await fetch(url, {
