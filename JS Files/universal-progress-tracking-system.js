@@ -161,6 +161,16 @@
     displayFinalResults(customMessage = '') {
       const elapsed = Math.round((new Date() - this.startTime) / 1000);
       const success = this.failCount === 0;
+      const copyText = [
+        `${this.title} RESULTS - ${new Date().toLocaleString()}`,
+        `Status: ${this.dryRun ? 'DRY RUN' : 'COMPLETED'}`,
+        `Success: ${this.successCount} | Failed: ${this.failCount} | Skipped: ${this.skippedCount}`,
+        `Time: ${elapsed} seconds`,
+        `Total: ${this.totalItems} items`,
+        '',
+        'DETAILS:',
+        ...this.results.map((r, i) => `${i + 1}. ${r.icon} ${r.item} - ${r.details || r.reason || r.error || 'Completed'}`)
+      ].join('\n');
 
       const finalHTML = `
         <div style="padding: 16px; background: ${success ? '#ecfdf5' : '#fef3c7'}; border: 1px solid ${success ? '#6ee7b7' : '#fbbf24'}; border-radius: 8px;">
@@ -170,7 +180,6 @@
 
           ${customMessage ? `<div style="margin-bottom: 12px; padding: 8px; background: rgba(0,0,0,0.05); border-radius: 4px; font-size: 13px;">${customMessage}</div>` : ''}
 
-          <!-- Final Stats -->
           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
             <div style="padding: 10px; background: #ecfdf5; border-radius: 6px; text-align: center;">
               <div style="font-size: 28px; font-weight: 700; color: #10b981;">✅ ${this.successCount}</div>
@@ -190,9 +199,8 @@
             </div>
           </div>
 
-          <!-- Detailed Results -->
           <div style="max-height: 400px; overflow-y: auto; background: white; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; margin-bottom: 12px; font-size: 12px;">
-            ${this.results.map((r, idx) => `
+            ${this.results.map((r) => `
               <div style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; display: flex; align-items: flex-start; gap: 8px;">
                 <div style="flex-shrink: 0; margin-top: 2px; font-size: 14px;">${r.icon}</div>
                 <div style="flex: 1; min-width: 0;">
@@ -205,22 +213,7 @@
             `).join('')}
           </div>
 
-          <!-- Copy Button -->
-          <button onclick="
-            const text = \`${this.title} RESULTS - ${new Date().toLocaleString()}
-Status: ${this.dryRun ? 'DRY RUN' : 'COMPLETED'}
-Success: ${this.successCount} | Failed: ${this.failCount} | Skipped: ${this.skippedCount}
-Time: ${elapsed} seconds
-Total: ${this.totalItems} items
-
-DETAILS:
-${this.results.map((r, i) => \`\${i + 1}. \${r.icon} \${r.item} - \${r.details || r.reason || r.error || 'Completed'}\`).join('\\n')}\`;
-            navigator.clipboard.writeText(text).then(() => {
-              alert('✅ Results copied to clipboard!');
-            }).catch(() => {
-              alert('❌ Could not copy to clipboard');
-            });
-          " style="
+          <button id="progressTrackerCopyBtn" style="
             padding: 10px 16px;
             background: #3b82f6;
             color: white;
@@ -237,6 +230,17 @@ ${this.results.map((r, i) => \`\${i + 1}. \${r.icon} \${r.item} - \${r.details |
       `;
 
       this.displayElement.innerHTML = finalHTML;
+
+      const copyBtn = this.displayElement.querySelector('#progressTrackerCopyBtn');
+      if (copyBtn) {
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(copyText).then(() => {
+            alert('✅ Results copied to clipboard!');
+          }).catch(() => {
+            alert('❌ Could not copy to clipboard');
+          });
+        };
+      }
     }
 
     /**
@@ -276,35 +280,33 @@ ${this.results.map((r, i) => \`\${i + 1}. \${r.icon} \${r.item} - \${r.details |
   // ENHANCED: Add Single Place with Progress
   // ============================================================
   window.handleAddSinglePlaceWithProgress = async function(input, inputType, displayElement, dryRun = false) {
-    console.log(`📍 Adding single place with progress tracking...`);
+    console.log('📍 Adding single place with progress tracking...');
 
     const tracker = new UniversalProgressTracker(displayElement, 'Add Single Place', 1, { dryRun });
 
     try {
-      tracker.updateProgress('Initializing...');
+      tracker.updateProgress('Resolving Google place...');
 
-      const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-      const adventuresData = mainWindow.adventuresData || window.adventuresData;
-
-      if (!adventuresData) {
-        tracker.displayError('No data available. Please load Excel first.');
+      if (dryRun) {
+        const resolved = typeof window.resolvePlaceInputWithGoogleData === 'function'
+          ? await window.resolvePlaceInputWithGoogleData(inputType, input)
+          : null;
+        tracker.recordSuccess(input, `[DRY RUN] Would add ${resolved?.name || input}`);
+        tracker.displayFinalResults('Single location resolved successfully');
         return tracker.getSummary();
       }
 
-      tracker.updateProgress(`Processing: ${input.substring(0, 50)}...`);
-
-      if (!dryRun) {
-        // Simulate adding
-        tracker.recordSuccess(input, 'Added to Excel');
-        
-        // Verify
-        if (adventuresData.length > 0) {
-          tracker.recordSuccess(input, 'Verified in Excel');
-        }
-      } else {
-        tracker.recordSuccess(input, '[DRY RUN] Would add');
+      const automation = window.enhancedAutomation;
+      if (!automation || typeof automation.addSinglePlace !== 'function') {
+        throw new Error('Enhanced automation add system is not available.');
       }
 
+      const result = await automation.addSinglePlace(input, inputType, false);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to add location');
+      }
+
+      tracker.recordSuccess(input, `Added ${result.placeName || input}`);
       tracker.displayFinalResults('Single location processed successfully');
       return tracker.getSummary();
     } catch (err) {
@@ -323,12 +325,9 @@ ${this.results.map((r, i) => \`\${i + 1}. \${r.icon} \${r.item} - \${r.details |
     const tracker = new UniversalProgressTracker(displayElement, 'Bulk Add Places', locations.length, { dryRun });
 
     try {
-      const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-      const adventuresData = mainWindow.adventuresData || window.adventuresData;
-
-      if (!adventuresData) {
-        tracker.displayError('No data available. Please load Excel first.');
-        return tracker.getSummary();
+      const automation = window.enhancedAutomation;
+      if (!automation || typeof automation.addSinglePlace !== 'function') {
+        throw new Error('Enhanced automation add system is not available.');
       }
 
       for (let i = 0; i < locations.length; i++) {
@@ -340,16 +339,16 @@ ${this.results.map((r, i) => \`\${i + 1}. \${r.icon} \${r.item} - \${r.details |
         }
 
         try {
-          tracker.updateProgress(`Processing: ${location.substring(0, 40)}...`);
+          tracker.updateProgress(`Resolving: ${location.substring(0, 40)}...`);
+          const result = await automation.addSinglePlace(location, inputType, dryRun);
 
-          if (!dryRun) {
-            tracker.recordSuccess(location, 'Added to Excel');
+          if (result.success) {
+            tracker.recordSuccess(location, dryRun ? `[DRY RUN] Would add ${result.placeName || location}` : `Added ${result.placeName || location}`);
           } else {
-            tracker.recordSuccess(location, '[DRY RUN] Would add');
+            tracker.recordFailure(location, result.error || 'Failed to add location');
           }
 
-          // Small delay for throttling
-          await new Promise(r => setTimeout(r, 100));
+          await new Promise(r => setTimeout(r, 120));
         } catch (err) {
           tracker.recordFailure(location, err.message);
         }
@@ -565,4 +564,3 @@ ${this.results.map((r, i) => \`\${i + 1}. \${r.icon} \${r.item} - \${r.details |
   console.log('  - Refresh Place IDs with progress');
   console.log('  - Auto tag with progress');
 })();
-

@@ -1,405 +1,370 @@
 /**
  * CONSOLIDATED AUTOMATION FEATURES SYSTEM v7.0.141
  * =================================================
- *
- * A unified, comprehensive automation system that consolidates all automation-related
- * functionality from multiple files into a single, maintainable module.
- *
- * INCLUDES:
- * - Enhanced Automation Features (v2)
- * - Refresh Place IDs with Progress
- * - Result Modal System (Legacy)
- * - Batch Processing Integration
- * - Keyboard Shortcuts
- * - Recent Places Tracking
- * - Multiple Input Methods
- *
- * Version: 7.0.141
- * Date: March 15, 2026
- * Created: Consolidated from 4 separate automation files
+ * Stable automation runtime for edit mode actions.
  */
 
 console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
 
-// ============================================================
-// SECTION 1: ENHANCED AUTOMATION FEATURES
-// ============================================================
-
-class EnhancedAutomationFeatures {
-  constructor() {
-    this.dryRunStates = {
-      addSingle: false,
-      bulkAdd: false,
-      bulkChain: false,
-      refreshPlaceIds: false,
-      populateMissing: false,
-      updateHours: false,
-      autoTag: false
-    };
-    this.init();
+(function() {
+  function getMainWindow() {
+    return window.opener && !window.opener.closed ? window.opener : window;
   }
 
-  /**
-   * Initialize features
-   */
-  init() {
-    console.log('✅ Enhanced Automation Features initialized');
+  function safeString(value) {
+    return String(value == null ? '' : value).trim();
   }
 
-  /**
-   * Create dry run toggle UI
-   */
-  createDryRunToggle(featureName, initialState = false) {
-    const container = document.createElement('div');
-    container.className = 'dry-run-toggle';
-    if (initialState) {
-      container.classList.add('on');
-    }
-    container.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px;
-      background: #f0f4ff;
-      border-radius: 8px;
-      border: 1px solid #60a5fa;
-      margin-bottom: 12px;
-      cursor: pointer;
-      user-select: none;
-    `;
-
-    // Create label with text
-    const label = document.createElement('label');
-    label.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 600;
-      color: #1e40af;
-      cursor: pointer;
-      margin: 0;
-      user-select: none;
-    `;
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = initialState;
-    checkbox.className = `dry-run-toggle-${featureName}`;
-    checkbox.style.cssText = `
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-    `;
-
-    const labelText = document.createTextNode('🧪 Dry Run (Preview Changes)');
-    label.appendChild(checkbox);
-    label.appendChild(labelText);
-
-    // Create custom switch for better UX
-    const switchElement = document.createElement('div');
-    switchElement.className = 'dry-run-switch';
-    switchElement.style.cssText = `
-      width: 32px;
-      height: 18px;
-      border-radius: 999px;
-      background: #e5e7eb;
-      position: relative;
-      transition: background 0.2s;
-      cursor: pointer;
-      flex-shrink: 0;
-    `;
-
-    const switchThumb = document.createElement('div');
-    switchThumb.className = 'dry-run-switch-thumb';
-    switchThumb.style.cssText = `
-      width: 14px;
-      height: 14px;
-      border-radius: 999px;
-      background: white;
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      transition: transform 0.2s;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-      pointer-events: none;
-    `;
-
-    switchElement.appendChild(switchThumb);
-
-    // Toggle function
-    const toggle = () => {
-      checkbox.checked = !checkbox.checked;
-      container.classList.toggle('on');
-
-      // Update switch colors
-      if (checkbox.checked) {
-        switchElement.style.background = '#60a5fa';
-      } else {
-        switchElement.style.background = '#e5e7eb';
-      }
-
-      // Trigger change event
-      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-    };
-
-    // Add click handlers to all clickable areas
-    container.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggle();
-    });
-
-    // Prevent double-toggle on checkbox click
-    checkbox.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
-
-    // Add to label
-    label.appendChild(switchElement);
-    container.appendChild(label);
-
-    return { container, checkbox };
+  function looksLikePlaceId(value) {
+    return /^ChI[A-Za-z0-9_-]{6,}$/i.test(safeString(value));
   }
 
-  /**
-   * Validate and parse place input
-   */
-  validatePlaceInput(input, inputType) {
-    const trimmed = input.trim();
+  function extractPlaceId(raw) {
+    const text = safeString(raw);
+    if (!text) return '';
 
-    if (!trimmed) {
-      return { isValid: false, error: 'Input cannot be empty' };
-    }
+    const directMatch = text.match(/\bChI[A-Za-z0-9_-]{6,}\b/);
+    if (directMatch) return directMatch[0];
 
-    switch (inputType) {
-      case 'placeName':
-        return {
-          isValid: true,
-          type: 'placeName',
-          value: trimmed,
-          description: `Place: ${trimmed}`
-        };
+    const queryPlaceIdMatch = text.match(/[?&]query_place_id=([^&#]+)/i);
+    if (queryPlaceIdMatch) return decodeURIComponent(queryPlaceIdMatch[1]);
 
-      case 'placeId':
-        if (!trimmed.startsWith('ChIJ')) {
-          return { isValid: false, error: 'Invalid Place ID (must start with ChIJ)' };
-        }
-        return {
-          isValid: true,
-          type: 'placeId',
-          value: trimmed,
-          description: `Place ID: ${trimmed.substring(0, 20)}...`
-        };
+    const placeIdMatch = text.match(/place_id[:=]([^&#]+)/i);
+    if (placeIdMatch) return decodeURIComponent(placeIdMatch[1]);
 
-      case 'website':
-        try {
-          new URL(trimmed);
-          return {
-            isValid: true,
-            type: 'website',
-            value: trimmed,
-            description: `Website: ${trimmed}`
-          };
-        } catch {
-          return { isValid: false, error: 'Invalid website URL' };
-        }
-
-      case 'placeUrl':
-        if (!trimmed.includes('google.com/maps') && !trimmed.includes('maps.google.com')) {
-          return { isValid: false, error: 'Not a valid Google Maps URL' };
-        }
-        return {
-          isValid: true,
-          type: 'placeUrl',
-          value: trimmed,
-          description: `Google Maps URL`
-        };
-
-      case 'address':
-        return {
-          isValid: true,
-          type: 'address',
-          value: trimmed,
-          description: `Address: ${trimmed}`
-        };
-
-      case 'placeNameCity':
-        const parts = trimmed.split(',');
-        if (parts.length < 2) {
-          return { isValid: false, error: 'Format: Place Name, City (e.g., Starbucks, Denver)' };
-        }
-        return {
-          isValid: true,
-          type: 'placeNameCity',
-          value: trimmed,
-          description: `${trimmed}`
-        };
-
-      default:
-        return { isValid: false, error: `Unknown input type: ${inputType}` };
-    }
+    return '';
   }
 
-  /**
-   * Resolve a place to a Google Place ID + details using available methods.
-   * Tries: mainWindow.getPlaceDetails → getPlaceDetailsFromAPI → Places Text Search API
-   */
-  async _resolvePlaceDetails(input, inputType) {
-    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-    const apiKey = window.GOOGLE_PLACES_API_KEY || mainWindow.GOOGLE_PLACES_API_KEY || '';
+  function extractSearchQuery(inputType, rawInput) {
+    const value = safeString(rawInput);
+    if (!value) return '';
 
-    // --- Already have a Place ID ---
-    if (inputType === 'placeId') {
-      if (typeof mainWindow.getPlaceDetails === 'function') {
-        try { return await mainWindow.getPlaceDetails(input); } catch (_) {}
-      }
-      if (typeof getPlaceDetailsFromAPI === 'function') {
-        try { return await getPlaceDetailsFromAPI(input); } catch (_) {}
-      }
-      return { placeId: input, name: input, website: '', phone: '', hours: '', address: '', rating: '', directions: `https://www.google.com/maps/place/?q=place_id:${input}` };
-    }
-
-    // --- Google Maps URL → extract Place ID from URL ---
-    if (inputType === 'placeUrl') {
-      const cidMatch = input.match(/[?&]cid=(\d+)/);
-      const placeIdMatch = input.match(/place_id[=:]([A-Za-z0-9_-]+)/);
-      if (placeIdMatch) {
-        return this._resolvePlaceDetails(placeIdMatch[1], 'placeId');
-      }
-      // Fall through to text search using the URL as query
-    }
-
-    // --- Text search (placeName, address, placeNameCity, website, placeUrl fallthrough) ---
-    let queryText = input;
     if (inputType === 'website') {
-      try { queryText = new URL(input).hostname.replace(/^www\./, ''); } catch (_) {}
+      try {
+        const normalized = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+        return new URL(normalized).hostname.replace(/^www\./i, '');
+      } catch (_error) {
+        return value;
+      }
     }
 
-    // Try mainWindow.findPlaceByText if it exists
-    if (typeof mainWindow.findPlaceByText === 'function') {
-      try {
-        const result = await mainWindow.findPlaceByText(queryText);
-        if (result) return result;
-      } catch (_) {}
+    if (inputType === 'placeUrl') {
+      const placePathMatch = value.match(/\/maps\/place\/([^/?#]+)/i);
+      if (placePathMatch && placePathMatch[1]) {
+        return decodeURIComponent(placePathMatch[1]).replace(/\+/g, ' ');
+      }
+
+      const queryMatch = value.match(/[?&](q|query)=([^&#]+)/i);
+      if (queryMatch && queryMatch[2]) {
+        return decodeURIComponent(queryMatch[2]).replace(/\+/g, ' ');
+      }
     }
 
-    // Try Google Places Text Search API directly
-    if (apiKey) {
+    return value;
+  }
+
+  function inferBusinessType(types) {
+    const list = Array.isArray(types) ? types : [];
+    const typeMap = {
+      restaurant: '🍽️ Restaurant',
+      cafe: '☕ Cafe',
+      bar: '🍺 Bar',
+      hotel: '🏨 Hotel',
+      lodging: '🛏️ Lodging',
+      park: '🌳 Park',
+      hiking_area: '🥾 Hiking',
+      museum: '🏛️ Museum',
+      shopping_mall: '🛍️ Shopping',
+      gym: '💪 Gym',
+      hospital: '🏥 Hospital',
+      pharmacy: '💊 Pharmacy',
+      store: '🏪 Store',
+      supermarket: '🛒 Supermarket'
+    };
+
+    for (const type of list) {
+      if (typeMap[type]) return typeMap[type];
+    }
+    return '';
+  }
+
+  function normalizeResolvedDetails(placeId, details, searchResult, rawInput) {
+    const safeDetails = details && typeof details === 'object' ? details : {};
+    const safeSearch = searchResult && typeof searchResult === 'object' ? searchResult : {};
+    const resolvedPlaceId = safeString(placeId || safeDetails.placeId || safeSearch.placeId || extractPlaceId(rawInput));
+    const name = safeString(safeDetails.name || safeSearch.name || rawInput);
+    const address = safeString(safeDetails.address || safeSearch.address);
+
+    return {
+      placeId: resolvedPlaceId,
+      name,
+      address,
+      phone: safeString(safeDetails.phone || safeSearch.phone),
+      website: safeString(safeDetails.website || safeSearch.website),
+      rating: safeDetails.rating ?? safeSearch.rating ?? '',
+      userRatingsTotal: safeDetails.userRatingsTotal ?? safeSearch.reviewCount ?? 0,
+      hours: safeDetails.hours || safeSearch.hours || '',
+      businessStatus: safeString(safeDetails.businessStatus || safeSearch.businessStatus || 'UNKNOWN'),
+      businessType: safeString(safeDetails.businessType || inferBusinessType(safeDetails.types || safeSearch.types)),
+      types: Array.isArray(safeDetails.types) ? safeDetails.types : (Array.isArray(safeSearch.types) ? safeSearch.types : []),
+      coordinates: safeDetails.coordinates || safeSearch.coordinates || null,
+      directions: resolvedPlaceId ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(resolvedPlaceId)}` : ''
+    };
+  }
+
+  window.resolvePlaceInputWithGoogleData = window.resolvePlaceInputWithGoogleData || async function(inputType, inputValue) {
+    const mainWindow = getMainWindow();
+    const rawValue = safeString(inputValue);
+    if (!rawValue) {
+      throw new Error('Please enter a value.');
+    }
+
+    let placeId = '';
+    let searchResult = null;
+    let details = null;
+
+    const extractedPlaceId = extractPlaceId(rawValue);
+    const queryText = extractSearchQuery(inputType, rawValue);
+
+    if (typeof mainWindow.resolvePlaceIdFromInput === 'function') {
       try {
-        const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(queryText)}&inputtype=textquery&fields=place_id,name,formatted_address,rating,formatted_phone_number,website,opening_hours&key=${apiKey}`;
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
-        const resp = await fetch(proxyUrl);
-        if (resp.ok) {
-          const data = await resp.json();
-          const candidate = data.candidates?.[0];
-          if (candidate?.place_id) {
-            return {
-              placeId: candidate.place_id,
-              name: candidate.name || queryText,
-              address: candidate.formatted_address || '',
-              phone: candidate.formatted_phone_number || '',
-              website: candidate.website || '',
-              rating: candidate.rating ? String(candidate.rating) : '',
-              hours: candidate.opening_hours?.weekday_text?.join(' | ') || '',
-              directions: `https://www.google.com/maps/place/?q=place_id:${candidate.place_id}`
-            };
+        placeId = safeString(await mainWindow.resolvePlaceIdFromInput(inputType, rawValue));
+      } catch (resolverError) {
+        console.warn(`⚠️ resolvePlaceIdFromInput failed for ${inputType}:`, resolverError.message);
+      }
+    }
+
+    if (!placeId && (inputType === 'placeId' || inputType === 'placeUrl') && extractedPlaceId) {
+      placeId = extractedPlaceId;
+    }
+
+    if ((!placeId || !looksLikePlaceId(placeId)) && typeof mainWindow.searchPlaces === 'function' && queryText) {
+      const searchResults = await mainWindow.searchPlaces(queryText);
+      if (Array.isArray(searchResults) && searchResults.length > 0) {
+        searchResult = searchResults[0];
+        placeId = safeString(searchResult.placeId || placeId);
+      }
+    }
+
+    if (!looksLikePlaceId(placeId)) {
+      throw new Error(`Could not resolve a valid Google Place ID for "${rawValue}".`);
+    }
+
+    if (typeof mainWindow.getPlaceDetails === 'function') {
+      details = await mainWindow.getPlaceDetails(placeId);
+    }
+
+    if ((!details || !safeString(details.name) || !safeString(details.address)) && !searchResult && typeof mainWindow.searchPlaces === 'function' && queryText) {
+      const searchResults = await mainWindow.searchPlaces(queryText);
+      if (Array.isArray(searchResults) && searchResults.length > 0) {
+        searchResult = searchResults[0];
+      }
+    }
+
+    const normalized = normalizeResolvedDetails(placeId, details, searchResult, rawValue);
+    if (!normalized.placeId || !normalized.name || !normalized.address) {
+      throw new Error(`Google returned incomplete details for "${rawValue}". No row was added.`);
+    }
+
+    return normalized;
+  };
+
+  window.normalizeExcelRowForSchema = window.normalizeExcelRowForSchema || function(rowValues, sourceWindow = getMainWindow()) {
+    const schemaCount = Number(
+      sourceWindow?.__excelColumnCount ||
+      sourceWindow?.adventuresData?.[0]?.values?.[0]?.length ||
+      window.__excelColumnCount ||
+      24
+    );
+
+    const normalized = (Array.isArray(rowValues) ? rowValues : []).map((v) => {
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'string') return v;
+      if (typeof v === 'number') return String(v);
+      if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+      return String(v);
+    });
+
+    if (normalized.length > schemaCount) return normalized.slice(0, schemaCount);
+    if (normalized.length < schemaCount) return normalized.concat(new Array(schemaCount - normalized.length).fill(''));
+    return normalized;
+  };
+
+  class EnhancedAutomationFeatures {
+    constructor() {
+      this.dryRunStates = {
+        addSingle: false,
+        bulkAdd: false,
+        bulkChain: false,
+        refreshPlaceIds: false,
+        populateMissing: false,
+        updateHours: false,
+        autoTag: false
+      };
+      console.log('✅ Enhanced Automation Features initialized');
+    }
+
+    validatePlaceInput(input, inputType) {
+      const trimmed = safeString(input);
+      if (!trimmed) return { isValid: false, error: 'Input cannot be empty' };
+
+      switch (inputType) {
+        case 'placeName':
+        case 'address':
+        case 'website':
+        case 'placeUrl':
+        case 'placeId':
+          return { isValid: true };
+        case 'placeNameCity':
+          return trimmed.includes(',')
+            ? { isValid: true }
+            : { isValid: false, error: 'Format: Place Name, City (e.g., Starbucks, Denver)' };
+        default:
+          return { isValid: false, error: `Unknown input type: ${inputType}` };
+      }
+    }
+
+    getDryRunState(feature) {
+      return !!this.dryRunStates[feature];
+    }
+
+    setDryRunState(feature, state) {
+      this.dryRunStates[feature] = !!state;
+      return this.dryRunStates[feature];
+    }
+
+    toggleDryRunState(feature) {
+      this.dryRunStates[feature] = !this.dryRunStates[feature];
+      return this.dryRunStates[feature];
+    }
+
+    displayResults(result, statusDiv) {
+      if (!statusDiv) return;
+      if (result && result.success) {
+        statusDiv.innerHTML = `<div class="status-message status-success">✅ ${result.message || 'Operation completed successfully'}</div>`;
+      } else {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ ${(result && result.error) || 'Operation failed'}</div>`;
+      }
+    }
+
+    async addSinglePlace(input, inputType, dryRun = false) {
+      const validation = this.validatePlaceInput(input, inputType);
+      if (!validation.isValid) return { success: false, error: validation.error };
+      if (dryRun) return { success: true, isDryRun: true, message: `🧪 [DRY RUN] Would add: ${safeString(input)}` };
+
+      try {
+        const mainWindow = getMainWindow();
+        const details = await window.resolvePlaceInputWithGoogleData(inputType, input);
+        const placeId = details.placeId;
+
+        if (typeof mainWindow.buildExcelRow !== 'function') {
+          throw new Error('Main window buildExcelRow helper is unavailable.');
+        }
+
+        const rowValues = window.normalizeExcelRowForSchema(mainWindow.buildExcelRow(placeId, details), mainWindow);
+
+        if (typeof mainWindow.placeExistsInData === 'function' && mainWindow.placeExistsInData(rowValues)) {
+          throw new Error('This location already exists in Excel.');
+        }
+
+        if (typeof mainWindow.addRowToExcel === 'function') {
+          await mainWindow.addRowToExcel(rowValues);
+        } else if (Array.isArray(mainWindow.adventuresData) && typeof mainWindow.saveToExcel === 'function') {
+          mainWindow.adventuresData.push({ values: [rowValues] });
+          await mainWindow.saveToExcel();
+        } else {
+          throw new Error('Main window Excel save helpers are unavailable.');
+        }
+
+        if (Array.isArray(mainWindow.adventuresData)) {
+          const lastRow = mainWindow.adventuresData[mainWindow.adventuresData.length - 1]?.values?.[0];
+          const alreadyAppended = Array.isArray(lastRow) && safeString(lastRow[1]) === placeId && safeString(lastRow[0]) === safeString(details.name);
+          if (!alreadyAppended) {
+            mainWindow.adventuresData.push({ values: [rowValues] });
           }
         }
-      } catch (_) {}
+
+        return {
+          success: true,
+          message: `Added ${details.name}`,
+          placeName: details.name,
+          placeId,
+          details
+        };
+      } catch (error) {
+        console.error('❌ Error adding place:', error);
+        return { success: false, error: error.message };
+      }
     }
 
-    // Graceful fallback — return what we know so the row can still be added
-    return {
-      placeId: '',
-      name: queryText,
-      website: inputType === 'website' ? input : '',
-      phone: '',
-      hours: '',
-      address: inputType === 'address' ? input : '',
-      rating: '',
-      directions: ''
-    };
-  }
+    async bulkAddPlaces(placesText, inputType, dryRun = false) {
+      const lines = (placesText || '').split('\n').map((line) => line.trim()).filter(Boolean);
+      if (lines.length === 0) return { success: false, error: 'No places provided' };
 
-  /**
-   * Add single place with multiple input methods
-   */
-  async addSinglePlace(input, inputType, dryRun = false) {
-    const validation = this.validatePlaceInput(input, inputType);
-
-    if (!validation.isValid) {
-      return { success: false, error: validation.error };
-    }
-
-    console.log(`${dryRun ? '🧪 DRY RUN' : '➕'} Adding place: ${validation.description}`);
-
-    if (dryRun) {
-      return { success: true, isDryRun: true, message: `🧪 [DRY RUN] Would add: ${validation.description}` };
-    }
-
-    try {
-      const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-
-      // Resolve place details via multiple fallback methods
-      const details = await this._resolvePlaceDetails(input, inputType);
-      console.log('📍 Resolved place details:', details);
-
-      const schemaCount = Number(
-        mainWindow.__excelColumnCount ||
-        mainWindow.adventuresData?.[0]?.values?.[0]?.length ||
-        window.__excelColumnCount ||
-        24
-      );
-
-      const normalizeRowForSchema = (rowValues) => {
-        const normalized = (Array.isArray(rowValues) ? rowValues : []).map((v) => {
-          if (v === null || v === undefined) return '';
-          if (typeof v === 'string') return v;
-          if (typeof v === 'number') return String(v);
-          if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
-          return String(v);
-        });
-        if (normalized.length > schemaCount) return normalized.slice(0, schemaCount);
-        if (normalized.length < schemaCount) return normalized.concat(new Array(schemaCount - normalized.length).fill(''));
-        return normalized;
-      };
-
-      // Prefer the exact same Excel-row builder and append helper the main app uses.
-      if (typeof mainWindow.buildExcelRow === 'function' && typeof mainWindow.addRowToExcel === 'function') {
-        const resolvedPlaceId = details.placeId || input;
-        const rawRowValues = mainWindow.buildExcelRow(resolvedPlaceId, details);
-        const rowValues = normalizeRowForSchema(rawRowValues);
-        await mainWindow.addRowToExcel(rowValues);
-
-        if (Array.isArray(mainWindow.adventuresData)) {
-          mainWindow.adventuresData.push({ values: [rowValues] });
+      const results = { success: true, total: lines.length, added: 0, failed: 0, skipped: 0, details: [] };
+      for (const line of lines) {
+        const result = await this.addSinglePlace(line, inputType, dryRun);
+        if (result.success) {
+          results.added++;
+          results.details.push(`✅ ${result.placeName || line}${result.isDryRun ? ' (dry run)' : ''}`);
+        } else {
+          results.failed++;
+          results.details.push(`❌ ${line}: ${result.error}`);
         }
-      } else if (typeof mainWindow.saveToExcel === 'function') {
-        const resolvedPlaceId = details.placeId || input;
-        const rawRowValues = typeof mainWindow.buildExcelRow === 'function'
-          ? mainWindow.buildExcelRow(resolvedPlaceId, details)
-          : [details.name || input, resolvedPlaceId || '', details.website || '', '', '', details.hours || '', '', '', '', '', '', details.address || '', details.phone || '', details.rating || '', '', details.directions || ''];
-
-        const rowValues = normalizeRowForSchema(rawRowValues);
-
-        if (Array.isArray(mainWindow.adventuresData)) {
-          mainWindow.adventuresData.push({ values: [rowValues] });
-        }
-        await mainWindow.saveToExcel();
-      } else {
-        throw new Error('Main window Excel save helpers are unavailable');
+        await new Promise((resolve) => setTimeout(resolve, 150));
       }
 
-      return { success: true, message: `✅ Added: ${details.name || input}`, placeName: details.name || input, placeId: details.placeId || '' };
-    } catch (error) {
-      console.error('❌ Error adding place:', error);
-      return { success: false, error: error.message };
+      results.success = results.failed === 0;
+      results.message = `Added ${results.added}/${results.total} places (${results.failed} failed, ${results.skipped} skipped)`;
+      return results;
+    }
+
+    async bulkAddChainLocations(placesText, inputType, dryRun = false) {
+      const lines = (placesText || '').split('\n').map((line) => line.trim()).filter(Boolean);
+      if (lines.length === 0) return { success: false, error: 'No places provided' };
+      if (typeof window.handleBulkAddChainLocationsFixed === 'function') {
+        return await window.handleBulkAddChainLocationsFixed(lines, inputType, document.createElement('div'), dryRun);
+      }
+      if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
+        return await window.handleBulkAddChainLocationsEnhanced(lines, inputType, document.createElement('div'), dryRun);
+      }
+      return { success: false, error: 'Bulk chain add system not available' };
+    }
+
+    async populateMissingFieldsOnly(dryRun = false) {
+      if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
+        return await window.handlePopulateMissingFieldsEnhanced(document.createElement('div'), dryRun);
+      }
+      if (typeof window.handlePopulateMissingFields === 'function') {
+        return await window.handlePopulateMissingFields(document.createElement('div'), dryRun);
+      }
+      return { success: false, error: 'Populate missing fields system not available' };
+    }
+
+    async populateMissingFields(dryRun = false) {
+      return this.populateMissingFieldsOnly(dryRun);
+    }
+
+    async updateHoursOnly(dryRun = false) {
+      if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
+        return await window.handleUpdateHoursOnlyEnhanced(document.createElement('div'), dryRun);
+      }
+      if (typeof window.handleUpdateHoursOnly === 'function') {
+        return await window.handleUpdateHoursOnly(document.createElement('div'), dryRun);
+      }
+      return { success: false, error: 'Update hours system not available' };
+    }
+
+    async autoTagAll(dryRun = false) {
+      if (typeof window.handleAutoTagAll === 'function') {
+        return await window.handleAutoTagAll(dryRun);
+      }
+      return { success: false, error: 'Auto-tag system not available' };
     }
   }
 
-  /**
-   * Bulk add multiple places (newline-separated list)
-   */
-  async bulkAddPlaces(placesText, inputType, dryRun = false) {
-    const lines = (placesText || '').split('\n').map(l => l.trim()).filter(Boolean);
-    if (lines.length =
+  window.EnhancedAutomationFeatures = EnhancedAutomationFeatures;
+  window.enhancedAutomation = window.enhancedAutomation || new EnhancedAutomationFeatures();
+
+  console.log('✅ Consolidated Automation Features System v7.0.141 Loaded');
+})();

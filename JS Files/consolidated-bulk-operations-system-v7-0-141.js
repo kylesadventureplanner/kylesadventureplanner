@@ -308,53 +308,65 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
       try {
         if (i > 0) await delay(PLACES_API_DELAY_MS);
 
-        let placeId = location;
-        let details = {
-          website: '',
-          phone: '',
-          hours: '',
-          address: '',
-          rating: '',
-          directions: ''
-        };
-
-        if (type !== 'placeId') {
-          console.log(`🔍 Location: ${location}`);
-          placeId = `place_${i}_${Date.now()}`;
-        } else {
-          try {
-            // Use the consolidated helper directly; previous alias was undefined.
-            details = await getPlaceDetailsFromAPI(location);
-          } catch (apiErr) {
-            console.warn(`⚠️ Could not fetch details for ${location}:`, apiErr.message);
+        let resolved;
+        try {
+          if (typeof window.resolvePlaceInputWithGoogleData === 'function') {
+            resolved = await window.resolvePlaceInputWithGoogleData(type, location);
+          } else {
+            throw new Error('Shared place resolver is not available');
           }
+        } catch (resolveErr) {
+          console.error(`❌ Could not resolve ${location}:`, resolveErr);
+          failCount++;
+          results.push({
+            location,
+            success: false,
+            error: resolveErr.message
+          });
+          continue;
         }
+
+        const placeId = resolved.placeId;
+        const details = {
+          ...resolved,
+          directions: resolved.directions || `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`
+        };
 
         if (!dryRun) {
           const schemaCount = getSchemaColumnCount(mainWindow);
 
-          // Prefer the main app's normalized Excel append path so bulk adds match the real schema.
-          if (typeof mainWindow.buildExcelRow === 'function' && typeof mainWindow.addRowToExcel === 'function') {
-            const rawRowValues = mainWindow.buildExcelRow(placeId, details);
-            const rowValues = normalizeRowForSchema(rawRowValues, schemaCount);
+          if (typeof mainWindow.buildExcelRow !== 'function') {
+            throw new Error('Main window buildExcelRow helper is unavailable');
+          }
+
+          const rawRowValues = mainWindow.buildExcelRow(placeId, details);
+          const rowValues = typeof window.normalizeExcelRowForSchema === 'function'
+            ? window.normalizeExcelRowForSchema(rawRowValues, mainWindow)
+            : normalizeRowForSchema(rawRowValues, schemaCount);
+
+          if (typeof mainWindow.placeExistsInData === 'function' && mainWindow.placeExistsInData(rowValues)) {
+            throw new Error('This location already exists in Excel');
+          }
+
+          if (typeof mainWindow.addRowToExcel === 'function') {
             await mainWindow.addRowToExcel(rowValues);
-
-            if (Array.isArray(mainWindow.adventuresData)) {
-              mainWindow.adventuresData.push({ values: [rowValues] });
-            }
           } else {
-            const rawRowValues = typeof mainWindow.buildExcelRow === 'function'
-              ? mainWindow.buildExcelRow(placeId, details)
-              : buildFallbackSchemaRow(location, placeId, details, schemaCount);
-
-            const rowValues = normalizeRowForSchema(rawRowValues, schemaCount);
-
             if (Array.isArray(mainWindow.adventuresData)) {
               mainWindow.adventuresData.push({ values: [rowValues] });
             }
 
             if (typeof mainWindow.saveToExcel === 'function') {
               await mainWindow.saveToExcel();
+            } else {
+              throw new Error('Main window Excel save helpers are unavailable');
+            }
+          }
+
+          if (Array.isArray(mainWindow.adventuresData)) {
+            const lastRow = mainWindow.adventuresData[mainWindow.adventuresData.length - 1]?.values?.[0];
+            const alreadyAppended = Array.isArray(lastRow) && String(lastRow[1] || '').trim() === placeId;
+            if (!alreadyAppended) {
+              mainWindow.adventuresData.push({ values: [rowValues] });
             }
           }
 
@@ -363,7 +375,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             location,
             placeId,
             success: true,
-            status: 'Added successfully'
+            status: `Added successfully: ${details.name || location}`
           });
         } else {
           successCount++;
@@ -371,7 +383,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             location,
             placeId,
             success: true,
-            status: '[DRY RUN] Would add'
+            status: `[DRY RUN] Would add ${details.name || location}`
           });
         }
       } catch (err) {
