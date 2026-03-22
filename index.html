@@ -20170,6 +20170,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
             if (this.state.hasOwnProperty(key)) {
               this.state[key] = inputElement.value.trim();
               console.log(`🔤 ${key} updated (delegated): "${this.state[key]}"`);
+              // Apply filters immediately as user types
+              this.applyAllFilters();
+              // Update autocomplete suggestions with filtered data
+              if (typeof populateAutocomplete === 'function') {
+                setTimeout(() => populateAutocomplete(), 50);
+              }
             }
           }, false);
 
@@ -20209,15 +20215,21 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
         console.log(`📝 FilterManager: Attaching listeners to ${foundInputs.length} input elements`);
 
-        // Input event (typing) - update state silently
+        // Input event (typing) - update state AND apply filters in real-time
         Object.entries(inputs).forEach(([key, element]) => {
           if (element) {
             element.addEventListener('input', (e) => {
               this.state[key] = e.target.value.trim();
               console.log(`🔤 ${key} updated: "${this.state[key]}"`);
+              // Apply filters immediately as user types
+              this.applyAllFilters();
+              // Update autocomplete suggestions
+              if (typeof populateAutocomplete === 'function') {
+                setTimeout(() => populateAutocomplete(), 50);
+              }
             }, false);
 
-            // Change event - apply filters
+            // Change event - apply filters (for select dropdowns)
             element.addEventListener('change', () => {
               this.state[key] = element.value.trim();
               console.log(`✅ ${key} changed, applying filters...`);
@@ -20463,6 +20475,18 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     console.log('✅ Consolidated Filtering System Ready');
   })();
 </script>
+
+<!-- ============================================================
+     AUTOCOMPLETE DATALIST ELEMENTS
+     These elements provide suggestions for filter inputs
+     They are populated by the populateAutocomplete() function
+     ============================================================ -->
+<datalist id="nameList"></datalist>
+<datalist id="stateList"></datalist>
+<datalist id="cityList"></datalist>
+<datalist id="tagsList"></datalist>
+<datalist id="costList"></datalist>
+
 </body>
 </html>
 
