@@ -61,8 +61,15 @@ class ErrorManager {
       return String(context.requestId).trim();
     }
 
-    const match = String(message || '').match(/\[(SL-[A-Za-z0-9-]+)]/);
-    return match ? match[1] : '';
+    const text = String(message || '');
+
+    // Preserve short-link request IDs.
+    const shortLinkMatch = text.match(/\[(SL-[A-Za-z0-9-]+)]/);
+    if (shortLinkMatch) return shortLinkMatch[1];
+
+    // Also capture strict wrapper tokens as metadata, not only message text.
+    const strictWrapperMatch = text.match(/\[(STRICT_WRAPPER:[A-Z_]+)]/);
+    return strictWrapperMatch ? strictWrapperMatch[1] : '';
   }
 
   /**
