@@ -363,50 +363,45 @@
     }
   };
 
+  function renderDelegationStatus(displayElement, text, isError = false) {
+    if (!displayElement) return;
+    const bg = isError ? '#fee2e2' : '#eff6ff';
+    const border = isError ? '#fca5a5' : '#bfdbfe';
+    const color = isError ? '#7f1d1d' : '#1e40af';
+    displayElement.innerHTML = `<div style="padding: 12px; background: ${bg}; border: 1px solid ${border}; border-radius: 8px; color: ${color}; font-size: 13px;">${text}</div>`;
+  }
+
+  async function runRealHandler(displayElement, dryRun, handlers, label) {
+    const candidates = Array.isArray(handlers) ? handlers : [];
+    const resolvedHandler = candidates.find((fn) => typeof fn === 'function');
+
+    if (!resolvedHandler) {
+      const msg = `❌ ${label} handler is not available.`;
+      renderDelegationStatus(displayElement, msg, true);
+      return { success: false, error: msg };
+    }
+
+    renderDelegationStatus(displayElement, `⏳ Running real ${label} handler...`);
+
+    const result = await resolvedHandler(displayElement, dryRun);
+    if (result && typeof result === 'object') return result;
+    return { success: true, message: `${label} completed.` };
+  }
+
   // ============================================================
   // ENHANCED: Populate Missing Fields with Progress
   // ============================================================
   window.handlePopulateMissingWithProgress = async function(displayElement, dryRun = false) {
-    console.log(`📋 Populating missing fields with progress...`);
-
-    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-    const adventuresData = mainWindow.adventuresData || window.adventuresData;
-
-    if (!adventuresData || adventuresData.length === 0) {
-      const error = 'No data available';
-      const tracker = new UniversalProgressTracker(displayElement, 'Populate Missing', 1, { dryRun });
-      tracker.displayError(error);
-      return { success: false, error };
-    }
-
-    const tracker = new UniversalProgressTracker(displayElement, 'Populate Missing Fields', adventuresData.length, { dryRun });
+    console.log('📋 Populating missing fields with progress...');
 
     try {
-      for (let i = 0; i < adventuresData.length; i++) {
-        const place = adventuresData[i];
-        const values = place.values ? place.values[0] : place;
-        const name = values[0] || 'Unknown';
-
-        tracker.updateProgress(`Processing: ${name}`);
-
-        try {
-          if (!dryRun) {
-            tracker.recordSuccess(name, 'Checked for missing fields');
-          } else {
-            tracker.recordSuccess(name, '[DRY RUN] Would populate');
-          }
-
-          await new Promise(r => setTimeout(r, 50));
-        } catch (err) {
-          tracker.recordFailure(name, err.message);
-        }
-      }
-
-      tracker.displayFinalResults(`${adventuresData.length} locations processed`);
-      return tracker.getSummary();
+      return await runRealHandler(displayElement, dryRun, [
+        window.handlePopulateMissingFieldsEnhanced,
+        window.handlePopulateMissingFields
+      ], 'populate-missing-fields');
     } catch (err) {
       console.error('❌ Error:', err);
-      tracker.displayError(err.message, err.stack);
+      renderDelegationStatus(displayElement, `❌ ${err.message}`, true);
       return { success: false, error: err.message };
     }
   };
@@ -415,46 +410,16 @@
   // ENHANCED: Update Hours with Progress
   // ============================================================
   window.handleUpdateHoursWithProgress = async function(displayElement, dryRun = false) {
-    console.log(`🕐 Updating hours with progress...`);
-
-    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-    const adventuresData = mainWindow.adventuresData || window.adventuresData;
-
-    if (!adventuresData || adventuresData.length === 0) {
-      const error = 'No data available';
-      const tracker = new UniversalProgressTracker(displayElement, 'Update Hours', 1, { dryRun });
-      tracker.displayError(error);
-      return { success: false, error };
-    }
-
-    const tracker = new UniversalProgressTracker(displayElement, 'Update Hours', adventuresData.length, { dryRun });
+    console.log('🕐 Updating hours with progress...');
 
     try {
-      for (let i = 0; i < adventuresData.length; i++) {
-        const place = adventuresData[i];
-        const values = place.values ? place.values[0] : place;
-        const name = values[0] || 'Unknown';
-
-        tracker.updateProgress(`Processing: ${name}`);
-
-        try {
-          if (!dryRun) {
-            tracker.recordSuccess(name, 'Hours updated');
-          } else {
-            tracker.recordSuccess(name, '[DRY RUN] Would update');
-          }
-
-          await new Promise(r => setTimeout(r, 50));
-        } catch (err) {
-          tracker.recordFailure(name, err.message);
-        }
-      }
-
-      tracker.displayFinalResults(`${adventuresData.length} locations updated`);
-      return tracker.getSummary();
+      return await runRealHandler(displayElement, dryRun, [
+        window.handleUpdateHoursOnlyEnhanced,
+        window.handleUpdateHoursOnly
+      ], 'update-hours');
     } catch (err) {
       console.error('❌ Error:', err);
-      tracker.displayError(err.message, err.stack);
+      renderDelegationStatus(displayElement, `❌ ${err.message}`, true);
       return { success: false, error: err.message };
     }
   };
@@ -463,46 +428,29 @@
   // ENHANCED: Refresh Place IDs with Progress
   // ============================================================
   window.handleRefreshPlaceIdsWithProgress = async function(displayElement, dryRun = false) {
-    console.log(`🔄 Refreshing Place IDs with progress...`);
-
-    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-    const adventuresData = mainWindow.adventuresData || window.adventuresData;
-
-    if (!adventuresData || adventuresData.length === 0) {
-      const error = 'No data available';
-      const tracker = new UniversalProgressTracker(displayElement, 'Refresh Place IDs', 1, { dryRun });
-      tracker.displayError(error);
-      return { success: false, error };
-    }
-
-    const tracker = new UniversalProgressTracker(displayElement, 'Refresh Place IDs', adventuresData.length, { dryRun });
+    console.log('🔄 Refreshing Place IDs with progress...');
 
     try {
-      for (let i = 0; i < adventuresData.length; i++) {
-        const place = adventuresData[i];
-        const values = place.values ? place.values[0] : place;
-        const name = values[0] || 'Unknown';
+      const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+      const refreshFn =
+        (typeof mainWindow.refreshPlaceIdsWithProgress === 'function' && mainWindow.refreshPlaceIdsWithProgress) ||
+        (typeof window.refreshPlaceIdsWithProgress === 'function' && window.refreshPlaceIdsWithProgress) ||
+        (typeof mainWindow.handleRefreshPlaceIds === 'function' && mainWindow.handleRefreshPlaceIds) ||
+        (typeof window.handleRefreshPlaceIds === 'function' && window.handleRefreshPlaceIds);
 
-        tracker.updateProgress(`Processing: ${name}`);
-
-        try {
-          if (!dryRun) {
-            tracker.recordSuccess(name, 'Place ID refreshed');
-          } else {
-            tracker.recordSuccess(name, '[DRY RUN] Would refresh');
-          }
-
-          await new Promise(r => setTimeout(r, 50));
-        } catch (err) {
-          tracker.recordFailure(name, err.message);
-        }
+      if (typeof refreshFn !== 'function') {
+        const msg = '❌ Refresh Place IDs handler is not available.';
+        renderDelegationStatus(displayElement, msg, true);
+        return { success: false, error: msg };
       }
 
-      tracker.displayFinalResults(`${adventuresData.length} Place IDs processed`);
-      return tracker.getSummary();
+      renderDelegationStatus(displayElement, '⏳ Running real refresh-place-ids handler...');
+      const result = await refreshFn(dryRun);
+      if (result && typeof result === 'object') return result;
+      return { success: true, message: 'Refresh Place IDs completed.' };
     } catch (err) {
       console.error('❌ Error:', err);
-      tracker.displayError(err.message, err.stack);
+      renderDelegationStatus(displayElement, `❌ ${err.message}`, true);
       return { success: false, error: err.message };
     }
   };
@@ -511,46 +459,28 @@
   // ENHANCED: Auto Tag with Progress
   // ============================================================
   window.handleAutoTagWithProgress = async function(displayElement, dryRun = false) {
-    console.log(`🏷️ Auto-tagging with progress...`);
-
-    const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-    const adventuresData = mainWindow.adventuresData || window.adventuresData;
-
-    if (!adventuresData || adventuresData.length === 0) {
-      const error = 'No data available';
-      const tracker = new UniversalProgressTracker(displayElement, 'Auto Tag', 1, { dryRun });
-      tracker.displayError(error);
-      return { success: false, error };
-    }
-
-    const tracker = new UniversalProgressTracker(displayElement, 'Auto Tag Locations', adventuresData.length, { dryRun });
+    console.log('🏷️ Auto-tagging with progress...');
 
     try {
-      for (let i = 0; i < adventuresData.length; i++) {
-        const place = adventuresData[i];
-        const values = place.values ? place.values[0] : place;
-        const name = values[0] || 'Unknown';
+      const autoTagCandidates = [
+        window.handleAutoTagAll,
+        window.autoTagAllLocationsUnified
+      ];
 
-        tracker.updateProgress(`Processing: ${name}`);
-
-        try {
-          if (!dryRun) {
-            tracker.recordSuccess(name, 'Tags applied');
-          } else {
-            tracker.recordSuccess(name, '[DRY RUN] Would tag');
-          }
-
-          await new Promise(r => setTimeout(r, 50));
-        } catch (err) {
-          tracker.recordFailure(name, err.message);
-        }
+      const fn = autoTagCandidates.find((handler) => typeof handler === 'function');
+      if (!fn) {
+        const msg = '❌ Auto-tag handler is not available.';
+        renderDelegationStatus(displayElement, msg, true);
+        return { success: false, error: msg };
       }
 
-      tracker.displayFinalResults(`${adventuresData.length} locations tagged`);
-      return tracker.getSummary();
+      renderDelegationStatus(displayElement, '⏳ Running real auto-tag handler...');
+      const result = await fn(dryRun);
+      if (result && typeof result === 'object') return result;
+      return { success: true, message: 'Auto-tag completed.' };
     } catch (err) {
       console.error('❌ Error:', err);
-      tracker.displayError(err.message, err.stack);
+      renderDelegationStatus(displayElement, `❌ ${err.message}`, true);
       return { success: false, error: err.message };
     }
   };
