@@ -206,12 +206,21 @@ class ErrorManager {
     html += '<div style="max-height: 400px; overflow-y: auto; border: 1px solid #fca5a5; border-radius: 8px; background: #fef2f2;">';
 
     for (let error of recentErrors) {
+      const badgeColorByType = {
+        console: { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', rid: '#1e40af' },
+        window: { bg: '#fff1f2', border: '#fecdd3', text: '#9f1239', rid: '#881337' },
+        promise: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', rid: '#78350f' },
+        default: { bg: '#f3f4f6', border: '#d1d5db', text: '#374151', rid: '#111827' }
+      };
+      const badgeColors = badgeColorByType[error.type] || badgeColorByType.default;
+
       const requestIdBadge = error.requestId
-        ? '<div title="Request ID: ' + error.requestId + '" style="display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 1px 6px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 999px; font-size: 10px; font-weight: 600; line-height: 1.3; color: #9f1239; max-width: 100%;">' +
-            '<span style="opacity: 0.85; font-weight: 700;">RID</span>' +
+        ? '<div title="Request ID: ' + error.requestId + '" style="display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 1px 6px; background: ' + badgeColors.bg + '; border: 1px solid ' + badgeColors.border + '; border-radius: 999px; font-size: 10px; font-weight: 600; line-height: 1.3; color: ' + badgeColors.text + '; max-width: 100%;">' +
+            '<span style="opacity: 0.9; font-weight: 700; color: ' + badgeColors.rid + ';">RID</span>' +
             '<span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; overflow-wrap: anywhere;">' + error.requestId + '</span>' +
           '</div>'
         : '';
+
       html += '<div style="padding: 12px; border-bottom: 1px solid #fecaca; display: flex; gap: 8px; align-items: flex-start;">' +
         '<div style="flex-shrink: 0; margin-top: 2px;">❌</div>' +
         '<div style="flex: 1; min-width: 0;">' +
