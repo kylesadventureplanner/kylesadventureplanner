@@ -13,6 +13,7 @@
   console.log('🔘 Initializing SAFE Button Reliability Layer...');
 
   let rowDetailFixInstalled = false;
+  let globalDetailDelegatesBound = false;
 
   function normalizeButton(button) {
     if (!button) return;
@@ -37,7 +38,8 @@
       tabs: document.getElementById('rowDetailTabsContainer'),
       content: document.getElementById('rowDetailContent'),
       closeBtn: document.getElementById('rowDetailCloseBtn'),
-      closeFooterBtn: document.getElementById('rowDetailCloseFooterBtn')
+      closeFooterBtn: document.getElementById('rowDetailCloseFooterBtn'),
+      editBtn: document.getElementById('rowDetailEditBtn')
     };
   }
 
@@ -45,6 +47,52 @@
     if (!element) return false;
     const style = window.getComputedStyle(element);
     return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+  }
+
+  function isInteractiveCardTarget(target) {
+    if (!target || !target.closest) return false;
+    return Boolean(target.closest(
+      'button, a, input, select, textarea, label, .rating-star, .tag-pill, .card-address-copy, .tag-manager-btn, .card-favorite-btn, .card-rating'
+    ));
+  }
+
+  function resolveCardIndexFromElement(element) {
+    if (!element) return null;
+
+    const detailsButton = element.querySelector('.card-details-btn');
+    const fromDetails = detailsButton ? Number(detailsButton.getAttribute('data-index')) : NaN;
+    if (Number.isInteger(fromDetails) && fromDetails >= 0) return fromDetails;
+
+    const fromDataAttr = Number(element.getAttribute('data-index'));
+    if (Number.isInteger(fromDataAttr) && fromDataAttr >= 0) return fromDataAttr;
+
+    return null;
+  }
+
+  function extractDetailIndexFromSimilarItem(item) {
+    if (!item) return null;
+
+    const dataIndex = Number(item.getAttribute('data-detail-index') || item.getAttribute('data-index'));
+    if (Number.isInteger(dataIndex) && dataIndex >= 0) return dataIndex;
+
+    const onclickText = String(item.getAttribute('onclick') || '');
+    const match = onclickText.match(/showCardDetails\((\d+)\)/);
+    if (match) return Number(match[1]);
+
+    return null;
+  }
+
+  function ensureEditingRowFromModalDataset() {
+    const parts = getRowDetailParts();
+    const raw = parts.modal ? parts.modal.dataset.currentRowIndex : '';
+    const sourceIndex = Number(raw);
+
+    if (!Number.isInteger(sourceIndex) || sourceIndex < 0) return false;
+    if (!Array.isArray(window.adventuresData) || !window.adventuresData[sourceIndex]) return false;
+
+    window.currentEditingRowIndex = sourceIndex;
+    window.currentEditingRow = window.adventuresData[sourceIndex];
+    return true;
   }
 
   function getAdventureEntry(index) {
@@ -265,18 +313,101 @@
     }
   }
 
+  function bindRowDetailEditHandler() {
+    const parts = getRowDetailParts();
+    const editButton = parts.editBtn;
+    if (!editButton || editButton.dataset.rowDetailEditBound === '1') return;
+
+    editButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
+        ensureEditingRowFromModalDataset();
+      }
+
+      if (typeof window.__rowDetailOriginalEnableEditMode === 'function') {
+        window.__rowDetailOriginalEnableEditMode();
+      } else if (typeof window.enableEditMode === 'function' && window.enableEditMode !== window.__rowDetailSafeEnableEditMode) {
+        window.enableEditMode();
+      } else if (window.showToast) {
+        window.showToast('Edit mode is still loading. Please try again.', 'warning', 2000);
+      }
+    }, true);
+
+    editButton.dataset.rowDetailEditBound = '1';
+  }
+
+  function bindGlobalDetailDelegates() {
+    if (globalDetailDelegatesBound) return;
+    globalDetailDelegatesBound = true;
+
+    // 1) Dedicated Details buttons on cards.
+    document.addEventListener('click', (event) => {
+      const detailsButton = event.target && event.target.closest ? event.target.closest('.card-details-btn') : null;
+      if (!detailsButton) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const index = detailsButton.getAttribute('data-index');
+      window.showCardDetails(index);
+    }, true);
+
+    // 2) Card body click should open Details, but never hijack interactive controls.
+    document.addEventListener('click', (event) => {
+      const card = event.target && event.target.closest ? event.target.closest('.adventure-card') : null;
+      if (!card) return;
+      if (isInteractiveCardTarget(event.target)) return;
+
+      const index = resolveCardIndexFromElement(card);
+      if (!Number.isInteger(index) || index < 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      window.showCardDetails(index);
+    }, true);
+
+    // 3) Similar modal item -> Details handoff.
+    document.addEventListener('click', (event) => {
+      const item = event.target && event.target.closest ? event.target.closest('#similarAdventuresModal .similar-adventure-item') : null;
+      if (!item) return;
+      if (isInteractiveCardTarget(event.target)) return;
+
+      const index = extractDetailIndexFromSimilarItem(item);
+      if (!Number.isInteger(index) || index < 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof window.closeSimilarAdventuresModal === 'function') {
+        window.closeSimilarAdventuresModal();
+      }
+      window.showCardDetails(index);
+    }, true);
+
+    // 4) Escape key always closes row details if open.
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      const parts = getRowDetailParts();
+      if (!isVisible(parts.modal)) return;
+      event.preventDefault();
+      window.closeRowDetailModal();
+    }, true);
+  }
+
   function installRowDetailFixes() {
     if (rowDetailFixInstalled) return;
     rowDetailFixInstalled = true;
 
     const originalShow = typeof window.showCardDetails === 'function' ? window.showCardDetails : null;
     const originalClose = typeof window.closeRowDetailModal === 'function' ? window.closeRowDetailModal : null;
+    const originalEnableEdit = typeof window.enableEditMode === 'function' ? window.enableEditMode : null;
 
     window.__rowDetailOriginalShowCardDetails = originalShow;
     window.__rowDetailOriginalClose = originalClose;
+    window.__rowDetailOriginalEnableEditMode = originalEnableEdit;
 
     window.initRowDetailModal = function() {
       bindRowDetailCloseHandlers();
+      bindRowDetailEditHandler();
       return true;
     };
 
@@ -290,6 +421,23 @@
       }
       return closeRowDetailModalHard();
     };
+
+    window.__rowDetailSafeEnableEditMode = function() {
+      if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
+        ensureEditingRowFromModalDataset();
+      }
+
+      if (typeof originalEnableEdit === 'function') {
+        return originalEnableEdit();
+      }
+
+      if (window.showToast) {
+        window.showToast('Edit mode is not available yet.', 'warning', 2000);
+      }
+      return false;
+    };
+
+    window.enableEditMode = window.__rowDetailSafeEnableEditMode;
 
     window.showCardDetails = function(index) {
       const entry = getAdventureEntry(index);
@@ -325,26 +473,9 @@
       return true;
     };
 
-    document.addEventListener('click', (event) => {
-      const detailsButton = event.target && event.target.closest ? event.target.closest('.card-details-btn') : null;
-      if (!detailsButton) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const index = detailsButton.getAttribute('data-index');
-      window.showCardDetails(index);
-    }, true);
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        const parts = getRowDetailParts();
-        if (isVisible(parts.modal)) {
-          event.preventDefault();
-          window.closeRowDetailModal();
-        }
-      }
-    }, true);
-
+    bindGlobalDetailDelegates();
     bindRowDetailCloseHandlers();
+    bindRowDetailEditHandler();
     console.log('✅ Row detail modal runtime fix installed');
   }
 
@@ -375,6 +506,7 @@
     const observer = new MutationObserver(() => {
       refreshVisibleButtons();
       bindRowDetailCloseHandlers();
+      bindRowDetailEditHandler();
     });
 
     if (document.body) {
