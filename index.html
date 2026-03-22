@@ -5610,6 +5610,10 @@
          const filePath = "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
          const tableName = "MyList";
 
+         // Store globally so saveToExcel can use the same values
+         window.filePath = filePath;
+         window.tableName = tableName;
+
          // Build Microsoft Graph API URL
          const encodedPath = encodeURIComponent(filePath);
          const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
@@ -18337,17 +18341,19 @@ COMMON ISSUES:
         return true;
       }
 
-      // Set default file path and table name if not already set
-      // These are the standard values for the Adventure Planner Excel file
-      const fileName = window.fileName || 'Adventure Planner.xlsx';
-      const tableName = window.tableName || 'MyList';
+      // Use the same file path and table name as loadTable function
+      // These MUST match the actual file location in OneDrive
+      const filePath = window.filePath || "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+      const tableName = window.tableName || "MyList";
 
-      console.log(`📝 Using Excel file: ${fileName}, table: ${tableName}`);
+      console.log(`📝 Using Excel file: ${filePath}, table: ${tableName}`);
 
       // Build URL using proper Graph API format with colon-based path
-      // Format: /me/drive/root:/{item-path}:/workbook/tables/{table-id}/rows
-      const encodedPath = encodeURIComponent(fileName);
+      // Format: /me/drive/root:/{item-path}:/workbook/tables/{table-name}/rows
+      const encodedPath = encodeURIComponent(filePath);
       const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
+
+      console.log(`📍 Saving to: ${url}`);
 
       // Convert adventuresData to proper row format
       const rowsToAdd = window.adventuresData.map(item => {
@@ -18373,6 +18379,17 @@ COMMON ISSUES:
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'No error details');
         console.error(`❌ Excel API returned ${response.status}: ${errorText}`);
+
+        // Provide helpful diagnostics
+        if (response.status === 404) {
+          console.error('❌ 404 Error: File or table not found');
+          console.error(`   Expected file: ${filePath}`);
+          console.error(`   Expected table: ${tableName}`);
+          console.error('   Please verify:');
+          console.error('   1. File exists at: Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx');
+          console.error('   2. Table name is: MyList');
+          console.error('   3. User has access to the file');
+        }
 
         // Try token refresh if 401
         if (response.status === 401 && typeof window.rehydrateAuthState === 'function') {

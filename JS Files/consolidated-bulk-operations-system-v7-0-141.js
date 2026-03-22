@@ -326,6 +326,10 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
 
           if (typeof mainWindow.saveToExcel === 'function') {
             try {
+              // Ensure file path and table name are set for saveToExcel
+              mainWindow.filePath = mainWindow.filePath || "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx";
+              mainWindow.tableName = mainWindow.tableName || "MyList";
+
               await mainWindow.saveToExcel();
             } catch (saveErr) {
               console.warn('⚠️ Could not save to Excel:', saveErr.message);
