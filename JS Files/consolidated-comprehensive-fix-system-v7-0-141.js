@@ -140,6 +140,116 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
   console.log('✅ Safe string operations ready');
 
+  /**
+   * CRITICAL: Toast notification system
+   * Shows temporary notifications to the user
+   */
+  window.showToast = window.showToast || function(message, type = 'info', duration = 3000) {
+    console.log(`📢 Toast [${type}]: ${message}`);
+
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+      `;
+      document.body.appendChild(toastContainer);
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+
+    // Determine styling based on type
+    let bgColor = '#3b82f6'; // info - blue
+    let icon = 'ℹ️';
+
+    if (type === 'success') {
+      bgColor = '#10b981'; // success - green
+      icon = '✅';
+    } else if (type === 'error') {
+      bgColor = '#ef4444'; // error - red
+      icon = '❌';
+    } else if (type === 'warning') {
+      bgColor = '#f59e0b'; // warning - amber
+      icon = '⚠️';
+    }
+
+    toast.style.cssText = `
+      background: ${bgColor};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      font-size: 14px;
+      font-weight: 500;
+      max-width: 350px;
+      word-break: break-word;
+      animation: slideIn 0.3s ease-out;
+      pointer-events: auto;
+      cursor: pointer;
+    `;
+
+    toast.innerHTML = `${icon} ${message}`;
+    toastContainer.appendChild(toast);
+
+    // Auto-remove after duration
+    setTimeout(() => {
+      toast.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    }, duration);
+
+    // Remove on click
+    toast.addEventListener('click', () => {
+      toast.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => {
+        toast.remove();
+      }, 300);
+    });
+  };
+
+  // Add toast animations to document if not already there
+  if (!document.getElementById('toastAnimationStyle')) {
+    const style = document.createElement('style');
+    style.id = 'toastAnimationStyle';
+    style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(400px);
+          opacity: 0;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  console.log('✅ Toast notification system initialized');
+
   // ============================================================
   // SECTION 3: WINDOW OPENING FUNCTIONS
   // ============================================================
