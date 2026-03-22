@@ -104,19 +104,26 @@ class TabContentLoader {
   }
 
   /**
-   * Set up tab switching
+   * Set up tab switching with event delegation
+   * Ensures tabs remain responsive after DOM updates
    */
   setupTabSwitching() {
-    const tabButtons = document.querySelectorAll('.app-tab-btn');
+    // Use event delegation on document for better reliability
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.app-tab-btn');
+      if (!btn) return;
 
-    tabButtons.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const tabId = btn.getAttribute('data-tab');
+      e.preventDefault();
+      e.stopPropagation();
+
+      const tabId = btn.getAttribute('data-tab');
+      if (tabId) {
+        console.log(`📑 Tab button clicked (delegated): ${tabId}`);
         this.switchTab(tabId);
-      });
-    });
+      }
+    }, true); // Use capture phase for reliable event handling
 
-    console.log('✅ Tab switching initialized with lazy loading');
+    console.log('✅ Tab switching initialized with event delegation');
   }
 
   /**

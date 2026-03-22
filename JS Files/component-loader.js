@@ -59,6 +59,23 @@ class ComponentLoader {
       targetElement.innerHTML = html;
       console.log(`✅ Component loaded: ${componentName}`);
 
+      // CRITICAL: Re-initialize button handlers after component loads
+      // This ensures newly loaded buttons have proper event delegation
+      if (window.setupButtonHandlers && typeof window.setupButtonHandlers === 'function') {
+        setTimeout(() => {
+          console.log(`🔘 Re-initializing button handlers for loaded component: ${componentName}`);
+          window.setupButtonHandlers();
+        }, 100);
+      }
+
+      // CRITICAL: Ensure all buttons in the new component are responsive
+      if (window.ensureButtonResponsiveness && typeof window.ensureButtonResponsiveness === 'function') {
+        setTimeout(() => {
+          console.log(`🔘 Ensuring button responsiveness for loaded component: ${componentName}`);
+          window.ensureButtonResponsiveness();
+        }, 150);
+      }
+
       // Trigger component initialization if it exists
       if (window[`init${this.toCamelCase(componentName)}`]) {
         window[`init${this.toCamelCase(componentName)}`]();

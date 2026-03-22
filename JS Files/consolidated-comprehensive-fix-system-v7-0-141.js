@@ -641,6 +641,233 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   console.log('✅ Z-Index management ready');
 
   // ============================================================
+  // SECTION: CRITICAL BUTTON RESPONSIVENESS FIX
+  // ============================================================
+
+  /**
+   * Ensure buttons are always responsive by fixing pointer-events and z-index issues
+   * This is a critical fix for buttons becoming unresponsive after scrolling
+   */
+  function ensureButtonResponsiveness() {
+    console.log('🔧 Setting up button responsiveness monitor...');
+
+    // Fix 1: Monitor for any pointer-events: none on buttons
+    const fixPointerEventsOnButtons = () => {
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(btn => {
+        // Get computed style
+        const style = window.getComputedStyle(btn);
+        const pointerEvents = style.pointerEvents;
+
+        // If pointer-events is blocking, fix it
+        if (pointerEvents === 'none' && !btn.disabled && !btn.classList.contains('loading')) {
+          console.warn(`⚠️ Fixed pointer-events:none on button: ${btn.id || btn.className}`);
+          btn.style.pointerEvents = 'auto';
+        }
+
+        // Ensure all buttons have proper z-index
+        if (!btn.style.zIndex || btn.style.zIndex === 'auto') {
+          btn.style.zIndex = '10';
+        }
+      });
+    };
+
+    // Fix 2: Check for overlapping modals or overlays blocking buttons
+    const fixOverlappingElements = () => {
+      const modals = document.querySelectorAll('.modal, [role="dialog"], .overlay');
+      modals.forEach(modal => {
+        // If modal is hidden, ensure it's not blocking
+        const style = window.getComputedStyle(modal);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+          modal.style.pointerEvents = 'none';
+          console.log(`✅ Set pointer-events:none on hidden modal`);
+        }
+      });
+    };
+
+    // Fix 3: Ensure card buttons have proper z-index
+    const fixCardButtonZIndex = () => {
+      const cardBtns = document.querySelectorAll('.card-btn, .card-action-buttons');
+      cardBtns.forEach(btn => {
+        const parent = btn.closest('.adventure-card');
+        if (parent) {
+          // Ensure card is properly layered
+          if (!parent.style.zIndex || parent.style.zIndex === 'auto') {
+            parent.style.zIndex = '1';
+          }
+          // Ensure button container is on top
+          if (btn.classList.contains('card-action-buttons')) {
+            btn.style.zIndex = '15';
+            btn.style.position = 'relative';
+          } else {
+            btn.style.zIndex = 'auto';
+            btn.style.position = 'relative';
+          }
+        }
+      });
+    };
+
+    // Fix 4: Remove any visibility: hidden or display: none from clickable buttons
+    const fixVisibilityOnButtons = () => {
+      const buttons = document.querySelectorAll('button');
+      buttons.forEach(btn => {
+        // Only fix if button is not actually supposed to be hidden
+        if (!btn.id.includes('hidden') && !btn.className.includes('hidden')) {
+          const style = window.getComputedStyle(btn);
+          if (style.visibility === 'hidden') {
+            btn.style.visibility = 'visible';
+            console.warn(`⚠️ Fixed visibility:hidden on button: ${btn.id || btn.className}`);
+          }
+          if (style.display === 'none') {
+            btn.style.display = 'inline-block';
+            console.warn(`⚠️ Fixed display:none on button: ${btn.id || btn.className}`);
+          }
+        }
+      });
+    };
+
+    // Fix 5: Ensure buttons have proper cursor style
+    const fixButtonCursorStyle = () => {
+      const buttons = document.querySelectorAll('button:not(:disabled)');
+      buttons.forEach(btn => {
+        if (btn.style.cursor !== 'pointer') {
+          btn.style.cursor = 'pointer';
+        }
+      });
+    };
+
+    // Run all fixes immediately
+    fixPointerEventsOnButtons();
+    fixOverlappingElements();
+    fixCardButtonZIndex();
+    fixVisibilityOnButtons();
+    fixButtonCursorStyle();
+
+    // Run fixes periodically to catch any new issues
+    setInterval(() => {
+      fixPointerEventsOnButtons();
+      fixOverlappingElements();
+      fixCardButtonZIndex();
+    }, 1000);
+
+    // Also run fixes on scroll (since buttons may be re-rendered)
+    document.addEventListener('scroll', () => {
+      // Debounce scroll handler
+      clearTimeout(window.scrollFixTimeout);
+      window.scrollFixTimeout = setTimeout(() => {
+        fixPointerEventsOnButtons();
+        fixCardButtonZIndex();
+      }, 100);
+    }, { passive: true });
+
+    // Run fixes when DOM changes
+    const observer = new MutationObserver(() => {
+      clearTimeout(window.domFixTimeout);
+      window.domFixTimeout = setTimeout(() => {
+        fixPointerEventsOnButtons();
+        fixCardButtonZIndex();
+      }, 100);
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+
+    console.log('✅ Button responsiveness monitor initialized');
+  }
+
+  // Initialize button responsiveness fixes
+  setTimeout(() => {
+    ensureButtonResponsiveness();
+  }, 100);
+
+  // ============================================================
+  // SECTION: PREVENT POINTER-EVENTS BLOCKING IN CSS
+  // ============================================================
+
+  /**
+   * Inject CSS rules to ensure buttons are never blocked by pointer-events
+   */
+  function injectButtonResponsivnessCSS() {
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Critical: Ensure all buttons remain interactive */
+      button {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+        position: relative;
+        z-index: 10;
+      }
+
+      /* Ensure disabled buttons still have proper styling */
+      button:disabled {
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+      }
+
+      /* Card buttons must be accessible */
+      .card-btn {
+        pointer-events: auto !important;
+        z-index: 15;
+      }
+
+      /* Button containers must not block */
+      .card-action-buttons {
+        pointer-events: auto !important;
+        z-index: 15;
+      }
+
+      /* Modals should not block buttons outside them */
+      .modal {
+        pointer-events: auto !important;
+      }
+
+      .modal.hidden,
+      .modal:not(.active) {
+        pointer-events: none !important;
+      }
+
+      /* Overlays should not block if hidden */
+      .overlay:not(.active) {
+        pointer-events: none !important;
+      }
+
+      /* Quick filter buttons must be accessible */
+      .quick-filter-btn {
+        pointer-events: auto !important;
+      }
+
+      /* Pagination buttons must be accessible */
+      .pagination-btn {
+        pointer-events: auto !important;
+      }
+
+      /* Automation buttons must be accessible */
+      .automation-btn {
+        pointer-events: auto !important;
+      }
+
+      /* Auth buttons must be accessible */
+      .auth-btn {
+        pointer-events: auto !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+    console.log('✅ Button responsiveness CSS injected');
+  }
+
+  // Inject CSS as soon as possible
+  if (document.head) {
+    injectButtonResponsivnessCSS();
+  } else {
+    document.addEventListener('DOMContentLoaded', injectButtonResponsivnessCSS);
+  }
+
+  // ============================================================
   // INITIALIZATION
   // ============================================================
 
@@ -685,4 +912,3 @@ if (typeof module !== 'undefined' && module.exports) {
     fixModalZIndex: window.fixModalZIndex
   };
 }
-
