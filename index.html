@@ -5647,6 +5647,12 @@
          // Render the cards to the grid
          await window.renderAdventureCards();
 
+         // Populate autocomplete suggestions with initial data
+         console.log('📋 Populating initial autocomplete suggestions...');
+         if (typeof populateAutocomplete === 'function') {
+           setTimeout(() => populateAutocomplete(), 100);
+         }
+
          // Update connection status to show we're connected to Excel backend
          window.updateConnectionStatus?.(true);
 
@@ -13968,11 +13974,21 @@
    * Populate Autocomplete Datalists
    */
   function populateAutocomplete() {
+    console.log('📋 populateAutocomplete: Starting to populate autocomplete suggestions...');
+
     const nameList = document.getElementById("nameList");
     const stateList = document.getElementById("stateList");
     const cityList = document.getElementById("cityList");
     const tagsList = document.getElementById("tagsList");
     const costList = document.getElementById("costList");
+
+    // Verify all datalist elements exist
+    const datalists = { nameList, stateList, cityList, tagsList, costList };
+    const missingLists = Object.entries(datalists).filter(([name, el]) => !el).map(([name]) => name);
+
+    if (missingLists.length > 0) {
+      console.warn(`⚠️ populateAutocomplete: Missing datalist elements: ${missingLists.join(', ')}`);
+    }
 
     // Get unique values from adventure cards
     const names = new Set();
@@ -13983,12 +13999,18 @@
 
     // Extract data from adventure cards
     const adventureCards = document.querySelectorAll(".adventure-card");
+    console.log(`📊 populateAutocomplete: Found ${adventureCards.length} adventure cards to extract data from`);
+
     adventureCards.forEach(card => {
       const titleEl = card.querySelector(".adventure-card-title");
       const locationEl = card.querySelector(".adventure-card-location");
       const tagPills = card.querySelectorAll(".tag-pill");
 
-      if (titleEl) names.add(titleEl.textContent.trim());
+      if (titleEl) {
+        const name = titleEl.textContent.trim();
+        if (name) names.add(name);
+      }
+
       if (locationEl) {
         const locText = locationEl.textContent;
         const parts = locText.split(",");
@@ -14007,20 +14029,54 @@
       });
     });
 
-    // Add common defaults
-    states.add("SC").add("NC").add("GA").add("FL").add("VA").add("TN");
-    cities.add("Columbia").add("Greenville").add("Charleston").add("Asheville");
-    tags.add("Hiking").add("Waterfalls").add("Restaurant").add("Family Friendly");
-    costs.add("Free").add("$").add("$$").add("$$$");
+    // Add common defaults if no data was found
+    if (states.size === 0) {
+      console.log('📌 populateAutocomplete: Adding default states');
+      states.add("SC").add("NC").add("GA").add("FL").add("VA").add("TN");
+    }
 
-    // Populate datalists
-    if (nameList) nameList.innerHTML = Array.from(names).map(n => `<option value="${n}">`).join("");
-    if (stateList) stateList.innerHTML = Array.from(states).map(s => `<option value="${s}">`).join("");
-    if (cityList) cityList.innerHTML = Array.from(cities).map(c => `<option value="${c}">`).join("");
-    if (tagsList) tagsList.innerHTML = Array.from(tags).map(t => `<option value="${t}">`).join("");
-    if (costList) costList.innerHTML = Array.from(costs).map(c => `<option value="${c}">`).join("");
+    if (cities.size === 0) {
+      console.log('📌 populateAutocomplete: Adding default cities');
+      cities.add("Columbia").add("Greenville").add("Charleston").add("Asheville");
+    }
 
-    console.log("✓ Autocomplete populated");
+    if (tags.size === 0) {
+      console.log('📌 populateAutocomplete: Adding default tags');
+      tags.add("Hiking").add("Waterfalls").add("Restaurant").add("Family Friendly");
+    }
+
+    if (costs.size === 0) {
+      console.log('📌 populateAutocomplete: Adding default costs');
+      costs.add("Free").add("$").add("$$").add("$$$");
+    }
+
+    // Populate datalists with logging
+    if (nameList) {
+      nameList.innerHTML = Array.from(names).map(n => `<option value="${n}">`).join("");
+      console.log(`✅ populateAutocomplete: Populated names (${names.size} items)`);
+    }
+
+    if (stateList) {
+      stateList.innerHTML = Array.from(states).map(s => `<option value="${s}">`).join("");
+      console.log(`✅ populateAutocomplete: Populated states (${states.size} items)`);
+    }
+
+    if (cityList) {
+      cityList.innerHTML = Array.from(cities).map(c => `<option value="${c}">`).join("");
+      console.log(`✅ populateAutocomplete: Populated cities (${cities.size} items)`);
+    }
+
+    if (tagsList) {
+      tagsList.innerHTML = Array.from(tags).map(t => `<option value="${t}">`).join("");
+      console.log(`✅ populateAutocomplete: Populated tags (${tags.size} items)`);
+    }
+
+    if (costList) {
+      costList.innerHTML = Array.from(costs).map(c => `<option value="${c}">`).join("");
+      console.log(`✅ populateAutocomplete: Populated costs (${costs.size} items)`);
+    }
+
+    console.log("✅ populateAutocomplete: Complete - All suggestions updated");
   }
 
   /**
@@ -20285,6 +20341,18 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         // Render filtered results
         if (typeof renderAdventureCards === 'function') {
           renderAdventureCards(filtered);
+        }
+
+        // Refresh autocomplete suggestions based on filtered results
+        console.log('🔄 Updating autocomplete suggestions with filtered data...');
+        if (typeof populateAutocomplete === 'function') {
+          // Use a small delay to ensure cards are rendered before extracting data
+          setTimeout(() => {
+            populateAutocomplete();
+            console.log('✅ Autocomplete suggestions updated');
+          }, 50);
+        } else {
+          console.warn('⚠️ populateAutocomplete function not available');
         }
 
         // Update UI indicators
