@@ -20020,10 +20020,98 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       // Initialize all filter inputs and listeners
       init() {
         console.log('📋 FilterManager: Initializing...');
+        console.log('📋 FilterManager: Document readyState:', document.readyState);
+
+        // Wait for DOM to be fully ready
+        if (document.readyState === 'loading') {
+          console.log('⏳ FilterManager: Waiting for DOM to be ready...');
+          return; // Will be called again from DOMContentLoaded
+        }
+
+        // Ensure filter elements exist before attaching listeners
+        const requiredElements = ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'];
+        const missingElements = requiredElements.filter(id => !document.getElementById(id));
+
+        if (missingElements.length > 0) {
+          console.warn(`⚠️ FilterManager: Missing elements: ${missingElements.join(', ')}. Retrying in 300ms...`);
+          setTimeout(() => this.init(), 300);
+          return;
+        }
+
         this.attachInputListeners();
         this.attachQuickFilterListeners();
         this.attachResetListeners();
+        this.setupEventDelegation();
         console.log('✅ FilterManager: Initialization complete');
+      },
+
+      // Setup event delegation for dynamically rendered quick filter buttons
+      setupEventDelegation() {
+        const quickFiltersContainer = document.querySelector('.quick-filters-card');
+        if (!quickFiltersContainer) {
+          console.warn('⚠️ FilterManager: Quick filters container not found');
+          return;
+        }
+
+        console.log('🎯 FilterManager: Setting up event delegation for quick filters');
+
+        // Event delegation for dynamically rendered buttons
+        quickFiltersContainer.addEventListener('click', (e) => {
+          const btn = e.target.closest('.quick-filter-btn');
+          if (!btn) return;
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (btn.id === 'favoritesFilterBtn') {
+            this.state.showFavoritesOnly = !this.state.showFavoritesOnly;
+            btn.classList.toggle('active');
+            console.log(`💖 Favorites filter (delegated): ${this.state.showFavoritesOnly ? 'ON' : 'OFF'}`);
+          } else {
+            const tag = btn.getAttribute('data-tag');
+            if (tag) {
+              if (this.state.quickFilters.has(tag)) {
+                this.state.quickFilters.delete(tag);
+                btn.classList.remove('active');
+              } else {
+                this.state.quickFilters.add(tag);
+                btn.classList.add('active');
+              }
+              console.log(`🏷️ Quick filter (delegated): ${tag} (${this.state.quickFilters.size} total)`);
+            }
+          }
+
+          this.applyAllFilters();
+        }, false);
+
+        // Also add event delegation for input changes at control panel level
+        const controlPanel = document.querySelector('.control-panel-card');
+        if (controlPanel) {
+          console.log('🎯 FilterManager: Setting up event delegation for control panel inputs');
+
+          controlPanel.addEventListener('input', (e) => {
+            const inputElement = e.target;
+            if (!inputElement || !inputElement.id) return;
+
+            const key = inputElement.id;
+            if (this.state.hasOwnProperty(key)) {
+              this.state[key] = inputElement.value.trim();
+              console.log(`🔤 ${key} updated (delegated): "${this.state[key]}"`);
+            }
+          }, false);
+
+          controlPanel.addEventListener('change', (e) => {
+            const inputElement = e.target;
+            if (!inputElement || !inputElement.id) return;
+
+            const key = inputElement.id;
+            if (this.state.hasOwnProperty(key)) {
+              this.state[key] = inputElement.value.trim();
+              console.log(`✅ ${key} changed (delegated), applying filters...`);
+              this.applyAllFilters();
+            }
+          }, false);
+        }
       },
 
       // Attach listeners to search and filter inputs
@@ -20037,19 +20125,31 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           filterCost: document.getElementById('filterCost')
         };
 
+        // Check which inputs were found
+        const foundInputs = Object.entries(inputs).filter(([key, el]) => {
+          if (!el) {
+            console.warn(`⚠️ FilterManager: Input element not found: ${key}`);
+            return false;
+          }
+          return true;
+        });
+
+        console.log(`📝 FilterManager: Attaching listeners to ${foundInputs.length} input elements`);
+
         // Input event (typing) - update state silently
         Object.entries(inputs).forEach(([key, element]) => {
           if (element) {
             element.addEventListener('input', (e) => {
               this.state[key] = e.target.value.trim();
               console.log(`🔤 ${key} updated: "${this.state[key]}"`);
-            });
+            }, false);
 
             // Change event - apply filters
             element.addEventListener('change', () => {
               this.state[key] = element.value.trim();
+              console.log(`✅ ${key} changed, applying filters...`);
               this.applyAllFilters();
-            });
+            }, false);
           }
         });
       },
@@ -20057,33 +20157,47 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       // Attach listeners to quick filter buttons
       attachQuickFilterListeners() {
         const quickButtons = document.querySelectorAll('.quick-filter-btn');
+        console.log(`🔘 FilterManager: Found ${quickButtons.length} quick filter buttons`);
+
+        if (quickButtons.length === 0) {
+          console.warn('⚠️ FilterManager: No quick filter buttons found! Retrying in 500ms...');
+          setTimeout(() => this.attachQuickFilterListeners(), 500);
+          return;
+        }
+
         quickButtons.forEach(btn => {
-          if (btn.id === 'favoritesFilterBtn') {
+          // Remove any existing listeners to prevent duplicates
+          const newBtn = btn.cloneNode(true);
+          btn.parentNode.replaceChild(newBtn, btn);
+
+          if (newBtn.id === 'favoritesFilterBtn') {
             // Favorites button - special handling
-            btn.addEventListener('click', (e) => {
+            newBtn.addEventListener('click', (e) => {
               e.preventDefault();
+              e.stopPropagation();
               this.state.showFavoritesOnly = !this.state.showFavoritesOnly;
-              btn.classList.toggle('active');
+              newBtn.classList.toggle('active');
               console.log(`💖 Favorites filter: ${this.state.showFavoritesOnly ? 'ON' : 'OFF'}`);
               this.applyAllFilters();
-            });
+            }, false);
           } else {
             // Tag filter buttons
-            btn.addEventListener('click', (e) => {
+            newBtn.addEventListener('click', (e) => {
               e.preventDefault();
-              const tag = btn.getAttribute('data-tag');
+              e.stopPropagation();
+              const tag = newBtn.getAttribute('data-tag');
               if (tag) {
                 if (this.state.quickFilters.has(tag)) {
                   this.state.quickFilters.delete(tag);
-                  btn.classList.remove('active');
+                  newBtn.classList.remove('active');
                 } else {
                   this.state.quickFilters.add(tag);
-                  btn.classList.add('active');
+                  newBtn.classList.add('active');
                 }
                 console.log(`🏷️ Quick filter: ${tag} (${this.state.quickFilters.size} total)`);
                 this.applyAllFilters();
               }
-            });
+            }, false);
           }
         });
       },
@@ -20091,11 +20205,15 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       // Attach listeners to reset buttons
       attachResetListeners() {
         const resetButtons = document.querySelectorAll('[data-action="reset-filters"], .pill-button.reset, #breadcrumbResetBtn');
+        console.log(`🔄 FilterManager: Found ${resetButtons.length} reset buttons`);
+
         resetButtons.forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            console.log('🔄 Reset button clicked');
             this.resetAllFilters();
-          });
+          }, false);
         });
       },
 
@@ -20229,10 +20347,27 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     };
 
     // Initialize FilterManager when page is ready
+    function initializeFilterManager() {
+      if (FilterManager.init) {
+        FilterManager.init();
+      }
+    }
+
+    // Multiple initialization attempts to ensure DOM is ready
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => FilterManager.init());
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('✅ DOMContentLoaded event fired');
+        initializeFilterManager();
+        // Try again after a short delay to ensure all elements are rendered
+        setTimeout(initializeFilterManager, 200);
+        setTimeout(initializeFilterManager, 500);
+      });
     } else {
-      FilterManager.init();
+      // DOM already loaded (e.g., script loaded after page render)
+      console.log('ℹ️ DOM already loaded, initializing FilterManager immediately');
+      initializeFilterManager();
+      setTimeout(initializeFilterManager, 200);
+      setTimeout(initializeFilterManager, 500);
     }
 
     // Make FilterManager globally accessible
