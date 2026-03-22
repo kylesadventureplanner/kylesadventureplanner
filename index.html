@@ -5305,17 +5305,71 @@
      // They will be replaced by the real implementations later in the script
      // ============================================================
 
-     if (typeof window.showCardDetails === 'undefined') {
+     if (typeof window.showCardDetails === 'undefined' || window.showCardDetails.toString().includes('Placeholder')) {
        window.showCardDetails = function(index) {
-         console.warn('⚠️ Placeholder showCardDetails called - real implementation loading');
-         // Try to call the real one if available
-         if (typeof window._realShowCardDetails === 'function') {
-           return window._realShowCardDetails(index);
+         // Try to open row detail modal with the filtered index
+         try {
+           const filteredIndex = parseInt(index);
+           if (!Number.isInteger(filteredIndex) || filteredIndex < 0) {
+             console.error('❌ Invalid index for showCardDetails:', index);
+             return;
+           }
+
+           // Get the adventure from filtered data
+           const adventure = window.totalFilteredAdventures && window.totalFilteredAdventures[filteredIndex];
+           if (!adventure) {
+             console.warn('⚠️ Adventure not found at filtered index:', filteredIndex);
+             return;
+           }
+
+           // Open the detail modal
+           const modal = document.getElementById('rowDetailModal');
+           const backdrop = document.getElementById('rowDetailModalBackdrop');
+
+           if (!modal || !backdrop) {
+             console.error('❌ Row detail modal elements not found');
+             return;
+           }
+
+           // Build modal content with adventure data
+           const values = adventure.row?.values?.[0] || [];
+           const rowData = {
+             name: values[0] || '',
+             googlePlaceId: values[1] || '',
+             city: values[10] || '',
+             state: values[9] || '',
+             address: values[11] || '',
+             index: filteredIndex,
+             sourceIndex: adventure.sourceIndex || -1
+           };
+
+           // Set modal content
+           const modalBody = modal.querySelector('.modal-body') || modal.querySelector('.row-detail-modal-content');
+           if (modalBody) {
+             const tabs = [
+               { id: "overview", name: "📋 Overview", content: `<div class="row-detail-section"><h3>${rowData.name}</h3><p><strong>Location:</strong> ${rowData.city}, ${rowData.state}</p><p><strong>Address:</strong> ${rowData.address}</p></div>` }
+             ];
+
+             let tabsHtml = '<div class="row-detail-tabs">';
+             tabs.forEach(tab => {
+               tabsHtml += `<button class="row-detail-tab-btn" data-tab="${tab.id}">${tab.name}</button>`;
+             });
+             tabsHtml += '</div><div class="row-detail-content">';
+             tabs.forEach((tab, idx) => {
+               tabsHtml += `<div class="row-detail-tab-pane ${idx === 0 ? 'active' : ''}" data-tab="${tab.id}">${tab.content}</div>`;
+             });
+             tabsHtml += '</div>';
+
+             modalBody.innerHTML = tabsHtml;
+           }
+
+           // Show modal
+           modal.classList.add('visible');
+           backdrop.classList.add('visible');
+           console.log('✅ Row details modal opened for index:', filteredIndex);
+         } catch (err) {
+           console.error('❌ Error in showCardDetails:', err);
          }
-         // Otherwise queue it to retry
-         console.log('⏳ Queueing showCardDetails call for index:', index);
-         if (!window._queuedCardDetailsCalls) window._queuedCardDetailsCalls = [];
-         window._queuedCardDetailsCalls.push(index);
        };
      }
 
@@ -20472,7 +20526,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         }
 
         // Filter the data
-        const filtered = window.adventuresData.filter((row) => {
+        const filtered = window.adventuresData.filter((row, sourceIndex) => {
           const values = row.values[0] || [];
           const [name, , , tags, , , , difficulty, , state, city, , , , , cost] = values;
 
@@ -20525,23 +20579,29 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           return matches;
         });
 
+        // Build filtered adventures with source index tracking
+        window.totalFilteredAdventures = filtered.map((row, index) => ({
+          row: row,
+          sourceIndex: window.adventuresData.indexOf(row)
+        }));
+
         console.log(`📊 Filtered: ${filtered.length} of ${window.adventuresData.length} adventures`);
 
-        // Render filtered results
-        if (typeof renderAdventureCards === 'function') {
-          renderAdventureCards(filtered);
-        }
+        // Reset pagination to first page
+        window.currentPage = 1;
 
-        // Refresh autocomplete suggestions based on filtered results
-        console.log('🔄 Updating autocomplete suggestions with filtered data...');
-        if (typeof populateAutocomplete === 'function') {
-          // Use a small delay to ensure cards are rendered before extracting data
-          setTimeout(() => {
-            populateAutocomplete();
-            console.log('✅ Autocomplete suggestions updated');
-          }, 50);
+        // Render using existing window functions
+        if (typeof window.renderPagedCards === 'function') {
+          window.renderPagedCards();
+          console.log('✅ Cards rendered using renderPagedCards');
+        } else if (typeof window.renderAllCards === 'function') {
+          window.renderAllCards(filtered);
+          console.log('✅ Cards rendered using renderAllCards');
+        } else if (typeof renderAdventureCards === 'function') {
+          renderAdventureCards(filtered);
+          console.log('✅ Cards rendered using renderAdventureCards');
         } else {
-          console.warn('⚠️ populateAutocomplete function not available');
+          console.warn('⚠️ No rendering function found');
         }
 
         // Update UI indicators
