@@ -117,7 +117,11 @@
       surface: '',
       lengthBand: '',
       driveTimeBand: '',
-      traffic: ''
+      traffic: '',
+      state: '',
+      city: '',
+      cost: '',
+      hours: ''
     }
   };
 
@@ -646,6 +650,10 @@
     state.filters.lengthBand = byId('bikeFilterLengthBand')?.value || '';
     state.filters.driveTimeBand = byId('bikeFilterDriveTimeBand')?.value || '';
     state.filters.traffic = (byId('bikeFilterTraffic')?.value || '').trim();
+    state.filters.state = (byId('bikeFilterState')?.value || '').trim();
+    state.filters.city = (byId('bikeFilterCity')?.value || '').trim();
+    state.filters.cost = (byId('bikeFilterCost')?.value || '').trim();
+    state.filters.hours = (byId('bikeFilterHours')?.value || '').trim();
     state.sortBy = byId('bikeSortBy')?.value || state.sortBy;
     state.groupBy = byId('bikeGroupBy')?.value || '';
   }
@@ -1182,6 +1190,10 @@
         if (state.filters.difficulty && !norm(trail.difficulty).includes(norm(state.filters.difficulty))) return false;
         if (state.filters.surface && !norm(trail.surfaceType).includes(norm(state.filters.surface))) return false;
         if (state.filters.traffic && !norm(trail.trafficExposure).includes(norm(state.filters.traffic))) return false;
+        if (state.filters.state && !norm(trail.state).includes(norm(state.filters.state))) return false;
+        if (state.filters.city && !norm(trail.city).includes(norm(state.filters.city))) return false;
+        if (state.filters.cost && !norm(trail.cost).includes(norm(state.filters.cost))) return false;
+        if (state.filters.hours && !norm(trail.hoursOfOperation).includes(norm(state.filters.hours))) return false;
 
         if (!matchesLengthBand(trail.lengthMiles, state.filters.lengthBand)) return false;
         if (!matchesDriveBand(parseDriveMinutes(trail.driveTime), state.filters.driveTimeBand)) return false;
@@ -1247,6 +1259,10 @@
     setValue('bikeFilterLengthBand', '');
     setValue('bikeFilterDriveTimeBand', '');
     setValue('bikeFilterTraffic', '');
+    setValue('bikeFilterState', '');
+    setValue('bikeFilterCity', '');
+    setValue('bikeFilterCost', '');
+    setValue('bikeFilterHours', '');
     setValue('bikeGroupBy', '');
 
     state.groupBy = '';
@@ -1266,7 +1282,11 @@
       { id: 'bikeRegionList', values: uniqueSorted(trails.map((t) => t.region)) },
       { id: 'bikeDifficultyList', values: uniqueSorted(trails.map((t) => t.difficulty)) },
       { id: 'bikeSurfaceList', values: uniqueSorted(trails.map((t) => t.surfaceType)) },
-      { id: 'bikeTrafficList', values: uniqueSorted(trails.map((t) => t.trafficExposure)) }
+      { id: 'bikeTrafficList', values: uniqueSorted(trails.map((t) => t.trafficExposure)) },
+      { id: 'bikeStateList', values: uniqueSorted(trails.map((t) => t.state)) },
+      { id: 'bikeCityList', values: uniqueSorted(trails.map((t) => t.city)) },
+      { id: 'bikeCostList', values: uniqueSorted(trails.map((t) => t.cost)) },
+      { id: 'bikeHoursList', values: uniqueSorted(trails.map((t) => t.hoursOfOperation)) }
     ];
 
     datalistConfig.forEach(({ id, values }) => {
@@ -1378,6 +1398,10 @@
     bindInput('bikeFilterLengthBand');
     bindInput('bikeFilterDriveTimeBand');
     bindInput('bikeFilterTraffic');
+    bindInput('bikeFilterState');
+    bindInput('bikeFilterCity');
+    bindInput('bikeFilterCost');
+    bindInput('bikeFilterHours');
     bindInput('bikeGroupBy');
 
     const bikeIphoneToggleBtn = document.getElementById('bikeIphoneToggleBtn');
