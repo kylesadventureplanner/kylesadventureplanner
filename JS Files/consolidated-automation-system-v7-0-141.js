@@ -21,6 +21,27 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return `[STRICT_WRAPPER:${safeCode}] ${safeLabel}`;
   }
 
+  function looksLikePlaceId(value) {
+    return /^ChI[A-Za-z0-9_-]{6,}$/.test(safeString(value));
+  }
+
+  function createTaggedShortLinkError(message, diagnostics, extra = {}) {
+    const baseMessage = safeString(message) || 'Short-link resolution failed.';
+    const requestId = diagnostics && diagnostics.enabled ? diagnostics.id : '';
+    const taggedMessage = requestId && !baseMessage.includes(`[${requestId}]`)
+      ? `[${requestId}] ${baseMessage}`
+      : baseMessage;
+
+    const error = new Error(taggedMessage);
+    if (requestId) error.requestId = requestId;
+    if (extra && typeof extra === 'object') {
+      Object.keys(extra).forEach((key) => {
+        error[key] = extra[key];
+      });
+    }
+    return error;
+  }
+
   function createShortLinkDiagnostics(inputType, inputValue) {
     const normalizedInput = safeString(inputValue);
     const shortLinkDetected = inputType === 'placeUrl' && /(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)/i.test(normalizedInput);

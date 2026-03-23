@@ -1207,6 +1207,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         if (isHidden) {
           modal.style.pointerEvents = 'none !important';
           modal.style.display = 'none !important';
+          modal.style.visibility = 'hidden !important';
         }
       });
     };
@@ -1223,14 +1224,28 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       });
     };
 
+    const ensureCityViewerContrast = () => {
+      const cityButtons = document.querySelectorAll('.city-viewer-btn');
+      cityButtons.forEach((btn) => {
+        // Keep high-contrast defaults if another runtime pass washed styles out.
+        const computed = window.getComputedStyle(btn);
+        if (computed.color === 'rgb(107, 114, 128)' || computed.backgroundColor === 'rgb(229, 231, 235)') {
+          btn.style.background = 'linear-gradient(135deg, #4f6cf0, #5f73e6)';
+          btn.style.color = '#ffffff';
+          btn.style.border = 'none';
+          btn.style.fontWeight = '700';
+        }
+      });
+    };
+
     /**
      * Fix 5: Clear stuck mouse states
      */
     const clearStuckMouseStates = () => {
-      // If mouse is not over any button, clear hover states
+      // If mouse is not over any button, clear hover-like inline artifacts only on known interactive classes.
       const hoveredBtn = document.querySelector('button:hover');
       if (!hoveredBtn) {
-        const buttons = document.querySelectorAll('button');
+        const buttons = document.querySelectorAll('.quick-filter-btn, .card-btn, .pagination-btn, .automation-btn');
         buttons.forEach(btn => {
           if (btn.style.backgroundColor || btn.style.boxShadow) {
             btn.style.backgroundColor = '';
@@ -1305,6 +1320,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     fixPointerEventsOnButtons();
     fixOverlappingElements();
     fixCardButtonZIndex();
+    ensureCityViewerContrast();
     clearStuckMouseStates();
     reattachButtonListeners();
     createHoverThrottler();
@@ -1314,6 +1330,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       fixPointerEventsOnButtons();
       fixOverlappingElements();
       fixCardButtonZIndex();
+      ensureCityViewerContrast();
       restoreButtonStates();
     }, 500);
 
