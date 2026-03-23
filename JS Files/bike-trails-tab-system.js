@@ -1005,6 +1005,7 @@
 
         return `
           <div class="adventure-card bike-trail-card"
+               data-card-domain="bike"
                data-bike-source-index="${trail.sourceIndex}"
                data-bike-trail-id="${escapeHtml(trail.id)}">
             <div class="card-header">

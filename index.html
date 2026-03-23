@@ -5827,6 +5827,7 @@
             // Create card HTML with ALL features
             const card = document.createElement('div');
             card.className = 'adventure-card';
+            card.dataset.cardDomain = 'adventure';
             card.dataset.adventureId = adventureId;
             card.innerHTML = `
               <div class="card-header">
@@ -10496,6 +10497,7 @@
       // Create card element
       const card = document.createElement("div");
       card.className = "adventure-card";
+      card.dataset.cardDomain = 'adventure';
       card.dataset.index = index;
       card.dataset.index = actualIndex;
       card.dataset.googlePlaceId = (googlePlaceId || "").trim();
@@ -10910,6 +10912,7 @@
       // Create card element
       const card = document.createElement("div");
       card.className = "adventure-card";
+      card.dataset.cardDomain = 'adventure';
       card.dataset.index = actualIndex;
       card.dataset.googlePlaceId = (googlePlaceId || "").trim();
       card.dataset.state = (state || "").toLowerCase();

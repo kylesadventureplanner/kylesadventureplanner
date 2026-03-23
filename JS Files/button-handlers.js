@@ -62,6 +62,11 @@
     return Boolean(target && target.closest && target.closest('#adventureCardsGrid'));
   }
 
+  function isAdventureDomainTarget(target) {
+    const card = target && target.closest ? target.closest('[data-card-domain]') : null;
+    return Boolean(card && card.getAttribute('data-card-domain') === 'adventure');
+  }
+
   function resolveCardIndexFromElement(element) {
     if (!element) return null;
 
@@ -517,6 +522,7 @@
 
     document.addEventListener('click', (event) => {
       if (!isInAdventureCardsGrid(event.target)) return;
+      if (!isAdventureDomainTarget(event.target)) return;
       const detailsButton = event.target && event.target.closest ? event.target.closest('.card-details-btn') : null;
       if (!detailsButton) return;
       event.preventDefault();
@@ -527,6 +533,7 @@
 
     document.addEventListener('click', (event) => {
       if (!isInAdventureCardsGrid(event.target)) return;
+      if (!isAdventureDomainTarget(event.target)) return;
       const card = event.target && event.target.closest ? event.target.closest('.adventure-card') : null;
       if (!card) return;
       if (isInteractiveCardTarget(event.target)) return;
