@@ -893,197 +893,90 @@
     return {
       id,
       sourceIndex,
-      name:            getField(row, 'Ride Name'),
-      region:          getField(row, 'Region'),
-      difficulty:      getField(row, 'Difficulty'),
-      surface:         getField(row, 'Surface Type'),
-      driveTime:       getField(row, 'Drive Time'),
-      driveMinutes:    parseDriveMinutes(getField(row, 'Drive Time')),
-      lengthMiles:     parseNumber(getField(row, 'Length (miles)')),
-      elevationGain:   parseNumber(getField(row, 'Elevation Gain (ft)')),
-      traffic:         getField(row, 'Traffic Exposure Rating'),
-      state:           getField(row, 'State'),
-      city:            getField(row, 'City'),
-      address:         getField(row, 'Address'),
-      cost:            getField(row, 'Cost'),
-      hours:           getField(row, 'Hours of Operation'),
-      phone:           getField(row, 'Phone Number'),
-      website:         getField(row, 'Website'),
-      description:     getField(row, 'Description'),
-      vibes:           getField(row, 'Vibes'),
-      moodTags:        getField(row, 'Ride Mood Tags'),
-      bestConditions:  getField(row, 'Best Conditions'),
-      bestTimeOfDay:   getField(row, 'Best Time of Day'),
-      coffeeNearby:    getField(row, 'Coffee Nearby'),
-      parking:         getField(row, 'Parking'),
-      notes:           getField(row, 'Notes'),
-      nearby:          getField(row, 'Nearby'),
-      links:           getField(row, 'Links'),
-      links2:          getField(row, 'Links 2'),
-      mapsLink:        getField(row, 'Maps Link') || getField(row, 'Google Maps Link') || getField(row, 'Directions'),
-      googlePlaceId:   getField(row, 'Google Place ID'),
-      routeType:       getField(row, 'Route Type'),
-      myRating:        parseNumber(getField(row, BIKE_PREFERENCE_COLUMNS.rating)),
-      isFavorite:      isBikeFavoriteFlag(getField(row, BIKE_PREFERENCE_COLUMNS.favorite)),
+      name:                  getField(row, 'Ride Name'),
+      region:                getField(row, 'Region'),
+      difficulty:            getField(row, 'Difficulty'),
+      difficultyScore:       getField(row, BIKE_DIFFICULTY_SCORE_COLUMN),
+      surface:               getField(row, 'Surface Type'),
+      surfaceBreakdown:      getField(row, 'Surface Breakdown (%)'),
+      driveTime:             getField(row, 'Drive Time'),
+      driveMinutes:          parseDriveMinutes(getField(row, 'Drive Time')),
+      lengthMiles:           parseNumber(getField(row, 'Length (miles)')),
+      elevationGain:         parseNumber(getField(row, 'Elevation Gain (ft)')),
+      traffic:               getField(row, 'Traffic Exposure Rating'),
+      trafficExposureRating: getField(row, 'Traffic Exposure Rating'),
+      state:                 getField(row, 'State'),
+      city:                  getField(row, 'City'),
+      cost:                  getField(row, 'Cost'),
+      hours:                 getField(row, 'Hours of Operation'),
+      googlePlaceId:         getField(row, 'Google Place ID'),
+
+      // Parking + maps
+      parkingCapacity:       getField(row, 'Parking Capacity'),
+      parkingDifficulty:     getField(row, 'Parking Difficulty'),
+      parkingDistanceToTrail:getField(row, 'Parking Distance to Trail'),
+      parkingCost:           getField(row, 'Parking Cost'),
+      parkingSafetyNotes:    getField(row, 'Parking Safety / Lighting Notes'),
+      mapsLink:              getField(row, 'Maps Link') || getField(row, 'Google URL'),
+      parkingLink:           getField(row, 'Parking Link'),
+      gpsCoordinates:        getField(row, 'GPS Coordinates'),
+      googleMapsTrailhead:   getField(row, 'Google Maps Trailhead'),
+      googleMapsParking:     getField(row, 'Google Maps Parking'),
+
+      // Overview
+      rideTypeClassification:getField(row, 'Ride Type Classification'),
+      rideCommitmentLevel:   getField(row, 'Ride Commitment Level'),
+      rideFlowProfile:       getField(row, 'Ride Flow Profile'),
+      bestTimeOfDay:         getField(row, 'Best Time of Day'),
+      highlights:            getField(row, 'Scenic & Nature Highlights'),
+      recommendedLoop:       getField(row, 'Recommended Loop'),
+      localRegulations:      getField(row, 'Local Regulations'),
+
+      // Ride profile
+      rideStartExperience:   getField(row, 'Ride Start Experience'),
+      rideFinishExperience:  getField(row, 'Ride Finish Experience'),
+      smoothnessIndex:       getField(row, 'Ride Smoothness Index'),
+      moodTags:              getField(row, 'Ride Mood Tags'),
+      vibes:                 getField(row, 'Vibes'),
+      rideNoiseProfile:      getField(row, 'Ride Noise Profile'),
+
+      // Conditions + safety
+      rideRiskProfile:       getField(row, 'Ride Risk Profile'),
+      weatherSuitability:    getField(row, 'Weather Suitability'),
+      nightRidingSuitability:getField(row, 'Night Riding Suitability'),
+      emergencyAccessNotes:  getField(row, 'Emergency Access Notes'),
+      cellCoverageNotes:     getField(row, 'Cell Coverage Notes'),
+
+      // Nearby
+      coffeeNearby:          getField(row, 'Coffee Nearby'),
+      foodNearby:            getField(row, 'Food Nearby'),
+      breweryNearby:         getField(row, 'Brewery Nearby'),
+      bikeShopNearby:        getField(row, 'Bike Shop Nearby'),
+      localShopsNearby:      getField(row, 'Local Shops Nearby'),
+
+      // External links
+      allTrails:             getField(row, 'AllTrails'),
+      mtbProject:            getField(row, 'MTBProject'),
+      hikingProject:         getField(row, 'HikingProject'),
+      singletracks:          getField(row, 'Singletracks'),
+      rideWithGps:           getField(row, 'RideWithGPS'),
+      openStreetMap:         getField(row, 'OpenStreetMap'),
+      officialLink1:         getField(row, 'Official Link 1'),
+      officialLink2:         getField(row, 'Official Link 2'),
+      officialLink3:         getField(row, 'Official Link 3'),
+      trailLink:             getField(row, 'TrailLink'),
+
+      // Along the trail
+      photoSpots:            getField(row, 'Photo Spots'),
+      localWildlifeNotes:    getField(row, 'Local Wildlife Notes'),
+      localHistoryFunFact:   getField(row, 'Local History / Fun Fact'),
+      seasonalNotes:         getField(row, 'Seasonal Notes'),
+      scenicNature:          getField(row, 'Scenic & Nature Highlights'),
+
+      myRating:              parseNumber(getField(row, BIKE_PREFERENCE_COLUMNS.rating)),
+      isFavorite:            isBikeFavoriteFlag(getField(row, BIKE_PREFERENCE_COLUMNS.favorite)),
       row
     };
-  }
-
-  function inBandLength(lengthMiles, band) {
-    if (!band) return true;
-    if (band === 'short') return lengthMiles <= 10;
-    if (band === 'medium') return lengthMiles > 10 && lengthMiles <= 25;
-    if (band === 'long') return lengthMiles > 25;
-    return true;
-  }
-
-  function inBandDrive(minutes, band) {
-    if (!band) return true;
-    if (band === 'under30') return minutes < 30;
-    if (band === '30to60') return minutes >= 30 && minutes <= 60;
-    if (band === 'over60') return minutes > 60;
-    return true;
-  }
-
-  function matchesQuickFilter(trail, filterKey) {
-    const difficulty = norm(trail.difficulty);
-    const surface = norm(trail.surface);
-
-    if (filterKey === 'easy') return difficulty.includes('easy');
-    if (filterKey === 'moderate') return difficulty.includes('moderate');
-    if (filterKey === 'hard') return difficulty.includes('hard');
-    if (filterKey === 'paved') return surface.includes('paved');
-    if (filterKey === 'gravel') return surface.includes('gravel');
-    if (filterKey === 'under30') return trail.driveMinutes < 30;
-    if (filterKey === 'low-elevation') return trail.elevationGain > 0 && trail.elevationGain <= 500;
-    if (filterKey === 'family') {
-      const text = `${trail.vibes} ${trail.moodTags}`;
-      return norm(text).includes('family');
-    }
-    if (filterKey === 'coffee') return isTruthyFlag(trail.coffeeNearby);
-    return true;
-  }
-
-  function compareTrails(a, b) {
-    const sortBy = state.sortBy;
-    const mult = state.sortAsc ? 1 : -1;
-
-    if (sortBy === 'driveTime') return (a.driveMinutes - b.driveMinutes) * mult;
-    if (sortBy === 'length') return (a.lengthMiles - b.lengthMiles) * mult;
-    if (sortBy === 'difficulty') return norm(a.difficulty).localeCompare(norm(b.difficulty)) * mult;
-    if (sortBy === 'elevation') return (a.elevationGain - b.elevationGain) * mult;
-    if (sortBy === 'surface') return norm(a.surface).localeCompare(norm(b.surface)) * mult;
-    if (sortBy === 'rating') return (a.myRating - b.myRating) * mult;
-    return norm(a.name).localeCompare(norm(b.name)) * mult;
-  }
-
-  function renderBikeTrailsPage() {
-    const grid = document.getElementById('bikeTrailsCardsGrid');
-    const resultsCount = document.getElementById('bikeResultsCount');
-    if (!grid) return;
-
-    const total = (window.bikeFilteredTrails || []).length;
-    const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
-    state.currentPage = Math.min(Math.max(1, state.currentPage), totalPages);
-
-    const startIndex = (state.currentPage - 1) * ITEMS_PER_PAGE;
-    const pageItems = (window.bikeFilteredTrails || []).slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-    if (!pageItems.length) {
-      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af;">No bike trails match your current filters.</div>';
-    } else {
-      grid.innerHTML = pageItems.map((trail) => {
-        const tags = [trail.surface, trail.difficulty].filter(Boolean);
-        const tagPills = tags.map((t) => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('');
-        const ratingStars = [1,2,3,4,5].map((s) =>
-          `<button type="button" class="bike-rating-star ${(trail.myRating || 0) >= s ? 'filled' : ''}"
-            style="border:none;background:transparent;cursor:pointer;font-size:16px;line-height:1;padding:0 1px;"
-            onclick="event.stopPropagation(); window.setBikeRating(${trail.sourceIndex}, ${s})" title="${s} stars">⭐</button>`
-        ).join('');
-        const favActive = trail.isFavorite ? 'active' : '';
-        const favIcon   = trail.isFavorite ? '💖' : '🤍';
-
-        return `
-          <div class="adventure-card bike-trail-card"
-               data-card-domain="bike"
-               data-bike-source-index="${trail.sourceIndex}"
-               data-bike-trail-id="${escapeHtml(trail.id)}">
-            <div class="card-header">
-              <h3 class="card-title">${escapeHtml(trail.name || 'Unnamed Ride')}</h3>
-              <div class="card-location">📍 ${escapeHtml(trail.region || trail.city || 'Unknown region')}</div>
-              ${trail.driveTime ? `<div class="card-drive-time">🚗 ${escapeHtml(trail.driveTime)}</div>` : ''}
-            </div>
-            <div class="card-body">
-              ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
-              ${trail.description ? `<div class="card-description">${escapeHtml(trail.description).substring(0, 140)}${trail.description.length > 140 ? '...' : ''}</div>` : ''}
-              <div class="card-info">
-                ${trail.lengthMiles  ? `<div class="card-info-item">Length: <strong>${escapeHtml(String(trail.lengthMiles))} mi</strong></div>` : ''}
-                ${trail.elevationGain ? `<div class="card-info-item">Elevation: <strong>${escapeHtml(String(trail.elevationGain))} ft</strong></div>` : ''}
-                ${trail.cost         ? `<div class="card-info-item">Cost: <strong>${escapeHtml(trail.cost)}</strong></div>` : ''}
-              </div>
-            </div>
-            <div class="card-footer">
-              <div class="card-action-buttons">
-                ${trail.mapsLink ? `<a href="${escapeHtml(trail.mapsLink)}" target="_blank" class="card-btn" onclick="event.stopPropagation();" title="Open in Google Maps">📍 Maps</a>` : ''}
-                <button type="button" class="card-btn bike-card-details-btn"
-                  onclick="event.stopPropagation(); window.showBikeTrailDetails(${trail.sourceIndex});"
-                  title="View full trail details">📖 Details</button>
-              </div>
-              <div class="card-favorite-rating-container">
-                <div class="bike-card-rating" style="display:flex;align-items:center;gap:1px;">${ratingStars}</div>
-                <button type="button" class="bike-card-favorite-btn ${favActive}"
-                  style="border:none;background:transparent;cursor:pointer;font-size:22px;line-height:1;padding:0 2px;"
-                  onclick="event.stopPropagation(); window.toggleBikeTrailFavorite(${trail.sourceIndex}, this);"
-                  title="Toggle favourite">${favIcon}</button>
-              </div>
-            </div>
-          </div>`;
-      }).join('');
-    }
-
-    if (resultsCount) {
-      const label = total === 1 ? 'trail' : 'trails';
-      resultsCount.textContent = `${total} ${label}`;
-    }
-
-    const rangeStart = total ? startIndex + 1 : 0;
-    const rangeEnd = total ? Math.min(startIndex + ITEMS_PER_PAGE, total) : 0;
-    const visibility = total > ITEMS_PER_PAGE ? 'flex' : 'none';
-
-    const paginationTargets = [
-      {
-        container: document.getElementById('bikePaginationControls'),
-        current: document.getElementById('bikeCurrentPageNum'),
-        total: document.getElementById('bikeTotalPagesNum'),
-        start: document.getElementById('bikeShowingRangeStart'),
-        end: document.getElementById('bikeShowingRangeEnd'),
-        all: document.getElementById('bikeTotalResultsNum'),
-        prev: document.getElementById('bikePrevPageBtn'),
-        next: document.getElementById('bikeNextPageBtn')
-      },
-      {
-        container: document.getElementById('bikePaginationControlsTop'),
-        current: document.getElementById('bikeCurrentPageNumTop'),
-        total: document.getElementById('bikeTotalPagesNumTop'),
-        start: document.getElementById('bikeShowingRangeStartTop'),
-        end: document.getElementById('bikeShowingRangeEndTop'),
-        all: document.getElementById('bikeTotalResultsNumTop'),
-        prev: document.getElementById('bikePrevPageBtnTop'),
-        next: document.getElementById('bikeNextPageBtnTop')
-      }
-    ];
-
-    paginationTargets.forEach((target) => {
-      if (!target.container) return;
-      target.container.style.display = visibility;
-      if (target.current) target.current.textContent = String(state.currentPage);
-      if (target.total) target.total.textContent = String(totalPages);
-      if (target.start) target.start.textContent = String(rangeStart);
-      if (target.end) target.end.textContent = String(rangeEnd);
-      if (target.all) target.all.textContent = String(total);
-      if (target.prev) target.prev.disabled = state.currentPage <= 1;
-      if (target.next) target.next.disabled = state.currentPage >= totalPages;
-    });
   }
 
   // ─── Bike Trail Details Modal ────────────────────────────────────────────────
@@ -1108,57 +1001,113 @@
     // ── Populate tab panes ──
     const pane = (tab) => modal.querySelector(`.row-detail-tab-pane[data-tab="${tab}"]`);
 
+    // Location and Parking
+    const lp = pane('location-parking');
+    if (lp) lp.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+        ${field('State', trail.state)}
+        ${field('City', trail.city)}
+        ${field('Drive Time', trail.driveTime)}
+        ${field('Parking Capacity', trail.parkingCapacity)}
+        ${field('Parking Difficulty', trail.parkingDifficulty)}
+        ${field('Parking Distance to Trail', trail.parkingDistanceToTrail)}
+        ${field('Parking Cost', trail.parkingCost)}
+        ${field('Parking Safety', trail.parkingSafetyNotes)}
+        ${field('Google Place ID', trail.googlePlaceId)}
+      </div>`;
+
+    // Maps
+    const maps = pane('maps');
+    if (maps) maps.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+        ${field('Maps Link', trail.mapsLink, true)}
+        ${field('Parking Link', trail.parkingLink, true)}
+        ${field('GPS Coordinates', trail.gpsCoordinates)}
+        ${field('Google Maps Trailhead', trail.googleMapsTrailhead, true)}
+        ${field('Google Maps Parking', trail.googleMapsParking, true)}
+      </div>`;
+
     // Overview
     const ov = pane('overview');
     if (ov) ov.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
-        ${field('🛣️ Surface',      trail.surface)}
-        ${field('📊 Difficulty',   trail.difficulty)}
-        ${field('📏 Length',       trail.lengthMiles  ? `${trail.lengthMiles} mi`  : '')}
-        ${field('⬆️ Elevation',    trail.elevationGain ? `${trail.elevationGain} ft` : '')}
-        ${field('🚗 Drive Time',   trail.driveTime)}
-        ${field('💰 Cost',         trail.cost)}
-        ${field('📍 Address',      trail.address)}
-        ${field('🌐 Website',      trail.website, true)}
-        ${trail.description ? `<div style="grid-column:1/-1"><strong>Description</strong><p style="margin:4px 0 0;color:#374151;">${escapeHtml(trail.description)}</p></div>` : ''}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+        ${field('Ride Type Classification', trail.rideTypeClassification)}
+        ${field('Surface Type', trail.surface)}
+        ${field('Surface Breakdown (%)', trail.surfaceBreakdown)}
+        ${field('Length (miles)', trail.lengthMiles ? `${trail.lengthMiles} mi` : '')}
+        ${field('Difficulty', trail.difficulty)}
+        ${field('Difficulty Score (0-100)', trail.difficultyScore)}
+        ${field('Ride Commitment Level', trail.rideCommitmentLevel)}
+        ${field('Elevation Gain (ft)', trail.elevationGain ? `${trail.elevationGain} ft` : '')}
+        ${field('Best Time of Day', trail.bestTimeOfDay)}
+        ${field('Ride Flow Profile', trail.rideFlowProfile)}
+        ${field('Highlights', trail.highlights)}
+        ${field('Hours of Operation', trail.hours)}
+        ${field('Recommended Loop', trail.recommendedLoop)}
+        ${field('Local Regulations', trail.localRegulations)}
       </div>`;
 
     // Ride Profile
     const rp = pane('ride-profile');
     if (rp) rp.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
-        ${field('📏 Length',          trail.lengthMiles  ? `${trail.lengthMiles} mi`  : '')}
-        ${field('⬆️ Elevation Gain',  trail.elevationGain ? `${trail.elevationGain} ft` : '')}
-        ${field('🛣️ Surface Type',    trail.surface)}
-        ${field('📊 Difficulty',      trail.difficulty)}
-        ${field('🚦 Traffic',         trail.traffic)}
-        ${field('🌄 Vibes',           trail.vibes)}
-        ${field('🏷️ Mood Tags',       trail.moodTags)}
-        ${field('🎿 Route Type',      trail.routeType || '')}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+        ${field('Ride Start Experience', trail.rideStartExperience)}
+        ${field('Ride Finish Experience', trail.rideFinishExperience)}
+        ${field('Smoothness Index', trail.smoothnessIndex)}
+        ${field('Ride Mood Tags', trail.moodTags)}
+        ${field('Vibes', trail.vibes)}
+        ${field('Ride Noise Profile', trail.rideNoiseProfile)}
       </div>`;
 
-    // Conditions & Safety
-    const cs = pane('conditions');
+    // Conditions and Safety
+    const cs = pane('conditions-safety');
     if (cs) cs.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
-        ${field('🌤️ Best Conditions', trail.bestConditions)}
-        ${field('☀️ Best Time of Day', trail.bestTimeOfDay)}
-        ${field('☕ Coffee Nearby',    trail.coffeeNearby)}
-        ${field('🅿️ Parking',         trail.parking)}
-        ${field('🕐 Hours',           trail.hours)}
-        ${field('📞 Phone',           trail.phone)}
-        ${field('⚠️ Notes',           trail.notes)}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+        ${field('Ride Risk Profile', trail.rideRiskProfile)}
+        ${field('Weather Suitability', trail.weatherSuitability)}
+        ${field('Night Riding Suitability', trail.nightRidingSuitability)}
+        ${field('Traffic Exposure Rating', trail.trafficExposureRating)}
+        ${field('Lighting Notes', trail.parkingSafetyNotes)}
+        ${field('Emergency Access Notes', trail.emergencyAccessNotes)}
+        ${field('Cell Coverage Notes', trail.cellCoverageNotes)}
       </div>`;
 
-    // Nearby & Links
-    const nl = pane('nearby-links');
-    if (nl) nl.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
-        ${field('📍 Nearby',     trail.nearby)}
-        ${field('🔗 Links',      trail.links, true)}
-        ${field('🔗 Links 2',    trail.links2, true)}
-        ${trail.mapsLink ? `<div><strong>🗺️ Google Maps</strong><br><a href="${escapeHtml(trail.mapsLink)}" target="_blank" style="color:#3b82f6;">Open in Maps</a></div>` : ''}
-        ${field('🆔 Google Place ID', trail.googlePlaceId)}
+    // Nearby
+    const nearby = pane('nearby');
+    if (nearby) nearby.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+        ${field('Bike Shop Nearby', trail.bikeShopNearby)}
+        ${field('Local Shops Nearby', trail.localShopsNearby)}
+        ${field('Coffee Nearby', trail.coffeeNearby)}
+        ${field('Food Nearby', trail.foodNearby)}
+        ${field('Brewery Nearby', trail.breweryNearby)}
+      </div>`;
+
+    // Links and Websites
+    const links = pane('links-websites');
+    if (links) links.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+        ${field('AllTrails', trail.allTrails, true)}
+        ${field('MTBProject', trail.mtbProject, true)}
+        ${field('HikingProject', trail.hikingProject, true)}
+        ${field('Singletracks', trail.singletracks, true)}
+        ${field('RideWithGPS', trail.rideWithGps, true)}
+        ${field('OpenStreetMap', trail.openStreetMap, true)}
+        ${field('Official Link 1', trail.officialLink1, true)}
+        ${field('Official Link 2', trail.officialLink2, true)}
+        ${field('Official Link 3', trail.officialLink3, true)}
+        ${field('TrailLink', trail.trailLink, true)}
+      </div>`;
+
+    // Along the Trail
+    const alongTrail = pane('along-trail');
+    if (alongTrail) alongTrail.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+        ${field('Photo Spots', trail.photoSpots)}
+        ${field('Local Wildlife Notes', trail.localWildlifeNotes)}
+        ${field('Local History / Fun Fact', trail.localHistoryFunFact)}
+        ${field('Seasonal Notes', trail.seasonalNotes)}
+        ${field('Scenic & Nature', trail.scenicNature)}
       </div>`;
 
     // ── Tab switching inside modal ──
@@ -1192,11 +1141,16 @@
   };
 
   function field(label, value, isLink) {
-    if (!value) return '';
-    const safe = escapeHtml(String(value));
-    const display = isLink && /^https?:\/\//.test(String(value))
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw) {
+      return `<div><strong>${label}</strong><br><span style="color:#9ca3af;font-style:italic;">No data yet</span></div>`;
+    }
+
+    const safe = escapeHtml(raw);
+    const display = isLink && /^https?:\/\//.test(raw)
       ? `<a href="${safe}" target="_blank" style="color:#3b82f6;word-break:break-all;">${safe}</a>`
       : `<span style="color:#374151;">${safe}</span>`;
+
     return `<div><strong>${label}</strong><br>${display}</div>`;
   }
 
