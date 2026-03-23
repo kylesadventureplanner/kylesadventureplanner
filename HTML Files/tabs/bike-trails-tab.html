@@ -5,6 +5,11 @@
 <header>
   <h1>Bike Trails</h1>
   <div style="display: flex; gap: 8px; align-items: center;">
+    <button id="bikeTrailExplorerBtn" title="Open Trail Explorer - browse by conditions, distance, time of day" data-tooltip="Open Trail Explorer"
+      style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(139,92,246,0.3); transition:all 0.2s;"
+      onclick="window.openBikeTrailExplorer?.()">
+      🗺️ Trail Explorer
+    </button>
     <button id="bikeRefreshBtn" title="Refresh bike trail data from Excel" data-tooltip="Refresh bike trail data from Excel"
       style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:linear-gradient(135deg,#10b981 0%,#059669 100%); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.3); transition:all 0.2s;"
       onclick="window.refreshBikeTrailData()">
@@ -222,6 +227,105 @@
   </div>
 </div>
 <div id="bikeTrailDetailModalBackdrop" class="modal-backdrop" style="display: none; z-index: 1001;"></div>
+
+<!-- TRAIL EXPLORER MODAL -->
+<div id="bikeTrailExplorerModal" class="modal-backdrop" style="display: none; z-index: 2000; background: rgba(0,0,0,0.5);">
+  <div style="background: white; border-radius: 16px; width: min(1000px, 95vw); height: min(90vh, 900px); max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.3); overflow: hidden;">
+    <!-- Header -->
+    <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
+      <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #1f2937;">🗺️ Trail Explorer - Find Your Perfect Ride</h2>
+      <button id="bikeExplorerCloseBtn" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280; padding: 0; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">×</button>
+    </div>
+
+    <!-- Explorer Tabs -->
+    <div style="display: flex; gap: 4px; padding: 12px 24px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; flex-shrink: 0; overflow-x: auto;">
+      <button class="bike-explorer-tab active" data-explorer-tab="distance" style="padding: 8px 14px; background: white; border: 2px solid #8b5cf6; border-radius: 6px; cursor: pointer; font-weight: 600; color: #8b5cf6; white-space: nowrap;">📍 By Distance</button>
+      <button class="bike-explorer-tab" data-explorer-tab="terrain" style="padding: 8px 14px; background: transparent; border: 2px solid #d1d5db; border-radius: 6px; cursor: pointer; font-weight: 600; color: #6b7280; white-space: nowrap;">🛣️ By Terrain</button>
+      <button class="bike-explorer-tab" data-explorer-tab="difficulty" style="padding: 8px 14px; background: transparent; border: 2px solid #d1d5db; border-radius: 6px; cursor: pointer; font-weight: 600; color: #6b7280; white-space: nowrap;">📊 By Difficulty</button>
+      <button class="bike-explorer-tab" data-explorer-tab="length" style="padding: 8px 14px; background: transparent; border: 2px solid #d1d5db; border-radius: 6px; cursor: pointer; font-weight: 600; color: #6b7280; white-space: nowrap;">📏 By Length</button>
+      <button class="bike-explorer-tab" data-explorer-tab="time" style="padding: 8px 14px; background: transparent; border: 2px solid #d1d5db; border-radius: 6px; cursor: pointer; font-weight: 600; color: #6b7280; white-space: nowrap;">🕐 By Time of Day</button>
+      <button class="bike-explorer-tab" data-explorer-tab="conditions" style="padding: 8px 14px; background: transparent; border: 2px solid #d1d5db; border-radius: 6px; cursor: pointer; font-weight: 600; color: #6b7280; white-space: nowrap;">🌤️ By Conditions</button>
+    </div>
+
+    <!-- Explorer Content -->
+    <div style="flex: 1; overflow-y: auto; padding: 24px;">
+      <!-- Distance Tab -->
+      <div class="bike-explorer-content active" data-explorer-content="distance" style="display: none;">
+        <h3 style="margin-top: 0; font-size: 16px; font-weight: 600; margin-bottom: 16px;">How far are you willing to travel?</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+          <button class="bike-explorer-option" data-filter-type="driveTime" data-filter-value="under30" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">⚡ Under 15 min</button>
+          <button class="bike-explorer-option" data-filter-type="driveTime" data-filter-value="under30" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🚗 15-30 min</button>
+          <button class="bike-explorer-option" data-filter-type="driveTime" data-filter-value="30to60" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🛣️ 30-60 min</button>
+          <button class="bike-explorer-option" data-filter-type="driveTime" data-filter-value="over60" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🗺️ Over 1 hour</button>
+        </div>
+      </div>
+
+      <!-- Terrain Tab -->
+      <div class="bike-explorer-content" data-explorer-content="terrain" style="display: none;">
+        <h3 style="margin-top: 0; font-size: 16px; font-weight: 600; margin-bottom: 16px;">What surface are you in the mood for?</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+          <button class="bike-explorer-option" data-filter-type="surface" data-filter-value="paved" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🛣️ Paved</button>
+          <button class="bike-explorer-option" data-filter-type="surface" data-filter-value="gravel" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🪨 Gravel</button>
+          <button class="bike-explorer-option" data-filter-type="surface" data-filter-value="dirt" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🌍 Dirt/Singletrack</button>
+          <button class="bike-explorer-option" data-filter-type="surface" data-filter-value="mixed" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🔀 Mixed</button>
+        </div>
+      </div>
+
+      <!-- Difficulty Tab -->
+      <div class="bike-explorer-content" data-explorer-content="difficulty" style="display: none;">
+        <h3 style="margin-top: 0; font-size: 16px; font-weight: 600; margin-bottom: 16px;">How hard do you want to push?</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+          <button class="bike-explorer-option" data-filter-type="difficulty" data-filter-value="easy" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🟢 Easy</button>
+          <button class="bike-explorer-option" data-filter-type="difficulty" data-filter-value="moderate" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🟡 Moderate</button>
+          <button class="bike-explorer-option" data-filter-type="difficulty" data-filter-value="hard" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🔴 Hard</button>
+          <button class="bike-explorer-option" data-filter-type="elevation" data-filter-value="low" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">📉 Mostly Flat</button>
+          <button class="bike-explorer-option" data-filter-type="elevation" data-filter-value="medium" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🗻 Some Climbing</button>
+          <button class="bike-explorer-option" data-filter-type="elevation" data-filter-value="high" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">⛰️ Lots of Climbing</button>
+        </div>
+      </div>
+
+      <!-- Length Tab -->
+      <div class="bike-explorer-content" data-explorer-content="length" style="display: none;">
+        <h3 style="margin-top: 0; font-size: 16px; font-weight: 600; margin-bottom: 16px;">How long do you have?</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+          <button class="bike-explorer-option" data-filter-type="lengthBand" data-filter-value="short" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">⚡ Short (0-10 mi)</button>
+          <button class="bike-explorer-option" data-filter-type="lengthBand" data-filter-value="medium" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🚴 Medium (10-25 mi)</button>
+          <button class="bike-explorer-option" data-filter-type="lengthBand" data-filter-value="long" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🗺️ Long (25+ mi)</button>
+        </div>
+      </div>
+
+      <!-- Time of Day Tab -->
+      <div class="bike-explorer-content" data-explorer-content="time" style="display: none;">
+        <h3 style="margin-top: 0; font-size: 16px; font-weight: 600; margin-bottom: 16px;">When do you want to ride?</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+          <button class="bike-explorer-option" data-filter-type="timeOfDay" data-filter-value="morning" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🌅 Morning</button>
+          <button class="bike-explorer-option" data-filter-type="timeOfDay" data-filter-value="afternoon" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">☀️ Afternoon</button>
+          <button class="bike-explorer-option" data-filter-type="timeOfDay" data-filter-value="evening" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🌅 Evening</button>
+          <button class="bike-explorer-option" data-filter-type="timeOfDay" data-filter-value="night" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🌙 Night</button>
+        </div>
+      </div>
+
+      <!-- Conditions Tab -->
+      <div class="bike-explorer-content" data-explorer-content="conditions" style="display: none;">
+        <h3 style="margin-top: 0; font-size: 16px; font-weight: 600; margin-bottom: 16px;">What weather are you riding in?</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+          <button class="bike-explorer-option" data-filter-type="condition" data-filter-value="sunny" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">☀️ Sunny & Warm</button>
+          <button class="bike-explorer-option" data-filter-type="condition" data-filter-value="cool" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">❄️ Cool/Windy</button>
+          <button class="bike-explorer-option" data-filter-type="condition" data-filter-value="forest" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🌲 Forest/Shaded</button>
+          <button class="bike-explorer-option" data-filter-type="condition" data-filter-value="scenic" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">🏞️ Scenic Views</button>
+          <button class="bike-explorer-option" data-filter-type="condition" data-filter-value="social" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">👥 Less Crowded</button>
+          <button class="bike-explorer-option" data-filter-type="condition" data-filter-value="coffee" style="padding: 16px; border: 2px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; font-weight: 600; transition: all 0.2s;">☕ Coffee Nearby</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer with Apply Button -->
+    <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #f9fafb; display: flex; gap: 12px; justify-content: flex-end; flex-shrink: 0;">
+      <button id="bikeExplorerClearBtn" style="padding: 10px 20px; background: white; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer; font-weight: 600; color: #6b7280;">Clear Selections</button>
+      <button id="bikeExplorerApplyBtn" style="padding: 10px 20px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; color: white; box-shadow: 0 2px 8px rgba(139,92,246,0.3);">Apply Filters & Close</button>
+    </div>
+  </div>
+</div>
 
 <script>
   // Delegate initialization to the bike tab system if available.

@@ -1034,6 +1034,7 @@
 
   function initializeBikeTrailsTab() {
     bindBikeControls();
+    bindTrailExplorerEvents();
     updateBikeDebugDetailsLine();
 
     if (!state.initialized) {
@@ -1093,6 +1094,186 @@
       }
     }
   }
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ─── Trail Explorer System ───────────────────────────────────────────────────
+  // Provides an intuitive browsing interface for finding trails by various criteria
+
+  const explorerState = {
+    selectedFilters: {} // { filterType: filterValue }
+  };
+
+  function openBikeTrailExplorer() {
+    const modal = document.getElementById('bikeTrailExplorerModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      explorerState.selectedFilters = {};
+      updateExplorerUI();
+    }
+  }
+
+  function closeBikeTrailExplorer() {
+    const modal = document.getElementById('bikeTrailExplorerModal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  function updateExplorerUI() {
+    // Clear all button selections
+    document.querySelectorAll('.bike-explorer-option').forEach((btn) => {
+      btn.style.borderColor = '#e5e7eb';
+      btn.style.background = 'white';
+      btn.style.color = 'inherit';
+    });
+
+    // Reapply current selections
+    Object.entries(explorerState.selectedFilters).forEach(([filterType, filterValue]) => {
+      const buttons = document.querySelectorAll(
+        `.bike-explorer-option[data-filter-type="${filterType}"][data-filter-value="${filterValue}"]`
+      );
+      buttons.forEach((btn) => {
+        btn.style.borderColor = '#8b5cf6';
+        btn.style.background = '#f3e8ff';
+        btn.style.color = '#7c3aed';
+      });
+    });
+  }
+
+  function bindTrailExplorerEvents() {
+    // Close button
+    const closeBtn = document.getElementById('bikeExplorerCloseBtn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeBikeTrailExplorer);
+    }
+
+    // Tab switching
+    document.querySelectorAll('.bike-explorer-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.getAttribute('data-explorer-tab');
+        if (!tabName) return;
+
+        // Update tab buttons
+        document.querySelectorAll('.bike-explorer-tab').forEach((t) => {
+          t.style.borderColor = '#d1d5db';
+          t.style.background = 'transparent';
+          t.style.color = '#6b7280';
+        });
+        tab.style.borderColor = '#8b5cf6';
+        tab.style.background = 'white';
+        tab.style.color = '#8b5cf6';
+
+        // Update content
+        document.querySelectorAll('.bike-explorer-content').forEach((content) => {
+          content.style.display = 'none';
+        });
+        const activeContent = document.querySelector(`.bike-explorer-content[data-explorer-content="${tabName}"]`);
+        if (activeContent) {
+          activeContent.style.display = 'block';
+        }
+      });
+    });
+
+    // Option buttons
+    document.querySelectorAll('.bike-explorer-option').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const filterType = btn.getAttribute('data-filter-type');
+        const filterValue = btn.getAttribute('data-filter-value');
+
+        if (!filterType || !filterValue) return;
+
+        // Toggle selection
+        if (explorerState.selectedFilters[filterType] === filterValue) {
+          delete explorerState.selectedFilters[filterType];
+        } else {
+          explorerState.selectedFilters[filterType] = filterValue;
+        }
+
+        updateExplorerUI();
+      });
+    });
+
+    // Clear button
+    const clearBtn = document.getElementById('bikeExplorerClearBtn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        explorerState.selectedFilters = {};
+        updateExplorerUI();
+      });
+    }
+
+    // Apply button
+    const applyBtn = document.getElementById('bikeExplorerApplyBtn');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', () => {
+        applyExplorerFilters();
+        closeBikeTrailExplorer();
+      });
+    }
+
+    // Close on modal backdrop click
+    const modal = document.getElementById('bikeTrailExplorerModal');
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeBikeTrailExplorer();
+        }
+      });
+    }
+  }
+
+  function applyExplorerFilters() {
+    // Reset existing filters first
+    Object.keys(state.filters).forEach((key) => {
+      state.filters[key] = '';
+      const inputId = getBikeFilterInputId(key);
+      const input = inputId ? document.getElementById(inputId) : null;
+      if (input) input.value = '';
+    });
+
+    // Apply explorer selections
+    Object.entries(explorerState.selectedFilters).forEach(([filterType, filterValue]) => {
+      if (filterType === 'driveTime') {
+        state.filters.driveTimeBand = filterValue;
+        const input = document.getElementById('bikeFilterDriveTimeBand');
+        if (input) input.value = filterValue;
+      } else if (filterType === 'surface') {
+        state.filters.surface = filterValue;
+        const input = document.getElementById('bikeFilterSurface');
+        if (input) input.value = filterValue;
+      } else if (filterType === 'difficulty') {
+        state.filters.difficulty = filterValue;
+        const input = document.getElementById('bikeFilterDifficulty');
+        if (input) input.value = filterValue;
+      } else if (filterType === 'elevation') {
+        // For elevation, we'll mark it but use difficulty
+        if (filterValue === 'low') state.filters.difficulty = 'easy';
+        else if (filterValue === 'medium') state.filters.difficulty = 'moderate';
+        else if (filterValue === 'high') state.filters.difficulty = 'hard';
+      } else if (filterType === 'lengthBand') {
+        state.filters.lengthBand = filterValue;
+        const input = document.getElementById('bikeFilterLengthBand');
+        if (input) input.value = filterValue;
+      } else if (filterType === 'timeOfDay') {
+        // Store in vibes/mood tags for matching
+        state.filters.searchName = filterValue;
+        const input = document.getElementById('bikeSearchName');
+        if (input) input.value = filterValue;
+      } else if (filterType === 'condition') {
+        // Store condition preference for matching
+        state.filters.searchName = filterValue;
+        const input = document.getElementById('bikeSearchName');
+        if (input) input.value = filterValue;
+      }
+    });
+
+    // Trigger filter application
+    applyBikeFilters();
+  }
+
+  window.openBikeTrailExplorer = openBikeTrailExplorer;
+  window.closeBikeTrailExplorer = closeBikeTrailExplorer;
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   window.findBikeTrailById = findBikeTrailById;
