@@ -979,6 +979,174 @@
     };
   }
 
+  function compareTrails(a, b) {
+    const sortBy = state.sortBy;
+    const mult = state.sortAsc ? 1 : -1;
+
+    if (sortBy === 'driveTime') return (a.driveMinutes - b.driveMinutes) * mult;
+    if (sortBy === 'length') return (a.lengthMiles - b.lengthMiles) * mult;
+    if (sortBy === 'difficulty') return norm(a.difficulty).localeCompare(norm(b.difficulty)) * mult;
+    if (sortBy === 'elevation') return (a.elevationGain - b.elevationGain) * mult;
+    if (sortBy === 'surface') return norm(a.surface).localeCompare(norm(b.surface)) * mult;
+    if (sortBy === 'rating') return (a.myRating - b.myRating) * mult;
+    return norm(a.name).localeCompare(norm(b.name)) * mult;
+  }
+
+  function renderBikeTrailsPage() {
+    const grid = document.getElementById('bikeTrailsCardsGrid');
+    const resultsCount = document.getElementById('bikeResultsCount');
+    if (!grid) return;
+
+    const total = (window.bikeFilteredTrails || []).length;
+    const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+    state.currentPage = Math.min(Math.max(1, state.currentPage), totalPages);
+
+    const startIndex = (state.currentPage - 1) * ITEMS_PER_PAGE;
+    const pageItems = (window.bikeFilteredTrails || []).slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+    if (resultsCount) {
+      const label = total === 1 ? 'trail' : 'trails';
+      resultsCount.textContent = `${total} ${label}`;
+    }
+
+    if (!pageItems.length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af;">No bike trails match your current filters.</div>';
+    } else {
+      grid.innerHTML = pageItems.map((trail) => {
+        const tags = [trail.surface, trail.difficulty].filter(Boolean);
+        const tagPills = tags.map((t) => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('');
+        const favIcon = trail.isFavorite ? '💖' : '🤍';
+        const rating = Math.max(0, Math.min(5, Number(trail.myRating || 0)));
+        const ratingText = rating > 0 ? `${'⭐'.repeat(rating)}${'☆'.repeat(5 - rating)}` : 'No rating';
+
+        return `
+          <div class="adventure-card bike-trail-card"
+               data-card-domain="bike"
+               data-bike-source-index="${trail.sourceIndex}"
+               data-bike-trail-id="${escapeHtml(trail.id)}"
+               style="cursor:pointer;"
+               onclick="window.showBikeTrailDetails(${trail.sourceIndex})"
+               title="Open trail details">
+            <div class="card-header">
+              <h3 class="card-title">${escapeHtml(trail.name || 'Unnamed Ride')}</h3>
+              <div class="card-location">📍 ${escapeHtml(trail.region || trail.city || 'Unknown region')}</div>
+              ${trail.driveTime ? `<div class="card-drive-time">🚗 ${escapeHtml(trail.driveTime)}</div>` : ''}
+            </div>
+            <div class="card-body">
+              ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
+              ${trail.description ? `<div class="card-description">${escapeHtml(trail.description).substring(0, 140)}${trail.description.length > 140 ? '...' : ''}</div>` : ''}
+              <div class="card-info">
+                ${trail.lengthMiles ? `<div class="card-info-item">Length: <strong>${escapeHtml(String(trail.lengthMiles))} mi</strong></div>` : ''}
+                ${trail.elevationGain ? `<div class="card-info-item">Elevation: <strong>${escapeHtml(String(trail.elevationGain))} ft</strong></div>` : ''}
+                ${trail.cost ? `<div class="card-info-item">Cost: <strong>${escapeHtml(trail.cost)}</strong></div>` : ''}
+                <div class="card-info-item">Favorite: <strong>${favIcon}</strong></div>
+                <div class="card-info-item">Rating: <strong>${ratingText}</strong></div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    const rangeStart = total ? startIndex + 1 : 0;
+    const rangeEnd = total ? Math.min(startIndex + ITEMS_PER_PAGE, total) : 0;
+    const visibility = total > ITEMS_PER_PAGE ? 'flex' : 'none';
+
+    const paginationTargets = [
+      {
+        container: document.getElementById('bikePaginationControls'),
+        current: document.getElementById('bikeCurrentPageNum'),
+        total: document.getElementById('bikeTotalPagesNum'),
+        start: document.getElementById('bikeShowingRangeStart'),
+        end: document.getElementById('bikeShowingRangeEnd'),
+        all: document.getElementById('bikeTotalResultsNum'),
+        prev: document.getElementById('bikePrevPageBtn'),
+        next: document.getElementById('bikeNextPageBtn')
+      },
+      {
+        container: document.getElementById('bikePaginationControlsTop'),
+        current: document.getElementById('bikeCurrentPageNumTop'),
+        total: document.getElementById('bikeTotalPagesNumTop'),
+        start: document.getElementById('bikeShowingRangeStartTop'),
+        end: document.getElementById('bikeShowingRangeEndTop'),
+        all: document.getElementById('bikeTotalResultsNumTop'),
+        prev: document.getElementById('bikePrevPageBtnTop'),
+        next: document.getElementById('bikeNextPageBtnTop')
+      }
+    ];
+
+    paginationTargets.forEach((target) => {
+      if (!target.container) return;
+      target.container.style.display = visibility;
+      if (target.current) target.current.textContent = String(state.currentPage);
+      if (target.total) target.total.textContent = String(totalPages);
+      if (target.start) target.start.textContent = String(rangeStart);
+      if (target.end) target.end.textContent = String(rangeEnd);
+      if (target.all) target.all.textContent = String(total);
+      if (target.prev) target.prev.disabled = state.currentPage <= 1;
+      if (target.next) target.next.disabled = state.currentPage >= totalPages;
+    });
+  }
+
+  function getPreferredTrailMapUrl(trail) {
+    return trail.mapsLink || trail.googleMapsTrailhead || trail.googleMapsParking || trail.parkingLink || '';
+  }
+
+  function renderBikeModalActionBar(modal, trail, sourceIndex) {
+    if (!modal) return;
+    const footer = modal.querySelector('.row-detail-footer');
+    if (!footer) return;
+
+    let actionBar = modal.querySelector('#bikeTrailModalActionBar');
+    if (!actionBar) {
+      actionBar = document.createElement('div');
+      actionBar.id = 'bikeTrailModalActionBar';
+      actionBar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start;margin-right:auto;';
+      footer.prepend(actionBar);
+    }
+
+    const rating = Math.max(0, Math.min(5, Number(trail.myRating || 0)));
+    const mapsUrl = getPreferredTrailMapUrl(trail);
+
+    actionBar.innerHTML = `
+      <button type="button" id="bikeTrailModalMapsBtn" class="row-detail-footer-btn" ${mapsUrl ? '' : 'disabled'}>🗺️ Open Maps</button>
+      <button type="button" id="bikeTrailModalParkingBtn" class="row-detail-footer-btn" ${trail.parkingLink ? '' : 'disabled'}>🅿️ Parking Map</button>
+      <button type="button" id="bikeTrailModalFavoriteBtn" class="row-detail-footer-btn">${trail.isFavorite ? '💖 Favorite' : '🤍 Favorite'}</button>
+      <div id="bikeTrailModalRatingControls" style="display:inline-flex;align-items:center;gap:4px;">
+        ${[1,2,3,4,5].map((s) => `<button type="button" class="row-detail-footer-btn bike-modal-rating-btn" data-rating="${s}" title="Rate ${s} stars" style="padding:6px 8px;">${rating >= s ? '⭐' : '☆'}</button>`).join('')}
+      </div>
+    `;
+
+    const mapsBtn = actionBar.querySelector('#bikeTrailModalMapsBtn');
+    if (mapsBtn) mapsBtn.onclick = () => {
+      if (!mapsUrl) return;
+      window.open(mapsUrl, '_blank', 'noopener');
+    };
+
+    const parkingBtn = actionBar.querySelector('#bikeTrailModalParkingBtn');
+    if (parkingBtn) parkingBtn.onclick = () => {
+      if (!trail.parkingLink) return;
+      window.open(trail.parkingLink, '_blank', 'noopener');
+    };
+
+    const favBtn = actionBar.querySelector('#bikeTrailModalFavoriteBtn');
+    if (favBtn) favBtn.onclick = () => {
+      window.toggleBikeTrailFavorite(sourceIndex, null);
+      const refreshed = trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex);
+      favBtn.textContent = refreshed.isFavorite ? '💖 Favorite' : '🤍 Favorite';
+      renderBikeTrailsPage();
+    };
+
+    actionBar.querySelectorAll('.bike-modal-rating-btn').forEach((btn) => {
+      btn.onclick = () => {
+        const value = Number(btn.getAttribute('data-rating'));
+        if (!Number.isInteger(value) || value < 1 || value > 5) return;
+        window.setBikeRating(sourceIndex, value);
+        const refreshed = trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex);
+        renderBikeModalActionBar(modal, refreshed, sourceIndex);
+      };
+    });
+  }
+
   // ─── Bike Trail Details Modal ────────────────────────────────────────────────
   window.showBikeTrailDetails = function(sourceIndex) {
     const rows = window.bikeTrailsData || [];
@@ -997,6 +1165,7 @@
     const locationEl = document.getElementById('bikeTrailDetailLocation');
     if (titleEl)    titleEl.textContent    = trail.name || 'Unnamed Ride';
     if (locationEl) locationEl.textContent = [trail.region, trail.city, trail.state].filter(Boolean).join(' • ');
+    modal.dataset.sourceIndex = String(sourceIndex);
 
     // ── Populate tab panes ──
     const pane = (tab) => modal.querySelector(`.row-detail-tab-pane[data-tab="${tab}"]`);
@@ -1123,6 +1292,7 @@
     });
     // Reset to first tab
     modal.querySelectorAll('.row-detail-tab-btn')[0]?.click();
+    renderBikeModalActionBar(modal, trail, sourceIndex);
 
     // ── Close handlers ──
     const closeFn = () => {
