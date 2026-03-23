@@ -2,18 +2,175 @@
 <!-- This file is loaded dynamically by tab-content-loader.js -->
 <!-- All CSS, JS, and functions are available from the main index -->
 
-<div class="tab-placeholder">
-  <div class="tab-placeholder-icon">🚴</div>
-  <div class="tab-placeholder-text">Bike Trails</div>
-  <div class="tab-placeholder-subtext">Explore paved and dirt/gravel bike trails near you</div>
+<header>
+  <h1>Bike Trails</h1>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <button id="bikeIphoneToggleBtn" class="iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
+      📱 iPhone View
+    </button>
+  </div>
+</header>
+
+<!-- Filters Active Badge -->
+<div style="padding: 8px 0; margin-bottom: 8px;">
+  <span id="bikeFiltersActiveBadge" class="filters-active-badge">Filters Active</span>
+</div>
+
+<!-- Control Panel Card -->
+<div id="bikeControlPanelCard" class="card control-panel-card">
+  <div class="card-header">
+    <div class="card-title">🎛️ Ride Filters</div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <button id="bikeFindNearMeBtn" class="find-near-me-btn" title="Find trails near your current location" data-tooltip="Find trails near your current location">
+        📍 Find Near Me
+      </button>
+      <button id="bikeResetAllFiltersTop" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
+    </div>
+  </div>
+  <div class="control-panel-grid">
+    <div class="filter-item">
+      <label for="bikeSearchName">Search Ride Name</label>
+      <input id="bikeSearchName" class="filter-input" type="text" placeholder="Search bike trails..." list="bikeNameList" />
+    </div>
+    <div class="filter-item">
+      <label for="bikeFilterRegion">Filter by Region</label>
+      <input id="bikeFilterRegion" class="filter-input" type="text" placeholder="Upstate, Midlands..." list="bikeRegionList" />
+    </div>
+    <div class="filter-item">
+      <label for="bikeFilterDifficulty">Filter by Difficulty</label>
+      <input id="bikeFilterDifficulty" class="filter-input" type="text" placeholder="Easy, Moderate, Hard..." list="bikeDifficultyList" />
+    </div>
+    <div class="filter-item">
+      <label for="bikeFilterSurface">Filter by Surface</label>
+      <input id="bikeFilterSurface" class="filter-input" type="text" placeholder="Paved, Gravel, Mixed..." list="bikeSurfaceList" />
+    </div>
+    <div class="filter-item">
+      <label for="bikeFilterLengthBand">Length Band</label>
+      <select id="bikeFilterLengthBand" class="filter-select">
+        <option value="">Any</option>
+        <option value="short">Short (0-10 mi)</option>
+        <option value="medium">Medium (10-25 mi)</option>
+        <option value="long">Long (25+ mi)</option>
+      </select>
+    </div>
+    <div class="filter-item">
+      <label for="bikeFilterDriveTimeBand">Drive Time</label>
+      <select id="bikeFilterDriveTimeBand" class="filter-select">
+        <option value="">Any</option>
+        <option value="under30">Under 30 min</option>
+        <option value="30to60">30-60 min</option>
+        <option value="over60">Over 60 min</option>
+      </select>
+    </div>
+    <div class="filter-item">
+      <label for="bikeFilterTraffic">Traffic Exposure</label>
+      <input id="bikeFilterTraffic" class="filter-input" type="text" placeholder="Low, Medium, High..." list="bikeTrafficList" />
+    </div>
+    <div class="filter-item">
+      <label for="bikeGroupBy">Group By</label>
+      <select id="bikeGroupBy" class="filter-select">
+        <option value="">None</option>
+        <option value="Region">Region</option>
+        <option value="Difficulty">Difficulty</option>
+        <option value="Surface Type">Surface Type</option>
+        <option value="Drive Time">Drive Time</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- Common Filters -->
+<div id="bikeQuickFiltersCard" class="card quick-filters-card">
+  <div class="card-header">
+    <div class="card-title">⚡ Quick Ride Filters</div>
+    <button id="bikeResetAllFiltersBottom" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
+  </div>
+  <div class="quick-filters-container">
+    <button id="bikeFavoritesFilterBtn" class="quick-filter-btn favorites-filter-btn" data-filter="favorites" title="Show only your favorite rides" data-tooltip="Show only your favorite rides">💖 My Favorites</button>
+    <button class="quick-filter-btn" data-bike-filter="easy" title="Easy rides">🟢 Easy</button>
+    <button class="quick-filter-btn" data-bike-filter="moderate" title="Moderate rides">🟡 Moderate</button>
+    <button class="quick-filter-btn" data-bike-filter="hard" title="Hard rides">🔴 Hard</button>
+    <button class="quick-filter-btn" data-bike-filter="paved" title="Paved trails">🛣️ Paved</button>
+    <button class="quick-filter-btn" data-bike-filter="gravel" title="Gravel routes">🪨 Gravel</button>
+    <button class="quick-filter-btn" data-bike-filter="under30" title="Under 30 minute drive">⏱️ Under 30 Min</button>
+    <button class="quick-filter-btn" data-bike-filter="low-elevation" title="Lower elevation gain">📉 Low Elevation</button>
+    <button class="quick-filter-btn" data-bike-filter="family" title="Family-friendly rides">👨‍👩‍👧‍👦 Family Friendly</button>
+    <button class="quick-filter-btn" data-bike-filter="coffee" title="Coffee nearby">☕ Coffee Nearby</button>
+  </div>
+</div>
+
+<!-- Autofill Datalists -->
+<datalist id="bikeNameList"></datalist>
+<datalist id="bikeRegionList"></datalist>
+<datalist id="bikeDifficultyList"></datalist>
+<datalist id="bikeSurfaceList"></datalist>
+<datalist id="bikeTrafficList"></datalist>
+
+<!-- Breadcrumb Filter Menu -->
+<div id="bikeBreadcrumbFilterMenu" class="breadcrumb-filter-menu">
+  <div id="bikeBreadcrumbContainer" class="breadcrumb-container"></div>
+  <button id="bikeBreadcrumbResetBtn" class="breadcrumb-reset-btn">🔄 Clear Filters</button>
+</div>
+
+<!-- Bike Trail List -->
+<div class="card table-card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Bike Trail List</div>
+      <div class="card-subtitle">Data source: Bike_Trail_Planner.xlsx</div>
+    </div>
+  </div>
+  <div class="view-controls">
+    <div class="sort-controls">
+      <label for="bikeSortBy" class="sort-label">Sort by:</label>
+      <select id="bikeSortBy" class="sort-select">
+        <option value="name">Ride Name</option>
+        <option value="driveTime">Drive Time</option>
+        <option value="length">Length (miles)</option>
+        <option value="difficulty">Difficulty</option>
+        <option value="elevation">Elevation Gain</option>
+        <option value="surface">Surface Type</option>
+        <option value="rating">My Rating</option>
+      </select>
+      <button id="bikeSortOrderBtn" class="sort-order-btn" title="Toggle sort order">
+        <span class="sort-icon">↑</span>
+      </button>
+    </div>
+    <div class="results-count" id="bikeResultsCount">0 trails</div>
+  </div>
+
+  <!-- Pagination Controls (Top) -->
+  <div id="bikePaginationControlsTop" class="pagination-controls" style="display: none;">
+    <button id="bikePrevPageBtnTop" class="pagination-btn" onclick="changeBikePage(-1)">← Previous</button>
+    <div class="pagination-info">
+      Page <span id="bikeCurrentPageNumTop">1</span> of <span id="bikeTotalPagesNumTop">1</span>
+      <span class="pagination-separator">•</span>
+      Showing <span id="bikeShowingRangeStartTop">1</span>-<span id="bikeShowingRangeEndTop">20</span> of <span id="bikeTotalResultsNumTop">0</span>
+    </div>
+    <button id="bikeNextPageBtnTop" class="pagination-btn" onclick="changeBikePage(1)">Next →</button>
+  </div>
+
+  <!-- Bike Trail Cards Grid -->
+  <div id="bikeTrailsCardsGrid" class="adventure-cards-grid">
+    <!-- Bike trail cards will be populated from Excel/Graph -->
+  </div>
+
+  <!-- Pagination Controls (Bottom) -->
+  <div id="bikePaginationControls" class="pagination-controls" style="display: none;">
+    <button id="bikePrevPageBtn" class="pagination-btn" onclick="changeBikePage(-1)">← Previous</button>
+    <div class="pagination-info">
+      Page <span id="bikeCurrentPageNum">1</span> of <span id="bikeTotalPagesNum">1</span>
+      <span class="pagination-separator">•</span>
+      Showing <span id="bikeShowingRangeStart">1</span>-<span id="bikeShowingRangeEnd">20</span> of <span id="bikeTotalResultsNum">0</span>
+    </div>
+    <button id="bikeNextPageBtn" class="pagination-btn" onclick="changeBikePage(1)">Next →</button>
+  </div>
 </div>
 
 <script>
-  // Initialize Bike Trails tab
+  // Starter initializer for bike tab-specific wiring.
   window.initBikeTrailsTab = function() {
     console.log('✅ Bike Trails tab initialized');
-    // Add your bike trails-specific initialization here
-    // All JS functions are available from main index
   };
 </script>
 
