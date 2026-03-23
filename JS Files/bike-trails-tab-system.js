@@ -5,7 +5,8 @@
 
 (function() {
   const BIKE_FILE_PATH_DEFAULT = 'Copilot_Apps/Kyles_Adventure_Finder/Bike_Trail_Planner.xlsx';
-  const BIKE_TABLE_CANDIDATES = ['BikeTrails', 'MyList'];
+  const BIKE_TABLE_NAME = 'BikeTrails';
+  const BIKE_TABLE_CANDIDATES = [BIKE_TABLE_NAME];
   const ITEMS_PER_PAGE = 20;
 
   const BIKE_COLUMNS = [
@@ -96,9 +97,10 @@
 
   window.bikeTrailsData = window.bikeTrailsData || [];
   window.bikeFilteredTrails = window.bikeFilteredTrails || [];
-  window.bikeTableConfig = window.bikeTableConfig || {
+  window.bikeTableConfig = {
+    ...(window.bikeTableConfig || {}),
     filePath: BIKE_FILE_PATH_DEFAULT,
-    tableName: '',
+    tableName: BIKE_TABLE_NAME,
     tableNameCandidates: BIKE_TABLE_CANDIDATES
   };
 
@@ -675,7 +677,7 @@
 
   async function detectTableName(accessToken, filePath) {
     const config = window.bikeTableConfig || {};
-    if (config.tableName) return config.tableName;
+    if (config.tableName === BIKE_TABLE_NAME) return BIKE_TABLE_NAME;
 
     const encodedPath = encodeURIComponent(filePath);
     const tablesUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables`;
@@ -683,16 +685,18 @@
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
-    if (!response.ok) return BIKE_TABLE_CANDIDATES[0];
+    if (!response.ok) {
+      throw new Error(`Unable to verify bike table '${BIKE_TABLE_NAME}' in Bike_Trail_Planner.xlsx (${response.status} ${response.statusText})`);
+    }
 
     const json = await response.json();
     const allTableNames = (json.value || []).map(item => item.name).filter(Boolean);
-    const candidates = Array.isArray(config.tableNameCandidates) && config.tableNameCandidates.length
-      ? config.tableNameCandidates
-      : BIKE_TABLE_CANDIDATES;
 
-    const matched = candidates.find(candidate => allTableNames.includes(candidate));
-    return matched || allTableNames.find(name => /bike/i.test(name)) || allTableNames[0] || BIKE_TABLE_CANDIDATES[0];
+    if (!allTableNames.includes(BIKE_TABLE_NAME)) {
+      throw new Error(`Required bike trails table '${BIKE_TABLE_NAME}' was not found in Bike_Trail_Planner.xlsx. Available tables: ${allTableNames.join(', ') || 'none'}`);
+    }
+
+    return BIKE_TABLE_NAME;
   }
 
   window.loadBikeTrailsTable = async function(force = false) {
@@ -709,10 +713,12 @@
       }
 
       const config = window.bikeTableConfig || {};
-      const filePath = config.filePath || BIKE_FILE_PATH_DEFAULT;
+      const filePath = BIKE_FILE_PATH_DEFAULT;
       const tableName = await detectTableName(accessToken, filePath);
 
-      config.tableName = tableName;
+      config.filePath = BIKE_FILE_PATH_DEFAULT;
+      config.tableName = BIKE_TABLE_NAME;
+      config.tableNameCandidates = BIKE_TABLE_CANDIDATES;
       window.bikeTableConfig = config;
 
       const encodedPath = encodeURIComponent(filePath);
@@ -726,7 +732,7 @@
       });
 
       if (!response.ok) {
-        throw new Error(`Bike trail load failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Bike trail load failed for Bike_Trail_Planner.xlsx / ${BIKE_TABLE_NAME}: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -742,8 +748,8 @@
       populateBikeDatalists();
       window.applyBikeFilters(false);
 
-      window.showToast?.(`Loaded ${rows.length} bike trails`, 'success', 2500);
-      console.log('✅ Bike trails loaded from Excel', { filePath, tableName, count: rows.length });
+      window.showToast?.(`Loaded ${rows.length} bike trails from ${BIKE_TABLE_NAME}`, 'success', 2500);
+      console.log('✅ Bike trails loaded from locked Excel source', { filePath, tableName, count: rows.length });
       return true;
     } catch (error) {
       console.error('❌ loadBikeTrailsTable error:', error);
@@ -827,6 +833,13 @@
   }
 
   window.initializeBikeTrailsTab = async function() {
+    window.bikeTableConfig = {
+      ...(window.bikeTableConfig || {}),
+      filePath: BIKE_FILE_PATH_DEFAULT,
+      tableName: BIKE_TABLE_NAME,
+      tableNameCandidates: BIKE_TABLE_CANDIDATES
+    };
+
     bindBikeControls();
 
     if (!state.initialized) {
