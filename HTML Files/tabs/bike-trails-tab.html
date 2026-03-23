@@ -86,7 +86,7 @@
     <button id="bikeResetAllFiltersBottom" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
   </div>
   <div class="quick-filters-container">
-    <button id="bikeFavoritesFilterBtn" class="quick-filter-btn favorites-filter-btn" data-filter="favorites" title="Show only your favorite rides" data-tooltip="Show only your favorite rides">💖 My Favorites</button>
+    <button id="bikeFavoritesFilterBtn" class="quick-filter-btn favorites-filter-btn" data-bike-filter="favorites" title="Show only your favorite rides" data-tooltip="Show only your favorite rides">💖 My Favorites</button>
     <button class="quick-filter-btn" data-bike-filter="easy" title="Easy rides">🟢 Easy</button>
     <button class="quick-filter-btn" data-bike-filter="moderate" title="Moderate rides">🟡 Moderate</button>
     <button class="quick-filter-btn" data-bike-filter="hard" title="Hard rides">🔴 Hard</button>
@@ -168,9 +168,13 @@
 </div>
 
 <script>
-  // Starter initializer for bike tab-specific wiring.
+  // Delegate initialization to the bike tab system if available.
   window.initBikeTrailsTab = function() {
-    console.log('✅ Bike Trails tab initialized');
+    if (typeof window.initializeBikeTrailsTab === 'function') {
+      window.initializeBikeTrailsTab();
+      return;
+    }
+    console.log('✅ Bike Trails tab initialized (UI only)');
   };
 </script>
 
