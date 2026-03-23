@@ -954,6 +954,13 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     };
     window.__filterBridgeDebugCounters = bridgeCounters;
 
+    window.resetFilterBridgeDebugCounters = function() {
+      bridgeCounters.inputApplied = 0;
+      bridgeCounters.quickApplied = 0;
+      console.log('🔁 Filter bridge debug counters reset', { ...bridgeCounters });
+      return { ...bridgeCounters };
+    };
+
     function bumpBridgeCounter(kind, detail = '') {
       bridgeCounters[kind] = (bridgeCounters[kind] || 0) + 1;
       const label = kind === 'quickApplied' ? 'bridge quick-filter applied' : 'bridge input applied';
@@ -1039,6 +1046,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     }, true);
 
     console.log('✅ Filter reliability bridge installed');
+    console.log('ℹ️ Reset helper available: window.resetFilterBridgeDebugCounters()');
   }
 
    /**
