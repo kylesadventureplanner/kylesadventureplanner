@@ -4,10 +4,19 @@
  */
 
 (function() {
+  // ─── File / table config ────────────────────────────────────────────────────
+  // These values are the *defaults*. If the Excel file lives at a different path
+  // in OneDrive, update BIKE_FILE_PATH_DEFAULT below OR call
+  //   window.setBikeConfig({ filePath: 'Your/OneDrive/Path/File.xlsx', tableName: 'TableName' })
+  // from the browser console at any time without touching this file.
   const BIKE_FILE_PATH_DEFAULT = 'Copilot_Apps/Kyles_Adventure_Finder/Bike_Trail_Planner.xlsx';
-  const BIKE_FILE_NAME = 'Bike_Trail_Planner.xlsx';
-  const BIKE_TABLE_NAME = 'BikeTrails';
-  const BIKE_TABLE_CANDIDATES = [BIKE_TABLE_NAME];
+  const BIKE_FILE_NAME         = 'Bike_Trail_Planner.xlsx';
+  const BIKE_TABLE_NAME        = 'BikeTrails';
+  // Extra candidate table names tried automatically when BIKE_TABLE_NAME 404s
+  const BIKE_TABLE_CANDIDATES  = [
+    BIKE_TABLE_NAME,
+    'Table1', 'Sheet1', 'Bike Trails', 'biketrails', 'Trails', 'trails'
+  ];
   const BIKE_DIFFICULTY_SCORE_COLUMN = 'Difficulty Score (0\u2013100)';
   const BIKE_PREFERENCE_COLUMNS = {
     rating: 'My Rating',
@@ -447,15 +456,151 @@
   //   3. Fetches all rows and stores them in window.bikeTrailsData
   //   4. Migrates any legacy localStorage prefs to Excel (once)
   //   5. Calls applyBikeFilters() to render the cards
-  // Tries each candidate table name in order; returns the resolved tableRef or null.
+  // ─── Diagnostic helpers ──────────────────────────────────────────────────────
+
+  /** Fetch all table names that exist inside a workbook. Returns [] on failure. */
+  async function listWorkbookTables(token, filePath) {
+    const encodedPath = encodeGraphPath(filePath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables`;
+    console.log('[bike-trails] Listing all tables in workbook:', url);
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) {
+        console.warn(`[bike-trails] Could not list workbook tables (${res.status}). The workbook may not exist at this path.`);
+        return [];
+      }
+      const json = await res.json();
+      return (json.value || []).map((t) => t.name).filter(Boolean);
+    } catch (e) {
+      console.warn('[bike-trails] listWorkbookTables error:', e.message);
+      return [];
+    }
+  }
+
+  /** List xlsx files inside the folder that contains filePath. Returns [] on failure. */
+  async function listFolderFiles(token, filePath) {
+    const parts = filePath.split('/').filter(Boolean);
+    parts.pop(); // remove filename
+    if (!parts.length) return [];
+    const folderPath = parts.join('/');
+    const encodedFolder = encodeGraphPath(folderPath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedFolder}:/children`;
+    console.log('[bike-trails] Listing folder contents:', url);
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) {
+        console.warn(`[bike-trails] Could not list folder (${res.status}):`, folderPath);
+        return [];
+      }
+      const json = await res.json();
+      return (json.value || []).map((f) => f.name).filter(Boolean);
+    } catch (e) {
+      console.warn('[bike-trails] listFolderFiles error:', e.message);
+      return [];
+    }
+  }
+
+  /** Show a persistent banner inside the bike tab so the user can correct the path. */
+  function showBikeConfigBanner(message, detail) {
+    const grid = document.getElementById('bikeTrailsCardsGrid');
+    if (!grid) return;
+
+    const existing = document.getElementById('bikeConfigBanner');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.id = 'bikeConfigBanner';
+    banner.style.cssText = `
+      grid-column: 1 / -1;
+      padding: 20px;
+      background: #fff7ed;
+      border: 2px solid #f97316;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+    `;
+    banner.innerHTML = `
+      <div style="font-size:16px; font-weight:700; color:#c2410c; margin-bottom:8px;">⚠️ Bike Trail Excel File Not Found</div>
+      <div style="color:#374151; margin-bottom:12px;">${message}</div>
+      ${detail ? `<pre style="background:#fee2e2; border-radius:6px; padding:10px; font-size:12px; overflow-x:auto; color:#7f1d1d;">${detail}</pre>` : ''}
+      <div style="margin-top:14px; color:#374151; font-size:13px;">
+        <strong>To fix this:</strong><br>
+        1. Make sure <code>Bike_Trail_Planner.xlsx</code> is uploaded to your OneDrive under:<br>
+        &nbsp;&nbsp;&nbsp;<code>Copilot_Apps/Kyles_Adventure_Finder/</code><br>
+        2. Or run this in the browser console to point to the correct file:<br>
+        <code style="display:block; margin-top:6px; padding:6px; background:#f3f4f6; border-radius:4px;">
+          window.setBikeConfig({ filePath: 'Your/Path/File.xlsx', tableName: 'TableName' })
+        </code>
+        3. Then click <strong>🔄 Refresh Data</strong> to retry.
+      </div>
+    `;
+    grid.innerHTML = '';
+    grid.appendChild(banner);
+  }
+
+  // ─── Schema resolver with full diagnostics ──────────────────────────────────
   async function resolveSchemaTableRef(token, filePath, primaryRef) {
-    const candidates = [primaryRef, ...BIKE_TABLE_CANDIDATES.filter((c) => c !== primaryRef)];
-    for (const candidate of candidates) {
+    // Build full candidate list – start with primary, then fallbacks
+    const allCandidates = [
+      primaryRef,
+      ...BIKE_TABLE_CANDIDATES.filter((c) => c !== primaryRef)
+    ];
+
+    for (const candidate of allCandidates) {
+      const encodedPath = encodeGraphPath(filePath);
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(candidate)}/columns`;
+      console.log(`[bike-trails] Trying table schema: ${url}`);
       try {
         await loadBikeTableSchema(token, filePath, candidate);
-        return candidate; // success – return whichever candidate worked
-      } catch (_) { /* try next */ }
+        if (candidate !== primaryRef) {
+          console.log(`[bike-trails] ✅ Resolved table as '${candidate}' (fallback)`);
+        }
+        return candidate;
+      } catch (e) {
+        console.warn(`[bike-trails] Table '${candidate}' not found: ${e.message}`);
+      }
     }
+
+    // ── All named candidates failed. Try enumerating workbook tables ──────────
+    console.warn('[bike-trails] All named candidates failed. Querying workbook for available tables…');
+    const availableTables = await listWorkbookTables(token, filePath);
+
+    if (availableTables.length > 0) {
+      console.log('[bike-trails] Tables found in workbook:', availableTables);
+      // Automatically try the first available table
+      try {
+        await loadBikeTableSchema(token, filePath, availableTables[0]);
+        console.log(`[bike-trails] ✅ Auto-resolved table as '${availableTables[0]}' (enumerated)`);
+        window.bikeTableConfig = {
+          ...(window.bikeTableConfig || {}),
+          tableRef: availableTables[0],
+          tableName: availableTables[0]
+        };
+        return availableTables[0];
+      } catch (e) {
+        console.warn(`[bike-trails] Even enumerated table '${availableTables[0]}' failed:`, e.message);
+      }
+    } else {
+      // Workbook itself likely 404 – show folder listing to confirm
+      const files = await listFolderFiles(token, filePath);
+      const detail = files.length
+        ? `Files found in that folder:\n  ${files.join('\n  ')}`
+        : `Folder not found either. Check that the path is correct in OneDrive.`;
+
+      console.error('[bike-trails] Workbook not accessible. ' + detail);
+      showBikeConfigBanner(
+        `The app looked for the file at:<br><code>${filePath}</code><br><br>
+         ${files.length
+           ? `That folder exists but these are the files inside it:<br><strong>${files.join(', ')}</strong>`
+           : `That folder was also not found. Make sure the folder structure exists in your OneDrive.`}`,
+        availableTables.length ? `Available tables: ${availableTables.join(', ')}` : null
+      );
+    }
+
     return null;
   }
 
@@ -479,14 +624,17 @@
     const tableRef = await resolveSchemaTableRef(token, filePath, primaryRef);
 
     if (!tableRef) {
-      const msg = `Could not load schema for ${BIKE_FILE_NAME}. Check that the file and table exist in OneDrive.`;
+      const msg = `Could not find a usable table in ${filePath}. See the banner in the Bike Trails tab for details.`;
       console.error('[bike-trails]', msg);
-      updateBikeMetadataStatusLine('error', { text: 'Failed to load Bike Trail data', detail: msg });
+      updateBikeMetadataStatusLine('error', {
+        text: 'Bike Trail Excel file/table not found',
+        detail: msg
+      });
       return false;
     }
 
     if (tableRef !== primaryRef) {
-      window.bikeTableConfig = { ...(window.bikeTableConfig || {}), tableRef };
+      window.bikeTableConfig = { ...(window.bikeTableConfig || {}), tableRef, tableName: tableRef };
     }
 
     try {
@@ -500,8 +648,7 @@
       // Step 3 – fetch all rows
       const rows = await fetchBikeRows(token, filePath, tableRef);
       window.bikeTrailsData = rows;
-
-      console.log(`✅ [bike-trails] Loaded ${rows.length} rows from ${BIKE_FILE_NAME} / ${tableRef}`);
+      console.log(`✅ [bike-trails] Loaded ${rows.length} rows from ${filePath} / ${tableRef}`);
 
       // Step 4 – migrate legacy localStorage prefs (fire-and-forget)
       migrateLegacyBikePreferencesToExcel(token, filePath, tableRef).catch(() => {});
@@ -509,9 +656,12 @@
       // Step 5 – render
       applyBikeFilters();
 
+      // Remove any config error banner
+      document.getElementById('bikeConfigBanner')?.remove();
+
       updateBikeMetadataStatusLine('success', {
         text: `${rows.length} bike trails loaded`,
-        detail: BIKE_FILE_NAME
+        detail: `${filePath} / ${tableRef}`
       });
 
       return true;
@@ -1271,9 +1421,6 @@
     applyBikeFilters();
   }
 
-  window.openBikeTrailExplorer = openBikeTrailExplorer;
-  window.closeBikeTrailExplorer = closeBikeTrailExplorer;
-
   // ─────────────────────────────────────────────────────────────────────────────
 
   window.findBikeTrailById = findBikeTrailById;
@@ -1282,7 +1429,26 @@
   window.initializeBikeTrailsTab = initializeBikeTrailsTab;
   window.loadBikeTable = loadBikeData;           // Called by sign-in / auto-login flows
   window.refreshBikeTrailData = refreshBikeTrailData; // Called by Refresh Data button
+  window.openBikeTrailExplorer = openBikeTrailExplorer;
+  window.closeBikeTrailExplorer = closeBikeTrailExplorer;
   window.initializeBikeTrailsTabState = state;
+
+  /**
+   * Runtime config override – call from browser console if the file/table name is wrong.
+   * Example:
+   *   window.setBikeConfig({ filePath: 'Copilot_Apps/MyFolder/Trails.xlsx', tableName: 'Sheet1' })
+   * Then click "🔄 Refresh Data".
+   */
+  window.setBikeConfig = function(opts = {}) {
+    window.bikeTableConfig = {
+      ...(window.bikeTableConfig || {}),
+      ...(opts.filePath  ? { filePath:  opts.filePath }  : {}),
+      ...(opts.tableName ? { tableName: opts.tableName, tableRef: opts.tableName } : {}),
+      ...(opts.tableRef  ? { tableRef:  opts.tableRef }  : {})
+    };
+    console.log('[bike-trails] Config updated:', window.bikeTableConfig);
+    window.showToast?.('⚙️ Bike config updated – click 🔄 Refresh Data to reload', 'info', 4000);
+  };
 
   if (document.readyState !== 'loading') {
     initializeBikeTrailsTab();
