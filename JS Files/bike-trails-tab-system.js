@@ -893,24 +893,38 @@
     return {
       id,
       sourceIndex,
-      name: getField(row, 'Ride Name'),
-      region: getField(row, 'Region'),
-      difficulty: getField(row, 'Difficulty'),
-      surface: getField(row, 'Surface Type'),
-      driveTime: getField(row, 'Drive Time'),
-      driveMinutes: parseDriveMinutes(getField(row, 'Drive Time')),
-      lengthMiles: parseNumber(getField(row, 'Length (miles)')),
-      elevationGain: parseNumber(getField(row, 'Elevation Gain (ft)')),
-      traffic: getField(row, 'Traffic Exposure Rating'),
-      state: getField(row, 'State'),
-      city: getField(row, 'City'),
-      cost: getField(row, 'Cost'),
-      hours: getField(row, 'Hours of Operation'),
-      vibes: getField(row, 'Vibes'),
-      moodTags: getField(row, 'Ride Mood Tags'),
-      coffeeNearby: getField(row, 'Coffee Nearby'),
-      myRating: parseNumber(getField(row, BIKE_PREFERENCE_COLUMNS.rating)),
-      isFavorite: isBikeFavoriteFlag(getField(row, BIKE_PREFERENCE_COLUMNS.favorite)),
+      name:            getField(row, 'Ride Name'),
+      region:          getField(row, 'Region'),
+      difficulty:      getField(row, 'Difficulty'),
+      surface:         getField(row, 'Surface Type'),
+      driveTime:       getField(row, 'Drive Time'),
+      driveMinutes:    parseDriveMinutes(getField(row, 'Drive Time')),
+      lengthMiles:     parseNumber(getField(row, 'Length (miles)')),
+      elevationGain:   parseNumber(getField(row, 'Elevation Gain (ft)')),
+      traffic:         getField(row, 'Traffic Exposure Rating'),
+      state:           getField(row, 'State'),
+      city:            getField(row, 'City'),
+      address:         getField(row, 'Address'),
+      cost:            getField(row, 'Cost'),
+      hours:           getField(row, 'Hours of Operation'),
+      phone:           getField(row, 'Phone Number'),
+      website:         getField(row, 'Website'),
+      description:     getField(row, 'Description'),
+      vibes:           getField(row, 'Vibes'),
+      moodTags:        getField(row, 'Ride Mood Tags'),
+      bestConditions:  getField(row, 'Best Conditions'),
+      bestTimeOfDay:   getField(row, 'Best Time of Day'),
+      coffeeNearby:    getField(row, 'Coffee Nearby'),
+      parking:         getField(row, 'Parking'),
+      notes:           getField(row, 'Notes'),
+      nearby:          getField(row, 'Nearby'),
+      links:           getField(row, 'Links'),
+      links2:          getField(row, 'Links 2'),
+      mapsLink:        getField(row, 'Maps Link') || getField(row, 'Google Maps Link') || getField(row, 'Directions'),
+      googlePlaceId:   getField(row, 'Google Place ID'),
+      routeType:       getField(row, 'Route Type'),
+      myRating:        parseNumber(getField(row, BIKE_PREFERENCE_COLUMNS.rating)),
+      isFavorite:      isBikeFavoriteFlag(getField(row, BIKE_PREFERENCE_COLUMNS.favorite)),
       row
     };
   }
@@ -976,10 +990,51 @@
     const pageItems = (window.bikeFilteredTrails || []).slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
     if (!pageItems.length) {
-      grid.innerHTML = '<div class="empty-state">No bike trails match your current filters.</div>';
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af;">No bike trails match your current filters.</div>';
     } else {
       grid.innerHTML = pageItems.map((trail) => {
-        return `<article class="adventure-card"><h3>${escapeHtml(trail.name || 'Unnamed Ride')}</h3><p>${escapeHtml(trail.region || 'Unknown region')} • ${escapeHtml(trail.difficulty || 'Difficulty n/a')}</p><p>${escapeHtml(trail.lengthMiles || 0)} mi • ${escapeHtml(trail.driveTime || 'Drive n/a')}</p></article>`;
+        const tags = [trail.surface, trail.difficulty].filter(Boolean);
+        const tagPills = tags.map((t) => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('');
+        const ratingStars = [1,2,3,4,5].map((s) =>
+          `<span class="rating-star ${(trail.myRating || 0) >= s ? 'filled' : ''}"
+            onclick="event.stopPropagation(); window.setBikeRating(${trail.sourceIndex}, ${s})" title="${s} stars">⭐</span>`
+        ).join('');
+        const favActive = trail.isFavorite ? 'active' : '';
+        const favIcon   = trail.isFavorite ? '💖' : '🤍';
+
+        return `
+          <div class="adventure-card bike-trail-card"
+               data-bike-source-index="${trail.sourceIndex}"
+               data-bike-trail-id="${escapeHtml(trail.id)}">
+            <div class="card-header">
+              <h3 class="card-title">${escapeHtml(trail.name || 'Unnamed Ride')}</h3>
+              <div class="card-location">📍 ${escapeHtml(trail.region || trail.city || 'Unknown region')}</div>
+              ${trail.driveTime ? `<div class="card-drive-time">🚗 ${escapeHtml(trail.driveTime)}</div>` : ''}
+            </div>
+            <div class="card-body">
+              ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
+              ${trail.description ? `<div class="card-description">${escapeHtml(trail.description).substring(0, 140)}${trail.description.length > 140 ? '...' : ''}</div>` : ''}
+              <div class="card-info">
+                ${trail.lengthMiles  ? `<div class="card-info-item">Length: <strong>${escapeHtml(String(trail.lengthMiles))} mi</strong></div>` : ''}
+                ${trail.elevationGain ? `<div class="card-info-item">Elevation: <strong>${escapeHtml(String(trail.elevationGain))} ft</strong></div>` : ''}
+                ${trail.cost         ? `<div class="card-info-item">Cost: <strong>${escapeHtml(trail.cost)}</strong></div>` : ''}
+              </div>
+            </div>
+            <div class="card-footer">
+              <div class="card-action-buttons">
+                ${trail.mapsLink ? `<a href="${escapeHtml(trail.mapsLink)}" target="_blank" class="card-btn" onclick="event.stopPropagation();" title="Open in Google Maps">📍 Maps</a>` : ''}
+                <button class="card-btn card-details-btn"
+                  onclick="event.stopPropagation(); window.showBikeTrailDetails(${trail.sourceIndex});"
+                  title="View full trail details">📖 Details</button>
+              </div>
+              <div class="card-favorite-rating-container">
+                <div class="card-rating">${ratingStars}</div>
+                <button class="card-favorite-btn ${favActive}"
+                  onclick="event.stopPropagation(); window.toggleBikeTrailFavorite(${trail.sourceIndex}, this);"
+                  title="Toggle favourite">${favIcon}</button>
+              </div>
+            </div>
+          </div>`;
       }).join('');
     }
 
@@ -1027,6 +1082,173 @@
       if (target.next) target.next.disabled = state.currentPage >= totalPages;
     });
   }
+
+  // ─── Bike Trail Details Modal ────────────────────────────────────────────────
+  window.showBikeTrailDetails = function(sourceIndex) {
+    const rows = window.bikeTrailsData || [];
+    if (sourceIndex < 0 || sourceIndex >= rows.length) {
+      window.showToast?.('Trail data not available', 'warning', 2000);
+      return;
+    }
+    const trail = trailModel(rows[sourceIndex], sourceIndex);
+
+    const modal   = document.getElementById('bikeTrailDetailModal');
+    const backdrop = document.getElementById('bikeTrailDetailModalBackdrop');
+    if (!modal) { console.warn('[bike-trails] bikeTrailDetailModal not found in DOM'); return; }
+
+    // ── Populate header ──
+    const titleEl    = document.getElementById('bikeTrailDetailTitle');
+    const locationEl = document.getElementById('bikeTrailDetailLocation');
+    if (titleEl)    titleEl.textContent    = trail.name || 'Unnamed Ride';
+    if (locationEl) locationEl.textContent = [trail.region, trail.city, trail.state].filter(Boolean).join(' • ');
+
+    // ── Populate tab panes ──
+    const pane = (tab) => modal.querySelector(`.row-detail-tab-pane[data-tab="${tab}"]`);
+
+    // Overview
+    const ov = pane('overview');
+    if (ov) ov.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
+        ${field('🛣️ Surface',      trail.surface)}
+        ${field('📊 Difficulty',   trail.difficulty)}
+        ${field('📏 Length',       trail.lengthMiles  ? `${trail.lengthMiles} mi`  : '')}
+        ${field('⬆️ Elevation',    trail.elevationGain ? `${trail.elevationGain} ft` : '')}
+        ${field('🚗 Drive Time',   trail.driveTime)}
+        ${field('💰 Cost',         trail.cost)}
+        ${field('📍 Address',      trail.address)}
+        ${field('🌐 Website',      trail.website, true)}
+        ${trail.description ? `<div style="grid-column:1/-1"><strong>Description</strong><p style="margin:4px 0 0;color:#374151;">${escapeHtml(trail.description)}</p></div>` : ''}
+      </div>`;
+
+    // Ride Profile
+    const rp = pane('ride-profile');
+    if (rp) rp.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
+        ${field('📏 Length',          trail.lengthMiles  ? `${trail.lengthMiles} mi`  : '')}
+        ${field('⬆️ Elevation Gain',  trail.elevationGain ? `${trail.elevationGain} ft` : '')}
+        ${field('🛣️ Surface Type',    trail.surface)}
+        ${field('📊 Difficulty',      trail.difficulty)}
+        ${field('🚦 Traffic',         trail.traffic)}
+        ${field('🌄 Vibes',           trail.vibes)}
+        ${field('🏷️ Mood Tags',       trail.moodTags)}
+        ${field('🎿 Route Type',      trail.routeType || '')}
+      </div>`;
+
+    // Conditions & Safety
+    const cs = pane('conditions');
+    if (cs) cs.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
+        ${field('🌤️ Best Conditions', trail.bestConditions)}
+        ${field('☀️ Best Time of Day', trail.bestTimeOfDay)}
+        ${field('☕ Coffee Nearby',    trail.coffeeNearby)}
+        ${field('🅿️ Parking',         trail.parking)}
+        ${field('🕐 Hours',           trail.hours)}
+        ${field('📞 Phone',           trail.phone)}
+        ${field('⚠️ Notes',           trail.notes)}
+      </div>`;
+
+    // Nearby & Links
+    const nl = pane('nearby-links');
+    if (nl) nl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:16px;">
+        ${field('📍 Nearby',     trail.nearby)}
+        ${field('🔗 Links',      trail.links, true)}
+        ${field('🔗 Links 2',    trail.links2, true)}
+        ${trail.mapsLink ? `<div><strong>🗺️ Google Maps</strong><br><a href="${escapeHtml(trail.mapsLink)}" target="_blank" style="color:#3b82f6;">Open in Maps</a></div>` : ''}
+        ${field('🆔 Google Place ID', trail.googlePlaceId)}
+      </div>`;
+
+    // ── Tab switching inside modal ──
+    modal.querySelectorAll('.row-detail-tab-btn').forEach((btn) => {
+      btn.onclick = null;
+      btn.addEventListener('click', () => {
+        modal.querySelectorAll('.row-detail-tab-btn').forEach((b) => b.classList.remove('active'));
+        modal.querySelectorAll('.row-detail-tab-pane').forEach((p) => p.classList.remove('active'));
+        btn.classList.add('active');
+        const target = modal.querySelector(`.row-detail-tab-pane[data-tab="${btn.dataset.tab}"]`);
+        if (target) target.classList.add('active');
+      });
+    });
+    // Reset to first tab
+    modal.querySelectorAll('.row-detail-tab-btn')[0]?.click();
+
+    // ── Close handlers ──
+    const closeFn = () => {
+      modal.style.display = 'none';
+      if (backdrop) backdrop.style.display = 'none';
+    };
+    document.getElementById('bikeTrailDetailCloseBtn')?.addEventListener('click', closeFn, { once: true });
+    document.getElementById('bikeTrailDetailCloseFooterBtn')?.addEventListener('click', closeFn, { once: true });
+    if (backdrop) {
+      backdrop.style.display = 'block';
+      backdrop.onclick = closeFn;
+    }
+
+    // ── Show modal ──
+    modal.style.display = 'flex';
+  };
+
+  function field(label, value, isLink) {
+    if (!value) return '';
+    const safe = escapeHtml(String(value));
+    const display = isLink && /^https?:\/\//.test(String(value))
+      ? `<a href="${safe}" target="_blank" style="color:#3b82f6;word-break:break-all;">${safe}</a>`
+      : `<span style="color:#374151;">${safe}</span>`;
+    return `<div><strong>${label}</strong><br>${display}</div>`;
+  }
+
+  // ─── Bike rating & favourite helpers ────────────────────────────────────────
+  window.setBikeRating = function(sourceIndex, rating) {
+    const trail = (window.bikeTrailsData || [])[sourceIndex];
+    if (!trail) return;
+    // Update local model
+    const ratingCol = getBikeColumnIndex(BIKE_PREFERENCE_COLUMNS.rating);
+    if (ratingCol >= 0) {
+      const vals = getValues(trail).slice();
+      while (vals.length <= ratingCol) vals.push('');
+      vals[ratingCol] = rating;
+      trail.values = [vals];
+    }
+    // Optimistic UI – re-render
+    applyBikeFilters();
+    window.showToast?.(`Rated ${rating} ⭐`, 'success', 1500);
+    // Persist to Excel (fire-and-forget)
+    if (window.accessToken && ratingCol >= 0) {
+      const cfg = window.bikeTableConfig || {};
+      updateBikeRowColumns(sourceIndex, { [ratingCol]: rating }, {
+        accessToken: window.accessToken,
+        filePath: cfg.filePath || BIKE_FILE_PATH_DEFAULT,
+        tableRef: cfg.tableRef || BIKE_TABLE_NAME
+      }).catch((e) => console.warn('[bike-trails] rating save failed:', e.message));
+    }
+  };
+
+  window.toggleBikeTrailFavorite = function(sourceIndex, btnEl) {
+    const trail = (window.bikeTrailsData || [])[sourceIndex];
+    if (!trail) return;
+    const favCol = getBikeColumnIndex(BIKE_PREFERENCE_COLUMNS.favorite);
+    const vals = getValues(trail).slice();
+    const currentFav = isBikeFavoriteFlag(vals[favCol] || '');
+    const newFav = !currentFav;
+    if (favCol >= 0) {
+      while (vals.length <= favCol) vals.push('');
+      vals[favCol] = newFav ? 'TRUE' : 'FALSE';
+      trail.values = [vals];
+    }
+    if (btnEl) {
+      btnEl.textContent = newFav ? '💖' : '🤍';
+      btnEl.classList.toggle('active', newFav);
+    }
+    window.showToast?.(newFav ? 'Added to favourites' : 'Removed from favourites', 'success', 1500);
+    if (window.accessToken && favCol >= 0) {
+      const cfg = window.bikeTableConfig || {};
+      updateBikeRowColumns(sourceIndex, { [favCol]: newFav ? 'TRUE' : 'FALSE' }, {
+        accessToken: window.accessToken,
+        filePath: cfg.filePath || BIKE_FILE_PATH_DEFAULT,
+        tableRef: cfg.tableRef || BIKE_TABLE_NAME
+      }).catch((e) => console.warn('[bike-trails] favourite save failed:', e.message));
+    }
+  };
 
   function readFilterControlValue(filterKey) {
     const inputId = getBikeFilterInputId(filterKey);
@@ -1184,7 +1406,6 @@
 
   function initializeBikeTrailsTab() {
     bindBikeControls();
-    bindTrailExplorerEvents();
     updateBikeDebugDetailsLine();
 
     if (!state.initialized) {
@@ -1255,11 +1476,23 @@
 
   function openBikeTrailExplorer() {
     const modal = document.getElementById('bikeTrailExplorerModal');
-    if (modal) {
-      modal.style.display = 'flex';
-      explorerState.selectedFilters = {};
-      updateExplorerUI();
+    if (!modal) {
+      console.warn('[bike-trails] bikeTrailExplorerModal not found in DOM');
+      return;
     }
+    // Always re-bind events — the modal may have been added to the DOM after
+    // initializeBikeTrailsTab() ran (dynamic tab HTML load).
+    bindTrailExplorerEvents();
+
+    // Reset state and show the first tab's content
+    explorerState.selectedFilters = {};
+    updateExplorerUI();
+
+    // Activate the first tab
+    const firstTab = modal.querySelector('.bike-explorer-tab');
+    if (firstTab) firstTab.click();
+
+    modal.style.display = 'flex';
   }
 
   function closeBikeTrailExplorer() {
@@ -1291,6 +1524,12 @@
   }
 
   function bindTrailExplorerEvents() {
+    const modal = document.getElementById('bikeTrailExplorerModal');
+    if (!modal) return;
+    // Guard: only wire up once per DOM instance
+    if (modal.dataset.explorerBound === '1') return;
+    modal.dataset.explorerBound = '1';
+
     // Close button
     const closeBtn = document.getElementById('bikeExplorerCloseBtn');
     if (closeBtn) {
@@ -1298,13 +1537,13 @@
     }
 
     // Tab switching
-    document.querySelectorAll('.bike-explorer-tab').forEach((tab) => {
+    modal.querySelectorAll('.bike-explorer-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
         const tabName = tab.getAttribute('data-explorer-tab');
         if (!tabName) return;
 
-        // Update tab buttons
-        document.querySelectorAll('.bike-explorer-tab').forEach((t) => {
+        // Update tab button styles
+        modal.querySelectorAll('.bike-explorer-tab').forEach((t) => {
           t.style.borderColor = '#d1d5db';
           t.style.background = 'transparent';
           t.style.color = '#6b7280';
@@ -1313,32 +1552,27 @@
         tab.style.background = 'white';
         tab.style.color = '#8b5cf6';
 
-        // Update content
-        document.querySelectorAll('.bike-explorer-content').forEach((content) => {
+        // Show matching content, hide others
+        modal.querySelectorAll('.bike-explorer-content').forEach((content) => {
           content.style.display = 'none';
         });
-        const activeContent = document.querySelector(`.bike-explorer-content[data-explorer-content="${tabName}"]`);
-        if (activeContent) {
-          activeContent.style.display = 'block';
-        }
+        const activeContent = modal.querySelector(`.bike-explorer-content[data-explorer-content="${tabName}"]`);
+        if (activeContent) activeContent.style.display = 'block';
       });
     });
 
-    // Option buttons
-    document.querySelectorAll('.bike-explorer-option').forEach((btn) => {
+    // Option buttons – toggle selection
+    modal.querySelectorAll('.bike-explorer-option').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const filterType = btn.getAttribute('data-filter-type');
+        const filterType  = btn.getAttribute('data-filter-type');
         const filterValue = btn.getAttribute('data-filter-value');
-
         if (!filterType || !filterValue) return;
 
-        // Toggle selection
         if (explorerState.selectedFilters[filterType] === filterValue) {
           delete explorerState.selectedFilters[filterType];
         } else {
           explorerState.selectedFilters[filterType] = filterValue;
         }
-
         updateExplorerUI();
       });
     });
@@ -1361,15 +1595,10 @@
       });
     }
 
-    // Close on modal backdrop click
-    const modal = document.getElementById('bikeTrailExplorerModal');
-    if (modal) {
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          closeBikeTrailExplorer();
-        }
-      });
-    }
+    // Close on backdrop click (clicking outside the white panel)
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeBikeTrailExplorer();
+    });
   }
 
   function applyExplorerFilters() {
