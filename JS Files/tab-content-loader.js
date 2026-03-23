@@ -374,6 +374,11 @@ class TabContentLoader {
         if (typeof window.initBikeTrailsTab === 'function') {
           window.initBikeTrailsTab();
         }
+        // If user is already signed in and data hasn't loaded yet, kick off the load.
+        if (window.accessToken && typeof window.loadBikeTable === 'function' &&
+            !(window.bikeTrailsData && window.bikeTrailsData.length > 0)) {
+          window.loadBikeTable();
+        }
         break;
       case 'birding':
         if (typeof window.initBirdingTab === 'function') {

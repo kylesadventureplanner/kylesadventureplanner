@@ -5480,6 +5480,7 @@
              window.updateConnectionStatus?.(true);
 
              await window.loadTable?.();
+             window.loadBikeTable?.();
              window.initFindNearMe?.();
              window.initContextMenu?.();
              window.initRowDetailModal?.();
@@ -5512,6 +5513,7 @@
          window.updateConnectionStatus?.(true);
 
          await window.loadTable?.();
+         window.loadBikeTable?.();
          window.initFindNearMe?.();
          window.initContextMenu?.();
          window.initRowDetailModal?.();
@@ -5615,6 +5617,7 @@
              // Load data from Excel
              console.log('📥 Loading adventure data from Excel...');
              await window.loadTable?.();
+             window.loadBikeTable?.();
 
              // Initialize other systems
              window.initFindNearMe?.();
@@ -5722,6 +5725,45 @@
          console.error('❌ loadTable error:', error);
          window.showToast?.(`❌ Failed to load adventure data: ${error.message}`, 'error', 5000);
          return false;
+       }
+     };
+
+     // ============================================================
+     // REFRESH ADVENTURE DATA - Re-fetch Excel data and re-render cards
+     // ============================================================
+     window.refreshAdventureData = async function() {
+       const btn = document.getElementById('adventureRefreshBtn');
+       const originalHTML = btn ? btn.innerHTML : '';
+
+       try {
+         // If not signed in, trigger sign-in first then reload
+         if (!accessToken || !activeAccount) {
+           window.showToast?.('🔐 Not signed in – signing in now...', 'info', 3000);
+           await window.signIn?.();
+           return; // signIn will call loadTable itself
+         }
+
+         if (btn) {
+           btn.disabled = true;
+           btn.innerHTML = '⏳ Refreshing...';
+           btn.style.opacity = '0.7';
+         }
+
+         window.showToast?.('🔄 Refreshing adventure data from Excel...', 'info', 2000);
+         const ok = await window.loadTable?.();
+
+         if (ok !== false) {
+           window.showToast?.('✅ Adventure data refreshed!', 'success', 3000);
+         }
+       } catch (err) {
+         console.error('❌ refreshAdventureData error:', err);
+         window.showToast?.(`❌ Refresh failed: ${err.message}`, 'error', 5000);
+       } finally {
+         if (btn) {
+           btn.disabled = false;
+           btn.innerHTML = originalHTML;
+           btn.style.opacity = '';
+         }
        }
      };
 
@@ -6631,6 +6673,11 @@
           <!-- Find Near Me Button -->
           <button id="findNearMeBtn" class="find-near-me-btn" title="Find adventures near your current location" onclick="startFindNearMe()">
             📍 Find Near Me
+          </button>
+
+          <!-- Refresh Data Button -->
+          <button id="adventureRefreshBtn" class="card-btn" title="Refresh adventure data from Excel" onclick="refreshAdventureData()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 2px 8px rgba(16,185,129,0.3);">
+            🔄 Refresh Data
           </button>
         </div>
 

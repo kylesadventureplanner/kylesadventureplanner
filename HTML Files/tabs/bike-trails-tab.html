@@ -5,6 +5,11 @@
 <header>
   <h1>Bike Trails</h1>
   <div style="display: flex; gap: 8px; align-items: center;">
+    <button id="bikeRefreshBtn" title="Refresh bike trail data from Excel" data-tooltip="Refresh bike trail data from Excel"
+      style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:linear-gradient(135deg,#10b981 0%,#059669 100%); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.3); transition:all 0.2s;"
+      onclick="window.refreshBikeTrailData()">
+      🔄 Refresh Data
+    </button>
     <button id="bikeIphoneToggleBtn" class="iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
       📱 iPhone View
     </button>
@@ -139,6 +144,7 @@
       <div class="card-title">Bike Trail List</div>
       <div class="card-subtitle">Data source: Bike_Trail_Planner.xlsx (Table: BikeTrails)</div>
       <div id="bikeMetadataStatusLine" aria-live="polite" style="display: none;">Excel metadata columns: checking BikeTrails schema…</div>
+      <div id="bikeMetadataDebugLine" aria-live="polite" style="display: none;"></div>
     </div>
   </div>
   <div class="view-controls">
