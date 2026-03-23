@@ -58,6 +58,10 @@
     ));
   }
 
+  function isInAdventureCardsGrid(target) {
+    return Boolean(target && target.closest && target.closest('#adventureCardsGrid'));
+  }
+
   function resolveCardIndexFromElement(element) {
     if (!element) return null;
 
@@ -512,6 +516,7 @@
     globalDetailDelegatesBound = true;
 
     document.addEventListener('click', (event) => {
+      if (!isInAdventureCardsGrid(event.target)) return;
       const detailsButton = event.target && event.target.closest ? event.target.closest('.card-details-btn') : null;
       if (!detailsButton) return;
       event.preventDefault();
@@ -521,6 +526,7 @@
     }, true);
 
     document.addEventListener('click', (event) => {
+      if (!isInAdventureCardsGrid(event.target)) return;
       const card = event.target && event.target.closest ? event.target.closest('.adventure-card') : null;
       if (!card) return;
       if (isInteractiveCardTarget(event.target)) return;
