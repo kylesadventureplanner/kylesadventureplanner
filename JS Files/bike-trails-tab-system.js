@@ -5,6 +5,7 @@
 
 (function() {
   const BIKE_FILE_PATH_DEFAULT = 'Copilot_Apps/Kyles_Adventure_Finder/Bike_Trail_Planner.xlsx';
+  const BIKE_FILE_NAME = 'Bike_Trail_Planner.xlsx';
   const BIKE_TABLE_NAME = 'BikeTrails';
   const BIKE_TABLE_CANDIDATES = [BIKE_TABLE_NAME];
   const BIKE_DIFFICULTY_SCORE_COLUMN = 'Difficulty Score (0\u2013100)';
@@ -329,9 +330,9 @@
     return idx >= 0 ? (values[idx] || '') : '';
   }
 
-  async function fetchBikeRows(accessToken, filePath, tableName) {
-    const encodedPath = encodeURIComponent(filePath);
-    const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows`;
+  async function fetchBikeRows(accessToken, filePath, tableRef) {
+    const encodedPath = encodeGraphPath(filePath);
+    const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableRef)}/rows`;
 
     const response = await fetch(apiUrl, {
       headers: {
@@ -341,7 +342,7 @@
     });
 
     if (!response.ok) {
-      throw new Error(`Bike trail load failed for Bike_Trail_Planner.xlsx / ${BIKE_TABLE_NAME}: ${response.status} ${response.statusText}`);
+      throw new Error(`Bike trail load failed for ${BIKE_FILE_NAME} / ${tableRef}: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -354,9 +355,9 @@
     }));
   }
 
-  async function loadBikeTableSchema(accessToken, filePath, tableName) {
-    const encodedPath = encodeURIComponent(filePath);
-    const tablesUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/columns`;
+  async function loadBikeTableSchema(accessToken, filePath, tableRef) {
+    const encodedPath = encodeGraphPath(filePath);
+    const tablesUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableRef)}/columns`;
     const response = await fetch(tablesUrl, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -365,7 +366,7 @@
     });
 
     if (!response.ok) {
-      throw new Error(`Unable to load schema for bike table '${BIKE_TABLE_NAME}' (${response.status} ${response.statusText})`);
+      throw new Error(`Unable to load schema for bike table '${tableRef}' (${response.status} ${response.statusText})`);
     }
 
     const json = await response.json();
@@ -388,9 +389,9 @@
     return columnNames;
   }
 
-  async function addBikeTableColumn(accessToken, filePath, tableName, columnName, rowCount) {
-    const encodedPath = encodeURIComponent(filePath);
-    const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}`;
+  async function addBikeTableColumn(accessToken, filePath, tableRef, columnName, rowCount) {
+    const encodedPath = encodeGraphPath(filePath);
+    const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableRef)}`;
     const columnValues = [[columnName], ...Array.from({ length: rowCount }, () => [''])];
     const payload = {
       index: null,
@@ -423,11 +424,11 @@
       lastError = `${response.status} ${detail || response.statusText}`;
     }
 
-    throw new Error(`Unable to add bike metadata column '${columnName}' to ${BIKE_TABLE_NAME}: ${lastError}`);
+    throw new Error(`Unable to add bike metadata column '${columnName}' to ${tableRef}: ${lastError}`);
   }
 
-  async function ensureBikePreferenceColumns(accessToken, filePath, tableName, rowCount) {
-    const existingColumns = await loadBikeTableSchema(accessToken, filePath, tableName);
+  async function ensureBikePreferenceColumns(accessToken, filePath, tableRef, rowCount) {
+    const existingColumns = await loadBikeTableSchema(accessToken, filePath, tableRef);
     const normalizedExisting = new Set(existingColumns.map(normalizeColumnName));
     const missingColumns = Object.values(BIKE_PREFERENCE_COLUMNS).filter((name) => {
       return !getExpectedColumnVariants(name).some((variant) => normalizedExisting.has(normalizeColumnName(variant)));
@@ -436,10 +437,10 @@
     if (!missingColumns.length) return false;
 
     for (const columnName of missingColumns) {
-      await addBikeTableColumn(accessToken, filePath, tableName, columnName, rowCount);
+      await addBikeTableColumn(accessToken, filePath, tableRef, columnName, rowCount);
     }
 
-    await loadBikeTableSchema(accessToken, filePath, tableName);
+    await loadBikeTableSchema(accessToken, filePath, tableRef);
     return true;
   }
 
@@ -1296,28 +1297,47 @@
     });
   }
 
-  async function detectTableName(accessToken, filePath) {
-    const config = window.bikeTableConfig || {};
-    if (config.tableName === BIKE_TABLE_NAME) return BIKE_TABLE_NAME;
+  function encodeGraphPath(filePath) {
+    return String(filePath || '')
+      .split('/')
+      .filter(Boolean)
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+  }
 
-    const encodedPath = encodeURIComponent(filePath);
+  async function detectTableName(accessToken, filePath) {
+    const encodedPath = encodeGraphPath(filePath);
     const tablesUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables`;
     const response = await fetch(tablesUrl, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
     if (!response.ok) {
-      throw new Error(`Unable to verify bike table '${BIKE_TABLE_NAME}' in Bike_Trail_Planner.xlsx (${response.status} ${response.statusText})`);
+      throw new Error(`Unable to verify bike table '${BIKE_TABLE_NAME}' in ${BIKE_FILE_NAME} (${response.status} ${response.statusText})`);
     }
 
     const json = await response.json();
-    const allTableNames = (json.value || []).map((item) => item.name).filter(Boolean);
+    const tables = Array.isArray(json.value) ? json.value : [];
+    const normalizedTarget = normalizeColumnName(BIKE_TABLE_NAME);
 
-    if (!allTableNames.includes(BIKE_TABLE_NAME)) {
-      throw new Error(`Required bike trails table '${BIKE_TABLE_NAME}' was not found in Bike_Trail_Planner.xlsx. Available tables: ${allTableNames.join(', ') || 'none'}`);
+    const exact = tables.find((item) => normalizeColumnName(item.name) === normalizedTarget);
+    const fuzzy = tables.find((item) => normalizeColumnName(item.name).includes(normalizedTarget));
+    const matched = exact || fuzzy;
+
+    if (!matched) {
+      const available = tables.map((item) => item.name).filter(Boolean);
+      throw new Error(`Required bike trails table '${BIKE_TABLE_NAME}' was not found in ${BIKE_FILE_NAME}. Available tables: ${available.join(', ') || 'none'}`);
     }
 
-    return BIKE_TABLE_NAME;
+    window.bikeTableConfig = {
+      ...(window.bikeTableConfig || {}),
+      filePath,
+      tableName: matched.name || BIKE_TABLE_NAME,
+      tableRef: matched.id || matched.name || BIKE_TABLE_NAME,
+      tableNameCandidates: BIKE_TABLE_CANDIDATES
+    };
+
+    return window.bikeTableConfig.tableRef;
   }
 
   window.loadBikeTrailsTable = async function(force = false) {
@@ -1339,27 +1359,31 @@
 
       const config = window.bikeTableConfig || {};
       const filePath = BIKE_FILE_PATH_DEFAULT;
-      const tableName = await detectTableName(accessToken, filePath);
+      const tableRef = await detectTableName(accessToken, filePath);
 
       config.filePath = BIKE_FILE_PATH_DEFAULT;
-      config.tableName = BIKE_TABLE_NAME;
       config.tableNameCandidates = BIKE_TABLE_CANDIDATES;
-      window.bikeTableConfig = config;
+      window.bikeTableConfig = {
+        ...config,
+        ...window.bikeTableConfig,
+        filePath: BIKE_FILE_PATH_DEFAULT,
+        tableNameCandidates: BIKE_TABLE_CANDIDATES
+      };
 
-      let rows = await fetchBikeRows(accessToken, filePath, tableName);
+      let rows = await fetchBikeRows(accessToken, filePath, tableRef);
       window.bikeTrailsData = rows;
 
-      await loadBikeTableSchema(accessToken, filePath, tableName);
-      const columnsAdded = await ensureBikePreferenceColumns(accessToken, filePath, tableName, rows.length);
+      await loadBikeTableSchema(accessToken, filePath, tableRef);
+      const columnsAdded = await ensureBikePreferenceColumns(accessToken, filePath, tableRef, rows.length);
       if (columnsAdded) {
-        rows = await fetchBikeRows(accessToken, filePath, tableName);
+        rows = await fetchBikeRows(accessToken, filePath, tableRef);
         window.bikeTrailsData = rows;
-        await loadBikeTableSchema(accessToken, filePath, tableName);
+        await loadBikeTableSchema(accessToken, filePath, tableRef);
       }
 
-      const migrated = await migrateLegacyBikePreferencesToExcel(accessToken, filePath, tableName);
+      const migrated = await migrateLegacyBikePreferencesToExcel(accessToken, filePath, tableRef);
       if (migrated) {
-        rows = await fetchBikeRows(accessToken, filePath, tableName);
+        rows = await fetchBikeRows(accessToken, filePath, tableRef);
         window.bikeTrailsData = rows;
       }
 
@@ -1367,8 +1391,9 @@
       populateBikeDatalists();
       window.applyBikeFilters(false);
 
-      window.showToast?.(`Loaded ${rows.length} bike trails from ${BIKE_TABLE_NAME}`, 'success', 2500);
-      console.log('✅ Bike trails loaded from locked Excel source', { filePath, tableName, count: rows.length });
+      const resolvedTableName = window.bikeTableConfig?.tableName || BIKE_TABLE_NAME;
+      window.showToast?.(`Loaded ${rows.length} bike trails from ${resolvedTableName}`, 'success', 2500);
+      console.log('✅ Bike trails loaded from locked Excel source', { filePath, tableRef, tableName: resolvedTableName, count: rows.length });
       return true;
     } catch (error) {
       console.error('❌ loadBikeTrailsTable error:', error);
