@@ -996,8 +996,9 @@
         const tags = [trail.surface, trail.difficulty].filter(Boolean);
         const tagPills = tags.map((t) => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('');
         const ratingStars = [1,2,3,4,5].map((s) =>
-          `<span class="rating-star ${(trail.myRating || 0) >= s ? 'filled' : ''}"
-            onclick="event.stopPropagation(); window.setBikeRating(${trail.sourceIndex}, ${s})" title="${s} stars">⭐</span>`
+          `<button type="button" class="bike-rating-star ${(trail.myRating || 0) >= s ? 'filled' : ''}"
+            style="border:none;background:transparent;cursor:pointer;font-size:16px;line-height:1;padding:0 1px;"
+            onclick="event.stopPropagation(); window.setBikeRating(${trail.sourceIndex}, ${s})" title="${s} stars">⭐</button>`
         ).join('');
         const favActive = trail.isFavorite ? 'active' : '';
         const favIcon   = trail.isFavorite ? '💖' : '🤍';
@@ -1023,13 +1024,14 @@
             <div class="card-footer">
               <div class="card-action-buttons">
                 ${trail.mapsLink ? `<a href="${escapeHtml(trail.mapsLink)}" target="_blank" class="card-btn" onclick="event.stopPropagation();" title="Open in Google Maps">📍 Maps</a>` : ''}
-                <button class="card-btn card-details-btn"
+                <button type="button" class="card-btn bike-card-details-btn"
                   onclick="event.stopPropagation(); window.showBikeTrailDetails(${trail.sourceIndex});"
                   title="View full trail details">📖 Details</button>
               </div>
               <div class="card-favorite-rating-container">
-                <div class="card-rating">${ratingStars}</div>
-                <button class="card-favorite-btn ${favActive}"
+                <div class="bike-card-rating" style="display:flex;align-items:center;gap:1px;">${ratingStars}</div>
+                <button type="button" class="bike-card-favorite-btn ${favActive}"
+                  style="border:none;background:transparent;cursor:pointer;font-size:22px;line-height:1;padding:0 2px;"
                   onclick="event.stopPropagation(); window.toggleBikeTrailFavorite(${trail.sourceIndex}, this);"
                   title="Toggle favourite">${favIcon}</button>
               </div>
@@ -1160,14 +1162,14 @@
 
     // ── Tab switching inside modal ──
     modal.querySelectorAll('.row-detail-tab-btn').forEach((btn) => {
-      btn.onclick = null;
-      btn.addEventListener('click', () => {
+      // Overwrite instead of stacking listeners on each open
+      btn.onclick = () => {
         modal.querySelectorAll('.row-detail-tab-btn').forEach((b) => b.classList.remove('active'));
         modal.querySelectorAll('.row-detail-tab-pane').forEach((p) => p.classList.remove('active'));
         btn.classList.add('active');
         const target = modal.querySelector(`.row-detail-tab-pane[data-tab="${btn.dataset.tab}"]`);
         if (target) target.classList.add('active');
-      });
+      };
     });
     // Reset to first tab
     modal.querySelectorAll('.row-detail-tab-btn')[0]?.click();
