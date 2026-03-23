@@ -40,31 +40,38 @@ class TabContentLoader {
         preload: true,
         isInlineContent: true  // ← Mark as inline
       },
+      'bike-trails': {
+        file: 'bike-trails-tab.html',
+        element: 'bikeTrailsTab',
+        priority: 2,
+        preload: false,
+        isInlineContent: false
+      },
       'birding': {
         file: 'birding-locations-tab.html',
         element: 'birdingTab',
-        priority: 2,
+        priority: 3,
         preload: false,
         isInlineContent: false
       },
       'recipes': {
         file: 'recipes-tab.html',
         element: 'recipesTab',
-        priority: 3,
+        priority: 4,
         preload: false,
         isInlineContent: false
       },
       'garden': {
         file: 'garden-planner-tab.html',
         element: 'gardenTab',
-        priority: 4,
+        priority: 5,
         preload: false,
         isInlineContent: false
       },
       'budget': {
         file: 'budget-planner-tab.html',
         element: 'budgetTab',
-        priority: 5,
+        priority: 6,
         preload: false,
         isInlineContent: false
       }
@@ -361,6 +368,11 @@ class TabContentLoader {
       case 'adventure-planner':
         if (typeof window.initAdventurePlanner === 'function') {
           window.initAdventurePlanner();
+        }
+        break;
+      case 'bike-trails':
+        if (typeof window.initBikeTrailsTab === 'function') {
+          window.initBikeTrailsTab();
         }
         break;
       case 'birding':
