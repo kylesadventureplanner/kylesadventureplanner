@@ -199,42 +199,204 @@
   </div>
 </div>
 
-<div id="bikeTrailDetailModal" class="row-detail-modal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 16px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); z-index: 1002; width: min(960px, 95vw); max-height: 92vh; overflow: hidden; flex-direction: column;">
-  <div class="row-detail-header">
-    <div class="row-detail-title-section">
-      <h1 class="row-detail-adventure-name" id="bikeTrailDetailTitle">Bike Trail Details</h1>
-      <div class="row-detail-location" id="bikeTrailDetailLocation"></div>
+<!-- ── Bike Trail Detail Modal ─────────────────────────────────────── -->
+<style>
+  /* Bike-modal–only tab pill system — does NOT touch adventure planner tabs */
+  #bikeTrailDetailModal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 32px 64px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.06);
+    z-index: 10020;          /* well above button-handlers global delegates */
+    width: min(980px, 96vw);
+    max-height: 93vh;
+    overflow: hidden;
+    flex-direction: column;
+    pointer-events: auto;    /* explicit — ensure nothing above kills events */
+  }
+
+  #bikeTrailDetailModal .bk-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px 24px 14px;
+    border-bottom: 1px solid #f0f0f0;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: #fff;
+    border-radius: 20px 20px 0 0;
+  }
+
+  #bikeTrailDetailModal .bk-modal-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  #bikeTrailDetailModal .bk-modal-location {
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+    font-weight: 500;
+  }
+
+  #bikeTrailDetailModal .bk-modal-close {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    line-height: 1;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10021;
+  }
+
+  #bikeTrailDetailModal .bk-modal-close:hover {
+    background: rgba(255,255,255,0.28);
+  }
+
+  /* Two-row wrapping pill tabs */
+  #bikeTrailDetailModal .bk-tab-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 14px 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e8ecf0;
+    flex-shrink: 0;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10021;
+  }
+
+  #bikeTrailDetailModal .bk-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    color: #4b5563;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.14s, border-color 0.14s, color 0.14s, box-shadow 0.14s;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10022;
+    user-select: none;
+  }
+
+  #bikeTrailDetailModal .bk-tab-btn:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #2563eb;
+    box-shadow: 0 1px 6px rgba(37,99,235,0.12);
+  }
+
+  #bikeTrailDetailModal .bk-tab-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.35);
+  }
+
+  #bikeTrailDetailModal .bk-tab-pane {
+    display: none;
+    animation: bkTabFadeIn 0.22s ease;
+  }
+
+  #bikeTrailDetailModal .bk-tab-pane.active {
+    display: block;
+  }
+
+  @keyframes bkTabFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  #bikeTrailDetailModal .bk-modal-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    background: #fff;
+  }
+
+  #bikeTrailDetailModal .bk-modal-footer {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px 20px;
+    border-top: 1px solid #f0f0f0;
+    background: #f8fafc;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10021;
+  }
+
+  #bikeTrailDetailModalBackdrop {
+    z-index: 10019 !important;
+  }
+</style>
+
+<div id="bikeTrailDetailModal">
+  <!-- Header -->
+  <div class="bk-modal-header">
+    <div>
+      <h1 class="bk-modal-title" id="bikeTrailDetailTitle">Bike Trail Details</h1>
+      <div class="bk-modal-location" id="bikeTrailDetailLocation"></div>
     </div>
-    <button class="row-detail-close-btn" id="bikeTrailDetailCloseBtn">×</button>
+    <button class="bk-modal-close" id="bikeTrailDetailCloseBtn" type="button" title="Close">×</button>
   </div>
 
-  <div class="row-detail-tabs">
-    <button class="row-detail-tab-btn active" data-tab="location-parking">📍 Location and Parking</button>
-    <button class="row-detail-tab-btn" data-tab="maps">🗺️ Maps</button>
-    <button class="row-detail-tab-btn" data-tab="overview">📋 Overview</button>
-    <button class="row-detail-tab-btn" data-tab="ride-profile">🚴 Ride Profile</button>
-    <button class="row-detail-tab-btn" data-tab="conditions-safety">⚠️ Conditions and Safety</button>
-    <button class="row-detail-tab-btn" data-tab="nearby">🏪 Nearby</button>
-    <button class="row-detail-tab-btn" data-tab="links-websites">🔗 Links and Websites</button>
-    <button class="row-detail-tab-btn" data-tab="along-trail">🌲 Along the Trail</button>
+  <!-- Two-row pill tab bar -->
+  <div class="bk-tab-bar">
+    <button class="bk-tab-btn active" data-tab="location-parking" type="button">📍 Location &amp; Parking</button>
+    <button class="bk-tab-btn" data-tab="maps"              type="button">🗺️ Maps</button>
+    <button class="bk-tab-btn" data-tab="overview"          type="button">📋 Overview</button>
+    <button class="bk-tab-btn" data-tab="ride-profile"      type="button">🚴 Ride Profile</button>
+    <button class="bk-tab-btn" data-tab="conditions-safety" type="button">⚠️ Conditions &amp; Safety</button>
+    <button class="bk-tab-btn" data-tab="nearby"            type="button">🏪 Nearby</button>
+    <button class="bk-tab-btn" data-tab="links-websites"    type="button">🔗 Links</button>
+    <button class="bk-tab-btn" data-tab="along-trail"       type="button">🌲 Along the Trail</button>
   </div>
 
-  <div class="row-detail-content">
-    <div class="row-detail-tab-pane active" data-tab="location-parking"></div>
-    <div class="row-detail-tab-pane" data-tab="maps"></div>
-    <div class="row-detail-tab-pane" data-tab="overview"></div>
-    <div class="row-detail-tab-pane" data-tab="ride-profile"></div>
-    <div class="row-detail-tab-pane" data-tab="conditions-safety"></div>
-    <div class="row-detail-tab-pane" data-tab="nearby"></div>
-    <div class="row-detail-tab-pane" data-tab="links-websites"></div>
-    <div class="row-detail-tab-pane" data-tab="along-trail"></div>
+  <!-- Tab panes -->
+  <div class="bk-modal-content">
+    <div class="bk-tab-pane active" data-tab="location-parking"></div>
+    <div class="bk-tab-pane"        data-tab="maps"></div>
+    <div class="bk-tab-pane"        data-tab="overview"></div>
+    <div class="bk-tab-pane"        data-tab="ride-profile"></div>
+    <div class="bk-tab-pane"        data-tab="conditions-safety"></div>
+    <div class="bk-tab-pane"        data-tab="nearby"></div>
+    <div class="bk-tab-pane"        data-tab="links-websites"></div>
+    <div class="bk-tab-pane"        data-tab="along-trail"></div>
   </div>
 
-  <div class="row-detail-footer">
-    <button class="row-detail-footer-btn primary" id="bikeTrailDetailCloseFooterBtn">Close</button>
+  <!-- Footer (action bar injected here by renderBikeModalActionBar) -->
+  <div class="bk-modal-footer row-detail-footer">
+    <button class="row-detail-footer-btn primary" id="bikeTrailDetailCloseFooterBtn" type="button">Close</button>
   </div>
 </div>
-<div id="bikeTrailDetailModalBackdrop" class="modal-backdrop" style="display: none; z-index: 1001;"></div>
+<div id="bikeTrailDetailModalBackdrop" class="modal-backdrop" style="display: none;"></div>
 
 <!-- TRAIL EXPLORER MODAL -->
 <div id="bikeTrailExplorerModal" class="modal-backdrop" style="display: none; z-index: 2000; background: rgba(0,0,0,0.5);">

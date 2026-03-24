@@ -1180,7 +1180,8 @@
 
   function renderBikeModalActionBar(modal, trail, sourceIndex) {
     if (!modal) return;
-    const footer = modal.querySelector('.row-detail-footer');
+    // Target the bike-modal-only footer (bk-modal-footer) — never the adventure modal's footer
+    const footer = modal.querySelector('.bk-modal-footer');
     if (!footer) return;
 
     let actionBar = modal.querySelector('#bikeTrailModalActionBar');
@@ -1254,8 +1255,8 @@
     if (locationEl) locationEl.textContent = [trail.region, trail.city, trail.state].filter(Boolean).join(' • ');
     modal.dataset.sourceIndex = String(sourceIndex);
 
-    // ── Populate tab panes ──
-    const pane = (tab) => modal.querySelector(`.row-detail-tab-pane[data-tab="${tab}"]`);
+    // ── Populate tab panes (bike-modal uses .bk-tab-pane) ──
+    const pane = (tab) => modal.querySelector(`.bk-tab-pane[data-tab="${tab}"]`);
 
     // Location and Parking
     const lp = pane('location-parking');
@@ -1366,22 +1367,26 @@
         ${field('Scenic & Nature', trail.scenicNature)}
       </div>`;
 
-    // ── Tab switching inside modal ──
-    modal.querySelectorAll('.row-detail-tab-btn').forEach((btn) => {
-      // Overwrite instead of stacking listeners on each open
-      btn.onclick = () => {
-        modal.querySelectorAll('.row-detail-tab-btn').forEach((b) => b.classList.remove('active'));
-        modal.querySelectorAll('.row-detail-tab-pane').forEach((p) => p.classList.remove('active'));
+    // ── Tab switching — use bk-tab-btn / bk-tab-pane (bike-modal-only classes) ──
+    // Overwrite onclick each time so we never stack duplicate listeners.
+    modal.querySelectorAll('.bk-tab-btn').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();   // prevent global adventure-card delegates from seeing this click
+        modal.querySelectorAll('.bk-tab-btn').forEach((b) => b.classList.remove('active'));
+        modal.querySelectorAll('.bk-tab-pane').forEach((p) => p.classList.remove('active'));
         btn.classList.add('active');
-        const target = modal.querySelector(`.row-detail-tab-pane[data-tab="${btn.dataset.tab}"]`);
+        const target = modal.querySelector(`.bk-tab-pane[data-tab="${btn.dataset.tab}"]`);
         if (target) target.classList.add('active');
       };
     });
+
     // Reset to first tab
-    modal.querySelectorAll('.row-detail-tab-btn')[0]?.click();
+    const firstTabBtn = modal.querySelector('.bk-tab-btn');
+    if (firstTabBtn) firstTabBtn.click();
+
     renderBikeModalActionBar(modal, trail, sourceIndex);
 
-    // ── Close handlers ──
+    // ── Close handlers (always fresh) ──
     const closeFn = () => {
       modal.style.display = 'none';
       if (backdrop) backdrop.style.display = 'none';
