@@ -1367,22 +1367,29 @@
         ${field('Scenic & Nature', trail.scenicNature)}
       </div>`;
 
-    // ── Tab switching — use bk-tab-btn / bk-tab-pane (bike-modal-only classes) ──
-    // Overwrite onclick each time so we never stack duplicate listeners.
-    modal.querySelectorAll('.bk-tab-btn').forEach((btn) => {
-      btn.onclick = (e) => {
-        e.stopPropagation();   // prevent global adventure-card delegates from seeing this click
+    // ── Tab switching: single delegated listener on the modal, bound only once ──
+    if (!modal.dataset.bkTabsBound) {
+      modal.dataset.bkTabsBound = '1';
+      modal.addEventListener('click', (e) => {
+        const btn = e.target && e.target.closest ? e.target.closest('.bk-tab-btn') : null;
+        if (!btn) return;
         modal.querySelectorAll('.bk-tab-btn').forEach((b) => b.classList.remove('active'));
         modal.querySelectorAll('.bk-tab-pane').forEach((p) => p.classList.remove('active'));
         btn.classList.add('active');
         const target = modal.querySelector(`.bk-tab-pane[data-tab="${btn.dataset.tab}"]`);
         if (target) target.classList.add('active');
-      };
-    });
+      });
+    }
 
     // Reset to first tab
     const firstTabBtn = modal.querySelector('.bk-tab-btn');
-    if (firstTabBtn) firstTabBtn.click();
+    if (firstTabBtn) {
+      modal.querySelectorAll('.bk-tab-btn').forEach((b) => b.classList.remove('active'));
+      modal.querySelectorAll('.bk-tab-pane').forEach((p) => p.classList.remove('active'));
+      firstTabBtn.classList.add('active');
+      const firstPane = modal.querySelector(`.bk-tab-pane[data-tab="${firstTabBtn.dataset.tab}"]`);
+      if (firstPane) firstPane.classList.add('active');
+    }
 
     renderBikeModalActionBar(modal, trail, sourceIndex);
 

@@ -563,19 +563,14 @@
     }, true);
 
     document.addEventListener('click', (event) => {
-      // Scoped strictly to adventure planner modal — never intercept bike trail modal tabs
+      // Never touch clicks inside the bike trail modal — it manages its own tabs
+      if (event.target && event.target.closest && event.target.closest('#bikeTrailDetailModal')) return;
+      // Scoped strictly to adventure planner modal tab buttons
       const tabButton = event.target && event.target.closest ? event.target.closest('#rowDetailModal .row-detail-tab-btn') : null;
       if (!tabButton) return;
       ensureEditingRowFromModalDataset();
       syncRowDetailContextFromGlobals();
       setTimeout(syncRowDetailContextFromGlobals, 0);
-    }, true);
-
-    // Hard guard: stop all global adventure delegates from consuming clicks inside the bike trail modal
-    document.addEventListener('click', (event) => {
-      if (event.target && event.target.closest && event.target.closest('#bikeTrailDetailModal')) {
-        event.stopImmediatePropagation();
-      }
     }, true);
 
     document.addEventListener('keydown', (event) => {
