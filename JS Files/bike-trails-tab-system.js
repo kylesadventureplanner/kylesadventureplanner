@@ -992,10 +992,57 @@
     return norm(a.name).localeCompare(norm(b.name)) * mult;
   }
 
+  function ensureBikeCardHoverHintStyles() {
+    if (document.getElementById('bikeCardHoverHintStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'bikeCardHoverHintStyles';
+    style.textContent = `
+      #bikeTrailsCardsGrid .bike-trail-card { position: relative; }
+      #bikeTrailsCardsGrid .bike-card-hover-hint {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #6b7280;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #e5e7eb;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        pointer-events: none;
+        display: none;
+      }
+
+      /* Desktop/laptop hint only: devices that actually support hover with fine pointer. */
+      @media (hover: hover) and (pointer: fine) {
+        #bikeTrailsCardsGrid .bike-card-hover-hint {
+          display: block;
+        }
+        #bikeTrailsCardsGrid .bike-trail-card:hover .bike-card-hover-hint,
+        #bikeTrailsCardsGrid .bike-trail-card:focus-within .bike-card-hover-hint {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Keep hint hidden on touch/coarse-pointer devices. */
+      @media (hover: none), (pointer: coarse) {
+        #bikeTrailsCardsGrid .bike-card-hover-hint {
+          display: none !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function renderBikeTrailsPage() {
     const grid = document.getElementById('bikeTrailsCardsGrid');
     const resultsCount = document.getElementById('bikeResultsCount');
     if (!grid) return;
+    ensureBikeCardHoverHintStyles();
 
     const total = (window.bikeFilteredTrails || []).length;
     const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
@@ -1026,7 +1073,7 @@
                data-bike-trail-id="${escapeHtml(trail.id)}"
                style="cursor:pointer;"
                onclick="window.showBikeTrailDetails(${trail.sourceIndex})"
-               title="Open trail details">
+               title="Click to open details">
             <div class="card-header">
               <h3 class="card-title">${escapeHtml(trail.name || 'Unnamed Ride')}</h3>
               <div class="card-location">📍 ${escapeHtml(trail.region || trail.city || 'Unknown region')}</div>
@@ -1042,6 +1089,7 @@
                 <div class="card-info-item">Favorite: <strong>${favIcon}</strong></div>
                 <div class="card-info-item">Rating: <strong>${ratingText}</strong></div>
               </div>
+              <div class="bike-card-hover-hint" aria-hidden="true">Click to open details</div>
             </div>
           </div>`;
       }).join('');
