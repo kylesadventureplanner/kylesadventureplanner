@@ -198,6 +198,45 @@
     return ['yes', 'y', 'true', '1', 'available', 'nearby'].some(flag => text === flag || text.includes(flag));
   }
 
+  function inBandLength(lengthMiles, band) {
+    if (!band) return true;
+    if (band === 'short') return Number(lengthMiles || 0) <= 10;
+    if (band === 'medium') return Number(lengthMiles || 0) > 10 && Number(lengthMiles || 0) <= 25;
+    if (band === 'long') return Number(lengthMiles || 0) > 25;
+    return true;
+  }
+
+  function inBandDrive(minutes, band) {
+    const mins = Number(minutes || 0);
+    if (!band) return true;
+    if (band === 'under30') return mins < 30;
+    if (band === '30to60') return mins >= 30 && mins <= 60;
+    if (band === 'over60') return mins > 60;
+    return true;
+  }
+
+  function matchesQuickFilter(trail, filterKey) {
+    const difficulty = norm(trail && trail.difficulty);
+    const surface = norm(trail && trail.surface);
+
+    if (filterKey === 'easy') return difficulty.includes('easy');
+    if (filterKey === 'moderate') return difficulty.includes('moderate');
+    if (filterKey === 'hard') return difficulty.includes('hard');
+    if (filterKey === 'paved') return surface.includes('paved');
+    if (filterKey === 'gravel') return surface.includes('gravel');
+    if (filterKey === 'under30') return Number(trail && trail.driveMinutes) < 30;
+    if (filterKey === 'low-elevation') {
+      const elevation = Number(trail && trail.elevationGain);
+      return elevation > 0 && elevation <= 500;
+    }
+    if (filterKey === 'family') {
+      const text = `${trail && trail.vibes ? trail.vibes : ''} ${trail && trail.moodTags ? trail.moodTags : ''}`;
+      return norm(text).includes('family');
+    }
+    if (filterKey === 'coffee') return isTruthyFlag(trail && trail.coffeeNearby);
+    return true;
+  }
+
   function normalizeColumnName(value) {
     return String(value || '')
       .trim()
