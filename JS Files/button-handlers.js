@@ -12,6 +12,8 @@
 
   let rowDetailFixInstalled = false;
   let globalDetailDelegatesBound = false;
+  let filterReliabilityBound = false;
+  let filterReliabilityLogShown = false;
 
   function normalizeButton(button) {
     if (!button) return;
@@ -70,7 +72,13 @@
   function resolveCardIndexFromElement(element) {
     if (!element) return null;
 
+    const fromSourceAttr = Number(element.getAttribute('data-source-index'));
+    if (Number.isInteger(fromSourceAttr) && fromSourceAttr >= 0) return fromSourceAttr;
+
     const detailsButton = element.querySelector('.card-details-btn');
+    const fromDetailsSource = detailsButton ? Number(detailsButton.getAttribute('data-source-index')) : NaN;
+    if (Number.isInteger(fromDetailsSource) && fromDetailsSource >= 0) return fromDetailsSource;
+
     const fromDetails = detailsButton ? Number(detailsButton.getAttribute('data-index')) : NaN;
     if (Number.isInteger(fromDetails) && fromDetails >= 0) return fromDetails;
 
@@ -802,16 +810,141 @@
     }, false);
   }
 
+  function installFilterReliabilityFallback() {
+    // Intentionally re-runnable: bike/adventure tab DOM is injected dynamically.
+
+    const adventureControlIds = [
+      'searchName',
+      'filterDifficulty',
+      'filterState',
+      'filterCity',
+      'filterTags',
+      'filterCost',
+      'groupBy',
+      'groupBySecondary'
+    ];
+
+    const bikeControlIds = [
+      'bikeSearchName',
+      'bikeFilterRegion',
+      'bikeFilterDifficulty',
+      'bikeFilterSurface',
+      'bikeFilterLengthBand',
+      'bikeFilterDriveTimeBand',
+      'bikeFilterTraffic',
+      'bikeFilterState',
+      'bikeFilterCity',
+      'bikeFilterCost',
+      'bikeFilterHours',
+      'bikeGroupBy',
+      'bikeSortBy'
+    ];
+
+    const callAdventureApply = () => {
+      if (window.FilterManager && typeof window.FilterManager.applyAllFilters === 'function') {
+        window.FilterManager.applyAllFilters();
+        return;
+      }
+      if (typeof window.applyFilters === 'function') {
+        window.applyFilters();
+      }
+    };
+
+    const callBikeApply = () => {
+      if (typeof window.applyBikeFilters === 'function') {
+        window.applyBikeFilters();
+      }
+    };
+
+    let boundAnything = false;
+
+    adventureControlIds.forEach((id) => {
+      const input = document.getElementById(id);
+      if (!input || input.dataset.filterReliabilityBound === '1') return;
+      input.addEventListener('input', callAdventureApply, false);
+      input.addEventListener('change', callAdventureApply, false);
+      input.dataset.filterReliabilityBound = '1';
+      boundAnything = true;
+    });
+
+    const quickFiltersCard = document.getElementById('quickFiltersCard');
+    if (quickFiltersCard && quickFiltersCard.dataset.filterReliabilityBound !== '1') {
+      quickFiltersCard.addEventListener('click', (event) => {
+        const button = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
+        if (!button) return;
+        setTimeout(callAdventureApply, 0);
+      }, false);
+      quickFiltersCard.dataset.filterReliabilityBound = '1';
+      boundAnything = true;
+    }
+
+    ['resetAllFiltersTop', 'resetAllFiltersBottom', 'breadcrumbResetBtn'].forEach((id) => {
+      const button = document.getElementById(id);
+      if (!button || button.dataset.filterReliabilityBound === '1') return;
+      button.addEventListener('click', () => setTimeout(callAdventureApply, 0), false);
+      button.dataset.filterReliabilityBound = '1';
+      boundAnything = true;
+    });
+
+    bikeControlIds.forEach((id) => {
+      const input = document.getElementById(id);
+      if (!input || input.dataset.bikeFilterReliabilityBound === '1') return;
+      input.addEventListener('input', callBikeApply, false);
+      input.addEventListener('change', callBikeApply, false);
+      input.dataset.bikeFilterReliabilityBound = '1';
+      boundAnything = true;
+    });
+
+    const bikeQuickFiltersCard = document.getElementById('bikeQuickFiltersCard');
+    if (bikeQuickFiltersCard && bikeQuickFiltersCard.dataset.bikeFilterReliabilityBound !== '1') {
+      bikeQuickFiltersCard.addEventListener('click', (event) => {
+        const button = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
+        if (!button) return;
+        setTimeout(callBikeApply, 0);
+      }, false);
+      bikeQuickFiltersCard.dataset.bikeFilterReliabilityBound = '1';
+      boundAnything = true;
+    }
+
+    ['bikeResetAllFiltersTop', 'bikeResetAllFiltersBottom', 'bikeBreadcrumbResetBtn'].forEach((id) => {
+      const button = document.getElementById(id);
+      if (!button || button.dataset.bikeFilterReliabilityBound === '1') return;
+      button.addEventListener('click', () => setTimeout(callBikeApply, 0), false);
+      button.dataset.bikeFilterReliabilityBound = '1';
+      boundAnything = true;
+    });
+
+    const bikeExplorerBtn = document.getElementById('bikeTrailExplorerBtn');
+    if (bikeExplorerBtn && bikeExplorerBtn.dataset.bikeExplorerReliabilityBound !== '1') {
+      bikeExplorerBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        window.openBikeTrailExplorer?.();
+      }, false);
+      bikeExplorerBtn.dataset.bikeExplorerReliabilityBound = '1';
+      boundAnything = true;
+    }
+
+    if (boundAnything) {
+      filterReliabilityBound = true;
+      if (!filterReliabilityLogShown) {
+        console.log('✅ Filter reliability fallback bound');
+        filterReliabilityLogShown = true;
+      }
+    }
+  }
+
   function init() {
     installHandlers();
     refreshVisibleButtons();
     installRowDetailFixes();
+    installFilterReliabilityFallback();
 
     const observer = new MutationObserver(() => {
       refreshVisibleButtons();
       bindRowDetailCloseHandlers();
       bindRowDetailEditHandler();
       reassertRowDetailBindings();
+      installFilterReliabilityFallback();
     });
 
     if (document.body) {

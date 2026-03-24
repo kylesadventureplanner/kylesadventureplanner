@@ -5797,44 +5797,37 @@
              // Column order: 0=Name, 1=GooglePlaceId, 2=Website, 3=Tags, etc.
             const name = values[0] || 'Unnamed Adventure';
             const googlePlaceId = values[1] || '';
-            const website = values[2] || '';
+            // const website = values[2] || '';
             const tags = (values[3] || '').split(',').filter(t => t.trim());
             const driveTime = values[4] || '';
-            const hoursOfOperation = values[5] || '';
-            const activityDuration = values[6] || '';
+            // const hoursOfOperation = values[5] || '';
+            // const activityDuration = values[6] || '';
             const difficulty = values[7] || '';
             const trailLength = values[8] || '';
             const state = values[9] || '';
             const city = values[10] || '';
-            const address = values[11] || '';
-            const phoneNumber = values[12] || '';
+            // const address = values[11] || '';
+            // const phoneNumber = values[12] || '';
             const googleRating = values[13] || '';
             const cost = values[14] || '';
-            const directions = values[15] || '';
+            // const directions = values[15] || '';
             const description = values[16] || '';
-            const myRating = values[21] || 0;
-            const favoriteStatus = values[22] || '';
+            // const myRating = values[21] || 0;
+            // const favoriteStatus = values[22] || '';
 
-            // Get saved rating for this adventure
+            // Adventure cards are now open-details surfaces; actions live in the modal.
             const adventureId = googlePlaceId || `${name}_${index}`;
-            const savedRatings = JSON.parse(localStorage.getItem('adventureRatings') || '{}');
-            const currentRating = savedRatings[adventureId] || 0;
-
-            // Check if favorited
-            const favorites = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
-            const isFavorited = favorites.includes(adventureId);
-
-            // Create card HTML with ALL features
             const card = document.createElement('div');
             card.className = 'adventure-card';
             card.dataset.cardDomain = 'adventure';
             card.dataset.adventureId = adventureId;
+            card.dataset.index = String(index);
             card.innerHTML = `
-              <div class="card-header">
-                <h3 class="card-title">${name}</h3>
-                <div class="card-location">📍 ${city}${state ? ', ' + state : ''}</div>
-                ${driveTime ? `<div class="card-drive-time">🚗 ${driveTime}</div>` : ''}
-              </div>
+             <div class="card-header">
+               <h3 class="card-title">${name}</h3>
+               <div class="card-location">📍 ${city}${state ? ', ' + state : ''}</div>
+               ${driveTime ? `<div class="card-drive-time">🚗 ${driveTime}</div>` : ''}
+             </div>
 
               <div class="card-body">
                 ${tags.length > 0 ? `
@@ -5855,53 +5848,8 @@
                 </div>
               </div>
 
-              <div class="card-footer">
-                <div class="card-action-buttons">
-                  ${address ? `
-                    <button class="card-btn" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(name)}+${encodeURIComponent(address)}', '_blank')" title="View on Google Maps" data-tooltip="View location on Google Maps">
-                      <span>📍</span> Google View
-                    </button>
-                  ` : `
-                    <button class="card-btn" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(name)}', '_blank')" title="View on Google Maps" data-tooltip="View location on Google Maps">
-                      <span>📍</span> Google View
-                    </button>
-                  `}
-
-                  ${directions || address ? `
-                    <button class="card-btn" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || name)}', '_blank')" title="Get turn-by-turn directions" data-tooltip="Get turn-by-turn directions to this location">
-                      <span>🗺️</span> Directions
-                    </button>
-                  ` : ''}
-
-                  ${website ? `
-                    <a href="${website}" target="_blank" class="card-btn" title="Visit website">
-                      <span>🌐</span> Website
-                    </a>
-                  ` : ''}
-
-                  <button class="card-btn card-details-btn" onclick="try { window.showCardDetails(${index}); } catch(e) { console.error('Error calling showCardDetails:', e); }" title="View full details">
-                    <span>📖</span> Details
-                  </button>
-                </div>
-
-                <div class="card-favorite-rating-container">
-                  <div class="card-rating">
-                    ${[1, 2, 3, 4, 5].map(star => `
-                      <span class="rating-star ${currentRating >= star ? 'filled' : ''}"
-                            data-rating="${star}"
-                            data-index="${index}"
-                            onclick="try { window.setAdventureRating(${index}, ${star}, this.closest('.adventure-card')); } catch(e) { console.error('Error calling setAdventureRating:', e); }"
-                            title="${star} stars">⭐</span>
-                    `).join('')}
-                  </div>
-
-                  <button class="card-favorite-btn ${isFavorited ? 'active' : ''}"
-                          onclick="try { window.toggleCardFavorite(${index}, event, this.closest('.adventure-card')); } catch(e) { console.error('Error calling toggleCardFavorite:', e); }"
-                          title="Add to favorites"
-                          data-adventure-id="${adventureId}">
-                    ${isFavorited ? '💖' : '🤍'}
-                  </button>
-                </div>
+              <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
+                <div style="font-size: 12px; color: #64748b;">Click anywhere on this card to open details</div>
               </div>
             `;
 
@@ -9117,6 +9065,38 @@
       }
 
     // ...existing code...
+    window.openAutomationControlPanel = function() {
+      // Check if window is already open
+      if (automationPanelWindow && !automationPanelWindow.closed) {
+        automationPanelWindow.focus();
+        return;
+      }
+
+      // Calculate center position
+      const width = 650;
+      const height = 800;
+      const left = (screen.width - width) / 2;
+      const top = (screen.height - height) / 2;
+
+      // Cache-bust popup URL and resolve from stable app root.
+      const popupBase = window.resolvePlannerPageUrl('HTML Files/automation-control-panel.html');
+      const popupUrl = `${popupBase}?cb=${Date.now()}`;
+
+      // Open popup window
+      automationPanelWindow = window.open(
+              popupUrl,
+              'AutomationControlPanel',
+              `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+      );
+
+      if (automationPanelWindow) {
+        automationPanelWindow.focus();
+        console.log('✅ Automation Control Panel opened');
+      } else {
+        alert('Failed to open Automation Control Panel. Please check if popups are blocked.');
+      }
+    };
+    // ...existing code...
         if (window.FilterManager) {
           // Final runtime filter fix: one source of truth, one-time bindings.
           if (!window.__finalFilterRuntimeInstalled) {
@@ -10839,7 +10819,10 @@
 
     // Render each card for this page
     pageAdventures.forEach((adventure, pageIndex) => {
-      const { row, index } = adventure;
+      const { row } = adventure;
+      const sourceIndex = Number.isInteger(adventure.sourceIndex)
+        ? adventure.sourceIndex
+        : (Array.isArray(window.adventuresData) ? window.adventuresData.indexOf(row) : -1);
       const values = row.values[0];
 
       // Calculate the actual index in totalFilteredAdventures array
@@ -10913,7 +10896,12 @@
       const card = document.createElement("div");
       card.className = "adventure-card";
       card.dataset.cardDomain = 'adventure';
-      card.dataset.index = actualIndex;
+      card.dataset.index = String(actualIndex);
+      if (sourceIndex >= 0) {
+        card.dataset.sourceIndex = String(sourceIndex);
+      } else {
+        card.removeAttribute('data-source-index');
+      }
       card.dataset.googlePlaceId = (googlePlaceId || "").trim();
       card.dataset.state = (state || "").toLowerCase();
       card.dataset.city = (city || "").toLowerCase();
@@ -10963,7 +10951,7 @@
             <div class="card-info-row">
               <span class="card-info-icon">📞</span>
               <span class="card-info-label">Phone:</span>
-              <span class="card-info-value"><a href="tel:${phoneNumber}" style="color: #1d4ed8; text-decoration: none;">${phoneNumber}</a></span>
+              <span class="card-info-value">${phoneNumber}</span>
             </div>
           ` : ''}
 
@@ -10971,7 +10959,7 @@
             <div class="card-info-row">
               <span class="card-info-icon">🌐</span>
               <span class="card-info-label">Website:</span>
-              <span class="card-info-value"><a href="${website.startsWith('http') ? website : 'https://' + website}" target="_blank" rel="noopener" style="color: #1d4ed8; text-decoration: none;">Visit Site ↗</a></span>
+              <span class="card-info-value">${website}</span>
             </div>
           ` : ''}
 
@@ -11000,40 +10988,8 @@
           ` : ''}
         </div>
 
-        <div class="adventure-card-footer">
-          <div class="card-action-btns">
-            <button class="card-btn card-details-btn" data-index="${actualIndex}" title="View full details and information" data-tooltip="View full details and information">
-              <span>📖</span> Details
-            </button>
-            ${(hasPlaceId || address || name) ? `
-              <button class="card-btn card-btn-primary card-directions-btn" data-placeid="${googlePlaceId || ''}" data-address="${address || ''}" data-name="${name || ''}" title="Get directions to this location" data-tooltip="Get directions to this location">
-                <span>🗺️</span> Directions
-              </button>
-            ` : ''}
-            ${(address || name) ? `
-              <button class="card-btn card-google-place-btn" data-placeid="${googlePlaceId || ''}" data-address="${address || ''}" data-name="${name || ''}" title="View on Google Maps" data-tooltip="View on Google Maps">
-                <span>📍</span> Google View
-              </button>
-            ` : ''}
-            <button class="card-btn card-similar-btn" data-index="${actualIndex}" title="Find similar adventures" data-tooltip="Find similar adventures">
-              <span>🔍</span> Similar
-            </button>
-          </div>
-          <div class="card-favorite-rating-container">
-            <div class="card-rating" data-index="${actualIndex}" title="Rate this place (click stars). Right-click to clear rating.">
-              <span class="rating-star ${currentRating >= 1 ? 'filled' : ''}" data-rating="1" title="1 star">⭐</span>
-              <span class="rating-star ${currentRating >= 2 ? 'filled' : ''}" data-rating="2" title="2 stars">⭐</span>
-              <span class="rating-star ${currentRating >= 3 ? 'filled' : ''}" data-rating="3" title="3 stars">⭐</span>
-              <span class="rating-star ${currentRating >= 4 ? 'filled' : ''}" data-rating="4" title="4 stars">⭐</span>
-              <span class="rating-star ${currentRating >= 5 ? 'filled' : ''}" data-rating="5" title="5 stars">⭐</span>
-            </div>
-            <button class="tag-manager-btn" onclick="openTagManager('${googlePlaceId}')" title="Manage tags for this place">
-              🏷️
-            </button>
-            <button class="card-favorite card-favorite-btn" data-index="${actualIndex}" title="Add to favorites. Click to toggle." data-tooltip="Add to favorites. Click to toggle.">
-              🤍
-            </button>
-          </div>
+        <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
+          <div style="font-size: 12px; color: #64748b;">Click anywhere on this card to open details</div>
         </div>
       `;
 
@@ -11059,163 +11015,22 @@
     // Add SINGLE delegated event listener for ALL card interactions
     // This eliminates duplicate listeners and the favorite multiplication bug
     freshCardsGrid.addEventListener('click', (e) => {
-      // CRITICAL: Ensure all button clicks are properly handled
-      // Stop propagation immediately for any button click
-      const clickedButton = e.target.closest('button[class*="card-btn"], button[class*="card-favorite"], button.tag-manager-btn');
-      if (clickedButton) {
-        e.stopPropagation();
-        e.preventDefault();
-      }
-
-      const tagPill = e.target.closest('.tag-pill');
-      if (tagPill) {
-        e.stopPropagation();
-        const tag = tagPill.getAttribute('data-tag');
-        filterByTag(tag);
-        return;
-      }
-
-      const addressCopy = e.target.closest('.card-address-copy');
-      if (addressCopy) {
-        e.stopPropagation();
-        const address = addressCopy.getAttribute('data-address') || addressCopy.textContent || '';
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(address)
-                  .then(() => showToast('Address copied', 'success', 1200))
-                  .catch(() => showToast('Could not copy address', 'error', 1500));
-        } else {
-          showToast('Clipboard not available in this browser', 'warning', 2000);
-        }
-        return;
-      }
-
-      const detailsBtn = e.target.closest('.card-details-btn');
-      if (detailsBtn) {
-        e.stopPropagation();
-        e.preventDefault();
-        const filteredIndex = Number(detailsBtn.getAttribute('data-index'));
-
-        // Get the adventure object from the filtered array
-        const adventure = totalFilteredAdventures[filteredIndex];
-        if (!adventure) {
-          console.error('❌ Adventure not found at filtered index:', filteredIndex);
-          return;
-        }
-
-        // Get the actual index in window.adventuresData
-        const actualDataIndex = adventure.sourceIndex;
-        if (actualDataIndex === undefined || actualDataIndex === null || actualDataIndex < 0) {
-          console.error('❌ Could not find actual data index for adventure at filtered index:', filteredIndex);
-          return;
-        }
-
-        try {
-          console.log('📖 Opening details for index:', actualDataIndex);
-          window.showCardDetails(actualDataIndex);
-        } catch (err) {
-          console.error('❌ Error opening details:', err);
-          alert('Error opening details. Please try again.');
-        }
-        return;
-      }
-
-      const directionsBtn = e.target.closest('.card-directions-btn');
-      if (directionsBtn) {
-        e.stopPropagation();
-        e.preventDefault();
-        const directionsUrl = directionsBtn.getAttribute('data-directions');
-
-        if (directionsUrl && directionsUrl.trim()) {
-          console.log('Opening directions:', directionsUrl);
-          window.open(directionsUrl, '_blank');
-        } else {
-          console.warn('No directions URL available');
-        }
-        return;
-      }
-
-      const tagManagerBtn = e.target.closest('.tag-manager-btn');
-      if (tagManagerBtn) {
-        e.stopPropagation();
-        e.preventDefault();
-        const placeId = tagManagerBtn.getAttribute('data-place-id');
-        if (typeof openTagManager === 'function') {
-          openTagManager(placeId);
-        } else {
-          console.error('Tag manager not available');
-        }
-        return;
-      }
-
-      const googlePlaceBtn = e.target.closest('.card-google-place-btn');
-      if (googlePlaceBtn) {
-        e.stopPropagation();
-        const address = googlePlaceBtn.getAttribute('data-address');
-        const name = googlePlaceBtn.getAttribute('data-name');
-
-        // Use address and name for more reliable Google Maps search
-        let searchQuery = '';
-        if (address && name) {
-          searchQuery = `${encodeURIComponent(name)}+${encodeURIComponent(address)}`;
-        } else if (address) {
-          searchQuery = encodeURIComponent(address);
-        } else if (name) {
-          searchQuery = encodeURIComponent(name);
-        }
-
-        if (searchQuery) {
-          const googleUrl = `https://www.google.com/maps/search/${searchQuery}`;
-          window.open(googleUrl, '_blank');
-
-          // Save the Google URL to Excel column 23 (Google URL)
-          const idx = Number(googlePlaceBtn.closest('.adventure-card').querySelector('.card-details-btn')?.getAttribute('data-index'));
-          if (idx >= 0 && totalFilteredAdventures[idx]) {
-            updateExcelGoogleUrl(idx, googleUrl);
-          }
-        }
-        return;
-      }
-
-      const similarBtn = e.target.closest('.card-similar-btn');
-      if (similarBtn) {
-        e.stopPropagation();
-        const idx = Number(similarBtn.getAttribute('data-index'));
-        showSimilarAdventures(idx);
-        return;
-      }
-
-      const nearbyBtn = e.target.closest('.card-nearby-btn');
-      if (nearbyBtn) {
-        e.stopPropagation();
-        const idx = Number(nearbyBtn.getAttribute('data-index'));
-        showNearbyAdventures(idx);
-        return;
-      }
-
-      const favoriteBtn = e.target.closest('.card-favorite-btn');
-      if (favoriteBtn) {
-        e.stopPropagation();
-        const idx = Number(favoriteBtn.getAttribute('data-index'));
-        const card = favoriteBtn.closest('.adventure-card');
-        toggleCardFavorite(idx, null, card);
-        return;
-      }
-
-      const ratingStar = e.target.closest('.rating-star');
-      if (ratingStar) {
-        e.stopPropagation();
-        const ratingContainer = ratingStar.closest('.card-rating');
-        const idx = Number(ratingContainer?.getAttribute('data-index'));
-        const rating = parseInt(ratingStar.getAttribute('data-rating'));
-        setAdventureRating(idx, rating, ratingStar.closest('.adventure-card'));
-        return;
-      }
-
-      // Card click for details (if not clicking button)
       const card = e.target.closest('.adventure-card');
-      if (card && !e.target.closest('button') && !e.target.closest('.rating-star')) {
-        const idx = Number(card.querySelector('.card-details-btn')?.getAttribute('data-index'));
-        showCardDetails(idx);
+      if (!card) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const sourceIndex = Number(card.dataset.sourceIndex || card.dataset.index);
+       if (!Number.isInteger(sourceIndex) || sourceIndex < 0) {
+         console.warn('⚠️ Card click missing valid source index');
+         return;
+       }
+
+      try {
+        showCardDetails(sourceIndex);
+      } catch (err) {
+        console.error('❌ Error opening details from card click:', err);
       }
     }, false);
 
@@ -11686,10 +11501,30 @@
 
     console.log('✅ Modal elements ready, populating data...');
 
+    const filteredIndex = Array.isArray(window.totalFilteredAdventures)
+      ? window.totalFilteredAdventures.findIndex((entry) => entry && entry.sourceIndex === index)
+      : -1;
+
     // Persist source index on the modal so edit mode can recover reliably.
     modal.dataset.currentRowIndex = String(index);
+    modal.dataset.currentFilteredIndex = String(filteredIndex);
 
     modalTitle.textContent = name || "Adventure Details";
+
+    const googleSearchUrl = `https://www.google.com/maps/search/${encodeURIComponent([name || '', address || ''].filter(Boolean).join(' '))}`;
+    const actionStrip = `
+      <div class="modal-detail-section" style="background:#f8fafc; border:1px solid #dbeafe;">
+        <h3>Quick Actions</h3>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button type="button" class="row-detail-action-btn" data-action="directions" data-url="${String(directions || '').replace(/"/g, '&quot;')}">🗺️ Directions</button>
+          <button type="button" class="row-detail-action-btn" data-action="google" data-url="${googleSearchUrl}">📍 Google View</button>
+          <button type="button" class="row-detail-action-btn" data-action="similar" data-filter-index="${filteredIndex}">🔎 Similar</button>
+          <button type="button" class="row-detail-action-btn" data-action="nearby" data-filter-index="${filteredIndex}">📌 Nearby</button>
+          <button type="button" class="row-detail-action-btn" data-action="favorite" data-filter-index="${filteredIndex}">💖 Favorite</button>
+          <button type="button" class="row-detail-action-btn" data-action="tags" data-place-id="${String(googlePlaceId || '').replace(/"/g, '&quot;')}">🏷️ Tags</button>
+        </div>
+      </div>
+    `;
 
     // Define tabs
     const tabs = [
@@ -11697,10 +11532,11 @@
         id: "overview",
         label: "📋 Overview",
         content: `
-          <div class="modal-detail-section">
-            <h3>📍 Location</h3>
-            <p><strong>Address:</strong> ${address || "Not available"}</p>
-            <p><strong>Drive Time:</strong> ${driveTime || "N/A"}</p>
+          ${actionStrip}
+           <div class="modal-detail-section">
+             <h3>📍 Location</h3>
+             <p><strong>Address:</strong> ${address || "Not available"}</p>
+             <p><strong>Drive Time:</strong> ${driveTime || "N/A"}</p>
             <p><strong>Phone Number:</strong> ${phoneNumber ? `<a href="tel:${String(phoneNumber).replace(/\s+/g, '')}">${phoneNumber}</a>` : "Not available"}</p>
             <p><strong>State:</strong> ${state || "N/A"}</p>
             <p><strong>City:</strong> ${city || "N/A"}</p>
@@ -11796,20 +11632,60 @@
       </div>
     `).join('');
 
-    // Add tab click handlers
-    tabsContainer.querySelectorAll('.row-detail-tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tabId = btn.getAttribute('data-tab-id');
+    // Bind tab and action behavior once on the modal container.
+    if (modal.dataset.rowDetailInteractionBound !== '1') {
+      modal.addEventListener('click', (event) => {
+        const tabBtn = event.target.closest('.row-detail-tab-btn');
+        if (tabBtn) {
+          const tabId = tabBtn.getAttribute('data-tab-id');
+          if (!tabId) return;
+          tabsContainer.querySelectorAll('.row-detail-tab-btn').forEach(b => b.classList.remove('active'));
+          modalContent.querySelectorAll('.row-detail-tab-pane').forEach(p => p.classList.remove('active'));
+          tabBtn.classList.add('active');
+          const pane = modalContent.querySelector(`.row-detail-tab-pane[data-tab-id="${tabId}"]`);
+          if (pane) pane.classList.add('active');
+          return;
+        }
 
-        // Remove active from all buttons and panes
-        tabsContainer.querySelectorAll('.row-detail-tab-btn').forEach(b => b.classList.remove('active'));
-        modalContent.querySelectorAll('.row-detail-tab-pane').forEach(p => p.classList.remove('active'));
+        const actionBtn = event.target.closest('.row-detail-action-btn');
+        if (!actionBtn) return;
+        event.preventDefault();
+        event.stopPropagation();
 
-        // Add active to clicked button and corresponding pane
-        btn.classList.add('active');
-        modalContent.querySelector(`.row-detail-tab-pane[data-tab-id="${tabId}"]`).classList.add('active');
-      });
-    });
+        const action = actionBtn.getAttribute('data-action');
+        const sourceIndex = Number(modal.dataset.currentRowIndex);
+        const activeFilteredIndex = Number(modal.dataset.currentFilteredIndex);
+        const filteredIndex = Number.isInteger(activeFilteredIndex) && activeFilteredIndex >= 0
+          ? activeFilteredIndex
+          : (Array.isArray(window.totalFilteredAdventures)
+            ? window.totalFilteredAdventures.findIndex((entry) => entry && entry.sourceIndex === sourceIndex)
+            : -1);
+
+        if (action === 'directions' || action === 'google') {
+          const url = String(actionBtn.getAttribute('data-url') || '').trim();
+          if (url) window.open(url, '_blank', 'noopener');
+          return;
+        }
+        if (action === 'similar' && typeof window.showSimilarAdventures === 'function' && filteredIndex >= 0) {
+          window.showSimilarAdventures(filteredIndex);
+          return;
+        }
+        if (action === 'nearby' && typeof window.showNearbyAdventures === 'function' && filteredIndex >= 0) {
+          window.showNearbyAdventures(filteredIndex);
+          return;
+        }
+        if (action === 'favorite' && typeof window.toggleCardFavorite === 'function' && filteredIndex >= 0) {
+          window.toggleCardFavorite(filteredIndex, event, null);
+          return;
+        }
+        if (action === 'tags' && typeof window.openTagManager === 'function') {
+          const placeId = String(actionBtn.getAttribute('data-place-id') || '').trim();
+          if (placeId) window.openTagManager(placeId);
+        }
+      }, true);
+
+      modal.dataset.rowDetailInteractionBound = '1';
+    }
 
     // Show modal and backdrop
     console.log('📊 Showing modal and backdrop...');
@@ -18052,6 +17928,31 @@ COMMON ISSUES:
 
     let automationPanelWindow = null;
 
+    // Resolve planner pages from a stable app root so refresh/new-tab routes do not drift.
+    window.resolvePlannerPageUrl = function(relativePath) {
+      const rel = String(relativePath || '').replace(/^\/+/, '');
+      const pathname = window.location.pathname || '/';
+      const marker = '/kylesadventureplanner/';
+      const markerIdx = pathname.toLowerCase().indexOf(marker);
+
+      let basePath = '/';
+      if (markerIdx >= 0) {
+        basePath = pathname.slice(0, markerIdx + marker.length);
+      } else {
+        const slashIdx = pathname.lastIndexOf('/');
+        basePath = slashIdx >= 0 ? pathname.slice(0, slashIdx + 1) : '/';
+      }
+
+      const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
+      const baseUrl = origin ? `${origin}${basePath}` : window.location.href;
+      return new URL(encodeURI(rel), baseUrl).toString();
+    };
+
+    window.openPlannerPage = function(relativePath, target = '_blank', features = '') {
+      const absoluteUrl = window.resolvePlannerPageUrl(relativePath);
+      return window.open(absoluteUrl, target, features);
+    };
+
     window.openAutomationControlPanel = function() {
       // Check if window is already open
       if (automationPanelWindow && !automationPanelWindow.closed) {
@@ -19089,11 +18990,11 @@ COMMON ISSUES:
     showToast('⏳ Loading Find Similar feature...', 'info', 3000);
   };
 
-  function openEditMode() {
+    function openEditMode() {
     // Open simplified edit mode with proven tab switching
-    const editModeUrl = 'HTML Files/edit-mode-simple.html';
+    const editModeUrl = new URL('HTML%20Files/edit-mode-simple.html', window.location.href).toString();
     window.open(editModeUrl, '_blank');
-  }
+    }
 
   // Add keyboard shortcut for Edit Mode
   document.addEventListener('keydown', function(e) {
@@ -19995,7 +19896,7 @@ window.openEditModeWindow = function() {
   console.log('📝 Opening Edit Mode in new tab...');
 
   try {
-    const editModeUrl = 'HTML Files/edit-mode-enhanced.html';
+    const editModeUrl = window.resolvePlannerPageUrl('HTML Files/edit-mode-enhanced.html');
 
     // Open in new tab (not window)
     const editTab = window.open(editModeUrl, '_blank');
@@ -20145,7 +20046,7 @@ setTimeout(() => {
 window.startFindNearMe = function() {
   console.log('📍 Starting Find Near Me in new tab...');
   try {
-    const findNearMeUrl = 'HTML Files/find-near-me-window.html';
+    const findNearMeUrl = window.resolvePlannerPageUrl('HTML Files/find-near-me-window.html');
     const newTab = window.open(findNearMeUrl, '_blank');
 
     if (!newTab) {
@@ -20373,8 +20274,16 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     // ============================================================
     console.log('🔧 Initializing Consolidated Filtering System...');
 
+    // (Removed duplicate guard to allow correct late FilterManager initialization)
+
+    // Hard stop: keep the earlier canonical FilterManager and avoid duplicate runtime ownership.
+    if (window.FilterManager) {
+      console.log('ℹ️ Skipping duplicate late FilterManager block (already initialized)');
+      return;
+    }
+
     // Master filter state object
-    const FilterManager = {
+    const LateFilterManager = {
       state: {
         searchName: '',
         filterDifficulty: '',
@@ -20747,8 +20656,8 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
     // Initialize FilterManager when page is ready
     function initializeFilterManager() {
-      if (FilterManager.init) {
-        FilterManager.init();
+      if (LateFilterManager.init) {
+        LateFilterManager.init();
       }
     }
 
@@ -20770,9 +20679,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     }
 
     // Make FilterManager globally accessible
-    window.FilterManager = FilterManager;
-    window.applyFilters = () => FilterManager.applyAllFilters();
-    window.resetAllFilters = () => FilterManager.resetAllFilters();
+    window.FilterManager = LateFilterManager;
+    window.applyFilters = () => LateFilterManager.applyAllFilters();
+    window.resetAllFilters = () => LateFilterManager.resetAllFilters();
 
     // Expose iPhone toggle as global function
     if (typeof initIphoneToggle === 'function') {
@@ -20997,6 +20906,80 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     }
 
     setTimeout(syncExcelBaseline, 0);
+  })();
+</script>
+<!-- ...existing code... -->
+<script>
+  (function () {
+    const ensureResolver = () => {
+      if (typeof window.resolvePlannerPageUrl === 'function') return;
+      window.resolvePlannerPageUrl = function(relativePath) {
+        const rel = String(relativePath || '').replace(/^\/+/, '');
+        const pathname = window.location.pathname || '/';
+        const marker = '/kylesadventureplanner/';
+        const markerIdx = pathname.toLowerCase().indexOf(marker);
+        let basePath = '/';
+        if (markerIdx >= 0) {
+          basePath = pathname.slice(0, markerIdx + marker.length);
+        } else {
+          const slashIdx = pathname.lastIndexOf('/');
+          basePath = slashIdx >= 0 ? pathname.slice(0, slashIdx + 1) : '/';
+        }
+        const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
+        const baseUrl = origin ? `${origin}${basePath}` : window.location.href;
+        return new URL(encodeURI(rel), baseUrl).toString();
+      };
+    };
+
+    ensureResolver();
+
+    window.openAutomationControlPanel = function() {
+      if (window.automationPanelWindow && !window.automationPanelWindow.closed) {
+        window.automationPanelWindow.focus();
+        return;
+      }
+      const width = 650;
+      const height = 800;
+      const left = (screen.width - width) / 2;
+      const top = (screen.height - height) / 2;
+      const popupBase = window.resolvePlannerPageUrl('HTML Files/automation-control-panel.html');
+      const popupUrl = `${popupBase}${popupBase.includes('?') ? '&' : '?'}cb=${Date.now()}`;
+      window.automationPanelWindow = window.open(
+        popupUrl,
+        'AutomationControlPanel',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,status=yes`
+      );
+      if (window.automationPanelWindow) {
+        window.automationPanelWindow.focus();
+      } else {
+        alert('Failed to open Automation Control Panel. Please check if popups are blocked.');
+      }
+    };
+
+    window.openEditMode = function() {
+      const editModeUrl = window.resolvePlannerPageUrl('HTML Files/edit-mode-simple.html');
+      window.open(editModeUrl, '_blank');
+    };
+
+    window.openEditModeWindow = function() {
+      const editModeUrl = window.resolvePlannerPageUrl('HTML Files/edit-mode-enhanced.html');
+      const editTab = window.open(editModeUrl, '_blank');
+      if (editTab) {
+        editTab.focus();
+      } else if (typeof window.showToast === 'function') {
+        window.showToast('❌ Failed to open Edit Mode. Check if pop-ups are blocked.', 'error', 5000);
+      }
+    };
+
+    window.startFindNearMe = function() {
+      const findNearMeUrl = window.resolvePlannerPageUrl('HTML Files/find-near-me-window.html');
+      const newTab = window.open(findNearMeUrl, '_blank');
+      if (newTab) {
+        newTab.focus();
+      } else if (typeof window.showToast === 'function') {
+        window.showToast('❌ Unable to open Find Near Me. Please allow pop-ups.', 'error', 5000);
+      }
+    };
   })();
 </script>
 </body>

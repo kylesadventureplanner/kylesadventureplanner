@@ -53,10 +53,13 @@ window.openCityViewerWindow = function() {
   const height = Math.min(900, window.screen.height - 100);
   const left = (window.screen.width - width) / 2;
   const top = (window.screen.height - height) / 2;
+  const resolvedCityViewerUrl = typeof window.resolvePlannerPageUrl === 'function'
+    ? window.resolvePlannerPageUrl('HTML Files/city-viewer-window.html')
+    : new URL('HTML%20Files/city-viewer-window.html', window.location.href).toString();
 
   try {
     // Method 1: Direct new tab (preferred)
-    const url = window.location.origin + '/HTML Files/city-viewer-window.html';
+    const url = resolvedCityViewerUrl;
     const newTab = window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top}`);
 
     if (newTab) {
@@ -69,8 +72,8 @@ window.openCityViewerWindow = function() {
   }
 
   try {
-    // Method 2: Fallback - relative path
-    const newTab = window.open('HTML Files/city-viewer-window.html', '_blank');
+    // Method 2: Fallback - resolved planner path
+    const newTab = window.open(resolvedCityViewerUrl, '_blank');
     if (newTab) {
       newTab.focus();
       console.log('✅ City Viewer opened in NEW TAB (Method 2)');
@@ -1400,4 +1403,3 @@ if (typeof module !== 'undefined' && module.exports) {
     enhancedCityViewerIntegration
   };
 }
-

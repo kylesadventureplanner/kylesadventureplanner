@@ -1567,17 +1567,26 @@
   function bindBikeControls() {
     if (state.controlsBound) return;
 
+    // Guard: do not mark as bound until bike tab DOM is actually present.
+    const bikeRootReady = Boolean(document.getElementById('bikeTrailsCardsGrid'));
+    if (!bikeRootReady) return;
+
     const filterKeys = Object.keys(state.filters);
+    let boundCount = 0;
     filterKeys.forEach((key) => {
       const id = getBikeFilterInputId(key);
       const input = id ? document.getElementById(id) : null;
       if (!input) return;
       input.addEventListener('input', applyBikeFilters);
       input.addEventListener('change', applyBikeFilters);
+      boundCount += 1;
     });
 
     const groupBy = document.getElementById('bikeGroupBy');
-    if (groupBy) groupBy.addEventListener('change', applyBikeFilters);
+    if (groupBy) {
+      groupBy.addEventListener('change', applyBikeFilters);
+      boundCount += 1;
+    }
 
     const sortBy = document.getElementById('bikeSortBy');
     if (sortBy) {
@@ -1585,6 +1594,7 @@
         state.sortBy = sortBy.value || 'name';
         applyBikeFilters();
       });
+      boundCount += 1;
     }
 
     const sortOrderBtn = document.getElementById('bikeSortOrderBtn');
@@ -1595,6 +1605,7 @@
         if (icon) icon.textContent = state.sortAsc ? '↑' : '↓';
         applyBikeFilters();
       });
+      boundCount += 1;
     }
 
     const favoritesBtn = document.getElementById('bikeFavoritesFilterBtn');
@@ -1604,6 +1615,17 @@
         favoritesBtn.classList.toggle('active', state.showFavoritesOnly);
         applyBikeFilters();
       });
+      boundCount += 1;
+    }
+
+    const explorerBtn = document.getElementById('bikeTrailExplorerBtn');
+    if (explorerBtn && explorerBtn.dataset.boundExplorerClick !== '1') {
+      explorerBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        window.openBikeTrailExplorer?.();
+      });
+      explorerBtn.dataset.boundExplorerClick = '1';
+      boundCount += 1;
     }
 
     document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn[data-bike-filter]').forEach((btn) => {
@@ -1619,15 +1641,19 @@
         }
         applyBikeFilters();
       });
+      boundCount += 1;
     });
 
     const resetButtons = ['bikeResetAllFiltersTop', 'bikeResetAllFiltersBottom', 'bikeBreadcrumbResetBtn'];
     resetButtons.forEach((id) => {
       const btn = document.getElementById(id);
-      if (btn) btn.addEventListener('click', resetAllBikeFilters);
+      if (btn) {
+        btn.addEventListener('click', resetAllBikeFilters);
+        boundCount += 1;
+      }
     });
 
-    state.controlsBound = true;
+    state.controlsBound = boundCount > 0;
   }
 
   function initializeBikeTrailsTab() {
@@ -1882,6 +1908,8 @@
   window.applyBikeFilters = applyBikeFilters;
   window.changeBikePage = changeBikePage;
   window.initializeBikeTrailsTab = initializeBikeTrailsTab;
+  // Alias expected by tab-content-loader to ensure bike init always runs.
+  window.initBikeTrailsTab = initializeBikeTrailsTab;
   window.loadBikeTable = loadBikeData;           // Called by sign-in / auto-login flows
   window.refreshBikeTrailData = refreshBikeTrailData; // Called by Refresh Data button
   window.openBikeTrailExplorer = openBikeTrailExplorer;

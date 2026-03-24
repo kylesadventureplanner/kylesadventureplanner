@@ -276,7 +276,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   window.openCityViewerWindow = window.openCityViewerWindow || function() {
     console.log('🌆 Opening City Viewer in new tab...');
     try {
-      const cityViewerUrl = 'HTML Files/city-viewer-window.html';
+      const cityViewerUrl = typeof window.resolvePlannerPageUrl === 'function'
+        ? window.resolvePlannerPageUrl('HTML Files/city-viewer-window.html')
+        : new URL('HTML%20Files/city-viewer-window.html', window.location.href).toString();
       const newTab = window.open(cityViewerUrl, '_blank');
 
       if (!newTab) {
@@ -303,7 +305,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   window.openFindNearMeWindow = window.openFindNearMeWindow || function() {
     console.log('📍 Opening Find Near Me in new tab...');
     try {
-      const findNearMeUrl = 'HTML Files/find-near-me-window.html';
+      const findNearMeUrl = typeof window.resolvePlannerPageUrl === 'function'
+        ? window.resolvePlannerPageUrl('HTML Files/find-near-me-window.html')
+        : new URL('HTML%20Files/find-near-me-window.html', window.location.href).toString();
       const newTab = window.open(findNearMeUrl, '_blank');
 
       if (!newTab) {
@@ -330,7 +334,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   window.openEditModeWindow = window.openEditModeWindow || function() {
     console.log('📝 Opening Edit Mode in new tab...');
     try {
-      const editModeUrl = 'HTML Files/edit-mode-enhanced.html';
+      const editModeUrl = typeof window.resolvePlannerPageUrl === 'function'
+        ? window.resolvePlannerPageUrl('HTML Files/edit-mode-enhanced.html')
+        : new URL('HTML%20Files/edit-mode-enhanced.html', window.location.href).toString();
       const newTab = window.open(editModeUrl, '_blank');
 
       if (!newTab) {
