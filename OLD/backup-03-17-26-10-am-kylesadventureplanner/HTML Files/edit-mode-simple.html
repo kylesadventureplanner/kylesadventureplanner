@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Mode - Adventure Planner</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin: 0;
+    }
+
+    .close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+      transition: all 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* TAB STYLING */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #e5e7eb;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      color: #6b7280;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: #667eea;
+    }
+
+    .tab-btn.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #1f2937;
+    }
+
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #374151;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .button-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .button-primary:hover {
+      background: #5568d3;
+    }
+
+    .button-secondary {
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .button-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .status-message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .status-success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+
+    .status-error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #dc2626;
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    /* ENHANCED STATUS DISPLAY */
+    .status-container {
+      margin-top: 16px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .status-header {
+      padding: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-header.success {
+      background: #d1fae5;
+      color: #065f46;
+      border-left: 4px solid #10b981;
+    }
+
+    .status-header.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 4px solid #dc2626;
+    }
+
+    .status-header.progress {
+      background: #dbeafe;
+      color: #1e40af;
+      border-left: 4px solid #3b82f6;
+    }
+
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.3);
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .status-details {
+      background: #f9fafb;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      color: #1f2937;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .detail-item {
+      padding: 8px;
+      border-bottom: 1px solid #e5e7eb;
+      margin-bottom: 8px;
+    }
+
+    .detail-item.success {
+      background: #ecfdf5;
+      border-left: 3px solid #10b981;
+      padding-left: 12px;
+    }
+
+    .detail-item.error {
+      background: #fef2f2;
+      border-left: 3px solid #dc2626;
+      padding-left: 12px;
+    }
+
+    .detail-item.warning {
+      background: #fffbeb;
+      border-left: 3px solid #f59e0b;
+      padding-left: 12px;
+    }
+
+    .detail-item.info {
+      background: #f0f9ff;
+      border-left: 3px solid #0ea5e9;
+      padding-left: 12px;
+    }
+
+    .detail-label {
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      color: #6b7280;
+      margin-left: 16px;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #0ea5e9);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>📝 Edit Mode</h1>
+        <p style="margin-top: 4px; opacity: 0.9;">Manage locations and automation</p>
+      </div>
+      <button class="close-btn" onclick="window.close()">✕</button>
+    </div>
+
+    <!-- TABS NAVIGATION -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="places">➕ Add Places</button>
+      <button class="tab-btn" data-tab="automation">🔄 Automation</button>
+      <button class="tab-btn" data-tab="backup">💾 Backup</button>
+      <button class="tab-btn" data-tab="history">📅 History</button>
+    </div>
+
+    <!-- TAB 1: ADD PLACES -->
+    <div id="places-tab" class="tab-content active">
+      <!-- Add Single Place -->
+      <div class="card">
+        <div class="card-title">➕ Add Single Place</div>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="singleDryRun" onchange="updateDryRun('addSingle', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="input-group">
+          <label>Input Type</label>
+          <select id="singleType">
+            <option value="placeName">Place Name</option>
+            <option value="address">Address</option>
+            <option value="placeNameCity">Place Name + City</option>
+            <option value="placeId">Google Place ID</option>
+            <option value="website">Website URL</option>
+            <option value="placeUrl">Google Maps URL</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Value</label>
+          <input type="text" id="singleValue" placeholder="Enter value based on input type">
+          <div class="help-text">💡 Examples: "Starbucks", "123 Main St, Denver", "Starbucks, NYC", "ChIJ...", "https://starbucks.com"</div>
+        </div>
+        <div class="button-group">
+          <button class="button button-secondary" onclick="document.getElementById('singleValue').value = ''">Clear</button>
+          <button class="button button-primary" onclick="addSinglePlace()">➕ Add Place</button>
+        </div>
+        <div id="single-status"></div>
+      </div>
+
+      <!-- Bulk Add Places -->
+      <div class="card">
+        <div class="card-title">📦 Bulk Add Places</div>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="bulkDryRun" onchange="updateDryRun('bulkAdd', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="input-group">
+          <label>Input Type (applies to all)</label>
+          <select id="bulkType">
+            <option value="placeName">Place Name</option>
+            <option value="address">Address</option>
+            <option value="placeNameCity">Place Name + City</option>
+            <option value="placeId">Google Place ID</option>
+            <option value="website">Website URL</option>
+            <option value="placeUrl">Google Maps URL</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Values (one per line or comma-separated)</label>
+          <textarea id="bulkValues" placeholder="Starbucks&#10;Coffee Bean & Tea Leaf&#10;Local Café"></textarea>
+          <div class="help-text">💡 Enter multiple places separated by new lines or commas</div>
+        </div>
+        <div class="button-group">
+          <button class="button button-secondary" onclick="document.getElementById('bulkValues').value = ''">Clear</button>
+          <button class="button button-primary" onclick="bulkAddPlaces()">📦 Add All</button>
+        </div>
+        <div id="bulk-status"></div>
+      </div>
+
+      <!-- Bulk Add Chain Locations -->
+      <div class="card">
+        <div class="card-title">⛓️ Bulk Add Chain Locations</div>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="chainDryRun" onchange="updateDryRun('bulkChain', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="input-group">
+          <label>Input Type</label>
+          <select id="chainType">
+            <option value="placeId">Google Place ID</option>
+            <option value="placeNameCity">Place Name + City</option>
+            <option value="address">Address</option>
+            <option value="placeUrl">Google Maps URL</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Location IDs or Details (one per line)</label>
+          <textarea id="chainValues" placeholder="ChIJ...&#10;Starbucks, Boston&#10;123 Main St, NYC"></textarea>
+          <div class="help-text">💡 Enter multiple chain locations. Each will inherit details from the chain's primary location.</div>
+        </div>
+        <div class="button-group">
+          <button class="button button-secondary" onclick="document.getElementById('chainValues').value = ''">Clear</button>
+          <button class="button button-primary" onclick="bulkChainLocations()">⛓️ Add Locations</button>
+        </div>
+        <div id="chain-status"></div>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: AUTOMATION -->
+    <div id="automation-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">🔄 Refresh Place IDs</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Refresh cached Place IDs from Google Places API.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="refreshDryRun" onchange="updateDryRun('refreshPlaceIds', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="refreshPlaceIds()">🔄 Refresh Place IDs</button>
+        </div>
+        <div id="refresh-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏷️ Auto-Tag All Locations</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Automatically recommend and add tags based on Google Places data.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="autoTagDryRun" onchange="updateDryRun('autoTag', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="autoTagAll()">🏷️ Auto-Tag All</button>
+        </div>
+        <div id="autotag-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 Populate Missing Fields Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to fill in empty fields for all your locations while preserving existing data.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="missingDryRun" onchange="updateDryRun('populateMissing', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="populateMissing()">📝 Update Missing Fields</button>
+        </div>
+        <div id="missing-status"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🕐 Update Hours Only</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to update operating hours for all your locations.
+        </p>
+        <div class="input-group">
+          <label>🧪 Dry Run</label>
+          <input type="checkbox" id="hoursDryRun" onchange="updateDryRun('updateHours', this.checked)">
+          <span style="margin-left: 8px; color: #6b7280;">Preview changes before applying</span>
+        </div>
+        <div class="button-group">
+          <button class="button button-primary" onclick="updateHours()">🕐 Update Hours</button>
+        </div>
+        <div id="hours-status"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: BACKUP -->
+    <div id="backup-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">💾 Backup</div>
+        <p style="color: #6b7280; margin-bottom: 16px;">Create a backup of all your data.</p>
+        <div class="button-group">
+          <button class="button button-primary" onclick="createBackup()">💾 Backup Now</button>
+        </div>
+        <div id="backup-status"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: HISTORY -->
+    <div id="history-tab" class="tab-content">
+      <div class="card">
+        <div class="card-title">📅 Location History</div>
+        <p style="color: #6b7280; margin-bottom: 16px;">View location history.</p>
+        <div class="button-group">
+          <button class="button button-secondary" onclick="sortNewest()">🆕 Newest</button>
+          <button class="button button-secondary" onclick="sortOldest()">🕐 Oldest</button>
+        </div>
+        <div id="history-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    console.log('✅ Edit Mode Loaded');
+
+    // Dry run state storage
+    const dryRunStates = {
+      addSingle: false,
+      bulkAdd: false,
+      bulkChain: false,
+      refreshPlaceIds: false,
+      populateMissing: false,
+      updateHours: false,
+      autoTag: false
+    };
+
+    // Tab switching with event listeners
+    function initTabs() {
+      console.log('🔧 Initializing tabs...');
+
+      const buttons = document.querySelectorAll('.tab-btn');
+      console.log(`Found ${buttons.length} tab buttons`);
+
+      buttons.forEach(button => {
+        button.addEventListener('click', function() {
+          const tabName = this.getAttribute('data-tab');
+          console.log(`📌 Clicked tab: ${tabName}`);
+          switchTab(tabName);
+        });
+      });
+
+      console.log('✅ Tab initialization complete');
+    }
+
+    function switchTab(tabName) {
+      console.log(`🔄 Switching to tab: ${tabName}`);
+
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+
+      // Remove active from buttons
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      // Show selected tab
+      const tabElement = document.getElementById(`${tabName}-tab`);
+      if (tabElement) {
+        tabElement.classList.add('active');
+        console.log(`✅ Tab activated: ${tabName}`);
+      } else {
+        console.error(`❌ Tab not found: ${tabName}-tab`);
+      }
+
+      // Highlight button
+      const button = document.querySelector(`[data-tab="${tabName}"]`);
+      if (button) {
+        button.classList.add('active');
+      }
+    }
+
+    // Dry run management
+    function updateDryRun(feature, state) {
+      dryRunStates[feature] = state;
+      console.log(`🧪 Dry run for ${feature}: ${state}`);
+    }
+
+    // UTILITY: Create detailed status display with results
+    function createStatusDisplay(title, icon, details, isError = false) {
+      const statusClass = isError ? 'error' : 'success';
+      const container = document.createElement('div');
+      container.className = 'status-container';
+
+      const header = document.createElement('div');
+      header.className = `status-header ${statusClass}`;
+
+      const titleSpan = document.createElement('span');
+      titleSpan.textContent = `${icon} ${title}`;
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.textContent = '📋 Copy';
+      copyBtn.onclick = (e) => {
+        e.stopPropagation();
+        const text = details.map(d => {
+          if (typeof d === 'object') {
+            return `${d.label}: ${d.value}`;
+          }
+          return d;
+        }).join('\n');
+
+        navigator.clipboard.writeText(text).then(() => {
+          const origText = copyBtn.textContent;
+          copyBtn.textContent = '✅ Copied!';
+          setTimeout(() => {
+            copyBtn.textContent = origText;
+          }, 2000);
+        }).catch(() => {
+          alert('Failed to copy to clipboard');
+        });
+      };
+
+      header.appendChild(titleSpan);
+      header.appendChild(copyBtn);
+      container.appendChild(header);
+
+      const detailsDiv = document.createElement('div');
+      detailsDiv.className = 'status-details';
+
+      details.forEach((detail, idx) => {
+        if (typeof detail === 'object') {
+          const item = document.createElement('div');
+          item.className = `detail-item ${detail.type || 'info'}`;
+
+          const label = document.createElement('div');
+          label.className = 'detail-label';
+          label.textContent = detail.label;
+
+          const value = document.createElement('div');
+          value.className = 'detail-value';
+          value.textContent = detail.value;
+
+          item.appendChild(label);
+          item.appendChild(value);
+          detailsDiv.appendChild(item);
+        } else {
+          const item = document.createElement('div');
+          item.className = 'detail-item info';
+          item.textContent = detail;
+          detailsDiv.appendChild(item);
+        }
+      });
+
+      container.appendChild(detailsDiv);
+      return container;
+    }
+
+    // UTILITY: Format detailed results
+    function formatResults(title, icon, data) {
+      const details = [];
+      details.push({ label: '⏱️ Timestamp', value: new Date().toLocaleTimeString(), type: 'info' });
+
+      if (data.status) {
+        details.push({ label: '📊 Status', value: data.status, type: data.success ? 'success' : 'error' });
+      }
+
+      if (data.counts) {
+        Object.entries(data.counts).forEach(([key, value]) => {
+          let icon = '➖';
+          if (key.includes('success') || key.includes('added')) icon = '✅';
+          else if (key.includes('error') || key.includes('failed')) icon = '❌';
+          else if (key.includes('skip')) icon = '⏭️';
+
+          details.push({
+            label: `${icon} ${key}`,
+            value: value.toString(),
+            type: key.includes('error') ? 'error' : 'success'
+          });
+        });
+      }
+
+      if (data.items && data.items.length > 0) {
+        details.push({ label: '📋 Details', value: '', type: 'info' });
+        data.items.forEach(item => {
+          details.push({
+            label: `  ${item.icon} ${item.name}`,
+            value: item.status,
+            type: item.type || 'info'
+          });
+        });
+      }
+
+      if (data.errors && data.errors.length > 0) {
+        details.push({ label: '🚨 Errors', value: '', type: 'error' });
+        data.errors.forEach(error => {
+          details.push({
+            label: `  ❌ Error`,
+            value: error,
+            type: 'error'
+          });
+        });
+      }
+
+      return createStatusDisplay(title, icon, details, !data.success);
+    }
+
+    // ADD SINGLE PLACE
+    function addSinglePlace() {
+      const type = document.getElementById('singleType').value;
+      const value = document.getElementById('singleValue').value;
+      const dryRun = document.getElementById('singleDryRun').checked;
+      const statusDiv = document.getElementById('single-status');
+
+      if (!value) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a value</div>';
+        return;
+      }
+
+      if (dryRun) {
+        statusDiv.innerHTML = `<div class="status-message status-success">🧪 Would add: ${value}</div>`;
+        return;
+      }
+
+      // Actually add to main window
+      if (window.opener && typeof window.opener.addNewPlace === 'function') {
+        try {
+          window.opener.addNewPlace(value, '', '');
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ Added: ${value}</div>`;
+          document.getElementById('singleValue').value = '';
+
+          // Reload main page after a delay to show the new place
+          setTimeout(() => {
+            if (window.opener) {
+              window.opener.location.reload();
+            }
+          }, 1000);
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+        }
+      } else {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Cannot access main window</div>`;
+      }
+    }
+
+    // BULK ADD PLACES
+    function bulkAddPlaces() {
+      const type = document.getElementById('bulkType').value;
+      const values = document.getElementById('bulkValues').value;
+      const dryRun = document.getElementById('bulkDryRun').checked;
+      const statusDiv = document.getElementById('bulk-status');
+
+      const places = values.split('\n').filter(v => v.trim());
+      if (places.length === 0) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter at least one place</div>';
+        return;
+      }
+
+      if (dryRun) {
+        statusDiv.innerHTML = `<div class="status-message status-success">🧪 Would add ${places.length} places</div>`;
+        return;
+      }
+
+      // Actually add to main window
+      if (window.opener && typeof window.opener.addNewPlace === 'function') {
+        try {
+          let successCount = 0;
+          places.forEach(place => {
+            window.opener.addNewPlace(place, '', '');
+            successCount++;
+          });
+
+          statusDiv.innerHTML = `<div class="status-message status-success">✅ Added ${successCount} places! Reloading main page...</div>`;
+          document.getElementById('bulkValues').value = '';
+
+          // Reload main page after a delay to show all new places
+          setTimeout(() => {
+            if (window.opener) {
+              window.opener.location.reload();
+            }
+          }, 1000);
+        } catch (error) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
+        }
+      } else {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Cannot access main window</div>`;
+      }
+    }
+
+    // BULK ADD CHAIN LOCATIONS
+    function bulkChainLocations() {
+      const type = document.getElementById('chainType').value;
+      const values = document.getElementById('chainValues').value;
+      const dryRun = document.getElementById('chainDryRun').checked;
+      const statusDiv = document.getElementById('chain-status');
+
+      const locations = values.split('\n').filter(v => v.trim());
+      if (locations.length === 0) {
+        const errorDisplay = formatResults('⛓️ Bulk Add Chain Locations - Error', '❌', {
+          success: false,
+          status: 'No locations provided',
+          errors: ['Please enter at least one location in the textarea']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+        return;
+      }
+
+      if (dryRun) {
+        const previewDisplay = formatResults('⛓️ Bulk Add Chain Locations - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run - Would add these locations',
+          counts: {
+            'Preview Count': locations.length,
+            'Type': type
+          },
+          items: locations.map((loc, idx) => ({
+            icon: '📍',
+            name: `Location ${idx + 1}`,
+            status: loc.substring(0, 50),
+            type: 'info'
+          }))
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
+        return;
+      }
+
+      // Show progress
+      const progressDisplay = formatResults('⛓️ Bulk Add Chain Locations - Processing', '⏳', {
+        success: true,
+        status: `Processing ${locations.length} locations...`,
+        counts: {
+          'Total Locations': locations.length,
+          'Status': 'In Progress'
+        }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+      console.log(`Adding ${locations.length} chain locations...`);
+
+      // Call to main window with proper handler
+      if (window.opener && typeof window.opener.handleBulkAddChainLocations === 'function') {
+        try {
+          console.log(`Adding ${locations.length} chain locations...`);
+
+          // Call the main window handler which will process and save
+          window.opener.handleBulkAddChainLocations(locations, type, (results) => {
+            console.log('Chain locations processed:', results);
+
+            const successCount = results.successful || 0;
+            const failCount = results.failed || 0;
+            const totalCount = locations.length;
+
+            const items = locations.slice(0, 20).map((loc, idx) => ({
+              icon: idx < successCount ? '✅' : '❌',
+              name: `Location ${idx + 1}`,
+              status: loc.substring(0, 60),
+              type: idx < successCount ? 'success' : 'error'
+            }));
+
+            if (locations.length > 20) {
+              items.push({
+                icon: '...',
+                name: `... and ${locations.length - 20} more`,
+                status: 'Listed above',
+                type: 'info'
+              });
+            }
+
+            const errors = results.errors || [];
+            const resultDisplay = formatResults(
+              '⛓️ Bulk Add Chain Locations - Complete',
+              successCount === totalCount ? '✅' : '⚠️',
+              {
+                success: failCount === 0,
+                status: failCount === 0 ? 'All locations added successfully!' : `Added with some errors`,
+                counts: {
+                  'Total Requested': totalCount,
+                  'Successfully Added': successCount,
+                  'Failed': failCount,
+                  'Excel Saved': 'Yes'
+                },
+                items: items,
+                errors: errors.length > 0 ? errors : null
+              }
+            );
+
+            statusDiv.innerHTML = '';
+            statusDiv.appendChild(resultDisplay);
+            console.log(`⛓️ Processing complete: ${successCount} successful, ${failCount} failed`);
+
+            document.getElementById('chainValues').value = '';
+
+            // Reload main page after a short delay
+            setTimeout(() => {
+              if (window.opener) {
+                console.log('Reloading main window...');
+                window.opener.location.reload();
+              }
+            }, 3000);
+          });
+        } catch (error) {
+          console.error('Error adding chain locations:', error);
+
+          const errorDisplay = formatResults(
+            '⛓️ Bulk Add Chain Locations - Error',
+            '❌',
+            {
+              success: false,
+              status: 'Exception occurred during processing',
+              errors: [
+                error.message,
+                error.stack ? `Stack: ${error.stack.substring(0, 200)}...` : 'No stack trace available'
+              ]
+            }
+          );
+
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
+        }
+      } else {
+        const errorDisplay = formatResults(
+          '⛓️ Bulk Add Chain Locations - Error',
+          '❌',
+          {
+            success: false,
+            status: 'Cannot access main window',
+            errors: [
+              'The main application window is not available',
+              'Make sure Edit Mode is opened from the main app',
+              'Check that window.opener is not null or closed'
+            ]
+          }
+        );
+
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+        console.warn('Main window (window.opener) not available or handleBulkAddChainLocations not found');
+      }
+    }
+
+    // POPULATE MISSING FIELDS
+    function populateMissing() {
+      const dryRun = document.getElementById('missingDryRun').checked;
+      const statusDiv = document.getElementById('missing-status');
+
+      if (dryRun) {
+        const previewDisplay = formatResults('📝 Populate Missing Fields - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run Mode - No changes will be made',
+          counts: {
+            'Mode': 'Preview Only'
+          }
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
+        return;
+      }
+
+      // Show progress
+      const progressDisplay = formatResults('📝 Populate Missing Fields - Processing', '⏳', {
+        success: true,
+        status: 'Scanning locations and fetching missing data...',
+        counts: {
+          'Status': 'In Progress'
+        }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+      console.log('📝 Starting to populate missing fields...');
+
+      if (window.opener && typeof window.opener.populateMissingFields === 'function') {
+        try {
+          window.opener.populateMissingFields((results) => {
+            const updated = results.updated || 0;
+            const skipped = results.skipped || 0;
+            const errors = results.errors || 0;
+
+            const resultDisplay = formatResults(
+              '📝 Populate Missing Fields - Complete',
+              errors === 0 ? '✅' : '⚠️',
+              {
+                success: errors === 0,
+                status: errors === 0 ? 'All fields populated successfully' : 'Completed with some errors',
+                counts: {
+                  'Fields Updated': updated,
+                  'Locations Skipped': skipped,
+                  'Errors': errors,
+                  'Excel Saved': 'Yes'
+                }
+              }
+            );
+
+            statusDiv.innerHTML = '';
+            statusDiv.appendChild(resultDisplay);
+            console.log(`📝 Populate complete: ${updated} updated, ${skipped} skipped, ${errors} errors`);
+
+            // Reload main page
+            setTimeout(() => {
+              if (window.opener) {
+                window.opener.location.reload();
+              }
+            }, 3000);
+          });
+        } catch (error) {
+          console.error('Error populating fields:', error);
+
+          const errorDisplay = formatResults(
+            '📝 Populate Missing Fields - Error',
+            '❌',
+            {
+              success: false,
+              status: 'Exception occurred during processing',
+              errors: [error.message]
+            }
+          );
+
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
+        }
+      } else {
+        const errorDisplay = formatResults(
+          '📝 Populate Missing Fields - Error',
+          '❌',
+          {
+            success: false,
+            status: 'Cannot access main window',
+            errors: ['The function populateMissingFields is not available in the main window']
+          }
+        );
+
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+        console.warn('populateMissingFields not available');
+      }
+    }
+
+    // UPDATE HOURS ONLY
+    function updateHours() {
+      const dryRun = document.getElementById('hoursDryRun').checked;
+      const statusDiv = document.getElementById('hours-status');
+
+      if (dryRun) {
+        const previewDisplay = formatResults('🕐 Update Hours Only - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run Mode - No changes will be made',
+          counts: {
+            'Mode': 'Preview Only'
+          }
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
+        return;
+      }
+
+      // Show progress
+      const progressDisplay = formatResults('🕐 Update Hours Only - Processing', '⏳', {
+        success: true,
+        status: 'Fetching and updating operating hours...',
+        counts: {
+          'Status': 'In Progress'
+        }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+      console.log('🕐 Starting to update hours...');
+
+      if (window.opener && typeof window.opener.updateHoursOnly === 'function') {
+        try {
+          window.opener.updateHoursOnly((results) => {
+            const updated = results.updated || 0;
+            const skipped = results.skipped || 0;
+            const errors = results.errors || 0;
+
+            const resultDisplay = formatResults(
+              '🕐 Update Hours Only - Complete',
+              errors === 0 ? '✅' : '⚠️',
+              {
+                success: errors === 0,
+                status: errors === 0 ? 'All hours updated successfully' : 'Completed with some errors',
+                counts: {
+                  'Hours Updated': updated,
+                  'Locations Skipped': skipped,
+                  'Errors': errors,
+                  'Excel Saved': 'Yes'
+                }
+              }
+            );
+
+            statusDiv.innerHTML = '';
+            statusDiv.appendChild(resultDisplay);
+            console.log(`🕐 Update hours complete: ${updated} updated, ${skipped} skipped, ${errors} errors`);
+
+            // Reload main page
+            setTimeout(() => {
+              if (window.opener) {
+                window.opener.location.reload();
+              }
+            }, 3000);
+          });
+        } catch (error) {
+          console.error('Error updating hours:', error);
+
+          const errorDisplay = formatResults(
+            '🕐 Update Hours Only - Error',
+            '❌',
+            {
+              success: false,
+              status: 'Exception occurred during processing',
+              errors: [error.message]
+            }
+          );
+
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
+        }
+      } else {
+        const errorDisplay = formatResults(
+          '🕐 Update Hours Only - Error',
+          '❌',
+          {
+            success: false,
+            status: 'Cannot access main window',
+            errors: ['The function updateHoursOnly is not available in the main window']
+          }
+        );
+
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+        console.warn('updateHoursOnly not available');
+      }
+    }
+
+    // REFRESH PLACE IDS
+    function refreshPlaceIds() {
+      const dryRun = document.getElementById('refreshDryRun').checked;
+      const statusDiv = document.getElementById('refresh-status');
+
+      if (dryRun) {
+        const previewDisplay = formatResults('🔄 Refresh Place IDs - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run Mode - No changes will be made',
+          counts: { 'Mode': 'Preview Only' }
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
+        return;
+      }
+
+      const progressDisplay = formatResults('🔄 Refresh Place IDs - Processing', '⏳', {
+        success: true,
+        status: 'Refreshing Place IDs from Google Places API...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+
+      if (window.opener && typeof window.opener.refreshPlaceIds === 'function') {
+        try {
+          window.opener.refreshPlaceIds();
+          const resultDisplay = formatResults('🔄 Refresh Place IDs - Complete', '✅', {
+            success: true,
+            status: 'Place IDs refreshed successfully',
+            counts: { 'Status': 'Complete', 'Excel Saved': 'Yes' }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
+
+          setTimeout(() => {
+            if (window.opener) window.opener.location.reload();
+          }, 3000);
+        } catch (error) {
+          const errorDisplay = formatResults('🔄 Refresh Place IDs - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
+        }
+      } else {
+        const errorDisplay = formatResults('🔄 Refresh Place IDs - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['refreshPlaceIds function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+      }
+    }
+
+    // AUTO-TAG ALL
+    function autoTagAll() {
+      const dryRun = document.getElementById('autoTagDryRun').checked;
+      const statusDiv = document.getElementById('autotag-status');
+
+      if (dryRun) {
+        const previewDisplay = formatResults('🏷️ Auto-Tag All - Preview', '🧪', {
+          success: true,
+          status: 'Dry Run Mode - No changes will be made',
+          counts: { 'Mode': 'Preview Only' }
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(previewDisplay);
+        return;
+      }
+
+      const progressDisplay = formatResults('🏷️ Auto-Tag All Locations - Processing', '⏳', {
+        success: true,
+        status: 'Scanning locations and generating tags...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+
+      if (window.opener && typeof window.opener.autoTagAll === 'function') {
+        try {
+          window.opener.autoTagAll();
+          const resultDisplay = formatResults('🏷️ Auto-Tag All - Complete', '✅', {
+            success: true,
+            status: 'Locations tagged successfully',
+            counts: { 'Status': 'Complete', 'Excel Saved': 'Yes' }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
+
+          setTimeout(() => {
+            if (window.opener) window.opener.location.reload();
+          }, 3000);
+        } catch (error) {
+          const errorDisplay = formatResults('🏷️ Auto-Tag All - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
+        }
+      } else {
+        const errorDisplay = formatResults('🏷️ Auto-Tag All - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['autoTagAll function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+      }
+    }
+
+    // BACKUP
+    function createBackup() {
+      const statusDiv = document.getElementById('backup-status');
+
+      const progressDisplay = formatResults('💾 Create Backup - Processing', '⏳', {
+        success: true,
+        status: 'Creating backup of all location data...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+
+      if (window.opener && typeof window.opener.createBackup === 'function') {
+        try {
+          window.opener.createBackup();
+          const resultDisplay = formatResults('💾 Create Backup - Complete', '✅', {
+            success: true,
+            status: 'Backup created successfully',
+            counts: { 'Status': 'Complete', 'Timestamp': new Date().toLocaleString() }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
+        } catch (error) {
+          const errorDisplay = formatResults('💾 Create Backup - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
+        }
+      } else {
+        const errorDisplay = formatResults('💾 Create Backup - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['createBackup function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+      }
+    }
+
+    // SORT NEWEST
+    function sortNewest() {
+      const statusDiv = document.getElementById('history-status');
+
+      const progressDisplay = formatResults('🆕 Sort by Newest - Processing', '⏳', {
+        success: true,
+        status: 'Sorting locations by newest first...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+
+      if (window.opener && typeof window.opener.sortNewest === 'function') {
+        try {
+          window.opener.sortNewest();
+          const resultDisplay = formatResults('🆕 Sort by Newest - Complete', '✅', {
+            success: true,
+            status: 'Locations sorted by newest first',
+            counts: { 'Status': 'Complete' }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
+
+          setTimeout(() => {
+            if (window.opener) window.opener.location.reload();
+          }, 2000);
+        } catch (error) {
+          const errorDisplay = formatResults('🆕 Sort by Newest - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
+        }
+      } else {
+        const errorDisplay = formatResults('🆕 Sort by Newest - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['sortNewest function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+      }
+    }
+
+    // SORT OLDEST
+    function sortOldest() {
+      const statusDiv = document.getElementById('history-status');
+
+      const progressDisplay = formatResults('🕐 Sort by Oldest - Processing', '⏳', {
+        success: true,
+        status: 'Sorting locations by oldest first...',
+        counts: { 'Status': 'In Progress' }
+      });
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(progressDisplay);
+
+      if (window.opener && typeof window.opener.sortOldest === 'function') {
+        try {
+          window.opener.sortOldest();
+          const resultDisplay = formatResults('🕐 Sort by Oldest - Complete', '✅', {
+            success: true,
+            status: 'Locations sorted by oldest first',
+            counts: { 'Status': 'Complete' }
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(resultDisplay);
+
+          setTimeout(() => {
+            if (window.opener) window.opener.location.reload();
+          }, 2000);
+        } catch (error) {
+          const errorDisplay = formatResults('🕐 Sort by Oldest - Error', '❌', {
+            success: false,
+            status: 'Exception occurred',
+            errors: [error.message]
+          });
+          statusDiv.innerHTML = '';
+          statusDiv.appendChild(errorDisplay);
+        }
+      } else {
+        const errorDisplay = formatResults('🕐 Sort by Oldest - Error', '❌', {
+          success: false,
+          status: 'Cannot access main window',
+          errors: ['sortOldest function not available']
+        });
+        statusDiv.innerHTML = '';
+        statusDiv.appendChild(errorDisplay);
+      }
+    }
+
+    // Initialize tabs when page loads
+    document.addEventListener('DOMContentLoaded', initTabs);
+
+    // Also try immediately if DOM is ready
+    if (document.readyState !== 'loading') {
+      initTabs();
+    }
+  </script>
+</body>
+</html>
+
