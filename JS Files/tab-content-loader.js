@@ -150,7 +150,12 @@ class TabContentLoader {
     });
 
     // Activate clicked tab button
-    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+    const tabButton = document.querySelector(`.app-tab-btn[data-tab="${tabId}"]`);
+    if (!tabButton) {
+      console.error(`❌ Tab button not found for tab: ${tabId}`);
+      return;
+    }
+    tabButton.classList.add('active');
 
     // Show selected tab
     const tabPane = document.querySelector(`.app-tab-pane[data-tab="${tabId}"]`);
@@ -276,6 +281,13 @@ class TabContentLoader {
 
       const htmlContent = await response.text();
 
+      if (!tabInfo.isInlineContent && this.isFallbackShellResponse(htmlContent)) {
+        throw new Error(
+          `Tab HTML for '${tabId}' returned the app shell instead of tab markup. ` +
+          `Check navigation fallback excludes for nested paths (for example '/HTML Files/tabs/*').`
+        );
+      }
+
       // Cache the content
       this.tabCache.set(tabId, htmlContent);
 
@@ -305,6 +317,7 @@ class TabContentLoader {
     } catch (error) {
       console.error(`❌ Error loading tab ${tabId}:`, error);
       this.loadingTabs.delete(tabId);
+      this.tabCache.delete(tabId);
 
       // Show error message in tab
       const container = document.getElementById(this.tabs[tabId]?.element);
@@ -469,6 +482,19 @@ class TabContentLoader {
     this.loadTimes.clear();
     console.log('✅ Tab cache cleared');
   }
+
+  /**
+   * Check if response is fallback HTML shell (for error handling)
+   */
+  isFallbackShellResponse(htmlContent) {
+    if (!htmlContent) return false;
+
+    const sample = String(htmlContent).slice(0, 1000).toLowerCase();
+    const hasHtmlShell = sample.includes('<!doctype html') || sample.includes('<html');
+    const looksLikeMainApp = sample.includes('adventure planner-test') || sample.includes('google places api key');
+
+    return hasHtmlShell && looksLikeMainApp;
+  }
 }
 
 // Initialize on page load
@@ -488,5 +514,4 @@ window.logTabPerformance = () => {
     window.tabLoader.logPerformanceMetrics();
   }
 };
-
 

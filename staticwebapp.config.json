@@ -19,7 +19,11 @@
       "/*.xlsx",
       "/*.map",
       "/*.yaml",
-      "/*.yml"
+      "/*.yml",
+      "/CSS/*",
+      "/JS Files/*",
+      "/HTML Files/*",
+      "/HTML Files/tabs/*"
     ]
   },
   "routes": [
@@ -41,4 +45,3 @@
     ".html": "text/html"
   }
 }
-
