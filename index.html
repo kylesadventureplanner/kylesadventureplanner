@@ -20872,7 +20872,18 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           return true;
         });
 
-        if (typeof renderAdventureCards === 'function') {
+        window.totalFilteredAdventures = filtered.map((row) => ({
+          row,
+          sourceIndex: window.adventuresData.indexOf(row)
+        }));
+        window.currentPage = 1;
+
+        if (typeof window.renderPaginatedCards === 'function') {
+          window.renderPaginatedCards();
+          if (typeof window.updatePaginationControls === 'function') {
+            window.updatePaginationControls();
+          }
+        } else if (typeof renderAdventureCards === 'function') {
           renderAdventureCards(filtered);
         } else if (typeof window.renderAdventureCards === 'function' && filtered.length === window.adventuresData.length) {
           window.renderAdventureCards();
