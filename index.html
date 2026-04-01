@@ -10849,10 +10849,23 @@
     totalFilteredAdventures = [];  // Clear previous data
 
     // Store all adventures with their SOURCE indices for pagination
-    totalFilteredAdventures = adventuresArray.map((row) => ({
-      row,
-      sourceIndex: window.adventuresData ? window.adventuresData.indexOf(row) : -1,
-    }));
+    totalFilteredAdventures = adventuresArray.map((row) => {
+      let sourceIndex = -1;
+      if (Array.isArray(window.adventuresData)) {
+        // Match by Excel data values (name + placeId) not object identity
+        const rowName = String(row.values?.[0]?.[0] || '').trim();
+        const rowPlaceId = String(row.values?.[0]?.[1] || '').trim();
+        sourceIndex = window.adventuresData.findIndex((dataRow) => {
+          const dataName = String(dataRow.values?.[0]?.[0] || '').trim();
+          const dataPlaceId = String(dataRow.values?.[0]?.[1] || '').trim();
+          return dataName === rowName && dataPlaceId === rowPlaceId;
+        });
+        if (sourceIndex === -1) {
+          console.warn(`⚠️ Could not find source index for: ${rowName} (${rowPlaceId})`);
+        }
+      }
+      return { row, sourceIndex };
+    });
 
     console.log(`✅ Pagination reset: page=${currentPage}, total items=${totalFilteredAdventures.length}`);
 
