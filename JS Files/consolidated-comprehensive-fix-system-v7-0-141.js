@@ -1730,5 +1730,106 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
   console.log('✅ Excel utilities ready');
 
+  // ============================================================
+  // SECTION: ADVENTURE METADATA STATUS LINE
+  // ============================================================
+
+  function setAdventureMetadataStatus(state, details = {}) {
+    const statusLine = document.getElementById('adventureMetadataStatusLine');
+    const debugLine = document.getElementById('adventureMetadataDebugLine');
+    if (!statusLine || !debugLine) return;
+
+    const filePath = String(window.filePath || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx');
+    const fileName = String(window.fileName || 'Adventure_Finder_Excel_DB.xlsx');
+    const tableName = String(window.tableName || 'MyList');
+    const tableRef = String(window.tableRef || tableName);
+
+    const paintStatus = (text, border, bg, color) => {
+      statusLine.textContent = text;
+      statusLine.style.display = 'inline-flex';
+      statusLine.style.marginTop = '6px';
+      statusLine.style.padding = '6px 10px';
+      statusLine.style.borderRadius = '999px';
+      statusLine.style.border = `1px solid ${border}`;
+      statusLine.style.background = bg;
+      statusLine.style.color = color;
+      statusLine.style.fontSize = '12px';
+      statusLine.style.fontWeight = '600';
+    };
+
+    if (state === 'loading') {
+      paintStatus(`Loading Adventure Planner data... • ${fileName}`, '#93c5fd', '#eff6ff', '#1d4ed8');
+    } else if (state === 'ready') {
+      const count = Number(details.count || 0);
+      paintStatus(`${count} adventures loaded • ${filePath} / ${tableName}`, '#a7f3d0', '#ecfdf5', '#065f46');
+    } else if (state === 'error') {
+      const message = details.message ? ` • ${details.message}` : '';
+      paintStatus(`Failed to load Adventure Planner data${message}`, '#fca5a5', '#fef2f2', '#991b1b');
+    } else {
+      paintStatus(`Sign in to load Adventure Planner data • ${fileName}`, '#fcd34d', '#fffbeb', '#92400e');
+    }
+
+    debugLine.textContent = `Debug: file=${filePath} | tableName=${tableName} | tableRef=${tableRef}`;
+    debugLine.style.display = 'block';
+    debugLine.style.marginTop = '6px';
+    debugLine.style.fontSize = '11px';
+    debugLine.style.color = '#6b7280';
+  }
+
+  function installAdventureMetadataLoadBridge() {
+    if (window.__adventureMetadataBridgeInstalled) return;
+    window.__adventureMetadataBridgeInstalled = true;
+
+    const tryWrap = () => {
+      if (typeof window.loadTable !== 'function') return false;
+      if (window.loadTable.__adventureMetadataWrapped) return true;
+
+      const originalLoadTable = window.loadTable;
+      const wrappedLoadTable = async function(...args) {
+        setAdventureMetadataStatus('loading');
+        try {
+          const result = await originalLoadTable.apply(this, args);
+          const count = Array.isArray(window.adventuresData) ? window.adventuresData.length : 0;
+          if (result === false && !window.accessToken) {
+            setAdventureMetadataStatus('idle');
+          } else if (result === false && count === 0) {
+            setAdventureMetadataStatus('error', { message: 'No data returned' });
+          } else {
+            setAdventureMetadataStatus('ready', { count });
+          }
+          return result;
+        } catch (error) {
+          setAdventureMetadataStatus('error', { message: error && error.message ? error.message : 'Unknown error' });
+          throw error;
+        }
+      };
+
+      wrappedLoadTable.__adventureMetadataWrapped = true;
+      window.loadTable = wrappedLoadTable;
+      return true;
+    };
+
+    // Run now and keep a short-lived watcher for late loadTable reassignments.
+    tryWrap();
+    let tries = 0;
+    const interval = setInterval(() => {
+      tries += 1;
+      tryWrap();
+      if (tries > 60) clearInterval(interval);
+    }, 250);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setAdventureMetadataStatus(window.accessToken ? 'loading' : 'idle');
+      installAdventureMetadataLoadBridge();
+    });
+  } else {
+    setAdventureMetadataStatus(window.accessToken ? 'loading' : 'idle');
+    installAdventureMetadataLoadBridge();
+  }
+
+  console.log('✅ Adventure metadata status bridge ready');
+
 })();
 
