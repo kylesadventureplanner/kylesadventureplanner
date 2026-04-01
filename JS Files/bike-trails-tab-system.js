@@ -665,6 +665,8 @@
     if (!tableRef) {
       const msg = `Could not find a usable table in ${filePath}. See the banner in the Bike Trails tab for details.`;
       console.error('[bike-trails]', msg);
+      console.error('[bike-trails] Debug: Expected file path:', filePath);
+      console.error('[bike-trails] Debug: Please verify the file exists in OneDrive at the specified path');
       updateBikeMetadataStatusLine('error', {
         text: 'Bike Trail Excel file/table not found',
         detail: msg

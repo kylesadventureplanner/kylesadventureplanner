@@ -5687,7 +5687,20 @@
          });
 
          if (!response.ok) {
-           throw new Error(`Excel API error: ${response.status} ${response.statusText}`);
+           // Provide detailed error information
+           let errorMsg = `Excel API error: ${response.status} ${response.statusText}`;
+
+           if (response.status === 403) {
+             errorMsg = '403 Forbidden: File path may be incorrect or file not accessible. Check the file location in OneDrive.';
+             console.error('🔍 Debug info:');
+             console.error('   Expected path:', filePath);
+             console.error('   Verify the file exists at: Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx');
+             console.error('   Also verify the table name exists:', tableName);
+           } else if (response.status === 404) {
+             errorMsg = '404 Not Found: Excel file or table not found. Check the file path and table name.';
+           }
+
+           throw new Error(errorMsg);
          }
 
          const data = await response.json();
@@ -16033,7 +16046,7 @@ COMMON ISSUES:
     if (actualColumnCount > 0) row[0] = name;
     if (actualColumnCount > 1) row[1] = strVal(placeId);
     if (actualColumnCount > 2) row[2] = strVal(details && details.website);
-    if (actualColumnCount > 3) row[3] = details && details.businessType ? details.businessType.replace(/^[🙏-🏛️]\s/, '') : "";
+    if (actualColumnCount > 3) row[3] = details && details.businessType ? details.businessType.replace(/^[\p{So}]\s/u, '') : "";
     if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
     if (actualColumnCount > 9) row[9] = cityState.state;
     if (actualColumnCount > 10) row[10] = cityState.city;
