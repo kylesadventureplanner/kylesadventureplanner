@@ -20268,6 +20268,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
     // Master filter state object
     const LateFilterManager = {
+      __initialized: false,
       state: {
         searchName: '',
         filterDifficulty: '',
@@ -20973,6 +20974,47 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         newTab.focus();
       } else if (typeof window.showToast === 'function') {
         window.showToast('❌ Unable to open Find Near Me. Please allow pop-ups.', 'error', 5000);
+      }
+    };
+  })();
+</script>
+<script>
+  // Final post-load patch: ensure filters render the filtered dataset visually.
+  (function () {
+    if (!window.FilterManager) return;
+
+    const originalApply = window.FilterManager.applyAllFilters;
+    window.FilterManager.applyAllFilters = function () {
+      if (typeof originalApply === 'function') {
+        originalApply.call(this);
+      }
+
+      const filtered = Array.isArray(window.totalFilteredAdventures)
+        ? window.totalFilteredAdventures
+        : [];
+
+      const paginatedRenderer =
+        (typeof window.renderPaginatedCards === 'function' && window.renderPaginatedCards) ||
+        (typeof renderPaginatedCards === 'function' && renderPaginatedCards);
+
+      if (paginatedRenderer) {
+        paginatedRenderer();
+        if (typeof window.updatePaginationControls === 'function') {
+          window.updatePaginationControls();
+        }
+        return;
+      }
+
+      const fullData = window.adventuresData;
+      window.adventuresData = filtered.map((x) => x.row || x).filter(Boolean);
+      try {
+        if (typeof window.renderAdventureCards === 'function') {
+          window.renderAdventureCards();
+        } else if (typeof renderAdventureCards === 'function') {
+          renderAdventureCards();
+        }
+      } finally {
+        window.adventuresData = fullData;
       }
     };
   })();
