@@ -20262,387 +20262,26 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
     // Hard stop: keep the earlier canonical FilterManager and avoid duplicate runtime ownership.
     if (window.FilterManager) {
-      console.log('ℹ️ Skipping duplicate late FilterManager block (already initialized)');
+      console.log('✅ FilterManager already initialized - skipping duplicate late initialization');
+
+      // Ensure global aliases are set up (if they aren't already)
+      if (!window.applyFilters) {
+        window.applyFilters = () => window.FilterManager.applyAllFilters();
+      }
+      if (!window.resetAllFilters) {
+        window.resetAllFilters = () => window.FilterManager.resetAllFilters();
+      }
+
+      console.log('✅ Consolidated Filtering System Ready');
       return;
     }
 
-    // Master filter state object
-    const LateFilterManager = {
-      __initialized: false,
-      state: {
-        searchName: '',
-        filterDifficulty: '',
-        filterState: '',
-        filterCity: '',
-        filterTags: '',
-        filterCost: '',
-        showFavoritesOnly: false,
-        quickFilters: new Set()
-      },
+    // (LateFilterManager definition removed - using early FilterManager instead)
 
-      // Initialize all filter inputs and listeners
-      init() {
-        console.log('📋 FilterManager: Initializing...');
-        console.log('📋 FilterManager: Document readyState:', document.readyState);
-
-        // Wait for DOM to be fully ready
-        if (document.readyState === 'loading') {
-          console.log('⏳ FilterManager: Waiting for DOM to be ready...');
-          return; // Will be called again from DOMContentLoaded
-        }
-
-        // Ensure filter elements exist before attaching listeners
-        const requiredElements = ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'];
-        const missingElements = requiredElements.filter(id => !document.getElementById(id));
-
-        if (missingElements.length > 0) {
-          console.warn(`⚠️ FilterManager: Missing elements: ${missingElements.join(', ')}. Retrying in 300ms...`);
-          setTimeout(() => this.init(), 300);
-          return;
-        }
-
-        this.attachInputListeners();
-        this.attachQuickFilterListeners();
-        this.attachResetListeners();
-        this.setupEventDelegation();
-        console.log('✅ FilterManager: Initialization complete');
-      },
-
-      // Setup event delegation for dynamically rendered quick filter buttons
-      setupEventDelegation() {
-        const quickFiltersContainer = document.querySelector('.quick-filters-card');
-        if (!quickFiltersContainer) {
-          console.warn('⚠️ FilterManager: Quick filters container not found');
-          return;
-        }
-
-        console.log('🎯 FilterManager: Setting up event delegation for quick filters');
-
-        // Event delegation for dynamically rendered buttons
-        quickFiltersContainer.addEventListener('click', (e) => {
-          const btn = e.target.closest('.quick-filter-btn');
-          if (!btn) return;
-
-          e.preventDefault();
-          e.stopPropagation();
-
-          if (btn.id === 'favoritesFilterBtn') {
-            this.state.showFavoritesOnly = !this.state.showFavoritesOnly;
-            btn.classList.toggle('active');
-            console.log(`💖 Favorites filter (delegated): ${this.state.showFavoritesOnly ? 'ON' : 'OFF'}`);
-          } else {
-            const tag = btn.getAttribute('data-tag');
-            if (tag) {
-              if (this.state.quickFilters.has(tag)) {
-                this.state.quickFilters.delete(tag);
-                btn.classList.remove('active');
-              } else {
-                this.state.quickFilters.add(tag);
-                btn.classList.add('active');
-              }
-              console.log(`🏷️ Quick filter (delegated): ${tag} (${this.state.quickFilters.size} total)`);
-            }
-          }
-
-          this.applyAllFilters();
-        }, false);
-
-        // Also add event delegation for input changes at control panel level
-        const controlPanel = document.querySelector('.control-panel-card');
-        if (controlPanel) {
-          console.log('🎯 FilterManager: Setting up event delegation for control panel inputs');
-
-          controlPanel.addEventListener('input', (e) => {
-            const inputElement = e.target;
-            if (!inputElement || !inputElement.id) return;
-
-            const key = inputElement.id;
-            if (this.state.hasOwnProperty(key)) {
-              this.state[key] = inputElement.value.trim();
-              console.log(`🔤 ${key} updated (delegated): "${this.state[key]}"`);
-              // Apply filters immediately as user types
-              this.applyAllFilters();
-              // Update autocomplete suggestions with filtered data
-              if (typeof populateAutocomplete === 'function') {
-                setTimeout(() => populateAutocomplete(), 50);
-              }
-            }
-          }, false);
-
-          controlPanel.addEventListener('change', (e) => {
-            const inputElement = e.target;
-            if (!inputElement || !inputElement.id) return;
-
-            const key = inputElement.id;
-            if (this.state.hasOwnProperty(key)) {
-              this.state[key] = inputElement.value.trim();
-              console.log(`✅ ${key} changed (delegated), applying filters...`);
-              this.applyAllFilters();
-            }
-          }, false);
-        }
-      },
-
-      // Attach listeners to search and filter inputs
-      attachInputListeners() {
-        const inputs = {
-          searchName: document.getElementById('searchName'),
-          filterDifficulty: document.getElementById('filterDifficulty'),
-          filterState: document.getElementById('filterState'),
-          filterCity: document.getElementById('filterCity'),
-          filterTags: document.getElementById('filterTags'),
-          filterCost: document.getElementById('filterCost')
-        };
-
-        // Check which inputs were found
-        const foundInputs = Object.entries(inputs).filter(([key, el]) => {
-          if (!el) {
-            console.warn(`⚠️ FilterManager: Input element not found: ${key}`);
-            return false;
-          }
-          return true;
-        });
-
-        console.log(`📝 FilterManager: Attaching listeners to ${foundInputs.length} input elements`);
-
-        // Input event (typing) - update state AND apply filters in real-time
-        Object.entries(inputs).forEach(([key, element]) => {
-          if (element) {
-            element.addEventListener('input', (e) => {
-              this.state[key] = e.target.value.trim();
-              console.log(`🔤 ${key} updated: "${this.state[key]}"`);
-              // Apply filters immediately as user types
-              this.applyAllFilters();
-              // Update autocomplete suggestions
-              if (typeof populateAutocomplete === 'function') {
-                setTimeout(() => populateAutocomplete(), 50);
-              }
-            }, false);
-
-            // Change event - apply filters (for select dropdowns)
-            element.addEventListener('change', () => {
-              this.state[key] = element.value.trim();
-              console.log(`✅ ${key} changed, applying filters...`);
-              this.applyAllFilters();
-            }, false);
-          }
-        });
-      },
-
-      // Attach listeners to quick filter buttons
-      attachQuickFilterListeners() {
-        const quickButtons = document.querySelectorAll('.quick-filter-btn');
-        console.log(`🔘 FilterManager: Found ${quickButtons.length} quick filter buttons`);
-
-        if (quickButtons.length === 0) {
-          console.warn('⚠️ FilterManager: No quick filter buttons found! Retrying in 500ms...');
-          setTimeout(() => this.attachQuickFilterListeners(), 500);
-          return;
-        }
-
-        quickButtons.forEach(btn => {
-          // Remove any existing listeners to prevent duplicates
-          const newBtn = btn.cloneNode(true);
-          btn.parentNode.replaceChild(newBtn, btn);
-
-          if (newBtn.id === 'favoritesFilterBtn') {
-            // Favorites button - special handling
-            newBtn.addEventListener('click', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              this.state.showFavoritesOnly = !this.state.showFavoritesOnly;
-              newBtn.classList.toggle('active');
-              console.log(`💖 Favorites filter: ${this.state.showFavoritesOnly ? 'ON' : 'OFF'}`);
-              this.applyAllFilters();
-            }, false);
-          } else {
-            // Tag filter buttons
-            newBtn.addEventListener('click', (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const tag = newBtn.getAttribute('data-tag');
-              if (tag) {
-                if (this.state.quickFilters.has(tag)) {
-                  this.state.quickFilters.delete(tag);
-                  newBtn.classList.remove('active');
-                } else {
-                  this.state.quickFilters.add(tag);
-                  newBtn.classList.add('active');
-                }
-                console.log(`🏷️ Quick filter: ${tag} (${this.state.quickFilters.size} total)`);
-                this.applyAllFilters();
-              }
-            }, false);
-          }
-        });
-      },
-
-      // Attach listeners to reset buttons
-      attachResetListeners() {
-        const resetButtons = document.querySelectorAll('[data-action="reset-filters"], .pill-button.reset, #breadcrumbResetBtn');
-        console.log(`🔄 FilterManager: Found ${resetButtons.length} reset buttons`);
-
-        resetButtons.forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🔄 Reset button clicked');
-            this.resetAllFilters();
-          }, false);
-        });
-      },
-
-      // Apply all active filters
-      applyAllFilters() {
-        console.log('⚡ FilterManager: Applying all active filters...');
-
-        if (!window.adventuresData || window.adventuresData.length === 0) {
-          console.warn('⚠️ No adventure data available');
-          return;
-        }
-
-        // Filter the data
-        const filtered = window.adventuresData.filter((row, sourceIndex) => {
-          const values = row.values[0] || [];
-          const [name, , , tags, , , , difficulty, , state, city, , , , , cost] = values;
-
-          let matches = true;
-
-          // Search name filter
-          if (matches && this.state.searchName) {
-            matches = (name || '').toLowerCase().includes(this.state.searchName.toLowerCase());
-          }
-
-          // Difficulty filter
-          if (matches && this.state.filterDifficulty) {
-            matches = (difficulty || '').toLowerCase() === this.state.filterDifficulty.toLowerCase();
-          }
-
-          // State filter
-          if (matches && this.state.filterState) {
-            matches = (state || '').toLowerCase() === this.state.filterState.toLowerCase();
-          }
-
-          // City filter
-          if (matches && this.state.filterCity) {
-            matches = (city || '').toLowerCase() === this.state.filterCity.toLowerCase();
-          }
-
-          // Tags filter
-          if (matches && this.state.filterTags) {
-            matches = (tags || '').toLowerCase().includes(this.state.filterTags.toLowerCase());
-          }
-
-          // Cost filter
-          if (matches && this.state.filterCost) {
-            matches = (cost || '').toLowerCase().includes(this.state.filterCost.toLowerCase());
-          }
-
-          // Quick filters (OR logic)
-          if (matches && this.state.quickFilters.size > 0) {
-            const tagList = (tags || '').split(',').map(t => t.trim().toLowerCase());
-            matches = Array.from(this.state.quickFilters).some(qf =>
-              tagList.some(tag => tag.includes(qf.toLowerCase()))
-            );
-          }
-
-          // Favorites filter
-          if (matches && this.state.showFavoritesOnly) {
-            const favs = JSON.parse(localStorage.getItem('adventureFavorites') || '[]');
-            matches = favs.includes(row.dataset?.adventureId || name);
-          }
-
-          return matches;
-        });
-
-        // Build filtered adventures with source index tracking
-        window.totalFilteredAdventures = filtered.map((row, index) => ({
-          row: row,
-          sourceIndex: window.adventuresData.indexOf(row)
-        }));
-
-        console.log(`📊 Filtered: ${filtered.length} of ${window.adventuresData.length} adventures`);
-
-        // Reset pagination to first page
-        window.currentPage = 1;
-
-        // Render using existing window functions
-        if (typeof window.renderPagedCards === 'function') {
-          window.renderPagedCards();
-          console.log('✅ Cards rendered using renderPagedCards');
-        } else if (typeof window.renderAllCards === 'function') {
-          window.renderAllCards(filtered);
-          console.log('✅ Cards rendered using renderAllCards');
-        } else if (typeof renderAdventureCards === 'function') {
-          renderAdventureCards(filtered);
-          console.log('✅ Cards rendered using renderAdventureCards');
-        } else {
-          console.warn('⚠️ No rendering function found');
-        }
-
-        // Update UI indicators
-        this.updateIndicators();
-      },
-
-      // Reset all filters
-      resetAllFilters() {
-        console.log('🔄 FilterManager: Resetting all filters...');
-
-        // Clear state
-        this.state.searchName = '';
-        this.state.filterDifficulty = '';
-        this.state.filterState = '';
-        this.state.filterCity = '';
-        this.state.filterTags = '';
-        this.state.filterCost = '';
-        this.state.showFavoritesOnly = false;
-        this.state.quickFilters.clear();
-
-        // Clear input values
-        ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.value = '';
-        });
-
-        // Clear button states
-        document.querySelectorAll('.quick-filter-btn, #favoritesFilterBtn').forEach(btn => {
-          btn.classList.remove('active');
-        });
-
-        // Reapply with no filters
-        this.applyAllFilters();
-        console.log('✅ All filters reset');
-      },
-
-      // Update filter indicator badge and breadcrumbs
-      updateIndicators() {
-        const badge = document.getElementById('filtersActiveBadge');
-        const count = (this.state.searchName ? 1 : 0) +
-                     (this.state.filterDifficulty ? 1 : 0) +
-                     (this.state.filterState ? 1 : 0) +
-                     (this.state.filterCity ? 1 : 0) +
-                     (this.state.filterTags ? 1 : 0) +
-                     (this.state.filterCost ? 1 : 0) +
-                     (this.state.showFavoritesOnly ? 1 : 0) +
-                     this.state.quickFilters.size;
-
-        if (badge) {
-          if (count > 0) {
-            badge.textContent = `${count} Filter${count !== 1 ? 's' : ''} Active`;
-            badge.style.display = 'inline-block';
-          } else {
-            badge.style.display = 'none';
-          }
-        }
-
-        console.log(`🎯 Filters active: ${count}`);
-      }
-    };
-
-    // Initialize FilterManager when page is ready
+    // Initialize FilterManager when page is ready (already initialized, just trigger if needed)
     function initializeFilterManager() {
-      if (LateFilterManager.init) {
-        LateFilterManager.init();
+      if (window.FilterManager && typeof window.FilterManager.init === 'function') {
+        window.FilterManager.init();
       }
     }
 
@@ -20663,10 +20302,15 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       setTimeout(initializeFilterManager, 500);
     }
 
-    // Make FilterManager globally accessible
-    window.FilterManager = LateFilterManager;
-    window.applyFilters = () => LateFilterManager.applyAllFilters();
-    window.resetAllFilters = () => LateFilterManager.resetAllFilters();
+    // Make FilterManager globally accessible (use already-initialized instance)
+    // NOTE: window.FilterManager is already set in the first filter implementation
+    // These aliases ensure consistency across all code paths
+    if (!window.applyFilters && window.FilterManager && typeof window.FilterManager.applyAllFilters === 'function') {
+      window.applyFilters = () => window.FilterManager.applyAllFilters();
+    }
+    if (!window.resetAllFilters && window.FilterManager && typeof window.FilterManager.resetAllFilters === 'function') {
+      window.resetAllFilters = () => window.FilterManager.resetAllFilters();
+    }
 
     // Expose iPhone toggle as global function
     if (typeof initIphoneToggle === 'function') {
@@ -20826,7 +20470,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       return true;
     };
 
-    if (window.FilterManager) {
+    if (false && window.FilterManager) {
       window.FilterManager.applyAllFilters = function () {
         console.log('⚡ Final FilterManager override: applying filters...');
 
@@ -20974,47 +20618,6 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         newTab.focus();
       } else if (typeof window.showToast === 'function') {
         window.showToast('❌ Unable to open Find Near Me. Please allow pop-ups.', 'error', 5000);
-      }
-    };
-  })();
-</script>
-<script>
-  // Final post-load patch: ensure filters render the filtered dataset visually.
-  (function () {
-    if (!window.FilterManager) return;
-
-    const originalApply = window.FilterManager.applyAllFilters;
-    window.FilterManager.applyAllFilters = function () {
-      if (typeof originalApply === 'function') {
-        originalApply.call(this);
-      }
-
-      const filtered = Array.isArray(window.totalFilteredAdventures)
-        ? window.totalFilteredAdventures
-        : [];
-
-      const paginatedRenderer =
-        (typeof window.renderPaginatedCards === 'function' && window.renderPaginatedCards) ||
-        (typeof renderPaginatedCards === 'function' && renderPaginatedCards);
-
-      if (paginatedRenderer) {
-        paginatedRenderer();
-        if (typeof window.updatePaginationControls === 'function') {
-          window.updatePaginationControls();
-        }
-        return;
-      }
-
-      const fullData = window.adventuresData;
-      window.adventuresData = filtered.map((x) => x.row || x).filter(Boolean);
-      try {
-        if (typeof window.renderAdventureCards === 'function') {
-          window.renderAdventureCards();
-        } else if (typeof renderAdventureCards === 'function') {
-          renderAdventureCards();
-        }
-      } finally {
-        window.adventuresData = fullData;
       }
     };
   })();

@@ -1,0 +1,13 @@
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;component name="InspectionProjectConfiguration"&gt;
+  &lt;profile version="1.0"&gt;
+    &lt;option name="myName" value="Project Default" /&gt;
+    &lt;option name="myLocal" value="true" /&gt;
+    &lt;inspection_tool class="HtmlUnknownTag" enabled="false" level="WARNING" /&gt;
+    &lt;inspection_tool class="XmlUnusedNamespaceDeclaration" enabled="false" level="WARNING" /&gt;
+    &lt;inspection_tool class="XmlDuplicatedId" enabled="false" level="WARNING" /&gt;
+    &lt;inspection_tool class="RequiredAttributes" enabled="false" level="WARNING" /&gt;
+    &lt;inspection_tool class="HtmlMissingClosingTag" enabled="false" level="WARNING" /&gt;
+  &lt;/profile&gt;
+&lt;/component&gt;
+
