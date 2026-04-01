@@ -11265,8 +11265,8 @@
         : (Array.isArray(window.adventuresData) ? window.adventuresData.indexOf(row) : -1);
       const values = row.values[0];
 
-      // Calculate the actual index in totalFilteredAdventures array
-      const actualIndex = startIndex + pageIndex;
+      // Use sourceIndex (stable position in adventuresData) for detail button, not pagination index
+      const actualIndex = sourceIndex;
 
       // Extract adventure data from Excel columns
       // Column indices (0-based):
