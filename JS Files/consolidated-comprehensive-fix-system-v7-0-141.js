@@ -954,6 +954,13 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     if (window.__filterReliabilityBridgeInstalled) return;
     window.__filterReliabilityBridgeInstalled = true;
 
+    const isAdventureQuickFilterButton = (btn) => {
+      if (!btn || !btn.classList || !btn.classList.contains('quick-filter-btn')) return false;
+      if (btn.closest('#bikeQuickFiltersCard')) return false;
+      if (btn.dataset && btn.dataset.bikeFilter) return false;
+      return !!btn.closest('#quickFiltersCard');
+    };
+
     const bridgeCounters = window.__filterBridgeDebugCounters || {
       inputApplied: 0,
       quickApplied: 0
@@ -988,7 +995,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       if (!state) return false;
 
       const nextQuickFilters = new Set();
-      document.querySelectorAll('.quick-filter-btn[data-tag].active').forEach((btn) => {
+      document.querySelectorAll('#quickFiltersCard .quick-filter-btn[data-tag].active').forEach((btn) => {
         const tag = (btn.dataset.tag || '').toLowerCase().trim();
         if (tag) nextQuickFilters.add(tag);
       });
@@ -1031,24 +1038,18 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     }, true);
 
     document.addEventListener('click', (event) => {
-      const btn = event.target && event.target.closest ? event.target.closest('button') : null;
+      const btn = event.target && event.target.closest ? event.target.closest('button.quick-filter-btn') : null;
       if (!btn) return;
 
-      const isTagQuickFilter = btn.classList.contains('quick-filter-btn') && !!btn.dataset.tag;
-      const isFavoritesFilter = btn.id === 'favoritesFilterBtn' || (btn.dataset.filter || '').toLowerCase() === 'favorites';
-      const isOpenToday = btn.id === 'openTodayFilterBtn';
-      const isClosingSoon = btn.id === 'closingSoonFilterBtn';
-      if (!isTagQuickFilter && !isFavoritesFilter && !isOpenToday && !isClosingSoon) return;
+      if (!isAdventureQuickFilterButton(btn)) return;
 
-      // Own quick-filter click handling to avoid broken or duplicated listener chains.
-      event.preventDefault();
-      event.stopPropagation();
-
-      btn.classList.toggle('active');
-
-      const synced = syncQuickFilterButtonsToState();
-      const applied = applyFiltersReliably();
-      bumpBridgeCounter('quickApplied', `${btn.id || btn.dataset.tag || 'quick-filter'}${synced ? '' : ':state-sync-failed'}${applied ? '' : ':no-apply-fn'}`);
+      // Let the owning tab handler update button state first, then mirror it into FilterManager.
+      setTimeout(() => {
+        syncQuickFilterButtonsToState();
+        console.log(`🧪 quick-filter debug | activeButtons=${document.querySelectorAll('#quickFiltersCard .quick-filter-btn.active').length} | state.quickFilters.size=${window.FilterManager?.state?.quickFilters?.size ?? 0}`);
+        const applied = applyFiltersReliably();
+        bumpBridgeCounter('quickApplied', `${btn.id || btn.dataset.tag || 'quick-filter'}${applied ? '' : ':no-apply-fn'}`);
+      }, 0);
     }, true);
 
     console.log('✅ Filter reliability bridge installed');

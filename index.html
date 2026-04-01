@@ -6209,7 +6209,7 @@
        }));
 
        if (typeof renderAdventureCards === 'function') {
-         renderAdventureCards();
+         renderAdventureCards(filteredRows);
        }
      },
 
@@ -6228,7 +6228,7 @@
          if (el) el.value = '';
        });
 
-       document.querySelectorAll('.quick-filter-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach(btn => btn.classList.remove('active'));
        document.querySelectorAll('.pill-button.reset').forEach(btn => btn.classList.remove('active'));
 
        this.applyAllFilters();
@@ -6247,35 +6247,42 @@
          }
        });
 
+       document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
+         btn.onclick = null;
+       });
+
        // Bind quick filter buttons - read state from active buttons each time
-       document.addEventListener('click', function(e) {
-         const btn = e.target?.closest?.('.quick-filter-btn');
-         if (!btn) return;
-         if (!btn.classList.contains('quick-filter-btn')) return;
+       if (!window.__adventureQuickFilterDelegatedBound) {
+         window.__adventureQuickFilterDelegatedBound = true;
+         document.addEventListener('click', function(e) {
+           const btn = e.target?.closest?.('#quickFiltersCard .quick-filter-btn');
+           if (!btn) return;
+           if (!btn.classList.contains('quick-filter-btn')) return;
 
-         e.preventDefault();
-         e.stopPropagation();
+           e.preventDefault();
+           e.stopPropagation();
 
-         btn.classList.toggle('active');
+           btn.classList.toggle('active');
 
-         self.state.quickFilters.clear();
-         self.state.showFavoritesOnly = false;
+           self.state.quickFilters.clear();
+           self.state.showFavoritesOnly = false;
 
-         document.querySelectorAll('.quick-filter-btn.active').forEach((activeBtn) => {
-           if (activeBtn.id === 'favoritesFilterBtn') {
-             self.state.showFavoritesOnly = true;
-           } else {
-             const dataTag = String(activeBtn.getAttribute('data-tag') || '').trim().toLowerCase();
-             const dataFilter = String(activeBtn.getAttribute('data-filter') || '').trim().toLowerCase();
-             const tag = dataTag || dataFilter;
-             if (tag) {
-               self.state.quickFilters.add(tag);
+           document.querySelectorAll('#quickFiltersCard .quick-filter-btn.active').forEach((activeBtn) => {
+             if (activeBtn.id === 'favoritesFilterBtn') {
+               self.state.showFavoritesOnly = true;
+             } else {
+               const dataTag = String(activeBtn.getAttribute('data-tag') || '').trim().toLowerCase();
+               const dataFilter = String(activeBtn.getAttribute('data-filter') || '').trim().toLowerCase();
+               const tag = dataTag || dataFilter;
+               if (tag) {
+                 self.state.quickFilters.add(tag);
+               }
              }
-           }
-         });
+           });
 
-         self.applyAllFilters();
-       }, true);
+           self.applyAllFilters();
+         }, true);
+       }
 
        // Bind reset buttons
        document.querySelectorAll('.pill-button.reset, [id*="reset"], [id*="Reset"]').forEach(btn => {
@@ -9432,7 +9439,7 @@
           if (el) el.value = '';
         });
 
-        document.querySelectorAll('.quick-filter-btn').forEach((btn) => btn.classList.remove('active'));
+        document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => btn.classList.remove('active'));
 
         // Apply the cleared filters
         this.applyAllFilters();
@@ -9456,39 +9463,42 @@
         });
 
         // Bind quick filter buttons - read state from active buttons each time
-        document.addEventListener('click', (e) => {
-          const btn = e.target?.closest?.('.quick-filter-btn');
-          if (!btn) return;
+        if (!window.__adventureQuickFilterDelegatedBound) {
+          window.__adventureQuickFilterDelegatedBound = true;
+          document.addEventListener('click', (e) => {
+            const btn = e.target?.closest?.('#quickFiltersCard .quick-filter-btn');
+            if (!btn) return;
 
-          // Only handle our quick filter buttons
-          if (!btn.classList.contains('quick-filter-btn')) return;
+           // Only handle our quick filter buttons
+           if (!btn.classList.contains('quick-filter-btn')) return;
 
-          // Prevent default and stop propagation
-          e.preventDefault();
-          e.stopPropagation();
+           // Prevent default and stop propagation
+           e.preventDefault();
+           e.stopPropagation();
 
-          // Toggle the button active state
-          btn.classList.toggle('active');
+           // Toggle the button active state
+           btn.classList.toggle('active');
 
-          // Now sync state from all active buttons
-          manager.state.quickFilters.clear();
-          manager.state.showFavoritesOnly = false;
+           // Now sync state from all active buttons
+           manager.state.quickFilters.clear();
+           manager.state.showFavoritesOnly = false;
 
-          document.querySelectorAll('.quick-filter-btn.active').forEach((activeBtn) => {
-            if (activeBtn.id === 'favoritesFilterBtn') {
-              manager.state.showFavoritesOnly = true;
-            } else {
-              const dataTag = String(activeBtn.getAttribute('data-tag') || '').trim().toLowerCase();
-              const dataFilter = String(activeBtn.getAttribute('data-filter') || '').trim().toLowerCase();
-              const tag = dataTag || dataFilter;
-              if (tag) {
-                manager.state.quickFilters.add(tag);
-              }
-            }
-          });
+           document.querySelectorAll('#quickFiltersCard .quick-filter-btn.active').forEach((activeBtn) => {
+             if (activeBtn.id === 'favoritesFilterBtn') {
+               manager.state.showFavoritesOnly = true;
+             } else {
+               const dataTag = String(activeBtn.getAttribute('data-tag') || '').trim().toLowerCase();
+               const dataFilter = String(activeBtn.getAttribute('data-filter') || '').trim().toLowerCase();
+               const tag = dataTag || dataFilter;
+               if (tag) {
+                 manager.state.quickFilters.add(tag);
+               }
+             }
+           });
 
-          manager.applyAllFilters();
-        }, true); // Use capture phase for more reliable event handling
+           manager.applyAllFilters();
+         }, true); // Use capture phase for more reliable event handling
+        }
 
         // Bind reset buttons
         const resetButtons = document.querySelectorAll('[id*="resetAllFilters"], #breadcrumbResetBtn');
@@ -9659,7 +9669,7 @@
                 if (el) el.value = '';
               });
 
-              document.querySelectorAll('.quick-filter-btn').forEach((btn) => btn.classList.remove('active'));
+              document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => btn.classList.remove('active'));
               syncLegacyActiveFilters();
               manager.applyAllFilters();
             };
@@ -9668,7 +9678,7 @@
               if (manager.__bindingsInstalled) return;
               manager.__bindingsInstalled = true;
 
-              const quickButtons = document.querySelectorAll('.quick-filter-btn');
+              const quickButtons = document.querySelectorAll('#quickFiltersCard .quick-filter-btn');
               quickButtons.forEach((btn) => {
                 // Disable legacy inline handlers so state cannot split across systems.
                 btn.onclick = null;
@@ -13497,7 +13507,7 @@
 
     if (filterMeta.type === "quick-tag") {
       filterState.quickTags.delete(filterMeta.value);
-      document.querySelectorAll(".quick-filter-btn").forEach(btn => {
+      document.querySelectorAll("#quickFiltersCard .quick-filter-btn").forEach(btn => {
         if ((btn.getAttribute("data-tag") || "") === filterMeta.value) {
           btn.classList.remove("active");
         }
@@ -15009,7 +15019,7 @@
       case "quickFilter":
         activeFilters.quickFilters.delete(filterValue);
         // Also update the quick filter button state
-        const quickBtn = document.querySelector(`.quick-filter-btn[data-tag="${filterValue}"]`);
+        const quickBtn = document.querySelector(`#quickFiltersCard .quick-filter-btn[data-tag="${filterValue}"]`);
         if (quickBtn) quickBtn.classList.remove("active");
         break;
 
@@ -15087,7 +15097,7 @@
     if (filterCost) filterCost.value = "";
 
     // Clear quick filter buttons
-    document.querySelectorAll(".quick-filter-btn").forEach(btn => {
+    document.querySelectorAll("#quickFiltersCard .quick-filter-btn").forEach(btn => {
       btn.classList.remove("active");
     });
 
@@ -18016,11 +18026,12 @@ COMMON ISSUES:
       }, 100);
     }
 
-    function initializeQuickFilterButtons() {
-      const quickFilterBtns = document.querySelectorAll('.quick-filter-btn');
-      quickFilterBtns.forEach(btn => {
-        if (!btn.dataset.quickFilterBound) {
-          btn.addEventListener('click', (e) => {
+     function initializeQuickFilterButtons() {
+       const quickFilterBtns = document.querySelectorAll('.quick-filter-btn');
+       quickFilterBtns.forEach(btn => {
+         if (btn.closest('#quickFiltersCard')) return;
+         if (!btn.dataset.quickFilterBound) {
+           btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
 
