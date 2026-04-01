@@ -774,7 +774,8 @@
       // New behavior: card details open in a separate tab, not in-modal.
       if (window.rowDetailOpenMode === 'tab') {
         if (!opened && typeof window.openAdventureDetailsTab === 'function') {
-          opened = window.openAdventureDetailsTab(entry.sourceIndex) !== false;
+          // Pass the resolved entry object to avoid index remapping bugs.
+          opened = window.openAdventureDetailsTab(entry) !== false;
         }
         syncRowDetailContextFromGlobals();
         return opened;
@@ -1047,8 +1048,12 @@
     return new URL(encodeURI(rel), baseUrl).toString();
   }
 
-  window.openAdventureDetailsTab = function (sourceIndex) {
-    const entry = getAdventureEntry(sourceIndex);
+  window.cacheAdventureDetailsForTab = cacheAdventureDetailsForTab;
+
+  window.openAdventureDetailsTab = function (sourceIndexOrEntry) {
+    const entry = sourceIndexOrEntry && sourceIndexOrEntry.row
+      ? sourceIndexOrEntry
+      : getAdventureEntry(sourceIndexOrEntry);
     if (!entry) return false;
 
     const detailKey = cacheAdventureDetailsForTab(entry);
