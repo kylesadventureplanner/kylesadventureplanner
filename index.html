@@ -5435,8 +5435,7 @@
      const loginRequest = {
        scopes: [
          "User.Read",
-         "Files.ReadWrite",
-         "Sites.ReadWrite.All",
+         "Files.ReadWrite",  // For accessing Excel files in OneDrive
        ],
      };
 
@@ -8004,40 +8003,12 @@
   /* ============================================================
      MICROSOFT AUTHENTICATION LIBRARY (MSAL) SETUP
      ============================================================
-     MSAL handles OAuth2 authentication with Microsoft 365.
+     NOTE: MSAL Instance is already initialized at the top of this script
+            around line 5410. Do not create duplicate instances.
+     All auth functions are defined there and should be used.
   */
-  const msalConfig = {
-    auth: {
-      clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
-      authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
-    },
-  };
 
-  // Initialize MSAL with the configuration above
-  const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-  // Initialize MSAL instance - REQUIRED for MSAL 2.x+ to work properly
-  const msalInitPromise = msalInstance.initialize().catch(error => {
-    console.error("MSAL initialization failed:", error);
-    throw error;
-  });
-
-  // Handle redirect from Microsoft login
-  msalInitPromise.then(() => {
-    if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
-      return msalInstance.handleRedirectPromise();
-    }
-    return Promise.resolve();
-  }).catch(error => {
-    console.error("⚠️ Error handling redirect:", error);
-  });
-
-   // DUPLICATE loginRequest REMOVED - moved to top of script (~line 5937)
-   // Real auth functions already defined at top of script
-  // NOTE: OLD DUPLICATE AUTH REMOVED
-  // Real window.signIn and window.signOut now defined at TOP of script (~line 5950-6050)
-  // Removed: let isSigningIn, window.signIn, window.addEventListener, window.signOut
-  // Removed: All duplicate registrations and preservation code
+  // ...existing code...
 
    // NOTE: Real signIn function already defined at line 5939
    // No duplicate needed here
