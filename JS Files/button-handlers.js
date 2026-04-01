@@ -571,6 +571,8 @@
   }
 
   function openRowDetailFromAnySource(index) {
+    console.log('🎯 openRowDetailFromAnySource called with index:', index, 'type:', typeof index);
+
     const safeShow = typeof window.__rowDetailSafeShowCardDetails === 'function'
       ? window.__rowDetailSafeShowCardDetails
       : (typeof window.showCardDetails === 'function' ? window.showCardDetails : null);
@@ -796,7 +798,10 @@
     }
 
     window.__rowDetailSafeShowCardDetails = function (index) {
+      console.log('🔍 __rowDetailSafeShowCardDetails: input index =', index);
       const entry = getAdventureEntry(index);
+      console.log('🔍 getAdventureEntry returned:', entry ? { sourceIndex: entry.sourceIndex, name: entry.row?.values?.[0]?.[0] } : null);
+
       if (!entry) {
         console.error('❌ Row detail: could not resolve adventure for index', index);
         return false;
