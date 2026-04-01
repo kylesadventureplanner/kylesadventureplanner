@@ -9150,15 +9150,19 @@
           if (manager.state.filterTags && !tags.includes(manager.norm(manager.state.filterTags))) return false;
           if (manager.state.filterCost && !cost.includes(manager.norm(manager.state.filterCost))) return false;
 
-          // Quick filters
+          // Quick filters - ALL selected quick filters must match (AND logic)
           if (manager.state.quickFilters.size > 0) {
             const tagList = tags.split(',').map((t) => manager.norm(t)).filter(Boolean);
-            const quickMatch = Array.from(manager.state.quickFilters).some((rawNeedle) => {
+
+            // Check if ALL quick filters have a match in this row
+            const allQuickFiltersMatch = Array.from(manager.state.quickFilters).every((rawNeedle) => {
               const needle = manager.norm(rawNeedle);
-              if (!needle) return false;
+              if (!needle) return true; // Skip empty filters
+              // Match if tag list contains the needle
               return tagList.some((tag) => tag.includes(needle));
             });
-            if (!quickMatch) return false;
+
+            if (!allQuickFiltersMatch) return false;
           }
 
           // Favorites filter
@@ -9246,34 +9250,40 @@
           }
         });
 
-        // Bind quick filter buttons
-        const quickContainer = document.querySelector('.quick-filters-card');
-        if (quickContainer) {
-          quickContainer.addEventListener('click', (e) => {
-            const btn = e.target?.closest?.('.quick-filter-btn');
-            if (!btn) return;
+        // Bind quick filter buttons - read state from active buttons each time
+        document.addEventListener('click', (e) => {
+          const btn = e.target?.closest?.('.quick-filter-btn');
+          if (!btn) return;
 
-            e.preventDefault();
+          // Only handle our quick filter buttons
+          if (!btn.classList.contains('quick-filter-btn')) return;
 
-            if (btn.id === 'favoritesFilterBtn') {
-              manager.state.showFavoritesOnly = !manager.state.showFavoritesOnly;
-              btn.classList.toggle('active', manager.state.showFavoritesOnly);
+          // Prevent default and stop propagation
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Toggle the button active state
+          btn.classList.toggle('active');
+
+          // Now sync state from all active buttons
+          manager.state.quickFilters.clear();
+          manager.state.showFavoritesOnly = false;
+
+          document.querySelectorAll('.quick-filter-btn.active').forEach((activeBtn) => {
+            if (activeBtn.id === 'favoritesFilterBtn') {
+              manager.state.showFavoritesOnly = true;
             } else {
-              const dataTag = String(btn.getAttribute('data-tag') || '').trim().toLowerCase();
-              if (dataTag) {
-                if (manager.state.quickFilters.has(dataTag)) {
-                  manager.state.quickFilters.delete(dataTag);
-                  btn.classList.remove('active');
-                } else {
-                  manager.state.quickFilters.add(dataTag);
-                  btn.classList.add('active');
-                }
+              const dataTag = String(activeBtn.getAttribute('data-tag') || '').trim().toLowerCase();
+              const dataFilter = String(activeBtn.getAttribute('data-filter') || '').trim().toLowerCase();
+              const tag = dataTag || dataFilter;
+              if (tag) {
+                manager.state.quickFilters.add(tag);
               }
             }
+          });
 
-            manager.applyAllFilters();
-          }, false);
-        }
+          manager.applyAllFilters();
+        }, true); // Use capture phase for more reliable event handling
 
         // Bind reset buttons
         const resetButtons = document.querySelectorAll('[id*="resetAllFilters"], #breadcrumbResetBtn');
@@ -9291,13 +9301,19 @@
     // Initialize FilterManager when page is ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
+        console.log('🎯 DOMContentLoaded: Initializing FilterManager');
         if (window.FilterManager && typeof window.FilterManager.init === 'function') {
           window.FilterManager.init();
+          console.log('✅ FilterManager.init() called');
         }
       });
     } else {
       if (window.FilterManager && typeof window.FilterManager.init === 'function') {
-        setTimeout(() => window.FilterManager.init(), 100);
+        console.log('📍 DOM already ready: Initializing FilterManager immediately');
+        setTimeout(() => {
+          window.FilterManager.init();
+          console.log('✅ FilterManager.init() called');
+        }, 100);
       }
     }
 
@@ -9306,6 +9322,9 @@
     window.resetAllFilters = () => window.FilterManager?.resetAllFilters();
 
     console.log('✅ FilterManager created and initialized');
+    console.log('📍 window.FilterManager.state available:', !!window.FilterManager?.state);
+    console.log('📍 window.applyFilters available:', typeof window.applyFilters);
+    console.log('📍 window.resetAllFilters available:', typeof window.resetAllFilters);
 
          if (window.FilterManager) {
            // Final runtime filter fix: one source of truth, one-time bindings.
