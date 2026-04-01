@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adventure Details</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #111827;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .head {
+      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+      color: #fff;
+      padding: 24px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    .meta { opacity: 0.95; font-size: 14px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .btn {
+      border: 1px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.16);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .label { color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .value { margin-top: 6px; font-size: 14px; line-height: 1.45; }
+    .full { margin-top: 12px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .tag { background: #e0ecff; color: #1d4ed8; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
+    .empty { color: #6b7280; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="header" class="head"></div>
+  <div id="details" class="grid"></div>
+  <div id="extra" class="full"></div>
+</div>
+
+<script>
+  function getParams() {
+    return new URLSearchParams(window.location.search || '');
+  }
+
+  function fromStoredPayload() {
+    const params = getParams();
+    const detailKey = params.get('detailKey');
+    const latestKey = window.localStorage.getItem('adventure_details_latest');
+    const keyToUse = detailKey || latestKey;
+    if (!keyToUse) return null;
+
+    try {
+      const raw = window.localStorage.getItem(keyToUse);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function fromOpenerBySourceIndex(sourceIndex) {
+    try {
+      if (!window.opener || !Array.isArray(window.opener.adventuresData)) return null;
+      const row = window.opener.adventuresData[sourceIndex];
+      if (!row || !Array.isArray(row.values) || !Array.isArray(row.values[0])) return null;
+      const values = row.values[0];
+      const [
+        name, googlePlaceId, website, tags, driveTime, hoursOfOperation,
+        activityDuration, difficulty, trailLength, state, city, address,
+        phoneNumber, googleRating, cost, directions, description, nearby,
+        links, links2, notes, myRating, favoriteStatus, googleUrl
+      ] = values;
+
+      return {
+        sourceIndex,
+        data: {
+          name, googlePlaceId, website, tags, driveTime, hoursOfOperation,
+          activityDuration, difficulty, trailLength, state, city, address,
+          phoneNumber, googleRating, cost, directions, description, nearby,
+          links, links2, notes, myRating, favoriteStatus, googleUrl
+        }
+      };
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function render(payload) {
+    const data = payload && payload.data ? payload.data : null;
+    if (!data) {
+      document.getElementById('header').innerHTML = '<h1>Adventure Details</h1><div class="meta">No detail payload was available. Open this page from an Adventure card.</div>';
+      return;
+    }
+
+    const tagList = String(data.tags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+    const headerActions = [
+      data.directions ? '<a class="btn" href="' + data.directions + '" target="_blank" rel="noopener">Directions</a>' : '',
+      data.website ? '<a class="btn" href="' + data.website + '" target="_blank" rel="noopener">Website</a>' : '',
+      data.googleUrl ? '<a class="btn" href="' + data.googleUrl + '" target="_blank" rel="noopener">Google View</a>' : ''
+    ].join('');
+
+    document.getElementById('header').innerHTML =
+      '<h1>' + (data.name || 'Adventure Details') + '</h1>' +
+      '<div class="meta">' + (data.city || 'Unknown city') + (data.state ? ', ' + data.state : '') + '</div>' +
+      (headerActions ? '<div class="actions">' + headerActions + '</div>' : '');
+
+    function card(label, value) {
+      return '<div class="card"><div class="label">' + label + '</div><div class="value">' + (value || '<span class="empty">Not available</span>') + '</div></div>';
+    }
+
+    document.getElementById('details').innerHTML = [
+      card('Address', data.address),
+      card('Phone Number', data.phoneNumber),
+      card('Drive Time', data.driveTime),
+      card('Hours', data.hoursOfOperation),
+      card('Duration', data.activityDuration),
+      card('Difficulty', data.difficulty),
+      card('Trail Length', data.trailLength),
+      card('Cost', data.cost),
+      card('Google Rating', data.googleRating),
+      card('My Rating', data.myRating),
+      card('Place ID', data.googlePlaceId)
+    ].join('');
+
+    document.getElementById('extra').innerHTML =
+      '<div class="card">' +
+      '<div class="label">Description</div>' +
+      '<div class="value">' + (data.description || '<span class="empty">Not available</span>') + '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px;">' +
+      '<div class="label">Nearby Attractions</div>' +
+      '<div class="value">' + (data.nearby || '<span class="empty">Not available</span>') + '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px;">' +
+      '<div class="label">Notes</div>' +
+      '<div class="value">' + (data.notes || '<span class="empty">Not available</span>') + '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:12px;">' +
+      '<div class="label">Tags</div>' +
+      '<div class="tags">' + (tagList.length ? tagList.map(function (tag) { return '<span class="tag">' + tag + '</span>'; }).join('') : '<span class="empty">No tags</span>') + '</div>' +
+      '</div>';
+  }
+
+  (function init() {
+    var payload = fromStoredPayload();
+    if (!payload) {
+      var sourceIndex = Number(getParams().get('sourceIndex'));
+      if (Number.isInteger(sourceIndex) && sourceIndex >= 0) {
+        payload = fromOpenerBySourceIndex(sourceIndex);
+      }
+    }
+    render(payload);
+  })();
+</script>
+</body>
+</html>
+

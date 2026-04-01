@@ -751,11 +751,19 @@
       let opened = false;
       if (typeof originalShow === 'function' && originalShow !== window.__rowDetailSafeShowCardDetails) {
         try {
-          originalShow(entry.sourceIndex);
-          opened = true;
+          opened = originalShow(entry.sourceIndex) !== false;
         } catch (error) {
           console.warn('⚠️ Original showCardDetails failed, using fallback renderer:', error);
         }
+      }
+
+      // New behavior: card details open in a separate tab, not in-modal.
+      if (window.rowDetailOpenMode === 'tab') {
+        if (!opened && typeof window.openAdventureDetailsTab === 'function') {
+          opened = window.openAdventureDetailsTab(entry.sourceIndex) !== false;
+        }
+        syncRowDetailContextFromGlobals();
+        return opened;
       }
 
       const parts = getRowDetailParts();
@@ -965,4 +973,85 @@
   }
 
   window.setupButtonHandlers = refreshVisibleButtons;
+
+  window.rowDetailOpenMode = 'tab';
+
+  function cacheAdventureDetailsForTab(entry) {
+    const values = entry && entry.row && entry.row.values ? entry.row.values[0] : [];
+    if (!Array.isArray(values)) return null;
+
+    const [
+      name, googlePlaceId, website, tags, driveTime, hoursOfOperation,
+      activityDuration, difficulty, trailLength, state, city, address,
+      phoneNumber, googleRating, cost, directions, description, nearby,
+      links, links2, notes, myRating, favoriteStatus, googleUrl
+    ] = values;
+
+    const detailKey = `adventure_details_${entry.sourceIndex}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const payload = {
+      sourceIndex: entry.sourceIndex,
+      exportedAt: new Date().toISOString(),
+      data: {
+        name, googlePlaceId, website, tags, driveTime, hoursOfOperation,
+        activityDuration, difficulty, trailLength, state, city, address,
+        phoneNumber, googleRating, cost, directions, description, nearby,
+        links, links2, notes, myRating, favoriteStatus, googleUrl
+      }
+    };
+
+    try {
+      window.localStorage.setItem(detailKey, JSON.stringify(payload));
+      window.localStorage.setItem('adventure_details_latest', detailKey);
+      return detailKey;
+    } catch (error) {
+      console.warn('⚠️ Could not cache adventure details payload:', error);
+      return null;
+    }
+  }
+
+  function resolvePlannerUrl(relativePath) {
+    if (typeof window.resolvePlannerPageUrl === 'function') {
+      return window.resolvePlannerPageUrl(relativePath);
+    }
+
+    const rel = String(relativePath || '').replace(/^\/+/, '');
+    const pathname = window.location.pathname || '/';
+    const marker = '/kylesadventureplanner/';
+    const markerIdx = pathname.toLowerCase().indexOf(marker);
+
+    let basePath = '/';
+    if (markerIdx >= 0) {
+      basePath = pathname.slice(0, markerIdx + marker.length);
+    } else {
+      const slashIdx = pathname.lastIndexOf('/');
+      basePath = slashIdx >= 0 ? pathname.slice(0, slashIdx + 1) : '/';
+    }
+
+    const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
+    const baseUrl = origin ? `${origin}${basePath}` : window.location.href;
+    return new URL(encodeURI(rel), baseUrl).toString();
+  }
+
+  window.openAdventureDetailsTab = function (sourceIndex) {
+    const entry = getAdventureEntry(sourceIndex);
+    if (!entry) return false;
+
+    const detailKey = cacheAdventureDetailsForTab(entry);
+    const detailsUrl = new URL(resolvePlannerUrl('HTML Files/adventure-details-window.html'), window.location.href);
+    detailsUrl.searchParams.set('sourceIndex', String(entry.sourceIndex));
+    if (detailKey) detailsUrl.searchParams.set('detailKey', detailKey);
+    detailsUrl.searchParams.set('ts', String(Date.now()));
+
+    const detailTab = window.open(detailsUrl.toString(), '_blank');
+    if (!detailTab) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('❌ Failed to open details tab. Check if pop-ups are blocked.', 'error', 5000);
+      }
+      return false;
+    }
+
+    detailTab.focus();
+    return true;
+  };
+
 })();
