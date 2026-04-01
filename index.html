@@ -5782,9 +5782,13 @@
      // ============================================================
      // RENDER ADVENTURE CARDS - Display loaded data in the grid
      // ============================================================
-     window.renderAdventureCards = async function() {
-       try {
-         console.log('🎨 renderAdventureCards: Starting to render cards...');
+    window.renderAdventureCards = async function(adventuresArray = null) {
+      try {
+        console.log('🎨 renderAdventureCards: Starting to render cards...');
+
+        const sourceAdventures = Array.isArray(adventuresArray)
+          ? adventuresArray
+          : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
 
          const cardsGrid = document.getElementById('adventureCardsGrid');
          if (!cardsGrid) {
@@ -5792,18 +5796,18 @@
            return;
          }
 
-         if (!window.adventuresData || window.adventuresData.length === 0) {
-           console.warn('⚠️ No adventure data to render');
-           cardsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No adventures found. Add some in Edit Mode!</div>';
-           return;
-         }
+        if (sourceAdventures.length === 0) {
+          console.warn('⚠️ No adventure data to render');
+          cardsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No adventures found. Add some in Edit Mode!</div>';
+          return;
+        }
 
          // Clear existing cards
          cardsGrid.innerHTML = '';
 
           // Render each adventure as a card
-          window.adventuresData.forEach((adventure, index) => {
-            const values = adventure.values[0] || [];
+        sourceAdventures.forEach((adventure, index) => {
+          const values = adventure.values[0] || [];
 
             // Extract data from columns - based on Excel structure
              // Column order: 0=Name, 1=GooglePlaceId, 2=Website, 3=Tags, etc.
@@ -5828,12 +5832,15 @@
             // const favoriteStatus = values[22] || '';
 
             // Adventure cards are now open-details surfaces; actions live in the modal.
-            const adventureId = googlePlaceId || `${name}_${index}`;
-            const card = document.createElement('div');
+              const sourceIndex = Array.isArray(window.adventuresData)
+                ? window.adventuresData.indexOf(adventure)
+                : index;
+              const adventureId = googlePlaceId || `${name}_${sourceIndex >= 0 ? sourceIndex : index}`;
+              const card = document.createElement('div');
             card.className = 'adventure-card';
             card.dataset.cardDomain = 'adventure';
             card.dataset.adventureId = adventureId;
-            card.dataset.index = String(index);
+              card.dataset.index = String(sourceIndex >= 0 ? sourceIndex : index);
             card.innerHTML = `
              <div class="card-header">
                <h3 class="card-title">${name}</h3>
@@ -5868,12 +5875,12 @@
             cardsGrid.appendChild(card);
           });
 
-         console.log(`✅ Rendered ${window.adventuresData.length} adventure cards`);
+          console.log(`✅ Rendered ${sourceAdventures.length} adventure cards`);
 
          // Update results count
          const resultsCount = document.getElementById('resultsCount');
          if (resultsCount) {
-           resultsCount.textContent = `${window.adventuresData.length} adventures`;
+        resultsCount.textContent = `${sourceAdventures.length} adventures`;
          }
 
        } catch (error) {
