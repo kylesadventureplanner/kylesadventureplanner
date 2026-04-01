@@ -6104,12 +6104,210 @@
   <!-- Legacy Automation Integration (v7.0.122) - from old automation-control-panel.html -->
   <script src="Archived-Files/JS/legacy-automation-integration.js"></script>
 
-  <!-- Bulk Add Chain Locations - FIXED (v7.0.123) with Real Progress Updates -->
-  <script src="Archived-Files/JS/bulk-add-chain-locations-fixed.js"></script>
+   <!-- Bulk Add Chain Locations - FIXED (v7.0.123) with Real Progress Updates -->
+   <script src="Archived-Files/JS/bulk-add-chain-locations-fixed.js"></script>
 
-  <!-- ============================================================ -->
-  <!-- CONSOLIDATED SYSTEMS (v7.0.141) - Core Application Systems -->
-  <!-- ============================================================ -->
+   <!-- ============================================================ -->
+   <!-- FILTERMANAGER SYSTEM - MUST LOAD BEFORE CONSOLIDATED SYSTEMS -->
+   <!-- ============================================================ -->
+   <script>
+   // Define FilterManager object - will be initialized after DOM loads
+   window.FilterManager = {
+     state: {
+       searchName: '',
+       filterDifficulty: '',
+       filterState: '',
+       filterCity: '',
+       filterTags: '',
+       filterCost: '',
+       quickFilters: new Set(),
+       showFavoritesOnly: false
+     },
+
+     norm: (str) => String(str || '').toLowerCase().trim(),
+
+     refreshStateFromControls: function() {
+       const searchInput = document.getElementById('searchName');
+       const difficultyInput = document.getElementById('filterDifficulty');
+       const stateInput = document.getElementById('filterState');
+       const cityInput = document.getElementById('filterCity');
+       const tagsInput = document.getElementById('filterTags');
+       const costInput = document.getElementById('filterCost');
+
+       this.state.searchName = searchInput ? searchInput.value.trim() : '';
+       this.state.filterDifficulty = difficultyInput ? difficultyInput.value.trim() : '';
+       this.state.filterState = stateInput ? stateInput.value.trim() : '';
+       this.state.filterCity = cityInput ? cityInput.value.trim() : '';
+       this.state.filterTags = tagsInput ? tagsInput.value.trim() : '';
+       this.state.filterCost = costInput ? costInput.value.trim() : '';
+     },
+
+     applyAllFilters: function() {
+       this.refreshStateFromControls();
+
+       const favorites = window.adventureFavorites ? new Set(window.adventureFavorites) : new Set();
+
+       if (!window.adventuresData || !Array.isArray(window.adventuresData)) {
+         console.warn('⚠️ FilterManager: adventuresData not available');
+         return;
+       }
+
+       const self = this;
+       const filteredRows = window.adventuresData.filter((row) => {
+         const values = row.values?.[0] || row;
+         if (!Array.isArray(values)) return false;
+
+         const placeId = String(values[1] || '').trim();
+         const name = self.norm(values[0]);
+         const tags = self.norm(values[3]);
+         const difficulty = self.norm(values[7]);
+         const state = self.norm(values[9]);
+         const city = self.norm(values[10]);
+         const cost = self.norm(values[14]);
+
+         if (self.state.searchName && !name.includes(self.norm(self.state.searchName))) return false;
+         if (self.state.filterDifficulty && difficulty !== self.norm(self.state.filterDifficulty)) return false;
+         if (self.state.filterState && state !== self.norm(self.state.filterState)) return false;
+         if (self.state.filterCity && city !== self.norm(self.state.filterCity)) return false;
+         if (self.state.filterTags && !tags.includes(self.norm(self.state.filterTags))) return false;
+         if (self.state.filterCost && !cost.includes(self.norm(self.state.filterCost))) return false;
+
+         // Quick filters - ALL selected quick filters must match (AND logic)
+         if (self.state.quickFilters.size > 0) {
+           const tagList = tags.split(',').map((t) => self.norm(t)).filter(Boolean);
+
+           const allQuickFiltersMatch = Array.from(self.state.quickFilters).every((rawNeedle) => {
+             const needle = self.norm(rawNeedle);
+             if (!needle) return true;
+             return tagList.some((tag) => tag.includes(needle));
+           });
+
+           if (!allQuickFiltersMatch) return false;
+         }
+
+         if (self.state.showFavoritesOnly) {
+           const identityA = String(placeId).trim();
+           const identityB = String(values[0] || '').trim();
+           if ((!identityA || !favorites.has(identityA)) && (!identityB || !favorites.has(identityB))) {
+             return false;
+           }
+         }
+
+         return true;
+       });
+
+       window.totalFilteredAdventures = filteredRows.map((row) => ({
+         row,
+         sourceIndex: window.adventuresData.indexOf(row)
+       }));
+
+       if (typeof renderAdventureCards === 'function') {
+         renderAdventureCards();
+       }
+     },
+
+     resetAllFilters: function() {
+       this.state.searchName = '';
+       this.state.filterDifficulty = '';
+       this.state.filterState = '';
+       this.state.filterCity = '';
+       this.state.filterTags = '';
+       this.state.filterCost = '';
+       this.state.quickFilters.clear();
+       this.state.showFavoritesOnly = false;
+
+       ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'].forEach(id => {
+         const el = document.getElementById(id);
+         if (el) el.value = '';
+       });
+
+       document.querySelectorAll('.quick-filter-btn').forEach(btn => btn.classList.remove('active'));
+       document.querySelectorAll('.pill-button.reset').forEach(btn => btn.classList.remove('active'));
+
+       this.applyAllFilters();
+     },
+
+     init: function() {
+       console.log('🎯 FilterManager.init() starting...');
+       const self = this;
+
+       // Bind text input filters
+       ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'].forEach(id => {
+         const el = document.getElementById(id);
+         if (el) {
+           el.addEventListener('input', function() { self.applyAllFilters(); });
+           el.addEventListener('change', function() { self.applyAllFilters(); });
+         }
+       });
+
+       // Bind quick filter buttons - read state from active buttons each time
+       document.addEventListener('click', function(e) {
+         const btn = e.target?.closest?.('.quick-filter-btn');
+         if (!btn) return;
+         if (!btn.classList.contains('quick-filter-btn')) return;
+
+         e.preventDefault();
+         e.stopPropagation();
+
+         btn.classList.toggle('active');
+
+         self.state.quickFilters.clear();
+         self.state.showFavoritesOnly = false;
+
+         document.querySelectorAll('.quick-filter-btn.active').forEach((activeBtn) => {
+           if (activeBtn.id === 'favoritesFilterBtn') {
+             self.state.showFavoritesOnly = true;
+           } else {
+             const dataTag = String(activeBtn.getAttribute('data-tag') || '').trim().toLowerCase();
+             const dataFilter = String(activeBtn.getAttribute('data-filter') || '').trim().toLowerCase();
+             const tag = dataTag || dataFilter;
+             if (tag) {
+               self.state.quickFilters.add(tag);
+             }
+           }
+         });
+
+         self.applyAllFilters();
+       }, true);
+
+       // Bind reset buttons
+       document.querySelectorAll('.pill-button.reset, [id*="reset"], [id*="Reset"]').forEach(btn => {
+         btn.addEventListener('click', function(e) {
+           e.preventDefault();
+           self.resetAllFilters();
+         }, false);
+       });
+
+       console.log('✅ FilterManager.init() complete');
+     }
+   };
+
+   // Create global aliases immediately
+   window.applyFilters = () => window.FilterManager?.applyAllFilters();
+   window.resetAllFilters = () => window.FilterManager?.resetAllFilters();
+
+   console.log('✅ FilterManager object created and ready for consolidated systems');
+   console.log('📍 window.FilterManager.state:', !!window.FilterManager?.state);
+   console.log('📍 window.FilterManager.state.quickFilters is Set:', window.FilterManager?.state?.quickFilters instanceof Set);
+
+   // Initialize FilterManager when DOM is ready (not too early)
+   if (document.readyState === 'loading') {
+     document.addEventListener('DOMContentLoaded', () => {
+       console.log('🚀 DOM ready: calling FilterManager.init()');
+       window.FilterManager?.init();
+     });
+   } else {
+     // DOM already loaded
+     setTimeout(() => {
+       console.log('🚀 Calling FilterManager.init() after short delay');
+       window.FilterManager?.init();
+     }, 100);
+   }
+   </script>
+
+   <!-- ============================================================ -->
+   <!-- CONSOLIDATED SYSTEMS (v7.0.141) - Core Application Systems -->
+   <!-- ============================================================ -->
   <!-- These consolidated files contain all core functionality -->
 
   <!-- Automation System - Google Places automation and bulk operations -->
@@ -9298,22 +9496,14 @@
       }
     };
 
-    // Initialize FilterManager when page is ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        console.log('🎯 DOMContentLoaded: Initializing FilterManager');
-        if (window.FilterManager && typeof window.FilterManager.init === 'function') {
-          window.FilterManager.init();
-          console.log('✅ FilterManager.init() called');
-        }
-      });
-    } else {
-      if (window.FilterManager && typeof window.FilterManager.init === 'function') {
-        console.log('📍 DOM already ready: Initializing FilterManager immediately');
-        setTimeout(() => {
-          window.FilterManager.init();
-          console.log('✅ FilterManager.init() called');
-        }, 100);
+    // Initialize FilterManager immediately (synchronously before other systems try to use it)
+    console.log('🚀 Initializing FilterManager immediately...');
+    if (typeof window.FilterManager.init === 'function') {
+      try {
+        window.FilterManager.init();
+        console.log('✅ FilterManager.init() called successfully');
+      } catch (err) {
+        console.error('⚠️ FilterManager.init() failed:', err);
       }
     }
 
@@ -9322,7 +9512,9 @@
     window.resetAllFilters = () => window.FilterManager?.resetAllFilters();
 
     console.log('✅ FilterManager created and initialized');
+    console.log('📍 window.FilterManager available:', !!window.FilterManager);
     console.log('📍 window.FilterManager.state available:', !!window.FilterManager?.state);
+    console.log('📍 window.FilterManager.state.quickFilters is Set:', window.FilterManager?.state?.quickFilters instanceof Set);
     console.log('📍 window.applyFilters available:', typeof window.applyFilters);
     console.log('📍 window.resetAllFilters available:', typeof window.resetAllFilters);
 
