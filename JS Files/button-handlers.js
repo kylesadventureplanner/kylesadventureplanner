@@ -69,11 +69,54 @@
     return Boolean(card && card.getAttribute('data-card-domain') === 'adventure');
   }
 
+  function resolveIndexFromAdventureId(element) {
+    if (!element || !Array.isArray(window.adventuresData)) return null;
+
+    var adventureId = String(element.getAttribute('data-adventure-id') || '').trim();
+    if (!adventureId) return null;
+
+    // If adventureId is a real Google Place ID, match by column 1.
+    var byPlaceId = window.adventuresData.findIndex(function (row) {
+      var values = row && row.values && row.values[0] ? row.values[0] : [];
+      return String(values[1] || '').trim() === adventureId;
+    });
+    if (byPlaceId >= 0) return byPlaceId;
+
+    // Fallback for synthetic ids like "Name_123".
+    var syntheticMatch = adventureId.match(/_(\d+)$/);
+    if (syntheticMatch) {
+      var parsed = Number(syntheticMatch[1]);
+      if (Number.isInteger(parsed) && parsed >= 0 && window.adventuresData[parsed]) return parsed;
+    }
+
+    return null;
+  }
+
+  function resolveIndexFromCardContent(element) {
+    if (!element || !Array.isArray(window.adventuresData)) return null;
+
+    var titleEl = element.querySelector('.card-title, .adventure-card-title');
+    var name = String(titleEl ? titleEl.textContent : '').trim().toLowerCase();
+    if (!name) return null;
+
+    var matchIndex = window.adventuresData.findIndex(function (row) {
+      var values = row && row.values && row.values[0] ? row.values[0] : [];
+      return String(values[0] || '').trim().toLowerCase() === name;
+    });
+
+    return matchIndex >= 0 ? matchIndex : null;
+  }
+
   function resolveCardIndexFromElement(element) {
     if (!element) return null;
 
+    // Prefer explicit stable source index when present.
     const fromSourceAttr = Number(element.getAttribute('data-source-index'));
     if (Number.isInteger(fromSourceAttr) && fromSourceAttr >= 0) return fromSourceAttr;
+
+    // Try resolving by stable adventureId (placeId or synthetic id).
+    const fromAdventureId = resolveIndexFromAdventureId(element);
+    if (Number.isInteger(fromAdventureId) && fromAdventureId >= 0) return fromAdventureId;
 
     const detailsButton = element.querySelector('.card-details-btn');
     const fromDetailsSource = detailsButton ? Number(detailsButton.getAttribute('data-source-index')) : NaN;
@@ -84,6 +127,9 @@
 
     const fromDataAttr = Number(element.getAttribute('data-index'));
     if (Number.isInteger(fromDataAttr) && fromDataAttr >= 0) return fromDataAttr;
+
+    const fromContent = resolveIndexFromCardContent(element);
+    if (Number.isInteger(fromContent) && fromContent >= 0) return fromContent;
 
     return null;
   }
@@ -761,10 +807,19 @@
       window.initRowDetailModal();
       syncRowDetailContextFromGlobals();
 
+      // Tab mode is now authoritative: do not invoke legacy/placeholder handlers.
+      if (window.rowDetailOpenMode === 'tab') {
+        if (typeof window.openAdventureDetailsTab === 'function') {
+          const openedTab = window.openAdventureDetailsTab(entry) !== false;
+          syncRowDetailContextFromGlobals();
+          return openedTab;
+        }
+        return false;
+      }
+
       let opened = false;
       if (typeof originalShow === 'function' && originalShow !== window.__rowDetailSafeShowCardDetails) {
         try {
-          // Only explicit true counts as opened; placeholder/legacy undefined should not.
           opened = originalShow(entry.sourceIndex) === true;
         } catch (error) {
           console.warn('⚠️ Original showCardDetails failed, using fallback renderer:', error);
