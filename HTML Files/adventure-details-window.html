@@ -98,11 +98,41 @@
     .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .tag { background: #e0ecff; color: #1d4ed8; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
     .empty { color: #6b7280; }
+
+    .debug-bar {
+      margin-bottom: 12px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .debug-bar.match {
+      border-color: #86efac;
+      background: #ecfdf5;
+      color: #065f46;
+    }
+    .debug-bar.mismatch {
+      border-color: #fca5a5;
+      background: #fef2f2;
+      color: #991b1b;
+    }
+    .debug-title { font-weight: 700; margin-bottom: 6px; }
+    .debug-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .debug-pill {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid #d1d5db;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
 <div class="wrap">
   <div id="header" class="head"></div>
+  <div id="debugBar" class="debug-bar" style="display:none;"></div>
 
   <div id="tabs" class="tabs" aria-label="Adventure details tabs">
     <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
@@ -192,6 +222,46 @@
       (value || '<span class="empty">Not available</span>') + '</div></div>';
   }
 
+  function normalizeForCompare(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function renderDebugMarker(payload) {
+    var debugBar = document.getElementById('debugBar');
+    if (!debugBar) return;
+
+    var params = getParams();
+    var urlSourceIndex = params.get('debugSourceIndex') || params.get('sourceIndex') || '';
+    var urlName = params.get('debugName') || '';
+    var urlPlaceId = params.get('debugPlaceId') || '';
+
+    var payloadSourceIndex = payload && payload.sourceIndex != null ? String(payload.sourceIndex) : '';
+    var payloadName = payload && payload.data ? String(payload.data.name || '') : '';
+    var payloadPlaceId = payload && payload.data ? String(payload.data.googlePlaceId || '') : '';
+
+    var sourceMatches = normalizeForCompare(urlSourceIndex) === normalizeForCompare(payloadSourceIndex);
+    var nameMatches = !urlName || normalizeForCompare(urlName) === normalizeForCompare(payloadName);
+    var placeMatches = !urlPlaceId || normalizeForCompare(urlPlaceId) === normalizeForCompare(payloadPlaceId);
+    var allMatch = sourceMatches && nameMatches && placeMatches;
+
+    debugBar.className = 'debug-bar ' + (allMatch ? 'match' : 'mismatch');
+    debugBar.style.display = 'block';
+    debugBar.innerHTML =
+      '<div class="debug-title">🔎 Detail Debug Marker: ' + (allMatch ? 'MATCH' : 'MISMATCH') + '</div>' +
+      '<div class="debug-row">' +
+      '<span class="debug-pill">URL sourceIndex: ' + (urlSourceIndex || '(empty)') + '</span>' +
+      '<span class="debug-pill">Payload sourceIndex: ' + (payloadSourceIndex || '(empty)') + '</span>' +
+      '</div>' +
+      '<div class="debug-row">' +
+      '<span class="debug-pill">URL name: ' + (urlName || '(empty)') + '</span>' +
+      '<span class="debug-pill">Payload name: ' + (payloadName || '(empty)') + '</span>' +
+      '</div>' +
+      '<div class="debug-row">' +
+      '<span class="debug-pill">URL placeId: ' + (urlPlaceId || '(empty)') + '</span>' +
+      '<span class="debug-pill">Payload placeId: ' + (payloadPlaceId || '(empty)') + '</span>' +
+      '</div>';
+  }
+
   function render(payload) {
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
@@ -217,6 +287,7 @@
       '</div>' + getCloseButtonHtml();
 
     bindCloseButton();
+    renderDebugMarker(payload);
 
     document.getElementById('pane-overview').innerHTML =
       '<div class="grid">' +

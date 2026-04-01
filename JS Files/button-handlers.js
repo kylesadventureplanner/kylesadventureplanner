@@ -1059,8 +1059,25 @@
     const detailKey = cacheAdventureDetailsForTab(entry);
     const detailsUrl = new URL(resolvePlannerUrl('HTML Files/adventure-details-window.html'), window.location.href);
     detailsUrl.searchParams.set('sourceIndex', String(entry.sourceIndex));
+
+    const values = entry && entry.row && entry.row.values ? entry.row.values[0] : [];
+    const debugName = Array.isArray(values) ? String(values[0] || '') : '';
+    const debugPlaceId = Array.isArray(values) ? String(values[1] || '') : '';
+
+    // URL debug markers help verify which card identity was sent to the new tab.
+    detailsUrl.searchParams.set('debugSourceIndex', String(entry.sourceIndex));
+    detailsUrl.searchParams.set('debugName', debugName);
+    detailsUrl.searchParams.set('debugPlaceId', debugPlaceId);
+
     if (detailKey) detailsUrl.searchParams.set('detailKey', detailKey);
     detailsUrl.searchParams.set('ts', String(Date.now()));
+
+    console.log('🔎 Opening details tab with debug marker:', {
+      sourceIndex: entry.sourceIndex,
+      name: debugName,
+      placeId: debugPlaceId,
+      detailKey: detailKey || '(none)'
+    });
 
     const detailTab = window.open(detailsUrl.toString(), '_blank');
     if (!detailTab) {
