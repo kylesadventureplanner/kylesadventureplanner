@@ -524,6 +524,19 @@
     editButton.dataset.rowDetailEditBound = '1';
   }
 
+  function openRowDetailFromAnySource(index) {
+    const safeShow = typeof window.__rowDetailSafeShowCardDetails === 'function'
+      ? window.__rowDetailSafeShowCardDetails
+      : (typeof window.showCardDetails === 'function' ? window.showCardDetails : null);
+
+    if (typeof safeShow !== 'function') {
+      console.error('❌ Row detail handler unavailable for index', index);
+      return false;
+    }
+
+    return safeShow(index);
+  }
+
   function bindGlobalDetailDelegates() {
     if (globalDetailDelegatesBound) return;
     globalDetailDelegatesBound = true;
@@ -536,7 +549,7 @@
       event.preventDefault();
       event.stopPropagation();
       const index = detailsButton.getAttribute('data-index');
-      window.showCardDetails(index);
+      openRowDetailFromAnySource(index);
     }, true);
 
     document.addEventListener('click', (event) => {
@@ -551,7 +564,7 @@
 
       event.preventDefault();
       event.stopPropagation();
-      window.showCardDetails(index);
+      openRowDetailFromAnySource(index);
     }, true);
 
     document.addEventListener('click', (event) => {
@@ -567,7 +580,7 @@
       if (typeof window.closeSimilarAdventuresModal === 'function') {
         window.closeSimilarAdventuresModal();
       }
-      window.showCardDetails(index);
+      openRowDetailFromAnySource(index);
     }, true);
 
     document.addEventListener('click', (event) => {
@@ -751,7 +764,8 @@
       let opened = false;
       if (typeof originalShow === 'function' && originalShow !== window.__rowDetailSafeShowCardDetails) {
         try {
-          opened = originalShow(entry.sourceIndex) !== false;
+          // Only explicit true counts as opened; placeholder/legacy undefined should not.
+          opened = originalShow(entry.sourceIndex) === true;
         } catch (error) {
           console.warn('⚠️ Original showCardDetails failed, using fallback renderer:', error);
         }
@@ -962,6 +976,7 @@
     setTimeout(reassertRowDetailBindings, 0);
     setTimeout(reassertRowDetailBindings, 300);
     setTimeout(reassertRowDetailBindings, 1000);
+    setTimeout(reassertRowDetailBindings, 2000);
 
     console.log('✅ Safe button reliability layer ready');
   }
