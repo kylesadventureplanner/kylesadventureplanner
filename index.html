@@ -9081,13 +9081,239 @@
       }
     };
     // ...existing code...
-        if (window.FilterManager) {
-          // Final runtime filter fix: one source of truth, one-time bindings.
-          if (!window.__finalFilterRuntimeInstalled) {
-            window.__finalFilterRuntimeInstalled = true;
 
-            const manager = window.FilterManager;
-            manager.__bindingsInstalled = false;
+    // ============================================================
+    // CREATE FILTERMANAGER - Fixed implementation matching Bike Trails
+    // ============================================================
+    // This creates the unified FilterManager that reads directly from DOM controls
+    // Similar to the working Bike Trails filtering system
+    window.FilterManager = {
+      state: {
+        searchName: '',
+        filterDifficulty: '',
+        filterState: '',
+        filterCity: '',
+        filterTags: '',
+        filterCost: '',
+        showFavoritesOnly: false,
+        quickFilters: new Set()
+      },
+
+      // Helper: Read value directly from DOM input
+      readControlValue: function(controlId) {
+        const el = document.getElementById(controlId);
+        return el ? String(el.value || '').trim() : '';
+      },
+
+      // Helper: Normalize text (lowercase and trim)
+      norm: function(value) {
+        return String(value || '').trim().toLowerCase();
+      },
+
+      // Refresh state from current DOM values (like Bike Trails does)
+      refreshStateFromControls: function() {
+        this.state.searchName = this.readControlValue('searchName');
+        this.state.filterDifficulty = this.readControlValue('filterDifficulty');
+        this.state.filterState = this.readControlValue('filterState');
+        this.state.filterCity = this.readControlValue('filterCity');
+        this.state.filterTags = this.readControlValue('filterTags');
+        this.state.filterCost = this.readControlValue('filterCost');
+      },
+
+      // Main filter application logic
+      applyAllFilters: function() {
+        // First, refresh state from current DOM control values
+        this.refreshStateFromControls();
+
+        if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) {
+          return;
+        }
+
+        const manager = this;
+        const favorites = this.getFavoriteSet();
+
+        const filteredRows = window.adventuresData.filter((row) => {
+          const values = row?.values?.[0] || [];
+          const name = manager.norm(values[0]);
+          const placeId = String(values[1] || '').trim();
+          const tags = manager.norm(values[3]);
+          const difficulty = manager.norm(values[7]);
+          const state = manager.norm(values[9]);
+          const city = manager.norm(values[10]);
+          const cost = manager.norm(values[14]);
+
+          // Apply each filter if it has a value
+          if (manager.state.searchName && !name.includes(manager.norm(manager.state.searchName))) return false;
+          if (manager.state.filterDifficulty && difficulty !== manager.norm(manager.state.filterDifficulty)) return false;
+          if (manager.state.filterState && state !== manager.norm(manager.state.filterState)) return false;
+          if (manager.state.filterCity && city !== manager.norm(manager.state.filterCity)) return false;
+          if (manager.state.filterTags && !tags.includes(manager.norm(manager.state.filterTags))) return false;
+          if (manager.state.filterCost && !cost.includes(manager.norm(manager.state.filterCost))) return false;
+
+          // Quick filters
+          if (manager.state.quickFilters.size > 0) {
+            const tagList = tags.split(',').map((t) => manager.norm(t)).filter(Boolean);
+            const quickMatch = Array.from(manager.state.quickFilters).some((rawNeedle) => {
+              const needle = manager.norm(rawNeedle);
+              if (!needle) return false;
+              return tagList.some((tag) => tag.includes(needle));
+            });
+            if (!quickMatch) return false;
+          }
+
+          // Favorites filter
+          if (manager.state.showFavoritesOnly) {
+            const identityA = String(placeId).trim();
+            const identityB = String(values[0] || '').trim();
+            if ((!identityA || !favorites.has(identityA)) && (!identityB || !favorites.has(identityB))) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        window.totalFilteredAdventures = filteredRows.map((row) => ({
+          row,
+          sourceIndex: window.adventuresData.indexOf(row)
+        }));
+
+        window.currentPage = 1;
+        if (typeof renderAdventureCards === 'function') {
+          renderAdventureCards(filteredRows);
+        }
+
+        if (typeof populateAutocomplete === 'function') {
+          setTimeout(() => populateAutocomplete(), 30);
+        }
+
+        console.log(`✅ Filters applied: ${filteredRows.length}/${window.adventuresData.length} adventures`);
+      },
+
+      // Get favorites from localStorage
+      getFavoriteSet: function() {
+        const out = new Set();
+        const raw = localStorage.getItem('adventureFavorites');
+        try {
+          const arr = JSON.parse(raw || '[]');
+          if (Array.isArray(arr)) {
+            arr.forEach((item) => out.add(String(item || '').trim()));
+          }
+        } catch (_err) {
+          // ignore malformed favorite payloads
+        }
+        return out;
+      },
+
+      // Reset all filters to defaults
+      resetAllFilters: function() {
+        // Clear state
+        this.state.searchName = '';
+        this.state.filterDifficulty = '';
+        this.state.filterState = '';
+        this.state.filterCity = '';
+        this.state.filterTags = '';
+        this.state.filterCost = '';
+        this.state.showFavoritesOnly = false;
+        this.state.quickFilters.clear();
+
+        // Clear DOM controls
+        ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+
+        document.querySelectorAll('.quick-filter-btn').forEach((btn) => btn.classList.remove('active'));
+
+        // Apply the cleared filters
+        this.applyAllFilters();
+      },
+
+      // Initialize event bindings (called once)
+      init: function() {
+        if (this.__bindingsInstalled) return;
+        this.__bindingsInstalled = true;
+
+        const manager = this;
+        const filterIds = ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'];
+
+        // Bind input/change events to all filter controls
+        filterIds.forEach((id) => {
+          const input = document.getElementById(id);
+          if (input) {
+            input.addEventListener('input', () => manager.applyAllFilters());
+            input.addEventListener('change', () => manager.applyAllFilters());
+          }
+        });
+
+        // Bind quick filter buttons
+        const quickContainer = document.querySelector('.quick-filters-card');
+        if (quickContainer) {
+          quickContainer.addEventListener('click', (e) => {
+            const btn = e.target?.closest?.('.quick-filter-btn');
+            if (!btn) return;
+
+            e.preventDefault();
+
+            if (btn.id === 'favoritesFilterBtn') {
+              manager.state.showFavoritesOnly = !manager.state.showFavoritesOnly;
+              btn.classList.toggle('active', manager.state.showFavoritesOnly);
+            } else {
+              const dataTag = String(btn.getAttribute('data-tag') || '').trim().toLowerCase();
+              if (dataTag) {
+                if (manager.state.quickFilters.has(dataTag)) {
+                  manager.state.quickFilters.delete(dataTag);
+                  btn.classList.remove('active');
+                } else {
+                  manager.state.quickFilters.add(dataTag);
+                  btn.classList.add('active');
+                }
+              }
+            }
+
+            manager.applyAllFilters();
+          }, false);
+        }
+
+        // Bind reset buttons
+        const resetButtons = document.querySelectorAll('[id*="resetAllFilters"], #breadcrumbResetBtn');
+        resetButtons.forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            manager.resetAllFilters();
+          }, false);
+        });
+
+        console.log('✅ FilterManager bindings installed');
+      }
+    };
+
+    // Initialize FilterManager when page is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.FilterManager && typeof window.FilterManager.init === 'function') {
+          window.FilterManager.init();
+        }
+      });
+    } else {
+      if (window.FilterManager && typeof window.FilterManager.init === 'function') {
+        setTimeout(() => window.FilterManager.init(), 100);
+      }
+    }
+
+    // Create global aliases
+    window.applyFilters = () => window.FilterManager?.applyAllFilters();
+    window.resetAllFilters = () => window.FilterManager?.resetAllFilters();
+
+    console.log('✅ FilterManager created and initialized');
+
+         if (window.FilterManager) {
+           // Final runtime filter fix: one source of truth, one-time bindings.
+           if (!window.__finalFilterRuntimeInstalled) {
+             window.__finalFilterRuntimeInstalled = true;
+
+             const manager = window.FilterManager;
+             manager.__bindingsInstalled = false;
 
             const FILTER_KEYS = new Set([
               'searchName',
