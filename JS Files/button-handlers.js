@@ -107,6 +107,42 @@
     return matchIndex >= 0 ? matchIndex : null;
   }
 
+  function resolveIndexFromVisibleCardOrder(element) {
+    if (!element) return null;
+
+    var card = element.closest ? element.closest('.adventure-card') : element;
+    if (!card) return null;
+
+    var grid = document.getElementById('adventureCardsGrid');
+    if (!grid) return null;
+
+    var cards = Array.from(grid.querySelectorAll('.adventure-card'));
+    var visualIndex = cards.indexOf(card);
+    if (visualIndex < 0) return null;
+
+    var page = Number(window.currentPage);
+    var perPage = Number(window.itemsPerPage);
+    var baseOffset = Number.isInteger(page) && page > 0 && Number.isInteger(perPage) && perPage > 0
+      ? (page - 1) * perPage
+      : 0;
+
+    var globalIndex = baseOffset + visualIndex;
+    var filtered = Array.isArray(window.totalFilteredAdventures) ? window.totalFilteredAdventures : null;
+    if (!filtered || !filtered[globalIndex]) return null;
+
+    var entry = filtered[globalIndex];
+    if (entry && Number.isInteger(entry.sourceIndex) && entry.sourceIndex >= 0) {
+      return entry.sourceIndex;
+    }
+
+    if (entry && entry.row && Array.isArray(window.adventuresData)) {
+      var byRef = window.adventuresData.indexOf(entry.row);
+      if (byRef >= 0) return byRef;
+    }
+
+    return null;
+  }
+
   function resolveCardIndexFromElement(element) {
     if (!element) return null;
 
@@ -124,6 +160,9 @@
 
     const fromDetails = detailsButton ? Number(detailsButton.getAttribute('data-index')) : NaN;
     if (Number.isInteger(fromDetails) && fromDetails >= 0) return fromDetails;
+
+    const fromVisibleOrder = resolveIndexFromVisibleCardOrder(element);
+    if (Number.isInteger(fromVisibleOrder) && fromVisibleOrder >= 0) return fromVisibleOrder;
 
     const fromDataAttr = Number(element.getAttribute('data-index'));
     if (Number.isInteger(fromDataAttr) && fromDataAttr >= 0) return fromDataAttr;
@@ -610,6 +649,11 @@
       const index = resolveCardIndexFromElement(card);
       if (!Number.isInteger(index) || index < 0) return;
 
+      // Temporary trace: verify card click resolves to the expected source row.
+      const titleEl = card.querySelector('.card-title, .adventure-card-title');
+      const cardTitle = String(titleEl ? titleEl.textContent : '').trim() || '(untitled card)';
+      console.log('🧭 Card click resolved:', { cardTitle, resolvedSourceIndex: index });
+
       event.preventDefault();
       event.stopPropagation();
       openRowDetailFromAnySource(index);
@@ -1052,7 +1096,7 @@
 
   window.rowDetailOpenMode = 'tab';
 
-  function cacheAdventureDetailsForTab(entry) {
+  function cacheAdventureDetailsForTab(entry, correlationId) {
     const values = entry && entry.row && entry.row.values ? entry.row.values[0] : [];
     if (!Array.isArray(values)) return null;
 
@@ -1066,6 +1110,7 @@
     const detailKey = `adventure_details_${entry.sourceIndex}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const payload = {
       sourceIndex: entry.sourceIndex,
+      correlationId: String(correlationId || ''),
       exportedAt: new Date().toISOString(),
       data: {
         name, googlePlaceId, website, tags, driveTime, hoursOfOperation,
@@ -1116,9 +1161,11 @@
       : getAdventureEntry(sourceIndexOrEntry);
     if (!entry) return false;
 
-    const detailKey = cacheAdventureDetailsForTab(entry);
+    const correlationId = `corr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const detailKey = cacheAdventureDetailsForTab(entry, correlationId);
     const detailsUrl = new URL(resolvePlannerUrl('HTML Files/adventure-details-window.html'), window.location.href);
     detailsUrl.searchParams.set('sourceIndex', String(entry.sourceIndex));
+    detailsUrl.searchParams.set('corrId', correlationId);
 
     const values = entry && entry.row && entry.row.values ? entry.row.values[0] : [];
     const debugName = Array.isArray(values) ? String(values[0] || '') : '';
@@ -1132,12 +1179,10 @@
     if (detailKey) detailsUrl.searchParams.set('detailKey', detailKey);
     detailsUrl.searchParams.set('ts', String(Date.now()));
 
-    console.log('🔎 Opening details tab with debug marker:', {
-      sourceIndex: entry.sourceIndex,
-      name: debugName,
-      placeId: debugPlaceId,
-      detailKey: detailKey || '(none)'
-    });
+    // Temporary single-line correlation trace for click-side matching.
+    const detailBundleLine = `🔗 Detail corrId=${correlationId} sourceIndex=${entry.sourceIndex} name="${debugName}" placeId="${debugPlaceId}"`;
+    window.__lastCardDebugBundle = detailBundleLine;
+    console.log(detailBundleLine);
 
     const detailTab = window.open(detailsUrl.toString(), '_blank');
     if (!detailTab) {

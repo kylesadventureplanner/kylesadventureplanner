@@ -118,8 +118,38 @@
       background: #fef2f2;
       color: #991b1b;
     }
-    .debug-title { font-weight: 700; margin-bottom: 6px; }
-    .debug-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .debug-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .debug-title { font-weight: 700; margin-bottom: 0; }
+    .debug-copy-btn {
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .debug-copy-btn:hover {
+      background: #dbeafe;
+    }
+    .debug-copy-btn.copied {
+      border-color: #86efac;
+      background: #ecfdf5;
+      color: #047857;
+    }
+    .debug-copy-btn.error {
+      border-color: #fca5a5;
+      background: #fef2f2;
+      color: #991b1b;
+    }
     .debug-pill {
       background: rgba(255,255,255,0.8);
       border: 1px solid #d1d5db;
@@ -226,6 +256,86 @@
     return String(value || '').trim().toLowerCase();
   }
 
+  function buildDebugBundleLine(payload, params) {
+    var sourceIndex = String(
+      (payload && payload.sourceIndex != null ? payload.sourceIndex : '') ||
+      params.get('debugSourceIndex') ||
+      params.get('sourceIndex') ||
+      ''
+    ).trim() || '(empty)';
+
+    var name = String(
+      (payload && payload.data ? payload.data.name : '') ||
+      params.get('debugName') ||
+      ''
+    ).trim() || '(empty)';
+
+    var placeId = String(
+      (payload && payload.data ? payload.data.googlePlaceId : '') ||
+      params.get('debugPlaceId') ||
+      ''
+    ).trim() || '(empty)';
+
+    var corrId = String(
+      (payload && payload.correlationId ? payload.correlationId : '') ||
+      params.get('corrId') ||
+      ''
+    ).trim() || '(empty)';
+
+    return 'sourceIndex=' + sourceIndex + ' | name=' + name + ' | placeId=' + placeId + ' | corrId=' + corrId;
+  }
+
+  function copyDebugBundle(text) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      return navigator.clipboard.writeText(text);
+    }
+
+    return new Promise(function (resolve, reject) {
+      try {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', 'readonly');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(area);
+        if (ok) resolve();
+        else reject(new Error('execCommand copy failed'));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  function bindDebugCopyButton(payload) {
+    var btn = document.getElementById('copyDebugBundleBtn');
+    if (!btn || btn.dataset.bound === '1') return;
+
+    btn.addEventListener('click', function () {
+      var params = getParams();
+      var line = buildDebugBundleLine(payload, params);
+
+      copyDebugBundle(line).then(function () {
+        console.log('📋 Debug bundle copied:', line);
+        var original = btn.textContent;
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 1200);
+      }).catch(function () {
+        btn.classList.add('error');
+        setTimeout(function () { btn.classList.remove('error'); }, 1200);
+        window.prompt('Copy debug bundle:', line);
+      });
+    });
+
+    btn.dataset.bound = '1';
+  }
+
   function renderDebugMarker(payload) {
     var debugBar = document.getElementById('debugBar');
     if (!debugBar) return;
@@ -234,20 +344,26 @@
     var urlSourceIndex = params.get('debugSourceIndex') || params.get('sourceIndex') || '';
     var urlName = params.get('debugName') || '';
     var urlPlaceId = params.get('debugPlaceId') || '';
+    var urlCorrId = params.get('corrId') || '';
 
     var payloadSourceIndex = payload && payload.sourceIndex != null ? String(payload.sourceIndex) : '';
     var payloadName = payload && payload.data ? String(payload.data.name || '') : '';
     var payloadPlaceId = payload && payload.data ? String(payload.data.googlePlaceId || '') : '';
+    var payloadCorrId = payload && payload.correlationId ? String(payload.correlationId) : '';
 
     var sourceMatches = normalizeForCompare(urlSourceIndex) === normalizeForCompare(payloadSourceIndex);
     var nameMatches = !urlName || normalizeForCompare(urlName) === normalizeForCompare(payloadName);
     var placeMatches = !urlPlaceId || normalizeForCompare(urlPlaceId) === normalizeForCompare(payloadPlaceId);
-    var allMatch = sourceMatches && nameMatches && placeMatches;
+    var corrMatches = !urlCorrId || normalizeForCompare(urlCorrId) === normalizeForCompare(payloadCorrId);
+    var allMatch = sourceMatches && nameMatches && placeMatches && corrMatches;
 
     debugBar.className = 'debug-bar ' + (allMatch ? 'match' : 'mismatch');
     debugBar.style.display = 'block';
     debugBar.innerHTML =
+      '<div class="debug-head">' +
       '<div class="debug-title">🔎 Detail Debug Marker: ' + (allMatch ? 'MATCH' : 'MISMATCH') + '</div>' +
+      '<button type="button" class="debug-copy-btn" id="copyDebugBundleBtn">Copy Debug Bundle</button>' +
+      '</div>' +
       '<div class="debug-row">' +
       '<span class="debug-pill">URL sourceIndex: ' + (urlSourceIndex || '(empty)') + '</span>' +
       '<span class="debug-pill">Payload sourceIndex: ' + (payloadSourceIndex || '(empty)') + '</span>' +
@@ -259,7 +375,13 @@
       '<div class="debug-row">' +
       '<span class="debug-pill">URL placeId: ' + (urlPlaceId || '(empty)') + '</span>' +
       '<span class="debug-pill">Payload placeId: ' + (payloadPlaceId || '(empty)') + '</span>' +
+      '</div>' +
+      '<div class="debug-row">' +
+      '<span class="debug-pill">URL corrId: ' + (urlCorrId || '(empty)') + '</span>' +
+      '<span class="debug-pill">Payload corrId: ' + (payloadCorrId || '(empty)') + '</span>' +
       '</div>';
+
+    bindDebugCopyButton(payload);
   }
 
   function render(payload) {
@@ -270,6 +392,17 @@
         getCloseButtonHtml();
       bindCloseButton();
       return;
+    }
+
+    console.log('🧪 Details tab payload resolved:', {
+      payloadSourceIndex: payload && payload.sourceIndex != null ? String(payload.sourceIndex) : '(empty)',
+      payloadName: String(data.name || ''),
+      payloadPlaceId: String(data.googlePlaceId || ''),
+      payloadCorrId: payload && payload.correlationId ? String(payload.correlationId) : '(empty)'
+    });
+
+    if (payload && payload.correlationId) {
+      console.log('🔗 Detail corrId=' + String(payload.correlationId));
     }
 
     var tagList = String(data.tags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
@@ -342,9 +475,23 @@
   (function init() {
     bindTabs();
 
+    var params = getParams();
+    console.log('🧪 Details tab init URL markers:', {
+      sourceIndex: params.get('sourceIndex') || '(empty)',
+      debugSourceIndex: params.get('debugSourceIndex') || '(empty)',
+      debugName: params.get('debugName') || '(empty)',
+      debugPlaceId: params.get('debugPlaceId') || '(empty)',
+      corrId: params.get('corrId') || '(empty)',
+      detailKey: params.get('detailKey') || '(empty)'
+    });
+
+    if (params.get('corrId')) {
+      console.log('🔗 Detail corrId=' + String(params.get('corrId')));
+    }
+
     var payload = fromStoredPayload();
     if (!payload) {
-      var sourceIndex = Number(getParams().get('sourceIndex'));
+      var sourceIndex = Number(params.get('sourceIndex'));
       if (Number.isInteger(sourceIndex) && sourceIndex >= 0) {
         payload = fromOpenerBySourceIndex(sourceIndex);
       }

@@ -6400,6 +6400,9 @@
       <button class="debug-btn" onclick="copyDebugConsoleToClipboard()" title="Copy all debug logs">
         📋 Copy All
       </button>
+      <button class="debug-btn" onclick="copyLatestCardDebugBundleToClipboard()" title="Copy latest card debug bundle">
+        🔗 Copy Card Bundle
+      </button>
       <button class="debug-btn" onclick="clearDebugConsole()" title="Clear debug console">
         🗑️ Clear
       </button>
@@ -7308,7 +7311,7 @@
   /**
    * Copy all debug logs to clipboard
    */
-  function copyDebugConsoleToClipboard() {
+    function copyDebugConsoleToClipboard() {
     let text = '=== DEBUG CONSOLE LOG ===\n\n';
     debugLog.forEach(entry => {
       const dataStr = entry.data ? ` → ${JSON.stringify(entry.data)}` : '';
@@ -7321,7 +7324,41 @@
     }).catch(err => {
       addDebugLog('error', 'Failed to copy debug logs', err.message);
     });
-  }
+    }
+
+    function getLatestCardDebugBundleLine() {
+    if (typeof window.__lastCardDebugBundle === 'string' && window.__lastCardDebugBundle.trim()) {
+      return window.__lastCardDebugBundle.trim();
+    }
+
+    const pattern = /🔗\s*Detail\s+corrId=.*sourceIndex=.*name=".*"\s+placeId=".*"/;
+    for (let i = debugLog.length - 1; i >= 0; i--) {
+      const line = String(debugLog[i] && debugLog[i].message ? debugLog[i].message : '').trim();
+      if (pattern.test(line)) return line;
+    }
+
+    return '';
+    }
+
+    function copyLatestCardDebugBundleToClipboard() {
+    const line = getLatestCardDebugBundleLine();
+    if (!line) {
+      addDebugLog('warn', 'No card debug bundle found yet. Click a card first.');
+      if (typeof showToast === 'function') {
+        showToast('No card debug bundle found yet. Click a card first.', 'warning', 2500);
+      }
+      return;
+    }
+
+    navigator.clipboard.writeText(line).then(() => {
+      addDebugLog('success', 'Latest card debug bundle copied to clipboard');
+      if (typeof showToast === 'function') {
+        showToast('Copied latest card debug bundle', 'success', 1800);
+      }
+    }).catch(() => {
+      window.prompt('Copy latest card debug bundle:', line);
+    });
+    }
 
   /**
    * Clear debug console
