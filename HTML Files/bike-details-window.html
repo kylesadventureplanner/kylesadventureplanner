@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bike Trail Details</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #111827;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .head {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: #fff;
+      padding: 24px;
+      border-radius: 14px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .head-main { flex: 1; min-width: 0; }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    .meta { opacity: 0.95; font-size: 14px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .btn {
+      border: 1px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.16);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .auth-btn {
+      background: white;
+      color: #6b3cc9;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .auth-btn:hover { background: #f3f4f6; }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      border-bottom: 2px solid #e5e7eb;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .tab-btn {
+      padding: 11px 16px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      color: #6b7280;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      color: #8b5cf6;
+      border-bottom-color: #8b5cf6;
+    }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .label { color: #6b7280; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .value { margin-top: 6px; font-size: 14px; line-height: 1.45; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .tag { background: #f3e8ff; color: #7c3aed; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
+    .empty { color: #6b7280; }
+
+    a {
+      color: #8b5cf6;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .addr-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 8px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      color: #374151;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      vertical-align: middle;
+    }
+    .addr-copy-btn:hover { background: #e5e7eb; }
+    .addr-copy-btn.copied { border-color: #86efac; background: #ecfdf5; color: #047857; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div id="header" class="head"></div>
+
+  <div id="tabs" class="tabs" aria-label="Bike trail details tabs">
+    <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
+    <button class="tab-btn" data-tab="details" type="button">ℹ️ Details</button>
+    <button class="tab-btn" data-tab="experience" type="button">🎢 Experience</button>
+    <button class="tab-btn" data-tab="location" type="button">📍 Location</button>
+    <button class="tab-btn" data-tab="links" type="button">🔗 Links</button>
+  </div>
+
+  <div id="pane-overview" class="tab-pane active"></div>
+  <div id="pane-details" class="tab-pane"></div>
+  <div id="pane-experience" class="tab-pane"></div>
+  <div id="pane-location" class="tab-pane"></div>
+  <div id="pane-links" class="tab-pane"></div>
+</div>
+
+<script>
+  function getParams() {
+    return new URLSearchParams(window.location.search || '');
+  }
+
+  function getCloseButtonHtml() {
+    return '<button type="button" class="auth-btn" id="closeTabBtn">✕ Close Tab</button>';
+  }
+
+  function bindCloseButton() {
+    var closeBtn = document.getElementById('closeTabBtn');
+    if (!closeBtn || closeBtn.dataset.bound === '1') return;
+
+    closeBtn.addEventListener('click', function () {
+      window.close();
+      setTimeout(function () {
+        if (window.history.length > 1) {
+          window.history.back();
+        }
+      }, 120);
+    });
+
+    closeBtn.dataset.bound = '1';
+  }
+
+  function fromStoredPayload() {
+    var params = getParams();
+    var detailKey = params.get('detailKey');
+    var latestKey = window.localStorage.getItem('bike_trail_details_latest');
+    var keyToUse = detailKey || latestKey;
+    if (!keyToUse) return null;
+
+    try {
+      var raw = window.localStorage.getItem(keyToUse);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function fromOpenerBySourceIndex(sourceIndex) {
+    try {
+      if (!window.opener || !Array.isArray(window.opener.bikeTrailsData)) return null;
+      var row = window.opener.bikeTrailsData[sourceIndex];
+      if (!row) return null;
+
+      // The bike trails system passes the trail object directly
+      return {
+        sourceIndex: sourceIndex,
+        data: row
+      };
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function card(label, value) {
+    return '<div class="card"><div class="label">' + label + '</div><div class="value">' +
+      (value || '<span class="empty">Not available</span>') + '</div></div>';
+  }
+
+  function render(payload) {
+    var data = payload && payload.data ? payload.data : null;
+    if (!data) {
+      document.getElementById('header').innerHTML =
+        '<div class="head-main"><h1>Bike Trail Details</h1><div class="meta">No detail payload was available. Open this page from a Bike Trail card.</div></div>' +
+        getCloseButtonHtml();
+      bindCloseButton();
+      return;
+    }
+
+    console.log('🚴 Bike trail details payload resolved:', {
+      payloadSourceIndex: payload && payload.sourceIndex != null ? String(payload.sourceIndex) : '(empty)',
+      payloadName: String(data.name || '')
+    });
+
+    // Build directions URL
+    var directionsUrl = data.mapsLink || data.googleMapsTrailhead || '';
+    if (!directionsUrl && data.gpsCoordinates) {
+      directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(data.gpsCoordinates);
+    }
+
+    var headerActions = [
+      directionsUrl ? '<a class="btn" href="' + directionsUrl + '" target="_blank" rel="noopener">🗺️ Open Maps</a>' : '',
+      data.parkingLink ? '<a class="btn" href="' + data.parkingLink + '" target="_blank" rel="noopener">🅿️ Parking</a>' : ''
+    ].join('');
+
+    document.getElementById('header').innerHTML =
+      '<div class="head-main">' +
+      '<h1>' + (data.name || 'Bike Trail Details') + '</h1>' +
+      '<div class="meta">' + (data.region || data.city || 'Unknown region') + (data.state ? ', ' + data.state : '') + '</div>' +
+      (headerActions ? '<div class="actions">' + headerActions + '</div>' : '') +
+      '</div>' + getCloseButtonHtml();
+
+    bindCloseButton();
+
+    // Overview tab
+    document.getElementById('pane-overview').innerHTML =
+      '<div class="grid">' +
+      card('Region', data.region) +
+      card('City', data.city) +
+      card('State', data.state) +
+      card('Drive Time', data.driveTime) +
+      card('Length (miles)', data.lengthMiles ? data.lengthMiles + ' mi' : '') +
+      card('Difficulty', data.difficulty) +
+      card('Surface Type', data.surface) +
+      '</div>' +
+      card('Description', data.description || data.vibes);
+
+    // Details tab
+    document.getElementById('pane-details').innerHTML =
+      '<div class="grid">' +
+      card('Difficulty Score', data.difficultyScore ? data.difficultyScore + '/100' : '') +
+      card('Elevation Gain', data.elevationGain ? data.elevationGain + ' ft' : '') +
+      card('Surface Breakdown', data.surfaceBreakdown) +
+      card('Cost', data.cost) +
+      card('Hours of Operation', data.hours) +
+      card('Parking Capacity', data.parkingCapacity) +
+      card('Parking Cost', data.parkingCost) +
+      card('Best Time of Day', data.bestTimeOfDay) +
+      card('Weather Suitability', data.weatherSuitability) +
+      card('Night Riding Suitability', data.nightRidingSuitability) +
+      '</div>';
+
+    // Experience tab
+    document.getElementById('pane-experience').innerHTML =
+      '<div class="grid">' +
+      card('Ride Type', data.rideTypeClassification) +
+      card('Flow Profile', data.rideFlowProfile) +
+      card('Commitment Level', data.rideCommitmentLevel) +
+      card('Smoothness Index', data.smoothnessIndex) +
+      card('Vibes', data.vibes) +
+      card('Mood Tags', data.moodTags) +
+      card('Noise Profile', data.rideNoiseProfile) +
+      card('Risk Profile', data.rideRiskProfile) +
+      card('Traffic Exposure', data.trafficExposureRating) +
+      '</div>' +
+      card('Start Experience', data.rideStartExperience) +
+      card('Finish Experience', data.rideFinishExperience) +
+      card('Scenic & Nature', data.scenicNature);
+
+    // Location tab
+    document.getElementById('pane-location').innerHTML =
+      '<div class="grid">' +
+      card('GPS Coordinates', data.gpsCoordinates ? data.gpsCoordinates + ' <button type="button" class="addr-copy-btn" data-copy="' + data.gpsCoordinates.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '') +
+      card('Maps Link', data.mapsLink ? '<a href="' + data.mapsLink + '" target="_blank" rel="noopener">Open Maps</a>' : '') +
+      card('Parking Link', data.parkingLink ? '<a href="' + data.parkingLink + '" target="_blank" rel="noopener">View Parking</a>' : '') +
+      card('Google Maps Trailhead', data.googleMapsTrailhead ? '<a href="' + data.googleMapsTrailhead + '" target="_blank" rel="noopener">View on Maps</a>' : '') +
+      card('Parking Difficulty', data.parkingDifficulty) +
+      card('Parking Distance to Trail', data.parkingDistanceToTrail) +
+      card('Parking Safety', data.parkingSafetyNotes) +
+      card('Emergency Access', data.emergencyAccessNotes) +
+      card('Cell Coverage', data.cellCoverageNotes) +
+      '</div>';
+
+    // Links tab
+    document.getElementById('pane-links').innerHTML =
+      '<div class="grid">' +
+      card('AllTrails', data.allTrails ? '<a href="' + data.allTrails + '" target="_blank" rel="noopener">Visit AllTrails</a>' : '') +
+      card('MTBProject', data.mtbProject ? '<a href="' + data.mtbProject + '" target="_blank" rel="noopener">Visit MTBProject</a>' : '') +
+      card('RideWithGPS', data.rideWithGps ? '<a href="' + data.rideWithGps + '" target="_blank" rel="noopener">Visit RideWithGPS</a>' : '') +
+      card('Singletracks', data.singletracks ? '<a href="' + data.singletracks + '" target="_blank" rel="noopener">Visit Singletracks</a>' : '') +
+      card('TrailLink', data.trailLink ? '<a href="' + data.trailLink + '" target="_blank" rel="noopener">Visit TrailLink</a>' : '') +
+      card('Official Link 1', data.officialLink1 ? '<a href="' + data.officialLink1 + '" target="_blank" rel="noopener">Visit</a>' : '') +
+      card('Official Link 2', data.officialLink2 ? '<a href="' + data.officialLink2 + '" target="_blank" rel="noopener">Visit</a>' : '') +
+      card('Official Link 3', data.officialLink3 ? '<a href="' + data.officialLink3 + '" target="_blank" rel="noopener">Visit</a>' : '') +
+      '</div>' +
+      card('Along the Trail', data.scenicNature) +
+      card('Photo Spots', data.photoSpots) +
+      card('Local Wildlife', data.localWildlifeNotes) +
+      card('Local History', data.localHistoryFunFact) +
+      card('Seasonal Notes', data.seasonalNotes);
+  }
+
+  function bindTabs() {
+    var tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var target = tab.getAttribute('data-tab');
+        tabs.forEach(function (t) { t.classList.remove('active'); });
+        document.querySelectorAll('.tab-pane').forEach(function (pane) { pane.classList.remove('active'); });
+        tab.classList.add('active');
+        var pane = document.getElementById('pane-' + target);
+        if (pane) pane.classList.add('active');
+      });
+    });
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      return navigator.clipboard.writeText(text);
+    }
+
+    return new Promise(function (resolve, reject) {
+      try {
+        var area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', 'readonly');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(area);
+        if (ok) resolve();
+        else reject(new Error('execCommand copy failed'));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  (function init() {
+    bindTabs();
+
+    // Delegated handler for address/GPS copy buttons
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.addr-copy-btn') : null;
+      if (!btn) return;
+      var text = btn.getAttribute('data-copy') || '';
+      if (!text) return;
+      copyToClipboard(text).then(function () {
+        var orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        btn.classList.add('copied');
+        setTimeout(function () { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
+      }).catch(function () {
+        window.prompt('Copy:', text);
+      });
+    });
+
+    var params = getParams();
+    console.log('🚴 Bike trail details tab init');
+
+    var payload = fromStoredPayload();
+    if (!payload) {
+      var sourceIndex = Number(params.get('sourceIndex'));
+      if (Number.isInteger(sourceIndex) && sourceIndex >= 0) {
+        payload = fromOpenerBySourceIndex(sourceIndex);
+      }
+    }
+
+    render(payload);
+  })();
+</script>
+</body>
+</html>
+

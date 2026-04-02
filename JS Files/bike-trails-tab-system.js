@@ -1066,8 +1066,8 @@
                data-bike-source-index="${trail.sourceIndex}"
                data-bike-trail-id="${escapeHtml(trail.id)}"
                style="cursor:pointer;"
-               onclick="window.showBikeTrailDetails(${trail.sourceIndex})"
-               title="Click to open details">
+               onclick="window.openBikeTrailDetailsInNewTab(${trail.sourceIndex})"
+               title="Click to open details in new tab">
             <div class="card-header">
               <h3 class="card-title">${escapeHtml(trail.name || 'Unnamed Ride')}</h3>
               <div class="card-location">📍 ${escapeHtml(trail.region || trail.city || 'Unknown region')}</div>
@@ -1913,6 +1913,38 @@
     // Trigger filter application
     applyBikeFilters();
   }
+
+  // ─── Open Bike Trail Details in New Tab ─────────────────────────────────────
+  window.openBikeTrailDetailsInNewTab = function(sourceIndex) {
+    const trail = trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex);
+    if (!trail) {
+      window.showToast?.('Trail data not available', 'warning', 2000);
+      return;
+    }
+
+    // Store the trail data in localStorage so the new window can access it
+    const detailKey = `bike_trail_detail_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    try {
+      window.localStorage.setItem(detailKey, JSON.stringify(trail));
+      window.localStorage.setItem('bike_trail_details_latest', detailKey);
+    } catch (err) {
+      console.warn('[bike-trails] Failed to store detail payload:', err);
+    }
+
+    // Resolve the bike-details-window.html URL
+    const detailsWindowUrl = window.resolvePlannerPageUrl
+      ? window.resolvePlannerPageUrl('HTML Files/bike-details-window.html')
+      : 'HTML Files/bike-details-window.html';
+
+    const urlWithParams = `${detailsWindowUrl}?sourceIndex=${sourceIndex}&detailKey=${encodeURIComponent(detailKey)}`;
+
+    const newTab = window.open(urlWithParams, '_blank');
+    if (newTab) {
+      newTab.focus();
+    } else if (typeof window.showToast === 'function') {
+      window.showToast('❌ Failed to open details. Check if pop-ups are blocked.', 'error', 5000);
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
 
