@@ -12190,10 +12190,106 @@
     }
   }
 
-  /**
-   * Show details modal for a specific adventure card
-   */
-  function showCardDetails(index) {
+    /**
+     * Build a Bike-Trails-style footer action bar for the Adventure details modal.
+     */
+    function renderAdventureModalActionBar(modal, sourceIndex) {
+    if (!modal || !Number.isInteger(sourceIndex) || sourceIndex < 0) return;
+
+    const row = Array.isArray(window.adventuresData) ? window.adventuresData[sourceIndex] : null;
+    const values = row && Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : null;
+    if (!values) return;
+
+    const footer = modal.querySelector('.row-detail-footer')
+      || (modal.querySelector('#rowDetailCloseFooterBtn') ? modal.querySelector('#rowDetailCloseFooterBtn').parentElement : null);
+    if (!footer) return;
+
+    let actionBar = modal.querySelector('#adventureModalActionBar');
+    if (!actionBar) {
+      actionBar = document.createElement('div');
+      actionBar.id = 'adventureModalActionBar';
+      actionBar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-start;margin-right:auto;';
+      footer.prepend(actionBar);
+    }
+
+    const name = String(values[0] || '').trim();
+    const address = String(values[11] || '').trim();
+    const directions = String(values[15] || '').trim();
+    const links = String(values[18] || '').trim();
+    const links2 = String(values[19] || '').trim();
+    const rating = Math.max(0, Math.min(5, Number(values[21] || 0)));
+    const favoriteRaw = values[22];
+    const isFavorite = String(favoriteRaw || '').trim().toLowerCase() === 'true' || favoriteRaw === '1' || favoriteRaw === 1;
+    const sourceGoogleUrl = String(values[23] || '').trim();
+
+    const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || '').trim());
+    const fallbackSearchUrl = `https://www.google.com/maps/search/${encodeURIComponent([name, address].filter(Boolean).join(' '))}`;
+    const mapsUrl = isHttpUrl(directions)
+      ? directions
+      : (isHttpUrl(links)
+        ? links
+        : (isHttpUrl(sourceGoogleUrl) ? sourceGoogleUrl : fallbackSearchUrl));
+    const parkingUrl = isHttpUrl(links2)
+      ? links2
+      : (isHttpUrl(links) && /park/i.test(links) ? links : '');
+
+    const activeFilteredIndex = Number(modal.dataset.currentFilteredIndex);
+    const filteredIndex = Number.isInteger(activeFilteredIndex) && activeFilteredIndex >= 0
+      ? activeFilteredIndex
+      : (Array.isArray(window.totalFilteredAdventures)
+        ? window.totalFilteredAdventures.findIndex((entry) => entry && entry.sourceIndex === sourceIndex)
+        : -1);
+    const canWriteRow = filteredIndex >= 0;
+
+    actionBar.innerHTML = `
+      <button type="button" id="adventureModalMapsBtn" class="row-detail-footer-btn" style="flex:0 0 auto;" ${mapsUrl ? '' : 'disabled'}>🗺️ Open Maps</button>
+      <button type="button" id="adventureModalParkingBtn" class="row-detail-footer-btn" style="flex:0 0 auto;" ${parkingUrl ? '' : 'disabled'}>🅿️ Parking Map</button>
+      <button type="button" id="adventureModalFavoriteBtn" class="row-detail-footer-btn" style="flex:0 0 auto;" ${canWriteRow ? '' : 'disabled'}>${isFavorite ? '💖 Favorite' : '🤍 Favorite'}</button>
+      <div id="adventureModalRatingControls" style="display:inline-flex;align-items:center;gap:4px;">
+        ${[1,2,3,4,5].map((s) => `<button type="button" class="row-detail-footer-btn adventure-modal-rating-btn" data-rating="${s}" title="Rate ${s} stars" style="padding:6px 8px;flex:0 0 auto;" ${canWriteRow ? '' : 'disabled'}>${rating >= s ? '⭐' : '☆'}</button>`).join('')}
+      </div>
+    `;
+
+    const mapsBtn = actionBar.querySelector('#adventureModalMapsBtn');
+    if (mapsBtn) {
+      mapsBtn.onclick = () => {
+        if (!mapsUrl) return;
+        window.open(mapsUrl, '_blank', 'noopener');
+      };
+    }
+
+    const parkingBtn = actionBar.querySelector('#adventureModalParkingBtn');
+    if (parkingBtn) {
+      parkingBtn.onclick = () => {
+        if (!parkingUrl) return;
+        window.open(parkingUrl, '_blank', 'noopener');
+      };
+    }
+
+    const favBtn = actionBar.querySelector('#adventureModalFavoriteBtn');
+    if (favBtn) {
+      favBtn.onclick = () => {
+        if (!canWriteRow || typeof window.toggleCardFavorite !== 'function') return;
+        window.toggleCardFavorite(filteredIndex, null, null);
+        renderAdventureModalActionBar(modal, sourceIndex);
+      };
+    }
+
+    actionBar.querySelectorAll('.adventure-modal-rating-btn').forEach((btn) => {
+      btn.onclick = async () => {
+        if (!canWriteRow || typeof window.setAdventureRating !== 'function') return;
+        const value = Number(btn.getAttribute('data-rating'));
+        if (!Number.isInteger(value) || value < 1 || value > 5) return;
+        await Promise.resolve(window.setAdventureRating(filteredIndex, value, null));
+        renderAdventureModalActionBar(modal, sourceIndex);
+      };
+    });
+    }
+
+    /**
+     * Show details modal for a specific adventure card
+     */
+    function showCardDetails(index) {
     console.log('🔍 showCardDetails called with index:', index);
 
     if (!window.adventuresData || !window.adventuresData[index]) {
@@ -12308,18 +12404,20 @@
     modal.dataset.currentRowIndex = String(index);
     modal.dataset.currentFilteredIndex = String(filteredIndex);
 
+    // Sync Bike-Trails-style footer actions for the currently opened adventure.
+    renderAdventureModalActionBar(modal, index);
+
     modalTitle.textContent = name || "Adventure Details";
 
     const googleSearchUrl = `https://www.google.com/maps/search/${encodeURIComponent([name || '', address || ''].filter(Boolean).join(' '))}`;
     const actionStrip = `
       <div class="modal-detail-section" style="background:#f8fafc; border:1px solid #dbeafe;">
-        <h3>Quick Actions</h3>
+        <h3>Helpful Links</h3>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
           <button type="button" class="row-detail-action-btn" data-action="directions" data-url="${String(directions || '').replace(/"/g, '&quot;')}">🗺️ Directions</button>
           <button type="button" class="row-detail-action-btn" data-action="google" data-url="${googleSearchUrl}">📍 Google View</button>
           <button type="button" class="row-detail-action-btn" data-action="similar" data-filter-index="${filteredIndex}">🔎 Similar</button>
           <button type="button" class="row-detail-action-btn" data-action="nearby" data-filter-index="${filteredIndex}">📌 Nearby</button>
-          <button type="button" class="row-detail-action-btn" data-action="favorite" data-filter-index="${filteredIndex}">💖 Favorite</button>
           <button type="button" class="row-detail-action-btn" data-action="tags" data-place-id="${String(googlePlaceId || '').replace(/"/g, '&quot;')}">🏷️ Tags</button>
         </div>
       </div>
@@ -12471,10 +12569,6 @@
         }
         if (action === 'nearby' && typeof window.showNearbyAdventures === 'function' && filteredIndex >= 0) {
           window.showNearbyAdventures(filteredIndex);
-          return;
-        }
-        if (action === 'favorite' && typeof window.toggleCardFavorite === 'function' && filteredIndex >= 0) {
-          window.toggleCardFavorite(filteredIndex, event, null);
           return;
         }
         if (action === 'tags' && typeof window.openTagManager === 'function') {
