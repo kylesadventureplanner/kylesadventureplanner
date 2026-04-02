@@ -143,11 +143,23 @@
     return null;
   }
 
+  function readNonNegativeInt(value) {
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw || !/^\d+$/.test(raw)) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+  }
+
+  function readNonNegativeIntAttr(element, attrName) {
+    if (!element || !attrName) return null;
+    return readNonNegativeInt(element.getAttribute(attrName));
+  }
+
   function resolveCardIndexFromElement(element) {
     if (!element) return null;
 
     // Prefer explicit stable source index when present.
-    const fromSourceAttr = Number(element.getAttribute('data-source-index'));
+    const fromSourceAttr = readNonNegativeIntAttr(element, 'data-source-index');
     if (Number.isInteger(fromSourceAttr) && fromSourceAttr >= 0) return fromSourceAttr;
 
     // Try resolving by stable adventureId (placeId or synthetic id).
@@ -155,16 +167,16 @@
     if (Number.isInteger(fromAdventureId) && fromAdventureId >= 0) return fromAdventureId;
 
     const detailsButton = element.querySelector('.card-details-btn');
-    const fromDetailsSource = detailsButton ? Number(detailsButton.getAttribute('data-source-index')) : NaN;
+    const fromDetailsSource = readNonNegativeIntAttr(detailsButton, 'data-source-index');
     if (Number.isInteger(fromDetailsSource) && fromDetailsSource >= 0) return fromDetailsSource;
 
-    const fromDetails = detailsButton ? Number(detailsButton.getAttribute('data-index')) : NaN;
+    const fromDetails = readNonNegativeIntAttr(detailsButton, 'data-index');
     if (Number.isInteger(fromDetails) && fromDetails >= 0) return fromDetails;
 
     const fromVisibleOrder = resolveIndexFromVisibleCardOrder(element);
     if (Number.isInteger(fromVisibleOrder) && fromVisibleOrder >= 0) return fromVisibleOrder;
 
-    const fromDataAttr = Number(element.getAttribute('data-index'));
+    const fromDataAttr = readNonNegativeIntAttr(element, 'data-index');
     if (Number.isInteger(fromDataAttr) && fromDataAttr >= 0) return fromDataAttr;
 
     const fromContent = resolveIndexFromCardContent(element);
@@ -176,7 +188,7 @@
   function extractDetailIndexFromSimilarItem(item) {
     if (!item) return null;
 
-    const dataIndex = Number(item.getAttribute('data-detail-index') || item.getAttribute('data-index'));
+    const dataIndex = readNonNegativeInt(item.getAttribute('data-detail-index') || item.getAttribute('data-index'));
     if (Number.isInteger(dataIndex) && dataIndex >= 0) return dataIndex;
 
     const onclickText = String(item.getAttribute('onclick') || '');
@@ -188,8 +200,7 @@
 
   function ensureEditingRowFromModalDataset() {
     const parts = getRowDetailParts();
-    const raw = parts.modal ? parts.modal.dataset.currentRowIndex : '';
-    const sourceIndex = Number(raw);
+    const sourceIndex = readNonNegativeInt(parts.modal ? parts.modal.dataset.currentRowIndex : '');
 
     if (!Number.isInteger(sourceIndex) || sourceIndex < 0) return false;
     if (!Array.isArray(window.adventuresData) || !window.adventuresData[sourceIndex]) return false;
@@ -358,7 +369,7 @@
   }
 
   function getAdventureEntry(index) {
-    const num = Number(index);
+    const num = readNonNegativeInt(index);
     if (!Number.isInteger(num) || num < 0) return null;
 
     const filtered = Array.isArray(window.totalFilteredAdventures) ? window.totalFilteredAdventures : [];
@@ -652,7 +663,13 @@
       // Temporary trace: verify card click resolves to the expected source row.
       const titleEl = card.querySelector('.card-title, .adventure-card-title');
       const cardTitle = String(titleEl ? titleEl.textContent : '').trim() || '(untitled card)';
-      console.log('🧭 Card click resolved:', { cardTitle, resolvedSourceIndex: index });
+      console.log('🧭 Card click resolved:', {
+        cardTitle,
+        rawSourceIndexAttr: card.getAttribute('data-source-index'),
+        rawIndexAttr: card.getAttribute('data-index'),
+        rawAdventureId: card.getAttribute('data-adventure-id'),
+        resolvedSourceIndex: index
+      });
 
       event.preventDefault();
       event.stopPropagation();
