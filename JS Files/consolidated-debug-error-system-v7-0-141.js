@@ -692,6 +692,12 @@ function initializeErrorBar() {
   errorHeader.style.pointerEvents = 'auto';
   errorHeader.style.userSelect = 'none';
 
+  // Collapse by default on first load
+  if (!errorBar.dataset.defaultCollapseApplied) {
+    errorBar.classList.add('collapsed');
+    errorBar.dataset.defaultCollapseApplied = '1';
+  }
+
   // Add click handler to header (primary)
   errorHeader.addEventListener('click', toggleErrorBar, true);
 

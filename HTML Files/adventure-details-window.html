@@ -104,20 +104,36 @@
       border: 1px solid #d1d5db;
       background: #f9fafb;
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 0;
       font-size: 12px;
       line-height: 1.45;
+      overflow: hidden;
     }
-    .debug-bar.match {
-      border-color: #86efac;
-      background: #ecfdf5;
-      color: #065f46;
+    .debug-bar.match { border-color: #86efac; }
+    .debug-bar.mismatch { border-color: #fca5a5; }
+    .debug-bar-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      user-select: none;
+      background: transparent;
+      border: none;
+      width: 100%;
+      text-align: left;
+      font-size: 12px;
     }
-    .debug-bar.mismatch {
-      border-color: #fca5a5;
-      background: #fef2f2;
-      color: #991b1b;
+    .debug-bar.match .debug-bar-toggle { color: #065f46; background: #ecfdf5; }
+    .debug-bar.mismatch .debug-bar-toggle { color: #991b1b; background: #fef2f2; }
+    .debug-bar-body {
+      display: none;
+      padding: 8px 12px 10px;
     }
+    .debug-bar.expanded .debug-bar-body { display: block; }
+    .debug-bar.match .debug-bar-body { color: #065f46; }
+    .debug-bar.mismatch .debug-bar-body { color: #991b1b; }
     .debug-head {
       display: flex;
       align-items: center;
@@ -137,19 +153,9 @@
       cursor: pointer;
       white-space: nowrap;
     }
-    .debug-copy-btn:hover {
-      background: #dbeafe;
-    }
-    .debug-copy-btn.copied {
-      border-color: #86efac;
-      background: #ecfdf5;
-      color: #047857;
-    }
-    .debug-copy-btn.error {
-      border-color: #fca5a5;
-      background: #fef2f2;
-      color: #991b1b;
-    }
+    .debug-copy-btn:hover { background: #dbeafe; }
+    .debug-copy-btn.copied { border-color: #86efac; background: #ecfdf5; color: #047857; }
+    .debug-copy-btn.error { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
     .debug-pill {
       background: rgba(255,255,255,0.8);
       border: 1px solid #d1d5db;
@@ -157,6 +163,23 @@
       padding: 2px 8px;
       font-weight: 600;
     }
+    .addr-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 8px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      color: #374151;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      vertical-align: middle;
+    }
+    .addr-copy-btn:hover { background: #e5e7eb; }
+    .addr-copy-btn.copied { border-color: #86efac; background: #ecfdf5; color: #047857; }
   </style>
 </head>
 <body>
@@ -357,11 +380,17 @@
     var corrMatches = !urlCorrId || normalizeForCompare(urlCorrId) === normalizeForCompare(payloadCorrId);
     var allMatch = sourceMatches && nameMatches && placeMatches && corrMatches;
 
+    // Collapsed by default — click the toggle row to expand
     debugBar.className = 'debug-bar ' + (allMatch ? 'match' : 'mismatch');
     debugBar.style.display = 'block';
     debugBar.innerHTML =
+      '<button type="button" class="debug-bar-toggle" id="debugBarToggle">' +
+      '<span class="debug-title">🔎 Debug: ' + (allMatch ? 'MATCH ✓' : '⚠️ MISMATCH') + '</span>' +
+      '<span style="font-size:10px;opacity:0.7;">▼ expand</span>' +
+      '</button>' +
+      '<div class="debug-bar-body">' +
       '<div class="debug-head">' +
-      '<div class="debug-title">🔎 Detail Debug Marker: ' + (allMatch ? 'MATCH' : 'MISMATCH') + '</div>' +
+      '<span class="debug-title">Detail Debug Marker: ' + (allMatch ? 'MATCH' : 'MISMATCH') + '</span>' +
       '<button type="button" class="debug-copy-btn" id="copyDebugBundleBtn">Copy Debug Bundle</button>' +
       '</div>' +
       '<div class="debug-row">' +
@@ -379,7 +408,17 @@
       '<div class="debug-row">' +
       '<span class="debug-pill">URL corrId: ' + (urlCorrId || '(empty)') + '</span>' +
       '<span class="debug-pill">Payload corrId: ' + (payloadCorrId || '(empty)') + '</span>' +
+      '</div>' +
       '</div>';
+
+    var toggleBtn = document.getElementById('debugBarToggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function () {
+        var expanded = debugBar.classList.toggle('expanded');
+        var arrow = toggleBtn.querySelector('span:last-child');
+        if (arrow) arrow.textContent = expanded ? '▲ collapse' : '▼ expand';
+      });
+    }
 
     bindDebugCopyButton(payload);
   }
@@ -406,8 +445,15 @@
     }
 
     var tagList = String(data.tags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+
+    // Build directions URL: prefer stored directions link, fall back to Google Maps search by address
+    var directionsUrl = data.directions || '';
+    if (!directionsUrl && data.address) {
+      directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(data.address);
+    }
+
     var headerActions = [
-      data.directions ? '<a class="btn" href="' + data.directions + '" target="_blank" rel="noopener">Directions</a>' : '',
+      directionsUrl ? '<a class="btn" href="' + directionsUrl + '" target="_blank" rel="noopener">Directions</a>' : '',
       data.website ? '<a class="btn" href="' + data.website + '" target="_blank" rel="noopener">Website</a>' : '',
       data.googleUrl ? '<a class="btn" href="' + data.googleUrl + '" target="_blank" rel="noopener">Google View</a>' : ''
     ].join('');
@@ -424,7 +470,7 @@
 
     document.getElementById('pane-overview').innerHTML =
       '<div class="grid">' +
-      card('Address', data.address) +
+      card('Address', data.address ? data.address + ' <button type="button" class="addr-copy-btn" data-copy="' + data.address.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '') +
       card('City', data.city) +
       card('State', data.state) +
       card('Drive Time', data.driveTime) +
@@ -447,7 +493,7 @@
       '<div class="grid">' +
       card('Phone Number', data.phoneNumber ? '<a href="tel:' + String(data.phoneNumber).replace(/\s+/g, '') + '">' + data.phoneNumber + '</a>' : '') +
       card('Website', data.website ? '<a href="' + data.website + '" target="_blank" rel="noopener">Visit Website</a>' : '') +
-      card('Directions', data.directions ? '<a href="' + data.directions + '" target="_blank" rel="noopener">Get Directions</a>' : '') +
+      card('Directions', directionsUrl ? '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get Directions</a>' : '') +
       card('Place ID', data.googlePlaceId) +
       card('Links', data.links ? '<a href="' + data.links + '" target="_blank" rel="noopener">Open Link</a>' : '') +
       card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '') +
@@ -474,6 +520,22 @@
 
   (function init() {
     bindTabs();
+
+    // Delegated handler for address copy buttons injected into card HTML
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.addr-copy-btn') : null;
+      if (!btn) return;
+      var text = btn.getAttribute('data-copy') || '';
+      if (!text) return;
+      copyDebugBundle(text).then(function () {
+        var orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        btn.classList.add('copied');
+        setTimeout(function () { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
+      }).catch(function () {
+        window.prompt('Copy address:', text);
+      });
+    });
 
     var params = getParams();
     console.log('🧪 Details tab init URL markers:', {

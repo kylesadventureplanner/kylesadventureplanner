@@ -5822,7 +5822,7 @@
             const trailLength = values[8] || '';
             const state = values[9] || '';
             const city = values[10] || '';
-            // const address = values[11] || '';
+            const address = values[11] || '';
             // const phoneNumber = values[12] || '';
             const googleRating = values[13] || '';
             const cost = values[14] || '';
@@ -5840,7 +5840,8 @@
             card.className = 'adventure-card';
             card.dataset.cardDomain = 'adventure';
             card.dataset.adventureId = adventureId;
-              card.dataset.index = String(sourceIndex >= 0 ? sourceIndex : index);
+            card.dataset.index = String(sourceIndex >= 0 ? sourceIndex : index);
+            card.dataset.sourceIndex = String(sourceIndex >= 0 ? sourceIndex : index);
             card.innerHTML = `
              <div class="card-header">
                <h3 class="card-title">${name}</h3>
@@ -5867,8 +5868,9 @@
                 </div>
               </div>
 
-              <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
-                <div style="font-size: 12px; color: #64748b;">Click anywhere on this card to open details</div>
+              <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
+                ${address ? `<button type="button" class="card-addr-copy-btn" data-address="${address.replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;" title="Copy address">📋 Address</button>` : ''}
               </div>
             `;
 
@@ -11478,8 +11480,9 @@
           ` : ''}
         </div>
 
-        <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
-          <div style="font-size: 12px; color: #64748b;">Click anywhere on this card to open details</div>
+        <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
+          ${address ? `<button type="button" class="card-addr-copy-btn" data-copy="${String(address).replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;" title="Copy address">📋 Address</button>` : ''}
         </div>
       `;
 
@@ -11505,13 +11508,43 @@
     // Add SINGLE delegated event listener for ALL card interactions
     // This eliminates duplicate listeners and the favorite multiplication bug
     freshCardsGrid.addEventListener('click', (e) => {
+      // Address copy click — handle before card-open
+      const addrCopy = e.target.closest('.card-address-copy, .card-addr-copy-btn');
+      if (addrCopy) {
+        e.preventDefault();
+        e.stopPropagation();
+        const text = addrCopy.getAttribute('data-address') || addrCopy.getAttribute('data-copy') || addrCopy.textContent || '';
+        if (!text) return;
+        const doCopy = navigator.clipboard && typeof navigator.clipboard.writeText === 'function'
+          ? navigator.clipboard.writeText(text)
+          : new Promise((res, rej) => {
+              try {
+                const area = document.createElement('textarea');
+                area.value = text; area.setAttribute('readonly', '');
+                area.style.cssText = 'position:fixed;opacity:0;';
+                document.body.appendChild(area); area.select();
+                document.execCommand('copy') ? res() : rej();
+                document.body.removeChild(area);
+              } catch (err) { rej(err); }
+            });
+        doCopy.then(() => {
+          const orig = addrCopy.textContent;
+          addrCopy.textContent = '✓ Copied!';
+          addrCopy.style.color = '#047857';
+          setTimeout(() => { addrCopy.textContent = orig; addrCopy.style.color = ''; }, 1400);
+          if (typeof showToast === 'function') showToast('📋 Address copied', 'success', 1500);
+        }).catch(() => window.prompt('Copy address:', text));
+        return;
+      }
+
       const card = e.target.closest('.adventure-card');
       if (!card) return;
 
       e.preventDefault();
       e.stopPropagation();
 
-      const sourceIndex = Number(card.dataset.sourceIndex || card.dataset.index);
+      const rawIdx = card.dataset.sourceIndex || card.dataset.index;
+      const sourceIndex = rawIdx != null && /^\d+$/.test(String(rawIdx).trim()) ? Number(rawIdx) : NaN;
        if (!Number.isInteger(sourceIndex) || sourceIndex < 0) {
          console.warn('⚠️ Card click missing valid source index');
          return;
@@ -20505,6 +20538,51 @@ if (document.readyState === 'loading') {
 
 // Re-initialize periodically in case DOM changes
 setTimeout(window.initializeActionButtons, 1000);
+
+// ── Delegated address copy for adventure cards rendered by renderAdventureCards ──
+// (renderPaginatedCards has its own inline handler; this covers the simpler render path)
+(function installAdventureCardAddrCopy() {
+  const grid = document.getElementById('adventureCardsGrid');
+  if (!grid) {
+    document.addEventListener('DOMContentLoaded', installAdventureCardAddrCopy);
+    return;
+  }
+  // Use capture so it fires before the card-open delegate
+  grid.addEventListener('click', function (e) {
+    const btn = e.target && e.target.closest ? e.target.closest('.card-addr-copy-btn') : null;
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const text = btn.getAttribute('data-copy') || btn.getAttribute('data-address') || '';
+    if (!text) return;
+    const doCopy = navigator.clipboard && typeof navigator.clipboard.writeText === 'function'
+      ? navigator.clipboard.writeText(text)
+      : new Promise(function (res, rej) {
+          try {
+            const area = document.createElement('textarea');
+            area.value = text; area.setAttribute('readonly', '');
+            area.style.cssText = 'position:fixed;opacity:0;';
+            document.body.appendChild(area); area.select();
+            document.execCommand('copy') ? res() : rej();
+            document.body.removeChild(area);
+          } catch (err) { rej(err); }
+        });
+    doCopy.then(function () {
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.borderColor = '#86efac';
+      btn.style.background = '#ecfdf5';
+      btn.style.color = '#047857';
+      setTimeout(function () {
+        btn.textContent = orig;
+        btn.style.borderColor = '';
+        btn.style.background = '';
+        btn.style.color = '';
+      }, 1400);
+      if (typeof showToast === 'function') showToast('📋 Address copied', 'success', 1500);
+    }).catch(function () { window.prompt('Copy address:', text); });
+  }, true);
+})();
 
 // ============================================================
 // FINAL: AUTHENTICATION EXPORT - CLEANUP

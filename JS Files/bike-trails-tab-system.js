@@ -1215,20 +1215,40 @@
     // ── Populate tab panes (bike-modal uses .bk-tab-pane) ──
     const pane = (tab) => modal.querySelector(`.bk-tab-pane[data-tab="${tab}"]`);
 
+    // Address copy helper — renders value with an inline copy button
+    const fieldWithCopy = (label, value) => {
+      const raw = String(value == null ? '' : value).trim();
+      if (!raw) return field(label, value);
+      const safe = escapeHtml(raw);
+      const copyBtn = `<button type="button" class="bk-addr-copy-btn" data-copy="${safe}" style="display:inline-flex;align-items:center;gap:3px;margin-left:8px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;cursor:pointer;vertical-align:middle;" title="Copy ${label}">📋 Copy</button>`;
+      return `<div><strong>${label}</strong><br><span style="color:#374151;">${safe}</span>${copyBtn}</div>`;
+    };
+
     // Location and Parking
     const lp = pane('location-parking');
-    if (lp) lp.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
-        ${field('State', trail.state)}
-        ${field('City', trail.city)}
-        ${field('Drive Time', trail.driveTime)}
-        ${field('Parking Capacity', trail.parkingCapacity)}
-        ${field('Parking Difficulty', trail.parkingDifficulty)}
-        ${field('Parking Distance to Trail', trail.parkingDistanceToTrail)}
-        ${field('Parking Cost', trail.parkingCost)}
-        ${field('Parking Safety', trail.parkingSafetyNotes)}
-        ${field('Google Place ID', trail.googlePlaceId)}
-      </div>`;
+    if (lp) {
+      const directionsUrl = (() => {
+        if (trail.googleMapsTrailhead && /^https?:\/\//.test(trail.googleMapsTrailhead)) return trail.googleMapsTrailhead;
+        if (trail.mapsLink && /^https?:\/\//.test(trail.mapsLink)) return trail.mapsLink;
+        if (trail.gpsCoordinates) return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(trail.gpsCoordinates);
+        if (trail.city && trail.state) return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(trail.name + ' ' + trail.city + ' ' + trail.state);
+        return '';
+      })();
+      lp.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px;">
+          ${field('State', trail.state)}
+          ${field('City', trail.city)}
+          ${field('Drive Time', trail.driveTime)}
+          ${fieldWithCopy('GPS Coordinates', trail.gpsCoordinates)}
+          ${directionsUrl ? `<div><strong>Directions</strong><br><a href="${escapeHtml(directionsUrl)}" target="_blank" style="color:#3b82f6;">Get Directions ↗</a></div>` : field('Directions', '')}
+          ${field('Parking Capacity', trail.parkingCapacity)}
+          ${field('Parking Difficulty', trail.parkingDifficulty)}
+          ${field('Parking Distance to Trail', trail.parkingDistanceToTrail)}
+          ${field('Parking Cost', trail.parkingCost)}
+          ${field('Parking Safety', trail.parkingSafetyNotes)}
+          ${field('Google Place ID', trail.googlePlaceId)}
+        </div>`;
+    }
 
     // Maps
     const maps = pane('maps');
@@ -1335,6 +1355,41 @@
         btn.classList.add('active');
         const target = modal.querySelector(`.bk-tab-pane[data-tab="${btn.dataset.tab}"]`);
         if (target) target.classList.add('active');
+      });
+
+      // Address/GPS copy button handler
+      modal.addEventListener('click', (e) => {
+        const copyBtn = e.target && e.target.closest ? e.target.closest('.bk-addr-copy-btn') : null;
+        if (!copyBtn) return;
+        const text = copyBtn.getAttribute('data-copy') || '';
+        if (!text) return;
+        const doCopy = navigator.clipboard && typeof navigator.clipboard.writeText === 'function'
+          ? navigator.clipboard.writeText(text)
+          : new Promise((res, rej) => {
+              try {
+                const area = document.createElement('textarea');
+                area.value = text;
+                area.setAttribute('readonly', '');
+                area.style.cssText = 'position:fixed;opacity:0;';
+                document.body.appendChild(area);
+                area.select();
+                document.execCommand('copy') ? res() : rej();
+                document.body.removeChild(area);
+              } catch (err) { rej(err); }
+            });
+        doCopy.then(() => {
+          const orig = copyBtn.textContent;
+          copyBtn.textContent = '✓ Copied';
+          copyBtn.style.borderColor = '#86efac';
+          copyBtn.style.background = '#ecfdf5';
+          copyBtn.style.color = '#047857';
+          setTimeout(() => {
+            copyBtn.textContent = orig;
+            copyBtn.style.borderColor = '';
+            copyBtn.style.background = '';
+            copyBtn.style.color = '';
+          }, 1400);
+        }).catch(() => window.prompt('Copy:', text));
       });
     }
 
