@@ -175,13 +175,22 @@
     var detailKey = params.get('detailKey');
     var latestKey = window.localStorage.getItem('bike_trail_details_latest');
     var keyToUse = detailKey || latestKey;
-    if (!keyToUse) return null;
+    if (!keyToUse) {
+      console.warn('🚴 No detail key found in URL or localStorage');
+      return null;
+    }
 
     try {
       var raw = window.localStorage.getItem(keyToUse);
-      if (!raw) return null;
-      return JSON.parse(raw);
+      if (!raw) {
+        console.warn('🚴 No data stored for key:', keyToUse);
+        return null;
+      }
+      var parsed = JSON.parse(raw);
+      console.log('🚴 Successfully retrieved and parsed payload:', parsed);
+      return parsed;
     } catch (_err) {
+      console.error('🚴 Failed to parse stored payload:', _err);
       return null;
     }
   }
@@ -208,8 +217,11 @@
   }
 
   function render(payload) {
+    console.log('🚴 render() called with payload:', payload);
+
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
+      console.warn('🚴 No data found in payload!');
       document.getElementById('header').innerHTML =
         '<div class="head-main"><h1>Bike Trail Details</h1><div class="meta">No detail payload was available. Open this page from a Bike Trail card.</div></div>' +
         getCloseButtonHtml();
@@ -219,7 +231,8 @@
 
     console.log('🚴 Bike trail details payload resolved:', {
       payloadSourceIndex: payload && payload.sourceIndex != null ? String(payload.sourceIndex) : '(empty)',
-      payloadName: String(data.name || '')
+      payloadName: String(data.name || ''),
+      trailKeys: Object.keys(data || {}).slice(0, 10) // Log first 10 property keys
     });
 
     // Build directions URL
