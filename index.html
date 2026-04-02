@@ -6588,10 +6588,9 @@
           v: "weekly",
           libraries: "places,geometry,drawing"
         });
-      </script>
-
-      <script>
-        (function () {
+    </script>
+    <script>
+      (function () {
           function bindCardLinkGuard(grid) {
             if (!grid || grid.dataset.linkGuardBound === '1') return;
 
@@ -9021,7 +9020,7 @@
     console.log("Initializing other UI features...");
     initConnectionStatus();
     initAppTabs();
-    initIphoneToggle();
+    window.initIphoneToggle?.();
     initSortControls();
     initFilters();
     initQuickFilters();
@@ -10383,10 +10382,80 @@
       }
     });
   }
-  function isInvalidPlaceIdError(error) {
-    const details = classifyPlacesError(error);
-    return !!details.notFound;
-  }
+    function isInvalidPlaceIdError(error) {
+      const details = classifyPlacesError(error);
+      return !!details.notFound;
+    }
+
+    /**
+     * Legacy bridge for older call sites.
+     * Canonical implementation is defined later as window.initIphoneToggle.
+     */
+    function initIphoneToggle() {
+      if (typeof window.initIphoneToggle === 'function' && window.initIphoneToggle !== initIphoneToggle) {
+        window.initIphoneToggle();
+      }
+    }
+
+    // Bridge for older init call sites; canonical implementation is defined near the end of this file.
+    function initIphoneToggle() {
+      if (typeof window.initIphoneToggle === 'function' && window.initIphoneToggle !== initIphoneToggle) {
+        window.initIphoneToggle();
+      }
+    }
+    function initIphoneToggle() {
+    if (window.__iphoneToggleInitialized) return;
+    window.__iphoneToggleInitialized = true;
+
+    const STORAGE_KEY = 'iphoneViewEnabled';
+
+    window.toggleIphoneView = function toggleIphoneView() {
+      const isMobile = document.body.classList.toggle('mobile-view');
+
+      try {
+        localStorage.setItem(STORAGE_KEY, isMobile ? 'true' : 'false');
+      } catch (error) {
+        console.warn('Could not persist iPhone view preference', error);
+      }
+
+      document.querySelectorAll('#iphoneToggleBtn, #bikeIphoneToggleBtn').forEach((btn) => {
+        btn.classList.toggle('active', isMobile);
+        btn.textContent = isMobile ? '💻 Desktop View' : '📱 iPhone View';
+      });
+
+      window.dispatchEvent(new Event('resize'));
+      console.log('iPhone view toggled. Mobile view is now:', isMobile);
+    };
+
+    let isMobile = document.body.classList.contains('mobile-view');
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === 'true') isMobile = true;
+      if (saved === 'false') isMobile = false;
+    } catch (error) {
+      console.warn('Could not read iPhone view preference', error);
+    }
+
+    document.body.classList.toggle('mobile-view', isMobile);
+    document.querySelectorAll('#iphoneToggleBtn, #bikeIphoneToggleBtn').forEach((btn) => {
+      btn.classList.toggle('active', isMobile);
+      btn.textContent = isMobile ? '💻 Desktop View' : '📱 iPhone View';
+    });
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('#iphoneToggleBtn, #bikeIphoneToggleBtn');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      window.toggleIphoneView();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.body.classList.contains('mobile-view')) {
+        window.toggleIphoneView();
+      }
+    });
+    }
   // ...existing code...
   function initIphoneToggle() {
     const btn = document.getElementById("iphoneToggleBtn");
@@ -10410,11 +10479,218 @@
   }
 
 
-  /***********************
-   * FIND NEAR ME FEATURE*
-   ***********************/
+  function initIphoneToggle() {
+    if (window.__iphoneToggleInitialized) return;
 
-  /* ============================================================
+    const buttonSelector = "#iphoneToggleBtn, #bikeIphoneToggleBtn";
+
+    window.toggleIphoneView = function toggleIphoneView() {
+      const isMobile = document.body.classList.toggle("mobile-view");
+      localStorage.setItem("iphoneViewEnabled", isMobile ? "1" : "0");
+
+      document.querySelectorAll(buttonSelector).forEach((btn) => {
+        if (isMobile) {
+          btn.classList.add("active");
+          btn.textContent = "💻 Desktop View";
+        } else {
+          btn.classList.remove("active");
+          btn.textContent = "📱 iPhone View";
+        }
+      });
+
+      console.log("iPhone view toggled. Mobile view is now:", isMobile);
+      return isMobile;
+    };
+
+    const isPersistedMobile = localStorage.getItem("iphoneViewEnabled") === "1";
+    document.body.classList.toggle("mobile-view", isPersistedMobile);
+
+    document.querySelectorAll(buttonSelector).forEach((btn) => {
+      if (isPersistedMobile) {
+        btn.classList.add("active");
+        btn.textContent = "💻 Desktop View";
+      } else {
+        btn.classList.remove("active");
+        btn.textContent = "📱 iPhone View";
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest(buttonSelector);
+      if (!btn) return;
+      e.preventDefault();
+      window.toggleIphoneView();
+    }, true);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.body.classList.contains("mobile-view")) {
+        window.toggleIphoneView();
+      }
+    });
+
+    window.__iphoneToggleInitialized = true;
+    }
+
+
+                        /***********************
+                         * FIND NEAR ME FEATURE*
+                         ***********************/
+              /**
+               * Initialize iPhone Toggle
+               */
+              function initIphoneToggle() {
+                if (typeof window.initIphoneToggle === 'function' && window.initIphoneToggle !== initIphoneToggle) {
+                  window.initIphoneToggle();
+                  return;
+                }
+
+                if (window.__iphoneToggleFallbackBound) return;
+                window.__iphoneToggleFallbackBound = true;
+
+                const buttonSelector = '#iphoneToggleBtn, #bikeIphoneToggleBtn';
+                const storageKey = 'iphoneViewEnabled';
+
+                const syncButtons = (isMobile) => {
+                  document.querySelectorAll(buttonSelector).forEach((btn) => {
+                    btn.classList.toggle('active', isMobile);
+                    btn.textContent = isMobile ? '💻 Desktop View' : '📱 iPhone View';
+                  });
+                };
+
+                window.toggleIphoneView = function toggleIphoneView() {
+                  const isMobile = document.body.classList.toggle('mobile-view');
+                  localStorage.setItem(storageKey, isMobile ? '1' : '0');
+                  syncButtons(isMobile);
+                  return isMobile;
+                };
+
+                const persisted = localStorage.getItem(storageKey);
+                const isMobile = persisted === '1' || persisted === 'true';
+                document.body.classList.toggle('mobile-view', isMobile);
+                syncButtons(isMobile);
+
+                document.addEventListener('click', (event) => {
+                  const btn = event.target.closest(buttonSelector);
+                  if (!btn) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  window.toggleIphoneView();
+                }, true);
+
+                document.addEventListener('keydown', (event) => {
+                  if (event.key === 'Escape' && document.body.classList.contains('mobile-view')) {
+                    window.toggleIphoneView();
+                  }
+                });
+
+                console.log('✓ iPhone toggle initialized (fallback bridge)');
+              }
+
+          /**
+           * Initialize iPhone Toggle
+           */
+          function initIphoneToggle() {
+            if (typeof window.initIphoneToggle === 'function' && window.initIphoneToggle !== initIphoneToggle) {
+              window.initIphoneToggle();
+              return;
+            }
+
+            if (window.__iphoneToggleFallbackBound) return;
+            window.__iphoneToggleFallbackBound = true;
+
+            const buttonSelector = '#iphoneToggleBtn, #bikeIphoneToggleBtn';
+            const storageKey = 'iphoneViewEnabled';
+
+            const syncButtons = (isMobile) => {
+              document.querySelectorAll(buttonSelector).forEach((btn) => {
+                btn.classList.toggle('active', isMobile);
+                btn.textContent = isMobile ? '💻 Desktop View' : '📱 iPhone View';
+              });
+            };
+
+            window.toggleIphoneView = function toggleIphoneView() {
+              const isMobile = document.body.classList.toggle('mobile-view');
+              localStorage.setItem(storageKey, isMobile ? '1' : '0');
+              syncButtons(isMobile);
+              return isMobile;
+            };
+
+            const persisted = localStorage.getItem(storageKey);
+            const isMobile = persisted === '1' || persisted === 'true';
+            document.body.classList.toggle('mobile-view', isMobile);
+            syncButtons(isMobile);
+
+            document.addEventListener('click', (event) => {
+              const btn = event.target.closest(buttonSelector);
+              if (!btn) return;
+              event.preventDefault();
+              event.stopPropagation();
+              window.toggleIphoneView();
+            }, true);
+
+            document.addEventListener('keydown', (event) => {
+              if (event.key === 'Escape' && document.body.classList.contains('mobile-view')) {
+                window.toggleIphoneView();
+              }
+            });
+
+            console.log('✓ iPhone toggle initialized (fallback bridge)');
+          }
+
+      /**
+       * Initialize iPhone Toggle
+       */
+      function initIphoneToggle() {
+        // If canonical implementation exists (defined in late script), delegate to it.
+        if (typeof window.initIphoneToggle === 'function' && window.initIphoneToggle !== initIphoneToggle) {
+          window.initIphoneToggle();
+          return;
+        }
+
+        // Fallback bridge used before canonical script initializes.
+        if (window.__iphoneToggleFallbackBound) return;
+        window.__iphoneToggleFallbackBound = true;
+
+        const buttonSelector = '#iphoneToggleBtn, #bikeIphoneToggleBtn';
+        const storageKey = 'iphoneViewEnabled';
+
+        const syncButtons = (isMobile) => {
+          document.querySelectorAll(buttonSelector).forEach((btn) => {
+            btn.classList.toggle('active', isMobile);
+            btn.textContent = isMobile ? '💻 Desktop View' : '📱 iPhone View';
+          });
+        };
+
+        window.toggleIphoneView = function toggleIphoneView() {
+          const isMobile = document.body.classList.toggle('mobile-view');
+          localStorage.setItem(storageKey, isMobile ? '1' : '0');
+          syncButtons(isMobile);
+          return isMobile;
+        };
+
+        const persisted = localStorage.getItem(storageKey);
+        const isMobile = persisted === '1' || persisted === 'true';
+        document.body.classList.toggle('mobile-view', isMobile);
+        syncButtons(isMobile);
+
+        document.addEventListener('click', (event) => {
+          const btn = event.target.closest(buttonSelector);
+          if (!btn) return;
+          event.preventDefault();
+          event.stopPropagation();
+          window.toggleIphoneView();
+        }, true);
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && document.body.classList.contains('mobile-view')) {
+            window.toggleIphoneView();
+          }
+        });
+
+        console.log('✓ iPhone toggle initialized (fallback bridge)');
+      }
+
+    /* ============================================================
      FIND NEAR ME FEATURE - HAVERSINE DISTANCE CALCULATION
      ============================================================
      This feature uses GPS to find adventures near the user's location.
@@ -10431,11 +10707,11 @@
      3. GPS coordinates retrieved
      4. Distance calculated to each adventure
      5. Table sorted: nearest adventures first
-  */
+    */
 
 
-  // Haversine formula to calculate distance between two coordinates
-  function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+    // Haversine formula to calculate distance between two coordinates
+    function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
     /*
      HAVERSINE FORMULA IMPLEMENTATION
      Calculates the great-circle distance between two points on Earth
@@ -21189,6 +21465,81 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         window.showToast('❌ Unable to open Find Near Me. Please allow pop-ups.', 'error', 5000);
       }
     };
+  })();
+</script>
+<script>
+  /**
+   * CANONICAL iPhone View Toggle System (v7.0.142+)
+   * ================================================
+   * Single source of truth for iPhone/mobile view toggling.
+   * Uses event delegation to work with dynamically loaded buttons.
+   * Works with both #iphoneToggleBtn and #bikeIphoneToggleBtn.
+   * Standardized on body.mobile-view class for CSS styling.
+   */
+  (function initializeIphoneViewCanonical() {
+    const BTN_SELECTOR = '#iphoneToggleBtn, #bikeIphoneToggleBtn';
+    let initDone = false;
+
+    /**
+     * Sync all iPhone toggle buttons to show current state
+     */
+    function syncButtonStates(isMobileView) {
+      document.querySelectorAll(BTN_SELECTOR).forEach((btn) => {
+        if (!btn) return;
+        btn.classList.toggle('active', isMobileView);
+        btn.textContent = isMobileView ? '💻 Desktop View' : '📱 iPhone View';
+      });
+    }
+
+    /**
+     * Main toggle function - called on button click
+     */
+    window.toggleIphoneView = function() {
+      const isMobileView = document.body.classList.toggle('mobile-view');
+      localStorage.setItem('iphoneViewEnabled', isMobileView ? '1' : '0');
+      syncButtonStates(isMobileView);
+      console.log(`📱 iPhone View ${isMobileView ? 'enabled' : 'disabled'}`);
+      return isMobileView;
+    };
+
+    /**
+     * Initialize the system
+     */
+    window.initIphoneToggle = function() {
+      if (initDone) return;
+      initDone = true;
+
+      // Restore persisted state
+      const isPersistedMobile = localStorage.getItem('iphoneViewEnabled') === '1';
+      document.body.classList.toggle('mobile-view', isPersistedMobile);
+      syncButtonStates(isPersistedMobile);
+
+      // Event delegation: attach listener once, works for all present/future buttons
+      document.addEventListener('click', (event) => {
+        const btn = event.target.closest(BTN_SELECTOR);
+        if (!btn) return;
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.toggleIphoneView();
+      }, true); // Capture phase ensures this runs first
+
+      // Allow ESC key to exit mobile view
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && document.body.classList.contains('mobile-view')) {
+          window.toggleIphoneView();
+        }
+      });
+
+      console.log('✅ iPhone View toggle system initialized');
+    };
+
+    // Initialize on DOMContentLoaded or immediately if already loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', window.initIphoneToggle);
+    } else {
+      window.initIphoneToggle();
+    }
   })();
 </script>
 </body>
