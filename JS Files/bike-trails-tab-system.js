@@ -1922,11 +1922,44 @@
       return;
     }
 
+    console.log('[🚴 openBikeTrailDetailsInNewTab] Trail object:', trail);
+    console.log('[🚴 openBikeTrailDetailsInNewTab] Trail keys:', Object.keys(trail));
+
     // Store the trail data in localStorage so the new window can access it
     const detailKey = `bike_trail_detail_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create a serializable copy without the row property (which has circular references)
+    const cleanTrail = {};
+    Object.keys(trail).forEach(key => {
+      if (key !== 'row') {
+        cleanTrail[key] = trail[key];
+      }
+    });
+
+    const payload = {
+      sourceIndex: sourceIndex,
+      data: cleanTrail
+    };
+
+    console.log('[🚴 openBikeTrailDetailsInNewTab] Creating payload with structure:', {
+      hasSourceIndex: 'sourceIndex' in payload,
+      hasData: 'data' in payload,
+      sourceIndexValue: payload.sourceIndex,
+      dataKeys: Object.keys(payload.data || {}).slice(0, 10)
+    });
+
     try {
-      window.localStorage.setItem(detailKey, JSON.stringify(trail));
+      const jsonString = JSON.stringify(payload);
+      console.log('[🚴 openBikeTrailDetailsInNewTab] JSON string length:', jsonString.length);
+      console.log('[🚴 openBikeTrailDetailsInNewTab] Storing with key:', detailKey);
+      window.localStorage.setItem(detailKey, jsonString);
       window.localStorage.setItem('bike_trail_details_latest', detailKey);
+      console.log('[🚴 openBikeTrailDetailsInNewTab] Storage successful');
+      // Verify what was stored
+      const verification = window.localStorage.getItem(detailKey);
+      console.log('[🚴 openBikeTrailDetailsInNewTab] Verification - stored data length:', verification ? verification.length : 'null');
+      const verifyParsed = JSON.parse(verification);
+      console.log('[🚴 openBikeTrailDetailsInNewTab] Verification - parsed data has:', Object.keys(verifyParsed.data || {}).length, 'properties');
     } catch (err) {
       console.warn('[bike-trails] Failed to store detail payload:', err);
     }
@@ -1937,6 +1970,7 @@
       : 'HTML Files/bike-details-window.html';
 
     const urlWithParams = `${detailsWindowUrl}?sourceIndex=${sourceIndex}&detailKey=${encodeURIComponent(detailKey)}`;
+    console.log('[🚴 openBikeTrailDetailsInNewTab] Opening URL:', urlWithParams);
 
     const newTab = window.open(urlWithParams, '_blank');
     if (newTab) {

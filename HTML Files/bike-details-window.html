@@ -180,17 +180,29 @@
       return null;
     }
 
+    console.log('🚴 fromStoredPayload - using key:', keyToUse);
+    console.log('🚴 fromStoredPayload - detailKey from URL:', detailKey);
+    console.log('🚴 fromStoredPayload - latestKey from storage:', latestKey);
+
     try {
       var raw = window.localStorage.getItem(keyToUse);
+      console.log('🚴 fromStoredPayload - raw string length:', raw ? raw.length : 'null');
+      console.log('🚴 fromStoredPayload - raw string preview:', raw ? raw.substring(0, 200) : 'null');
+
       if (!raw) {
         console.warn('🚴 No data stored for key:', keyToUse);
         return null;
       }
       var parsed = JSON.parse(raw);
       console.log('🚴 Successfully retrieved and parsed payload:', parsed);
+      console.log('🚴 Parsed payload type:', typeof parsed);
+      console.log('🚴 Parsed payload keys:', Object.keys(parsed || {}));
+      console.log('🚴 Parsed payload.data exists?', parsed && 'data' in parsed);
+      console.log('🚴 Parsed payload.sourceIndex:', parsed && parsed.sourceIndex);
       return parsed;
     } catch (_err) {
       console.error('🚴 Failed to parse stored payload:', _err);
+      console.error('🚴 Raw string that failed to parse:', raw);
       return null;
     }
   }
@@ -218,10 +230,21 @@
 
   function render(payload) {
     console.log('🚴 render() called with payload:', payload);
+    console.log('🚴 Payload type:', typeof payload);
+    console.log('🚴 Payload keys:', payload ? Object.keys(payload) : 'null/undefined');
+    console.log('🚴 payload.data exists?', payload && 'data' in payload);
+    console.log('🚴 payload.sourceIndex exists?', payload && 'sourceIndex' in payload);
 
     var data = payload && payload.data ? payload.data : null;
+    console.log('🚴 data after extraction:', data);
+    console.log('🚴 data type:', typeof data);
+    if (data) {
+      console.log('🚴 data keys:', Object.keys(data).slice(0, 20));
+    }
+
     if (!data) {
       console.warn('🚴 No data found in payload!');
+      console.log('🚴 Full payload object for debugging:', JSON.stringify(payload, null, 2));
       document.getElementById('header').innerHTML =
         '<div class="head-main"><h1>Bike Trail Details</h1><div class="meta">No detail payload was available. Open this page from a Bike Trail card.</div></div>' +
         getCloseButtonHtml();
