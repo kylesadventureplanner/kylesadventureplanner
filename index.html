@@ -18617,7 +18617,7 @@ COMMON ISSUES:
       };
 
       btn.onclick = function() {
-        window.openEnhancedCityVisualizer();
+        window.openCityViewerWindow();
       };
 
       container.appendChild(btn);
@@ -19156,30 +19156,14 @@ COMMON ISSUES:
   };
 
   /**
-   * Open the Enhanced City Visualizer modal
+   * Open the City Viewer - redirects to new tab instead of modal
    */
   window.openEnhancedCityVisualizer = function() {
-    console.log('🏙️ Opening City Visualizer...');
-
-    try {
-      // Create instance if it doesn't exist
-      if (!window.enhancedCityViz) {
-        console.log('📦 Creating new EnhancedCityVisualizer instance...');
-        window.enhancedCityViz = new EnhancedCityVisualizer();
-      }
-
-      // Show the modal
-      if (typeof window.enhancedCityViz.show === 'function') {
-        window.enhancedCityViz.show();
-        console.log('✅ City Visualizer opened');
-      } else {
-        console.error('❌ EnhancedCityVisualizer.show() method not found');
-      }
-    } catch (err) {
-      console.error('❌ Error opening City Visualizer:', err);
-      if (typeof showToast === 'function') {
-        showToast('❌ Error opening City Visualizer', 'error', 3000);
-      }
+    console.log('🌆 City Viewer → opening in new tab (modal disabled)');
+    if (typeof window.openCityViewerWindow === 'function') {
+      window.openCityViewerWindow();
+    } else {
+      console.error('❌ openCityViewerWindow not available');
     }
   };
 

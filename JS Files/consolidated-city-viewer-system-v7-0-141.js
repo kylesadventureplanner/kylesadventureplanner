@@ -1265,17 +1265,20 @@ class EnhancedCityVisualizer {
   }
 }
 
-// Create global instance
+// Create global instance (still needed so the class exists, but modal won't be used)
 window.enhancedCityViz = window.enhancedCityViz || new EnhancedCityVisualizer();
 
 /**
  * Global functions for enhanced city visualizer
+ * Redirects to new tab opener instead of modal
  */
 window.openEnhancedCityVisualizer = function() {
-  if (!window.enhancedCityViz) {
-    window.enhancedCityViz = new EnhancedCityVisualizer();
+  console.log('🌆 City Viewer → opening in new tab (modal disabled)');
+  if (typeof window.openCityViewerInNewTab === 'function') {
+    window.openCityViewerInNewTab();
+  } else if (typeof window.openCityViewerWindow === 'function') {
+    window.openCityViewerWindow();
   }
-  window.enhancedCityViz.show();
 };
 
 window.closeEnhancedCityVisualizer = function() {
