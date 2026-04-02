@@ -43,57 +43,109 @@ window.closeEnhancedCityVisualizer = window.closeEnhancedCityVisualizer || funct
 // ============================================================
 
 /**
+ * Cache adventure data for City Viewer tab
+ * Stores filtered adventure data in sessionStorage for the city viewer window to access
+ */
+function cacheCityViewerDataForTab(correlationId) {
+  if (!Array.isArray(window.adventuresData)) {
+    console.warn('⚠️ Adventure data not available for city viewer');
+    return null;
+  }
+
+  const cacheKey = `city_viewer_data_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const payload = {
+    correlationId: String(correlationId || ''),
+    exportedAt: new Date().toISOString(),
+    adventuresData: window.adventuresData,
+    totalCount: window.adventuresData.length
+  };
+
+  try {
+    window.sessionStorage.setItem(cacheKey, JSON.stringify(payload));
+    window.sessionStorage.setItem('city_viewer_data_latest', cacheKey);
+    console.log(`✅ City Viewer data cached: ${cacheKey} (${window.adventuresData.length} adventures)`);
+    return cacheKey;
+  } catch (error) {
+    console.warn('⚠️ Could not cache city viewer data:', error);
+    return null;
+  }
+}
+
+/**
+ * Open City Viewer in a new browser tab
+ * Similar to openAdventureDetailsTab but for city viewing
+ */
+window.openCityViewerInNewTab = function() {
+  console.log('🌆 Opening City Viewer in new browser tab');
+
+  if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) {
+    if (typeof window.showToast === 'function') {
+      window.showToast('⚠️ No adventure data available. Please load data first.', 'warning', 3000);
+    } else {
+      alert('No adventure data available. Please load data first.');
+    }
+    return false;
+  }
+
+  try {
+    // Create correlation ID for tracking
+    const correlationId = `corr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    // Cache the adventure data for the new tab to access
+    const dataKey = cacheCityViewerDataForTab(correlationId);
+
+    // Resolve the URL to the city viewer window
+    const cityViewerUrl = typeof window.resolvePlannerPageUrl === 'function'
+      ? window.resolvePlannerPageUrl('HTML Files/city-viewer-window.html')
+      : new URL('HTML%20Files/city-viewer-window.html', window.location.href).toString();
+
+    // Add correlation ID as query parameter
+    const url = new URL(cityViewerUrl);
+    url.searchParams.set('corrId', correlationId);
+    if (dataKey) url.searchParams.set('dataKey', dataKey);
+    url.searchParams.set('ts', String(Date.now()));
+
+    // Open in new tab
+    const cityViewerTab = window.open(url.toString(), '_blank');
+
+    if (!cityViewerTab) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('❌ Failed to open City Viewer. Check if pop-ups are blocked.', 'error', 5000);
+      } else {
+        alert('Please enable pop-ups to open City Viewer');
+      }
+      return false;
+    }
+
+    // Focus the new tab
+    cityViewerTab.focus();
+    console.log('✅ City Viewer opened in new tab');
+    return true;
+  } catch (error) {
+    console.error('❌ Error opening City Viewer:', error);
+    if (typeof window.showToast === 'function') {
+      window.showToast('❌ Error opening City Viewer: ' + error.message, 'error', 5000);
+    } else {
+      alert('Error opening City Viewer: ' + error.message);
+    }
+    return false;
+  }
+};
+
+/**
  * Open City Viewer in GUARANTEED new tab
+ * This is the primary function called by the UI
  */
 window.openCityViewerWindow = function() {
   console.log('🌆 Opening City Viewer - ENFORCED NEW TAB');
-
-  // Calculate position and size for new window
-  const width = Math.min(1400, window.screen.width - 100);
-  const height = Math.min(900, window.screen.height - 100);
-  const left = (window.screen.width - width) / 2;
-  const top = (window.screen.height - height) / 2;
-  const resolvedCityViewerUrl = typeof window.resolvePlannerPageUrl === 'function'
-    ? window.resolvePlannerPageUrl('HTML Files/city-viewer-window.html')
-    : new URL('HTML%20Files/city-viewer-window.html', window.location.href).toString();
-
-  try {
-    // Method 1: Direct new tab (preferred)
-    const url = resolvedCityViewerUrl;
-    const newTab = window.open(url, '_blank', `width=${width},height=${height},left=${left},top=${top}`);
-
-    if (newTab) {
-      newTab.focus();
-      console.log('✅ City Viewer opened in NEW TAB (Method 1)');
-      return newTab;
-    }
-  } catch (error) {
-    console.error('❌ Method 1 failed:', error);
-  }
-
-  try {
-    // Method 2: Fallback - resolved planner path
-    const newTab = window.open(resolvedCityViewerUrl, '_blank');
-    if (newTab) {
-      newTab.focus();
-      console.log('✅ City Viewer opened in NEW TAB (Method 2)');
-      return newTab;
-    }
-  } catch (error) {
-    console.error('❌ Method 2 failed:', error);
-  }
-
-  // If both fail, show error
-  console.error('❌ Could not open City Viewer');
-  alert('Please enable pop-ups/tabs to open City Viewer');
-  return null;
+  return window.openCityViewerInNewTab();
 };
 
 // Override all possible function names for compatibility
-window.openCityViewerInTab = window.openCityViewerWindow;
-window.viewCityDetails = window.openCityViewerWindow;
-window.viewCity = window.openCityViewerWindow;
-window.showCityViewer = window.openCityViewerWindow;
+window.openCityViewerInTab = window.openCityViewerInNewTab;
+window.viewCityDetails = window.openCityViewerInNewTab;
+window.viewCity = window.openCityViewerInNewTab;
+window.showCityViewer = window.openCityViewerInNewTab;
 
 console.log('✅ City Viewer tab opener installed');
 

@@ -246,14 +246,86 @@
   </div>
 
   <script>
-    // Get data from parent window
-    const parentWindow = window.opener || window;
-    const adventuresData = parentWindow.adventuresData || [];
+    // Get data from sessionStorage (cached from parent window) or fallback to parent window
+    let adventuresData = [];
     let citiesData = {};
     let currentSort = 'count';
 
+    // Helper function to load data from sessionStorage
+    function loadCityViewerData() {
+      try {
+        // First, try to get data from the cached key passed in the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataKey = urlParams.get('dataKey');
+        const corrId = urlParams.get('corrId');
+
+        console.log(`🔗 City Viewer loaded with corrId=${corrId}, dataKey=${dataKey}`);
+
+        if (dataKey) {
+          const cachedData = window.sessionStorage.getItem(dataKey);
+          if (cachedData) {
+            try {
+              const payload = JSON.parse(cachedData);
+              if (Array.isArray(payload.adventuresData)) {
+                adventuresData = payload.adventuresData;
+                console.log(`✅ Loaded ${adventuresData.length} adventures from sessionStorage`);
+                return true;
+              }
+            } catch (e) {
+              console.warn('⚠️ Failed to parse cached data:', e);
+            }
+          }
+        }
+
+        // Fallback: Try to get latest cached data
+        const latestKey = window.sessionStorage.getItem('city_viewer_data_latest');
+        if (latestKey) {
+          const cachedData = window.sessionStorage.getItem(latestKey);
+          if (cachedData) {
+            try {
+              const payload = JSON.parse(cachedData);
+              if (Array.isArray(payload.adventuresData)) {
+                adventuresData = payload.adventuresData;
+                console.log(`✅ Loaded ${adventuresData.length} adventures from latest cache`);
+                return true;
+              }
+            } catch (e) {
+              console.warn('⚠️ Failed to parse latest cache:', e);
+            }
+          }
+        }
+
+        // Fallback: Try to get from parent window (for popup windows)
+        const parentWindow = window.opener || window;
+        if (parentWindow && Array.isArray(parentWindow.adventuresData)) {
+          adventuresData = parentWindow.adventuresData;
+          console.log(`✅ Loaded ${adventuresData.length} adventures from parent window`);
+          return true;
+        }
+
+        return false;
+      } catch (error) {
+        console.error('❌ Error loading city viewer data:', error);
+        return false;
+      }
+    }
+
     // Initialize city viewer
     function init() {
+      // Load data from sessionStorage or parent window
+      if (!loadCityViewerData()) {
+        console.error('❌ Failed to load adventure data');
+        const grid = document.getElementById('cityGrid');
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-state-icon">❌</div>
+            <div class="empty-state-text">Error loading data</div>
+            <div style="font-size: 14px; color: #9ca3af;">Could not load adventure data. Please ensure you have data loaded in the main window.</div>
+          </div>
+        `;
+        return;
+      }
+
       console.log('🌆 City Viewer initializing with', adventuresData.length, 'adventures');
 
       // Group by city
@@ -281,62 +353,6 @@
       renderCities();
     }
 
-    function renderCities() {
-      const grid = document.getElementById('cityGrid');
-
-      if (Object.keys(citiesData).length === 0) {
-        grid.innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
-            <div class="empty-state-icon">🏙️</div>
-            <div class="empty-state-text">No cities found</div>
-            <div style="font-size: 14px; color: #9ca3af;">Load adventure data in the main window to see cities here</div>
-          </div>
-        `;
-        return;
-      }
-
-      let citiesArray = Object.values(citiesData);
-
-      // Sort
-      if (currentSort === 'name') {
-        citiesArray.sort((a, b) => a.city.localeCompare(b.city));
-      } else {
-        citiesArray.sort((a, b) => b.count - a.count);
-      }
-
-      // Filter
-      const searchTerm = document.getElementById('searchBox')?.value?.toLowerCase() || '';
-      if (searchTerm) {
-        citiesArray = citiesArray.filter(c =>
-          c.city.toLowerCase().includes(searchTerm) ||
-          c.state.toLowerCase().includes(searchTerm)
-        );
-      }
-
-      grid.innerHTML = citiesArray.map(city => `
-        <div class="city-card" onclick="viewCity('${city.city}', '${city.state}')">
-          <div class="city-name">${city.city}</div>
-          <div class="city-state">${city.state}</div>
-          <div class="city-stats">
-            <div class="stat">
-              <div class="stat-label">📍 Locations</div>
-              <div class="stat-value">${city.count}</div>
-            </div>
-          </div>
-          <button class="city-btn">View Locations</button>
-        </div>
-      `).join('');
-
-      // Add drive time if available
-      resultHTML = resultHTML.replace(
-        '<div class="city-btn">View Locations</div>',
-        function() {
-          const card = event?.target?.closest?.('.city-card');
-          const driveTime = card?.dataset?.driveTime;
-          return driveTime ? `<div style="font-size: 14px; color: #0891b2; font-weight: 600; margin-bottom: 12px;">🚗 ${driveTime}</div><div class="city-btn">View Locations</div>` : '<div class="city-btn">View Locations</div>';
-        }
-      );
-    }
 
     function renderCities() {
       const grid = document.getElementById('cityGrid');
@@ -490,11 +506,16 @@
       alert(`Found ${locations.length} locations in ${city}, ${state}.\n\nThis feature will show detailed location list.`);
     }
 
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
     console.log('✅ City Viewer window loaded');
   </script>
 
-  <!-- City Viewer Enforcer (v7.0.138) - Drive time calculations -->
-  <script src="../../JS Files/city-viewer-enforcer-v7-0-138.js"></script>
 
 </body>
 </html>
