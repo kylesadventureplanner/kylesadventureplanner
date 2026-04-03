@@ -2534,54 +2534,6 @@
       position: relative;
     }
 
-    /* Notes Feature - Icon Button */
-    .notes-btn {
-      border-radius: 50%;
-      border: 1px solid #9ca3af;
-      background: #f3f4f6;
-      color: #374151;
-      padding: 6px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: all 0.2s;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-    }
-
-    .notes-btn:hover {
-      background: #e5e7eb;
-      border-color: #6b7280;
-      transform: scale(1.1);
-    }
-
-    /* Tooltip that shows when hovering over notes icon */
-    .notes-btn[title]::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%) translateY(-8px);
-      background: #1f2937;
-      color: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 100;
-      max-width: 200px;
-      white-space: normal;
-      width: max-content;
-    }
-
-    .notes-btn:hover[data-tooltip]::after {
-      opacity: 1;
-    }
 
     /* My Rating Feature - Star Rating Button */
     .rating-btn {
@@ -2861,142 +2813,7 @@
       border-color: #d1d5db;
     }
 
-    #notesModal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
-      z-index: 1000;
-      max-width: 600px;
-      width: 90%;
-      max-height: 80vh;
-      display: none;
-      flex-direction: column;
-    }
-
-    #notesModal.visible {
-      display: flex;
-    }
-
-    #notesModalBackdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 999;
-      display: none;
-    }
-
-    #notesModalBackdrop.visible {
-      display: block;
-    }
-
-    .notes-modal-header {
-      padding: 16px;
-      border-bottom: 1px solid #e5e7eb;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .notes-modal-title {
-      font-weight: 600;
-      font-size: 16px;
-      color: #111827;
-    }
-
-    .notes-modal-close {
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: #6b7280;
-    }
-
-    .notes-modal-close:hover {
-      color: #111827;
-    }
-
-    .notes-modal-body {
-      padding: 16px;
-      flex: 1;
-      overflow-y: auto;
-    }
-
-    /* Notes Preview Section */
-    #notesPreview {
-      margin-bottom: 12px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-
-    .notes-textarea {
-      width: 100%;
-      min-height: 200px;
-      padding: 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 13px;
-      resize: vertical;
-    }
-
-    .notes-textarea:focus {
-      outline: none;
-      border-color: var(--blue-border);
-      box-shadow: 0 0 0 3px var(--blue-bg);
-    }
-
-    .notes-modal-footer {
-      padding: 16px;
-      border-top: 1px solid #e5e7eb;
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .notes-save-btn {
-      border-radius: 6px;
-      border: none;
-      background: var(--blue-strong);
-      color: white;
-      padding: 8px 16px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .notes-save-btn:hover {
-      background: #1e40af;
-    }
-
-    .notes-save-btn:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
-    }
-
-    .notes-cancel-btn {
-      border-radius: 6px;
-      border: 1px solid #d1d5db;
-      background: white;
-      color: #374151;
-      padding: 8px 16px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .notes-cancel-btn:hover {
-      background: #f9fafb;
-    }
+    /* ...existing code... */
 
     /* Simple modal shell for automation progress (placeholder) */
     .modal-backdrop {
@@ -5908,7 +5725,7 @@
                 <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${(() => { const r = Number(values[21]) || 0; return r > 0 ? `${'⭐'.repeat(r)}${'☆'.repeat(5 - r)}` : 'Not yet Reviewed'; })()}</strong></div>
                 <div class="kh-feedback-row">Favorite: <strong>${(() => { const fs = String(values[22] || '').trim().toLowerCase(); return (fs === 'true' || fs === '1' || values[22] === 1) ? 'Marked as Favorite' : 'Not marked as Favorite'; })()}</strong></div>
                 <div class="kh-feedback-row">Visited: ${(() => { const v = String(values[24] || '').trim().toLowerCase(); return v === 'yes' ? '<span style="color:#16a34a;font-weight:700;">✅ Visited</span>' : 'This Adventure still Awaits...'; })()}</div>
-                <div class="kh-feedback-row kh-feedback-notes">Notes: ${(() => { const n = String(values[20] || '').trim() || 'No comments yet...'; return n.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); })()}</div>
+                <div class="kh-feedback-row kh-feedback-notes">Notes: ${(() => { const raw = String(values[20] || '').trim(); if (!raw) return 'No comments yet...'; const prefix = 'NOTES_JSON_V1::'; let jp = ''; if (raw.startsWith(prefix)) jp = raw.slice(prefix.length).trim(); else if (raw.startsWith('[') && raw.endsWith(']')) jp = raw; if (jp) { try { const arr = JSON.parse(jp); if (Array.isArray(arr)) { const clean = arr.map(n => String(n ?? '').trim()).filter(Boolean); if (clean.length) { const prev = clean[0].length > 80 ? clean[0].substring(0, 80) + '…' : clean[0]; const safe = prev.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return clean.length > 1 ? `${safe} (+${clean.length - 1} more)` : safe; } } } catch(_){} } return raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); })()}</div>
               </div>
             </div>
 
@@ -9975,7 +9792,6 @@
       ['rowDetailModalBackdrop', 'rowDetailModal'],
       ['automationModalBackdrop', 'automationModal'],
       ['ratingModalBackdrop', 'ratingModal'],
-      ['notesModalBackdrop', 'notesModal'],
       ['pricingSearchModalBackdrop', 'pricingSearchModal'],
       ['addPlaceBackdrop', 'addPlaceModal'],
       ['loadingOverlay', null]
@@ -10404,7 +10220,6 @@
       ['rowDetailModalBackdrop', 'rowDetailModal'],
       ['automationModalBackdrop', 'automationModal'],
       ['ratingModalBackdrop', 'ratingModal'],
-      ['notesModalBackdrop', 'notesModal'],
       ['pricingSearchModalBackdrop', 'pricingSearchModal'],
       ['loadingOverlay', null]
     ];
@@ -11711,10 +11526,28 @@
       const khAdventureVisitedText = visitedLower === 'yes'
         ? '<span style="color:#16a34a;font-weight:700;">✅ Visited</span>'
         : 'This Adventure still Awaits...';
-      const khAdventureNotesText = String(notes || '').trim() || 'No comments yet...';
-
-
-      const visitedValue = values.length > 24 ? String(values[24] || '').trim() : '';
+      // Parse notes preview using the same NOTES_JSON_V1 format used by the Notes subtab
+      const khAdventureNotesText = (() => {
+        const raw = String(notes || '').trim();
+        if (!raw) return 'No comments yet...';
+        const prefix = 'NOTES_JSON_V1::';
+        let jsonPayload = '';
+        if (raw.startsWith(prefix)) jsonPayload = raw.slice(prefix.length).trim();
+        else if (raw.startsWith('[') && raw.endsWith(']')) jsonPayload = raw;
+        if (jsonPayload) {
+          try {
+            const arr = JSON.parse(jsonPayload);
+            if (Array.isArray(arr)) {
+              const clean = arr.map(n => String(n ?? '').trim()).filter(Boolean);
+              if (clean.length) {
+                const preview = clean[0].length > 80 ? clean[0].substring(0, 80) + '…' : clean[0];
+                return clean.length > 1 ? `${preview} (+${clean.length - 1} more)` : preview;
+              }
+            }
+          } catch (_) {}
+        }
+        return raw.length > 80 ? raw.substring(0, 80) + '…' : raw;
+      })();
       const khFeedbackHtml = window.renderKhFeedbackBlock({
         ratingValue: currentRating,
         favoriteValue: favoriteStatus,
@@ -12537,14 +12370,36 @@
         id: "details",
         label: "ℹ️ Details",
         content: `
-          <div class="modal-detail-section">
-            <h3>Details</h3>
-            ${hoursOfOperation ? `<p><strong>Hours:</strong> ${hoursOfOperation}</p>` : ''}
-            ${activityDuration ? `<p><strong>Duration:</strong> ${activityDuration}</p>` : ''}
-            ${difficulty ? `<p><strong>Difficulty:</strong> ${difficulty}</p>` : ''}
-            ${trailLength ? `<p><strong>Trail Length:</strong> ${trailLength}</p>` : ''}
-            ${cost ? `<p><strong>Cost:</strong> ${cost}</p>` : ''}
-            ${googleRating ? `<p><strong>Google Rating:</strong> ${renderStarRating(googleRating)}</p>` : ''}
+          <div style="display:flex;gap:8px;margin-bottom:12px;border-bottom:1px solid #e5e7eb;padding-bottom:10px;" id="adv-detail-subtabs">
+            <button type="button" class="adv-detail-subtab-btn active" data-adv-subtab="core" style="border:1px solid #d1d5db;border-radius:999px;background:#fff;color:#374151;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;">ℹ️ Details</button>
+            <button type="button" class="adv-detail-subtab-btn" data-adv-subtab="notes" style="border:1px solid #d1d5db;border-radius:999px;background:#fff;color:#374151;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;">📝 Notes</button>
+          </div>
+          <div id="adv-detail-subpane-core" class="adv-detail-subpane">
+            <div class="modal-detail-section">
+              <h3>Details</h3>
+              ${hoursOfOperation ? `<p><strong>Hours:</strong> ${hoursOfOperation}</p>` : ''}
+              ${activityDuration ? `<p><strong>Duration:</strong> ${activityDuration}</p>` : ''}
+              ${difficulty ? `<p><strong>Difficulty:</strong> ${difficulty}</p>` : ''}
+              ${trailLength ? `<p><strong>Trail Length:</strong> ${trailLength}</p>` : ''}
+              ${cost ? `<p><strong>Cost:</strong> ${cost}</p>` : ''}
+              ${googleRating ? `<p><strong>Google Rating:</strong> ${renderStarRating(googleRating)}</p>` : ''}
+            </div>
+          </div>
+          <div id="adv-detail-subpane-notes" class="adv-detail-subpane" style="display:none;">
+            <div id="adv-notes-manager" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                <h3 style="margin:0;font-size:17px;color:#111827;">📝 Notes</h3>
+                <div id="adv-notes-status" style="font-size:12px;color:#6b7280;">Manage notes for this location</div>
+              </div>
+              <div id="adv-notes-list" style="display:grid;gap:8px;margin-bottom:10px;"></div>
+              <div style="margin-top:8px;">
+                <textarea id="adv-notes-input" placeholder="Write a note… (Cmd/Ctrl + Enter to add)" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:10px;font:inherit;resize:vertical;min-height:90px;box-sizing:border-box;"></textarea>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                <button type="button" id="adv-notes-add-btn" style="border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;background:#fff;color:#374151;font-weight:700;font-size:13px;cursor:pointer;">Add Note</button>
+                <button type="button" id="adv-notes-save-btn" style="border:1px solid #1d4ed8;border-radius:8px;padding:9px 12px;background:#2563eb;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">Save Notes</button>
+              </div>
+            </div>
           </div>
         `
       },
@@ -12576,13 +12431,6 @@
             </div>
           ` : ''}
 
-          ${notes ? `
-            <div class="modal-detail-section">
-              <h3>📝 My Notes</h3>
-              <p>${notes}</p>
-            </div>
-          ` : ''}
-
           ${myRating ? `
             <div class="modal-detail-section">
               <h3>⭐ My Rating</h3>
@@ -12606,6 +12454,178 @@
         ${tab.content}
       </div>
     `).join('');
+
+    // ── Adventure Notes Management ─────────────────────────────
+    const ADV_NOTES_PREFIX = 'NOTES_JSON_V1::';
+
+    function parseAdvNotes(raw) {
+      const text = String(raw == null ? '' : raw).trim();
+      if (!text) return [];
+      let jsonPayload = '';
+      if (text.startsWith(ADV_NOTES_PREFIX)) {
+        jsonPayload = text.slice(ADV_NOTES_PREFIX.length).trim();
+      } else if (text.startsWith('[') && text.endsWith(']')) {
+        jsonPayload = text;
+      }
+      if (jsonPayload) {
+        try {
+          const parsed = JSON.parse(jsonPayload);
+          if (Array.isArray(parsed)) return parsed.map(n => String(n ?? '').trim()).filter(Boolean);
+        } catch (_) {}
+      }
+      // Legacy: split by dividers or double newlines
+      const byDiv = text.split(/\n-{3,}\n/g).map(p => p.trim()).filter(Boolean);
+      if (byDiv.length > 1) return byDiv;
+      const byPara = text.split(/\n\s*\n/g).map(p => p.trim()).filter(Boolean);
+      if (byPara.length > 1) return byPara;
+      return [text];
+    }
+
+    function serializeAdvNotes(noteArr) {
+      const clean = (noteArr || []).map(n => String(n ?? '').trim()).filter(Boolean);
+      return clean.length ? (ADV_NOTES_PREFIX + JSON.stringify(clean)) : '';
+    }
+
+    function esc(t) {
+      return String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Initialize notes state from current row
+    const advNotesState = {
+      notes: parseAdvNotes(notes),
+      sourceIndex: index,
+      row: row
+    };
+
+    function renderAdvNotesList() {
+      const list = document.getElementById('adv-notes-list');
+      if (!list) return;
+      if (!advNotesState.notes.length) {
+        list.innerHTML = '<span style="color:#6b7280;font-style:italic;font-size:13px;">No notes yet — add your first note below.</span>';
+        return;
+      }
+      list.innerHTML = advNotesState.notes.map((note, i) => `
+        <div style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff;display:flex;gap:8px;justify-content:space-between;align-items:flex-start;">
+          <div style="white-space:pre-wrap;line-height:1.45;color:#1f2937;font-size:14px;flex:1;">${esc(note)}</div>
+          <button type="button" data-adv-note-remove="${i}" style="border:1px solid #fecaca;border-radius:7px;background:#fef2f2;color:#b91c1c;font-size:12px;font-weight:700;padding:5px 8px;cursor:pointer;white-space:nowrap;">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    function setAdvNotesStatus(msg, isErr) {
+      const el = document.getElementById('adv-notes-status');
+      if (el) { el.textContent = msg; el.style.color = isErr ? '#b91c1c' : '#6b7280'; }
+    }
+
+    async function saveAdvNotes() {
+      const serialized = serializeAdvNotes(advNotesState.notes);
+      // Mirror back into live data
+      if (advNotesState.row && advNotesState.row.values && advNotesState.row.values[0]) {
+        const vals = advNotesState.row.values[0];
+        while (vals.length <= 20) vals.push('');
+        vals[20] = serialized;
+      }
+      // Re-render opener if same context
+      try {
+        if (typeof window.applyFilters === 'function') window.applyFilters();
+        if (typeof window.renderPaginatedCards === 'function') window.renderPaginatedCards();
+      } catch (_) {}
+      // Save to Excel
+      try {
+        if (typeof window.saveToExcel === 'function') {
+          if (advNotesState.row && advNotesState.row.rowId) {
+            await window.saveToExcel(advNotesState.row.rowId, advNotesState.row.values[0]);
+          } else {
+            await window.saveToExcel();
+          }
+          setAdvNotesStatus('Notes saved to Excel.', false);
+          if (typeof window.showToast === 'function') window.showToast('📝 Notes saved for ' + (name || 'location'), 'success', 3000);
+        } else {
+          setAdvNotesStatus('Notes updated in memory (sign in to sync to Excel).', false);
+        }
+      } catch (err) {
+        console.warn('⚠️ saveAdvNotes Excel error:', err);
+        setAdvNotesStatus('Notes updated in memory (Excel sync failed).', false);
+      }
+    }
+
+    // Render initial notes list
+    renderAdvNotesList();
+
+    // Bind detail sub-tab switching for this modal instance (re-bind each open)
+    const detailSubtabsEl = modalContent.querySelector('#adv-detail-subtabs');
+    if (detailSubtabsEl) {
+      detailSubtabsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.adv-detail-subtab-btn');
+        if (!btn) return;
+        const target = btn.getAttribute('data-adv-subtab');
+        detailSubtabsEl.querySelectorAll('.adv-detail-subtab-btn').forEach(b => {
+          b.style.background = '#fff';
+          b.style.color = '#374151';
+          b.style.borderColor = '#d1d5db';
+          b.classList.remove('active');
+        });
+        btn.style.background = '#2563eb';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#1d4ed8';
+        btn.classList.add('active');
+        modalContent.querySelectorAll('.adv-detail-subpane').forEach(p => { p.style.display = 'none'; });
+        const pane = modalContent.querySelector(`#adv-detail-subpane-${target}`);
+        if (pane) pane.style.display = 'block';
+        if (target === 'notes') renderAdvNotesList();
+      });
+    }
+
+    // Bind notes add/remove/save (use a named handler on modal content to avoid duplicates)
+    const existingNotesHandler = modalContent._advNotesHandler;
+    if (existingNotesHandler) modalContent.removeEventListener('click', existingNotesHandler);
+    const advNotesClickHandler = (e) => {
+      const removeBtn = e.target.closest('[data-adv-note-remove]');
+      if (removeBtn) {
+        const idx = Number(removeBtn.getAttribute('data-adv-note-remove'));
+        if (Number.isInteger(idx) && idx >= 0 && idx < advNotesState.notes.length) {
+          advNotesState.notes.splice(idx, 1);
+          renderAdvNotesList();
+          setAdvNotesStatus('Note removed. Click Save Notes to persist.', false);
+        }
+        return;
+      }
+      if (e.target && e.target.id === 'adv-notes-add-btn') {
+        const inp = document.getElementById('adv-notes-input');
+        const val = (inp ? inp.value : '').trim();
+        if (val) {
+          advNotesState.notes.push(val);
+          if (inp) inp.value = '';
+          renderAdvNotesList();
+          setAdvNotesStatus('Note added. Click Save Notes to persist.', false);
+        }
+        return;
+      }
+      if (e.target && e.target.id === 'adv-notes-save-btn') {
+        saveAdvNotes();
+      }
+    };
+    modalContent.addEventListener('click', advNotesClickHandler);
+    modalContent._advNotesHandler = advNotesClickHandler;
+
+    // Keyboard shortcut: Cmd/Ctrl+Enter in notes textarea adds note
+    const existingKeyHandler = modalContent._advNotesKeyHandler;
+    if (existingKeyHandler) modalContent.removeEventListener('keydown', existingKeyHandler);
+    const advNotesKeyHandler = (e) => {
+      if (e.target && e.target.id === 'adv-notes-input' && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const val = e.target.value.trim();
+        if (val) {
+          advNotesState.notes.push(val);
+          e.target.value = '';
+          renderAdvNotesList();
+          setAdvNotesStatus('Note added. Click Save Notes to persist.', false);
+        }
+      }
+    };
+    modalContent.addEventListener('keydown', advNotesKeyHandler);
+    modalContent._advNotesKeyHandler = advNotesKeyHandler;
+    // ── End Adventure Notes Management ────────────────────────
 
     // Bind tab and action behavior once on the modal container.
     if (modal.dataset.rowDetailInteractionBound !== '1') {
@@ -21151,7 +21171,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   }, 500);
 </script>
 
-<!-- ...existing code... -->
+<!-- renderKhFeedbackBlock is defined once at bottom of file -->
 <script>
   // Final auth hardening: restore native handlers if late scripts overwrite globals.
   (function () {
@@ -21366,11 +21386,11 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
      These elements provide suggestions for filter inputs
      They are populated by the populateAutocomplete() function
      ============================================================ -->
-<datalist id="nameList"></datalist>
-<datalist id="stateList"></datalist>
-<datalist id="cityList"></datalist>
-<datalist id="tagsList"></datalist>
-<datalist id="costList"></datalist>
+<datalist id="nameList2"></datalist>
+<datalist id="stateList2"></datalist>
+<datalist id="cityList2"></datalist>
+<datalist id="tagsList2"></datalist>
+<datalist id="costList2"></datalist>
 
 <!-- ...existing code... -->
 <script>
@@ -21716,7 +21736,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 </script>
 <script>
   // Shared renderer used by Adventure + Bike cards to keep K&H output in sync.
-  window.renderKhFeedbackBlock = window.renderKhFeedbackBlock || function(input) {
+  window.renderKhFeedbackBlock = function(input) {
     const data = input || {};
     const escapeHtml = function(value) {
       return String(value || '')
@@ -21725,6 +21745,34 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    };
+
+    const parseNotesPreview = function(raw) {
+      const text = String(raw || '').trim();
+      if (!text) return 'No comments yet...';
+
+      const prefix = 'NOTES_JSON_V1::';
+      let jsonPayload = '';
+      if (text.indexOf(prefix) === 0) jsonPayload = text.slice(prefix.length).trim();
+      else if (text.charAt(0) === '[' && text.charAt(text.length - 1) === ']') jsonPayload = text;
+
+      if (jsonPayload) {
+        try {
+          const parsed = JSON.parse(jsonPayload);
+          if (Array.isArray(parsed)) {
+            const clean = parsed.map((item) => String(item == null ? '' : item).trim()).filter(Boolean);
+            if (clean.length) return clean.join(' | ');
+          }
+        } catch (_err) {}
+      }
+
+      const byDivider = text.split(/\n-{3,}\n/g).map((part) => part.trim()).filter(Boolean);
+      if (byDivider.length > 1) return byDivider.join(' | ');
+
+      const byParagraph = text.split(/\n\s*\n/g).map((part) => part.trim()).filter(Boolean);
+      if (byParagraph.length > 1) return byParagraph.join(' | ');
+
+      return text;
     };
 
     const rating = Math.max(0, Math.min(5, Number(data.ratingValue) || 0));
@@ -21740,7 +21788,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       ? '<span class="kh-feedback-visited-yes">✅ Visited</span>'
       : 'This Adventure still Awaits...';
 
-    const notesText = escapeHtml(String(data.notesValue || '').trim() || 'No comments yet...');
+    const notesText = escapeHtml(parseNotesPreview(data.notesValue));
 
     return `
       <div class="kh-feedback-block">

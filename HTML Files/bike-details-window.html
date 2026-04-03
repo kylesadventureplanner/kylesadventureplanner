@@ -290,6 +290,62 @@
       cursor: pointer;
     }
     .tm-empty { color: #6b7280; font-style: italic; font-size: 13px; }
+
+    .detail-subtabs {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .detail-subtab-btn {
+      border: 1px solid #d1d5db;
+      border-radius: 999px;
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 12px;
+      cursor: pointer;
+    }
+    .detail-subtab-btn.active {
+      background: #7c3aed;
+      border-color: #6d28d9;
+      color: #fff;
+    }
+    .detail-subpane { display: none; }
+    .detail-subpane.active { display: block; }
+
+    .bnm-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff;
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .bnm-text { white-space: pre-wrap; line-height: 1.45; color: #1f2937; font-size: 14px; }
+    .bnm-remove {
+      border: 1px solid #fecaca;
+      border-radius: 7px;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 8px;
+      cursor: pointer;
+    }
+    .bnm-input {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px;
+      font: inherit;
+      resize: vertical;
+      min-height: 90px;
+    }
   </style>
 </head>
 <body>
@@ -345,6 +401,12 @@
   }
 
   var BIKE_TAG_STORAGE_KEY = 'adventureFinderTags';
+  var BIKE_NOTES_PREFIX = 'NOTES_JSON_V1::';
+  var bikeNoteState = {
+    sourceIndex: null,
+    notes: [],
+    data: null
+  };
   var bikeTagState = {
     placeId: '',
     currentTags: [],
@@ -392,6 +454,38 @@
     return null;
   }
 
+  function parseBikeNotesBlob(raw) {
+    var text = String(raw == null ? '' : raw).trim();
+    if (!text) return [];
+
+    var jsonPayload = '';
+    if (text.indexOf(BIKE_NOTES_PREFIX) === 0) {
+      jsonPayload = text.slice(BIKE_NOTES_PREFIX.length).trim();
+    } else if (text.charAt(0) === '[' && text.charAt(text.length - 1) === ']') {
+      jsonPayload = text;
+    }
+
+    if (jsonPayload) {
+      try {
+        var parsed = JSON.parse(jsonPayload);
+        if (Array.isArray(parsed)) return parsed.map(function (n) { return String(n == null ? '' : n).trim(); }).filter(Boolean);
+      } catch (_err) {}
+    }
+
+    var byDivider = text.split(/\n-{3,}\n/g).map(function (part) { return part.trim(); }).filter(Boolean);
+    if (byDivider.length > 1) return byDivider;
+
+    var byParagraph = text.split(/\n\s*\n/g).map(function (part) { return part.trim(); }).filter(Boolean);
+    if (byParagraph.length > 1) return byParagraph;
+
+    return [text];
+  }
+
+  function serializeBikeNotesBlob(notes) {
+    var clean = (notes || []).map(function (note) { return String(note == null ? '' : note).trim(); }).filter(Boolean);
+    return clean.length ? (BIKE_NOTES_PREFIX + JSON.stringify(clean)) : '';
+  }
+
   function readTagMapFromStorage() {
     try { return JSON.parse(localStorage.getItem(BIKE_TAG_STORAGE_KEY) || '{}'); }
     catch (_err) { return {}; }
@@ -435,6 +529,123 @@
     tagMap[placeId] = normalized;
     saveTagMapToStorage(tagMap);
     return true;
+  }
+
+  function bindDetailSubTabs() {
+    var root = document.getElementById('bikeDetailSubtabs');
+    if (!root || root.dataset.bound === '1') return;
+    root.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.detail-subtab-btn') : null;
+      if (!btn) return;
+      var target = btn.getAttribute('data-detail-subtab') || 'core';
+      root.querySelectorAll('.detail-subtab-btn').forEach(function (b) { b.classList.remove('active'); });
+      var host = document.getElementById('pane-details');
+      if (host) host.querySelectorAll('.detail-subpane').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      var pane = document.getElementById('bikeDetailSubPane_' + target);
+      if (pane) pane.classList.add('active');
+    });
+    root.dataset.bound = '1';
+  }
+
+  function setBikeNotesStatus(message, isError) {
+    var status = document.getElementById('bnmStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.style.color = isError ? '#b91c1c' : '#6b7280';
+  }
+
+  function renderBikeNotesPane() {
+    var wrap = document.getElementById('bikeDetailNotesWrap');
+    if (!wrap) return;
+
+    var notes = bikeNoteState.notes || [];
+    wrap.innerHTML =
+      '<div class="tm-wrap">' +
+      '<div class="tm-head">' +
+      '<h3 class="tm-title">Notes</h3>' +
+      '<div id="bnmStatus" class="tm-status">Manage notes for this bike trail</div>' +
+      '</div>' +
+      '<div style="display:grid;gap:8px;">' +
+      (notes.length
+        ? notes.map(function (note, idx) {
+            return '<div class="bnm-item"><div class="bnm-text">' + esc(note) + '</div><button type="button" class="bnm-remove" data-bike-note-index="' + idx + '">Remove</button></div>';
+          }).join('')
+        : '<span class="tm-empty">No notes yet</span>') +
+      '</div>' +
+      '<div class="tm-input-row" style="margin-top:10px;">' +
+      '<textarea id="bnmInput" class="bnm-input" placeholder="Write a note (Cmd/Ctrl + Enter to add)"></textarea>' +
+      '</div>' +
+      '<div class="tm-actions">' +
+      '<button id="bnmAddBtn" type="button" class="tm-btn">Add Note</button>' +
+      '<button id="bnmSaveBtn" type="button" class="tm-btn primary">Save Notes</button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function addBikeNote(value) {
+    var clean = String(value || '').trim();
+    if (!clean) return;
+    bikeNoteState.notes = (bikeNoteState.notes || []).concat([clean]);
+    renderBikeNotesPane();
+    setBikeNotesStatus('Note added. Click Save Notes to persist.', false);
+  }
+
+  function removeBikeNote(index) {
+    if (!Array.isArray(bikeNoteState.notes)) return;
+    if (!Number.isInteger(index) || index < 0 || index >= bikeNoteState.notes.length) return;
+    bikeNoteState.notes.splice(index, 1);
+    renderBikeNotesPane();
+    setBikeNotesStatus('Note removed. Click Save Notes to persist.', false);
+  }
+
+  async function saveBikeNotes() {
+    var serialized = serializeBikeNotesBlob(bikeNoteState.notes || []);
+    if (bikeNoteState.data) bikeNoteState.data.notes = serialized;
+
+    var openerWin = window.opener && !window.opener.closed ? window.opener : null;
+    if (!openerWin || !Number.isInteger(bikeNoteState.sourceIndex) || bikeNoteState.sourceIndex < 0) {
+      setBikeNotesStatus('No opener sync target available.', true);
+      return;
+    }
+
+    var row = Array.isArray(openerWin.bikeTrailsData) ? openerWin.bikeTrailsData[bikeNoteState.sourceIndex] : null;
+    if (!row || !Array.isArray(row.values) || !Array.isArray(row.values[0])) {
+      setBikeNotesStatus('Bike row not found in opener.', true);
+      return;
+    }
+
+    var noteCol = typeof openerWin.getBikeColumnIndexByName === 'function'
+      ? openerWin.getBikeColumnIndexByName('Notes')
+      : 96;
+    if (!Number.isInteger(noteCol) || noteCol < 0) {
+      setBikeNotesStatus('Notes column was not found.', true);
+      return;
+    }
+
+    var values = row.values[0].slice();
+    while (values.length <= noteCol) values.push('');
+    values[noteCol] = serialized;
+    row.values = [values];
+
+    try {
+      if (typeof openerWin.updateBikeTrailRowColumns === 'function' && openerWin.accessToken) {
+        await openerWin.updateBikeTrailRowColumns(bikeNoteState.sourceIndex, { [noteCol]: serialized }, {
+          accessToken: openerWin.accessToken,
+          filePath: openerWin.bikeTableConfig && openerWin.bikeTableConfig.filePath,
+          tableRef: openerWin.bikeTableConfig && (openerWin.bikeTableConfig.tableRef || openerWin.bikeTableConfig.tableName)
+        });
+        setBikeNotesStatus('Notes saved to Excel.', false);
+      } else {
+        setBikeNotesStatus('Notes updated in planner memory (sign in to sync).', false);
+      }
+
+      if (typeof openerWin.applyBikeFilters === 'function') openerWin.applyBikeFilters();
+      if (typeof openerWin.renderBikeTrailsPage === 'function') openerWin.renderBikeTrailsPage();
+    } catch (err) {
+      console.warn('⚠️ saveBikeNotes failed:', err);
+      setBikeNotesStatus('Failed to save notes to Excel.', true);
+    }
   }
 
   function renderTagManagementPane() {
@@ -724,6 +935,11 @@
 
     // Details tab
     document.getElementById('pane-details').innerHTML =
+      '<div id="bikeDetailSubtabs" class="detail-subtabs">' +
+      '<button type="button" class="detail-subtab-btn active" data-detail-subtab="core">ℹ️ Details</button>' +
+      '<button type="button" class="detail-subtab-btn" data-detail-subtab="notes">📝 Notes</button>' +
+      '</div>' +
+      '<div id="bikeDetailSubPane_core" class="detail-subpane active">' +
       '<div class="grid">' +
       card('Difficulty Score', data.difficultyScore ? data.difficultyScore + '/100' : '') +
       card('Elevation Gain', data.elevationGain ? data.elevationGain + ' ft' : '') +
@@ -735,56 +951,17 @@
       card('Best Time of Day', data.bestTimeOfDay) +
       card('Weather Suitability', data.weatherSuitability) +
       card('Night Riding Suitability', data.nightRidingSuitability) +
+      '</div>' +
+      '</div>' +
+      '<div id="bikeDetailSubPane_notes" class="detail-subpane">' +
+      '<div id="bikeDetailNotesWrap"></div>' +
       '</div>';
 
-    // Experience tab
-    document.getElementById('pane-experience').innerHTML =
-      '<div class="grid">' +
-      card('Ride Type', data.rideTypeClassification) +
-      card('Flow Profile', data.rideFlowProfile) +
-      card('Commitment Level', data.rideCommitmentLevel) +
-      card('Smoothness Index', data.smoothnessIndex) +
-      card('Vibes', data.vibes) +
-      card('Mood Tags', data.moodTags) +
-      card('Noise Profile', data.rideNoiseProfile) +
-      card('Risk Profile', data.rideRiskProfile) +
-      card('Traffic Exposure', data.trafficExposureRating) +
-      '</div>' +
-      card('Start Experience', data.rideStartExperience) +
-      card('Finish Experience', data.rideFinishExperience) +
-      card('Scenic & Nature', data.scenicNature);
-
-    // Location tab
-    document.getElementById('pane-location').innerHTML =
-      '<div class="grid">' +
-      card('GPS Coordinates', data.gpsCoordinates ? data.gpsCoordinates + ' <button type="button" class="addr-copy-btn" data-copy="' + data.gpsCoordinates.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '') +
-      card('Maps Link', data.mapsLink ? '<a href="' + data.mapsLink + '" target="_blank" rel="noopener">Open Maps</a>' : '') +
-      card('Parking Link', data.parkingLink ? '<a href="' + data.parkingLink + '" target="_blank" rel="noopener">View Parking</a>' : '') +
-      card('Google Maps Trailhead', data.googleMapsTrailhead ? '<a href="' + data.googleMapsTrailhead + '" target="_blank" rel="noopener">View on Maps</a>' : '') +
-      card('Parking Difficulty', data.parkingDifficulty) +
-      card('Parking Distance to Trail', data.parkingDistanceToTrail) +
-      card('Parking Safety', data.parkingSafetyNotes) +
-      card('Emergency Access', data.emergencyAccessNotes) +
-      card('Cell Coverage', data.cellCoverageNotes) +
-      '</div>';
-
-    // Links tab
-    document.getElementById('pane-links').innerHTML =
-      '<div class="grid">' +
-      card('AllTrails', data.allTrails ? '<a href="' + data.allTrails + '" target="_blank" rel="noopener">Visit AllTrails</a>' : '') +
-      card('MTBProject', data.mtbProject ? '<a href="' + data.mtbProject + '" target="_blank" rel="noopener">Visit MTBProject</a>' : '') +
-      card('RideWithGPS', data.rideWithGps ? '<a href="' + data.rideWithGps + '" target="_blank" rel="noopener">Visit RideWithGPS</a>' : '') +
-      card('Singletracks', data.singletracks ? '<a href="' + data.singletracks + '" target="_blank" rel="noopener">Visit Singletracks</a>' : '') +
-      card('TrailLink', data.trailLink ? '<a href="' + data.trailLink + '" target="_blank" rel="noopener">Visit TrailLink</a>' : '') +
-      card('Official Link 1', data.officialLink1 ? '<a href="' + data.officialLink1 + '" target="_blank" rel="noopener">Visit</a>' : '') +
-      card('Official Link 2', data.officialLink2 ? '<a href="' + data.officialLink2 + '" target="_blank" rel="noopener">Visit</a>' : '') +
-      card('Official Link 3', data.officialLink3 ? '<a href="' + data.officialLink3 + '" target="_blank" rel="noopener">Visit</a>' : '') +
-      '</div>' +
-      card('Along the Trail', data.scenicNature) +
-      card('Photo Spots', data.photoSpots) +
-      card('Local Wildlife', data.localWildlifeNotes) +
-      card('Local History', data.localHistoryFunFact) +
-      card('Seasonal Notes', data.seasonalNotes);
+    bikeNoteState.sourceIndex = payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null;
+    bikeNoteState.notes = parseBikeNotesBlob(data.notes);
+    bikeNoteState.data = data;
+    bindDetailSubTabs();
+    renderBikeNotesPane();
 
     hydrateBikeTagState(data, payload);
   }
@@ -942,6 +1119,35 @@
       }).catch(function () {
         window.prompt('Copy:', text);
       });
+    });
+
+    document.addEventListener('click', function (e) {
+      var removeBtn = e.target && e.target.closest ? e.target.closest('[data-bike-note-index]') : null;
+      if (removeBtn) {
+        removeBikeNote(Number(removeBtn.getAttribute('data-bike-note-index')));
+        return;
+      }
+
+      if (e.target && e.target.id === 'bnmAddBtn') {
+        var input = document.getElementById('bnmInput');
+        addBikeNote(input ? input.value : '');
+        if (input) input.value = '';
+        return;
+      }
+
+      if (e.target && e.target.id === 'bnmSaveBtn') {
+        saveBikeNotes();
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      var active = document.activeElement;
+      if (!active || active.id !== 'bnmInput') return;
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        addBikeNote(active.value);
+        active.value = '';
+      }
     });
 
     var params = getParams();

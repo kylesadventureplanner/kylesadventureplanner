@@ -97,7 +97,68 @@
     .value { margin-top: 6px; font-size: 14px; line-height: 1.45; }
     .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .tag { background: #e0ecff; color: #1d4ed8; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
-    .empty { color: #6b7280; }
+    .empty { color: #6b7280; font-style: italic; font-size: 13px; }
+
+    .detail-subtabs {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .detail-subtab-btn {
+      border: 1px solid #d1d5db;
+      border-radius: 999px;
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 12px;
+      cursor: pointer;
+    }
+    .detail-subtab-btn.active {
+      background: #7c3aed;
+      border-color: #6d28d9;
+      color: #fff;
+    }
+    .detail-subpane { display: none; }
+    .detail-subpane.active { display: block; }
+
+    .dnm-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff;
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .dnm-text {
+      white-space: pre-wrap;
+      line-height: 1.45;
+      color: #1f2937;
+      font-size: 14px;
+    }
+    .dnm-remove {
+      border: 1px solid #fecaca;
+      border-radius: 7px;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 8px;
+      cursor: pointer;
+    }
+    .dnm-input {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px;
+      font: inherit;
+      resize: vertical;
+      min-height: 90px;
+    }
 
     .debug-bar {
       margin-bottom: 12px;
@@ -519,6 +580,8 @@
   var TAG_MIGRATION_MARKER_PREFIX = 'adventureFinderTagsMigrated_';
   var STORAGE_PREFIX_ADV = 'adv_actionbar_';
   var DETAIL_TAGS_COLUMN_INDEX = 3;
+  var DETAIL_NOTES_COLUMN_INDEX = 20;
+  var DETAIL_NOTES_PREFIX = 'NOTES_JSON_V1::';
 
   function toIsoNow() {
     try { return new Date().toISOString(); } catch (_err) { return String(Date.now()); }
@@ -1368,6 +1431,184 @@
     refreshTagSaveDebugUi(window.__lastTagSaveDebug || null);
   }
 
+  // ── Notes Management ─────────────────────────────────────────
+  // NOTES_JSON_V1:: prefix is used to distinguish structured JSON arrays
+  // from legacy plain-text notes. All notes are stored as a JSON array
+  // serialized into a single spreadsheet cell under the "notes" column (index 20).
+
+  function parseDetailNotesBlob(raw) {
+    var text = String(raw == null ? '' : raw).trim();
+    if (!text) return [];
+
+    var jsonPayload = '';
+    if (text.indexOf(DETAIL_NOTES_PREFIX) === 0) {
+      jsonPayload = text.slice(DETAIL_NOTES_PREFIX.length).trim();
+    } else if (text.charAt(0) === '[' && text.charAt(text.length - 1) === ']') {
+      jsonPayload = text;
+    }
+
+    if (jsonPayload) {
+      try {
+        var parsed = JSON.parse(jsonPayload);
+        if (Array.isArray(parsed)) {
+          return parsed.map(function (n) { return String(n == null ? '' : n).trim(); }).filter(Boolean);
+        }
+      } catch (_err) {}
+    }
+
+    // Legacy plain-text fallback: split by divider lines or double newlines
+    var byDivider = text.split(/\n-{3,}\n/g).map(function (p) { return p.trim(); }).filter(Boolean);
+    if (byDivider.length > 1) return byDivider;
+
+    var byParagraph = text.split(/\n\s*\n/g).map(function (p) { return p.trim(); }).filter(Boolean);
+    if (byParagraph.length > 1) return byParagraph;
+
+    return [text];
+  }
+
+  function serializeDetailNotesBlob(notes) {
+    var clean = (notes || []).map(function (n) { return String(n == null ? '' : n).trim(); }).filter(Boolean);
+    return clean.length ? (DETAIL_NOTES_PREFIX + JSON.stringify(clean)) : '';
+  }
+
+  function setDetailNotesStatus(message, isError) {
+    var status = document.getElementById('dnmStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.style.color = isError ? '#b91c1c' : '#6b7280';
+  }
+
+  function renderDetailNotesPane() {
+    var wrap = document.getElementById('detailNotesWrap');
+    if (!wrap) return;
+
+    var notes = (window.__detailNotesState && window.__detailNotesState.notes) || [];
+    wrap.innerHTML =
+      '<div class="tm-wrap">' +
+      '<div class="tm-head">' +
+      '<h3 class="tm-title">📝 Notes</h3>' +
+      '<div id="dnmStatus" class="tm-status">Manage notes for this location</div>' +
+      '</div>' +
+      '<div style="display:grid;gap:8px;">' +
+      (notes.length
+        ? notes.map(function (note, idx) {
+            return '<div class="dnm-item">' +
+              '<div class="dnm-text">' + escapeHtml(note) + '</div>' +
+              '<button type="button" class="dnm-remove" data-note-index="' + idx + '" title="Remove this note">Remove</button>' +
+              '</div>';
+          }).join('')
+        : '<span class="tm-empty">No notes yet — add your first note below.</span>') +
+      '</div>' +
+      '<div class="tm-input-row" style="margin-top:10px;">' +
+      '<textarea id="dnmInput" class="dnm-input" placeholder="Write a note… (Cmd/Ctrl + Enter to add)"></textarea>' +
+      '</div>' +
+      '<div class="tm-actions">' +
+      '<button id="dnmAddBtn" type="button" class="tm-btn">Add Note</button>' +
+      '<button id="dnmSaveBtn" type="button" class="tm-btn primary">Save Notes</button>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function addNoteToDetailState(value) {
+    var clean = String(value || '').trim();
+    if (!clean) return;
+    if (!window.__detailNotesState) return;
+    window.__detailNotesState.notes = (window.__detailNotesState.notes || []).concat([clean]);
+    renderDetailNotesPane();
+    setDetailNotesStatus('Note added. Click Save Notes to persist.', false);
+  }
+
+  function removeNoteFromDetailState(index) {
+    if (!window.__detailNotesState || !Array.isArray(window.__detailNotesState.notes)) return;
+    if (!Number.isInteger(index) || index < 0 || index >= window.__detailNotesState.notes.length) return;
+    window.__detailNotesState.notes.splice(index, 1);
+    renderDetailNotesPane();
+    setDetailNotesStatus('Note removed. Click Save Notes to persist.', false);
+  }
+
+  async function saveDetailNotes() {
+    if (!window.__detailNotesState) {
+      showDetailToast('⚠️ Notes state not initialised.', 'error', 4000);
+      return;
+    }
+
+    var state = window.__detailNotesState;
+    var serialized = serializeDetailNotesBlob(state.notes || []);
+
+    // Mirror back into the live data object so tag-recommendations etc. see the latest value
+    if (state.data) state.data.notes = serialized;
+
+    var openerWin = getOpenerWindow();
+    if (!openerWin) {
+      setDetailNotesStatus('Notes updated locally (no opener window available).', false);
+      showDetailToast('📝 Notes saved locally (open from planner to sync to Excel).', 'info', 4500);
+      return;
+    }
+
+    // Find the row in the opener's adventure data
+    var rowMatch = findOpenerRowForTagSync(openerWin, state);
+    if (!rowMatch || !rowMatch.row || !Array.isArray(rowMatch.row.values) || !Array.isArray(rowMatch.row.values[0])) {
+      setDetailNotesStatus('Notes updated locally (row not found in opener).', false);
+      showDetailToast('⚠️ Notes saved — but could not locate row in planner to sync.', 'info', 4500);
+      return;
+    }
+
+    // Update the in-memory row
+    var values = rowMatch.row.values[0];
+    while (values.length <= DETAIL_NOTES_COLUMN_INDEX) values.push('');
+    values[DETAIL_NOTES_COLUMN_INDEX] = serialized;
+
+    // Trigger planner re-render
+    try {
+      if (typeof openerWin.renderPaginatedCards === 'function') openerWin.renderPaginatedCards();
+      if (typeof openerWin.applyFilters === 'function') openerWin.applyFilters();
+    } catch (_rerr) {}
+
+    // Persist to Excel
+    var excelSaved = false;
+    try {
+      if (typeof openerWin.saveToExcel === 'function') {
+        if (rowMatch.row.rowId) {
+          await openerWin.saveToExcel(rowMatch.row.rowId, values);
+        } else {
+          await openerWin.saveToExcel();
+        }
+        excelSaved = true;
+      }
+    } catch (_excelErr) {
+      console.warn('⚠️ saveDetailNotes: Excel save failed:', _excelErr);
+    }
+
+    if (excelSaved) {
+      setDetailNotesStatus('Notes saved to Excel.', false);
+      showDetailToast('✅ Notes saved and synced to Excel.', 'success', 4000);
+      if (typeof openerWin.showToast === 'function') {
+        openerWin.showToast('📝 Notes updated for ' + (state.data && state.data.name ? state.data.name : 'location'), 'success', 3000);
+      }
+    } else {
+      setDetailNotesStatus('Notes updated in planner memory (sign in to sync to Excel).', false);
+      showDetailToast('⚠️ Notes saved in planner view. Sign in to persist to Excel.', 'info', 5000);
+    }
+  }
+
+  function bindDetailSubTabs() {
+    var root = document.getElementById('detailSubtabs');
+    if (!root || root.dataset.bound === '1') return;
+    root.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('.detail-subtab-btn') : null;
+      if (!btn) return;
+      var target = btn.getAttribute('data-detail-subtab') || 'core';
+      root.querySelectorAll('.detail-subtab-btn').forEach(function (b) { b.classList.remove('active'); });
+      var host = document.getElementById('pane-details');
+      if (host) host.querySelectorAll('.detail-subpane').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      var pane = document.getElementById('detailSubPane_' + target);
+      if (pane) pane.classList.add('active');
+    });
+    root.dataset.bound = '1';
+  }
+  // ── End Notes Management ──────────────────────────────────────
+
   function render(payload) {
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
@@ -1424,6 +1665,11 @@
       card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div>');
 
     document.getElementById('pane-details').innerHTML =
+      '<div id="detailSubtabs" class="detail-subtabs">' +
+      '<button type="button" class="detail-subtab-btn active" data-detail-subtab="core">ℹ️ Details</button>' +
+      '<button type="button" class="detail-subtab-btn" data-detail-subtab="notes">📝 Notes</button>' +
+      '</div>' +
+      '<div id="detailSubPane_core" class="detail-subpane active">' +
       '<div class="grid">' +
       card('Hours', data.hoursOfOperation) +
       card('Duration', data.activityDuration) +
@@ -1432,7 +1678,20 @@
       card('Cost', data.cost) +
       card('Google Rating', data.googleRating) +
       card('My Rating', data.myRating) +
+      '</div>' +
+      '</div>' +
+      '<div id="detailSubPane_notes" class="detail-subpane">' +
+      '<div id="detailNotesWrap"></div>' +
       '</div>';
+
+    bindDetailSubTabs();
+    window.__detailNotesState = {
+      placeKey: getTagPlaceKey(data),
+      notes: parseDetailNotesBlob(data.notes),
+      data: data,
+      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null
+    };
+    renderDetailNotesPane();
 
     document.getElementById('pane-contact').innerHTML =
       '<div class="grid">' +
@@ -1445,10 +1704,7 @@
       '</div>';
 
     document.getElementById('pane-additional').innerHTML =
-      card('Nearby Attractions', data.nearby) +
-      card('Notes', data.notes);
-
-    renderTagManagementPane(data, sourceTagList, storedTagList, payload);
+      card('Nearby Attractions', data.nearby);
   }
 
   function getLocationKey(data) {
@@ -1625,11 +1881,35 @@
         pushTagSaveDebug(window.__lastTagSaveDebug, 'ui_reset_to_source', { tagCount: window.__detailTagState.tags.length });
         refreshTagSaveDebugUi(window.__lastTagSaveDebug);
       }
+
+      var removeNoteBtn = e.target && e.target.closest ? e.target.closest('.dnm-remove') : null;
+      if (removeNoteBtn) {
+        removeNoteFromDetailState(Number(removeNoteBtn.getAttribute('data-note-index')));
+        return;
+      }
+
+      if (e.target && e.target.id === 'dnmAddBtn') {
+        var noteInput = document.getElementById('dnmInput');
+        addNoteToDetailState(noteInput ? noteInput.value : '');
+        if (noteInput) noteInput.value = '';
+        return;
+      }
+
+      if (e.target && e.target.id === 'dnmSaveBtn') {
+        saveDetailNotes();
+      }
     });
 
     document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter') return;
       var active = document.activeElement;
+      if (active && active.id === 'dnmInput' && (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+        e.preventDefault();
+        addNoteToDetailState(active.value);
+        active.value = '';
+        return;
+      }
+
+      if (e.key !== 'Enter') return;
       if (!active || active.id !== 'tmInput') return;
       e.preventDefault();
       addTagToDetailState(active.value);
