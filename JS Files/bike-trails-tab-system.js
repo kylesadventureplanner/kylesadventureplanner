@@ -586,6 +586,41 @@
     return Number.isInteger(fallback) ? fallback : -1;
   }
 
+  // For writes, only use indexes discovered from live workbook schema.
+  // This avoids writing to the wrong column when schema order drifts.
+  function getBikeWritableColumnIndex(fieldName) {
+    const config = window.bikeTableConfig || {};
+    const direct = config.columnIndexByName?.[fieldName];
+    if (Number.isInteger(direct)) return direct;
+
+    const normalizedLookup = config.columnIndexByNormalizedName || {};
+    for (const variant of getExpectedColumnVariants(fieldName)) {
+      const idx = normalizedLookup[normalizeColumnName(variant)];
+      if (Number.isInteger(idx)) return idx;
+    }
+
+    return -1;
+  }
+
+  const bikePreferenceCache = {
+    ratings: null,
+    favorites: null
+  };
+
+  function getBikeLegacyPreferenceSnapshot() {
+    if (!bikePreferenceCache.ratings) bikePreferenceCache.ratings = readJson('bikeTrailRatings', {});
+    if (!bikePreferenceCache.favorites) bikePreferenceCache.favorites = new Set(readJson('bikeTrailFavorites', []));
+    return {
+      ratings: bikePreferenceCache.ratings,
+      favorites: bikePreferenceCache.favorites
+    };
+  }
+
+  function invalidateBikeLegacyPreferenceSnapshot() {
+    bikePreferenceCache.ratings = null;
+    bikePreferenceCache.favorites = null;
+  }
+
   function cacheBikeTableSchema(columnNames) {
     const names = Array.isArray(columnNames)
       ? columnNames.map((name) => String(name || '').trim()).filter(Boolean)
@@ -1015,8 +1050,8 @@
       return false;
     }
 
-    const ratingCol = getBikeColumnIndex(BIKE_PREFERENCE_COLUMNS.rating);
-    const favoriteCol = getBikeColumnIndex(BIKE_PREFERENCE_COLUMNS.favorite);
+    const ratingCol = getBikeWritableColumnIndex(BIKE_PREFERENCE_COLUMNS.rating);
+    const favoriteCol = getBikeWritableColumnIndex(BIKE_PREFERENCE_COLUMNS.favorite);
     if (ratingCol < 0 || favoriteCol < 0) return false;
 
     let updatedAny = false;
@@ -1073,6 +1108,11 @@
 
   function trailModel(row, sourceIndex) {
     const id = buildTrailId(row, sourceIndex);
+    const legacyPrefs = getBikeLegacyPreferenceSnapshot();
+    const legacyRating = Number(legacyPrefs.ratings[id] || 0);
+    const legacyFavorite = legacyPrefs.favorites.has(id);
+    const tableRating = parseNumber(getField(row, BIKE_PREFERENCE_COLUMNS.rating));
+    const tableFavorite = isBikeFavoriteFlag(getField(row, BIKE_PREFERENCE_COLUMNS.favorite));
     return {
       id,
       sourceIndex,
@@ -1157,8 +1197,8 @@
       seasonalNotes:         getField(row, 'Seasonal Notes'),
       scenicNature:          getField(row, 'Scenic & Nature Highlights'),
 
-      myRating:              parseNumber(getField(row, BIKE_PREFERENCE_COLUMNS.rating)),
-      isFavorite:            isBikeFavoriteFlag(getField(row, BIKE_PREFERENCE_COLUMNS.favorite)),
+      myRating:              tableRating > 0 ? tableRating : legacyRating,
+      isFavorite:            tableFavorite || legacyFavorite,
       row
     };
   }
@@ -1764,7 +1804,7 @@
     if (!trail) return;
 
     const nextFav = !trail.isFavorite;
-    const favoriteCol = getBikeColumnIndex(BIKE_PREFERENCE_COLUMNS.favorite);
+    const favoriteCol = getBikeWritableColumnIndex(BIKE_PREFERENCE_COLUMNS.favorite);
     const updates = {};
     if (favoriteCol >= 0) updates[favoriteCol] = nextFav ? 'TRUE' : 'FALSE';
 
@@ -1774,11 +1814,16 @@
       if (nextFav) legacy.add(id);
       else legacy.delete(id);
       localStorage.setItem('bikeTrailFavorites', JSON.stringify(Array.from(legacy)));
+      invalidateBikeLegacyPreferenceSnapshot();
     }
 
     try {
       if (Object.keys(updates).length) await persistBikePreference(sourceIndex, updates);
-      window.showToast?.(nextFav ? '💖 Added to favorites' : '🤍 Removed from favorites', 'success', 1800);
+      if (favoriteCol >= 0) {
+        window.showToast?.(nextFav ? '💖 Added to favorites' : '🤍 Removed from favorites', 'success', 1800);
+      } else {
+        window.showToast?.('⚠️ Favorite saved locally (preference column not mapped).', 'warning', 2600);
+      }
     } catch (err) {
       console.warn('[bike-trails] Favorite save failed:', err);
       window.showToast?.('⚠️ Favorite saved locally only.', 'warning', 2400);
@@ -1792,7 +1837,7 @@
     const trail = trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex);
     if (!trail) return;
 
-    const ratingCol = getBikeColumnIndex(BIKE_PREFERENCE_COLUMNS.rating);
+    const ratingCol = getBikeWritableColumnIndex(BIKE_PREFERENCE_COLUMNS.rating);
     const updates = {};
     if (ratingCol >= 0) updates[ratingCol] = value ? String(value) : '';
 
@@ -1802,11 +1847,16 @@
       if (value > 0) legacyRatings[id] = value;
       else delete legacyRatings[id];
       localStorage.setItem('bikeTrailRatings', JSON.stringify(legacyRatings));
+      invalidateBikeLegacyPreferenceSnapshot();
     }
 
     try {
       if (Object.keys(updates).length) await persistBikePreference(sourceIndex, updates);
-      window.showToast?.(value ? `⭐ Rated ${value}/5` : 'Rating cleared', 'success', 1800);
+      if (ratingCol >= 0) {
+        window.showToast?.(value ? `⭐ Rated ${value}/5` : 'Rating cleared', 'success', 1800);
+      } else {
+        window.showToast?.('⚠️ Rating saved locally (preference column not mapped).', 'warning', 2600);
+      }
     } catch (err) {
       console.warn('[bike-trails] Rating save failed:', err);
       window.showToast?.('⚠️ Rating saved locally only.', 'warning', 2400);
