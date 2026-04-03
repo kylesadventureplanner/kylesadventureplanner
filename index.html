@@ -1905,6 +1905,42 @@
       transform: translateY(-2px);
     }
 
+    .kh-feedback-block {
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .kh-feedback-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .kh-feedback-row {
+      font-size: 12px;
+      color: #475569;
+      margin-top: 4px;
+    }
+
+    .kh-feedback-row-first {
+      margin-top: 6px;
+    }
+
+    .kh-feedback-visited-yes {
+      color: #16a34a;
+      font-weight: 700;
+    }
+
+    .kh-feedback-notes {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
     /* State Badge */
     .state-badge {
       display: inline-block;
@@ -5866,7 +5902,15 @@
                   ${googleRating ? `<div class="card-info-item">Google Rating: <strong>⭐ ${googleRating}</strong></div>` : ''}
                   ${cost ? `<div class="card-info-item">Cost: <strong>${cost}</strong></div>` : ''}
                 </div>
+
+              <div class="kh-feedback-block">
+                <div class="kh-feedback-title">K&H Feedback</div>
+                <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${(() => { const r = Number(values[21]) || 0; return r > 0 ? `${'⭐'.repeat(r)}${'☆'.repeat(5 - r)}` : 'Not yet Reviewed'; })()}</strong></div>
+                <div class="kh-feedback-row">Favorite: <strong>${(() => { const fs = String(values[22] || '').trim().toLowerCase(); return (fs === 'true' || fs === '1' || values[22] === 1) ? 'Marked as Favorite' : 'Not marked as Favorite'; })()}</strong></div>
+                <div class="kh-feedback-row">Visited: ${(() => { const v = String(values[24] || '').trim().toLowerCase(); return v === 'yes' ? '<span style="color:#16a34a;font-weight:700;">✅ Visited</span>' : 'This Adventure still Awaits...'; })()}</div>
+                <div class="kh-feedback-row kh-feedback-notes">Notes: ${(() => { const n = String(values[20] || '').trim() || 'No comments yet...'; return n.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); })()}</div>
               </div>
+            </div>
 
               <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
                 <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
@@ -11332,6 +11376,14 @@
               <span class="card-info-value">${cost}</span>
             </div>
           ` : ''}
+
+          <div style="margin-top:10px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;">
+            <div style="font-size:12px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:0.03em;">K&H Feedback</div>
+            <div style="font-size:12px;color:#475569;margin-top:6px;">Review Rating: <strong>${khAdventureRatingText}</strong></div>
+            <div style="font-size:12px;color:#475569;">Favorite: <strong>${khAdventureFavoriteText}</strong></div>
+            <div style="font-size:12px;color:#475569;">Visited: ${khAdventureVisitedText}</div>
+            <div style="font-size:12px;color:#475569;margin-top:4px;">Notes: ${khAdventureNotesText}</div>
+          </div>
         </div>
 
         <div class="adventure-card-footer">
@@ -11652,6 +11704,16 @@
       // Get state color
       const stateUpper = (state || "").trim().toUpperCase();
 
+      const visitedValue = values.length > 24 ? String(values[24] || '').trim() : '';
+      const visitedLower = visitedValue.toLowerCase();
+      const khAdventureRatingText = currentRating > 0 ? `${'⭐'.repeat(currentRating)}${'☆'.repeat(5 - currentRating)}` : 'Not yet Reviewed';
+      const khAdventureFavoriteText = isFavorite ? 'Marked as Favorite' : 'Not marked as Favorite';
+      const khAdventureVisitedText = visitedLower === 'yes'
+        ? '<span style="color:#16a34a;font-weight:700;">✅ Visited</span>'
+        : 'This Adventure still Awaits...';
+      const khAdventureNotesText = String(notes || '').trim() || 'No comments yet...';
+
+
       // Parse tags - NOW INTEGRATED WITH TAG MANAGER
       const tagList = getTagsForPlace(googlePlaceId, tags);
 
@@ -11754,6 +11816,14 @@
               <span class="card-info-value">${cost}</span>
             </div>
           ` : ''}
+
+          <div class="kh-feedback-block">
+            <div class="kh-feedback-title">K&H Feedback</div>
+            <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${khAdventureRatingText}</strong></div>
+            <div class="kh-feedback-row">Favorite: <strong>${khAdventureFavoriteText}</strong></div>
+            <div class="kh-feedback-row">Visited: ${khAdventureVisitedText}</div>
+            <div class="kh-feedback-row kh-feedback-notes">Notes: ${khAdventureNotesText}</div>
+          </div>
         </div>
 
         <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
