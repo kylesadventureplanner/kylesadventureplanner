@@ -669,12 +669,25 @@
     return String(raw || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
   }
 
+  function normalizeTagKey(tag) {
+    return String(tag || '').trim().toLowerCase();
+  }
+
+  function normalizeTextKey(text) {
+    return String(text || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  function hasTagCaseInsensitive(tags, candidate) {
+    var needle = normalizeTagKey(candidate);
+    return (tags || []).some(function (tag) { return normalizeTagKey(tag) === needle; });
+  }
+
   function uniqueTags(tags) {
     var seen = {};
     var out = [];
     (tags || []).forEach(function (tag) {
       var clean = String(tag || '').trim();
-      var key = clean.toLowerCase();
+      var key = normalizeTagKey(clean);
       if (!clean || seen[key]) return;
       seen[key] = true;
       out.push(clean);
@@ -703,7 +716,13 @@
   function getTagPlaceKey(data) {
     var placeId = data && data.googlePlaceId ? String(data.googlePlaceId).trim() : '';
     if (placeId) return placeId;
-    return String((data && data.name) || '').trim();
+
+    var name = normalizeTextKey(data && data.name);
+    var city = normalizeTextKey(data && data.city);
+    var state = normalizeTextKey(data && data.state);
+    if (!name) return '';
+
+    return 'name|' + name + '|city|' + city + '|state|' + state;
   }
 
   function getStoredTagsForPlace(placeKey) {
@@ -720,26 +739,102 @@
     return saveTagStorageMap(map);
   }
 
-  function buildTagRecommendations(data, currentTags) {
-    var text = [data && data.name, data && data.description, data && data.city, data && data.address, data && data.notes, data && data.tags].join(' ').toLowerCase();
-    var recs = [];
+  function escapeRegExp(value) {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
 
-    function add(tag) {
-      if (recs.indexOf(tag) === -1 && currentTags.indexOf(tag) === -1) recs.push(tag);
+  function buildTagRecommendations(data, currentTags) {
+    var EXCLUDED_RECOMMENDATIONS = {
+      'city center': true,
+      'downtown': true,
+      'urban': true,
+      'commercial': true
+    };
+
+    var recs = new Map();
+    var currentTagKeys = (currentTags || []).map(normalizeTagKey);
+    var fullText = [
+      data && data.name,
+      data && data.tags,
+      data && data.city,
+      data && data.address,
+      data && data.description,
+      data && data.notes
+    ].join(' ').toLowerCase();
+
+    var googleRating = parseFloat(data && data.googleRating) || 0;
+
+    var ruleMap = [
+      { keys: ['hike', 'trail', 'hiking', 'trekking', 'mountain', 'alpine'], tags: ['Hiking', 'Outdoor', 'Nature', 'Scenic', 'Adventure'], confidence: 0.95 },
+      { keys: ['waterfall', 'cascade', 'falls'], tags: ['Waterfall', 'Nature', 'Scenic', 'Photography', 'Outdoor'], confidence: 0.9 },
+      { keys: ['park', 'garden', 'botanical', 'arboretum'], tags: ['Park', 'Nature', 'Family-Friendly', 'Relaxing', 'Scenic'], confidence: 0.85 },
+      { keys: ['lake', 'river', 'stream', 'pond', 'creek', 'water'], tags: ['Water Activity', 'Nature', 'Scenic', 'Family-Friendly'], confidence: 0.8 },
+      { keys: ['forest', 'woods', 'woodland', 'grove'], tags: ['Nature', 'Hiking', 'Outdoor', 'Relaxing', 'Scenic'], confidence: 0.85 },
+      { keys: ['beach', 'shore', 'coast', 'seaside'], tags: ['Beach', 'Outdoor', 'Family-Friendly', 'Scenic', 'Relaxing'], confidence: 0.9 },
+      { keys: ['camping', 'camp site'], tags: ['Camping', 'Outdoor', 'Adventure', 'Family-Friendly'], confidence: 0.9 },
+      { keys: ['restaurant', 'bistro', 'steakhouse', 'grill'], tags: ['Restaurant', 'Dining', 'Local Favorite', 'Worth Visiting'], confidence: 0.95 },
+      { keys: ['cafe', 'coffee', 'espresso', 'tea house'], tags: ['Cafe', 'Coffee', 'Local Favorite', 'Relaxing'], confidence: 0.9 },
+      { keys: ['diner', 'fast food', 'quick bite'], tags: ['Casual Dining', 'Quick Service'], confidence: 0.8 },
+      { keys: ['bakery', 'pastry'], tags: ['Bakery', 'Local Favorite', 'Worth Visiting'], confidence: 0.85 },
+      { keys: ['brewery', 'winery', 'distillery', 'bar', 'pub'], tags: ['Beverage', 'Adult Experience', 'Local Favorite'], confidence: 0.85 },
+      { keys: ['food truck', 'street food'], tags: ['Quick Service', 'Casual Dining', 'Local Favorite'], confidence: 0.8 },
+      { keys: ['shop', 'store', 'retail', 'boutique'], tags: ['Shopping', 'Local Business', 'Worth Visiting'], confidence: 0.8 },
+      { keys: ['market', 'farmer market', 'farmers market'], tags: ['Market', 'Local Business', 'Family-Friendly', 'Worth Visiting'], confidence: 0.9 },
+      { keys: ['mall', 'shopping center'], tags: ['Shopping', 'Family-Friendly'], confidence: 0.75 },
+      { keys: ['museum', 'gallery', 'exhibition', 'exhibit'], tags: ['Museum', 'Cultural', 'Historical', 'Educational', 'Indoor Activity'], confidence: 0.9 },
+      { keys: ['historic', 'history', 'monument', 'landmark', 'heritage'], tags: ['Historical', 'Cultural', 'Worth Visiting', 'Educational'], confidence: 0.85 },
+      { keys: ['art', 'artist', 'sculpture', 'craft'], tags: ['Cultural', 'Artistic', 'Local Business'], confidence: 0.8 },
+      { keys: ['gym', 'fitness', 'yoga', 'pilates'], tags: ['Fitness', 'Health & Wellness'], confidence: 0.85 },
+      { keys: ['sport', 'athletic', 'court', 'field', 'stadium'], tags: ['Sports', 'Active', 'Family-Friendly'], confidence: 0.8 },
+      { keys: ['bowling', 'arcade', 'recreation'], tags: ['Entertainment', 'Family-Friendly', 'Fun'], confidence: 0.8 },
+      { keys: ['movie', 'cinema', 'theater', 'theatre'], tags: ['Entertainment', 'Family-Friendly', 'Indoor Activity'], confidence: 0.9 },
+      { keys: ['music', 'concert', 'live performance'], tags: ['Entertainment', 'Local Favorite', 'Worth Visiting'], confidence: 0.85 },
+      { keys: ['amusement', 'theme park', 'carnival'], tags: ['Entertainment', 'Family-Friendly', 'Fun', 'Adventure'], confidence: 0.9 },
+      { keys: ['hotel', 'motel', 'inn', 'resort'], tags: ['Accommodation', 'Travel-Friendly'], confidence: 0.85 },
+      { keys: ['bed & breakfast', 'bed and breakfast', 'airbnb'], tags: ['Accommodation', 'Local Experience'], confidence: 0.8 }
+    ];
+
+    ruleMap.forEach(function (rule) {
+      var matchCount = rule.keys.filter(function (key) {
+        var regex = new RegExp('\\b' + escapeRegExp(key) + '\\b', 'i');
+        return regex.test(fullText);
+      }).length;
+
+      if (matchCount > 0) {
+        var scoreBoost = matchCount > 1 ? 1.1 : 1.0;
+        rule.tags.forEach(function (tag) {
+          var existingScore = recs.get(tag) || 0;
+          recs.set(tag, Math.max(existingScore, rule.confidence * scoreBoost));
+        });
+      }
+    });
+
+    if (googleRating >= 4.7) {
+      recs.set('Top Rated', Math.max(recs.get('Top Rated') || 0, 0.95));
+      recs.set('Worth Visiting', Math.max(recs.get('Worth Visiting') || 0, 0.9));
+    } else if (googleRating >= 4.3) {
+      recs.set('Highly Recommended', Math.max(recs.get('Highly Recommended') || 0, 0.85));
     }
 
-    if (/hike|trail|mountain|trek/.test(text)) { add('Hiking'); add('Outdoor'); add('Scenic'); }
-    if (/park|garden|arboretum/.test(text)) { add('Park'); add('Nature'); add('Family-Friendly'); }
-    if (/water|river|lake|falls|waterfall|beach/.test(text)) { add('Water Activity'); add('Nature'); add('Photography'); }
-    if (/museum|historic|history|landmark/.test(text)) { add('Historical'); add('Cultural'); }
-    if (/food|restaurant|cafe|coffee|bakery|brewery/.test(text)) { add('Dining'); add('Local Favorite'); }
-    if (/kids|family|playground|children/.test(text)) { add('Family-Friendly'); }
+    var familyKeywords = ['family', 'kids', 'child', 'playground', 'park', 'children', 'school', 'educational'];
+    if (familyKeywords.some(function (k) { return fullText.indexOf(k) !== -1; })) {
+      recs.set('Family-Friendly', Math.max(recs.get('Family-Friendly') || 0, 0.8));
+    }
 
-    var rating = parseFloat(data && data.googleRating) || 0;
-    if (rating >= 4.7) add('Top Rated');
-    if (rating >= 4.3) add('Worth Visiting');
+    var relaxingKeywords = ['relax', 'peaceful', 'quiet', 'serene', 'tranquil', 'spa', 'wellness'];
+    if (relaxingKeywords.some(function (k) { return fullText.indexOf(k) !== -1; })) {
+      recs.set('Relaxing', Math.max(recs.get('Relaxing') || 0, 0.8));
+    }
 
-    return recs.slice(0, 10);
+    return Array.from(recs.entries())
+      .filter(function (entry) {
+        var tag = entry[0];
+        var tagKey = normalizeTagKey(tag);
+        return currentTagKeys.indexOf(tagKey) === -1 && !EXCLUDED_RECOMMENDATIONS[tagKey];
+      })
+      .sort(function (a, b) { return b[1] - a[1]; })
+      .slice(0, 8)
+      .map(function (entry) { return entry[0]; });
   }
 
   function renderTagListHtml(tags) {
@@ -779,7 +874,7 @@
     allKnown = uniqueTags(allKnown.concat(state.sourceTags || [], ['Outdoor', 'Nature', 'Family-Friendly', 'Scenic', 'Worth Visiting', 'Top Rated', 'Adventure', 'Local Favorite']));
 
     datalist.innerHTML = allKnown
-      .filter(function (tag) { return state.tags.indexOf(tag) === -1; })
+      .filter(function (tag) { return !hasTagCaseInsensitive(state.tags, tag); })
       .map(function (tag) { return '<option value="' + escapeHtml(tag) + '"></option>'; })
       .join('');
 
@@ -793,7 +888,7 @@
     var state = window.__detailTagState;
     if (!state) return;
     var clean = String(raw || '').trim();
-    if (!clean || state.tags.indexOf(clean) !== -1) return;
+    if (!clean || hasTagCaseInsensitive(state.tags, clean)) return;
     state.tags.push(clean);
     state.tags = uniqueTags(state.tags);
     syncTagManagementUi();
@@ -802,7 +897,8 @@
   function removeTagFromDetailState(tag) {
     var state = window.__detailTagState;
     if (!state) return;
-    state.tags = state.tags.filter(function (t) { return t !== tag; });
+    var removeKey = normalizeTagKey(tag);
+    state.tags = state.tags.filter(function (t) { return normalizeTagKey(t) !== removeKey; });
     syncTagManagementUi();
   }
 
