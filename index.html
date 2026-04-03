@@ -8180,7 +8180,39 @@
      All auth functions are defined there and should be used.
   */
 
-  // ...existing code...
+    // Ensure datalist options are refreshed when user focuses filter fields.
+    function bindAutocompleteRefreshOnFocus() {
+    if (window.__autocompleteFocusBound) return;
+    window.__autocompleteFocusBound = true;
+
+    const bindings = [
+      ['searchName', 'nameList'],
+      ['filterState', 'stateList'],
+      ['filterCity', 'cityList'],
+      ['filterTags', 'tagsList'],
+      ['filterCost', 'costList']
+    ];
+
+    const ensureReady = (_event) => {
+      const sourceData = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      if (sourceData.length === 0) return;
+      populateAutocomplete();
+    };
+
+    bindings.forEach(([inputId, listId]) => {
+      const input = document.getElementById(inputId);
+      const list = document.getElementById(listId);
+      if (!input || !list) return;
+
+      input.addEventListener('focus', ensureReady, false);
+      input.addEventListener('click', ensureReady, false);
+    });
+    }
+
+    // Late bind because some controls are mounted dynamically in this app.
+    setTimeout(() => {
+    bindAutocompleteRefreshOnFocus();
+    }, 0);
 
    // NOTE: Real signIn function already defined at line 5939
    // No duplicate needed here
@@ -21568,7 +21600,8 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     }
   })();
 </script>
- <script src="JS Files/kh-feedback-renderer.js"></script>
+<script src="JS Files/adventure-filter-hotfix.js"></script>
+<script src="JS Files/kh-feedback-renderer.js"></script>
 </body>
 </html>
 
