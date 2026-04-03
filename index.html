@@ -5690,7 +5690,15 @@
                 : index;
               const adventureId = googlePlaceId || `${name}_${sourceIndex >= 0 ? sourceIndex : index}`;
               const card = document.createElement('div');
-            card.className = 'adventure-card';
+              const khFeedbackHtml = typeof window.renderKhFeedbackBlock === 'function'
+                ? window.renderKhFeedbackBlock({
+                    ratingValue: values[21],
+                    favoriteValue: values[22],
+                    visitedValue: values[24],
+                    notesValue: values[20]
+                  })
+                : '';
+             card.className = 'adventure-card';
             card.dataset.cardDomain = 'adventure';
             card.dataset.adventureId = adventureId;
             card.dataset.index = String(sourceIndex >= 0 ? sourceIndex : index);
@@ -5720,13 +5728,7 @@
                   ${cost ? `<div class="card-info-item">Cost: <strong>${cost}</strong></div>` : ''}
                 </div>
 
-              <div class="kh-feedback-block">
-                <div class="kh-feedback-title">K&H Feedback</div>
-                <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${(() => { const r = Number(values[21]) || 0; return r > 0 ? `${'⭐'.repeat(r)}${'☆'.repeat(5 - r)}` : 'Not yet Reviewed'; })()}</strong></div>
-                <div class="kh-feedback-row">Favorite: <strong>${(() => { const fs = String(values[22] || '').trim().toLowerCase(); return (fs === 'true' || fs === '1' || values[22] === 1) ? 'Marked as Favorite' : 'Not marked as Favorite'; })()}</strong></div>
-                <div class="kh-feedback-row">Visited: ${(() => { const v = String(values[24] || '').trim().toLowerCase(); return v === 'yes' ? '<span style="color:#16a34a;font-weight:700;">✅ Visited</span>' : 'This Adventure still Awaits...'; })()}</div>
-                <div class="kh-feedback-row kh-feedback-notes">Notes: ${(() => { const raw = String(values[20] || '').trim(); if (!raw) return 'No comments yet...'; const prefix = 'NOTES_JSON_V1::'; let jp = ''; if (raw.startsWith(prefix)) jp = raw.slice(prefix.length).trim(); else if (raw.startsWith('[') && raw.endsWith(']')) jp = raw; if (jp) { try { const arr = JSON.parse(jp); if (Array.isArray(arr)) { const clean = arr.map(n => String(n ?? '').trim()).filter(Boolean); if (clean.length) { const prev = clean[0].length > 80 ? clean[0].substring(0, 80) + '…' : clean[0]; const safe = prev.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return clean.length > 1 ? `${safe} (+${clean.length - 1} more)` : safe; } } } catch(_){} } return raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); })()}</div>
-              </div>
+              ${khFeedbackHtml}
             </div>
 
               <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
@@ -11097,12 +11099,21 @@
       const tagList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
       // Check if has valid Place ID
-      const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 &&
-              googlePlaceId !== 'undefined' && googlePlaceId !== 'null' &&
-              googlePlaceId !== 'SKIP' && !String(googlePlaceId).toUpperCase().includes('SKIP');
+          const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 &&
+                  googlePlaceId !== 'undefined' && googlePlaceId !== 'null' &&
+                  googlePlaceId !== 'SKIP' && !String(googlePlaceId).toUpperCase().includes('SKIP');
 
-      // Create card element
-      const card = document.createElement("div");
+          const khFeedbackHtml = typeof window.renderKhFeedbackBlock === 'function'
+            ? window.renderKhFeedbackBlock({
+                ratingValue: myRating,
+                favoriteValue: favoriteStatus,
+                visitedValue: values[24],
+                notesValue: notes
+              })
+            : '';
+
+           // Create card element
+           const card = document.createElement("div");
       card.className = "adventure-card";
       card.dataset.cardDomain = 'adventure';
       card.dataset.index = index;
@@ -11192,13 +11203,7 @@
             </div>
           ` : ''}
 
-          <div style="margin-top:10px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;">
-            <div style="font-size:12px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:0.03em;">K&H Feedback</div>
-            <div style="font-size:12px;color:#475569;margin-top:6px;">Review Rating: <strong>${khAdventureRatingText}</strong></div>
-            <div style="font-size:12px;color:#475569;">Favorite: <strong>${khAdventureFavoriteText}</strong></div>
-            <div style="font-size:12px;color:#475569;">Visited: ${khAdventureVisitedText}</div>
-            <div style="font-size:12px;color:#475569;margin-top:4px;">Notes: ${khAdventureNotesText}</div>
-          </div>
+          ${khFeedbackHtml}
         </div>
 
         <div class="adventure-card-footer">
@@ -11511,47 +11516,13 @@
         });
       }
 
-      // Get favorite status from Excel column (no more localStorage)
-      // Safely handle undefined, null, or non-string values
-      const favStatusStr = String(favoriteStatus || '').trim().toLowerCase();
-      const isFavorite = favStatusStr === 'true' || favStatusStr === '1' || favoriteStatus === 1;
-
       // Get state color
       const stateUpper = (state || "").trim().toUpperCase();
 
-      const visitedValue = values.length > 24 ? String(values[24] || '').trim() : '';
-      const visitedLower = visitedValue.toLowerCase();
-      const khAdventureRatingText = currentRating > 0 ? `${'⭐'.repeat(currentRating)}${'☆'.repeat(5 - currentRating)}` : 'Not yet Reviewed';
-      const khAdventureFavoriteText = isFavorite ? 'Marked as Favorite' : 'Not marked as Favorite';
-      const khAdventureVisitedText = visitedLower === 'yes'
-        ? '<span style="color:#16a34a;font-weight:700;">✅ Visited</span>'
-        : 'This Adventure still Awaits...';
-      // Parse notes preview using the same NOTES_JSON_V1 format used by the Notes subtab
-      const khAdventureNotesText = (() => {
-        const raw = String(notes || '').trim();
-        if (!raw) return 'No comments yet...';
-        const prefix = 'NOTES_JSON_V1::';
-        let jsonPayload = '';
-        if (raw.startsWith(prefix)) jsonPayload = raw.slice(prefix.length).trim();
-        else if (raw.startsWith('[') && raw.endsWith(']')) jsonPayload = raw;
-        if (jsonPayload) {
-          try {
-            const arr = JSON.parse(jsonPayload);
-            if (Array.isArray(arr)) {
-              const clean = arr.map(n => String(n ?? '').trim()).filter(Boolean);
-              if (clean.length) {
-                const preview = clean[0].length > 80 ? clean[0].substring(0, 80) + '…' : clean[0];
-                return clean.length > 1 ? `${preview} (+${clean.length - 1} more)` : preview;
-              }
-            }
-          } catch (_) {}
-        }
-        return raw.length > 80 ? raw.substring(0, 80) + '…' : raw;
-      })();
       const khFeedbackHtml = window.renderKhFeedbackBlock({
         ratingValue: currentRating,
         favoriteValue: favoriteStatus,
-        visitedValue,
+        visitedValue: values[24],
         notesValue: notes
       });
 
@@ -11658,13 +11629,7 @@
             </div>
           ` : ''}
 
-          <div class="kh-feedback-block">
-            <div class="kh-feedback-title">K&H Feedback</div>
-            <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${khAdventureRatingText}</strong></div>
-            <div class="kh-feedback-row">Favorite: <strong>${khAdventureFavoriteText}</strong></div>
-            <div class="kh-feedback-row">Visited: ${khAdventureVisitedText}</div>
-            <div class="kh-feedback-row kh-feedback-notes">Notes: ${khAdventureNotesText}</div>
-          </div>
+          ${khFeedbackHtml}
         </div>
 
         <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
@@ -21734,73 +21699,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     }
   })();
 </script>
-<script>
-  // Shared renderer used by Adventure + Bike cards to keep K&H output in sync.
-  window.renderKhFeedbackBlock = function(input) {
-    const data = input || {};
-    const escapeHtml = function(value) {
-      return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    };
-
-    const parseNotesPreview = function(raw) {
-      const text = String(raw || '').trim();
-      if (!text) return 'No comments yet...';
-
-      const prefix = 'NOTES_JSON_V1::';
-      let jsonPayload = '';
-      if (text.indexOf(prefix) === 0) jsonPayload = text.slice(prefix.length).trim();
-      else if (text.charAt(0) === '[' && text.charAt(text.length - 1) === ']') jsonPayload = text;
-
-      if (jsonPayload) {
-        try {
-          const parsed = JSON.parse(jsonPayload);
-          if (Array.isArray(parsed)) {
-            const clean = parsed.map((item) => String(item == null ? '' : item).trim()).filter(Boolean);
-            if (clean.length) return clean.join(' | ');
-          }
-        } catch (_err) {}
-      }
-
-      const byDivider = text.split(/\n-{3,}\n/g).map((part) => part.trim()).filter(Boolean);
-      if (byDivider.length > 1) return byDivider.join(' | ');
-
-      const byParagraph = text.split(/\n\s*\n/g).map((part) => part.trim()).filter(Boolean);
-      if (byParagraph.length > 1) return byParagraph.join(' | ');
-
-      return text;
-    };
-
-    const rating = Math.max(0, Math.min(5, Number(data.ratingValue) || 0));
-    const ratingText = rating > 0 ? `${'⭐'.repeat(rating)}${'☆'.repeat(5 - rating)}` : 'Not yet Reviewed';
-
-    const favoriteRaw = data.favoriteValue;
-    const favoriteNorm = String(favoriteRaw || '').trim().toLowerCase();
-    const isFavorite = favoriteNorm === 'true' || favoriteNorm === '1' || favoriteRaw === 1;
-    const favoriteText = isFavorite ? 'Marked as Favorite' : 'Not marked as Favorite';
-
-    const visitedNorm = String(data.visitedValue || '').trim().toLowerCase();
-    const visitedHtml = visitedNorm === 'yes'
-      ? '<span class="kh-feedback-visited-yes">✅ Visited</span>'
-      : 'This Adventure still Awaits...';
-
-    const notesText = escapeHtml(parseNotesPreview(data.notesValue));
-
-    return `
-      <div class="kh-feedback-block">
-        <div class="kh-feedback-title">K&H Feedback</div>
-        <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${ratingText}</strong></div>
-        <div class="kh-feedback-row">Favorite: <strong>${favoriteText}</strong></div>
-        <div class="kh-feedback-row">Visited: ${visitedHtml}</div>
-        <div class="kh-feedback-row kh-feedback-notes">Notes: ${notesText}</div>
-      </div>
-    `;
-  };
-</script>
+ <script src="JS Files/kh-feedback-renderer.js"></script>
 </body>
 </html>
 
