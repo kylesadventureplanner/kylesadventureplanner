@@ -5637,54 +5637,103 @@
       // ============================================================
       // NOTE: This window.renderAdventureCards shim delegates to the real
       // paginated renderer (_paginatedRenderAdventureCards) which is assigned
-      // later when the body script block that owns renderAdventureCards executes.
-      // At that point window.renderAdventureCards is replaced with the real
-      // function, so any call made AFTER page load hits the real implementation
-      // directly.  This shim only runs if somehow called before that block fires.
+       // later when the body script block that owns renderAdventureCards executes.
+       // At that point window.renderAdventureCards is replaced with the real
+       // function, so any call made AFTER page load hits the real implementation
+       // directly.  This shim only runs if somehow called before that block fires.
        window.renderAdventureCards = async function(adventuresArray = null) {
-         try {
-           console.log('🎨 window.renderAdventureCards shim: delegating to paginated renderer...');
-           const sourceAdventures = Array.isArray(adventuresArray)
-             ? adventuresArray
-             : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
+         console.log('🎨 window.renderAdventureCards INLINE FALLBACK: rendering directly...');
+         const sourceAdventures = Array.isArray(adventuresArray)
+           ? adventuresArray
+           : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
 
-           if (sourceAdventures.length === 0) {
-             console.warn('⚠️ No adventure data to render');
-             const cardsGrid = document.getElementById('adventureCardsGrid');
-             if (cardsGrid) {
-               cardsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No adventures found. Add some in Edit Mode!</div>';
-             }
-             return;
-           }
+         if (sourceAdventures.length === 0) {
+           console.warn('⚠️ No adventure data to render');
+           return;
+         }
 
-           // At runtime the real function will be on window._paginatedRenderAdventureCards.
-           // If it is not yet available (extremely unlikely — would mean this shim fired
-           // before the body script block ran) fall back gracefully.
-           const realRenderer = window._paginatedRenderAdventureCards;
-           if (typeof realRenderer === 'function') {
-             console.log('✅ Real renderer available, calling now with', sourceAdventures.length, 'items');
-             realRenderer(sourceAdventures);
-           } else {
-             console.warn('⚠️ Real paginated renderer not yet available — will retry in 200ms');
-             setTimeout(function() {
-               const retryRenderer = window._paginatedRenderAdventureCards;
-               if (typeof retryRenderer === 'function') {
-                 console.log('✅ Retry: Real renderer now available, calling with', sourceAdventures.length, 'items');
-                 try {
-                   retryRenderer(sourceAdventures);
-                   console.log('✅ Retry render completed successfully');
-                 } catch (retryErr) {
-                   console.error('❌ Retry render error:', retryErr);
-                 }
-               } else {
-                 console.error('❌ Retry failed: Real renderer still not available');
-               }
-             }, 200);
+         // Set pagination state variables globally so they're available immediately
+         window.totalFilteredAdventures = sourceAdventures.map((row, idx) => ({
+           row,
+           sourceIndex: idx
+         }));
+         window.currentPage = 1;
+         window.itemsPerPage = 20;
+
+         // Render directly without waiting
+         const cardsGrid = document.getElementById('adventureCardsGrid');
+         if (!cardsGrid) {
+           console.error('❌ cardsGrid not found');
+           return;
+         }
+
+         console.log(`✅ Rendering ${sourceAdventures.length} cards to grid`);
+         cardsGrid.innerHTML = '';
+
+         // Render first page (20 items)
+         const startIdx = 0;
+         const endIdx = Math.min(20, sourceAdventures.length);
+
+         for (let i = startIdx; i < endIdx; i++) {
+           const item = window.totalFilteredAdventures[i];
+           const row = item.row;
+           const values = row.values[0] || [];
+
+           const [
+             name, googlePlaceId, website, tags, driveTime,
+             hoursOfOperation, activityDuration, difficulty, trailLength,
+             state, city, address, phoneNumber, googleRating, cost,
+             directions, description, nearby, links, links2, notes, myRating,
+             favoriteStatus, googleUrl
+           ] = values;
+
+           const card = document.createElement('div');
+           card.className = 'adventure-card';
+           card.dataset.index = String(i);
+           card.dataset.googlePlaceId = String(googlePlaceId || '').trim();
+           card.dataset.state = String(state || '').toLowerCase();
+           card.dataset.city = String(city || '').toLowerCase();
+
+           const stateUpper = String(state || '').trim().toUpperCase();
+           const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0;
+
+           card.innerHTML = `
+             <div class="adventure-card-header">
+               <div class="adventure-card-title">${escapeHtml(name || 'Unnamed')}</div>
+               <div class="adventure-card-location">
+                 <span>📍</span>
+                 <span>${escapeHtml(city || 'Unknown')}${state ? ', ' + stateUpper : ''}</span>
+               </div>
+               ${driveTime ? `<div class="adventure-card-time">🚗 ${escapeHtml(driveTime)}</div>` : ''}
+             </div>
+             <div class="adventure-card-body">
+               ${description ? `<div>${escapeHtml(description)}</div>` : ''}
+             </div>
+             <div class="adventure-card-footer">
+               <button class="card-btn" data-index="${i}">📖 Details</button>
+             </div>
+           `;
+
+           cardsGrid.appendChild(card);
+         }
+
+         console.log(`✅ Successfully rendered ${endIdx - startIdx} cards`);
+
+         // Show pagination if needed
+         if (sourceAdventures.length > 20) {
+           const paginationControls = document.getElementById('paginationControls');
+           if (paginationControls) {
+             paginationControls.style.display = 'flex';
            }
-         } catch (error) {
-           console.error('❌ window.renderAdventureCards shim error:', error);
          }
        };
+
+       // Helper to escape HTML
+       function escapeHtml(text) {
+         const div = document.createElement('div');
+         div.textContent = text;
+         return div.innerHTML;
+       }
 
      // ============================================================
      // TOGGLE FAVORITE - Handle favorite button clicks
