@@ -124,6 +124,89 @@
     }
     .addr-copy-btn:hover { background: #e5e7eb; }
     .addr-copy-btn.copied { border-color: #86efac; background: #ecfdf5; color: #047857; }
+
+    /* ── Sticky Action Bar ── */
+    .action-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 100;
+      background: #fff;
+      border-top: 2px solid #e5e7eb;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+      border-radius: 0 0 14px 14px;
+    }
+    .action-bar-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #9ca3af;
+      letter-spacing: 0.05em;
+      margin-right: 4px;
+      white-space: nowrap;
+    }
+    .ab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .ab-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.12); }
+    .ab-btn:active { transform: translateY(0); }
+
+    /* Favorite */
+    .ab-fav { background: #fff0f3; color: #e11d48; border-color: #fecdd3; }
+    .ab-fav:hover { background: #ffe4e6; border-color: #fda4af; }
+    .ab-fav.active { background: #e11d48; color: #fff; border-color: #be123c; }
+
+    /* Maps */
+    .ab-maps { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
+    .ab-maps:hover { background: #ede9fe; border-color: #c4b5fd; }
+
+    /* Parking */
+    .ab-parking { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .ab-parking:hover { background: #dcfce7; border-color: #86efac; }
+
+    /* Star Rating */
+    .star-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 7px 12px;
+      background: #fffbeb;
+      border: 2px solid #fde68a;
+      border-radius: 8px;
+    }
+    .star-rating-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #92400e;
+      margin-right: 4px;
+    }
+    .star-btn {
+      background: none;
+      border: none;
+      padding: 1px 2px;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      transition: transform 0.12s;
+      color: #d1d5db;
+    }
+    .star-btn:hover { transform: scale(1.25); }
+    .star-btn.lit { color: #f59e0b; }
   </style>
 </head>
 <body>
@@ -143,6 +226,32 @@
   <div id="pane-experience" class="tab-pane"></div>
   <div id="pane-location" class="tab-pane"></div>
   <div id="pane-links" class="tab-pane"></div>
+
+  <!-- Sticky action bar — always visible regardless of active tab -->
+  <div class="action-bar" id="actionBar" style="display:none;">
+    <span class="action-bar-label">Quick Actions</span>
+
+    <button type="button" class="ab-btn ab-fav" id="abFavBtn" title="Add to Favorites">
+      <span id="abFavIcon">🤍</span> <span id="abFavText">Favorite</span>
+    </button>
+
+    <div class="star-rating" title="My star rating">
+      <span class="star-rating-label">My Rating:</span>
+      <button type="button" class="star-btn" data-star="1" title="1 star">★</button>
+      <button type="button" class="star-btn" data-star="2" title="2 stars">★</button>
+      <button type="button" class="star-btn" data-star="3" title="3 stars">★</button>
+      <button type="button" class="star-btn" data-star="4" title="4 stars">★</button>
+      <button type="button" class="star-btn" data-star="5" title="5 stars">★</button>
+    </div>
+
+    <a class="ab-btn ab-maps" id="abMapsBtn" href="#" target="_blank" rel="noopener" style="display:none;">
+      🗺️ Open Maps
+    </a>
+
+    <a class="ab-btn ab-parking" id="abParkingBtn" href="#" target="_blank" rel="noopener" style="display:none;">
+      🅿️ Parking Map
+    </a>
+  </div>
 </div>
 
 <script>
@@ -277,6 +386,7 @@
       '</div>' + getCloseButtonHtml();
 
     bindCloseButton();
+    initActionBar(data, directionsUrl);
 
     // Overview tab
     document.getElementById('pane-overview').innerHTML =
@@ -355,6 +465,104 @@
       card('Local History', data.localHistoryFunFact) +
       card('Seasonal Notes', data.seasonalNotes);
   }
+
+  // ── Action Bar ──────────────────────────────────────────────
+  var STORAGE_PREFIX_BIKE = 'bike_actionbar_';
+
+  function getLocationKey(data) {
+    if (data.id) return 'id_' + data.id;
+    return 'name_' + String(data.name || '').toLowerCase().replace(/\W+/g, '_');
+  }
+
+  function loadActionBarState(key) {
+    try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX_BIKE + key) || '{}'); } catch (_) { return {}; }
+  }
+
+  function saveActionBarState(key, state) {
+    try { localStorage.setItem(STORAGE_PREFIX_BIKE + key, JSON.stringify(state)); } catch (_) {}
+  }
+
+  function renderStars(rating) {
+    document.querySelectorAll('.star-btn').forEach(function (btn) {
+      var n = parseInt(btn.getAttribute('data-star'), 10);
+      btn.classList.toggle('lit', n <= rating);
+    });
+  }
+
+  function initActionBar(data, directionsUrl) {
+    var bar = document.getElementById('actionBar');
+    if (!bar) return;
+    bar.style.display = 'flex';
+
+    var locationKey = getLocationKey(data);
+    var state = loadActionBarState(locationKey);
+
+    // ── Favorite button ──
+    var favBtn = document.getElementById('abFavBtn');
+    var favIcon = document.getElementById('abFavIcon');
+    var favText = document.getElementById('abFavText');
+
+    function syncFav(isFav) {
+      if (isFav) {
+        favBtn.classList.add('active');
+        favIcon.textContent = '❤️';
+        favText.textContent = 'Favorited';
+      } else {
+        favBtn.classList.remove('active');
+        favIcon.textContent = '🤍';
+        favText.textContent = 'Favorite';
+      }
+    }
+
+    syncFav(!!state.favorite);
+
+    favBtn.addEventListener('click', function () {
+      state.favorite = !state.favorite;
+      syncFav(state.favorite);
+      saveActionBarState(locationKey, state);
+      console.log('❤️ Favorite toggled:', state.favorite, 'for', data.name);
+    });
+
+    // ── Star rating ──
+    var currentRating = state.myRating || 0;
+    renderStars(currentRating);
+
+    document.querySelectorAll('.star-btn').forEach(function (btn) {
+      btn.addEventListener('mouseenter', function () {
+        renderStars(parseInt(btn.getAttribute('data-star'), 10));
+      });
+      btn.addEventListener('mouseleave', function () {
+        renderStars(currentRating);
+      });
+      btn.addEventListener('click', function () {
+        var clicked = parseInt(btn.getAttribute('data-star'), 10);
+        currentRating = (currentRating === clicked) ? 0 : clicked;
+        renderStars(currentRating);
+        state.myRating = currentRating;
+        saveActionBarState(locationKey, state);
+        console.log('⭐ Rating saved:', currentRating, 'for', data.name);
+      });
+    });
+
+    // ── Open Maps ──
+    var mapsBtn = document.getElementById('abMapsBtn');
+    if (directionsUrl) {
+      mapsBtn.setAttribute('href', directionsUrl);
+      mapsBtn.style.display = 'inline-flex';
+    }
+
+    // ── Parking Map ──
+    var parkingBtn = document.getElementById('abParkingBtn');
+    var parkingUrl = data.parkingLink || '';
+    if (!parkingUrl && data.gpsCoordinates) {
+      parkingUrl = 'https://www.google.com/maps/search/parking+near+' + encodeURIComponent(data.gpsCoordinates);
+    }
+    if (parkingUrl) {
+      parkingBtn.setAttribute('href', parkingUrl);
+      parkingBtn.style.display = 'inline-flex';
+    }
+  }
+  // ── End Action Bar ───────────────────────────────────────────
 
   function bindTabs() {
     var tabs = document.querySelectorAll('.tab-btn');
