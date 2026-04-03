@@ -5632,126 +5632,48 @@
        }
      };
 
-     // ============================================================
-     // RENDER ADVENTURE CARDS - Display loaded data in the grid
-     // ============================================================
-    window.renderAdventureCards = async function(adventuresArray = null) {
-      try {
-        console.log('🎨 renderAdventureCards: Starting to render cards...');
+      // ============================================================
+      // RENDER ADVENTURE CARDS - Display loaded data in the grid
+      // ============================================================
+      // NOTE: This window.renderAdventureCards shim delegates to the real
+      // paginated renderer (_paginatedRenderAdventureCards) which is assigned
+      // later when the body script block that owns renderAdventureCards executes.
+      // At that point window.renderAdventureCards is replaced with the real
+      // function, so any call made AFTER page load hits the real implementation
+      // directly.  This shim only runs if somehow called before that block fires.
+      window.renderAdventureCards = async function(adventuresArray = null) {
+        try {
+          console.log('🎨 window.renderAdventureCards shim: delegating to paginated renderer...');
+          const sourceAdventures = Array.isArray(adventuresArray)
+            ? adventuresArray
+            : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
 
-        const sourceAdventures = Array.isArray(adventuresArray)
-          ? adventuresArray
-          : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
+          if (sourceAdventures.length === 0) {
+            console.warn('⚠️ No adventure data to render');
+            const cardsGrid = document.getElementById('adventureCardsGrid');
+            if (cardsGrid) {
+              cardsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No adventures found. Add some in Edit Mode!</div>';
+            }
+            return;
+          }
 
-         const cardsGrid = document.getElementById('adventureCardsGrid');
-         if (!cardsGrid) {
-           console.error('❌ Adventure cards grid not found in DOM');
-           return;
-         }
-
-        if (sourceAdventures.length === 0) {
-          console.warn('⚠️ No adventure data to render');
-          cardsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">No adventures found. Add some in Edit Mode!</div>';
-          return;
+          // At runtime the real function will be on window._paginatedRenderAdventureCards.
+          // If it is not yet available (extremely unlikely — would mean this shim fired
+          // before the body script block ran) fall back gracefully.
+          const realRenderer = window._paginatedRenderAdventureCards;
+          if (typeof realRenderer === 'function') {
+            realRenderer(sourceAdventures);
+          } else {
+            console.warn('⚠️ Real paginated renderer not yet available — will retry in 200ms');
+            setTimeout(function() {
+              const retryRenderer = window._paginatedRenderAdventureCards;
+              if (typeof retryRenderer === 'function') retryRenderer(sourceAdventures);
+            }, 200);
+          }
+        } catch (error) {
+          console.error('❌ window.renderAdventureCards shim error:', error);
         }
-
-         // Clear existing cards
-         cardsGrid.innerHTML = '';
-
-          // Render each adventure as a card
-        sourceAdventures.forEach((adventure, index) => {
-          const values = adventure.values[0] || [];
-
-            // Extract data from columns - based on Excel structure
-             // Column order: 0=Name, 1=GooglePlaceId, 2=Website, 3=Tags, etc.
-            const name = values[0] || 'Unnamed Adventure';
-            const googlePlaceId = values[1] || '';
-            // const website = values[2] || '';
-            const tags = (values[3] || '').split(',').filter(t => t.trim());
-            const driveTime = values[4] || '';
-            // const hoursOfOperation = values[5] || '';
-            // const activityDuration = values[6] || '';
-            const difficulty = values[7] || '';
-            const trailLength = values[8] || '';
-            const state = values[9] || '';
-            const city = values[10] || '';
-            const address = values[11] || '';
-            // const phoneNumber = values[12] || '';
-            const googleRating = values[13] || '';
-            const cost = values[14] || '';
-            // const directions = values[15] || '';
-            const description = values[16] || '';
-            // const myRating = values[21] || 0;
-            // const favoriteStatus = values[22] || '';
-
-            // Adventure cards are now open-details surfaces; actions live in the modal.
-              const sourceIndex = Array.isArray(window.adventuresData)
-                ? window.adventuresData.indexOf(adventure)
-                : index;
-              const adventureId = googlePlaceId || `${name}_${sourceIndex >= 0 ? sourceIndex : index}`;
-              const card = document.createElement('div');
-              const khFeedbackHtml = typeof window.renderKhFeedbackBlock === 'function'
-                ? window.renderKhFeedbackBlock({
-                    ratingValue: values[21],
-                    favoriteValue: values[22],
-                    visitedValue: values[24],
-                    notesValue: values[20]
-                  })
-                : '';
-             card.className = 'adventure-card';
-            card.dataset.cardDomain = 'adventure';
-            card.dataset.adventureId = adventureId;
-            card.dataset.index = String(sourceIndex >= 0 ? sourceIndex : index);
-            card.dataset.sourceIndex = String(sourceIndex >= 0 ? sourceIndex : index);
-            card.innerHTML = `
-             <div class="card-header">
-               <h3 class="card-title">${name}</h3>
-               <div class="card-location">📍 ${city}${state ? ', ' + state : ''}</div>
-               ${driveTime ? `<div class="card-drive-time">🚗 ${driveTime}</div>` : ''}
-             </div>
-
-              <div class="card-body">
-                ${tags.length > 0 ? `
-                  <div class="card-tags">
-                    ${tags.map(tag => `<span class="tag-pill">${tag.trim()}</span>`).join('')}
-                  </div>
-                ` : ''}
-
-                ${description ? `
-                  <div class="card-description">${description.substring(0, 150)}${description.length > 150 ? '...' : ''}</div>
-                ` : ''}
-
-                <div class="card-info">
-                  ${difficulty ? `<div class="card-info-item">Difficulty: <strong>${difficulty}</strong></div>` : ''}
-                  ${trailLength ? `<div class="card-info-item">Trail: <strong>${trailLength}</strong></div>` : ''}
-                  ${googleRating ? `<div class="card-info-item">Google Rating: <strong>⭐ ${googleRating}</strong></div>` : ''}
-                  ${cost ? `<div class="card-info-item">Cost: <strong>${cost}</strong></div>` : ''}
-                </div>
-
-              ${khFeedbackHtml}
-            </div>
-
-              <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
-                ${address ? `<button type="button" class="card-addr-copy-btn" data-address="${address.replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;" title="Copy address">📋 Address</button>` : ''}
-              </div>
-            `;
-
-            cardsGrid.appendChild(card);
-          });
-
-          console.log(`✅ Rendered ${sourceAdventures.length} adventure cards`);
-
-         // Update results count
-         const resultsCount = document.getElementById('resultsCount');
-         if (resultsCount) {
-        resultsCount.textContent = `${sourceAdventures.length} adventures`;
-         }
-
-       } catch (error) {
-         console.error('❌ renderAdventureCards error:', error);
-       }
-     };
+      };
 
      // ============================================================
      // TOGGLE FAVORITE - Handle favorite button clicks
@@ -11043,6 +10965,10 @@
       return { row, sourceIndex };
     });
 
+    // Keep window in sync so external scripts and onclick handlers read the same state
+    window.currentPage = currentPage;
+    window.totalFilteredAdventures = totalFilteredAdventures;
+
     console.log(`✅ Pagination reset: page=${currentPage}, total items=${totalFilteredAdventures.length}`);
 
     // Render first page
@@ -11260,6 +11186,33 @@
   let itemsPerPage = 20; // Show 20 cards per page
   let totalFilteredAdventures = [];
 
+  // ── Sync pagination state to window ────────────────────────────────────────
+  // Mirror the local variables onto window so that:
+  //   • The HTML onclick="changePage(-1)" buttons always find the function.
+  //   • consolidated-comprehensive-fix-system and any other external script
+  //     read/write the SAME state instead of a diverging window.currentPage copy.
+  // These are reassigned (not frozen) so mutations from changePage() stay in sync.
+  window.currentPage = currentPage;
+  window.itemsPerPage = itemsPerPage;
+  window.totalFilteredAdventures = totalFilteredAdventures;
+
+  // Export functions to window so onclick handlers and external scripts always
+  // call the real implementations defined in this block (hoisted by JS engine).
+  window.changePage = function(direction) { changePage(direction); };
+  window.renderPaginatedCards = function() { renderPaginatedCards(); };
+  window.updatePaginationControls = function() { updatePaginationControls(); };
+
+  // Override window.renderAdventureCards with the real paginated version.
+  // The earlier shim (defined in the head script block) is a delegation
+  // placeholder; this assignment replaces it with the actual function that
+  // populates totalFilteredAdventures and calls renderPaginatedCards().
+  // We also export under a stable internal name so any code that captured
+  // the old shim reference can still reach the real implementation.
+  window._paginatedRenderAdventureCards = function(adventuresArray) {
+    renderAdventureCards(adventuresArray);
+  };
+  window.renderAdventureCards = window._paginatedRenderAdventureCards;
+
   /**
    * Update the results count display
    */
@@ -11349,6 +11302,7 @@
     }
 
     currentPage = newPage;
+    window.currentPage = currentPage; // keep window in sync
 
     // Scroll to top first for better UX
     scrollToCards();
