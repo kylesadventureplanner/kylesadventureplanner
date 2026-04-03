@@ -9251,7 +9251,6 @@
           console.error('Tag manager not initialized');
         }
       }
-
     // ...existing code...
     window.openAutomationControlPanel = function() {
       // Check if window is already open
@@ -11646,7 +11645,7 @@
       const card = e.target.closest('.adventure-card');
       if (!card) return;
 
-      showContextMenu(e, card);
+      showCardContextMenu(e, card);
     }, false);
 
     // CRITICAL: Ensure all buttons are clickable after rendering
@@ -13154,147 +13153,14 @@
   /* ============================================================
      CONTEXT MENU FILTERING - Right-click to filter by cell value
      ============================================================ */
-
-  function showContextMenu(e, card) {
-    const clickedElement = e.target;
-    let fieldValue = null;
-    let fieldName = null;
-    let filterField = null;
-
-    // Determine what was clicked
-    if (clickedElement.closest('.adventure-card-title')) {
-      fieldName = 'Name';
-      fieldValue = card.querySelector('.adventure-card-title')?.textContent?.trim();
-      filterField = 'name';
-    } else if (clickedElement.closest('.adventure-card-location') || clickedElement.textContent?.includes(',')) {
-      // Check if it's city or state
-      const locationText = card.querySelector('.adventure-card-location')?.textContent?.trim();
-      if (locationText) {
-        const [city, state] = locationText.split(',').map(s => s.trim());
-        if (clickedElement.closest('.adventure-card-location')) {
-          fieldName = 'Location';
-          fieldValue = locationText;
-          filterField = 'location';
-        }
-      }
-    } else if (clickedElement.closest('.tag-pill')) {
-      fieldName = 'Tag';
-      fieldValue = clickedElement.closest('.tag-pill')?.getAttribute('data-tag');
-      filterField = 'tag';
-    } else if (clickedElement.closest('.card-info-row')) {
-      const row = clickedElement.closest('.card-info-row');
-      const icon = row?.querySelector('.card-info-icon')?.textContent?.trim();
-      const value = row?.textContent?.replace(icon, '')?.trim();
-
-      if (icon === '📍') {
-        fieldName = 'Address';
-        fieldValue = value;
-        filterField = 'address';
-      } else if (icon === '💬') {
-        fieldName = 'Difficulty';
-        fieldValue = value;
-        filterField = 'difficulty';
-      } else if (icon === '🕐') {
-        fieldName = 'Hours';
-        fieldValue = value;
-        filterField = 'hours';
-      } else if (icon === '💰') {
-        fieldName = 'Cost';
-        fieldValue = value;
-        filterField = 'cost';
-      } else if (icon === '☎️') {
-        fieldName = 'Phone';
-        fieldValue = value;
-        filterField = 'phone';
-      }
-    }
-
-    if (!fieldValue || !filterField) {
-      // Generic right-click - show general options
-      showGeneralContextMenu(e, card);
-      return;
-    }
-
-    // Build and show context menu
-    const menu = document.createElement('div');
-    menu.id = 'contextMenu';
-    menu.className = 'visible';
-    menu.style.position = 'fixed';
-    menu.style.top = e.clientY + 'px';
-    menu.style.left = e.clientX + 'px';
-    menu.style.zIndex = '99999';
-
-    menu.innerHTML = `
-      <div class="context-menu-header">
-        <strong>${fieldName}</strong>: ${fieldValue}
-      </div>
-      <div class="context-menu-item" onclick="addToContextFilter('${filterField}', '${fieldValue.replace(/'/g, "\\'")}', 'contains')">
-        <span class="context-menu-icon">✓</span> Contains "${fieldValue}"
-      </div>
-      <div class="context-menu-item" onclick="addToContextFilter('${filterField}', '${fieldValue.replace(/'/g, "\\'")}', 'notcontains')">
-        <span class="context-menu-icon">✗</span> Does NOT Contain "${fieldValue}"
-      </div>
-      <div class="context-menu-item" onclick="addToContextFilter('${filterField}', '${fieldValue.replace(/'/g, "\\'")}', 'equals')">
-        <span class="context-menu-icon">⭐</span> Equals "${fieldValue}"
-      </div>
-      <div class="context-menu-item" onclick="removeFromContextFilter('${filterField}', '${fieldValue.replace(/'/g, "\\'")}')">
-        <span class="context-menu-icon">−</span> Remove "${fieldValue}" from Filter
-      </div>
-      <div class="context-menu-item danger" onclick="clearAllContextFilters()">
-        <span class="context-menu-icon">⚠️</span> Clear All Filters
-      </div>
-    `;
-
-    // Remove old menu if exists
-    document.getElementById('contextMenu')?.remove();
-    document.body.appendChild(menu);
-
-    // Close menu on click elsewhere
-    setTimeout(() => {
-      document.addEventListener('click', closeContextMenu, { once: true });
-      document.addEventListener('contextmenu', closeContextMenu, { once: true });
-    }, 100);
-  }
-
-  function showGeneralContextMenu(e, card) {
-    const menu = document.createElement('div');
-    menu.id = 'contextMenu';
-    menu.className = 'visible';
-    menu.style.position = 'fixed';
-    menu.style.top = e.clientY + 'px';
-    menu.style.left = e.clientX + 'px';
-    menu.style.zIndex = '99999';
-
-    menu.innerHTML = `
-      <div class="context-menu-header">
-        Card Options
-      </div>
-      <div class="context-menu-item" onclick="applyFiltersNow()">
-        <span class="context-menu-icon">🔍</span> Apply Current Filters
-      </div>
-      <div class="context-menu-item" onclick="clearAllContextFilters()">
-        <span class="context-menu-icon">⚠️</span> Clear All Filters
-      </div>
-    `;
-
-    // Remove old menu if exists
-    document.getElementById('contextMenu')?.remove();
-    document.body.appendChild(menu);
-
-    // Close menu on click elsewhere
-    setTimeout(() => {
-      document.addEventListener('click', closeContextMenu, { once: true });
-      document.addEventListener('contextmenu', closeContextMenu, { once: true });
-    }, 100);
-  }
-
-  function closeContextMenu() {
-    const menu = document.getElementById('contextMenu');
+  // Legacy card context-menu renderers removed; hotfix now owns card menus.
+  function closeCardContextMenu() {
+    const menu = document.getElementById('cardContextMenu');
     if (menu) menu.remove();
   }
 
   function addToContextFilter(field, value, operator) {
-    closeContextMenu();
+    closeCardContextMenu();
 
     // Add to context filters
     filterState.contextFilters = filterState.contextFilters || [];
