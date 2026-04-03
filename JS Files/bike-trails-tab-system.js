@@ -245,6 +245,84 @@
       .replace(/\s+/g, ' ');
   }
 
+  function uniqueTagsCaseInsensitive(tags) {
+    const seen = new Set();
+    const out = [];
+    (Array.isArray(tags) ? tags : []).forEach((tag) => {
+      const value = String(tag || '').trim();
+      const key = value.toLowerCase();
+      if (!value || seen.has(key)) return;
+      seen.add(key);
+      out.push(value);
+    });
+    return out;
+  }
+
+  function getBikeTagKey(trail) {
+    const placeId = String(trail?.googlePlaceId || '').trim();
+    if (placeId) return placeId;
+    const fallbackId = String(trail?.id || trail?.sourceIndex || '').trim();
+    return `bike:${fallbackId || 'unknown'}`;
+  }
+
+  function getBikeManagedTags(trail) {
+    const key = getBikeTagKey(trail);
+    if (!key || !window.tagManager || typeof window.tagManager.getTagsForPlace !== 'function') return [];
+    return uniqueTagsCaseInsensitive(window.tagManager.getTagsForPlace(key) || []);
+  }
+
+  function getBikeBaseTags(trail) {
+    const moodTags = String(trail?.moodTags || '')
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return uniqueTagsCaseInsensitive([trail?.surface, trail?.difficulty, ...moodTags]);
+  }
+
+  function getBikeDisplayTags(trail) {
+    return uniqueTagsCaseInsensitive([...getBikeBaseTags(trail), ...getBikeManagedTags(trail)]);
+  }
+
+  window.getBikeTagKey = getBikeTagKey;
+
+  window.openBikeTrailTagManager = function(event, sourceIndex) {
+    if (event && typeof event.stopPropagation === 'function') {
+      event.stopPropagation();
+      if (typeof event.preventDefault === 'function') event.preventDefault();
+    }
+
+    const row = (window.bikeTrailsData || [])[sourceIndex];
+    const trail = trailModel(row, sourceIndex);
+    if (!trail) {
+      window.showToast?.('Trail data not available', 'warning', 2000);
+      return false;
+    }
+
+    if (!window.cleanTagManager || typeof window.cleanTagManager.openModal !== 'function') {
+      window.showToast?.('Tag manager is not available yet', 'warning', 2500);
+      return false;
+    }
+
+    const placeId = getBikeTagKey(trail);
+    window.cleanTagManager.openModal(placeId, `${trail.name || 'Bike Trail'} (Bike Trail)`, {
+      domain: 'bike',
+      getExcelTags: () => getBikeBaseTags(trail),
+      getContextualTags: () => getBikeManagedTags(trail),
+      onSave: () => {
+        applyBikeFilters();
+        const modal = document.getElementById('bikeTrailDetailModal');
+        if (modal && modal.style.display === 'flex') {
+          const modalSourceIndex = Number(modal.dataset.sourceIndex);
+          if (modalSourceIndex === sourceIndex) {
+            renderBikeModalActionBar(modal, trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex), sourceIndex);
+          }
+        }
+      }
+    });
+
+    return false;
+  };
+
   function getExpectedColumnVariants(fieldName) {
     return [fieldName, ...(BIKE_COLUMN_ALIASES[fieldName] || [])];
   }
@@ -1054,7 +1132,7 @@
       grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:40px;color:#9ca3af;">No bike trails match your current filters.</div>';
     } else {
       grid.innerHTML = pageItems.map((trail) => {
-        const tags = [trail.surface, trail.difficulty].filter(Boolean);
+        const tags = getBikeDisplayTags(trail);
         const tagPills = tags.map((t) => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('');
         const favIcon = trail.isFavorite ? '💖' : '🤍';
         const rating = Math.max(0, Math.min(5, Number(trail.myRating || 0)));
@@ -1065,6 +1143,7 @@
                data-card-domain="bike"
                data-bike-source-index="${trail.sourceIndex}"
                data-bike-trail-id="${escapeHtml(trail.id)}"
+               data-bike-tag-key="${escapeHtml(getBikeTagKey(trail))}"
                style="cursor:pointer;"
                onclick="window.openBikeTrailDetailsInNewTab(${trail.sourceIndex})"
                title="Click to open details in new tab">
@@ -1084,8 +1163,9 @@
                 <div class="card-info-item">Rating: <strong>${ratingText}</strong></div>
               </div>
             </div>
-            <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
-              <div style="font-size: 12px; color: #64748b;">Click anywhere on this card to open details</div>
+            <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
+              <button type="button" class="row-detail-footer-btn" onclick="return window.openBikeTrailTagManager(event, ${trail.sourceIndex})">🏷️ Manage Tags</button>
             </div>
           </div>`;
       }).join('');
@@ -1151,8 +1231,10 @@
 
     const rating = Math.max(0, Math.min(5, Number(trail.myRating || 0)));
     const mapsUrl = getPreferredTrailMapUrl(trail);
+    const managedTagCount = getBikeManagedTags(trail).length;
 
     actionBar.innerHTML = `
+      <button type="button" id="bikeTrailModalManageTagsBtn" class="row-detail-footer-btn">${managedTagCount > 0 ? `🏷️ Tags (${managedTagCount})` : '🏷️ Add Tags'}</button>
       <button type="button" id="bikeTrailModalMapsBtn" class="row-detail-footer-btn" ${mapsUrl ? '' : 'disabled'}>🗺️ Open Maps</button>
       <button type="button" id="bikeTrailModalParkingBtn" class="row-detail-footer-btn" ${trail.parkingLink ? '' : 'disabled'}>🅿️ Parking Map</button>
       <button type="button" id="bikeTrailModalFavoriteBtn" class="row-detail-footer-btn">${trail.isFavorite ? '💖 Favorite' : '🤍 Favorite'}</button>
@@ -1160,6 +1242,11 @@
         ${[1,2,3,4,5].map((s) => `<button type="button" class="row-detail-footer-btn bike-modal-rating-btn" data-rating="${s}" title="Rate ${s} stars" style="padding:6px 8px;">${rating >= s ? '⭐' : '☆'}</button>`).join('')}
       </div>
     `;
+
+    const manageTagsBtn = actionBar.querySelector('#bikeTrailModalManageTagsBtn');
+    if (manageTagsBtn) manageTagsBtn.onclick = () => {
+      window.openBikeTrailTagManager(null, sourceIndex);
+    };
 
     const mapsBtn = actionBar.querySelector('#bikeTrailModalMapsBtn');
     if (mapsBtn) mapsBtn.onclick = () => {

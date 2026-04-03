@@ -256,9 +256,28 @@
       .filter(Boolean);
   }
 
+  function normalizeHookTags(value) {
+    if (Array.isArray(value)) return value;
+    return parseExcelTags(value);
+  }
+
+  function getModalHook(hookName) {
+    const hook = window.cleanTagManager?.contextOptions?.[hookName];
+    return typeof hook === 'function' ? hook : null;
+  }
+
   function getExcelTagsForPlace(placeId) {
     const id = String(placeId || '').trim();
     if (!id) return [];
+
+    const contextualHook = getModalHook('getExcelTags');
+    if (contextualHook) {
+      try {
+        return normalizeHookTags(contextualHook(id));
+      } catch (error) {
+        console.warn('[clean-tag-manager] getExcelTags hook failed:', error);
+      }
+    }
 
     const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
     const normalizedId = id.toLowerCase();
@@ -273,6 +292,15 @@
 
   function getContextualExcelTags(placeId) {
     const normalizedId = String(placeId || '').trim().toLowerCase();
+
+    const contextualHook = getModalHook('getContextualTags');
+    if (contextualHook) {
+      try {
+        return normalizeHookTags(contextualHook(normalizedId));
+      } catch (error) {
+        console.warn('[clean-tag-manager] getContextualTags hook failed:', error);
+      }
+    }
 
     // Prefer currently edited row if it matches the active Place ID.
     const currentRowTags = window.currentEditingRow?.values?.[0]?.[3];
@@ -391,6 +419,7 @@
   window.cleanTagManager = {
     currentPlaceId: null,
     currentTags: [],
+    contextOptions: null,
 
     init() {
       ensureStyles();
@@ -419,9 +448,10 @@
       });
     },
 
-    openModal(placeId, placeName) {
+    openModal(placeId, placeName, contextOptions = null) {
       hideLegacyTagModal();
       this.currentPlaceId = String(placeId || '').trim();
+      this.contextOptions = contextOptions && typeof contextOptions === 'object' ? contextOptions : null;
       if (!this.currentPlaceId) {
         if (typeof window.showToast === 'function') {
           window.showToast('No Place ID found for this location', 'warning', 2500);
@@ -501,6 +531,18 @@
     },
 
     getRowForCurrentPlace() {
+      const rowHook = this.contextOptions && typeof this.contextOptions.getRow === 'function'
+        ? this.contextOptions.getRow
+        : null;
+      if (rowHook) {
+        try {
+          const hookRow = rowHook(this.currentPlaceId);
+          if (hookRow) return hookRow;
+        } catch (error) {
+          console.warn('[clean-tag-manager] getRow hook failed:', error);
+        }
+      }
+
       const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
       return rows.find((row) => {
         const values = row?.values?.[0] || [];
@@ -833,9 +875,27 @@
       }
       this.closeModal();
 
+      const onSaveHook = this.contextOptions && typeof this.contextOptions.onSave === 'function'
+        ? this.contextOptions.onSave
+        : null;
+      if (onSaveHook) {
+        try {
+          onSaveHook({
+            placeId: this.currentPlaceId,
+            tags: [...this.currentTags],
+            domain: this.contextOptions?.domain || 'default'
+          });
+        } catch (error) {
+          console.warn('[clean-tag-manager] onSave hook failed:', error);
+        }
+      }
+
       // Refresh visible cards to reflect new tags.
       if (typeof window.renderPaginatedCards === 'function') {
         window.renderPaginatedCards();
+      }
+      if (typeof window.renderBikeTrailsPage === 'function') {
+        window.renderBikeTrailsPage();
       }
     }
   };
@@ -860,10 +920,10 @@
 
   // Also ensure init on first openModal call
   const origOpenModal = window.cleanTagManager.openModal;
-  window.cleanTagManager.openModal = function(placeId, placeName) {
+  window.cleanTagManager.openModal = function(placeId, placeName, contextOptions) {
     if (!window.cleanTagManager._initialized) {
       ensureInit();
     }
-    return origOpenModal.call(this, placeId, placeName);
+    return origOpenModal.call(this, placeId, placeName, contextOptions);
   };
 })();
