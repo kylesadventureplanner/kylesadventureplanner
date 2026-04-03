@@ -263,6 +263,128 @@
     }
     .star-btn:hover { transform: scale(1.25); }
     .star-btn.lit { color: #f59e0b; }
+
+    /* Tag Management tab */
+    .tm-wrap {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .tm-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .tm-title {
+      margin: 0;
+      font-size: 17px;
+      color: #111827;
+    }
+    .tm-status {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .tm-input-row {
+      display: flex;
+      gap: 8px;
+      margin: 10px 0 12px;
+      flex-wrap: wrap;
+    }
+    .tm-input {
+      flex: 1;
+      min-width: 220px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 14px;
+    }
+    .tm-btn {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 9px 12px;
+      background: #fff;
+      color: #374151;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .tm-btn.primary {
+      background: #2563eb;
+      color: #fff;
+      border-color: #1d4ed8;
+    }
+    .tm-btn.danger {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fecaca;
+    }
+    .tm-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .tm-section-label {
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .tm-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 34px;
+    }
+    .tm-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      border: 1px solid #93c5fd;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+    .tm-remove-btn {
+      border: 0;
+      background: transparent;
+      color: #1e3a8a;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+      padding: 0;
+    }
+    .tm-suggestions {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tm-suggest-btn {
+      border: 1px solid #86efac;
+      background: #f0fdf4;
+      color: #166534;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tm-empty {
+      color: #6b7280;
+      font-style: italic;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -275,12 +397,14 @@
     <button class="tab-btn" data-tab="details" type="button">ℹ️ Details</button>
     <button class="tab-btn" data-tab="contact" type="button">📞 Contact</button>
     <button class="tab-btn" data-tab="additional" type="button">📌 Additional</button>
+    <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
   </div>
 
   <div id="pane-overview" class="tab-pane active"></div>
   <div id="pane-details" class="tab-pane"></div>
   <div id="pane-contact" class="tab-pane"></div>
   <div id="pane-additional" class="tab-pane"></div>
+  <div id="pane-tag-management" class="tab-pane"></div>
 
   <!-- Sticky action bar — always visible regardless of active tab -->
   <div class="action-bar" id="actionBar" style="display:none;">
@@ -310,6 +434,9 @@
 </div>
 
 <script>
+  var TAG_STORAGE_KEY = 'adventureFinderTags';
+  var STORAGE_PREFIX_ADV = 'adv_actionbar_';
+
   function getParams() {
     return new URLSearchParams(window.location.search || '');
   }
@@ -325,9 +452,7 @@
     closeBtn.addEventListener('click', function () {
       window.close();
       setTimeout(function () {
-        if (window.history.length > 1) {
-          window.history.back();
-        }
+        if (window.history.length > 1) window.history.back();
       }, 120);
     });
 
@@ -489,7 +614,6 @@
     var corrMatches = !urlCorrId || normalizeForCompare(urlCorrId) === normalizeForCompare(payloadCorrId);
     var allMatch = sourceMatches && nameMatches && placeMatches && corrMatches;
 
-    // Collapsed by default — click the toggle row to expand
     debugBar.className = 'debug-bar ' + (allMatch ? 'match' : 'mismatch');
     debugBar.style.display = 'block';
     debugBar.innerHTML =
@@ -532,6 +656,214 @@
     bindDebugCopyButton(payload);
   }
 
+  function escapeHtml(text) {
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function parseTagCsv(raw) {
+    return String(raw || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+  }
+
+  function uniqueTags(tags) {
+    var seen = {};
+    var out = [];
+    (tags || []).forEach(function (tag) {
+      var clean = String(tag || '').trim();
+      var key = clean.toLowerCase();
+      if (!clean || seen[key]) return;
+      seen[key] = true;
+      out.push(clean);
+    });
+    return out.sort(function (a, b) { return a.localeCompare(b); });
+  }
+
+  function getTagStorageMap() {
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(TAG_STORAGE_KEY) || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  function saveTagStorageMap(map) {
+    try {
+      window.localStorage.setItem(TAG_STORAGE_KEY, JSON.stringify(map || {}));
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function getTagPlaceKey(data) {
+    var placeId = data && data.googlePlaceId ? String(data.googlePlaceId).trim() : '';
+    if (placeId) return placeId;
+    return String((data && data.name) || '').trim();
+  }
+
+  function getStoredTagsForPlace(placeKey) {
+    if (!placeKey) return [];
+    var map = getTagStorageMap();
+    var val = map[placeKey];
+    return Array.isArray(val) ? uniqueTags(val) : [];
+  }
+
+  function setStoredTagsForPlace(placeKey, tags) {
+    if (!placeKey) return false;
+    var map = getTagStorageMap();
+    map[placeKey] = uniqueTags(tags || []);
+    return saveTagStorageMap(map);
+  }
+
+  function buildTagRecommendations(data, currentTags) {
+    var text = [data && data.name, data && data.description, data && data.city, data && data.address, data && data.notes, data && data.tags].join(' ').toLowerCase();
+    var recs = [];
+
+    function add(tag) {
+      if (recs.indexOf(tag) === -1 && currentTags.indexOf(tag) === -1) recs.push(tag);
+    }
+
+    if (/hike|trail|mountain|trek/.test(text)) { add('Hiking'); add('Outdoor'); add('Scenic'); }
+    if (/park|garden|arboretum/.test(text)) { add('Park'); add('Nature'); add('Family-Friendly'); }
+    if (/water|river|lake|falls|waterfall|beach/.test(text)) { add('Water Activity'); add('Nature'); add('Photography'); }
+    if (/museum|historic|history|landmark/.test(text)) { add('Historical'); add('Cultural'); }
+    if (/food|restaurant|cafe|coffee|bakery|brewery/.test(text)) { add('Dining'); add('Local Favorite'); }
+    if (/kids|family|playground|children/.test(text)) { add('Family-Friendly'); }
+
+    var rating = parseFloat(data && data.googleRating) || 0;
+    if (rating >= 4.7) add('Top Rated');
+    if (rating >= 4.3) add('Worth Visiting');
+
+    return recs.slice(0, 10);
+  }
+
+  function renderTagListHtml(tags) {
+    if (!tags || !tags.length) return '<span class="empty">No tags yet</span>';
+    return '<div class="tags">' + tags.map(function (tag) { return '<span class="tag">' + escapeHtml(tag) + '</span>'; }).join('') + '</div>';
+  }
+
+  function setTagStatus(message, isError) {
+    var status = document.getElementById('tmStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.style.color = isError ? '#b91c1c' : '#6b7280';
+  }
+
+  function syncTagManagementUi() {
+    var state = window.__detailTagState;
+    if (!state) return;
+
+    var currentWrap = document.getElementById('tmCurrentTags');
+    var suggestWrap = document.getElementById('tmSuggestions');
+    var datalist = document.getElementById('tmAllTagOptions');
+    if (!currentWrap || !suggestWrap || !datalist) return;
+
+    if (!state.tags.length) {
+      currentWrap.innerHTML = '<span class="tm-empty">No tags yet</span>';
+    } else {
+      currentWrap.innerHTML = state.tags.map(function (tag) {
+        return '<span class="tm-pill">' + escapeHtml(tag) + '<button type="button" class="tm-remove-btn" data-tag="' + escapeHtml(tag) + '">x</button></span>';
+      }).join('');
+    }
+
+    var allKnown = [];
+    var map = getTagStorageMap();
+    Object.keys(map).forEach(function (k) {
+      if (Array.isArray(map[k])) allKnown = allKnown.concat(map[k]);
+    });
+    allKnown = uniqueTags(allKnown.concat(state.sourceTags || [], ['Outdoor', 'Nature', 'Family-Friendly', 'Scenic', 'Worth Visiting', 'Top Rated', 'Adventure', 'Local Favorite']));
+
+    datalist.innerHTML = allKnown
+      .filter(function (tag) { return state.tags.indexOf(tag) === -1; })
+      .map(function (tag) { return '<option value="' + escapeHtml(tag) + '"></option>'; })
+      .join('');
+
+    var suggestions = buildTagRecommendations(state.data || {}, state.tags || []);
+    suggestWrap.innerHTML = suggestions.length
+      ? suggestions.map(function (tag) { return '<button type="button" class="tm-suggest-btn" data-tag="' + escapeHtml(tag) + '">+' + escapeHtml(tag) + '</button>'; }).join('')
+      : '<span class="tm-empty">No new suggestions right now</span>';
+  }
+
+  function addTagToDetailState(raw) {
+    var state = window.__detailTagState;
+    if (!state) return;
+    var clean = String(raw || '').trim();
+    if (!clean || state.tags.indexOf(clean) !== -1) return;
+    state.tags.push(clean);
+    state.tags = uniqueTags(state.tags);
+    syncTagManagementUi();
+  }
+
+  function removeTagFromDetailState(tag) {
+    var state = window.__detailTagState;
+    if (!state) return;
+    state.tags = state.tags.filter(function (t) { return t !== tag; });
+    syncTagManagementUi();
+  }
+
+  function updateOverviewTagsCard(tags) {
+    var wrap = document.getElementById('overviewTagsValue');
+    if (!wrap) return;
+    wrap.innerHTML = renderTagListHtml(uniqueTags(tags || []));
+  }
+
+  function saveDetailTags() {
+    var state = window.__detailTagState;
+    if (!state || !state.placeKey) {
+      setTagStatus('Cannot save tags: missing Place ID/name key.', true);
+      return;
+    }
+
+    if (!setStoredTagsForPlace(state.placeKey, state.tags)) {
+      setTagStatus('Failed to save tags (storage unavailable).', true);
+      return;
+    }
+
+    updateOverviewTagsCard(state.tags);
+    setTagStatus('Tags saved for this location.', false);
+  }
+
+  function renderTagManagementPane(data, sourceTags, storedTags) {
+    var pane = document.getElementById('pane-tag-management');
+    if (!pane) return;
+
+    window.__detailTagState = {
+      placeKey: getTagPlaceKey(data),
+      sourceTags: uniqueTags(sourceTags || []),
+      tags: uniqueTags([].concat(sourceTags || [], storedTags || [])),
+      data: data || {}
+    };
+
+    pane.innerHTML =
+      '<div class="tm-wrap">' +
+      '<div class="tm-head">' +
+      '<h3 class="tm-title">Tag Management</h3>' +
+      '<div id="tmStatus" class="tm-status">Manage and save tags for this location</div>' +
+      '</div>' +
+      '<div class="tm-section-label">Current Tags</div>' +
+      '<div id="tmCurrentTags" class="tm-pills"></div>' +
+      '<div class="tm-input-row">' +
+      '<input id="tmInput" class="tm-input" type="text" list="tmAllTagOptions" placeholder="Add a tag and press Enter" autocomplete="off" />' +
+      '<datalist id="tmAllTagOptions"></datalist>' +
+      '<button id="tmAddBtn" type="button" class="tm-btn primary">Add Tag</button>' +
+      '</div>' +
+      '<div class="tm-section-label">Suggested Tags</div>' +
+      '<div id="tmSuggestions" class="tm-suggestions"></div>' +
+      '<div class="tm-actions">' +
+      '<button id="tmSaveBtn" type="button" class="tm-btn primary">Save Tags</button>' +
+      '<button id="tmResetBtn" type="button" class="tm-btn">Reset to Source Tags</button>' +
+      '<button id="tmClearBtn" type="button" class="tm-btn danger">Clear All</button>' +
+      '</div>' +
+      '</div>';
+
+    syncTagManagementUi();
+  }
+
   function render(payload) {
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
@@ -549,13 +881,12 @@
       payloadCorrId: payload && payload.correlationId ? String(payload.correlationId) : '(empty)'
     });
 
-    if (payload && payload.correlationId) {
-      console.log('🔗 Detail corrId=' + String(payload.correlationId));
-    }
+    if (payload && payload.correlationId) console.log('🔗 Detail corrId=' + String(payload.correlationId));
 
-    var tagList = String(data.tags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+    var sourceTagList = parseTagCsv(data.tags);
+    var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data));
+    var tagList = uniqueTags([].concat(sourceTagList, storedTagList));
 
-    // Build directions URL: prefer stored directions link, fall back to Google Maps search by address
     var directionsUrl = data.directions || '';
     if (!directionsUrl && data.address) {
       directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(data.address);
@@ -586,7 +917,7 @@
       card('Drive Time', data.driveTime) +
       '</div>' +
       card('Description', data.description) +
-      card('Tags', tagList.length ? '<div class="tags">' + tagList.map(function (tag) { return '<span class="tag">' + tag + '</span>'; }).join('') + '</div>' : '');
+      card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div>');
 
     document.getElementById('pane-details').innerHTML =
       '<div class="grid">' +
@@ -612,13 +943,11 @@
     document.getElementById('pane-additional').innerHTML =
       card('Nearby Attractions', data.nearby) +
       card('Notes', data.notes);
+
+    renderTagManagementPane(data, sourceTagList, storedTagList);
   }
 
-  // ── Action Bar ──────────────────────────────────────────────
-  var STORAGE_PREFIX_ADV = 'adv_actionbar_';
-
   function getLocationKey(data) {
-    // Use googlePlaceId first; fall back to a slugified name
     if (data.googlePlaceId) return 'place_' + data.googlePlaceId;
     return 'name_' + String(data.name || '').toLowerCase().replace(/\W+/g, '_');
   }
@@ -646,7 +975,6 @@
     var locationKey = getLocationKey(data);
     var state = loadActionBarState(locationKey);
 
-    // ── Favorite button ──
     var favBtn = document.getElementById('abFavBtn');
     var favIcon = document.getElementById('abFavIcon');
     var favText = document.getElementById('abFavText');
@@ -672,7 +1000,6 @@
       console.log('❤️ Favorite toggled:', state.favorite, 'for', data.name);
     });
 
-    // ── Star rating ──
     var currentRating = state.myRating || 0;
     renderStars(currentRating);
 
@@ -685,7 +1012,6 @@
       });
       btn.addEventListener('click', function () {
         var clicked = parseInt(btn.getAttribute('data-star'), 10);
-        // Click same star again → clear rating
         currentRating = (currentRating === clicked) ? 0 : clicked;
         renderStars(currentRating);
         state.myRating = currentRating;
@@ -694,18 +1020,15 @@
       });
     });
 
-    // ── Open Maps ──
     var mapsBtn = document.getElementById('abMapsBtn');
     if (directionsUrl) {
       mapsBtn.setAttribute('href', directionsUrl);
       mapsBtn.style.display = 'inline-flex';
     }
 
-    // ── Parking Map ── (Adventure data uses data.parkingLink if available, or notes)
     var parkingBtn = document.getElementById('abParkingBtn');
     var parkingUrl = data.parkingLink || '';
     if (!parkingUrl && data.address) {
-      // Fall back to a Google Maps parking search near the address
       parkingUrl = 'https://www.google.com/maps/search/parking+near+' + encodeURIComponent(data.address);
     }
     if (parkingUrl) {
@@ -713,7 +1036,6 @@
       parkingBtn.style.display = 'inline-flex';
     }
   }
-  // ── End Action Bar ───────────────────────────────────────────
 
   function bindTabs() {
     var tabs = document.querySelectorAll('.tab-btn');
@@ -732,20 +1054,69 @@
   (function init() {
     bindTabs();
 
-    // Delegated handler for address copy buttons injected into card HTML
     document.addEventListener('click', function (e) {
-      var btn = e.target && e.target.closest ? e.target.closest('.addr-copy-btn') : null;
-      if (!btn) return;
-      var text = btn.getAttribute('data-copy') || '';
-      if (!text) return;
-      copyDebugBundle(text).then(function () {
-        var orig = btn.textContent;
-        btn.textContent = '✓ Copied';
-        btn.classList.add('copied');
-        setTimeout(function () { btn.textContent = orig; btn.classList.remove('copied'); }, 1400);
-      }).catch(function () {
-        window.prompt('Copy address:', text);
-      });
+      var addrBtn = e.target && e.target.closest ? e.target.closest('.addr-copy-btn') : null;
+      if (addrBtn) {
+        var text = addrBtn.getAttribute('data-copy') || '';
+        if (!text) return;
+        copyDebugBundle(text).then(function () {
+          var orig = addrBtn.textContent;
+          addrBtn.textContent = '✓ Copied';
+          addrBtn.classList.add('copied');
+          setTimeout(function () { addrBtn.textContent = orig; addrBtn.classList.remove('copied'); }, 1400);
+        }).catch(function () {
+          window.prompt('Copy address:', text);
+        });
+        return;
+      }
+
+      var removeBtn = e.target && e.target.closest ? e.target.closest('.tm-remove-btn') : null;
+      if (removeBtn) {
+        removeTagFromDetailState(removeBtn.getAttribute('data-tag') || '');
+        return;
+      }
+
+      var suggestBtn = e.target && e.target.closest ? e.target.closest('.tm-suggest-btn') : null;
+      if (suggestBtn) {
+        addTagToDetailState(suggestBtn.getAttribute('data-tag') || '');
+        return;
+      }
+
+      if (e.target && e.target.id === 'tmAddBtn') {
+        var input = document.getElementById('tmInput');
+        addTagToDetailState(input ? input.value : '');
+        if (input) input.value = '';
+        return;
+      }
+
+      if (e.target && e.target.id === 'tmSaveBtn') {
+        saveDetailTags();
+        return;
+      }
+
+      if (e.target && e.target.id === 'tmClearBtn') {
+        if (window.__detailTagState) {
+          window.__detailTagState.tags = [];
+          syncTagManagementUi();
+          setTagStatus('Cleared tags. Click Save Tags to persist.', false);
+        }
+        return;
+      }
+
+      if (e.target && e.target.id === 'tmResetBtn' && window.__detailTagState) {
+        window.__detailTagState.tags = uniqueTags(window.__detailTagState.sourceTags || []);
+        syncTagManagementUi();
+        setTagStatus('Reset to source tags. Click Save Tags to persist.', false);
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var active = document.activeElement;
+      if (!active || active.id !== 'tmInput') return;
+      e.preventDefault();
+      addTagToDetailState(active.value);
+      active.value = '';
     });
 
     var params = getParams();
@@ -775,4 +1146,3 @@
 </script>
 </body>
 </html>
-
