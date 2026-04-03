@@ -11473,12 +11473,14 @@
       // Get state color
       const stateUpper = (state || "").trim().toUpperCase();
 
-      const khFeedbackHtml = window.renderKhFeedbackBlock({
-        ratingValue: currentRating,
-        favoriteValue: favoriteStatus,
-        visitedValue: values[24],
-        notesValue: notes
-      });
+      const khFeedbackHtml = typeof window.renderKhFeedbackBlock === 'function'
+        ? window.renderKhFeedbackBlock({
+            ratingValue: currentRating,
+            favoriteValue: favoriteStatus,
+            visitedValue: values[24],
+            notesValue: notes
+          })
+        : '';
 
       // Parse tags - NOW INTEGRATED WITH TAG MANAGER
       const tagList = getTagsForPlace(googlePlaceId, tags);
