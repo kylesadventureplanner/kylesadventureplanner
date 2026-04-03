@@ -596,7 +596,8 @@
     const tagCounts = new Map();
 
     trails.forEach((trail) => {
-      getBikeManagedTags(trail).forEach((tag) => {
+      // Include all display tags: base tags (surface, difficulty, mood) + managed tags
+      getBikeDisplayTags(trail).forEach((tag) => {
         const label = String(tag || '').trim();
         if (!label) return;
         const key = label.toLowerCase();
@@ -1952,9 +1953,9 @@
       if (state.filters.cost && !norm(trail.cost).includes(norm(state.filters.cost))) return false;
       if (state.filters.hours && !norm(trail.hours).includes(norm(state.filters.hours))) return false;
       if (state.filters.tag) {
-        const managed = getBikeManagedTags(trail).map(norm);
+        const allTags = getBikeDisplayTags(trail).map(norm);
         const needle = norm(state.filters.tag);
-        if (!managed.some((tag) => tag.includes(needle))) return false;
+        if (!allTags.some((tag) => tag.includes(needle))) return false;
       }
       if (!inBandLength(trail.lengthMiles, state.filters.lengthBand)) return false;
       if (!inBandDrive(trail.driveMinutes, state.filters.driveTimeBand)) return false;
