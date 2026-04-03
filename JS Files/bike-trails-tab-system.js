@@ -384,6 +384,70 @@
     line.style.color = palette.color;
     line.style.fontSize = '12px';
     line.style.fontWeight = '600';
+
+    renderBikePreferenceFallbackBanner();
+  }
+
+  function getBikePreferenceFallbackState() {
+    const ratingCol = getBikeWritableColumnIndex(BIKE_PREFERENCE_COLUMNS.rating);
+    const favoriteCol = getBikeWritableColumnIndex(BIKE_PREFERENCE_COLUMNS.favorite);
+    const missingColumns = [];
+    if (ratingCol < 0) missingColumns.push(BIKE_PREFERENCE_COLUMNS.rating);
+    if (favoriteCol < 0) missingColumns.push(BIKE_PREFERENCE_COLUMNS.favorite);
+
+    const missingAuth = !window.accessToken;
+    const needsFallback = missingAuth || missingColumns.length > 0;
+
+    if (!needsFallback) return { needsFallback: false, message: '' };
+
+    if (missingAuth && missingColumns.length) {
+      return {
+        needsFallback: true,
+        message: `Preferences are using local fallback (not signed in + missing mapped columns: ${missingColumns.join(', ')}).`
+      };
+    }
+
+    if (missingAuth) {
+      return {
+        needsFallback: true,
+        message: 'Preferences are using local fallback until you sign in to Excel.'
+      };
+    }
+
+    return {
+      needsFallback: true,
+      message: `Preferences are using local fallback (missing mapped columns: ${missingColumns.join(', ')}).`
+    };
+  }
+
+  function renderBikePreferenceFallbackBanner() {
+    const statusLine = document.getElementById('bikeMetadataStatusLine');
+    if (!statusLine || !statusLine.parentElement) return;
+
+    const host = statusLine.parentElement;
+    let banner = document.getElementById('bikePreferenceFallbackBanner');
+    const fallback = getBikePreferenceFallbackState();
+
+    if (!fallback.needsFallback) {
+      if (banner) banner.remove();
+      return;
+    }
+
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'bikePreferenceFallbackBanner';
+      banner.style.marginTop = '8px';
+      banner.style.fontSize = '12px';
+      banner.style.lineHeight = '1.45';
+      banner.style.padding = '8px 10px';
+      banner.style.borderRadius = '8px';
+      banner.style.border = '1px solid #fcd34d';
+      banner.style.background = '#fffbeb';
+      banner.style.color = '#92400e';
+      host.appendChild(banner);
+    }
+
+    banner.textContent = `⚠️ ${fallback.message}`;
   }
 
   function updateBikeDebugDetailsLine(options = {}) {
@@ -830,6 +894,7 @@
         text: 'Sign in to load Bike Trail data',
         detail: BIKE_FILE_NAME
       });
+      renderBikePreferenceFallbackBanner();
       return false;
     }
 
@@ -848,6 +913,7 @@
         text: 'Bike Trail Excel file/table not found',
         detail: msg
       });
+      renderBikePreferenceFallbackBanner();
       return false;
     }
 
@@ -881,6 +947,7 @@
         text: `${rows.length} bike trails loaded`,
         detail: `${filePath} / ${tableRef}`
       });
+      renderBikePreferenceFallbackBanner();
 
       return true;
     } catch (err) {
@@ -889,6 +956,7 @@
         text: 'Failed to load Bike Trail data',
         detail: err.message
       });
+      renderBikePreferenceFallbackBanner();
       return false;
     }
   }
@@ -2035,6 +2103,7 @@
     renderBikeManagedTagQuickChips();
     renderBikeBreadcrumbChips();
     updateBikeFiltersBadge();
+    renderBikePreferenceFallbackBanner();
 
     if (window.accessToken && (!window.bikeTrailsData || !window.bikeTrailsData.length)) {
       loadBikeData();
