@@ -425,6 +425,47 @@
       border-color: #93c5fd;
       color: #1e3a8a;
     }
+
+    .tm-debug {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: #f9fafb;
+    }
+    .tm-debug-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .tm-debug-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #374151;
+      text-transform: uppercase;
+    }
+    .tm-debug-copy {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 5px 8px;
+      background: #fff;
+      color: #374151;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tm-debug-copy:hover { background: #f3f4f6; }
+    .tm-debug-pre {
+      margin: 0;
+      white-space: pre-wrap;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #374151;
+      max-height: 220px;
+      overflow: auto;
+    }
   </style>
 </head>
 <body>
@@ -478,6 +519,66 @@
   var TAG_MIGRATION_MARKER_PREFIX = 'adventureFinderTagsMigrated_';
   var STORAGE_PREFIX_ADV = 'adv_actionbar_';
   var DETAIL_TAGS_COLUMN_INDEX = 3;
+
+  function toIsoNow() {
+    try { return new Date().toISOString(); } catch (_err) { return String(Date.now()); }
+  }
+
+  function createTagSaveDebugSeed(state) {
+    return {
+      runId: 'tagsave_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      createdAt: toIsoNow(),
+      placeKey: state && state.placeKey ? state.placeKey : '(empty)',
+      sourceIndex: state && state.sourceIndex != null ? state.sourceIndex : '(empty)',
+      name: state && state.data ? String(state.data.name || '') : '',
+      placeId: state && state.data ? String(state.data.googlePlaceId || '') : '',
+      steps: [],
+      finalStatus: 'pending'
+    };
+  }
+
+  function pushTagSaveDebug(debug, step, detail) {
+    if (!debug) return;
+    debug.steps.push({ at: toIsoNow(), step: step, detail: detail || {} });
+  }
+
+  function formatTagSaveDebug(debug) {
+    if (!debug) return 'No debug trace captured yet.';
+    var lines = [];
+    lines.push('Run: ' + (debug.runId || '(unknown)'));
+    lines.push('Created: ' + (debug.createdAt || '(unknown)'));
+    lines.push('Final: ' + (debug.finalStatus || '(unknown)'));
+    lines.push('PlaceKey: ' + (debug.placeKey || '(empty)'));
+    lines.push('SourceIndex: ' + String(debug.sourceIndex));
+    lines.push('Name: ' + (debug.name || '(empty)'));
+    lines.push('PlaceId: ' + (debug.placeId || '(empty)'));
+    lines.push('');
+    lines.push('Steps:');
+    (debug.steps || []).forEach(function (entry, idx) {
+      lines.push((idx + 1) + '. [' + (entry.at || '?') + '] ' + entry.step + ' ' + JSON.stringify(entry.detail || {}));
+    });
+    return lines.join('\n');
+  }
+
+  function refreshTagSaveDebugUi(debug) {
+    window.__lastTagSaveDebug = debug || window.__lastTagSaveDebug || null;
+    var pre = document.getElementById('tmDebugPre');
+    if (!pre) return;
+    pre.textContent = formatTagSaveDebug(window.__lastTagSaveDebug);
+  }
+
+  function copyLastTagSaveDebug() {
+    var text = formatTagSaveDebug(window.__lastTagSaveDebug);
+    return copyDebugBundle(text);
+  }
+
+  function getLastTagSaveDebugJson() {
+    try {
+      return JSON.stringify(window.__lastTagSaveDebug || {}, null, 2);
+    } catch (_err) {
+      return '{}';
+    }
+  }
 
   function getParams() {
     return new URLSearchParams(window.location.search || '');
@@ -1049,7 +1150,7 @@
 
     var sourceIndex = state && Number.isInteger(state.sourceIndex) ? state.sourceIndex : Number(state && state.sourceIndex);
     if (Number.isInteger(sourceIndex) && sourceIndex >= 0 && openerWin.adventuresData[sourceIndex]) {
-      return { row: openerWin.adventuresData[sourceIndex], index: sourceIndex };
+      return { row: openerWin.adventuresData[sourceIndex], index: sourceIndex, matchType: 'sourceIndex' };
     }
 
     var data = state && state.data ? state.data : {};
@@ -1065,25 +1166,39 @@
 
       var rowPlaceId = normalizeTextKey(values[1]);
       if (placeIdNeedle && rowPlaceId && rowPlaceId === placeIdNeedle) {
-        return { row: row, index: i };
+        return { row: row, index: i, matchType: 'placeId' };
       }
 
       var rowName = normalizeTextKey(values[0]);
       var rowCity = normalizeTextKey(values[10]);
       var rowState = normalizeTextKey(values[9]);
       if (nameNeedle && rowName === nameNeedle && rowCity === cityNeedle && rowState === stateNeedle) {
-        return { row: row, index: i };
+        return { row: row, index: i, matchType: 'nameCityState' };
       }
     }
 
     return null;
   }
 
-  async function syncTagsToOpenerAndSpreadsheet(state) {
+  async function syncTagsToOpenerAndSpreadsheet(state, debug) {
     var openerWin = getOpenerWindow();
+    pushTagSaveDebug(debug, 'opener_check', {
+      hasOpener: !!openerWin,
+      hasAdventuresData: !!(openerWin && Array.isArray(openerWin.adventuresData)),
+      adventuresDataLength: openerWin && Array.isArray(openerWin.adventuresData) ? openerWin.adventuresData.length : 0,
+      hasSaveToExcel: !!(openerWin && typeof openerWin.saveToExcel === 'function')
+    });
+
     if (!openerWin) return { syncedRow: false, excelSaved: false, reason: 'no-opener' };
 
     var rowMatch = findOpenerRowForTagSync(openerWin, state);
+    pushTagSaveDebug(debug, 'row_match', {
+      found: !!rowMatch,
+      matchType: rowMatch ? rowMatch.matchType : 'none',
+      rowIndex: rowMatch ? rowMatch.index : -1,
+      hasRowId: !!(rowMatch && rowMatch.row && rowMatch.row.rowId)
+    });
+
     if (!rowMatch || !rowMatch.row || !Array.isArray(rowMatch.row.values) || !Array.isArray(rowMatch.row.values[0])) {
       return { syncedRow: false, excelSaved: false, reason: 'row-not-found' };
     }
@@ -1091,28 +1206,33 @@
     var values = rowMatch.row.values[0];
     var tagsCsv = uniqueTags(state.tags || []).join(', ');
     values[DETAIL_TAGS_COLUMN_INDEX] = tagsCsv;
+    pushTagSaveDebug(debug, 'planner_row_updated', {
+      rowIndex: rowMatch.index,
+      tagsCsvLength: tagsCsv.length,
+      tagsCount: uniqueTags(state.tags || []).length
+    });
 
     if (state && state.data) {
       state.data.tags = tagsCsv;
     }
 
-    // Keep known working-set pointers in sync in opener.
     if (openerWin.currentEditingRow && openerWin.currentEditingRow.values && openerWin.currentEditingRow.values[0]) {
       var currentEditingPlaceId = normalizeTextKey(openerWin.currentEditingRow.values[0][1]);
       var activePlaceId = normalizeTextKey(state && state.data && state.data.googlePlaceId);
       if (activePlaceId && currentEditingPlaceId === activePlaceId) {
         openerWin.currentEditingRow.values[0][DETAIL_TAGS_COLUMN_INDEX] = tagsCsv;
+        pushTagSaveDebug(debug, 'current_editing_row_updated', { matchedByPlaceId: true });
       }
     }
 
     if (typeof openerWin.renderPaginatedCards === 'function') {
-      try { openerWin.renderPaginatedCards(); } catch (_err) {}
+      try { openerWin.renderPaginatedCards(); pushTagSaveDebug(debug, 'render_paginated_cards', { ok: true }); } catch (errA) { pushTagSaveDebug(debug, 'render_paginated_cards', { ok: false, error: String(errA && errA.message || errA) }); }
     }
     if (typeof openerWin.renderAdventureCards === 'function') {
-      try { await openerWin.renderAdventureCards(); } catch (_err) {}
+      try { await openerWin.renderAdventureCards(); pushTagSaveDebug(debug, 'render_adventure_cards', { ok: true }); } catch (errB) { pushTagSaveDebug(debug, 'render_adventure_cards', { ok: false, error: String(errB && errB.message || errB) }); }
     }
     if (typeof openerWin.applyFilters === 'function') {
-      try { openerWin.applyFilters(); } catch (_err) {}
+      try { openerWin.applyFilters(); pushTagSaveDebug(debug, 'apply_filters', { ok: true }); } catch (errC) { pushTagSaveDebug(debug, 'apply_filters', { ok: false, error: String(errC && errC.message || errC) }); }
     }
 
     var excelSaved = false;
@@ -1120,19 +1240,28 @@
       if (typeof openerWin.saveToExcel === 'function') {
         if (rowMatch.row.rowId) {
           try {
+            pushTagSaveDebug(debug, 'excel_save_row_attempt', { rowId: String(rowMatch.row.rowId) });
             var rowResult = await openerWin.saveToExcel(rowMatch.row.rowId, values);
             excelSaved = rowResult !== false;
-          } catch (_firstErr) {
+            pushTagSaveDebug(debug, 'excel_save_row_result', { ok: excelSaved, rawResultType: typeof rowResult });
+          } catch (firstErr) {
+            pushTagSaveDebug(debug, 'excel_save_row_error', { error: String(firstErr && firstErr.message || firstErr) });
             var fullResult = await openerWin.saveToExcel();
             excelSaved = fullResult !== false;
+            pushTagSaveDebug(debug, 'excel_save_full_result', { ok: excelSaved, rawResultType: typeof fullResult });
           }
         } else {
+          pushTagSaveDebug(debug, 'excel_save_full_attempt', { reason: 'missing_row_id' });
           var fallbackResult = await openerWin.saveToExcel();
           excelSaved = fallbackResult !== false;
+          pushTagSaveDebug(debug, 'excel_save_full_result', { ok: excelSaved, rawResultType: typeof fallbackResult });
         }
+      } else {
+        pushTagSaveDebug(debug, 'excel_save_unavailable', { hasSaveToExcel: false });
       }
     } catch (excelErr) {
       console.warn('⚠️ Could not persist tags to Excel from details tab:', excelErr && excelErr.message ? excelErr.message : excelErr);
+      pushTagSaveDebug(debug, 'excel_save_exception', { error: String(excelErr && excelErr.message || excelErr) });
       excelSaved = false;
     }
 
@@ -1141,36 +1270,57 @@
 
   async function saveDetailTags() {
     var state = window.__detailTagState;
+    var debug = createTagSaveDebugSeed(state);
+    refreshTagSaveDebugUi(debug);
+    pushTagSaveDebug(debug, 'save_start', { tagCount: state && state.tags ? state.tags.length : 0 });
+
     if (!state || !state.placeKey) {
       setTagStatus('Cannot save tags: missing Place ID/name key.', true);
       showDetailToast('Cannot save tags: missing Place ID/name key.', 'error', 4200);
+      pushTagSaveDebug(debug, 'save_abort', { reason: 'missing_place_key' });
+      debug.finalStatus = 'failed';
+      refreshTagSaveDebugUi(debug);
       return;
     }
 
-    if (!setStoredTagsForPlace(state.placeKey, state.tags, state.data)) {
+    var localOk = setStoredTagsForPlace(state.placeKey, state.tags, state.data);
+    pushTagSaveDebug(debug, 'local_storage_save', { ok: !!localOk, storageKey: TAG_STORAGE_KEY, placeKey: state.placeKey });
+    if (!localOk) {
       setTagStatus('Failed to save tags (storage unavailable).', true);
       showDetailToast('Failed to save tags (storage unavailable).', 'error', 4200);
+      debug.finalStatus = 'failed';
+      refreshTagSaveDebugUi(debug);
       return;
     }
 
-    var syncResult = await syncTagsToOpenerAndSpreadsheet(state);
+    var syncResult = await syncTagsToOpenerAndSpreadsheet(state, debug);
+    pushTagSaveDebug(debug, 'sync_result', syncResult);
     updateOverviewTagsCard(state.tags);
 
     if (syncResult.syncedRow && syncResult.excelSaved) {
       setTagStatus('Tags saved for this location and synced to Excel.', false);
       showDetailToast('✅ Tags saved and synced to your Adventure Planner + Excel.', 'success', 4200);
+      debug.finalStatus = 'success_excel';
     } else if (syncResult.syncedRow) {
       setTagStatus('Tags saved locally and synced to planner view; Excel save hook unavailable.', false);
       showDetailToast('⚠️ Tags saved and synced to planner view, but Excel save hook was not confirmed.', 'info', 5000);
+      debug.finalStatus = 'success_planner_only';
     } else {
       setTagStatus('Tags saved locally for this location.', false);
       showDetailToast('⚠️ Tags saved locally, but opener planner sync was not available.', 'info', 5000);
+      debug.finalStatus = 'success_local_only';
     }
 
     var openerWin = getOpenerWindow();
     if (openerWin && typeof openerWin.showToast === 'function') {
       openerWin.showToast('🏷️ Tags updated for ' + (state.data && state.data.name ? state.data.name : 'location'), syncResult.excelSaved ? 'success' : 'warning', 3200);
+      pushTagSaveDebug(debug, 'opener_toast', { invoked: true, type: syncResult.excelSaved ? 'success' : 'warning' });
+    } else {
+      pushTagSaveDebug(debug, 'opener_toast', { invoked: false });
     }
+
+    refreshTagSaveDebugUi(debug);
+    console.log('🧪 Tag save debug trace:\n' + formatTagSaveDebug(debug));
   }
 
   function renderTagManagementPane(data, sourceTags, storedTags, payload) {
@@ -1205,9 +1355,17 @@
       '<button id="tmResetBtn" type="button" class="tm-btn">Reset to Source Tags</button>' +
       '<button id="tmClearBtn" type="button" class="tm-btn danger">Clear All</button>' +
       '</div>' +
+      '<div class="tm-debug">' +
+      '<div class="tm-debug-head">' +
+      '<span class="tm-debug-title">Save Debug Trace</span>' +
+      '<button id="tmCopyDebugBtn" type="button" class="tm-debug-copy">Copy Debug</button>' +
+      '</div>' +
+      '<pre id="tmDebugPre" class="tm-debug-pre">No debug trace captured yet.</pre>' +
+      '</div>' +
       '</div>';
 
     syncTagManagementUi();
+    refreshTagSaveDebugUi(window.__lastTagSaveDebug || null);
   }
 
   function render(payload) {
@@ -1440,11 +1598,22 @@
         return;
       }
 
+      if (e.target && e.target.id === 'tmCopyDebugBtn') {
+        copyLastTagSaveDebug().then(function () {
+          showDetailToast('📋 Tag save debug copied to clipboard.', 'info', 2200);
+        }).catch(function () {
+          window.prompt('Copy tag save debug:', getLastTagSaveDebugJson());
+        });
+        return;
+      }
+
       if (e.target && e.target.id === 'tmClearBtn') {
         if (window.__detailTagState) {
           window.__detailTagState.tags = [];
           syncTagManagementUi();
           setTagStatus('Cleared tags. Click Save Tags to persist.', false);
+          pushTagSaveDebug(window.__lastTagSaveDebug, 'ui_clear_all', { remainingTags: 0 });
+          refreshTagSaveDebugUi(window.__lastTagSaveDebug);
         }
         return;
       }
@@ -1453,6 +1622,8 @@
         window.__detailTagState.tags = uniqueTags(window.__detailTagState.sourceTags || []);
         syncTagManagementUi();
         setTagStatus('Reset to source tags. Click Save Tags to persist.', false);
+        pushTagSaveDebug(window.__lastTagSaveDebug, 'ui_reset_to_source', { tagCount: window.__detailTagState.tags.length });
+        refreshTagSaveDebugUi(window.__lastTagSaveDebug);
       }
     });
 
