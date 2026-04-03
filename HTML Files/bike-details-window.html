@@ -291,30 +291,7 @@
     }
     .tm-empty { color: #6b7280; font-style: italic; font-size: 13px; }
 
-    .detail-subtabs {
-      display: flex;
-      gap: 8px;
-      margin: 0 0 12px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .detail-subtab-btn {
-      border: 1px solid #d1d5db;
-      border-radius: 999px;
-      background: #fff;
-      color: #374151;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 7px 12px;
-      cursor: pointer;
-    }
-    .detail-subtab-btn.active {
-      background: #7c3aed;
-      border-color: #6d28d9;
-      color: #fff;
-    }
-    .detail-subpane { display: none; }
-    .detail-subpane.active { display: block; }
+    /* Notes are now rendered in the top-level Notes tab. */
 
     .bnm-item {
       border: 1px solid #e5e7eb;
@@ -531,23 +508,6 @@
     tagMap[placeId] = normalized;
     saveTagMapToStorage(tagMap);
     return true;
-  }
-
-  function bindDetailSubTabs() {
-    var root = document.getElementById('bikeDetailSubtabs');
-    if (!root || root.dataset.bound === '1') return;
-    root.addEventListener('click', function (e) {
-      var btn = e.target && e.target.closest ? e.target.closest('.detail-subtab-btn') : null;
-      if (!btn) return;
-      var target = btn.getAttribute('data-detail-subtab') || 'core';
-      root.querySelectorAll('.detail-subtab-btn').forEach(function (b) { b.classList.remove('active'); });
-      var host = document.getElementById('pane-details');
-      if (host) host.querySelectorAll('.detail-subpane').forEach(function (p) { p.classList.remove('active'); });
-      btn.classList.add('active');
-      var pane = document.getElementById('bikeDetailSubPane_' + target);
-      if (pane) pane.classList.add('active');
-    });
-    root.dataset.bound = '1';
   }
 
   function setBikeNotesStatus(message, isError) {
@@ -906,10 +866,12 @@
     if (!directionsUrl && data.gpsCoordinates) {
       directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(data.gpsCoordinates);
     }
+    var googleViewUrl = data.googleUrl || directionsUrl || '';
 
     var headerActions = [
       directionsUrl ? '<a class="btn" href="' + directionsUrl + '" target="_blank" rel="noopener">🗺️ Open Maps</a>' : '',
-      data.parkingLink ? '<a class="btn" href="' + data.parkingLink + '" target="_blank" rel="noopener">🅿️ Parking</a>' : ''
+      data.parkingLink ? '<a class="btn" href="' + data.parkingLink + '" target="_blank" rel="noopener">🅿️ Parking</a>' : '',
+      googleViewUrl ? '<a class="btn" href="' + googleViewUrl + '" target="_blank" rel="noopener">🌐 Google View</a>' : ''
     ].join('');
 
     document.getElementById('header').innerHTML =
@@ -983,6 +945,7 @@
       card('Google Place ID', data.googlePlaceId) +
       '</div>' +
       card('Maps Link', data.mapsLink ? '<a href="' + data.mapsLink + '" target="_blank" rel="noopener">Open Maps</a>' : '') +
+      card('Google URL', googleViewUrl ? '<a href="' + googleViewUrl + '" target="_blank" rel="noopener">Open in Google</a>' : '') +
       card('Parking Link', data.parkingLink ? '<a href="' + data.parkingLink + '" target="_blank" rel="noopener">Open Parking Map</a>' : '');
 
     // Links tab

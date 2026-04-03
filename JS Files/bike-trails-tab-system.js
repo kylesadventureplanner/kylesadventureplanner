@@ -1210,10 +1210,12 @@
       parkingCost:           getField(row, 'Parking Cost'),
       parkingSafetyNotes:    getField(row, 'Parking Safety / Lighting Notes'),
       mapsLink:              getField(row, 'Maps Link') || getField(row, 'Google URL'),
-      parkingLink:           getField(row, 'Parking Link'),
-      gpsCoordinates:        getField(row, 'GPS Coordinates'),
-      googleMapsTrailhead:   getField(row, 'Google Maps Trailhead'),
-      googleMapsParking:     getField(row, 'Google Maps Parking'),
+      googleUrl:             getField(row, 'Google URL'),
+       parkingLink:           getField(row, 'Parking Link'),
+       gpsCoordinates:        getField(row, 'GPS Coordinates'),
+      googlePlaceId:         getField(row, 'Google Place ID'),
+       googleMapsTrailhead:   getField(row, 'Google Maps Trailhead'),
+       googleMapsParking:     getField(row, 'Google Maps Parking'),
 
       // Overview
       rideTypeClassification:getField(row, 'Ride Type Classification'),

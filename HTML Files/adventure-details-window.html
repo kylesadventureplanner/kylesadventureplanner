@@ -99,31 +99,6 @@
     .tag { background: #e0ecff; color: #1d4ed8; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 600; }
     .empty { color: #6b7280; font-style: italic; font-size: 13px; }
 
-    .detail-subtabs {
-      display: flex;
-      gap: 8px;
-      margin: 0 0 12px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #e5e7eb;
-    }
-    .detail-subtab-btn {
-      border: 1px solid #d1d5db;
-      border-radius: 999px;
-      background: #fff;
-      color: #374151;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 7px 12px;
-      cursor: pointer;
-    }
-    .detail-subtab-btn.active {
-      background: #7c3aed;
-      border-color: #6d28d9;
-      color: #fff;
-    }
-    .detail-subpane { display: none; }
-    .detail-subpane.active { display: block; }
-
     .dnm-item {
       border: 1px solid #e5e7eb;
       border-radius: 10px;
@@ -490,7 +465,7 @@
     .tm-debug {
       margin-top: 12px;
       padding: 10px;
-      border: 1px solid #d1d5db;
+      border: 1px solid #d5d5db;
       border-radius: 10px;
       background: #f9fafb;
     }
@@ -537,6 +512,7 @@
   <div id="tabs" class="tabs" aria-label="Adventure details tabs">
     <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
     <button class="tab-btn" data-tab="details" type="button">ℹ️ Details</button>
+    <button class="tab-btn" data-tab="notes" type="button">📝 Notes</button>
     <button class="tab-btn" data-tab="contact" type="button">📞 Contact</button>
     <button class="tab-btn" data-tab="additional" type="button">📌 Additional</button>
     <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
@@ -544,6 +520,7 @@
 
   <div id="pane-overview" class="tab-pane active"></div>
   <div id="pane-details" class="tab-pane"></div>
+  <div id="pane-notes" class="tab-pane"></div>
   <div id="pane-contact" class="tab-pane"></div>
   <div id="pane-additional" class="tab-pane"></div>
   <div id="pane-tag-management" class="tab-pane"></div>
@@ -1591,22 +1568,6 @@
     }
   }
 
-  function bindDetailSubTabs() {
-    var root = document.getElementById('detailSubtabs');
-    if (!root || root.dataset.bound === '1') return;
-    root.addEventListener('click', function (e) {
-      var btn = e.target && e.target.closest ? e.target.closest('.detail-subtab-btn') : null;
-      if (!btn) return;
-      var target = btn.getAttribute('data-detail-subtab') || 'core';
-      root.querySelectorAll('.detail-subtab-btn').forEach(function (b) { b.classList.remove('active'); });
-      var host = document.getElementById('pane-details');
-      if (host) host.querySelectorAll('.detail-subpane').forEach(function (p) { p.classList.remove('active'); });
-      btn.classList.add('active');
-      var pane = document.getElementById('detailSubPane_' + target);
-      if (pane) pane.classList.add('active');
-    });
-    root.dataset.bound = '1';
-  }
   // ── End Notes Management ──────────────────────────────────────
 
   function render(payload) {
@@ -1619,15 +1580,6 @@
       return;
     }
 
-    console.log('🧪 Details tab payload resolved:', {
-      payloadSourceIndex: payload && payload.sourceIndex != null ? String(payload.sourceIndex) : '(empty)',
-      payloadName: String(data.name || ''),
-      payloadPlaceId: String(data.googlePlaceId || ''),
-      payloadCorrId: payload && payload.correlationId ? String(payload.correlationId) : '(empty)'
-    });
-
-    if (payload && payload.correlationId) console.log('🔗 Detail corrId=' + String(payload.correlationId));
-
     var sourceTagList = parseTagCsv(data.tags);
     var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data), data);
     var tagList = uniqueTags([].concat(sourceTagList, storedTagList));
@@ -1636,11 +1588,12 @@
     if (!directionsUrl && data.address) {
       directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(data.address);
     }
+    var googleViewUrl = data.googleUrl || directionsUrl || '';
 
     var headerActions = [
       directionsUrl ? '<a class="btn" href="' + directionsUrl + '" target="_blank" rel="noopener">Directions</a>' : '',
       data.website ? '<a class="btn" href="' + data.website + '" target="_blank" rel="noopener">Website</a>' : '',
-      data.googleUrl ? '<a class="btn" href="' + data.googleUrl + '" target="_blank" rel="noopener">Google View</a>' : ''
+      googleViewUrl ? '<a class="btn" href="' + googleViewUrl + '" target="_blank" rel="noopener">Google View</a>' : ''
     ].join('');
 
     document.getElementById('header').innerHTML =
@@ -1665,11 +1618,6 @@
       card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div>');
 
     document.getElementById('pane-details').innerHTML =
-      '<div id="detailSubtabs" class="detail-subtabs">' +
-      '<button type="button" class="detail-subtab-btn active" data-detail-subtab="core">ℹ️ Details</button>' +
-      '<button type="button" class="detail-subtab-btn" data-detail-subtab="notes">📝 Notes</button>' +
-      '</div>' +
-      '<div id="detailSubPane_core" class="detail-subpane active">' +
       '<div class="grid">' +
       card('Hours', data.hoursOfOperation) +
       card('Duration', data.activityDuration) +
@@ -1678,13 +1626,9 @@
       card('Cost', data.cost) +
       card('Google Rating', data.googleRating) +
       card('My Rating', data.myRating) +
-      '</div>' +
-      '</div>' +
-      '<div id="detailSubPane_notes" class="detail-subpane">' +
-      '<div id="detailNotesWrap"></div>' +
       '</div>';
 
-    bindDetailSubTabs();
+    document.getElementById('pane-notes').innerHTML = '<div id="detailNotesWrap"></div>';
     window.__detailNotesState = {
       placeKey: getTagPlaceKey(data),
       notes: parseDetailNotesBlob(data.notes),
@@ -1693,7 +1637,6 @@
     };
     renderDetailNotesPane();
 
-    // Ensure the dedicated Tag Management pane is hydrated on first render.
     renderTagManagementPane(data, sourceTagList, storedTagList, payload);
 
     document.getElementById('pane-contact').innerHTML =
@@ -1701,13 +1644,13 @@
       card('Phone Number', data.phoneNumber ? '<a href="tel:' + String(data.phoneNumber).replace(/\s+/g, '') + '">' + data.phoneNumber + '</a>' : '') +
       card('Website', data.website ? '<a href="' + data.website + '" target="_blank" rel="noopener">Visit Website</a>' : '') +
       card('Directions', directionsUrl ? '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get Directions</a>' : '') +
+      card('Google URL', googleViewUrl ? '<a href="' + googleViewUrl + '" target="_blank" rel="noopener">Open in Google</a>' : '') +
       card('Place ID', data.googlePlaceId) +
       card('Links', data.links ? '<a href="' + data.links + '" target="_blank" rel="noopener">Open Link</a>' : '') +
       card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '') +
       '</div>';
 
-    document.getElementById('pane-additional').innerHTML =
-      card('Nearby Attractions', data.nearby);
+    document.getElementById('pane-additional').innerHTML = card('Nearby Attractions', data.nearby);
   }
 
   function getLocationKey(data) {
@@ -1760,7 +1703,6 @@
       state.favorite = !state.favorite;
       syncFav(state.favorite);
       saveActionBarState(locationKey, state);
-      console.log('❤️ Favorite toggled:', state.favorite, 'for', data.name);
     });
 
     var currentRating = state.myRating || 0;
@@ -1779,7 +1721,6 @@
         renderStars(currentRating);
         state.myRating = currentRating;
         saveActionBarState(locationKey, state);
-        console.log('⭐ Rating saved:', currentRating, 'for', data.name);
       });
     });
 
@@ -1871,7 +1812,6 @@
           window.__detailTagState.tags = [];
           syncTagManagementUi();
           setTagStatus('Cleared tags. Click Save Tags to persist.', false);
-          pushTagSaveDebug(window.__lastTagSaveDebug, 'ui_clear_all', { remainingTags: 0 });
           refreshTagSaveDebugUi(window.__lastTagSaveDebug);
         }
         return;
@@ -1881,7 +1821,6 @@
         window.__detailTagState.tags = uniqueTags(window.__detailTagState.sourceTags || []);
         syncTagManagementUi();
         setTagStatus('Reset to source tags. Click Save Tags to persist.', false);
-        pushTagSaveDebug(window.__lastTagSaveDebug, 'ui_reset_to_source', { tagCount: window.__detailTagState.tags.length });
         refreshTagSaveDebugUi(window.__lastTagSaveDebug);
       }
 
@@ -1919,26 +1858,10 @@
       active.value = '';
     });
 
-    var params = getParams();
-    console.log('🧪 Details tab init URL markers:', {
-      sourceIndex: params.get('sourceIndex') || '(empty)',
-      debugSourceIndex: params.get('debugSourceIndex') || '(empty)',
-      debugName: params.get('debugName') || '(empty)',
-      debugPlaceId: params.get('debugPlaceId') || '(empty)',
-      corrId: params.get('corrId') || '(empty)',
-      detailKey: params.get('detailKey') || '(empty)'
-    });
-
-    if (params.get('corrId')) {
-      console.log('🔗 Detail corrId=' + String(params.get('corrId')));
-    }
-
     var payload = fromStoredPayload();
     if (!payload) {
-      var sourceIndex = Number(params.get('sourceIndex'));
-      if (Number.isInteger(sourceIndex) && sourceIndex >= 0) {
-        payload = fromOpenerBySourceIndex(sourceIndex);
-      }
+      var sourceIndex = Number(getParams().get('sourceIndex'));
+      if (Number.isInteger(sourceIndex) && sourceIndex >= 0) payload = fromOpenerBySourceIndex(sourceIndex);
     }
 
     render(payload);
