@@ -11214,15 +11214,19 @@
   window.updatePaginationControls = function() { updatePaginationControls(); };
 
   // Override window.renderAdventureCards with the real paginated version.
-  // The earlier shim (defined in the head script block) is a delegation
-  // placeholder; this assignment replaces it with the actual function that
-  // populates totalFilteredAdventures and calls renderPaginatedCards().
-  // We also export under a stable internal name so any code that captured
-  // the old shim reference can still reach the real implementation.
-  window._paginatedRenderAdventureCards = function(adventuresArray) {
-    renderAdventureCards(adventuresArray);
-  };
-  window.renderAdventureCards = window._paginatedRenderAdventureCards;
+   // The earlier shim (defined in the head script block) is a delegation
+   // placeholder; this assignment replaces it with the actual function that
+   // populates totalFilteredAdventures and calls renderPaginatedCards().
+   // We also export under a stable internal name so any code that captured
+   // the old shim reference can still reach the real implementation.
+   console.log('🔧 CRITICAL: About to assign window._paginatedRenderAdventureCards...');
+   window._paginatedRenderAdventureCards = function(adventuresArray) {
+     console.log('✅ _paginatedRenderAdventureCards wrapper called');
+     renderAdventureCards(adventuresArray);
+   };
+   console.log('✅ window._paginatedRenderAdventureCards assigned successfully');
+   window.renderAdventureCards = window._paginatedRenderAdventureCards;
+   console.log('✅ window.renderAdventureCards reassigned to _paginatedRenderAdventureCards');
 
   /**
    * Update the results count display
