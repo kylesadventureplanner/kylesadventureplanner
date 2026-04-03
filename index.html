@@ -5642,7 +5642,7 @@
        // function, so any call made AFTER page load hits the real implementation
        // directly.  This shim only runs if somehow called before that block fires.
        window.renderAdventureCards = async function(adventuresArray = null) {
-         console.log('🎨 window.renderAdventureCards INLINE FALLBACK: rendering directly...');
+         console.log('🎨 window.renderAdventureCards INLINE: rendering cards...');
          const sourceAdventures = Array.isArray(adventuresArray)
            ? adventuresArray
            : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
@@ -5652,7 +5652,7 @@
            return;
          }
 
-         // Set pagination state variables globally so they're available immediately
+         // Set pagination state
          window.totalFilteredAdventures = sourceAdventures.map((row, idx) => ({
            row,
            sourceIndex: idx
@@ -5660,14 +5660,13 @@
          window.currentPage = 1;
          window.itemsPerPage = 20;
 
-         // Render directly without waiting
          const cardsGrid = document.getElementById('adventureCardsGrid');
          if (!cardsGrid) {
            console.error('❌ cardsGrid not found');
            return;
          }
 
-         console.log(`✅ Rendering ${sourceAdventures.length} cards to grid`);
+         console.log(`✅ Rendering ${sourceAdventures.length} cards`);
          cardsGrid.innerHTML = '';
 
          // Render first page (20 items)
@@ -5677,6 +5676,8 @@
          for (let i = startIdx; i < endIdx; i++) {
            const item = window.totalFilteredAdventures[i];
            const row = item.row;
+           const sourceIndex = item.sourceIndex;
+           const actualIndex = i;
            const values = row.values[0] || [];
 
            const [
@@ -5687,30 +5688,81 @@
              favoriteStatus, googleUrl
            ] = values;
 
-           const card = document.createElement('div');
-           card.className = 'adventure-card';
-           card.dataset.index = String(i);
-           card.dataset.googlePlaceId = String(googlePlaceId || '').trim();
-           card.dataset.state = String(state || '').toLowerCase();
-           card.dataset.city = String(city || '').toLowerCase();
-
            const stateUpper = String(state || '').trim().toUpperCase();
-           const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0;
+           const hasPlaceId = googlePlaceId && String(googlePlaceId).trim().length > 0 &&
+             googlePlaceId !== 'undefined' && googlePlaceId !== 'null' &&
+             googlePlaceId !== 'SKIP' && !String(googlePlaceId).toUpperCase().includes('SKIP');
+
+           // Get feedback block HTML if function is available
+           const khFeedbackHtml = typeof window.renderKhFeedbackBlock === 'function'
+             ? window.renderKhFeedbackBlock({
+                 ratingValue: myRating,
+                 favoriteValue: favoriteStatus,
+                 visitedValue: values[24],
+                 notesValue: notes
+               })
+             : '';
+
+           const card = document.createElement("div");
+           card.className = "adventure-card";
+           card.dataset.cardDomain = 'adventure';
+           card.dataset.index = String(actualIndex);
+           if (sourceIndex >= 0) {
+             card.dataset.sourceIndex = String(sourceIndex);
+           }
+           card.dataset.googlePlaceId = (googlePlaceId || "").trim();
+           card.dataset.state = (state || "").toLowerCase();
+           card.dataset.city = (city || "").toLowerCase();
+           card.dataset.tags = (tags || "").toLowerCase();
+           card.dataset.difficulty = (difficulty || "").toLowerCase();
 
            card.innerHTML = `
              <div class="adventure-card-header">
-               <div class="adventure-card-title">${escapeHtml(name || 'Unnamed')}</div>
+               <div class="adventure-card-title">${name || "Unnamed Adventure"}</div>
+               ${hasPlaceId ? `
+                 <div class="adventure-card-place-id-subtitle" style="font-size: 0.85rem; font-weight: normal; color: #6b7280; margin-top: -4px;">Google Place ID: ${googlePlaceId}</div>
+               ` : ''}
                <div class="adventure-card-location">
-                 <span>📍</span>
-                 <span>${escapeHtml(city || 'Unknown')}${state ? ', ' + stateUpper : ''}</span>
+                 <span class="location-icon">📍</span>
+                 <span>${city || "Unknown"}${state ? ', ' + stateUpper : ''}</span>
                </div>
-               ${driveTime ? `<div class="adventure-card-time">🚗 ${escapeHtml(driveTime)}</div>` : ''}
+               ${driveTime ? `
+                 <div class="adventure-card-time">
+                   <span class="time-icon">🚗</span>
+                   <span>${driveTime}</span>
+                 </div>
+               ` : ''}
              </div>
+
              <div class="adventure-card-body">
-               ${description ? `<div>${escapeHtml(description)}</div>` : ''}
+               ${description ? `<div class="card-description">${description}</div>` : ''}
+               ${hoursOfOperation ? `
+                 <div class="card-info-row">
+                   <span class="card-info-icon">🕐</span>
+                   <span class="card-info-label">Hours:</span>
+                   <span class="card-info-value">${hoursOfOperation}</span>
+                 </div>
+               ` : ''}
+               ${difficulty ? `
+                 <div class="card-info-row">
+                   <span class="card-info-icon">⚡</span>
+                   <span class="card-info-label">Difficulty:</span>
+                   <span class="card-info-value">${difficulty}</span>
+                 </div>
+               ` : ''}
+               ${cost ? `
+                 <div class="card-info-row">
+                   <span class="card-info-icon">💰</span>
+                   <span class="card-info-label">Cost:</span>
+                   <span class="card-info-value">${cost}</span>
+                 </div>
+               ` : ''}
+               ${khFeedbackHtml}
              </div>
-             <div class="adventure-card-footer">
-               <button class="card-btn" data-index="${i}">📖 Details</button>
+
+             <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+               <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
+               ${address ? `<button type="button" class="card-addr-copy-btn" data-copy="${String(address).replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;" title="Copy address">📋 Address</button>` : ''}
              </div>
            `;
 
@@ -5718,6 +5770,35 @@
          }
 
          console.log(`✅ Successfully rendered ${endIdx - startIdx} cards`);
+
+         // Set up delegated click handler for card interactions
+         cardsGrid.addEventListener('click', (e) => {
+           // Address copy click
+           const addrCopy = e.target.closest('.card-addr-copy-btn');
+           if (addrCopy) {
+             e.preventDefault();
+             e.stopPropagation();
+             const text = addrCopy.getAttribute('data-copy') || '';
+             if (!text) return;
+             if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+               navigator.clipboard.writeText(text).then(() => {
+                 if (typeof window.showToast === 'function') {
+                   window.showToast('📋 Address copied!', 'success', 2000);
+                 }
+               });
+             }
+             return;
+           }
+
+           // Card click - open details modal
+           const clickedCard = e.target.closest('.adventure-card');
+           if (clickedCard) {
+             const idx = parseInt(clickedCard.dataset.index, 10);
+             if (!isNaN(idx) && typeof window.showCardDetails === 'function') {
+               window.showCardDetails(idx);
+             }
+           }
+         });
 
          // Show pagination if needed
          if (sourceAdventures.length > 20) {
@@ -5728,12 +5809,6 @@
          }
        };
 
-       // Helper to escape HTML
-       function escapeHtml(text) {
-         const div = document.createElement('div');
-         div.textContent = text;
-         return div.innerHTML;
-       }
 
      // ============================================================
      // TOGGLE FAVORITE - Handle favorite button clicks
