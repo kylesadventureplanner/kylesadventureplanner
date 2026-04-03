@@ -355,6 +355,7 @@
   <div id="tabs" class="tabs" aria-label="Bike trail details tabs">
     <button class="tab-btn active" data-tab="overview" type="button">📋 Overview</button>
     <button class="tab-btn" data-tab="details" type="button">ℹ️ Details</button>
+    <button class="tab-btn" data-tab="notes" type="button">📝 Notes</button>
     <button class="tab-btn" data-tab="experience" type="button">🎢 Experience</button>
     <button class="tab-btn" data-tab="location" type="button">📍 Location</button>
     <button class="tab-btn" data-tab="links" type="button">🔗 Links</button>
@@ -363,6 +364,7 @@
 
   <div id="pane-overview" class="tab-pane active"></div>
   <div id="pane-details" class="tab-pane"></div>
+  <div id="pane-notes" class="tab-pane"></div>
   <div id="pane-experience" class="tab-pane"></div>
   <div id="pane-location" class="tab-pane"></div>
   <div id="pane-links" class="tab-pane"></div>
@@ -935,33 +937,75 @@
 
     // Details tab
     document.getElementById('pane-details').innerHTML =
-      '<div id="bikeDetailSubtabs" class="detail-subtabs">' +
-      '<button type="button" class="detail-subtab-btn active" data-detail-subtab="core">ℹ️ Details</button>' +
-      '<button type="button" class="detail-subtab-btn" data-detail-subtab="notes">📝 Notes</button>' +
-      '</div>' +
-      '<div id="bikeDetailSubPane_core" class="detail-subpane active">' +
+       '<div class="grid">' +
+       card('Difficulty Score', data.difficultyScore ? data.difficultyScore + '/100' : '') +
+       card('Elevation Gain', data.elevationGain ? data.elevationGain + ' ft' : '') +
+       card('Surface Breakdown', data.surfaceBreakdown) +
+       card('Cost', data.cost) +
+       card('Hours of Operation', data.hours) +
+       card('Parking Capacity', data.parkingCapacity) +
+       card('Parking Cost', data.parkingCost) +
+       card('Best Time of Day', data.bestTimeOfDay) +
+       card('Weather Suitability', data.weatherSuitability) +
+       card('Night Riding Suitability', data.nightRidingSuitability) +
+      '</div>';
+
+    // Notes tab
+    document.getElementById('pane-notes').innerHTML = '<div id="bikeDetailNotesWrap"></div>';
+
+    // Experience tab
+    document.getElementById('pane-experience').innerHTML =
       '<div class="grid">' +
-      card('Difficulty Score', data.difficultyScore ? data.difficultyScore + '/100' : '') +
-      card('Elevation Gain', data.elevationGain ? data.elevationGain + ' ft' : '') +
-      card('Surface Breakdown', data.surfaceBreakdown) +
-      card('Cost', data.cost) +
-      card('Hours of Operation', data.hours) +
+      card('Ride Start Experience', data.rideStartExperience) +
+      card('Ride Finish Experience', data.rideFinishExperience) +
+      card('Ride Flow Profile', data.rideFlowProfile) +
+      card('Ride Commitment Level', data.rideCommitmentLevel) +
+      card('Ride Mood Tags', data.moodTags) +
+      card('Vibes', data.vibes) +
+      card('Ride Noise Profile', data.rideNoiseProfile) +
+      card('Scenic Highlights', data.highlights || data.scenicNature) +
+      card('Seasonal Notes', data.seasonalNotes) +
+      '</div>';
+
+    // Location tab
+    document.getElementById('pane-location').innerHTML =
+      '<div class="grid">' +
+      card('Region', data.region) +
+      card('City', data.city) +
+      card('State', data.state) +
+      card('Drive Time', data.driveTime) +
+      card('GPS Coordinates', data.gpsCoordinates) +
       card('Parking Capacity', data.parkingCapacity) +
+      card('Parking Difficulty', data.parkingDifficulty) +
+      card('Parking Distance to Trail', data.parkingDistanceToTrail) +
       card('Parking Cost', data.parkingCost) +
-      card('Best Time of Day', data.bestTimeOfDay) +
-      card('Weather Suitability', data.weatherSuitability) +
-      card('Night Riding Suitability', data.nightRidingSuitability) +
+      card('Parking Safety Notes', data.parkingSafetyNotes) +
+      card('Google Place ID', data.googlePlaceId) +
       '</div>' +
-      '</div>' +
-      '<div id="bikeDetailSubPane_notes" class="detail-subpane">' +
-      '<div id="bikeDetailNotesWrap"></div>' +
+      card('Maps Link', data.mapsLink ? '<a href="' + data.mapsLink + '" target="_blank" rel="noopener">Open Maps</a>' : '') +
+      card('Parking Link', data.parkingLink ? '<a href="' + data.parkingLink + '" target="_blank" rel="noopener">Open Parking Map</a>' : '');
+
+    // Links tab
+    document.getElementById('pane-links').innerHTML =
+      '<div class="grid">' +
+      card('Official Link 1', data.officialLink1 ? '<a href="' + data.officialLink1 + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('Official Link 2', data.officialLink2 ? '<a href="' + data.officialLink2 + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('Official Link 3', data.officialLink3 ? '<a href="' + data.officialLink3 + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('AllTrails', data.allTrails ? '<a href="' + data.allTrails + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('MTBProject', data.mtbProject ? '<a href="' + data.mtbProject + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('HikingProject', data.hikingProject ? '<a href="' + data.hikingProject + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('Singletracks', data.singletracks ? '<a href="' + data.singletracks + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('RideWithGPS', data.rideWithGps ? '<a href="' + data.rideWithGps + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('OpenStreetMap', data.openStreetMap ? '<a href="' + data.openStreetMap + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('TrailLink', data.trailLink ? '<a href="' + data.trailLink + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('Google Maps Trailhead', data.googleMapsTrailhead ? '<a href="' + data.googleMapsTrailhead + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('Google Maps Parking', data.googleMapsParking ? '<a href="' + data.googleMapsParking + '" target="_blank" rel="noopener">Open Link</a>' : '') +
       '</div>';
 
     bikeNoteState.sourceIndex = payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null;
     bikeNoteState.notes = parseBikeNotesBlob(data.notes);
     bikeNoteState.data = data;
-    bindDetailSubTabs();
-    renderBikeNotesPane();
+     renderBikeNotesPane();
 
     hydrateBikeTagState(data, payload);
   }
