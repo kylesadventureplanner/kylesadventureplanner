@@ -1703,8 +1703,301 @@
   }
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // ─── Trail Explorer System ───────────────────────────────────────────────────
-  // Provides an intuitive browsing interface for finding trails by various criteria
+  function updateBikeFiltersBadge() {
+    const badge = document.getElementById('bikeFiltersActiveBadge');
+    if (!badge) return;
+    const textFilters = Object.values(state.filters).filter(Boolean).length;
+    const quick = state.quickFilters.size;
+    const fav = state.showFavoritesOnly ? 1 : 0;
+    const group = state.groupBy ? 1 : 0;
+    const count = textFilters + quick + fav + group;
+    if (!count) {
+      badge.style.display = 'none';
+      return;
+    }
+    badge.style.display = 'inline-flex';
+    badge.textContent = `${count} Filter${count === 1 ? '' : 's'} Active`;
+  }
+
+  function syncBikeFilterStateFromControls() {
+    Object.keys(state.filters).forEach((key) => {
+      const id = getBikeFilterInputId(key);
+      const el = id ? document.getElementById(id) : null;
+      if (!el) return;
+      state.filters[key] = String(el.value || '').trim();
+    });
+
+    const sortBy = document.getElementById('bikeSortBy');
+    if (sortBy) state.sortBy = sortBy.value || 'name';
+
+    const groupBy = document.getElementById('bikeGroupBy');
+    if (groupBy) state.groupBy = String(groupBy.value || '').trim();
+  }
+
+  function getBikeFavoriteIdentity(trail) {
+    return String(trail?.id || trail?.name || '').trim();
+  }
+
+  async function persistBikePreference(sourceIndex, updatesByColumnIndex) {
+    const row = window.bikeTrailsData?.[sourceIndex];
+    if (!row) return false;
+
+    const values = getValues(row).slice();
+    const indexes = Object.keys(updatesByColumnIndex).map((idx) => Number(idx)).filter(Number.isInteger);
+    const maxIndex = Math.max(values.length - 1, ...indexes);
+    while (values.length <= maxIndex) values.push('');
+    Object.entries(updatesByColumnIndex).forEach(([idx, val]) => { values[Number(idx)] = val; });
+    row.values = [values];
+
+    if (!window.accessToken) return true;
+
+    await updateBikeRowColumns(sourceIndex, updatesByColumnIndex, {
+      accessToken: window.accessToken,
+      filePath: window.bikeTableConfig?.filePath || BIKE_FILE_PATH_DEFAULT,
+      tableRef: window.bikeTableConfig?.tableRef || window.bikeTableConfig?.tableName || BIKE_TABLE_NAME
+    });
+    return true;
+  }
+
+  async function toggleBikeTrailFavorite(sourceIndex) {
+    const trail = trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex);
+    if (!trail) return;
+
+    const nextFav = !trail.isFavorite;
+    const favoriteCol = getBikeColumnIndex(BIKE_PREFERENCE_COLUMNS.favorite);
+    const updates = {};
+    if (favoriteCol >= 0) updates[favoriteCol] = nextFav ? 'TRUE' : 'FALSE';
+
+    const legacy = new Set(readJson('bikeTrailFavorites', []));
+    const id = getBikeFavoriteIdentity(trail);
+    if (id) {
+      if (nextFav) legacy.add(id);
+      else legacy.delete(id);
+      localStorage.setItem('bikeTrailFavorites', JSON.stringify(Array.from(legacy)));
+    }
+
+    try {
+      if (Object.keys(updates).length) await persistBikePreference(sourceIndex, updates);
+      window.showToast?.(nextFav ? '💖 Added to favorites' : '🤍 Removed from favorites', 'success', 1800);
+    } catch (err) {
+      console.warn('[bike-trails] Favorite save failed:', err);
+      window.showToast?.('⚠️ Favorite saved locally only.', 'warning', 2400);
+    }
+
+    applyBikeFilters();
+  }
+
+  async function setBikeRating(sourceIndex, rating) {
+    const value = Math.max(0, Math.min(5, Number(rating) || 0));
+    const trail = trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex);
+    if (!trail) return;
+
+    const ratingCol = getBikeColumnIndex(BIKE_PREFERENCE_COLUMNS.rating);
+    const updates = {};
+    if (ratingCol >= 0) updates[ratingCol] = value ? String(value) : '';
+
+    const legacyRatings = readJson('bikeTrailRatings', {});
+    const id = getBikeFavoriteIdentity(trail);
+    if (id) {
+      if (value > 0) legacyRatings[id] = value;
+      else delete legacyRatings[id];
+      localStorage.setItem('bikeTrailRatings', JSON.stringify(legacyRatings));
+    }
+
+    try {
+      if (Object.keys(updates).length) await persistBikePreference(sourceIndex, updates);
+      window.showToast?.(value ? `⭐ Rated ${value}/5` : 'Rating cleared', 'success', 1800);
+    } catch (err) {
+      console.warn('[bike-trails] Rating save failed:', err);
+      window.showToast?.('⚠️ Rating saved locally only.', 'warning', 2400);
+    }
+
+    applyBikeFilters();
+  }
+
+  function applyBikeFilters() {
+    syncBikeFilterStateFromControls();
+
+    const filtered = getAllBikeTrails().filter((trail) => {
+      if (state.filters.searchName) {
+        const haystack = [trail.name, trail.region, trail.city, trail.vibes, trail.moodTags].map(norm).join(' ');
+        if (!haystack.includes(norm(state.filters.searchName))) return false;
+      }
+      if (state.filters.region && !norm(trail.region).includes(norm(state.filters.region))) return false;
+      if (state.filters.difficulty && !norm(trail.difficulty).includes(norm(state.filters.difficulty))) return false;
+      if (state.filters.surface && !norm(trail.surface).includes(norm(state.filters.surface))) return false;
+      if (state.filters.traffic && !norm(trail.traffic).includes(norm(state.filters.traffic))) return false;
+      if (state.filters.state && !norm(trail.state).includes(norm(state.filters.state))) return false;
+      if (state.filters.city && !norm(trail.city).includes(norm(state.filters.city))) return false;
+      if (state.filters.cost && !norm(trail.cost).includes(norm(state.filters.cost))) return false;
+      if (state.filters.hours && !norm(trail.hours).includes(norm(state.filters.hours))) return false;
+      if (state.filters.tag) {
+        const managed = getBikeManagedTags(trail).map(norm);
+        const needle = norm(state.filters.tag);
+        if (!managed.some((tag) => tag.includes(needle))) return false;
+      }
+      if (!inBandLength(trail.lengthMiles, state.filters.lengthBand)) return false;
+      if (!inBandDrive(trail.driveMinutes, state.filters.driveTimeBand)) return false;
+
+      if (state.showFavoritesOnly && !trail.isFavorite) return false;
+
+      if (state.quickFilters.size > 0) {
+        const allQuickMatch = Array.from(state.quickFilters).every((quickKey) => matchesQuickFilter(trail, quickKey));
+        if (!allQuickMatch) return false;
+      }
+
+      return true;
+    });
+
+    window.bikeFilteredTrails = filtered.sort(compareTrails);
+    state.currentPage = 1;
+    renderBikeTrailsPage();
+    renderBikeBreadcrumbChips();
+    renderBikeManagedTagQuickChips();
+    updateBikeFiltersBadge();
+  }
+
+  function resetBikeFilters() {
+    state.filters = {
+      searchName: '',
+      region: '',
+      difficulty: '',
+      surface: '',
+      lengthBand: '',
+      driveTimeBand: '',
+      traffic: '',
+      state: '',
+      city: '',
+      cost: '',
+      hours: '',
+      tag: ''
+    };
+    state.quickFilters.clear();
+    state.showFavoritesOnly = false;
+    state.groupBy = '';
+
+    Object.keys(state.filters).forEach((key) => {
+      const id = getBikeFilterInputId(key);
+      const el = id ? document.getElementById(id) : null;
+      if (el) el.value = '';
+    });
+    const groupBy = document.getElementById('bikeGroupBy');
+    if (groupBy) groupBy.value = '';
+
+    document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn').forEach((btn) => btn.classList.remove('active'));
+    applyBikeFilters();
+  }
+
+  function changeBikePage(delta) {
+    const total = (window.bikeFilteredTrails || []).length;
+    const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+    const next = state.currentPage + Number(delta || 0);
+    if (next < 1 || next > totalPages) return;
+    state.currentPage = next;
+    renderBikeTrailsPage();
+  }
+
+  function bindBikeControls() {
+    if (state.controlsBound) return;
+
+    Object.keys(state.filters).forEach((key) => {
+      const id = getBikeFilterInputId(key);
+      const el = id ? document.getElementById(id) : null;
+      if (!el) return;
+      const handler = () => applyBikeFilters();
+      el.addEventListener('input', handler);
+      el.addEventListener('change', handler);
+    });
+
+    const sortBy = document.getElementById('bikeSortBy');
+    if (sortBy) {
+      sortBy.addEventListener('change', () => {
+        state.sortBy = sortBy.value || 'name';
+        state.currentPage = 1;
+        renderBikeTrailsPage();
+      });
+    }
+
+    const sortOrderBtn = document.getElementById('bikeSortOrderBtn');
+    if (sortOrderBtn) {
+      sortOrderBtn.addEventListener('click', () => {
+        state.sortAsc = !state.sortAsc;
+        const icon = sortOrderBtn.querySelector('.sort-icon');
+        if (icon) icon.textContent = state.sortAsc ? '↑' : '↓';
+        renderBikeTrailsPage();
+      });
+    }
+
+    document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        const key = String(btn.getAttribute('data-bike-filter') || '').trim();
+        if (!key) return;
+
+        if (key === 'favorites') {
+          state.showFavoritesOnly = !state.showFavoritesOnly;
+          btn.classList.toggle('active', state.showFavoritesOnly);
+        } else {
+          if (state.quickFilters.has(key)) {
+            state.quickFilters.delete(key);
+            btn.classList.remove('active');
+          } else {
+            state.quickFilters.add(key);
+            btn.classList.add('active');
+          }
+        }
+        applyBikeFilters();
+      });
+    });
+
+    const managedTagWrap = document.getElementById('bikeManagedTagQuickFilters');
+    if (managedTagWrap) {
+      managedTagWrap.addEventListener('click', (event) => {
+        const btn = event.target && event.target.closest ? event.target.closest('[data-bike-managed-tag]') : null;
+        if (!btn) return;
+        const value = String(btn.getAttribute('data-bike-managed-tag') || '').trim();
+        const input = document.getElementById('bikeFilterTag');
+        if (input) input.value = value;
+        state.filters.tag = value;
+        applyBikeFilters();
+      });
+    }
+
+    ['bikeResetAllFiltersTop', 'bikeResetAllFiltersBottom', 'bikeBreadcrumbResetBtn'].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        resetBikeFilters();
+      });
+    });
+
+    const explorerBtn = document.getElementById('bikeTrailExplorerBtn');
+    if (explorerBtn) explorerBtn.addEventListener('click', () => openBikeTrailExplorer());
+
+    const nearBtn = document.getElementById('bikeFindNearMeBtn');
+    if (nearBtn) nearBtn.addEventListener('click', () => window.startFindNearMe?.());
+
+    state.controlsBound = true;
+  }
+
+  function initializeBikeTrailsTab() {
+    bindBikeControls();
+    renderBikeManagedTagQuickChips();
+    renderBikeBreadcrumbChips();
+    updateBikeFiltersBadge();
+
+    if (window.accessToken && (!window.bikeTrailsData || !window.bikeTrailsData.length)) {
+      loadBikeData();
+      return;
+    }
+
+    if (Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length) {
+      applyBikeFilters();
+    }
+  }
+
+   // ─── Trail Explorer System ───────────────────────────────────────────────────
+   // Provides an intuitive browsing interface for finding trails by various criteria
 
   const explorerState = {
     selectedFilters: {} // { filterType: filterValue }
@@ -1957,6 +2250,8 @@
   window.findBikeTrailById = findBikeTrailById;
   window.applyBikeFilters = applyBikeFilters;
   window.changeBikePage = changeBikePage;
+  window.toggleBikeTrailFavorite = toggleBikeTrailFavorite;
+  window.setBikeRating = setBikeRating;
   window.initializeBikeTrailsTab = initializeBikeTrailsTab;
   // Alias expected by tab-content-loader to ensure bike init always runs.
   window.initBikeTrailsTab = initializeBikeTrailsTab;

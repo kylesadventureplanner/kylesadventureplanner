@@ -1693,6 +1693,9 @@
     };
     renderDetailNotesPane();
 
+    // Ensure the dedicated Tag Management pane is hydrated on first render.
+    renderTagManagementPane(data, sourceTagList, storedTagList, payload);
+
     document.getElementById('pane-contact').innerHTML =
       '<div class="grid">' +
       card('Phone Number', data.phoneNumber ? '<a href="tel:' + String(data.phoneNumber).replace(/\s+/g, '') + '">' + data.phoneNumber + '</a>' : '') +
