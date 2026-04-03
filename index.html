@@ -13175,33 +13175,6 @@
     updateBreadcrumbMenu();
   }
 
-  function removeFromContextFilter(field, value) {
-    closeContextMenu();
-
-    filterState.contextFilters = filterState.contextFilters || [];
-    filterState.contextFilters = filterState.contextFilters.filter(f =>
-            !(f.field === field && f.value === value)
-    );
-
-    console.log(`✓ Removed filter: ${field} "${value}"`);
-    applyFiltersNow();
-    updateBreadcrumbMenu();
-  }
-
-  function clearAllContextFilters() {
-    closeContextMenu();
-    filterState.contextFilters = [];
-    console.log('✓ All context filters cleared');
-    applyFiltersNow();
-    updateBreadcrumbMenu();
-    showToast('All filters cleared', 'success', 1500);
-  }
-
-  function applyFiltersNow() {
-    // Apply context filters in addition to regular filters
-    applyFilters();
-    renderAllCards();
-  }
 
   /***********************
    * ROW SELECTION       *
@@ -21466,7 +21439,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     }
   })();
 </script>
-<script src="JS Files/adventure-filter-hotfix.js"></script>
+<script src="JS Files/runtime-hotfixes.js"></script>
 <script src="JS Files/kh-feedback-renderer.js"></script>
 </body>
 </html>
