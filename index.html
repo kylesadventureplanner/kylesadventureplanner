@@ -12335,10 +12335,6 @@
         id: "details",
         label: "ℹ️ Details",
         content: `
-          <div style="display:flex;gap:8px;margin-bottom:12px;border-bottom:1px solid #e5e7eb;padding-bottom:10px;" id="adv-detail-subtabs">
-            <button type="button" class="adv-detail-subtab-btn active" data-adv-subtab="core" style="border:1px solid #d1d5db;border-radius:999px;background:#fff;color:#374151;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;">ℹ️ Details</button>
-            <button type="button" class="adv-detail-subtab-btn" data-adv-subtab="notes" style="border:1px solid #d1d5db;border-radius:999px;background:#fff;color:#374151;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;">📝 Notes</button>
-          </div>
           <div id="adv-detail-subpane-core" class="adv-detail-subpane">
             <div class="modal-detail-section">
               <h3>Details</h3>
@@ -12350,20 +12346,24 @@
               ${googleRating ? `<p><strong>Google Rating:</strong> ${renderStarRating(googleRating)}</p>` : ''}
             </div>
           </div>
-          <div id="adv-detail-subpane-notes" class="adv-detail-subpane" style="display:none;">
-            <div id="adv-notes-manager" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-                <h3 style="margin:0;font-size:17px;color:#111827;">📝 Notes</h3>
-                <div id="adv-notes-status" style="font-size:12px;color:#6b7280;">Manage notes for this location</div>
-              </div>
-              <div id="adv-notes-list" style="display:grid;gap:8px;margin-bottom:10px;"></div>
-              <div style="margin-top:8px;">
-                <textarea id="adv-notes-input" placeholder="Write a note… (Cmd/Ctrl + Enter to add)" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:10px;font:inherit;resize:vertical;min-height:90px;box-sizing:border-box;"></textarea>
-              </div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                <button type="button" id="adv-notes-add-btn" style="border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;background:#fff;color:#374151;font-weight:700;font-size:13px;cursor:pointer;">Add Note</button>
-                <button type="button" id="adv-notes-save-btn" style="border:1px solid #1d4ed8;border-radius:8px;padding:9px 12px;background:#2563eb;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">Save Notes</button>
-              </div>
+        `
+      },
+      {
+        id: "notes",
+        label: "📝 Notes",
+        content: `
+          <div id="adv-notes-manager" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+              <h3 style="margin:0;font-size:17px;color:#111827;">📝 Notes</h3>
+              <div id="adv-notes-status" style="font-size:12px;color:#6b7280;">Manage notes for this location</div>
+            </div>
+            <div id="adv-notes-list" style="display:grid;gap:8px;margin-bottom:10px;"></div>
+            <div style="margin-top:8px;">
+              <textarea id="adv-notes-input" placeholder="Write a note… (Cmd/Ctrl + Enter to add)" style="width:100%;border:1px solid #d1d5db;border-radius:8px;padding:10px;font:inherit;resize:vertical;min-height:90px;box-sizing:border-box;"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+              <button type="button" id="adv-notes-add-btn" style="border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;background:#fff;color:#374151;font-weight:700;font-size:13px;cursor:pointer;">Add Note</button>
+              <button type="button" id="adv-notes-save-btn" style="border:1px solid #1d4ed8;border-radius:8px;padding:9px 12px;background:#2563eb;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">Save Notes</button>
             </div>
           </div>
         `
@@ -12419,6 +12419,8 @@
         ${tab.content}
       </div>
     `).join('');
+
+    // Notes is now a native top-level tab — no promotion step needed.
 
     // ── Adventure Notes Management ─────────────────────────────
     const ADV_NOTES_PREFIX = 'NOTES_JSON_V1::';
@@ -12517,29 +12519,6 @@
     // Render initial notes list
     renderAdvNotesList();
 
-    // Bind detail sub-tab switching for this modal instance (re-bind each open)
-    const detailSubtabsEl = modalContent.querySelector('#adv-detail-subtabs');
-    if (detailSubtabsEl) {
-      detailSubtabsEl.addEventListener('click', (e) => {
-        const btn = e.target.closest('.adv-detail-subtab-btn');
-        if (!btn) return;
-        const target = btn.getAttribute('data-adv-subtab');
-        detailSubtabsEl.querySelectorAll('.adv-detail-subtab-btn').forEach(b => {
-          b.style.background = '#fff';
-          b.style.color = '#374151';
-          b.style.borderColor = '#d1d5db';
-          b.classList.remove('active');
-        });
-        btn.style.background = '#2563eb';
-        btn.style.color = '#fff';
-        btn.style.borderColor = '#1d4ed8';
-        btn.classList.add('active');
-        modalContent.querySelectorAll('.adv-detail-subpane').forEach(p => { p.style.display = 'none'; });
-        const pane = modalContent.querySelector(`#adv-detail-subpane-${target}`);
-        if (pane) pane.style.display = 'block';
-        if (target === 'notes') renderAdvNotesList();
-      });
-    }
 
     // Bind notes add/remove/save (use a named handler on modal content to avoid duplicates)
     const existingNotesHandler = modalContent._advNotesHandler;
