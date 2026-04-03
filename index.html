@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Adventure Planner-TEST</title>
+  <title>Adventure Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- ============================================================
@@ -11714,6 +11714,14 @@
       const khAdventureNotesText = String(notes || '').trim() || 'No comments yet...';
 
 
+      const visitedValue = values.length > 24 ? String(values[24] || '').trim() : '';
+      const khFeedbackHtml = window.renderKhFeedbackBlock({
+        ratingValue: currentRating,
+        favoriteValue: favoriteStatus,
+        visitedValue,
+        notesValue: notes
+      });
+
       // Parse tags - NOW INTEGRATED WITH TAG MANAGER
       const tagList = getTagsForPlace(googlePlaceId, tags);
 
@@ -21705,6 +21713,45 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       window.initIphoneToggle();
     }
   })();
+</script>
+<script>
+  // Shared renderer used by Adventure + Bike cards to keep K&H output in sync.
+  window.renderKhFeedbackBlock = window.renderKhFeedbackBlock || function(input) {
+    const data = input || {};
+    const escapeHtml = function(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    };
+
+    const rating = Math.max(0, Math.min(5, Number(data.ratingValue) || 0));
+    const ratingText = rating > 0 ? `${'⭐'.repeat(rating)}${'☆'.repeat(5 - rating)}` : 'Not yet Reviewed';
+
+    const favoriteRaw = data.favoriteValue;
+    const favoriteNorm = String(favoriteRaw || '').trim().toLowerCase();
+    const isFavorite = favoriteNorm === 'true' || favoriteNorm === '1' || favoriteRaw === 1;
+    const favoriteText = isFavorite ? 'Marked as Favorite' : 'Not marked as Favorite';
+
+    const visitedNorm = String(data.visitedValue || '').trim().toLowerCase();
+    const visitedHtml = visitedNorm === 'yes'
+      ? '<span class="kh-feedback-visited-yes">✅ Visited</span>'
+      : 'This Adventure still Awaits...';
+
+    const notesText = escapeHtml(String(data.notesValue || '').trim() || 'No comments yet...');
+
+    return `
+      <div class="kh-feedback-block">
+        <div class="kh-feedback-title">K&H Feedback</div>
+        <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${ratingText}</strong></div>
+        <div class="kh-feedback-row">Favorite: <strong>${favoriteText}</strong></div>
+        <div class="kh-feedback-row">Visited: ${visitedHtml}</div>
+        <div class="kh-feedback-row kh-feedback-notes">Notes: ${notesText}</div>
+      </div>
+    `;
+  };
 </script>
 </body>
 </html>

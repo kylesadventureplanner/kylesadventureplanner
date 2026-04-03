@@ -1153,13 +1153,31 @@
         const favIcon = trail.isFavorite ? '💖' : '🤍';
         const rating = Math.max(0, Math.min(5, Number(trail.myRating || 0)));
         const ratingText = rating > 0 ? `${'⭐'.repeat(rating)}${'☆'.repeat(5 - rating)}` : 'No rating';
-        const khRatingText = rating > 0 ? `${'⭐'.repeat(rating)}${'☆'.repeat(5 - rating)}` : 'Not yet Reviewed';
-        const khFavoriteText = trail.isFavorite ? 'Marked as Favorite' : 'Not marked as Favorite';
-        const visitedText = norm(trail.visited);
-        const khVisitedText = visitedText === 'yes'
-          ? '<span class="kh-feedback-visited-yes">✅ Visited</span>'
-          : 'This Adventure still Awaits...';
-        const khNotesText = String(trail.notes || '').trim() || 'No comments yet...';
+        const renderKhFeedback = typeof window.renderKhFeedbackBlock === 'function'
+          ? window.renderKhFeedbackBlock
+          : function(input) {
+              const data = input || {};
+              const localRating = Math.max(0, Math.min(5, Number(data.ratingValue) || 0));
+              const localRatingText = localRating > 0 ? `${'⭐'.repeat(localRating)}${'☆'.repeat(5 - localRating)}` : 'Not yet Reviewed';
+              const favNorm = String(data.favoriteValue || '').trim().toLowerCase();
+              const localFavorite = favNorm === 'true' || favNorm === '1' || data.favoriteValue === 1
+                ? 'Marked as Favorite'
+                : 'Not marked as Favorite';
+              const visitedNorm = String(data.visitedValue || '').trim().toLowerCase();
+              const localVisited = visitedNorm === 'yes'
+                ? '<span class="kh-feedback-visited-yes">✅ Visited</span>'
+                : 'This Adventure still Awaits...';
+              const localNotes = String(data.notesValue || '').trim() || 'No comments yet...';
+              return `
+                <div class="kh-feedback-block">
+                  <div class="kh-feedback-title">K&H Feedback</div>
+                  <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${localRatingText}</strong></div>
+                  <div class="kh-feedback-row">Favorite: <strong>${localFavorite}</strong></div>
+                  <div class="kh-feedback-row">Visited: ${localVisited}</div>
+                  <div class="kh-feedback-row kh-feedback-notes">Notes: ${escapeHtml(localNotes)}</div>
+                </div>
+              `;
+            };
 
         return `
           <div class="adventure-card bike-trail-card"
@@ -1185,13 +1203,12 @@
                 <div class="card-info-item">Favorite: <strong>${favIcon}</strong></div>
                 <div class="card-info-item">Rating: <strong>${ratingText}</strong></div>
               </div>
-              <div class="kh-feedback-block">
-                <div class="kh-feedback-title">K&H Feedback</div>
-                <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>${escapeHtml(khRatingText)}</strong></div>
-                <div class="kh-feedback-row">Favorite: <strong>${escapeHtml(khFavoriteText)}</strong></div>
-                <div class="kh-feedback-row">Visited: ${khVisitedText}</div>
-                <div class="kh-feedback-row kh-feedback-notes">Notes: ${escapeHtml(khNotesText)}</div>
-              </div>
+              ${renderKhFeedback({
+                ratingValue: trail.myRating,
+                favoriteValue: trail.isFavorite,
+                visitedValue: trail.visited,
+                notesValue: trail.notes
+              })}
             </div>
             <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
               <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
