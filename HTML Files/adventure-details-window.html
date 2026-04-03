@@ -385,6 +385,46 @@
       font-style: italic;
       font-size: 13px;
     }
+
+    .detail-toast {
+      position: fixed;
+      right: 20px;
+      top: 20px;
+      z-index: 999999;
+      min-width: 280px;
+      max-width: min(480px, calc(100vw - 40px));
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2);
+      color: #111827;
+      font-size: 13px;
+      font-weight: 700;
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .detail-toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .detail-toast.success {
+      background: #ecfdf5;
+      border-color: #86efac;
+      color: #065f46;
+    }
+    .detail-toast.error {
+      background: #fef2f2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+    .detail-toast.info {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1e3a8a;
+    }
   </style>
 </head>
 <body>
@@ -435,7 +475,9 @@
 
 <script>
   var TAG_STORAGE_KEY = 'adventureFinderTags';
+  var TAG_MIGRATION_MARKER_PREFIX = 'adventureFinderTagsMigrated_';
   var STORAGE_PREFIX_ADV = 'adv_actionbar_';
+  var DETAIL_TAGS_COLUMN_INDEX = 3;
 
   function getParams() {
     return new URLSearchParams(window.location.search || '');
@@ -725,18 +767,79 @@
     return 'name|' + name + '|city|' + city + '|state|' + state;
   }
 
-  function getStoredTagsForPlace(placeKey) {
+  function getLegacyNameOnlyTagKey(data) {
+    var name = normalizeTextKey(data && data.name);
+    return name || '';
+  }
+
+  function getMigrationMarkerKey(placeKey) {
+    return TAG_MIGRATION_MARKER_PREFIX + placeKey;
+  }
+
+  function isMigrationMarked(placeKey) {
+    try {
+      return window.localStorage.getItem(getMigrationMarkerKey(placeKey)) === '1';
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function markMigrationDone(placeKey) {
+    try {
+      window.localStorage.setItem(getMigrationMarkerKey(placeKey), '1');
+    } catch (_err) {}
+  }
+
+  function migrateLegacyNameKeyIfNeeded(placeKey, data, map) {
+    if (!placeKey || !data || !map || isMigrationMarked(placeKey)) return map;
+
+    var legacyKey = getLegacyNameOnlyTagKey(data);
+    if (!legacyKey || legacyKey === placeKey) {
+      markMigrationDone(placeKey);
+      return map;
+    }
+
+    var legacyTags = Array.isArray(map[legacyKey]) ? map[legacyKey] : [];
+    var currentTags = Array.isArray(map[placeKey]) ? map[placeKey] : [];
+
+    if (!legacyTags.length) {
+      markMigrationDone(placeKey);
+      return map;
+    }
+
+    var merged = uniqueTags([].concat(currentTags, legacyTags));
+    var nextMap = Object.assign({}, map, { [placeKey]: merged });
+    delete nextMap[legacyKey];
+
+    if (saveTagStorageMap(nextMap)) {
+      console.log('🏷️ Tag key migration completed:', {
+        legacyKey: legacyKey,
+        newKey: placeKey,
+        migratedTagCount: merged.length
+      });
+      markMigrationDone(placeKey);
+      return nextMap;
+    }
+
+    return map;
+  }
+
+  function getStoredTagsForPlace(placeKey, data) {
     if (!placeKey) return [];
     var map = getTagStorageMap();
+    map = migrateLegacyNameKeyIfNeeded(placeKey, data, map);
     var val = map[placeKey];
     return Array.isArray(val) ? uniqueTags(val) : [];
   }
 
-  function setStoredTagsForPlace(placeKey, tags) {
+  function setStoredTagsForPlace(placeKey, tags, data) {
     if (!placeKey) return false;
     var map = getTagStorageMap();
+    map = migrateLegacyNameKeyIfNeeded(placeKey, data, map);
     map[placeKey] = uniqueTags(tags || []);
-    return saveTagStorageMap(map);
+    var ok = saveTagStorageMap(map);
+    if (ok) markMigrationDone(placeKey);
+    return ok;
   }
 
   function escapeRegExp(value) {
@@ -908,23 +1011,169 @@
     wrap.innerHTML = renderTagListHtml(uniqueTags(tags || []));
   }
 
-  function saveDetailTags() {
+  function showDetailToast(message, type, duration) {
+    var toastType = type || 'info';
+    var displayMs = Number(duration || 3500);
+    var existing = document.getElementById('detailSaveToast');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.id = 'detailSaveToast';
+    toast.className = 'detail-toast ' + toastType;
+    toast.textContent = String(message || 'Done');
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(function () {
+      toast.classList.add('visible');
+    });
+
+    window.setTimeout(function () {
+      toast.classList.remove('visible');
+      window.setTimeout(function () {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 220);
+    }, displayMs);
+  }
+
+  function getOpenerWindow() {
+    try {
+      if (!window.opener || window.opener.closed) return null;
+      return window.opener;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function findOpenerRowForTagSync(openerWin, state) {
+    if (!openerWin || !Array.isArray(openerWin.adventuresData)) return null;
+
+    var sourceIndex = state && Number.isInteger(state.sourceIndex) ? state.sourceIndex : Number(state && state.sourceIndex);
+    if (Number.isInteger(sourceIndex) && sourceIndex >= 0 && openerWin.adventuresData[sourceIndex]) {
+      return { row: openerWin.adventuresData[sourceIndex], index: sourceIndex };
+    }
+
+    var data = state && state.data ? state.data : {};
+    var placeIdNeedle = normalizeTextKey(data.googlePlaceId);
+    var nameNeedle = normalizeTextKey(data.name);
+    var cityNeedle = normalizeTextKey(data.city);
+    var stateNeedle = normalizeTextKey(data.state);
+
+    for (var i = 0; i < openerWin.adventuresData.length; i++) {
+      var row = openerWin.adventuresData[i];
+      var values = row && row.values && row.values[0];
+      if (!Array.isArray(values)) continue;
+
+      var rowPlaceId = normalizeTextKey(values[1]);
+      if (placeIdNeedle && rowPlaceId && rowPlaceId === placeIdNeedle) {
+        return { row: row, index: i };
+      }
+
+      var rowName = normalizeTextKey(values[0]);
+      var rowCity = normalizeTextKey(values[10]);
+      var rowState = normalizeTextKey(values[9]);
+      if (nameNeedle && rowName === nameNeedle && rowCity === cityNeedle && rowState === stateNeedle) {
+        return { row: row, index: i };
+      }
+    }
+
+    return null;
+  }
+
+  async function syncTagsToOpenerAndSpreadsheet(state) {
+    var openerWin = getOpenerWindow();
+    if (!openerWin) return { syncedRow: false, excelSaved: false, reason: 'no-opener' };
+
+    var rowMatch = findOpenerRowForTagSync(openerWin, state);
+    if (!rowMatch || !rowMatch.row || !Array.isArray(rowMatch.row.values) || !Array.isArray(rowMatch.row.values[0])) {
+      return { syncedRow: false, excelSaved: false, reason: 'row-not-found' };
+    }
+
+    var values = rowMatch.row.values[0];
+    var tagsCsv = uniqueTags(state.tags || []).join(', ');
+    values[DETAIL_TAGS_COLUMN_INDEX] = tagsCsv;
+
+    if (state && state.data) {
+      state.data.tags = tagsCsv;
+    }
+
+    // Keep known working-set pointers in sync in opener.
+    if (openerWin.currentEditingRow && openerWin.currentEditingRow.values && openerWin.currentEditingRow.values[0]) {
+      var currentEditingPlaceId = normalizeTextKey(openerWin.currentEditingRow.values[0][1]);
+      var activePlaceId = normalizeTextKey(state && state.data && state.data.googlePlaceId);
+      if (activePlaceId && currentEditingPlaceId === activePlaceId) {
+        openerWin.currentEditingRow.values[0][DETAIL_TAGS_COLUMN_INDEX] = tagsCsv;
+      }
+    }
+
+    if (typeof openerWin.renderPaginatedCards === 'function') {
+      try { openerWin.renderPaginatedCards(); } catch (_err) {}
+    }
+    if (typeof openerWin.renderAdventureCards === 'function') {
+      try { await openerWin.renderAdventureCards(); } catch (_err) {}
+    }
+    if (typeof openerWin.applyFilters === 'function') {
+      try { openerWin.applyFilters(); } catch (_err) {}
+    }
+
+    var excelSaved = false;
+    try {
+      if (typeof openerWin.saveToExcel === 'function') {
+        if (rowMatch.row.rowId) {
+          try {
+            var rowResult = await openerWin.saveToExcel(rowMatch.row.rowId, values);
+            excelSaved = rowResult !== false;
+          } catch (_firstErr) {
+            var fullResult = await openerWin.saveToExcel();
+            excelSaved = fullResult !== false;
+          }
+        } else {
+          var fallbackResult = await openerWin.saveToExcel();
+          excelSaved = fallbackResult !== false;
+        }
+      }
+    } catch (excelErr) {
+      console.warn('⚠️ Could not persist tags to Excel from details tab:', excelErr && excelErr.message ? excelErr.message : excelErr);
+      excelSaved = false;
+    }
+
+    return { syncedRow: true, excelSaved: excelSaved, reason: excelSaved ? 'saved' : 'sync-only' };
+  }
+
+  async function saveDetailTags() {
     var state = window.__detailTagState;
     if (!state || !state.placeKey) {
       setTagStatus('Cannot save tags: missing Place ID/name key.', true);
+      showDetailToast('Cannot save tags: missing Place ID/name key.', 'error', 4200);
       return;
     }
 
-    if (!setStoredTagsForPlace(state.placeKey, state.tags)) {
+    if (!setStoredTagsForPlace(state.placeKey, state.tags, state.data)) {
       setTagStatus('Failed to save tags (storage unavailable).', true);
+      showDetailToast('Failed to save tags (storage unavailable).', 'error', 4200);
       return;
     }
 
+    var syncResult = await syncTagsToOpenerAndSpreadsheet(state);
     updateOverviewTagsCard(state.tags);
-    setTagStatus('Tags saved for this location.', false);
+
+    if (syncResult.syncedRow && syncResult.excelSaved) {
+      setTagStatus('Tags saved for this location and synced to Excel.', false);
+      showDetailToast('✅ Tags saved and synced to your Adventure Planner + Excel.', 'success', 4200);
+    } else if (syncResult.syncedRow) {
+      setTagStatus('Tags saved locally and synced to planner view; Excel save hook unavailable.', false);
+      showDetailToast('⚠️ Tags saved and synced to planner view, but Excel save hook was not confirmed.', 'info', 5000);
+    } else {
+      setTagStatus('Tags saved locally for this location.', false);
+      showDetailToast('⚠️ Tags saved locally, but opener planner sync was not available.', 'info', 5000);
+    }
+
+    var openerWin = getOpenerWindow();
+    if (openerWin && typeof openerWin.showToast === 'function') {
+      openerWin.showToast('🏷️ Tags updated for ' + (state.data && state.data.name ? state.data.name : 'location'), syncResult.excelSaved ? 'success' : 'warning', 3200);
+    }
   }
 
-  function renderTagManagementPane(data, sourceTags, storedTags) {
+  function renderTagManagementPane(data, sourceTags, storedTags, payload) {
     var pane = document.getElementById('pane-tag-management');
     if (!pane) return;
 
@@ -932,7 +1181,8 @@
       placeKey: getTagPlaceKey(data),
       sourceTags: uniqueTags(sourceTags || []),
       tags: uniqueTags([].concat(sourceTags || [], storedTags || [])),
-      data: data || {}
+      data: data || {},
+      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null
     };
 
     pane.innerHTML =
@@ -980,7 +1230,7 @@
     if (payload && payload.correlationId) console.log('🔗 Detail corrId=' + String(payload.correlationId));
 
     var sourceTagList = parseTagCsv(data.tags);
-    var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data));
+    var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data), data);
     var tagList = uniqueTags([].concat(sourceTagList, storedTagList));
 
     var directionsUrl = data.directions || '';
@@ -1040,7 +1290,7 @@
       card('Nearby Attractions', data.nearby) +
       card('Notes', data.notes);
 
-    renderTagManagementPane(data, sourceTagList, storedTagList);
+    renderTagManagementPane(data, sourceTagList, storedTagList, payload);
   }
 
   function getLocationKey(data) {
