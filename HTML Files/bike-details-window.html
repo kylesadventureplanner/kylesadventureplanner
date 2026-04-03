@@ -207,6 +207,89 @@
     }
     .star-btn:hover { transform: scale(1.25); }
     .star-btn.lit { color: #f59e0b; }
+
+    /* Tag Management tab */
+    .tm-wrap {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .tm-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .tm-title { margin: 0; font-size: 17px; color: #111827; }
+    .tm-status { font-size: 12px; color: #6b7280; }
+    .tm-input-row { display: flex; gap: 8px; margin: 10px 0 12px; flex-wrap: wrap; }
+    .tm-input {
+      flex: 1;
+      min-width: 220px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 14px;
+    }
+    .tm-btn {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 9px 12px;
+      background: #fff;
+      color: #374151;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .tm-btn.primary { background: #7c3aed; color: #fff; border-color: #6d28d9; }
+    .tm-btn.danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+    .tm-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .tm-section-label {
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .tm-pills { display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; }
+    .tm-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      border: 1px solid #c4b5fd;
+      background: #f5f3ff;
+      color: #5b21b6;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+    .tm-remove-btn {
+      border: 0;
+      background: transparent;
+      color: #5b21b6;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+      padding: 0;
+    }
+    .tm-suggestions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .tm-suggest-btn {
+      border: 1px solid #ddd6fe;
+      background: #f5f3ff;
+      color: #6d28d9;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tm-empty { color: #6b7280; font-style: italic; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -219,6 +302,7 @@
     <button class="tab-btn" data-tab="experience" type="button">🎢 Experience</button>
     <button class="tab-btn" data-tab="location" type="button">📍 Location</button>
     <button class="tab-btn" data-tab="links" type="button">🔗 Links</button>
+    <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
   </div>
 
   <div id="pane-overview" class="tab-pane active"></div>
@@ -226,6 +310,7 @@
   <div id="pane-experience" class="tab-pane"></div>
   <div id="pane-location" class="tab-pane"></div>
   <div id="pane-links" class="tab-pane"></div>
+  <div id="pane-tag-management" class="tab-pane"></div>
 
   <!-- Sticky action bar — always visible regardless of active tab -->
   <div class="action-bar" id="actionBar" style="display:none;">
@@ -257,6 +342,242 @@
 <script>
   function getParams() {
     return new URLSearchParams(window.location.search || '');
+  }
+
+  var BIKE_TAG_STORAGE_KEY = 'adventureFinderTags';
+  var bikeTagState = {
+    placeId: '',
+    currentTags: [],
+    sourceTags: []
+  };
+
+  function esc(text) {
+    return String(text == null ? '' : text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function normTag(text) {
+    return String(text || '').trim().toLowerCase();
+  }
+
+  function uniqueTags(tags) {
+    var seen = new Set();
+    var out = [];
+    (tags || []).forEach(function(tag) {
+      var value = String(tag || '').trim();
+      var key = normTag(value);
+      if (!value || seen.has(key)) return;
+      seen.add(key);
+      out.push(value);
+    });
+    return out;
+  }
+
+  function splitCsvTags(raw) {
+    return String(raw || '')
+      .split(',')
+      .map(function (t) { return t.trim(); })
+      .filter(Boolean);
+  }
+
+  function getTagManagerFromContext() {
+    if (window.tagManager && typeof window.tagManager.getTagsForPlace === 'function') return window.tagManager;
+    if (window.opener && !window.opener.closed && window.opener.tagManager && typeof window.opener.tagManager.getTagsForPlace === 'function') {
+      return window.opener.tagManager;
+    }
+    return null;
+  }
+
+  function readTagMapFromStorage() {
+    try { return JSON.parse(localStorage.getItem(BIKE_TAG_STORAGE_KEY) || '{}'); }
+    catch (_err) { return {}; }
+  }
+
+  function saveTagMapToStorage(tagMap) {
+    try { localStorage.setItem(BIKE_TAG_STORAGE_KEY, JSON.stringify(tagMap || {})); }
+    catch (_err) {}
+  }
+
+  function getBikeTagKeyForData(data, payload) {
+    var placeId = String((data && data.googlePlaceId) || '').trim();
+    if (placeId) return placeId;
+    var dataTagKey = String((data && data.tagKey) || '').trim();
+    if (dataTagKey) return dataTagKey;
+    var sourceIndex = payload && payload.sourceIndex != null ? String(payload.sourceIndex).trim() : '';
+    var id = String((data && data.id) || sourceIndex || '').trim();
+    return id ? ('bike:' + id) : '';
+  }
+
+  function loadManagedTags(placeId) {
+    if (!placeId) return [];
+    var manager = getTagManagerFromContext();
+    if (manager) {
+      return uniqueTags(manager.getTagsForPlace(placeId) || []);
+    }
+    var tagMap = readTagMapFromStorage();
+    return uniqueTags(tagMap[placeId] || []);
+  }
+
+  function saveManagedTags(placeId, tags) {
+    if (!placeId) return false;
+    var normalized = uniqueTags(tags);
+    var manager = getTagManagerFromContext();
+    if (manager && typeof manager.setTagsForPlace === 'function') {
+      manager.setTagsForPlace(placeId, normalized);
+      if (typeof manager.saveTags === 'function') manager.saveTags();
+      return true;
+    }
+    var tagMap = readTagMapFromStorage();
+    tagMap[placeId] = normalized;
+    saveTagMapToStorage(tagMap);
+    return true;
+  }
+
+  function renderTagManagementPane() {
+    var pane = document.getElementById('pane-tag-management');
+    if (!pane) return;
+
+    var currentTags = uniqueTags(bikeTagState.currentTags);
+    var sourceTags = uniqueTags(bikeTagState.sourceTags).filter(function (tag) {
+      return !currentTags.some(function (existing) { return normTag(existing) === normTag(tag); });
+    });
+
+    pane.innerHTML = '' +
+      '<div class="tm-wrap">' +
+        '<div class="tm-head">' +
+          '<h3 class="tm-title">Manage Bike Tags</h3>' +
+          '<div id="bikeTagStatus" class="tm-status">Tag key: ' + esc(bikeTagState.placeId || 'Unavailable') + '</div>' +
+        '</div>' +
+        '<div class="tm-section-label">Current Tags</div>' +
+        '<div id="bikeTagPills" class="tm-pills">' +
+          (currentTags.length
+            ? currentTags.map(function (tag) {
+                return '<span class="tm-pill">' + esc(tag) +
+                  ' <button type="button" class="tm-remove-btn" data-remove-bike-tag="' + esc(tag) + '" title="Remove">×</button></span>';
+              }).join('')
+            : '<span class="tm-empty">No tags yet</span>') +
+        '</div>' +
+        '<div class="tm-input-row">' +
+          '<input id="bikeTagInput" class="tm-input" type="text" placeholder="Add a tag and press Enter" />' +
+          '<button type="button" class="tm-btn" id="bikeAddTagBtn">Add Tag</button>' +
+        '</div>' +
+        '<div class="tm-section-label">Suggested Tags</div>' +
+        '<div id="bikeTagSuggestions" class="tm-suggestions">' +
+          (sourceTags.length
+            ? sourceTags.map(function (tag) {
+                return '<button type="button" class="tm-suggest-btn" data-suggest-bike-tag="' + esc(tag) + '">' + esc(tag) + ' +</button>';
+              }).join('')
+            : '<span class="tm-empty">No additional suggestions</span>') +
+        '</div>' +
+        '<div class="tm-actions">' +
+          '<button type="button" class="tm-btn primary" id="bikeSaveTagsBtn">Save Tags</button>' +
+          '<button type="button" class="tm-btn danger" id="bikeClearTagsBtn">Clear All</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function refreshTagManagementUi(message) {
+    renderTagManagementPane();
+    var status = document.getElementById('bikeTagStatus');
+    if (status && message) status.textContent = message;
+  }
+
+  function addBikeTag(tag) {
+    var clean = String(tag || '').trim();
+    if (!clean) return;
+    if (bikeTagState.currentTags.some(function (t) { return normTag(t) === normTag(clean); })) return;
+    bikeTagState.currentTags.push(clean);
+    bikeTagState.currentTags = uniqueTags(bikeTagState.currentTags);
+    refreshTagManagementUi();
+    var input = document.getElementById('bikeTagInput');
+    if (input) input.value = '';
+  }
+
+  function removeBikeTag(tag) {
+    var key = normTag(tag);
+    bikeTagState.currentTags = (bikeTagState.currentTags || []).filter(function (t) {
+      return normTag(t) !== key;
+    });
+    refreshTagManagementUi();
+  }
+
+  function saveBikeTags() {
+    if (!bikeTagState.placeId) {
+      refreshTagManagementUi('Tag key unavailable for this trail');
+      return;
+    }
+
+    var ok = saveManagedTags(bikeTagState.placeId, bikeTagState.currentTags || []);
+    refreshTagManagementUi(ok ? 'Tags saved' : 'Failed to save tags');
+
+    if (window.opener && !window.opener.closed) {
+      try {
+        if (typeof window.opener.applyBikeFilters === 'function') window.opener.applyBikeFilters();
+        if (typeof window.opener.renderBikeTrailsPage === 'function') window.opener.renderBikeTrailsPage();
+      } catch (_err) {}
+    }
+  }
+
+  function bindTagManagementEvents() {
+    var pane = document.getElementById('pane-tag-management');
+    if (!pane || pane.dataset.boundBikeTagEvents === '1') return;
+
+    pane.addEventListener('click', function (event) {
+      var removeBtn = event.target && event.target.closest ? event.target.closest('[data-remove-bike-tag]') : null;
+      if (removeBtn) {
+        removeBikeTag(removeBtn.getAttribute('data-remove-bike-tag') || '');
+        return;
+      }
+
+      var suggestBtn = event.target && event.target.closest ? event.target.closest('[data-suggest-bike-tag]') : null;
+      if (suggestBtn) {
+        addBikeTag(suggestBtn.getAttribute('data-suggest-bike-tag') || '');
+        return;
+      }
+
+      if (event.target && event.target.id === 'bikeAddTagBtn') {
+        var input = document.getElementById('bikeTagInput');
+        addBikeTag(input ? input.value : '');
+        return;
+      }
+
+      if (event.target && event.target.id === 'bikeSaveTagsBtn') {
+        saveBikeTags();
+        return;
+      }
+
+      if (event.target && event.target.id === 'bikeClearTagsBtn') {
+        bikeTagState.currentTags = [];
+        refreshTagManagementUi();
+      }
+    });
+
+    pane.addEventListener('keydown', function (event) {
+      if (event.target && event.target.id === 'bikeTagInput' && event.key === 'Enter') {
+        event.preventDefault();
+        addBikeTag(event.target.value || '');
+      }
+    });
+
+    pane.dataset.boundBikeTagEvents = '1';
+  }
+
+  function hydrateBikeTagState(data, payload) {
+    var placeId = getBikeTagKeyForData(data, payload);
+    var sourceTags = uniqueTags([
+      data && data.surface,
+      data && data.difficulty
+    ].concat(splitCsvTags(data && data.moodTags)));
+
+    bikeTagState.placeId = placeId;
+    bikeTagState.sourceTags = sourceTags;
+    bikeTagState.currentTags = loadManagedTags(placeId);
+    renderTagManagementPane();
+    bindTagManagementEvents();
   }
 
   function getCloseButtonHtml() {
@@ -464,6 +785,8 @@
       card('Local Wildlife', data.localWildlifeNotes) +
       card('Local History', data.localHistoryFunFact) +
       card('Seasonal Notes', data.seasonalNotes);
+
+    hydrateBikeTagState(data, payload);
   }
 
   // ── Action Bar ──────────────────────────────────────────────

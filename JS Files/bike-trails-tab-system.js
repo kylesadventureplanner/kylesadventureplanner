@@ -131,7 +131,8 @@
       state: '',
       city: '',
       cost: '',
-      hours: ''
+      hours: '',
+      tag: ''
     }
   };
 
@@ -285,43 +286,6 @@
 
   window.getBikeTagKey = getBikeTagKey;
 
-  window.openBikeTrailTagManager = function(event, sourceIndex) {
-    if (event && typeof event.stopPropagation === 'function') {
-      event.stopPropagation();
-      if (typeof event.preventDefault === 'function') event.preventDefault();
-    }
-
-    const row = (window.bikeTrailsData || [])[sourceIndex];
-    const trail = trailModel(row, sourceIndex);
-    if (!trail) {
-      window.showToast?.('Trail data not available', 'warning', 2000);
-      return false;
-    }
-
-    if (!window.cleanTagManager || typeof window.cleanTagManager.openModal !== 'function') {
-      window.showToast?.('Tag manager is not available yet', 'warning', 2500);
-      return false;
-    }
-
-    const placeId = getBikeTagKey(trail);
-    window.cleanTagManager.openModal(placeId, `${trail.name || 'Bike Trail'} (Bike Trail)`, {
-      domain: 'bike',
-      getExcelTags: () => getBikeBaseTags(trail),
-      getContextualTags: () => getBikeManagedTags(trail),
-      onSave: () => {
-        applyBikeFilters();
-        const modal = document.getElementById('bikeTrailDetailModal');
-        if (modal && modal.style.display === 'flex') {
-          const modalSourceIndex = Number(modal.dataset.sourceIndex);
-          if (modalSourceIndex === sourceIndex) {
-            renderBikeModalActionBar(modal, trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex), sourceIndex);
-          }
-        }
-      }
-    });
-
-    return false;
-  };
 
   function getExpectedColumnVariants(fieldName) {
     return [fieldName, ...(BIKE_COLUMN_ALIASES[fieldName] || [])];
@@ -403,6 +367,7 @@
       city: 'bikeFilterCity',
       cost: 'bikeFilterCost',
       hours: 'bikeFilterHours',
+      tag: 'bikeFilterTag',
       groupBy: 'bikeGroupBy'
     };
     return map[filterKey] || '';
@@ -421,6 +386,7 @@
       city: 'City',
       cost: 'Cost',
       hours: 'Hours',
+      tag: 'Tag',
       groupBy: 'Group By'
     };
 
@@ -506,6 +472,54 @@
         clearBikeFilterChip(btn.dataset.bikeChipKey || '', btn.dataset.bikeChipValue || '');
       });
     });
+  }
+
+  function renderBikeManagedTagQuickChips() {
+    const container = document.getElementById('bikeManagedTagQuickFilters');
+    const dataList = document.getElementById('bikeTagList');
+    if (!container) return;
+
+    const trails = getAllBikeTrails();
+    const tagCounts = new Map();
+
+    trails.forEach((trail) => {
+      getBikeManagedTags(trail).forEach((tag) => {
+        const label = String(tag || '').trim();
+        if (!label) return;
+        const key = label.toLowerCase();
+        const entry = tagCounts.get(key);
+        if (entry) {
+          entry.count += 1;
+        } else {
+          tagCounts.set(key, { label, count: 1 });
+        }
+      });
+    });
+
+    const topTags = Array.from(tagCounts.values())
+      .sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label))
+      .slice(0, 8);
+
+    if (dataList) {
+      const allTags = Array.from(tagCounts.values()).sort((a, b) => a.label.localeCompare(b.label));
+      dataList.innerHTML = allTags.map((entry) => `<option value="${escapeHtml(entry.label)}"></option>`).join('');
+    }
+
+    if (!topTags.length) {
+      container.innerHTML = '<span style="font-size:12px;color:#6b7280;">Add some bike tags to see quick tag filters here.</span>';
+      return;
+    }
+
+    const activeTag = norm(state.filters.tag);
+    container.innerHTML = topTags.map((entry) => {
+      const isActive = activeTag && activeTag === norm(entry.label);
+      return `<button type="button" class="quick-filter-btn${isActive ? ' active' : ''}" data-bike-managed-tag="${escapeHtml(entry.label)}" title="Used on ${entry.count} trail${entry.count === 1 ? '' : 's'}">🏷️ ${escapeHtml(entry.label)} <span style="opacity:0.75;">(${entry.count})</span></button>`;
+    }).join('');
+  }
+
+  function getAllBikeTrails() {
+    const rows = window.bikeTrailsData || [];
+    return rows.map((row, idx) => trailModel(row, idx));
   }
 
   function getBikeColumnIndex(fieldName) {
@@ -1163,9 +1177,8 @@
                 <div class="card-info-item">Rating: <strong>${ratingText}</strong></div>
               </div>
             </div>
-            <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <div class="card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
               <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
-              <button type="button" class="row-detail-footer-btn" onclick="return window.openBikeTrailTagManager(event, ${trail.sourceIndex})">🏷️ Manage Tags</button>
             </div>
           </div>`;
       }).join('');
@@ -1231,10 +1244,8 @@
 
     const rating = Math.max(0, Math.min(5, Number(trail.myRating || 0)));
     const mapsUrl = getPreferredTrailMapUrl(trail);
-    const managedTagCount = getBikeManagedTags(trail).length;
 
     actionBar.innerHTML = `
-      <button type="button" id="bikeTrailModalManageTagsBtn" class="row-detail-footer-btn">${managedTagCount > 0 ? `🏷️ Tags (${managedTagCount})` : '🏷️ Add Tags'}</button>
       <button type="button" id="bikeTrailModalMapsBtn" class="row-detail-footer-btn" ${mapsUrl ? '' : 'disabled'}>🗺️ Open Maps</button>
       <button type="button" id="bikeTrailModalParkingBtn" class="row-detail-footer-btn" ${trail.parkingLink ? '' : 'disabled'}>🅿️ Parking Map</button>
       <button type="button" id="bikeTrailModalFavoriteBtn" class="row-detail-footer-btn">${trail.isFavorite ? '💖 Favorite' : '🤍 Favorite'}</button>
@@ -1243,10 +1254,6 @@
       </div>
     `;
 
-    const manageTagsBtn = actionBar.querySelector('#bikeTrailModalManageTagsBtn');
-    if (manageTagsBtn) manageTagsBtn.onclick = () => {
-      window.openBikeTrailTagManager(null, sourceIndex);
-    };
 
     const mapsBtn = actionBar.querySelector('#bikeTrailModalMapsBtn');
     if (mapsBtn) mapsBtn.onclick = () => {
@@ -1588,11 +1595,6 @@
     state.groupBy = readFilterControlValue('groupBy');
   }
 
-  function getAllBikeTrails() {
-    const rows = window.bikeTrailsData || [];
-    return rows.map((row, idx) => trailModel(row, idx));
-  }
-
   function applyBikeFilters() {
     refreshFilterStateFromControls();
 
@@ -1605,9 +1607,16 @@
     const cityNeedle = norm(state.filters.city);
     const costNeedle = norm(state.filters.cost);
     const hoursNeedle = norm(state.filters.hours);
+    const tagNeedle = norm(state.filters.tag);
 
     const trails = getAllBikeTrails().filter((trail) => {
-      if (searchNeedle && !norm(trail.name).includes(searchNeedle)) return false;
+      const managedTags = getBikeManagedTags(trail);
+      const managedTagText = norm(managedTags.join(' '));
+
+      if (searchNeedle) {
+        const searchCorpus = `${trail.name || ''} ${managedTags.join(' ')}`;
+        if (!norm(searchCorpus).includes(searchNeedle)) return false;
+      }
       if (regionNeedle && !norm(trail.region).includes(regionNeedle)) return false;
       if (difficultyNeedle && !norm(trail.difficulty).includes(difficultyNeedle)) return false;
       if (surfaceNeedle && !norm(trail.surface).includes(surfaceNeedle)) return false;
@@ -1616,6 +1625,7 @@
       if (cityNeedle && !norm(trail.city).includes(cityNeedle)) return false;
       if (costNeedle && !norm(trail.cost).includes(costNeedle)) return false;
       if (hoursNeedle && !norm(trail.hours).includes(hoursNeedle)) return false;
+      if (tagNeedle && !managedTagText.includes(tagNeedle)) return false;
       if (!inBandLength(trail.lengthMiles, state.filters.lengthBand)) return false;
       if (!inBandDrive(trail.driveMinutes, state.filters.driveTimeBand)) return false;
       if (state.showFavoritesOnly && !trail.isFavorite) return false;
@@ -1630,6 +1640,7 @@
     window.bikeFilteredTrails = trails;
     state.currentPage = 1;
     renderBikeBreadcrumbChips();
+    renderBikeManagedTagQuickChips();
     renderBikeTrailsPage();
     return trails;
   }
@@ -1751,6 +1762,23 @@
         boundCount += 1;
       }
     });
+
+    const managedTagContainer = document.getElementById('bikeManagedTagQuickFilters');
+    if (managedTagContainer && managedTagContainer.dataset.boundManagedTagClicks !== '1') {
+      managedTagContainer.addEventListener('click', (event) => {
+        const button = event.target && event.target.closest ? event.target.closest('[data-bike-managed-tag]') : null;
+        if (!button) return;
+        const tag = String(button.getAttribute('data-bike-managed-tag') || '').trim();
+        const input = document.getElementById('bikeFilterTag');
+        if (!tag || !input) return;
+
+        const currentlyActive = norm(input.value) === norm(tag);
+        input.value = currentlyActive ? '' : tag;
+        applyBikeFilters();
+      });
+      managedTagContainer.dataset.boundManagedTagClicks = '1';
+      boundCount += 1;
+    }
 
     state.controlsBound = boundCount > 0;
   }
@@ -2080,6 +2108,7 @@
   window.openBikeTrailExplorer = openBikeTrailExplorer;
   window.closeBikeTrailExplorer = closeBikeTrailExplorer;
   window.initializeBikeTrailsTabState = state;
+  window.renderBikeTrailsPage = renderBikeTrailsPage;
 
   /**
    * Runtime config override – call from browser console if the file/table name is wrong.
