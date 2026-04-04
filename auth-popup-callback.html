@@ -31,7 +31,6 @@
       const query = window.location.search || '';
       const hash = window.location.hash || '';
       const authParamPattern = /(^|[?&#])(code|error|state|id_token|access_token)=/i;
-      const hasAuthParams = authParamPattern.test(query + '&' + hash);
 
       // MSAL popup polling is most reliable when auth params are in the hash.
       if (query && !hash && authParamPattern.test(query)) {
@@ -41,40 +40,21 @@
         return;
       }
 
-      if (window.opener && window.opener !== window) {
+      if (statusEl) {
+        statusEl.textContent = 'Sign-in response received. Finishing authentication...';
+      }
+
+      // Do not force-close aggressively here.
+      // MSAL in the opener reads this URL and then closes the popup itself.
+      window.setTimeout(function() {
         try {
-          window.opener.postMessage(
-            {
-              type: 'msal-popup-callback',
-              href: window.location.href,
-              hasAuthParams: hasAuthParams
-            },
-            window.location.origin
-          );
-        } catch (err) {
-          console.warn('Popup callback could not notify opener:', err);
-        }
-      }
-
-      if (hasAuthParams && statusEl) {
-        statusEl.textContent = 'Sign-in response received. Closing this window...';
-      }
-
-      let attempts = 0;
-      const maxAttempts = 12;
-      const timer = window.setInterval(() => {
-        attempts += 1;
-        window.close();
-
-        if (attempts >= maxAttempts) {
-          window.clearInterval(timer);
-          if (statusEl) {
-            statusEl.textContent = 'Sign-in appears complete. You can close this window and return to the app.';
+          if (window.opener && window.opener !== window) {
+            window.close();
           }
+        } catch (_err) {
+          // Ignore close failures; user can close manually.
         }
-      }, 250);
-
-      window.close();
+      }, 2000);
     })();
   </script>
 </body>

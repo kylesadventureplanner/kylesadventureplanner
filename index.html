@@ -5710,7 +5710,10 @@
            msg.includes('user cancelled the flow') ||
            msg.includes('user_cancelled') ||
            msg.includes('popup window closed') ||
-           msg.includes('closed by user');
+           msg.includes('closed by user') ||
+           msg.includes('sign on canceled') ||
+           msg.includes('sign-in canceled') ||
+           msg.includes('sign in canceled');
 
          if (isCancelled) {
            console.log('ℹ️ Sign-in cancelled by user');
@@ -7794,7 +7797,10 @@
         message.includes('user cancelled the flow') ||
         message.includes('user_cancelled') ||
         message.includes('popup window closed') ||
-        message.includes('closed by user')
+        message.includes('closed by user') ||
+        message.includes('sign on canceled') ||
+        message.includes('sign-in canceled') ||
+        message.includes('sign in canceled')
       );
     };
     }
@@ -21650,6 +21656,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       lowerMessage.includes('user_cancelled') ||
       lowerMessage.includes('popup window closed') ||
       lowerMessage.includes('closed by user') ||
+      lowerMessage.includes('sign on canceled') ||
+      lowerMessage.includes('sign-in canceled') ||
+      lowerMessage.includes('sign in canceled') ||
       lowerMessage.includes('cancelled');
     if (isCancelled) {
       if (typeof window.showToast === 'function') window.showToast('Sign-in cancelled', 'info', 2000);
