@@ -725,6 +725,7 @@ class EnhancedCityVisualizer {
       keywords: ''
     };
     this.availableTags = new Set();
+    this._initialized = false;
     this.init();
   }
 
@@ -732,6 +733,15 @@ class EnhancedCityVisualizer {
    * Initialize the enhanced city visualizer
    */
   init() {
+    if (this._initialized) return;
+
+    // This script can execute before <body> exists; defer until DOM is usable.
+    if (!document.body || document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.init(), { once: true });
+      return;
+    }
+
+    this._initialized = true;
     this.createStyles();
     this.createMarkup();
     this.attachEventListeners();
@@ -1135,6 +1145,11 @@ class EnhancedCityVisualizer {
    * Create HTML markup
    */
   createMarkup() {
+    if (!document.body) return;
+    if (document.getElementById('enhancedCityVisualizerBackdrop') && document.getElementById('enhancedCityVisualizerModal')) {
+      return;
+    }
+
     const backdrop = document.createElement('div');
     backdrop.id = 'enhancedCityVisualizerBackdrop';
     document.body.appendChild(backdrop);
@@ -1214,6 +1229,7 @@ class EnhancedCityVisualizer {
     }
 
     const listView = document.getElementById('cityListView');
+    if (!listView) return;
 
     if (cities.length === 0) {
       listView.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px;"><p style="color: #9ca3af;">No cities found</p></div>`;
@@ -1239,8 +1255,18 @@ class EnhancedCityVisualizer {
    * Show the modal
    */
   show() {
-    document.getElementById('enhancedCityVisualizerBackdrop').classList.add('visible');
-    document.getElementById('enhancedCityVisualizerModal').classList.add('visible');
+    const backdrop = document.getElementById('enhancedCityVisualizerBackdrop');
+    const modal = document.getElementById('enhancedCityVisualizerModal');
+    if (!backdrop || !modal) {
+      this.createMarkup();
+    }
+
+    const safeBackdrop = document.getElementById('enhancedCityVisualizerBackdrop');
+    const safeModal = document.getElementById('enhancedCityVisualizerModal');
+    if (!safeBackdrop || !safeModal) return;
+
+    safeBackdrop.classList.add('visible');
+    safeModal.classList.add('visible');
     this.currentView = 'cityList';
     this.refreshData();
     this.renderCityList();
@@ -1250,8 +1276,10 @@ class EnhancedCityVisualizer {
    * Hide the modal
    */
   hide() {
-    document.getElementById('enhancedCityVisualizerBackdrop').classList.remove('visible');
-    document.getElementById('enhancedCityVisualizerModal').classList.remove('visible');
+    const backdrop = document.getElementById('enhancedCityVisualizerBackdrop');
+    const modal = document.getElementById('enhancedCityVisualizerModal');
+    backdrop?.classList.remove('visible');
+    modal?.classList.remove('visible');
   }
 
   /**
@@ -1265,8 +1293,18 @@ class EnhancedCityVisualizer {
   }
 }
 
-// Create global instance (still needed so the class exists, but modal won't be used)
-window.enhancedCityViz = window.enhancedCityViz || new EnhancedCityVisualizer();
+// Create global instance after DOM is ready to avoid startup race conditions.
+if (!window.enhancedCityViz) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!window.enhancedCityViz) {
+        window.enhancedCityViz = new EnhancedCityVisualizer();
+      }
+    }, { once: true });
+  } else {
+    window.enhancedCityViz = new EnhancedCityVisualizer();
+  }
+}
 
 /**
  * Global functions for enhanced city visualizer
