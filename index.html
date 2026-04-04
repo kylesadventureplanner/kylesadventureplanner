@@ -179,18 +179,24 @@
       align-items: center;
       margin-top: 10px;
       position: sticky;
-      top: 8px;
+      top: var(--planner-top-sticky-offset, 8px);
       z-index: 120;
       padding: 8px;
       border-radius: 10px;
-      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(255, 255, 255, var(--planner-top-bg-alpha, 0.92));
       backdrop-filter: blur(6px);
       box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+      transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .planner-top-actions.scrolled {
+      border-color: rgba(148, 163, 184, 0.28);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
     }
 
     @media (max-width: 768px) {
       .planner-top-actions {
-        top: 4px;
         padding: 6px;
       }
     }
@@ -9343,6 +9349,8 @@
     console.log("Initializing other UI features...");
     initConnectionStatus();
     initAppTabs();
+    window.updatePlannerTopStickyOffset?.();
+    window.requestPlannerTopStickyVisualUpdate?.();
     window.initIphoneToggle?.();
     initSortControls();
     initFilters();
@@ -14921,9 +14929,77 @@
         btn.classList.add("active");
         const activePane = document.querySelector(`.app-tab-pane[data-tab="${tabId}"]`);
         if (activePane) activePane.classList.add("active");
+
+        // Recompute sticky offset and polish sticky visuals after tab layout updates.
+        setTimeout(() => {
+          window.updatePlannerTopStickyOffset?.();
+          window.requestPlannerTopStickyVisualUpdate?.();
+        }, 0);
       });
     });
     console.log("✓ App tabs initialized");
+  }
+
+  function updatePlannerTopStickyOffset() {
+    const root = document.documentElement;
+    const topGap = 6;
+
+    function getPinnedHeight(selector) {
+      const el = document.querySelector(selector);
+      if (!el) return 0;
+      const styles = window.getComputedStyle(el);
+      const pos = styles.position;
+      if (pos !== 'fixed' && pos !== 'sticky') return 0;
+
+      const rect = el.getBoundingClientRect();
+      if (pos === 'fixed') return Math.max(0, rect.height);
+
+      const stickyTop = Number.parseFloat(styles.top || '0') || 0;
+      const isPinned = rect.top <= stickyTop + 1;
+      return isPinned ? Math.max(0, rect.height) : 0;
+    }
+
+    const offset = getPinnedHeight('.app-header') + getPinnedHeight('.app-tabs-nav') + topGap;
+    root.style.setProperty('--planner-top-sticky-offset', `${offset || topGap}px`);
+  }
+
+  window.updatePlannerTopStickyOffset = updatePlannerTopStickyOffset;
+
+  function updatePlannerTopStickyVisualState() {
+    const topActions = document.querySelector('#adventurePlannerTab .planner-top-actions');
+    if (!topActions) return;
+
+    const scrollY = Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0);
+    const progress = Math.min(scrollY / 180, 1);
+    const alpha = (0.90 + progress * 0.08).toFixed(3);
+
+    topActions.style.setProperty('--planner-top-bg-alpha', alpha);
+    topActions.classList.toggle('scrolled', scrollY > 16);
+  }
+
+  let plannerTopVisualRaf = 0;
+  function requestPlannerTopStickyVisualUpdate() {
+    if (plannerTopVisualRaf) return;
+    plannerTopVisualRaf = window.requestAnimationFrame(() => {
+      plannerTopVisualRaf = 0;
+      updatePlannerTopStickyVisualState();
+    });
+  }
+
+  window.updatePlannerTopStickyVisualState = updatePlannerTopStickyVisualState;
+  window.requestPlannerTopStickyVisualUpdate = requestPlannerTopStickyVisualUpdate;
+
+  if (!window.__plannerStickyOffsetListenersBound) {
+    window.addEventListener('resize', updatePlannerTopStickyOffset);
+    window.addEventListener('orientationchange', updatePlannerTopStickyOffset);
+    window.__plannerStickyOffsetListenersBound = true;
+  }
+
+  if (!window.__plannerStickyVisualListenersBound) {
+    window.addEventListener('scroll', requestPlannerTopStickyVisualUpdate, { passive: true });
+    window.addEventListener('resize', requestPlannerTopStickyVisualUpdate);
+    window.addEventListener('orientationchange', requestPlannerTopStickyVisualUpdate);
+    window.__plannerStickyVisualListenersBound = true;
   }
 
   /**
