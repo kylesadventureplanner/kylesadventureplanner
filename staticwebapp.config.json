@@ -28,9 +28,24 @@
   },
   "routes": [
     {
+      "route": "/",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups"
+      }
+    },
+    {
       "route": "/index.html",
       "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate"
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups"
+      }
+    },
+    {
+      "route": "/auth-popup-callback.html",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Cross-Origin-Opener-Policy": "same-origin-allow-popups"
       }
     }
   ],

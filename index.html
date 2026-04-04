@@ -11012,16 +11012,15 @@
    // The earlier shim (defined in the head script block) is a delegation
    // placeholder; this assignment replaces it with the actual function that
    // populates totalFilteredAdventures and calls renderPaginatedCards().
-   // We also export under a stable internal name so any code that captured
-   // the old shim reference can still reach the real implementation.
-   console.log('🔧 CRITICAL: About to assign window._paginatedRenderAdventureCards...');
+   // We preserve the original function reference first so later window exports
+   // cannot accidentally recurse back into themselves through the global binding.
+   const realPaginatedRenderAdventureCards = renderAdventureCards;
+   console.log('🔧 Exporting stable paginated renderAdventureCards implementation...');
    window._paginatedRenderAdventureCards = function(adventuresArray) {
-     console.log('✅ _paginatedRenderAdventureCards wrapper called');
-     renderAdventureCards(adventuresArray);
+     return realPaginatedRenderAdventureCards(adventuresArray);
    };
-   console.log('✅ window._paginatedRenderAdventureCards assigned successfully');
-   window.renderAdventureCards = window._paginatedRenderAdventureCards;
-   console.log('✅ window.renderAdventureCards reassigned to _paginatedRenderAdventureCards');
+   window.renderAdventureCards = realPaginatedRenderAdventureCards;
+   console.log('✅ Stable paginated renderAdventureCards exported successfully');
 
   /**
    * Update the results count display
