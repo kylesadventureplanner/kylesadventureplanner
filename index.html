@@ -6244,13 +6244,29 @@
    if (document.readyState === 'loading') {
      document.addEventListener('DOMContentLoaded', () => {
        console.log('🚀 DOM ready: calling FilterManager.init()');
-       window.FilterManager?.init();
+       if (typeof window.FilterManager === 'object' && typeof window.FilterManager.init === 'function') {
+         try {
+           window.FilterManager.init();
+         } catch (error) {
+           console.error('❌ Error initializing FilterManager:', error);
+         }
+       } else {
+         console.warn('⚠️ FilterManager.init not available or not a function');
+       }
      });
    } else {
      // DOM already loaded
      setTimeout(() => {
        console.log('🚀 Calling FilterManager.init() after short delay');
-       window.FilterManager?.init();
+       if (typeof window.FilterManager === 'object' && typeof window.FilterManager.init === 'function') {
+         try {
+           window.FilterManager.init();
+         } catch (error) {
+           console.error('❌ Error initializing FilterManager:', error);
+         }
+       } else {
+         console.warn('⚠️ FilterManager.init not available or not a function');
+       }
      }, 100);
    }
    </script>
