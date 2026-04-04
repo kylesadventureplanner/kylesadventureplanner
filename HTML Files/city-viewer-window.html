@@ -533,6 +533,26 @@
       cursor: pointer;
     }
     .loc-mini-btn:hover { border-color: #667eea; color: #667eea; }
+    .loc-mini-btn.success { border-color: #86efac; color: #166534; }
+
+    .loc-check-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .loc-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #4b5563;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    .loc-check input { cursor: pointer; }
 
     .loc-main-layout {
       display: grid;
@@ -698,8 +718,13 @@
           <select id="locPresetSelect" class="loc-preset-select"></select>
           <button class="loc-mini-btn" onclick="loadSelectedLocPreset()">Load</button>
           <button class="loc-mini-btn" onclick="deleteSelectedLocPreset()">Delete</button>
+          <button id="copyShareBtn" class="loc-mini-btn" onclick="copyShareLink()">Copy Share Link</button>
         </div>
-        <div class="locations-controls-grid">
+        <div class="loc-check-row">
+          <label class="loc-check"><input id="locFilterOpenNow" type="checkbox" onchange="applyLocFilters()"> Open now</label>
+          <label class="loc-check"><input id="locFilterClosingSoon" type="checkbox" onchange="applyLocFilters()"> Closing within 2h</label>
+        </div>
+         <div class="locations-controls-grid">
           <div class="loc-filter-item">
             <label for="locSearchName">Search by Name</label>
             <input id="locSearchName" class="loc-filter-input" type="text" placeholder="Search locations..." oninput="applyLocFilters()">
@@ -883,8 +908,16 @@
 
       console.log('✅ Grouped into', Object.keys(citiesData).length, 'cities');
 
-      renderCities();
-    }
+      pendingShareState = parseShareStateFromUrl();
+       renderCities();
+
+      if (pendingShareState && pendingShareState.cityKey) {
+        const [city, state] = String(pendingShareState.cityKey).split(',').map(s => s && s.trim());
+        if (city && state && citiesData[pendingShareState.cityKey]) {
+          viewCity(city, state);
+        }
+      }
+     }
 
 
     function renderCities() {
@@ -1034,6 +1067,12 @@
     let lastFilteredLocations = [];
     let activeLocId = null;
     const locPointCache = {};
+    let pendingShareState = null;
+    let locGoogleMap = null;
+    let locGoogleMarkers = [];
+    let locMapboxMap = null;
+    let locMapboxMarkers = [];
+    const CLOSING_SOON_MINUTES = 120;
 
     function cityStateKey(cityKey) { return `cityViewer:lastState:${cityKey}`; }
     function cityPresetKey(cityKey) { return `cityViewer:presets:${cityKey}`; }
@@ -1053,6 +1092,8 @@
         difficulty: document.getElementById('locFilterDifficulty').value,
         cost: document.getElementById('locFilterCost').value,
         tagText: document.getElementById('locFilterTag').value,
+        openNow: document.getElementById('locFilterOpenNow').checked,
+        closingSoon: document.getElementById('locFilterClosingSoon').checked,
         sortBy: document.getElementById('locSortBy').value,
         sortOrder: locSortOrder,
         quickTag: activeLocQuickTag,
@@ -1066,6 +1107,8 @@
       document.getElementById('locFilterDifficulty').value = state.difficulty || '';
       document.getElementById('locFilterCost').value = state.cost || '';
       document.getElementById('locFilterTag').value = state.tagText || '';
+      document.getElementById('locFilterOpenNow').checked = Boolean(state.openNow);
+      document.getElementById('locFilterClosingSoon').checked = Boolean(state.closingSoon);
       document.getElementById('locSortBy').value = state.sortBy || 'name';
       locSortOrder = state.sortOrder === 'desc' ? 'desc' : 'asc';
       document.getElementById('locSortOrderBtn').textContent = locSortOrder === 'asc' ? '↑' : '↓';
@@ -1164,6 +1207,7 @@
       if (setObj.has(locId)) setObj.delete(locId);
       else setObj.add(locId);
       setShortlistSet(setObj);
+      updateUrlFromState();
     }
 
     function clearShortlist() {
@@ -1191,6 +1235,7 @@
       setSplitView(!locSplitView);
       saveLastLocState();
       renderLocMap(lastFilteredLocations);
+      updateUrlFromState();
     }
 
     function findLocationById(locId) {
@@ -1223,37 +1268,129 @@
       if (!canvas || !count) return;
       count.textContent = `${locations.length} pins`;
       canvas.innerHTML = '';
-      if (!locSplitView || locations.length === 0) return;
+       if (!locSplitView || locations.length === 0) return;
 
-      const points = locations.map(loc => {
-        const locId = getLocId(loc);
-        return { locId, loc, point: getLocPoint(loc, locId), name: String(locVal(loc, 0, 'name') || 'Location') };
+       const points = locations.map(loc => {
+         const locId = getLocId(loc);
+         return { locId, loc, point: getLocPoint(loc, locId), name: String(locVal(loc, 0, 'name') || 'Location') };
+       });
+
+      if (renderGoogleMap(points)) return;
+      if (renderMapboxMap(points)) return;
+      renderCanvasMap(points);
+    }
+
+    function renderGoogleMap(points) {
+      if (!(window.google && window.google.maps)) return false;
+      const geoPoints = points.filter(p => p.point.geo);
+      if (!geoPoints.length) return false;
+
+      const canvas = document.getElementById('locMapCanvas');
+      canvas.innerHTML = '';
+      const center = { lat: geoPoints[0].point.y, lng: geoPoints[0].point.x };
+      locGoogleMap = locGoogleMap || new window.google.maps.Map(canvas, { zoom: 10, center });
+      locGoogleMap.setCenter(center);
+
+      locGoogleMarkers.forEach(m => m.setMap(null));
+      locGoogleMarkers = [];
+
+      geoPoints.forEach(item => {
+        const marker = new window.google.maps.Marker({
+          map: locGoogleMap,
+          position: { lat: item.point.y, lng: item.point.x },
+          title: item.name
+        });
+        marker.__locId = item.locId;
+        marker.addListener('click', () => setActiveLocation(item.locId, true));
+        locGoogleMarkers.push(marker);
       });
+
+      const bounds = new window.google.maps.LatLngBounds();
+      geoPoints.forEach(item => bounds.extend({ lat: item.point.y, lng: item.point.x }));
+      if (geoPoints.length > 1) locGoogleMap.fitBounds(bounds);
+      updateMapHighlights();
+      return true;
+    }
+
+    function renderMapboxMap(points) {
+      if (!window.mapboxgl) return false;
+      if (!window.mapboxgl.accessToken && !window.MAPBOX_TOKEN) return false;
+      if (!window.mapboxgl.accessToken && window.MAPBOX_TOKEN) {
+        window.mapboxgl.accessToken = window.MAPBOX_TOKEN;
+      }
 
       const geoPoints = points.filter(p => p.point.geo);
-      const minX = geoPoints.length ? Math.min(...geoPoints.map(p => p.point.x)) : 0;
-      const maxX = geoPoints.length ? Math.max(...geoPoints.map(p => p.point.x)) : 100;
-      const minY = geoPoints.length ? Math.min(...geoPoints.map(p => p.point.y)) : 0;
-      const maxY = geoPoints.length ? Math.max(...geoPoints.map(p => p.point.y)) : 100;
-      const xRange = Math.max(0.001, maxX - minX);
-      const yRange = Math.max(0.001, maxY - minY);
+      if (!geoPoints.length) return false;
 
-      points.forEach((item, idx) => {
-        const pin = document.createElement('button');
-        pin.className = 'map-pin';
-        pin.type = 'button';
-        pin.dataset.locId = item.locId;
-        pin.title = item.name;
-        pin.textContent = String((idx % 9) + 1);
-        const left = item.point.geo ? (5 + ((item.point.x - minX) / xRange) * 90) : item.point.x;
-        const top = item.point.geo ? (95 - ((item.point.y - minY) / yRange) * 90) : item.point.y;
-        pin.style.left = `${left}%`;
-        pin.style.top = `${top}%`;
-        pin.onclick = () => setActiveLocation(item.locId, true);
-        canvas.appendChild(pin);
+      const canvas = document.getElementById('locMapCanvas');
+      if (!locMapboxMap) {
+        canvas.innerHTML = '';
+        locMapboxMap = new window.mapboxgl.Map({
+          container: 'locMapCanvas',
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [geoPoints[0].point.x, geoPoints[0].point.y],
+          zoom: 9
+        });
+      }
+
+      locMapboxMarkers.forEach(m => m.remove());
+      locMapboxMarkers = [];
+
+      geoPoints.forEach(item => {
+        const el = document.createElement('button');
+        el.className = 'map-pin';
+        el.dataset.locId = item.locId;
+        el.type = 'button';
+        el.title = item.name;
+        el.textContent = '•';
+        el.onclick = () => setActiveLocation(item.locId, true);
+
+        const marker = new window.mapboxgl.Marker(el)
+          .setLngLat([item.point.x, item.point.y])
+          .addTo(locMapboxMap);
+
+        marker.__locId = item.locId;
+        locMapboxMarkers.push(marker);
       });
-      highlightActiveLocation();
+
+      if (geoPoints.length > 1) {
+        const bounds = new window.mapboxgl.LngLatBounds();
+        geoPoints.forEach(item => bounds.extend([item.point.x, item.point.y]));
+        locMapboxMap.fitBounds(bounds, { padding: 32 });
+      }
+      updateMapHighlights();
+      return true;
     }
+
+    function renderCanvasMap(points) {
+      const canvas = document.getElementById('locMapCanvas');
+      canvas.innerHTML = '';
+
+      const geoPoints = points.filter(p => p.point.geo);
+       const minX = geoPoints.length ? Math.min(...geoPoints.map(p => p.point.x)) : 0;
+       const maxX = geoPoints.length ? Math.max(...geoPoints.map(p => p.point.x)) : 100;
+       const minY = geoPoints.length ? Math.min(...geoPoints.map(p => p.point.y)) : 0;
+       const maxY = geoPoints.length ? Math.max(...geoPoints.map(p => p.point.y)) : 100;
+       const xRange = Math.max(0.001, maxX - minX);
+       const yRange = Math.max(0.001, maxY - minY);
+
+       points.forEach((item, idx) => {
+         const pin = document.createElement('button');
+         pin.className = 'map-pin';
+         pin.type = 'button';
+         pin.dataset.locId = item.locId;
+         pin.title = item.name;
+         pin.textContent = String((idx % 9) + 1);
+         const left = item.point.geo ? (5 + ((item.point.x - minX) / xRange) * 90) : item.point.x;
+         const top = item.point.geo ? (95 - ((item.point.y - minY) / yRange) * 90) : item.point.y;
+         pin.style.left = `${left}%`;
+         pin.style.top = `${top}%`;
+         pin.onclick = () => setActiveLocation(item.locId, true);
+         canvas.appendChild(pin);
+       });
+      highlightActiveLocation();
+      updateMapHighlights();
+     }
 
     function setActiveLocation(locId, scrollToCard) {
       activeLocId = locId;
@@ -1270,6 +1407,18 @@
       });
       document.querySelectorAll('.map-pin').forEach(pin => {
         pin.classList.toggle('active', pin.dataset.locId === activeLocId);
+      });
+      updateMapHighlights();
+     }
+
+    function updateMapHighlights() {
+      locGoogleMarkers.forEach(marker => {
+        marker.setOpacity(marker.__locId === activeLocId ? 1 : 0.65);
+      });
+      locMapboxMarkers.forEach(marker => {
+        const el = marker.getElement && marker.getElement();
+        if (!el) return;
+        el.classList.toggle('active', marker.__locId === activeLocId);
       });
     }
 
@@ -1328,97 +1477,106 @@
         .join('');
     }
 
-    function cssEscape(str) {
-      if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(str);
-      return String(str).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
-    }
-
-    function escHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function escAttr(str) {
-      return escHtml(str).replace(/`/g, '&#096;');
-    }
-
-    function locVal(loc, colIndex, fallbackKey) {
-      if (loc.values && Array.isArray(loc.values[0])) return loc.values[0][colIndex] || '';
-      return loc[fallbackKey] || '';
-    }
-
-    function buildQuickTagPills(locations) {
-      const tagCounts = {};
-      locations.forEach(loc => {
-        const tagsRaw = locVal(loc, 3, 'tags');
-        if (!tagsRaw) return;
-        tagsRaw.split(',').forEach(t => {
-          const tag = t.trim().toLowerCase();
-          if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
-      });
-
-      const topTags = Object.entries(tagCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 12)
-        .map(([tag]) => tag);
-
-      const container = document.getElementById('locQuickTags');
-      container.innerHTML = topTags.map(tag => {
-        const label = tag.charAt(0).toUpperCase() + tag.slice(1);
-        return `<button class="loc-tag-btn" data-tag="${escAttr(tag)}" onclick="toggleLocQuickTag('${escAttr(tag)}')">${escHtml(label)}</button>`;
-      }).join('');
-    }
-
-    function populateTagDatalist(locations) {
-      const tags = new Set();
-      locations.forEach(loc => {
-        const tagsRaw = locVal(loc, 3, 'tags');
-        if (!tagsRaw) return;
-        tagsRaw.split(',').forEach(t => {
-          const tag = t.trim();
-          if (tag) tags.add(tag);
-        });
-      });
-      document.getElementById('locTagDatalist').innerHTML =
-        Array.from(tags).sort().map(t => `<option value="${escAttr(t)}">`).join('');
-    }
-
-    function toggleLocQuickTag(tag) {
-      const normalized = String(tag || '').toLowerCase();
-      activeLocQuickTag = activeLocQuickTag === normalized ? null : normalized;
-      if (activeLocQuickTag) {
-        document.getElementById('locFilterTag').value = '';
+    function parseShareStateFromUrl() {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const raw = p.get('sv');
+        if (!raw) return null;
+        const padded = raw.replace(/-/g, '+').replace(/_/g, '/');
+        const json = decodeURIComponent(atob(padded));
+        return JSON.parse(json);
+      } catch (e) {
+        console.warn('⚠️ Share state parse failed', e);
+        return null;
       }
-      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
-      });
-      applyLocFilters();
     }
 
-    function toggleLocSortOrder() {
-      locSortOrder = locSortOrder === 'asc' ? 'desc' : 'asc';
-      document.getElementById('locSortOrderBtn').textContent = locSortOrder === 'asc' ? '↑' : '↓';
-      applyLocFilters();
+    function encodeShareState(state) {
+      const json = JSON.stringify(state);
+      return btoa(encodeURIComponent(json)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
     }
 
-    function resetLocFilters() {
-      document.getElementById('locSearchName').value = '';
-      document.getElementById('locFilterDifficulty').value = '';
-      document.getElementById('locFilterCost').value = '';
-      document.getElementById('locFilterTag').value = '';
-      document.getElementById('locSortBy').value = 'name';
-      locSortOrder = 'asc';
-      document.getElementById('locSortOrderBtn').textContent = '↑';
-      activeLocQuickTag = null;
-      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
-      setSplitView(false);
-      applyLocFilters();
+    function updateUrlFromState() {
+      if (!currentCityKey) return;
+      const payload = {
+        cityKey: currentCityKey,
+        filters: getLocFilterState(),
+        shortlist: Array.from(getShortlistSet())
+      };
+      const url = new URL(window.location.href);
+      url.searchParams.set('sv', encodeShareState(payload));
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    async function copyShareLink() {
+      updateUrlFromState();
+      const btn = document.getElementById('copyShareBtn');
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        btn.classList.add('success');
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.classList.remove('success');
+          btn.textContent = 'Copy Share Link';
+        }, 1500);
+      } catch (_) {
+        window.prompt('Copy this link:', window.location.href);
+      }
+    }
+
+    function getOpenInfoForToday(hoursText) {
+      const text = String(hoursText || '').trim();
+      if (!text) return { isOpen: false, minutesUntilClose: null };
+
+      const now = new Date();
+      const dayIdx = now.getDay();
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const today = dayNames[dayIdx];
+
+      const parts = text.toLowerCase().split(/[;\n,]+/).map(s => s.trim()).filter(Boolean);
+      let candidate = '';
+      for (const part of parts) {
+        if (segmentMatchesDay(part, today)) { candidate = part; break; }
+      }
+      if (!candidate && parts.length === 1) candidate = parts[0];
+      if (!candidate || candidate.includes('closed')) return { isOpen: false, minutesUntilClose: null };
+
+      const m = candidate.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*-\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+      if (!m) return { isOpen: false, minutesUntilClose: null };
+
+      const open = toMinutes(m[1], m[2], m[3]);
+      let close = toMinutes(m[4], m[5], m[6]);
+      let current = nowMins;
+      if (close <= open) {
+        close += 24 * 60;
+        if (current < open) current += 24 * 60;
+      }
+      const isOpen = current >= open && current < close;
+      const minutesUntilClose = isOpen ? (close - current) : null;
+      return { isOpen, minutesUntilClose };
+    }
+
+    function segmentMatchesDay(segment, todayShort) {
+      const token = segment.slice(0, 32);
+      if (token.includes(todayShort)) return true;
+      const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const range = token.match(/(sun|mon|tue|wed|thu|fri|sat)\s*-\s*(sun|mon|tue|wed|thu|fri|sat)/);
+      if (!range) return false;
+      const start = days.indexOf(range[1]);
+      const end = days.indexOf(range[2]);
+      const today = days.indexOf(todayShort);
+      if (start <= end) return today >= start && today <= end;
+      return today >= start || today <= end;
+    }
+
+    function toMinutes(h, m, ampm) {
+      let hour = Number(h || 0);
+      const mins = Number(m || 0);
+      const suffix = String(ampm || '').toLowerCase();
+      if (suffix === 'pm' && hour !== 12) hour += 12;
+      if (suffix === 'am' && hour === 12) hour = 0;
+      return hour * 60 + mins;
     }
 
     function viewCity(city, state) {
@@ -1450,6 +1608,13 @@
       populateTagDatalist(cityEntry.locations);
       refreshPresetSelect();
       restoreLastLocState();
+      if (pendingShareState && pendingShareState.cityKey === currentCityKey) {
+        if (pendingShareState.filters) applyLocFilterState(pendingShareState.filters);
+        if (Array.isArray(pendingShareState.shortlist)) {
+          setShortlistSet(new Set(pendingShareState.shortlist));
+        }
+        pendingShareState = null;
+      }
       renderShortlistTray();
       document.getElementById('locDayPlan').classList.remove('visible');
 
@@ -1478,6 +1643,8 @@
       const costFilter = document.getElementById('locFilterCost').value.toLowerCase();
       const tagInput = document.getElementById('locFilterTag').value.trim().toLowerCase();
       const tagFilter = activeLocQuickTag || tagInput;
+      const openNowOnly = document.getElementById('locFilterOpenNow').checked;
+      const closingSoonOnly = document.getElementById('locFilterClosingSoon').checked;
       const sortKey = document.getElementById('locSortBy').value;
 
       let results = cityEntry.locations.filter(loc => {
@@ -1485,11 +1652,15 @@
         const tags = locVal(loc, 3, 'tags').toLowerCase();
         const difficulty = locVal(loc, 7, 'difficulty').toLowerCase();
         const cost = locVal(loc, 14, 'cost').toLowerCase();
+        const hours = locVal(loc, 5, 'hours');
+        const openInfo = getOpenInfoForToday(hours);
 
         if (searchTerm && !name.includes(searchTerm)) return false;
         if (diffFilter && !difficulty.includes(diffFilter)) return false;
         if (costFilter && !cost.includes(costFilter)) return false;
         if (tagFilter && !tags.includes(tagFilter)) return false;
+        if (openNowOnly && !openInfo.isOpen) return false;
+        if (closingSoonOnly && !(openInfo.isOpen && openInfo.minutesUntilClose !== null && openInfo.minutesUntilClose <= CLOSING_SOON_MINUTES)) return false;
         return true;
       });
 
@@ -1497,8 +1668,8 @@
       const difficultyOrder = { easy: 0, moderate: 1, hard: 2 };
 
       results.sort((a, b) => {
-        let av = '';
-        let bv = '';
+        let av;
+        let bv;
 
         if (sortKey === 'difficulty') {
           av = difficultyOrder[locVal(a, 7, 'difficulty').toLowerCase()] ?? 99;
@@ -1532,6 +1703,7 @@
       renderLocationCards(results);
       renderLocMap(results);
       renderShortlistTray();
+      updateUrlFromState();
     }
 
     function renderLocationCards(locations) {
@@ -1616,6 +1788,7 @@
     window.setActiveLocation = setActiveLocation;
     window.buildDayPlan = buildDayPlan;
     window.clearShortlist = clearShortlist;
+    window.copyShareLink = copyShareLink;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
