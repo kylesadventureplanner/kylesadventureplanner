@@ -549,7 +549,7 @@ console.log('✅ Error Management System ready');
    * Main initialization
    */
   const initialize = function() {
-    console.clear();
+    // NOTE: console.clear() removed - preserving MSAL auth logs
     console.log('🎯 STARTING v7.0.141 INITIALIZATION DEBUG SYSTEM\n');
 
     checkAndFixSignIn();
