@@ -5645,7 +5645,7 @@
        // function, so any call made AFTER page load hits the real implementation
        // directly.  This shim only runs if somehow called before that block fires.
        window.renderAdventureCards = async function(adventuresArray = null) {
-         console.log('🎨 window.renderAdventureCards INLINE: rendering cards...');
+         console.log('🎨 window.renderAdventureCards: delegating to paginated renderer...');
          const sourceAdventures = Array.isArray(adventuresArray)
            ? adventuresArray
            : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
@@ -5663,21 +5663,42 @@
          window.currentPage = 1;
          window.itemsPerPage = 20;
 
-         const cardsGrid = document.getElementById('adventureCardsGrid');
-         if (!cardsGrid) {
-           console.error('❌ cardsGrid not found');
-           return;
+         // Calculate total pages
+         const totalPages = Math.ceil(sourceAdventures.length / 20);
+
+         // Show/hide pagination controls based on whether we have more than one page
+         const paginationControls = document.getElementById('paginationControls');
+         const paginationControlsTop = document.getElementById('paginationControlsTop');
+         if (totalPages > 1) {
+           if (paginationControls) paginationControls.style.display = 'flex';
+           if (paginationControlsTop) paginationControlsTop.style.display = 'flex';
+         } else {
+           if (paginationControls) paginationControls.style.display = 'none';
+           if (paginationControlsTop) paginationControlsTop.style.display = 'none';
          }
 
-         console.log(`✅ Rendering ${sourceAdventures.length} cards`);
-         cardsGrid.innerHTML = '';
+         // Delegate to the proper paginated renderer
+         if (typeof renderPaginatedCards === 'function') {
+           console.log('✅ Calling renderPaginatedCards()...');
+           renderPaginatedCards();
+         } else {
+           console.warn('⚠️ renderPaginatedCards not available yet, rendering inline...');
+           // Fallback: render first page inline
+           const cardsGrid = document.getElementById('adventureCardsGrid');
+           if (!cardsGrid) {
+             console.error('❌ cardsGrid not found');
+             return;
+           }
 
-         // Render first page (20 items)
-         const startIdx = 0;
-         const endIdx = Math.min(20, sourceAdventures.length);
+           console.log(`✅ Rendering ${sourceAdventures.length} cards (fallback inline)`);
+           cardsGrid.innerHTML = '';
 
-         for (let i = startIdx; i < endIdx; i++) {
-           const item = window.totalFilteredAdventures[i];
+           // Render first page (20 items) as fallback
+           const startIdx = 0;
+           const endIdx = Math.min(20, sourceAdventures.length);
+
+           for (let i = startIdx; i < endIdx; i++) {
+             const item = window.totalFilteredAdventures[i];
            const row = item.row;
            const sourceIndex = item.sourceIndex;
            const actualIndex = i;
@@ -5777,37 +5798,15 @@
 
              <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
                <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
-               ${address ? `<button type="button" class="card-addr-copy-btn" data-copy="${String(address).replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;gap:4px;border:1px solid #d1d5db;background:#fff;color:#374151;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;" title="Copy address">📋 Address</button>` : ''}
              </div>
            `;
 
            cardsGrid.appendChild(card);
-         }
-
-         console.log(`✅ Successfully rendered ${endIdx - startIdx} cards`);
-
-         // Set up delegated click handler for card interactions
-         cardsGrid.addEventListener('click', (e) => {
-           // Address copy click
-           const addrCopy = e.target.closest('.card-addr-copy-btn');
-           if (addrCopy) {
-             e.preventDefault();
-             e.stopPropagation();
-             const text = addrCopy.getAttribute('data-copy') || '';
-             if (!text) return;
-             if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-               navigator.clipboard.writeText(text).then(() => {
-                 if (typeof window.showToast === 'function') {
-                   window.showToast('📋 Address copied!', 'success', 2000);
-                 }
-               });
-             }
-             return;
            }
 
-           // Card click - open details modal
-           const clickedCard = e.target.closest('.adventure-card');
-           if (clickedCard) {
+           console.log(`✅ Successfully rendered ${endIdx - startIdx} cards (fallback)`);
+         }
+       };
              const idx = parseInt(clickedCard.dataset.index, 10);
              if (!isNaN(idx) && typeof window.showCardDetails === 'function') {
                window.showCardDetails(idx);
