@@ -5706,6 +5706,9 @@
                })
              : '';
 
+           // Parse tags using getTagsForPlace function
+           const tagList = typeof getTagsForPlace === 'function' ? getTagsForPlace(googlePlaceId, tags) : (tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []);
+
            const card = document.createElement("div");
            card.className = "adventure-card";
            card.dataset.cardDomain = 'adventure';
@@ -5736,6 +5739,15 @@
                  </div>
                ` : ''}
              </div>
+
+             ${tagList.length > 0 ? `
+               <div class="adventure-card-tags">
+                 ${tagList.map(tag => {
+           const tagClass = tag.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+           return `<span class="tag-pill tag-${tagClass}" data-tag="${tag}">${tag}</span>`;
+         }).join('')}
+               </div>
+             ` : ''}
 
              <div class="adventure-card-body">
                ${description ? `<div class="card-description">${description}</div>` : ''}
