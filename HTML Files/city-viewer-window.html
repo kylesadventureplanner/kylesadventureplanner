@@ -218,6 +218,291 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    /* ── Locations Page ─────────────────────────────────── */
+    #locationsPage {
+      display: none;
+    }
+
+    .locations-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px 24px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .back-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.35); }
+
+    .locations-title {
+      flex: 1;
+      min-width: 0;
+    }
+    .locations-title h2 { font-size: 22px; margin: 0 0 2px 0; }
+    .locations-title .subtitle { font-size: 13px; opacity: 0.85; }
+
+    /* Filter/Sort Panel */
+    .locations-controls {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+    }
+
+    .locations-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .loc-filter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .loc-filter-item label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .loc-filter-input,
+    .loc-filter-select {
+      padding: 9px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #374151;
+      background: white;
+      width: 100%;
+    }
+    .loc-filter-input:focus,
+    .loc-filter-select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+    }
+
+    /* Quick tag filters */
+    .loc-quick-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .loc-tag-btn {
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 2px solid #e5e7eb;
+      background: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #374151;
+    }
+    .loc-tag-btn:hover {
+      border-color: #667eea;
+      color: #667eea;
+    }
+    .loc-tag-btn.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-color: transparent;
+      color: white;
+    }
+
+    /* Sort + results row */
+    .loc-sort-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 0 0 0;
+      border-top: 1px solid #f3f4f6;
+      margin-top: 14px;
+    }
+    .loc-sort-label { font-size: 12px; color: #6b7280; font-weight: 600; }
+    .loc-sort-select {
+      padding: 7px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 13px;
+      background: white;
+      cursor: pointer;
+    }
+    .loc-sort-order-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .loc-sort-order-btn:hover { border-color: #667eea; background: #f0f4ff; }
+    .loc-results-count {
+      margin-left: auto;
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+    .loc-reset-btn {
+      padding: 7px 14px;
+      background: white;
+      border: 1px solid #fca5a5;
+      color: #dc2626;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    .loc-reset-btn:hover { background: #fef2f2; }
+
+    /* Location Cards */
+    .locations-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .loc-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 18px 20px;
+      transition: all 0.2s;
+    }
+    .loc-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 6px 20px rgba(102,126,234,0.15);
+      transform: translateY(-2px);
+    }
+    .loc-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .loc-card-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1f2937;
+      flex: 1;
+    }
+    .loc-card-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .loc-meta-badge {
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #f3f4f6;
+      color: #374151;
+    }
+    .loc-meta-badge.difficulty-easy   { background: #dcfce7; color: #166534; }
+    .loc-meta-badge.difficulty-moderate { background: #fef9c3; color: #854d0e; }
+    .loc-meta-badge.difficulty-hard   { background: #fee2e2; color: #991b1b; }
+    .loc-meta-badge.cost              { background: #ecfdf5; color: #065f46; }
+    .loc-meta-badge.rating            { background: #fffbeb; color: #92400e; }
+
+    .loc-card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    .loc-tag-pill {
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 3px 9px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .loc-card-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 6px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .loc-detail-row { display: flex; gap: 6px; align-items: baseline; }
+    .loc-detail-icon { width: 16px; flex-shrink: 0; }
+    .loc-detail-value { color: #374151; }
+
+    .loc-card-description {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #f3f4f6;
+      line-height: 1.5;
+    }
+
+    .loc-card-footer {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #f3f4f6;
+    }
+    .loc-action-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #374151;
+      text-decoration: none;
+    }
+    .loc-action-btn:hover { border-color: #667eea; color: #667eea; background: #f0f4ff; }
+    .loc-action-btn.primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-color: transparent;
+    }
+    .loc-action-btn.primary:hover { opacity: 0.9; }
+
+    .loc-empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #9ca3af;
+    }
+    .loc-empty-icon { font-size: 56px; margin-bottom: 12px; }
+    .loc-empty-text { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #6b7280; }
   </style>
 </head>
 <body>
@@ -243,7 +528,76 @@
         <span class="spinner"></span> Loading cities...
       </div>
     </div>
-  </div>
+
+    <!-- ══ LOCATIONS PAGE (shown when a city card is clicked) ══ -->
+    <div id="locationsPage">
+
+      <!-- Header with back button -->
+      <div class="locations-header">
+        <button class="back-btn" onclick="goBackToCities()">← Back</button>
+        <div class="locations-title">
+          <h2 id="locationsPageTitle">Locations</h2>
+          <div class="subtitle" id="locationsPageSubtitle"></div>
+        </div>
+      </div>
+
+      <!-- Filter & Sort Controls (mirrors Adventure Planner) -->
+      <div class="locations-controls">
+        <div class="locations-controls-grid">
+          <div class="loc-filter-item">
+            <label for="locSearchName">Search by Name</label>
+            <input id="locSearchName" class="loc-filter-input" type="text" placeholder="Search locations..." oninput="applyLocFilters()">
+          </div>
+          <div class="loc-filter-item">
+            <label for="locFilterDifficulty">Difficulty</label>
+            <select id="locFilterDifficulty" class="loc-filter-select" onchange="applyLocFilters()">
+              <option value="">Any Difficulty</option>
+              <option value="easy">Easy</option>
+              <option value="moderate">Moderate</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div class="loc-filter-item">
+            <label for="locFilterCost">Cost</label>
+            <select id="locFilterCost" class="loc-filter-select" onchange="applyLocFilters()">
+              <option value="">Any Cost</option>
+              <option value="free">Free</option>
+              <option value="$">$</option>
+              <option value="$$">$$</option>
+              <option value="$$$">$$$</option>
+            </select>
+          </div>
+          <div class="loc-filter-item">
+            <label for="locFilterTag">Filter by Tag</label>
+            <input id="locFilterTag" class="loc-filter-input" type="text" placeholder="e.g. hiking, restaurant…" list="locTagDatalist" oninput="applyLocFilters()">
+            <datalist id="locTagDatalist"></datalist>
+          </div>
+        </div>
+
+        <!-- Quick Tag Buttons (populated dynamically) -->
+        <div id="locQuickTags" class="loc-quick-tags"></div>
+
+        <!-- Sort Row -->
+        <div class="loc-sort-row">
+          <span class="loc-sort-label">Sort by:</span>
+          <select id="locSortBy" class="loc-sort-select" onchange="applyLocFilters()">
+            <option value="name">Name</option>
+            <option value="difficulty">Difficulty</option>
+            <option value="cost">Cost</option>
+            <option value="rating">Rating</option>
+            <option value="tags">Tags</option>
+          </select>
+          <button id="locSortOrderBtn" class="loc-sort-order-btn" title="Toggle sort order" onclick="toggleLocSortOrder()">↑</button>
+          <button class="loc-reset-btn" onclick="resetLocFilters()">Reset Filters</button>
+          <div class="loc-results-count" id="locResultsCount">0 locations</div>
+        </div>
+      </div>
+
+      <!-- Location Cards -->
+      <div id="locationsGrid" class="locations-grid"></div>
+    </div>
+
+  </div><!-- /.container -->
 
   <script>
     // Get data from sessionStorage (cached from parent window) or fallback to parent window
@@ -493,17 +847,325 @@
       }
     }
 
+    // ── Locations Page State ────────────────────────────────────────────────
+    let currentCityKey = null;       // "City, State"
+    let locSortOrder = 'asc';        // 'asc' | 'desc'
+    let activeLocQuickTag = null;    // quick-tag pill value or null
+
+    /**
+     * Open the locations page for a specific city.
+     * Hides the cities view and shows the locations page.
+     */
     function viewCity(city, state) {
       console.log(`👀 Viewing city: ${city}, ${state}`);
-      const locations = citiesData[`${city}, ${state}`]?.locations || [];
+      const key = `${city}, ${state}`;
+      const cityEntry = citiesData[key];
 
-      if (locations.length === 0) {
+      if (!cityEntry || cityEntry.locations.length === 0) {
         alert('No locations found for this city');
         return;
       }
 
-      // Create modal or show in parent window
-      alert(`Found ${locations.length} locations in ${city}, ${state}.\n\nThis feature will show detailed location list.`);
+      currentCityKey = key;
+      activeLocQuickTag = null;
+
+      // Update page title / subtitle
+      document.getElementById('locationsPageTitle').textContent = `📍 ${city}`;
+      document.getElementById('locationsPageSubtitle').textContent =
+        `${state} · ${cityEntry.locations.length} location${cityEntry.locations.length !== 1 ? 's' : ''}`;
+
+      // Reset filter controls
+      document.getElementById('locSearchName').value = '';
+      document.getElementById('locFilterDifficulty').value = '';
+      document.getElementById('locFilterCost').value = '';
+      document.getElementById('locFilterTag').value = '';
+      document.getElementById('locSortBy').value = 'name';
+      locSortOrder = 'asc';
+      document.getElementById('locSortOrderBtn').textContent = '↑';
+
+      // Build quick-tag pills from this city's data
+      buildQuickTagPills(cityEntry.locations);
+
+      // Populate the tag datalist
+      populateTagDatalist(cityEntry.locations);
+
+      // Show locations page, hide city list
+      document.querySelector('.controls').style.display = 'none';
+      document.getElementById('cityGrid').style.display = 'none';
+      document.getElementById('locationsPage').style.display = 'block';
+
+      // Render
+      applyLocFilters();
+    }
+
+    /**
+     * Go back to the cities list view.
+     */
+    function goBackToCities() {
+      currentCityKey = null;
+      document.getElementById('locationsPage').style.display = 'none';
+      document.getElementById('cityGrid').style.display = 'grid';
+      document.querySelector('.controls').style.display = 'flex';
+    }
+
+    /**
+     * Build quick-tag pill buttons from the locations in the current city.
+     */
+    function buildQuickTagPills(locations) {
+      const tagCounts = {};
+      locations.forEach(loc => {
+        const vals = loc.values?.[0] || loc;
+        const tagsRaw = Array.isArray(vals) ? vals[3] : (loc.tags || '');
+        if (!tagsRaw) return;
+        tagsRaw.split(',').forEach(t => {
+          const tag = t.trim().toLowerCase();
+          if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      });
+
+      // Pick top 12 tags by count
+      const topTags = Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12)
+        .map(([tag]) => tag);
+
+      const container = document.getElementById('locQuickTags');
+      if (topTags.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = topTags.map(tag => {
+        const label = tag.charAt(0).toUpperCase() + tag.slice(1);
+        return `<button class="loc-tag-btn" data-tag="${tag}" onclick="toggleLocQuickTag('${tag}')">${label}</button>`;
+      }).join('');
+    }
+
+    /**
+     * Populate tag datalist for the tag filter input.
+     */
+    function populateTagDatalist(locations) {
+      const tags = new Set();
+      locations.forEach(loc => {
+        const vals = loc.values?.[0] || loc;
+        const tagsRaw = Array.isArray(vals) ? vals[3] : (loc.tags || '');
+        if (!tagsRaw) return;
+        tagsRaw.split(',').forEach(t => { const tag = t.trim(); if (tag) tags.add(tag); });
+      });
+      const datalist = document.getElementById('locTagDatalist');
+      datalist.innerHTML = Array.from(tags).sort().map(t => `<option value="${t}">`).join('');
+    }
+
+    /**
+     * Toggle a quick-tag pill filter.
+     */
+    function toggleLocQuickTag(tag) {
+      if (activeLocQuickTag === tag) {
+        activeLocQuickTag = null;
+      } else {
+        activeLocQuickTag = tag;
+        // Also clear the text tag input to avoid double-filter confusion
+        document.getElementById('locFilterTag').value = '';
+      }
+      // Update pill active state
+      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
+      });
+      applyLocFilters();
+    }
+
+    /**
+     * Toggle sort order asc ↔ desc.
+     */
+    function toggleLocSortOrder() {
+      locSortOrder = locSortOrder === 'asc' ? 'desc' : 'asc';
+      document.getElementById('locSortOrderBtn').textContent = locSortOrder === 'asc' ? '↑' : '↓';
+      applyLocFilters();
+    }
+
+    /**
+     * Reset all location page filters back to defaults.
+     */
+    function resetLocFilters() {
+      document.getElementById('locSearchName').value = '';
+      document.getElementById('locFilterDifficulty').value = '';
+      document.getElementById('locFilterCost').value = '';
+      document.getElementById('locFilterTag').value = '';
+      document.getElementById('locSortBy').value = 'name';
+      locSortOrder = 'asc';
+      document.getElementById('locSortOrderBtn').textContent = '↑';
+      activeLocQuickTag = null;
+      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
+      applyLocFilters();
+    }
+
+    /**
+     * Extract a field value from a location row (handles both {values:[[...]]} shape and flat objects).
+     */
+    function locVal(loc, colIndex, fallbackKey) {
+      if (loc.values && Array.isArray(loc.values[0])) return loc.values[0][colIndex] || '';
+      return loc[fallbackKey] || '';
+    }
+
+    /**
+     * Apply filters + sort to the current city's locations and re-render cards.
+     */
+    function applyLocFilters() {
+      if (!currentCityKey) return;
+      const cityEntry = citiesData[currentCityKey];
+      if (!cityEntry) return;
+
+      const searchTerm   = document.getElementById('locSearchName').value.trim().toLowerCase();
+      const diffFilter   = document.getElementById('locFilterDifficulty').value.toLowerCase();
+      const costFilter   = document.getElementById('locFilterCost').value.toLowerCase();
+      const tagTextInput = document.getElementById('locFilterTag').value.trim().toLowerCase();
+      const tagFilter    = activeLocQuickTag || tagTextInput;
+      const sortKey      = document.getElementById('locSortBy').value;
+
+      // Column map (matches index.html renderPaginatedCards comments):
+      // 0:Name 1:PlaceID 2:Website 3:Tags 4:DriveTime 5:Hours 6:Duration
+      // 7:Difficulty 8:TrailLength 9:State 10:City 11:Address 12:Phone
+      // 13:Rating 14:Cost 15:Directions 16:Description 17:Nearby 18:Links
+      // 19:Links2 20:Notes 21:MyRating 22:Favorite 23:GoogleURL
+      let results = cityEntry.locations.filter(loc => {
+        const name       = locVal(loc, 0,  'name').toLowerCase();
+        const tags       = locVal(loc, 3,  'tags').toLowerCase();
+        const difficulty = locVal(loc, 7,  'difficulty').toLowerCase();
+        const cost       = locVal(loc, 14, 'cost').toLowerCase();
+
+        if (searchTerm && !name.includes(searchTerm)) return false;
+        if (diffFilter && !difficulty.includes(diffFilter)) return false;
+        if (costFilter && !cost.includes(costFilter)) return false;
+        if (tagFilter  && !tags.includes(tagFilter))   return false;
+        return true;
+      });
+
+      // Sort
+      const costOrder = { 'free': 0, '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
+      results.sort((a, b) => {
+        let aVal = '', bVal = '';
+        switch (sortKey) {
+          case 'name':
+            aVal = locVal(a, 0, 'name').toLowerCase();
+            bVal = locVal(b, 0, 'name').toLowerCase();
+            break;
+          case 'difficulty': {
+            const dOrder = { 'easy': 0, 'moderate': 1, 'hard': 2 };
+            aVal = dOrder[locVal(a, 7, 'difficulty').toLowerCase()] ?? 99;
+            bVal = dOrder[locVal(b, 7, 'difficulty').toLowerCase()] ?? 99;
+            break;
+          }
+          case 'cost':
+            aVal = costOrder[locVal(a, 14, 'cost').toLowerCase()] ?? 99;
+            bVal = costOrder[locVal(b, 14, 'cost').toLowerCase()] ?? 99;
+            break;
+          case 'rating':
+            aVal = parseFloat(locVal(a, 13, 'rating')) || 0;
+            bVal = parseFloat(locVal(b, 13, 'rating')) || 0;
+            break;
+          case 'tags':
+            aVal = locVal(a, 3, 'tags').toLowerCase();
+            bVal = locVal(b, 3, 'tags').toLowerCase();
+            break;
+        }
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return locSortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+        const cmp = String(aVal).localeCompare(String(bVal));
+        return locSortOrder === 'asc' ? cmp : -cmp;
+      });
+
+      document.getElementById('locResultsCount').textContent =
+        `${results.length} location${results.length !== 1 ? 's' : ''}`;
+
+      renderLocationCards(results);
+    }
+
+    /**
+     * Render an array of location rows as cards inside #locationsGrid.
+     */
+    function renderLocationCards(locations) {
+      const grid = document.getElementById('locationsGrid');
+
+      if (locations.length === 0) {
+        grid.innerHTML = `
+          <div class="loc-empty">
+            <div class="loc-empty-icon">🔍</div>
+            <div class="loc-empty-text">No locations match your filters</div>
+            <div style="font-size:13px;">Try adjusting or resetting the filters above.</div>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = locations.map(loc => {
+        const name        = locVal(loc, 0,  'name')        || 'Unnamed Location';
+        const website     = locVal(loc, 2,  'website');
+        const tagsRaw     = locVal(loc, 3,  'tags');
+        const driveTime   = locVal(loc, 4,  'driveTime');
+        const hours       = locVal(loc, 5,  'hours');
+        const duration    = locVal(loc, 6,  'duration');
+        const difficulty  = locVal(loc, 7,  'difficulty');
+        const trailLen    = locVal(loc, 8,  'trailLength');
+        const address     = locVal(loc, 11, 'address');
+        const phone       = locVal(loc, 12, 'phone');
+        const rating      = locVal(loc, 13, 'rating');
+        const cost        = locVal(loc, 14, 'cost');
+        const description = locVal(loc, 16, 'description');
+        const googleUrl   = locVal(loc, 23, 'googleUrl');
+
+        const tagList = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+        const diffClass = difficulty
+          ? `difficulty-${difficulty.toLowerCase().replace(/\s+/g, '-')}`
+          : '';
+
+        const tagPills = tagList.map(t =>
+          `<span class="loc-tag-pill">${escHtml(t)}</span>`
+        ).join('');
+
+        const metaBadges = [
+          difficulty ? `<span class="loc-meta-badge ${diffClass}">⛰️ ${escHtml(difficulty)}</span>` : '',
+          cost       ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : '',
+          rating     ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : '',
+        ].filter(Boolean).join('');
+
+        const detailRows = [
+          driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : '',
+          hours     ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : '',
+          duration  ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : '',
+          trailLen  ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : '',
+          address   ? `<div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escHtml(address)}</span></div>` : '',
+          phone     ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : '',
+        ].filter(Boolean).join('');
+
+        const actionBtns = [
+          website   ? `<a class="loc-action-btn" href="${escHtml(website)}" target="_blank" rel="noopener">🌐 Website</a>` : '',
+          googleUrl ? `<a class="loc-action-btn" href="${escHtml(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : '',
+        ].filter(Boolean).join('');
+
+        return `
+          <div class="loc-card">
+            <div class="loc-card-header">
+              <div class="loc-card-name">${escHtml(name)}</div>
+              <div class="loc-card-meta">${metaBadges}</div>
+            </div>
+            ${tagPills ? `<div class="loc-card-tags">${tagPills}</div>` : ''}
+            ${detailRows ? `<div class="loc-card-details">${detailRows}</div>` : ''}
+            ${description ? `<div class="loc-card-description">${escHtml(description)}</div>` : ''}
+            ${actionBtns ? `<div class="loc-card-footer">${actionBtns}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    /** Simple HTML escape helper */
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
 
     // Initialize when DOM is ready
