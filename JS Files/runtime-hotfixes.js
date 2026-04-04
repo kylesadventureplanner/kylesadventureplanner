@@ -160,42 +160,21 @@
   }
 
   function injectDebugBadge() {
-    if (document.getElementById('overlayDebugBadge')) return;
+    var legacyBadge = document.getElementById('overlayDebugBadge');
+    if (legacyBadge) legacyBadge.remove();
 
-    var style = document.createElement('style');
-    style.id = 'overlayDebugBadgeStyle';
-    style.textContent = [
-      '#overlayDebugBadge {',
-      '  position: fixed;',
-      '  right: 12px;',
-      '  bottom: 12px;',
-      '  z-index: 2147483647;',
-      '  font: 600 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;',
-      '  padding: 6px 9px;',
-      '  border-radius: 999px;',
-      '  border: 1px solid transparent;',
-      '  color: #fff;',
-      '  background: rgba(17, 24, 39, 0.88);',
-      '  pointer-events: none;',
-      '  user-select: none;',
-      '  max-width: 72vw;',
-      '  white-space: nowrap;',
-      '  overflow: hidden;',
-      '  text-overflow: ellipsis;',
-      '}',
-      '#overlayDebugBadge.ok { border-color: #16a34a; background: rgba(22, 163, 74, 0.92); }',
-      '#overlayDebugBadge.blocked { border-color: #dc2626; background: rgba(153, 27, 27, 0.95); }'
-    ].join('\n');
+    var badge = document.getElementById('overlayStatusBadge');
+    if (badge) return;
 
-    if (!document.getElementById('overlayDebugBadgeStyle')) {
-      document.head.appendChild(style);
-    }
+    var header = document.querySelector('#errorNotificationBar .error-header .error-header-left') ||
+      document.querySelector('#errorNotificationBar .error-header');
+    if (!header) return;
 
-    var badge = document.createElement('div');
-    badge.id = 'overlayDebugBadge';
-    badge.className = 'ok';
+    badge = document.createElement('span');
+    badge.id = 'overlayStatusBadge';
+    badge.className = 'overlay-status-badge overlay-ok';
     badge.textContent = 'Overlay: OK';
-    document.body.appendChild(badge);
+    header.appendChild(badge);
   }
 
   function getElementLabel(el) {
@@ -234,17 +213,17 @@
   }
 
   function updateDebugBadge() {
-    var badge = document.getElementById('overlayDebugBadge');
+    var badge = document.getElementById('overlayStatusBadge') || document.getElementById('overlayDebugBadge');
     if (!badge) return;
 
     var blocker = findLikelyBlockingOverlay();
     if (blocker) {
-      badge.classList.remove('ok');
-      badge.classList.add('blocked');
+      badge.classList.remove('overlay-ok', 'ok');
+      badge.classList.add('overlay-blocked');
       badge.textContent = 'Overlay blocked: ' + getElementLabel(blocker);
     } else {
-      badge.classList.remove('blocked');
-      badge.classList.add('ok');
+      badge.classList.remove('overlay-blocked', 'blocked');
+      badge.classList.add('overlay-ok');
       badge.textContent = 'Overlay: OK';
     }
   }

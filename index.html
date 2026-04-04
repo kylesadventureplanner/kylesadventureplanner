@@ -4047,6 +4047,19 @@
       min-height: 44px;
     }
 
+    .error-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .error-title {
+      font-weight: 600;
+      font-size: 14px;
+      pointer-events: auto;
+    }
+
     .error-header:hover {
       pointer-events: auto !important;
       background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
@@ -4059,12 +4072,6 @@
     #errorNotificationBar:not(.collapsed) .error-header {
       background: linear-gradient(135deg, #7f1d1d 0%, #4c0519 100%);
       border-bottom: 1px solid #dc2626;
-    }
-
-    .error-header span:first-child {
-      font-weight: 600;
-      font-size: 14px;
-      pointer-events: auto;
     }
 
     .error-header .toggle-icon {
@@ -4102,6 +4109,79 @@
 
     .error-count.no-errors::after {
       content: '';
+    }
+
+    .overlay-status-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: #e5e7eb;
+      background: rgba(17, 24, 39, 0.75);
+      white-space: nowrap;
+    }
+
+    .overlay-status-badge.overlay-ok {
+      border-color: #16a34a;
+      background: rgba(22, 163, 74, 0.2);
+      color: #86efac;
+    }
+
+    .overlay-status-badge.overlay-blocked {
+      border-color: #dc2626;
+      background: rgba(220, 38, 38, 0.2);
+      color: #fca5a5;
+    }
+
+    .error-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .error-tab-btn {
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.04);
+      color: #d1d5db;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .error-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+
+    .error-tab-btn.active {
+      background: rgba(220, 38, 38, 0.25);
+      border-color: #dc2626;
+      color: #fee2e2;
+    }
+
+    .error-tab-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .error-empty-state {
+      border: 1px dashed rgba(255, 255, 255, 0.18);
+      border-radius: 6px;
+      padding: 12px;
+      color: #9ca3af;
+      font-size: 12px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.03);
     }
 
     /* ============================================================
@@ -4183,6 +4263,10 @@
       border-radius: 4px;
       font-size: 12px;
       line-height: 1.4;
+    }
+
+    .error-item.warning-item {
+      border-left-color: #f59e0b;
     }
 
     .error-item:last-child {
@@ -6575,8 +6659,11 @@
 <!-- Error/Warning Notification Bar - Shows console errors and app errors -->
 <div id="errorNotificationBar" class="collapsed">
   <div class="error-header" onclick="toggleErrorBar(event)" style="cursor: pointer;" title="Click to expand/collapse errors">
-    <span>⚠️ Errors Detected</span>
-    <span class="error-count" id="errorCount">0</span>
+    <div class="error-header-left">
+      <span class="error-title">⚠️ Errors Detected</span>
+      <span class="error-count" id="errorCount">0</span>
+      <span id="overlayStatusBadge" class="overlay-status-badge overlay-ok">Overlay: OK</span>
+    </div>
     <span class="toggle-icon">▼</span>
   </div>
   <div id="errorDetailsPanel"></div>
@@ -7235,6 +7322,53 @@
     errorItems: {}
   };
 
+  let activeErrorBarTab = 'errors';
+
+  function setErrorBarTab(tabName, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    activeErrorBarTab = tabName;
+    updateErrorBar();
+  }
+
+  function escapeErrorHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function buildIssueListHtml(entries, typeLabel) {
+    if (!entries.length) {
+      return `<div class="error-empty-state">No ${typeLabel} captured.</div>`;
+    }
+
+    return entries.map((entry) => {
+      const typeEmoji = entry.type === 'warning' ? '⚠️' : '❌';
+      const typeClass = entry.type === 'warning' ? 'console-warn' : 'console-error';
+      const itemClass = entry.type === 'warning' ? 'error-item warning-item' : 'error-item';
+      const escapedMessage = escapeErrorHtml(entry.message);
+      const escapedStackTrace = entry.stackTrace ? escapeErrorHtml(entry.stackTrace) : '';
+
+      return `
+        <div class="${itemClass}">
+          <div class="error-type ${typeClass}">${typeEmoji} ${entry.type.toUpperCase()} [${entry.timestamp}]</div>
+          <div class="error-message">
+            ${escapedMessage}
+            ${entry.stackTrace ? `<br><br><strong>Details:</strong><br><code style="white-space: pre-wrap; word-break: break-word; font-size: 11px; color: #fca5a5;">${escapedStackTrace}</code>` : ''}
+          </div>
+          <div class="error-debug-buttons">
+            <button class="error-copy-btn" data-error-id="${entry.id}" onclick="copyErrorToClipboard(this)" title="Copy this item">📋 Copy</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   /**
    * Update the error notification bar with current errors
    */
@@ -7252,6 +7386,18 @@
       errorBar.classList.remove('has-errors');
       errorBar.classList.add('collapsed');
       if (errorCount) errorCount.textContent = '0';
+      if (errorDetailsPanel) {
+        errorDetailsPanel.innerHTML = `
+          <div class="error-tabs">
+            <button class="error-tab-btn ${activeErrorBarTab === 'errors' ? 'active' : ''}" onclick="setErrorBarTab('errors', event)">Errors (0)</button>
+            <button class="error-tab-btn ${activeErrorBarTab === 'warnings' ? 'active' : ''}" onclick="setErrorBarTab('warnings', event)">Warnings (0)</button>
+            <button class="error-tab-btn ${activeErrorBarTab === 'debug-flow' ? 'active' : ''}" onclick="setErrorBarTab('debug-flow', event)">Debug Flow (${debugLog.length})</button>
+          </div>
+          <div class="error-tab-content">
+            ${activeErrorBarTab === 'debug-flow' ? '<div class="error-empty-state">No debug flow entries yet.</div>' : '<div class="error-empty-state">No issues captured.</div>'}
+          </div>
+        `;
+      }
       return;
     }
 
@@ -7260,79 +7406,81 @@
     errorBar.classList.remove('collapsed'); // Auto-expand when errors occur
     if (errorCount) errorCount.textContent = errorLog.length;
 
-    // Build error details HTML with copy buttons
-    let detailsHTML = '';
-    let copyAllText = '=== ERROR REPORT ===\n\n';
-    let allErrorsData = [];
+    const taggedIssues = errorLog.map((entry, index) => ({
+      ...entry,
+      id: `issue-${index}`
+    }));
+    const errorEntries = taggedIssues.filter((entry) => entry.type !== 'warning');
+    const warningEntries = taggedIssues.filter((entry) => entry.type === 'warning');
 
-    errorLog.forEach((error, index) => {
-      const typeEmoji = error.type === 'error' ? '❌' : error.type === 'warning' ? '⚠️' : '🔴';
-      const typeClass = error.type === 'warning' ? 'console-warn' : 'console-error';
-      const errorId = `error-${index}`;
-
-      // Build copy text for this error
-      const errorCopyText = `${typeEmoji} ${error.type.toUpperCase()} [${error.timestamp}]\n${error.message}\n${error.stackTrace ? `Details: ${error.stackTrace}` : ''}\n`;
-      copyAllText += errorCopyText + '\n---\n\n';
-      allErrorsData.push({id: errorId, text: errorCopyText});
-
-      // Escape HTML special characters for display
-      const escapedMessage = error.message
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-
-      const escapedStackTrace = error.stackTrace
-        ? error.stackTrace
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          : '';
-
-      detailsHTML += `
-        <div class="error-item">
-          <div class="error-type ${typeClass}">
-            ${typeEmoji} ${error.type.toUpperCase()} [${error.timestamp}]
-          </div>
-          <div class="error-message">
-            ${escapedMessage}
-            ${error.stackTrace ? `<br><br><strong>Details:</strong><br><code style="white-space: pre-wrap; word-break: break-word; font-size: 11px; color: #fca5a5;">${escapedStackTrace}</code>` : ''}
-          </div>
-          <div class="error-debug-buttons">
-            <button class="error-copy-btn" data-error-id="${errorId}" onclick="copyErrorToClipboard(this)" title="Copy this error">
-              📋 Copy Error
-            </button>
-          </div>
-        </div>
-      `;
+    const issueText = taggedIssues.map((entry) => {
+      const typeEmoji = entry.type === 'warning' ? '⚠️' : '❌';
+      const details = entry.stackTrace ? `Details: ${entry.stackTrace}` : '';
+      return `${typeEmoji} ${entry.type.toUpperCase()} [${entry.timestamp}]\n${entry.message}\n${details}\n`;
     });
 
-    // Store error data for copy functionality
-    errorDataStore.allErrors = copyAllText;
+    errorDataStore.allErrors = `=== ERROR REPORT ===\n\n${issueText.join('\n---\n\n')}`;
     errorDataStore.errorItems = {};
-
-    // Store individual error data
-    errorLog.forEach((error, index) => {
-      const typeEmoji = error.type === 'error' ? '❌' : error.type === 'warning' ? '⚠️' : '🔴';
-      const errorId = `error-${index}`;
-      const errorText = `${typeEmoji} ${error.type.toUpperCase()} [${error.timestamp}]\n${error.message}\n${error.stackTrace ? `Details: ${error.stackTrace}` : ''}\n`;
-      errorDataStore.errorItems[errorId] = errorText;
+    taggedIssues.forEach((entry, index) => {
+      errorDataStore.errorItems[entry.id] = issueText[index];
     });
 
-    // Add copy all button
-    detailsHTML += `
-      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2);">
-        <button class="error-copy-btn" id="copy-all-errors-btn" data-copy-all="true" onclick="copyAllErrorsToClipboard()" title="Copy all errors" style="background: rgba(59, 130, 246, 0.3); border-color: #3b82f6; width: 100%; margin-bottom: 8px;">
-          📋 Copy All Errors
-        </button>
-        <button class="error-copy-btn" onclick="clearAllErrors()" title="Clear all errors" style="background: rgba(239, 68, 68, 0.3); border-color: #ef4444; width: 100%;">
-          🗑️ Clear All
-        </button>
-      </div>
-    `;
+    const debugFlowHtml = debugLog.length
+      ? debugLog.slice(-50).map((entry) => {
+          const dataSnippet = entry.data ? ` → ${escapeErrorHtml(JSON.stringify(entry.data).substring(0, 180))}` : '';
+          return `<div class="error-item"><div class="error-type">🧭 ${entry.type.toUpperCase()} [${entry.timestamp}]</div><div class="error-message">${escapeErrorHtml(entry.message)}${dataSnippet}</div></div>`;
+        }).join('')
+      : '<div class="error-empty-state">No debug flow entries yet.</div>';
 
-    errorDetailsPanel.innerHTML = detailsHTML;
+    let tabContent;
+    if (activeErrorBarTab === 'warnings') {
+      tabContent = buildIssueListHtml(warningEntries, 'warnings');
+    } else if (activeErrorBarTab === 'debug-flow') {
+      tabContent = debugFlowHtml;
+    } else {
+      tabContent = buildIssueListHtml(errorEntries, 'errors');
+    }
+
+    const actionsHtml = activeErrorBarTab === 'debug-flow'
+      ? `
+          <button class="error-copy-btn" id="copy-debug-flow-btn" onclick="copyDebugFlowFromErrorBar()" title="Copy debug flow" style="background: rgba(59, 130, 246, 0.3); border-color: #3b82f6; width: 100%; margin-bottom: 8px;">📋 Copy Debug Flow</button>
+          <button class="error-copy-btn" onclick="clearDebugConsole()" title="Clear debug flow" style="background: rgba(239, 68, 68, 0.3); border-color: #ef4444; width: 100%;">🗑️ Clear Debug Flow</button>
+        `
+      : `
+          <button class="error-copy-btn" id="copy-all-errors-btn" data-copy-all="true" onclick="copyAllErrorsToClipboard()" title="Copy all issues" style="background: rgba(59, 130, 246, 0.3); border-color: #3b82f6; width: 100%; margin-bottom: 8px;">📋 Copy All Issues</button>
+          <button class="error-copy-btn" onclick="clearAllErrors()" title="Clear all issues" style="background: rgba(239, 68, 68, 0.3); border-color: #ef4444; width: 100%;">🗑️ Clear All Issues</button>
+        `;
+
+    errorDetailsPanel.innerHTML = `
+      <div class="error-tabs">
+        <button class="error-tab-btn ${activeErrorBarTab === 'errors' ? 'active' : ''}" onclick="setErrorBarTab('errors', event)">Errors (${errorEntries.length})</button>
+        <button class="error-tab-btn ${activeErrorBarTab === 'warnings' ? 'active' : ''}" onclick="setErrorBarTab('warnings', event)">Warnings (${warningEntries.length})</button>
+        <button class="error-tab-btn ${activeErrorBarTab === 'debug-flow' ? 'active' : ''}" onclick="setErrorBarTab('debug-flow', event)">Debug Flow (${debugLog.length})</button>
+      </div>
+      <div class="error-tab-content">${tabContent}</div>
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2);">${actionsHtml}</div>
+    `;
+  }
+
+  function copyDebugFlowFromErrorBar() {
+    const textToCopy = `=== DEBUG FLOW ===\n\n${debugLog.map((entry) => {
+      const data = entry.data ? ` → ${JSON.stringify(entry.data)}` : '';
+      return `[${entry.timestamp}] ${entry.type.toUpperCase()}: ${entry.message}${data}`;
+    }).join('\n')}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const button = document.getElementById('copy-debug-flow-btn');
+      if (!button) return;
+      const originalText = button.textContent;
+      button.textContent = '✅ Copied!';
+      button.classList.add('copied');
+      window.setTimeout(() => {
+        button.textContent = originalText;
+        button.classList.remove('copied');
+      }, 1600);
+    }).catch((err) => {
+      console.error('❌ Failed to copy debug flow:', err);
+    });
   }
 
   /**
@@ -7435,7 +7583,6 @@
     }
 
     const isCollapsed = errorBar.classList.contains('collapsed');
-    const errorPanel = document.getElementById('errorDetailsPanel');
 
     if (isCollapsed) {
       errorBar.classList.remove('collapsed');
@@ -7514,6 +7661,11 @@
     content.innerHTML = html;
     // Scroll to bottom
     content.scrollTop = content.scrollHeight;
+
+    const errorBar = document.getElementById('errorNotificationBar');
+    if (activeErrorBarTab === 'debug-flow' && errorBar && !errorBar.classList.contains('collapsed')) {
+      updateErrorBar();
+    }
   }
 
   /**
