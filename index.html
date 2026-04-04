@@ -9546,6 +9546,7 @@
 
 
        <!-- ============================================================ -->
+  <script>
   async function addRowToExcel(rowValues, retryCount = 0) {
     let token = window.accessToken;
     if (!token) throw new Error("Please sign in first.");
@@ -11885,6 +11886,8 @@
     const parkingBtn = actionBar.querySelector('#adventureModalParkingBtn');
     if (parkingBtn) {
       if (!parkingUrl) parkingBtn.disabled = true;
+      parkingBtn.onclick = () => {
+        if (!parkingUrl) return;
         window.open(parkingUrl, '_blank', 'noopener');
       };
     }
