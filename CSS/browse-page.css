@@ -424,6 +424,24 @@ tr.row-selected {
   align-items: center;
 }
 
+.tag-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.tag-pill:hover {
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+  transform: translateY(-1px);
+}
+
 /* Card Body */
 .adventure-card-body {
   padding: var(--space-xl);
