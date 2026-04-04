@@ -503,6 +503,155 @@
     }
     .loc-empty-icon { font-size: 56px; margin-bottom: 12px; }
     .loc-empty-text { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #6b7280; }
+
+    /* Presets, shortlist, map split */
+    .loc-presets-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .loc-preset-input,
+    .loc-preset-select {
+      padding: 7px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 12px;
+      min-width: 140px;
+      background: white;
+    }
+    .loc-mini-btn {
+      padding: 7px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: white;
+      cursor: pointer;
+    }
+    .loc-mini-btn:hover { border-color: #667eea; color: #667eea; }
+
+    .loc-main-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      align-items: start;
+    }
+    .loc-main-layout.split {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    }
+
+    .loc-map-panel {
+      display: none;
+      position: sticky;
+      top: 12px;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .loc-main-layout.split .loc-map-panel { display: block; }
+
+    .loc-map-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 12px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+    .loc-map-canvas {
+      height: 460px;
+      position: relative;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.15), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.12), transparent 35%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+    .map-pin {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      transform: translate(-50%, -50%);
+      background: #667eea;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .map-pin.active,
+    .map-pin:hover {
+      background: #ef4444;
+      transform: translate(-50%, -50%) scale(1.12);
+      z-index: 3;
+    }
+
+    .loc-shortlist-tray {
+      position: sticky;
+      bottom: 10px;
+      background: #111827;
+      color: white;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    }
+    .loc-shortlist-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .loc-shortlist-count {
+      font-size: 12px;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-right: auto;
+    }
+    .loc-shortlist-chip-wrap { display: flex; gap: 6px; flex-wrap: wrap; }
+    .loc-shortlist-chip {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.24);
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .loc-day-plan {
+      margin-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+      padding-top: 10px;
+      display: none;
+    }
+    .loc-day-plan.visible { display: block; }
+    .loc-day-plan-list {
+      margin: 6px 0 0 16px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #e5e7eb;
+    }
+    .loc-select-btn.active {
+      background: #1d4ed8;
+      color: white;
+      border-color: #1d4ed8;
+    }
+    .loc-card.active {
+      border-color: #ef4444;
+      box-shadow: 0 6px 20px rgba(239, 68, 68, 0.18);
+    }
   </style>
 </head>
 <body>
@@ -543,6 +692,13 @@
 
       <!-- Filter & Sort Controls (mirrors Adventure Planner) -->
       <div class="locations-controls">
+        <div class="loc-presets-row">
+          <input id="locPresetName" class="loc-preset-input" type="text" placeholder="Preset name...">
+          <button class="loc-mini-btn" onclick="saveLocPreset()">Save Preset</button>
+          <select id="locPresetSelect" class="loc-preset-select"></select>
+          <button class="loc-mini-btn" onclick="loadSelectedLocPreset()">Load</button>
+          <button class="loc-mini-btn" onclick="deleteSelectedLocPreset()">Delete</button>
+        </div>
         <div class="locations-controls-grid">
           <div class="loc-filter-item">
             <label for="locSearchName">Search by Name</label>
@@ -588,13 +744,36 @@
             <option value="tags">Tags</option>
           </select>
           <button id="locSortOrderBtn" class="loc-sort-order-btn" title="Toggle sort order" onclick="toggleLocSortOrder()">↑</button>
-          <button class="loc-reset-btn" onclick="resetLocFilters()">Reset Filters</button>
-          <div class="loc-results-count" id="locResultsCount">0 locations</div>
-        </div>
+          <button class="loc-mini-btn" id="locSplitToggleBtn" onclick="toggleSplitView()">Show Map</button>
+           <button class="loc-reset-btn" onclick="resetLocFilters()">Reset Filters</button>
+           <div class="loc-results-count" id="locResultsCount">0 locations</div>
+         </div>
+       </div>
+
+      <div id="locMainLayout" class="loc-main-layout">
+        <div id="locationsGrid" class="locations-grid"></div>
+        <aside class="loc-map-panel" id="locMapPanel">
+          <div class="loc-map-header">
+            <span>Map Pins (synced with list)</span>
+            <span id="locMapCount">0 pins</span>
+          </div>
+          <div id="locMapCanvas" class="loc-map-canvas"></div>
+        </aside>
       </div>
 
-      <!-- Location Cards -->
-      <div id="locationsGrid" class="locations-grid"></div>
+      <div class="loc-shortlist-tray" id="locShortlistTray" style="display:none;">
+        <div class="loc-shortlist-top">
+          <div id="locShortlistCount" class="loc-shortlist-count">0 selected</div>
+          <button class="loc-mini-btn" onclick="buildDayPlan()">Build Day Plan</button>
+          <button class="loc-mini-btn" onclick="clearShortlist()">Clear</button>
+        </div>
+        <div id="locShortlistChips" class="loc-shortlist-chip-wrap"></div>
+        <div id="locDayPlan" class="loc-day-plan">
+          <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Suggested Route</div>
+          <div id="locDayPlanSummary" style="font-size:12px; color:#cbd5e1;"></div>
+          <ol id="locDayPlanList" class="loc-day-plan-list"></ol>
+        </div>
+      </div>
     </div>
 
   </div><!-- /.container -->
@@ -851,71 +1030,332 @@
     let currentCityKey = null;       // "City, State"
     let locSortOrder = 'asc';        // 'asc' | 'desc'
     let activeLocQuickTag = null;    // quick-tag pill value or null
+    let locSplitView = false;
+    let lastFilteredLocations = [];
+    let activeLocId = null;
+    const locPointCache = {};
 
-    /**
-     * Open the locations page for a specific city.
-     * Hides the cities view and shows the locations page.
-     */
-    function viewCity(city, state) {
-      console.log(`👀 Viewing city: ${city}, ${state}`);
-      const key = `${city}, ${state}`;
-      const cityEntry = citiesData[key];
+    function cityStateKey(cityKey) { return `cityViewer:lastState:${cityKey}`; }
+    function cityPresetKey(cityKey) { return `cityViewer:presets:${cityKey}`; }
+    function cityShortlistKey(cityKey) { return `cityViewer:shortlist:${cityKey}`; }
 
-      if (!cityEntry || cityEntry.locations.length === 0) {
-        alert('No locations found for this city');
-        return;
+    function getLocId(loc) {
+      const placeId = String(locVal(loc, 1, 'googlePlaceId') || '').trim();
+      if (placeId) return `pid:${placeId}`;
+      const name = String(locVal(loc, 0, 'name') || '').trim();
+      const addr = String(locVal(loc, 11, 'address') || '').trim();
+      return `fallback:${name}::${addr}`;
+    }
+
+    function getLocFilterState() {
+      return {
+        searchName: document.getElementById('locSearchName').value,
+        difficulty: document.getElementById('locFilterDifficulty').value,
+        cost: document.getElementById('locFilterCost').value,
+        tagText: document.getElementById('locFilterTag').value,
+        sortBy: document.getElementById('locSortBy').value,
+        sortOrder: locSortOrder,
+        quickTag: activeLocQuickTag,
+        splitView: locSplitView
+      };
+    }
+
+    function applyLocFilterState(state) {
+      if (!state) return;
+      document.getElementById('locSearchName').value = state.searchName || '';
+      document.getElementById('locFilterDifficulty').value = state.difficulty || '';
+      document.getElementById('locFilterCost').value = state.cost || '';
+      document.getElementById('locFilterTag').value = state.tagText || '';
+      document.getElementById('locSortBy').value = state.sortBy || 'name';
+      locSortOrder = state.sortOrder === 'desc' ? 'desc' : 'asc';
+      document.getElementById('locSortOrderBtn').textContent = locSortOrder === 'asc' ? '↑' : '↓';
+      activeLocQuickTag = state.quickTag || null;
+      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
+      });
+      setSplitView(Boolean(state.splitView));
+    }
+
+    function saveLastLocState() {
+      if (!currentCityKey) return;
+      window.localStorage.setItem(cityStateKey(currentCityKey), JSON.stringify(getLocFilterState()));
+    }
+
+    function restoreLastLocState() {
+      if (!currentCityKey) return;
+      try {
+        const raw = window.localStorage.getItem(cityStateKey(currentCityKey));
+        if (raw) applyLocFilterState(JSON.parse(raw));
+      } catch (e) {
+        console.warn('⚠️ Could not restore location state', e);
       }
+    }
 
-      currentCityKey = key;
-      activeLocQuickTag = null;
+    function getPresetsForCity() {
+      if (!currentCityKey) return {};
+      try { return JSON.parse(window.localStorage.getItem(cityPresetKey(currentCityKey)) || '{}'); }
+      catch (_) { return {}; }
+    }
 
-      // Update page title / subtitle
-      document.getElementById('locationsPageTitle').textContent = `📍 ${city}`;
-      document.getElementById('locationsPageSubtitle').textContent =
-        `${state} · ${cityEntry.locations.length} location${cityEntry.locations.length !== 1 ? 's' : ''}`;
+    function setPresetsForCity(presets) {
+      if (!currentCityKey) return;
+      window.localStorage.setItem(cityPresetKey(currentCityKey), JSON.stringify(presets));
+      refreshPresetSelect();
+    }
 
-      // Reset filter controls
-      document.getElementById('locSearchName').value = '';
-      document.getElementById('locFilterDifficulty').value = '';
-      document.getElementById('locFilterCost').value = '';
-      document.getElementById('locFilterTag').value = '';
-      document.getElementById('locSortBy').value = 'name';
-      locSortOrder = 'asc';
-      document.getElementById('locSortOrderBtn').textContent = '↑';
+    function refreshPresetSelect() {
+      const select = document.getElementById('locPresetSelect');
+      const presets = getPresetsForCity();
+      const names = Object.keys(presets).sort();
+      select.innerHTML = [`<option value="">Saved presets...</option>`]
+        .concat(names.map(name => `<option value="${escAttr(name)}">${escHtml(name)}</option>`))
+        .join('');
+    }
 
-      // Build quick-tag pills from this city's data
-      buildQuickTagPills(cityEntry.locations);
+    function saveLocPreset() {
+      const name = document.getElementById('locPresetName').value.trim();
+      if (!name) return alert('Enter a preset name first.');
+      const presets = getPresetsForCity();
+      presets[name] = getLocFilterState();
+      setPresetsForCity(presets);
+      document.getElementById('locPresetName').value = '';
+    }
 
-      // Populate the tag datalist
-      populateTagDatalist(cityEntry.locations);
-
-      // Show locations page, hide city list
-      document.querySelector('.controls').style.display = 'none';
-      document.getElementById('cityGrid').style.display = 'none';
-      document.getElementById('locationsPage').style.display = 'block';
-
-      // Render
+    function loadSelectedLocPreset() {
+      const name = document.getElementById('locPresetSelect').value;
+      if (!name) return;
+      const presets = getPresetsForCity();
+      if (!presets[name]) return;
+      applyLocFilterState(presets[name]);
       applyLocFilters();
     }
 
-    /**
-     * Go back to the cities list view.
-     */
-    function goBackToCities() {
-      currentCityKey = null;
-      document.getElementById('locationsPage').style.display = 'none';
-      document.getElementById('cityGrid').style.display = 'grid';
-      document.querySelector('.controls').style.display = 'flex';
+    function deleteSelectedLocPreset() {
+      const name = document.getElementById('locPresetSelect').value;
+      if (!name) return;
+      const presets = getPresetsForCity();
+      delete presets[name];
+      setPresetsForCity(presets);
     }
 
-    /**
-     * Build quick-tag pill buttons from the locations in the current city.
-     */
+    function getShortlistSet() {
+      if (!currentCityKey) return new Set();
+      try {
+        const raw = JSON.parse(window.localStorage.getItem(cityShortlistKey(currentCityKey)) || '[]');
+        return new Set(Array.isArray(raw) ? raw : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function setShortlistSet(setObj) {
+      if (!currentCityKey) return;
+      window.localStorage.setItem(cityShortlistKey(currentCityKey), JSON.stringify(Array.from(setObj)));
+      renderShortlistTray();
+      updateShortlistButtons();
+    }
+
+    function toggleShortlistByEncodedId(encoded) {
+      toggleShortlistById(decodeURIComponent(encoded));
+    }
+
+    function toggleShortlistById(locId) {
+      const setObj = getShortlistSet();
+      if (setObj.has(locId)) setObj.delete(locId);
+      else setObj.add(locId);
+      setShortlistSet(setObj);
+    }
+
+    function clearShortlist() {
+      setShortlistSet(new Set());
+      document.getElementById('locDayPlan').classList.remove('visible');
+    }
+
+    function updateShortlistButtons() {
+      const setObj = getShortlistSet();
+      document.querySelectorAll('.loc-select-btn').forEach(btn => {
+        btn.classList.toggle('active', setObj.has(btn.dataset.locId));
+        btn.textContent = setObj.has(btn.dataset.locId) ? 'Selected' : 'Add to Plan';
+      });
+    }
+
+    function setSplitView(enabled) {
+      locSplitView = !!enabled;
+      const layout = document.getElementById('locMainLayout');
+      const btn = document.getElementById('locSplitToggleBtn');
+      layout.classList.toggle('split', locSplitView);
+      btn.textContent = locSplitView ? 'Hide Map' : 'Show Map';
+    }
+
+    function toggleSplitView() {
+      setSplitView(!locSplitView);
+      saveLastLocState();
+      renderLocMap(lastFilteredLocations);
+    }
+
+    function findLocationById(locId) {
+      const cityEntry = citiesData[currentCityKey];
+      if (!cityEntry) return null;
+      return cityEntry.locations.find(loc => getLocId(loc) === locId) || null;
+    }
+
+    function getLocPoint(loc, locId) {
+      if (locPointCache[locId]) return locPointCache[locId];
+      const latRaw = locVal(loc, 25, 'latitude') || locVal(loc, 26, 'lat') || loc.latitude || loc.lat;
+      const lngRaw = locVal(loc, 26, 'longitude') || locVal(loc, 27, 'lng') || loc.longitude || loc.lng;
+      const lat = parseFloat(latRaw);
+      const lng = parseFloat(lngRaw);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        locPointCache[locId] = { x: lng, y: lat, geo: true };
+        return locPointCache[locId];
+      }
+      let hash = 0;
+      for (let i = 0; i < locId.length; i++) hash = (hash * 31 + locId.charCodeAt(i)) | 0;
+      const x = 10 + Math.abs(hash % 80);
+      const y = 10 + Math.abs((hash >> 8) % 80);
+      locPointCache[locId] = { x, y, geo: false };
+      return locPointCache[locId];
+    }
+
+    function renderLocMap(locations) {
+      const canvas = document.getElementById('locMapCanvas');
+      const count = document.getElementById('locMapCount');
+      if (!canvas || !count) return;
+      count.textContent = `${locations.length} pins`;
+      canvas.innerHTML = '';
+      if (!locSplitView || locations.length === 0) return;
+
+      const points = locations.map(loc => {
+        const locId = getLocId(loc);
+        return { locId, loc, point: getLocPoint(loc, locId), name: String(locVal(loc, 0, 'name') || 'Location') };
+      });
+
+      const geoPoints = points.filter(p => p.point.geo);
+      const minX = geoPoints.length ? Math.min(...geoPoints.map(p => p.point.x)) : 0;
+      const maxX = geoPoints.length ? Math.max(...geoPoints.map(p => p.point.x)) : 100;
+      const minY = geoPoints.length ? Math.min(...geoPoints.map(p => p.point.y)) : 0;
+      const maxY = geoPoints.length ? Math.max(...geoPoints.map(p => p.point.y)) : 100;
+      const xRange = Math.max(0.001, maxX - minX);
+      const yRange = Math.max(0.001, maxY - minY);
+
+      points.forEach((item, idx) => {
+        const pin = document.createElement('button');
+        pin.className = 'map-pin';
+        pin.type = 'button';
+        pin.dataset.locId = item.locId;
+        pin.title = item.name;
+        pin.textContent = String((idx % 9) + 1);
+        const left = item.point.geo ? (5 + ((item.point.x - minX) / xRange) * 90) : item.point.x;
+        const top = item.point.geo ? (95 - ((item.point.y - minY) / yRange) * 90) : item.point.y;
+        pin.style.left = `${left}%`;
+        pin.style.top = `${top}%`;
+        pin.onclick = () => setActiveLocation(item.locId, true);
+        canvas.appendChild(pin);
+      });
+      highlightActiveLocation();
+    }
+
+    function setActiveLocation(locId, scrollToCard) {
+      activeLocId = locId;
+      highlightActiveLocation();
+      if (scrollToCard) {
+        const card = document.querySelector(`.loc-card[data-loc-id="${cssEscape(locId)}"]`);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function highlightActiveLocation() {
+      document.querySelectorAll('.loc-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.locId === activeLocId);
+      });
+      document.querySelectorAll('.map-pin').forEach(pin => {
+        pin.classList.toggle('active', pin.dataset.locId === activeLocId);
+      });
+    }
+
+    function renderShortlistTray() {
+      const tray = document.getElementById('locShortlistTray');
+      const chips = document.getElementById('locShortlistChips');
+      const count = document.getElementById('locShortlistCount');
+      const setObj = getShortlistSet();
+      const ids = Array.from(setObj);
+      tray.style.display = ids.length ? 'block' : 'none';
+      count.textContent = `${ids.length} selected`;
+
+      const items = ids.map(id => findLocationById(id)).filter(Boolean);
+      chips.innerHTML = items.map(loc => {
+        const locId = getLocId(loc);
+        return `<button class="loc-shortlist-chip" onclick="setActiveLocation('${escAttr(locId)}', true)">${escHtml(locVal(loc, 0, 'name') || 'Location')}</button>`;
+      }).join('');
+    }
+
+    function buildDayPlan() {
+      const ids = Array.from(getShortlistSet());
+      const selected = ids.map(id => findLocationById(id)).filter(Boolean);
+      if (selected.length < 2) {
+        alert('Select at least 2 locations to build a route.');
+        return;
+      }
+
+      const remaining = selected.slice().sort((a, b) => String(locVal(a, 0, 'name')).localeCompare(String(locVal(b, 0, 'name'))));
+      const route = [remaining.shift()];
+      while (remaining.length) {
+        const last = route[route.length - 1];
+        const lastPt = getLocPoint(last, getLocId(last));
+        let bestIdx = 0;
+        let bestDist = Infinity;
+        remaining.forEach((candidate, idx) => {
+          const pt = getLocPoint(candidate, getLocId(candidate));
+          const dx = lastPt.x - pt.x;
+          const dy = lastPt.y - pt.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < bestDist) { bestDist = d; bestIdx = idx; }
+        });
+        route.push(remaining.splice(bestIdx, 1)[0]);
+      }
+
+      let total = 0;
+      for (let i = 0; i < route.length - 1; i++) {
+        const a = getLocPoint(route[i], getLocId(route[i]));
+        const b = getLocPoint(route[i + 1], getLocId(route[i + 1]));
+        total += Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+      }
+
+      document.getElementById('locDayPlan').classList.add('visible');
+      document.getElementById('locDayPlanSummary').textContent = `Stops: ${route.length} · Approx route score: ${total.toFixed(1)}`;
+      document.getElementById('locDayPlanList').innerHTML = route
+        .map(loc => `<li>${escHtml(locVal(loc, 0, 'name') || 'Location')}</li>`)
+        .join('');
+    }
+
+    function cssEscape(str) {
+      if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(str);
+      return String(str).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+    }
+
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escAttr(str) {
+      return escHtml(str).replace(/`/g, '&#096;');
+    }
+
+    function locVal(loc, colIndex, fallbackKey) {
+      if (loc.values && Array.isArray(loc.values[0])) return loc.values[0][colIndex] || '';
+      return loc[fallbackKey] || '';
+    }
+
     function buildQuickTagPills(locations) {
       const tagCounts = {};
       locations.forEach(loc => {
-        const vals = loc.values?.[0] || loc;
-        const tagsRaw = Array.isArray(vals) ? vals[3] : (loc.tags || '');
+        const tagsRaw = locVal(loc, 3, 'tags');
         if (!tagsRaw) return;
         tagsRaw.split(',').forEach(t => {
           const tag = t.trim().toLowerCase();
@@ -923,69 +1363,50 @@
         });
       });
 
-      // Pick top 12 tags by count
       const topTags = Object.entries(tagCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 12)
         .map(([tag]) => tag);
 
       const container = document.getElementById('locQuickTags');
-      if (topTags.length === 0) {
-        container.innerHTML = '';
-        return;
-      }
-
       container.innerHTML = topTags.map(tag => {
         const label = tag.charAt(0).toUpperCase() + tag.slice(1);
-        return `<button class="loc-tag-btn" data-tag="${tag}" onclick="toggleLocQuickTag('${tag}')">${label}</button>`;
+        return `<button class="loc-tag-btn" data-tag="${escAttr(tag)}" onclick="toggleLocQuickTag('${escAttr(tag)}')">${escHtml(label)}</button>`;
       }).join('');
     }
 
-    /**
-     * Populate tag datalist for the tag filter input.
-     */
     function populateTagDatalist(locations) {
       const tags = new Set();
       locations.forEach(loc => {
-        const vals = loc.values?.[0] || loc;
-        const tagsRaw = Array.isArray(vals) ? vals[3] : (loc.tags || '');
+        const tagsRaw = locVal(loc, 3, 'tags');
         if (!tagsRaw) return;
-        tagsRaw.split(',').forEach(t => { const tag = t.trim(); if (tag) tags.add(tag); });
+        tagsRaw.split(',').forEach(t => {
+          const tag = t.trim();
+          if (tag) tags.add(tag);
+        });
       });
-      const datalist = document.getElementById('locTagDatalist');
-      datalist.innerHTML = Array.from(tags).sort().map(t => `<option value="${t}">`).join('');
+      document.getElementById('locTagDatalist').innerHTML =
+        Array.from(tags).sort().map(t => `<option value="${escAttr(t)}">`).join('');
     }
 
-    /**
-     * Toggle a quick-tag pill filter.
-     */
     function toggleLocQuickTag(tag) {
-      if (activeLocQuickTag === tag) {
-        activeLocQuickTag = null;
-      } else {
-        activeLocQuickTag = tag;
-        // Also clear the text tag input to avoid double-filter confusion
+      const normalized = String(tag || '').toLowerCase();
+      activeLocQuickTag = activeLocQuickTag === normalized ? null : normalized;
+      if (activeLocQuickTag) {
         document.getElementById('locFilterTag').value = '';
       }
-      // Update pill active state
       document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
       });
       applyLocFilters();
     }
 
-    /**
-     * Toggle sort order asc ↔ desc.
-     */
     function toggleLocSortOrder() {
       locSortOrder = locSortOrder === 'asc' ? 'desc' : 'asc';
       document.getElementById('locSortOrderBtn').textContent = locSortOrder === 'asc' ? '↑' : '↓';
       applyLocFilters();
     }
 
-    /**
-     * Reset all location page filters back to defaults.
-     */
     function resetLocFilters() {
       document.getElementById('locSearchName').value = '';
       document.getElementById('locFilterDifficulty').value = '';
@@ -996,96 +1417,126 @@
       document.getElementById('locSortOrderBtn').textContent = '↑';
       activeLocQuickTag = null;
       document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
+      setSplitView(false);
       applyLocFilters();
     }
 
-    /**
-     * Extract a field value from a location row (handles both {values:[[...]]} shape and flat objects).
-     */
-    function locVal(loc, colIndex, fallbackKey) {
-      if (loc.values && Array.isArray(loc.values[0])) return loc.values[0][colIndex] || '';
-      return loc[fallbackKey] || '';
+    function viewCity(city, state) {
+      const key = `${city}, ${state}`;
+      const cityEntry = citiesData[key];
+      if (!cityEntry || cityEntry.locations.length === 0) {
+        alert('No locations found for this city');
+        return;
+      }
+
+      currentCityKey = key;
+      activeLocId = null;
+      activeLocQuickTag = null;
+
+      document.getElementById('locationsPageTitle').textContent = `📍 ${city}`;
+      document.getElementById('locationsPageSubtitle').textContent =
+        `${state} · ${cityEntry.locations.length} location${cityEntry.locations.length !== 1 ? 's' : ''}`;
+
+      document.getElementById('locSearchName').value = '';
+      document.getElementById('locFilterDifficulty').value = '';
+      document.getElementById('locFilterCost').value = '';
+      document.getElementById('locFilterTag').value = '';
+      document.getElementById('locSortBy').value = 'name';
+      locSortOrder = 'asc';
+      document.getElementById('locSortOrderBtn').textContent = '↑';
+      setSplitView(false);
+
+      buildQuickTagPills(cityEntry.locations);
+      populateTagDatalist(cityEntry.locations);
+      refreshPresetSelect();
+      restoreLastLocState();
+      renderShortlistTray();
+      document.getElementById('locDayPlan').classList.remove('visible');
+
+      document.querySelector('.controls').style.display = 'none';
+      document.getElementById('cityGrid').style.display = 'none';
+      document.getElementById('locationsPage').style.display = 'block';
+
+      applyLocFilters();
     }
 
-    /**
-     * Apply filters + sort to the current city's locations and re-render cards.
-     */
+    function goBackToCities() {
+      currentCityKey = null;
+      activeLocId = null;
+      document.getElementById('locationsPage').style.display = 'none';
+      document.getElementById('cityGrid').style.display = 'grid';
+      document.querySelector('.controls').style.display = 'flex';
+    }
+
     function applyLocFilters() {
       if (!currentCityKey) return;
       const cityEntry = citiesData[currentCityKey];
       if (!cityEntry) return;
 
-      const searchTerm   = document.getElementById('locSearchName').value.trim().toLowerCase();
-      const diffFilter   = document.getElementById('locFilterDifficulty').value.toLowerCase();
-      const costFilter   = document.getElementById('locFilterCost').value.toLowerCase();
-      const tagTextInput = document.getElementById('locFilterTag').value.trim().toLowerCase();
-      const tagFilter    = activeLocQuickTag || tagTextInput;
-      const sortKey      = document.getElementById('locSortBy').value;
+      const searchTerm = document.getElementById('locSearchName').value.trim().toLowerCase();
+      const diffFilter = document.getElementById('locFilterDifficulty').value.toLowerCase();
+      const costFilter = document.getElementById('locFilterCost').value.toLowerCase();
+      const tagInput = document.getElementById('locFilterTag').value.trim().toLowerCase();
+      const tagFilter = activeLocQuickTag || tagInput;
+      const sortKey = document.getElementById('locSortBy').value;
 
-      // Column map (matches index.html renderPaginatedCards comments):
-      // 0:Name 1:PlaceID 2:Website 3:Tags 4:DriveTime 5:Hours 6:Duration
-      // 7:Difficulty 8:TrailLength 9:State 10:City 11:Address 12:Phone
-      // 13:Rating 14:Cost 15:Directions 16:Description 17:Nearby 18:Links
-      // 19:Links2 20:Notes 21:MyRating 22:Favorite 23:GoogleURL
       let results = cityEntry.locations.filter(loc => {
-        const name       = locVal(loc, 0,  'name').toLowerCase();
-        const tags       = locVal(loc, 3,  'tags').toLowerCase();
-        const difficulty = locVal(loc, 7,  'difficulty').toLowerCase();
-        const cost       = locVal(loc, 14, 'cost').toLowerCase();
+        const name = locVal(loc, 0, 'name').toLowerCase();
+        const tags = locVal(loc, 3, 'tags').toLowerCase();
+        const difficulty = locVal(loc, 7, 'difficulty').toLowerCase();
+        const cost = locVal(loc, 14, 'cost').toLowerCase();
 
         if (searchTerm && !name.includes(searchTerm)) return false;
         if (diffFilter && !difficulty.includes(diffFilter)) return false;
         if (costFilter && !cost.includes(costFilter)) return false;
-        if (tagFilter  && !tags.includes(tagFilter))   return false;
+        if (tagFilter && !tags.includes(tagFilter)) return false;
         return true;
       });
 
-      // Sort
-      const costOrder = { 'free': 0, '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
+      const costOrder = { free: 0, '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
+      const difficultyOrder = { easy: 0, moderate: 1, hard: 2 };
+
       results.sort((a, b) => {
-        let aVal = '', bVal = '';
-        switch (sortKey) {
-          case 'name':
-            aVal = locVal(a, 0, 'name').toLowerCase();
-            bVal = locVal(b, 0, 'name').toLowerCase();
-            break;
-          case 'difficulty': {
-            const dOrder = { 'easy': 0, 'moderate': 1, 'hard': 2 };
-            aVal = dOrder[locVal(a, 7, 'difficulty').toLowerCase()] ?? 99;
-            bVal = dOrder[locVal(b, 7, 'difficulty').toLowerCase()] ?? 99;
-            break;
-          }
-          case 'cost':
-            aVal = costOrder[locVal(a, 14, 'cost').toLowerCase()] ?? 99;
-            bVal = costOrder[locVal(b, 14, 'cost').toLowerCase()] ?? 99;
-            break;
-          case 'rating':
-            aVal = parseFloat(locVal(a, 13, 'rating')) || 0;
-            bVal = parseFloat(locVal(b, 13, 'rating')) || 0;
-            break;
-          case 'tags':
-            aVal = locVal(a, 3, 'tags').toLowerCase();
-            bVal = locVal(b, 3, 'tags').toLowerCase();
-            break;
+        let av = '';
+        let bv = '';
+
+        if (sortKey === 'difficulty') {
+          av = difficultyOrder[locVal(a, 7, 'difficulty').toLowerCase()] ?? 99;
+          bv = difficultyOrder[locVal(b, 7, 'difficulty').toLowerCase()] ?? 99;
+        } else if (sortKey === 'cost') {
+          av = costOrder[locVal(a, 14, 'cost').toLowerCase()] ?? 99;
+          bv = costOrder[locVal(b, 14, 'cost').toLowerCase()] ?? 99;
+        } else if (sortKey === 'rating') {
+          av = parseFloat(locVal(a, 13, 'rating')) || 0;
+          bv = parseFloat(locVal(b, 13, 'rating')) || 0;
+        } else if (sortKey === 'tags') {
+          av = locVal(a, 3, 'tags').toLowerCase();
+          bv = locVal(b, 3, 'tags').toLowerCase();
+        } else {
+          av = locVal(a, 0, 'name').toLowerCase();
+          bv = locVal(b, 0, 'name').toLowerCase();
         }
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          return locSortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+
+        if (typeof av === 'number' && typeof bv === 'number') {
+          return locSortOrder === 'asc' ? av - bv : bv - av;
         }
-        const cmp = String(aVal).localeCompare(String(bVal));
+        const cmp = String(av).localeCompare(String(bv));
         return locSortOrder === 'asc' ? cmp : -cmp;
       });
 
       document.getElementById('locResultsCount').textContent =
         `${results.length} location${results.length !== 1 ? 's' : ''}`;
 
+      lastFilteredLocations = results;
+      saveLastLocState();
       renderLocationCards(results);
+      renderLocMap(results);
+      renderShortlistTray();
     }
 
-    /**
-     * Render an array of location rows as cards inside #locationsGrid.
-     */
     function renderLocationCards(locations) {
       const grid = document.getElementById('locationsGrid');
+      const shortlist = getShortlistSet();
 
       if (locations.length === 0) {
         grid.innerHTML = `
@@ -1098,75 +1549,73 @@
       }
 
       grid.innerHTML = locations.map(loc => {
-        const name        = locVal(loc, 0,  'name')        || 'Unnamed Location';
-        const website     = locVal(loc, 2,  'website');
-        const tagsRaw     = locVal(loc, 3,  'tags');
-        const driveTime   = locVal(loc, 4,  'driveTime');
-        const hours       = locVal(loc, 5,  'hours');
-        const duration    = locVal(loc, 6,  'duration');
-        const difficulty  = locVal(loc, 7,  'difficulty');
-        const trailLen    = locVal(loc, 8,  'trailLength');
-        const address     = locVal(loc, 11, 'address');
-        const phone       = locVal(loc, 12, 'phone');
-        const rating      = locVal(loc, 13, 'rating');
-        const cost        = locVal(loc, 14, 'cost');
+        const locId = getLocId(loc);
+        const encodedLocId = encodeURIComponent(locId);
+        const name = locVal(loc, 0, 'name') || 'Unnamed Location';
+        const website = locVal(loc, 2, 'website');
+        const tagsRaw = locVal(loc, 3, 'tags');
+        const driveTime = locVal(loc, 4, 'driveTime');
+        const hours = locVal(loc, 5, 'hours');
+        const duration = locVal(loc, 6, 'duration');
+        const difficulty = locVal(loc, 7, 'difficulty');
+        const trailLen = locVal(loc, 8, 'trailLength');
+        const address = locVal(loc, 11, 'address');
+        const phone = locVal(loc, 12, 'phone');
+        const rating = locVal(loc, 13, 'rating');
+        const cost = locVal(loc, 14, 'cost');
         const description = locVal(loc, 16, 'description');
-        const googleUrl   = locVal(loc, 23, 'googleUrl');
+        const googleUrl = locVal(loc, 23, 'googleUrl');
 
         const tagList = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
-
-        const diffClass = difficulty
-          ? `difficulty-${difficulty.toLowerCase().replace(/\s+/g, '-')}`
-          : '';
-
-        const tagPills = tagList.map(t =>
-          `<span class="loc-tag-pill">${escHtml(t)}</span>`
-        ).join('');
-
-        const metaBadges = [
-          difficulty ? `<span class="loc-meta-badge ${diffClass}">⛰️ ${escHtml(difficulty)}</span>` : '',
-          cost       ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : '',
-          rating     ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : '',
-        ].filter(Boolean).join('');
-
-        const detailRows = [
-          driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : '',
-          hours     ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : '',
-          duration  ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : '',
-          trailLen  ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : '',
-          address   ? `<div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escHtml(address)}</span></div>` : '',
-          phone     ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : '',
-        ].filter(Boolean).join('');
+        const diffClass = difficulty ? `difficulty-${difficulty.toLowerCase().replace(/\s+/g, '-')}` : '';
 
         const actionBtns = [
-          website   ? `<a class="loc-action-btn" href="${escHtml(website)}" target="_blank" rel="noopener">🌐 Website</a>` : '',
-          googleUrl ? `<a class="loc-action-btn" href="${escHtml(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : '',
+          website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener">🌐 Website</a>` : '',
+          googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : '',
+          `<button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>`
         ].filter(Boolean).join('');
 
         return `
-          <div class="loc-card">
+          <div class="loc-card" data-loc-id="${escAttr(locId)}" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
             <div class="loc-card-header">
               <div class="loc-card-name">${escHtml(name)}</div>
-              <div class="loc-card-meta">${metaBadges}</div>
+              <div class="loc-card-meta">
+                ${difficulty ? `<span class="loc-meta-badge ${diffClass}">⛰️ ${escHtml(difficulty)}</span>` : ''}
+                ${cost ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : ''}
+                ${rating ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : ''}
+              </div>
             </div>
-            ${tagPills ? `<div class="loc-card-tags">${tagPills}</div>` : ''}
-            ${detailRows ? `<div class="loc-card-details">${detailRows}</div>` : ''}
+            ${tagList.length ? `<div class="loc-card-tags">${tagList.map(t => `<span class="loc-tag-pill">${escHtml(t)}</span>`).join('')}</div>` : ''}
+            <div class="loc-card-details">
+              ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
+              ${hours ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : ''}
+              ${duration ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : ''}
+              ${trailLen ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : ''}
+              ${address ? `<div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escHtml(address)}</span></div>` : ''}
+              ${phone ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : ''}
+            </div>
             ${description ? `<div class="loc-card-description">${escHtml(description)}</div>` : ''}
-            ${actionBtns ? `<div class="loc-card-footer">${actionBtns}</div>` : ''}
+            <div class="loc-card-footer">${actionBtns}</div>
           </div>`;
       }).join('');
+
+      highlightActiveLocation();
     }
 
-    /** Simple HTML escape helper */
-    function escHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
+    window.viewCity = viewCity;
+    window.goBackToCities = goBackToCities;
+    window.toggleLocQuickTag = toggleLocQuickTag;
+    window.toggleLocSortOrder = toggleLocSortOrder;
+    window.resetLocFilters = resetLocFilters;
+    window.applyLocFilters = applyLocFilters;
+    window.saveLocPreset = saveLocPreset;
+    window.loadSelectedLocPreset = loadSelectedLocPreset;
+    window.deleteSelectedLocPreset = deleteSelectedLocPreset;
+    window.toggleSplitView = toggleSplitView;
+    window.toggleShortlistByEncodedId = toggleShortlistByEncodedId;
+    window.setActiveLocation = setActiveLocation;
+    window.buildDayPlan = buildDayPlan;
+    window.clearShortlist = clearShortlist;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
