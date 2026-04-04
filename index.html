@@ -5226,7 +5226,8 @@
 
    <!-- MSAL Config & Real Auth - MUST load right after MSAL library before any other scripts -->
    <script>
-     console.log('🔐 MSAL Configuration & Real Auth Setup');
+     console.log('🔐 MSAL Configuration & Real Auth Setup - STARTING');
+     console.log('🔐 typeof msal:', typeof msal);
 
      try {
        // MSAL Configuration
@@ -5239,12 +5240,28 @@
 
        // Check if MSAL library is loaded
        if (typeof msal === 'undefined') {
+         console.error('❌ MSAL library (msal) is undefined! CDN may have failed to load.');
          throw new Error('MSAL library not loaded! Check if CDN script loaded correctly.');
        }
+
+       console.log('✅ MSAL library is available');
 
        // Initialize MSAL
        const msalInstance = new msal.PublicClientApplication(msalConfig);
        window.msalInstance = msalInstance; // Export immediately for fallback
+       console.log('✅ MSAL instance created and exported to window.msalInstance');
+       console.log('🔐 window.msalInstance:', typeof window.msalInstance);
+
+     } catch (msalSetupError) {
+       console.error('❌ MSAL Setup Error:', msalSetupError);
+       console.error('❌ MSAL Setup Error message:', msalSetupError.message);
+       console.error('❌ MSAL Setup Error stack:', msalSetupError.stack);
+       // Don't alert - it blocks the page. Just log.
+     }
+
+     // Continue with MSAL initialization (outside try block so msalInstance is in scope)
+     if (typeof window.msalInstance !== 'undefined') {
+       const msalInstance = window.msalInstance;
 
      // Initialize MSAL instance
      const msalInitPromise = msalInstance.initialize().catch(error => {
@@ -5968,9 +5985,10 @@
 
        } catch (error) {
          console.error('❌ saveToExcel error:', error);
-         throw error;
-       }
-     };
+          throw error;
+        }
+      };
+     } // End of if (typeof window.msalInstance !== 'undefined')
     </script>
 
    <!-- Tag Management System (v7.0.112+) - DEPRECATED: Now using consolidated-tag-system-v7-0-141.js -->
@@ -21192,6 +21210,11 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         e.preventDefault();
         e.stopPropagation();
         console.log('🔐 Final Auth Guarantee: Sign In clicked!');
+        console.log('🔐 Available auth methods:');
+        console.log('   - window.realSignIn:', typeof window.realSignIn);
+        console.log('   - window.signIn:', typeof window.signIn);
+        console.log('   - window.msalInstance:', typeof window.msalInstance);
+        console.log('   - window.msalInstance value:', window.msalInstance);
 
         try {
           // Try every possible way to call signIn
@@ -21201,7 +21224,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           } else if (typeof window.signIn === 'function') {
             console.log('🔐 Calling window.signIn');
             await window.signIn();
-          } else if (typeof window.msalInstance !== 'undefined') {
+          } else if (typeof window.msalInstance !== 'undefined' && window.msalInstance !== null) {
             // Direct MSAL fallback
             console.log('🔐 Using direct MSAL fallback');
             const loginRequest = { scopes: ["User.Read", "Files.ReadWrite"] };
@@ -21210,10 +21233,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
             window.location.reload(); // Reload to pick up the session
           } else {
             console.error('❌ No auth method available!');
-            alert('Authentication system not loaded. Please refresh the page and try again.');
+            console.error('❌ This means: window.msalInstance was not created. Check for MSAL setup errors above.');
+            alert('Authentication system not loaded. Please check the console for errors and refresh the page.');
           }
         } catch (err) {
           console.error('❌ Sign-in error:', err);
+          console.error('❌ Sign-in error message:', err.message);
           if (err.message && err.message.includes('popup')) {
             alert('Please allow popups for this site to sign in.');
           }
