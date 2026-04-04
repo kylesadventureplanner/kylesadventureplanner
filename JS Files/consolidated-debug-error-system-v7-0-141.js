@@ -981,26 +981,12 @@ async function ensureFallbackAuth(forceRecreate = false) {
 
 
 function checkAndFixSignIn() {
-    if (typeof window.signIn !== 'function') {
-        logDebug('signIn not ready yet - will be fixed by Final Auth Guarantee');
-
-        // Create emergency signIn if msalInstance is available
-        if (typeof window.msalInstance !== 'undefined') {
-            window.signIn = async function emergencySignIn() {
-                console.log('🔐 Emergency signIn using msalInstance');
-                try {
-                    const loginRequest = { scopes: ["User.Read", "Files.ReadWrite"] };
-                    await window.msalInstance.loginPopup(loginRequest);
-                    window.location.reload();
-                } catch (err) {
-                    console.error('❌ Emergency signIn failed:', err);
-                    alert('Sign in failed. Please try again or refresh the page.');
-                }
-            };
-            logSuccess('✅ Emergency signIn function created');
-        }
-    } else {
+    // Auth buttons are wired by the Final Auth Guarantee script at the bottom of index.html.
+    // It handles all cases including when window.signIn isn't ready yet.
+    if (typeof window.signIn === 'function') {
         logSuccess('signIn function exists');
+    } else {
+        logDebug('signIn not yet set - Final Auth Guarantee will handle sign-in on click');
     }
 }
 
