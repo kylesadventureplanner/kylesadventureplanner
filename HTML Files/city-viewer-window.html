@@ -122,7 +122,7 @@
 
     .city-card:hover {
       border-color: #667eea;
-      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.15);
+      box-shadow: 0 10px 25px rgba(102,126,234,0.15);
       transform: translateY(-4px);
     }
 
@@ -1633,6 +1633,333 @@
       const win = window.open(url, '_blank', 'noopener');
       if (win) showRouteToast(`Opening ${provider === 'mapbox' ? 'Mapbox' : 'Google'} route...`, false);
       else showRouteToast('Popup blocked. Allow popups for route links.', true);
+    }
+
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escAttr(str) {
+      return escHtml(str).replace(/`/g, '&#096;');
+    }
+
+    function cssEscape(str) {
+      if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(str);
+      return String(str).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+    }
+
+    function locVal(loc, colIndex, fallbackKey) {
+      if (loc && loc.values && Array.isArray(loc.values[0])) return loc.values[0][colIndex] || '';
+      return (loc && loc[fallbackKey]) || '';
+    }
+
+    function parseShareStateFromUrl() {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const raw = p.get('sv');
+        if (!raw) return null;
+        const normalized = raw.replace(/-/g, '+').replace(/_/g, '/');
+        const json = decodeURIComponent(atob(normalized));
+        return JSON.parse(json);
+      } catch (e) {
+        console.warn('⚠️ Share state parse failed', e);
+        return null;
+      }
+    }
+
+    function encodeShareState(state) {
+      return btoa(encodeURIComponent(JSON.stringify(state)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/g, '');
+    }
+
+    function updateUrlFromState() {
+      if (!currentCityKey) return;
+      const payload = {
+        cityKey: currentCityKey,
+        filters: getLocFilterState(),
+        shortlist: Array.from(getShortlistSet())
+      };
+      const url = new URL(window.location.href);
+      url.searchParams.set('sv', encodeShareState(payload));
+      window.history.replaceState({}, '', url.toString());
+    }
+
+    async function copyShareLink() {
+      updateUrlFromState();
+      const btn = document.getElementById('copyShareBtn');
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        if (btn) {
+          btn.classList.add('success');
+          btn.textContent = 'Copied!';
+          setTimeout(() => {
+            btn.classList.remove('success');
+            btn.textContent = 'Copy Share Link';
+          }, 1200);
+        }
+      } catch (_) {
+        window.prompt('Copy this link:', window.location.href);
+      }
+    }
+
+    function buildQuickTagPills(locations) {
+      const counts = {};
+      locations.forEach(loc => {
+        String(locVal(loc, 3, 'tags') || '').split(',').forEach(raw => {
+          const tag = raw.trim().toLowerCase();
+          if (tag) counts[tag] = (counts[tag] || 0) + 1;
+        });
+      });
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
+      const wrap = document.getElementById('locQuickTags');
+      if (!wrap) return;
+      wrap.innerHTML = top.map(tag =>
+        `<button class="loc-tag-btn" data-tag="${escAttr(tag)}" onclick="toggleLocQuickTag('${escAttr(tag)}')">${escHtml(tag.charAt(0).toUpperCase() + tag.slice(1))}</button>`
+      ).join('');
+    }
+
+    function populateTagDatalist(locations) {
+      const tags = new Set();
+      locations.forEach(loc => {
+        String(locVal(loc, 3, 'tags') || '').split(',').forEach(raw => {
+          const tag = raw.trim();
+          if (tag) tags.add(tag);
+        });
+      });
+      const dl = document.getElementById('locTagDatalist');
+      if (!dl) return;
+      dl.innerHTML = Array.from(tags).sort().map(tag => `<option value="${escAttr(tag)}">`).join('');
+    }
+
+    function toggleLocQuickTag(tag) {
+      const norm = String(tag || '').toLowerCase();
+      activeLocQuickTag = activeLocQuickTag === norm ? null : norm;
+      const input = document.getElementById('locFilterTag');
+      if (input && activeLocQuickTag) input.value = '';
+      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
+      });
+      applyLocFilters();
+    }
+
+    function toggleLocSortOrder() {
+      locSortOrder = locSortOrder === 'asc' ? 'desc' : 'asc';
+      const btn = document.getElementById('locSortOrderBtn');
+      if (btn) btn.textContent = locSortOrder === 'asc' ? '↑' : '↓';
+      applyLocFilters();
+    }
+
+    function resetLocFilters() {
+      document.getElementById('locSearchName').value = '';
+      document.getElementById('locFilterDifficulty').value = '';
+      document.getElementById('locFilterCost').value = '';
+      document.getElementById('locFilterTag').value = '';
+      document.getElementById('locFilterOpenNow').checked = false;
+      document.getElementById('locFilterClosingSoon').checked = false;
+      document.getElementById('locSortBy').value = 'name';
+      locSortOrder = 'asc';
+      const sortBtn = document.getElementById('locSortOrderBtn');
+      if (sortBtn) sortBtn.textContent = '↑';
+      activeLocQuickTag = null;
+      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
+      setSplitView(false);
+      applyLocFilters();
+    }
+
+    function getOpenInfoForToday(hoursText) {
+      const text = String(hoursText || '').toLowerCase();
+      if (!text) return { isOpen: true, minutesUntilClose: null };
+      if (text.includes('closed')) return { isOpen: false, minutesUntilClose: null };
+      return { isOpen: true, minutesUntilClose: null };
+    }
+
+    function applyLocFilters() {
+      if (!currentCityKey || !citiesData[currentCityKey]) return;
+      const cityEntry = citiesData[currentCityKey];
+
+      const searchTerm = document.getElementById('locSearchName').value.trim().toLowerCase();
+      const diffFilter = document.getElementById('locFilterDifficulty').value.toLowerCase();
+      const costFilter = document.getElementById('locFilterCost').value.toLowerCase();
+      const tagInput = document.getElementById('locFilterTag').value.trim().toLowerCase();
+      const tagFilter = activeLocQuickTag || tagInput;
+      const openNowOnly = document.getElementById('locFilterOpenNow').checked;
+      const closingSoonOnly = document.getElementById('locFilterClosingSoon').checked;
+      const sortBy = document.getElementById('locSortBy').value;
+
+      let results = cityEntry.locations.filter(loc => {
+        const name = String(locVal(loc, 0, 'name')).toLowerCase();
+        const tags = String(locVal(loc, 3, 'tags')).toLowerCase();
+        const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
+        const cost = String(locVal(loc, 14, 'cost')).toLowerCase();
+        const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
+        if (searchTerm && !name.includes(searchTerm)) return false;
+        if (diffFilter && !difficulty.includes(diffFilter)) return false;
+        if (costFilter && !cost.includes(costFilter)) return false;
+        if (tagFilter && !tags.includes(tagFilter)) return false;
+        if (openNowOnly && !openInfo.isOpen) return false;
+        if (closingSoonOnly && !(openInfo.isOpen && openInfo.minutesUntilClose !== null && openInfo.minutesUntilClose <= 120)) return false;
+        return true;
+      });
+
+      const costOrder = { free: 0, '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
+      const diffOrder = { easy: 0, moderate: 1, hard: 2 };
+      results.sort((a, b) => {
+        let av;
+        let bv;
+        if (sortBy === 'difficulty') {
+          av = diffOrder[String(locVal(a, 7, 'difficulty')).toLowerCase()] ?? 99;
+          bv = diffOrder[String(locVal(b, 7, 'difficulty')).toLowerCase()] ?? 99;
+        } else if (sortBy === 'cost') {
+          av = costOrder[String(locVal(a, 14, 'cost')).toLowerCase()] ?? 99;
+          bv = costOrder[String(locVal(b, 14, 'cost')).toLowerCase()] ?? 99;
+        } else if (sortBy === 'rating') {
+          av = parseFloat(locVal(a, 13, 'rating')) || 0;
+          bv = parseFloat(locVal(b, 13, 'rating')) || 0;
+        } else if (sortBy === 'tags') {
+          av = String(locVal(a, 3, 'tags')).toLowerCase();
+          bv = String(locVal(b, 3, 'tags')).toLowerCase();
+        } else {
+          av = String(locVal(a, 0, 'name')).toLowerCase();
+          bv = String(locVal(b, 0, 'name')).toLowerCase();
+        }
+        if (typeof av === 'number' && typeof bv === 'number') return locSortOrder === 'asc' ? av - bv : bv - av;
+        const cmp = String(av).localeCompare(String(bv));
+        return locSortOrder === 'asc' ? cmp : -cmp;
+      });
+
+      lastFilteredLocations = results;
+      document.getElementById('locResultsCount').textContent = `${results.length} location${results.length !== 1 ? 's' : ''}`;
+      saveLastLocState();
+      renderLocationCards(results);
+      renderLocMap(results);
+      renderShortlistTray();
+      updateUrlFromState();
+    }
+
+    function renderLocationCards(locations) {
+      const grid = document.getElementById('locationsGrid');
+      const shortlist = getShortlistSet();
+      if (!grid) return;
+      if (!locations.length) {
+        grid.innerHTML = `
+          <div class="loc-empty">
+            <div class="loc-empty-icon">🔍</div>
+            <div class="loc-empty-text">No locations match your filters</div>
+            <div style="font-size:13px;">Try adjusting or resetting the filters above.</div>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = locations.map(loc => {
+        const locId = getLocId(loc);
+        const encodedLocId = encodeURIComponent(locId);
+        const name = locVal(loc, 0, 'name') || 'Unnamed Location';
+        const website = locVal(loc, 2, 'website');
+        const tagsRaw = locVal(loc, 3, 'tags');
+        const driveTime = locVal(loc, 4, 'driveTime');
+        const hours = locVal(loc, 5, 'hours');
+        const duration = locVal(loc, 6, 'duration');
+        const difficulty = locVal(loc, 7, 'difficulty');
+        const trailLen = locVal(loc, 8, 'trailLength');
+        const address = locVal(loc, 11, 'address');
+        const phone = locVal(loc, 12, 'phone');
+        const rating = locVal(loc, 13, 'rating');
+        const cost = locVal(loc, 14, 'cost');
+        const description = locVal(loc, 16, 'description');
+        const googleUrl = locVal(loc, 23, 'googleUrl');
+        const tags = String(tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
+
+        return `
+          <div class="loc-card" data-loc-id="${escAttr(locId)}" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
+            <div class="loc-card-header">
+              <div class="loc-card-name">${escHtml(name)}</div>
+              <div class="loc-card-meta">
+                ${difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}
+                ${cost ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : ''}
+                ${rating ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : ''}
+              </div>
+            </div>
+            ${tags.length ? `<div class="loc-card-tags">${tags.map(t => `<span class="loc-tag-pill">${escHtml(t)}</span>`).join('')}</div>` : ''}
+            <div class="loc-card-details">
+              ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
+              ${hours ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : ''}
+              ${duration ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : ''}
+              ${trailLen ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : ''}
+              ${address ? `<div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escHtml(address)}</span></div>` : ''}
+              ${phone ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : ''}
+            </div>
+            ${description ? `<div class="loc-card-description">${escHtml(description)}</div>` : ''}
+            <div class="loc-card-footer">
+              ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener">🌐 Website</a>` : ''}
+              ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : ''}
+              <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      highlightActiveLocation();
+      updateShortlistButtons();
+    }
+
+    function viewCity(city, state) {
+      const key = `${city}, ${state}`;
+      const cityEntry = citiesData[key];
+      if (!cityEntry || !cityEntry.locations.length) {
+        alert('No locations found for this city');
+        return;
+      }
+
+      currentCityKey = key;
+      activeLocId = null;
+      activeLocQuickTag = null;
+
+      document.getElementById('locationsPageTitle').textContent = `📍 ${city}`;
+      document.getElementById('locationsPageSubtitle').textContent = `${state} · ${cityEntry.locations.length} location${cityEntry.locations.length !== 1 ? 's' : ''}`;
+
+      document.getElementById('locSearchName').value = '';
+      document.getElementById('locFilterDifficulty').value = '';
+      document.getElementById('locFilterCost').value = '';
+      document.getElementById('locFilterTag').value = '';
+      document.getElementById('locFilterOpenNow').checked = false;
+      document.getElementById('locFilterClosingSoon').checked = false;
+      document.getElementById('locSortBy').value = 'name';
+      locSortOrder = 'asc';
+      document.getElementById('locSortOrderBtn').textContent = '↑';
+      setSplitView(false);
+
+      buildQuickTagPills(cityEntry.locations);
+      populateTagDatalist(cityEntry.locations);
+      refreshPresetSelect();
+      renderShortlistTray();
+      document.getElementById('locDayPlan').classList.remove('visible');
+
+      if (pendingShareState && pendingShareState.cityKey === currentCityKey) {
+        if (pendingShareState.filters) applyLocFilterState(pendingShareState.filters);
+        if (Array.isArray(pendingShareState.shortlist)) setShortlistSet(new Set(pendingShareState.shortlist));
+        pendingShareState = null;
+      }
+
+      document.querySelector('.controls').style.display = 'none';
+      document.getElementById('cityGrid').style.display = 'none';
+      document.getElementById('locationsPage').style.display = 'block';
+
+      applyLocFilters();
+    }
+
+    function goBackToCities() {
+      currentCityKey = null;
+      activeLocId = null;
+      document.getElementById('locationsPage').style.display = 'none';
+      document.getElementById('cityGrid').style.display = 'grid';
+      document.querySelector('.controls').style.display = 'flex';
     }
 
     window.viewCity = viewCity;
