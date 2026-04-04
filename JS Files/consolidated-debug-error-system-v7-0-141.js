@@ -80,12 +80,19 @@ class ErrorManager {
     window.addEventListener('error', (e) => this.handleError(e));
     window.addEventListener('unhandledrejection', (e) => this.handleRejection(e));
 
+    // Save the raw browser console.error before wrapping it,
+    // so later wrappers (index.html) can call the real browser method.
+    window.__rawConsoleError = console.error;
+
     // Override console.error to capture logs
     const originalError = console.error;
     console.error = (...args) => {
       originalError.apply(console, args);
       this.logError(args.join(' '), 'console');
     };
+
+    // Mark that this layer is installed so index.html can detect it.
+    window.__errorBarConsoleErrorInstalled = true;
 
     // Create UI elements
     this.createToggleButton();

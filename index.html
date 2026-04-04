@@ -5406,7 +5406,11 @@
 
        function shouldUseRedirectFallback(err) {
          const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
+         const code = String(err?.errorCode || err?.code || '').toLowerCase();
+         const coopHintSeen = window.__msalCoopWarningSeen === true;
          return (
+           (coopHintSeen && code === 'user_cancelled') ||
+           code === 'popup_window_error' ||
            msg.includes('cross-origin-opener-policy') ||
            msg.includes('window.closed') ||
            msg.includes('popup window') ||
@@ -5415,17 +5419,20 @@
        }
 
        async function loginPopupWithFallback(instance, request) {
-         try {
-           return await instance.loginPopup({ ...request, redirectUri: POPUP_REDIRECT_URI });
-         } catch (err) {
-           if (!isRedirectMismatchError(err)) throw err;
-           console.warn('⚠️ Popup callback redirect not registered; retrying root redirect URI');
-           return await instance.loginPopup({ ...request, redirectUri: POPUP_ROOT_URI });
-         }
-       }
+          try {
+            console.log('🔐 [AUTH PATH] Attempting popup sign-in → auth-popup-callback redirectUri');
+            return await instance.loginPopup({ ...request, redirectUri: POPUP_REDIRECT_URI });
+          } catch (err) {
+            if (!isRedirectMismatchError(err)) throw err;
+            console.warn('⚠️ Popup callback redirect not registered; retrying root redirect URI');
+            console.log('🔐 [AUTH PATH] Retrying popup sign-in → root redirectUri (mismatch fallback)');
+            return await instance.loginPopup({ ...request, redirectUri: POPUP_ROOT_URI });
+          }
+        }
 
-       // ── main boot sequence ────────────────────────────────────────────────
-       async function boot() {
+        // ── main boot sequence ────────────────────────────────────────────────
+        async function boot() {
+
          try {
            await ensureMSAL();
          } catch (loadErr) {
@@ -5505,26 +5512,37 @@
            async function realSignInImpl() {
              if (isSigningIn) { console.log('⏳ Sign-in already in progress'); return; }
              isSigningIn = true;
-             try {
-               window.showLoading?.('Signing in…');
-                const resp = await loginPopupWithFallback(instance, { scopes: SCOPES });
-               activeAccount = resp.account;
-               instance.setActiveAccount(activeAccount);
+              try {
+                window.showLoading?.('Signing in…');
+                console.log('🔐 [AUTH PATH] Starting interactive sign-in (popup)…');
+                 const resp = await loginPopupWithFallback(instance, { scopes: SCOPES });
+                console.log('✅ [AUTH PATH] Popup sign-in succeeded for', resp.account?.username);
+                activeAccount = resp.account;
+                instance.setActiveAccount(activeAccount);
 
-               const tokenResp = await instance.acquireTokenSilent({ scopes: SCOPES, account: activeAccount });
-               accessToken = tokenResp.accessToken;
-               isConnectedToExcel = true;
-               syncAuthGlobals();
-               updateUI(activeAccount);
+                const tokenResp = await instance.acquireTokenSilent({ scopes: SCOPES, account: activeAccount });
+                accessToken = tokenResp.accessToken;
+                isConnectedToExcel = true;
+                syncAuthGlobals();
+                updateUI(activeAccount);
 
-               window.showToast?.('✅ Signed in as ' + activeAccount.username, 'success', 3000);
-               if (typeof window.loadTable === 'function') await window.loadTable();
-             } catch (err) {
-                if (window.__isExpectedAuthCancellation?.(err) && shouldUseRedirectFallback(err)) {
-                  console.warn('⚠️ Popup auth appears blocked by browser policy. Switching to redirect sign-in.');
-                  await instance.loginRedirect({ scopes: SCOPES, redirectUri: POPUP_ROOT_URI });
-                  return;
-                }
+                window.showToast?.('✅ Signed in as ' + activeAccount.username, 'success', 3000);
+                window.__authRedirectFallbackTried = false;
+                if (typeof window.loadTable === 'function') await window.loadTable();
+              } catch (err) {
+                 if (window.__isExpectedAuthCancellation?.(err) && shouldUseRedirectFallback(err)) {
+                   if (window.__authRedirectFallbackTried) {
+                     console.log('ℹ️ [AUTH PATH] Redirect fallback already tried; giving up. Error:', err?.message || err);
+                     window.showToast?.('Sign-in cancelled', 'info', 2000);
+                     return;
+                   }
+                   window.__authRedirectFallbackTried = true;
+                   console.warn('⚠️ [AUTH PATH] Popup blocked by browser policy → switching to redirect sign-in');
+                   console.log('🔀 [AUTH PATH] Calling loginRedirect (COOP / popup_window_error fallback)');
+                   window.showToast?.('Completing sign-in in this tab...', 'info', 2500);
+                   await instance.loginRedirect({ scopes: SCOPES, redirectUri: POPUP_ROOT_URI });
+                   return;
+                 }
                 if (window.__isExpectedAuthCancellation?.(err)) {
                  console.log('ℹ️ Sign-in popup dismissed:', err?.message || err);
                  window.showToast?.('Sign-in cancelled', 'info', 2000);
@@ -7173,10 +7191,7 @@
 
     if (errorLog.length === 0) {
       errorBar.classList.remove('has-errors');
-      // Keep debug-flow usable even when there are no error/warning entries.
-      if (activeErrorBarTab !== 'debug-flow') {
-        errorBar.classList.add('collapsed');
-      }
+      // Preserve user-expanded state when there are no error entries.
       if (errorCount) errorCount.textContent = '0';
       if (errorDetailsPanel) {
         errorDetailsPanel.innerHTML = `
@@ -7194,9 +7209,14 @@
       return;
     }
 
-    // Show error bar and expand it
+    // Show error bar and mark it as having errors
     errorBar.classList.add('has-errors');
-    errorBar.classList.remove('collapsed'); // Auto-expand when errors occur
+    // Do NOT auto-expand here — user controls collapsed/expanded state.
+    // Only expand automatically on the very first error (bar transitions from clean to errored).
+    if (!errorBar.dataset.hasHadErrors) {
+      errorBar.dataset.hasHadErrors = '1';
+      errorBar.classList.remove('collapsed');
+    }
     if (errorCount) errorCount.textContent = errorLog.length;
 
     const taggedIssues = errorLog.map((entry, index) => ({
@@ -7372,6 +7392,10 @@
       event.preventDefault();
       event.stopPropagation();
     }
+
+    const now = Date.now();
+    if (window.__errorBarToggleLockUntil && now < window.__errorBarToggleLockUntil) return;
+    window.__errorBarToggleLockUntil = now + 200;
 
     const errorBar = document.getElementById('errorNotificationBar');
     if (!errorBar) {
@@ -7598,13 +7622,23 @@
     }
     logErrorToBar('error', message);
     addDebugLog('error', message);
-    originalConsoleError.apply(console, args);
+    // Call through but skip re-invoking if ErrorManager already wraps this layer
+    // (prevents double-logging when consolidated-debug-error-system.js loads first).
+    if (!window.__errorBarConsoleErrorInstalled) {
+      originalConsoleError.apply(console, args);
+    } else {
+      // Use the raw browser console directly to avoid recursion through ErrorManager wrapper.
+      (window.__rawConsoleError || originalConsoleError).apply(console, args);
+    }
     };
 
     // Intercept console.warn to capture warnings
     const originalConsoleWarn = console.warn;
     console.warn = function(...args) {
     const message = args.join(' ');
+    if (String(message).toLowerCase().includes('cross-origin-opener-policy policy would block the window.closed call')) {
+      window.__msalCoopWarningSeen = true;
+    }
     if (window.__isIgnorableConsoleNoise?.(message)) {
       originalConsoleWarn.apply(console, args);
       return;
@@ -21246,10 +21280,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
   async function loginPopupWithFallback(instance, request) {
     try {
+      console.log('🔐 [AUTH PATH] Attempting popup sign-in → auth-popup-callback redirectUri (guarantee block)');
       return await instance.loginPopup({ ...request, redirectUri: POPUP_REDIRECT_URI });
     } catch (err) {
       if (!isRedirectMismatchError(err)) throw err;
       console.warn('⚠️ Popup callback redirect not registered; retrying root redirect URI');
+      console.log('🔐 [AUTH PATH] Retrying popup sign-in → root redirectUri (mismatch fallback, guarantee block)');
       return await instance.loginPopup({ ...request, redirectUri: POPUP_ROOT_URI });
     }
   }
@@ -21276,16 +21312,19 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
       // 1. Use already-initialised signIn functions if available
       if (isUsableAuthFn(window.realSignIn)) {
+        console.log('🔐 [AUTH PATH] Delegating to window.realSignIn (canonical)');
         try { await window.realSignIn(); } catch (err) { showAuthError(err); }
         return;
       }
       if (isUsableAuthFn(window.signIn)) {
+        console.log('🔐 [AUTH PATH] Delegating to window.signIn');
         try { await window.signIn(); } catch (err) { showAuthError(err); }
         return;
       }
 
       // 2. Use the already-created MSAL instance if available
       if (window.msalInstance) {
+        console.log('🔐 [AUTH PATH] Popup via msalInstance direct (no signIn function available)');
         try {
           const resp = await loginPopupWithFallback(window.msalInstance, { scopes: SCOPES });
           window.activeAccount = resp.account;
