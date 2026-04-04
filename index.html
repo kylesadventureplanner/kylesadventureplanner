@@ -5128,21 +5128,34 @@
    <script>
      console.log('🔐 Early auth initialization: Setting up auth functions...');
 
-     // Initialize auth functions
-     if (typeof window.signIn === 'undefined') {
-       window.signIn = async function() {
-         console.log('✅ Sign in called');
-         // Silently proceed - no backend auth configured
-         return Promise.resolve();
-       };
-     }
+     // These placeholders will be OVERWRITTEN by the real MSAL auth functions later.
+     // The real auth defines: window.signIn = realSignInImpl (see line ~5432)
+     // So we just set up minimal placeholders that log if somehow called before replacement.
 
+     window._placeholderSignIn = async function() {
+       console.log('🔐 Placeholder signIn - real auth should have replaced this');
+       // Try to call the real implementation if it exists
+       if (typeof window.realSignIn === 'function') {
+         return window.realSignIn();
+       }
+       console.error('❌ Real auth not loaded. Please refresh the page.');
+       window.showToast?.('Sign in unavailable - please refresh the page', 'error', 3000);
+     };
+
+     window._placeholderSignOut = async function() {
+       console.log('🔐 Placeholder signOut - real auth should have replaced this');
+       if (typeof window.realSignOut === 'function') {
+         return window.realSignOut();
+       }
+       console.error('❌ Real auth not loaded');
+     };
+
+     // Only set if not already defined (real auth may load first in some scenarios)
+     if (typeof window.signIn === 'undefined') {
+       window.signIn = window._placeholderSignIn;
+     }
      if (typeof window.signOut === 'undefined') {
-       window.signOut = async function() {
-         console.log('✅ Sign out called');
-         // Silently proceed - no backend auth configured
-         return Promise.resolve();
-       };
+       window.signOut = window._placeholderSignOut;
      }
 
      console.log('✅ Early auth initialization complete');
@@ -5420,6 +5433,28 @@
      window.realSignOut = realSignOutImpl;
 
      console.log('✅ REAL AUTH FUNCTIONS DEFINED AND READY IMMEDIATELY!');
+
+     // Also attach directly to buttons to guarantee they work
+     setTimeout(() => {
+       const signInBtn = document.getElementById('signInBtn');
+       const signOutBtn = document.getElementById('signOutBtn');
+       if (signInBtn) {
+         signInBtn.onclick = function(e) {
+           e.preventDefault();
+           console.log('🔐 Direct button handler: calling realSignInImpl');
+           realSignInImpl();
+         };
+         console.log('✅ Direct signIn handler attached to button');
+       }
+       if (signOutBtn) {
+         signOutBtn.onclick = function(e) {
+           e.preventDefault();
+           console.log('🔐 Direct button handler: calling realSignOutImpl');
+           realSignOutImpl();
+         };
+         console.log('✅ Direct signOut handler attached to button');
+       }
+     }, 100);
 
      // ============================================================
      // AUTO-LOGIN: Check for existing session on page load
