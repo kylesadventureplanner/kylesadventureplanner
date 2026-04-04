@@ -645,6 +645,15 @@
       z-index: 3;
     }
 
+    .loc-bulk-actions {
+      background: linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.05) 100%);
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      margin-top: 12px;
+    }
+
     .loc-shortlist-tray {
       position: sticky;
       bottom: 10px;
@@ -822,6 +831,18 @@
         </aside>
       </div>
 
+      <!-- Bulk Actions Toolbar -->
+      <div class="loc-bulk-actions" id="locBulkActions" style="display:none;">
+        <div style="font-size:12px; font-weight:700; color:#6b7280; margin-bottom:8px;">⚡ Quick Actions</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="loc-mini-btn" onclick="bulkAddTopRated(5)" title="Add top 5 rated">Top 5 ⭐</button>
+          <button class="loc-mini-btn" onclick="bulkAddTopRated(10)" title="Add top 10 rated">Top 10 ⭐</button>
+          <button class="loc-mini-btn" onclick="bulkFilterOpenNow()" title="Show only open now">🟢 Open Now</button>
+          <button class="loc-mini-btn" onclick="resetLocFilters()" title="Clear all filters">Reset Filters</button>
+          <button class="loc-mini-btn" onclick="clearShortlist()" title="Clear shortlist">Clear Selected</button>
+        </div>
+      </div>
+
       <div class="loc-shortlist-tray" id="locShortlistTray" style="display:none;">
         <div class="loc-shortlist-top">
           <div id="locShortlistCount" class="loc-shortlist-count">0 selected</div>
@@ -831,6 +852,28 @@
           <button class="loc-mini-btn" onclick="clearShortlist()">Clear</button>
         </div>
         <div id="locShortlistChips" class="loc-shortlist-chip-wrap"></div>
+
+        <!-- Time-Window Itinerary Builder -->
+        <div id="locTimeWindow" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.2); display:none;">
+          <div style="font-size:12px; font-weight:700; margin-bottom:8px;">⏰ Plan by Time Window</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px;">
+            <div>
+              <label for="locTimeStart" style="font-size:11px; color:#cbd5e1;">Start Time</label>
+              <input id="locTimeStart" type="time" value="09:00" style="width:100%; padding:6px; border:1px solid rgba(255,255,255,0.3); border-radius:4px; background:rgba(0,0,0,0.2); color:white; font-size:12px;">
+            </div>
+            <div>
+              <label for="locTimeEnd" style="font-size:11px; color:#cbd5e1;">End Time</label>
+              <input id="locTimeEnd" type="time" value="17:00" style="width:100%; padding:6px; border:1px solid rgba(255,255,255,0.3); border-radius:4px; background:rgba(0,0,0,0.2); color:white; font-size:12px;">
+            </div>
+            <div>
+              <label for="locTimePerStop" style="font-size:11px; color:#cbd5e1;">Per Stop (min)</label>
+              <input id="locTimePerStop" type="number" value="60" min="15" max="240" style="width:100%; padding:6px; border:1px solid rgba(255,255,255,0.3); border-radius:4px; background:rgba(0,0,0,0.2); color:white; font-size:12px;">
+            </div>
+          </div>
+          <button class="loc-mini-btn" onclick="calculateRouteQuality()" style="width:100%;">📊 Calculate Feasibility</button>
+          <div id="locRouteQuality" style="margin-top:8px; font-size:12px; color:#e5e7eb; padding:8px; background:rgba(0,0,0,0.3); border-radius:6px; display:none;"></div>
+        </div>
+
         <div id="locDayPlan" class="loc-day-plan">
           <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Suggested Route</div>
           <div id="locDayPlanSummary" style="font-size:12px; color:#cbd5e1;"></div>
@@ -1584,6 +1627,7 @@
       document.getElementById('locDayPlanList').innerHTML = route
         .map(loc => `<li>${escHtml(locVal(loc, 0, 'name') || 'Location')}</li>`)
         .join('');
+      document.getElementById('locTimeWindow').style.display = 'block';
       updateRouteButtonsState();
     }
 
@@ -1962,6 +2006,65 @@
       document.querySelector('.controls').style.display = 'flex';
     }
 
+    function timeToMinutes(timeStr) {
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+
+    function calculateRouteQuality() {
+      if (!lastBuiltDayPlanRoute || lastBuiltDayPlanRoute.length < 1) {
+        showRouteToast('Build a day plan first', true);
+        return;
+      }
+      const startStr = document.getElementById('locTimeStart')?.value || '09:00';
+      const endStr = document.getElementById('locTimeEnd')?.value || '17:00';
+      const perStopMins = parseInt(document.getElementById('locTimePerStop')?.value) || 60;
+
+      const startMins = timeToMinutes(startStr);
+      const endMins = timeToMinutes(endStr);
+      const availableMins = endMins - startMins;
+      const travelEstimate = (lastBuiltDayPlanRoute.length - 1) * 15; // 15 min avg per stop
+      const stopTimeTotalMins = lastBuiltDayPlanRoute.length * perStopMins;
+      const totalRequired = travelEstimate + stopTimeTotalMins;
+
+      const feasible = totalRequired <= availableMins;
+      const slack = availableMins - totalRequired;
+      const color = feasible ? (slack > 60 ? '#86efac' : '#fbbf24') : '#f87171';
+      const status = feasible ? (slack > 60 ? '✅ Comfortable' : '⚠️ Tight but doable') : '❌ Too tight';
+
+      const html = `
+        <strong>${status}</strong><br>
+        Available: ${availableMins} min | Needed: ${totalRequired} min (${lastBuiltDayPlanRoute.length} stops × ${perStopMins}m + ${travelEstimate}m transit)<br>
+        Slack time: ${slack > 0 ? slack : Math.abs(slack)} min ${slack > 0 ? '✓' : '✗'}
+      `;
+      const panel = document.getElementById('locRouteQuality');
+      if (panel) {
+        panel.innerHTML = html;
+        panel.style.display = 'block';
+        panel.style.borderLeft = `4px solid ${color}`;
+        panel.style.color = color;
+      }
+      showRouteToast(feasible ? 'Route is feasible!' : 'Route exceeds time window', !feasible);
+    }
+
+    function bulkAddTopRated(count) {
+      if (!currentCityKey || !citiesData[currentCityKey]) return;
+      const locs = citiesData[currentCityKey].locations.slice();
+      locs.sort((a, b) => (parseFloat(locVal(b, 13, 'rating')) || 0) - (parseFloat(locVal(a, 13, 'rating')) || 0));
+      const topN = locs.slice(0, count);
+      const shortlist = getShortlistSet();
+      topN.forEach(loc => shortlist.add(getLocId(loc)));
+      setShortlistSet(shortlist);
+      showRouteToast(`Added top ${count} rated locations`, false);
+    }
+
+    function bulkFilterOpenNow() {
+      document.getElementById('locFilterOpenNow').checked = true;
+      applyLocFilters();
+      showRouteToast('Showing only open locations', false);
+    }
+
     window.viewCity = viewCity;
     window.goBackToCities = goBackToCities;
     window.toggleLocQuickTag = toggleLocQuickTag;
@@ -1978,6 +2081,9 @@
     window.clearShortlist = clearShortlist;
     window.copyShareLink = copyShareLink;
     window.openDayPlanRoute = openDayPlanRoute;
+    window.calculateRouteQuality = calculateRouteQuality;
+    window.bulkAddTopRated = bulkAddTopRated;
+    window.bulkFilterOpenNow = bulkFilterOpenNow;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
