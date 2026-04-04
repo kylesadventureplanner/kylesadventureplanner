@@ -5240,6 +5240,7 @@
        const CLIENT_ID   = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
        const AUTHORITY   = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
        const SCOPES      = ['User.Read', 'Files.ReadWrite'];
+       const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
 
        // ── helpers ──────────────────────────────────────────────────────────
        function loadScript(src) {
@@ -5282,9 +5283,9 @@
          }
 
          try {
-           const msalConfig = {
-             auth: { clientId: CLIENT_ID, authority: AUTHORITY }
-           };
+            const msalConfig = {
+              auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: POPUP_REDIRECT_URI }
+            };
            const instance = new msal.PublicClientApplication(msalConfig);
            window.msalInstance = instance;
            console.log('✅ MSAL instance created → window.msalInstance');
@@ -5351,7 +5352,7 @@
              isSigningIn = true;
              try {
                window.showLoading?.('Signing in…');
-               const resp = await instance.loginPopup({ scopes: SCOPES });
+                const resp = await instance.loginPopup({ scopes: SCOPES, redirectUri: POPUP_REDIRECT_URI });
                activeAccount = resp.account;
                instance.setActiveAccount(activeAccount);
 
@@ -5381,7 +5382,7 @@
              try {
                window.showLoading?.('Signing out…');
                if (activeAccount) {
-                 await instance.logoutPopup({ account: activeAccount });
+                  await instance.logoutPopup({ account: activeAccount, postLogoutRedirectUri: POPUP_REDIRECT_URI });
                }
                accessToken = null;
                activeAccount = null;
@@ -5419,7 +5420,10 @@
    </script>
 
    <script>
-     // Initialize MSAL instance
+      // Keep popup callbacks on a lightweight page to avoid rendering the full app in the auth popup.
+      const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
+
+      // Initialize MSAL instance
      const msalInitPromise = msalInstance.initialize().catch(error => {
        console.error("MSAL initialization failed:", error);
        throw error;
@@ -5503,7 +5507,7 @@
            }
          }
 
-         const loginResponse = await msalInstance.loginPopup(loginRequest);
+          const loginResponse = await msalInstance.loginPopup({ ...loginRequest, redirectUri: POPUP_REDIRECT_URI });
          activeAccount = loginResponse.account;
          msalInstance.setActiveAccount(activeAccount);
 
@@ -5556,9 +5560,9 @@
          return;
        }
 
-       await msalInstance.logoutPopup({
+        await msalInstance.logoutPopup({
          account,
-         postLogoutRedirectUri: window.location.origin,
+          postLogoutRedirectUri: POPUP_REDIRECT_URI,
        });
 
        accessToken = null;
@@ -21152,6 +21156,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   const CLIENT_ID = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
   const AUTHORITY  = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
   const SCOPES     = ['User.Read', 'Files.ReadWrite'];
+  const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
 
   function isUsableAuthFn(fn) {
     if (typeof fn !== 'function') return false;
@@ -21197,7 +21202,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       // 2. Use the already-created MSAL instance if available
       if (window.msalInstance) {
         try {
-          const resp = await window.msalInstance.loginPopup({ scopes: SCOPES });
+          const resp = await window.msalInstance.loginPopup({ scopes: SCOPES, redirectUri: POPUP_REDIRECT_URI });
           window.activeAccount = resp.account;
           window.msalInstance.setActiveAccount(resp.account);
           const tok = await window.msalInstance.acquireTokenSilent({ scopes: SCOPES, account: resp.account });
@@ -21215,10 +21220,10 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         return;
       }
       try {
-        const inst = new msal.PublicClientApplication({ auth: { clientId: CLIENT_ID, authority: AUTHORITY } });
+        const inst = new msal.PublicClientApplication({ auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: POPUP_REDIRECT_URI } });
         await inst.initialize();
         window.msalInstance = inst;
-        const resp = await inst.loginPopup({ scopes: SCOPES });
+        const resp = await inst.loginPopup({ scopes: SCOPES, redirectUri: POPUP_REDIRECT_URI });
         window.activeAccount = resp.account;
         inst.setActiveAccount(resp.account);
         const tok = await inst.acquireTokenSilent({ scopes: SCOPES, account: resp.account });
@@ -21226,7 +21231,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         window.isConnectedToExcel = true;
         // Expose signIn/signOut on window so subsequent clicks use the fast path
         window.signIn = async () => {
-          const r = await inst.loginPopup({ scopes: SCOPES });
+          const r = await inst.loginPopup({ scopes: SCOPES, redirectUri: POPUP_REDIRECT_URI });
           window.activeAccount = r.account;
           inst.setActiveAccount(r.account);
           const t = await inst.acquireTokenSilent({ scopes: SCOPES, account: r.account });
@@ -21238,7 +21243,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         window.signOut = async () => {
           const account = inst.getActiveAccount() || window.activeAccount || null;
           if (account) {
-            await inst.logoutPopup({ account: account, postLogoutRedirectUri: window.location.origin });
+            await inst.logoutPopup({ account: account, postLogoutRedirectUri: POPUP_REDIRECT_URI });
           }
           window.accessToken = null;
           window.activeAccount = null;
