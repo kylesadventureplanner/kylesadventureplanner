@@ -24,7 +24,59 @@
   </style>
 </head>
 <body>
-  <div class="card">Completing sign-in... You can close this window if it does not close automatically.</div>
+  <div id="status" class="card">Completing sign-in... You can close this window if it does not close automatically.</div>
+  <script>
+    (function handlePopupCallback() {
+      const statusEl = document.getElementById('status');
+      const query = window.location.search || '';
+      const hash = window.location.hash || '';
+      const authParamPattern = /(^|[?&#])(code|error|state|id_token|access_token)=/i;
+      const hasAuthParams = authParamPattern.test(query + '&' + hash);
+
+      // MSAL popup polling is most reliable when auth params are in the hash.
+      if (query && !hash && authParamPattern.test(query)) {
+        const normalizedHash = query.charAt(0) === '?' ? query.substring(1) : query;
+        const normalizedUrl = window.location.origin + window.location.pathname + '#' + normalizedHash;
+        window.location.replace(normalizedUrl);
+        return;
+      }
+
+      if (window.opener && window.opener !== window) {
+        try {
+          window.opener.postMessage(
+            {
+              type: 'msal-popup-callback',
+              href: window.location.href,
+              hasAuthParams: hasAuthParams
+            },
+            window.location.origin
+          );
+        } catch (err) {
+          console.warn('Popup callback could not notify opener:', err);
+        }
+      }
+
+      if (hasAuthParams && statusEl) {
+        statusEl.textContent = 'Sign-in response received. Closing this window...';
+      }
+
+      let attempts = 0;
+      const maxAttempts = 12;
+      const timer = window.setInterval(() => {
+        attempts += 1;
+        window.close();
+
+        if (attempts >= maxAttempts) {
+          window.clearInterval(timer);
+          if (statusEl) {
+            statusEl.textContent = 'Sign-in appears complete. You can close this window and return to the app.';
+          }
+        }
+      }, 250);
+
+      window.close();
+    })();
+  </script>
 </body>
 </html>
 
