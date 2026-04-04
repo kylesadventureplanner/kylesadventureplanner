@@ -5124,41 +5124,10 @@
   <!-- MSAL library loaded from Microsoft CDN (recommended by Microsoft for latest security updates) -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
-   <!-- Early Auth Initialization - Define signIn/signOut before debug system loads -->
+   <!-- Note: Real auth functions are defined in the MSAL Config script block below -->
+   <!-- We don't need placeholders - just let the real auth define window.signIn/signOut -->
    <script>
-     console.log('🔐 Early auth initialization: Setting up auth functions...');
-
-     // These placeholders will be OVERWRITTEN by the real MSAL auth functions later.
-     // The real auth defines: window.signIn = realSignInImpl (see line ~5432)
-     // So we just set up minimal placeholders that log if somehow called before replacement.
-
-     window._placeholderSignIn = async function() {
-       console.log('🔐 Placeholder signIn - real auth should have replaced this');
-       // Try to call the real implementation if it exists
-       if (typeof window.realSignIn === 'function') {
-         return window.realSignIn();
-       }
-       console.error('❌ Real auth not loaded. Please refresh the page.');
-       window.showToast?.('Sign in unavailable - please refresh the page', 'error', 3000);
-     };
-
-     window._placeholderSignOut = async function() {
-       console.log('🔐 Placeholder signOut - real auth should have replaced this');
-       if (typeof window.realSignOut === 'function') {
-         return window.realSignOut();
-       }
-       console.error('❌ Real auth not loaded');
-     };
-
-     // Only set if not already defined (real auth may load first in some scenarios)
-     if (typeof window.signIn === 'undefined') {
-       window.signIn = window._placeholderSignIn;
-     }
-     if (typeof window.signOut === 'undefined') {
-       window.signOut = window._placeholderSignOut;
-     }
-
-     console.log('✅ Early auth initialization complete');
+     console.log('🔐 Auth will be initialized by MSAL Config script block below');
 
      // ============================================================
      // PLACEHOLDER FUNCTIONS FOR CARD BUTTONS
@@ -20636,8 +20605,15 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       if (signInBtn) {
         signInBtn.onclick = async function (e) {
           e.preventDefault();
-          restoreNativeAuth();
-          if (typeof window.signIn === 'function') {
+          // Use realSignInImpl directly if available (it's defined in the MSAL script block)
+          if (typeof realSignInImpl === 'function') {
+            console.log('🔐 Calling realSignInImpl directly');
+            await realSignInImpl();
+          } else if (typeof window.realSignIn === 'function') {
+            console.log('🔐 Calling window.realSignIn');
+            await window.realSignIn();
+          } else if (typeof window.signIn === 'function') {
+            console.log('🔐 Calling window.signIn');
             await window.signIn();
           } else {
             console.error('❌ signIn function not available');
@@ -20649,8 +20625,15 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       if (signOutBtn) {
         signOutBtn.onclick = async function (e) {
           e.preventDefault();
-          restoreNativeAuth();
-          if (typeof window.signOut === 'function') {
+          // Use realSignOutImpl directly if available
+          if (typeof realSignOutImpl === 'function') {
+            console.log('🔐 Calling realSignOutImpl directly');
+            await realSignOutImpl();
+          } else if (typeof window.realSignOut === 'function') {
+            console.log('🔐 Calling window.realSignOut');
+            await window.realSignOut();
+          } else if (typeof window.signOut === 'function') {
+            console.log('🔐 Calling window.signOut');
             await window.signOut();
           } else {
             console.error('❌ signOut function not available');
