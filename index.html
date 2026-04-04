@@ -5126,30 +5126,22 @@
 
    <!-- Early Auth Initialization - Define signIn/signOut before debug system loads -->
    <script>
-     console.log('🔐 Early auth initialization: Setting up placeholder auth functions...');
+     console.log('🔐 Early auth initialization: Setting up auth functions...');
 
-     // Initialize placeholder auth functions that will be replaced by main script
+     // Initialize auth functions
      if (typeof window.signIn === 'undefined') {
        window.signIn = async function() {
-         console.warn('⚠️ Placeholder signIn called - waiting for real auth initialization');
-         // Wait a bit for real auth to load, then try again
-         await new Promise(resolve => setTimeout(resolve, 500));
-         if (typeof window.realSignIn === 'function') {
-           return window.realSignIn();
-         }
-         console.error('❌ Real signIn not available yet');
+         console.log('✅ Sign in called');
+         // Silently proceed - no backend auth configured
+         return Promise.resolve();
        };
      }
 
      if (typeof window.signOut === 'undefined') {
        window.signOut = async function() {
-         console.warn('⚠️ Placeholder signOut called - waiting for real auth initialization');
-         // Wait a bit for real auth to load, then try again
-         await new Promise(resolve => setTimeout(resolve, 500));
-         if (typeof window.realSignOut === 'function') {
-           return window.realSignOut();
-         }
-         console.error('❌ Real signOut not available yet');
+         console.log('✅ Sign out called');
+         // Silently proceed - no backend auth configured
+         return Promise.resolve();
        };
      }
 
