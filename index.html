@@ -171,23 +171,64 @@
        Various button styles for different purposes throughout the app.
     */
 
-    /* iPhone/Mobile toggle button - switches between desktop and mobile view */
-    .iphone-toggle-btn {
-      padding: 6px 12px;
-      border-radius: 999px;  /* Pill-shaped button */
-      border: 1px solid var(--blue-border);
-      background: white;
-      color: var(--blue-strong);
-      font-size: 13px;
-      cursor: pointer;
-      display: inline-flex;
+    /* Prominent top actions for Adventure Planner controls */
+    .planner-top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
       align-items: center;
-      gap: 6px;
+      margin-top: 10px;
+      position: sticky;
+      top: 8px;
+      z-index: 120;
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
     }
 
-    /* Active state for iPhone toggle - shows when in mobile view mode */
-    .iphone-toggle-btn.active {
-      background: var(--blue-bg); /* Highlighted when active */
+    @media (max-width: 768px) {
+      .planner-top-actions {
+        top: 4px;
+        padding: 6px;
+      }
+    }
+
+    .planner-top-btn {
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--neutral-300);
+      background: white;
+      color: var(--neutral-700);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      box-shadow: var(--shadow-sm);
+      white-space: nowrap;
+    }
+
+    .planner-top-btn:hover {
+      background: var(--neutral-50);
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .planner-top-btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .planner-top-btn.active {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent-info) 100%);
+      border-color: var(--primary);
+      color: white;
     }
 
     /* ============================================================
@@ -6595,8 +6636,17 @@
     <div class="app-tab-pane active" data-tab="adventure-planner" id="adventurePlannerTab">
       <header>
         <h1>Adventure Planner</h1>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <button id="iphoneToggleBtn" class="iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
+        <div class="planner-top-actions">
+          <button id="editModeBtn" class="planner-top-btn" title="Open Edit Mode to manage your data" data-tooltip="Open Edit Mode to manage your data" onclick="openEditModeWindow()">
+            📝 Edit Mode
+          </button>
+          <button id="findNearMeBtn" class="planner-top-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location" onclick="startFindNearMe()">
+            📍 Find Near Me
+          </button>
+          <button id="cityViewerBtn" class="planner-top-btn" title="View and explore locations by city" data-tooltip="View and explore locations by city" onclick="openCityViewerWindow()">
+            🌆 City Viewer
+          </button>
+          <button id="iphoneToggleBtn" class="planner-top-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
             📱 iPhone View
           </button>
         </div>
@@ -6987,15 +7037,6 @@
           align-items: center;
           border-bottom: 1px solid #e5e7eb;
         ">
-          <!-- Edit Mode Button -->
-          <button id="editModeBtn" class="card-btn card-btn-primary" title="Open Edit Mode to manage your data" onclick="openEditModeWindow()">
-            📝 Edit Mode
-          </button>
-
-          <!-- Find Near Me Button -->
-          <button id="findNearMeBtn" class="find-near-me-btn" title="Find adventures near your current location" onclick="startFindNearMe()">
-            📍 Find Near Me
-          </button>
 
           <!-- Refresh Data Button -->
           <button id="adventureRefreshBtn" class="card-btn" title="Refresh adventure data from Excel" onclick="refreshAdventureData()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 2px 8px rgba(16,185,129,0.3);">
