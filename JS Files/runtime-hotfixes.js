@@ -1,5 +1,5 @@
 (function runtimeHotfixes() {
-  var HOTFIX_VERSION = '2026-04-03.runtime.1';
+  var HOTFIX_VERSION = '2026-04-03.runtime.2';
   var FILTER_CONTROL_SELECTOR = '.control-panel-card input, .control-panel-card select';
   var AUTOCOMPLETE_BINDINGS = [
     ['searchName', 'nameList'],
@@ -385,6 +385,142 @@
     window.__cardContextMenuHotfixInstalled = true;
   }
 
+  function getAdventureFilterManager() {
+    if (window.FilterManager && typeof window.FilterManager.applyAllFilters === 'function') return window.FilterManager;
+    return null;
+  }
+
+  function normalizeKey(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function syncAdventureQuickFilterState(manager) {
+    if (!manager || !manager.state) return;
+    if (!(manager.state.quickFilters instanceof Set)) manager.state.quickFilters = new Set();
+    manager.state.quickFilters.clear();
+    manager.state.showFavoritesOnly = false;
+
+    document.querySelectorAll('#quickFiltersCard .quick-filter-btn.active').forEach(function(btn) {
+      var id = btn.id || '';
+      var dataFilter = normalizeKey(btn.getAttribute('data-filter'));
+      var dataTag = normalizeKey(btn.getAttribute('data-tag'));
+
+      if (id === 'favoritesFilterBtn' || dataFilter === 'favorites') {
+        manager.state.showFavoritesOnly = true;
+        return;
+      }
+
+      var key = dataTag || dataFilter;
+      if (key) manager.state.quickFilters.add(key);
+    });
+  }
+
+  function applyAdventureFiltersSafe() {
+    var manager = getAdventureFilterManager();
+    if (manager) {
+      manager.applyAllFilters();
+      return;
+    }
+
+    if (typeof window.applyFilters === 'function') {
+      window.applyFilters();
+    }
+  }
+
+  function bindAdventureFilterRuntime() {
+    if (window.__adventureFilterHotfixBound) return;
+
+    var controlPanel = document.querySelector('.control-panel-card');
+    var quickCard = document.getElementById('quickFiltersCard');
+    if (!controlPanel || !quickCard) return;
+
+    var manager = getAdventureFilterManager();
+    if (!manager) return;
+
+    window.__adventureFilterHotfixBound = true;
+
+    // Legacy inline handlers compete with delegated filtering and can no-op.
+    document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach(function(btn) {
+      btn.onclick = null;
+    });
+
+    controlPanel.addEventListener('input', function(event) {
+      var el = event.target;
+      if (!el || !el.id) return;
+      if (el.id !== 'searchName' && el.id !== 'filterDifficulty' && el.id !== 'filterState' && el.id !== 'filterCity' && el.id !== 'filterTags' && el.id !== 'filterCost') {
+        return;
+      }
+      applyAdventureFiltersSafe();
+    }, true);
+
+    controlPanel.addEventListener('change', function(event) {
+      var el = event.target;
+      if (!el || !el.id) return;
+      if (el.id !== 'searchName' && el.id !== 'filterDifficulty' && el.id !== 'filterState' && el.id !== 'filterCity' && el.id !== 'filterTags' && el.id !== 'filterCost') {
+        return;
+      }
+      applyAdventureFiltersSafe();
+    }, true);
+
+    quickCard.addEventListener('click', function(event) {
+      var btn = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
+      if (!btn) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      btn.classList.toggle('active');
+      syncAdventureQuickFilterState(getAdventureFilterManager());
+      applyAdventureFiltersSafe();
+    }, true);
+
+    ['resetAllFiltersTop', 'resetAllFiltersBottom', 'breadcrumbResetBtn'].forEach(function(id) {
+      var btn = document.getElementById(id);
+      if (!btn || btn.dataset.filterResetHotfixBound === '1') return;
+      btn.dataset.filterResetHotfixBound = '1';
+      btn.addEventListener('click', function(event) {
+        event.preventDefault();
+        var activeManager = getAdventureFilterManager();
+        if (activeManager && typeof activeManager.resetAllFilters === 'function') {
+          activeManager.resetAllFilters();
+          return;
+        }
+        if (typeof window.resetAllFilters === 'function') window.resetAllFilters();
+      }, true);
+    });
+
+    // Preserve compatibility with legacy inline button attributes.
+    window.applyOpenTodayFilter = function() {
+      var btn = document.getElementById('openTodayFilterBtn');
+      if (btn) btn.click();
+    };
+
+    window.applyClosingSoonFilter = function() {
+      var btn = document.getElementById('closingSoonFilterBtn');
+      if (btn) btn.click();
+    };
+
+    console.log('[Hotfix] Adventure filter runtime bound');
+  }
+
+  function installBikeFilterReinitHook() {
+    if (window.__bikeFilterHotfixBound) return;
+    window.__bikeFilterHotfixBound = true;
+
+    document.addEventListener('click', function(event) {
+      var tabBtn = event.target && event.target.closest ? event.target.closest('.app-tab-btn[data-tab="bike-trails"]') : null;
+      if (!tabBtn) return;
+
+      window.setTimeout(function() {
+        if (typeof window.initBikeTrailsTab === 'function') {
+          window.initBikeTrailsTab();
+        } else if (typeof window.initializeBikeTrailsTab === 'function') {
+          window.initializeBikeTrailsTab();
+        }
+      }, 50);
+    }, true);
+  }
+
   function init() {
     injectContextMenuCssFix();
     injectDebugBadge();
@@ -395,12 +531,23 @@
     updateDebugBadge();
     installCardContextMenuIsolation();
     installLegacyContextFilterGuards();
+    // Adventure filter runtime binding is disabled to avoid conflicting listeners.
+    // Canonical ownership now stays with index.html FilterManager only.
+    if (false) {
+      bindAdventureFilterRuntime();
+    }
+    installBikeFilterReinitHook();
 
     if (!window.__runtimeHotfixesInterval) {
       window.__runtimeHotfixesInterval = window.setInterval(function() {
         enforceFilterControlInteractivity();
         clearStaleBlockingOverlays();
         updateDebugBadge();
+        // Adventure filter runtime binding is disabled to avoid conflicting listeners.
+        // Canonical ownership now stays with index.html FilterManager only.
+        if (false) {
+          bindAdventureFilterRuntime();
+        }
       }, 1500);
     }
 

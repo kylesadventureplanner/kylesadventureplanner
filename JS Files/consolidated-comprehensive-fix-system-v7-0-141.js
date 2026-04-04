@@ -1101,11 +1101,6 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     };
   }
 
-  // Ensure delegated filter listeners are always present, even after dynamic tab loads.
-  installFilterReliabilityBridge();
-
-  console.log('✅ Filter application fixes ready');
-
   // ============================================================
   // SECTION 8: Z-INDEX MANAGEMENT
   // ============================================================
@@ -1830,6 +1825,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
   }
 
   console.log('✅ Adventure metadata status bridge ready');
+
+  // installAdventureFilterBridge();
+  // Disabled: canonical adventure filtering is owned by index.html FilterManager
 
 })();
 
