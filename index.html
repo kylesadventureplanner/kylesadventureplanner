@@ -8338,9 +8338,10 @@
   */
 
   // Authentication state
-  let accessToken = null;           // JWT token for Microsoft API requests
-  let activeAccount = null;         // Current logged-in user account
-  let isConnectedToExcel = false;   // Whether Excel connection is working
+  // Reuse the auth state variables declared in the earlier MSAL script block.
+  accessToken = window.accessToken || null;           // JWT token for Microsoft API requests
+  activeAccount = window.activeAccount || null;       // Current logged-in user account
+  isConnectedToExcel = !!window.isConnectedToExcel;   // Whether Excel connection is working
 
   function syncAuthGlobals() {
     // Keep legacy helpers and popup window checks in sync with current auth state.
