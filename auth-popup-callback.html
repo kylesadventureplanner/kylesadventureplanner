@@ -44,17 +44,8 @@
         statusEl.textContent = 'Sign-in response received. Finishing authentication...';
       }
 
-      // Do not force-close aggressively here.
-      // MSAL in the opener reads this URL and then closes the popup itself.
-      window.setTimeout(function() {
-        try {
-          if (window.opener && window.opener !== window) {
-            window.close();
-          }
-        } catch (_err) {
-          // Ignore close failures; user can close manually.
-        }
-      }, 2000);
+      // Keep this page passive; MSAL in the opener should close the popup.
+      // If browser policy blocks automatic close, the user can close manually.
     })();
   </script>
 </body>

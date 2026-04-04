@@ -662,8 +662,28 @@ function initializeErrorBar() {
   const errorBar = document.getElementById('errorNotificationBar');
   const errorHeader = errorBar?.querySelector('.error-header');
 
+  if (!errorBar) {
+    console.warn('⚠️ Error bar not found');
+    return;
+  }
+
+  if (errorBar.dataset.debugErrorInteractionsBound === '1') {
+    return;
+  }
+  errorBar.dataset.debugErrorInteractionsBound = '1';
+
   if (!errorHeader) {
     console.warn('⚠️ Error bar header not found');
+    return;
+  }
+
+  // index.html owns error-bar toggle behavior (inline + native handler).
+  // Avoid layering additional listeners here which can double-toggle/lock UI.
+  if (typeof window.toggleErrorBar === 'function') {
+    errorHeader.style.cursor = 'pointer';
+    errorHeader.style.pointerEvents = 'auto';
+    errorHeader.style.userSelect = 'none';
+    console.log('✅ Error bar interactions initialized (native handler preserved)');
     return;
   }
 
@@ -672,6 +692,12 @@ function initializeErrorBar() {
    */
   function toggleErrorBar(e) {
     e?.stopPropagation();
+    e?.preventDefault();
+
+    const target = e?.target;
+    if (target && target.closest && target.closest('#errorDetailsPanel')) {
+      return;
+    }
 
     if (!errorBar) return;
 
@@ -698,15 +724,8 @@ function initializeErrorBar() {
     errorBar.dataset.defaultCollapseApplied = '1';
   }
 
-  // Add click handler to header (primary)
+  // Add one click handler to header only.
   errorHeader.addEventListener('click', toggleErrorBar, true);
-
-  // Add click handler to error bar itself (fallback)
-  errorBar.addEventListener('click', (e) => {
-    if (e.target.closest('.error-header')) {
-      toggleErrorBar(e);
-    }
-  }, true);
 
   // Ensure error bar is always accessible
   errorBar.style.pointerEvents = 'auto';
@@ -717,7 +736,11 @@ function initializeErrorBar() {
   if (toggleIcon) {
     toggleIcon.style.cursor = 'pointer';
     toggleIcon.style.pointerEvents = 'auto';
-    toggleIcon.addEventListener('click', toggleErrorBar, true);
+    // Prevent icon click from double-triggering via header bubbling.
+    toggleIcon.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleErrorBar(e);
+    }, true);
   }
 
   // Rotate toggle icon based on state
