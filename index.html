@@ -21,7 +21,6 @@
     // Set your Google Places API key here
     window.GOOGLE_PLACES_API_KEY = 'AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc';
   </script>
-  <script src="JS Files/filter-manager-ownership-guard.js"></script>
 
   <!-- MSAL Browser Library - Required for Microsoft Authentication -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
@@ -6974,14 +6973,22 @@
     const errorCount = document.getElementById('errorCount');
     const errorDetailsPanel = document.getElementById('errorDetailsPanel');
 
-    if (errorLog.length === 0) {
-      errorBar.classList.remove('has-errors');
+    if (!errorBar) {
+      console.warn('⚠️ Error bar element not found');
       return;
     }
 
-    // Show error bar
+    if (errorLog.length === 0) {
+      errorBar.classList.remove('has-errors');
+      errorBar.classList.add('collapsed');
+      if (errorCount) errorCount.textContent = '0';
+      return;
+    }
+
+    // Show error bar and expand it
     errorBar.classList.add('has-errors');
-    errorCount.textContent = errorLog.length;
+    errorBar.classList.remove('collapsed'); // Auto-expand when errors occur
+    if (errorCount) errorCount.textContent = errorLog.length;
 
     // Build error details HTML with copy buttons
     let detailsHTML = '';
@@ -7145,9 +7152,30 @@
   /**
    * Toggle error details panel open/close
    */
-  function toggleErrorBar() {
+  function toggleErrorBar(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     const errorBar = document.getElementById('errorNotificationBar');
-    errorBar.classList.toggle('collapsed');
+    if (!errorBar) return;
+
+    const isCollapsed = errorBar.classList.contains('collapsed');
+
+    if (isCollapsed) {
+      errorBar.classList.remove('collapsed');
+      console.log('✅ Error bar expanded');
+    } else {
+      errorBar.classList.add('collapsed');
+      console.log('✅ Error bar collapsed');
+    }
+
+    // Rotate toggle icon
+    const toggleIcon = errorBar.querySelector('.toggle-icon');
+    if (toggleIcon) {
+      toggleIcon.style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
+    }
   }
 
   /* ============================================================
@@ -9304,7 +9332,6 @@
 
        </script>
 
-       <script src="JS Files/filter-manager-ownership-guard.js"></script>
 
        <!-- ============================================================ -->
   async function addRowToExcel(rowValues, retryCount = 0) {
@@ -10900,6 +10927,9 @@
    * Get combined tags for a place (Excel tags + Tag Manager tags)
    * Integrates the tag manager system with the existing Excel-based tags
    * @param {string} googlePlaceId - The place's Google Place ID
+  /**
+   * Get combined tags for a location from Excel and tag manager
+   * @param {string} googlePlaceId - Google Places ID
    * @param {string} excelTags - Tags from Excel (comma-separated)
    * @returns {Array} Combined array of unique tags
    */
@@ -10907,14 +10937,9 @@
     // Start with Excel tags
     const excelTagList = excelTags ? excelTags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-    // Get tags from tag manager if it exists
-    let managedTags = [];
-    if (window.tagManager && googlePlaceId && String(googlePlaceId).trim().length > 0) {
-      managedTags = window.tagManager.getTagsForPlace(googlePlaceId) || [];
-    }
-
-    // Combine and deduplicate
-    const allTags = [...new Set([...excelTagList, ...managedTags])];
+    // Note: Tag manager integration disabled - window.tagManager not initialized
+    // Tags are sourced only from Excel data
+    const allTags = [...new Set([...excelTagList])];
     return allTags;
   }
 
