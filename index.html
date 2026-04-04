@@ -5228,16 +5228,23 @@
    <script>
      console.log('🔐 MSAL Configuration & Real Auth Setup');
 
-     // MSAL Configuration
-     const msalConfig = {
-       auth: {
-         clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
-         authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
-       },
-     };
+     try {
+       // MSAL Configuration
+       const msalConfig = {
+         auth: {
+           clientId: "54cd5065-43b4-4f98-9390-0fbba95da3f2",
+           authority: "https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc",
+         },
+       };
 
-     // Initialize MSAL
-     const msalInstance = new msal.PublicClientApplication(msalConfig);
+       // Check if MSAL library is loaded
+       if (typeof msal === 'undefined') {
+         throw new Error('MSAL library not loaded! Check if CDN script loaded correctly.');
+       }
+
+       // Initialize MSAL
+       const msalInstance = new msal.PublicClientApplication(msalConfig);
+       window.msalInstance = msalInstance; // Export immediately for fallback
 
      // Initialize MSAL instance
      const msalInitPromise = msalInstance.initialize().catch(error => {
@@ -5402,6 +5409,8 @@
      window.realSignOut = realSignOutImpl;
 
      console.log('✅ REAL AUTH FUNCTIONS DEFINED AND READY IMMEDIATELY!');
+     console.log('🔐 window.signIn type:', typeof window.signIn);
+     console.log('🔐 window.realSignIn type:', typeof window.realSignIn);
 
      // Also attach directly to buttons to guarantee they work
      setTimeout(() => {
@@ -21153,6 +21162,97 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 </script>
 <script src="JS Files/runtime-hotfixes.js"></script>
 <script src="JS Files/kh-feedback-renderer.js"></script>
+
+<!-- FINAL AUTH GUARANTEE - Absolute last script -->
+<script>
+(function finalAuthGuarantee() {
+  console.log('🔐 Final Auth Guarantee Script Running...');
+
+  // Wait for everything to be loaded
+  setTimeout(function() {
+    const signInBtn = document.getElementById('signInBtn');
+
+    // Check if real auth functions exist
+    const hasRealSignIn = typeof window.realSignIn === 'function';
+    const hasWindowSignIn = typeof window.signIn === 'function';
+    const hasMsalInstance = typeof window.msalInstance !== 'undefined' || typeof msalInstance !== 'undefined';
+
+    console.log('🔐 Auth Status Check:', {
+      hasRealSignIn: hasRealSignIn,
+      hasWindowSignIn: hasWindowSignIn,
+      hasMsalInstance: hasMsalInstance
+    });
+
+    if (signInBtn) {
+      // Remove ALL existing handlers and add a fresh one
+      const newBtn = signInBtn.cloneNode(true);
+      signInBtn.parentNode.replaceChild(newBtn, signInBtn);
+
+      newBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🔐 Final Auth Guarantee: Sign In clicked!');
+
+        try {
+          // Try every possible way to call signIn
+          if (typeof window.realSignIn === 'function') {
+            console.log('🔐 Calling window.realSignIn');
+            await window.realSignIn();
+          } else if (typeof window.signIn === 'function') {
+            console.log('🔐 Calling window.signIn');
+            await window.signIn();
+          } else if (typeof window.msalInstance !== 'undefined') {
+            // Direct MSAL fallback
+            console.log('🔐 Using direct MSAL fallback');
+            const loginRequest = { scopes: ["User.Read", "Files.ReadWrite"] };
+            await window.msalInstance.loginPopup(loginRequest);
+            console.log('✅ MSAL login popup completed');
+            window.location.reload(); // Reload to pick up the session
+          } else {
+            console.error('❌ No auth method available!');
+            alert('Authentication system not loaded. Please refresh the page and try again.');
+          }
+        } catch (err) {
+          console.error('❌ Sign-in error:', err);
+          if (err.message && err.message.includes('popup')) {
+            alert('Please allow popups for this site to sign in.');
+          }
+        }
+      }, true); // Use capture phase
+
+      console.log('✅ Final Auth Guarantee: Sign In button handler installed');
+    }
+
+    // Also handle sign out
+    const signOutBtn = document.getElementById('signOutBtn');
+    if (signOutBtn) {
+      const newOutBtn = signOutBtn.cloneNode(true);
+      signOutBtn.parentNode.replaceChild(newOutBtn, signOutBtn);
+
+      newOutBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🔐 Final Auth Guarantee: Sign Out clicked!');
+
+        try {
+          if (typeof window.realSignOut === 'function') {
+            await window.realSignOut();
+          } else if (typeof window.signOut === 'function') {
+            await window.signOut();
+          } else if (typeof window.msalInstance !== 'undefined') {
+            await window.msalInstance.logoutPopup();
+            window.location.reload();
+          }
+        } catch (err) {
+          console.error('❌ Sign-out error:', err);
+        }
+      }, true);
+
+      console.log('✅ Final Auth Guarantee: Sign Out button handler installed');
+    }
+  }, 2000); // Wait 2 seconds for everything to load
+})();
+</script>
 </body>
 </html>
 
