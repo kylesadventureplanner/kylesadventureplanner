@@ -5240,8 +5240,8 @@
        const CLIENT_ID   = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
        const AUTHORITY   = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
        const SCOPES      = ['User.Read', 'Files.ReadWrite'];
-       // Use root URI by default (typically already registered in Azure app auth settings).
-       const POPUP_REDIRECT_URI = window.location.origin + '/';
+       const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
+       const POPUP_ROOT_URI = window.location.origin + '/';
 
        // ── helpers ──────────────────────────────────────────────────────────
        function loadScript(src) {
@@ -5267,6 +5267,21 @@
            console.warn('⚠️ Primary CDN failed, trying fallback…');
            await loadScript(MSAL_CDN_FALLBACK);
            console.log('✅ MSAL loaded from fallback CDN');
+         }
+       }
+
+       function isRedirectMismatchError(err) {
+         const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
+         return msg.includes('aadsts50011') || msg.includes('redirect uri');
+       }
+
+       async function loginPopupWithFallback(instance, request) {
+         try {
+           return await instance.loginPopup({ ...request, redirectUri: POPUP_REDIRECT_URI });
+         } catch (err) {
+           if (!isRedirectMismatchError(err)) throw err;
+           console.warn('⚠️ Popup callback redirect not registered; retrying root redirect URI');
+           return await instance.loginPopup({ ...request, redirectUri: POPUP_ROOT_URI });
          }
        }
 
@@ -5353,7 +5368,7 @@
              isSigningIn = true;
              try {
                window.showLoading?.('Signing in…');
-                const resp = await instance.loginPopup({ scopes: SCOPES, redirectUri: POPUP_REDIRECT_URI });
+                const resp = await loginPopupWithFallback(instance, { scopes: SCOPES });
                activeAccount = resp.account;
                instance.setActiveAccount(activeAccount);
 
@@ -5422,8 +5437,23 @@
 
    <script>
       // Keep popup callbacks on a lightweight page to avoid rendering the full app in the auth popup.
-      // Use root URI by default (typically already registered in Azure app auth settings).
-      const POPUP_REDIRECT_URI = window.location.origin + '/';
+      const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
+      const POPUP_ROOT_URI = window.location.origin + '/';
+
+      function isRedirectMismatchError(err) {
+        const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
+        return msg.includes('aadsts50011') || msg.includes('redirect uri');
+      }
+
+      async function loginPopupWithFallback(instance, request) {
+        try {
+          return await instance.loginPopup({ ...request, redirectUri: POPUP_REDIRECT_URI });
+        } catch (err) {
+          if (!isRedirectMismatchError(err)) throw err;
+          console.warn('⚠️ Popup callback redirect not registered; retrying root redirect URI');
+          return await instance.loginPopup({ ...request, redirectUri: POPUP_ROOT_URI });
+        }
+      }
 
       // Initialize MSAL instance
      const msalInitPromise = msalInstance.initialize().catch(error => {
@@ -5509,7 +5539,7 @@
            }
          }
 
-          const loginResponse = await msalInstance.loginPopup({ ...loginRequest, redirectUri: POPUP_REDIRECT_URI });
+          const loginResponse = await loginPopupWithFallback(msalInstance, loginRequest);
          activeAccount = loginResponse.account;
          msalInstance.setActiveAccount(activeAccount);
 
@@ -21156,8 +21186,8 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   const CLIENT_ID = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
   const AUTHORITY  = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
   const SCOPES     = ['User.Read', 'Files.ReadWrite'];
-  // Use root URI by default (typically already registered in Azure app auth settings).
-  const POPUP_REDIRECT_URI = window.location.origin + '/';
+  const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
+  const POPUP_ROOT_URI = window.location.origin + '/';
 
   function isUsableAuthFn(fn) {
     if (typeof fn !== 'function') return false;
@@ -21168,6 +21198,21 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       src.includes('Placeholder signIn') ||
       src.includes('real auth should have replaced this')
     );
+  }
+
+  function isRedirectMismatchError(err) {
+    const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
+    return msg.includes('aadsts50011') || msg.includes('redirect uri');
+  }
+
+  async function loginPopupWithFallback(instance, request) {
+    try {
+      return await instance.loginPopup({ ...request, redirectUri: POPUP_REDIRECT_URI });
+    } catch (err) {
+      if (!isRedirectMismatchError(err)) throw err;
+      console.warn('⚠️ Popup callback redirect not registered; retrying root redirect URI');
+      return await instance.loginPopup({ ...request, redirectUri: POPUP_ROOT_URI });
+    }
   }
 
   function getCleanButton(id) {
@@ -21203,7 +21248,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       // 2. Use the already-created MSAL instance if available
       if (window.msalInstance) {
         try {
-          const resp = await window.msalInstance.loginPopup({ scopes: SCOPES, redirectUri: POPUP_REDIRECT_URI });
+          const resp = await loginPopupWithFallback(window.msalInstance, { scopes: SCOPES });
           window.activeAccount = resp.account;
           window.msalInstance.setActiveAccount(resp.account);
           const tok = await window.msalInstance.acquireTokenSilent({ scopes: SCOPES, account: resp.account });
@@ -21224,7 +21269,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         const inst = new msal.PublicClientApplication({ auth: { clientId: CLIENT_ID, authority: AUTHORITY, redirectUri: POPUP_REDIRECT_URI } });
         await inst.initialize();
         window.msalInstance = inst;
-        const resp = await inst.loginPopup({ scopes: SCOPES, redirectUri: POPUP_REDIRECT_URI });
+        const resp = await loginPopupWithFallback(inst, { scopes: SCOPES });
         window.activeAccount = resp.account;
         inst.setActiveAccount(resp.account);
         const tok = await inst.acquireTokenSilent({ scopes: SCOPES, account: resp.account });
@@ -21232,7 +21277,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         window.isConnectedToExcel = true;
         // Expose signIn/signOut on window so subsequent clicks use the fast path
         window.signIn = async () => {
-          const r = await inst.loginPopup({ scopes: SCOPES, redirectUri: POPUP_REDIRECT_URI });
+          const r = await loginPopupWithFallback(inst, { scopes: SCOPES });
           window.activeAccount = r.account;
           inst.setActiveAccount(r.account);
           const t = await inst.acquireTokenSilent({ scopes: SCOPES, account: r.account });
