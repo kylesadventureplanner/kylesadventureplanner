@@ -5989,23 +5989,17 @@
            }
 
            console.log(`✅ Successfully rendered ${endIdx - startIdx} cards (fallback)`);
-         }
-       };
-             const idx = parseInt(clickedCard.dataset.index, 10);
-             if (!isNaN(idx) && typeof window.showCardDetails === 'function') {
-               window.showCardDetails(idx);
+
+           // Show pagination if needed
+           if (sourceAdventures.length > 20) {
+             const paginationControls = document.getElementById('paginationControls');
+             if (paginationControls) {
+               paginationControls.style.display = 'flex';
              }
            }
-         });
-
-         // Show pagination if needed
-         if (sourceAdventures.length > 20) {
-           const paginationControls = document.getElementById('paginationControls');
-           if (paginationControls) {
-             paginationControls.style.display = 'flex';
-           }
          }
        };
+
 
 
      // ============================================================
@@ -6150,7 +6144,7 @@
           throw error;
         }
       };
-     } // End of if (typeof window.msalInstance !== 'undefined')
+     // End of MSAL/auth helper script block
     </script>
 
    <!-- Tag Management System (v7.0.112+) - DEPRECATED: Now using consolidated-tag-system-v7-0-141.js -->
