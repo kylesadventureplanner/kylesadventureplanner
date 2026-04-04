@@ -9556,9 +9556,18 @@
     };
     // ...existing code...
 
-       window.FilterManager = {
-    // ...existing code...
-       };
+       if (!window.FilterManager || typeof window.FilterManager.init !== 'function') {
+         window.FilterManager = window.FilterManager || {};
+         if (typeof window.FilterManager.applyAllFilters !== 'function') {
+           window.FilterManager.applyAllFilters = function() {};
+         }
+         if (typeof window.FilterManager.resetAllFilters !== 'function') {
+           window.FilterManager.resetAllFilters = function() {};
+         }
+         if (typeof window.FilterManager.init !== 'function') {
+           window.FilterManager.init = function() {};
+         }
+       }
 
        // Canonical owner marker for runtime ownership guard.
        window.__filterManagerOwner = 'index.html:head-canonical';
@@ -11997,7 +12006,6 @@
 
     // Get references to modal child elements (these have IDs defined in static HTML)
     const titleEl = document.getElementById('rowDetailTitle');
-    const tabsContainer = document.getElementById('rowDetailTabsContainer');
     const contentContainer = document.getElementById('rowDetailContent');
 
     // Create action bar container if it doesn't exist
