@@ -5381,10 +5381,11 @@
                window.showToast?.('✅ Signed in as ' + activeAccount.username, 'success', 3000);
                if (typeof window.loadTable === 'function') await window.loadTable();
              } catch (err) {
-               console.error('❌ Sign-in error:', err);
-               if (err.errorCode === 'user_cancelled') {
+               if (window.__isExpectedAuthCancellation?.(err)) {
+                 console.log('ℹ️ Sign-in popup dismissed:', err?.message || err);
                  window.showToast?.('Sign-in cancelled', 'info', 2000);
                } else {
+                 console.error('❌ Sign-in error:', err);
                  window.showToast?.('Sign-in failed: ' + (err.message || err), 'error', 5000);
                }
              } finally {
@@ -5570,13 +5571,27 @@
        } catch (error) {
          isSigningIn = false;
          window.hideLoading?.();
+
+         const msg = String(error?.message || error || '').toLowerCase();
+         const code = String(error?.errorCode || error?.code || '').toLowerCase();
+         const isCancelled =
+           code === 'user_cancelled' ||
+           msg.includes('user cancelled the flow') ||
+           msg.includes('user_cancelled') ||
+           msg.includes('popup window closed') ||
+           msg.includes('closed by user');
+
+         if (isCancelled) {
+           console.log('ℹ️ Sign-in cancelled by user');
+           window.showToast?.('Sign-in cancelled', 'info', 2500);
+           return;
+         }
+
          console.error("❌ SIGN-IN ERROR:", error.message);
 
          let userMessage = "Sign-in failed. Check console for details.";
          if (error.name === "BrowserAuthError" && error.code === "popup_window_error") {
            userMessage = "Could not open login popup. Please check if popups are blocked.";
-         } else if (error.name === "BrowserAuthError" && error.code === "user_cancelled") {
-           userMessage = "Login was cancelled. Please try again.";
          }
 
          window.showToast?.('✕ ' + userMessage, 'error', 5000);
@@ -7537,52 +7552,96 @@
   /**
    * Show debug console programmatically
    */
-  function showDebugConsole() {
+    function showDebugConsole() {
     const console_el = document.getElementById('debuggingConsole');
     if (console_el && !console_el.classList.contains('visible')) {
       console_el.classList.add('visible');
     }
-  }
+    }
 
-  // Intercept console.error to capture errors
-  const originalConsoleError = console.error;
-  console.error = function(...args) {
+    if (typeof window.__isExpectedAuthCancellation !== 'function') {
+    window.__isExpectedAuthCancellation = function(errorOrMessage) {
+      const message = String(errorOrMessage?.message || errorOrMessage || '').toLowerCase();
+      const errorCode = String(errorOrMessage?.errorCode || errorOrMessage?.code || '').toLowerCase();
+      return (
+        errorCode === 'user_cancelled' ||
+        message.includes('user cancelled the flow') ||
+        message.includes('user_cancelled') ||
+        message.includes('popup window closed') ||
+        message.includes('closed by user')
+      );
+    };
+    }
+
+    if (typeof window.__isIgnorableConsoleNoise !== 'function') {
+    window.__isIgnorableConsoleNoise = function(message) {
+      const lowerMessage = String(message || '').toLowerCase();
+      return (
+        lowerMessage.includes('cross-origin-opener-policy policy would block the window.closed call') ||
+        lowerMessage.includes('background-redux-new.js') ||
+        lowerMessage.includes('invalid frameid for foreground frameid') ||
+        lowerMessage.includes('no tab with id:') ||
+        lowerMessage.includes('chrome-extension://') ||
+        (lowerMessage.includes('cannot create item with duplicate id') && lowerMessage.includes('lastpass'))
+      );
+    };
+    }
+
+    // Intercept console.error to capture errors
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
     const message = args.join(' ');
+    if (window.__isIgnorableConsoleNoise?.(message) || window.__isExpectedAuthCancellation?.(message)) {
+      originalConsoleError.apply(console, args);
+      return;
+    }
     logErrorToBar('error', message);
     addDebugLog('error', message);
     originalConsoleError.apply(console, args);
-  };
+    };
 
-  // Intercept console.warn to capture warnings
-  const originalConsoleWarn = console.warn;
-  console.warn = function(...args) {
+    // Intercept console.warn to capture warnings
+    const originalConsoleWarn = console.warn;
+    console.warn = function(...args) {
     const message = args.join(' ');
+    if (window.__isIgnorableConsoleNoise?.(message)) {
+      originalConsoleWarn.apply(console, args);
+      return;
+    }
     logErrorToBar('warning', message);
     addDebugLog('warn', message);
     originalConsoleWarn.apply(console, args);
-  };
+    };
 
-  // Intercept console.log to capture logs
-  const originalConsoleLog = console.log;
-  console.log = function(...args) {
+    // Intercept console.log to capture logs
+    const originalConsoleLog = console.log;
+    console.log = function(...args) {
     const message = args.join(' ');
     addDebugLog('log', message);
     originalConsoleLog.apply(console, args);
-  };
+    };
 
-  // Global error handler - catches uncaught errors
-  window.addEventListener('error', (event) => {
+    // Global error handler - catches uncaught errors
+    if (!window.__globalErrorHandlersRegistered) {
+    window.addEventListener('error', (event) => {
     const errorMsg = `${event.message || 'Unknown error'} at ${event.filename || 'unknown file'}:${event.lineno || '?'}`;
+    if (window.__isIgnorableConsoleNoise?.(errorMsg) || window.__isExpectedAuthCancellation?.(event.error || event.message)) return;
     logErrorToBar('error', '🔴 Global error caught: ' + event.message, errorMsg);
     addDebugLog('error', errorMsg);
-  });
+    if (window.errorRecoveryManager?.logError && event.error) {
+      window.errorRecoveryManager.logError(event.error, 0, 1);
+    }
+    });
 
-  // Global unhandled promise rejection handler
-  window.addEventListener('unhandledrejection', (event) => {
+    // Global unhandled promise rejection handler
+    window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason?.message || String(event.reason || 'Unknown rejection');
+    if (window.__isIgnorableConsoleNoise?.(reason) || window.__isExpectedAuthCancellation?.(event.reason)) return;
     logErrorToBar('error', 'Unhandled Promise Rejection', reason);
     addDebugLog('error', 'Unhandled Promise Rejection: ' + reason);
-  });
+    });
+    window.__globalErrorHandlersRegistered = true;
+    }
 
   // Set up DOMContentLoaded listener for error bar interactions
   document.addEventListener('DOMContentLoaded', () => {
@@ -18449,66 +18508,8 @@ COMMON ISSUES:
       ]);
     };
 
-    // ============================================================
-    // ERROR MONITORING & ERROR NOTIFICATION BAR
-    // ============================================================
-    let errorCount = 0;
-    const errorBar = document.getElementById('errorNotificationBar');
-    const errorCountEl = document.getElementById('errorCount');
-
-    // Override console.error to track errors
-    const originalError = console.error;
-    window.console.error = function() {
-      originalError.apply(console, arguments);
-      errorCount++;
-      updateErrorBar();
-    };
-
-    // Track uncaught errors
-    window.addEventListener('error', (event) => {
-      errorCount++;
-      updateErrorBar();
-    });
-
-    // Track unhandled promise rejections
-    window.addEventListener('unhandledrejection', (event) => {
-      errorCount++;
-      updateErrorBar();
-    });
-
-    function updateErrorBar() {
-      if (!errorCountEl) return;
-
-      if (errorCount === 0) {
-        // Show green checkmark when no errors
-        errorCountEl.classList.add('no-errors');
-        errorCountEl.textContent = '';
-        if (errorBar) {
-          errorBar.classList.add('collapsed');
-          errorBar.querySelector('.error-header span:first-child').textContent = '✅ No Errors';
-        }
-      } else {
-        // Show red circle with error count
-        errorCountEl.classList.remove('no-errors');
-        errorCountEl.textContent = errorCount;
-        if (errorBar) {
-          errorBar.classList.remove('collapsed');
-          errorBar.querySelector('.error-header span:first-child').textContent = '⚠️ Errors Detected';
-        }
-      }
-    }
-
-    // Initialize error bar on load
-    document.addEventListener('DOMContentLoaded', () => {
-      updateErrorBar();
-    });
-
-    // Also update on startup
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', updateErrorBar);
-    } else {
-      updateErrorBar();
-    }
+    // Error notification bar instrumentation is centralized in the primary
+    // logger/wrapper block to avoid duplicate counting and re-logging.
 
     // ============================================================
     // AUTOMATION CONTROL PANEL - POPUP WINDOW
@@ -20198,20 +20199,8 @@ window.featureAvailability = new FeatureAvailability();
 // ===========================================================================
 // 7. COMPREHENSIVE ERROR HANDLER - Centralized error management
 // ===========================================================================
-window.addEventListener('error', (event) => {
-  console.error('🔴 Global error caught:', event.error);
-  window.errorRecoveryManager.logError(event.error, 0, 1);
-  if (typeof showToast === 'function') {
-    showToast(`⚠️ Error: ${event.error.message}`, 'error', 5000);
-  }
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('🔴 Unhandled promise rejection:', event.reason);
-  if (typeof showToast === 'function') {
-    showToast(`⚠️ Operation failed: ${event.reason}`, 'error', 5000);
-  }
-});
+// Global error/rejection listeners are already registered in the primary
+// error tracking section so extension noise and auth cancellations are filtered once.
 
 // ===========================================================================
 // 8. ENHANCED FETCH WITH TIMEOUT AND ERROR HANDLING
@@ -21351,7 +21340,15 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     if (!err) return;
     const message = typeof err?.message === 'string' ? err.message : String(err || '');
     const lowerMessage = message.toLowerCase();
-    if (err.errorCode === 'user_cancelled' || message.includes('cancelled')) {
+    const code = String(err?.errorCode || err?.code || '').toLowerCase();
+    const isCancelled =
+      code === 'user_cancelled' ||
+      lowerMessage.includes('user cancelled the flow') ||
+      lowerMessage.includes('user_cancelled') ||
+      lowerMessage.includes('popup window closed') ||
+      lowerMessage.includes('closed by user') ||
+      lowerMessage.includes('cancelled');
+    if (isCancelled) {
       if (typeof window.showToast === 'function') window.showToast('Sign-in cancelled', 'info', 2000);
     } else if (lowerMessage.includes('popup')) {
       alert('Please allow pop-ups for this site and try again.');
