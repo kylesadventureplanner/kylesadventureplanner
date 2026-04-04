@@ -8,6 +8,9 @@
     &lt;inspection_tool class="XmlDuplicatedId" enabled="false" level="WARNING" /&gt;
     &lt;inspection_tool class="RequiredAttributes" enabled="false" level="WARNING" /&gt;
     &lt;inspection_tool class="HtmlMissingClosingTag" enabled="false" level="WARNING" /&gt;
+    &lt;inspection_tool class="HtmlUnknownAttribute" enabled="false" level="WARNING" /&gt;
+    &lt;inspection_tool class="HtmlWrongAttributeValue" enabled="false" level="WARNING" /&gt;
+    &lt;inspection_tool class="CheckTagEmptyBody" enabled="false" level="WARNING" /&gt;
   &lt;/profile&gt;
 &lt;/component&gt;
 

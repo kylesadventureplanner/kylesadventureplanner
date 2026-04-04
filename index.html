@@ -3968,12 +3968,21 @@
     }
 
     #errorNotificationBar.collapsed #errorDetailsPanel {
-      display: none;
+      display: none !important;
     }
 
-    #errorNotificationBar.collapsed .error-copy-btn,
-    #errorNotificationBar.collapsed .error-debug-buttons {
-      display: none;
+    #errorNotificationBar:not(.collapsed) #errorDetailsPanel {
+      display: block !important;
+    }
+
+    #errorDetailsPanel {
+      padding: 12px 16px;
+      overflow-y: auto;
+      max-height: 250px;
+      background: #1f2937;
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .error-header {
@@ -4118,12 +4127,6 @@
       transform: rotate(180deg);
     }
 
-    #errorDetailsPanel {
-      padding: 12px 16px;
-      overflow-y: auto;
-      max-height: 250px;
-      background: #1f2937;
-    }
 
     .error-item {
       background: rgba(255, 255, 255, 0.05);
@@ -6304,7 +6307,7 @@
 
 <!-- Error/Warning Notification Bar - Shows console errors and app errors -->
 <div id="errorNotificationBar" class="collapsed">
-  <div class="error-header" onclick="toggleErrorBar(); event.stopPropagation();" style="cursor: pointer;" title="Click to expand/collapse errors">
+  <div class="error-header" onclick="toggleErrorBar(event)" style="cursor: pointer;" title="Click to expand/collapse errors">
     <span>⚠️ Errors Detected</span>
     <span class="error-count" id="errorCount">0</span>
     <span class="toggle-icon">▼</span>
@@ -7159,15 +7162,22 @@
     }
 
     const errorBar = document.getElementById('errorNotificationBar');
-    if (!errorBar) return;
+    if (!errorBar) {
+      console.warn('⚠️ Error bar element not found');
+      return;
+    }
 
     const isCollapsed = errorBar.classList.contains('collapsed');
+    const errorPanel = document.getElementById('errorDetailsPanel');
 
     if (isCollapsed) {
       errorBar.classList.remove('collapsed');
-      console.log('✅ Error bar expanded');
+      // Ensure max-height allows content to be visible
+      errorBar.style.maxHeight = '400px';
+      console.log('✅ Error bar expanded - showing', errorLog.length, 'errors');
     } else {
       errorBar.classList.add('collapsed');
+      errorBar.style.maxHeight = '44px';
       console.log('✅ Error bar collapsed');
     }
 
@@ -7371,10 +7381,36 @@
 
   // Set up DOMContentLoaded listener for error bar interactions
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('🎯 Initializing error bar...');
+
+    const errorBar = document.getElementById('errorNotificationBar');
     const errorHeader = document.querySelector('.error-header');
+    const errorDetailsPanel = document.getElementById('errorDetailsPanel');
+
+    if (!errorBar) {
+      console.error('❌ Error bar element not found');
+      return;
+    }
+
+    if (!errorDetailsPanel) {
+      console.error('❌ Error details panel not found');
+      return;
+    }
+
     if (errorHeader) {
       errorHeader.addEventListener('click', toggleErrorBar);
+      console.log('✅ Error bar click handler attached');
     }
+
+    // Ensure error bar starts in collapsed state
+    if (!errorBar.classList.contains('collapsed')) {
+      errorBar.classList.add('collapsed');
+      errorBar.style.maxHeight = '44px';
+    }
+
+    // Initialize error bar with initial state
+    updateErrorBar();
+    console.log('✅ Error bar initialized');
   });
 
   // ============================================================
@@ -11487,7 +11523,7 @@
       else if (item.score < 70) barColor = '#eab308'; // yellow
 
       return `
-                <div class="similar-adventure-item" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s;" onclick="event.stopPropagation(); closeSimilarAdventuresModal(); showCardDetails(${item.index});" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'; this.style.borderColor='#3b82f6';" onmouseout="this.style.boxShadow='none'; this.style.borderColor='#e5e7eb';">
+                <div class="similar-adventure-item" data-adventure-index="${item.index}" style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s;">
                   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
                     <div style="flex: 1;">
                       <h3 style="font-size: 18px; font-weight: 700; color: #1f2937; margin: 0 0 4px 0;">${name}</h3>
@@ -11553,7 +11589,36 @@
     // Add modal to body
     const modalContainer = document.createElement('div');
     modalContainer.innerHTML = modalHTML;
-    document.body.appendChild(modalContainer.firstElementChild);
+    const newModal = modalContainer.firstElementChild;
+    document.body.appendChild(newModal);
+
+    // Add event listeners to similar adventure items
+    setTimeout(() => {
+      const items = document.querySelectorAll('.similar-adventure-item');
+      items.forEach(item => {
+        const adventureIndex = item.getAttribute('data-adventure-index');
+
+        // Click handler
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeSimilarAdventuresModal();
+          if (adventureIndex) {
+            showCardDetails(parseInt(adventureIndex));
+          }
+        });
+
+        // Hover handlers
+        item.addEventListener('mouseover', function() {
+          this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+          this.style.borderColor = '#3b82f6';
+        });
+
+        item.addEventListener('mouseout', function() {
+          this.style.boxShadow = 'none';
+          this.style.borderColor = '#e5e7eb';
+        });
+      });
+    }, 0);
   }
 
   /**
@@ -11623,16 +11688,18 @@
     const canWriteRow = filteredIndex >= 0;
 
     actionBar.innerHTML = `
-      <button type="button" id="adventureModalMapsBtn" class="row-detail-footer-btn" style="flex:0 0 auto;" ${mapsUrl ? '' : 'disabled'}>🗺️ Open Maps</button>
-      <button type="button" id="adventureModalParkingBtn" class="row-detail-footer-btn" style="flex:0 0 auto;" ${parkingUrl ? '' : 'disabled'}>🅿️ Parking Map</button>
-      <button type="button" id="adventureModalFavoriteBtn" class="row-detail-footer-btn" style="flex:0 0 auto;" ${canWriteRow ? '' : 'disabled'}>${isFavorite ? '💖 Favorite' : '🤍 Favorite'}</button>
+      <button type="button" id="adventureModalMapsBtn" class="row-detail-footer-btn" style="flex:0 0 auto;">🗺️ Open Maps</button>
+      <button type="button" id="adventureModalParkingBtn" class="row-detail-footer-btn" style="flex:0 0 auto;">🅿️ Parking Map</button>
+      <button type="button" id="adventureModalFavoriteBtn" class="row-detail-footer-btn" style="flex:0 0 auto;"><span id="favBtnText">${isFavorite ? '💖 Favorite' : '🤍 Favorite'}</span></button>
       <div id="adventureModalRatingControls" style="display:inline-flex;align-items:center;gap:4px;">
-        ${[1,2,3,4,5].map((s) => `<button type="button" class="row-detail-footer-btn adventure-modal-rating-btn" data-rating="${s}" title="Rate ${s} stars" style="padding:6px 8px;flex:0 0 auto;" ${canWriteRow ? '' : 'disabled'}>${rating >= s ? '⭐' : '☆'}</button>`).join('')}
+        ${[1,2,3,4,5].map((s) => `<button type="button" class="row-detail-footer-btn adventure-modal-rating-btn" data-rating="${s}" title="Rate ${s} stars" style="padding:6px 8px;flex:0 0 auto;">${rating >= s ? '⭐' : '☆'}</button>`).join('')}
       </div>
     `;
 
+    // Set disabled state after creation
     const mapsBtn = actionBar.querySelector('#adventureModalMapsBtn');
     if (mapsBtn) {
+      if (!mapsUrl) mapsBtn.disabled = true;
       mapsBtn.onclick = () => {
         if (!mapsUrl) return;
         window.open(mapsUrl, '_blank', 'noopener');
@@ -11641,14 +11708,14 @@
 
     const parkingBtn = actionBar.querySelector('#adventureModalParkingBtn');
     if (parkingBtn) {
-      parkingBtn.onclick = () => {
-        if (!parkingUrl) return;
+      if (!parkingUrl) parkingBtn.disabled = true;
         window.open(parkingUrl, '_blank', 'noopener');
       };
     }
 
     const favBtn = actionBar.querySelector('#adventureModalFavoriteBtn');
     if (favBtn) {
+      if (!canWriteRow) favBtn.disabled = true;
       favBtn.onclick = () => {
         if (!canWriteRow || typeof window.toggleCardFavorite !== 'function') return;
         window.toggleCardFavorite(filteredIndex, null, null);
@@ -11657,6 +11724,7 @@
     }
 
     actionBar.querySelectorAll('.adventure-modal-rating-btn').forEach((btn) => {
+      if (!canWriteRow) btn.disabled = true;
       btn.onclick = async () => {
         if (!canWriteRow || typeof window.setAdventureRating !== 'function') return;
         const value = Number(btn.getAttribute('data-rating'));
@@ -11712,22 +11780,24 @@
         modal = document.createElement('div');
         modal.id = 'rowDetailModal';
         modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; z-index: 10000; display: none; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.3);';
-        modal.innerHTML = `
-          <div style="padding: 24px; border-bottom: 1px solid #e5e7eb; background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
-            <h2 id="rowDetailTitle" style="margin: 0; font-size: 20px; font-weight: 700;"></h2>
-            <button onclick="closeRowDetailModal()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer; opacity: 0.8;">×</button>
-          </div>
-          <div style="padding: 24px; flex: 1; overflow-y: auto;">
-            <div id="rowDetailTabsContainer" style="display: flex; gap: 8px; border-bottom: 1px solid #e5e7eb; margin-bottom: 20px; flex-wrap: wrap;"></div>
-            <div id="rowDetailContent" style="min-height: 200px;"></div>
-          </div>
-          <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; background: #f9fafb; display: flex; gap: 12px; justify-content: flex-end;">
-            <button id="rowDetailEditBtn" onclick="enableEditMode()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">✎ Edit</button>
-            <button id="rowDetailCloseFooterBtn" onclick="closeRowDetailModal()" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Close</button>
-          </div>
-        `;
+        // NOTE: Modal structure will be populated by the static HTML rowDetailModal element
+        // Don't create innerHTML here to avoid duplicate IDs
         document.body.appendChild(modal);
       }
+    }
+
+    // Get references to modal child elements (these have IDs defined in static HTML)
+    const titleEl = document.getElementById('rowDetailTitle');
+    const tabsContainer = document.getElementById('rowDetailTabsContainer');
+    const contentContainer = document.getElementById('rowDetailContent');
+
+    // Create action bar container if it doesn't exist
+    let actionBar = document.getElementById('adventureModalRatingControls');
+    if (!actionBar) {
+      actionBar = document.createElement('div');
+      actionBar.id = 'adventureModalRatingControls';
+      actionBar.style.cssText = 'display:inline-flex;align-items:center;gap:4px;';
+      if (contentContainer) contentContainer.appendChild(actionBar);
     }
 
     // Store current row for editing (CRITICAL FIX)
@@ -14144,13 +14214,32 @@
    * Generate Overview Tab Content
    */
   function generateOverviewTab(data) {
-    const isHiking = data.tags && data.tags.toLowerCase().includes("hiking");
+    // ...existing code...
 
     // Build difficulty and trail length fields only if hiking tag is present
+    const getDifficultyBgColor = (difficulty) => {
+      if (!difficulty) return "#f3f4f6";
+      const d = difficulty.toLowerCase();
+      if (d.includes("easy")) return "#d1fae5";
+      if (d.includes("hard")) return "#fee2e2";
+      return "#fef3c7";
+    };
+
+    const getDifficultyTextColor = (difficulty) => {
+      if (!difficulty) return "#6b7280";
+      const d = difficulty.toLowerCase();
+      if (d.includes("easy")) return "#047857";
+      if (d.includes("hard")) return "#991b1b";
+      return "#92400e";
+    };
+
+    const diffBg = getDifficultyBgColor(data.difficulty);
+    const diffText = getDifficultyTextColor(data.difficulty);
+
     const hikingFields = isHiking ? `
       <div class="row-detail-field">
         <div class="row-detail-label">Difficulty</div>
-        <div class="row-detail-value"><span style="padding: 2px 8px; border-radius: 4px; background: ${data.difficulty?.toLowerCase().includes("easy") ? "#d1fae5" : data.difficulty?.toLowerCase().includes("hard") ? "#fee2e2" : "#fef3c7"}; color: ${data.difficulty?.toLowerCase().includes("easy") ? "#047857" : data.difficulty?.toLowerCase().includes("hard") ? "#991b1b" : "#92400e"}">${data.difficulty || "N/A"}</span></div>
+        <div class="row-detail-value"><span style="padding: 2px 8px; border-radius: 4px; background: ${diffBg}; color: ${diffText};">${data.difficulty || "N/A"}</span></div>
       </div>
       <div class="row-detail-field">
         <div class="row-detail-label">Trail Length</div>
@@ -20684,8 +20773,6 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 <datalist id="costList2"></datalist>
 
 <!-- Removed stray deprecated inline JS block (was outside <script>). -->
- <script>
-   (function () {
 <script>
   (function () {
     function normalizePendingRow(item) {
