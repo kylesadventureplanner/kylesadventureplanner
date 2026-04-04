@@ -5240,7 +5240,8 @@
        const CLIENT_ID   = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
        const AUTHORITY   = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
        const SCOPES      = ['User.Read', 'Files.ReadWrite'];
-       const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
+       // Use root URI by default (typically already registered in Azure app auth settings).
+       const POPUP_REDIRECT_URI = window.location.origin + '/';
 
        // ── helpers ──────────────────────────────────────────────────────────
        function loadScript(src) {
@@ -5421,7 +5422,8 @@
 
    <script>
       // Keep popup callbacks on a lightweight page to avoid rendering the full app in the auth popup.
-      const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
+      // Use root URI by default (typically already registered in Azure app auth settings).
+      const POPUP_REDIRECT_URI = window.location.origin + '/';
 
       // Initialize MSAL instance
      const msalInitPromise = msalInstance.initialize().catch(error => {
@@ -21156,7 +21158,8 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   const CLIENT_ID = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
   const AUTHORITY  = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
   const SCOPES     = ['User.Read', 'Files.ReadWrite'];
-  const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
+  // Use root URI by default (typically already registered in Azure app auth settings).
+  const POPUP_REDIRECT_URI = window.location.origin + '/';
 
   function isUsableAuthFn(fn) {
     if (typeof fn !== 'function') return false;
