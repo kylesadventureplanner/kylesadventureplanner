@@ -1579,6 +1579,113 @@
       return hour * 60 + mins;
     }
 
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escAttr(str) {
+      return escHtml(str).replace(/`/g, '&#096;');
+    }
+
+    function locVal(loc, colIndex, fallbackKey) {
+      if (loc && loc.values && Array.isArray(loc.values[0])) return loc.values[0][colIndex] || '';
+      return (loc && loc[fallbackKey]) || '';
+    }
+
+    function buildQuickTagPills(locations) {
+      const tagCounts = {};
+      locations.forEach(loc => {
+        const tagsRaw = locVal(loc, 3, 'tags');
+        if (!tagsRaw) return;
+        tagsRaw.split(',').forEach(t => {
+          const tag = t.trim().toLowerCase();
+          if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      });
+
+      const topTags = Object.entries(tagCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12)
+        .map(([tag]) => tag);
+
+      const container = document.getElementById('locQuickTags');
+      if (!container) return;
+      container.innerHTML = topTags.map(tag => {
+        const label = tag.charAt(0).toUpperCase() + tag.slice(1);
+        return `<button class="loc-tag-btn" data-tag="${escAttr(tag)}" onclick="toggleLocQuickTag('${escAttr(tag)}')">${escHtml(label)}</button>`;
+      }).join('');
+    }
+
+    function populateTagDatalist(locations) {
+      const tags = new Set();
+      locations.forEach(loc => {
+        const tagsRaw = locVal(loc, 3, 'tags');
+        if (!tagsRaw) return;
+        tagsRaw.split(',').forEach(t => {
+          const tag = t.trim();
+          if (tag) tags.add(tag);
+        });
+      });
+      const datalist = document.getElementById('locTagDatalist');
+      if (!datalist) return;
+      datalist.innerHTML = Array.from(tags)
+        .sort()
+        .map(t => `<option value="${escAttr(t)}">`)
+        .join('');
+    }
+
+    function toggleLocQuickTag(tag) {
+      const normalized = String(tag || '').toLowerCase();
+      activeLocQuickTag = activeLocQuickTag === normalized ? null : normalized;
+      if (activeLocQuickTag) {
+        const tagInput = document.getElementById('locFilterTag');
+        if (tagInput) tagInput.value = '';
+      }
+      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
+      });
+      applyLocFilters();
+    }
+
+    function toggleLocSortOrder() {
+      locSortOrder = locSortOrder === 'asc' ? 'desc' : 'asc';
+      const btn = document.getElementById('locSortOrderBtn');
+      if (btn) btn.textContent = locSortOrder === 'asc' ? '↑' : '↓';
+      applyLocFilters();
+    }
+
+    function resetLocFilters() {
+      const search = document.getElementById('locSearchName');
+      const difficulty = document.getElementById('locFilterDifficulty');
+      const cost = document.getElementById('locFilterCost');
+      const tag = document.getElementById('locFilterTag');
+      const sort = document.getElementById('locSortBy');
+      const openNow = document.getElementById('locFilterOpenNow');
+      const closingSoon = document.getElementById('locFilterClosingSoon');
+
+      if (search) search.value = '';
+      if (difficulty) difficulty.value = '';
+      if (cost) cost.value = '';
+      if (tag) tag.value = '';
+      if (sort) sort.value = 'name';
+      if (openNow) openNow.checked = false;
+      if (closingSoon) closingSoon.checked = false;
+
+      locSortOrder = 'asc';
+      const sortBtn = document.getElementById('locSortOrderBtn');
+      if (sortBtn) sortBtn.textContent = '↑';
+      activeLocQuickTag = null;
+      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
+      setSplitView(false);
+      applyLocFilters();
+    }
+
     function viewCity(city, state) {
       const key = `${city}, ${state}`;
       const cityEntry = citiesData[key];
