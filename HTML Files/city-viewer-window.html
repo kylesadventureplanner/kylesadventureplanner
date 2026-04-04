@@ -714,6 +714,10 @@
       <div class="locations-controls">
         <div class="loc-presets-row">
           <input id="locPresetName" class="loc-preset-input" type="text" placeholder="Preset name...">
+          <select id="locPresetScope" class="loc-preset-select" style="min-width:120px;">
+            <option value="city">City Preset</option>
+            <option value="global">Global Preset</option>
+          </select>
           <button class="loc-mini-btn" onclick="saveLocPreset()">Save Preset</button>
           <select id="locPresetSelect" class="loc-preset-select"></select>
           <button class="loc-mini-btn" onclick="loadSelectedLocPreset()">Load</button>
@@ -790,6 +794,8 @@
         <div class="loc-shortlist-top">
           <div id="locShortlistCount" class="loc-shortlist-count">0 selected</div>
           <button class="loc-mini-btn" onclick="buildDayPlan()">Build Day Plan</button>
+          <button class="loc-mini-btn" onclick="openDayPlanRoute('google')">Open Google Route</button>
+          <button class="loc-mini-btn" onclick="openDayPlanRoute('mapbox')">Open Mapbox Route</button>
           <button class="loc-mini-btn" onclick="clearShortlist()">Clear</button>
         </div>
         <div id="locShortlistChips" class="loc-shortlist-chip-wrap"></div>
@@ -1068,6 +1074,7 @@
     let activeLocId = null;
     const locPointCache = {};
     let pendingShareState = null;
+    let lastBuiltDayPlanRoute = [];
     let locGoogleMap = null;
     let locGoogleMarkers = [];
     let locMapboxMap = null;
@@ -1076,6 +1083,7 @@
 
     function cityStateKey(cityKey) { return `cityViewer:lastState:${cityKey}`; }
     function cityPresetKey(cityKey) { return `cityViewer:presets:${cityKey}`; }
+    function globalPresetKey() { return 'cityViewer:presets:global:v1'; }
     function cityShortlistKey(cityKey) { return `cityViewer:shortlist:${cityKey}`; }
 
     function getLocId(loc) {
@@ -1140,45 +1148,88 @@
       catch (_) { return {}; }
     }
 
+    function getGlobalPresets() {
+      try { return JSON.parse(window.localStorage.getItem(globalPresetKey()) || '{}'); }
+      catch (_) { return {}; }
+    }
+
     function setPresetsForCity(presets) {
       if (!currentCityKey) return;
       window.localStorage.setItem(cityPresetKey(currentCityKey), JSON.stringify(presets));
       refreshPresetSelect();
     }
 
+    function setGlobalPresets(presets) {
+      window.localStorage.setItem(globalPresetKey(), JSON.stringify(presets));
+      refreshPresetSelect();
+    }
+
     function refreshPresetSelect() {
       const select = document.getElementById('locPresetSelect');
-      const presets = getPresetsForCity();
-      const names = Object.keys(presets).sort();
-      select.innerHTML = [`<option value="">Saved presets...</option>`]
-        .concat(names.map(name => `<option value="${escAttr(name)}">${escHtml(name)}</option>`))
-        .join('');
+      if (!select) return;
+      const cityPresets = getPresetsForCity();
+      const globalPresets = getGlobalPresets();
+      const cityNames = Object.keys(cityPresets).sort();
+      const globalNames = Object.keys(globalPresets).sort();
+      const options = ['<option value="">Saved presets...</option>'];
+      if (cityNames.length) {
+        options.push('<optgroup label="This City">');
+        cityNames.forEach(name => options.push(`<option value="city::${escAttr(name)}">📍 ${escHtml(name)}</option>`));
+        options.push('</optgroup>');
+      }
+      if (globalNames.length) {
+        options.push('<optgroup label="Global">');
+        globalNames.forEach(name => options.push(`<option value="global::${escAttr(name)}">🌐 ${escHtml(name)}</option>`));
+        options.push('</optgroup>');
+      }
+      select.innerHTML = options.join('');
+    }
+
+    function parsePresetOption(value) {
+      const v = String(value || '');
+      if (!v) return null;
+      if (v.startsWith('city::')) return { scope: 'city', name: v.slice(6) };
+      if (v.startsWith('global::')) return { scope: 'global', name: v.slice(8) };
+      return { scope: 'city', name: v }; // backwards compatibility
     }
 
     function saveLocPreset() {
       const name = document.getElementById('locPresetName').value.trim();
       if (!name) return alert('Enter a preset name first.');
-      const presets = getPresetsForCity();
-      presets[name] = getLocFilterState();
-      setPresetsForCity(presets);
+      const scope = (document.getElementById('locPresetScope')?.value || 'city');
+      if (scope === 'global') {
+        const presets = getGlobalPresets();
+        presets[name] = getLocFilterState();
+        setGlobalPresets(presets);
+      } else {
+        const presets = getPresetsForCity();
+        presets[name] = getLocFilterState();
+        setPresetsForCity(presets);
+      }
       document.getElementById('locPresetName').value = '';
     }
 
     function loadSelectedLocPreset() {
-      const name = document.getElementById('locPresetSelect').value;
-      if (!name) return;
-      const presets = getPresetsForCity();
-      if (!presets[name]) return;
-      applyLocFilterState(presets[name]);
+      const parsed = parsePresetOption(document.getElementById('locPresetSelect').value);
+      if (!parsed) return;
+      const source = parsed.scope === 'global' ? getGlobalPresets() : getPresetsForCity();
+      if (!source[parsed.name]) return;
+      applyLocFilterState(source[parsed.name]);
       applyLocFilters();
     }
 
     function deleteSelectedLocPreset() {
-      const name = document.getElementById('locPresetSelect').value;
-      if (!name) return;
-      const presets = getPresetsForCity();
-      delete presets[name];
-      setPresetsForCity(presets);
+      const parsed = parsePresetOption(document.getElementById('locPresetSelect').value);
+      if (!parsed) return;
+      if (parsed.scope === 'global') {
+        const presets = getGlobalPresets();
+        delete presets[parsed.name];
+        setGlobalPresets(presets);
+      } else {
+        const presets = getPresetsForCity();
+        delete presets[parsed.name];
+        setPresetsForCity(presets);
+      }
     }
 
     function getShortlistSet() {
@@ -1463,6 +1514,15 @@
         route.push(remaining.splice(bestIdx, 1)[0]);
       }
 
+      lastBuiltDayPlanRoute = route.map(loc => ({
+        locId: getLocId(loc),
+        name: String(locVal(loc, 0, 'name') || ''),
+        placeId: String(locVal(loc, 1, 'googlePlaceId') || ''),
+        address: String(locVal(loc, 11, 'address') || ''),
+        lat: parseFloat(locVal(loc, 25, 'latitude') || locVal(loc, 26, 'lat') || loc.latitude || loc.lat),
+        lng: parseFloat(locVal(loc, 26, 'longitude') || locVal(loc, 27, 'lng') || loc.longitude || loc.lng)
+      }));
+
       let total = 0;
       for (let i = 0; i < route.length - 1; i++) {
         const a = getLocPoint(route[i], getLocId(route[i]));
@@ -1477,408 +1537,50 @@
         .join('');
     }
 
-    function parseShareStateFromUrl() {
-      try {
-        const p = new URLSearchParams(window.location.search);
-        const raw = p.get('sv');
-        if (!raw) return null;
-        const padded = raw.replace(/-/g, '+').replace(/_/g, '/');
-        const json = decodeURIComponent(atob(padded));
-        return JSON.parse(json);
-      } catch (e) {
-        console.warn('⚠️ Share state parse failed', e);
-        return null;
+    function stopHasCoords(stop) {
+      return Number.isFinite(stop.lat) && Number.isFinite(stop.lng);
+    }
+
+    function stopToGoogleQuery(stop) {
+      if (stop.placeId) return `place_id:${stop.placeId}`;
+      if (stopHasCoords(stop)) return `${stop.lat},${stop.lng}`;
+      return stop.address || stop.name;
+    }
+
+    function openDayPlanRoute(provider) {
+      if (!lastBuiltDayPlanRoute || lastBuiltDayPlanRoute.length < 2) {
+        buildDayPlan();
       }
-    }
-
-    function encodeShareState(state) {
-      const json = JSON.stringify(state);
-      return btoa(encodeURIComponent(json)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-    }
-
-    function updateUrlFromState() {
-      if (!currentCityKey) return;
-      const payload = {
-        cityKey: currentCityKey,
-        filters: getLocFilterState(),
-        shortlist: Array.from(getShortlistSet())
-      };
-      const url = new URL(window.location.href);
-      url.searchParams.set('sv', encodeShareState(payload));
-      window.history.replaceState({}, '', url.toString());
-    }
-
-    async function copyShareLink() {
-      updateUrlFromState();
-      const btn = document.getElementById('copyShareBtn');
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        btn.classList.add('success');
-        btn.textContent = 'Copied!';
-        setTimeout(() => {
-          btn.classList.remove('success');
-          btn.textContent = 'Copy Share Link';
-        }, 1500);
-      } catch (_) {
-        window.prompt('Copy this link:', window.location.href);
-      }
-    }
-
-    function getOpenInfoForToday(hoursText) {
-      const text = String(hoursText || '').trim();
-      if (!text) return { isOpen: false, minutesUntilClose: null };
-
-      const now = new Date();
-      const dayIdx = now.getDay();
-      const nowMins = now.getHours() * 60 + now.getMinutes();
-      const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-      const today = dayNames[dayIdx];
-
-      const parts = text.toLowerCase().split(/[;\n,]+/).map(s => s.trim()).filter(Boolean);
-      let candidate = '';
-      for (const part of parts) {
-        if (segmentMatchesDay(part, today)) { candidate = part; break; }
-      }
-      if (!candidate && parts.length === 1) candidate = parts[0];
-      if (!candidate || candidate.includes('closed')) return { isOpen: false, minutesUntilClose: null };
-
-      const m = candidate.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*-\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
-      if (!m) return { isOpen: false, minutesUntilClose: null };
-
-      const open = toMinutes(m[1], m[2], m[3]);
-      let close = toMinutes(m[4], m[5], m[6]);
-      let current = nowMins;
-      if (close <= open) {
-        close += 24 * 60;
-        if (current < open) current += 24 * 60;
-      }
-      const isOpen = current >= open && current < close;
-      const minutesUntilClose = isOpen ? (close - current) : null;
-      return { isOpen, minutesUntilClose };
-    }
-
-    function segmentMatchesDay(segment, todayShort) {
-      const token = segment.slice(0, 32);
-      if (token.includes(todayShort)) return true;
-      const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-      const range = token.match(/(sun|mon|tue|wed|thu|fri|sat)\s*-\s*(sun|mon|tue|wed|thu|fri|sat)/);
-      if (!range) return false;
-      const start = days.indexOf(range[1]);
-      const end = days.indexOf(range[2]);
-      const today = days.indexOf(todayShort);
-      if (start <= end) return today >= start && today <= end;
-      return today >= start || today <= end;
-    }
-
-    function toMinutes(h, m, ampm) {
-      let hour = Number(h || 0);
-      const mins = Number(m || 0);
-      const suffix = String(ampm || '').toLowerCase();
-      if (suffix === 'pm' && hour !== 12) hour += 12;
-      if (suffix === 'am' && hour === 12) hour = 0;
-      return hour * 60 + mins;
-    }
-
-    function escHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
-    function escAttr(str) {
-      return escHtml(str).replace(/`/g, '&#096;');
-    }
-
-    function locVal(loc, colIndex, fallbackKey) {
-      if (loc && loc.values && Array.isArray(loc.values[0])) return loc.values[0][colIndex] || '';
-      return (loc && loc[fallbackKey]) || '';
-    }
-
-    function buildQuickTagPills(locations) {
-      const tagCounts = {};
-      locations.forEach(loc => {
-        const tagsRaw = locVal(loc, 3, 'tags');
-        if (!tagsRaw) return;
-        tagsRaw.split(',').forEach(t => {
-          const tag = t.trim().toLowerCase();
-          if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
-      });
-
-      const topTags = Object.entries(tagCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 12)
-        .map(([tag]) => tag);
-
-      const container = document.getElementById('locQuickTags');
-      if (!container) return;
-      container.innerHTML = topTags.map(tag => {
-        const label = tag.charAt(0).toUpperCase() + tag.slice(1);
-        return `<button class="loc-tag-btn" data-tag="${escAttr(tag)}" onclick="toggleLocQuickTag('${escAttr(tag)}')">${escHtml(label)}</button>`;
-      }).join('');
-    }
-
-    function populateTagDatalist(locations) {
-      const tags = new Set();
-      locations.forEach(loc => {
-        const tagsRaw = locVal(loc, 3, 'tags');
-        if (!tagsRaw) return;
-        tagsRaw.split(',').forEach(t => {
-          const tag = t.trim();
-          if (tag) tags.add(tag);
-        });
-      });
-      const datalist = document.getElementById('locTagDatalist');
-      if (!datalist) return;
-      datalist.innerHTML = Array.from(tags)
-        .sort()
-        .map(t => `<option value="${escAttr(t)}">`)
-        .join('');
-    }
-
-    function toggleLocQuickTag(tag) {
-      const normalized = String(tag || '').toLowerCase();
-      activeLocQuickTag = activeLocQuickTag === normalized ? null : normalized;
-      if (activeLocQuickTag) {
-        const tagInput = document.getElementById('locFilterTag');
-        if (tagInput) tagInput.value = '';
-      }
-      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tag === activeLocQuickTag);
-      });
-      applyLocFilters();
-    }
-
-    function toggleLocSortOrder() {
-      locSortOrder = locSortOrder === 'asc' ? 'desc' : 'asc';
-      const btn = document.getElementById('locSortOrderBtn');
-      if (btn) btn.textContent = locSortOrder === 'asc' ? '↑' : '↓';
-      applyLocFilters();
-    }
-
-    function resetLocFilters() {
-      const search = document.getElementById('locSearchName');
-      const difficulty = document.getElementById('locFilterDifficulty');
-      const cost = document.getElementById('locFilterCost');
-      const tag = document.getElementById('locFilterTag');
-      const sort = document.getElementById('locSortBy');
-      const openNow = document.getElementById('locFilterOpenNow');
-      const closingSoon = document.getElementById('locFilterClosingSoon');
-
-      if (search) search.value = '';
-      if (difficulty) difficulty.value = '';
-      if (cost) cost.value = '';
-      if (tag) tag.value = '';
-      if (sort) sort.value = 'name';
-      if (openNow) openNow.checked = false;
-      if (closingSoon) closingSoon.checked = false;
-
-      locSortOrder = 'asc';
-      const sortBtn = document.getElementById('locSortOrderBtn');
-      if (sortBtn) sortBtn.textContent = '↑';
-      activeLocQuickTag = null;
-      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
-      setSplitView(false);
-      applyLocFilters();
-    }
-
-    function viewCity(city, state) {
-      const key = `${city}, ${state}`;
-      const cityEntry = citiesData[key];
-      if (!cityEntry || cityEntry.locations.length === 0) {
-        alert('No locations found for this city');
+      if (!lastBuiltDayPlanRoute || lastBuiltDayPlanRoute.length < 2) {
+        alert('Build a day plan with at least 2 stops first.');
         return;
       }
 
-      currentCityKey = key;
-      activeLocId = null;
-      activeLocQuickTag = null;
-
-      document.getElementById('locationsPageTitle').textContent = `📍 ${city}`;
-      document.getElementById('locationsPageSubtitle').textContent =
-        `${state} · ${cityEntry.locations.length} location${cityEntry.locations.length !== 1 ? 's' : ''}`;
-
-      document.getElementById('locSearchName').value = '';
-      document.getElementById('locFilterDifficulty').value = '';
-      document.getElementById('locFilterCost').value = '';
-      document.getElementById('locFilterTag').value = '';
-      document.getElementById('locSortBy').value = 'name';
-      locSortOrder = 'asc';
-      document.getElementById('locSortOrderBtn').textContent = '↑';
-      setSplitView(false);
-
-      buildQuickTagPills(cityEntry.locations);
-      populateTagDatalist(cityEntry.locations);
-      refreshPresetSelect();
-      restoreLastLocState();
-      if (pendingShareState && pendingShareState.cityKey === currentCityKey) {
-        if (pendingShareState.filters) applyLocFilterState(pendingShareState.filters);
-        if (Array.isArray(pendingShareState.shortlist)) {
-          setShortlistSet(new Set(pendingShareState.shortlist));
+      let url = '';
+      if (provider === 'mapbox') {
+        const coords = lastBuiltDayPlanRoute
+          .filter(stopHasCoords)
+          .map(s => `${s.lng},${s.lat}`);
+        if (coords.length < 2) {
+          alert('Mapbox route requires latitude/longitude for at least 2 stops.');
+          return;
         }
-        pendingShareState = null;
-      }
-      renderShortlistTray();
-      document.getElementById('locDayPlan').classList.remove('visible');
-
-      document.querySelector('.controls').style.display = 'none';
-      document.getElementById('cityGrid').style.display = 'none';
-      document.getElementById('locationsPage').style.display = 'block';
-
-      applyLocFilters();
-    }
-
-    function goBackToCities() {
-      currentCityKey = null;
-      activeLocId = null;
-      document.getElementById('locationsPage').style.display = 'none';
-      document.getElementById('cityGrid').style.display = 'grid';
-      document.querySelector('.controls').style.display = 'flex';
-    }
-
-    function applyLocFilters() {
-      if (!currentCityKey) return;
-      const cityEntry = citiesData[currentCityKey];
-      if (!cityEntry) return;
-
-      const searchTerm = document.getElementById('locSearchName').value.trim().toLowerCase();
-      const diffFilter = document.getElementById('locFilterDifficulty').value.toLowerCase();
-      const costFilter = document.getElementById('locFilterCost').value.toLowerCase();
-      const tagInput = document.getElementById('locFilterTag').value.trim().toLowerCase();
-      const tagFilter = activeLocQuickTag || tagInput;
-      const openNowOnly = document.getElementById('locFilterOpenNow').checked;
-      const closingSoonOnly = document.getElementById('locFilterClosingSoon').checked;
-      const sortKey = document.getElementById('locSortBy').value;
-
-      let results = cityEntry.locations.filter(loc => {
-        const name = locVal(loc, 0, 'name').toLowerCase();
-        const tags = locVal(loc, 3, 'tags').toLowerCase();
-        const difficulty = locVal(loc, 7, 'difficulty').toLowerCase();
-        const cost = locVal(loc, 14, 'cost').toLowerCase();
-        const hours = locVal(loc, 5, 'hours');
-        const openInfo = getOpenInfoForToday(hours);
-
-        if (searchTerm && !name.includes(searchTerm)) return false;
-        if (diffFilter && !difficulty.includes(diffFilter)) return false;
-        if (costFilter && !cost.includes(costFilter)) return false;
-        if (tagFilter && !tags.includes(tagFilter)) return false;
-        if (openNowOnly && !openInfo.isOpen) return false;
-        if (closingSoonOnly && !(openInfo.isOpen && openInfo.minutesUntilClose !== null && openInfo.minutesUntilClose <= CLOSING_SOON_MINUTES)) return false;
-        return true;
-      });
-
-      const costOrder = { free: 0, '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
-      const difficultyOrder = { easy: 0, moderate: 1, hard: 2 };
-
-      results.sort((a, b) => {
-        let av;
-        let bv;
-
-        if (sortKey === 'difficulty') {
-          av = difficultyOrder[locVal(a, 7, 'difficulty').toLowerCase()] ?? 99;
-          bv = difficultyOrder[locVal(b, 7, 'difficulty').toLowerCase()] ?? 99;
-        } else if (sortKey === 'cost') {
-          av = costOrder[locVal(a, 14, 'cost').toLowerCase()] ?? 99;
-          bv = costOrder[locVal(b, 14, 'cost').toLowerCase()] ?? 99;
-        } else if (sortKey === 'rating') {
-          av = parseFloat(locVal(a, 13, 'rating')) || 0;
-          bv = parseFloat(locVal(b, 13, 'rating')) || 0;
-        } else if (sortKey === 'tags') {
-          av = locVal(a, 3, 'tags').toLowerCase();
-          bv = locVal(b, 3, 'tags').toLowerCase();
-        } else {
-          av = locVal(a, 0, 'name').toLowerCase();
-          bv = locVal(b, 0, 'name').toLowerCase();
-        }
-
-        if (typeof av === 'number' && typeof bv === 'number') {
-          return locSortOrder === 'asc' ? av - bv : bv - av;
-        }
-        const cmp = String(av).localeCompare(String(bv));
-        return locSortOrder === 'asc' ? cmp : -cmp;
-      });
-
-      document.getElementById('locResultsCount').textContent =
-        `${results.length} location${results.length !== 1 ? 's' : ''}`;
-
-      lastFilteredLocations = results;
-      saveLastLocState();
-      renderLocationCards(results);
-      renderLocMap(results);
-      renderShortlistTray();
-      updateUrlFromState();
-    }
-
-    function renderLocationCards(locations) {
-      const grid = document.getElementById('locationsGrid');
-      const shortlist = getShortlistSet();
-
-      if (locations.length === 0) {
-        grid.innerHTML = `
-          <div class="loc-empty">
-            <div class="loc-empty-icon">🔍</div>
-            <div class="loc-empty-text">No locations match your filters</div>
-            <div style="font-size:13px;">Try adjusting or resetting the filters above.</div>
-          </div>`;
-        return;
+        url = `https://www.mapbox.com/directions/?profile=mapbox/driving&coordinates=${encodeURIComponent(coords.join(';'))}`;
+      } else {
+        const origin = stopToGoogleQuery(lastBuiltDayPlanRoute[0]);
+        const destination = stopToGoogleQuery(lastBuiltDayPlanRoute[lastBuiltDayPlanRoute.length - 1]);
+        const waypoints = lastBuiltDayPlanRoute.slice(1, -1).map(stopToGoogleQuery).filter(Boolean);
+        const params = new URLSearchParams({
+          api: '1',
+          travelmode: 'driving',
+          origin,
+          destination
+        });
+        if (waypoints.length) params.set('waypoints', waypoints.join('|'));
+        url = `https://www.google.com/maps/dir/?${params.toString()}`;
       }
 
-      grid.innerHTML = locations.map(loc => {
-        const locId = getLocId(loc);
-        const encodedLocId = encodeURIComponent(locId);
-        const name = locVal(loc, 0, 'name') || 'Unnamed Location';
-        const website = locVal(loc, 2, 'website');
-        const tagsRaw = locVal(loc, 3, 'tags');
-        const driveTime = locVal(loc, 4, 'driveTime');
-        const hours = locVal(loc, 5, 'hours');
-        const duration = locVal(loc, 6, 'duration');
-        const difficulty = locVal(loc, 7, 'difficulty');
-        const trailLen = locVal(loc, 8, 'trailLength');
-        const address = locVal(loc, 11, 'address');
-        const phone = locVal(loc, 12, 'phone');
-        const rating = locVal(loc, 13, 'rating');
-        const cost = locVal(loc, 14, 'cost');
-        const description = locVal(loc, 16, 'description');
-        const googleUrl = locVal(loc, 23, 'googleUrl');
-
-        const tagList = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
-        const diffClass = difficulty ? `difficulty-${difficulty.toLowerCase().replace(/\s+/g, '-')}` : '';
-
-        const actionBtns = [
-          website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener">🌐 Website</a>` : '',
-          googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : '',
-          `<button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>`
-        ].filter(Boolean).join('');
-
-        return `
-          <div class="loc-card" data-loc-id="${escAttr(locId)}" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
-            <div class="loc-card-header">
-              <div class="loc-card-name">${escHtml(name)}</div>
-              <div class="loc-card-meta">
-                ${difficulty ? `<span class="loc-meta-badge ${diffClass}">⛰️ ${escHtml(difficulty)}</span>` : ''}
-                ${cost ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : ''}
-                ${rating ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : ''}
-              </div>
-            </div>
-            ${tagList.length ? `<div class="loc-card-tags">${tagList.map(t => `<span class="loc-tag-pill">${escHtml(t)}</span>`).join('')}</div>` : ''}
-            <div class="loc-card-details">
-              ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
-              ${hours ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : ''}
-              ${duration ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : ''}
-              ${trailLen ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : ''}
-              ${address ? `<div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escHtml(address)}</span></div>` : ''}
-              ${phone ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : ''}
-            </div>
-            ${description ? `<div class="loc-card-description">${escHtml(description)}</div>` : ''}
-            <div class="loc-card-footer">${actionBtns}</div>
-          </div>`;
-      }).join('');
-
-      highlightActiveLocation();
+      window.open(url, '_blank', 'noopener');
     }
 
     window.viewCity = viewCity;
@@ -1896,6 +1598,7 @@
     window.buildDayPlan = buildDayPlan;
     window.clearShortlist = clearShortlist;
     window.copyShareLink = copyShareLink;
+    window.openDayPlanRoute = openDayPlanRoute;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
