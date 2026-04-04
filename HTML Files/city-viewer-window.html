@@ -428,9 +428,6 @@
       background: #f3f4f6;
       color: #374151;
     }
-    .loc-meta-badge.difficulty-easy   { background: #dcfce7; color: #166534; }
-    .loc-meta-badge.difficulty-moderate { background: #fef9c3; color: #854d0e; }
-    .loc-meta-badge.difficulty-hard   { background: #fee2e2; color: #991b1b; }
     .loc-meta-badge.cost              { background: #ecfdf5; color: #065f46; }
     .loc-meta-badge.rating            { background: #fffbeb; color: #92400e; }
 
@@ -489,12 +486,6 @@
       text-decoration: none;
     }
     .loc-action-btn:hover { border-color: #667eea; color: #667eea; background: #f0f4ff; }
-    .loc-action-btn.primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border-color: transparent;
-    }
-    .loc-action-btn.primary:hover { opacity: 0.9; }
 
     .loc-empty {
       text-align: center;
@@ -553,6 +544,42 @@
       user-select: none;
     }
     .loc-check input { cursor: pointer; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+      white-space: nowrap;
+    }
+
+    .loc-toast {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 9999;
+      background: #111827;
+      color: #f9fafb;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+    }
+    .loc-toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .loc-toast.error {
+      background: #991b1b;
+    }
 
     .loc-main-layout {
       display: grid;
@@ -685,6 +712,7 @@
     </div>
 
     <div class="controls">
+      <label class="sr-only" for="searchBox">Search cities</label>
       <input type="text" class="search-box" id="searchBox" placeholder="Search cities..." onkeyup="filterCities()">
       <button class="sort-btn" id="sortByNameBtn" onclick="sortBy('name')">Sort A-Z</button>
       <button class="sort-btn active" id="sortByCountBtn" onclick="sortBy('count')">Sort by Count</button>
@@ -713,12 +741,15 @@
       <!-- Filter & Sort Controls (mirrors Adventure Planner) -->
       <div class="locations-controls">
         <div class="loc-presets-row">
+          <label class="sr-only" for="locPresetName">Preset name</label>
           <input id="locPresetName" class="loc-preset-input" type="text" placeholder="Preset name...">
+          <label class="sr-only" for="locPresetScope">Preset scope</label>
           <select id="locPresetScope" class="loc-preset-select" style="min-width:120px;">
             <option value="city">City Preset</option>
             <option value="global">Global Preset</option>
           </select>
           <button class="loc-mini-btn" onclick="saveLocPreset()">Save Preset</button>
+          <label class="sr-only" for="locPresetSelect">Saved presets</label>
           <select id="locPresetSelect" class="loc-preset-select"></select>
           <button class="loc-mini-btn" onclick="loadSelectedLocPreset()">Load</button>
           <button class="loc-mini-btn" onclick="deleteSelectedLocPreset()">Delete</button>
@@ -765,6 +796,7 @@
         <!-- Sort Row -->
         <div class="loc-sort-row">
           <span class="loc-sort-label">Sort by:</span>
+          <label class="sr-only" for="locSortBy">Sort locations</label>
           <select id="locSortBy" class="loc-sort-select" onchange="applyLocFilters()">
             <option value="name">Name</option>
             <option value="difficulty">Difficulty</option>
@@ -794,8 +826,8 @@
         <div class="loc-shortlist-top">
           <div id="locShortlistCount" class="loc-shortlist-count">0 selected</div>
           <button class="loc-mini-btn" onclick="buildDayPlan()">Build Day Plan</button>
-          <button class="loc-mini-btn" onclick="openDayPlanRoute('google')">Open Google Route</button>
-          <button class="loc-mini-btn" onclick="openDayPlanRoute('mapbox')">Open Mapbox Route</button>
+          <button id="openGoogleRouteBtn" class="loc-mini-btn" onclick="openDayPlanRoute('google')" disabled>Open Google Route</button>
+          <button id="openMapboxRouteBtn" class="loc-mini-btn" onclick="openDayPlanRoute('mapbox')" disabled>Open Mapbox Route</button>
           <button class="loc-mini-btn" onclick="clearShortlist()">Clear</button>
         </div>
         <div id="locShortlistChips" class="loc-shortlist-chip-wrap"></div>
@@ -807,9 +839,11 @@
       </div>
     </div>
 
-  </div><!-- /.container -->
+    </div><!-- /.container -->
 
-  <script>
+    <div id="locToast" class="loc-toast" role="status" aria-live="polite"></div>
+
+    <script>
     // Get data from sessionStorage (cached from parent window) or fallback to parent window
     let adventuresData = [];
     let citiesData = {};
@@ -1006,7 +1040,10 @@
 
       try {
         if (!navigator.geolocation) {
-          throw new Error('Geolocation not supported');
+          btn.disabled = false;
+          btn.textContent = '📍 Not supported';
+          alert('Geolocation is not supported by this browser.');
+          return;
         }
 
         navigator.geolocation.getCurrentPosition(
@@ -1079,7 +1116,6 @@
     let locGoogleMarkers = [];
     let locMapboxMap = null;
     let locMapboxMarkers = [];
-    const CLOSING_SOON_MINUTES = 120;
 
     function cityStateKey(cityKey) { return `cityViewer:lastState:${cityKey}`; }
     function cityPresetKey(cityKey) { return `cityViewer:presets:${cityKey}`; }
@@ -1130,16 +1166,6 @@
     function saveLastLocState() {
       if (!currentCityKey) return;
       window.localStorage.setItem(cityStateKey(currentCityKey), JSON.stringify(getLocFilterState()));
-    }
-
-    function restoreLastLocState() {
-      if (!currentCityKey) return;
-      try {
-        const raw = window.localStorage.getItem(cityStateKey(currentCityKey));
-        if (raw) applyLocFilterState(JSON.parse(raw));
-      } catch (e) {
-        console.warn('⚠️ Could not restore location state', e);
-      }
     }
 
     function getPresetsForCity() {
@@ -1245,8 +1271,10 @@
     function setShortlistSet(setObj) {
       if (!currentCityKey) return;
       window.localStorage.setItem(cityShortlistKey(currentCityKey), JSON.stringify(Array.from(setObj)));
+      lastBuiltDayPlanRoute = [];
       renderShortlistTray();
       updateShortlistButtons();
+      updateRouteButtonsState();
     }
 
     function toggleShortlistByEncodedId(encoded) {
@@ -1264,6 +1292,27 @@
     function clearShortlist() {
       setShortlistSet(new Set());
       document.getElementById('locDayPlan').classList.remove('visible');
+      updateRouteButtonsState();
+    }
+
+    function updateRouteButtonsState() {
+      const enabled = Array.isArray(lastBuiltDayPlanRoute) && lastBuiltDayPlanRoute.length >= 2;
+      const googleBtn = document.getElementById('openGoogleRouteBtn');
+      const mapboxBtn = document.getElementById('openMapboxRouteBtn');
+      if (googleBtn) googleBtn.disabled = !enabled;
+      if (mapboxBtn) mapboxBtn.disabled = !enabled;
+    }
+
+    function showRouteToast(message, isError) {
+      const toast = document.getElementById('locToast');
+      if (!toast) return;
+      toast.textContent = String(message || '');
+      toast.classList.toggle('error', Boolean(isError));
+      toast.classList.add('visible');
+      window.clearTimeout(showRouteToast._timer);
+      showRouteToast._timer = window.setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 1800);
     }
 
     function updateShortlistButtons() {
@@ -1535,6 +1584,7 @@
       document.getElementById('locDayPlanList').innerHTML = route
         .map(loc => `<li>${escHtml(locVal(loc, 0, 'name') || 'Location')}</li>`)
         .join('');
+      updateRouteButtonsState();
     }
 
     function stopHasCoords(stop) {
@@ -1552,7 +1602,7 @@
         buildDayPlan();
       }
       if (!lastBuiltDayPlanRoute || lastBuiltDayPlanRoute.length < 2) {
-        alert('Build a day plan with at least 2 stops first.');
+        showRouteToast('Build a day plan with at least 2 stops first.', true);
         return;
       }
 
@@ -1562,7 +1612,7 @@
           .filter(stopHasCoords)
           .map(s => `${s.lng},${s.lat}`);
         if (coords.length < 2) {
-          alert('Mapbox route requires latitude/longitude for at least 2 stops.');
+          showRouteToast('Mapbox route needs at least 2 geo-coded stops.', true);
           return;
         }
         url = `https://www.mapbox.com/directions/?profile=mapbox/driving&coordinates=${encodeURIComponent(coords.join(';'))}`;
@@ -1580,7 +1630,9 @@
         url = `https://www.google.com/maps/dir/?${params.toString()}`;
       }
 
-      window.open(url, '_blank', 'noopener');
+      const win = window.open(url, '_blank', 'noopener');
+      if (win) showRouteToast(`Opening ${provider === 'mapbox' ? 'Mapbox' : 'Google'} route...`, false);
+      else showRouteToast('Popup blocked. Allow popups for route links.', true);
     }
 
     window.viewCity = viewCity;
@@ -1606,9 +1658,10 @@
     } else {
       init();
     }
+    updateRouteButtonsState();
 
     console.log('✅ City Viewer window loaded');
-  </script>
+    </script>
 
 
 </body>
