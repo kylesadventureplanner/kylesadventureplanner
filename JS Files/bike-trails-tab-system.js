@@ -2187,6 +2187,13 @@
     updateBikeFiltersBadge();
     renderBikePreferenceFallbackBanner();
 
+    const params = new URLSearchParams(window.location.search || '');
+    const wantsExplorer = params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
+    if (wantsExplorer && !window.__bikeExplorerAutoOpenedFromUrl) {
+      window.__bikeExplorerAutoOpenedFromUrl = true;
+      setTimeout(() => openBikeTrailExplorer(), 0);
+    }
+
     if (window.accessToken && (!window.bikeTrailsData || !window.bikeTrailsData.length)) {
       loadBikeData();
       return;
@@ -2196,12 +2203,6 @@
       applyBikeFilters();
     }
 
-    const params = new URLSearchParams(window.location.search || '');
-    const wantsExplorer = params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
-    if (wantsExplorer && !window.__bikeExplorerAutoOpenedFromUrl) {
-      window.__bikeExplorerAutoOpenedFromUrl = true;
-      setTimeout(() => openBikeTrailExplorer(), 0);
-    }
   }
 
    // ─── Trail Explorer System ───────────────────────────────────────────────────
@@ -2437,7 +2438,7 @@
     if (hintEl) {
       const selected = explorerState.selectedFilters || {};
       const restoredBadgeLine = explorerState.restoredPresetName
-        ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;"><span style="display:inline-flex;align-items:center;padding:2px 8px;border:1px solid #ddd6fe;border-radius:999px;background:#f5f3ff;color:#6d28d9;font-size:11px;font-weight:700;">↺ Restored preset</span><span style="display:inline-flex;align-items:center;padding:2px 8px;border:1px solid #e9d5ff;border-radius:999px;background:#faf5ff;color:#7c3aed;font-size:11px;font-weight:600;">${escapeHtml(explorerState.restoredPresetName)}</span></div>`
+        ? `<div class="bike-explorer-restored-line"><span class="bike-explorer-restored-label">↺ Restored preset</span><span class="bike-explorer-restored-name">${escapeHtml(explorerState.restoredPresetName)}</span></div>`
         : '';
       if (!Object.keys(selected).length) {
         hintEl.innerHTML = `${restoredBadgeLine}<div>Tip: pick one or more criteria to narrow results before applying.</div>`;
@@ -2635,9 +2636,21 @@
   }
 
   window.openTrailExplorerWindow = function() {
+    const now = Date.now();
+    const dedupeWindowMs = 1200;
+    const lastOpenAttempt = Number(window.__trailExplorerLastOpenAttemptTs || 0);
+    if (now - lastOpenAttempt < dedupeWindowMs) {
+      return true;
+    }
+    window.__trailExplorerLastOpenAttemptTs = now;
+
     const params = new URLSearchParams(window.location.search || '');
     const isExplorerContext = params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
     if (isExplorerContext) {
+      const modal = document.getElementById('bikeTrailExplorerModal');
+      if (modal && modal.classList.contains('visible')) {
+        return true;
+      }
       openBikeTrailExplorer();
       return true;
     }

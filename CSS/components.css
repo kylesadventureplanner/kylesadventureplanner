@@ -283,6 +283,38 @@ header h1 {
   gap: 8px;
 }
 
+/* Trail Explorer: restored preset hint badge row */
+.bike-explorer-restored-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.bike-explorer-restored-label,
+.bike-explorer-restored-name {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.bike-explorer-restored-label {
+  border: 1px solid var(--trail-explorer-restored-label-border);
+  background: var(--trail-explorer-restored-label-bg);
+  color: var(--trail-explorer-restored-label-text);
+  font-weight: 700;
+}
+
+.bike-explorer-restored-name {
+  border: 1px solid var(--trail-explorer-restored-name-border);
+  background: var(--trail-explorer-restored-name-bg);
+  color: var(--trail-explorer-restored-name-text);
+  font-weight: 600;
+}
+
 /* ============================================================
    TOOLTIPS
 ============================================================ */
