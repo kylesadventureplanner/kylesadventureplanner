@@ -1495,10 +1495,49 @@
     return '';
   }
 
+  function isTrailCityResultsMode() {
+    const tabRoot = document.getElementById('bikeTrailsTab');
+    return !!(tabRoot && tabRoot.classList.contains('trail-city-results-mode'));
+  }
+
   function buildBikeTrailCardHtml(trail) {
     const sourceIndex = Number(trail.sourceIndex || 0);
     const displayTags = getBikeDisplayTags(trail).slice(0, 4);
     const description = buildBikeCardDescriptionHtml(trail.notes || trail.vibes || trail.highlights || '');
+
+    if (isTrailCityResultsMode()) {
+      const shortDescription = escapeHtml(String(trail.notes || trail.vibes || trail.highlights || '').trim());
+      const clippedDescription = shortDescription.length > 420
+        ? `${shortDescription.slice(0, 420).trim()}...`
+        : shortDescription;
+      const hasDescription = String(trail.notes || trail.vibes || trail.highlights || '').trim().length > 0;
+
+      return `
+        <article class="loc-card bike-trail-card" data-bike-source-index="${sourceIndex}" tabindex="0" role="button" aria-label="Open ${escapeHtml(trail.name || 'trail')} details">
+          <div class="loc-card-header">
+            <div class="loc-card-name">${escapeHtml(trail.name || 'Bike Trail')}</div>
+            <div class="loc-card-meta">
+              ${trail.difficulty ? `<span class="loc-meta-badge">${escapeHtml(trail.difficulty)}</span>` : ''}
+              ${trail.cost ? `<span class="loc-meta-badge cost">${escapeHtml(trail.cost)}</span>` : ''}
+              ${trail.myRating ? `<span class="loc-meta-badge rating">⭐ ${escapeHtml(String(trail.myRating))}</span>` : ''}
+            </div>
+          </div>
+          ${displayTags.length ? `<div class="loc-card-tags">${displayTags.map((tag) => `<span class="loc-tag-pill">${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
+          <div class="loc-card-details">
+            <div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escapeHtml(trail.driveTime || 'Drive time unavailable')}</span></div>
+            <div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escapeHtml(trail.lengthMiles ? `${trail.lengthMiles} mi` : 'Length not listed')}</span></div>
+            <div class="loc-detail-row"><span class="loc-detail-icon">🛣️</span><span class="loc-detail-value">${escapeHtml(trail.surface || 'Surface not listed')}</span></div>
+            <div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escapeHtml([trail.city, trail.state].filter(Boolean).join(', ') || trail.region || 'Location unavailable')}</span></div>
+          </div>
+          ${hasDescription ? `<div class="loc-card-description">${clippedDescription}</div>` : ''}
+          <div class="loc-card-footer">
+            ${trail.officialLink1 ? `<a class="loc-action-btn" href="${escapeHtml(trail.officialLink1)}" target="_blank" rel="noopener">🌐 Website</a>` : ''}
+            ${trail.mapsLink ? `<a class="loc-action-btn" href="${escapeHtml(trail.mapsLink)}" target="_blank" rel="noopener">🗺️ Trail Map</a>` : ''}
+            <button type="button" class="loc-action-btn" onclick="event.stopPropagation(); window.openBikeTrailDetailsInNewTab(${sourceIndex});">Open Details</button>
+          </div>
+        </article>
+      `;
+    }
 
     return `
       <article class="adventure-card bike-trail-card" data-bike-source-index="${sourceIndex}" tabindex="0" role="button" aria-label="Open ${escapeHtml(trail.name || 'trail')} details">

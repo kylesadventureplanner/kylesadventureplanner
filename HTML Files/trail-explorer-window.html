@@ -294,21 +294,68 @@
     }
 
     .trail-results-filters {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 8px;
       margin-bottom: 14px;
       background: #fff;
       border: 1px solid #e5e7eb;
       border-radius: 12px;
-      padding: 16px;
+      padding: 16px 20px;
+    }
+
+    .trail-presets-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .trail-preset-input,
+    .trail-preset-select {
+      padding: 7px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 12px;
+      min-width: 140px;
+      background: #fff;
+      color: #374151;
+    }
+
+    .trail-mini-btn {
+      padding: 7px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #fff;
+      color: #111827;
+      cursor: pointer;
+    }
+
+    .trail-mini-btn:hover {
+      border-color: #667eea;
+      color: #667eea;
+    }
+
+    .trail-mini-btn.success {
+      border-color: #86efac;
+      color: #166534;
+    }
+
+    .trail-results-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
     }
 
     .trail-results-filters label {
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       color: #6b7280;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
       margin-bottom: 4px;
       display: block;
     }
@@ -340,6 +387,45 @@
       background: #fef2f2;
     }
 
+    .trail-quick-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .trail-tag-btn {
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 2px solid #e5e7eb;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #374151;
+    }
+
+    .trail-tag-btn:hover {
+      border-color: #667eea;
+      color: #667eea;
+    }
+
+    .trail-tag-btn.active {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .trail-results-bottom-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      border-top: 1px solid #f3f4f6;
+      padding-top: 10px;
+    }
+
     .trail-empty {
       border: 1px dashed #d1d5db;
       border-radius: 12px;
@@ -367,6 +453,237 @@
     #bikeTrailsTab.trail-city-results-mode .table-card .card-subtitle,
     #bikeTrailsTab.trail-city-results-mode #bikeMetadataDebugLine {
       display: none !important;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .table-card {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .table-card > .card-header {
+      display: none;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .view-controls {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .sort-label {
+      font-size: 12px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .sort-select,
+    #bikeTrailsTab.trail-city-results-mode .sort-order-btn {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .sort-order-btn {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .trail-sort-reset-btn {
+      padding: 7px 14px;
+      background: #fff;
+      border: 1px solid #fca5a5;
+      color: #dc2626;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .trail-sort-reset-btn:hover {
+      background: #fef2f2;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .results-count {
+      margin-left: auto;
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .adventure-cards-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 0;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 18px 20px;
+      transition: all 0.2s;
+      cursor: pointer;
+      box-shadow: none;
+      animation: none;
+      transform: none;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 6px 20px rgba(102,126,234,0.15);
+      transform: translateY(-2px);
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card::before {
+      display: none;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1f2937;
+      flex: 1;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-meta-badge {
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-meta-badge.cost {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-meta-badge.rating {
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 10px;
+      padding: 0;
+      min-height: 0;
+      background: transparent;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-tag-pill {
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 3px 9px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 6px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-detail-row {
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-detail-icon {
+      width: 16px;
+      flex-shrink: 0;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-detail-value {
+      color: #374151;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card-description {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #f3f4f6;
+      line-height: 1.5;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-card-footer {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #f3f4f6;
+      background: transparent;
+      flex-direction: row;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-action-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #374151;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .loc-action-btn:hover {
+      border-color: #667eea;
+      color: #667eea;
+      background: #f0f4ff;
     }
   </style>
 </head>
@@ -409,24 +726,46 @@
     </div>
 
     <div class="trail-results-filters">
-      <div>
-        <label for="trailResultDifficultyFilter">Difficulty</label>
-        <select id="trailResultDifficultyFilter" class="trail-results-filter-select">
-          <option value="">Any Difficulty</option>
+      <div class="trail-presets-row">
+        <input id="trailPresetName" class="trail-preset-input" type="text" placeholder="Preset name..." />
+        <select id="trailPresetScope" class="trail-preset-select">
+          <option value="city">Region Preset</option>
+          <option value="global">Global Preset</option>
         </select>
-      </div>
-      <div>
-        <label for="trailResultCostFilter">Cost</label>
-        <select id="trailResultCostFilter" class="trail-results-filter-select">
-          <option value="">Any Cost</option>
+        <button id="trailPresetSaveBtn" type="button" class="trail-mini-btn">Save Preset</button>
+        <select id="trailPresetSelect" class="trail-preset-select">
+          <option value="">Saved presets...</option>
         </select>
+        <button id="trailPresetLoadBtn" type="button" class="trail-mini-btn">Load</button>
+        <button id="trailPresetDeleteBtn" type="button" class="trail-mini-btn">Delete</button>
+        <button id="trailCopyShareBtn" type="button" class="trail-mini-btn">Copy Share Link</button>
       </div>
-      <div>
-        <label for="trailResultTagFilter">Tag</label>
-        <input id="trailResultTagFilter" class="trail-results-filter-input" type="text" placeholder="e.g. scenic, gravel" list="trailResultTagList" />
-        <datalist id="trailResultTagList"></datalist>
+
+      <div class="trail-results-controls-grid">
+        <div>
+          <label for="trailResultDifficultyFilter">Difficulty</label>
+          <select id="trailResultDifficultyFilter" class="trail-results-filter-select">
+            <option value="">Any Difficulty</option>
+          </select>
+        </div>
+        <div>
+          <label for="trailResultCostFilter">Cost</label>
+          <select id="trailResultCostFilter" class="trail-results-filter-select">
+            <option value="">Any Cost</option>
+          </select>
+        </div>
+        <div>
+          <label for="trailResultTagFilter">Filter by Tag</label>
+          <input id="trailResultTagFilter" class="trail-results-filter-input" type="text" placeholder="e.g. scenic, gravel" list="trailResultTagList" />
+          <datalist id="trailResultTagList"></datalist>
+        </div>
       </div>
-      <button id="trailResultClearFiltersBtn" type="button" class="trail-results-clear-btn">Clear City Filters</button>
+
+      <div id="trailResultQuickTags" class="trail-quick-tags"></div>
+
+      <div class="trail-results-bottom-row">
+        <button id="trailResultClearFiltersBtn" type="button" class="trail-results-clear-btn">Reset Filters</button>
+      </div>
     </div>
   </section>
 
@@ -449,12 +788,16 @@
         cost: 68,
         gpsCoordinates: 41
       };
+      var TRAIL_CITY_PRESETS_KEY_PREFIX = 'trailExplorer:cityResultPresets:v1:';
+      var TRAIL_GLOBAL_PRESETS_KEY = 'trailExplorer:cityResultPresets:global:v1';
       var cityExplorerState = {
         allTrails: [],
         cityBuckets: [],
         selectedRegion: null,
         userLocation: null,
-        hasDriveTimes: false
+        hasDriveTimes: false,
+        activeResultQuickTag: null,
+        pendingShareState: null
       };
 
       function setStatus(message) {
@@ -506,6 +849,255 @@
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
+      }
+
+      function normalizePresetName(value) {
+        return String(value || '').trim();
+      }
+
+      function getRegionPresetStorageKey() {
+        var key = normalizeLocationText(cityExplorerState.selectedRegion || 'unknown-region').replace(/[^a-z0-9_-]+/g, '-');
+        return TRAIL_CITY_PRESETS_KEY_PREFIX + key;
+      }
+
+      function readTrailPresets(storageKey) {
+        try {
+          var raw = window.localStorage.getItem(storageKey);
+          var parsed = raw ? JSON.parse(raw) : {};
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+        } catch (_) {}
+        return {};
+      }
+
+      function writeTrailPresets(storageKey, presets) {
+        window.localStorage.setItem(storageKey, JSON.stringify(presets || {}));
+      }
+
+      function getTrailResultFilterState() {
+        var difficulty = document.getElementById('trailResultDifficultyFilter');
+        var cost = document.getElementById('trailResultCostFilter');
+        var tag = document.getElementById('trailResultTagFilter');
+        return {
+          difficulty: difficulty ? String(difficulty.value || '').trim() : '',
+          cost: cost ? String(cost.value || '').trim() : '',
+          tag: tag ? String(tag.value || '').trim() : ''
+        };
+      }
+
+      function applyTrailResultFilterState(state) {
+        var next = state || {};
+        var difficulty = document.getElementById('trailResultDifficultyFilter');
+        var cost = document.getElementById('trailResultCostFilter');
+        var tag = document.getElementById('trailResultTagFilter');
+        if (difficulty) difficulty.value = String(next.difficulty || '').trim();
+        if (cost) cost.value = String(next.cost || '').trim();
+        if (tag) tag.value = String(next.tag || '').trim();
+        cityExplorerState.activeResultQuickTag = String(next.tag || '').trim().toLowerCase() || null;
+        updateTrailQuickTagUi();
+        applyCityResultFilters();
+      }
+
+      function refreshTrailPresetSelect() {
+        var select = document.getElementById('trailPresetSelect');
+        if (!select) return;
+
+        var regionPresets = readTrailPresets(getRegionPresetStorageKey());
+        var globalPresets = readTrailPresets(TRAIL_GLOBAL_PRESETS_KEY);
+        var regionNames = Object.keys(regionPresets).sort();
+        var globalNames = Object.keys(globalPresets).sort();
+
+        var options = ['<option value="">Saved presets...</option>'];
+        if (regionNames.length) {
+          options.push('<optgroup label="This Region">');
+          regionNames.forEach(function (name) {
+            options.push('<option value="city::' + esc(name) + '">📍 ' + esc(name) + '</option>');
+          });
+          options.push('</optgroup>');
+        }
+        if (globalNames.length) {
+          options.push('<optgroup label="Global">');
+          globalNames.forEach(function (name) {
+            options.push('<option value="global::' + esc(name) + '">🌐 ' + esc(name) + '</option>');
+          });
+          options.push('</optgroup>');
+        }
+
+        select.innerHTML = options.join('');
+      }
+
+      function parseTrailPresetOption(value) {
+        var v = String(value || '');
+        if (!v) return null;
+        if (v.indexOf('city::') === 0) return { scope: 'city', name: v.slice(6) };
+        if (v.indexOf('global::') === 0) return { scope: 'global', name: v.slice(8) };
+        return { scope: 'city', name: v };
+      }
+
+      function saveTrailResultPreset() {
+        var nameInput = document.getElementById('trailPresetName');
+        var scopeInput = document.getElementById('trailPresetScope');
+        if (!nameInput) return;
+        var name = normalizePresetName(nameInput.value);
+        if (!name) {
+          window.alert('Enter a preset name first.');
+          return;
+        }
+
+        var scope = scopeInput ? String(scopeInput.value || 'city') : 'city';
+        var storageKey = scope === 'global' ? TRAIL_GLOBAL_PRESETS_KEY : getRegionPresetStorageKey();
+        var presets = readTrailPresets(storageKey);
+        presets[name] = getTrailResultFilterState();
+        writeTrailPresets(storageKey, presets);
+        nameInput.value = '';
+        refreshTrailPresetSelect();
+      }
+
+      function loadSelectedTrailResultPreset() {
+        var select = document.getElementById('trailPresetSelect');
+        if (!select) return;
+        var parsed = parseTrailPresetOption(select.value);
+        if (!parsed) return;
+
+        var storageKey = parsed.scope === 'global' ? TRAIL_GLOBAL_PRESETS_KEY : getRegionPresetStorageKey();
+        var presets = readTrailPresets(storageKey);
+        if (!presets[parsed.name]) return;
+        applyTrailResultFilterState(presets[parsed.name]);
+      }
+
+      function deleteSelectedTrailResultPreset() {
+        var select = document.getElementById('trailPresetSelect');
+        if (!select) return;
+        var parsed = parseTrailPresetOption(select.value);
+        if (!parsed) return;
+
+        var storageKey = parsed.scope === 'global' ? TRAIL_GLOBAL_PRESETS_KEY : getRegionPresetStorageKey();
+        var presets = readTrailPresets(storageKey);
+        delete presets[parsed.name];
+        writeTrailPresets(storageKey, presets);
+        refreshTrailPresetSelect();
+      }
+
+      function collectTrailQuickTags(cityTrails) {
+        var counts = {};
+        (cityTrails || []).forEach(function (trail) {
+          [trail.surface, trail.moodTags, trail.vibes].forEach(function (value) {
+            String(value || '').split(',').forEach(function (rawTag) {
+              var clean = String(rawTag || '').trim().toLowerCase();
+              if (!clean) return;
+              counts[clean] = (counts[clean] || 0) + 1;
+            });
+          });
+        });
+        return Object.keys(counts)
+          .sort(function (a, b) {
+            if (counts[b] !== counts[a]) return counts[b] - counts[a];
+            return a.localeCompare(b);
+          })
+          .slice(0, 12);
+      }
+
+      function updateTrailQuickTagUi() {
+        var wrap = document.getElementById('trailResultQuickTags');
+        if (!wrap) return;
+        var active = normalizeLocationText(cityExplorerState.activeResultQuickTag || '');
+        wrap.querySelectorAll('.trail-tag-btn').forEach(function (btn) {
+          var isActive = normalizeLocationText(btn.getAttribute('data-tag') || '') === active;
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+      }
+
+      function renderTrailQuickTags(cityTrails) {
+        var wrap = document.getElementById('trailResultQuickTags');
+        if (!wrap) return;
+        var tags = collectTrailQuickTags(cityTrails);
+        if (!tags.length) {
+          wrap.innerHTML = '';
+          return;
+        }
+        wrap.innerHTML = tags.map(function (tag) {
+          var label = tag.charAt(0).toUpperCase() + tag.slice(1);
+          return '<button type="button" class="trail-tag-btn" aria-pressed="false" data-tag="' + esc(tag) + '">' + esc(label) + '</button>';
+        }).join('');
+        updateTrailQuickTagUi();
+      }
+
+      function toggleTrailQuickTag(tag) {
+        var normalized = normalizeLocationText(tag);
+        var tagInput = document.getElementById('trailResultTagFilter');
+        if (!tagInput) return;
+        if (normalizeLocationText(cityExplorerState.activeResultQuickTag) === normalized) {
+          cityExplorerState.activeResultQuickTag = null;
+          tagInput.value = '';
+        } else {
+          cityExplorerState.activeResultQuickTag = normalized;
+          tagInput.value = tag;
+        }
+        updateTrailQuickTagUi();
+        applyCityResultFilters();
+      }
+
+      function encodeShareState(stateObj) {
+        try {
+          return btoa(encodeURIComponent(JSON.stringify(stateObj || {})))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/g, '');
+        } catch (_) {
+          return '';
+        }
+      }
+
+      function decodeShareState(raw) {
+        try {
+          if (!raw) return null;
+          var normalized = String(raw).replace(/-/g, '+').replace(/_/g, '/');
+          var json = decodeURIComponent(atob(normalized));
+          return JSON.parse(json);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function parseTrailShareStateFromUrl() {
+        var params = new URLSearchParams(window.location.search || '');
+        var raw = params.get('tes');
+        return decodeShareState(raw);
+      }
+
+      function buildTrailShareLink() {
+        var payload = {
+          region: cityExplorerState.selectedRegion || '',
+          filters: getTrailResultFilterState()
+        };
+        var encoded = encodeShareState(payload);
+        var url = new URL(window.location.href);
+        if (encoded) {
+          url.searchParams.set('tes', encoded);
+        }
+        return url.toString();
+      }
+
+      function copyTrailShareLink() {
+        var btn = document.getElementById('trailCopyShareBtn');
+        var link = buildTrailShareLink();
+        if (!link) return;
+
+        Promise.resolve(
+          navigator.clipboard && navigator.clipboard.writeText
+            ? navigator.clipboard.writeText(link)
+            : Promise.reject(new Error('Clipboard unavailable'))
+        ).then(function () {
+          if (!btn) return;
+          btn.classList.add('success');
+          btn.textContent = 'Copied!';
+          setTimeout(function () {
+            btn.classList.remove('success');
+            btn.textContent = 'Copy Share Link';
+          }, 1200);
+        }).catch(function () {
+          window.prompt('Copy this link:', link);
+        });
       }
 
       function waitFor(checkFn, timeoutMs) {
@@ -810,6 +1402,9 @@
         costEl.value = '';
         var tagInput = document.getElementById('trailResultTagFilter');
         if (tagInput) tagInput.value = '';
+        cityExplorerState.activeResultQuickTag = null;
+        renderTrailQuickTags(cityTrails);
+        refreshTrailPresetSelect();
       }
 
       function applyCityResultFilters() {
@@ -830,6 +1425,9 @@
         if (costInput) costInput.value = cost ? String(cost.value || '').trim() : '';
         if (tagInput) tagInput.value = tag ? String(tag.value || '').trim() : '';
 
+        cityExplorerState.activeResultQuickTag = tag ? normalizeLocationText(tag.value) || null : null;
+        updateTrailQuickTagUi();
+
         if (typeof window.applyBikeFilters === 'function') window.applyBikeFilters();
         updateResultsSubtitle();
       }
@@ -841,6 +1439,8 @@
         if (difficulty) difficulty.value = '';
         if (cost) cost.value = '';
         if (tag) tag.value = '';
+        cityExplorerState.activeResultQuickTag = null;
+        updateTrailQuickTagUi();
         applyCityResultFilters();
       }
 
@@ -849,6 +1449,37 @@
         if (!subtitle) return;
         var count = Array.isArray(window.bikeFilteredTrails) ? window.bikeFilteredTrails.length : 0;
         subtitle.textContent = count + (count === 1 ? ' location' : ' locations') + ' in this region';
+      }
+
+      function ensureTrailSortRowUi() {
+        var tabRoot = document.getElementById('bikeTrailsTab');
+        if (!tabRoot || !tabRoot.classList.contains('trail-city-results-mode')) return;
+
+        var controls = tabRoot.querySelector('.view-controls');
+        var sortControls = controls ? controls.querySelector('.sort-controls') : null;
+        if (!controls || !sortControls) return;
+
+        var resetBtn = document.getElementById('trailSortResetBtn');
+        if (!resetBtn) {
+          resetBtn = document.createElement('button');
+          resetBtn.id = 'trailSortResetBtn';
+          resetBtn.type = 'button';
+          resetBtn.className = 'trail-sort-reset-btn';
+          resetBtn.textContent = 'Reset Filters';
+          sortControls.appendChild(resetBtn);
+        } else if (resetBtn.parentElement !== sortControls) {
+          sortControls.appendChild(resetBtn);
+        }
+
+        if (resetBtn.dataset.bound !== '1') {
+          resetBtn.addEventListener('click', clearCityResultFilters);
+          resetBtn.dataset.bound = '1';
+        }
+
+        var resultsCount = document.getElementById('bikeResultsCount');
+        if (resultsCount && resultsCount.parentElement !== controls) {
+          controls.appendChild(resultsCount);
+        }
       }
 
       function showCityResults(region) {
@@ -868,13 +1499,22 @@
           tabRoot.classList.add('trail-city-results-mode');
         }
 
+        ensureTrailSortRowUi();
+
         clearBikeFiltersForCityResults();
         populateCityResultFilters();
+
+        var pending = cityExplorerState.pendingShareState;
+        if (pending && normalizeLocationText(pending.region) === normalizeLocationText(cityExplorerState.selectedRegion)) {
+          applyTrailResultFilterState(pending.filters || {});
+          cityExplorerState.pendingShareState = null;
+        }
 
         var regionInput = document.getElementById('bikeFilterRegion');
         if (regionInput) regionInput.value = cityExplorerState.selectedRegion;
 
         applyCityResultFilters();
+        ensureTrailSortRowUi();
         document.title = 'Trail Explorer - ' + (title ? title.textContent : cityExplorerState.selectedRegion);
       }
 
@@ -888,6 +1528,8 @@
           tabRoot.classList.add('hidden');
           tabRoot.classList.remove('trail-city-results-mode');
         }
+        cityExplorerState.activeResultQuickTag = null;
+        updateTrailQuickTagUi();
         clearCityResultFilters();
         document.title = BASE_TITLE;
       }
@@ -965,14 +1607,54 @@
 
         var tagFilter = document.getElementById('trailResultTagFilter');
         if (tagFilter && tagFilter.dataset.bound !== '1') {
-          tagFilter.addEventListener('input', applyCityResultFilters);
+          tagFilter.addEventListener('input', function () {
+            if (!String(tagFilter.value || '').trim()) {
+              cityExplorerState.activeResultQuickTag = null;
+              updateTrailQuickTagUi();
+            }
+            applyCityResultFilters();
+          });
           tagFilter.dataset.bound = '1';
+        }
+
+        var quickTags = document.getElementById('trailResultQuickTags');
+        if (quickTags && quickTags.dataset.bound !== '1') {
+          quickTags.addEventListener('click', function (event) {
+            var btn = event.target && event.target.closest ? event.target.closest('.trail-tag-btn') : null;
+            if (!btn) return;
+            toggleTrailQuickTag(btn.getAttribute('data-tag') || '');
+          });
+          quickTags.dataset.bound = '1';
         }
 
         var clearFiltersBtn = document.getElementById('trailResultClearFiltersBtn');
         if (clearFiltersBtn && clearFiltersBtn.dataset.bound !== '1') {
           clearFiltersBtn.addEventListener('click', clearCityResultFilters);
           clearFiltersBtn.dataset.bound = '1';
+        }
+
+        var savePresetBtn = document.getElementById('trailPresetSaveBtn');
+        if (savePresetBtn && savePresetBtn.dataset.bound !== '1') {
+          savePresetBtn.addEventListener('click', saveTrailResultPreset);
+          savePresetBtn.dataset.bound = '1';
+        }
+
+        var loadPresetBtn = document.getElementById('trailPresetLoadBtn');
+        if (loadPresetBtn && loadPresetBtn.dataset.bound !== '1') {
+          loadPresetBtn.addEventListener('click', loadSelectedTrailResultPreset);
+          loadPresetBtn.dataset.bound = '1';
+        }
+
+        var deletePresetBtn = document.getElementById('trailPresetDeleteBtn');
+        if (deletePresetBtn && deletePresetBtn.dataset.bound !== '1') {
+          deletePresetBtn.addEventListener('click', deleteSelectedTrailResultPreset);
+          deletePresetBtn.dataset.bound = '1';
+        }
+
+        var copyShareBtn = document.getElementById('trailCopyShareBtn');
+        if (copyShareBtn && copyShareBtn.dataset.bound !== '1') {
+          copyShareBtn.addEventListener('click', copyTrailShareLink);
+          copyShareBtn.dataset.bound = '1';
         }
       }
 
@@ -989,6 +1671,11 @@
         if (citiesPage) citiesPage.classList.remove('hidden');
 
         renderCityCards();
+
+        if (cityExplorerState.pendingShareState && cityExplorerState.pendingShareState.region) {
+          showCityResults(cityExplorerState.pendingShareState.region);
+          return;
+        }
 
         if (!cityExplorerState.cityBuckets.length) {
           var grid = document.getElementById('trailCityGrid');
@@ -1052,6 +1739,7 @@
            };
 
           bindHeaderActions();
+          cityExplorerState.pendingShareState = parseTrailShareStateFromUrl();
 
           await loadScript('../JS Files/bike-trails-tab-system.js');
           await loadScript('../JS Files/button-handlers.js');
