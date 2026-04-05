@@ -178,6 +178,13 @@ class TabContentLoader {
         priority: 6,
         preload: false,
         isInlineContent: false
+      },
+      'visited-locations': {
+        file: 'visited-locations-tab.html',
+        element: 'visitedLocationsTab',
+        priority: 7,
+        preload: false,
+        isInlineContent: false
       }
     };
 
@@ -549,6 +556,11 @@ class TabContentLoader {
       case 'budget':
         if (typeof window.initBudgetTab === 'function') {
           window.initBudgetTab();
+        }
+        break;
+      case 'visited-locations':
+        if (typeof window.initVisitedLocationsTab === 'function') {
+          window.initVisitedLocationsTab();
         }
         break;
     }

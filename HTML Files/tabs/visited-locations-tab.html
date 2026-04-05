@@ -1,0 +1,270 @@
+<!-- VISITED LOCATIONS TAB CONTENT -->
+<!-- Gamified tracker + smart recommendations -->
+
+<div id="visitedLocationsRoot">
+  <header>
+    <h1>Visited Adventures</h1>
+    <div class="planner-top-actions">
+      <button id="visitedRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh tracker data" data-tooltip="Refresh tracker data">
+        🔄 Refresh Tracker
+      </button>
+      <select id="visitedWeatherMode" class="filter-select" title="Choose weather mode for recommendations" style="max-width: 240px;">
+        <option value="auto">🌦️ Auto Weather Mode</option>
+        <option value="sunny">☀️ Sunny</option>
+        <option value="rainy">🌧️ Rainy</option>
+        <option value="cold">❄️ Cold</option>
+        <option value="hot">🔥 Hot</option>
+        <option value="cloudy">☁️ Cloudy</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="card" style="margin-top: 10px;">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🎮 Your Adventure Quest</div>
+        <div class="card-subtitle" id="visitedDataStatus">Loading adventures...</div>
+      </div>
+    </div>
+    <div id="visitedSummaryStats" class="visited-summary-grid"></div>
+    <div class="visited-level-track">
+      <div id="visitedLevelBarFill" class="visited-level-fill"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📊 Category Progress</div>
+      <div class="card-subtitle">Track the categories you asked for and level up each one.</div>
+    </div>
+    <div id="visitedCategoryGrid" class="visited-category-grid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🏁 Challenges</div>
+      <div class="card-subtitle">Complete challenge cards to stack XP and unlock bragging rights.</div>
+    </div>
+    <div id="visitedChallengeGrid" class="visited-challenge-grid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🧠 Smart Adventure Suggestions</div>
+        <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
+      </div>
+    </div>
+    <div id="visitedSuggestionList" class="adventure-cards-grid" style="padding: 8px 0;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🕓 Recent Check-Ins</div>
+      <div class="card-subtitle">Your newest visits at a glance.</div>
+    </div>
+    <div id="visitedRecentList" class="visited-recent-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">🗂️ Visit Tracker</div>
+        <div class="card-subtitle">Search your adventures and quickly mark places as visited.</div>
+      </div>
+      <div>
+        <label for="visitedSearchInput" style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">Search adventures</label>
+        <input id="visitedSearchInput" class="filter-input" type="text" placeholder="Search by name, city, state, or tags..." style="max-width: 340px;" />
+      </div>
+    </div>
+    <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
+  </div>
+</div>
+
+<style>
+  #visitedLocationsRoot .visited-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+  }
+
+  #visitedLocationsRoot .visited-stat-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 12px;
+  }
+
+  #visitedLocationsRoot .visited-stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+  }
+
+  #visitedLocationsRoot .visited-stat-value {
+    margin-top: 6px;
+    font-size: 24px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  #visitedLocationsRoot .visited-stat-sub {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  #visitedLocationsRoot .visited-level-track {
+    margin-top: 12px;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+  }
+
+  #visitedLocationsRoot .visited-level-fill {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
+    transition: width 0.3s ease;
+  }
+
+  #visitedLocationsRoot .visited-category-grid,
+  #visitedLocationsRoot .visited-challenge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  #visitedLocationsRoot .visited-category-card,
+  #visitedLocationsRoot .visited-challenge-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    background: #fff;
+  }
+
+  #visitedLocationsRoot .visited-challenge-card.completed {
+    border-color: #86efac;
+    background: #f0fdf4;
+  }
+
+  #visitedLocationsRoot .visited-category-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  #visitedLocationsRoot .visited-category-title,
+  #visitedLocationsRoot .visited-challenge-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  #visitedLocationsRoot .visited-category-meta,
+  #visitedLocationsRoot .visited-challenge-progress,
+  #visitedLocationsRoot .visited-challenge-tip {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  #visitedLocationsRoot .visited-progress-track {
+    margin-top: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+  }
+
+  #visitedLocationsRoot .visited-progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  #visitedLocationsRoot .visited-suggestion-card {
+    min-height: 250px;
+  }
+
+  #visitedLocationsRoot .visited-pill-row,
+  #visitedLocationsRoot .visited-reason-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #visitedLocationsRoot .visited-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #374151;
+    background: #f3f4f6;
+  }
+
+  #visitedLocationsRoot .visited-pill.open {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  #visitedLocationsRoot .visited-pill.closed {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  #visitedLocationsRoot .visited-recent-list,
+  #visitedLocationsRoot .visited-catalog-list {
+    display: grid;
+    gap: 8px;
+  }
+
+  #visitedLocationsRoot .visited-recent-item,
+  #visitedLocationsRoot .visited-catalog-row {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+  }
+
+  #visitedLocationsRoot .visited-catalog-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  #visitedLocationsRoot .visited-catalog-meta {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  #visitedLocationsRoot .visited-empty {
+    padding: 20px;
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+    background: #f9fafb;
+  }
+</style>
+
+<script>
+  window.initVisitedLocationsTab = function() {
+    if (typeof window.initializeVisitedLocationsTab === 'function') {
+      window.initializeVisitedLocationsTab();
+      return;
+    }
+    console.log('✅ Visited Locations tab initialized (UI only)');
+  };
+</script>
+
