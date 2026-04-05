@@ -40,7 +40,7 @@ Current check:
 
 - [ ] Remove inline `<style>` blocks where equivalent CSS can live in shared files.
 - [x] Remove inline `<style>` blocks where equivalent CSS can live in shared files.
-- [ ] Remove `style="..."` attributes for layout/visibility and replace with class-based styling.
+- [x] Remove `style="..."` attributes for layout/visibility and replace with class-based styling (completed for `HTML Files/edit-mode-new.html`).
 - [ ] Leave truly dynamic values inline only when they cannot be represented with classes.
 
 ## 6) Pilot migration recipe (completed on Trail Explorer)
@@ -54,7 +54,7 @@ Reference file: `HTML Files/trail-explorer-window.html`
 
 ## 7) Next rollout targets
 
-1. `HTML Files/edit-mode-new.html` (inline `<style>` block completed; inline `style="..."` attributes remain).
+1. `HTML Files/edit-mode-new.html` (inline `<style>` and inline `style="..."` attributes completed).
 2. `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html`.
 3. `HTML Files/adventure-details-window.html` and `HTML Files/bike-details-window.html`.
 4. Tabs under `HTML Files/tabs/` after shell/component patterns are stable.

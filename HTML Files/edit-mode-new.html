@@ -13,16 +13,7 @@
 </head>
 <body>
   <!-- Toast Notifications Container -->
-  <div id="toastContainer" style="
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 10000;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-width: 400px;
-  "></div>
+  <div id="toastContainer" class="toast-container"></div>
 
   <header class="app-header">
     <div class="header-left">
@@ -50,16 +41,16 @@
         <div class="card-header">
           <div class="card-title">💾 Backup Your Data</div>
         </div>
-        <div style="padding: 16px;">
-          <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+        <div class="edit-section-body">
+          <p class="edit-lead-text">
             Create a timestamped backup of all your app files including HTML, JavaScript, CSS, and your Excel data file.
             Backups are saved locally and can be restored later if needed.
           </p>
-          <button class="button button-primary" onclick="performBackup()" style="width: 100%; padding: 12px;">
+          <button class="button button-primary edit-action-btn" onclick="performBackup()">
             🚀 Create Backup Now
           </button>
-          <div id="backup-status" style="margin-top: 16px;"></div>
-          <div id="backup-history" style="margin-top: 16px;"></div>
+          <div id="backup-status" class="edit-status-slot-lg"></div>
+          <div id="backup-history" class="edit-status-slot-lg"></div>
         </div>
       </div>
     </div>
@@ -70,86 +61,86 @@
         <div class="card-header">
           <div class="card-title">🔄 Google Places Automation</div>
         </div>
-        <div style="padding: 16px;">
-          <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+        <div class="edit-section-body">
+          <p class="edit-lead-text">
             Automate your location data management with Google Places API integration.
           </p>
 
           <!-- Auto-Tag All Locations -->
-          <div class="card" style="border: 1px solid #60a5fa; background: #f0f9ff;">
+          <div class="card edit-subcard-blue-soft">
             <div class="card-header">
-              <div class="card-title" style="color: #1e40af;">🏷️ Auto-Tag All Locations</div>
+              <div class="card-title edit-title-blue">🏷️ Auto-Tag All Locations</div>
             </div>
-            <div style="padding: 12px;">
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+            <div class="edit-subsection-body">
+              <p class="edit-help-text">
                 Automatically generate tag recommendations for all your locations based on their Google Places data.
               </p>
               <div class="input-group">
                 <label>
                   <input type="checkbox" id="dryRunToggle" checked>
-                  <span style="font-weight: 600;">Dry Run (preview changes before applying)</span>
+                  <span class="edit-text-strong">Dry Run (preview changes before applying)</span>
                 </label>
               </div>
-              <button class="button button-primary" onclick="autoTagAllLocations()" style="width: 100%; padding: 12px;">
+              <button class="button button-primary edit-action-btn" onclick="autoTagAllLocations()">
                 🏷️ Auto-Tag All Locations
               </button>
-              <div id="autotag-status" style="margin-top: 12px;"></div>
+              <div id="autotag-status" class="edit-status-slot"></div>
             </div>
           </div>
 
           <!-- Batch Add Chain Locations -->
-          <div class="card" style="border: 1px solid #fbbf24; background: #fffbeb; margin-top: 12px;">
+          <div class="card edit-subcard-amber mt-3">
             <div class="card-header">
-              <div class="card-title" style="color: #92400e;">⛓️ Bulk Add Chain Locations</div>
+              <div class="card-title edit-title-amber">⛓️ Bulk Add Chain Locations</div>
             </div>
-            <div style="padding: 12px;">
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+            <div class="edit-subsection-body">
+              <p class="edit-help-text">
                 Add multiple locations by their Google Place IDs. Paste one Place ID per line.
               </p>
               <div class="input-group">
                 <label>Google Place IDs (one per line):</label>
                 <textarea id="placeIdsInput" rows="4" placeholder="ChIJV4ak4OsDVIYRIA96j1TFUAM&#10;ChIJ...&#10;ChIJ..."></textarea>
               </div>
-              <button class="button button-primary" onclick="batchAddChainLocations()" style="width: 100%; padding: 12px;">
+              <button class="button button-primary edit-action-btn" onclick="batchAddChainLocations()">
                 ⛓️ Add Chain Locations
               </button>
-              <div id="batch-add-status" style="margin-top: 12px;"></div>
+              <div id="batch-add-status" class="edit-status-slot"></div>
             </div>
           </div>
 
           <!-- Refresh Place IDs -->
-          <div class="card" style="border: 1px solid #6ee7b7; background: #ecfdf5; margin-top: 12px;">
+          <div class="card edit-subcard-green mt-3">
             <div class="card-header">
-              <div class="card-title" style="color: #065f46;">🔄 Refresh Google Place IDs</div>
+              <div class="card-title edit-title-green">🔄 Refresh Google Place IDs</div>
             </div>
-            <div style="padding: 12px;">
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+            <div class="edit-subsection-body">
+              <p class="edit-help-text">
                 Refresh Place IDs for all locations to ensure data is up-to-date with Google Places.
               </p>
-              <button class="button button-primary" onclick="refreshPlaceIds()" style="width: 100%; padding: 12px;">
+              <button class="button button-primary edit-action-btn" onclick="refreshPlaceIds()">
                 🔄 Refresh Place IDs
               </button>
-              <div id="refresh-status" style="margin-top: 12px;"></div>
+              <div id="refresh-status" class="edit-status-slot"></div>
             </div>
           </div>
 
           <!-- Search by Place ID -->
-          <div class="card" style="border: 1px solid #60a5fa; background: #dbeafe; margin-top: 12px;">
+          <div class="card edit-subcard-blue mt-3">
             <div class="card-header">
-              <div class="card-title" style="color: #1e40af;">🔍 Search by Place ID</div>
+              <div class="card-title edit-title-blue">🔍 Search by Place ID</div>
             </div>
-            <div style="padding: 12px;">
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+            <div class="edit-subsection-body">
+              <p class="edit-help-text">
                 Search for a location by its Google Place ID.
               </p>
               <div class="input-group">
                 <label>Google Place ID:</label>
                 <input type="text" id="searchPlaceId" placeholder="Enter Place ID...">
               </div>
-              <button class="button button-primary" onclick="searchByPlaceId()" style="width: 100%; padding: 12px;">
+              <button class="button button-primary edit-action-btn" onclick="searchByPlaceId()">
                 🔍 Search
               </button>
-              <div id="search-status" style="margin-top: 12px;"></div>
+              <div id="search-status" class="edit-status-slot"></div>
             </div>
           </div>
         </div>
@@ -163,18 +154,18 @@
         <div class="card-header">
           <div class="card-title">➕ Add New Places</div>
         </div>
-        <div style="padding: 16px;">
-          <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+        <div class="edit-section-body">
+          <p class="edit-lead-text">
             Add new locations to your adventure finder. You can add a single place or multiple places at once.
           </p>
 
           <!-- Add Single Place -->
-          <div class="card" style="border: 1px solid #3b82f6; background: #eff6ff; margin-bottom: 12px;">
+          <div class="card edit-subcard-blue-vivid mb-3">
             <div class="card-header">
-              <div class="card-title" style="color: #1e40af;">➕ Add Single Place</div>
+              <div class="card-title edit-title-blue">➕ Add Single Place</div>
             </div>
-            <div style="padding: 12px;">
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+            <div class="edit-subsection-body">
+              <p class="edit-help-text">
                 Add a single location by entering the place name, Google Place ID, or website.
               </p>
               <div class="input-group">
@@ -189,50 +180,50 @@
                 <label>Website URL (optional):</label>
                 <input type="url" id="singlePlaceWebsite" placeholder="e.g., https://example.com">
               </div>
-              <button class="button button-primary" onclick="addSinglePlace()" style="width: 100%; padding: 12px;">
+              <button class="button button-primary edit-action-btn" onclick="addSinglePlace()">
                 ➕ Add Place
               </button>
-              <div id="single-place-status" style="margin-top: 12px;"></div>
+              <div id="single-place-status" class="edit-status-slot"></div>
             </div>
           </div>
 
           <!-- Bulk Add Places -->
-          <div class="card" style="border: 1px solid #8b5cf6; background: #faf5ff; margin-bottom: 12px;">
+          <div class="card edit-subcard-violet mb-3">
             <div class="card-header">
-              <div class="card-title" style="color: #6d28d9;">📦 Bulk Add Places</div>
+              <div class="card-title edit-title-violet">📦 Bulk Add Places</div>
             </div>
-            <div style="padding: 12px;">
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+            <div class="edit-subsection-body">
+              <p class="edit-help-text">
                 Add multiple locations at once. Enter place names, one per line.
               </p>
               <div class="input-group">
                 <label>Place Names (one per line):</label>
                 <textarea id="bulkPlaceNames" rows="4" placeholder="Starbucks Downtown&#10;Local Coffee Shop&#10;Restaurant Name..."></textarea>
               </div>
-              <button class="button button-primary" onclick="bulkAddPlaces()" style="width: 100%; padding: 12px;">
+              <button class="button button-primary edit-action-btn" onclick="bulkAddPlaces()">
                 📦 Add Multiple Places
               </button>
-              <div id="bulk-place-status" style="margin-top: 12px;"></div>
+              <div id="bulk-place-status" class="edit-status-slot"></div>
             </div>
           </div>
 
           <!-- Find Similar Locations -->
-          <div class="card" style="border: 1px solid #ec4899; background: #fdf2f8; margin-bottom: 12px;">
+          <div class="card edit-subcard-pink mb-3">
             <div class="card-header">
-              <div class="card-title" style="color: #be185d;">🔍 Find Similar Locations</div>
+              <div class="card-title edit-title-pink">🔍 Find Similar Locations</div>
             </div>
-            <div style="padding: 12px;">
-              <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px;">
+            <div class="edit-subsection-body">
+              <p class="edit-help-text">
                 Search for locations similar to one in your list.
               </p>
               <div class="input-group">
                 <label>Location Name or ID:</label>
                 <input type="text" id="similarSearchInput" placeholder="Search for a location...">
               </div>
-              <button class="button button-primary" onclick="findSimilarLocations()" style="width: 100%; padding: 12px;">
+              <button class="button button-primary edit-action-btn" onclick="findSimilarLocations()">
                 🔍 Find Similar
               </button>
-              <div id="similar-status" style="margin-top: 12px;"></div>
+              <div id="similar-status" class="edit-status-slot"></div>
             </div>
           </div>
         </div>
@@ -245,8 +236,8 @@
         <div class="card-header">
           <div class="card-title">📅 Location History</div>
         </div>
-        <div style="padding: 16px;">
-          <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+        <div class="edit-section-body">
+          <p class="edit-lead-text">
             View locations sorted by when they were added to the app.
           </p>
           <div class="button-group">
@@ -254,7 +245,7 @@
             <button class="button button-secondary" onclick="sortLocationsByOldest()">🕐 Oldest First</button>
             <button class="button button-secondary" onclick="sortLocationsByName()">📝 Alphabetical</button>
           </div>
-          <div id="history-list" style="margin-top: 16px;"></div>
+          <div id="history-list" class="edit-status-slot-lg"></div>
         </div>
       </div>
     </div>
