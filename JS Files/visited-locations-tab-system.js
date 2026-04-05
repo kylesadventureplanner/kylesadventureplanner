@@ -77,6 +77,12 @@
     categoryFilter: 'all',
     challengeState: {},
     metaState: {},
+    latestLocations: [],
+    bikeLoadRequested: false,
+    visitedColumnIndexCache: {
+      adventure: null,
+      bike: null
+    },
     lastRenderAt: null
   };
 
@@ -86,6 +92,20 @@
 
   function norm(value) {
     return String(value || '').trim().toLowerCase();
+  }
+
+  function parseVisitedFlag(value) {
+    const text = norm(value);
+    if (!text) return false;
+    return ['yes', 'y', 'true', '1', 'visited', 'done', 'x'].some(flag => text === flag || text.includes(flag));
+  }
+
+  function encodeGraphPath(filePath) {
+    return String(filePath || '')
+      .split('/')
+      .filter(Boolean)
+      .map(part => encodeURIComponent(part))
+      .join('/');
   }
 
   function escapeHtml(value) {
@@ -231,6 +251,84 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   }
 
+  async function resolveTableVisitedColumnIndex(filePath, tableName, cacheKey) {
+    if (Number.isInteger(state.visitedColumnIndexCache[cacheKey])) {
+      return state.visitedColumnIndexCache[cacheKey];
+    }
+
+    if (!window.accessToken || !filePath || !tableName) {
+      return -1;
+    }
+
+    try {
+      const encodedPath = encodeGraphPath(filePath);
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/columns?$select=name,index`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) return -1;
+
+      const payload = await response.json().catch(() => ({}));
+      const columns = Array.isArray(payload.value) ? payload.value : [];
+      const match = columns.find((col, idx) => norm(col?.name) === 'visited');
+
+      if (!match) {
+        state.visitedColumnIndexCache[cacheKey] = -1;
+        return -1;
+      }
+
+      const index = Number.isInteger(match.index)
+        ? match.index
+        : columns.findIndex(col => norm(col?.name) === 'visited');
+
+      state.visitedColumnIndexCache[cacheKey] = Number.isInteger(index) ? index : -1;
+      return state.visitedColumnIndexCache[cacheKey];
+    } catch (error) {
+      return -1;
+    }
+  }
+
+  async function resolveAdventureVisitedColumnIndex() {
+    if (Number.isInteger(state.visitedColumnIndexCache.adventure)) {
+      return state.visitedColumnIndexCache.adventure;
+    }
+
+    const filePath = window.filePath || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+    const tableName = window.tableName || 'MyList';
+    return await resolveTableVisitedColumnIndex(filePath, tableName, 'adventure');
+  }
+
+  async function resolveBikeVisitedColumnIndex() {
+    const direct = typeof window.getBikeColumnIndexByName === 'function'
+      ? Number(window.getBikeColumnIndexByName('Visited'))
+      : -1;
+
+    if (Number.isInteger(direct) && direct >= 0) {
+      state.visitedColumnIndexCache.bike = direct;
+      return direct;
+    }
+
+    if (Number.isInteger(state.visitedColumnIndexCache.bike)) {
+      return state.visitedColumnIndexCache.bike;
+    }
+
+    const filePath = window.bikeTableConfig?.filePath || 'Copilot_Apps/Kyles_Adventure_Finder/Bike_Trail_Planner.xlsx';
+    const tableName = window.bikeTableConfig?.tableRef || window.bikeTableConfig?.tableName || 'BikeTrails';
+    return await resolveTableVisitedColumnIndex(filePath, tableName, 'bike');
+  }
+
+  function getKnownAdventureVisitedColumnIndex() {
+    return Number.isInteger(state.visitedColumnIndexCache.adventure) ? state.visitedColumnIndexCache.adventure : -1;
+  }
+
+  function getKnownBikeVisitedColumnIndex() {
+    return Number.isInteger(state.visitedColumnIndexCache.bike) ? state.visitedColumnIndexCache.bike : -1;
+  }
+
   function parseAdventure(adventure, index) {
     const values = adventure?.values?.[0] || adventure?.row?.values?.[0] || null;
     if (!Array.isArray(values)) return null;
@@ -239,9 +337,12 @@
     const name = String(values[0] || 'Unknown').trim();
     const placeId = String(values[1] || '').trim();
 
+    const visitedIdx = getKnownAdventureVisitedColumnIndex();
+    const visitedCell = visitedIdx >= 0 ? values[visitedIdx] : undefined;
+
     return {
       index,
-      id: placeId || name,
+      id: `adv:${placeId || name || adventure?.rowId || index}`,
       placeId,
       name,
       tags: rawTags,
@@ -251,13 +352,120 @@
       state: String(values[9] || '').trim(),
       city: String(values[10] || '').trim(),
       cost: String(values[14] || '').trim(),
-      description: String(values[16] || '').trim()
+      description: String(values[16] || '').trim(),
+      sourceType: 'adventure',
+      sourceIndex: index,
+      rowId: adventure?.rowId || null,
+      rowValues: values,
+      excelVisitedKnown: visitedIdx >= 0,
+      excelVisited: parseVisitedFlag(visitedCell)
     };
   }
 
   function readAdventures() {
     const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
     return rows.map(parseAdventure).filter(Boolean);
+  }
+
+  function parseBikeTrailToLocation(trail, fallbackIndex) {
+    const sourceIndex = Number.isInteger(trail?.sourceIndex) ? trail.sourceIndex : fallbackIndex;
+    const tags = [
+      trail?.surface,
+      trail?.difficulty,
+      trail?.rideTypeClassification,
+      trail?.vibes,
+      ...(String(trail?.moodTags || '').split(',').map(item => item.trim()))
+    ]
+      .map(item => norm(item))
+      .filter(Boolean);
+
+    const bikeVisitedIdx = getKnownBikeVisitedColumnIndex();
+    const bikeValues = trail?.row?.values?.[0];
+    const bikeVisitedCell = (bikeVisitedIdx >= 0 && Array.isArray(bikeValues)) ? bikeValues[bikeVisitedIdx] : undefined;
+
+    return {
+      index: sourceIndex,
+      id: `bike:${trail?.id || trail?.googlePlaceId || trail?.name || sourceIndex}`,
+      placeId: String(trail?.googlePlaceId || '').trim(),
+      name: String(trail?.name || 'Unknown Bike Trail').trim(),
+      tags,
+      driveTime: String(trail?.driveTime || '').trim(),
+      hours: String(trail?.hours || '').trim(),
+      difficulty: String(trail?.difficulty || '').trim(),
+      state: String(trail?.state || '').trim(),
+      city: String(trail?.city || '').trim(),
+      cost: String(trail?.cost || '').trim(),
+      description: String(trail?.notes || trail?.highlights || trail?.vibes || '').trim(),
+      sourceType: 'bike',
+      sourceIndex,
+      rowId: null,
+      rowValues: Array.isArray(bikeValues) ? bikeValues : null,
+      excelVisitedKnown: bikeVisitedIdx >= 0,
+      excelVisited: parseVisitedFlag(bikeVisitedCell)
+    };
+  }
+
+  function readBikeTrails() {
+    const models = typeof window.getAllBikeTrailModels === 'function'
+      ? window.getAllBikeTrailModels()
+      : (Array.isArray(window.bikeTrailsData) ? window.bikeTrailsData : []);
+
+    if (!Array.isArray(models)) return [];
+
+    return models.map((trail, idx) => {
+      if (trail && trail.sourceIndex !== undefined && trail.row) {
+        return parseBikeTrailToLocation(trail, idx);
+      }
+
+      // Fallback shape from raw rows.
+      const sourceIndex = idx;
+      const values = trail?.values?.[0] || [];
+      const pseudo = {
+        sourceIndex,
+        id: `fallback-${sourceIndex}`,
+        googlePlaceId: values[108] || '',
+        name: values[0] || '',
+        driveTime: values[2] || '',
+        hours: values[109] || '',
+        difficulty: values[6] || '',
+        state: values[110] || '',
+        city: values[111] || '',
+        cost: values[112] || '',
+        notes: values[103] || '',
+        moodTags: values[13] || '',
+        surface: values[4] || '',
+        vibes: values[12] || '',
+        row: trail
+      };
+      return parseBikeTrailToLocation(pseudo, idx);
+    }).filter(Boolean);
+  }
+
+  function readAllLocations() {
+    return readAdventures().concat(readBikeTrails());
+  }
+
+  function hydrateVisitMapFromExcel(locations, visitMap) {
+    const nextMap = { ...(visitMap || {}) };
+
+    locations.forEach((location) => {
+      if (!location.excelVisitedKnown) return;
+
+      if (location.excelVisited) {
+        const existing = nextMap[location.id] || {};
+        nextMap[location.id] = {
+          ...existing,
+          name: location.name,
+          visitedAt: existing.visitedAt || new Date().toISOString(),
+          sourceType: location.sourceType,
+          synced: true
+        };
+      } else {
+        delete nextMap[location.id];
+      }
+    });
+
+    return nextMap;
   }
 
   function categoriesForAdventure(adventure) {
@@ -1093,6 +1301,47 @@
     });
   }
 
+  async function persistVisitedToExcel(location, isVisited) {
+    const writeValue = isVisited ? 'TRUE' : '';
+
+    if (location.sourceType === 'adventure') {
+      const colIdx = await resolveAdventureVisitedColumnIndex();
+      if (colIdx < 0) {
+        throw new Error('Adventure table is missing a Visited column mapping.');
+      }
+
+      const row = Array.isArray(window.adventuresData) ? window.adventuresData[location.sourceIndex] : null;
+      const values = Array.isArray(row?.values?.[0]) ? row.values[0].slice() : (Array.isArray(location.rowValues) ? location.rowValues.slice() : []);
+      while (values.length <= colIdx) values.push('');
+      values[colIdx] = writeValue;
+
+      if (typeof window.saveToExcel !== 'function' || !location.rowId) {
+        throw new Error('Adventure Excel write helper is unavailable for this row.');
+      }
+
+      await window.saveToExcel(location.rowId, values);
+      if (row && row.values) {
+        row.values[0] = values;
+      }
+      return true;
+    }
+
+    if (location.sourceType === 'bike') {
+      const colIdx = await resolveBikeVisitedColumnIndex();
+      if (colIdx < 0) {
+        throw new Error('Bike table is missing a Visited column mapping.');
+      }
+      if (typeof window.updateBikeTrailRowColumns !== 'function') {
+        throw new Error('Bike Excel write helper is unavailable.');
+      }
+
+      await window.updateBikeTrailRowColumns(location.sourceIndex, { [colIdx]: writeValue });
+      return true;
+    }
+
+    throw new Error('Unsupported location source type.');
+  }
+
   function renderCatalog(adventures, visitMap) {
     const container = document.getElementById('visitedAdventureCatalog');
     if (!container) return;
@@ -1120,9 +1369,19 @@
     }).join('');
   }
 
-  function refreshTab() {
-    const adventures = readAdventures();
-    const visitMap = getVisitMap();
+  async function refreshTab() {
+    await Promise.all([
+      resolveAdventureVisitedColumnIndex().catch(() => -1),
+      resolveBikeVisitedColumnIndex().catch(() => -1)
+    ]);
+
+    const adventures = readAllLocations();
+    let visitMap = getVisitMap();
+    visitMap = hydrateVisitMapFromExcel(adventures, visitMap);
+    saveVisitMap(visitMap);
+
+    state.latestLocations = adventures;
+
     const stats = buildStats(adventures, visitMap);
     const challengeProgress = buildChallengeProgress(stats);
     const insights = computeVisitInsights(stats, visitMap);
@@ -1143,42 +1402,73 @@
 
     const dataStatus = document.getElementById('visitedDataStatus');
     if (dataStatus) {
-      dataStatus.textContent = `${adventures.length} adventures loaded • ${stats.visited.length} visited tracked`;
+      const adventureCount = adventures.filter(item => item.sourceType === 'adventure').length;
+      const bikeCount = adventures.filter(item => item.sourceType === 'bike').length;
+      dataStatus.textContent = `${adventures.length} total locations (${adventureCount} adventure + ${bikeCount} bike) • ${stats.visited.length} visited tracked`;
     }
 
     state.lastRenderAt = new Date().toISOString();
   }
 
   function findAdventureById(locationId) {
-    const adventures = readAdventures();
+    const adventures = Array.isArray(state.latestLocations) && state.latestLocations.length > 0
+      ? state.latestLocations
+      : readAllLocations();
     return adventures.find(adventure => adventure.id === locationId) || null;
   }
 
-  function toggleVisited(locationId) {
+  async function toggleVisited(locationId) {
     const visitMap = getVisitMap();
+    const location = findAdventureById(locationId);
+
     if (visitMap[locationId]) {
       delete visitMap[locationId];
       saveVisitMap(visitMap);
-      if (typeof window.showToast === 'function') {
-        window.showToast('Visit removed from tracker', 'info', 2000);
+
+      try {
+        if (location) {
+          await persistVisitedToExcel(location, false);
+        }
+        if (typeof window.showToast === 'function') {
+          window.showToast('Visit removed from tracker', 'info', 2000);
+        }
+      } catch (error) {
+        if (typeof window.showToast === 'function') {
+          window.showToast(`Local-only update: ${error.message}`, 'warning', 3200);
+        }
       }
-      refreshTab();
+
+      await refreshTab();
       return;
     }
 
-    const adventure = findAdventureById(locationId);
+    const adventure = location;
     visitMap[locationId] = {
       name: adventure ? adventure.name : locationId,
-      visitedAt: new Date().toISOString()
+      visitedAt: new Date().toISOString(),
+      sourceType: adventure ? adventure.sourceType : 'unknown',
+      synced: false
     };
 
     saveVisitMap(visitMap);
+
+    try {
+      if (adventure) {
+        await persistVisitedToExcel(adventure, true);
+        visitMap[locationId].synced = true;
+        saveVisitMap(visitMap);
+      }
+    } catch (error) {
+      if (typeof window.showToast === 'function') {
+        window.showToast(`Local-only update: ${error.message}`, 'warning', 3200);
+      }
+    }
 
     if (typeof window.showToast === 'function') {
       window.showToast(`Logged: ${adventure ? adventure.name : 'Location'} 🎉`, 'success', 2500);
     }
 
-    refreshTab();
+    await refreshTab();
   }
 
   function bindControls() {
@@ -1267,11 +1557,24 @@
     }, 1000);
   }
 
+  async function ensureBikeDataLoadedForTracker() {
+    if (state.bikeLoadRequested) return;
+    if (!window.accessToken || typeof window.loadBikeTable !== 'function') return;
+    if (Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length > 0) return;
+
+    state.bikeLoadRequested = true;
+    try {
+      await window.loadBikeTable();
+    } catch (_) {
+      // Bike data load is best-effort here.
+    }
+  }
+
   function initializeVisitedLocationsTab() {
     loadChallengeState();
     loadMetaState();
     bindControls();
-    refreshTab();
+    ensureBikeDataLoadedForTracker().finally(() => refreshTab());
     scheduleDataRefreshCheck();
 
     if (!state.initialized) {
