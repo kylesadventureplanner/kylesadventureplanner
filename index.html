@@ -12153,6 +12153,11 @@
     // Add SINGLE delegated event listener for ALL card interactions
     // This eliminates duplicate listeners and the favorite multiplication bug
     freshCardsGrid.addEventListener('click', (e) => {
+      // Keep bulk-select interactions fully isolated from card-open click behavior.
+      if (e.target.closest('[data-no-card-open], .adventure-bulk-select-wrap, .adventure-bulk-select')) {
+        return;
+      }
+
       const descriptionToggleBtn = e.target.closest('.card-description-toggle');
       if (descriptionToggleBtn) {
         e.preventDefault();

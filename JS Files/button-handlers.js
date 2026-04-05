@@ -56,7 +56,7 @@
   function isInteractiveCardTarget(target) {
     if (!target || !target.closest) return false;
     return Boolean(target.closest(
-      'button, a, input, select, textarea, label, .rating-star, .tag-pill, .card-address-copy, .tag-manager-btn, .card-favorite-btn, .card-rating'
+      'button, a, input, select, textarea, label, .rating-star, .tag-pill, .card-address-copy, .tag-manager-btn, .card-favorite-btn, .card-rating, .adventure-bulk-select-wrap, .adventure-bulk-select, [data-no-card-open]'
     ));
   }
 

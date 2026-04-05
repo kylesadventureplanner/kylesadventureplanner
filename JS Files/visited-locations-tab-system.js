@@ -97,9 +97,12 @@
       longPressActive: false,
       suppressClickUntil: 0,
       targetEl: null,
+      lastLongPressTarget: null,
       bubbleEl: null
     },
     loadingUiActive: false,
+    subTabCheckTimerId: 0,
+    lastSubTabBlockerLabel: '',
     visitedColumnIndexCache: {
       adventure: null,
       bike: null
@@ -141,6 +144,74 @@
     state.activeProgressSubTab = tabKey || 'overview';
     syncProgressSubTabs(root);
     announceProgressSubTab(root, state.activeProgressSubTab);
+    scheduleVisitedSubTabInterceptionCheck(root, 0);
+  }
+
+  function getElementDebugLabel(el) {
+    if (!el) return '(unknown)';
+    if (el.id) return `#${el.id}`;
+    if (el.classList && el.classList.length) return `.${el.classList[0]}`;
+    return String(el.tagName || 'element').toLowerCase();
+  }
+
+  function setVisitedSubTabBlockerWarning(message) {
+    const warningEl = document.getElementById('visitedSubTabBlockerWarning');
+    if (!warningEl) return;
+    if (!message) {
+      warningEl.hidden = true;
+      warningEl.textContent = '';
+      return;
+    }
+    warningEl.textContent = message;
+    warningEl.hidden = false;
+  }
+
+  function findVisitedSubTabBlockingElement(root) {
+    if (!root || !root.isConnected) return null;
+    const buttons = root.querySelectorAll('[data-progress-subtab]');
+    for (const btn of buttons) {
+      const rect = btn.getBoundingClientRect();
+      if (rect.width < 6 || rect.height < 6) continue;
+      const x = Math.round(rect.left + (rect.width / 2));
+      const y = Math.round(rect.top + (rect.height / 2));
+      const topEl = document.elementFromPoint(x, y);
+      if (!topEl) continue;
+      if (topEl === btn || btn.contains(topEl)) continue;
+      const sameTabBtn = topEl.closest ? topEl.closest('[data-progress-subtab]') : null;
+      if (sameTabBtn === btn) continue;
+      return topEl;
+    }
+    return null;
+  }
+
+  function checkVisitedSubTabInterception(root) {
+    const blocker = findVisitedSubTabBlockingElement(root);
+    if (!blocker) {
+      state.lastSubTabBlockerLabel = '';
+      setVisitedSubTabBlockerWarning('');
+      return;
+    }
+
+    const blockerLabel = getElementDebugLabel(blocker);
+    if (state.lastSubTabBlockerLabel !== blockerLabel) {
+      console.warn(`[visited] Subtab clicks may be blocked by ${blockerLabel}`, blocker);
+      state.lastSubTabBlockerLabel = blockerLabel;
+    }
+
+    setVisitedSubTabBlockerWarning(`Heads up: subtab clicks may be blocked by ${blockerLabel}.`);
+  }
+
+  function scheduleVisitedSubTabInterceptionCheck(root, delayMs) {
+    if (!root) return;
+    if (state.subTabCheckTimerId) {
+      clearTimeout(state.subTabCheckTimerId);
+      state.subTabCheckTimerId = 0;
+    }
+    const wait = Math.max(0, Number(delayMs) || 0);
+    state.subTabCheckTimerId = window.setTimeout(() => {
+      state.subTabCheckTimerId = 0;
+      checkVisitedSubTabInterception(root);
+    }, wait);
   }
 
   function getMobileTooltipLongPressMs() {
@@ -337,6 +408,10 @@
     hideMobileTooltipBubble();
   }
 
+  function isProgressSubTabElement(el) {
+    return Boolean(el && el.closest && el.closest('[data-progress-subtab]'));
+  }
+
   function initMobileTooltipSupport(root) {
     if (!root || root.dataset.mobileTooltipBound === '1') return;
     root.dataset.mobileTooltipBound = '1';
@@ -366,10 +441,12 @@
       if (!text) return;
 
       clearMobileLongPressState();
+      state.mobileTooltip.lastLongPressTarget = null;
       state.mobileTooltip.targetEl = target;
       state.mobileTooltip.pressTimerId = window.setTimeout(() => {
         state.mobileTooltip.longPressActive = true;
         state.mobileTooltip.suppressClickUntil = Date.now() + suppressMs;
+        state.mobileTooltip.lastLongPressTarget = target;
         showMobileTooltipBubble(target, text);
         showMobileTooltipChip(text, 2600);
       }, longPressMs);
@@ -388,13 +465,27 @@
     }, { passive: true });
 
     root.addEventListener('click', (event) => {
-      if (!state.mobileTooltip.longPressActive && Date.now() > state.mobileTooltip.suppressClickUntil) return;
       const target = event.target.closest ? event.target.closest('[data-tooltip]') : null;
       if (!target) return;
+
+      if (isProgressSubTabElement(target)) return;
+
+      const now = Date.now();
+      if (!state.mobileTooltip.longPressActive && now > state.mobileTooltip.suppressClickUntil) {
+        state.mobileTooltip.lastLongPressTarget = null;
+        return;
+      }
+
+      const longPressTarget = state.mobileTooltip.lastLongPressTarget;
+      if (longPressTarget && target !== longPressTarget && !longPressTarget.contains(target)) {
+        return;
+      }
+
       event.preventDefault();
       event.stopPropagation();
       state.mobileTooltip.longPressActive = false;
       state.mobileTooltip.suppressClickUntil = 0;
+      state.mobileTooltip.lastLongPressTarget = null;
     }, true);
 
     window.addEventListener('scroll', () => {
@@ -1887,6 +1978,7 @@
 
       const root = document.getElementById('visitedLocationsRoot');
       applyTooltipInfoIcons(root);
+      scheduleVisitedSubTabInterceptionCheck(root, 60);
     } finally {
       clearLoadingState();
     }
@@ -2014,8 +2106,10 @@
       if (progressTabBtn) {
         event.preventDefault();
         const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'overview';
-        if (tabKey === state.activeProgressSubTab) return;
-        setActiveProgressSubTab(root, tabKey);
+        if (tabKey !== state.activeProgressSubTab) {
+          setActiveProgressSubTab(root, tabKey);
+        }
+        scheduleVisitedSubTabInterceptionCheck(root, 0);
         return;
       }
 
@@ -2111,6 +2205,17 @@
         renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
       });
     }
+
+    root.addEventListener('pointerdown', (event) => {
+      if (!event.target.closest || !event.target.closest('[data-progress-subtab]')) return;
+      scheduleVisitedSubTabInterceptionCheck(root, 0);
+    }, true);
+
+    window.addEventListener('resize', () => {
+      scheduleVisitedSubTabInterceptionCheck(root, 50);
+    });
+
+    scheduleVisitedSubTabInterceptionCheck(root, 80);
   }
 
   function scheduleDataRefreshCheck() {

@@ -5,11 +5,123 @@
 (function initAdventureBulkActions() {
   const adventureState = {
     selectedSourceIndexes: new Set(),
+    pulsedSelectionSourceIndexes: new Set(),
     busy: false,
     observer: null,
     initialized: false
   };
   const BULK_STATUS_CONFIRM_THRESHOLD = 20;
+  const BULK_SELECTION_STYLE_ID = 'adventureBulkSelectionRailStyles';
+  const BULK_BADGE_HIDE_TIMER_KEY = '__bulkBadgeHideTimer';
+
+  function ensureAdventureBulkSelectionRailStyles() {
+    if (document.getElementById(BULK_SELECTION_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = BULK_SELECTION_STYLE_ID;
+    style.textContent = [
+      '.adventure-card.adventure-bulk-card-selectable { position: relative; overflow: hidden; }',
+      '.adventure-card.adventure-bulk-card-selectable.adventure-bulk-card-selected {',
+      '  border-color: #60a5fa;',
+      '  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22), 0 10px 20px rgba(37, 99, 235, 0.10);',
+      '}',
+      '.adventure-card.adventure-bulk-card-selectable.adventure-bulk-card-selected:hover {',
+      '  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3), 0 14px 24px rgba(37, 99, 235, 0.14);',
+      '}',
+      '.adventure-card.adventure-bulk-card-selectable.adventure-bulk-card-selected-pulse {',
+      '  animation: adventureBulkCardSelectedPulse 280ms ease-out;',
+      '}',
+      '@keyframes adventureBulkCardSelectedPulse {',
+      '  0% { transform: scale(0.995); }',
+      '  55% { transform: scale(1.01); }',
+      '  100% { transform: scale(1); }',
+      '}',
+      '.adventure-bulk-select-wrap {',
+      '  display: flex;',
+      '  justify-content: flex-start;',
+      '  align-items: center;',
+      '  padding: 10px 12px;',
+      '  margin: -1px -1px 10px;',
+      '  border-bottom: 1px solid #dbeafe;',
+      '  background: linear-gradient(180deg, #f8fbff 0%, #f1f5f9 100%);',
+      '  position: relative;',
+      '  z-index: 3;',
+      '}',
+      '.adventure-bulk-select-label {',
+      '  display: inline-flex;',
+      '  align-items: center;',
+      '  gap: 8px;',
+      '  border: 1px solid #bfdbfe;',
+      '  border-radius: 10px;',
+      '  background: #ffffff;',
+      '  padding: 8px 10px;',
+      '  color: #1e3a8a;',
+      '  font-size: 12px;',
+      '  font-weight: 700;',
+      '  line-height: 1;',
+      '  cursor: pointer;',
+      '  user-select: none;',
+      '}',
+      '.adventure-bulk-select-label:hover { border-color: #93c5fd; background: #eff6ff; }',
+      '.adventure-bulk-select-label input.adventure-bulk-select { width: 16px; height: 16px; cursor: pointer; margin: 0; }',
+      '.adventure-bulk-select-hint { color: #334155; font-weight: 600; font-size: 11px; }',
+      '.adventure-bulk-selected-badge {',
+      '  margin-left: auto;',
+      '  display: inline-flex;',
+      '  align-items: center;',
+      '  border: 1px solid #60a5fa;',
+      '  background: #dbeafe;',
+      '  color: #1e40af;',
+      '  border-radius: 999px;',
+      '  padding: 4px 8px;',
+      '  font-size: 10px;',
+      '  font-weight: 800;',
+      '  letter-spacing: 0.02em;',
+      '  white-space: nowrap;',
+      '  opacity: 0;',
+      '  transform: scale(0.96);',
+      '  transition: opacity 140ms ease, transform 140ms ease;',
+      '  pointer-events: none;',
+      '}',
+      '.adventure-bulk-selected-badge.is-visible {',
+      '  opacity: 1;',
+      '  transform: scale(1);',
+      '}',
+      '.adventure-bulk-selected-badge[hidden] { display: none; }',
+      '@media (prefers-reduced-motion: reduce) {',
+      '  .adventure-card.adventure-bulk-card-selectable.adventure-bulk-card-selected-pulse { animation: none; }',
+      '  .adventure-bulk-selected-badge { transition: none; }',
+      '}'
+    ].join('\n');
+    document.head.appendChild(style);
+  }
+
+  function prefersReducedMotion() {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function setBulkSelectedBadgeState(badge, isVisible) {
+    if (!badge) return;
+
+    const prevTimer = badge[BULK_BADGE_HIDE_TIMER_KEY];
+    if (prevTimer) {
+      clearTimeout(prevTimer);
+      badge[BULK_BADGE_HIDE_TIMER_KEY] = 0;
+    }
+
+    if (isVisible) {
+      badge.hidden = false;
+      badge.classList.add('is-visible');
+      badge.setAttribute('aria-hidden', 'false');
+      return;
+    }
+
+    badge.classList.remove('is-visible');
+    badge.setAttribute('aria-hidden', 'true');
+    badge[BULK_BADGE_HIDE_TIMER_KEY] = window.setTimeout(() => {
+      if (!badge.classList.contains('is-visible')) badge.hidden = true;
+      badge[BULK_BADGE_HIDE_TIMER_KEY] = 0;
+    }, 160);
+  }
 
   function parseTagsInput(raw) {
     const seen = new Set();
@@ -100,8 +212,32 @@
     document.querySelectorAll('.adventure-bulk-select').forEach((checkbox) => {
       const raw = String(checkbox.getAttribute('data-adventure-source-index') || '').trim();
       const idx = /^\d+$/.test(raw) ? Number(raw) : NaN;
-      checkbox.checked = Number.isInteger(idx) && adventureState.selectedSourceIndexes.has(idx);
+      const isSelected = Number.isInteger(idx) && adventureState.selectedSourceIndexes.has(idx);
+      checkbox.checked = isSelected;
       checkbox.disabled = adventureState.busy;
+
+      const card = checkbox.closest ? checkbox.closest('.adventure-card') : null;
+      if (card) card.classList.toggle('adventure-bulk-card-selected', isSelected);
+
+      if (Number.isInteger(idx) && idx >= 0) {
+        if (!isSelected) {
+          adventureState.pulsedSelectionSourceIndexes.delete(idx);
+          if (card) card.classList.remove('adventure-bulk-card-selected-pulse');
+        } else if (!adventureState.pulsedSelectionSourceIndexes.has(idx) && card && !prefersReducedMotion()) {
+          adventureState.pulsedSelectionSourceIndexes.add(idx);
+          card.classList.remove('adventure-bulk-card-selected-pulse');
+          // Force restart so pulse always plays once when newly selected.
+          void card.offsetWidth;
+          card.classList.add('adventure-bulk-card-selected-pulse');
+          window.setTimeout(() => {
+            card.classList.remove('adventure-bulk-card-selected-pulse');
+          }, 320);
+        }
+      }
+
+      const wrap = checkbox.closest ? checkbox.closest('.adventure-bulk-select-wrap') : null;
+      const badge = wrap ? wrap.querySelector('.adventure-bulk-selected-badge') : null;
+      setBulkSelectedBadgeState(badge, isSelected);
     });
   }
 
@@ -163,19 +299,27 @@
     return Number.isInteger(idx) && idx >= 0 ? idx : -1;
   }
 
+  function isBulkSelectionTarget(target) {
+    return Boolean(target && target.closest && target.closest('.adventure-bulk-select-wrap, .adventure-bulk-select, [data-no-card-open]'));
+  }
+
   function decorateAdventureCardsForBulkSelection() {
     const grid = document.getElementById('adventureCardsGrid');
     if (!grid) return;
+
+    ensureAdventureBulkSelectionRailStyles();
 
     grid.querySelectorAll('.adventure-card').forEach((card) => {
       if (card.querySelector('.adventure-bulk-select-wrap')) return;
       const sourceIndex = getCardSourceIndex(card);
       if (sourceIndex < 0) return;
 
+      card.classList.add('adventure-bulk-card-selectable');
+
       const wrap = document.createElement('div');
       wrap.className = 'adventure-bulk-select-wrap';
-      wrap.style.cssText = 'display:flex;justify-content:flex-end;padding:10px 12px 0;';
-      wrap.innerHTML = `<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px;"><input type="checkbox" class="adventure-bulk-select" data-adventure-source-index="${sourceIndex}">Select</label>`;
+      wrap.setAttribute('data-no-card-open', '1');
+      wrap.innerHTML = `<label class="adventure-bulk-select-label" data-no-card-open="1"><input type="checkbox" class="adventure-bulk-select" data-no-card-open="1" data-adventure-source-index="${sourceIndex}"><span>Select for bulk actions</span></label><span class="adventure-bulk-select-hint" data-no-card-open="1">(separate from card details click)</span><span class="adventure-bulk-selected-badge" data-no-card-open="1" aria-hidden="true" hidden>Selected</span>`;
       card.insertBefore(wrap, card.firstChild);
     });
 
@@ -187,10 +331,19 @@
     if (!grid || grid.dataset.adventureBulkDelegatesBound === '1') return;
 
     // Capture phase to keep card-open delegate from firing when checkbox is used.
+    grid.addEventListener('pointerdown', (event) => {
+      if (!isBulkSelectionTarget(event.target)) return;
+      event.stopPropagation();
+    }, true);
+
+    grid.addEventListener('mousedown', (event) => {
+      if (!isBulkSelectionTarget(event.target)) return;
+      event.stopPropagation();
+    }, true);
+
     grid.addEventListener('click', (event) => {
-      if (event.target && event.target.closest && event.target.closest('.adventure-bulk-select-wrap')) {
-        event.stopPropagation();
-      }
+      if (!isBulkSelectionTarget(event.target)) return;
+      event.stopPropagation();
     }, true);
 
     grid.addEventListener('change', (event) => {
