@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/CSS/edit-page.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/edit-page.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-new.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-new.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/UI_CONSISTENCY_CHECKLIST.md" beforeDir="false" afterPath="$PROJECT_DIR$/UI_CONSISTENCY_CHECKLIST.md" afterDir="false" />
-    </list>
+    <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -88,7 +84,7 @@
       <workItem from="1775053911750" duration="6601000" />
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
-      <workItem from="1775308318086" duration="26343000" />
+      <workItem from="1775308318086" duration="26715000" />
     </task>
     <servers />
   </component>

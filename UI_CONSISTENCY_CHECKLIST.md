@@ -6,7 +6,7 @@ This checklist is tailored to the current workspace structure in `kylesadventure
 
 - [ ] Keep all reusable tokens in `CSS/design-tokens.css` (color, spacing, radius, typography, shadows).
 - [x] Do not redeclare global tokens in page-level `<style>` blocks (example target: `HTML Files/edit-mode-new.html`).
-- [ ] Prefer token references (`var(--...)`) over raw hex values in component/page CSS.
+- [x] Prefer token references (`var(--...)`) over raw hex values in component/page CSS (applied to new `edit-*` color classes).
 
 ## 2) Stylesheet import contract (all HTML entry pages)
 
@@ -38,9 +38,9 @@ Current check:
 
 ## 5) Inline style debt cleanup
 
-- [ ] Remove inline `<style>` blocks where equivalent CSS can live in shared files.
 - [x] Remove inline `<style>` blocks where equivalent CSS can live in shared files.
 - [x] Remove `style="..."` attributes for layout/visibility and replace with class-based styling (completed for `HTML Files/edit-mode-new.html`).
+- [x] Remove `style="..."` attributes for layout/visibility and replace with class-based styling (completed for `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html`).
 - [ ] Leave truly dynamic values inline only when they cannot be represented with classes.
 
 ## 6) Pilot migration recipe (completed on Trail Explorer)
@@ -55,7 +55,7 @@ Reference file: `HTML Files/trail-explorer-window.html`
 ## 7) Next rollout targets
 
 1. `HTML Files/edit-mode-new.html` (inline `<style>` and inline `style="..."` attributes completed).
-2. `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html`.
+2. `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html` (inline `style="..."` attributes completed).
 3. `HTML Files/adventure-details-window.html` and `HTML Files/bike-details-window.html`.
 4. Tabs under `HTML Files/tabs/` after shell/component patterns are stable.
 

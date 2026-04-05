@@ -514,6 +514,9 @@
       min-width: 140px;
       background: white;
     }
+    .loc-preset-scope {
+      min-width: 120px;
+    }
     .loc-mini-btn {
       padding: 7px 10px;
       border: 1px solid #e5e7eb;
@@ -646,6 +649,7 @@
     }
 
     .loc-bulk-actions {
+      display: none;
       background: linear-gradient(135deg, rgba(34,197,94,0.12) 0%, rgba(34,197,94,0.05) 100%);
       border: 1px solid rgba(34,197,94,0.3);
       border-radius: 12px;
@@ -653,8 +657,20 @@
       margin-bottom: 12px;
       margin-top: 12px;
     }
+    .loc-bulk-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+    .loc-bulk-btn-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
 
     .loc-shortlist-tray {
+      display: none;
       position: sticky;
       bottom: 10px;
       background: #111827;
@@ -698,6 +714,75 @@
       font-size: 12px;
       line-height: 1.45;
       color: #e5e7eb;
+    }
+    .loc-time-window {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+      display: none;
+    }
+    .loc-time-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .loc-time-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .loc-time-label {
+      font-size: 11px;
+      color: #cbd5e1;
+    }
+    .loc-time-input {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 4px;
+      background: rgba(0,0,0,0.2);
+      color: white;
+      font-size: 12px;
+    }
+    .loc-time-calc-btn {
+      width: 100%;
+    }
+    .loc-route-quality {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #e5e7eb;
+      padding: 8px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      display: none;
+    }
+    .loc-day-plan-title {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .loc-day-plan-summary {
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+    .city-grid-empty {
+      grid-column: 1 / -1;
+    }
+    .city-empty-note {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+    .city-drive-time {
+      font-size: 13px;
+      color: #0891b2;
+      font-weight: 600;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .loc-empty-note {
+      font-size: 13px;
     }
     .loc-select-btn.active {
       background: #1d4ed8;
@@ -753,7 +838,7 @@
           <label class="sr-only" for="locPresetName">Preset name</label>
           <input id="locPresetName" class="loc-preset-input" type="text" placeholder="Preset name...">
           <label class="sr-only" for="locPresetScope">Preset scope</label>
-          <select id="locPresetScope" class="loc-preset-select" style="min-width:120px;">
+          <select id="locPresetScope" class="loc-preset-select loc-preset-scope">
             <option value="city">City Preset</option>
             <option value="global">Global Preset</option>
           </select>
@@ -832,9 +917,9 @@
       </div>
 
       <!-- Bulk Actions Toolbar -->
-      <div class="loc-bulk-actions" id="locBulkActions" style="display:none;">
-        <div style="font-size:12px; font-weight:700; color:#6b7280; margin-bottom:8px;">⚡ Quick Actions</div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <div class="loc-bulk-actions" id="locBulkActions">
+        <div class="loc-bulk-title">⚡ Quick Actions</div>
+        <div class="loc-bulk-btn-row">
           <button class="loc-mini-btn" onclick="bulkAddTopRated(5)" title="Add top 5 rated">Top 5 ⭐</button>
           <button class="loc-mini-btn" onclick="bulkAddTopRated(10)" title="Add top 10 rated">Top 10 ⭐</button>
           <button class="loc-mini-btn" onclick="bulkFilterOpenNow()" title="Show only open now">🟢 Open Now</button>
@@ -843,7 +928,7 @@
         </div>
       </div>
 
-      <div class="loc-shortlist-tray" id="locShortlistTray" style="display:none;">
+      <div class="loc-shortlist-tray" id="locShortlistTray">
         <div class="loc-shortlist-top">
           <div id="locShortlistCount" class="loc-shortlist-count">0 selected</div>
           <button class="loc-mini-btn" onclick="buildDayPlan()">Build Day Plan</button>
@@ -854,29 +939,29 @@
         <div id="locShortlistChips" class="loc-shortlist-chip-wrap"></div>
 
         <!-- Time-Window Itinerary Builder -->
-        <div id="locTimeWindow" style="margin-top:14px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.2); display:none;">
-          <div style="font-size:12px; font-weight:700; margin-bottom:8px;">⏰ Plan by Time Window</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px;">
+        <div id="locTimeWindow" class="loc-time-window">
+          <div class="loc-time-title">⏰ Plan by Time Window</div>
+          <div class="loc-time-grid">
             <div>
-              <label for="locTimeStart" style="font-size:11px; color:#cbd5e1;">Start Time</label>
-              <input id="locTimeStart" type="time" value="09:00" style="width:100%; padding:6px; border:1px solid rgba(255,255,255,0.3); border-radius:4px; background:rgba(0,0,0,0.2); color:white; font-size:12px;">
+              <label for="locTimeStart" class="loc-time-label">Start Time</label>
+              <input id="locTimeStart" class="loc-time-input" type="time" value="09:00">
             </div>
             <div>
-              <label for="locTimeEnd" style="font-size:11px; color:#cbd5e1;">End Time</label>
-              <input id="locTimeEnd" type="time" value="17:00" style="width:100%; padding:6px; border:1px solid rgba(255,255,255,0.3); border-radius:4px; background:rgba(0,0,0,0.2); color:white; font-size:12px;">
+              <label for="locTimeEnd" class="loc-time-label">End Time</label>
+              <input id="locTimeEnd" class="loc-time-input" type="time" value="17:00">
             </div>
             <div>
-              <label for="locTimePerStop" style="font-size:11px; color:#cbd5e1;">Per Stop (min)</label>
-              <input id="locTimePerStop" type="number" value="60" min="15" max="240" style="width:100%; padding:6px; border:1px solid rgba(255,255,255,0.3); border-radius:4px; background:rgba(0,0,0,0.2); color:white; font-size:12px;">
+              <label for="locTimePerStop" class="loc-time-label">Per Stop (min)</label>
+              <input id="locTimePerStop" class="loc-time-input" type="number" value="60" min="15" max="240">
             </div>
           </div>
-          <button class="loc-mini-btn" onclick="calculateRouteQuality()" style="width:100%;">📊 Calculate Feasibility</button>
-          <div id="locRouteQuality" style="margin-top:8px; font-size:12px; color:#e5e7eb; padding:8px; background:rgba(0,0,0,0.3); border-radius:6px; display:none;"></div>
+          <button class="loc-mini-btn loc-time-calc-btn" onclick="calculateRouteQuality()">📊 Calculate Feasibility</button>
+          <div id="locRouteQuality" class="loc-route-quality"></div>
         </div>
 
         <div id="locDayPlan" class="loc-day-plan">
-          <div style="font-size:12px; font-weight:700; margin-bottom:4px;">Suggested Route</div>
-          <div id="locDayPlanSummary" style="font-size:12px; color:#cbd5e1;"></div>
+          <div class="loc-day-plan-title">Suggested Route</div>
+          <div id="locDayPlanSummary" class="loc-day-plan-summary"></div>
           <ol id="locDayPlanList" class="loc-day-plan-list"></ol>
         </div>
       </div>
@@ -958,10 +1043,10 @@
         console.error('❌ Failed to load adventure data');
         const grid = document.getElementById('cityGrid');
         grid.innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-state city-grid-empty">
             <div class="empty-state-icon">❌</div>
             <div class="empty-state-text">Error loading data</div>
-            <div style="font-size: 14px; color: #9ca3af;">Could not load adventure data. Please ensure you have data loaded in the main window.</div>
+            <div class="city-empty-note">Could not load adventure data. Please ensure you have data loaded in the main window.</div>
           </div>
         `;
         return;
@@ -1008,10 +1093,10 @@
 
       if (Object.keys(citiesData).length === 0) {
         grid.innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-state city-grid-empty">
             <div class="empty-state-icon">🏙️</div>
             <div class="empty-state-text">No cities found</div>
-            <div style="font-size: 14px; color: #9ca3af;">Load adventure data in the main window to see cities here</div>
+            <div class="city-empty-note">Load adventure data in the main window to see cities here</div>
           </div>
         `;
         return;
@@ -1039,7 +1124,7 @@
 
       grid.innerHTML = citiesArray.map(city => {
         const driveTimeHtml = city.distance !== undefined
-          ? `<div style="font-size: 13px; color: #0891b2; font-weight: 600; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">🚗 ${city.driveTime || 'calculating...'}</div>`
+          ? `<div class="city-drive-time">🚗 ${city.driveTime || 'calculating...'}</div>`
           : '';
 
         return `
@@ -1897,7 +1982,7 @@
           <div class="loc-empty">
             <div class="loc-empty-icon">🔍</div>
             <div class="loc-empty-text">No locations match your filters</div>
-            <div style="font-size:13px;">Try adjusting or resetting the filters above.</div>
+            <div class="loc-empty-note">Try adjusting or resetting the filters above.</div>
           </div>`;
         return;
       }

@@ -268,6 +268,23 @@
     .refresh-btn:hover {
       background: #5568d3;
     }
+
+    .is-hidden {
+      display: none;
+    }
+
+    .helper-note {
+      font-size: 14px;
+      color: #9ca3af;
+    }
+
+    .results-grid-span {
+      grid-column: 1 / -1;
+    }
+
+    .error-action-wrap {
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -291,7 +308,7 @@
       </div>
     </div>
 
-    <div id="resultsContainer" class="results" style="display: none;">
+    <div id="resultsContainer" class="results is-hidden">
       <div class="results-title">📍 Nearby Adventures</div>
       <div class="results-stats" id="resultStats"></div>
       <div class="locations-list" id="locationsList"></div>
@@ -301,7 +318,7 @@
     <div id="emptyState" class="empty-state">
       <div class="empty-state-icon">📍</div>
       <div class="empty-state-text">Ready to find nearby adventures</div>
-      <div style="font-size: 14px; color: #9ca3af;">Click "Find My Location" to get started. You'll need to allow location access.</div>
+      <div class="helper-note">Click "Find My Location" to get started. You'll need to allow location access.</div>
     </div>
   </div>
 
@@ -438,10 +455,10 @@
       // Display locations
       if (nearbyAdventures.length === 0) {
         document.getElementById('locationsList').innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-state results-grid-span">
             <div class="empty-state-icon">🏜️</div>
             <div class="empty-state-text">No adventures found</div>
-            <div style="font-size: 14px; color: #9ca3af;">Try increasing the search distance</div>
+            <div class="helper-note">Try increasing the search distance</div>
           </div>
         `;
         return;
@@ -467,7 +484,7 @@
     function showError(message) {
       document.getElementById('emptyState').innerHTML = `
         <div class="error-message">❌ ${message}</div>
-        <div style="text-align: center;">
+        <div class="error-action-wrap">
           <button class="start-btn" onclick="startFindNearMe()">🔍 Try Again</button>
         </div>
       `;

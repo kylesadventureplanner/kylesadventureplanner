@@ -209,58 +209,58 @@
 }
 
 .edit-subcard-blue-soft {
-  border: 1px solid #60a5fa;
-  background: #f0f9ff;
+  border: 1px solid var(--edit-subcard-blue-soft-border);
+  background: var(--edit-subcard-blue-soft-bg);
 }
 
 .edit-subcard-blue {
-  border: 1px solid #60a5fa;
-  background: #dbeafe;
+  border: 1px solid var(--edit-subcard-blue-border);
+  background: var(--edit-subcard-blue-bg);
 }
 
 .edit-subcard-blue-vivid {
-  border: 1px solid #3b82f6;
-  background: #eff6ff;
+  border: 1px solid var(--edit-subcard-blue-vivid-border);
+  background: var(--edit-subcard-blue-vivid-bg);
 }
 
 .edit-subcard-amber {
-  border: 1px solid #fbbf24;
-  background: #fffbeb;
+  border: 1px solid var(--edit-subcard-amber-border);
+  background: var(--edit-subcard-amber-bg);
 }
 
 .edit-subcard-green {
-  border: 1px solid #6ee7b7;
-  background: #ecfdf5;
+  border: 1px solid var(--edit-subcard-green-border);
+  background: var(--edit-subcard-green-bg);
 }
 
 .edit-subcard-violet {
-  border: 1px solid #8b5cf6;
-  background: #faf5ff;
+  border: 1px solid var(--edit-subcard-violet-border);
+  background: var(--edit-subcard-violet-bg);
 }
 
 .edit-subcard-pink {
-  border: 1px solid #ec4899;
-  background: #fdf2f8;
+  border: 1px solid var(--edit-subcard-pink-border);
+  background: var(--edit-subcard-pink-bg);
 }
 
 .edit-title-blue {
-  color: #1e40af;
+  color: var(--edit-title-blue);
 }
 
 .edit-title-amber {
-  color: #92400e;
+  color: var(--edit-title-amber);
 }
 
 .edit-title-green {
-  color: #065f46;
+  color: var(--edit-title-green);
 }
 
 .edit-title-violet {
-  color: #6d28d9;
+  color: var(--edit-title-violet);
 }
 
 .edit-title-pink {
-  color: #be185d;
+  color: var(--edit-title-pink);
 }
 
 /* Scoped spinner so edit status messages keep their original contrast. */

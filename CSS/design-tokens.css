@@ -45,6 +45,27 @@
   --soft-yellow-border: #fbbf24; /* Yellow border */
   --danger-red: #ef4444;        /* Red */
 
+  /* EDIT MODE semantic accents used by edit-* classes in edit-page.css */
+  --edit-subcard-blue-soft-border: #60a5fa;
+  --edit-subcard-blue-soft-bg: #f0f9ff;
+  --edit-subcard-blue-border: #60a5fa;
+  --edit-subcard-blue-bg: #dbeafe;
+  --edit-subcard-blue-vivid-border: #3b82f6;
+  --edit-subcard-blue-vivid-bg: #eff6ff;
+  --edit-subcard-amber-border: #fbbf24;
+  --edit-subcard-amber-bg: #fffbeb;
+  --edit-subcard-green-border: #6ee7b7;
+  --edit-subcard-green-bg: #ecfdf5;
+  --edit-subcard-violet-border: #8b5cf6;
+  --edit-subcard-violet-bg: #faf5ff;
+  --edit-subcard-pink-border: #ec4899;
+  --edit-subcard-pink-bg: #fdf2f8;
+  --edit-title-blue: #1e40af;
+  --edit-title-amber: #92400e;
+  --edit-title-green: #065f46;
+  --edit-title-violet: #6d28d9;
+  --edit-title-pink: #be185d;
+
   /* TRAIL EXPLORER
      Restored-state badge colors used by .bike-explorer-restored-* in components.css. */
   --trail-explorer-restored-label-border: #ddd6fe;
