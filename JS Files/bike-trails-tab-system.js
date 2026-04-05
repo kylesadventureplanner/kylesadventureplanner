@@ -641,8 +641,42 @@
     container.innerHTML = topTags.map((entry) => {
       const isActive = activeTag && activeTag === norm(entry.label);
       const tooltip = `Used on ${entry.count} trail${entry.count === 1 ? '' : 's'}`;
-      return `<button type="button" class="quick-filter-btn${isActive ? ' active' : ''}" data-bike-managed-tag="${escapeHtml(entry.label)}" title="${escapeHtml(tooltip)}" data-tooltip="${escapeHtml(tooltip)}">🏷️ ${escapeHtml(entry.label)} <span class="quick-filter-count">(${entry.count})</span></button>`;
+      return `<button type="button" class="quick-filter-btn${isActive ? ' active' : ''}" aria-pressed="${isActive ? 'true' : 'false'}" data-bike-managed-tag="${escapeHtml(entry.label)}" title="${escapeHtml(tooltip)}" data-tooltip="${escapeHtml(tooltip)}">🏷️ ${escapeHtml(entry.label)} <span class="quick-filter-count">(${entry.count})</span></button>`;
     }).join('');
+  }
+
+  function setBikeQuickFilterButtonState(btn, isActive) {
+    if (!btn) return;
+    const active = Boolean(isActive);
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  }
+
+  function syncBikeQuickFilterButtonsFromState() {
+    document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn[data-bike-filter]').forEach((btn) => {
+      const key = String(btn.getAttribute('data-bike-filter') || '').trim();
+      if (!key) return;
+      const isActive = key === 'favorites' ? state.showFavoritesOnly : state.quickFilters.has(key);
+      setBikeQuickFilterButtonState(btn, isActive);
+    });
+  }
+
+  function handleBikeQuickFilterButtonActivate(btn) {
+    if (!btn) return;
+    const key = String(btn.getAttribute('data-bike-filter') || '').trim();
+    if (!key) return;
+
+    if (key === 'favorites') {
+      state.showFavoritesOnly = !state.showFavoritesOnly;
+    } else if (state.quickFilters.has(key)) {
+      state.quickFilters.delete(key);
+    } else {
+      state.quickFilters.add(key);
+    }
+
+    state.currentPage = 1;
+    syncBikeQuickFilterButtonsFromState();
+    applyBikeFilters();
   }
 
   function cacheBikeQuickFilterBaseLabels() {
@@ -1673,7 +1707,7 @@
     state.showFavoritesOnly = false;
     const sortBy = document.getElementById('bikeSortBy');
     if (sortBy) sortBy.value = state.sortBy;
-    document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn').forEach((btn) => btn.classList.remove('active'));
+    document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn').forEach((btn) => setBikeQuickFilterButtonState(btn, false));
   }
 
   function bindBikeControls() {
@@ -1722,31 +1756,35 @@
       });
     }
 
-    document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn[data-bike-filter]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const key = String(btn.getAttribute('data-bike-filter') || '').trim();
-        if (!key) return;
-        if (key === 'favorites') {
-          state.showFavoritesOnly = !state.showFavoritesOnly;
-          btn.classList.toggle('active', state.showFavoritesOnly);
-        } else if (state.quickFilters.has(key)) {
-          state.quickFilters.delete(key);
-          btn.classList.remove('active');
-        } else {
-          state.quickFilters.add(key);
-          btn.classList.add('active');
-        }
-        state.currentPage = 1;
-        applyBikeFilters();
-      });
-    });
+    const bikeQuickFiltersCard = document.getElementById('bikeQuickFiltersCard');
+    if (bikeQuickFiltersCard && bikeQuickFiltersCard.dataset.bikeQuickDelegatesBound !== '1') {
+      bikeQuickFiltersCard.addEventListener('click', (event) => {
+        const btn = event.target && event.target.closest ? event.target.closest('.quick-filter-btn[data-bike-filter]') : null;
+        if (!btn) return;
+        event.preventDefault();
+        event.stopPropagation();
+        handleBikeQuickFilterButtonActivate(btn);
+      }, true);
+
+      bikeQuickFiltersCard.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const btn = event.target && event.target.closest ? event.target.closest('.quick-filter-btn[data-bike-filter]') : null;
+        if (!btn) return;
+        event.preventDefault();
+        handleBikeQuickFilterButtonActivate(btn);
+      }, true);
+
+      bikeQuickFiltersCard.dataset.bikeQuickDelegatesBound = '1';
+    }
+    syncBikeQuickFilterButtonsFromState();
 
     const managedTags = document.getElementById('bikeManagedTagQuickFilters');
     if (managedTags) {
       managedTags.addEventListener('click', (event) => {
         const btn = event.target && event.target.closest ? event.target.closest('[data-bike-managed-tag]') : null;
         if (!btn) return;
-        state.filters.tag = String(btn.getAttribute('data-bike-managed-tag') || '').trim();
+        const nextTag = String(btn.getAttribute('data-bike-managed-tag') || '').trim();
+        state.filters.tag = norm(state.filters.tag) === norm(nextTag) ? '' : nextTag;
         const tagInput = document.getElementById('bikeFilterTag');
         if (tagInput) tagInput.value = state.filters.tag;
         state.currentPage = 1;

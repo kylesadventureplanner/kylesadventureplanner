@@ -30,6 +30,15 @@
   white-space: nowrap;
   color: var(--neutral-700);
   box-shadow: var(--shadow-sm);
+  pointer-events: auto;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 1;
+}
+
+.quick-filter-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .quick-filter-btn:hover {

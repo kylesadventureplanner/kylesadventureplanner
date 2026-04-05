@@ -265,33 +265,98 @@
 
     /* Consistent quick action buttons in row detail modal */
     .row-detail-action-btn {
-      padding: 10px 14px;
-      border-radius: var(--radius-md);
+      padding: 9px 16px;
+      border-radius: 8px;
       font-size: 13px;
-      font-weight: 600;
-      border: 1px solid var(--neutral-300);
-      background: white;
-      color: var(--neutral-700);
+      font-weight: 700;
+      border: 2px solid transparent;
+      background: #fff;
+      color: #374151;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.18s;
       display: inline-flex;
       align-items: center;
       gap: var(--space-sm);
-      box-shadow: var(--shadow-sm);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
       white-space: nowrap;
+      text-decoration: none;
+      touch-action: manipulation;
+      pointer-events: auto;
     }
 
     .row-detail-action-btn:hover {
-      background: var(--neutral-50);
-      border-color: var(--primary);
-      color: var(--primary);
-      box-shadow: var(--shadow-md);
-      transform: translateY(-2px);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+    }
+
+    .row-detail-action-btn:active {
+      transform: translateY(0);
     }
 
     .row-detail-action-btn:focus-visible {
       outline: 2px solid var(--primary);
       outline-offset: 2px;
+    }
+
+    .row-detail-action-btn--maps {
+      background: #f5f3ff;
+      color: #7c3aed;
+      border-color: #ddd6fe;
+    }
+
+    .row-detail-action-btn--maps:hover {
+      background: #ede9fe;
+      border-color: #c4b5fd;
+    }
+
+    .row-detail-action-btn--website,
+    .row-detail-action-btn--google {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .row-detail-action-btn--website:hover,
+    .row-detail-action-btn--google:hover {
+      background: #dbeafe;
+      border-color: #93c5fd;
+    }
+
+    .row-detail-action-btn--similar {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border-color: #ddd6fe;
+    }
+
+    .row-detail-action-btn--similar:hover {
+      background: #ede9fe;
+      border-color: #c4b5fd;
+    }
+
+    .row-detail-action-btn--nearby {
+      background: #f0fdf4;
+      color: #15803d;
+      border-color: #bbf7d0;
+    }
+
+    .row-detail-action-btn--nearby:hover {
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+
+    .row-detail-action-btn--tags {
+      background: #fdf4ff;
+      color: #a21caf;
+      border-color: #f5d0fe;
+    }
+
+    .row-detail-action-btn--tags:hover {
+      background: #fae8ff;
+      border-color: #f0abfc;
+    }
+
+    .row-detail-action-btn.is-launched {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 10px rgba(0, 0, 0, 0.12);
     }
 
     /* ============================================================
@@ -6373,6 +6438,39 @@
        });
      },
 
+     setQuickFilterButtonState: function(btn, isActive) {
+       if (!btn) return;
+       const active = Boolean(isActive);
+       btn.classList.toggle('active', active);
+       btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+     },
+
+     syncQuickFilterButtonsFromState: function() {
+       document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
+         const key = this.norm(btn.getAttribute('data-tag') || btn.getAttribute('data-filter') || '');
+         if (!key) return;
+         const isActive = key === 'favorites' ? this.state.showFavoritesOnly : this.state.quickFilters.has(key);
+         this.setQuickFilterButtonState(btn, isActive);
+       });
+     },
+
+     handleQuickFilterButtonActivate: function(btn) {
+       if (!btn) return;
+       const key = this.norm(btn.getAttribute('data-tag') || btn.getAttribute('data-filter') || '');
+       if (!key) return;
+
+       if (key === 'favorites') {
+         this.state.showFavoritesOnly = !this.state.showFavoritesOnly;
+       } else if (this.state.quickFilters.has(key)) {
+         this.state.quickFilters.delete(key);
+       } else {
+         this.state.quickFilters.add(key);
+       }
+
+       this.syncQuickFilterButtonsFromState();
+       this.applyAllFilters();
+     },
+
      matchesQuickFilter: function(values, quickKey, favoritesSet) {
        const key = this.norm(quickKey);
        const name = String(values[0] || '').trim();
@@ -6441,6 +6539,7 @@
          btn.append(countSpan);
           btn.setAttribute('aria-busy', countsLoading ? 'true' : 'false');
        });
+       this.syncQuickFilterButtonsFromState();
      },
 
      refreshStateFromControls: function() {
@@ -6540,7 +6639,7 @@
          if (el) el.value = '';
        });
 
-    document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach(btn => btn.classList.remove('active'));
+       this.syncQuickFilterButtonsFromState();
        document.querySelectorAll('.pill-button.reset').forEach(btn => btn.classList.remove('active'));
 
        this.applyAllFilters();
@@ -6561,42 +6660,33 @@
           }
         });
 
-       document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
-         btn.onclick = null;
-       });
+       const quickFiltersCard = document.getElementById('quickFiltersCard');
+       if (quickFiltersCard) {
+         quickFiltersCard.querySelectorAll('.quick-filter-btn').forEach((btn) => {
+           btn.onclick = null;
+         });
 
-       // Bind quick filter buttons - read state from active buttons each time
-       if (!window.__adventureQuickFilterDelegatedBound) {
-         window.__adventureQuickFilterDelegatedBound = true;
-         document.addEventListener('click', function(e) {
-           const btn = e.target?.closest?.('#quickFiltersCard .quick-filter-btn');
-           if (!btn) return;
-           if (!btn.classList.contains('quick-filter-btn')) return;
+         if (quickFiltersCard.dataset.adventureQuickDelegatesBound !== '1') {
+           quickFiltersCard.addEventListener('click', function(e) {
+             const btn = e.target && e.target.closest ? e.target.closest('.quick-filter-btn') : null;
+             if (!btn) return;
+             e.preventDefault();
+             e.stopPropagation();
+             self.handleQuickFilterButtonActivate(btn);
+           }, true);
 
-           e.preventDefault();
-           e.stopPropagation();
+           quickFiltersCard.addEventListener('keydown', function(e) {
+             if (e.key !== 'Enter' && e.key !== ' ') return;
+             const btn = e.target && e.target.closest ? e.target.closest('.quick-filter-btn') : null;
+             if (!btn) return;
+             e.preventDefault();
+             self.handleQuickFilterButtonActivate(btn);
+           }, true);
 
-           btn.classList.toggle('active');
-
-           self.state.quickFilters.clear();
-           self.state.showFavoritesOnly = false;
-
-           document.querySelectorAll('#quickFiltersCard .quick-filter-btn.active').forEach((activeBtn) => {
-             if (activeBtn.id === 'favoritesFilterBtn') {
-               self.state.showFavoritesOnly = true;
-             } else {
-               const dataTag = String(activeBtn.getAttribute('data-tag') || '').trim().toLowerCase();
-               const dataFilter = String(activeBtn.getAttribute('data-filter') || '').trim().toLowerCase();
-               const tag = dataTag || dataFilter;
-               if (tag) {
-                 self.state.quickFilters.add(tag);
-               }
-             }
-           });
-
-           self.applyAllFilters();
-         }, true);
+           quickFiltersCard.dataset.adventureQuickDelegatesBound = '1';
+         }
        }
+       this.syncQuickFilterButtonsFromState();
 
     // Bind reset buttons
     ['resetAllFiltersTop', 'resetAllFiltersBottom', 'breadcrumbResetBtn'].forEach((id) => {
@@ -12447,12 +12537,12 @@
       <div class="modal-detail-section" style="background:#f8fafc; border:1px solid #dbeafe;">
         <h3>Helpful Links</h3>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
-          <button type="button" class="row-detail-action-btn" data-action="directions" data-url="${String(directions || '').replace(/"/g, '&quot;')}" data-tooltip="Open directions in a new tab">🗺️ Directions</button>
-          ${website ? `<button type="button" class="row-detail-action-btn" data-action="website" data-url="${String(website || '').replace(/"/g, '&quot;')}" data-tooltip="Open website in a new tab">🌐 Website</button>` : ''}
-          <button type="button" class="row-detail-action-btn" data-action="google" data-url="${googleSearchUrl}" data-tooltip="Open Google View in a new tab">📍 Google View</button>
-          <button type="button" class="row-detail-action-btn" data-action="similar" data-filter-index="${filteredIndex}" data-tooltip="Find similar locations">🔎 Similar</button>
-          <button type="button" class="row-detail-action-btn" data-action="nearby" data-filter-index="${filteredIndex}" data-tooltip="Find nearby locations">📌 Nearby</button>
-          <button type="button" class="row-detail-action-btn" data-action="tags" data-place-id="${String(googlePlaceId || '').replace(/"/g, '&quot;')}" data-tooltip="Manage tags for this location">🏷️ Tags</button>
+          <button type="button" class="row-detail-action-btn row-detail-action-btn--maps" aria-pressed="false" data-action="directions" data-url="${String(directions || '').replace(/"/g, '&quot;')}" data-tooltip="Open directions in a new tab">🗺️ Directions</button>
+          ${website ? `<button type="button" class="row-detail-action-btn row-detail-action-btn--website" aria-pressed="false" data-action="website" data-url="${String(website || '').replace(/"/g, '&quot;')}" data-tooltip="Open website in a new tab">🌐 Website</button>` : ''}
+          <button type="button" class="row-detail-action-btn row-detail-action-btn--google" aria-pressed="false" data-action="google" data-url="${googleSearchUrl}" data-tooltip="Open Google View in a new tab">📍 Google View</button>
+          <button type="button" class="row-detail-action-btn row-detail-action-btn--similar" data-action="similar" data-filter-index="${filteredIndex}" data-tooltip="Find similar locations">🔎 Similar</button>
+          <button type="button" class="row-detail-action-btn row-detail-action-btn--nearby" data-action="nearby" data-filter-index="${filteredIndex}" data-tooltip="Find nearby locations">📌 Nearby</button>
+          <button type="button" class="row-detail-action-btn row-detail-action-btn--tags" data-action="tags" data-place-id="${String(googlePlaceId || '').replace(/"/g, '&quot;')}" data-tooltip="Manage tags for this location">🏷️ Tags</button>
         </div>
       </div>
     `;
@@ -12758,22 +12848,43 @@
             ? window.totalFilteredAdventures.findIndex((entry) => entry && entry.sourceIndex === sourceIndex)
             : -1);
 
+        const pulseActionButton = () => {
+          actionBtn.classList.add('is-launched');
+          actionBtn.setAttribute('aria-pressed', 'true');
+          actionBtn.setAttribute('aria-busy', 'true');
+          window.setTimeout(() => {
+            actionBtn.classList.remove('is-launched');
+            actionBtn.setAttribute('aria-pressed', 'false');
+            actionBtn.setAttribute('aria-busy', 'false');
+          }, 550);
+        };
+
         if (action === 'directions' || action === 'google' || action === 'website') {
           const url = String(actionBtn.getAttribute('data-url') || '').trim();
-          if (url) window.open(url, '_blank', 'noopener');
+          if (!url) {
+            if (typeof showToast === 'function') showToast('Link not available for this location', 'info', 1600);
+            return;
+          }
+          pulseActionButton();
+          window.open(url, '_blank', 'noopener');
           return;
         }
         if (action === 'similar' && typeof window.showSimilarAdventures === 'function' && filteredIndex >= 0) {
+          pulseActionButton();
           window.showSimilarAdventures(filteredIndex);
           return;
         }
         if (action === 'nearby' && typeof window.showNearbyAdventures === 'function' && filteredIndex >= 0) {
+          pulseActionButton();
           window.showNearbyAdventures(filteredIndex);
           return;
         }
         if (action === 'tags' && typeof window.openTagManager === 'function') {
           const placeId = String(actionBtn.getAttribute('data-place-id') || '').trim();
-          if (placeId) window.openTagManager(placeId);
+          if (placeId) {
+            pulseActionButton();
+            window.openTagManager(placeId);
+          }
         }
       }, true);
 
