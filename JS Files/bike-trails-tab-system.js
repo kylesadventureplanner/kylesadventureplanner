@@ -1363,7 +1363,7 @@
     return `
       <div class="card-description-wrap">
         <div class="card-description">${safeDescription}</div>
-        ${shouldToggle ? `<button type="button" class="card-description-toggle" aria-expanded="false" onclick="window.toggleBikeCardDescription(event, this)">${getBikeDescriptionToggleLabel(false)}</button>` : ''}
+        ${shouldToggle ? `<button type="button" class="card-description-toggle" aria-expanded="false">${getBikeDescriptionToggleLabel(false)}</button>` : ''}
       </div>
     `;
   }
@@ -2619,7 +2619,6 @@
   window.updateBikeTrailRowColumns = updateBikeRowColumns;
   window.parseBikeNotesBlob = parseBikeNotesBlob;
   window.serializeBikeNotesBlob = serializeBikeNotesBlob;
-  window.toggleBikeCardDescription = toggleBikeCardDescription;
 
   /**
    * Runtime config override – call from browser console if the file/table name is wrong.
