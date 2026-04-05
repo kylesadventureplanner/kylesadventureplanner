@@ -1365,38 +1365,19 @@
     }
 
     const safeDescription = escapeHtml(descriptionText);
-    const shouldToggle = descriptionText.length > toggleThreshold;
+    const clipped = descriptionText.length > toggleThreshold
+      ? `${safeDescription.slice(0, toggleThreshold).trim()}...`
+      : safeDescription;
     return `
       <div class="card-description-wrap">
-        <div class="card-description">${safeDescription}</div>
-        ${shouldToggle ? `<button type="button" class="card-description-toggle" aria-expanded="false">${getBikeDescriptionToggleLabel(false)}</button>` : ''}
+        <div class="card-description">${clipped}</div>
       </div>
     `;
   }
 
-  function getBikeDescriptionToggleLabel(isExpanded) {
-    return isExpanded ? 'less ▴' : '... more ▾';
-  }
-
-  function toggleBikeCardDescription(event, toggleBtn) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    const wrap = toggleBtn && toggleBtn.closest ? toggleBtn.closest('.card-description-wrap') : null;
-    if (!wrap) return;
-    const expanded = wrap.classList.toggle('is-expanded');
-    toggleBtn.textContent = getBikeDescriptionToggleLabel(expanded);
-    toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-  }
-
   function isBikeInteractiveCardTarget(target) {
     if (!target || !target.closest) return false;
-    // Only block clicks on TRUE interactive elements (native controls and copy buttons).
-    // Do NOT include .tag-pill (non-interactive <span>s), .card-rating (container <div>),
-    // or .rating-star (<button>s already caught by the explicit [data-bike-rating] check
-    // earlier in the delegate). Including those here creates dead zones where clicking
-    // does nothing instead of opening the details tab.
+    // Keep card-open behavior simple: only true form/link controls block card-open.
     return Boolean(target.closest('a, button, input, select, textarea, label, [contenteditable=""], [contenteditable="true"], .card-address-copy, .card-addr-copy-btn'));
   }
 
@@ -1405,61 +1386,6 @@
     if (!grid || grid.dataset.bikeCardDelegatesBound === '1') return;
 
     grid.addEventListener('click', (event) => {
-      const detailsBtn = event.target && event.target.closest ? event.target.closest('[data-open-bike-details]') : null;
-      if (detailsBtn) {
-        const raw = String(detailsBtn.getAttribute('data-open-bike-details') || '').trim();
-        const sourceIndex = /^\d+$/.test(raw) ? Number(raw) : NaN;
-        if (Number.isInteger(sourceIndex) && sourceIndex >= 0) {
-          event.preventDefault();
-          event.stopPropagation();
-          window.openBikeTrailDetailsInNewTab(sourceIndex);
-        }
-        return;
-      }
-
-      const favBtn = event.target && event.target.closest ? event.target.closest('[data-bike-favorite]') : null;
-      if (favBtn) {
-        const raw = String(favBtn.getAttribute('data-bike-favorite') || '').trim();
-        const sourceIndex = /^\d+$/.test(raw) ? Number(raw) : NaN;
-        if (Number.isInteger(sourceIndex) && sourceIndex >= 0) {
-          event.preventDefault();
-          event.stopPropagation();
-          toggleBikeTrailFavorite(sourceIndex);
-        }
-        return;
-      }
-
-      const starBtn = event.target && event.target.closest ? event.target.closest('[data-bike-rating]') : null;
-      if (starBtn) {
-        const sourceRaw = String(starBtn.getAttribute('data-bike-source-index') || '').trim();
-        const sourceIndex = /^\d+$/.test(sourceRaw) ? Number(sourceRaw) : NaN;
-        const rating = Number(starBtn.getAttribute('data-bike-rating') || 0);
-        if (Number.isInteger(sourceIndex) && sourceIndex >= 0 && rating >= 0) {
-          event.preventDefault();
-          event.stopPropagation();
-          setBikeRating(sourceIndex, rating);
-        }
-        return;
-      }
-
-      const clearRatingBtn = event.target && event.target.closest ? event.target.closest('[data-bike-clear-rating]') : null;
-      if (clearRatingBtn) {
-        const sourceRaw = String(clearRatingBtn.getAttribute('data-bike-clear-rating') || '').trim();
-        const sourceIndex = /^\d+$/.test(sourceRaw) ? Number(sourceRaw) : NaN;
-        if (Number.isInteger(sourceIndex) && sourceIndex >= 0) {
-          event.preventDefault();
-          event.stopPropagation();
-          setBikeRating(sourceIndex, 0);
-        }
-        return;
-      }
-
-      const toggleBtn = event.target && event.target.closest ? event.target.closest('.card-description-toggle') : null;
-      if (toggleBtn) {
-        toggleBikeCardDescription(event, toggleBtn);
-        return;
-      }
-
       const card = event.target && event.target.closest ? event.target.closest('.bike-trail-card') : null;
       if (!card) return;
       if (isBikeInteractiveCardTarget(event.target)) return;
@@ -1511,10 +1437,6 @@
   function buildBikeTrailCardHtml(trail) {
     const sourceIndex = Number(trail.sourceIndex || 0);
     const displayTags = getBikeDisplayTags(trail).slice(0, 4);
-    const stars = [1, 2, 3, 4, 5].map((n) => {
-      const filled = Number(trail.myRating || 0) >= n ? ' filled' : '';
-      return `<button type="button" class="rating-star${filled}" data-bike-rating="${n}" data-bike-source-index="${sourceIndex}" title="${n} star${n === 1 ? '' : 's'}">★</button>`;
-    }).join('');
     const description = buildBikeCardDescriptionHtml(trail.notes || trail.vibes || trail.highlights || '');
 
     return `
@@ -1531,18 +1453,8 @@
           <div class="card-info-row"><span class="card-info-icon">🛣️</span><span class="card-info-label">Surface</span><span class="card-info-value">${escapeHtml(trail.surface || 'Not listed')}</span></div>
           <div class="card-info-row"><span class="card-info-icon">📈</span><span class="card-info-label">Difficulty</span><span class="card-info-value">${escapeHtml(trail.difficulty || 'Not listed')}</span></div>
         </div>
-        <div class="adventure-card-footer">
-          <div class="card-action-btns">
-            <button type="button" class="card-btn card-btn-primary" data-open-bike-details="${sourceIndex}">📋 Details</button>
-            ${trail.mapsLink ? `<a class="card-btn" href="${escapeHtml(trail.mapsLink)}" target="_blank" rel="noopener">🗺️ Maps</a>` : ''}
-          </div>
-          <div class="card-favorite-rating-container">
-            <div class="card-rating-tools">
-              <div class="card-rating">${stars}</div>
-              <button type="button" class="rating-clear-btn" data-bike-clear-rating="${sourceIndex}">Clear</button>
-            </div>
-            <button type="button" class="card-favorite-btn${trail.isFavorite ? ' active' : ''}" data-bike-favorite="${sourceIndex}" title="Toggle favorite">${trail.isFavorite ? '❤️' : '🤍'}</button>
-          </div>
+        <div class="adventure-card-footer" style="padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <div style="font-size: 12px; color: #64748b;">Click card to open details</div>
         </div>
       </article>
     `;
