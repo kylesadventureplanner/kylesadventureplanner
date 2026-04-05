@@ -54,6 +54,43 @@
   --trail-explorer-restored-name-bg: #faf5ff;
   --trail-explorer-restored-name-text: #7c3aed;
 
+  /* Trail Explorer preview card + why-chip colors used by .bike-explorer-preview-* */
+  --trail-explorer-preview-card-border: #e9d5ff;
+  --trail-explorer-preview-card-bg: #ffffff;
+  --trail-explorer-preview-title-text: #4c1d95;
+  --trail-explorer-preview-meta-text: #6b7280;
+  --trail-explorer-preview-chip-border: #ddd6fe;
+  --trail-explorer-preview-chip-bg: #f5f3ff;
+  --trail-explorer-preview-chip-text: #6d28d9;
+
+  /* Trail Explorer action/chip/relax button colors used by .bike-explorer-action-btn* and related classes */
+  --trail-explorer-action-btn-border: #ddd6fe;
+  --trail-explorer-action-btn-bg: #ffffff;
+  --trail-explorer-action-btn-text: #6d28d9;
+  --trail-explorer-action-btn-primary-border: #c4b5fd;
+  --trail-explorer-action-btn-primary-bg: #ede9fe;
+  --trail-explorer-action-btn-primary-text: #5b21b6;
+  --trail-explorer-action-btn-neutral-border: #e5e7eb;
+  --trail-explorer-action-btn-neutral-bg: #ffffff;
+  --trail-explorer-action-btn-neutral-text: #6b7280;
+  --trail-explorer-chip-remove-border: #ddd6fe;
+  --trail-explorer-chip-remove-bg: #ffffff;
+  --trail-explorer-chip-remove-text: #5b21b6;
+  --trail-explorer-relax-btn-border: #c4b5fd;
+  --trail-explorer-relax-btn-bg: #ffffff;
+  --trail-explorer-relax-btn-text: #6d28d9;
+  --trail-explorer-action-btn-hover-bg: #faf5ff;
+  --trail-explorer-action-btn-hover-border: #c4b5fd;
+  --trail-explorer-action-btn-primary-hover-bg: #ddd6fe;
+  --trail-explorer-action-btn-primary-hover-border: #a78bfa;
+  --trail-explorer-action-btn-neutral-hover-bg: #f9fafb;
+  --trail-explorer-action-btn-neutral-hover-border: #d1d5db;
+  --trail-explorer-action-btn-focus-ring: rgba(139, 92, 246, 0.28);
+  --trail-explorer-chip-remove-hover-bg: #faf5ff;
+  --trail-explorer-chip-remove-hover-border: #c4b5fd;
+  --trail-explorer-relax-btn-hover-bg: #faf5ff;
+  --trail-explorer-relax-btn-hover-border: #a78bfa;
+
   /* SHADOWS - Modern layered shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);

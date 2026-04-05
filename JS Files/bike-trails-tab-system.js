@@ -35,6 +35,8 @@
   const ITEMS_PER_PAGE = 20;
   const BIKE_EXPLORER_PRESETS_KEY = 'bikeTrailExplorerPresetsV1';
   const BIKE_EXPLORER_LAST_PRESET_KEY = 'bikeTrailExplorerLastPresetV1';
+  const BIKE_EXPLORER_DEFAULT_PRESET_KEY = 'bikeTrailExplorerDefaultPresetV1';
+  const BIKE_EXPLORER_AUTO_APPLY_KEY = 'bikeTrailExplorerAutoApplyV1';
   const BIKE_EXPLORER_MAX_PRESETS = 8;
 
   const BIKE_COLUMNS = [
@@ -2243,6 +2245,32 @@
     localStorage.setItem(BIKE_EXPLORER_LAST_PRESET_KEY, value);
   }
 
+  function getDefaultExplorerPresetName() {
+    return String(localStorage.getItem(BIKE_EXPLORER_DEFAULT_PRESET_KEY) || '').trim();
+  }
+
+  function setDefaultExplorerPresetName(name) {
+    const value = String(name || '').trim();
+    if (!value) {
+      localStorage.removeItem(BIKE_EXPLORER_DEFAULT_PRESET_KEY);
+      return;
+    }
+    localStorage.setItem(BIKE_EXPLORER_DEFAULT_PRESET_KEY, value);
+  }
+
+  function isExplorerAutoApplyEnabled() {
+    const raw = String(localStorage.getItem(BIKE_EXPLORER_AUTO_APPLY_KEY) || '').trim().toLowerCase();
+    return raw === '1' || raw === 'true';
+  }
+
+  function setExplorerAutoApplyEnabled(enabled) {
+    if (enabled) {
+      localStorage.setItem(BIKE_EXPLORER_AUTO_APPLY_KEY, '1');
+    } else {
+      localStorage.removeItem(BIKE_EXPLORER_AUTO_APPLY_KEY);
+    }
+  }
+
   function getExplorerFilterLabel(filterType, filterValue) {
     const labels = {
       driveTime: 'Drive Time',
@@ -2337,6 +2365,138 @@
     return getAllBikeTrails().filter((trail) => bikeTrailMatchesFilters(trail, previewFilters)).length;
   }
 
+  function getExplorerSelectionEntries() {
+    return Object.entries(explorerState.selectedFilters || {});
+  }
+
+  function getTrailDifficultyBand(trail) {
+    const diff = norm(trail.difficulty);
+    if (diff.includes('easy')) return 'easy';
+    if (diff.includes('moderate') || diff.includes('intermediate')) return 'moderate';
+    if (diff.includes('hard') || diff.includes('advanced') || diff.includes('expert')) return 'hard';
+    const score = parseNumber(trail.difficultyScore);
+    if (score > 0) {
+      if (score <= 33) return 'easy';
+      if (score <= 66) return 'moderate';
+      return 'hard';
+    }
+    return '';
+  }
+
+  function getTrailElevationBand(trail) {
+    const gain = Number(trail.elevationGain || 0);
+    if (gain <= 500) return 'low';
+    if (gain <= 1500) return 'medium';
+    return 'high';
+  }
+
+  function matchesExplorerCriterion(trail, filterType, filterValue) {
+    const value = String(filterValue || '').trim();
+    if (!filterType || !value) return false;
+
+    if (filterType === 'driveTime') return inBandDrive(trail.driveMinutes, value);
+    if (filterType === 'lengthBand') return inBandLength(trail.lengthMiles, value);
+    if (filterType === 'surface') return norm(trail.surface).includes(norm(value));
+    if (filterType === 'difficulty') {
+      const trailBand = getTrailDifficultyBand(trail);
+      return trailBand ? trailBand === value : norm(trail.difficulty).includes(norm(value));
+    }
+    if (filterType === 'elevation') return getTrailElevationBand(trail) === value;
+
+    if (filterType === 'timeOfDay') {
+      const haystack = [trail.bestTimeOfDay, trail.vibes, trail.moodTags, trail.notes].map(norm).join(' ');
+      return haystack.includes(norm(value));
+    }
+
+    if (filterType === 'condition') {
+      const haystack = [trail.weatherSuitability, trail.rideRiskProfile, trail.seasonalNotes, trail.notes].map(norm).join(' ');
+      return haystack.includes(norm(value));
+    }
+
+    return false;
+  }
+
+  function scoreTrailForExplorerSelection(trail, selectionEntries) {
+    const entries = Array.isArray(selectionEntries) ? selectionEntries : [];
+    const matchedCount = entries.reduce((sum, [type, value]) => (
+      sum + (matchesExplorerCriterion(trail, type, value) ? 1 : 0)
+    ), 0);
+    const ratingBoost = Number(trail.myRating || 0) * 2;
+    const drivePenalty = Number(trail.driveMinutes || 0) / 90;
+    return (matchedCount * 100) + ratingBoost - drivePenalty;
+  }
+
+  function getWhyMatchedChipsForTrail(trail, selectionEntries, fallbackCount = 2) {
+    const entries = Array.isArray(selectionEntries) ? selectionEntries : [];
+    const matched = entries
+      .filter(([type, value]) => matchesExplorerCriterion(trail, type, value))
+      .map(([type, value]) => getExplorerFilterLabel(type, value));
+
+    if (matched.length) return matched.slice(0, 3);
+
+    const fallback = [];
+    if (trail.driveMinutes > 0) fallback.push(`Drive: ${trail.driveMinutes} min`);
+    if (trail.lengthMiles > 0) fallback.push(`Length: ${trail.lengthMiles} mi`);
+    if (trail.difficulty) fallback.push(`Difficulty: ${trail.difficulty}`);
+    return fallback.slice(0, fallbackCount);
+  }
+
+  function getTopExplorerPreviewTrails(limit = 3) {
+    const selectionEntries = getExplorerSelectionEntries();
+    const previewFilters = buildExplorerFilterState(explorerState.selectedFilters);
+    return getAllBikeTrails()
+      .filter((trail) => bikeTrailMatchesFilters(trail, previewFilters))
+      .sort((a, b) => {
+        const scoreDiff = scoreTrailForExplorerSelection(b, selectionEntries) - scoreTrailForExplorerSelection(a, selectionEntries);
+        if (scoreDiff !== 0) return scoreDiff;
+        return Number(a.driveMinutes || 0) - Number(b.driveMinutes || 0);
+      })
+      .slice(0, Math.max(1, limit));
+  }
+
+  function getClosestExplorerCandidates(limit = 3) {
+    const selectionEntries = getExplorerSelectionEntries();
+    if (!selectionEntries.length) return [];
+
+    return getAllBikeTrails()
+      .map((trail) => {
+        const matchedCount = selectionEntries.reduce((sum, [type, value]) => (
+          sum + (matchesExplorerCriterion(trail, type, value) ? 1 : 0)
+        ), 0);
+        return { trail, matchedCount, score: scoreTrailForExplorerSelection(trail, selectionEntries) };
+      })
+      .filter((entry) => entry.matchedCount > 0)
+      .sort((a, b) => {
+        if (b.matchedCount !== a.matchedCount) return b.matchedCount - a.matchedCount;
+        return b.score - a.score;
+      })
+      .slice(0, Math.max(1, limit));
+  }
+
+  function buildSmartRelaxSuggestions(limit = 2) {
+    const selected = explorerState.selectedFilters || {};
+    const selectedKeys = Object.keys(selected);
+    if (!selectedKeys.length) return [];
+
+    const closest = getClosestExplorerCandidates(5);
+    if (!closest.length) return selectedKeys.slice(0, limit);
+
+    const mismatchCounts = {};
+    selectedKeys.forEach((key) => { mismatchCounts[key] = 0; });
+
+    closest.forEach(({ trail }) => {
+      selectedKeys.forEach((key) => {
+        if (!matchesExplorerCriterion(trail, key, selected[key])) {
+          mismatchCounts[key] += 1;
+        }
+      });
+    });
+
+    return selectedKeys
+      .sort((a, b) => (mismatchCounts[b] || 0) - (mismatchCounts[a] || 0))
+      .slice(0, Math.max(1, limit));
+  }
+
   function ensureExplorerFeedbackUI(modal) {
     if (!modal) return;
     if (document.getElementById('bikeExplorerFeedbackWrap')) return;
@@ -2354,20 +2514,26 @@
           <select id="bikeExplorerPresetSelect" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;background:white;font-size:12px;min-width:180px;">
             <option value="">Saved presets...</option>
           </select>
-          <button id="bikeExplorerLoadPresetBtn" type="button" style="padding:6px 10px;border:1px solid #c4b5fd;border-radius:6px;background:#ede9fe;color:#5b21b6;font-weight:600;cursor:pointer;">Load</button>
-          <button id="bikeExplorerSavePresetBtn" type="button" style="padding:6px 10px;border:1px solid #c4b5fd;border-radius:6px;background:white;color:#6d28d9;font-weight:600;cursor:pointer;">Save Current</button>
-          <button id="bikeExplorerRenamePresetBtn" type="button" style="padding:6px 10px;border:1px solid #ddd6fe;border-radius:6px;background:white;color:#6d28d9;font-weight:600;cursor:pointer;">Rename</button>
-          <button id="bikeExplorerDeletePresetBtn" type="button" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:6px;background:white;color:#6b7280;font-weight:600;cursor:pointer;">Delete</button>
+          <button id="bikeExplorerLoadPresetBtn" type="button" class="bike-explorer-action-btn bike-explorer-action-btn-primary">Load</button>
+          <button id="bikeExplorerSavePresetBtn" type="button" class="bike-explorer-action-btn bike-explorer-action-btn-outline">Save Current</button>
+          <button id="bikeExplorerRenamePresetBtn" type="button" class="bike-explorer-action-btn bike-explorer-action-btn-outline">Rename</button>
+          <button id="bikeExplorerDeletePresetBtn" type="button" class="bike-explorer-action-btn bike-explorer-action-btn-neutral">Delete</button>
+          <button id="bikeExplorerSetDefaultPresetBtn" type="button" class="bike-explorer-action-btn bike-explorer-action-btn-outline">Set Default</button>
         </div>
       </div>
+      <div id="bikeExplorerPresetMeta" style="margin-top:6px;font-size:11px;color:#6b7280;"></div>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:#6b7280;">
+        <input id="bikeExplorerAutoApplyToggle" type="checkbox" /> Auto-apply default preset on open
+      </label>
       <div id="bikeExplorerPresetEditor" style="display:none;margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap;">
         <span id="bikeExplorerPresetEditorLabel" style="font-size:12px;color:#6d28d9;font-weight:700;">Preset Name</span>
         <input id="bikeExplorerPresetNameInput" type="text" maxlength="80" placeholder="Preset name" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;background:white;font-size:12px;min-width:220px;" />
-        <button id="bikeExplorerPresetEditorSaveBtn" type="button" style="padding:6px 10px;border:1px solid #c4b5fd;border-radius:6px;background:#ede9fe;color:#5b21b6;font-weight:600;cursor:pointer;">Save</button>
-        <button id="bikeExplorerPresetEditorCancelBtn" type="button" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:6px;background:white;color:#6b7280;font-weight:600;cursor:pointer;">Cancel</button>
+        <button id="bikeExplorerPresetEditorSaveBtn" type="button" class="bike-explorer-action-btn bike-explorer-action-btn-primary">Save</button>
+        <button id="bikeExplorerPresetEditorCancelBtn" type="button" class="bike-explorer-action-btn bike-explorer-action-btn-neutral">Cancel</button>
       </div>
       <div id="bikeExplorerSelectedChips" style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;"></div>
       <div id="bikeExplorerHint" style="margin-top:8px;font-size:12px;color:#7c3aed;"></div>
+      <div id="bikeExplorerPreviewCards" class="bike-explorer-preview-cards"></div>
     `;
 
     tabsBar.insertAdjacentElement('afterend', wrap);
@@ -2377,14 +2543,63 @@
     const select = document.getElementById('bikeExplorerPresetSelect');
     if (!select) return;
     const presets = getExplorerPresets();
+    const defaultPreset = getDefaultExplorerPresetName();
     select.innerHTML = '<option value="">Saved presets...</option>' + presets.map((preset) => {
-      return `<option value="${escapeHtml(preset.name)}">${escapeHtml(preset.name)}</option>`;
+      const optionLabel = preset.name === defaultPreset ? `Default: ${preset.name}` : preset.name;
+      return `<option value="${escapeHtml(preset.name)}">${escapeHtml(optionLabel)}</option>`;
     }).join('');
 
     const lastUsed = getLastUsedExplorerPresetName();
     if (lastUsed && presets.some((entry) => entry.name === lastUsed)) {
       select.value = lastUsed;
     }
+
+    renderExplorerPresetMetaUI();
+  }
+
+  function renderExplorerPresetMetaUI() {
+    const meta = document.getElementById('bikeExplorerPresetMeta');
+    const select = document.getElementById('bikeExplorerPresetSelect');
+    const setDefaultBtn = document.getElementById('bikeExplorerSetDefaultPresetBtn');
+    const autoApplyToggle = document.getElementById('bikeExplorerAutoApplyToggle');
+    const defaultPreset = getDefaultExplorerPresetName();
+    const selected = String(select?.value || '').trim();
+
+    if (autoApplyToggle) autoApplyToggle.checked = isExplorerAutoApplyEnabled();
+    if (meta) {
+      meta.textContent = defaultPreset
+        ? `Default preset: ${defaultPreset}`
+        : 'No default preset selected.';
+    }
+    if (setDefaultBtn) {
+      if (selected && defaultPreset && selected === defaultPreset) {
+        setDefaultBtn.textContent = 'Clear Default';
+      } else {
+        setDefaultBtn.textContent = 'Set Default';
+      }
+    }
+  }
+
+  function setOrClearDefaultFromSelectedPreset() {
+    const select = document.getElementById('bikeExplorerPresetSelect');
+    const selectedName = String(select?.value || '').trim();
+    if (!selectedName) {
+      window.showToast?.('Choose a preset first.', 'info', 1800);
+      return;
+    }
+
+    const defaultPreset = getDefaultExplorerPresetName();
+    if (defaultPreset && defaultPreset === selectedName) {
+      setDefaultExplorerPresetName('');
+      window.showToast?.('Default preset cleared.', 'info', 1800);
+    } else {
+      setDefaultExplorerPresetName(selectedName);
+      window.showToast?.(`Set default preset: ${selectedName}`, 'success', 1800);
+    }
+
+    renderExplorerPresetOptions();
+    if (select) select.value = selectedName;
+    renderExplorerPresetMetaUI();
   }
 
   function showExplorerPresetEditor(mode, initialName = '') {
@@ -2421,14 +2636,16 @@
 
     container.innerHTML = entries.map(([filterType, filterValue]) => {
       const label = getExplorerFilterLabel(filterType, filterValue);
-      return `<button type="button" class="bike-explorer-chip-remove" data-explorer-chip-type="${escapeHtml(filterType)}" style="padding:5px 10px;border:1px solid #ddd6fe;border-radius:999px;background:white;color:#5b21b6;font-size:12px;cursor:pointer;">${escapeHtml(label)} ×</button>`;
+      return `<button type="button" class="bike-explorer-chip-remove bike-explorer-chip-remove-btn" data-explorer-chip-type="${escapeHtml(filterType)}">${escapeHtml(label)} ×</button>`;
     }).join('');
   }
 
   function renderExplorerFeedbackUI() {
     const countEl = document.getElementById('bikeExplorerLiveCount');
     const hintEl = document.getElementById('bikeExplorerHint');
+    const previewEl = document.getElementById('bikeExplorerPreviewCards');
     const previewCount = getExplorerPreviewMatchCount();
+    const selectionEntries = getExplorerSelectionEntries();
 
     if (countEl) {
       const label = previewCount === 1 ? 'trail' : 'trails';
@@ -2443,14 +2660,39 @@
       if (!Object.keys(selected).length) {
         hintEl.innerHTML = `${restoredBadgeLine}<div>Tip: pick one or more criteria to narrow results before applying.</div>`;
       } else if (previewCount === 0) {
-        const removable = ['driveTime', 'difficulty', 'lengthBand', 'surface', 'condition', 'timeOfDay', 'elevation']
-          .filter((key) => selected[key]);
-        const actions = removable.slice(0, 2).map((key) => {
-          return `<button type="button" class="bike-explorer-relax-btn" data-explorer-relax="${escapeHtml(key)}" style="margin-left:6px;padding:4px 8px;border:1px solid #c4b5fd;border-radius:999px;background:white;color:#6d28d9;cursor:pointer;">Relax ${escapeHtml(getExplorerFilterLabel(key, selected[key]).split(':')[0])}</button>`;
+        const suggestions = buildSmartRelaxSuggestions(2);
+        const closest = getClosestExplorerCandidates(1)[0];
+        const actions = suggestions.map((key) => {
+          return `<button type="button" class="bike-explorer-relax-btn bike-explorer-relax-btn-ui" data-explorer-relax="${escapeHtml(key)}">Relax ${escapeHtml(getExplorerFilterLabel(key, selected[key]).split(':')[0])}</button>`;
         }).join('');
-        hintEl.innerHTML = `${restoredBadgeLine}<div>No matches yet. Try relaxing one filter.${actions}</div>`;
+        const closestText = closest
+          ? ` Closest match: ${escapeHtml(closest.trail.name)} (${closest.matchedCount}/${selectionEntries.length} criteria).`
+          : '';
+        hintEl.innerHTML = `${restoredBadgeLine}<div>No exact matches yet.${closestText} Try a smart relax suggestion.${actions}</div>`;
       } else {
         hintEl.innerHTML = `${restoredBadgeLine}<div>Looks good. Click Apply Filters & Close to update your trail list.</div>`;
+      }
+    }
+
+    if (previewEl) {
+      if (previewCount === 0) {
+        previewEl.innerHTML = '';
+      } else {
+        const topPreview = getTopExplorerPreviewTrails(3);
+        previewEl.innerHTML = topPreview.map((trail) => {
+          const whyChips = getWhyMatchedChipsForTrail(trail, selectionEntries).map((chip) => {
+            return `<span class="bike-explorer-preview-why-chip">${escapeHtml(chip)}</span>`;
+          }).join('');
+          return `
+            <div class="bike-explorer-preview-card">
+              <div class="bike-explorer-preview-card-top">
+                <strong class="bike-explorer-preview-card-title">${escapeHtml(trail.name || 'Trail')}</strong>
+                <span class="bike-explorer-preview-card-meta">${escapeHtml(String(trail.driveMinutes || 0))} min drive • ${escapeHtml(String(trail.lengthMiles || 0))} mi</span>
+              </div>
+              <div class="bike-explorer-preview-chip-row">${whyChips}</div>
+            </div>
+          `;
+        }).join('');
       }
     }
 
@@ -2543,6 +2785,9 @@
       name: nextName
     };
     saveExplorerPresets(presets);
+    if (getDefaultExplorerPresetName() === selectedName) {
+      setDefaultExplorerPresetName(nextName);
+    }
     renderExplorerPresetOptions();
     if (select) select.value = nextName;
     setLastUsedExplorerPresetName(nextName);
@@ -2592,6 +2837,9 @@
     if (getLastUsedExplorerPresetName() === selectedName) {
       setLastUsedExplorerPresetName('');
     }
+    if (getDefaultExplorerPresetName() === selectedName) {
+      setDefaultExplorerPresetName('');
+    }
     renderExplorerPresetOptions();
     if (select) select.value = '';
     hideExplorerPresetEditor();
@@ -2617,9 +2865,14 @@
     hideExplorerPresetEditor();
     renderExplorerFeedbackUI();
 
+    const defaultPreset = getDefaultExplorerPresetName();
     const lastPreset = getLastUsedExplorerPresetName();
-    if (lastPreset) {
-      applyExplorerPresetByName(lastPreset, { silent: true, showSuccessToast: false, showRestoredHint: true });
+    const presetToRestore = defaultPreset || lastPreset;
+    if (presetToRestore) {
+      const restored = applyExplorerPresetByName(presetToRestore, { silent: true, showSuccessToast: false, showRestoredHint: true });
+      if (restored && defaultPreset && isExplorerAutoApplyEnabled()) {
+        applyExplorerFilters();
+      }
     }
 
     // Activate the first tab
@@ -2790,6 +3043,22 @@
 
     const deletePresetBtn = document.getElementById('bikeExplorerDeletePresetBtn');
     if (deletePresetBtn) deletePresetBtn.addEventListener('click', deleteSelectedExplorerPreset);
+
+    const setDefaultPresetBtn = document.getElementById('bikeExplorerSetDefaultPresetBtn');
+    if (setDefaultPresetBtn) setDefaultPresetBtn.addEventListener('click', setOrClearDefaultFromSelectedPreset);
+
+    const autoApplyToggle = document.getElementById('bikeExplorerAutoApplyToggle');
+    if (autoApplyToggle) {
+      autoApplyToggle.addEventListener('change', () => {
+        setExplorerAutoApplyEnabled(!!autoApplyToggle.checked);
+        renderExplorerPresetMetaUI();
+      });
+    }
+
+    const presetSelect = document.getElementById('bikeExplorerPresetSelect');
+    if (presetSelect) {
+      presetSelect.addEventListener('change', renderExplorerPresetMetaUI);
+    }
 
     const presetEditorSaveBtn = document.getElementById('bikeExplorerPresetEditorSaveBtn');
     if (presetEditorSaveBtn) presetEditorSaveBtn.addEventListener('click', commitExplorerPresetEditor);

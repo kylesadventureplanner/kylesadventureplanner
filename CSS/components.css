@@ -315,6 +315,153 @@ header h1 {
   font-weight: 600;
 }
 
+/* Trail Explorer: inline preview cards + why-matched chips */
+.bike-explorer-preview-cards {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.bike-explorer-preview-card {
+  border: 1px solid var(--trail-explorer-preview-card-border);
+  border-radius: 8px;
+  background: var(--trail-explorer-preview-card-bg);
+  padding: 8px 10px;
+}
+
+.bike-explorer-preview-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.bike-explorer-preview-card-title {
+  font-size: 12px;
+  color: var(--trail-explorer-preview-title-text);
+}
+
+.bike-explorer-preview-card-meta {
+  font-size: 11px;
+  color: var(--trail-explorer-preview-meta-text);
+}
+
+.bike-explorer-preview-chip-row {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.bike-explorer-preview-why-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid var(--trail-explorer-preview-chip-border);
+  border-radius: 999px;
+  background: var(--trail-explorer-preview-chip-bg);
+  color: var(--trail-explorer-preview-chip-text);
+  font-size: 11px;
+}
+
+.bike-explorer-action-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--trail-explorer-action-btn-border);
+  background: var(--trail-explorer-action-btn-bg);
+  color: var(--trail-explorer-action-btn-text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bike-explorer-action-btn-primary {
+  border-color: var(--trail-explorer-action-btn-primary-border);
+  background: var(--trail-explorer-action-btn-primary-bg);
+  color: var(--trail-explorer-action-btn-primary-text);
+}
+
+.bike-explorer-action-btn-outline {
+  border-color: var(--trail-explorer-action-btn-border);
+  background: var(--trail-explorer-action-btn-bg);
+  color: var(--trail-explorer-action-btn-text);
+}
+
+.bike-explorer-action-btn-neutral {
+  border-color: var(--trail-explorer-action-btn-neutral-border);
+  background: var(--trail-explorer-action-btn-neutral-bg);
+  color: var(--trail-explorer-action-btn-neutral-text);
+}
+
+@media (hover: hover) {
+  .bike-explorer-action-btn:hover {
+    background: var(--trail-explorer-action-btn-hover-bg);
+    border-color: var(--trail-explorer-action-btn-hover-border);
+  }
+
+  .bike-explorer-action-btn-primary:hover {
+    background: var(--trail-explorer-action-btn-primary-hover-bg);
+    border-color: var(--trail-explorer-action-btn-primary-hover-border);
+  }
+
+  .bike-explorer-action-btn-neutral:hover {
+    background: var(--trail-explorer-action-btn-neutral-hover-bg);
+    border-color: var(--trail-explorer-action-btn-neutral-hover-border);
+  }
+}
+
+.bike-explorer-action-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--trail-explorer-action-btn-focus-ring);
+}
+
+.bike-explorer-chip-remove-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--trail-explorer-chip-remove-border);
+  border-radius: 999px;
+  background: var(--trail-explorer-chip-remove-bg);
+  color: var(--trail-explorer-chip-remove-text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+@media (hover: hover) {
+  .bike-explorer-chip-remove-btn:hover {
+    background: var(--trail-explorer-chip-remove-hover-bg);
+    border-color: var(--trail-explorer-chip-remove-hover-border);
+  }
+}
+
+.bike-explorer-chip-remove-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--trail-explorer-action-btn-focus-ring);
+}
+
+.bike-explorer-relax-btn-ui {
+  margin-left: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--trail-explorer-relax-btn-border);
+  border-radius: 999px;
+  background: var(--trail-explorer-relax-btn-bg);
+  color: var(--trail-explorer-relax-btn-text);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+@media (hover: hover) {
+  .bike-explorer-relax-btn-ui:hover {
+    background: var(--trail-explorer-relax-btn-hover-bg);
+    border-color: var(--trail-explorer-relax-btn-hover-border);
+  }
+}
+
+.bike-explorer-relax-btn-ui:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--trail-explorer-action-btn-focus-ring);
+}
+
 /* ============================================================
    TOOLTIPS
 ============================================================ */
