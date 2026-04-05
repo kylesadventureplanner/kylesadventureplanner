@@ -40,7 +40,7 @@ Current check:
 
 - [x] Remove inline `<style>` blocks where equivalent CSS can live in shared files.
 - [x] Remove `style="..."` attributes for layout/visibility and replace with class-based styling (completed for `HTML Files/edit-mode-new.html`).
-- [x] Remove `style="..."` attributes for layout/visibility and replace with class-based styling (completed for `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html`).
+- [x] Remove `style="..."` attributes for layout/visibility and replace with class-based styling (completed for `HTML Files/find-near-me-window.html`, `HTML Files/city-viewer-window.html`, `HTML Files/adventure-details-window.html`, and `HTML Files/bike-details-window.html`).
 - [ ] Leave truly dynamic values inline only when they cannot be represented with classes.
 
 ## 6) Pilot migration recipe (completed on Trail Explorer)
@@ -56,7 +56,7 @@ Reference file: `HTML Files/trail-explorer-window.html`
 
 1. `HTML Files/edit-mode-new.html` (inline `<style>` and inline `style="..."` attributes completed).
 2. `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html` (inline `style="..."` attributes completed).
-3. `HTML Files/adventure-details-window.html` and `HTML Files/bike-details-window.html`.
+3. `HTML Files/adventure-details-window.html` and `HTML Files/bike-details-window.html` (inline `style="..."` attributes completed).
 4. Tabs under `HTML Files/tabs/` after shell/component patterns are stable.
 
 ## 8) QA pass for each migrated page
@@ -65,4 +65,9 @@ Reference file: `HTML Files/trail-explorer-window.html`
 - [ ] Verify loading and error states still render correctly.
 - [ ] Verify no regressions in JS behavior tied to class/state toggling.
 - [ ] Capture before/after screenshots for visual diff review.
+
+## 9) Shared utility extraction
+
+- [x] Extracted repeated window utility patterns into `CSS/utilities.css` (`.u-hidden`, `.u-stack-gap-sm`, `.u-mt-10`, `.u-text-xs-dim`).
+- [x] Updated `HTML Files/adventure-details-window.html` and `HTML Files/bike-details-window.html` to consume shared window utility classes.
 

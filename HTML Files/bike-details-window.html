@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bike Trail Details</title>
+  <link rel="stylesheet" href="../CSS/utilities.css">
   <style>
     body {
       margin: 0;
@@ -348,7 +349,7 @@
   <div id="pane-tag-management" class="tab-pane"></div>
 
   <!-- Sticky action bar — always visible regardless of active tab -->
-  <div class="action-bar" id="actionBar" style="display:none;">
+  <div class="action-bar u-hidden" id="actionBar">
     <span class="action-bar-label">Quick Actions</span>
 
     <button type="button" class="ab-btn ab-fav" id="abFavBtn" title="Add to Favorites">
@@ -364,11 +365,11 @@
       <button type="button" class="star-btn" data-star="5" title="5 stars">★</button>
     </div>
 
-    <a class="ab-btn ab-maps" id="abMapsBtn" href="#" target="_blank" rel="noopener" style="display:none;">
+    <a class="ab-btn ab-maps u-hidden" id="abMapsBtn" href="#" target="_blank" rel="noopener">
       🗺️ Open Maps
     </a>
 
-    <a class="ab-btn ab-parking" id="abParkingBtn" href="#" target="_blank" rel="noopener" style="display:none;">
+    <a class="ab-btn ab-parking u-hidden" id="abParkingBtn" href="#" target="_blank" rel="noopener">
       🅿️ Parking Map
     </a>
   </div>
@@ -528,14 +529,14 @@
       '<h3 class="tm-title">Notes</h3>' +
       '<div id="bnmStatus" class="tm-status">Manage notes for this bike trail</div>' +
       '</div>' +
-      '<div style="display:grid;gap:8px;">' +
+      '<div class="u-stack-gap-sm">' +
       (notes.length
         ? notes.map(function (note, idx) {
             return '<div class="bnm-item"><div class="bnm-text">' + esc(note) + '</div><button type="button" class="bnm-remove" data-bike-note-index="' + idx + '">Remove</button></div>';
           }).join('')
         : '<span class="tm-empty">No notes yet</span>') +
       '</div>' +
-      '<div class="tm-input-row" style="margin-top:10px;">' +
+      '<div class="tm-input-row u-mt-10">' +
       '<textarea id="bnmInput" class="bnm-input" placeholder="Write a note (Cmd/Ctrl + Enter to add)"></textarea>' +
       '</div>' +
       '<div class="tm-actions">' +
@@ -999,7 +1000,7 @@
   function initActionBar(data, directionsUrl) {
     var bar = document.getElementById('actionBar');
     if (!bar) return;
-    bar.style.display = 'flex';
+    bar.classList.remove('u-hidden');
 
     var locationKey = getLocationKey(data);
     var state = loadActionBarState(locationKey);
@@ -1055,7 +1056,7 @@
     var mapsBtn = document.getElementById('abMapsBtn');
     if (directionsUrl) {
       mapsBtn.setAttribute('href', directionsUrl);
-      mapsBtn.style.display = 'inline-flex';
+      mapsBtn.classList.remove('u-hidden');
     }
 
     // ── Parking Map ──
@@ -1066,7 +1067,7 @@
     }
     if (parkingUrl) {
       parkingBtn.setAttribute('href', parkingUrl);
-      parkingBtn.style.display = 'inline-flex';
+      parkingBtn.classList.remove('u-hidden');
     }
   }
   // ── End Action Bar ───────────────────────────────────────────
