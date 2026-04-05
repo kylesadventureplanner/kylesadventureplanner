@@ -50,6 +50,34 @@
 
   <div class="card">
     <div class="card-header">
+      <div class="card-title">🏅 Badge Gallery</div>
+      <div class="card-subtitle">Unlock achievements by rarity: Common, Rare, Epic, and Legendary.</div>
+    </div>
+    <div id="visitedBadgeGallery" class="visited-badge-grid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📆 Rotating Quests</div>
+      <div class="card-subtitle">Fresh objective sets every week and month.</div>
+    </div>
+    <div class="visited-quest-panels">
+      <div id="visitedWeeklyQuestPanel" class="visited-quest-panel"></div>
+      <div id="visitedMonthlyQuestPanel" class="visited-quest-panel"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🗺️ Visited Heatmap</div>
+      <div class="card-subtitle">Hot spots by city/state based on your logged visits.</div>
+    </div>
+    <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
+    <div id="visitedHeatmapHotspots" class="visited-hotspots-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
       <div>
         <div class="card-title">🧠 Smart Adventure Suggestions</div>
         <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
@@ -137,11 +165,150 @@
     gap: 12px;
   }
 
+  #visitedLocationsRoot .visited-badge-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
   #visitedLocationsRoot .visited-category-card,
   #visitedLocationsRoot .visited-challenge-card {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     padding: 12px;
+    background: #fff;
+  }
+
+  #visitedLocationsRoot .visited-badge-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    background: #fff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  #visitedLocationsRoot .visited-badge-card.unlocked {
+    border-color: #93c5fd;
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.12);
+  }
+
+  #visitedLocationsRoot .visited-badge-card.unlock-pop {
+    animation: visitedBadgeUnlock 0.7s ease;
+  }
+
+  @keyframes visitedBadgeUnlock {
+    0% { transform: scale(0.95); }
+    50% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+
+  #visitedLocationsRoot .visited-badge-card.rarity-common { border-left: 5px solid #9ca3af; }
+  #visitedLocationsRoot .visited-badge-card.rarity-rare { border-left: 5px solid #3b82f6; }
+  #visitedLocationsRoot .visited-badge-card.rarity-epic { border-left: 5px solid #8b5cf6; }
+  #visitedLocationsRoot .visited-badge-card.rarity-legendary { border-left: 5px solid #f59e0b; }
+
+  #visitedLocationsRoot .visited-badge-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  #visitedLocationsRoot .visited-badge-icon { font-size: 22px; }
+
+  #visitedLocationsRoot .visited-badge-rarity {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  #visitedLocationsRoot .visited-badge-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  #visitedLocationsRoot .visited-badge-desc {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #6b7280;
+    min-height: 32px;
+  }
+
+  #visitedLocationsRoot .visited-quest-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px;
+  }
+
+  #visitedLocationsRoot .visited-quest-panel {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px;
+    background: #fff;
+  }
+
+  #visitedLocationsRoot .visited-quest-panel-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  #visitedLocationsRoot .visited-quest-panel-subtitle {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  #visitedLocationsRoot .visited-quest-list {
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  #visitedLocationsRoot .visited-quest-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+    background: #f9fafb;
+  }
+
+  #visitedLocationsRoot .visited-quest-item.completed {
+    border-color: #86efac;
+    background: #f0fdf4;
+  }
+
+  #visitedLocationsRoot .visited-quest-item-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  #visitedLocationsRoot .visited-heatmap-canvas {
+    width: 100%;
+    min-height: 290px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f8fafc;
+  }
+
+  #visitedLocationsRoot .visited-hotspots-list {
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  #visitedLocationsRoot .visited-hotspot-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #374151;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
     background: #fff;
   }
 

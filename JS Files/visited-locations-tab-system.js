@@ -6,6 +6,7 @@
 (function() {
   const STORAGE_KEY = 'visitedLocationsTrackerV1';
   const CHALLENGE_STATE_KEY = 'visitedLocationsChallengeStateV1';
+  const VISITED_META_KEY = 'visitedLocationsMetaV1';
 
   const CATEGORY_DEFS = [
     { key: 'hiking', label: 'Hiking Trails', icon: '🥾', keywords: ['hiking', 'trail', 'mountain', 'summit'] },
@@ -36,12 +37,46 @@
     cloudy: { label: 'Cloudy', preferred: ['hiking', 'bike', 'scenic'] }
   };
 
+  const BADGE_DEFS = [
+    { id: 'first-checkin', icon: '🎯', title: 'First Check-In', rarity: 'common', points: 40, metric: 'visited', goal: 1, description: 'Mark your first visited location.' },
+    { id: 'trail-mixer', icon: '🧩', title: 'Trail Mixer', rarity: 'rare', points: 90, metric: 'categoryCoverage', goal: 3, description: 'Visit at least 3 different categories.' },
+    { id: 'state-hopper', icon: '🗺️', title: 'State Hopper', rarity: 'epic', points: 140, metric: 'states', goal: 3, description: 'Visit locations in 3 different states.' },
+    { id: 'weekend-warrior', icon: '🌞', title: 'Weekend Warrior', rarity: 'rare', points: 120, metric: 'weekendVisits', goal: 5, description: 'Log 5 weekend adventures.' },
+    { id: 'coffee-connoisseur', icon: '☕', title: 'Coffee Connoisseur', rarity: 'epic', points: 160, metric: 'category', category: 'coffee', goal: 8, description: 'Visit 8 coffee spots.' },
+    { id: 'all-terrain', icon: '🏅', title: 'All Terrain Master', rarity: 'legendary', points: 250, metric: 'categoryCoverage', goal: 6, description: 'Unlock every category at least once.' },
+    { id: 'seven-day-flame', icon: '🔥', title: 'Seven Day Flame', rarity: 'legendary', points: 220, metric: 'streak', goal: 7, description: 'Reach a 7-day visit streak.' }
+  ];
+
+  const WEEKLY_QUEST_POOL = [
+    { id: 'wk-three-visits', icon: '⚡', title: '3 Visits This Week', metric: 'visitsInPeriod', goal: 3, points: 80 },
+    { id: 'wk-two-categories', icon: '🧭', title: '2 Categories This Week', metric: 'categoriesInPeriod', goal: 2, points: 90 },
+    { id: 'wk-city-hop', icon: '🏙️', title: '3 Cities This Week', metric: 'citiesInPeriod', goal: 3, points: 95 },
+    { id: 'wk-waterfall', icon: '💧', title: '1 Waterfall This Week', metric: 'categoryInPeriod', category: 'waterfall', goal: 1, points: 85 },
+    { id: 'wk-coffee', icon: '☕', title: '2 Coffee Spots This Week', metric: 'categoryInPeriod', category: 'coffee', goal: 2, points: 85 }
+  ];
+
+  const MONTHLY_QUEST_POOL = [
+    { id: 'mo-ten-visits', icon: '🏁', title: '10 Visits This Month', metric: 'visitsInPeriod', goal: 10, points: 180 },
+    { id: 'mo-four-categories', icon: '🎨', title: '4 Categories This Month', metric: 'categoriesInPeriod', goal: 4, points: 200 },
+    { id: 'mo-state-tour', icon: '🗺️', title: '2 States This Month', metric: 'statesInPeriod', goal: 2, points: 170 },
+    { id: 'mo-scenic-pair', icon: '🛣️', title: '2 Scenic Drives This Month', metric: 'categoryInPeriod', category: 'scenic', goal: 2, points: 160 },
+    { id: 'mo-bike-pack', icon: '🚴', title: '3 Bike Spots This Month', metric: 'categoryInPeriod', category: 'bike', goal: 3, points: 160 }
+  ];
+
+  const RARITY_STYLES = {
+    common: { label: 'Common', className: 'rarity-common' },
+    rare: { label: 'Rare', className: 'rarity-rare' },
+    epic: { label: 'Epic', className: 'rarity-epic' },
+    legendary: { label: 'Legendary', className: 'rarity-legendary' }
+  };
+
   const state = {
     initialized: false,
     weatherMode: 'auto',
     searchText: '',
     categoryFilter: 'all',
     challengeState: {},
+    metaState: {},
     lastRenderAt: null
   };
 
@@ -72,6 +107,20 @@
 
   function saveChallengeState() {
     localStorage.setItem(CHALLENGE_STATE_KEY, JSON.stringify(state.challengeState || {}));
+  }
+
+  function loadMetaState() {
+    const base = safeJsonParse(localStorage.getItem(VISITED_META_KEY), {}) || {};
+    state.metaState = {
+      badges: base.badges || {},
+      quests: {
+        completions: (base.quests && base.quests.completions) || {}
+      }
+    };
+  }
+
+  function saveMetaState() {
+    localStorage.setItem(VISITED_META_KEY, JSON.stringify(state.metaState || {}));
   }
 
   function getVisitMap() {
@@ -192,6 +241,73 @@
     return streak;
   }
 
+  function getVisitDate(entry) {
+    const date = new Date(entry && entry.visitedAt);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function getWeekKey(date) {
+    const utc = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    utc.setUTCDate(utc.getUTCDate() + 4 - (utc.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
+    return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  }
+
+  function getMonthKey(date) {
+    return `${date.getFullYear()}-M${String(date.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function computeVisitInsights(stats, visitMap) {
+    const stateSet = new Set();
+    const citySet = new Set();
+    const weekendVisits = [];
+    const weekEntries = [];
+    const monthEntries = [];
+
+    const now = new Date();
+    const nowWeek = getWeekKey(now);
+    const nowMonth = getMonthKey(now);
+
+    stats.visited.forEach((adventure) => {
+      const stateText = norm(adventure.state);
+      const cityText = norm(adventure.city);
+      if (stateText) stateSet.add(stateText);
+      if (cityText) citySet.add(`${cityText}|${stateText}`);
+    });
+
+    Object.entries(visitMap).forEach(([locationId, entry]) => {
+      const date = getVisitDate(entry);
+      if (!date) return;
+
+      const adventure = stats.adventures.find(item => item.id === locationId);
+      const categories = adventure ? categoriesForAdventure(adventure) : [];
+
+      const payload = {
+        locationId,
+        date,
+        adventure,
+        categories,
+        weekKey: getWeekKey(date),
+        monthKey: getMonthKey(date)
+      };
+
+      if (date.getDay() === 0 || date.getDay() === 6) weekendVisits.push(payload);
+      if (payload.weekKey === nowWeek) weekEntries.push(payload);
+      if (payload.monthKey === nowMonth) monthEntries.push(payload);
+    });
+
+    return {
+      uniqueStates: stateSet.size,
+      uniqueCities: citySet.size,
+      weekendVisitCount: weekendVisits.length,
+      weekEntries,
+      monthEntries,
+      weekKey: nowWeek,
+      monthKey: nowMonth
+    };
+  }
+
   function buildStats(adventures, visitMap) {
     const visited = getVisitedLocations(adventures, visitMap);
     const visitedIds = new Set(visited.map(item => item.id));
@@ -258,6 +374,145 @@
         pct: Math.min(100, Math.round((progress / challenge.goal) * 100))
       };
     });
+  }
+
+  function seededPick(pool, seedText, count) {
+    let seed = 0;
+    for (let i = 0; i < seedText.length; i += 1) {
+      seed = (seed * 31 + seedText.charCodeAt(i)) >>> 0;
+    }
+
+    const scored = pool.map((item, idx) => {
+      const value = (seed ^ ((idx + 1) * 2654435761)) >>> 0;
+      return { item, value };
+    });
+
+    return scored
+      .sort((a, b) => a.value - b.value)
+      .slice(0, count)
+      .map(entry => entry.item);
+  }
+
+  function calcQuestProgress(quest, entries) {
+    if (quest.metric === 'visitsInPeriod') return entries.length;
+
+    if (quest.metric === 'categoriesInPeriod') {
+      const set = new Set();
+      entries.forEach(entry => entry.categories.forEach(category => set.add(category)));
+      return set.size;
+    }
+
+    if (quest.metric === 'citiesInPeriod') {
+      const set = new Set();
+      entries.forEach(entry => {
+        const city = norm(entry.adventure && entry.adventure.city);
+        const state = norm(entry.adventure && entry.adventure.state);
+        if (city || state) set.add(`${city}|${state}`);
+      });
+      return set.size;
+    }
+
+    if (quest.metric === 'statesInPeriod') {
+      const set = new Set();
+      entries.forEach(entry => {
+        const stateText = norm(entry.adventure && entry.adventure.state);
+        if (stateText) set.add(stateText);
+      });
+      return set.size;
+    }
+
+    if (quest.metric === 'categoryInPeriod') {
+      return entries.filter(entry => entry.categories.includes(quest.category)).length;
+    }
+
+    return 0;
+  }
+
+  function buildQuestSet(type, periodKey, pool, entries) {
+    const selected = seededPick(pool, `${type}:${periodKey}`, 3);
+    const justCompleted = [];
+
+    const quests = selected.map((quest) => {
+      const progress = calcQuestProgress(quest, entries);
+      const completed = progress >= quest.goal;
+      const completionKey = `${type}:${periodKey}:${quest.id}`;
+
+      if (completed && !state.metaState.quests.completions[completionKey]) {
+        state.metaState.quests.completions[completionKey] = new Date().toISOString();
+        justCompleted.push(quest);
+      }
+
+      return {
+        ...quest,
+        progress,
+        completed,
+        completionKey,
+        pct: Math.min(100, Math.round((progress / quest.goal) * 100))
+      };
+    });
+
+    return { type, periodKey, quests, justCompleted };
+  }
+
+  function buildRotatingQuests(insights) {
+    const weekly = buildQuestSet('weekly', insights.weekKey, WEEKLY_QUEST_POOL, insights.weekEntries);
+    const monthly = buildQuestSet('monthly', insights.monthKey, MONTHLY_QUEST_POOL, insights.monthEntries);
+
+    const allNew = weekly.justCompleted.concat(monthly.justCompleted);
+    if (allNew.length > 0) {
+      saveMetaState();
+      if (typeof window.showToast === 'function') {
+        const labels = allNew.map(item => `${item.icon} ${item.title}`).join(', ');
+        window.showToast(`Quest complete: ${labels}`, 'success', 4200);
+      }
+    }
+
+    return { weekly, monthly };
+  }
+
+  function getBadgeMetricProgress(badge, stats, insights) {
+    if (badge.metric === 'visited') return stats.visited.length;
+    if (badge.metric === 'categoryCoverage') return stats.completedCategories;
+    if (badge.metric === 'states') return insights.uniqueStates;
+    if (badge.metric === 'weekendVisits') return insights.weekendVisitCount;
+    if (badge.metric === 'streak') return stats.streakDays;
+    if (badge.metric === 'category') return stats.visitedByCategory[badge.category] || 0;
+    return 0;
+  }
+
+  function buildBadgeProgress(stats, insights) {
+    const now = new Date().toISOString();
+    const badges = BADGE_DEFS.map((badge) => {
+      const progress = getBadgeMetricProgress(badge, stats, insights);
+      const completed = progress >= badge.goal;
+      const existing = state.metaState.badges[badge.id] || null;
+      let justUnlocked = false;
+
+      if (completed && !existing) {
+        state.metaState.badges[badge.id] = { unlockedAt: now };
+        justUnlocked = true;
+      }
+
+      return {
+        ...badge,
+        progress,
+        completed,
+        justUnlocked,
+        unlockedAt: state.metaState.badges[badge.id] ? state.metaState.badges[badge.id].unlockedAt : null,
+        pct: Math.min(100, Math.round((progress / badge.goal) * 100))
+      };
+    });
+
+    const newlyUnlocked = badges.filter(item => item.justUnlocked);
+    if (newlyUnlocked.length > 0) {
+      saveMetaState();
+      if (typeof window.showToast === 'function') {
+        const labels = newlyUnlocked.map(item => `${item.icon} ${item.title}`).join(', ');
+        window.showToast(`Badge unlocked: ${labels}`, 'success', 4200);
+      }
+    }
+
+    return badges;
   }
 
   function getPlayerLevel(totalXp) {
@@ -346,12 +601,16 @@
       .slice(0, 8);
   }
 
-  function renderSummary(stats, challengeProgress) {
+  function renderSummary(stats, challengeProgress, badges, questSet) {
     const completedChallenges = challengeProgress.filter(challenge => challenge.completed).length;
     const challengeXp = challengeProgress
       .filter(challenge => challenge.completed)
       .reduce((sum, challenge) => sum + challenge.points, 0);
-    const level = getPlayerLevel(stats.xpFromVisits + challengeXp);
+    const badgeXp = badges.filter(badge => badge.completed).reduce((sum, badge) => sum + badge.points, 0);
+    const questXp = questSet.weekly.quests.concat(questSet.monthly.quests)
+      .filter(quest => quest.completed)
+      .reduce((sum, quest) => sum + quest.points, 0);
+    const level = getPlayerLevel(stats.xpFromVisits + challengeXp + badgeXp + questXp);
 
     const summaryEl = document.getElementById('visitedSummaryStats');
     if (!summaryEl) return;
@@ -373,6 +632,11 @@
         <div class="visited-stat-sub">Keep stacking wins</div>
       </div>
       <div class="visited-stat-card">
+        <div class="visited-stat-label">Badges</div>
+        <div class="visited-stat-value">${badges.filter(b => b.completed).length}/${badges.length}</div>
+        <div class="visited-stat-sub">Rarity tiers unlocked</div>
+      </div>
+      <div class="visited-stat-card">
         <div class="visited-stat-label">Current Streak</div>
         <div class="visited-stat-value">${stats.streakDays} days</div>
         <div class="visited-stat-sub">Visit one place daily</div>
@@ -383,6 +647,153 @@
     if (levelBar) {
       levelBar.style.width = `${Math.max(0, Math.min(100, level.levelProgressPct))}%`;
     }
+  }
+
+  function renderBadges(badges) {
+    const container = document.getElementById('visitedBadgeGallery');
+    if (!container) return;
+
+    container.innerHTML = badges.map((badge) => {
+      const rarity = RARITY_STYLES[badge.rarity] || RARITY_STYLES.common;
+      const statusText = badge.completed
+        ? `Unlocked ${badge.unlockedAt ? new Date(badge.unlockedAt).toLocaleDateString() : ''}`
+        : `${badge.progress}/${badge.goal}`;
+
+      return `
+        <div class="visited-badge-card ${rarity.className} ${badge.completed ? 'unlocked' : 'locked'} ${badge.justUnlocked ? 'unlock-pop' : ''}">
+          <div class="visited-badge-top">
+            <div class="visited-badge-icon">${badge.icon}</div>
+            <div class="visited-badge-rarity">${rarity.label}</div>
+          </div>
+          <div class="visited-badge-title">${escapeHtml(badge.title)}</div>
+          <div class="visited-badge-desc">${escapeHtml(badge.description)}</div>
+          <div class="visited-challenge-progress">${escapeHtml(statusText)}</div>
+          <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${badge.pct}%;"></div></div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderQuestPanel(containerId, title, subtitle, questBucket) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="visited-quest-panel-title">${escapeHtml(title)}</div>
+      <div class="visited-quest-panel-subtitle">${escapeHtml(subtitle)} • ${escapeHtml(questBucket.periodKey)}</div>
+      <div class="visited-quest-list">
+        ${questBucket.quests.map((quest) => `
+          <div class="visited-quest-item ${quest.completed ? 'completed' : ''}">
+            <div class="visited-quest-item-title">${quest.icon} ${escapeHtml(quest.title)}</div>
+            <div class="visited-challenge-progress">${quest.progress}/${quest.goal}</div>
+            <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${quest.pct}%;"></div></div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderRotatingQuests(questSet) {
+    renderQuestPanel('visitedWeeklyQuestPanel', 'Weekly Quests', 'Rotates each week', questSet.weekly);
+    renderQuestPanel('visitedMonthlyQuestPanel', 'Monthly Quests', 'Rotates each month', questSet.monthly);
+  }
+
+  function projectToCanvas(lat, lng, width, height) {
+    const minLat = 24;
+    const maxLat = 50;
+    const minLng = -125;
+    const maxLng = -66;
+    const x = ((lng - minLng) / (maxLng - minLng)) * width;
+    const y = (1 - ((lat - minLat) / (maxLat - minLat))) * height;
+    return { x, y };
+  }
+
+  function getApproximateCoordinates(city, stateText) {
+    if (window.enhancedCityViz && typeof window.enhancedCityViz.getApproximateCoordinates === 'function') {
+      return window.enhancedCityViz.getApproximateCoordinates(city, stateText);
+    }
+    return { lat: 35.3395, lng: -82.4637 };
+  }
+
+  function buildHeatmapBuckets(stats) {
+    const buckets = new Map();
+
+    stats.visited.forEach((adventure) => {
+      const city = adventure.city || 'Unknown City';
+      const stateText = adventure.state || 'Unknown State';
+      const key = `${city}, ${stateText}`;
+      const prev = buckets.get(key) || { city, state: stateText, count: 0 };
+      prev.count += 1;
+      buckets.set(key, prev);
+    });
+
+    return Array.from(buckets.values())
+      .map((entry) => {
+        const coords = getApproximateCoordinates(entry.city, entry.state);
+        return { ...entry, lat: Number(coords.lat), lng: Number(coords.lng) };
+      })
+      .filter(entry => Number.isFinite(entry.lat) && Number.isFinite(entry.lng))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  function renderHeatmap(stats) {
+    const canvas = document.getElementById('visitedHeatmapCanvas');
+    const hotspots = document.getElementById('visitedHeatmapHotspots');
+    if (!canvas || !hotspots) return;
+
+    const buckets = buildHeatmapBuckets(stats);
+    if (buckets.length === 0) {
+      hotspots.innerHTML = '<div class="visited-empty">No visited locations yet to build heatmap.</div>';
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    const width = Math.max(640, canvas.clientWidth || 640);
+    const height = 290;
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < height; y += 58) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      const maxCount = buckets[0].count || 1;
+      buckets.forEach((bucket) => {
+        const p = projectToCanvas(bucket.lat, bucket.lng, width, height);
+        const intensity = Math.max(0.2, bucket.count / maxCount);
+        const radius = 8 + (intensity * 28);
+
+        const grad = ctx.createRadialGradient(p.x, p.y, 4, p.x, p.y, radius);
+        grad.addColorStop(0, `rgba(59,130,246,${0.2 + intensity * 0.7})`);
+        grad.addColorStop(1, 'rgba(59,130,246,0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    hotspots.innerHTML = buckets.slice(0, 8).map((bucket, idx) => `
+      <div class="visited-hotspot-item">
+        <span>#${idx + 1} ${escapeHtml(bucket.city)}, ${escapeHtml(bucket.state)}</span>
+        <span>${bucket.count} visits</span>
+      </div>
+    `).join('');
   }
 
   function renderCategories(stats) {
@@ -569,11 +980,17 @@
     const visitMap = getVisitMap();
     const stats = buildStats(adventures, visitMap);
     const challengeProgress = buildChallengeProgress(stats);
+    const insights = computeVisitInsights(stats, visitMap);
+    const badges = buildBadgeProgress(stats, insights);
+    const questSet = buildRotatingQuests(insights);
     const suggestions = generateSuggestions(adventures, visitMap, challengeProgress);
 
-    renderSummary(stats, challengeProgress);
+    renderSummary(stats, challengeProgress, badges, questSet);
     renderCategories(stats);
     renderChallenges(challengeProgress);
+    renderBadges(badges);
+    renderRotatingQuests(questSet);
+    renderHeatmap(stats);
     renderSuggestions(suggestions);
     renderRecentVisits(stats, visitMap);
     renderCatalog(adventures, visitMap);
@@ -681,6 +1098,7 @@
 
   function initializeVisitedLocationsTab() {
     loadChallengeState();
+    loadMetaState();
     bindControls();
     refreshTab();
     scheduleDataRefreshCheck();
