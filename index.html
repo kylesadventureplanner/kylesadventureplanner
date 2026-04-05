@@ -33,6 +33,9 @@
   <!-- MSAL Browser Library - Required for Microsoft Authentication -->
   <script src="https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js"></script>
 
+  <!-- PERFORMANCE OPTIMIZATIONS - Debounce, caching, and smooth interactions -->
+  <script src="JS Files/performance-optimizations.js"></script>
+
   <!-- COMPREHENSIVE DEBUG SYSTEM - Tracks all button clicks, mutations, and state changes -->
   <script src="JS Files/comprehensive-debug-system.js"></script>
 
@@ -2106,6 +2109,35 @@
       transform: translateY(-4px);
       border-color: var(--primary);
     }
+
+    /* ============================================================
+       PERFORMANCE: GPU ACCELERATION FOR SMOOTH ANIMATIONS
+       ============================================================ */
+    .adventure-card {
+      will-change: auto;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+
+    .adventure-card:hover {
+      will-change: transform, box-shadow;
+    }
+
+    .card,
+    .modal,
+    .automation-btn,
+    .quick-filter-btn {
+      transform: translateZ(0);
+      backface-visibility: hidden;
+    }
+
+    .card:hover,
+    .automation-btn:hover,
+    .quick-filter-btn:hover {
+      will-change: transform, box-shadow;
+    }
+
+    /* ============================================================ */
 
     .adventure-card .card-header {
       padding: var(--space-lg);
