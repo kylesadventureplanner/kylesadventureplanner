@@ -2289,7 +2289,8 @@
       renderBikePreferenceFallbackBanner();
     }
 
-    const wantsExplorer = standaloneExplorer || params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
+    // Standalone trail explorer now uses its own city-first UI and should not auto-open the legacy modal wizard.
+    const wantsExplorer = !standaloneExplorer && (params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true');
     if (wantsExplorer && !window.__bikeExplorerAutoOpenedFromUrl) {
       window.__bikeExplorerAutoOpenedFromUrl = true;
       setTimeout(() => openBikeTrailExplorer({ standalone: standaloneExplorer }), 0);
@@ -2309,10 +2310,15 @@
 
   function cacheBikeTrailDataForExplorerTab() {
     if (!Array.isArray(window.bikeTrailsData) || window.bikeTrailsData.length === 0) return null;
+    const normalizedTrails = getAllBikeTrails().map((trail) => {
+      const { row, ...safeTrail } = trail || {};
+      return safeTrail;
+    });
     const cacheKey = `bike_trail_explorer_data_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const payload = {
       exportedAt: new Date().toISOString(),
-      bikeTrailsData: window.bikeTrailsData
+      bikeTrailsData: window.bikeTrailsData,
+      bikeTrailsNormalized: normalizedTrails
     };
     try {
       window.sessionStorage.setItem(cacheKey, JSON.stringify(payload));
@@ -2333,6 +2339,9 @@
       const parsed = JSON.parse(window.sessionStorage.getItem(key) || '{}');
       if (Array.isArray(parsed.bikeTrailsData) && parsed.bikeTrailsData.length > 0) {
         window.bikeTrailsData = parsed.bikeTrailsData;
+      }
+      if (Array.isArray(parsed.bikeTrailsNormalized)) {
+        window.bikeTrailExplorerModelsCache = parsed.bikeTrailsNormalized;
       }
     } catch (error) {
       console.warn('[bike-trails] Could not restore bike data for explorer tab:', error);
@@ -3436,6 +3445,7 @@
   window.closeBikeTrailExplorer = closeBikeTrailExplorer;
   window.initializeBikeTrailsTabState = state;
   window.renderBikeTrailsPage = renderBikeTrailsPage;
+  window.getAllBikeTrailModels = getAllBikeTrails;
   window.getBikeColumnIndexByName = getBikeColumnIndex;
   window.updateBikeTrailRowColumns = updateBikeRowColumns;
   window.parseBikeNotesBlob = parseBikeNotesBlob;

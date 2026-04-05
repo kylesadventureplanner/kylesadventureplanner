@@ -8,6 +8,232 @@
   <link rel="stylesheet" href="../CSS/components.css" />
   <link rel="stylesheet" href="../CSS/utilities.css" />
   <link rel="stylesheet" href="../CSS/browse-page.css" />
+  <style>
+    #trailExplorerHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    #trailExplorerBootstrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .trail-cities-controls {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) auto auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .trail-cities-input,
+    .trail-cities-select,
+    .trail-cities-btn {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #fff;
+      color: #111827;
+    }
+
+    .trail-cities-btn {
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .trail-cities-btn:hover {
+      border-color: #7c3aed;
+      color: #6d28d9;
+    }
+
+    .trail-cities-btn.active {
+      border-color: #7c3aed;
+      background: #f5f3ff;
+      color: #6d28d9;
+    }
+
+    .trail-city-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .trail-city-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+    }
+
+    .trail-city-card:hover {
+      border-color: #7c3aed;
+      box-shadow: 0 6px 18px rgba(124, 58, 237, 0.14);
+      transform: translateY(-2px);
+    }
+
+    .trail-city-name {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #111827;
+    }
+
+    .trail-city-meta {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+
+    .trail-city-stats {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .trail-city-chip {
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #f5f3ff;
+      color: #6d28d9;
+    }
+
+    .trail-city-cta {
+      font-size: 12px;
+      font-weight: 700;
+      color: #4c1d95;
+    }
+
+    .trail-results-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .trail-results-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .trail-results-subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .trail-results-filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .trail-results-filters label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .trail-results-filter-input,
+    .trail-results-filter-select {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      background: #fff;
+      color: #111827;
+    }
+
+    .trail-results-clear-btn {
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      align-self: end;
+    }
+
+    .trail-results-clear-btn:hover {
+      background: #fef2f2;
+    }
+
+    .trail-back-btn {
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .trail-back-btn:hover {
+      border-color: #7c3aed;
+      color: #6d28d9;
+    }
+
+    .trail-empty {
+      border: 1px dashed #d1d5db;
+      border-radius: 12px;
+      padding: 24px;
+      color: #6b7280;
+      background: #fff;
+      text-align: center;
+    }
+
+    /* Standalone trail explorer keeps only cards + pagination when viewing a city. */
+    #bikeTrailsTab.trail-city-results-mode > header,
+    #bikeTrailsTab.trail-city-results-mode > #bikeControlPanelCard,
+    #bikeTrailsTab.trail-city-results-mode > #bikeQuickFiltersCard,
+    #bikeTrailsTab.trail-city-results-mode > #bikeBreadcrumbFilterMenu,
+    #bikeTrailsTab.trail-city-results-mode > div[style*="padding: 8px 0"],
+    #bikeTrailsTab.trail-city-results-mode #bikeTrailExplorerModal {
+      display: none !important;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .table-card > .card-header {
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+
+    #bikeTrailsTab.trail-city-results-mode .table-card .card-subtitle,
+    #bikeTrailsTab.trail-city-results-mode #bikeMetadataDebugLine {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
   <header id="trailExplorerHeader">
@@ -19,11 +245,78 @@
     <div class="spinner" aria-hidden="true"></div>
     Loading Trail Explorer...
   </div>
+
+  <section id="trailCitiesPage" class="hidden">
+    <div class="trail-cities-controls">
+      <input id="trailCitySearchInput" class="trail-cities-input" type="text" placeholder="Search cities or states..." />
+      <select id="trailCitySortSelect" class="trail-cities-select" aria-label="Sort cities">
+        <option value="count">Sort by Trail Count</option>
+        <option value="name">Sort A-Z</option>
+        <option value="drive">Sort by Drive Time</option>
+      </select>
+      <button id="trailCityDriveTimesBtn" type="button" class="trail-cities-btn">📍 Show my drive times</button>
+    </div>
+    <div id="trailCityGrid" class="trail-city-grid"></div>
+  </section>
+
+  <section id="trailCityResultsPage" class="hidden">
+    <div class="trail-results-header">
+      <button id="trailBackToCitiesBtn" class="trail-back-btn" type="button">← Back to Cities</button>
+      <div>
+        <div id="trailResultsTitle" class="trail-results-title">City Trails</div>
+        <div id="trailResultsSubtitle" class="trail-results-subtitle"></div>
+      </div>
+    </div>
+
+    <div class="trail-results-filters">
+      <div>
+        <label for="trailResultDifficultyFilter">Difficulty</label>
+        <select id="trailResultDifficultyFilter" class="trail-results-filter-select">
+          <option value="">Any Difficulty</option>
+        </select>
+      </div>
+      <div>
+        <label for="trailResultCostFilter">Cost</label>
+        <select id="trailResultCostFilter" class="trail-results-filter-select">
+          <option value="">Any Cost</option>
+        </select>
+      </div>
+      <div>
+        <label for="trailResultTagFilter">Tag</label>
+        <input id="trailResultTagFilter" class="trail-results-filter-input" type="text" placeholder="e.g. scenic, gravel" list="trailResultTagList" />
+        <datalist id="trailResultTagList"></datalist>
+      </div>
+      <button id="trailResultClearFiltersBtn" type="button" class="trail-results-clear-btn">Clear City Filters</button>
+    </div>
+  </section>
+
   <main id="bikeTrailsTab" class="hidden"></main>
 
   <script>
     (function () {
       var BASE_TITLE = 'Trail Explorer - Kyle\'s Adventure Finder';
+      var COL = {
+        name: 0,
+        region: 1,
+        driveTime: 2,
+        lengthMiles: 3,
+        surface: 4,
+        difficulty: 6,
+        vibes: 12,
+        moodTags: 13,
+        state: 66,
+        city: 67,
+        cost: 68,
+        gpsCoordinates: 41
+      };
+      var cityExplorerState = {
+        allTrails: [],
+        cityBuckets: [],
+        selectedCity: null,
+        selectedState: null,
+        userLocation: null,
+        hasDriveTimes: false
+      };
 
       function setStatus(message) {
         var el = document.getElementById('trailExplorerBootstrap');
@@ -42,35 +335,523 @@
         link.href = href;
       }
 
-      function updateWindowTitleFromPreset() {
-        var select = document.getElementById('bikeExplorerPresetSelect');
-        var activePreset = '';
-        if (select && select.value) {
-          activePreset = String(select.value || '').trim();
-        }
-        if (!activePreset) {
-          activePreset = String(window.localStorage.getItem('bikeTrailExplorerLastPresetV1') || '').trim();
+      function parseDriveMinutes(value) {
+        var text = String(value || '').trim().toLowerCase();
+        if (!text) return 0;
+        if (/^\d+$/.test(text)) return Number(text);
+
+        var hoursMatch = text.match(/(\d+(?:\.\d+)?)\s*h/);
+        var minsMatch = text.match(/(\d+(?:\.\d+)?)\s*m/);
+        if (hoursMatch || minsMatch) {
+          var hours = hoursMatch ? Number(hoursMatch[1]) : 0;
+          var mins = minsMatch ? Number(minsMatch[1]) : 0;
+          return Math.round((hours * 60) + mins);
         }
 
-        if (activePreset) {
-          document.title = 'Trail Explorer - ' + activePreset;
+        var colon = text.match(/^(\d{1,2}):(\d{2})$/);
+        if (colon) return (Number(colon[1]) * 60) + Number(colon[2]);
+        return 0;
+      }
+
+      function esc(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function waitFor(checkFn, timeoutMs) {
+        var started = Date.now();
+        return new Promise(function (resolve) {
+          (function poll() {
+            if (checkFn()) {
+              resolve(true);
+              return;
+            }
+            if (Date.now() - started >= timeoutMs) {
+              resolve(false);
+              return;
+            }
+            setTimeout(poll, 120);
+          })();
+        });
+      }
+
+      function mapRowToTrail(row, idx) {
+        var values = row && row.values && Array.isArray(row.values[0]) ? row.values[0] : [];
+        return {
+          id: 'fallback:' + idx,
+          name: values[COL.name] || '',
+          region: values[COL.region] || '',
+          driveTime: values[COL.driveTime] || '',
+          driveMinutes: parseDriveMinutes(values[COL.driveTime]),
+          lengthMiles: Number(values[COL.lengthMiles] || 0),
+          surface: values[COL.surface] || '',
+          difficulty: values[COL.difficulty] || '',
+          vibes: values[COL.vibes] || '',
+          moodTags: values[COL.moodTags] || '',
+          state: values[COL.state] || '',
+          city: values[COL.city] || '',
+          cost: values[COL.cost] || '',
+          gpsCoordinates: values[COL.gpsCoordinates] || ''
+        };
+      }
+
+      function getTrailModels() {
+        if (typeof window.getAllBikeTrailModels === 'function') {
+          var models = window.getAllBikeTrailModels() || [];
+          if (Array.isArray(models) && models.length) {
+            return models.map(function (trail) {
+              var copy = Object.assign({}, trail || {});
+              delete copy.row;
+              return copy;
+            });
+          }
+        }
+
+        if (Array.isArray(window.bikeTrailExplorerModelsCache) && window.bikeTrailExplorerModelsCache.length) {
+          return window.bikeTrailExplorerModelsCache.slice();
+        }
+
+        if (Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length) {
+          return window.bikeTrailsData.map(mapRowToTrail);
+        }
+
+        return [];
+      }
+
+      function getCityKey(city, state) {
+        var c = String(city || '').trim();
+        var s = String(state || '').trim();
+        if (!c && !s) return 'Unknown Location';
+        return s ? (c + ', ' + s) : c;
+      }
+
+      function buildCityBuckets(trails) {
+        var grouped = {};
+        (trails || []).forEach(function (trail) {
+          var city = String((trail && trail.city) || '').trim();
+          var state = String((trail && trail.state) || '').trim();
+          var key = getCityKey(city, state);
+          if (!grouped[key]) {
+            grouped[key] = {
+              key: key,
+              city: city || 'Unknown',
+              rawCity: city,
+              state: state,
+              rawState: state,
+              count: 0,
+              driveMinutesTotal: 0,
+              trailsWithDrive: 0,
+              distanceMiles: null,
+              driveTimeLabel: ''
+            };
+          }
+          grouped[key].count += 1;
+          var drive = Number((trail && trail.driveMinutes) || 0);
+          if (drive > 0) {
+            grouped[key].driveMinutesTotal += drive;
+            grouped[key].trailsWithDrive += 1;
+          }
+        });
+
+        return Object.keys(grouped).map(function (key) {
+          var bucket = grouped[key];
+          bucket.avgDriveMinutes = bucket.trailsWithDrive
+            ? Math.round(bucket.driveMinutesTotal / bucket.trailsWithDrive)
+            : 0;
+          return bucket;
+        });
+      }
+
+      function normalizeLocationText(value) {
+        return String(value || '').trim().toLowerCase();
+      }
+
+      function parseGpsCoordinates(value) {
+        var text = String(value || '').trim();
+        if (!text) return null;
+        var match = text.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+        if (!match) return null;
+        var lat = Number(match[1]);
+        var lng = Number(match[2]);
+        if (!isFinite(lat) || !isFinite(lng)) return null;
+        return { lat: lat, lng: lng };
+      }
+
+      function haversineMiles(aLat, aLng, bLat, bLng) {
+        var R = 3959;
+        var dLat = (bLat - aLat) * Math.PI / 180;
+        var dLng = (bLng - aLng) * Math.PI / 180;
+        var x = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+          + Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180)
+          * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        var c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+        return R * c;
+      }
+
+      function estimateDriveTimeText(distanceMiles) {
+        var hours = distanceMiles / 60;
+        var whole = Math.floor(hours);
+        var mins = Math.round((hours - whole) * 60);
+        if (whole <= 0) return mins + 'm (' + distanceMiles.toFixed(1) + ' mi)';
+        return whole + 'h ' + mins + 'm (' + distanceMiles.toFixed(1) + ' mi)';
+      }
+
+      function applyCityDriveTimesFromUserLocation() {
+        var userLoc = cityExplorerState.userLocation;
+        if (!userLoc || !isFinite(userLoc.lat) || !isFinite(userLoc.lng)) return;
+
+        cityExplorerState.cityBuckets.forEach(function (bucket) {
+          var matches = cityExplorerState.allTrails.filter(function (trail) {
+            return normalizeLocationText(trail.city) === normalizeLocationText(bucket.city)
+              && normalizeLocationText(trail.state) === normalizeLocationText(bucket.state);
+          });
+          var trailWithCoords = matches.find(function (trail) {
+            return !!parseGpsCoordinates(trail.gpsCoordinates);
+          });
+          if (!trailWithCoords) {
+            bucket.distanceMiles = null;
+            bucket.driveTimeLabel = 'Drive time unavailable';
+            return;
+          }
+          var point = parseGpsCoordinates(trailWithCoords.gpsCoordinates);
+          if (!point) {
+            bucket.distanceMiles = null;
+            bucket.driveTimeLabel = 'Drive time unavailable';
+            return;
+          }
+          var miles = haversineMiles(userLoc.lat, userLoc.lng, point.lat, point.lng);
+          bucket.distanceMiles = miles;
+          bucket.driveTimeLabel = estimateDriveTimeText(miles);
+        });
+      }
+
+      function updateCityDriveButtonUi() {
+        var btn = document.getElementById('trailCityDriveTimesBtn');
+        if (!btn) return;
+        if (cityExplorerState.hasDriveTimes) {
+          btn.classList.add('active');
+          btn.textContent = '✅ Drive times enabled';
         } else {
-          document.title = BASE_TITLE;
+          btn.classList.remove('active');
+          btn.textContent = '📍 Show my drive times';
         }
       }
 
-      function wireTitleSync() {
-        updateWindowTitleFromPreset();
-        var select = document.getElementById('bikeExplorerPresetSelect');
-        if (select && select.dataset.trailExplorerTitleBound !== '1') {
-          select.addEventListener('change', updateWindowTitleFromPreset);
-          select.dataset.trailExplorerTitleBound = '1';
+      function renderCityCards() {
+        var searchInput = document.getElementById('trailCitySearchInput');
+        var sortSelect = document.getElementById('trailCitySortSelect');
+        var search = String(searchInput ? searchInput.value : '').trim().toLowerCase();
+        var sort = String(sortSelect ? sortSelect.value : 'count');
+        var grid = document.getElementById('trailCityGrid');
+        if (!grid) return;
+
+        var cards = cityExplorerState.cityBuckets.slice();
+        if (search) {
+          cards = cards.filter(function (bucket) {
+            return bucket.city.toLowerCase().includes(search) || bucket.state.toLowerCase().includes(search);
+          });
         }
-        window.addEventListener('storage', function (event) {
-          if (event && event.key === 'bikeTrailExplorerLastPresetV1') {
-            updateWindowTitleFromPreset();
-          }
+
+        if (sort === 'name') {
+          cards.sort(function (a, b) { return a.key.localeCompare(b.key); });
+        } else if (sort === 'drive') {
+          cards.sort(function (a, b) {
+            var aMiles = isFinite(a.distanceMiles) ? a.distanceMiles : Number.POSITIVE_INFINITY;
+            var bMiles = isFinite(b.distanceMiles) ? b.distanceMiles : Number.POSITIVE_INFINITY;
+            if (aMiles !== bMiles) return aMiles - bMiles;
+            return a.key.localeCompare(b.key);
+          });
+        } else {
+          cards.sort(function (a, b) {
+            if (b.count !== a.count) return b.count - a.count;
+            return a.key.localeCompare(b.key);
+          });
+        }
+
+        if (!cards.length) {
+          grid.innerHTML = '<div class="trail-empty" style="grid-column:1/-1;">No cities match your search.</div>';
+          return;
+        }
+
+        grid.innerHTML = cards.map(function (bucket) {
+          var avgDrive = bucket.avgDriveMinutes > 0 ? (bucket.avgDriveMinutes + ' min avg drive') : 'Drive time not available';
+          var driveChip = cityExplorerState.hasDriveTimes
+            ? (bucket.driveTimeLabel || 'Drive time unavailable')
+            : avgDrive;
+          return '' +
+            '<button type="button" class="trail-city-card" data-city="' + esc(bucket.rawCity) + '" data-state="' + esc(bucket.rawState) + '">' +
+              '<div class="trail-city-name">' + esc(bucket.city || 'Unknown') + '</div>' +
+              '<div class="trail-city-meta">' + esc(bucket.state || 'No state provided') + '</div>' +
+              '<div class="trail-city-stats">' +
+                '<span class="trail-city-chip">' + esc(String(bucket.count)) + ' trail' + (bucket.count === 1 ? '' : 's') + '</span>' +
+                '<span class="trail-city-chip">' + esc(driveChip) + '</span>' +
+              '</div>' +
+              '<div class="trail-city-cta">View trails in this city →</div>' +
+            '</button>';
+        }).join('');
+      }
+
+      function clearBikeFiltersForCityResults() {
+        [
+          'bikeSearchName', 'bikeFilterRegion', 'bikeFilterDifficulty', 'bikeFilterSurface',
+          'bikeFilterLengthBand', 'bikeFilterDriveTimeBand', 'bikeFilterTraffic', 'bikeFilterState',
+          'bikeFilterCity', 'bikeFilterCost', 'bikeFilterHours', 'bikeFilterTag', 'bikeGroupBy'
+        ].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.value = '';
         });
+      }
+
+      function getSelectedCityTrails() {
+        var city = normalizeLocationText(cityExplorerState.selectedCity);
+        var state = normalizeLocationText(cityExplorerState.selectedState);
+        return cityExplorerState.allTrails.filter(function (trail) {
+          return normalizeLocationText(trail.city) === city && normalizeLocationText(trail.state) === state;
+        });
+      }
+
+      function populateCityResultFilters() {
+        var cityTrails = getSelectedCityTrails();
+        var difficultyEl = document.getElementById('trailResultDifficultyFilter');
+        var costEl = document.getElementById('trailResultCostFilter');
+        var tagList = document.getElementById('trailResultTagList');
+        if (!difficultyEl || !costEl || !tagList) return;
+
+        var difficulties = {};
+        var costs = {};
+        var tags = {};
+
+        cityTrails.forEach(function (trail) {
+          var difficulty = String(trail.difficulty || '').trim();
+          var cost = String(trail.cost || '').trim();
+          if (difficulty) difficulties[difficulty.toLowerCase()] = difficulty;
+          if (cost) costs[cost.toLowerCase()] = cost;
+
+          [trail.surface, trail.moodTags, trail.vibes].forEach(function (value) {
+            String(value || '').split(',').forEach(function (rawTag) {
+              var clean = String(rawTag || '').trim();
+              if (!clean) return;
+              tags[clean.toLowerCase()] = clean;
+            });
+          });
+        });
+
+        var difficultyOptions = Object.keys(difficulties).sort().map(function (key) {
+          var val = difficulties[key];
+          return '<option value="' + esc(val) + '">' + esc(val) + '</option>';
+        }).join('');
+
+        var costOptions = Object.keys(costs).sort().map(function (key) {
+          var val = costs[key];
+          return '<option value="' + esc(val) + '">' + esc(val) + '</option>';
+        }).join('');
+
+        var tagOptions = Object.keys(tags).sort().slice(0, 100).map(function (key) {
+          return '<option value="' + esc(tags[key]) + '"></option>';
+        }).join('');
+
+        difficultyEl.innerHTML = '<option value="">Any Difficulty</option>' + difficultyOptions;
+        costEl.innerHTML = '<option value="">Any Cost</option>' + costOptions;
+        tagList.innerHTML = tagOptions;
+
+        difficultyEl.value = '';
+        costEl.value = '';
+        var tagInput = document.getElementById('trailResultTagFilter');
+        if (tagInput) tagInput.value = '';
+      }
+
+      function applyCityResultFilters() {
+        var difficulty = document.getElementById('trailResultDifficultyFilter');
+        var cost = document.getElementById('trailResultCostFilter');
+        var tag = document.getElementById('trailResultTagFilter');
+        var cityInput = document.getElementById('bikeFilterCity');
+        var stateInput = document.getElementById('bikeFilterState');
+        var diffInput = document.getElementById('bikeFilterDifficulty');
+        var costInput = document.getElementById('bikeFilterCost');
+        var tagInput = document.getElementById('bikeFilterTag');
+
+        if (cityInput) cityInput.value = cityExplorerState.selectedCity || '';
+        if (stateInput) stateInput.value = cityExplorerState.selectedState || '';
+        if (diffInput) diffInput.value = difficulty ? String(difficulty.value || '').trim() : '';
+        if (costInput) costInput.value = cost ? String(cost.value || '').trim() : '';
+        if (tagInput) tagInput.value = tag ? String(tag.value || '').trim() : '';
+
+        if (typeof window.applyBikeFilters === 'function') window.applyBikeFilters();
+        updateResultsSubtitle();
+      }
+
+      function clearCityResultFilters() {
+        var difficulty = document.getElementById('trailResultDifficultyFilter');
+        var cost = document.getElementById('trailResultCostFilter');
+        var tag = document.getElementById('trailResultTagFilter');
+        if (difficulty) difficulty.value = '';
+        if (cost) cost.value = '';
+        if (tag) tag.value = '';
+        applyCityResultFilters();
+      }
+
+      function updateResultsSubtitle() {
+        var subtitle = document.getElementById('trailResultsSubtitle');
+        if (!subtitle) return;
+        var count = Array.isArray(window.bikeFilteredTrails) ? window.bikeFilteredTrails.length : 0;
+        subtitle.textContent = count + (count === 1 ? ' trail' : ' trails') + ' in this city';
+      }
+
+      function showCityResults(city, state) {
+        cityExplorerState.selectedCity = String(city || '').trim();
+        cityExplorerState.selectedState = String(state || '').trim();
+
+        var title = document.getElementById('trailResultsTitle');
+        if (title) title.textContent = cityExplorerState.selectedState
+          ? (cityExplorerState.selectedCity + ', ' + cityExplorerState.selectedState)
+          : (cityExplorerState.selectedCity || 'Unknown Location');
+
+        var citiesPage = document.getElementById('trailCitiesPage');
+        var resultsPage = document.getElementById('trailCityResultsPage');
+        if (citiesPage) citiesPage.classList.add('hidden');
+        if (resultsPage) resultsPage.classList.remove('hidden');
+
+        var tabRoot = document.getElementById('bikeTrailsTab');
+        if (tabRoot) {
+          tabRoot.classList.remove('hidden');
+          tabRoot.classList.add('trail-city-results-mode');
+        }
+
+        clearBikeFiltersForCityResults();
+        populateCityResultFilters();
+
+        var cityInput = document.getElementById('bikeFilterCity');
+        var stateInput = document.getElementById('bikeFilterState');
+        if (cityInput) cityInput.value = cityExplorerState.selectedCity;
+        if (stateInput) stateInput.value = cityExplorerState.selectedState;
+
+        applyCityResultFilters();
+        document.title = 'Trail Explorer - ' + (title ? title.textContent : cityExplorerState.selectedCity);
+      }
+
+      function showCitiesPage() {
+        var resultsPage = document.getElementById('trailCityResultsPage');
+        var citiesPage = document.getElementById('trailCitiesPage');
+        var tabRoot = document.getElementById('bikeTrailsTab');
+        if (resultsPage) resultsPage.classList.add('hidden');
+        if (citiesPage) citiesPage.classList.remove('hidden');
+        if (tabRoot) {
+          tabRoot.classList.add('hidden');
+          tabRoot.classList.remove('trail-city-results-mode');
+        }
+        clearCityResultFilters();
+        document.title = BASE_TITLE;
+      }
+
+      function bindCityExplorerEvents() {
+        var search = document.getElementById('trailCitySearchInput');
+        if (search && search.dataset.bound !== '1') {
+          search.addEventListener('input', renderCityCards);
+          search.dataset.bound = '1';
+        }
+
+        var sort = document.getElementById('trailCitySortSelect');
+        if (sort && sort.dataset.bound !== '1') {
+          sort.addEventListener('change', renderCityCards);
+          sort.dataset.bound = '1';
+        }
+
+        var driveBtn = document.getElementById('trailCityDriveTimesBtn');
+        if (driveBtn && driveBtn.dataset.bound !== '1') {
+          driveBtn.addEventListener('click', function () {
+            if (!navigator.geolocation) {
+              window.alert('Geolocation is not supported by this browser.');
+              return;
+            }
+
+            driveBtn.disabled = true;
+            driveBtn.textContent = '📍 Getting location...';
+            navigator.geolocation.getCurrentPosition(function (position) {
+              cityExplorerState.userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+              };
+              cityExplorerState.hasDriveTimes = true;
+              applyCityDriveTimesFromUserLocation();
+              updateCityDriveButtonUi();
+              renderCityCards();
+              driveBtn.disabled = false;
+            }, function () {
+              driveBtn.disabled = false;
+              cityExplorerState.hasDriveTimes = false;
+              updateCityDriveButtonUi();
+              window.alert('Could not get your location. Please check browser permissions.');
+            });
+          });
+          driveBtn.dataset.bound = '1';
+        }
+
+        var grid = document.getElementById('trailCityGrid');
+        if (grid && grid.dataset.bound !== '1') {
+          grid.addEventListener('click', function (event) {
+            var card = event.target && event.target.closest ? event.target.closest('.trail-city-card') : null;
+            if (!card) return;
+            showCityResults(card.getAttribute('data-city') || '', card.getAttribute('data-state') || '');
+          });
+          grid.dataset.bound = '1';
+        }
+
+        var backBtn = document.getElementById('trailBackToCitiesBtn');
+        if (backBtn && backBtn.dataset.bound !== '1') {
+          backBtn.addEventListener('click', showCitiesPage);
+          backBtn.dataset.bound = '1';
+        }
+
+        var difficultyFilter = document.getElementById('trailResultDifficultyFilter');
+        if (difficultyFilter && difficultyFilter.dataset.bound !== '1') {
+          difficultyFilter.addEventListener('change', applyCityResultFilters);
+          difficultyFilter.dataset.bound = '1';
+        }
+
+        var costFilter = document.getElementById('trailResultCostFilter');
+        if (costFilter && costFilter.dataset.bound !== '1') {
+          costFilter.addEventListener('change', applyCityResultFilters);
+          costFilter.dataset.bound = '1';
+        }
+
+        var tagFilter = document.getElementById('trailResultTagFilter');
+        if (tagFilter && tagFilter.dataset.bound !== '1') {
+          tagFilter.addEventListener('input', applyCityResultFilters);
+          tagFilter.dataset.bound = '1';
+        }
+
+        var clearFiltersBtn = document.getElementById('trailResultClearFiltersBtn');
+        if (clearFiltersBtn && clearFiltersBtn.dataset.bound !== '1') {
+          clearFiltersBtn.addEventListener('click', clearCityResultFilters);
+          clearFiltersBtn.dataset.bound = '1';
+        }
+      }
+
+      function initCityExplorerUi() {
+        var trails = getTrailModels();
+        cityExplorerState.allTrails = trails;
+        cityExplorerState.cityBuckets = buildCityBuckets(trails);
+        bindCityExplorerEvents();
+        updateCityDriveButtonUi();
+
+        var bootstrap = document.getElementById('trailExplorerBootstrap');
+        var citiesPage = document.getElementById('trailCitiesPage');
+        if (bootstrap) bootstrap.classList.add('hidden');
+        if (citiesPage) citiesPage.classList.remove('hidden');
+
+        renderCityCards();
+
+        if (!cityExplorerState.cityBuckets.length) {
+          var grid = document.getElementById('trailCityGrid');
+          if (grid) {
+            grid.innerHTML = '<div class="trail-empty" style="grid-column:1/-1;">No bike trails are available yet. Sign in and refresh bike trail data in your planner tab.</div>';
+          }
+        }
       }
 
       function loadScript(src) {
@@ -114,7 +895,13 @@
 
           await loadScript('../JS Files/bike-trails-tab-system.js');
           await loadScript('../JS Files/button-handlers.js');
-          wireTitleSync();
+
+          await waitFor(function () {
+            return (Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length > 0)
+              || (Array.isArray(window.bikeTrailExplorerModelsCache) && window.bikeTrailExplorerModelsCache.length > 0);
+          }, 10000);
+
+          initCityExplorerUi();
         } catch (error) {
           console.error('Trail Explorer window bootstrap failed:', error);
           setStatus('Trail Explorer failed to load. ' + (error && error.message ? error.message : 'Unknown error'));
