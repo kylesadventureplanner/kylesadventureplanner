@@ -128,6 +128,8 @@
     groupBy: '',
     quickFilters: new Set(),
     showFavoritesOnly: false,
+    selectedSourceIndexes: new Set(),
+    bulkBusy: false,
     filters: {
       searchName: '',
       region: '',
@@ -143,6 +145,7 @@
       tag: ''
     }
   };
+  const BULK_STATUS_CONFIRM_THRESHOLD = 20;
 
   window.bikeTrailsData = window.bikeTrailsData || [];
   window.bikeFilteredTrails = window.bikeFilteredTrails || [];
@@ -739,6 +742,153 @@
   function getAllBikeTrails() {
     const rows = window.bikeTrailsData || [];
     return rows.map((row, idx) => trailModel(row, idx));
+  }
+
+  function parseBulkTagsInput(raw) {
+    const seen = new Set();
+    return String(raw || '')
+      .split(',')
+      .map((part) => String(part || '').trim())
+      .filter((tag) => {
+        const key = tag.toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function getVisibleBikeSourceIndexSet() {
+    const out = new Set();
+    const trails = Array.isArray(window.bikeFilteredTrails) ? window.bikeFilteredTrails : [];
+    trails.forEach((trail) => {
+      const idx = Number(trail && trail.sourceIndex);
+      if (Number.isInteger(idx) && idx >= 0) out.add(idx);
+    });
+    return out;
+  }
+
+  function getCurrentBikePageSourceIndexSet() {
+    const out = new Set();
+    const all = Array.isArray(window.bikeFilteredTrails) ? window.bikeFilteredTrails : [];
+    const startIdx = (state.currentPage - 1) * ITEMS_PER_PAGE;
+    const pageItems = all.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+    pageItems.forEach((trail) => {
+      const idx = Number(trail && trail.sourceIndex);
+      if (Number.isInteger(idx) && idx >= 0) out.add(idx);
+    });
+    return out;
+  }
+
+  function getBikeSelectionScope() {
+    const scopeSelect = document.getElementById('bikeBulkSelectionScope');
+    return String(scopeSelect && scopeSelect.value ? scopeSelect.value : 'filtered').trim().toLowerCase() === 'page'
+      ? 'page'
+      : 'filtered';
+  }
+
+  function getBikeSelectionScopeLabel() {
+    return getBikeSelectionScope() === 'page' ? 'Current Page' : 'Filtered Results';
+  }
+
+  function getBikeScopeSourceIndexSet() {
+    return getBikeSelectionScope() === 'page'
+      ? getCurrentBikePageSourceIndexSet()
+      : getVisibleBikeSourceIndexSet();
+  }
+
+  function pruneBikeSelectionToVisible() {
+    const visible = getVisibleBikeSourceIndexSet();
+    Array.from(state.selectedSourceIndexes).forEach((idx) => {
+      if (!visible.has(idx)) state.selectedSourceIndexes.delete(idx);
+    });
+  }
+
+  function updateBikeBulkSelectionUi() {
+    const count = state.selectedSourceIndexes.size;
+    const pageSet = getCurrentBikePageSourceIndexSet();
+    const pageSelectedCount = Array.from(state.selectedSourceIndexes).reduce((total, idx) => {
+      return total + (pageSet.has(idx) ? 1 : 0);
+    }, 0);
+    const countEl = document.getElementById('bikeBulkSelectionCount');
+    if (countEl) countEl.textContent = `${pageSelectedCount} on page / ${count} total selected`;
+
+    const disable = count === 0 || state.bulkBusy;
+    ['bikeBulkApplyTagsBtn', 'bikeBulkApplyRatingBtn', 'bikeBulkMarkFavoriteBtn', 'bikeBulkUnmarkFavoriteBtn', 'bikeBulkMarkVisitedBtn', 'bikeBulkUnmarkVisitedBtn', 'bikeBulkClearSelectionBtn'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = disable;
+    });
+
+    const invertBtn = document.getElementById('bikeBulkInvertSelectionBtn');
+    if (invertBtn) {
+      const sourceSet = getBikeScopeSourceIndexSet();
+      invertBtn.disabled = state.bulkBusy || sourceSet.size === 0;
+    }
+
+    document.querySelectorAll('.bike-bulk-select').forEach((checkbox) => {
+      const raw = String(checkbox.getAttribute('data-bike-source-index') || '').trim();
+      const idx = /^\d+$/.test(raw) ? Number(raw) : NaN;
+      checkbox.checked = Number.isInteger(idx) && state.selectedSourceIndexes.has(idx);
+      checkbox.disabled = state.bulkBusy;
+    });
+  }
+
+  function setBikeBulkBusy(isBusy) {
+    state.bulkBusy = Boolean(isBusy);
+    const selectVisibleBtn = document.getElementById('bikeBulkSelectVisibleBtn');
+    if (selectVisibleBtn) selectVisibleBtn.disabled = state.bulkBusy;
+    updateBikeBulkSelectionUi();
+  }
+
+  function setBikeSelectionFromScope() {
+    state.selectedSourceIndexes.clear();
+    const sourceSet = getBikeScopeSourceIndexSet();
+    sourceSet.forEach((idx) => state.selectedSourceIndexes.add(idx));
+    updateBikeBulkSelectionUi();
+  }
+
+  function invertBikeSelectionFromScope() {
+    const sourceSet = getBikeScopeSourceIndexSet();
+    if (!sourceSet.size) {
+      showToast?.('No trails available in this scope.', 'info', 2000);
+      return;
+    }
+
+    sourceSet.forEach((idx) => {
+      if (state.selectedSourceIndexes.has(idx)) state.selectedSourceIndexes.delete(idx);
+      else state.selectedSourceIndexes.add(idx);
+    });
+    updateBikeBulkSelectionUi();
+    showToast?.(`Selection inverted for ${getBikeSelectionScopeLabel()}.`, 'info', 2000);
+  }
+
+  function clearBikeSelection() {
+    state.selectedSourceIndexes.clear();
+    updateBikeBulkSelectionUi();
+  }
+
+  function setBikeCardSelected(sourceIndex, isSelected) {
+    if (!Number.isInteger(sourceIndex) || sourceIndex < 0) return;
+    if (isSelected) state.selectedSourceIndexes.add(sourceIndex);
+    else state.selectedSourceIndexes.delete(sourceIndex);
+    updateBikeBulkSelectionUi();
+  }
+
+  function syncBikeBulkSelectButtonLabel() {
+    const selectBtn = document.getElementById('bikeBulkSelectVisibleBtn');
+    const invertBtn = document.getElementById('bikeBulkInvertSelectionBtn');
+    const hintEl = document.getElementById('bikeBulkSelectionScopeHint');
+    if (!selectBtn) return;
+    const scope = getBikeSelectionScope();
+    selectBtn.textContent = scope === 'page' ? 'Select Page' : 'Select Filtered';
+    if (invertBtn) invertBtn.textContent = scope === 'page' ? 'Invert Page' : 'Invert Filtered';
+    if (hintEl) {
+      const hintTextEl = hintEl.querySelector('.bulk-scope-hint-text');
+      const nextText = scope === 'page'
+        ? 'Selection applies to the current page only.'
+        : 'Selection applies to all filtered results.';
+      if (hintTextEl) hintTextEl.textContent = nextText;
+      else hintEl.textContent = nextText;
+    }
   }
 
   function getBikeColumnIndex(fieldName) {
@@ -1460,6 +1610,17 @@
       window.openBikeTrailDetailsInNewTab(sourceIndex);
     }, false);
 
+    grid.addEventListener('change', (event) => {
+      const checkbox = event.target && event.target.closest ? event.target.closest('.bike-bulk-select') : null;
+      if (!checkbox) return;
+
+      event.stopPropagation();
+      const raw = String(checkbox.getAttribute('data-bike-source-index') || '').trim();
+      const sourceIndex = /^\d+$/.test(raw) ? Number(raw) : NaN;
+      if (!Number.isInteger(sourceIndex) || sourceIndex < 0) return;
+      setBikeCardSelected(sourceIndex, Boolean(checkbox.checked));
+    }, true);
+
     grid.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       const card = event.target && event.target.closest ? event.target.closest('.bike-trail-card') : null;
@@ -1504,6 +1665,8 @@
     const sourceIndex = Number(trail.sourceIndex || 0);
     const displayTags = getBikeDisplayTags(trail).slice(0, 4);
     const description = buildBikeCardDescriptionHtml(trail.notes || trail.vibes || trail.highlights || '');
+    const isSelected = state.selectedSourceIndexes.has(sourceIndex);
+    const selectionControl = `<label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;padding:4px 8px;"><input type="checkbox" class="bike-bulk-select" data-bike-source-index="${sourceIndex}" ${isSelected ? 'checked' : ''}>Select</label>`;
 
     if (isTrailCityResultsMode()) {
       const shortDescription = escapeHtml(String(trail.notes || trail.vibes || trail.highlights || '').trim());
@@ -1514,6 +1677,7 @@
 
       return `
         <article class="loc-card bike-trail-card" data-bike-source-index="${sourceIndex}" tabindex="0" role="button" aria-label="Open ${escapeHtml(trail.name || 'trail')} details">
+          <div style="display:flex;justify-content:flex-end;padding:10px 12px 0;">${selectionControl}</div>
           <div class="loc-card-header">
             <div class="loc-card-name">${escapeHtml(trail.name || 'Bike Trail')}</div>
             <div class="loc-card-meta">
@@ -1541,6 +1705,7 @@
 
     return `
       <article class="adventure-card bike-trail-card" data-bike-source-index="${sourceIndex}" tabindex="0" role="button" aria-label="Open ${escapeHtml(trail.name || 'trail')} details">
+        <div style="display:flex;justify-content:flex-end;padding:10px 12px 0;">${selectionControl}</div>
         <div class="adventure-card-header">
           <h3 class="adventure-card-title">${escapeHtml(trail.name || 'Bike Trail')}</h3>
           <div class="adventure-card-location"><span class="location-icon">📍</span>${escapeHtml([trail.city, trail.state].filter(Boolean).join(', ') || trail.region || 'Location unavailable')}</div>
@@ -1659,6 +1824,7 @@
       .sort(compareTrails);
 
     window.bikeFilteredTrails = filtered;
+    pruneBikeSelectionToVisible();
     const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
     state.currentPage = Math.min(Math.max(1, state.currentPage), totalPages);
 
@@ -1668,6 +1834,7 @@
     renderBikeStaticQuickFilterCounts();
     updateBikeFiltersBadge();
     renderBikePreferenceFallbackBanner();
+    updateBikeBulkSelectionUi();
   }
 
   function changeBikePage(direction) {
@@ -1732,6 +1899,127 @@
     const nextValue = !(trail && trail.isFavorite);
     await persistBikePreferenceUpdate(sourceIndex, { isFavorite: nextValue });
     applyBikeFilters();
+  }
+
+  async function setBikeVisited(sourceOrTrailId, isVisited) {
+    const sourceIndex = resolveSourceIndex(sourceOrTrailId);
+    if (sourceIndex < 0) return;
+
+    const writableCol = getBikeWritableColumnIndex('Visited');
+    const fallbackCol = getBikeColumnIndex('Visited');
+    const visitedCol = writableCol >= 0 ? writableCol : fallbackCol;
+    if (visitedCol < 0) {
+      throw new Error('Visited column is not available in the bike table schema.');
+    }
+
+    const writeValue = isVisited ? 'TRUE' : '';
+    await updateBikeRowColumns(sourceIndex, { [visitedCol]: writeValue });
+  }
+
+  async function runBikeBulkOperation(label, worker) {
+    const targets = Array.from(state.selectedSourceIndexes).filter((idx) => Number.isInteger(idx) && idx >= 0);
+    if (!targets.length) {
+      showToast?.('Select one or more trails first.', 'warning', 2200);
+      return;
+    }
+
+    const autoClear = Boolean(document.getElementById('bikeBulkAutoClearToggle')?.checked);
+
+    setBikeBulkBusy(true);
+    let success = 0;
+    let failed = 0;
+
+    try {
+      for (const sourceIndex of targets) {
+        try {
+          // Run writes in sequence so API calls are easier to reason about.
+          await worker(sourceIndex);
+          success += 1;
+        } catch (error) {
+          failed += 1;
+          console.warn(`[bike-trails] Bulk ${label} failed for sourceIndex ${sourceIndex}:`, error);
+        }
+      }
+
+      const scopeLabel = getBikeSelectionScopeLabel();
+      const attempted = targets.length;
+
+      if (failed > 0) {
+        showToast?.(`Bulk ${label} (${scopeLabel}): ${success}/${attempted} updated, ${failed} failed`, 'warning', 3400);
+      } else {
+        showToast?.(`Bulk ${label} (${scopeLabel}): ${success}/${attempted} updated`, 'success', 2400);
+      }
+
+      if (autoClear && failed === 0) {
+        clearBikeSelection();
+      }
+    } finally {
+      setBikeBulkBusy(false);
+      applyBikeFilters();
+    }
+  }
+
+  async function applyBikeBulkTags() {
+    const input = document.getElementById('bikeBulkTagsInput');
+    const tagsToAdd = parseBulkTagsInput(input ? input.value : '');
+    if (!tagsToAdd.length) {
+      showToast?.('Enter one or more tags (comma separated).', 'warning', 2200);
+      return;
+    }
+
+    await runBikeBulkOperation('tag add', async (sourceIndex) => {
+      const trail = getTrailBySourceIndex(sourceIndex);
+      const tagKey = getBikeTagKey(trail);
+      if (!tagKey || !window.tagManager || typeof window.tagManager.addTagsToPlace !== 'function') {
+        throw new Error('Tag manager is unavailable.');
+      }
+      window.tagManager.addTagsToPlace(tagKey, tagsToAdd);
+    });
+  }
+
+  async function applyBikeBulkRating() {
+    const select = document.getElementById('bikeBulkRatingSelect');
+    const value = Number(select && select.value);
+    if (!Number.isFinite(value) || value < 1 || value > 5) {
+      showToast?.('Choose a rating from 1 to 5.', 'warning', 2200);
+      return;
+    }
+
+    await runBikeBulkOperation('rating', async (sourceIndex) => {
+      await persistBikePreferenceUpdate(sourceIndex, { myRating: value });
+    });
+  }
+
+  async function applyBikeBulkFavorite() {
+    const selected = state.selectedSourceIndexes.size;
+    if (selected > BULK_STATUS_CONFIRM_THRESHOLD && !window.confirm(`Apply "Mark Favorite" to ${selected} selected trails?`)) return;
+    await runBikeBulkOperation('favorite', async (sourceIndex) => {
+      await persistBikePreferenceUpdate(sourceIndex, { isFavorite: true });
+    });
+  }
+
+  async function applyBikeBulkUnfavorite() {
+    const selected = state.selectedSourceIndexes.size;
+    if (selected > BULK_STATUS_CONFIRM_THRESHOLD && !window.confirm(`Apply "Unmark Favorite" to ${selected} selected trails?`)) return;
+    await runBikeBulkOperation('unfavorite', async (sourceIndex) => {
+      await persistBikePreferenceUpdate(sourceIndex, { isFavorite: false });
+    });
+  }
+
+  async function applyBikeBulkVisited() {
+    const selected = state.selectedSourceIndexes.size;
+    if (selected > BULK_STATUS_CONFIRM_THRESHOLD && !window.confirm(`Apply "Mark Visited" to ${selected} selected trails?`)) return;
+    await runBikeBulkOperation('visited', async (sourceIndex) => {
+      await setBikeVisited(sourceIndex, true);
+    });
+  }
+
+  async function applyBikeBulkUnvisited() {
+    const selected = state.selectedSourceIndexes.size;
+    if (selected > BULK_STATUS_CONFIRM_THRESHOLD && !window.confirm(`Apply "Unmark Visited" to ${selected} selected trails?`)) return;
+    await runBikeBulkOperation('unvisited', async (sourceIndex) => {
+      await setBikeVisited(sourceIndex, false);
+    });
   }
 
   function resetAllBikeFilters() {
@@ -1841,7 +2129,89 @@
       });
     });
 
+    const selectVisibleBtn = document.getElementById('bikeBulkSelectVisibleBtn');
+    if (selectVisibleBtn && selectVisibleBtn.dataset.bound !== '1') {
+      selectVisibleBtn.addEventListener('click', () => {
+        setBikeSelectionFromScope();
+      });
+      selectVisibleBtn.dataset.bound = '1';
+    }
+
+    const scopeSelect = document.getElementById('bikeBulkSelectionScope');
+    if (scopeSelect && scopeSelect.dataset.bound !== '1') {
+      scopeSelect.addEventListener('change', () => {
+        syncBikeBulkSelectButtonLabel();
+      });
+      scopeSelect.dataset.bound = '1';
+    }
+
+    const clearBtn = document.getElementById('bikeBulkClearSelectionBtn');
+    if (clearBtn && clearBtn.dataset.bound !== '1') {
+      clearBtn.addEventListener('click', () => {
+        clearBikeSelection();
+      });
+      clearBtn.dataset.bound = '1';
+    }
+
+    const invertBtn = document.getElementById('bikeBulkInvertSelectionBtn');
+    if (invertBtn && invertBtn.dataset.bound !== '1') {
+      invertBtn.addEventListener('click', () => {
+        invertBikeSelectionFromScope();
+      });
+      invertBtn.dataset.bound = '1';
+    }
+
+    const tagsBtn = document.getElementById('bikeBulkApplyTagsBtn');
+    if (tagsBtn && tagsBtn.dataset.bound !== '1') {
+      tagsBtn.addEventListener('click', () => {
+        applyBikeBulkTags();
+      });
+      tagsBtn.dataset.bound = '1';
+    }
+
+    const ratingBtn = document.getElementById('bikeBulkApplyRatingBtn');
+    if (ratingBtn && ratingBtn.dataset.bound !== '1') {
+      ratingBtn.addEventListener('click', () => {
+        applyBikeBulkRating();
+      });
+      ratingBtn.dataset.bound = '1';
+    }
+
+    const favoriteBtn = document.getElementById('bikeBulkMarkFavoriteBtn');
+    if (favoriteBtn && favoriteBtn.dataset.bound !== '1') {
+      favoriteBtn.addEventListener('click', () => {
+        applyBikeBulkFavorite();
+      });
+      favoriteBtn.dataset.bound = '1';
+    }
+
+    const unfavoriteBtn = document.getElementById('bikeBulkUnmarkFavoriteBtn');
+    if (unfavoriteBtn && unfavoriteBtn.dataset.bound !== '1') {
+      unfavoriteBtn.addEventListener('click', () => {
+        applyBikeBulkUnfavorite();
+      });
+      unfavoriteBtn.dataset.bound = '1';
+    }
+
+    const visitedBtn = document.getElementById('bikeBulkMarkVisitedBtn');
+    if (visitedBtn && visitedBtn.dataset.bound !== '1') {
+      visitedBtn.addEventListener('click', () => {
+        applyBikeBulkVisited();
+      });
+      visitedBtn.dataset.bound = '1';
+    }
+
+    const unvisitedBtn = document.getElementById('bikeBulkUnmarkVisitedBtn');
+    if (unvisitedBtn && unvisitedBtn.dataset.bound !== '1') {
+      unvisitedBtn.addEventListener('click', () => {
+        applyBikeBulkUnvisited();
+      });
+      unvisitedBtn.dataset.bound = '1';
+    }
+
     bindBikeCardInteractionDelegates();
+    syncBikeBulkSelectButtonLabel();
+    updateBikeBulkSelectionUi();
     grid.dataset.bikeControlsBound = '1';
     return true;
   }
@@ -3029,6 +3399,7 @@
   window.changeBikePage = changeBikePage;
   window.toggleBikeTrailFavorite = toggleBikeTrailFavorite;
   window.setBikeRating = setBikeRating;
+  window.setBikeVisited = setBikeVisited;
   window.initializeBikeTrailsTab = initializeBikeTrailsTab;
   // Alias expected by tab-content-loader to ensure bike init always runs.
   window.initBikeTrailsTab = initializeBikeTrailsTab;

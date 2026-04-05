@@ -16,6 +16,62 @@
   <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
 </div>
 
+<!-- Bulk Actions -->
+<div id="adventureBulkActionsCard" class="card control-panel-card" style="margin-bottom: 12px;">
+  <div class="card-header" style="align-items: center;">
+    <div class="card-title">✅ Bulk Actions</div>
+    <div id="adventureBulkSelectionCount" style="font-size:12px; font-weight:700; color:#475569;">0 selected</div>
+  </div>
+  <div class="control-panel-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+    <div class="filter-item">
+      <label>Selection</label>
+      <select id="adventureBulkSelectionScope" class="filter-select" style="margin-bottom:8px;">
+        <option value="filtered">Filtered results</option>
+        <option value="page">Current page only</option>
+      </select>
+      <div id="adventureBulkSelectionScopeHint" style="font-size:11px;color:#64748b;margin-bottom:8px;display:inline-flex;align-items:center;gap:6px;">
+        <span aria-hidden="true" style="font-size:12px;line-height:1;color:#475569;">ℹ</span>
+        <span class="bulk-scope-hint-text">Selection applies to all filtered results.</span>
+      </div>
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#475569;margin-bottom:8px;">
+        <input id="adventureBulkAutoClearToggle" type="checkbox" />
+        Auto-clear selection after successful apply
+      </label>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="adventureBulkSelectVisibleBtn" type="button" class="pill-button">Select</button>
+        <button id="adventureBulkInvertSelectionBtn" type="button" class="pill-button">Invert</button>
+        <button id="adventureBulkClearSelectionBtn" type="button" class="pill-button reset">Clear</button>
+      </div>
+    </div>
+    <div class="filter-item">
+      <label for="adventureBulkTagsInput">Add Tags (comma separated)</label>
+      <input id="adventureBulkTagsInput" class="filter-input" type="text" placeholder="outdoor, brunch, scenic" />
+      <button id="adventureBulkApplyTagsBtn" type="button" class="pill-button" style="margin-top:8px;">Apply Tags</button>
+    </div>
+    <div class="filter-item">
+      <label for="adventureBulkRatingSelect">Set Rating</label>
+      <select id="adventureBulkRatingSelect" class="filter-select">
+        <option value="">Choose rating...</option>
+        <option value="1">1 star</option>
+        <option value="2">2 stars</option>
+        <option value="3">3 stars</option>
+        <option value="4">4 stars</option>
+        <option value="5">5 stars</option>
+      </select>
+      <button id="adventureBulkApplyRatingBtn" type="button" class="pill-button" style="margin-top:8px;">Apply Rating</button>
+    </div>
+    <div class="filter-item">
+      <label>Status</label>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="adventureBulkMarkFavoriteBtn" type="button" class="pill-button">Mark Favorite</button>
+        <button id="adventureBulkUnmarkFavoriteBtn" type="button" class="pill-button">Unmark Favorite</button>
+        <button id="adventureBulkMarkVisitedBtn" type="button" class="pill-button">Mark Visited</button>
+        <button id="adventureBulkUnmarkVisitedBtn" type="button" class="pill-button">Unmark Visited</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Control Panel Card -->
 <div id="controlPanelCard" class="card control-panel-card">
   <div class="card-header">
