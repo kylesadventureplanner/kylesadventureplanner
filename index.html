@@ -263,6 +263,37 @@
       color: white;
     }
 
+    /* Consistent quick action buttons in row detail modal */
+    .row-detail-action-btn {
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--neutral-300);
+      background: white;
+      color: var(--neutral-700);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      box-shadow: var(--shadow-sm);
+      white-space: nowrap;
+    }
+
+    .row-detail-action-btn:hover {
+      background: var(--neutral-50);
+      border-color: var(--primary);
+      color: var(--primary);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .row-detail-action-btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
     /* ============================================================
        STATUS BAR
        ============================================================
@@ -6756,7 +6787,7 @@
       <header>
         <h1>Adventure Planner</h1>
         <div class="planner-top-actions">
-          <button id="editModeBtn" class="planner-top-btn" title="Open Edit Mode to manage your data" data-tooltip="Open Edit Mode to manage your data" onclick="openEditModeWindow()">
+          <button id="editModeBtn" class="planner-top-btn" title="Open edit mode to manage your data" data-tooltip="Open edit mode to manage your data" onclick="openEditModeWindow()">
             📝 Edit Mode
           </button>
           <button id="findNearMeBtn" class="planner-top-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location" onclick="startFindNearMe()">
@@ -12416,11 +12447,12 @@
       <div class="modal-detail-section" style="background:#f8fafc; border:1px solid #dbeafe;">
         <h3>Helpful Links</h3>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
-          <button type="button" class="row-detail-action-btn" data-action="directions" data-url="${String(directions || '').replace(/"/g, '&quot;')}">🗺️ Directions</button>
-          <button type="button" class="row-detail-action-btn" data-action="google" data-url="${googleSearchUrl}">📍 Google View</button>
-          <button type="button" class="row-detail-action-btn" data-action="similar" data-filter-index="${filteredIndex}">🔎 Similar</button>
-          <button type="button" class="row-detail-action-btn" data-action="nearby" data-filter-index="${filteredIndex}">📌 Nearby</button>
-          <button type="button" class="row-detail-action-btn" data-action="tags" data-place-id="${String(googlePlaceId || '').replace(/"/g, '&quot;')}">🏷️ Tags</button>
+          <button type="button" class="row-detail-action-btn" data-action="directions" data-url="${String(directions || '').replace(/"/g, '&quot;')}" data-tooltip="Open directions in a new tab">🗺️ Directions</button>
+          ${website ? `<button type="button" class="row-detail-action-btn" data-action="website" data-url="${String(website || '').replace(/"/g, '&quot;')}" data-tooltip="Open website in a new tab">🌐 Website</button>` : ''}
+          <button type="button" class="row-detail-action-btn" data-action="google" data-url="${googleSearchUrl}" data-tooltip="Open Google View in a new tab">📍 Google View</button>
+          <button type="button" class="row-detail-action-btn" data-action="similar" data-filter-index="${filteredIndex}" data-tooltip="Find similar locations">🔎 Similar</button>
+          <button type="button" class="row-detail-action-btn" data-action="nearby" data-filter-index="${filteredIndex}" data-tooltip="Find nearby locations">📌 Nearby</button>
+          <button type="button" class="row-detail-action-btn" data-action="tags" data-place-id="${String(googlePlaceId || '').replace(/"/g, '&quot;')}" data-tooltip="Manage tags for this location">🏷️ Tags</button>
         </div>
       </div>
     `;
@@ -12726,7 +12758,7 @@
             ? window.totalFilteredAdventures.findIndex((entry) => entry && entry.sourceIndex === sourceIndex)
             : -1);
 
-        if (action === 'directions' || action === 'google') {
+        if (action === 'directions' || action === 'google' || action === 'website') {
           const url = String(actionBtn.getAttribute('data-url') || '').trim();
           if (url) window.open(url, '_blank', 'noopener');
           return;
@@ -15193,15 +15225,17 @@
   window.updatePlannerTopStickyOffset = updatePlannerTopStickyOffset;
 
   function updatePlannerTopStickyVisualState() {
-    const topActions = document.querySelector('#adventurePlannerTab .planner-top-actions');
-    if (!topActions) return;
+    const topActionBars = document.querySelectorAll('.app-tab-pane .planner-top-actions');
+    if (!topActionBars.length) return;
 
     const scrollY = Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0);
     const progress = Math.min(scrollY / 180, 1);
     const alpha = (0.90 + progress * 0.08).toFixed(3);
 
-    topActions.style.setProperty('--planner-top-bg-alpha', alpha);
-    topActions.classList.toggle('scrolled', scrollY > 16);
+    topActionBars.forEach((topActions) => {
+      topActions.style.setProperty('--planner-top-bg-alpha', alpha);
+      topActions.classList.toggle('scrolled', scrollY > 16);
+    });
   }
 
   let plannerTopVisualRaf = 0;

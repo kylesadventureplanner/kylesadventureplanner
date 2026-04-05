@@ -48,21 +48,6 @@
       gap: 10px;
     }
 
-    #trailExplorerBackLink {
-      color: #fff;
-      text-decoration: none;
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 700;
-      background: rgba(255, 255, 255, 0.12);
-    }
-
-    #trailExplorerBackLink:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
     #trailExplorerCloseBtn {
       background: rgba(255, 255, 255, 0.2);
       border: none;
@@ -388,11 +373,10 @@
 <body>
   <header id="trailExplorerHeader">
     <div class="trail-header-main">
-      <h1>🏙️ City Viewer</h1>
-      <div class="trail-header-subtitle">Explore adventures grouped by city</div>
+      <h1>🗺️ Trail Explorer</h1>
+      <div class="trail-header-subtitle">Explore bike trails grouped by city</div>
     </div>
     <div class="trail-header-actions">
-      <a id="trailExplorerBackLink" href="../index.html">← Back to Planner</a>
       <button id="trailExplorerCloseBtn" type="button" title="Close this tab">×</button>
     </div>
   </header>
@@ -478,34 +462,13 @@
         if (el) el.textContent = message;
       }
 
-      function setPlannerBackLink() {
-        var link = document.getElementById('trailExplorerBackLink');
-        if (!link) return;
-
-        var href = '../index.html';
-        if (typeof window.resolvePlannerPageUrl === 'function') {
-          href = window.resolvePlannerPageUrl('index.html');
-        } else {
-          // Handle both encoded and non-encoded HTML Files route segments.
-          var pathname = String(window.location.pathname || '/');
-          var lower = pathname.toLowerCase();
-          var markers = ['/html%20files/', '/html files/'];
-          var appRootPath = '/';
-          var markerHit = markers.find(function (marker) { return lower.indexOf(marker) >= 0; });
-          if (markerHit) {
-            appRootPath = pathname.slice(0, lower.indexOf(markerHit) + 1);
-          }
-          href = new URL(appRootPath + 'index.html', window.location.origin).toString();
-        }
-        link.href = href;
-      }
-
       function bindHeaderActions() {
         var closeBtn = document.getElementById('trailExplorerCloseBtn');
         if (!closeBtn || closeBtn.dataset.bound === '1') return;
         closeBtn.addEventListener('click', function () {
-          var link = document.getElementById('trailExplorerBackLink');
-          var fallback = link && link.href ? link.href : '../index.html';
+          var fallback = typeof window.resolvePlannerPageUrl === 'function'
+            ? window.resolvePlannerPageUrl('index.html')
+            : '../index.html';
           window.close();
           setTimeout(function () {
             if (window.history.length > 1) {
@@ -1073,7 +1036,6 @@
             return new URL(relativePath, window.location.href).toString();
           };
 
-          setPlannerBackLink();
           bindHeaderActions();
 
           await loadScript('../JS Files/bike-trails-tab-system.js');
