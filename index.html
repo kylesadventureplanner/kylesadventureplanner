@@ -5363,14 +5363,115 @@
      // window.signIn / window.signOut / window.realSignIn / window.realSignOut.
      // Works whether or not the <script src> above already loaded the library.
      // ─────────────────────────────────────────────────────────────────────────
-     (function initMSAL() {
-       const MSAL_CDN = 'https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js';
-       const MSAL_CDN_FALLBACK = 'https://alcdn.msftauth.net/browser/2.37.0/js/msal-browser.min.js';
-       const CLIENT_ID   = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
-       const AUTHORITY   = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
-       const SCOPES      = ['User.Read', 'Files.ReadWrite'];
-       const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
-       const POPUP_ROOT_URI = window.location.origin + '/';
+      (function initMSAL() {
+        const MSAL_CDN = 'https://alcdn.msauth.net/browser/2.37.0/js/msal-browser.min.js';
+        const MSAL_CDN_FALLBACK = 'https://alcdn.msftauth.net/browser/2.37.0/js/msal-browser.min.js';
+        const CLIENT_ID   = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
+        const AUTHORITY   = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
+        const SCOPES      = ['User.Read', 'Files.ReadWrite'];
+        const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
+        const POPUP_ROOT_URI = window.location.origin + '/';
+
+        // Shared helper so all sign-out paths stay in sync.
+        if (typeof window.resetAuthStateBeforeSignOut !== 'function') {
+          window.resetAuthStateBeforeSignOut = function resetAuthStateBeforeSignOut(options = {}) {
+            const {
+              setLocalState = null,
+              syncGlobals = null,
+              updateUI = null,
+              clearAdventureTable = false,
+              clearSelectionFn = null
+            } = options;
+
+            try {
+              if (typeof setLocalState === 'function') setLocalState();
+              else {
+                window.accessToken = null;
+                window.activeAccount = null;
+                window.isConnectedToExcel = false;
+              }
+
+              if (typeof syncGlobals === 'function') syncGlobals();
+              if (typeof updateUI === 'function') {
+                updateUI(null);
+              } else {
+                const authStatus = document.getElementById('authStatus');
+                const signInBtn = document.getElementById('signInBtn');
+                const signOutBtn = document.getElementById('signOutBtn');
+                if (authStatus) authStatus.textContent = 'Not signed in';
+                if (signInBtn) signInBtn.style.display = '';
+                if (signOutBtn) signOutBtn.style.display = 'none';
+                window.updateConnectionStatus?.(false);
+              }
+
+              if (clearAdventureTable) {
+                const adventureTableBody = document.querySelector('#adventureTableBody');
+                if (adventureTableBody) adventureTableBody.innerHTML = '';
+              }
+
+              if (typeof clearSelectionFn === 'function') {
+                clearSelectionFn();
+              }
+            } catch (err) {
+              console.error('❌ Sign-out state reset error:', err);
+            }
+          };
+        }
+
+        if (typeof window.runSignOutWithLoading !== 'function') {
+          window.runSignOutWithLoading = async function runSignOutWithLoading(options = {}) {
+            const {
+              // SIGN_OUT_TEXT_GUARD: keep ASCII three dots.
+              // Quick check: grep -n "Signing out…" index.html
+              message = 'Signing out...',
+              execute = null
+            } = options;
+
+            window.showLoading?.(message);
+
+            try {
+              const startedRedirect = typeof execute === 'function'
+                ? await execute()
+                : false;
+              if (!startedRedirect) window.hideLoading?.();
+              return !!startedRedirect;
+            } catch (err) {
+              window.hideLoading?.();
+              throw err;
+            }
+          };
+        }
+
+        if (typeof window.performRedirectSignOut !== 'function') {
+          window.performRedirectSignOut = async function performRedirectSignOut(options = {}) {
+            const {
+              instance,
+              account = null,
+              postLogoutRedirectUri = window.location.origin + '/',
+              onError = null
+            } = options;
+
+            if (!instance || typeof instance.logoutRedirect !== 'function') {
+              const err = new Error('MSAL instance is unavailable for redirect sign-out');
+              if (typeof onError === 'function') onError(err);
+              else console.error('❌ Sign-out error:', err);
+              return false;
+            }
+
+            try {
+              instance.setActiveAccount?.(null);
+              await instance.logoutRedirect({
+                ...(account ? { account } : {}),
+                postLogoutRedirectUri
+              });
+              return true;
+            } catch (err) {
+              if (typeof onError === 'function') onError(err);
+              else console.error('❌ Sign-out error:', err);
+              return false;
+            }
+          };
+        }
 
        // ── helpers ──────────────────────────────────────────────────────────
        function loadScript(src) {
@@ -5398,43 +5499,6 @@
            console.log('✅ MSAL loaded from fallback CDN');
          }
        }
-
-       function isRedirectMismatchError(err) {
-         const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
-         return msg.includes('aadsts50011') || msg.includes('redirect uri');
-       }
-
-        function shouldUseRedirectFallback(err) {
-           const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
-           const code = String(err?.errorCode || err?.code || '').toLowerCase();
-           // NOTE: The COOP browser warning ("Cross-Origin-Opener-Policy policy would block
-           // the window.closed call") is a native browser DevTools message — it does NOT
-           // route through console.warn, so __msalCoopWarningSeen can never be set that way.
-           // Under same-origin-allow-popups (our Static Web App config), MSAL cannot poll
-           // popup.closed for cross-origin popups (login.microsoftonline.com), causing
-           // silent user_cancelled errors. Always redirect on first cancellation.
-           return (
-             code === 'user_cancelled' ||
-             code === 'popup_window_error' ||
-             msg.includes('cross-origin-opener-policy') ||
-             msg.includes('window.closed') ||
-             msg.includes('popup window') ||
-             msg.includes('popup was blocked') ||
-             msg.includes('popup_window_error')
-           );
-         }
-
-       async function loginPopupWithFallback(instance, request) {
-          try {
-            console.log('🔐 [AUTH PATH] Attempting popup sign-in → auth-popup-callback redirectUri');
-            return await instance.loginPopup({ ...request, redirectUri: POPUP_REDIRECT_URI });
-          } catch (err) {
-            if (!isRedirectMismatchError(err)) throw err;
-            console.warn('⚠️ Popup callback redirect not registered; retrying root redirect URI');
-            console.log('🔐 [AUTH PATH] Retrying popup sign-in → root redirectUri (mismatch fallback)');
-            return await instance.loginPopup({ ...request, redirectUri: POPUP_ROOT_URI });
-          }
-        }
 
         // ── main boot sequence ────────────────────────────────────────────────
         async function boot() {
@@ -5531,38 +5595,14 @@
              isSigningIn = true;
               try {
                 window.showLoading?.('Signing in…');
-                console.log('🔐 [AUTH PATH] Starting interactive sign-in (popup)…');
-                 const resp = await loginPopupWithFallback(instance, { scopes: SCOPES });
-                console.log('✅ [AUTH PATH] Popup sign-in succeeded for', resp.account?.username);
-                activeAccount = resp.account;
-                instance.setActiveAccount(activeAccount);
-
-                const tokenResp = await instance.acquireTokenSilent({ scopes: SCOPES, account: activeAccount });
-                accessToken = tokenResp.accessToken;
-                isConnectedToExcel = true;
-                syncAuthGlobals();
-                updateUI(activeAccount);
-
-                window.showToast?.('✅ Signed in as ' + activeAccount.username, 'success', 3000);
-                window.__authRedirectFallbackTried = false;
-                if (typeof window.loadTable === 'function') await window.loadTable();
+                console.log('🔐 [AUTH PATH] Starting interactive sign-in (redirect primary)…');
+                window.__authRedirectFallbackTried = true;
+                window.showToast?.('Completing sign-in in this tab...', 'info', 2500);
+                await instance.loginRedirect({ scopes: SCOPES, redirectUri: POPUP_ROOT_URI });
+                return;
                } catch (err) {
-                 // shouldUseRedirectFallback covers user_cancelled AND popup_window_error (popup blocker)
-                 if (shouldUseRedirectFallback(err)) {
-                   if (window.__authRedirectFallbackTried) {
-                     console.log('ℹ️ [AUTH PATH] Redirect fallback already tried; giving up. Error:', err?.message || err);
-                     window.showToast?.('Sign-in cancelled', 'info', 2000);
-                     return;
-                   }
-                   window.__authRedirectFallbackTried = true;
-                   console.warn('⚠️ [AUTH PATH] Popup blocked by browser policy → switching to redirect sign-in');
-                   console.log('🔀 [AUTH PATH] Calling loginRedirect (COOP / popup_window_error fallback)');
-                   window.showToast?.('Completing sign-in in this tab...', 'info', 2500);
-                   await instance.loginRedirect({ scopes: SCOPES, redirectUri: POPUP_ROOT_URI });
-                   return;
-                 }
                 if (window.__isExpectedAuthCancellation?.(err)) {
-                 console.log('ℹ️ Sign-in popup dismissed:', err?.message || err);
+                 console.log('ℹ️ Sign-in cancelled:', err?.message || err);
                  window.showToast?.('Sign-in cancelled', 'info', 2000);
                } else {
                  console.error('❌ Sign-in error:', err);
@@ -5576,22 +5616,30 @@
 
            // ── signOut ───────────────────────────────────────────────────────
            async function realSignOutImpl() {
-             try {
-               window.showLoading?.('Signing out…');
-               if (activeAccount) {
-                  await instance.logoutPopup({ account: activeAccount, postLogoutRedirectUri: POPUP_REDIRECT_URI });
+             const startedRedirect = await window.runSignOutWithLoading({
+               execute: async function() {
+                 const accountToLogout = activeAccount || instance.getActiveAccount?.() || null;
+                 window.resetAuthStateBeforeSignOut({
+                   setLocalState: function() {
+                     accessToken = null;
+                     activeAccount = null;
+                     isConnectedToExcel = false;
+                   },
+                   syncGlobals: syncAuthGlobals,
+                   updateUI
+                 });
+
+                 return window.performRedirectSignOut({
+                   instance,
+                   account: accountToLogout,
+                   postLogoutRedirectUri: POPUP_ROOT_URI,
+                   onError: (err) => {
+                     console.error('❌ Sign-out error:', err);
+                   }
+                 });
                }
-               accessToken = null;
-               activeAccount = null;
-               isConnectedToExcel = false;
-               syncAuthGlobals();
-               updateUI(null);
-               window.showToast?.('✓ Signed out successfully', 'success', 2000);
-             } catch (err) {
-               console.error('❌ Sign-out error:', err);
-             } finally {
-               window.hideLoading?.();
-             }
+             });
+             if (startedRedirect) return;
            }
 
            // ── export ────────────────────────────────────────────────────────
@@ -5735,8 +5783,8 @@
          console.log('✅ loadTable: Adventure data ready');
          console.log('📊 Loaded adventures:', window.adventuresData.length);
 
-         // Render the cards to the grid
-         await window.renderAdventureCards();
+         // Render loaded rows explicitly (avoids relying on shim defaults).
+         await window.renderAdventureCards(window.adventuresData);
 
          // Populate autocomplete suggestions with initial data
          console.log('📋 Populating initial autocomplete suggestions...');
@@ -8602,30 +8650,41 @@
 
   if (typeof window.signOut !== 'function') {
     window.signOut = async function() {
-      showLoading('Signing out...');
-      const account = msalInstance.getActiveAccount();
-      if (!account) {
-        hideLoading();
-        return;
-      }
+      const startedRedirect = await window.runSignOutWithLoading({
+        execute: async function() {
+          const authInstance = window.msalInstance;
+          const account = authInstance?.getActiveAccount?.() || window.activeAccount || null;
+          window.resetAuthStateBeforeSignOut({
+            setLocalState: function() {
+              accessToken = null;
+              activeAccount = null;
+              isConnectedToExcel = false;
+            },
+            syncGlobals,
+            updateUI: function() {
+              const authStatus = document.getElementById('authStatus');
+              const signInBtn = document.getElementById('signInBtn');
+              const signOutBtn = document.getElementById('signOutBtn');
+              if (authStatus) authStatus.textContent = 'Not signed in';
+              if (signInBtn) signInBtn.style.display = 'inline-block';
+              if (signOutBtn) signOutBtn.style.display = 'none';
+              updateConnectionStatus(false);
+            },
+            clearAdventureTable: true,
+            clearSelectionFn: typeof clearSelection === 'function' ? clearSelection : null
+          });
 
-      await msalInstance.logoutPopup({
-        account,
-        postLogoutRedirectUri: window.location.origin
+          return window.performRedirectSignOut({
+            instance: authInstance,
+            account,
+            postLogoutRedirectUri: window.location.origin + '/',
+            onError: (err) => {
+              console.error('❌ Sign-out error:', err);
+            }
+          });
+        }
       });
-
-      accessToken = null;
-      activeAccount = null;
-      syncAuthGlobals();
-      isConnectedToExcel = false;
-      document.getElementById('authStatus').textContent = 'Not signed in';
-      document.getElementById('signInBtn').style.display = 'inline-block';
-      document.getElementById('signOutBtn').style.display = 'none';
-      updateConnectionStatus(false);
-      document.querySelector('#adventureTableBody').innerHTML = '';
-      clearSelection();
-      hideLoading();
-      showToast('✓ Successfully signed out!', 'success', 2000);
+      if (startedRedirect) return;
     };
   }
 
@@ -11088,11 +11147,11 @@
   window.itemsPerPage = itemsPerPage;
   window.totalFilteredAdventures = totalFilteredAdventures;
 
-  // Export functions to window so onclick handlers and external scripts always
-  // call the real implementations defined in this block (hoisted by JS engine).
-  window.changePage = function(direction) { changePage(direction); };
-  window.renderPaginatedCards = function() { renderPaginatedCards(); };
-  window.updatePaginationControls = function() { updatePaginationControls(); };
+  // Export canonical references directly.
+  // Wrapping these names in same-named delegates can recurse in global scope.
+  window.changePage = changePage;
+  window.renderPaginatedCards = renderPaginatedCards;
+  window.updatePaginationControls = updatePaginationControls;
 
   // Override window.renderAdventureCards with the real paginated version.
    // The earlier shim (defined in the head script block) is a delegation
@@ -21277,7 +21336,6 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   const CLIENT_ID = '54cd5065-43b4-4f98-9390-0fbba95da3f2';
   const AUTHORITY  = 'https://login.microsoftonline.com/5b9b0c40-0a71-4cc2-a98a-8a1fc03a20bc';
   const SCOPES     = ['User.Read', 'Files.ReadWrite'];
-  const POPUP_REDIRECT_URI = window.location.origin + '/auth-popup-callback.html';
   const POPUP_ROOT_URI = window.location.origin + '/';
 
   function isUsableAuthFn(fn) {
@@ -21289,23 +21347,6 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       src.includes('Placeholder signIn') ||
       src.includes('real auth should have replaced this')
     );
-  }
-
-  function isRedirectMismatchError(err) {
-    const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
-    return msg.includes('aadsts50011') || msg.includes('redirect uri');
-  }
-
-  async function loginPopupWithFallback(instance, request) {
-    try {
-      console.log('🔐 [AUTH PATH] Attempting popup sign-in → auth-popup-callback redirectUri (guarantee block)');
-      return await instance.loginPopup({ ...request, redirectUri: POPUP_REDIRECT_URI });
-    } catch (err) {
-      if (!isRedirectMismatchError(err)) throw err;
-      console.warn('⚠️ Popup callback redirect not registered; retrying root redirect URI');
-      console.log('🔐 [AUTH PATH] Retrying popup sign-in → root redirectUri (mismatch fallback, guarantee block)');
-      return await instance.loginPopup({ ...request, redirectUri: POPUP_ROOT_URI });
-    }
   }
 
   function getCleanButton(id) {
@@ -21342,36 +21383,11 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
       // 2. Use the already-created MSAL instance if available
       if (window.msalInstance) {
-        console.log('🔐 [AUTH PATH] Popup via msalInstance direct (no signIn function available)');
+        console.log('🔐 [AUTH PATH] Redirect via msalInstance direct');
         try {
-          const resp = await loginPopupWithFallback(window.msalInstance, { scopes: SCOPES });
-          window.activeAccount = resp.account;
-          window.msalInstance.setActiveAccount(resp.account);
-          const tok = await window.msalInstance.acquireTokenSilent({ scopes: SCOPES, account: resp.account });
-          window.accessToken = tok.accessToken;
-          window.isConnectedToExcel = true;
-          updateAuthUI(resp.account);
-          if (typeof window.loadTable === 'function') await window.loadTable();
-        } catch (err) {
-          const errCode = String(err?.errorCode || err?.code || '').toLowerCase();
-          const errMsg  = String(err?.message   || err?.errorMessage || '').toLowerCase();
-          const isPopupBlocked =
-            errCode === 'user_cancelled' ||
-            errCode === 'popup_window_error' ||
-            errMsg.includes('popup window') ||
-            errMsg.includes('popup was blocked') ||
-            errMsg.includes('popup_window_error') ||
-            errMsg.includes('cross-origin-opener-policy');
-          if (isPopupBlocked && !window.__authRedirectFallbackTried) {
-            window.__authRedirectFallbackTried = true;
-            console.warn('⚠️ [AUTH PATH] Popup blocked in guarantee block → switching to redirect sign-in');
-            try {
-              await window.msalInstance.loginRedirect({ scopes: SCOPES, redirectUri: POPUP_ROOT_URI });
-            } catch (redirectErr) { showAuthError(redirectErr); }
-            return;
-          }
-          showAuthError(err);
-        }
+          window.__authRedirectFallbackTried = true;
+          await window.msalInstance.loginRedirect({ scopes: SCOPES, redirectUri: POPUP_ROOT_URI });
+        } catch (err) { showAuthError(err); }
         return;
       }
 
@@ -21397,11 +21413,19 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         return;
       }
       if (window.msalInstance) {
-        try {
-          await window.msalInstance.logoutPopup();
-          window.accessToken = null; window.activeAccount = null; window.isConnectedToExcel = false;
-          updateAuthUI(null);
-        } catch (err) { console.error('Sign-out error:', err); }
+        const startedRedirect = await window.runSignOutWithLoading({
+          execute: async function() {
+            const accountToLogout = window.activeAccount || window.msalInstance.getActiveAccount?.() || null;
+            window.resetAuthStateBeforeSignOut({ updateUI: updateAuthUI });
+            return window.performRedirectSignOut({
+              instance: window.msalInstance,
+              account: accountToLogout,
+              postLogoutRedirectUri: POPUP_ROOT_URI,
+              onError: (err) => { console.error('Sign-out error:', err); }
+            });
+          }
+        });
+        if (startedRedirect) return;
       }
     }, true);
   }
