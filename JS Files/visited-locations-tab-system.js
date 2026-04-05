@@ -79,7 +79,18 @@
     challengeState: {},
     metaState: {},
     latestLocations: [],
+    isRefreshing: false,
+    busyVisitToggles: new Set(),
     bikeLoadRequested: false,
+    mobileTooltip: {
+      pressTimerId: 0,
+      hideTimerId: 0,
+      chipHideTimerId: 0,
+      longPressActive: false,
+      suppressClickUntil: 0,
+      targetEl: null,
+      bubbleEl: null
+    },
     visitedColumnIndexCache: {
       adventure: null,
       bike: null
@@ -109,6 +120,220 @@
   function setActiveProgressSubTab(root, tabKey) {
     state.activeProgressSubTab = tabKey || 'overview';
     syncProgressSubTabs(root);
+  }
+
+  function isTouchPrimaryInput() {
+    if (typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
+  }
+
+  function getTooltipTextFromElement(el) {
+    if (!el) return '';
+    const value = el.getAttribute('data-tooltip') || el.getAttribute('title') || '';
+    return String(value).trim();
+  }
+
+  function clearMobileTooltipTimers() {
+    const mt = state.mobileTooltip;
+    if (mt.pressTimerId) {
+      clearTimeout(mt.pressTimerId);
+      mt.pressTimerId = 0;
+    }
+    if (mt.hideTimerId) {
+      clearTimeout(mt.hideTimerId);
+      mt.hideTimerId = 0;
+    }
+    if (mt.chipHideTimerId) {
+      clearTimeout(mt.chipHideTimerId);
+      mt.chipHideTimerId = 0;
+    }
+  }
+
+  function ensureMobileTooltipBubble() {
+    if (state.mobileTooltip.bubbleEl && document.body.contains(state.mobileTooltip.bubbleEl)) {
+      return state.mobileTooltip.bubbleEl;
+    }
+    const bubble = document.createElement('div');
+    bubble.className = 'visited-mobile-tooltip-bubble';
+    bubble.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bubble);
+    state.mobileTooltip.bubbleEl = bubble;
+    return bubble;
+  }
+
+  function hideMobileTooltipBubble() {
+    const bubble = state.mobileTooltip.bubbleEl;
+    if (!bubble) return;
+    bubble.classList.remove('is-visible');
+    state.mobileTooltip.hideTimerId = window.setTimeout(() => {
+      if (!bubble.classList.contains('is-visible')) {
+        bubble.remove();
+        if (state.mobileTooltip.bubbleEl === bubble) {
+          state.mobileTooltip.bubbleEl = null;
+        }
+      }
+      state.mobileTooltip.hideTimerId = 0;
+    }, 170);
+  }
+
+  function positionMobileTooltipBubble(target, bubble) {
+    if (!target || !bubble) return;
+    const rect = target.getBoundingClientRect();
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const maxLeft = Math.max(10, vw - bubble.offsetWidth - 10);
+    let left = rect.left + (rect.width / 2) - (bubble.offsetWidth / 2);
+    left = Math.max(10, Math.min(left, maxLeft));
+    let top = rect.top - bubble.offsetHeight - 10;
+    if (top < 10) top = rect.bottom + 10;
+    bubble.style.left = `${Math.round(left)}px`;
+    bubble.style.top = `${Math.round(top)}px`;
+  }
+
+  function showMobileTooltipBubble(target, text) {
+    if (!target || !text) return;
+    const bubble = ensureMobileTooltipBubble();
+    bubble.textContent = text;
+    bubble.classList.add('is-visible');
+    positionMobileTooltipBubble(target, bubble);
+  }
+
+  function hideMobileTooltipChip() {
+    const chip = document.getElementById('visitedMobileTooltipChip');
+    if (!chip) return;
+    chip.hidden = true;
+    chip.textContent = '';
+  }
+
+  function showMobileTooltipChip(text, autoHideMs) {
+    const chip = document.getElementById('visitedMobileTooltipChip');
+    if (!chip || !text) return;
+    chip.textContent = text;
+    chip.hidden = false;
+
+    if (state.mobileTooltip.chipHideTimerId) {
+      clearTimeout(state.mobileTooltip.chipHideTimerId);
+      state.mobileTooltip.chipHideTimerId = 0;
+    }
+
+    const ms = Number(autoHideMs) || 0;
+    if (ms > 0) {
+      state.mobileTooltip.chipHideTimerId = window.setTimeout(() => {
+        hideMobileTooltipChip();
+      }, ms);
+    }
+  }
+
+  function clearMobileLongPressState() {
+    if (state.mobileTooltip.pressTimerId) {
+      clearTimeout(state.mobileTooltip.pressTimerId);
+      state.mobileTooltip.pressTimerId = 0;
+    }
+    state.mobileTooltip.targetEl = null;
+    state.mobileTooltip.longPressActive = false;
+    hideMobileTooltipBubble();
+  }
+
+  function initMobileTooltipSupport(root) {
+    if (!root || root.dataset.mobileTooltipBound === '1') return;
+    root.dataset.mobileTooltipBound = '1';
+
+    root.addEventListener('focusin', (event) => {
+      const target = event.target.closest ? event.target.closest('[data-tooltip]') : null;
+      if (!target) return;
+      const text = getTooltipTextFromElement(target);
+      if (text) showMobileTooltipChip(text, 2400);
+    });
+
+    root.addEventListener('click', (event) => {
+      const target = event.target.closest ? event.target.closest('[data-tooltip]') : null;
+      if (!target || !isTouchPrimaryInput()) return;
+      const text = getTooltipTextFromElement(target);
+      if (text) showMobileTooltipChip(text, 2200);
+    }, true);
+
+    root.addEventListener('touchstart', (event) => {
+      if (!isTouchPrimaryInput()) return;
+      const target = event.target.closest ? event.target.closest('[data-tooltip]') : null;
+      if (!target) return;
+
+      const text = getTooltipTextFromElement(target);
+      if (!text) return;
+
+      clearMobileLongPressState();
+      state.mobileTooltip.targetEl = target;
+      state.mobileTooltip.pressTimerId = window.setTimeout(() => {
+        state.mobileTooltip.longPressActive = true;
+        state.mobileTooltip.suppressClickUntil = Date.now() + 650;
+        showMobileTooltipBubble(target, text);
+        showMobileTooltipChip(text, 2600);
+      }, 420);
+    }, { passive: true });
+
+    root.addEventListener('touchmove', () => {
+      clearMobileLongPressState();
+    }, { passive: true });
+
+    root.addEventListener('touchend', () => {
+      clearMobileLongPressState();
+    }, { passive: true });
+
+    root.addEventListener('touchcancel', () => {
+      clearMobileLongPressState();
+    }, { passive: true });
+
+    root.addEventListener('click', (event) => {
+      if (!state.mobileTooltip.longPressActive && Date.now() > state.mobileTooltip.suppressClickUntil) return;
+      const target = event.target.closest ? event.target.closest('[data-tooltip]') : null;
+      if (!target) return;
+      event.preventDefault();
+      event.stopPropagation();
+      state.mobileTooltip.longPressActive = false;
+      state.mobileTooltip.suppressClickUntil = 0;
+    }, true);
+
+    window.addEventListener('scroll', () => {
+      hideMobileTooltipBubble();
+    }, { passive: true });
+
+    window.addEventListener('resize', () => {
+      hideMobileTooltipBubble();
+    });
+  }
+
+  function getProgressSubTabButtons(root) {
+    return root ? Array.from(root.querySelectorAll('[data-progress-subtab]')) : [];
+  }
+
+  function setButtonBusy(button, isBusy, busyLabel) {
+    if (!button) return;
+    if (isBusy) {
+      if (!button.dataset.prevLabel) {
+        button.dataset.prevLabel = button.textContent || '';
+      }
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      if (busyLabel) button.textContent = busyLabel;
+      return;
+    }
+
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+    if (button.dataset.prevLabel) {
+      button.textContent = button.dataset.prevLabel;
+      delete button.dataset.prevLabel;
+    }
+  }
+
+  async function runRefreshWithLock(sourceButton) {
+    if (state.isRefreshing) return;
+    state.isRefreshing = true;
+    setButtonBusy(sourceButton, true, 'Refreshing...');
+    try {
+      await refreshTab();
+    } finally {
+      setButtonBusy(sourceButton, false);
+      state.isRefreshing = false;
+    }
   }
 
   function prefersReducedMotion() {
@@ -1187,6 +1412,8 @@
         dot.style.width = `${Math.max(8, Math.min(18, radius * 0.35))}px`;
         dot.style.height = dot.style.width;
         dot.setAttribute('aria-label', `${bucket.city}, ${bucket.state}: ${bucket.count} visits`);
+        dot.setAttribute('title', `Heat spot: ${bucket.city}, ${bucket.state} (${bucket.count} visits)`);
+        dot.setAttribute('data-tooltip', `Heat spot: ${bucket.city}, ${bucket.state} (${bucket.count} visits)`);
         dot.dataset.hotspotTooltip = buildHotspotTooltipHtml(bucket);
         overlay.appendChild(dot);
       });
@@ -1213,7 +1440,7 @@
         <div class="visited-category-card" data-category="${category.key}">
           <div class="visited-category-top">
             <div class="visited-category-title">${category.icon} ${category.label}</div>
-            <button class="quick-filter-btn visited-category-filter-btn ${state.categoryFilter === category.key ? 'active' : ''}" data-category-filter="${category.key}">Focus</button>
+            <button type="button" class="quick-filter-btn visited-category-filter-btn ${state.categoryFilter === category.key ? 'active' : ''}" data-category-filter="${category.key}" title="Filter tracker to ${escapeHtml(category.label)}" data-tooltip="Filter tracker to ${escapeHtml(category.label)}">Focus</button>
           </div>
           <div class="visited-category-meta">${visitedCount} / ${totalCount || 0} visited</div>
           <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${pct}%;"></div></div>
@@ -1291,7 +1518,7 @@
           </div>
           <div class="adventure-card-footer">
             <div class="card-action-buttons">
-              <button class="card-btn card-btn-primary" data-visit-action="toggle" data-location-id="${escapeHtml(suggestion.id)}">✅ Mark Visited</button>
+              <button type="button" class="card-btn card-btn-primary" data-visit-action="toggle" data-location-id="${escapeHtml(suggestion.id)}" title="Mark ${escapeHtml(suggestion.name)} as visited" data-tooltip="Mark ${escapeHtml(suggestion.name)} as visited">✅ Mark Visited</button>
             </div>
           </div>
         </div>
@@ -1412,7 +1639,7 @@
             <div class="visited-catalog-name">${escapeHtml(adventure.name)} ${categories}</div>
             <div class="visited-catalog-meta">${escapeHtml(adventure.city)}, ${escapeHtml(adventure.state)} • ${escapeHtml(adventure.driveTime || 'Drive time unknown')}</div>
           </div>
-          <button class="quick-filter-btn ${visited ? 'active' : ''}" data-visit-action="toggle" data-location-id="${escapeHtml(adventure.id)}">
+          <button type="button" class="quick-filter-btn ${visited ? 'active' : ''}" data-visit-action="toggle" data-location-id="${escapeHtml(adventure.id)}" title="${visited ? 'Mark as not visited' : 'Mark as visited'}" data-tooltip="${visited ? 'Mark as not visited' : 'Mark as visited'}">
             ${visited ? '✅ Visited' : '➕ Mark'}
           </button>
         </div>
@@ -1530,32 +1757,72 @@
 
     root.dataset.bound = '1';
     syncProgressSubTabs(root);
+    initMobileTooltipSupport(root);
+
+    root.addEventListener('keydown', (event) => {
+      const currentTabBtn = event.target.closest('[data-progress-subtab]');
+      if (!currentTabBtn) return;
+
+      const buttons = getProgressSubTabButtons(root);
+      if (buttons.length === 0) return;
+      const index = buttons.indexOf(currentTabBtn);
+      if (index < 0) return;
+
+      let nextIndex = index;
+      if (event.key === 'ArrowRight') nextIndex = (index + 1) % buttons.length;
+      else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + buttons.length) % buttons.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = buttons.length - 1;
+      else return;
+
+      event.preventDefault();
+      const nextButton = buttons[nextIndex];
+      const tabKey = nextButton.getAttribute('data-progress-subtab') || 'overview';
+      setActiveProgressSubTab(root, tabKey);
+      nextButton.focus();
+    });
 
     root.addEventListener('click', (event) => {
       const progressTabBtn = event.target.closest('[data-progress-subtab]');
       if (progressTabBtn) {
+        event.preventDefault();
         const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'overview';
+        if (tabKey === state.activeProgressSubTab) return;
         setActiveProgressSubTab(root, tabKey);
         return;
       }
 
       const toggleBtn = event.target.closest('[data-visit-action="toggle"]');
       if (toggleBtn) {
+        event.preventDefault();
         const locationId = toggleBtn.getAttribute('data-location-id');
-        if (locationId) toggleVisited(locationId);
+        if (locationId && !state.busyVisitToggles.has(locationId)) {
+          state.busyVisitToggles.add(locationId);
+          setButtonBusy(toggleBtn, true, 'Saving...');
+          toggleVisited(locationId)
+            .catch((error) => {
+              console.warn('Visited toggle failed:', error);
+            })
+            .finally(() => {
+              state.busyVisitToggles.delete(locationId);
+              setButtonBusy(toggleBtn, false);
+            });
+        }
         return;
       }
 
       const categoryBtn = event.target.closest('[data-category-filter]');
       if (categoryBtn) {
+        event.preventDefault();
         const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
         state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
-        refreshTab();
+        runRefreshWithLock(categoryBtn);
         return;
       }
 
       const celebrationBtn = event.target.closest('[data-celebration-toggle]');
       if (celebrationBtn) {
+        event.preventDefault();
         const prefType = celebrationBtn.getAttribute('data-celebration-toggle');
         if (prefType) toggleCelebrationPreference(prefType);
         return;
@@ -1582,7 +1849,10 @@
 
     const refreshBtn = document.getElementById('visitedRefreshBtn');
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => refreshTab());
+      refreshBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        runRefreshWithLock(refreshBtn);
+      });
     }
 
     const weatherEl = document.getElementById('visitedWeatherMode');

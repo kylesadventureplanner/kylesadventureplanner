@@ -9,13 +9,13 @@
         🔄 Refresh Tracker
       </button>
       <span id="visitedSyncHealthBadge" class="visited-sync-health" aria-live="polite">Sync: checking...</span>
-      <button type="button" class="quick-filter-btn" data-celebration-toggle="confetti" aria-pressed="true" title="Toggle confetti celebration">
+      <button type="button" class="quick-filter-btn" data-celebration-toggle="confetti" aria-pressed="true" title="Toggle confetti celebration" data-tooltip="Toggle confetti celebration">
         🎉 Confetti
       </button>
-      <button type="button" class="quick-filter-btn" data-celebration-toggle="sound" aria-pressed="false" title="Toggle celebration sound">
+      <button type="button" class="quick-filter-btn" data-celebration-toggle="sound" aria-pressed="false" title="Toggle celebration sound" data-tooltip="Toggle celebration sound">
         🔊 Sound
       </button>
-      <select id="visitedWeatherMode" class="filter-select" title="Choose weather mode for recommendations" style="max-width: 240px;">
+      <select id="visitedWeatherMode" class="filter-select" title="Choose weather mode for recommendations" data-tooltip="Choose weather mode for recommendations" style="max-width: 240px;">
         <option value="auto">🌦️ Auto Weather Mode</option>
         <option value="sunny">☀️ Sunny</option>
         <option value="rainy">🌧️ Rainy</option>
@@ -27,12 +27,14 @@
   </div>
 
   <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Progress sections">
-    <button type="button" class="visited-progress-subtab active" role="tab" aria-selected="true" data-progress-subtab="overview">Overview</button>
-    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="badges">Badges and Challenges</button>
-    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="heatmap">Heat Map</button>
-    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="quests">Weekly, Monthly, Quarterly, Yearly Quests</button>
-    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="tracker">Visit Tracker</button>
+    <button type="button" class="visited-progress-subtab active" role="tab" aria-selected="true" data-progress-subtab="overview" title="Open Overview section" data-tooltip="Open Overview section">Overview</button>
+    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="badges" title="Open Badges and Challenges section" data-tooltip="Open Badges and Challenges section">Badges and Challenges</button>
+    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="heatmap" title="Open Heat Map section" data-tooltip="Open Heat Map section">Heat Map</button>
+    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="quests" title="Open Quests section" data-tooltip="Open Quests section">Weekly, Monthly, Quarterly, Yearly Quests</button>
+    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="tracker" title="Open Visit Tracker section" data-tooltip="Open Visit Tracker section">Visit Tracker</button>
   </div>
+
+  <div id="visitedMobileTooltipChip" class="visited-mobile-tooltip-chip" aria-live="polite" hidden></div>
 
   <div class="visited-progress-pane is-active" data-progress-pane="overview">
     <div class="card" style="margin-top: 10px;">
@@ -162,6 +164,75 @@
     margin-bottom: 12px;
   }
 
+  #visitedLocationsRoot .visited-mobile-tooltip-chip {
+    margin: -2px 0 12px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  #visitedLocationsRoot .visited-mobile-tooltip-chip[hidden] {
+    display: none;
+  }
+
+  .visited-mobile-tooltip-bubble {
+    position: fixed;
+    z-index: 12000;
+    max-width: min(280px, calc(100vw - 20px));
+    background: #111827;
+    color: #f8fafc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.35;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+  }
+
+  .visited-mobile-tooltip-bubble.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (min-width: 1024px) {
+    #visitedLocationsRoot .visited-mobile-tooltip-chip {
+      display: none !important;
+    }
+  }
+
+  #visitedLocationsRoot .planner-top-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #visitedLocationsRoot button,
+  #visitedLocationsRoot [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #visitedLocationsRoot .planner-top-btn,
+  #visitedLocationsRoot .visited-progress-subtab,
+  #visitedLocationsRoot .quick-filter-btn,
+  #visitedLocationsRoot .card-btn {
+    min-height: 38px;
+    line-height: 1.2;
+    pointer-events: auto;
+    position: relative;
+    z-index: 2;
+  }
+
   #visitedLocationsRoot .visited-progress-subtab {
     border: 1px solid #d1d5db;
     background: #ffffff;
@@ -184,6 +255,48 @@
     border-color: #1d4ed8;
     background: #dbeafe;
     color: #1e3a8a;
+  }
+
+  #visitedLocationsRoot .visited-progress-subtab:focus-visible,
+  #visitedLocationsRoot .planner-top-btn:focus-visible,
+  #visitedLocationsRoot .quick-filter-btn:focus-visible,
+  #visitedLocationsRoot .card-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+  }
+
+  #visitedLocationsRoot [data-tooltip]:focus-visible::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  #visitedLocationsRoot [data-tooltip]:focus-visible::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1f2937;
+    z-index: 10000;
+  }
+
+  @media (hover: hover) {
+    #visitedLocationsRoot .quick-filter-btn:hover,
+    #visitedLocationsRoot .card-btn:hover {
+      transform: translateY(-1px);
+    }
   }
 
   #visitedLocationsRoot .visited-progress-pane {
