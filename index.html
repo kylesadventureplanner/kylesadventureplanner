@@ -5404,19 +5404,25 @@
          return msg.includes('aadsts50011') || msg.includes('redirect uri');
        }
 
-       function shouldUseRedirectFallback(err) {
-         const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
-         const code = String(err?.errorCode || err?.code || '').toLowerCase();
-         const coopHintSeen = window.__msalCoopWarningSeen === true;
-         return (
-           (coopHintSeen && code === 'user_cancelled') ||
-           code === 'popup_window_error' ||
-           msg.includes('cross-origin-opener-policy') ||
-           msg.includes('window.closed') ||
-           msg.includes('popup window') ||
-           msg.includes('popup')
-         );
-       }
+        function shouldUseRedirectFallback(err) {
+           const msg = String(err?.message || err?.errorMessage || '').toLowerCase();
+           const code = String(err?.errorCode || err?.code || '').toLowerCase();
+           // NOTE: The COOP browser warning ("Cross-Origin-Opener-Policy policy would block
+           // the window.closed call") is a native browser DevTools message — it does NOT
+           // route through console.warn, so __msalCoopWarningSeen can never be set that way.
+           // Under same-origin-allow-popups (our Static Web App config), MSAL cannot poll
+           // popup.closed for cross-origin popups (login.microsoftonline.com), causing
+           // silent user_cancelled errors. Always redirect on first cancellation.
+           return (
+             code === 'user_cancelled' ||
+             code === 'popup_window_error' ||
+             msg.includes('cross-origin-opener-policy') ||
+             msg.includes('window.closed') ||
+             msg.includes('popup window') ||
+             msg.includes('popup was blocked') ||
+             msg.includes('popup_window_error')
+           );
+         }
 
        async function loginPopupWithFallback(instance, request) {
           try {
@@ -5452,23 +5458,30 @@
            window.msalInstance = instance;
            console.log('✅ MSAL instance created → window.msalInstance');
 
-           // Initialize and handle any pending redirect
-           await instance.initialize();
-           try {
-             await instance.handleRedirectPromise();
-           } catch (e) {
-             console.warn('⚠️ handleRedirectPromise error (non-fatal):', e.message);
-           }
+            // Initialize and handle any pending redirect
+            await instance.initialize();
+            let redirectResult = null;
+            try {
+              redirectResult = await instance.handleRedirectPromise();
+              if (redirectResult) {
+                console.log('🔀 [AUTH PATH] Redirect sign-in completed for', redirectResult.account?.username);
+              }
+            } catch (e) {
+              console.warn('⚠️ handleRedirectPromise error (non-fatal):', e.message);
+            }
 
-           // ── state ─────────────────────────────────────────────────────────
-           let accessToken = null;
-           let activeAccount = instance.getActiveAccount() || instance.getAllAccounts()[0] || null;
-           let isConnectedToExcel = false;
-           let isSigningIn = false;
+            // ── state ─────────────────────────────────────────────────────────
+            let accessToken = null;
+            let activeAccount = redirectResult?.account
+              || instance.getActiveAccount()
+              || instance.getAllAccounts()[0]
+              || null;
+            let isConnectedToExcel = false;
+            let isSigningIn = false;
 
-           if (activeAccount) {
-             instance.setActiveAccount(activeAccount);
-           }
+            if (activeAccount) {
+              instance.setActiveAccount(activeAccount);
+            }
 
            function syncAuthGlobals() {
              window.accessToken = accessToken || null;
@@ -5486,27 +5499,31 @@
              if (typeof window.updateConnectionStatus === 'function') window.updateConnectionStatus(!!account);
            }
 
-           // ── try silent token restore ──────────────────────────────────────
-           if (activeAccount) {
-             try {
-               const silent = await instance.acquireTokenSilent({ scopes: SCOPES, account: activeAccount });
-               accessToken = silent.accessToken;
-               isConnectedToExcel = true;
-               syncAuthGlobals();
-               updateUI(activeAccount);
-               console.log('✅ Silent token restore succeeded – auto signed-in as', activeAccount.username);
-               if (typeof window.showLoading === 'function') window.showLoading('Loading your adventures…');
-               if (typeof window.loadTable === 'function') {
-                 try { await window.loadTable(); } catch (e) { console.error('loadTable error:', e); }
-               }
-             } catch (silentErr) {
-               console.warn('⚠️ Silent restore failed (will need interactive sign-in):', silentErr.message);
-               syncAuthGlobals();
-               updateUI(null);
-             }
-           } else {
-             updateUI(null);
-           }
+           // ── try silent token restore OR complete redirect sign-in ─────────
+            if (activeAccount) {
+              try {
+                // If we just came back from a redirect, redirectResult already has a token.
+                const silent = redirectResult
+                  ? redirectResult
+                  : await instance.acquireTokenSilent({ scopes: SCOPES, account: activeAccount });
+                accessToken = silent.accessToken;
+                isConnectedToExcel = true;
+                syncAuthGlobals();
+                updateUI(activeAccount);
+                const verb = redirectResult ? '🔀 Redirect sign-in completed' : '✅ Silent token restore succeeded';
+                console.log(verb + ' – signed in as', activeAccount.username);
+                if (typeof window.showLoading === 'function') window.showLoading('Loading your adventures…');
+                if (typeof window.loadTable === 'function') {
+                  try { await window.loadTable(); } catch (e) { console.error('loadTable error:', e); }
+                }
+              } catch (silentErr) {
+                console.warn('⚠️ Silent restore failed (will need interactive sign-in):', silentErr.message);
+                syncAuthGlobals();
+                updateUI(null);
+              }
+            } else {
+              updateUI(null);
+            }
 
            // ── signIn ────────────────────────────────────────────────────────
            async function realSignInImpl() {
@@ -5529,8 +5546,9 @@
                 window.showToast?.('✅ Signed in as ' + activeAccount.username, 'success', 3000);
                 window.__authRedirectFallbackTried = false;
                 if (typeof window.loadTable === 'function') await window.loadTable();
-              } catch (err) {
-                 if (window.__isExpectedAuthCancellation?.(err) && shouldUseRedirectFallback(err)) {
+               } catch (err) {
+                 // shouldUseRedirectFallback covers user_cancelled AND popup_window_error (popup blocker)
+                 if (shouldUseRedirectFallback(err)) {
                    if (window.__authRedirectFallbackTried) {
                      console.log('ℹ️ [AUTH PATH] Redirect fallback already tried; giving up. Error:', err?.message || err);
                      window.showToast?.('Sign-in cancelled', 'info', 2000);
@@ -21334,7 +21352,26 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           window.isConnectedToExcel = true;
           updateAuthUI(resp.account);
           if (typeof window.loadTable === 'function') await window.loadTable();
-        } catch (err) { showAuthError(err); }
+        } catch (err) {
+          const errCode = String(err?.errorCode || err?.code || '').toLowerCase();
+          const errMsg  = String(err?.message   || err?.errorMessage || '').toLowerCase();
+          const isPopupBlocked =
+            errCode === 'user_cancelled' ||
+            errCode === 'popup_window_error' ||
+            errMsg.includes('popup window') ||
+            errMsg.includes('popup was blocked') ||
+            errMsg.includes('popup_window_error') ||
+            errMsg.includes('cross-origin-opener-policy');
+          if (isPopupBlocked && !window.__authRedirectFallbackTried) {
+            window.__authRedirectFallbackTried = true;
+            console.warn('⚠️ [AUTH PATH] Popup blocked in guarantee block → switching to redirect sign-in');
+            try {
+              await window.msalInstance.loginRedirect({ scopes: SCOPES, redirectUri: POPUP_ROOT_URI });
+            } catch (redirectErr) { showAuthError(redirectErr); }
+            return;
+          }
+          showAuthError(err);
+        }
         return;
       }
 
