@@ -6381,7 +6381,11 @@
        this.cacheQuickFilterBaseLabels();
        const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
        const favorites = window.adventureFavorites ? new Set(window.adventureFavorites) : new Set();
-       const countsLoading = Boolean(window.__adventureQuickCountsLoading);
+       // Guard against stale loading state: once rows exist, switch to real numeric counts.
+       if (rows.length > 0 && window.__adventureQuickCountsLoading) {
+         window.__adventureQuickCountsLoading = false;
+       }
+       const countsLoading = Boolean(window.__adventureQuickCountsLoading) && rows.length === 0;
 
        document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
          const key = String(btn.getAttribute('data-tag') || btn.getAttribute('data-filter') || '').trim();
