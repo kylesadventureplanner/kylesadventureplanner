@@ -9,12 +9,75 @@
   <link rel="stylesheet" href="../CSS/utilities.css" />
   <link rel="stylesheet" href="../CSS/browse-page.css" />
   <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      padding: 20px;
+      margin: 0;
+    }
+
     #trailExplorerHeader {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding: 24px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+
+    .trail-header-main h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: -0.4px;
+    }
+
+    .trail-header-subtitle {
+      margin-top: 8px;
+      opacity: 0.92;
+      font-size: 14px;
+    }
+
+    .trail-header-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #trailExplorerBackLink {
+      color: #fff;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    #trailExplorerBackLink:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    #trailExplorerCloseBtn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 34px;
+      line-height: 1;
+      transition: all 0.2s;
+    }
+
+    #trailExplorerCloseBtn:hover {
+      background: rgba(255, 255, 255, 0.3);
     }
 
     #trailExplorerBootstrap {
@@ -30,117 +93,219 @@
     }
 
     .trail-cities-controls {
-      display: grid;
-      grid-template-columns: minmax(240px, 1fr) auto auto;
-      gap: 10px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 24px;
     }
 
     .trail-cities-input,
     .trail-cities-select,
     .trail-cities-btn {
-      width: 100%;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      padding: 10px 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px 16px;
       font-size: 14px;
       background: #fff;
-      color: #111827;
+      color: #1f2937;
+      min-height: 48px;
+    }
+
+    .trail-cities-input {
+      flex: 1;
+      min-width: 240px;
     }
 
     .trail-cities-btn {
       font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
+      background: #fff;
     }
 
     .trail-cities-btn:hover {
-      border-color: #7c3aed;
-      color: #6d28d9;
+      border-color: #667eea;
+      color: #667eea;
     }
 
     .trail-cities-btn.active {
-      border-color: #7c3aed;
-      background: #f5f3ff;
-      color: #6d28d9;
+      border-color: #667eea;
+      background: #667eea;
+      color: #fff;
     }
 
     .trail-city-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
       margin-bottom: 12px;
     }
 
     .trail-city-card {
       border: 1px solid #e5e7eb;
       border-radius: 12px;
-      padding: 14px;
+      padding: 20px;
       background: #fff;
       cursor: pointer;
-      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      text-align: left;
     }
 
     .trail-city-card:hover {
-      border-color: #7c3aed;
-      box-shadow: 0 6px 18px rgba(124, 58, 237, 0.14);
-      transform: translateY(-2px);
+      border-color: #667eea;
+      box-shadow: 0 10px 25px rgba(102,126,234,0.15);
+      transform: translateY(-4px);
     }
 
     .trail-city-name {
-      font-size: 17px;
+      font-size: 32px;
       font-weight: 700;
-      margin-bottom: 4px;
-      color: #111827;
+      margin-bottom: 8px;
+      color: #1f2937;
     }
 
     .trail-city-meta {
-      font-size: 12px;
+      font-size: 14px;
       color: #6b7280;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .trail-city-stats {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
     }
 
-    .trail-city-chip {
-      font-size: 12px;
+    .trail-city-stat {
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 74px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .trail-city-chip-label {
+      display: block;
+      font-size: 13px;
       font-weight: 700;
-      border-radius: 999px;
-      padding: 4px 9px;
-      background: #f5f3ff;
-      color: #6d28d9;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .trail-city-chip-value {
+      display: block;
+      font-size: 32px;
+      line-height: 1;
+      color: #667eea;
+      font-weight: 700;
+    }
+
+    .trail-city-chip-value.is-drive {
+      font-size: 15px;
+      line-height: 1.2;
+      color: #4b5563;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .trail-city-grid {
+        gap: 14px;
+      }
+
+      .trail-city-card {
+        padding: 16px;
+      }
+
+      .trail-city-name {
+        font-size: 28px;
+        margin-bottom: 6px;
+      }
+
+      .trail-city-meta {
+        margin-bottom: 10px;
+      }
+
+      .trail-city-stats {
+        gap: 10px;
+      }
+
+      .trail-city-stat {
+        padding: 10px;
+        min-height: 66px;
+      }
+
+      .trail-city-stat-drive {
+        grid-column: 1 / -1;
+      }
+
+      .trail-city-chip-label {
+        font-size: 12px;
+        margin-bottom: 3px;
+      }
+
+      .trail-city-chip-value {
+        font-size: 28px;
+      }
+
+      .trail-city-chip-value.is-drive {
+        font-size: 14px;
+      }
     }
 
     .trail-city-cta {
-      font-size: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      background: #667eea;
+      color: #fff;
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 18px;
       font-weight: 700;
-      color: #4c1d95;
+      margin-top: auto;
     }
 
-    .trail-results-header {
+    .trail-results-hero {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
+      gap: 12px;
       flex-wrap: wrap;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 20px 24px;
+      border-radius: 12px;
+      margin-bottom: 20px;
     }
 
     .trail-results-title {
-      font-size: 20px;
+      font-size: 30px;
       font-weight: 800;
-      color: #111827;
+      color: #fff;
     }
 
     .trail-results-subtitle {
       font-size: 13px;
-      color: #6b7280;
+      color: rgba(255,255,255,0.9);
       margin-top: 2px;
+    }
+
+    .trail-results-back {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .trail-results-back:hover {
+      background: rgba(255,255,255,0.35);
     }
 
     .trail-results-filters {
@@ -151,7 +316,7 @@
       background: #fff;
       border: 1px solid #e5e7eb;
       border-radius: 12px;
-      padding: 10px;
+      padding: 16px;
     }
 
     .trail-results-filters label {
@@ -168,7 +333,7 @@
       width: 100%;
       border: 1px solid #d1d5db;
       border-radius: 8px;
-      padding: 8px 10px;
+      padding: 10px 12px;
       font-size: 13px;
       background: #fff;
       color: #111827;
@@ -188,21 +353,6 @@
 
     .trail-results-clear-btn:hover {
       background: #fef2f2;
-    }
-
-    .trail-back-btn {
-      border: 1px solid #d1d5db;
-      background: #fff;
-      color: #374151;
-      border-radius: 10px;
-      padding: 8px 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .trail-back-btn:hover {
-      border-color: #7c3aed;
-      color: #6d28d9;
     }
 
     .trail-empty {
@@ -237,8 +387,14 @@
 </head>
 <body>
   <header id="trailExplorerHeader">
-    <h1 class="trail-explorer-header-title">Trail Explorer</h1>
-    <a id="trailExplorerBackLink" class="trail-explorer-back-link" href="../index.html">← Back to Planner</a>
+    <div class="trail-header-main">
+      <h1>🏙️ City Viewer</h1>
+      <div class="trail-header-subtitle">Explore adventures grouped by city</div>
+    </div>
+    <div class="trail-header-actions">
+      <a id="trailExplorerBackLink" href="../index.html">← Back to Planner</a>
+      <button id="trailExplorerCloseBtn" type="button" title="Close this tab">×</button>
+    </div>
   </header>
 
   <div id="trailExplorerBootstrap">
@@ -260,9 +416,9 @@
   </section>
 
   <section id="trailCityResultsPage" class="hidden">
-    <div class="trail-results-header">
-      <button id="trailBackToCitiesBtn" class="trail-back-btn" type="button">← Back to Cities</button>
-      <div>
+    <div class="trail-results-hero">
+      <button id="trailBackToCitiesBtn" class="trail-results-back" type="button">← Back</button>
+      <div class="trail-results-hero-copy">
         <div id="trailResultsTitle" class="trail-results-title">City Trails</div>
         <div id="trailResultsSubtitle" class="trail-results-subtitle"></div>
       </div>
@@ -333,6 +489,24 @@
           href = new URL('../index.html', window.location.href).toString();
         }
         link.href = href;
+      }
+
+      function bindHeaderActions() {
+        var closeBtn = document.getElementById('trailExplorerCloseBtn');
+        if (!closeBtn || closeBtn.dataset.bound === '1') return;
+        closeBtn.addEventListener('click', function () {
+          var link = document.getElementById('trailExplorerBackLink');
+          var fallback = link && link.href ? link.href : '../index.html';
+          window.close();
+          setTimeout(function () {
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.location.href = fallback;
+            }
+          }, 120);
+        });
+        closeBtn.dataset.bound = '1';
       }
 
       function parseDriveMinutes(value) {
@@ -578,7 +752,7 @@
         }
 
         grid.innerHTML = cards.map(function (bucket) {
-          var avgDrive = bucket.avgDriveMinutes > 0 ? (bucket.avgDriveMinutes + ' min avg drive') : 'Drive time not available';
+          var avgDrive = bucket.avgDriveMinutes > 0 ? (bucket.avgDriveMinutes + ' min avg') : 'Drive time unavailable';
           var driveChip = cityExplorerState.hasDriveTimes
             ? (bucket.driveTimeLabel || 'Drive time unavailable')
             : avgDrive;
@@ -587,10 +761,18 @@
               '<div class="trail-city-name">' + esc(bucket.city || 'Unknown') + '</div>' +
               '<div class="trail-city-meta">' + esc(bucket.state || 'No state provided') + '</div>' +
               '<div class="trail-city-stats">' +
-                '<span class="trail-city-chip">' + esc(String(bucket.count)) + ' trail' + (bucket.count === 1 ? '' : 's') + '</span>' +
-                '<span class="trail-city-chip">' + esc(driveChip) + '</span>' +
+                '<div class="trail-city-stat">' +
+                  '<span class="trail-city-chip-label">📍 Locations</span>' +
+                  '<span class="trail-city-chip-value">' + esc(String(bucket.count)) + '</span>' +
+                '</div>' +
+                (cityExplorerState.hasDriveTimes
+                  ? ('<div class="trail-city-stat trail-city-stat-drive">' +
+                      '<span class="trail-city-chip-label">🚗 Drive Time</span>' +
+                      '<span class="trail-city-chip-value is-drive">' + esc(driveChip) + '</span>' +
+                    '</div>')
+                  : '') +
               '</div>' +
-              '<div class="trail-city-cta">View trails in this city →</div>' +
+              '<div class="trail-city-cta">View Locations</div>' +
             '</button>';
         }).join('');
       }
@@ -699,7 +881,7 @@
         var subtitle = document.getElementById('trailResultsSubtitle');
         if (!subtitle) return;
         var count = Array.isArray(window.bikeFilteredTrails) ? window.bikeFilteredTrails.length : 0;
-        subtitle.textContent = count + (count === 1 ? ' trail' : ' trails') + ' in this city';
+        subtitle.textContent = count + (count === 1 ? ' location' : ' locations') + ' in this city';
       }
 
       function showCityResults(city, state) {
@@ -893,6 +1075,7 @@
           };
 
           setPlannerBackLink();
+          bindHeaderActions();
 
           await loadScript('../JS Files/bike-trails-tab-system.js');
           await loadScript('../JS Files/button-handlers.js');
