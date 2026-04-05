@@ -22,7 +22,111 @@ class TabContentLoader {
     this.tabCache = new Map();
     this.loadTimes = new Map();
     this.isInitialized = false;
+    this.statusHideTimer = null;
+    this.ensureLoaderStyles();
+    this.ensureGlobalStatusElement();
     this.initializeTabs();
+  }
+
+  ensureLoaderStyles() {
+    if (document.getElementById('tabLoaderRuntimeStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'tabLoaderRuntimeStyles';
+    style.textContent = `
+      .app-tab-pane { position: relative; }
+      .app-tab-pane.tab-is-loading { pointer-events: none; }
+      .tab-loading-indicator {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: rgba(255, 255, 255, 0.9);
+        z-index: 20;
+      }
+      .tab-loading-spinner {
+        width: 34px;
+        height: 34px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: tabLoaderSpin 0.8s linear infinite;
+      }
+      .tab-loading-text {
+        color: #4b5563;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .tab-global-status {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid #dbeafe;
+        background: #eff6ff;
+        color: #1d4ed8;
+      }
+      .tab-global-status.visible { display: inline-flex; }
+      .tab-global-status.ready {
+        border-color: #bbf7d0;
+        background: #ecfdf5;
+        color: #047857;
+      }
+      .tab-global-status .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+      @keyframes tabLoaderSpin {
+        to { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  ensureGlobalStatusElement() {
+    const nav = document.getElementById('appTabsNav');
+    if (!nav || document.getElementById('tabGlobalStatus')) return;
+    const status = document.createElement('div');
+    status.id = 'tabGlobalStatus';
+    status.className = 'tab-global-status';
+    status.innerHTML = '<span class="status-dot"></span><span id="tabGlobalStatusText">Loading tab...</span>';
+    nav.appendChild(status);
+  }
+
+  updateGlobalStatus(text, isReady = false, autoHideMs = 0) {
+    const status = document.getElementById('tabGlobalStatus');
+    const statusText = document.getElementById('tabGlobalStatusText');
+    if (!status || !statusText) return;
+
+    if (this.statusHideTimer) {
+      clearTimeout(this.statusHideTimer);
+      this.statusHideTimer = null;
+    }
+
+    statusText.textContent = text;
+    status.classList.add('visible');
+    status.classList.toggle('ready', isReady);
+
+    if (autoHideMs > 0) {
+      this.statusHideTimer = setTimeout(() => {
+        status.classList.remove('visible');
+        status.classList.remove('ready');
+      }, autoHideMs);
+    }
+  }
+
+  getTabLabel(tabId) {
+    const button = document.querySelector(`.app-tab-btn[data-tab="${tabId}"]`);
+    if (!button) return String(tabId || 'Tab');
+    return button.textContent.replace(/\s+/g, ' ').trim();
   }
 
   /**
@@ -111,15 +215,27 @@ class TabContentLoader {
       }
     });
 
-    // Preload other tabs after a delay (lower priority)
+    // Preload other tabs after a delay (lower priority), staggered to avoid UI jank.
     setTimeout(() => {
-      Object.entries(this.tabs).forEach(([tabId, tabInfo]) => {
-        if (!tabInfo.preload && !this.loadedTabs.has(tabId)) {
+      const backgroundTabs = Object.entries(this.tabs)
+        .filter(([tabId, tabInfo]) => !tabInfo.preload && !this.loadedTabs.has(tabId));
+
+      backgroundTabs.forEach(([tabId], index) => {
+        const run = () => {
+          if (this.loadedTabs.has(tabId) || this.loadingTabs.has(tabId)) return;
           console.log(`🔄 Preloading background tab: ${tabId}`);
-          this.loadTab(tabId, true); // Preload in background
-        }
+          this.loadTab(tabId, true);
+        };
+
+        setTimeout(() => {
+          if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(run, { timeout: 1500 });
+          } else {
+            run();
+          }
+        }, index * 350);
       });
-    }, 2000); // 2 second delay
+    }, 1200);
   }
 
   /**
@@ -181,7 +297,7 @@ class TabContentLoader {
 
     // Show loading indicator if not already loaded
     if (!this.loadedTabs.has(tabId) && !this.loadingTabs.has(tabId)) {
-      this.showLoadingIndicator(tabPane);
+      this.showLoadingIndicator(tabPane, tabId);
     }
 
     // Load content if not already loaded (lazy loading)
@@ -196,28 +312,11 @@ class TabContentLoader {
    * Show loading indicator
    */
   showLoadingIndicator(container) {
+    if (!container || container.querySelector('.tab-loading-indicator')) return;
+    container.classList.add('tab-is-loading');
     const indicator = document.createElement('div');
     indicator.className = 'tab-loading-indicator';
-    indicator.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px;">
-        <div style="
-          width: 40px;
-          height: 40px;
-          border: 3px solid #e5e7eb;
-          border-top-color: #3b82f6;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-          margin-bottom: 16px;
-        "></div>
-        <p style="color: #6b7280; font-weight: 600;">Loading content...</p>
-      </div>
-      <style>
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      </style>
-    `;
-    container.innerHTML = '';
+    indicator.innerHTML = '<div class="tab-loading-spinner"></div><p class="tab-loading-text">Loading tab...</p>';
     container.appendChild(indicator);
   }
 
@@ -225,10 +324,12 @@ class TabContentLoader {
    * Hide loading indicator
    */
   hideLoadingIndicator(container) {
+    if (!container) return;
     const indicator = container.querySelector('.tab-loading-indicator');
     if (indicator) {
       indicator.remove();
     }
+    container.classList.remove('tab-is-loading');
   }
 
   /**
@@ -244,6 +345,10 @@ class TabContentLoader {
       if (this.loadingTabs.has(tabId)) {
         console.log(`⏳ Tab already loading: ${tabId}`);
         return;
+      }
+
+      if (!isPreload) {
+        this.updateGlobalStatus(`Loading ${this.getTabLabel(tabId)}...`);
       }
 
       this.loadingTabs.add(tabId);
@@ -264,6 +369,11 @@ class TabContentLoader {
         this.loadedTabs.add(tabId);
         this.loadingTabs.delete(tabId);
         this.initializeTab(tabId);
+        const container = document.getElementById(this.tabs[tabId]?.element);
+        if (container) this.hideLoadingIndicator(container);
+        if (!isPreload) {
+          this.updateGlobalStatus(`${this.getTabLabel(tabId)} ready`, true, 1200);
+        }
         return;
       }
 
@@ -276,7 +386,15 @@ class TabContentLoader {
         console.log(`💾 Using cached content for tab: ${tabId}`);
         const cachedContent = this.tabCache.get(tabId);
         this.insertTabContent(tabId, cachedContent);
+        this.loadedTabs.add(tabId);
         this.loadingTabs.delete(tabId);
+        this.executeScripts(tabId);
+        this.initializeTab(tabId);
+        const container = document.getElementById(this.tabs[tabId]?.element);
+        if (container) this.hideLoadingIndicator(container);
+        if (!isPreload) {
+          this.updateGlobalStatus(`${this.getTabLabel(tabId)} ready`, true, 1200);
+        }
         return;
       }
 
@@ -321,9 +439,13 @@ class TabContentLoader {
       // Trigger tab-specific initialization
       this.initializeTab(tabId);
 
+      const container = document.getElementById(this.tabs[tabId]?.element);
+      if (container) this.hideLoadingIndicator(container);
+
       // Log performance
       if (!isPreload) {
         console.log(`✅ Tab loaded and displayed: ${tabId}`);
+        this.updateGlobalStatus(`${this.getTabLabel(tabId)} ready`, true, 1200);
       }
 
     } catch (error) {
@@ -334,6 +456,7 @@ class TabContentLoader {
       // Show error message in tab
       const container = document.getElementById(this.tabs[tabId]?.element);
       if (container) {
+        this.hideLoadingIndicator(container);
         container.innerHTML = `
           <div style="padding: 40px; text-align: center;">
             <p style="color: #ef4444; font-weight: 600;">❌ Error loading tab content</p>
@@ -343,6 +466,9 @@ class TabContentLoader {
             </button>
           </div>
         `;
+      }
+      if (!isPreload) {
+        this.updateGlobalStatus(`Failed to load ${this.getTabLabel(tabId)}`, false, 2200);
       }
     }
   }
@@ -513,6 +639,16 @@ class TabContentLoader {
 document.addEventListener('DOMContentLoaded', () => {
   window.tabLoader = new TabContentLoader();
   console.log('✅ Tab Content Loader Ready with Lazy Loading');
+
+  // Signal the shell that initial tab interactions are ready.
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new CustomEvent('app:interactive-ready', {
+      detail: {
+        source: 'tab-content-loader',
+        loadedTabs: window.tabLoader ? window.tabLoader.getLoadedTabs() : []
+      }
+    }));
+  });
 
   // Log performance metrics after 5 seconds
   setTimeout(() => {

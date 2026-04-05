@@ -849,6 +849,43 @@
       .replace(/'/g, '&#039;');
   }
 
+  function buildDetailMapsSearchUrl(data) {
+    var addressQuery = [data && data.address, data && data.city, data && data.state]
+      .map(function (part) { return String(part || '').trim(); })
+      .filter(Boolean)
+      .join(', ');
+    var query = addressQuery || String(data && data.name || '').trim();
+    if (!query) {
+      var fallbackGoogle = String(data && data.googleUrl || '').trim();
+      if (/^https?:\/\//i.test(fallbackGoogle)) return fallbackGoogle;
+      return '';
+    }
+    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
+  }
+
+  function buildDetailDirectionsUrl(data) {
+    var placeId = String(data && data.googlePlaceId || '').trim();
+    var destination = [data && data.address, data && data.city, data && data.state]
+      .map(function (part) { return String(part || '').trim(); })
+      .filter(Boolean)
+      .join(', ');
+    if (!destination) destination = String(data && data.name || '').trim();
+
+    if (placeId) {
+      var params = new URLSearchParams({ api: '1', destination_place_id: placeId });
+      if (destination) params.set('destination', destination);
+      return 'https://www.google.com/maps/dir/?' + params.toString();
+    }
+
+    if (destination) {
+      return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(destination);
+    }
+
+    var fallbackDirections = String(data && data.directions || '').trim();
+    if (/^https?:\/\//i.test(fallbackDirections)) return fallbackDirections;
+    return '';
+  }
+
   function parseTagCsv(raw) {
     return String(raw || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean);
   }
@@ -1585,11 +1622,8 @@
     var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data), data);
     var tagList = uniqueTags([].concat(sourceTagList, storedTagList));
 
-    var directionsUrl = data.directions || '';
-    if (!directionsUrl && data.address) {
-      directionsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(data.address);
-    }
-    var googleViewUrl = data.googleUrl || directionsUrl || '';
+    var directionsUrl = buildDetailDirectionsUrl(data);
+    var googleViewUrl = buildDetailMapsSearchUrl(data) || String(data.googleUrl || '').trim() || directionsUrl || '';
 
     var headerActions = [
       directionsUrl ? '<a class="btn" href="' + directionsUrl + '" target="_blank" rel="noopener">Directions</a>' : '',

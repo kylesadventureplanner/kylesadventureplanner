@@ -3750,7 +3750,14 @@
       justify-content: center;
       z-index: 9999;
       backdrop-filter: blur(4px);
+          opacity: 1;
+          transition: opacity 0.2s ease;
     }
+
+        .loading-overlay.startup-complete {
+          opacity: 0;
+          pointer-events: none;
+        }
 
     .loading-content {
       background: white;
@@ -6773,12 +6780,58 @@
 <div id="toastContainer" class="toast-container"></div>
 
 <!-- Loading Overlay -->
-<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+<div id="loadingOverlay" class="loading-overlay" style="display: flex;" data-startup-lock="1">
   <div class="loading-content">
     <div class="spinner"></div>
-    <div class="loading-text" id="loadingText">Loading...</div>
+    <div class="loading-text" id="loadingText">App is preparing...</div>
   </div>
 </div>
+
+<script>
+  (function initStartupPreparingIndicator() {
+    let dismissed = false;
+
+    function setStartupMessage(message) {
+      const textEl = document.getElementById('loadingText');
+      if (textEl) textEl.textContent = message;
+    }
+
+    function dismissStartupOverlay(reason) {
+      if (dismissed) return;
+      dismissed = true;
+
+      const overlay = document.getElementById('loadingOverlay');
+      if (!overlay) return;
+
+      overlay.dataset.startupLock = '0';
+      overlay.classList.add('startup-complete');
+
+      window.setTimeout(() => {
+        if (typeof window.hideLoading === 'function') {
+          window.hideLoading(true);
+        } else {
+          overlay.style.display = 'none';
+        }
+        overlay.classList.remove('startup-complete');
+      }, 220);
+
+      console.log('✅ Startup preparing indicator dismissed:', reason || 'ready');
+    }
+
+    window.dismissStartupPreparingOverlay = dismissStartupOverlay;
+
+    window.addEventListener('app:interactive-ready', () => {
+      setStartupMessage('Tabs ready');
+      window.setTimeout(() => dismissStartupOverlay('interactive-ready'), 350);
+    }, { once: true });
+
+    window.addEventListener('load', () => {
+      window.setTimeout(() => dismissStartupOverlay('window-load-fallback'), 4500);
+    }, { once: true });
+
+    window.setTimeout(() => dismissStartupOverlay('timeout-fallback'), 12000);
+  })();
+</script>
 
 <!-- Network Status Indicator -->
 <div id="networkStatus" class="network-status" style="display: none; position: fixed; top: 60px; right: 20px; z-index: 9999; padding: 12px 16px; border-radius: 8px; background: #fef08a; border: 2px solid #fbbf24; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
@@ -6884,7 +6937,7 @@
             📍 Find Near Me
           </button>
           <button id="cityViewerBtn" class="planner-top-btn" title="View and explore locations by city" data-tooltip="View and explore locations by city" onclick="openCityViewerWindow()">
-            🌆 City Viewer
+            🌆 City Explorer
           </button>
           <button id="iphoneToggleBtn" class="planner-top-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
             📱 iPhone View
@@ -9161,10 +9214,12 @@
     overlay.style.display = 'flex';
   }
 
-  function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.style.display = 'none';
-  }
+    function hideLoading(force = false) {
+      const overlay = document.getElementById('loadingOverlay');
+      if (!overlay) return;
+      if (overlay.dataset.startupLock === '1' && !force) return;
+      overlay.style.display = 'none';
+    }
 
   // ============================================================
   // EMPTY STATE
@@ -11801,14 +11856,6 @@
             </div>
           ` : ''}
 
-          ${website ? `
-            <div class="card-info-row">
-              <span class="card-info-icon">🌐</span>
-              <span class="card-info-label">Website:</span>
-              <span class="card-info-value">${website}</span>
-            </div>
-          ` : ''}
-
           ${hoursOfOperation ? `
             <div class="card-info-row">
               <span class="card-info-icon">🕐</span>
@@ -12307,6 +12354,30 @@
     }
   }
 
+    function buildGoogleMapsSearchUrl(name, address, fallbackUrl) {
+    const query = [String(address || '').trim(), String(name || '').trim()].filter(Boolean).join(' ');
+    if (query) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    }
+    const fallback = String(fallbackUrl || '').trim();
+    return /^https?:\/\//i.test(fallback) ? fallback : '';
+    }
+
+    function buildGoogleMapsDirectionsUrl(placeId, address, name, fallbackUrl) {
+    const pid = String(placeId || '').trim();
+    const destination = String(address || '').trim() || String(name || '').trim();
+    if (pid) {
+      const params = new URLSearchParams({ api: '1', destination_place_id: pid });
+      if (destination) params.set('destination', destination);
+      return `https://www.google.com/maps/dir/?${params.toString()}`;
+    }
+    if (destination) {
+      return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+    }
+    const fallback = String(fallbackUrl || '').trim();
+    return /^https?:\/\//i.test(fallback) ? fallback : '';
+    }
+
     /**
      * Build a Bike-Trails-style footer action bar for the Adventure details modal.
      */
@@ -12330,7 +12401,10 @@
     }
 
     const name = String(values[0] || '').trim();
+    const placeId = String(values[1] || '').trim();
     const address = String(values[11] || '').trim();
+    const state = String(values[9] || '').trim();
+    const city = String(values[10] || '').trim();
     const directions = String(values[15] || '').trim();
     const links = String(values[18] || '').trim();
     const links2 = String(values[19] || '').trim();
@@ -12340,12 +12414,8 @@
     const sourceGoogleUrl = String(values[23] || '').trim();
 
     const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || '').trim());
-    const fallbackSearchUrl = `https://www.google.com/maps/search/${encodeURIComponent([name, address].filter(Boolean).join(' '))}`;
-    const mapsUrl = isHttpUrl(directions)
-      ? directions
-      : (isHttpUrl(links)
-        ? links
-        : (isHttpUrl(sourceGoogleUrl) ? sourceGoogleUrl : fallbackSearchUrl));
+    const fullAddress = [address, city, state].filter(Boolean).join(', ');
+    const mapsUrl = buildGoogleMapsSearchUrl(name, fullAddress || address, sourceGoogleUrl || links || directions);
     const parkingUrl = isHttpUrl(links2)
       ? links2
       : (isHttpUrl(links) && /park/i.test(links) ? links : '');
@@ -12430,6 +12500,10 @@
       phoneNumber, googleRating, cost, directions, description, nearby,
       links, links2, notes, myRating
     ] = values;
+
+    const fullAddress = [address, city, state].filter(Boolean).join(', ');
+    const mappedDirectionsUrl = buildGoogleMapsDirectionsUrl(googlePlaceId, fullAddress || address, name, directions);
+    const mappedGoogleUrl = buildGoogleMapsSearchUrl(name, fullAddress || address, directions);
 
     console.log('✅ Extracted adventure data:', { name, city, address });
 
@@ -12532,14 +12606,13 @@
 
     modalTitle.textContent = name || "Adventure Details";
 
-    const googleSearchUrl = `https://www.google.com/maps/search/${encodeURIComponent([name || '', address || ''].filter(Boolean).join(' '))}`;
     const actionStrip = `
       <div class="modal-detail-section" style="background:#f8fafc; border:1px solid #dbeafe;">
         <h3>Helpful Links</h3>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
-          <button type="button" class="row-detail-action-btn row-detail-action-btn--maps" aria-pressed="false" data-action="directions" data-url="${String(directions || '').replace(/"/g, '&quot;')}" data-tooltip="Open directions in a new tab">🗺️ Directions</button>
+          <button type="button" class="row-detail-action-btn row-detail-action-btn--maps" aria-pressed="false" data-action="directions" data-url="${String(mappedDirectionsUrl || '').replace(/"/g, '&quot;')}" data-tooltip="Open directions in a new tab">🗺️ Directions</button>
           ${website ? `<button type="button" class="row-detail-action-btn row-detail-action-btn--website" aria-pressed="false" data-action="website" data-url="${String(website || '').replace(/"/g, '&quot;')}" data-tooltip="Open website in a new tab">🌐 Website</button>` : ''}
-          <button type="button" class="row-detail-action-btn row-detail-action-btn--google" aria-pressed="false" data-action="google" data-url="${googleSearchUrl}" data-tooltip="Open Google View in a new tab">📍 Google View</button>
+          <button type="button" class="row-detail-action-btn row-detail-action-btn--google" aria-pressed="false" data-action="google" data-url="${String(mappedGoogleUrl || '').replace(/"/g, '&quot;')}" data-tooltip="Open Google View in a new tab">📍 Google View</button>
           <button type="button" class="row-detail-action-btn row-detail-action-btn--similar" data-action="similar" data-filter-index="${filteredIndex}" data-tooltip="Find similar locations">🔎 Similar</button>
           <button type="button" class="row-detail-action-btn row-detail-action-btn--nearby" data-action="nearby" data-filter-index="${filteredIndex}" data-tooltip="Find nearby locations">📌 Nearby</button>
           <button type="button" class="row-detail-action-btn row-detail-action-btn--tags" data-action="tags" data-place-id="${String(googlePlaceId || '').replace(/"/g, '&quot;')}" data-tooltip="Manage tags for this location">🏷️ Tags</button>
@@ -12626,7 +12699,7 @@
               ${phoneNumber ? `<p><strong>Phone:</strong> ${phoneNumber}</p>` : ''}
               ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
               ${website ? `<p><strong>Website:</strong> <a href="${website}" target="_blank" rel="noopener">${website}</a></p>` : ''}
-              ${directions ? `<p><strong>Directions:</strong> <a href="${directions}" target="_blank" rel="noopener">Get Directions</a></p>` : ''}
+              ${mappedDirectionsUrl ? `<p><strong>Directions:</strong> <a href="${mappedDirectionsUrl}" target="_blank" rel="noopener">Get Directions</a></p>` : ''}
               ${links ? `<p><strong>Link:</strong> <a href="${links}" target="_blank" rel="noopener">${links}</a></p>` : ''}
               ${links2 ? `<p><strong>Additional Link:</strong> <a href="${links2}" target="_blank" rel="noopener">${links2}</a></p>` : ''}
             </div>
@@ -19117,7 +19190,7 @@ COMMON ISSUES:
       // Create City Visualizer button
       const btn = document.createElement('button');
       btn.id = 'cityViewerBtn';
-      btn.textContent = '🏙️ City Viewer';
+      btn.textContent = '🏙️ City Explorer';
       btn.title = 'View and explore locations by city';
       btn.style.cssText = `
         padding: 10px 16px;

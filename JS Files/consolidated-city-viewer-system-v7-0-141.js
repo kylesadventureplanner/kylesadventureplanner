@@ -31,7 +31,7 @@ window.viewCityDetailsEnhanced = window.viewCityDetailsEnhanced || function(city
 };
 
 window.openCityViewerWindow = window.openCityViewerWindow || function() {
-  console.log('🌆 Opening City Viewer...');
+  console.log('🌆 Opening City Explorer...');
 };
 
 window.closeEnhancedCityVisualizer = window.closeEnhancedCityVisualizer || function() {
@@ -76,7 +76,7 @@ function cacheCityViewerDataForTab(correlationId) {
  * Similar to openAdventureDetailsTab but for city viewing
  */
 window.openCityViewerInNewTab = function() {
-  console.log('🌆 Opening City Viewer in new browser tab');
+  console.log('🌆 Opening City Explorer in new browser tab');
 
   if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) {
     if (typeof window.showToast === 'function') {
@@ -110,23 +110,23 @@ window.openCityViewerInNewTab = function() {
 
     if (!cityViewerTab) {
       if (typeof window.showToast === 'function') {
-        window.showToast('❌ Failed to open City Viewer. Check if pop-ups are blocked.', 'error', 5000);
+        window.showToast('❌ Failed to open City Explorer. Check if pop-ups are blocked.', 'error', 5000);
       } else {
-        alert('Please enable pop-ups to open City Viewer');
+        alert('Please enable pop-ups to open City Explorer');
       }
       return false;
     }
 
     // Focus the new tab
     cityViewerTab.focus();
-    console.log('✅ City Viewer opened in new tab');
+    console.log('✅ City Explorer opened in new tab');
     return true;
   } catch (error) {
-    console.error('❌ Error opening City Viewer:', error);
+    console.error('❌ Error opening City Explorer:', error);
     if (typeof window.showToast === 'function') {
-      window.showToast('❌ Error opening City Viewer: ' + error.message, 'error', 5000);
+      window.showToast('❌ Error opening City Explorer: ' + error.message, 'error', 5000);
     } else {
-      alert('Error opening City Viewer: ' + error.message);
+      alert('Error opening City Explorer: ' + error.message);
     }
     return false;
   }
@@ -137,7 +137,7 @@ window.openCityViewerInNewTab = function() {
  * This is the primary function called by the UI
  */
 window.openCityViewerWindow = function() {
-  console.log('🌆 Opening City Viewer - ENFORCED NEW TAB');
+  console.log('🌆 Opening City Explorer - ENFORCED NEW TAB');
   return window.openCityViewerInNewTab();
 };
 
