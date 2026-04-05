@@ -501,15 +501,19 @@ tr.row-selected {
   background: transparent;
   color: var(--blue-strong);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
   padding: 0;
   text-decoration: underline;
+  text-decoration-thickness: 1px;
   text-underline-offset: 2px;
+  transition: color 0.18s ease, text-decoration-color 0.18s ease;
 }
 
 .card-description-toggle:hover {
-  color: var(--primary-dark);
+  color: #1d4ed8;
+  text-decoration-color: rgba(29, 78, 216, 0.65);
 }
 
 .card-info-row {
@@ -875,6 +879,20 @@ tr.row-selected {
 ============================================================ */
 
 @media (max-width: 768px) {
+  .card-description {
+    -webkit-line-clamp: 2;
+    min-height: calc(1.6em * 2);
+  }
+
+  .card-description-wrap::after {
+    bottom: 20px;
+    height: 18px;
+  }
+
+  .card-description-toggle {
+    margin-top: 4px;
+  }
+
   .adventure-cards-grid {
     grid-template-columns: 1fr;
     padding: var(--space-lg);

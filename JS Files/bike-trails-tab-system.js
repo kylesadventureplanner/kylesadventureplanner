@@ -1311,7 +1311,7 @@
   }
 
   function getBikeDescriptionToggleLabel(isExpanded) {
-    return isExpanded ? 'less' : '... more';
+    return isExpanded ? 'less ▴' : '... more ▾';
   }
 
   function toggleBikeCardDescription(event, toggleBtn) {
