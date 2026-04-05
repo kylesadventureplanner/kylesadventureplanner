@@ -1033,8 +1033,23 @@
 
           // Provide the same resolver signature used by opener logic.
           window.resolvePlannerPageUrl = window.resolvePlannerPageUrl || function (relativePath) {
-            return new URL(relativePath, window.location.href).toString();
-          };
+            var rel = String(relativePath || '').replace(/^\/+/, '');
+            var pathname = window.location.pathname || '/';
+            var marker = '/kylesadventureplanner/';
+            var markerIdx = pathname.toLowerCase().indexOf(marker);
+            var basePath = '/';
+
+            if (markerIdx >= 0) {
+              basePath = pathname.slice(0, markerIdx + marker.length);
+            } else {
+              var slashIdx = pathname.lastIndexOf('/');
+              basePath = slashIdx >= 0 ? pathname.slice(0, slashIdx + 1) : '/';
+            }
+
+            var origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
+            var baseUrl = origin ? (origin + basePath) : window.location.href;
+            return new URL(encodeURI(rel), baseUrl).toString();
+           };
 
           bindHeaderActions();
 

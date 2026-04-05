@@ -14,6 +14,9 @@
     <button id="bikeTrailExplorerBtn" class="planner-top-btn planner-top-btn--accent" title="Open Trail Explorer - browse by conditions, distance, time of day" data-tooltip="Open Trail Explorer" onclick="window.openTrailExplorerWindow?.()">
       🗺️ Trail Explorer
     </button>
+    <button id="bikeFindNearMeBtn" class="planner-top-btn" title="Find trails near your current location" data-tooltip="Find trails near your current location" onclick="(window.startFindNearMe || window.openFindNearMeWindow || function(){})()">
+      📍 Find Near Me
+    </button>
   </div>
 </header>
 
@@ -27,9 +30,6 @@
   <div class="card-header">
     <div class="card-title">🎛️ Ride Filters</div>
     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-      <button id="bikeFindNearMeBtn" class="find-near-me-btn" title="Find trails near your current location" data-tooltip="Find trails near your current location">
-        📍 Find Near Me
-      </button>
       <button id="bikeResetAllFiltersTop" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
     </div>
   </div>

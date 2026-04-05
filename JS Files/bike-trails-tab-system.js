@@ -1246,6 +1246,33 @@
       .join('/');
   }
 
+  function resolvePlannerUrl(relativePath) {
+    const rel = String(relativePath || '').replace(/^\/+/, '');
+
+    if (typeof window.resolvePlannerPageUrl === 'function') {
+      try {
+        const resolved = window.resolvePlannerPageUrl(rel);
+        if (resolved) return resolved;
+      } catch (_) {}
+    }
+
+    const pathname = window.location.pathname || '/';
+    const marker = '/kylesadventureplanner/';
+    const markerIdx = pathname.toLowerCase().indexOf(marker);
+
+    let basePath = '/';
+    if (markerIdx >= 0) {
+      basePath = pathname.slice(0, markerIdx + marker.length);
+    } else {
+      const slashIdx = pathname.lastIndexOf('/');
+      basePath = slashIdx >= 0 ? pathname.slice(0, slashIdx + 1) : '/';
+    }
+
+    const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
+    const baseUrl = origin ? `${origin}${basePath}` : window.location.href;
+    return new URL(encodeURI(rel), baseUrl).toString();
+  }
+
   function trailModel(row, sourceIndex) {
     const id = buildTrailId(row, sourceIndex);
     const legacyPrefs = getBikeLegacyPreferenceSnapshot();
@@ -2588,9 +2615,7 @@
     }
 
     try {
-      const baseUrl = typeof window.resolvePlannerPageUrl === 'function'
-        ? window.resolvePlannerPageUrl('HTML Files/trail-explorer-window.html')
-        : new URL('HTML%20Files/trail-explorer-window.html', window.location.href).toString();
+      const baseUrl = resolvePlannerUrl('HTML Files/trail-explorer-window.html');
 
       const url = new URL(baseUrl, window.location.href);
       url.searchParams.set('trailExplorerWindow', '1');
@@ -2907,9 +2932,7 @@
     }
 
     // Resolve the bike-details-window.html URL
-    const detailsWindowUrl = window.resolvePlannerPageUrl
-      ? window.resolvePlannerPageUrl('HTML Files/bike-details-window.html')
-      : 'HTML Files/bike-details-window.html';
+    const detailsWindowUrl = resolvePlannerUrl('HTML Files/bike-details-window.html');
 
     const urlWithParams = `${detailsWindowUrl}?sourceIndex=${sourceIndex}&detailKey=${encodeURIComponent(detailKey)}`;
     console.log('[🚴 openBikeTrailDetailsInNewTab] Opening URL:', urlWithParams);
