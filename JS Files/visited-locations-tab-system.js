@@ -80,6 +80,10 @@
     lastRenderAt: null
   };
 
+  function prefersReducedMotion() {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
   function norm(value) {
     return String(value || '').trim().toLowerCase();
   }
@@ -115,12 +119,108 @@
       badges: base.badges || {},
       quests: {
         completions: (base.quests && base.quests.completions) || {}
+      },
+      preferences: {
+        confettiEnabled: base.preferences?.confettiEnabled !== false,
+        soundEnabled: Boolean(base.preferences?.soundEnabled)
       }
     };
+
+    if (prefersReducedMotion()) {
+      state.metaState.preferences.confettiEnabled = false;
+    }
   }
 
   function saveMetaState() {
     localStorage.setItem(VISITED_META_KEY, JSON.stringify(state.metaState || {}));
+  }
+
+  function getCelebrationPreferences() {
+    if (!state.metaState.preferences) {
+      state.metaState.preferences = { confettiEnabled: true, soundEnabled: false };
+    }
+    return state.metaState.preferences;
+  }
+
+  function renderCelebrationControls() {
+    const confettiBtn = document.querySelector('[data-celebration-toggle="confetti"]');
+    const soundBtn = document.querySelector('[data-celebration-toggle="sound"]');
+    const prefs = getCelebrationPreferences();
+
+    if (confettiBtn) {
+      confettiBtn.classList.toggle('active', Boolean(prefs.confettiEnabled));
+      confettiBtn.setAttribute('aria-pressed', prefs.confettiEnabled ? 'true' : 'false');
+    }
+    if (soundBtn) {
+      soundBtn.classList.toggle('active', Boolean(prefs.soundEnabled));
+      soundBtn.setAttribute('aria-pressed', prefs.soundEnabled ? 'true' : 'false');
+    }
+  }
+
+  function toggleCelebrationPreference(type) {
+    const prefs = getCelebrationPreferences();
+    if (type === 'confetti') prefs.confettiEnabled = !prefs.confettiEnabled;
+    if (type === 'sound') prefs.soundEnabled = !prefs.soundEnabled;
+    saveMetaState();
+    renderCelebrationControls();
+  }
+
+  function playBadgeSound() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+
+      const tones = [523.25, 659.25, 783.99];
+      tones.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const start = ctx.currentTime + (idx * 0.08);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.05, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
+        osc.start(start);
+        osc.stop(start + 0.17);
+      });
+    } catch (error) {
+      // Audio is optional; ignore blocked autoplay contexts.
+    }
+  }
+
+  function launchBadgeConfetti(count) {
+    const layer = document.getElementById('visitedConfettiLayer');
+    if (!layer) return;
+
+    const pieces = Math.max(12, Math.min(48, (count || 1) * 16));
+    const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
+
+    for (let i = 0; i < pieces; i += 1) {
+      const piece = document.createElement('span');
+      piece.className = 'visited-confetti-piece';
+      piece.style.left = `${Math.random() * 100}%`;
+      piece.style.background = colors[i % colors.length];
+      piece.style.animationDelay = `${Math.random() * 0.12}s`;
+      piece.style.transform = `translateY(-10px) rotate(${Math.round(Math.random() * 360)}deg)`;
+      layer.appendChild(piece);
+
+      setTimeout(() => piece.remove(), 1400);
+    }
+  }
+
+  function triggerBadgeCelebration(newlyUnlocked) {
+    const prefs = getCelebrationPreferences();
+    if (prefs.confettiEnabled) {
+      launchBadgeConfetti(newlyUnlocked.length);
+    }
+    if (prefs.soundEnabled) {
+      playBadgeSound();
+    }
   }
 
   function getVisitMap() {
@@ -506,6 +606,7 @@
     const newlyUnlocked = badges.filter(item => item.justUnlocked);
     if (newlyUnlocked.length > 0) {
       saveMetaState();
+      triggerBadgeCelebration(newlyUnlocked);
       if (typeof window.showToast === 'function') {
         const labels = newlyUnlocked.map(item => `${item.icon} ${item.title}`).join(', ');
         window.showToast(`Badge unlocked: ${labels}`, 'success', 4200);
@@ -722,26 +823,59 @@
       const city = adventure.city || 'Unknown City';
       const stateText = adventure.state || 'Unknown State';
       const key = `${city}, ${stateText}`;
-      const prev = buckets.get(key) || { city, state: stateText, count: 0 };
+      const prev = buckets.get(key) || { city, state: stateText, count: 0, categoryCounts: {} };
       prev.count += 1;
+
+      categoriesForAdventure(adventure).forEach((categoryKey) => {
+        prev.categoryCounts[categoryKey] = (prev.categoryCounts[categoryKey] || 0) + 1;
+      });
+
       buckets.set(key, prev);
     });
 
     return Array.from(buckets.values())
       .map((entry) => {
         const coords = getApproximateCoordinates(entry.city, entry.state);
-        return { ...entry, lat: Number(coords.lat), lng: Number(coords.lng) };
+        const topCategories = Object.entries(entry.categoryCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([key, count]) => `${getCategoryMeta(key)?.icon || '📍'} ${getCategoryMeta(key)?.label || key} (${count})`);
+        return { ...entry, lat: Number(coords.lat), lng: Number(coords.lng), topCategories };
       })
       .filter(entry => Number.isFinite(entry.lat) && Number.isFinite(entry.lng))
       .sort((a, b) => b.count - a.count);
   }
 
+  function showHeatmapTooltip(x, y, html) {
+    const tooltip = document.getElementById('visitedHeatmapTooltip');
+    if (!tooltip) return;
+    tooltip.innerHTML = html;
+    tooltip.style.left = `${x + 12}px`;
+    tooltip.style.top = `${y + 12}px`;
+    tooltip.classList.add('visible');
+  }
+
+  function hideHeatmapTooltip() {
+    const tooltip = document.getElementById('visitedHeatmapTooltip');
+    if (!tooltip) return;
+    tooltip.classList.remove('visible');
+  }
+
+  function buildHotspotTooltipHtml(bucket) {
+    const categories = bucket.topCategories && bucket.topCategories.length > 0
+      ? bucket.topCategories.join('<br>')
+      : 'No category data yet';
+    return `<strong>${escapeHtml(bucket.city)}, ${escapeHtml(bucket.state)}</strong><br>${bucket.count} visits<br>${categories}`;
+  }
+
   function renderHeatmap(stats) {
     const canvas = document.getElementById('visitedHeatmapCanvas');
     const hotspots = document.getElementById('visitedHeatmapHotspots');
-    if (!canvas || !hotspots) return;
+    const overlay = document.getElementById('visitedHeatmapOverlay');
+    if (!canvas || !hotspots || !overlay) return;
 
     const buckets = buildHeatmapBuckets(stats);
+    overlay.innerHTML = '';
     if (buckets.length === 0) {
       hotspots.innerHTML = '<div class="visited-empty">No visited locations yet to build heatmap.</div>';
       const ctx = canvas.getContext('2d');
@@ -785,11 +919,22 @@
         ctx.beginPath();
         ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
         ctx.fill();
+
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'visited-heat-dot';
+        dot.style.left = `${(p.x / width) * 100}%`;
+        dot.style.top = `${(p.y / height) * 100}%`;
+        dot.style.width = `${Math.max(8, Math.min(18, radius * 0.35))}px`;
+        dot.style.height = dot.style.width;
+        dot.setAttribute('aria-label', `${bucket.city}, ${bucket.state}: ${bucket.count} visits`);
+        dot.dataset.hotspotTooltip = buildHotspotTooltipHtml(bucket);
+        overlay.appendChild(dot);
       });
     }
 
     hotspots.innerHTML = buckets.slice(0, 8).map((bucket, idx) => `
-      <div class="visited-hotspot-item">
+      <div class="visited-hotspot-item" data-hotspot-tooltip="${escapeHtml(buildHotspotTooltipHtml(bucket))}">
         <span>#${idx + 1} ${escapeHtml(bucket.city)}, ${escapeHtml(bucket.state)}</span>
         <span>${bucket.count} visits</span>
       </div>
@@ -991,6 +1136,7 @@
     renderBadges(badges);
     renderRotatingQuests(questSet);
     renderHeatmap(stats);
+    renderCelebrationControls();
     renderSuggestions(suggestions);
     renderRecentVisits(stats, visitMap);
     renderCatalog(adventures, visitMap);
@@ -1056,7 +1202,32 @@
         refreshTab();
         return;
       }
+
+      const celebrationBtn = event.target.closest('[data-celebration-toggle]');
+      if (celebrationBtn) {
+        const prefType = celebrationBtn.getAttribute('data-celebration-toggle');
+        if (prefType) toggleCelebrationPreference(prefType);
+        return;
+      }
     });
+
+    root.addEventListener('mousemove', (event) => {
+      const hotspot = event.target.closest('[data-hotspot-tooltip]');
+      if (!hotspot) {
+        hideHeatmapTooltip();
+        return;
+      }
+
+      const raw = String(hotspot.getAttribute('data-hotspot-tooltip') || '');
+      const html = raw.includes('&lt;') ? raw
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        : raw;
+      showHeatmapTooltip(event.clientX, event.clientY, html);
+    });
+
+    root.addEventListener('mouseleave', () => hideHeatmapTooltip());
 
     const refreshBtn = document.getElementById('visitedRefreshBtn');
     if (refreshBtn) {

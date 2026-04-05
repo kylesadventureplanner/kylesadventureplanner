@@ -8,6 +8,12 @@
       <button id="visitedRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh tracker data" data-tooltip="Refresh tracker data">
         🔄 Refresh Tracker
       </button>
+      <button type="button" class="quick-filter-btn" data-celebration-toggle="confetti" aria-pressed="true" title="Toggle confetti celebration">
+        🎉 Confetti
+      </button>
+      <button type="button" class="quick-filter-btn" data-celebration-toggle="sound" aria-pressed="false" title="Toggle celebration sound">
+        🔊 Sound
+      </button>
       <select id="visitedWeatherMode" class="filter-select" title="Choose weather mode for recommendations" style="max-width: 240px;">
         <option value="auto">🌦️ Auto Weather Mode</option>
         <option value="sunny">☀️ Sunny</option>
@@ -72,7 +78,11 @@
       <div class="card-title">🗺️ Visited Heatmap</div>
       <div class="card-subtitle">Hot spots by city/state based on your logged visits.</div>
     </div>
-    <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
+    <div class="visited-heatmap-wrap">
+      <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
+      <div id="visitedHeatmapOverlay" class="visited-heat-overlay" aria-hidden="true"></div>
+      <div id="visitedHeatmapTooltip" class="visited-heat-tooltip" role="tooltip"></div>
+    </div>
     <div id="visitedHeatmapHotspots" class="visited-hotspots-list"></div>
   </div>
 
@@ -108,6 +118,8 @@
     <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
   </div>
 </div>
+
+<div id="visitedConfettiLayer" class="visited-confetti-layer" aria-hidden="true"></div>
 
 <style>
   #visitedLocationsRoot .visited-summary-grid {
@@ -294,6 +306,51 @@
     background: #f8fafc;
   }
 
+  #visitedLocationsRoot .visited-heatmap-wrap {
+    position: relative;
+  }
+
+  #visitedLocationsRoot .visited-heat-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  #visitedLocationsRoot .visited-heat-dot {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    border: 2px solid #ffffff;
+    background: rgba(29, 78, 216, 0.9);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.24);
+    cursor: pointer;
+    pointer-events: auto;
+    transition: transform 0.14s ease;
+  }
+
+  #visitedLocationsRoot .visited-heat-dot:hover {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+
+  #visitedLocationsRoot .visited-heat-tooltip {
+    position: fixed;
+    z-index: 1200;
+    display: none;
+    max-width: 280px;
+    background: #111827;
+    color: #f9fafb;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+  }
+
+  #visitedLocationsRoot .visited-heat-tooltip.visible {
+    display: block;
+  }
+
   #visitedLocationsRoot .visited-hotspots-list {
     margin-top: 10px;
     display: grid;
@@ -310,6 +367,30 @@
     justify-content: space-between;
     gap: 10px;
     background: #fff;
+    cursor: default;
+  }
+
+  .visited-confetti-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1300;
+    overflow: hidden;
+  }
+
+  .visited-confetti-piece {
+    position: absolute;
+    top: -14px;
+    width: 8px;
+    height: 14px;
+    border-radius: 2px;
+    opacity: 0.95;
+    animation: visitedConfettiFall 1.3s ease-in forwards;
+  }
+
+  @keyframes visitedConfettiFall {
+    0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
   }
 
   #visitedLocationsRoot .visited-challenge-card.completed {
