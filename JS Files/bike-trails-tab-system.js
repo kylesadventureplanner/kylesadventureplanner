@@ -2194,13 +2194,23 @@
     const firstTab = modal.querySelector('.bike-explorer-tab');
     if (firstTab) firstTab.click();
 
+    // Some global safety patches force hidden backdrops to z-index:-1/pointer-events:none.
+    // Restore full visibility state explicitly when opening this modal.
+    modal.classList.add('visible');
     modal.style.display = 'flex';
+    modal.style.pointerEvents = 'auto';
+    modal.style.opacity = '1';
+    modal.style.zIndex = '2000';
   }
 
   function closeBikeTrailExplorer() {
     const modal = document.getElementById('bikeTrailExplorerModal');
     if (modal) {
+      modal.classList.remove('visible');
       modal.style.display = 'none';
+      modal.style.pointerEvents = 'none';
+      modal.style.opacity = '0';
+      modal.style.zIndex = '-1';
     }
   }
 
