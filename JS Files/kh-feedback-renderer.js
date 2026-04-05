@@ -1,5 +1,5 @@
 (function initKhFeedbackRenderer() {
-  var VERSION = '1.2.0';
+  var VERSION = '1.3.1';
   var SOURCE = 'JS Files/kh-feedback-renderer.js';
 
   function escapeHtml(value) {
@@ -57,6 +57,37 @@
     return text === 'yes' || text === 'y' || text === 'true' || text === '1' || text === 'visited' || text === 'done';
   }
 
+  function resolveNotesToggleLabels(input) {
+    var defaults = { more: 'Show more', less: 'Show less' };
+    var appConfig = (((window.APP_UI_LABELS || {}).khFeedback || {}).notesToggle || {});
+    var globalConfig = window.KH_FEEDBACK_NOTES_TOGGLE_LABELS || {};
+    var localConfig = input && input.notesToggleLabels ? input.notesToggleLabels : {};
+
+    // Precedence: per-render override -> legacy global -> app-level config -> renderer defaults.
+    var more = String(localConfig.more || globalConfig.more || appConfig.more || '').trim() || defaults.more;
+    var less = String(localConfig.less || globalConfig.less || appConfig.less || '').trim() || defaults.less;
+    return { more: more, less: less };
+  }
+
+  function getNotesToggleLabel(isExpanded, labels) {
+    var resolved = labels || resolveNotesToggleLabels();
+    return isExpanded ? resolved.less : resolved.more;
+  }
+
+  function registerNotesToggle() {
+    window.toggleKhFeedbackNotes = function (toggleBtn) {
+      var wrap = toggleBtn && toggleBtn.closest ? toggleBtn.closest('.kh-feedback-notes-wrap') : null;
+      if (!wrap) return;
+      var expanded = wrap.classList.toggle('is-expanded');
+      var labels = {
+        more: toggleBtn.getAttribute('data-more-label') || undefined,
+        less: toggleBtn.getAttribute('data-less-label') || undefined
+      };
+      toggleBtn.textContent = getNotesToggleLabel(expanded, labels);
+      toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    };
+  }
+
   function buildRenderer() {
     return function renderKhFeedbackBlock(input) {
       var data = input || {};
@@ -67,7 +98,11 @@
       var isFavorite = parseTruthy(data.favoriteValue);
       var isVisited = parseVisited(data.visitedValue);
 
-      var notesText = escapeHtml(parseNotesPreview(data.notesValue));
+      var notesPreview = parseNotesPreview(data.notesValue);
+      var notesText = escapeHtml(notesPreview);
+      var notesToggleThreshold = 120;
+      var shouldToggleNotes = notesPreview.length > notesToggleThreshold;
+      var notesToggleLabels = resolveNotesToggleLabels(data);
 
       return [
         '<div class="kh-feedback-block">',
@@ -82,6 +117,7 @@
         '  <div class="kh-feedback-notes-wrap">',
         '    <div class="kh-feedback-notes-label">Notes</div>',
         '    <div class="kh-feedback-row kh-feedback-notes">' + notesText + '</div>',
+        '    ' + (shouldToggleNotes ? '<button type="button" class="kh-feedback-notes-toggle" aria-expanded="false" data-more-label="' + escapeHtml(notesToggleLabels.more) + '" data-less-label="' + escapeHtml(notesToggleLabels.less) + '">' + getNotesToggleLabel(false, notesToggleLabels) + '</button>' : ''),
         '  </div>',
         '</div>'
       ].join('\n');
@@ -102,6 +138,8 @@
       return;
     }
   }
+
+  registerNotesToggle();
 
   var renderer = buildRenderer();
   renderer.__khRendererMeta = { source: SOURCE, version: VERSION };
