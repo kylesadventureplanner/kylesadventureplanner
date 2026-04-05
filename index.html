@@ -11049,6 +11049,12 @@
     }
 
     try {
+      // Show quick-filter placeholders while this fetch is in flight.
+      window.__adventureQuickCountsLoading = true;
+      if (window.FilterManager && typeof window.FilterManager.renderQuickFilterCounts === 'function') {
+        window.FilterManager.renderQuickFilterCounts();
+      }
+
       // Show loading indicator
       updateDataLoadIndicator('loading', '⏳ Loading Excel data...');
       console.log("Starting to load Excel data...");
@@ -11107,6 +11113,14 @@
       // Render cards instead of table rows
       renderAdventureCards(data.value);
 
+      // End placeholder mode and refresh counts immediately (no user interaction needed).
+      window.__adventureQuickCountsLoading = false;
+      if (window.FilterManager && typeof window.FilterManager.applyAllFilters === 'function') {
+        window.FilterManager.applyAllFilters();
+      } else if (window.FilterManager && typeof window.FilterManager.renderQuickFilterCounts === 'function') {
+        window.FilterManager.renderQuickFilterCounts();
+      }
+
       // Update connection status to show we're connected to Excel backend
       window.updateConnectionStatus?.(true);
 
@@ -11118,6 +11132,10 @@
       console.log("✓ Adventure data loaded successfully!");
 
     } catch (err) {
+      window.__adventureQuickCountsLoading = false;
+      if (window.FilterManager && typeof window.FilterManager.renderQuickFilterCounts === 'function') {
+        window.FilterManager.renderQuickFilterCounts();
+      }
       console.error("❌ Failed to load adventure data:", err);
       updateDataLoadIndicator('error', '❌ Failed to load data');
       alert(`Failed to load adventure data: ${err.message}`);
