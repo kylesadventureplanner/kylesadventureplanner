@@ -634,8 +634,65 @@
     const activeTag = norm(state.filters.tag);
     container.innerHTML = topTags.map((entry) => {
       const isActive = activeTag && activeTag === norm(entry.label);
-      return `<button type="button" class="quick-filter-btn${isActive ? ' active' : ''}" data-bike-managed-tag="${escapeHtml(entry.label)}" title="Used on ${entry.count} trail${entry.count === 1 ? '' : 's'}">🏷️ ${escapeHtml(entry.label)} <span style="opacity:0.75;">(${entry.count})</span></button>`;
+      return `<button type="button" class="quick-filter-btn${isActive ? ' active' : ''}" data-bike-managed-tag="${escapeHtml(entry.label)}" title="Used on ${entry.count} trail${entry.count === 1 ? '' : 's'}">🏷️ ${escapeHtml(entry.label)} <span class="quick-filter-count">(${entry.count})</span></button>`;
     }).join('');
+  }
+
+  function cacheBikeQuickFilterBaseLabels() {
+    document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn[data-bike-filter]').forEach((btn) => {
+      if (btn.dataset.baseLabel) return;
+      btn.dataset.baseLabel = String(btn.textContent || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+    });
+  }
+
+  function matchesBikeBaseFiltersExcludingQuick(trail) {
+    if (state.filters.searchName) {
+      const haystack = [trail.name, trail.region, trail.city, trail.vibes, trail.moodTags].map(norm).join(' ');
+      if (!haystack.includes(norm(state.filters.searchName))) return false;
+    }
+    if (state.filters.region && !norm(trail.region).includes(norm(state.filters.region))) return false;
+    if (state.filters.difficulty && !norm(trail.difficulty).includes(norm(state.filters.difficulty))) return false;
+    if (state.filters.surface && !norm(trail.surface).includes(norm(state.filters.surface))) return false;
+    if (state.filters.traffic && !norm(trail.traffic).includes(norm(state.filters.traffic))) return false;
+    if (state.filters.state && !norm(trail.state).includes(norm(state.filters.state))) return false;
+    if (state.filters.city && !norm(trail.city).includes(norm(state.filters.city))) return false;
+    if (state.filters.cost && !norm(trail.cost).includes(norm(state.filters.cost))) return false;
+    if (state.filters.hours && !norm(trail.hours).includes(norm(state.filters.hours))) return false;
+    if (state.filters.tag) {
+      const allTags = getBikeDisplayTags(trail).map(norm);
+      const needle = norm(state.filters.tag);
+      if (!allTags.some((tag) => tag.includes(needle))) return false;
+    }
+    if (!inBandLength(trail.lengthMiles, state.filters.lengthBand)) return false;
+    if (!inBandDrive(trail.driveMinutes, state.filters.driveTimeBand)) return false;
+    return true;
+  }
+
+  function renderBikeStaticQuickFilterCounts() {
+    cacheBikeQuickFilterBaseLabels();
+    const trails = getAllBikeTrails();
+
+    document.querySelectorAll('#bikeQuickFiltersCard .quick-filter-btn[data-bike-filter]').forEach((btn) => {
+      const key = String(btn.getAttribute('data-bike-filter') || '').trim();
+      const baseLabel = btn.dataset.baseLabel || String(btn.textContent || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+      if (!key) {
+        btn.textContent = baseLabel;
+        return;
+      }
+
+      const count = trails.reduce((total, trail) => {
+        if (!matchesBikeBaseFiltersExcludingQuick(trail)) return total;
+        if (key === 'favorites') return total + (trail.isFavorite ? 1 : 0);
+        return total + (matchesQuickFilter(trail, key) ? 1 : 0);
+      }, 0);
+
+      btn.textContent = '';
+      btn.append(document.createTextNode(baseLabel + ' '));
+      const countSpan = document.createElement('span');
+      countSpan.className = 'quick-filter-count';
+      countSpan.textContent = `(${count})`;
+      btn.append(countSpan);
+    });
   }
 
   function getAllBikeTrails() {
@@ -2039,6 +2096,7 @@
     renderBikeTrailsPage();
     renderBikeBreadcrumbChips();
     renderBikeManagedTagQuickChips();
+    renderBikeStaticQuickFilterCounts();
     updateBikeFiltersBadge();
   }
 
@@ -2225,6 +2283,7 @@
     state.controlBindAttempts = 0;
     if (controlsReady) {
       renderBikeManagedTagQuickChips();
+      renderBikeStaticQuickFilterCounts();
       renderBikeBreadcrumbChips();
       updateBikeFiltersBadge();
       renderBikePreferenceFallbackBanner();

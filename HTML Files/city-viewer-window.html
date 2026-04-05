@@ -396,6 +396,7 @@
       border-radius: 12px;
       padding: 18px 20px;
       transition: all 0.2s;
+      cursor: pointer;
     }
     .loc-card:hover {
       border-color: #667eea;
@@ -487,6 +488,34 @@
       text-decoration: none;
     }
     .loc-action-btn:hover { border-color: #667eea; color: #667eea; background: #f0f4ff; }
+
+    #locationDetailPage {
+      display: none;
+      margin-top: 10px;
+    }
+    .location-detail-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .location-detail-title {
+      margin: 0;
+      font-size: 18px;
+      color: #111827;
+    }
+    .location-detail-subtitle {
+      margin-top: 4px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .location-detail-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
 
     .loc-empty {
       text-align: center;
@@ -892,6 +921,17 @@
         </div>
       </div>
 
+      <div id="locationDetailPage">
+        <div class="location-detail-header">
+          <button class="back-btn" onclick="goBackToLocationResults()">← Back to Results</button>
+          <div>
+            <h3 id="locationDetailTitle" class="location-detail-title">Location Details</h3>
+            <div id="locationDetailSubtitle" class="location-detail-subtitle"></div>
+          </div>
+        </div>
+        <div id="locationDetailContent" class="location-detail-content"></div>
+      </div>
+
       <div class="loc-shortlist-tray" id="locShortlistTray">
         <div class="loc-shortlist-top">
           <div id="locShortlistCount" class="loc-shortlist-count">0 selected</div>
@@ -1204,6 +1244,8 @@
     const locPointCache = {};
     let pendingShareState = null;
     let lastBuiltDayPlanRoute = [];
+    let activeLocationDetailId = null;
+    let locationResultsScrollY = 0;
     let locGoogleMap = null;
     let locGoogleMarkers = [];
     let locMapboxMap = null;
@@ -1413,6 +1455,123 @@
         btn.classList.toggle('active', setObj.has(btn.dataset.locId));
         btn.textContent = setObj.has(btn.dataset.locId) ? 'Selected' : 'Add to Plan';
       });
+    }
+
+    function setLocationResultsMode() {
+      const header = document.querySelector('#locationsPage .locations-header');
+      const controls = document.querySelector('#locationsPage .locations-controls');
+      const mainLayout = document.getElementById('locMainLayout');
+      const bulk = document.getElementById('locBulkActions');
+      const shortlist = document.getElementById('locShortlistTray');
+      const detail = document.getElementById('locationDetailPage');
+      if (header) header.style.display = 'flex';
+      if (controls) controls.style.display = 'block';
+      if (mainLayout) mainLayout.style.display = 'grid';
+      if (bulk) bulk.style.display = 'block';
+      if (shortlist) shortlist.style.display = 'block';
+      if (detail) detail.style.display = 'none';
+    }
+
+    function setLocationDetailMode() {
+      const header = document.querySelector('#locationsPage .locations-header');
+      const controls = document.querySelector('#locationsPage .locations-controls');
+      const mainLayout = document.getElementById('locMainLayout');
+      const bulk = document.getElementById('locBulkActions');
+      const shortlist = document.getElementById('locShortlistTray');
+      const detail = document.getElementById('locationDetailPage');
+      if (header) header.style.display = 'none';
+      if (controls) controls.style.display = 'none';
+      if (mainLayout) mainLayout.style.display = 'none';
+      if (bulk) bulk.style.display = 'none';
+      if (shortlist) shortlist.style.display = 'none';
+      if (detail) detail.style.display = 'block';
+    }
+
+    function renderLocationDetail(loc) {
+      if (!loc) return;
+      const locId = getLocId(loc);
+      const name = locVal(loc, 0, 'name') || 'Unnamed Location';
+      const website = locVal(loc, 2, 'website');
+      const tagsRaw = locVal(loc, 3, 'tags');
+      const driveTime = locVal(loc, 4, 'driveTime');
+      const hours = locVal(loc, 5, 'hours');
+      const duration = locVal(loc, 6, 'duration');
+      const difficulty = locVal(loc, 7, 'difficulty');
+      const trailLen = locVal(loc, 8, 'trailLength');
+      const address = locVal(loc, 11, 'address');
+      const phone = locVal(loc, 12, 'phone');
+      const rating = locVal(loc, 13, 'rating');
+      const cost = locVal(loc, 14, 'cost');
+      const description = locVal(loc, 16, 'description');
+      const googleUrl = locVal(loc, 23, 'googleUrl');
+      const tags = String(tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
+      const shortlist = getShortlistSet();
+      const encodedLocId = encodeURIComponent(locId);
+
+      const detailTitle = document.getElementById('locationDetailTitle');
+      const detailSubtitle = document.getElementById('locationDetailSubtitle');
+      const detailContent = document.getElementById('locationDetailContent');
+      if (detailTitle) detailTitle.textContent = name;
+      if (detailSubtitle) detailSubtitle.textContent = currentCityKey || '';
+      if (!detailContent) return;
+
+      detailContent.innerHTML = `
+        <div class="loc-card" data-loc-id="${escAttr(locId)}">
+          <div class="loc-card-header">
+            <div class="loc-card-name">${escHtml(name)}</div>
+            <div class="loc-card-meta">
+              ${difficulty ? `<span class="loc-meta-badge">⛰️ ${escHtml(difficulty)}</span>` : ''}
+              ${cost ? `<span class="loc-meta-badge cost">💰 ${escHtml(cost)}</span>` : ''}
+              ${rating ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : ''}
+            </div>
+          </div>
+          ${tags.length ? `<div class="loc-card-tags">${tags.map(t => `<span class="loc-tag-pill">${escHtml(t)}</span>`).join('')}</div>` : ''}
+          <div class="loc-card-details">
+            ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
+            ${hours ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : ''}
+            ${duration ? `<div class="loc-detail-row"><span class="loc-detail-icon">⏱️</span><span class="loc-detail-value">${escHtml(duration)}</span></div>` : ''}
+            ${trailLen ? `<div class="loc-detail-row"><span class="loc-detail-icon">📏</span><span class="loc-detail-value">${escHtml(trailLen)}</span></div>` : ''}
+            ${address ? `<div class="loc-detail-row"><span class="loc-detail-icon">📍</span><span class="loc-detail-value">${escHtml(address)}</span></div>` : ''}
+            ${phone ? `<div class="loc-detail-row"><span class="loc-detail-icon">📞</span><span class="loc-detail-value">${escHtml(phone)}</span></div>` : ''}
+          </div>
+          ${description ? `<div class="loc-card-description">${escHtml(description)}</div>` : ''}
+          <div class="loc-card-footer">
+            ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener">🌐 Website</a>` : ''}
+            ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : ''}
+            <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
+          </div>
+        </div>`;
+    }
+
+    function openLocationDetailById(locId) {
+      const targetId = String(locId || '').trim();
+      if (!targetId) return;
+      const loc = findLocationById(targetId);
+      if (!loc) return;
+      activeLocationDetailId = targetId;
+      locationResultsScrollY = Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0);
+      setActiveLocation(targetId, false);
+      renderLocationDetail(loc);
+      setLocationDetailMode();
+      window.scrollTo(0, 0);
+    }
+
+    function openLocationDetailByEncodedId(encoded) {
+      openLocationDetailById(decodeURIComponent(String(encoded || '')));
+    }
+
+    function handleLocCardKeydown(event, encoded) {
+      if (!event) return;
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openLocationDetailByEncodedId(encoded);
+    }
+
+    function goBackToLocationResults() {
+      if (!activeLocationDetailId) return;
+      activeLocationDetailId = null;
+      setLocationResultsMode();
+      window.scrollTo(0, Math.max(0, locationResultsScrollY));
     }
 
     function setSplitView(enabled) {
@@ -1971,7 +2130,7 @@
         const tags = String(tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
 
         return `
-          <div class="loc-card" data-loc-id="${escAttr(locId)}" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
+          <div class="loc-card" data-loc-id="${escAttr(locId)}" role="button" tabindex="0" onclick="openLocationDetailByEncodedId('${encodedLocId}')" onkeydown="handleLocCardKeydown(event, '${encodedLocId}')" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
             <div class="loc-card-header">
               <div class="loc-card-name">${escHtml(name)}</div>
               <div class="loc-card-meta">
@@ -1991,9 +2150,9 @@
             </div>
             ${description ? `<div class="loc-card-description">${escHtml(description)}</div>` : ''}
             <div class="loc-card-footer">
-              ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener">🌐 Website</a>` : ''}
-              ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : ''}
-              <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
+              ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🌐 Website</a>` : ''}
+              ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Google Maps</a>` : ''}
+              <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="event.stopPropagation();toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
             </div>
           </div>`;
       }).join('');
@@ -2013,6 +2172,7 @@
       currentCityKey = key;
       activeLocId = null;
       activeLocQuickTag = null;
+      activeLocationDetailId = null;
 
       document.getElementById('locationsPageTitle').textContent = `📍 ${city}`;
       document.getElementById('locationsPageSubtitle').textContent = `${state} · ${cityEntry.locations.length} location${cityEntry.locations.length !== 1 ? 's' : ''}`;
@@ -2043,6 +2203,7 @@
       document.querySelector('.controls').style.display = 'none';
       document.getElementById('cityGrid').style.display = 'none';
       document.getElementById('locationsPage').style.display = 'block';
+      setLocationResultsMode();
 
       applyLocFilters();
     }
@@ -2050,9 +2211,11 @@
     function goBackToCities() {
       currentCityKey = null;
       activeLocId = null;
+      activeLocationDetailId = null;
       document.getElementById('locationsPage').style.display = 'none';
       document.getElementById('cityGrid').style.display = 'grid';
       document.querySelector('.controls').style.display = 'flex';
+      setLocationResultsMode();
     }
 
     function timeToMinutes(timeStr) {
@@ -2133,6 +2296,9 @@
     window.calculateRouteQuality = calculateRouteQuality;
     window.bulkAddTopRated = bulkAddTopRated;
     window.bulkFilterOpenNow = bulkFilterOpenNow;
+    window.openLocationDetailByEncodedId = openLocationDetailByEncodedId;
+    window.handleLocCardKeydown = handleLocCardKeydown;
+    window.goBackToLocationResults = goBackToLocationResults;
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {

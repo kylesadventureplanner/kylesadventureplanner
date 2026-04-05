@@ -5775,6 +5775,12 @@
          window.filePath = filePath;
          window.tableName = tableName;
 
+          // Show quick-filter count placeholders while rows are being fetched.
+          window.__adventureQuickCountsLoading = true;
+          if (window.FilterManager && typeof window.FilterManager.renderQuickFilterCounts === 'function') {
+            window.FilterManager.renderQuickFilterCounts();
+          }
+
          // Build Microsoft Graph API URL
          const encodedPath = encodeURIComponent(filePath);
          const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
@@ -5825,6 +5831,17 @@
          // Render loaded rows explicitly (avoids relying on shim defaults).
          await window.renderAdventureCards(window.adventuresData);
 
+          window.__adventureQuickCountsLoading = false;
+
+          // Keep Common Filter counts in sync immediately after data load.
+          setTimeout(() => {
+            if (window.FilterManager && typeof window.FilterManager.applyAllFilters === 'function') {
+              window.FilterManager.applyAllFilters();
+            } else if (window.FilterManager && typeof window.FilterManager.renderQuickFilterCounts === 'function') {
+              window.FilterManager.renderQuickFilterCounts();
+            }
+          }, 0);
+
          // Populate autocomplete suggestions with initial data
          console.log('📋 Populating initial autocomplete suggestions...');
          if (typeof populateAutocomplete === 'function') {
@@ -5839,6 +5856,10 @@
 
          return true;
        } catch (error) {
+          window.__adventureQuickCountsLoading = false;
+          if (window.FilterManager && typeof window.FilterManager.renderQuickFilterCounts === 'function') {
+            window.FilterManager.renderQuickFilterCounts();
+          }
          console.error('❌ loadTable error:', error);
          window.showToast?.(`❌ Failed to load adventure data: ${error.message}`, 'error', 5000);
          return false;
@@ -6299,6 +6320,7 @@
    <!-- ============================================================ -->
    <script>
    // Define FilterManager object - will be initialized after DOM loads
+   window.__adventureQuickCountsLoading = !Array.isArray(window.adventuresData) || window.adventuresData.length === 0;
    window.FilterManager = {
      state: {
        searchName: '',
@@ -6316,7 +6338,7 @@
      cacheQuickFilterBaseLabels: function() {
        document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
          if (btn.dataset.baseLabel) return;
-         btn.dataset.baseLabel = String(btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim();
+         btn.dataset.baseLabel = String(btn.textContent || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
        });
      },
 
@@ -6359,10 +6381,11 @@
        this.cacheQuickFilterBaseLabels();
        const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
        const favorites = window.adventureFavorites ? new Set(window.adventureFavorites) : new Set();
+       const countsLoading = Boolean(window.__adventureQuickCountsLoading);
 
        document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
          const key = String(btn.getAttribute('data-tag') || btn.getAttribute('data-filter') || '').trim();
-         const baseLabel = btn.dataset.baseLabel || String(btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim();
+         const baseLabel = btn.dataset.baseLabel || String(btn.textContent || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
          if (!key) {
            btn.textContent = baseLabel;
            return;
@@ -6379,8 +6402,9 @@
          btn.append(document.createTextNode(baseLabel + ' '));
          const countSpan = document.createElement('span');
          countSpan.className = 'quick-filter-count';
-         countSpan.textContent = `(${count})`;
+          countSpan.textContent = countsLoading ? '(...)' : `(${count})`;
          btn.append(countSpan);
+          btn.setAttribute('aria-busy', countsLoading ? 'true' : 'false');
        });
      },
 
