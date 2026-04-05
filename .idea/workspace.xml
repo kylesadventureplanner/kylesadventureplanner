@@ -5,7 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/bike-trails-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/bike-trails-tab.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/bike-trails-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/bike-trails-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/button-handlers.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/button-handlers.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/tab-content-loader.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/tab-content-loader.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -86,7 +90,7 @@
       <workItem from="1775053911750" duration="6601000" />
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
-      <workItem from="1775308318086" duration="20935000" />
+      <workItem from="1775308318086" duration="22032000" />
     </task>
     <servers />
   </component>

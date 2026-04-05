@@ -34,6 +34,7 @@
   const LEGACY_BIKE_PREFS_MIGRATION_KEY = 'bikeTrailPrefsMigratedToExcel';
   const ITEMS_PER_PAGE = 20;
   const BIKE_EXPLORER_PRESETS_KEY = 'bikeTrailExplorerPresetsV1';
+  const BIKE_EXPLORER_LAST_PRESET_KEY = 'bikeTrailExplorerLastPresetV1';
   const BIKE_EXPLORER_MAX_PRESETS = 8;
 
   const BIKE_COLUMNS = [
@@ -2151,7 +2152,7 @@
 
     const explorerBtn = document.getElementById('bikeTrailExplorerBtn');
     if (explorerBtn && explorerBtn.dataset.bikeFilterBound !== '1') {
-      explorerBtn.addEventListener('click', () => openBikeTrailExplorer());
+      explorerBtn.addEventListener('click', () => window.openTrailExplorerWindow?.());
       explorerBtn.dataset.bikeFilterBound = '1';
       boundCount++;
     }
@@ -2194,13 +2195,22 @@
     if (Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length) {
       applyBikeFilters();
     }
+
+    const params = new URLSearchParams(window.location.search || '');
+    const wantsExplorer = params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
+    if (wantsExplorer && !window.__bikeExplorerAutoOpenedFromUrl) {
+      window.__bikeExplorerAutoOpenedFromUrl = true;
+      setTimeout(() => openBikeTrailExplorer(), 0);
+    }
   }
 
    // ─── Trail Explorer System ───────────────────────────────────────────────────
    // Provides an intuitive browsing interface for finding trails by various criteria
 
   const explorerState = {
-    selectedFilters: {} // { filterType: filterValue }
+    selectedFilters: {}, // { filterType: filterValue }
+    presetEditMode: '',
+    restoredPresetName: ''
   };
 
   function getExplorerPresets() {
@@ -2217,6 +2227,19 @@
 
   function saveExplorerPresets(presets) {
     localStorage.setItem(BIKE_EXPLORER_PRESETS_KEY, JSON.stringify(Array.isArray(presets) ? presets : []));
+  }
+
+  function getLastUsedExplorerPresetName() {
+    return String(localStorage.getItem(BIKE_EXPLORER_LAST_PRESET_KEY) || '').trim();
+  }
+
+  function setLastUsedExplorerPresetName(name) {
+    const value = String(name || '').trim();
+    if (!value) {
+      localStorage.removeItem(BIKE_EXPLORER_LAST_PRESET_KEY);
+      return;
+    }
+    localStorage.setItem(BIKE_EXPLORER_LAST_PRESET_KEY, value);
   }
 
   function getExplorerFilterLabel(filterType, filterValue) {
@@ -2332,8 +2355,15 @@
           </select>
           <button id="bikeExplorerLoadPresetBtn" type="button" style="padding:6px 10px;border:1px solid #c4b5fd;border-radius:6px;background:#ede9fe;color:#5b21b6;font-weight:600;cursor:pointer;">Load</button>
           <button id="bikeExplorerSavePresetBtn" type="button" style="padding:6px 10px;border:1px solid #c4b5fd;border-radius:6px;background:white;color:#6d28d9;font-weight:600;cursor:pointer;">Save Current</button>
+          <button id="bikeExplorerRenamePresetBtn" type="button" style="padding:6px 10px;border:1px solid #ddd6fe;border-radius:6px;background:white;color:#6d28d9;font-weight:600;cursor:pointer;">Rename</button>
           <button id="bikeExplorerDeletePresetBtn" type="button" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:6px;background:white;color:#6b7280;font-weight:600;cursor:pointer;">Delete</button>
         </div>
+      </div>
+      <div id="bikeExplorerPresetEditor" style="display:none;margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span id="bikeExplorerPresetEditorLabel" style="font-size:12px;color:#6d28d9;font-weight:700;">Preset Name</span>
+        <input id="bikeExplorerPresetNameInput" type="text" maxlength="80" placeholder="Preset name" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;background:white;font-size:12px;min-width:220px;" />
+        <button id="bikeExplorerPresetEditorSaveBtn" type="button" style="padding:6px 10px;border:1px solid #c4b5fd;border-radius:6px;background:#ede9fe;color:#5b21b6;font-weight:600;cursor:pointer;">Save</button>
+        <button id="bikeExplorerPresetEditorCancelBtn" type="button" style="padding:6px 10px;border:1px solid #e5e7eb;border-radius:6px;background:white;color:#6b7280;font-weight:600;cursor:pointer;">Cancel</button>
       </div>
       <div id="bikeExplorerSelectedChips" style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;"></div>
       <div id="bikeExplorerHint" style="margin-top:8px;font-size:12px;color:#7c3aed;"></div>
@@ -2349,6 +2379,33 @@
     select.innerHTML = '<option value="">Saved presets...</option>' + presets.map((preset) => {
       return `<option value="${escapeHtml(preset.name)}">${escapeHtml(preset.name)}</option>`;
     }).join('');
+
+    const lastUsed = getLastUsedExplorerPresetName();
+    if (lastUsed && presets.some((entry) => entry.name === lastUsed)) {
+      select.value = lastUsed;
+    }
+  }
+
+  function showExplorerPresetEditor(mode, initialName = '') {
+    const editor = document.getElementById('bikeExplorerPresetEditor');
+    const input = document.getElementById('bikeExplorerPresetNameInput');
+    const label = document.getElementById('bikeExplorerPresetEditorLabel');
+    if (!editor || !input || !label) return;
+
+    explorerState.presetEditMode = String(mode || 'save');
+    label.textContent = explorerState.presetEditMode === 'rename' ? 'Rename Preset' : 'Save Preset';
+    input.value = String(initialName || '').trim();
+    editor.style.display = 'flex';
+    input.focus();
+    input.select();
+  }
+
+  function hideExplorerPresetEditor() {
+    const editor = document.getElementById('bikeExplorerPresetEditor');
+    const input = document.getElementById('bikeExplorerPresetNameInput');
+    if (editor) editor.style.display = 'none';
+    if (input) input.value = '';
+    explorerState.presetEditMode = '';
   }
 
   function renderExplorerSelectedChips() {
@@ -2379,17 +2436,20 @@
 
     if (hintEl) {
       const selected = explorerState.selectedFilters || {};
+      const restoredBadgeLine = explorerState.restoredPresetName
+        ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;"><span style="display:inline-flex;align-items:center;padding:2px 8px;border:1px solid #ddd6fe;border-radius:999px;background:#f5f3ff;color:#6d28d9;font-size:11px;font-weight:700;">↺ Restored preset</span><span style="display:inline-flex;align-items:center;padding:2px 8px;border:1px solid #e9d5ff;border-radius:999px;background:#faf5ff;color:#7c3aed;font-size:11px;font-weight:600;">${escapeHtml(explorerState.restoredPresetName)}</span></div>`
+        : '';
       if (!Object.keys(selected).length) {
-        hintEl.textContent = 'Tip: pick one or more criteria to narrow results before applying.';
+        hintEl.innerHTML = `${restoredBadgeLine}<div>Tip: pick one or more criteria to narrow results before applying.</div>`;
       } else if (previewCount === 0) {
         const removable = ['driveTime', 'difficulty', 'lengthBand', 'surface', 'condition', 'timeOfDay', 'elevation']
           .filter((key) => selected[key]);
         const actions = removable.slice(0, 2).map((key) => {
           return `<button type="button" class="bike-explorer-relax-btn" data-explorer-relax="${escapeHtml(key)}" style="margin-left:6px;padding:4px 8px;border:1px solid #c4b5fd;border-radius:999px;background:white;color:#6d28d9;cursor:pointer;">Relax ${escapeHtml(getExplorerFilterLabel(key, selected[key]).split(':')[0])}</button>`;
         }).join('');
-        hintEl.innerHTML = `No matches yet. Try relaxing one filter.${actions}`;
+        hintEl.innerHTML = `${restoredBadgeLine}<div>No matches yet. Try relaxing one filter.${actions}</div>`;
       } else {
-        hintEl.textContent = 'Looks good. Click Apply Filters & Close to update your trail list.';
+        hintEl.innerHTML = `${restoredBadgeLine}<div>Looks good. Click Apply Filters & Close to update your trail list.</div>`;
       }
     }
 
@@ -2397,15 +2457,31 @@
   }
 
   function saveCurrentExplorerPreset() {
+    const defaultName = getLastUsedExplorerPresetName() || 'My Trail Explorer Preset';
+    showExplorerPresetEditor('save', defaultName);
+  }
+
+  function commitExplorerPresetEditor() {
+    const input = document.getElementById('bikeExplorerPresetNameInput');
+    const name = String(input?.value || '').trim();
+    const mode = explorerState.presetEditMode || 'save';
+
+    if (!name) {
+      window.showToast?.('Enter a preset name.', 'info', 1800);
+      input?.focus();
+      return;
+    }
+
+    if (mode === 'rename') {
+      renameSelectedExplorerPreset(name);
+      return;
+    }
+
     const currentSelection = { ...explorerState.selectedFilters };
     if (!Object.keys(currentSelection).length) {
       window.showToast?.('Pick at least one explorer filter before saving a preset.', 'info', 2400);
       return;
     }
-
-    const nameInput = window.prompt('Preset name:', 'My Trail Explorer Preset');
-    const name = String(nameInput || '').trim();
-    if (!name) return;
 
     let presets = getExplorerPresets();
     const existingIndex = presets.findIndex((entry) => entry.name.toLowerCase() === name.toLowerCase());
@@ -2420,27 +2496,86 @@
     renderExplorerPresetOptions();
     const select = document.getElementById('bikeExplorerPresetSelect');
     if (select) select.value = name;
+    setLastUsedExplorerPresetName(name);
+    hideExplorerPresetEditor();
     window.showToast?.('✅ Preset saved', 'success', 1800);
+  }
+
+  function beginRenameSelectedExplorerPreset() {
+    const select = document.getElementById('bikeExplorerPresetSelect');
+    const selectedName = String(select?.value || '').trim();
+    if (!selectedName) {
+      window.showToast?.('Choose a preset to rename.', 'info', 1800);
+      return;
+    }
+    showExplorerPresetEditor('rename', selectedName);
+  }
+
+  function renameSelectedExplorerPreset(nextNameInput) {
+    const select = document.getElementById('bikeExplorerPresetSelect');
+    const selectedName = String(select?.value || '').trim();
+    const nextName = String(nextNameInput || '').trim();
+    if (!selectedName) {
+      window.showToast?.('Choose a preset to rename.', 'info', 1800);
+      return;
+    }
+    if (!nextName) {
+      window.showToast?.('Enter a new preset name.', 'info', 1800);
+      return;
+    }
+
+    let presets = getExplorerPresets();
+    const currentIndex = presets.findIndex((entry) => entry.name === selectedName);
+    if (currentIndex < 0) {
+      window.showToast?.('Preset not found.', 'warning', 2000);
+      return;
+    }
+
+    const conflictIndex = presets.findIndex((entry) => entry.name.toLowerCase() === nextName.toLowerCase());
+    if (conflictIndex >= 0 && conflictIndex !== currentIndex) {
+      window.showToast?.('A preset with that name already exists.', 'warning', 2200);
+      return;
+    }
+
+    presets[currentIndex] = {
+      ...presets[currentIndex],
+      name: nextName
+    };
+    saveExplorerPresets(presets);
+    renderExplorerPresetOptions();
+    if (select) select.value = nextName;
+    setLastUsedExplorerPresetName(nextName);
+    hideExplorerPresetEditor();
+    window.showToast?.('✅ Preset renamed', 'success', 1800);
+  }
+
+  function applyExplorerPresetByName(name, options = {}) {
+    const presetName = String(name || '').trim();
+    const { silent = false, showSuccessToast = false, showRestoredHint = false } = options;
+    if (!presetName) {
+      if (!silent) window.showToast?.('Choose a preset to load.', 'info', 1800);
+      return false;
+    }
+
+    const preset = getExplorerPresets().find((entry) => entry.name === presetName);
+    if (!preset) {
+      if (!silent) window.showToast?.('Preset not found.', 'warning', 2000);
+      return false;
+    }
+
+    explorerState.selectedFilters = { ...(preset.selectedFilters || {}) };
+    explorerState.restoredPresetName = showRestoredHint ? presetName : '';
+    updateExplorerUI();
+    renderExplorerFeedbackUI();
+    setLastUsedExplorerPresetName(presetName);
+    if (showSuccessToast) window.showToast?.(`✅ Loaded preset: ${presetName}`, 'success', 1800);
+    return true;
   }
 
   function loadSelectedExplorerPreset() {
     const select = document.getElementById('bikeExplorerPresetSelect');
     const selectedName = String(select?.value || '').trim();
-    if (!selectedName) {
-      window.showToast?.('Choose a preset to load.', 'info', 1800);
-      return;
-    }
-
-    const preset = getExplorerPresets().find((entry) => entry.name === selectedName);
-    if (!preset) {
-      window.showToast?.('Preset not found.', 'warning', 2000);
-      return;
-    }
-
-    explorerState.selectedFilters = { ...(preset.selectedFilters || {}) };
-    updateExplorerUI();
-    renderExplorerFeedbackUI();
-    window.showToast?.(`✅ Loaded preset: ${selectedName}`, 'success', 1800);
+    applyExplorerPresetByName(selectedName, { silent: false, showSuccessToast: true, showRestoredHint: false });
   }
 
   function deleteSelectedExplorerPreset() {
@@ -2453,8 +2588,12 @@
 
     const next = getExplorerPresets().filter((entry) => entry.name !== selectedName);
     saveExplorerPresets(next);
+    if (getLastUsedExplorerPresetName() === selectedName) {
+      setLastUsedExplorerPresetName('');
+    }
     renderExplorerPresetOptions();
     if (select) select.value = '';
+    hideExplorerPresetEditor();
     window.showToast?.(`🗑️ Deleted preset: ${selectedName}`, 'info', 1800);
   }
 
@@ -2470,10 +2609,17 @@
 
     // Reset state and show the first tab's content
     explorerState.selectedFilters = {};
+    explorerState.restoredPresetName = '';
     updateExplorerUI();
     ensureExplorerFeedbackUI(modal);
     renderExplorerPresetOptions();
+    hideExplorerPresetEditor();
     renderExplorerFeedbackUI();
+
+    const lastPreset = getLastUsedExplorerPresetName();
+    if (lastPreset) {
+      applyExplorerPresetByName(lastPreset, { silent: true, showSuccessToast: false, showRestoredHint: true });
+    }
 
     // Activate the first tab
     const firstTab = modal.querySelector('.bike-explorer-tab');
@@ -2487,6 +2633,39 @@
     modal.style.opacity = '1';
     modal.style.zIndex = '2000';
   }
+
+  window.openTrailExplorerWindow = function() {
+    const params = new URLSearchParams(window.location.search || '');
+    const isExplorerContext = params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
+    if (isExplorerContext) {
+      openBikeTrailExplorer();
+      return true;
+    }
+
+    try {
+      const baseUrl = typeof window.resolvePlannerPageUrl === 'function'
+        ? window.resolvePlannerPageUrl('index.html')
+        : new URL('index.html', window.location.href).toString();
+
+      const url = new URL(baseUrl, window.location.href);
+      url.searchParams.set('tab', 'bike-trails');
+      url.searchParams.set('openTrailExplorer', '1');
+      url.searchParams.set('ts', String(Date.now()));
+
+      const explorerTab = window.open(url.toString(), '_blank');
+      if (!explorerTab) {
+        window.showToast?.('❌ Failed to open Trail Explorer. Check if pop-ups are blocked.', 'error', 5000);
+        return false;
+      }
+
+      explorerTab.focus();
+      return true;
+    } catch (error) {
+      console.error('❌ Error opening Trail Explorer tab:', error);
+      window.showToast?.('❌ Error opening Trail Explorer: ' + (error?.message || error), 'error', 5000);
+      return false;
+    }
+  };
 
   function closeBikeTrailExplorer() {
     const modal = document.getElementById('bikeTrailExplorerModal');
@@ -2570,6 +2749,7 @@
         } else {
           explorerState.selectedFilters[filterType] = filterValue;
         }
+        explorerState.restoredPresetName = '';
         updateExplorerUI();
         renderExplorerFeedbackUI();
       });
@@ -2580,6 +2760,7 @@
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
         explorerState.selectedFilters = {};
+        explorerState.restoredPresetName = '';
         updateExplorerUI();
         renderExplorerFeedbackUI();
       });
@@ -2588,11 +2769,33 @@
     const savePresetBtn = document.getElementById('bikeExplorerSavePresetBtn');
     if (savePresetBtn) savePresetBtn.addEventListener('click', saveCurrentExplorerPreset);
 
+    const renamePresetBtn = document.getElementById('bikeExplorerRenamePresetBtn');
+    if (renamePresetBtn) renamePresetBtn.addEventListener('click', beginRenameSelectedExplorerPreset);
+
     const loadPresetBtn = document.getElementById('bikeExplorerLoadPresetBtn');
     if (loadPresetBtn) loadPresetBtn.addEventListener('click', loadSelectedExplorerPreset);
 
     const deletePresetBtn = document.getElementById('bikeExplorerDeletePresetBtn');
     if (deletePresetBtn) deletePresetBtn.addEventListener('click', deleteSelectedExplorerPreset);
+
+    const presetEditorSaveBtn = document.getElementById('bikeExplorerPresetEditorSaveBtn');
+    if (presetEditorSaveBtn) presetEditorSaveBtn.addEventListener('click', commitExplorerPresetEditor);
+
+    const presetEditorCancelBtn = document.getElementById('bikeExplorerPresetEditorCancelBtn');
+    if (presetEditorCancelBtn) presetEditorCancelBtn.addEventListener('click', hideExplorerPresetEditor);
+
+    const presetNameInput = document.getElementById('bikeExplorerPresetNameInput');
+    if (presetNameInput) {
+      presetNameInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commitExplorerPresetEditor();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          hideExplorerPresetEditor();
+        }
+      });
+    }
 
     modal.addEventListener('click', (event) => {
       const chipRemoveBtn = event.target && event.target.closest ? event.target.closest('.bike-explorer-chip-remove') : null;
@@ -2600,6 +2803,7 @@
         const filterType = String(chipRemoveBtn.getAttribute('data-explorer-chip-type') || '').trim();
         if (filterType) {
           delete explorerState.selectedFilters[filterType];
+          explorerState.restoredPresetName = '';
           updateExplorerUI();
           renderExplorerFeedbackUI();
         }
@@ -2611,6 +2815,7 @@
         const filterType = String(relaxBtn.getAttribute('data-explorer-relax') || '').trim();
         if (filterType) {
           delete explorerState.selectedFilters[filterType];
+          explorerState.restoredPresetName = '';
           updateExplorerUI();
           renderExplorerFeedbackUI();
         }

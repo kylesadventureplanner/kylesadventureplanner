@@ -1062,7 +1062,11 @@
     if (bikeExplorerBtn && bikeExplorerBtn.dataset.bikeExplorerReliabilityBound !== '1') {
       bikeExplorerBtn.addEventListener('click', (event) => {
         event.preventDefault();
-        window.openBikeTrailExplorer?.();
+        if (typeof window.openTrailExplorerWindow === 'function') {
+          window.openTrailExplorerWindow();
+        } else {
+          window.openBikeTrailExplorer?.();
+        }
       }, false);
       bikeExplorerBtn.dataset.bikeExplorerReliabilityBound = '1';
       boundAnything = true;

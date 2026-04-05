@@ -83,8 +83,20 @@ class TabContentLoader {
     // Preload high-priority tabs
     this.preloadTabs();
 
+    // Support deep-linking directly to a tab (used by popup/new-tab flows).
+    this.openRequestedTabFromUrl();
+
     this.isInitialized = true;
     console.log('✅ Tab Content Loader Ready (Lazy Loading Enabled)');
+  }
+
+  openRequestedTabFromUrl() {
+    const params = new URLSearchParams(window.location.search || '');
+    const requestedTab = String(params.get('tab') || '').trim();
+    if (!requestedTab || !this.tabs[requestedTab]) return;
+
+    // Let other startup scripts attach first, then switch.
+    setTimeout(() => this.switchTab(requestedTab), 0);
   }
 
   /**
