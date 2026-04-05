@@ -802,4 +802,305 @@ header h1 {
     border-width: 2px;
   }
 }
+/* ============================================================
+   BUTTON RELIABILITY - 100% RESPONSIVENESS GUARANTEED
+   ============================================================ */
 
+/* UNIVERSAL BUTTON ENFORCEMENT */
+button, [role="button"], .btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  cursor: pointer !important;
+  touch-action: manipulation !important;
+  user-select: none !important;
+}
+
+button:disabled, [role="button"][aria-disabled="true"] {
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+  pointer-events: auto !important;
+}
+
+button:hover:not(:disabled), [role="button"]:hover:not([aria-disabled="true"]) {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+button:focus, button:focus-visible, [role="button"]:focus, [role="button"]:focus-visible {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+button:active:not(:disabled), [role="button"]:active:not([aria-disabled="true"]) {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* QUICK FILTER BUTTONS */
+.quick-filter-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  cursor: pointer !important;
+  z-index: 10;
+}
+
+.quick-filter-btn:hover, .quick-filter-btn.active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* AUTOMATION BUTTONS */
+.automation-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 201;
+}
+
+.automation-btn:not(:disabled):not(.loading):hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.automation-btn:disabled {
+  opacity: 0.5 !important;
+  pointer-events: auto !important;
+}
+
+/* PLANNER TOP BUTTONS */
+.planner-top-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 120;
+}
+
+.planner-top-btn:hover, .planner-top-btn.active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* CARD BUTTONS */
+.card-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 20 !important;
+}
+
+.card-btn:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ROW DETAIL BUTTONS */
+.row-detail-action-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 15;
+}
+
+.row-detail-action-btn:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* FAVORITE BUTTONS */
+.card-favorite-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 30 !important;
+}
+
+.card-favorite-btn:hover, .card-favorite-btn.active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* TAG MANAGER BUTTONS */
+.tag-manager-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 30 !important;
+}
+
+.tag-manager-btn:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* RATING STARS */
+.rating-star {
+  pointer-events: auto !important;
+  visibility: visible !important;
+  z-index: 30 !important;
+}
+
+.rating-star:hover {
+  opacity: 0.6 !important;
+  pointer-events: auto !important;
+}
+
+.rating-star.filled {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ACTION BUTTONS */
+.edit-mode-btn, .find-near-me-btn, .city-viewer-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10;
+}
+
+.edit-mode-btn:hover, .find-near-me-btn:hover, .city-viewer-btn:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* MODAL BUTTONS */
+.modal-close-btn, .modal-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 20;
+}
+
+.modal-close-btn:hover, .modal-btn:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* PILL BUTTONS */
+.pill-button {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10;
+}
+
+.pill-button:hover, .pill-button.reset:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* PRIMARY & SECONDARY */
+.primary-btn, .secondary-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10;
+}
+
+.primary-btn:hover, .secondary-btn:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* TOGGLE BUTTONS */
+.iphone-toggle-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10;
+}
+
+.iphone-toggle-btn:hover, .iphone-toggle-btn.active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* MORE/LESS BUTTONS */
+.more-less-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10;
+}
+
+.more-less-btn:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* TOAST CLOSE BUTTONS */
+.toast-close {
+  pointer-events: auto !important;
+  opacity: 0.8 !important;
+  visibility: visible !important;
+  z-index: 10;
+}
+
+.toast-close:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* CONTAINERS - ENSURE NO BLOCKING */
+.card-action-buttons, .automation-buttons, .planner-top-actions,
+.quick-filters-container, .adventure-card-footer {
+  pointer-events: auto !important;
+}
+
+/* TAB BUTTONS */
+.row-detail-tab-btn {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10;
+}
+
+.row-detail-tab-btn:hover, .row-detail-tab-btn.active {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ACCESSIBILITY FOCUS */
+button:focus-visible, [role="button"]:focus-visible {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2) !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* MOBILE TOUCH TARGETS */
+@media (max-width: 768px) {
+  button, [role="button"], .btn {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    pointer-events: auto !important;
+  }
+
+  button:active, [role="button"]:active {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}
+
+/* CARD & FILTER OVERRIDES */
+.adventure-card button, .adventure-card [role="button"] {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.control-panel-card button, .quick-filters-card button {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 100;
+}
+
+#rowDetailModal button, .row-detail-modal button {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 200;
+}

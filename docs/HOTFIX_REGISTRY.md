@@ -22,3 +22,4 @@ Last updated: 2026-04-03
 2. Every hotfix must include a clear owner, purpose, and explicit removal criteria.
 3. Keep one runtime hotfix entrypoint (`runtime-hotfixes.js`) to avoid load-order conflicts.
 4. Archive or delete superseded hotfix files in `JS Files/_archived-hotfixes/`.
+

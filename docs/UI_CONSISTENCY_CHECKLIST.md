@@ -75,3 +75,4 @@ Reference file: `HTML Files/trail-explorer-window.html`
 - [x] Applied the same shared utility naming cleanup to `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html`.
 - [x] Completed a safe dedupe pass for time-window utility-like classes in `HTML Files/city-viewer-window.html` (moved to shared `u-*` classes in `CSS/utilities.css`).
 
+
