@@ -70,12 +70,20 @@
     legendary: { label: 'Legendary', className: 'rarity-legendary' }
   };
 
+  const CATALOG_INITIAL_LIMIT = 60;
+  const CATALOG_LOAD_STEP = 40;
+  const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
+
   const state = {
     initialized: false,
     activeProgressSubTab: 'overview',
     weatherMode: 'auto',
     searchText: '',
     categoryFilter: 'all',
+    catalogVisitFilter: 'all',
+    catalogSourceFilter: 'all',
+    catalogRenderLimit: CATALOG_INITIAL_LIMIT,
+    latestVisitMap: {},
     challengeState: {},
     metaState: {},
     latestLocations: [],
@@ -91,6 +99,7 @@
       targetEl: null,
       bubbleEl: null
     },
+    loadingUiActive: false,
     visitedColumnIndexCache: {
       adventure: null,
       bike: null
@@ -107,6 +116,7 @@
       const isActive = tabKey === active;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      btn.setAttribute('tabindex', isActive ? '0' : '-1');
     });
 
     root.querySelectorAll('[data-progress-pane]').forEach((pane) => {
@@ -114,12 +124,106 @@
       const isActive = paneKey === active;
       pane.classList.toggle('is-active', isActive);
       pane.hidden = !isActive;
+      pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
     });
+  }
+
+  function announceProgressSubTab(root, tabKey) {
+    if (!root) return;
+    const announcer = document.getElementById('visitedSubTabAnnouncer');
+    if (!announcer) return;
+    const btn = root.querySelector(`[data-progress-subtab="${tabKey}"]`);
+    const label = btn ? btn.textContent.trim() : 'Overview';
+    announcer.textContent = `${label} section active`;
   }
 
   function setActiveProgressSubTab(root, tabKey) {
     state.activeProgressSubTab = tabKey || 'overview';
     syncProgressSubTabs(root);
+    announceProgressSubTab(root, state.activeProgressSubTab);
+  }
+
+  function getMobileTooltipLongPressMs() {
+    const appConfig = (((window.APP_UI_LABELS || {}).visitedProgress || {}).mobileTooltip || {});
+    const raw = Number(appConfig.longPressMs);
+    if (!Number.isFinite(raw)) return 420;
+    return Math.max(250, Math.min(1000, Math.round(raw)));
+  }
+
+  function applyTooltipInfoIcons(scope) {
+    const root = scope || document;
+    const targets = root.querySelectorAll('button[data-tooltip], .quick-filter-btn[data-tooltip], .card-btn[data-tooltip]');
+    targets.forEach((btn) => {
+      const tooltipText = String(btn.getAttribute('data-tooltip') || '').trim();
+      if (tooltipText.length < TOOLTIP_INFO_ICON_MIN_CHARS) return;
+      if (btn.querySelector('.visited-tooltip-info')) return;
+      const marker = document.createElement('span');
+      marker.className = 'visited-tooltip-info';
+      marker.setAttribute('aria-hidden', 'true');
+      marker.textContent = 'i';
+      btn.appendChild(marker);
+    });
+  }
+
+  function formatRelativeTime(isoText) {
+    if (!isoText) return 'just now';
+    const date = new Date(isoText);
+    if (Number.isNaN(date.getTime())) return 'just now';
+    const diffMs = Math.max(0, Date.now() - date.getTime());
+    const sec = Math.floor(diffMs / 1000);
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hrs = Math.floor(min / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  }
+
+  function renderSyncMeta(visitMap) {
+    const el = document.getElementById('visitedSyncMeta');
+    if (!el) return;
+    const map = visitMap || state.latestVisitMap || {};
+    const pending = Object.values(map).filter((entry) => entry && entry.synced === false).length;
+    const sourceCounts = (state.latestLocations || []).reduce((acc, item) => {
+      const key = item && item.sourceType === 'bike' ? 'bike' : 'adventure';
+      acc[key] += 1;
+      return acc;
+    }, { adventure: 0, bike: 0 });
+    const since = formatRelativeTime(state.lastRenderAt);
+    el.textContent = `Last synced: ${since} • Pending local-only: ${pending} • Sources: ${sourceCounts.adventure} adv / ${sourceCounts.bike} bike`;
+  }
+
+  function renderLoadingState() {
+    if (state.loadingUiActive) return;
+    state.loadingUiActive = true;
+
+    const skeleton = '<div class="visited-skeleton-stack"><div class="visited-skeleton-block"></div><div class="visited-skeleton-block short"></div><div class="visited-skeleton-block"></div></div>';
+
+    const placeholders = {
+      visitedSummaryStats: skeleton,
+      visitedCategoryGrid: `${skeleton}${skeleton}`,
+      visitedSuggestionList: `${skeleton}${skeleton}`,
+      visitedRecentList: skeleton,
+      visitedChallengeGrid: `${skeleton}${skeleton}`,
+      visitedBadgeGallery: `${skeleton}${skeleton}`,
+      visitedWeeklyQuestPanel: skeleton,
+      visitedMonthlyQuestPanel: skeleton,
+      visitedHeatmapHotspots: skeleton,
+      visitedAdventureCatalog: `${skeleton}${skeleton}`
+    };
+
+    Object.entries(placeholders).forEach(([id, html]) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    });
+
+    const dataStatus = document.getElementById('visitedDataStatus');
+    if (dataStatus) dataStatus.textContent = 'Refreshing adventure progress...';
+  }
+
+  function clearLoadingState() {
+    state.loadingUiActive = false;
   }
 
   function isTouchPrimaryInput() {
@@ -236,6 +340,8 @@
   function initMobileTooltipSupport(root) {
     if (!root || root.dataset.mobileTooltipBound === '1') return;
     root.dataset.mobileTooltipBound = '1';
+    const longPressMs = getMobileTooltipLongPressMs();
+    const suppressMs = Math.max(420, Math.round(longPressMs * 1.55));
 
     root.addEventListener('focusin', (event) => {
       const target = event.target.closest ? event.target.closest('[data-tooltip]') : null;
@@ -263,10 +369,10 @@
       state.mobileTooltip.targetEl = target;
       state.mobileTooltip.pressTimerId = window.setTimeout(() => {
         state.mobileTooltip.longPressActive = true;
-        state.mobileTooltip.suppressClickUntil = Date.now() + 650;
+        state.mobileTooltip.suppressClickUntil = Date.now() + suppressMs;
         showMobileTooltipBubble(target, text);
         showMobileTooltipChip(text, 2600);
-      }, 420);
+      }, longPressMs);
     }, { passive: true });
 
     root.addEventListener('touchmove', () => {
@@ -1141,43 +1247,66 @@
 
         let score = 0;
         const reasons = [];
+        const scoreBreakdown = {
+          weather: 0,
+          distance: 0,
+          categoryProgress: 0,
+          questRelevance: 0,
+          availability: 0,
+          context: 0
+        };
 
         if (openState === true) {
           score += 30;
+          scoreBreakdown.availability += 30;
           reasons.push('Open now');
         } else if (openState === false) {
           score -= 25;
+          scoreBreakdown.availability -= 25;
           reasons.push('Likely closed right now');
         } else {
           score += 8;
+          scoreBreakdown.availability += 8;
           reasons.push('Hours unknown, worth checking');
         }
 
         if (driveMinutes <= 30) {
           score += 18;
+          scoreBreakdown.distance += 18;
           reasons.push('Quick drive');
         } else if (driveMinutes <= 60) {
           score += 10;
+          scoreBreakdown.distance += 10;
         }
 
         categories.forEach(category => {
           if (weatherPreferred.includes(category)) {
             score += 16;
+            scoreBreakdown.weather += 16;
             reasons.push(`${getCategoryMeta(category)?.label || category} matches weather`);
           }
           if (unfinishedPriority.has(category)) {
             score += 20;
+            scoreBreakdown.questRelevance += 20;
+            scoreBreakdown.categoryProgress += 20;
             reasons.push('Moves an active challenge forward');
           }
         });
 
-        if (weekend && categories.includes('scenic')) score += 8;
-        if (!weekend && categories.includes('coffee')) score += 6;
+        if (weekend && categories.includes('scenic')) {
+          score += 8;
+          scoreBreakdown.context += 8;
+        }
+        if (!weekend && categories.includes('coffee')) {
+          score += 6;
+          scoreBreakdown.context += 6;
+        }
 
         return {
           ...adventure,
           categories,
           score,
+          scoreBreakdown,
           reasons: Array.from(new Set(reasons)).slice(0, 3),
           openState
         };
@@ -1505,6 +1634,9 @@
           ? '<span class="visited-pill closed">Likely closed now</span>'
           : '<span class="visited-pill">Check hours</span>';
 
+      const explainId = `visitedSuggestionExplain-${escapeHtml(suggestion.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      const breakdown = suggestion.scoreBreakdown || {};
+
       return `
         <div class="adventure-card visited-suggestion-card">
           <div class="adventure-card-header">
@@ -1515,6 +1647,15 @@
           <div class="adventure-card-body">
             <div class="visited-pill-row">${openBadge}</div>
             <div class="visited-reason-list">${suggestion.reasons.map(reason => `<span class="visited-pill">${escapeHtml(reason)}</span>`).join('')}</div>
+            <button type="button" class="visited-suggestion-explain-btn" data-suggestion-explain-toggle="${explainId}" aria-expanded="false" title="See score breakdown" data-tooltip="See score breakdown">Why this now? (${Math.round(suggestion.score)})</button>
+            <div id="${explainId}" class="visited-suggestion-breakdown" hidden>
+              <div>Availability: ${breakdown.availability || 0}</div>
+              <div>Distance: ${breakdown.distance || 0}</div>
+              <div>Weather match: ${breakdown.weather || 0}</div>
+              <div>Category progress: ${breakdown.categoryProgress || 0}</div>
+              <div>Quest relevance: ${breakdown.questRelevance || 0}</div>
+              <div>Context bonus: ${breakdown.context || 0}</div>
+            </div>
           </div>
           <div class="adventure-card-footer">
             <div class="card-action-buttons">
@@ -1524,6 +1665,8 @@
         </div>
       `;
     }).join('');
+
+    applyTooltipInfoIcons(container);
   }
 
   function renderRecentVisits(stats, visitMap) {
@@ -1560,10 +1703,18 @@
   function filterCatalog(adventures, visitMap) {
     const text = norm(state.searchText);
     const categoryFilter = state.categoryFilter;
+    const visitFilter = state.catalogVisitFilter || 'all';
+    const sourceFilter = state.catalogSourceFilter || 'all';
 
     return adventures.filter(adventure => {
       const matchesSearch = !text || `${norm(adventure.name)} ${norm(adventure.city)} ${norm(adventure.state)} ${adventure.tags.join(' ')}`.includes(text);
       if (!matchesSearch) return false;
+
+      const visited = Boolean(visitMap[adventure.id]);
+      if (visitFilter === 'visited' && !visited) return false;
+      if (visitFilter === 'unvisited' && visited) return false;
+
+      if (sourceFilter !== 'all' && adventure.sourceType !== sourceFilter) return false;
 
       if (categoryFilter !== 'all') {
         const categories = categoriesForAdventure(adventure);
@@ -1576,6 +1727,38 @@
       const bVisited = Boolean(visitMap[b.id]);
       if (aVisited !== bVisited) return aVisited ? 1 : -1;
       return a.name.localeCompare(b.name);
+    });
+  }
+
+  function resetCatalogRenderLimit() {
+    state.catalogRenderLimit = CATALOG_INITIAL_LIMIT;
+  }
+
+  function renderCatalogQuickFilters(adventures, visitMap) {
+    const root = document.getElementById('visitedTrackerQuickFilters');
+    if (!root) return;
+
+    const allCount = adventures.length;
+    const visitedCount = adventures.filter((adventure) => Boolean(visitMap[adventure.id])).length;
+    const unvisitedCount = Math.max(0, allCount - visitedCount);
+    const advCount = adventures.filter((adventure) => adventure.sourceType === 'adventure').length;
+    const bikeCount = adventures.filter((adventure) => adventure.sourceType === 'bike').length;
+
+    root.querySelectorAll('[data-catalog-filter]').forEach((btn) => {
+      const group = btn.getAttribute('data-catalog-filter') || '';
+      const value = btn.getAttribute('data-catalog-filter-value') || 'all';
+      const active = group === 'visit'
+        ? state.catalogVisitFilter === value
+        : state.catalogSourceFilter === value;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+
+      if (group === 'visit' && value === 'all') btn.textContent = `All (${allCount})`;
+      if (group === 'visit' && value === 'visited') btn.textContent = `Visited (${visitedCount})`;
+      if (group === 'visit' && value === 'unvisited') btn.textContent = `Unvisited (${unvisitedCount})`;
+      if (group === 'source' && value === 'all') btn.textContent = `All sources (${allCount})`;
+      if (group === 'source' && value === 'adventure') btn.textContent = `Adventure (${advCount})`;
+      if (group === 'source' && value === 'bike') btn.textContent = `Bike (${bikeCount})`;
     });
   }
 
@@ -1624,13 +1807,18 @@
     const container = document.getElementById('visitedAdventureCatalog');
     if (!container) return;
 
-    const filtered = filterCatalog(adventures, visitMap).slice(0, 80);
+    renderCatalogQuickFilters(adventures, visitMap);
+    const filtered = filterCatalog(adventures, visitMap);
     if (filtered.length === 0) {
       container.innerHTML = '<div class="visited-empty">No locations match your search right now.</div>';
       return;
     }
 
-    container.innerHTML = filtered.map(adventure => {
+    const renderLimit = Math.max(CATALOG_INITIAL_LIMIT, Number(state.catalogRenderLimit) || CATALOG_INITIAL_LIMIT);
+    const visible = filtered.slice(0, renderLimit);
+    const hasMore = filtered.length > visible.length;
+
+    container.innerHTML = visible.map(adventure => {
       const visited = Boolean(visitMap[adventure.id]);
       const categories = categoriesForAdventure(adventure).map(category => getCategoryMeta(category)?.icon || '📍').join(' ');
       return `
@@ -1644,50 +1832,64 @@
           </button>
         </div>
       `;
-    }).join('');
+    }).join('') + (hasMore
+      ? `<div class="visited-catalog-footer"><button type="button" class="visited-load-more-btn" data-catalog-action="load-more">Load more (${visible.length}/${filtered.length})</button></div>`
+      : '');
+
+    applyTooltipInfoIcons(container);
   }
 
   async function refreshTab() {
-    await Promise.all([
-      resolveAdventureVisitedColumnIndex().catch(() => -1),
-      resolveBikeVisitedColumnIndex().catch(() => -1)
-    ]);
+    renderLoadingState();
+    try {
+      await Promise.all([
+        resolveAdventureVisitedColumnIndex().catch(() => -1),
+        resolveBikeVisitedColumnIndex().catch(() => -1)
+      ]);
 
-    renderSyncHealthBadge();
+      renderSyncHealthBadge();
 
-    const adventures = readAllLocations();
-    let visitMap = getVisitMap();
-    visitMap = hydrateVisitMapFromExcel(adventures, visitMap);
-    saveVisitMap(visitMap);
+      const adventures = readAllLocations();
+      let visitMap = getVisitMap();
+      visitMap = hydrateVisitMapFromExcel(adventures, visitMap);
+      saveVisitMap(visitMap);
 
-    state.latestLocations = adventures;
+      state.latestLocations = adventures;
+      state.latestVisitMap = visitMap;
 
-    const stats = buildStats(adventures, visitMap);
-    const challengeProgress = buildChallengeProgress(stats);
-    const insights = computeVisitInsights(stats, visitMap);
-    const badges = buildBadgeProgress(stats, insights);
-    const questSet = buildRotatingQuests(insights);
-    const suggestions = generateSuggestions(adventures, visitMap, challengeProgress);
+      const stats = buildStats(adventures, visitMap);
+      const challengeProgress = buildChallengeProgress(stats);
+      const insights = computeVisitInsights(stats, visitMap);
+      const badges = buildBadgeProgress(stats, insights);
+      const questSet = buildRotatingQuests(insights);
+      const suggestions = generateSuggestions(adventures, visitMap, challengeProgress);
 
-    renderSummary(stats, challengeProgress, badges, questSet);
-    renderCategories(stats);
-    renderChallenges(challengeProgress);
-    renderBadges(badges);
-    renderRotatingQuests(questSet);
-    renderHeatmap(stats);
-    renderCelebrationControls();
-    renderSuggestions(suggestions);
-    renderRecentVisits(stats, visitMap);
-    renderCatalog(adventures, visitMap);
+      renderSummary(stats, challengeProgress, badges, questSet);
+      renderCategories(stats);
+      renderChallenges(challengeProgress);
+      renderBadges(badges);
+      renderRotatingQuests(questSet);
+      renderHeatmap(stats);
+      renderCelebrationControls();
+      renderSuggestions(suggestions);
+      renderRecentVisits(stats, visitMap);
+      renderCatalog(adventures, visitMap);
 
-    const dataStatus = document.getElementById('visitedDataStatus');
-    if (dataStatus) {
-      const adventureCount = adventures.filter(item => item.sourceType === 'adventure').length;
-      const bikeCount = adventures.filter(item => item.sourceType === 'bike').length;
-      dataStatus.textContent = `${adventures.length} total locations (${adventureCount} adventure + ${bikeCount} bike) • ${stats.visited.length} visited tracked`;
+      const dataStatus = document.getElementById('visitedDataStatus');
+      if (dataStatus) {
+        const adventureCount = adventures.filter(item => item.sourceType === 'adventure').length;
+        const bikeCount = adventures.filter(item => item.sourceType === 'bike').length;
+        dataStatus.textContent = `${adventures.length} total locations (${adventureCount} adventure + ${bikeCount} bike) • ${stats.visited.length} visited tracked`;
+      }
+
+      state.lastRenderAt = new Date().toISOString();
+      renderSyncMeta(visitMap);
+
+      const root = document.getElementById('visitedLocationsRoot');
+      applyTooltipInfoIcons(root);
+    } finally {
+      clearLoadingState();
     }
-
-    state.lastRenderAt = new Date().toISOString();
   }
 
   function findAdventureById(locationId) {
@@ -1757,7 +1959,11 @@
 
     root.dataset.bound = '1';
     syncProgressSubTabs(root);
+    announceProgressSubTab(root, state.activeProgressSubTab);
+    state.latestVisitMap = getVisitMap();
+    renderSyncMeta(state.latestVisitMap);
     initMobileTooltipSupport(root);
+    applyTooltipInfoIcons(root);
 
     root.addEventListener('keydown', (event) => {
       const currentTabBtn = event.target.closest('[data-progress-subtab]');
@@ -1783,6 +1989,27 @@
     });
 
     root.addEventListener('click', (event) => {
+      const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
+      if (explainBtn) {
+        event.preventDefault();
+        const targetId = explainBtn.getAttribute('data-suggestion-explain-toggle');
+        const panel = targetId ? document.getElementById(targetId) : null;
+        if (panel) {
+          const expanded = explainBtn.getAttribute('aria-expanded') === 'true';
+          explainBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+          panel.hidden = expanded;
+        }
+        return;
+      }
+
+      const loadMoreBtn = event.target.closest('[data-catalog-action="load-more"]');
+      if (loadMoreBtn) {
+        event.preventDefault();
+        state.catalogRenderLimit += CATALOG_LOAD_STEP;
+        renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
+        return;
+      }
+
       const progressTabBtn = event.target.closest('[data-progress-subtab]');
       if (progressTabBtn) {
         event.preventDefault();
@@ -1816,7 +2043,20 @@
         event.preventDefault();
         const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
         state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
+        resetCatalogRenderLimit();
         runRefreshWithLock(categoryBtn);
+        return;
+      }
+
+      const catalogFilterBtn = event.target.closest('[data-catalog-filter]');
+      if (catalogFilterBtn) {
+        event.preventDefault();
+        const group = catalogFilterBtn.getAttribute('data-catalog-filter') || '';
+        const value = catalogFilterBtn.getAttribute('data-catalog-filter-value') || 'all';
+        if (group === 'visit') state.catalogVisitFilter = value;
+        if (group === 'source') state.catalogSourceFilter = value;
+        resetCatalogRenderLimit();
+        renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
         return;
       }
 
@@ -1857,14 +2097,18 @@
 
     const weatherEl = document.getElementById('visitedWeatherMode');
     if (weatherEl) {
-      weatherEl.addEventListener('change', () => refreshTab());
+      weatherEl.addEventListener('change', () => {
+        resetCatalogRenderLimit();
+        runRefreshWithLock();
+      });
     }
 
     const searchInput = document.getElementById('visitedSearchInput');
     if (searchInput) {
       searchInput.addEventListener('input', () => {
         state.searchText = searchInput.value || '';
-        renderCatalog(readAdventures(), getVisitMap());
+        resetCatalogRenderLimit();
+        renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
       });
     }
   }
