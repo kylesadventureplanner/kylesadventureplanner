@@ -1123,7 +1123,8 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     Object.entries(zIndexMap).forEach(([id, zIndex]) => {
       const element = document.getElementById(id);
       if (element) {
-        element.style.zIndex = zIndex + ' !important';
+        // Use setProperty with 'important' flag — the correct way to set !important via JS
+        element.style.setProperty('z-index', String(zIndex), 'important');
         console.log(`✅ Set Z-Index for ${id}: ${zIndex}`);
       }
     });
@@ -1140,6 +1141,12 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
    * Handles: hover state lockups, scroll issues, event listener loss
    */
   function ensureButtonResponsiveness() {
+    // Guard: only run once per page load — duplicate calls would stack extra intervals/listeners
+    if (window.__enhancedButtonMonitorActive) {
+      console.log('ℹ️ ENHANCED button responsiveness monitor already active, skipping duplicate init');
+      return;
+    }
+    window.__enhancedButtonMonitorActive = true;
     console.log('🔧 Setting up ENHANCED button responsiveness monitor...');
 
     // Track button states to prevent hover locks
@@ -1154,20 +1161,14 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         const key = btn.id || btn.className;
         const state = buttonStates.get(key);
 
-        // Reset any stuck hover states
+        // Remove synthetic hover class only (real CSS :hover is managed by the browser)
         if (btn.classList.contains('hover') || btn.classList.contains(':hover')) {
           btn.classList.remove('hover');
         }
 
-        // Ensure button is not stuck in active state
-        if (btn.matches(':active')) {
-          btn.blur();
-        }
-
-        // Clear any stuck focus
-        if (document.activeElement === btn && btn !== document.body) {
-          setTimeout(() => btn.blur(), 0);
-        }
+        // NOTE: Do NOT call btn.blur() here. Blurring the active/focused button
+        // every 500ms breaks keyboard navigation and interrupts in-progress clicks.
+        // The browser manages :active and focus state correctly on its own.
       });
     };
 
@@ -1181,17 +1182,17 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         const pointerEvents = style.pointerEvents;
 
         if (pointerEvents === 'none') {
-          btn.style.pointerEvents = 'auto !important';
+          // Use valid inline style assignment (no !important — that's only valid in stylesheets)
+          btn.style.pointerEvents = 'auto';
           console.warn(`⚠️ Fixed pointer-events:none on: ${btn.id || btn.textContent.slice(0, 20)}`);
         }
 
-        // Ensure z-index is set
-        if (!btn.style.zIndex || btn.style.zIndex === 'auto') {
-          btn.style.zIndex = '10';
-        }
+        // NOTE: Do NOT set z-index here. Forcing z-index: 10 on every button via inline style
+        // creates unwanted stacking contexts and overrides carefully designed z-index layouts.
+        // z-index is managed per-component in the CSS instead.
 
-        // Remove any opacity that might block clicks
-        if (style.opacity === '0' && !btn.classList.contains('hidden')) {
+        // Remove inline opacity:0 only on non-hidden buttons that shouldn't be invisible
+        if (style.opacity === '0' && !btn.classList.contains('hidden') && style.display !== 'none') {
           btn.style.opacity = '1';
         }
       });
@@ -1207,9 +1208,10 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         const isHidden = style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0';
 
         if (isHidden) {
-          modal.style.pointerEvents = 'none !important';
-          modal.style.display = 'none !important';
-          modal.style.visibility = 'hidden !important';
+          // Use valid inline style assignment — !important is NOT valid in element.style
+          modal.style.pointerEvents = 'none';
+          // Do NOT force display:none/visibility:hidden here — the element is already hidden
+          // by computed style. Setting these inline would conflict with animation/transition logic.
         }
       });
     };
@@ -1220,9 +1222,11 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     const fixCardButtonZIndex = () => {
       const cardBtns = document.querySelectorAll('.card-btn, .card-action-buttons, .quick-filter-btn, .pagination-btn');
       cardBtns.forEach(btn => {
-        btn.style.pointerEvents = 'auto !important';
-        btn.style.zIndex = '15 !important';
-        btn.style.position = 'relative';
+        // Use valid inline style assignment — !important is NOT valid in element.style
+        btn.style.pointerEvents = 'auto';
+        // NOTE: Do NOT set z-index inline here. Card component CSS handles z-index.
+        // Setting z-index via inline style on every button every 500ms creates
+        // stacking context chaos and overrides intentional CSS layering.
       });
     };
 
@@ -1296,13 +1300,15 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
       document.addEventListener('mousemove', (e) => {
         const btn = e.target.closest('button');
-        if (!btn) return;
+        if (!btn) {
+          lastHoverTarget = null;
+          return;
+        }
 
         if (lastHoverTarget !== btn) {
-          // Clear old hover
-          if (lastHoverTarget) {
-            lastHoverTarget.blur();
-          }
+          // NOTE: Do NOT call lastHoverTarget.blur() here.
+          // Blurring the previously-hovered button on every mousemove call interrupts
+          // in-progress clicks and breaks keyboard focus management.
           lastHoverTarget = btn;
         }
 
@@ -1393,11 +1399,12 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
          ============================================================ */
 
       /* ALL buttons must be interactive */
+      /* NOTE: z-index removed — applying z-index: 10 globally creates stacking-context
+         chaos and causes buttons INSIDE containers to visually overlap or get covered.
+         Let each component manage its own z-index instead. */
       button {
         pointer-events: auto !important;
         cursor: pointer !important;
-        position: relative;
-        z-index: 10 !important;
         user-select: none !important;
       }
 
@@ -1550,11 +1557,10 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         transition: all 0.15s ease !important;
       }
 
-      /* Prevent opacity from making buttons unclickable */
-      button {
-        opacity: 1 !important;
-        visibility: visible !important;
-      }
+      /* NOTE: We intentionally do NOT force opacity:1/visibility:visible on all buttons.
+         Forcing those globally can make intentionally-hidden buttons visible and interactive,
+         which causes them to overlap real buttons and block clicks/hover on the real ones.
+         Instead, only ensure pointer-events are correct (handled above). */
 
       button[style*="opacity: 0"],
       button[style*="visibility: hidden"],

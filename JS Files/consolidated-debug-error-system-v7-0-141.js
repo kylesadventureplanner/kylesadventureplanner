@@ -495,8 +495,8 @@ console.log('✅ Error Management System ready');
     // Hide old tag manager backdrop
     const oldTagBackdrop = document.getElementById('tagManagerBackdrop');
     if (oldTagBackdrop) {
-      oldTagBackdrop.style.display = 'none !important';
-      oldTagBackdrop.style.zIndex = '-9999 !important';
+      oldTagBackdrop.style.display = 'none';
+      oldTagBackdrop.style.setProperty('z-index', '-9999', 'important');
       logInit('🔧 Hidden old tag manager backdrop');
     }
 
@@ -508,7 +508,7 @@ console.log('✅ Error Management System ready');
         origOpen.call(this);
         const backdrop = document.getElementById('locationHistoryBackdrop');
         if (backdrop) {
-          backdrop.style.zIndex = '999998 !important';
+          backdrop.style.setProperty('z-index', '999998', 'important');
           logInit('🔧 Location History z-index fixed');
         }
       };
@@ -778,19 +778,21 @@ if (document.readyState === 'loading') {
   setTimeout(initializeErrorBar, 100);
 }
 
-// Also ensure error bar stays responsive
-setInterval(() => {
-  const errorBar = document.getElementById('errorNotificationBar');
-  if (errorBar) {
-    errorBar.style.pointerEvents = 'auto';
-    errorBar.style.zIndex = '9998';
+// Ensure error bar stays responsive — guarded so only one interval is ever created,
+// and only writes to DOM when values actually need to change (avoids triggering MutationObserver on every tick).
+if (!window.__errorBarResponsivenessInterval) {
+  window.__errorBarResponsivenessInterval = setInterval(() => {
+    const errorBar = document.getElementById('errorNotificationBar');
+    if (!errorBar) return;
+    if (errorBar.style.pointerEvents !== 'auto') errorBar.style.pointerEvents = 'auto';
+    if (errorBar.style.zIndex !== '9998') errorBar.style.zIndex = '9998';
     const header = errorBar.querySelector('.error-header');
     if (header) {
-      header.style.pointerEvents = 'auto';
-      header.style.cursor = 'pointer';
+      if (header.style.pointerEvents !== 'auto') header.style.pointerEvents = 'auto';
+      if (header.style.cursor !== 'pointer') header.style.cursor = 'pointer';
     }
-  }
-}, 1000);
+  }, 1000);
+}
 
 // Export for module use
 if (typeof module !== 'undefined' && module.exports) {

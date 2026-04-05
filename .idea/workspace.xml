@@ -5,30 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/BUTTON_DEBUGGING_EXAMPLES.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/BUTTON_DEBUGGING_QUICK_REFERENCE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/BUTTON_RELIABILITY_DOCUMENTATION_INDEX.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/BUTTON_RELIABILITY_QUICK_START.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/BUTTON_RELIABILITY_SETUP.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CSS/button-reliability.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/IMPLEMENTATION_STATUS.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/JS Files/button-reliability-system.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/RELIABILITY_MERGE_DECISION.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/BUTTON_DEBUGGING_EXAMPLES.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/BUTTON_DEBUGGING_QUICK_REFERENCE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/BUTTON_RELIABILITY_DOCUMENTATION_INDEX.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/BUTTON_RELIABILITY_QUICK_START.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/BUTTON_RELIABILITY_SETUP.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/DOCUMENTATION_ORGANIZATION.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/HOTFIX_REGISTRY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/IMPLEMENTATION_STATUS.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/IPHONE_VIEW_FIX.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/SYSTEM_CONSOLIDATION_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/_root_moved_cleanup/UI_CONSISTENCY_CHECKLIST.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CSS/components.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/components.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/button-reliability-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/button-reliability-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-comprehensive-fix-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-comprehensive-fix-system-v7-0-141.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-debug-error-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-debug-error-system-v7-0-141.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -109,7 +89,7 @@
       <workItem from="1775053911750" duration="6601000" />
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
-      <workItem from="1775308318086" duration="66357000" />
+      <workItem from="1775308318086" duration="68664000" />
     </task>
     <servers />
   </component>
