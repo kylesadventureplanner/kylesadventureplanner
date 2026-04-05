@@ -5,7 +5,7 @@ This checklist is tailored to the current workspace structure in `kylesadventure
 ## 1) Design system source of truth
 
 - [ ] Keep all reusable tokens in `CSS/design-tokens.css` (color, spacing, radius, typography, shadows).
-- [ ] Do not redeclare global tokens in page-level `<style>` blocks (example target: `HTML Files/edit-mode-new.html`).
+- [x] Do not redeclare global tokens in page-level `<style>` blocks (example target: `HTML Files/edit-mode-new.html`).
 - [ ] Prefer token references (`var(--...)`) over raw hex values in component/page CSS.
 
 ## 2) Stylesheet import contract (all HTML entry pages)
@@ -39,6 +39,7 @@ Current check:
 ## 5) Inline style debt cleanup
 
 - [ ] Remove inline `<style>` blocks where equivalent CSS can live in shared files.
+- [x] Remove inline `<style>` blocks where equivalent CSS can live in shared files.
 - [ ] Remove `style="..."` attributes for layout/visibility and replace with class-based styling.
 - [ ] Leave truly dynamic values inline only when they cannot be represented with classes.
 
@@ -53,7 +54,7 @@ Reference file: `HTML Files/trail-explorer-window.html`
 
 ## 7) Next rollout targets
 
-1. `HTML Files/edit-mode-new.html` (largest inline style and inline attribute footprint).
+1. `HTML Files/edit-mode-new.html` (inline `<style>` block completed; inline `style="..."` attributes remain).
 2. `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html`.
 3. `HTML Files/adventure-details-window.html` and `HTML Files/bike-details-window.html`.
 4. Tabs under `HTML Files/tabs/` after shell/component patterns are stable.
