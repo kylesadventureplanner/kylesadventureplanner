@@ -468,6 +468,19 @@
       transform: translateY(-3px);
     }
 
+    .quick-filter-btn .quick-filter-count {
+      color: var(--neutral-500);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      opacity: 0.82;
+    }
+
+    .quick-filter-btn.active .quick-filter-count {
+      color: rgba(255, 255, 255, 0.86);
+      opacity: 1;
+    }
+
     /* Google Automation Card */
     .automation-card {
       border-color: var(--blue-border);
@@ -6300,6 +6313,77 @@
 
      norm: (str) => String(str || '').toLowerCase().trim(),
 
+     cacheQuickFilterBaseLabels: function() {
+       document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
+         if (btn.dataset.baseLabel) return;
+         btn.dataset.baseLabel = String(btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim();
+       });
+     },
+
+     matchesQuickFilter: function(values, quickKey, favoritesSet) {
+       const key = this.norm(quickKey);
+       const name = String(values[0] || '').trim();
+       const placeId = String(values[1] || '').trim();
+       const tags = this.norm(values[3]);
+       const hours = this.norm(values[5]);
+
+       if (key === 'favorites') {
+         return (!!placeId && favoritesSet.has(placeId)) || (!!name && favoritesSet.has(name));
+       }
+       if (key === 'opentoday') return hours.length > 0;
+       if (key === 'closingsoon') return hours.includes('close');
+
+       const tagList = tags.split(',').map((t) => this.norm(t)).filter(Boolean);
+       return tagList.some((tag) => tag.includes(key));
+     },
+
+     matchesBaseFiltersExcludingQuick: function(values) {
+       const name = this.norm(values[0]);
+       const tags = this.norm(values[3]);
+       const difficulty = this.norm(values[7]);
+       const state = this.norm(values[9]);
+       const city = this.norm(values[10]);
+       const cost = this.norm(values[14]);
+
+       if (this.state.searchName && !name.includes(this.norm(this.state.searchName))) return false;
+       if (this.state.filterDifficulty && difficulty !== this.norm(this.state.filterDifficulty)) return false;
+       if (this.state.filterState && state !== this.norm(this.state.filterState)) return false;
+       if (this.state.filterCity && city !== this.norm(this.state.filterCity)) return false;
+       if (this.state.filterTags && !tags.includes(this.norm(this.state.filterTags))) return false;
+       if (this.state.filterCost && !cost.includes(this.norm(this.state.filterCost))) return false;
+
+       return true;
+     },
+
+     renderQuickFilterCounts: function() {
+       this.cacheQuickFilterBaseLabels();
+       const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+       const favorites = window.adventureFavorites ? new Set(window.adventureFavorites) : new Set();
+
+       document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
+         const key = String(btn.getAttribute('data-tag') || btn.getAttribute('data-filter') || '').trim();
+         const baseLabel = btn.dataset.baseLabel || String(btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim();
+         if (!key) {
+           btn.textContent = baseLabel;
+           return;
+         }
+
+         const count = rows.reduce((total, row) => {
+           const values = row?.values?.[0] || row;
+           if (!Array.isArray(values)) return total;
+           if (!this.matchesBaseFiltersExcludingQuick(values)) return total;
+           return total + (this.matchesQuickFilter(values, key, favorites) ? 1 : 0);
+         }, 0);
+
+         btn.textContent = '';
+         btn.append(document.createTextNode(baseLabel + ' '));
+         const countSpan = document.createElement('span');
+         countSpan.className = 'quick-filter-count';
+         countSpan.textContent = `(${count})`;
+         btn.append(countSpan);
+       });
+     },
+
      refreshStateFromControls: function() {
        const searchInput = document.getElementById('searchName');
        const difficultyInput = document.getElementById('filterDifficulty');
@@ -6378,6 +6462,8 @@
        if (typeof renderAdventureCards === 'function') {
          renderAdventureCards(filteredRows);
        }
+
+       this.renderQuickFilterCounts();
      },
 
      resetAllFilters: function() {
@@ -6404,6 +6490,7 @@
      init: function() {
        console.log('🎯 FilterManager.init() starting...');
        const self = this;
+       this.cacheQuickFilterBaseLabels();
 
        // Bind text input filters
        ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'].forEach(id => {
@@ -6460,6 +6547,7 @@
        });
 
        console.log('✅ FilterManager.init() complete');
+       this.renderQuickFilterCounts();
      }
    };
 
