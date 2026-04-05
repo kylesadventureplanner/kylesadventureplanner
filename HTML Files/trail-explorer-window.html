@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trail Explorer - Kyle's Adventure Finder</title>
+  <link rel="stylesheet" href="../CSS/design-tokens.css" />
+  <link rel="stylesheet" href="../CSS/components.css" />
+  <link rel="stylesheet" href="../CSS/utilities.css" />
+  <link rel="stylesheet" href="../CSS/browse-page.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f9fafb;
+      color: #111827;
+    }
+
+    #trailExplorerHeader {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--gray-border);
+      background: var(--trail-explorer-preview-card-bg);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .trail-explorer-header-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--trail-explorer-preview-title-text);
+      margin: 0;
+    }
+
+    .trail-explorer-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--trail-explorer-restored-label-border);
+      background: var(--trail-explorer-restored-name-bg);
+      color: var(--trail-explorer-restored-label-text);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    #trailExplorerBootstrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: var(--gray-text);
+      font-size: 14px;
+    }
+
+    #trailExplorerBootstrap .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--gray-border);
+      border-top-color: var(--trail-explorer-preview-chip-text);
+      border-radius: 999px;
+      margin-right: 10px;
+      animation: trailExplorerSpin 0.8s linear infinite;
+    }
+
+    @keyframes trailExplorerSpin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <header id="trailExplorerHeader">
+    <h1 class="trail-explorer-header-title">Trail Explorer</h1>
+    <a id="trailExplorerBackLink" class="trail-explorer-back-link" href="../index.html">← Back to Planner</a>
+  </header>
+
+  <div id="trailExplorerBootstrap">
+    <div class="spinner" aria-hidden="true"></div>
+    Loading Trail Explorer...
+  </div>
+  <main id="bikeTrailsTab" style="display:none;"></main>
+
+  <script>
+    (function () {
+      var BASE_TITLE = 'Trail Explorer - Kyle\'s Adventure Finder';
+
+      function setStatus(message) {
+        var el = document.getElementById('trailExplorerBootstrap');
+        if (el) el.textContent = message;
+      }
+
+      function setPlannerBackLink() {
+        var link = document.getElementById('trailExplorerBackLink');
+        if (!link) return;
+        var href = '../index.html';
+        if (typeof window.resolvePlannerPageUrl === 'function') {
+          href = window.resolvePlannerPageUrl('index.html');
+        } else {
+          href = new URL('../index.html', window.location.href).toString();
+        }
+        link.href = href;
+      }
+
+      function updateWindowTitleFromPreset() {
+        var select = document.getElementById('bikeExplorerPresetSelect');
+        var activePreset = '';
+        if (select && select.value) {
+          activePreset = String(select.value || '').trim();
+        }
+        if (!activePreset) {
+          activePreset = String(window.localStorage.getItem('bikeTrailExplorerLastPresetV1') || '').trim();
+        }
+
+        if (activePreset) {
+          document.title = 'Trail Explorer - ' + activePreset;
+        } else {
+          document.title = BASE_TITLE;
+        }
+      }
+
+      function wireTitleSync() {
+        updateWindowTitleFromPreset();
+        var select = document.getElementById('bikeExplorerPresetSelect');
+        if (select && select.dataset.trailExplorerTitleBound !== '1') {
+          select.addEventListener('change', updateWindowTitleFromPreset);
+          select.dataset.trailExplorerTitleBound = '1';
+        }
+        window.addEventListener('storage', function (event) {
+          if (event && event.key === 'bikeTrailExplorerLastPresetV1') {
+            updateWindowTitleFromPreset();
+          }
+        });
+      }
+
+      function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+          var script = document.createElement('script');
+          script.src = src;
+          script.onload = resolve;
+          script.onerror = reject;
+          document.body.appendChild(script);
+        });
+      }
+
+      async function bootTrailExplorerWindow() {
+        try {
+          var tabHtmlUrl = 'tabs/bike-trails-tab.html';
+          var response = await fetch(tabHtmlUrl, { cache: 'no-store' });
+          if (!response.ok) {
+            throw new Error('Failed to load bike tab markup: ' + response.status + ' ' + response.statusText);
+          }
+
+          var html = await response.text();
+          var parser = new DOMParser();
+          var doc = parser.parseFromString(html, 'text/html');
+          var explorerModal = doc.getElementById('bikeTrailExplorerModal');
+          if (!explorerModal) throw new Error('Trail Explorer markup not found in bike tab HTML');
+
+          var root = document.getElementById('bikeTrailsTab');
+          if (!root) throw new Error('Trail Explorer root mount not found');
+
+          root.innerHTML = explorerModal.outerHTML;
+          root.style.display = 'block';
+
+          var header = document.getElementById('trailExplorerHeader');
+          if (header) header.style.display = 'flex';
+
+          var loading = document.getElementById('trailExplorerBootstrap');
+          if (loading) loading.style.display = 'none';
+
+          // Provide the same resolver signature used by opener logic.
+          window.resolvePlannerPageUrl = window.resolvePlannerPageUrl || function (relativePath) {
+            return new URL(relativePath, window.location.href).toString();
+          };
+
+          setPlannerBackLink();
+
+          await loadScript('../JS Files/bike-trails-tab-system.js');
+          await loadScript('../JS Files/button-handlers.js');
+          wireTitleSync();
+        } catch (error) {
+          console.error('Trail Explorer window bootstrap failed:', error);
+          setStatus('Trail Explorer failed to load. ' + (error && error.message ? error.message : 'Unknown error'));
+        }
+      }
+
+      bootTrailExplorerWindow();
+    })();
+  </script>
+</body>
+</html>
+

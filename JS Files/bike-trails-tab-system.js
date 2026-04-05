@@ -37,6 +37,7 @@
   const BIKE_EXPLORER_LAST_PRESET_KEY = 'bikeTrailExplorerLastPresetV1';
   const BIKE_EXPLORER_DEFAULT_PRESET_KEY = 'bikeTrailExplorerDefaultPresetV1';
   const BIKE_EXPLORER_AUTO_APPLY_KEY = 'bikeTrailExplorerAutoApplyV1';
+  const BIKE_EXPLORER_TAB_DATA_KEY_LATEST = 'bikeTrailExplorerTabDataLatestV1';
   const BIKE_EXPLORER_MAX_PRESETS = 8;
 
   const BIKE_COLUMNS = [
@@ -2171,10 +2172,16 @@
   }
 
   function initializeBikeTrailsTab() {
+    const params = new URLSearchParams(window.location.search || '');
+    const standaloneExplorer = params.get('trailExplorerWindow') === '1' || params.get('trailExplorerWindow') === 'true';
+    if (standaloneExplorer) {
+      hydrateBikeTrailDataFromExplorerTabCache(params.get('dataKey'));
+    }
+
     const controlsReady = bindBikeControls();
 
     // Controls may not exist yet while tab HTML is still loading.
-    if (!controlsReady) {
+    if (!controlsReady && !standaloneExplorer) {
       state.controlsBound = false;
       state.controlBindAttempts += 1;
       if (state.controlBindAttempts <= 10) {
@@ -2184,16 +2191,17 @@
     }
 
     state.controlBindAttempts = 0;
-    renderBikeManagedTagQuickChips();
-    renderBikeBreadcrumbChips();
-    updateBikeFiltersBadge();
-    renderBikePreferenceFallbackBanner();
+    if (controlsReady) {
+      renderBikeManagedTagQuickChips();
+      renderBikeBreadcrumbChips();
+      updateBikeFiltersBadge();
+      renderBikePreferenceFallbackBanner();
+    }
 
-    const params = new URLSearchParams(window.location.search || '');
-    const wantsExplorer = params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
+    const wantsExplorer = standaloneExplorer || params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
     if (wantsExplorer && !window.__bikeExplorerAutoOpenedFromUrl) {
       window.__bikeExplorerAutoOpenedFromUrl = true;
-      setTimeout(() => openBikeTrailExplorer(), 0);
+      setTimeout(() => openBikeTrailExplorer({ standalone: standaloneExplorer }), 0);
     }
 
     if (window.accessToken && (!window.bikeTrailsData || !window.bikeTrailsData.length)) {
@@ -2201,10 +2209,42 @@
       return;
     }
 
-    if (Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length) {
+    if (!standaloneExplorer && Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length) {
       applyBikeFilters();
     }
 
+  }
+
+  function cacheBikeTrailDataForExplorerTab() {
+    if (!Array.isArray(window.bikeTrailsData) || window.bikeTrailsData.length === 0) return null;
+    const cacheKey = `bike_trail_explorer_data_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      bikeTrailsData: window.bikeTrailsData
+    };
+    try {
+      window.sessionStorage.setItem(cacheKey, JSON.stringify(payload));
+      window.sessionStorage.setItem(BIKE_EXPLORER_TAB_DATA_KEY_LATEST, cacheKey);
+      return cacheKey;
+    } catch (error) {
+      console.warn('[bike-trails] Could not cache bike data for explorer tab:', error);
+      return null;
+    }
+  }
+
+  function hydrateBikeTrailDataFromExplorerTabCache(preferredKey) {
+    if (Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length > 0) return;
+    const key = String(preferredKey || '').trim() || String(window.sessionStorage.getItem(BIKE_EXPLORER_TAB_DATA_KEY_LATEST) || '').trim();
+    if (!key) return;
+
+    try {
+      const parsed = JSON.parse(window.sessionStorage.getItem(key) || '{}');
+      if (Array.isArray(parsed.bikeTrailsData) && parsed.bikeTrailsData.length > 0) {
+        window.bikeTrailsData = parsed.bikeTrailsData;
+      }
+    } catch (error) {
+      console.warn('[bike-trails] Could not restore bike data for explorer tab:', error);
+    }
   }
 
    // ─── Trail Explorer System ───────────────────────────────────────────────────
@@ -2846,7 +2886,43 @@
     window.showToast?.(`🗑️ Deleted preset: ${selectedName}`, 'info', 1800);
   }
 
-  function openBikeTrailExplorer() {
+  function enterTrailExplorerStandaloneMode(modal) {
+    if (!modal || modal.dataset.explorerStandaloneMode === '1') return;
+    modal.dataset.explorerStandaloneMode = '1';
+
+    const parent = modal.parentElement;
+    if (parent) {
+      Array.from(parent.children).forEach((child) => {
+        if (child === modal || child.tagName === 'SCRIPT') return;
+        child.style.display = 'none';
+      });
+    }
+
+    modal.style.position = 'static';
+    modal.style.inset = 'auto';
+    modal.style.background = 'transparent';
+    modal.style.padding = '16px';
+    modal.style.zIndex = 'auto';
+    modal.style.minHeight = '100vh';
+
+    const panel = modal.firstElementChild;
+    if (panel && panel.style) {
+      panel.style.width = 'min(1200px, 96vw)';
+      panel.style.height = 'auto';
+      panel.style.maxHeight = 'none';
+      panel.style.margin = '0 auto';
+      panel.style.border = '1px solid #e5e7eb';
+    }
+
+    const closeBtn = document.getElementById('bikeExplorerCloseBtn');
+    if (closeBtn) closeBtn.textContent = 'Done';
+
+    const applyBtn = document.getElementById('bikeExplorerApplyBtn');
+    if (applyBtn) applyBtn.textContent = 'Apply Filters';
+  }
+
+  function openBikeTrailExplorer(options = {}) {
+    const { standalone = false } = options;
     const modal = document.getElementById('bikeTrailExplorerModal');
     if (!modal) {
       console.warn('[bike-trails] bikeTrailExplorerModal not found in DOM');
@@ -2886,6 +2962,10 @@
     modal.style.pointerEvents = 'auto';
     modal.style.opacity = '1';
     modal.style.zIndex = '2000';
+
+    if (standalone) {
+      enterTrailExplorerStandaloneMode(modal);
+    }
   }
 
   window.openTrailExplorerWindow = function() {
@@ -2898,24 +2978,31 @@
     window.__trailExplorerLastOpenAttemptTs = now;
 
     const params = new URLSearchParams(window.location.search || '');
-    const isExplorerContext = params.get('openTrailExplorer') === '1' || params.get('openTrailExplorer') === 'true';
+    const isExplorerContext =
+      params.get('trailExplorerWindow') === '1' ||
+      params.get('trailExplorerWindow') === 'true' ||
+      params.get('openTrailExplorer') === '1' ||
+      params.get('openTrailExplorer') === 'true';
     if (isExplorerContext) {
       const modal = document.getElementById('bikeTrailExplorerModal');
       if (modal && modal.classList.contains('visible')) {
         return true;
       }
-      openBikeTrailExplorer();
+      const standalone = params.get('trailExplorerWindow') === '1' || params.get('trailExplorerWindow') === 'true';
+      openBikeTrailExplorer({ standalone });
       return true;
     }
 
     try {
       const baseUrl = typeof window.resolvePlannerPageUrl === 'function'
-        ? window.resolvePlannerPageUrl('index.html')
-        : new URL('index.html', window.location.href).toString();
+        ? window.resolvePlannerPageUrl('HTML Files/trail-explorer-window.html')
+        : new URL('HTML%20Files/trail-explorer-window.html', window.location.href).toString();
 
       const url = new URL(baseUrl, window.location.href);
-      url.searchParams.set('tab', 'bike-trails');
+      url.searchParams.set('trailExplorerWindow', '1');
       url.searchParams.set('openTrailExplorer', '1');
+      const dataKey = cacheBikeTrailDataForExplorerTab();
+      if (dataKey) url.searchParams.set('dataKey', dataKey);
       url.searchParams.set('ts', String(Date.now()));
 
       const explorerTab = window.open(url.toString(), '_blank');
@@ -2934,6 +3021,17 @@
   };
 
   function closeBikeTrailExplorer() {
+    const params = new URLSearchParams(window.location.search || '');
+    const standalone = params.get('trailExplorerWindow') === '1' || params.get('trailExplorerWindow') === 'true';
+    if (standalone) {
+      try {
+        window.close();
+      } catch (error) {
+        console.warn('[bike-trails] Could not close standalone explorer tab:', error);
+      }
+      return;
+    }
+
     const modal = document.getElementById('bikeTrailExplorerModal');
     if (modal) {
       modal.classList.remove('visible');
@@ -3113,13 +3211,22 @@
     if (applyBtn) {
       applyBtn.addEventListener('click', () => {
         applyExplorerFilters();
-        closeBikeTrailExplorer();
+        const params = new URLSearchParams(window.location.search || '');
+        const standalone = params.get('trailExplorerWindow') === '1' || params.get('trailExplorerWindow') === 'true';
+        if (!standalone) {
+          closeBikeTrailExplorer();
+        } else {
+          window.showToast?.('✅ Filters applied.', 'success', 1600);
+        }
       });
     }
 
     // Close on backdrop click (clicking outside the white panel)
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeBikeTrailExplorer();
+      if (e.target !== modal) return;
+      const params = new URLSearchParams(window.location.search || '');
+      const standalone = params.get('trailExplorerWindow') === '1' || params.get('trailExplorerWindow') === 'true';
+      if (!standalone) closeBikeTrailExplorer();
     });
   }
 
