@@ -28,11 +28,11 @@
   </div>
 
   <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Progress sections">
-    <button id="visitedProgressTab-overview" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-overview" aria-selected="true" data-progress-subtab="overview" aria-label="Open Overview section" title="Open Overview section" data-tooltip="Open Overview section">Overview</button>
-    <button id="visitedProgressTab-badges" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-badges" aria-selected="false" data-progress-subtab="badges" aria-label="Open Badges and Challenges section" title="Open Badges and Challenges section" data-tooltip="Open Badges and Challenges section">Badges</button>
-    <button id="visitedProgressTab-heatmap" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-heatmap" aria-selected="false" data-progress-subtab="heatmap" aria-label="Open Heat Map section" title="Open Heat Map section" data-tooltip="Open Heat Map section">Heat Map</button>
-    <button id="visitedProgressTab-quests" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-quests" aria-selected="false" data-progress-subtab="quests" aria-label="Open Weekly, Monthly, Quarterly, and Yearly Quests section" title="Open Weekly, Monthly, Quarterly, and Yearly Quests section" data-tooltip="Open Weekly, Monthly, Quarterly, and Yearly Quests section">Quests</button>
-    <button id="visitedProgressTab-tracker" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-tracker" aria-selected="false" data-progress-subtab="tracker" aria-label="Open Visit Tracker section" title="Open Visit Tracker section" data-tooltip="Open Visit Tracker section">Tracker</button>
+    <button id="visitedProgressTab-overview" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-overview" aria-selected="true" data-progress-subtab="overview" aria-label="Open Overview section" title="Open Overview section">Overview</button>
+    <button id="visitedProgressTab-badges" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-badges" aria-selected="false" data-progress-subtab="badges" aria-label="Open Badges and Challenges section" title="Open Badges and Challenges section">Badges</button>
+    <button id="visitedProgressTab-heatmap" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-heatmap" aria-selected="false" data-progress-subtab="heatmap" aria-label="Open Heat Map section" title="Open Heat Map section">Heat Map</button>
+    <button id="visitedProgressTab-quests" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-quests" aria-selected="false" data-progress-subtab="quests" aria-label="Open Weekly, Monthly, Quarterly, and Yearly Quests section" title="Open Weekly, Monthly, Quarterly, and Yearly Quests section">Quests</button>
+    <button id="visitedProgressTab-tracker" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-tracker" aria-selected="false" data-progress-subtab="tracker" aria-label="Open Visit Tracker section" title="Open Visit Tracker section">Tracker</button>
   </div>
   <div id="visitedSubTabBlockerWarning" class="visited-subtab-blocker-warning" role="status" aria-live="polite" hidden></div>
 
@@ -161,7 +161,7 @@
   }
 
   #visitedLocationsRoot .visited-progress-header {
-    margin-bottom: 10px;
+    margin-bottom: 14px;
   }
 
   #visitedLocationsRoot .visited-progress-header h1 {
@@ -171,8 +171,8 @@
   #visitedLocationsRoot .visited-progress-subtabs {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 10px;
+    margin: 8px 0 18px;
     position: relative;
     z-index: 140;
     isolation: isolate;
@@ -180,7 +180,7 @@
   }
 
   #visitedLocationsRoot .visited-subtab-blocker-warning {
-    margin: -4px 0 12px;
+    margin: 0 0 14px;
     border: 1px solid #fde68a;
     background: #fffbeb;
     color: #92400e;
@@ -195,7 +195,7 @@
   }
 
   #visitedLocationsRoot .visited-mobile-tooltip-chip {
-    margin: -2px 0 12px;
+    margin: 6px 0 14px;
     display: inline-flex;
     align-items: center;
     border: 1px solid #bfdbfe;
@@ -205,6 +205,7 @@
     padding: 6px 10px;
     font-size: 12px;
     font-weight: 700;
+    pointer-events: none;
   }
 
   #visitedLocationsRoot .visited-sr-only {
@@ -404,7 +405,7 @@
 
   @media (min-width: 1024px) {
     #visitedLocationsRoot .visited-progress-subtabs {
-      gap: 10px;
+      gap: 12px;
     }
 
     #visitedLocationsRoot .visited-progress-subtab {

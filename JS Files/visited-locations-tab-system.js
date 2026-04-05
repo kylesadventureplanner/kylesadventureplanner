@@ -14,7 +14,10 @@
     { key: 'waterfall', label: 'Waterfalls', icon: '💧', keywords: ['waterfall', 'falls', 'cascade'] },
     { key: 'park', label: 'Parks', icon: '🌳', keywords: ['park', 'nature preserve', 'state park', 'national park'] },
     { key: 'scenic', label: 'Scenic Drives', icon: '🛣️', keywords: ['scenic drive', 'parkway', 'overlook', 'scenic'] },
-    { key: 'coffee', label: 'Coffee Shops', icon: '☕', keywords: ['coffee', 'cafe', 'espresso', 'latte'] }
+    { key: 'coffee', label: 'Coffee Shops', icon: '☕', keywords: ['coffee', 'cafe', 'espresso', 'latte'] },
+    { key: 'camping', label: 'Camping Spots', icon: '⛺', keywords: ['camp', 'campground', 'campsite', 'rv park'] },
+    { key: 'lakes', label: 'Lakes and Rivers', icon: '🏞️', keywords: ['lake', 'river', 'reservoir', 'shore'] },
+    { key: 'wildlife', label: 'Wildlife', icon: '🦉', keywords: ['wildlife', 'bird', 'sanctuary', 'zoo', 'rehabilitation'] }
   ];
 
   const CHALLENGES = [
@@ -24,7 +27,10 @@
     { id: 'park-passport', icon: '🌳', title: 'Park Passport', category: 'park', goal: 6, points: 160, tip: 'Check off 6 parks.' },
     { id: 'road-tripper', icon: '🛣️', title: 'Road Tripper', category: 'scenic', goal: 4, points: 120, tip: 'Complete 4 scenic drives.' },
     { id: 'coffee-circuit', icon: '☕', title: 'Coffee Circuit', category: 'coffee', goal: 6, points: 160, tip: 'Try 6 coffee spots.' },
-    { id: 'well-rounded', icon: '🏆', title: 'Well Rounded Explorer', category: null, goal: 6, points: 220, tip: 'Visit at least one in every category.' },
+    { id: 'camp-setup', icon: '⛺', title: 'Camp Setup', category: 'camping', goal: 4, points: 150, tip: 'Log 4 camping destinations.' },
+    { id: 'lake-loop', icon: '🏞️', title: 'Lake Loop', category: 'lakes', goal: 5, points: 150, tip: 'Visit 5 lakeside or riverside spots.' },
+    { id: 'wildlife-spotter', icon: '🦉', title: 'Wildlife Spotter', category: 'wildlife', goal: 4, points: 150, tip: 'Visit 4 wildlife-focused locations.' },
+    { id: 'well-rounded', icon: '🏆', title: 'Well Rounded Explorer', category: null, goal: 9, points: 260, tip: 'Visit at least one in every category.' },
     { id: 'triple-streak', icon: '🔥', title: 'Streak Starter', category: null, goal: 3, points: 180, tip: 'Visit places on 3 consecutive days.' }
   ];
 
@@ -43,7 +49,11 @@
     { id: 'state-hopper', icon: '🗺️', title: 'State Hopper', rarity: 'epic', points: 140, metric: 'states', goal: 3, description: 'Visit locations in 3 different states.' },
     { id: 'weekend-warrior', icon: '🌞', title: 'Weekend Warrior', rarity: 'rare', points: 120, metric: 'weekendVisits', goal: 5, description: 'Log 5 weekend adventures.' },
     { id: 'coffee-connoisseur', icon: '☕', title: 'Coffee Connoisseur', rarity: 'epic', points: 160, metric: 'category', category: 'coffee', goal: 8, description: 'Visit 8 coffee spots.' },
-    { id: 'all-terrain', icon: '🏅', title: 'All Terrain Master', rarity: 'legendary', points: 250, metric: 'categoryCoverage', goal: 6, description: 'Unlock every category at least once.' },
+    { id: 'campfire-keeper', icon: '🔥', title: 'Campfire Keeper', rarity: 'rare', points: 110, metric: 'category', category: 'camping', goal: 4, description: 'Visit 4 camping destinations.' },
+    { id: 'river-runner', icon: '🌊', title: 'River Runner', rarity: 'epic', points: 150, metric: 'category', category: 'lakes', goal: 5, description: 'Visit 5 lakes and river spots.' },
+    { id: 'wildlife-guardian', icon: '🦉', title: 'Wildlife Guardian', rarity: 'epic', points: 150, metric: 'category', category: 'wildlife', goal: 4, description: 'Visit 4 wildlife-focused places.' },
+    { id: 'trailblazer-25', icon: '🚩', title: 'Trailblazer 25', rarity: 'legendary', points: 260, metric: 'visited', goal: 25, description: 'Log 25 total visited locations.' },
+    { id: 'all-terrain', icon: '🏅', title: 'All Terrain Master', rarity: 'legendary', points: 280, metric: 'categoryCoverage', goal: 9, description: 'Unlock every category at least once.' },
     { id: 'seven-day-flame', icon: '🔥', title: 'Seven Day Flame', rarity: 'legendary', points: 220, metric: 'streak', goal: 7, description: 'Reach a 7-day visit streak.' }
   ];
 
@@ -184,9 +194,45 @@
     return null;
   }
 
+  function isVisitedProgressUiVisible(root) {
+    if (!root || !root.isConnected) return false;
+    const pane = root.closest('.app-tab-pane');
+    if (pane && !pane.classList.contains('active')) return false;
+    const subtabs = root.querySelector('.visited-progress-subtabs');
+    if (!subtabs) return false;
+    const cs = window.getComputedStyle(subtabs);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+    const rect = subtabs.getBoundingClientRect();
+    return rect.width > 8 && rect.height > 8;
+  }
+
+  function isPointerBlockingElement(el) {
+    if (!el) return false;
+    const cs = window.getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+    return cs.pointerEvents !== 'none';
+  }
+
+  function isExpectedGlobalBlocker(el) {
+    if (!el || !el.closest) return false;
+    return Boolean(el.closest('#loadingOverlay, #rowDetailModal, #rowDetailModalBackdrop'));
+  }
+
   function checkVisitedSubTabInterception(root) {
+    if (!isVisitedProgressUiVisible(root)) {
+      state.lastSubTabBlockerLabel = '';
+      setVisitedSubTabBlockerWarning('');
+      return;
+    }
+
     const blocker = findVisitedSubTabBlockingElement(root);
     if (!blocker) {
+      state.lastSubTabBlockerLabel = '';
+      setVisitedSubTabBlockerWarning('');
+      return;
+    }
+
+    if (!isPointerBlockingElement(blocker) || isExpectedGlobalBlocker(blocker)) {
       state.lastSubTabBlockerLabel = '';
       setVisitedSubTabBlockerWarning('');
       return;
@@ -499,6 +545,21 @@
 
   function getProgressSubTabButtons(root) {
     return root ? Array.from(root.querySelectorAll('[data-progress-subtab]')) : [];
+  }
+
+  function bindProgressSubTabButtons(root) {
+    if (!root) return;
+    getProgressSubTabButtons(root).forEach((btn) => {
+      if (btn.dataset.progressSubTabBound === '1') return;
+      btn.dataset.progressSubTabBound = '1';
+      btn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const tabKey = btn.getAttribute('data-progress-subtab') || 'overview';
+        if (tabKey !== state.activeProgressSubTab) setActiveProgressSubTab(root, tabKey);
+        scheduleVisitedSubTabInterceptionCheck(root, 0);
+      });
+    });
   }
 
   function setButtonBusy(button, isBusy, busyLabel) {
@@ -2051,6 +2112,7 @@
 
     root.dataset.bound = '1';
     syncProgressSubTabs(root);
+    bindProgressSubTabButtons(root);
     announceProgressSubTab(root, state.activeProgressSubTab);
     state.latestVisitMap = getVisitMap();
     renderSyncMeta(state.latestVisitMap);

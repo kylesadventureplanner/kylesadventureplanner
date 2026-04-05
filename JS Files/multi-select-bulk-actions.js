@@ -63,7 +63,6 @@
       '}',
       '.adventure-bulk-select-label:hover { border-color: #93c5fd; background: #eff6ff; }',
       '.adventure-bulk-select-label input.adventure-bulk-select { width: 16px; height: 16px; cursor: pointer; margin: 0; }',
-      '.adventure-bulk-select-hint { color: #334155; font-weight: 600; font-size: 11px; }',
       '.adventure-bulk-selected-badge {',
       '  margin-left: auto;',
       '  display: inline-flex;',
@@ -143,6 +142,18 @@
       const idx = Number(item && item.sourceIndex);
       if (Number.isInteger(idx) && idx >= 0) out.add(idx);
     });
+
+    // Fallback for moments when filtered cache is not yet hydrated.
+    if (out.size === 0) {
+      const grid = document.getElementById('adventureCardsGrid');
+      if (grid) {
+        grid.querySelectorAll('.adventure-card').forEach((card) => {
+          const idx = getCardSourceIndex(card);
+          if (Number.isInteger(idx) && idx >= 0) out.add(idx);
+        });
+      }
+    }
+
     return out;
   }
 
@@ -179,6 +190,7 @@
 
   function pruneAdventureSelectionToVisible() {
     const visible = getAdventureVisibleSourceIndexSet();
+    if (visible.size === 0) return;
     Array.from(adventureState.selectedSourceIndexes).forEach((idx) => {
       if (!visible.has(idx)) adventureState.selectedSourceIndexes.delete(idx);
     });
@@ -319,7 +331,7 @@
       const wrap = document.createElement('div');
       wrap.className = 'adventure-bulk-select-wrap';
       wrap.setAttribute('data-no-card-open', '1');
-      wrap.innerHTML = `<label class="adventure-bulk-select-label" data-no-card-open="1"><input type="checkbox" class="adventure-bulk-select" data-no-card-open="1" data-adventure-source-index="${sourceIndex}"><span>Select for bulk actions</span></label><span class="adventure-bulk-select-hint" data-no-card-open="1">(separate from card details click)</span><span class="adventure-bulk-selected-badge" data-no-card-open="1" aria-hidden="true" hidden>Selected</span>`;
+      wrap.innerHTML = `<label class="adventure-bulk-select-label" data-no-card-open="1"><input type="checkbox" class="adventure-bulk-select" data-no-card-open="1" data-adventure-source-index="${sourceIndex}"><span>Select for bulk actions</span></label><span class="adventure-bulk-selected-badge" data-no-card-open="1" aria-hidden="true" hidden>Selected</span>`;
       card.insertBefore(wrap, card.firstChild);
     });
 
@@ -333,16 +345,19 @@
     // Capture phase to keep card-open delegate from firing when checkbox is used.
     grid.addEventListener('pointerdown', (event) => {
       if (!isBulkSelectionTarget(event.target)) return;
+      event.stopImmediatePropagation();
       event.stopPropagation();
     }, true);
 
     grid.addEventListener('mousedown', (event) => {
       if (!isBulkSelectionTarget(event.target)) return;
+      event.stopImmediatePropagation();
       event.stopPropagation();
     }, true);
 
     grid.addEventListener('click', (event) => {
       if (!isBulkSelectionTarget(event.target)) return;
+      event.stopImmediatePropagation();
       event.stopPropagation();
     }, true);
 
