@@ -191,6 +191,12 @@ class TabContentLoader {
     // Set up tab switching event listeners
     this.setupTabSwitching();
 
+    // Ensure the initially active shell tab is loaded immediately.
+    const initialActiveTab = this.getInitialActiveTabId();
+    if (initialActiveTab) {
+      this.loadTab(initialActiveTab, true);
+    }
+
     // Preload high-priority tabs
     this.preloadTabs();
 
@@ -199,6 +205,14 @@ class TabContentLoader {
 
     this.isInitialized = true;
     console.log('✅ Tab Content Loader Ready (Lazy Loading Enabled)');
+  }
+
+  getInitialActiveTabId() {
+    const activeButton = document.querySelector('.app-tab-btn.active');
+    const fallbackButton = activeButton || document.querySelector('.app-tab-btn');
+    const tabId = fallbackButton ? fallbackButton.getAttribute('data-tab') : '';
+    if (!tabId || !this.tabs[tabId]) return null;
+    return tabId;
   }
 
   openRequestedTabFromUrl() {

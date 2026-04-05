@@ -2,7 +2,7 @@
 <!-- Gamified tracker + smart recommendations -->
 
 <div id="visitedLocationsRoot">
-  <header>
+  <div class="visited-progress-header">
     <h1>Visited Adventures</h1>
     <div class="planner-top-actions">
       <button id="visitedRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh tracker data" data-tooltip="Refresh tracker data">
@@ -24,99 +24,117 @@
         <option value="cloudy">☁️ Cloudy</option>
       </select>
     </div>
-  </header>
+  </div>
 
-  <div class="card" style="margin-top: 10px;">
-    <div class="card-header">
-      <div>
-        <div class="card-title">🎮 Your Adventure Quest</div>
-        <div class="card-subtitle" id="visitedDataStatus">Loading adventures...</div>
+  <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Progress sections">
+    <button type="button" class="visited-progress-subtab active" role="tab" aria-selected="true" data-progress-subtab="overview">Overview</button>
+    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="badges">Badges and Challenges</button>
+    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="heatmap">Heat Map</button>
+    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="quests">Weekly, Monthly, Quarterly, Yearly Quests</button>
+    <button type="button" class="visited-progress-subtab" role="tab" aria-selected="false" data-progress-subtab="tracker">Visit Tracker</button>
+  </div>
+
+  <div class="visited-progress-pane is-active" data-progress-pane="overview">
+    <div class="card" style="margin-top: 10px;">
+      <div class="card-header">
+        <div>
+          <div class="card-title">🎮 Your Adventure Quest</div>
+          <div class="card-subtitle" id="visitedDataStatus">Loading adventures...</div>
+        </div>
+      </div>
+      <div id="visitedSummaryStats" class="visited-summary-grid"></div>
+      <div class="visited-level-track">
+        <div id="visitedLevelBarFill" class="visited-level-fill"></div>
       </div>
     </div>
-    <div id="visitedSummaryStats" class="visited-summary-grid"></div>
-    <div class="visited-level-track">
-      <div id="visitedLevelBarFill" class="visited-level-fill"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📊 Category Progress</div>
+        <div class="card-subtitle">Track the categories you asked for and level up each one.</div>
+      </div>
+      <div id="visitedCategoryGrid" class="visited-category-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">🧠 Smart Adventure Suggestions</div>
+          <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
+        </div>
+      </div>
+      <div id="visitedSuggestionList" class="adventure-cards-grid" style="padding: 8px 0;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🕓 Recent Check-Ins</div>
+        <div class="card-subtitle">Your newest visits at a glance.</div>
+      </div>
+      <div id="visitedRecentList" class="visited-recent-list"></div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">📊 Category Progress</div>
-      <div class="card-subtitle">Track the categories you asked for and level up each one.</div>
+  <div class="visited-progress-pane" data-progress-pane="badges" hidden>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🏁 Challenges</div>
+        <div class="card-subtitle">Complete challenge cards to stack XP and unlock bragging rights.</div>
+      </div>
+      <div id="visitedChallengeGrid" class="visited-challenge-grid"></div>
     </div>
-    <div id="visitedCategoryGrid" class="visited-category-grid"></div>
-  </div>
 
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">🏁 Challenges</div>
-      <div class="card-subtitle">Complete challenge cards to stack XP and unlock bragging rights.</div>
-    </div>
-    <div id="visitedChallengeGrid" class="visited-challenge-grid"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">🏅 Badge Gallery</div>
-      <div class="card-subtitle">Unlock achievements by rarity: Common, Rare, Epic, and Legendary.</div>
-    </div>
-    <div id="visitedBadgeGallery" class="visited-badge-grid"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">📆 Rotating Quests</div>
-      <div class="card-subtitle">Fresh objective sets every week and month.</div>
-    </div>
-    <div class="visited-quest-panels">
-      <div id="visitedWeeklyQuestPanel" class="visited-quest-panel"></div>
-      <div id="visitedMonthlyQuestPanel" class="visited-quest-panel"></div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🏅 Badge Gallery</div>
+        <div class="card-subtitle">Unlock achievements by rarity: Common, Rare, Epic, and Legendary.</div>
+      </div>
+      <div id="visitedBadgeGallery" class="visited-badge-grid"></div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">🗺️ Visited Heatmap</div>
-      <div class="card-subtitle">Hot spots by city/state based on your logged visits.</div>
+  <div class="visited-progress-pane" data-progress-pane="heatmap" hidden>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🗺️ Visited Heatmap</div>
+        <div class="card-subtitle">Hot spots by city/state based on your logged visits.</div>
+      </div>
+      <div class="visited-heatmap-wrap">
+        <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
+        <div id="visitedHeatmapOverlay" class="visited-heat-overlay" aria-hidden="true"></div>
+        <div id="visitedHeatmapTooltip" class="visited-heat-tooltip" role="tooltip"></div>
+      </div>
+      <div id="visitedHeatmapHotspots" class="visited-hotspots-list"></div>
     </div>
-    <div class="visited-heatmap-wrap">
-      <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
-      <div id="visitedHeatmapOverlay" class="visited-heat-overlay" aria-hidden="true"></div>
-      <div id="visitedHeatmapTooltip" class="visited-heat-tooltip" role="tooltip"></div>
-    </div>
-    <div id="visitedHeatmapHotspots" class="visited-hotspots-list"></div>
   </div>
 
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <div class="card-title">🧠 Smart Adventure Suggestions</div>
-        <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
+  <div class="visited-progress-pane" data-progress-pane="quests" hidden>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📆 Rotating Quests</div>
+        <div class="card-subtitle">Fresh objective sets every week and month.</div>
+      </div>
+      <div class="visited-quest-panels">
+        <div id="visitedWeeklyQuestPanel" class="visited-quest-panel"></div>
+        <div id="visitedMonthlyQuestPanel" class="visited-quest-panel"></div>
       </div>
     </div>
-    <div id="visitedSuggestionList" class="adventure-cards-grid" style="padding: 8px 0;"></div>
   </div>
 
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">🕓 Recent Check-Ins</div>
-      <div class="card-subtitle">Your newest visits at a glance.</div>
-    </div>
-    <div id="visitedRecentList" class="visited-recent-list"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <div class="card-title">🗂️ Visit Tracker</div>
-        <div class="card-subtitle">Search your adventures and quickly mark places as visited.</div>
+  <div class="visited-progress-pane" data-progress-pane="tracker" hidden>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">🗂️ Visit Tracker</div>
+          <div class="card-subtitle">Search your adventures and quickly mark places as visited.</div>
+        </div>
+        <div>
+          <label for="visitedSearchInput" style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">Search adventures</label>
+          <input id="visitedSearchInput" class="filter-input" type="text" placeholder="Search by name, city, state, or tags..." style="max-width: 340px;" />
+        </div>
       </div>
-      <div>
-        <label for="visitedSearchInput" style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">Search adventures</label>
-        <input id="visitedSearchInput" class="filter-input" type="text" placeholder="Search by name, city, state, or tags..." style="max-width: 340px;" />
-      </div>
+      <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
     </div>
-    <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
   </div>
 </div>
 
@@ -127,6 +145,53 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 12px;
+  }
+
+  #visitedLocationsRoot .visited-progress-header {
+    margin-bottom: 10px;
+  }
+
+  #visitedLocationsRoot .visited-progress-header h1 {
+    margin-bottom: 10px;
+  }
+
+  #visitedLocationsRoot .visited-progress-subtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  #visitedLocationsRoot .visited-progress-subtab {
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  #visitedLocationsRoot .visited-progress-subtab:hover {
+    border-color: #93c5fd;
+    color: #1d4ed8;
+    background: #eff6ff;
+  }
+
+  #visitedLocationsRoot .visited-progress-subtab.active {
+    border-color: #1d4ed8;
+    background: #dbeafe;
+    color: #1e3a8a;
+  }
+
+  #visitedLocationsRoot .visited-progress-pane {
+    display: none;
+  }
+
+  #visitedLocationsRoot .visited-progress-pane.is-active {
+    display: block;
   }
 
   #visitedLocationsRoot .visited-sync-health {

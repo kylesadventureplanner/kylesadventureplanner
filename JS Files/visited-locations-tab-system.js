@@ -72,6 +72,7 @@
 
   const state = {
     initialized: false,
+    activeProgressSubTab: 'overview',
     weatherMode: 'auto',
     searchText: '',
     categoryFilter: 'all',
@@ -85,6 +86,30 @@
     },
     lastRenderAt: null
   };
+
+  function syncProgressSubTabs(root) {
+    if (!root) return;
+    const active = state.activeProgressSubTab || 'overview';
+
+    root.querySelectorAll('[data-progress-subtab]').forEach((btn) => {
+      const tabKey = btn.getAttribute('data-progress-subtab');
+      const isActive = tabKey === active;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    root.querySelectorAll('[data-progress-pane]').forEach((pane) => {
+      const paneKey = pane.getAttribute('data-progress-pane');
+      const isActive = paneKey === active;
+      pane.classList.toggle('is-active', isActive);
+      pane.hidden = !isActive;
+    });
+  }
+
+  function setActiveProgressSubTab(root, tabKey) {
+    state.activeProgressSubTab = tabKey || 'overview';
+    syncProgressSubTabs(root);
+  }
 
   function prefersReducedMotion() {
     return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1504,8 +1529,16 @@
     if (!root || root.dataset.bound === '1') return;
 
     root.dataset.bound = '1';
+    syncProgressSubTabs(root);
 
     root.addEventListener('click', (event) => {
+      const progressTabBtn = event.target.closest('[data-progress-subtab]');
+      if (progressTabBtn) {
+        const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'overview';
+        setActiveProgressSubTab(root, tabKey);
+        return;
+      }
+
       const toggleBtn = event.target.closest('[data-visit-action="toggle"]');
       if (toggleBtn) {
         const locationId = toggleBtn.getAttribute('data-location-id');
