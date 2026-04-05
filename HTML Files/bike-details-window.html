@@ -74,7 +74,9 @@
   var bikeTagState = {
     placeId: '',
     currentTags: [],
-    sourceTags: []
+    sourceTags: [],
+    sourceIndex: null,  // row index in opener.bikeTrailsData — required for Excel write-back
+    data: null          // trail data object — updated in-memory on save
   };
 
   function esc(text) {
@@ -197,6 +199,14 @@
 
   function setBikeNotesStatus(message, isError) {
     var status = document.getElementById('bnmStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.style.color = isError ? '#b91c1c' : '#6b7280';
+  }
+
+  // Sets status text on the tag management pane without re-rendering the whole pane.
+  function setBikeTagStatus(message, isError) {
+    var status = document.getElementById('bikeTagStatus');
     if (!status) return;
     status.textContent = message;
     status.style.color = isError ? '#b91c1c' : '#6b7280';
@@ -363,20 +373,122 @@
     refreshTagManagementUi();
   }
 
-  function saveBikeTags() {
+  async function saveBikeTags() {
+    console.log('🏷️ [bike-tags] saveBikeTags() called', {
+      placeId: bikeTagState.placeId,
+      sourceIndex: bikeTagState.sourceIndex,
+      tagCount: (bikeTagState.currentTags || []).length,
+      tags: bikeTagState.currentTags
+    });
+
+    // ── Guard: need a place key ──────────────────────────────────────────────
     if (!bikeTagState.placeId) {
-      refreshTagManagementUi('Tag key unavailable for this trail');
+      console.warn('⚠️ [bike-tags] No placeId — cannot save tags (trail has no Google Place ID or row ID)');
+      setBikeTagStatus('⚠️ Tag key unavailable for this trail', true);
       return;
     }
 
+    // ── Step 1: always save to localStorage via tagManager ───────────────────
     var ok = saveManagedTags(bikeTagState.placeId, bikeTagState.currentTags || []);
-    refreshTagManagementUi(ok ? 'Tags saved' : 'Failed to save tags');
+    if (!ok) {
+      console.warn('⚠️ [bike-tags] saveManagedTags() returned false');
+      setBikeTagStatus('⚠️ Failed to save tags to local storage', true);
+      return;
+    }
+    console.log('✅ [bike-tags] Tags saved to localStorage');
 
-    if (window.opener && !window.opener.closed) {
+    // ── Step 2: resolve opener window ───────────────────────────────────────
+    var openerWin = window.opener && !window.opener.closed ? window.opener : null;
+    if (!openerWin) {
+      console.warn('⚠️ [bike-tags] No opener window — tags saved to localStorage only (Excel sync skipped)');
+      setBikeTagStatus('Tags saved locally (no opener window — Excel sync skipped)', false);
+      // Still refresh the opener UI if possible via broadcast
+      return;
+    }
+
+    // ── Step 3: require a valid sourceIndex ─────────────────────────────────
+    if (!Number.isInteger(bikeTagState.sourceIndex) || bikeTagState.sourceIndex < 0) {
+      console.warn('⚠️ [bike-tags] sourceIndex is', bikeTagState.sourceIndex, '— cannot locate Excel row. Tags saved to localStorage only.');
+      setBikeTagStatus('Tags saved locally (row index missing — Excel sync skipped)', false);
       try {
-        if (typeof window.opener.applyBikeFilters === 'function') window.opener.applyBikeFilters();
-        if (typeof window.opener.renderBikeTrailsPage === 'function') window.opener.renderBikeTrailsPage();
-      } catch (_err) {}
+        if (typeof openerWin.applyBikeFilters === 'function') openerWin.applyBikeFilters();
+        if (typeof openerWin.renderBikeTrailsPage === 'function') openerWin.renderBikeTrailsPage();
+      } catch (_e) {}
+      return;
+    }
+
+    // ── Step 4: require an access token ─────────────────────────────────────
+    if (!openerWin.accessToken) {
+      console.warn('⚠️ [bike-tags] No accessToken on opener — not signed in. Tags saved to localStorage only.');
+      setBikeTagStatus('Tags saved locally (sign in to sync to Excel)', false);
+      try {
+        if (typeof openerWin.applyBikeFilters === 'function') openerWin.applyBikeFilters();
+        if (typeof openerWin.renderBikeTrailsPage === 'function') openerWin.renderBikeTrailsPage();
+      } catch (_e) {}
+      return;
+    }
+
+    // ── Step 5: resolve the "Ride Mood Tags" column index ───────────────────
+    var tagCol = typeof openerWin.getBikeColumnIndexByName === 'function'
+      ? openerWin.getBikeColumnIndexByName('Ride Mood Tags')
+      : 13; // static fallback from BIKE_COLUMNS
+
+    if (!Number.isInteger(tagCol) || tagCol < 0) {
+      console.warn('⚠️ [bike-tags] "Ride Mood Tags" column not found in workbook schema (getBikeColumnIndexByName returned', tagCol, '). Tags saved to localStorage only.');
+      setBikeTagStatus('Tags saved locally (column not found in workbook — Excel sync skipped)', false);
+      try {
+        if (typeof openerWin.applyBikeFilters === 'function') openerWin.applyBikeFilters();
+        if (typeof openerWin.renderBikeTrailsPage === 'function') openerWin.renderBikeTrailsPage();
+      } catch (_e) {}
+      return;
+    }
+
+    // ── Step 6: verify the row exists in opener memory ───────────────────────
+    var row = Array.isArray(openerWin.bikeTrailsData)
+      ? openerWin.bikeTrailsData[bikeTagState.sourceIndex]
+      : null;
+    if (!row || !Array.isArray(row.values) || !Array.isArray(row.values[0])) {
+      console.warn('⚠️ [bike-tags] Row not found at opener.bikeTrailsData[' + bikeTagState.sourceIndex + ']', {
+        bikeTrailsDataLength: Array.isArray(openerWin.bikeTrailsData) ? openerWin.bikeTrailsData.length : 'not an array',
+        row: row
+      });
+      setBikeTagStatus('Tags saved locally (row not found in opener memory — Excel sync skipped)', false);
+      return;
+    }
+
+    // ── Step 7: serialize tags as comma-separated and write to Excel ─────────
+    var serialized = (bikeTagState.currentTags || []).join(', ');
+
+    // Update local in-memory data so the UI stays consistent without a reload
+    if (bikeTagState.data) bikeTagState.data.moodTags = serialized;
+
+    setBikeTagStatus('Saving tags to Excel…', false);
+    console.log('🏷️ [bike-tags] Writing to Excel row', bikeTagState.sourceIndex, 'col', tagCol, '→', serialized || '(empty)');
+
+    try {
+      await openerWin.updateBikeTrailRowColumns(
+        bikeTagState.sourceIndex,
+        { [tagCol]: serialized },
+        {
+          accessToken: openerWin.accessToken,
+          filePath: openerWin.bikeTableConfig && openerWin.bikeTableConfig.filePath,
+          tableRef: openerWin.bikeTableConfig && (openerWin.bikeTableConfig.tableRef || openerWin.bikeTableConfig.tableName)
+        }
+      );
+
+      console.log('✅ [bike-tags] Tags successfully written to Excel (col ' + tagCol + '):', serialized);
+      setBikeTagStatus('✅ Tags saved to Excel', false);
+
+      // Refresh the opener's card list to reflect the new tags
+      try {
+        if (typeof openerWin.applyBikeFilters === 'function') openerWin.applyBikeFilters();
+        if (typeof openerWin.renderBikeTrailsPage === 'function') openerWin.renderBikeTrailsPage();
+      } catch (_e) {
+        console.warn('⚠️ [bike-tags] Could not refresh opener UI after tag save:', _e);
+      }
+    } catch (err) {
+      console.error('❌ [bike-tags] Excel write failed:', err);
+      setBikeTagStatus('⚠️ Tags saved locally — Excel sync failed: ' + (err && err.message ? err.message : String(err)), true);
     }
   }
 
@@ -434,6 +546,16 @@
     bikeTagState.placeId = placeId;
     bikeTagState.sourceTags = sourceTags;
     bikeTagState.currentTags = loadManagedTags(placeId);
+    bikeTagState.sourceIndex = payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null;
+    bikeTagState.data = data || null;
+
+    console.log('🏷️ [bike-tags] Hydrated tag state:', {
+      placeId: placeId || '(none)',
+      sourceIndex: bikeTagState.sourceIndex,
+      currentTagCount: bikeTagState.currentTags.length,
+      hasData: !!data
+    });
+
     renderTagManagementPane();
     bindTagManagementEvents();
   }
