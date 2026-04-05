@@ -1294,6 +1294,38 @@
     return norm(a.name).localeCompare(norm(b.name)) * mult;
   }
 
+  function buildBikeCardDescriptionHtml(rawDescription, toggleThreshold = 180) {
+    const descriptionText = String(rawDescription || '').trim();
+    if (!descriptionText) {
+      return '<div class="card-description-wrap"><div class="card-description card-description-empty">No description provided.</div></div>';
+    }
+
+    const safeDescription = escapeHtml(descriptionText);
+    const shouldToggle = descriptionText.length > toggleThreshold;
+    return `
+      <div class="card-description-wrap">
+        <div class="card-description">${safeDescription}</div>
+        ${shouldToggle ? `<button type="button" class="card-description-toggle" aria-expanded="false" onclick="window.toggleBikeCardDescription(event, this)">${getBikeDescriptionToggleLabel(false)}</button>` : ''}
+      </div>
+    `;
+  }
+
+  function getBikeDescriptionToggleLabel(isExpanded) {
+    return isExpanded ? 'less' : '... more';
+  }
+
+  function toggleBikeCardDescription(event, toggleBtn) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const wrap = toggleBtn && toggleBtn.closest ? toggleBtn.closest('.card-description-wrap') : null;
+    if (!wrap) return;
+    const expanded = wrap.classList.toggle('is-expanded');
+    toggleBtn.textContent = getBikeDescriptionToggleLabel(expanded);
+    toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  }
+
   function renderBikeTrailsPage() {
     const grid = document.getElementById('bikeTrailsCardsGrid');
     const resultsCount = document.getElementById('bikeResultsCount');
@@ -1387,7 +1419,7 @@
             </div>
             <div class="card-body">
               ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
-              ${trail.description ? `<div class="card-description">${escapeHtml(trail.description).substring(0, 140)}${trail.description.length > 140 ? '...' : ''}</div>` : ''}
+              ${buildBikeCardDescriptionHtml(trail.description, 180)}
               <div class="card-info">
                 ${trail.lengthMiles ? `<div class="card-info-item">Length: <strong>${escapeHtml(String(trail.lengthMiles))} mi</strong></div>` : ''}
                 ${trail.elevationGain ? `<div class="card-info-item">Elevation: <strong>${escapeHtml(String(trail.elevationGain))} ft</strong></div>` : ''}
@@ -3349,6 +3381,7 @@
   window.updateBikeTrailRowColumns = updateBikeRowColumns;
   window.parseBikeNotesBlob = parseBikeNotesBlob;
   window.serializeBikeNotesBlob = serializeBikeNotesBlob;
+  window.toggleBikeCardDescription = toggleBikeCardDescription;
 
   /**
    * Runtime config override – call from browser console if the file/table name is wrong.

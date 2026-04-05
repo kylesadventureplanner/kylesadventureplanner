@@ -451,15 +451,65 @@ tr.row-selected {
   gap: var(--space-md);
 }
 
+.card-description-wrap {
+  margin-bottom: var(--space-md);
+  position: relative;
+}
+
 .card-description {
   color: var(--neutral-600);
   font-size: 14px;
   line-height: 1.6;
-  margin-bottom: var(--space-md);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  min-height: calc(1.6em * 3);
+}
+
+.card-description-wrap.is-expanded .card-description {
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+  overflow: visible;
+  min-height: 0;
+}
+
+.card-description-wrap::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  height: 24px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96));
+}
+
+.card-description-wrap.is-expanded::after {
+  display: none;
+}
+
+.card-description-empty {
+  color: var(--neutral-400);
+  font-style: italic;
+}
+
+.card-description-toggle {
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  color: var(--blue-strong);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.card-description-toggle:hover {
+  color: var(--primary-dark);
 }
 
 .card-info-row {

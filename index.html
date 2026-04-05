@@ -237,6 +237,32 @@
       color: white;
     }
 
+    .planner-top-btn--success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border-color: #10b981;
+      color: white;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .planner-top-btn--success:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      border-color: #059669;
+      color: white;
+    }
+
+    .planner-top-btn--accent {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      border-color: #8b5cf6;
+      color: white;
+      box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+    }
+
+    .planner-top-btn--accent:hover {
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+      border-color: #7c3aed;
+      color: white;
+    }
+
     /* ============================================================
        STATUS BAR
        ============================================================
@@ -5845,6 +5871,36 @@
        }
      };
 
+     function buildExpandableCardDescriptionHtml(rawDescription, toggleThreshold) {
+       const descriptionText = String(rawDescription || '').trim();
+       if (!descriptionText) {
+         return '<div class="card-description-wrap"><div class="card-description card-description-empty">No description provided.</div></div>';
+       }
+
+       const threshold = Number(toggleThreshold) || 180;
+       const shouldToggle = descriptionText.length > threshold;
+       const safeDescription = typeof escapeForHTML === 'function' ? escapeForHTML(descriptionText) : descriptionText;
+
+       return `
+         <div class="card-description-wrap">
+           <div class="card-description">${safeDescription}</div>
+           ${shouldToggle ? `<button type="button" class="card-description-toggle" aria-expanded="false">${getCardDescriptionToggleLabel(false)}</button>` : ''}
+         </div>
+       `;
+     }
+
+     function getCardDescriptionToggleLabel(isExpanded) {
+       return isExpanded ? 'less' : '... more';
+     }
+
+     window.toggleCardDescription = function(toggleBtn) {
+       const wrap = toggleBtn && toggleBtn.closest ? toggleBtn.closest('.card-description-wrap') : null;
+       if (!wrap) return;
+       const expanded = wrap.classList.toggle('is-expanded');
+       toggleBtn.textContent = getCardDescriptionToggleLabel(expanded);
+       toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+     };
+
       // ============================================================
       // RENDER ADVENTURE CARDS - Display loaded data in the grid
       // ============================================================
@@ -5981,7 +6037,7 @@
              ` : ''}
 
              <div class="adventure-card-body">
-               ${description ? `<div class="card-description">${description}</div>` : ''}
+               ${buildExpandableCardDescriptionHtml(description, 180)}
                ${hoursOfOperation ? `
                  <div class="card-info-row">
                    <span class="card-info-icon">🕐</span>
@@ -6592,6 +6648,9 @@
           <button id="iphoneToggleBtn" class="planner-top-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
             📱 iPhone View
           </button>
+          <button id="adventureRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh adventure data from Excel" data-tooltip="Refresh adventure data from Excel" onclick="refreshAdventureData()">
+            🔄 Refresh Data
+          </button>
         </div>
       </header>
 
@@ -6970,22 +7029,7 @@
           </div>
         </div>
 
-        <!-- Action Buttons -->
-        <div id="adventureListActions" style="
-          display: flex;
-          gap: 12px;
-          padding: 12px 0;
-          margin-bottom: 12px;
-          flex-wrap: wrap;
-          align-items: center;
-          border-bottom: 1px solid #e5e7eb;
-        ">
-
-          <!-- Refresh Data Button -->
-          <button id="adventureRefreshBtn" class="card-btn" title="Refresh adventure data from Excel" onclick="refreshAdventureData()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; box-shadow: 0 2px 8px rgba(16,185,129,0.3);">
-            🔄 Refresh Data
-          </button>
-        </div>
+        <div id="adventureListActions" style="display:none;"></div>
 
         <div class="view-controls">
           <div class="sort-controls">
@@ -11487,7 +11531,7 @@
         ` : ''}
 
         <div class="adventure-card-body">
-          ${description ? `<div class="card-description">${description}</div>` : ''}
+          ${buildExpandableCardDescriptionHtml(description, 180)}
 
 
 
@@ -11561,6 +11605,14 @@
     // Add SINGLE delegated event listener for ALL card interactions
     // This eliminates duplicate listeners and the favorite multiplication bug
     freshCardsGrid.addEventListener('click', (e) => {
+      const descriptionToggleBtn = e.target.closest('.card-description-toggle');
+      if (descriptionToggleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.toggleCardDescription?.(descriptionToggleBtn);
+        return;
+      }
+
       // Address copy click — handle before card-open
       const addrCopy = e.target.closest('.card-address-copy, .card-addr-copy-btn');
       if (addrCopy) {
@@ -20702,22 +20754,10 @@ window.applyClosingSoonFilter = function() {
 window.initializeActionButtons = function() {
   console.log('🔘 Initializing action buttons...');
 
-  // Add buttons to adventure list if they don't exist
-  const actionsDiv = document.getElementById('adventureListActions');
-  if (actionsDiv && actionsDiv.children.length === 0) {
-    actionsDiv.innerHTML = `
-      <button class="edit-mode-btn" onclick="openEditModeWindow()" title="Open Edit Mode">
-        📝 Edit Mode
-      </button>
-      <button class="find-near-me-btn" onclick="openFindNearMeWindow()" title="Find nearby adventures">
-        📍 Find Near Me
-      </button>
-      <button class="city-viewer-btn" onclick="openCityViewerWindow()" title="View cities">
-        🌆 City Viewer
-      </button>
-    `;
-    console.log('✅ Action buttons added');
-  }
+  // Top action bar is now the single source of truth for planner actions.
+  const actionsDiv = document.querySelector('#adventurePlannerTab .planner-top-actions');
+  if (!actionsDiv) return;
+  console.log('✅ Planner top action bar is active');
 };
 
 // Initialize on DOM ready

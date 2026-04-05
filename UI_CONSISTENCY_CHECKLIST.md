@@ -70,4 +70,6 @@ Reference file: `HTML Files/trail-explorer-window.html`
 
 - [x] Extracted repeated window utility patterns into `CSS/utilities.css` (`.u-hidden`, `.u-stack-gap-sm`, `.u-mt-10`, `.u-text-xs-dim`).
 - [x] Updated `HTML Files/adventure-details-window.html` and `HTML Files/bike-details-window.html` to consume shared window utility classes.
+- [x] Applied the same shared utility naming cleanup to `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html`.
+- [x] Completed a safe dedupe pass for time-window utility-like classes in `HTML Files/city-viewer-window.html` (moved to shared `u-*` classes in `CSS/utilities.css`).
 

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>City Viewer - Kyle's Adventure Finder</title>
+  <link rel="stylesheet" href="../CSS/utilities.css">
   <style>
     * {
       margin: 0;
@@ -721,21 +722,6 @@
       border-top: 1px solid rgba(255,255,255,0.2);
       display: none;
     }
-    .loc-time-title {
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .loc-time-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .loc-time-label {
-      font-size: 11px;
-      color: #cbd5e1;
-    }
     .loc-time-input {
       width: 100%;
       padding: 6px;
@@ -744,9 +730,6 @@
       background: rgba(0,0,0,0.2);
       color: white;
       font-size: 12px;
-    }
-    .loc-time-calc-btn {
-      width: 100%;
     }
     .loc-route-quality {
       margin-top: 8px;
@@ -757,22 +740,6 @@
       border-radius: 6px;
       display: none;
     }
-    .loc-day-plan-title {
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .loc-day-plan-summary {
-      font-size: 12px;
-      color: #cbd5e1;
-    }
-    .city-grid-empty {
-      grid-column: 1 / -1;
-    }
-    .city-empty-note {
-      font-size: 14px;
-      color: #9ca3af;
-    }
     .city-drive-time {
       font-size: 13px;
       color: #0891b2;
@@ -780,9 +747,6 @@
       margin-top: 8px;
       padding-top: 8px;
       border-top: 1px solid #e5e7eb;
-    }
-    .loc-empty-note {
-      font-size: 13px;
     }
     .loc-select-btn.active {
       background: #1d4ed8;
@@ -940,28 +904,28 @@
 
         <!-- Time-Window Itinerary Builder -->
         <div id="locTimeWindow" class="loc-time-window">
-          <div class="loc-time-title">⏰ Plan by Time Window</div>
-          <div class="loc-time-grid">
+          <div class="u-text-12-strong u-mb-8">⏰ Plan by Time Window</div>
+          <div class="u-grid-3-gap-8 u-mb-10">
             <div>
-              <label for="locTimeStart" class="loc-time-label">Start Time</label>
+              <label for="locTimeStart" class="u-text-11-light">Start Time</label>
               <input id="locTimeStart" class="loc-time-input" type="time" value="09:00">
             </div>
             <div>
-              <label for="locTimeEnd" class="loc-time-label">End Time</label>
+              <label for="locTimeEnd" class="u-text-11-light">End Time</label>
               <input id="locTimeEnd" class="loc-time-input" type="time" value="17:00">
             </div>
             <div>
-              <label for="locTimePerStop" class="loc-time-label">Per Stop (min)</label>
+              <label for="locTimePerStop" class="u-text-11-light">Per Stop (min)</label>
               <input id="locTimePerStop" class="loc-time-input" type="number" value="60" min="15" max="240">
             </div>
           </div>
-          <button class="loc-mini-btn loc-time-calc-btn" onclick="calculateRouteQuality()">📊 Calculate Feasibility</button>
+          <button class="loc-mini-btn u-w-full" onclick="calculateRouteQuality()">📊 Calculate Feasibility</button>
           <div id="locRouteQuality" class="loc-route-quality"></div>
         </div>
 
         <div id="locDayPlan" class="loc-day-plan">
-          <div class="loc-day-plan-title">Suggested Route</div>
-          <div id="locDayPlanSummary" class="loc-day-plan-summary"></div>
+          <div class="u-text-12-strong u-mb-4">Suggested Route</div>
+          <div id="locDayPlanSummary" class="u-text-12-light"></div>
           <ol id="locDayPlanList" class="loc-day-plan-list"></ol>
         </div>
       </div>
@@ -1043,10 +1007,10 @@
         console.error('❌ Failed to load adventure data');
         const grid = document.getElementById('cityGrid');
         grid.innerHTML = `
-          <div class="empty-state city-grid-empty">
+          <div class="empty-state u-grid-full-span">
             <div class="empty-state-icon">❌</div>
             <div class="empty-state-text">Error loading data</div>
-            <div class="city-empty-note">Could not load adventure data. Please ensure you have data loaded in the main window.</div>
+            <div class="u-note-muted">Could not load adventure data. Please ensure you have data loaded in the main window.</div>
           </div>
         `;
         return;
@@ -1093,10 +1057,10 @@
 
       if (Object.keys(citiesData).length === 0) {
         grid.innerHTML = `
-          <div class="empty-state city-grid-empty">
+          <div class="empty-state u-grid-full-span">
             <div class="empty-state-icon">🏙️</div>
             <div class="empty-state-text">No cities found</div>
-            <div class="city-empty-note">Load adventure data in the main window to see cities here</div>
+            <div class="u-note-muted">Load adventure data in the main window to see cities here</div>
           </div>
         `;
         return;
@@ -1982,7 +1946,7 @@
           <div class="loc-empty">
             <div class="loc-empty-icon">🔍</div>
             <div class="loc-empty-text">No locations match your filters</div>
-            <div class="loc-empty-note">Try adjusting or resetting the filters above.</div>
+            <div class="u-note-sm">Try adjusting or resetting the filters above.</div>
           </div>`;
         return;
       }

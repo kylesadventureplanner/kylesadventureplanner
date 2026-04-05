@@ -4,19 +4,15 @@
 
 <header>
   <h1>Bike Trails</h1>
-  <div style="display: flex; gap: 8px; align-items: center;">
-    <button id="bikeTrailExplorerBtn" title="Open Trail Explorer - browse by conditions, distance, time of day" data-tooltip="Open Trail Explorer"
-      style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(139,92,246,0.3); transition:all 0.2s;"
-      onclick="window.openTrailExplorerWindow?.()">
-      🗺️ Trail Explorer
+  <div class="planner-top-actions">
+    <button id="bikeIphoneToggleBtn" class="planner-top-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
+      📱 iPhone View
     </button>
-    <button id="bikeRefreshBtn" title="Refresh bike trail data from Excel" data-tooltip="Refresh bike trail data from Excel"
-      style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; background:linear-gradient(135deg,#10b981 0%,#059669 100%); color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(16,185,129,0.3); transition:all 0.2s;"
-      onclick="window.refreshBikeTrailData()">
+    <button id="bikeRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh bike trail data from Excel" data-tooltip="Refresh bike trail data from Excel" onclick="window.refreshBikeTrailData()">
       🔄 Refresh Data
     </button>
-    <button id="bikeIphoneToggleBtn" class="iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
-      📱 iPhone View
+    <button id="bikeTrailExplorerBtn" class="planner-top-btn planner-top-btn--accent" title="Open Trail Explorer - browse by conditions, distance, time of day" data-tooltip="Open Trail Explorer" onclick="window.openTrailExplorerWindow?.()">
+      🗺️ Trail Explorer
     </button>
   </div>
 </header>

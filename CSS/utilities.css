@@ -548,6 +548,60 @@ mark {
   opacity: 0.7;
 }
 
+.u-grid-full-span {
+  grid-column: 1 / -1;
+}
+
+.u-note-muted {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.u-note-sm {
+  font-size: 13px;
+}
+
+.u-text-center {
+  text-align: center;
+}
+
+.u-w-full {
+  width: 100%;
+}
+
+.u-grid-3-gap-8 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.u-text-12-strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.u-text-12-light {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.u-text-11-light {
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.u-mb-10 {
+  margin-bottom: 10px;
+}
+
+.u-mb-8 {
+  margin-bottom: 8px;
+}
+
+.u-mb-4 {
+  margin-bottom: 4px;
+}
+
 /* ============================================================
    MOBILE RESPONSIVENESS
 ============================================================ */
