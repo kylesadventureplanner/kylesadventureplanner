@@ -876,9 +876,10 @@
           var root = document.getElementById('bikeTrailsTab');
           if (!root) throw new Error('Trail Explorer root mount not found');
 
-          // Standalone explorer window keeps full bike tab markup so result cards render here.
+          // Keep bike tab shell mounted but hidden; city-first UI controls when results become visible.
           root.innerHTML = html;
-          root.classList.remove('hidden');
+          root.classList.add('hidden');
+          root.classList.remove('trail-city-results-mode');
 
           var header = document.getElementById('trailExplorerHeader');
           if (header) header.classList.add('is-visible');
