@@ -8,72 +8,6 @@
   <link rel="stylesheet" href="../CSS/components.css" />
   <link rel="stylesheet" href="../CSS/utilities.css" />
   <link rel="stylesheet" href="../CSS/browse-page.css" />
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f9fafb;
-      color: #111827;
-    }
-
-    #trailExplorerHeader {
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--gray-border);
-      background: var(--trail-explorer-preview-card-bg);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .trail-explorer-header-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--trail-explorer-preview-title-text);
-      margin: 0;
-    }
-
-    .trail-explorer-back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 8px;
-      border: 1px solid var(--trail-explorer-restored-label-border);
-      background: var(--trail-explorer-restored-name-bg);
-      color: var(--trail-explorer-restored-label-text);
-      font-size: 12px;
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    #trailExplorerBootstrap {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      color: var(--gray-text);
-      font-size: 14px;
-    }
-
-    #trailExplorerBootstrap .spinner {
-      width: 18px;
-      height: 18px;
-      border: 2px solid var(--gray-border);
-      border-top-color: var(--trail-explorer-preview-chip-text);
-      border-radius: 999px;
-      margin-right: 10px;
-      animation: trailExplorerSpin 0.8s linear infinite;
-    }
-
-    @keyframes trailExplorerSpin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
 </head>
 <body>
   <header id="trailExplorerHeader">
@@ -85,7 +19,7 @@
     <div class="spinner" aria-hidden="true"></div>
     Loading Trail Explorer...
   </div>
-  <main id="bikeTrailsTab" style="display:none;"></main>
+  <main id="bikeTrailsTab" class="hidden"></main>
 
   <script>
     (function () {
@@ -163,13 +97,13 @@
 
           // Standalone explorer window keeps full bike tab markup so result cards render here.
           root.innerHTML = html;
-          root.style.display = 'block';
+          root.classList.remove('hidden');
 
           var header = document.getElementById('trailExplorerHeader');
-          if (header) header.style.display = 'flex';
+          if (header) header.classList.add('is-visible');
 
           var loading = document.getElementById('trailExplorerBootstrap');
-          if (loading) loading.style.display = 'none';
+          if (loading) loading.classList.add('hidden');
 
           // Provide the same resolver signature used by opener logic.
           window.resolvePlannerPageUrl = window.resolvePlannerPageUrl || function (relativePath) {
