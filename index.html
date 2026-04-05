@@ -534,6 +534,24 @@
       gap: 6px;
     }
 
+    .quick-filter-subsection {
+      width: 100%;
+      margin-top: 8px;
+      padding-top: 10px;
+      border-top: 1px solid var(--neutral-200);
+    }
+
+    .quick-filter-subsection-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--neutral-500);
+      margin-bottom: 8px;
+    }
+
+    .quick-filter-subsection-buttons {
+      gap: 6px;
+    }
+
     .quick-filter-btn {
       border-radius: var(--radius-full);
       border: 2px solid var(--neutral-200);
@@ -1261,6 +1279,94 @@
     }
     .tag-used-book-store::before {
       content: "📚 ";
+    }
+
+    /* Historical Site - Classical Building */
+    .tag-historical-site {
+      background: #fef3c7;
+    }
+    .tag-historical-site::before {
+      content: "🏛️ ";
+    }
+
+    /* Public Garden - Herb */
+    .tag-public-garden {
+      background: #dcfce7;
+    }
+    .tag-public-garden::before {
+      content: "🌿 ";
+    }
+
+    /* Public Beach - Beach */
+    .tag-public-beach {
+      background: #e0f2fe;
+    }
+    .tag-public-beach::before {
+      content: "🏖️ ";
+    }
+
+    /* Museum - Palette */
+    .tag-museum {
+      background: #ede9fe;
+    }
+    .tag-museum::before {
+      content: "🎨 ";
+    }
+
+    /* Art Gallery - Framed Picture */
+    .tag-art-gallery {
+      background: #fce7f3;
+    }
+    .tag-art-gallery::before {
+      content: "🖼️ ";
+    }
+
+    /* Historical Downtown - Buildings */
+    .tag-historical-downtown {
+      background: #fef3c7;
+    }
+    .tag-historical-downtown::before {
+      content: "🏘️ ";
+    }
+
+    /* Lighthouse - Beacon */
+    .tag-lighthouse {
+      background: #e0f2fe;
+    }
+    .tag-lighthouse::before {
+      content: "🔦 ";
+    }
+
+    /* Seasonal Festival - Celebration */
+    .tag-seasonal-festival {
+      background: #fce7f3;
+    }
+    .tag-seasonal-festival::before {
+      content: "🎉 ";
+    }
+
+    /* Public Swimming Hole - Swimmer */
+    .tag-public-swimming-hole {
+      background: #e0f2fe;
+    }
+    .tag-public-swimming-hole::before {
+      content: "🏊 ";
+    }
+
+    /* Wildlife Sanctuary - Lion */
+    .tag-wildlife-sanctuary {
+      background: #dcfce7;
+    }
+    .tag-wildlife-sanctuary::before {
+      content: "🦁 ";
+    }
+
+    /* Wildlife Rehabilitation - Deer */
+    .tag-wildlife-rehabilitation {
+      background: #dcfce7;
+    }
+    .tag-wildlife-rehabilitation::before {
+      content: "🦌 ";
     }
 
     /* Entertainment / Music - Musical Note */
@@ -7148,9 +7254,26 @@
           <button class="quick-filter-btn" data-tag="ziplining" title="Filter by Ziplining" data-tooltip="Filter by Ziplining">🪂 Ziplining</button>
           <button class="quick-filter-btn" data-tag="market" title="Filter by Market" data-tooltip="Filter by Market">🛒 Market</button>
           <button class="quick-filter-btn" data-tag="scenic drive" title="Filter by Scenic Drive" data-tooltip="Filter by Scenic Drive">🛣️ Scenic Drive</button>
-          <button class="quick-filter-btn" data-tag="nature" title="Filter by Nature" data-tooltip="Filter by Nature">🌳 Nature</button>
           <button class="quick-filter-btn" data-tag="attractions" title="Filter by Attractions" data-tooltip="Filter by Attractions">⭐ Attractions</button>
           <button class="quick-filter-btn" data-tag="used book store" title="Filter by Used Book Store" data-tooltip="Filter by Used Book Store">📚 Used Book Store</button>
+
+          <div class="quick-filter-subsection">
+            <div class="quick-filter-subsection-title">Culture &amp; Nature</div>
+            <div class="quick-filters-container quick-filter-subsection-buttons">
+              <button class="quick-filter-btn" data-tag="historical site" title="Filter by Historical Site" data-tooltip="Filter by Historical Site">🏛️ Historical Site</button>
+              <button class="quick-filter-btn" data-tag="public garden" title="Filter by Public Garden" data-tooltip="Filter by Public Garden">🌿 Public Garden</button>
+              <button class="quick-filter-btn" data-tag="nature" title="Filter by Nature" data-tooltip="Filter by Nature">🌳 Nature</button>
+              <button class="quick-filter-btn" data-tag="public beach" title="Filter by Public Beach" data-tooltip="Filter by Public Beach">🏖️ Public Beach</button>
+              <button class="quick-filter-btn" data-tag="museum" title="Filter by Museum" data-tooltip="Filter by Museum">🎨 Museum</button>
+              <button class="quick-filter-btn" data-tag="art gallery" title="Filter by Art Gallery" data-tooltip="Filter by Art Gallery">🖼️ Art Gallery</button>
+              <button class="quick-filter-btn" data-tag="historical downtown" title="Filter by Historical Downtown" data-tooltip="Filter by Historical Downtown">🏘️ Historical Downtown</button>
+              <button class="quick-filter-btn" data-tag="lighthouse" title="Filter by Lighthouse" data-tooltip="Filter by Lighthouse">🔦 Lighthouse</button>
+              <button class="quick-filter-btn" data-tag="seasonal festival" title="Filter by Seasonal Festival" data-tooltip="Filter by Seasonal Festival">🎉 Seasonal Festival</button>
+              <button class="quick-filter-btn" data-tag="public swimming hole" title="Filter by Public Swimming Hole" data-tooltip="Filter by Public Swimming Hole">🏊 Public Swimming Hole</button>
+              <button class="quick-filter-btn" data-tag="wildlife sanctuary" title="Filter by Wildlife Sanctuary" data-tooltip="Filter by Wildlife Sanctuary">🦁 Wildlife Sanctuary</button>
+              <button class="quick-filter-btn" data-tag="wildlife rehabilitation" title="Filter by Wildlife Rehabilitation" data-tooltip="Filter by Wildlife Rehabilitation">🦌 Wildlife Rehabilitation</button>
+            </div>
+          </div>
         </div>
       </div>
 

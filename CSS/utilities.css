@@ -275,6 +275,73 @@
 }
 .tag-scenic::before { content: "🌅 "; }
 
+/* New Adventure Categories */
+.tag-historical-site {
+  background: #fef3c7;
+  color: #78350f;
+}
+.tag-historical-site::before { content: "🏛️ "; }
+
+.tag-public-garden {
+  background: #dcfce7;
+  color: #166534;
+}
+.tag-public-garden::before { content: "🌿 "; }
+
+.tag-public-beach {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-public-beach::before { content: "🏖️ "; }
+
+.tag-museum {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.tag-museum::before { content: "🎨 "; }
+
+.tag-art-gallery {
+  background: #fce7f3;
+  color: #831843;
+}
+.tag-art-gallery::before { content: "🖼️ "; }
+
+.tag-historical-downtown {
+  background: #fef3c7;
+  color: #78350f;
+}
+.tag-historical-downtown::before { content: "🏘️ "; }
+
+.tag-lighthouse {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-lighthouse::before { content: "🔦 "; }
+
+.tag-seasonal-festival {
+  background: #fce7f3;
+  color: #831843;
+}
+.tag-seasonal-festival::before { content: "🎉 "; }
+
+.tag-public-swimming-hole {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+.tag-public-swimming-hole::before { content: "🏊 "; }
+
+.tag-wildlife-sanctuary {
+  background: #dcfce7;
+  color: #166534;
+}
+.tag-wildlife-sanctuary::before { content: "🦁 "; }
+
+.tag-wildlife-rehabilitation {
+  background: #dcfce7;
+  color: #166534;
+}
+.tag-wildlife-rehabilitation::before { content: "🦌 "; }
+
 /* Default style for unknown tags */
 [class*="tag-"] {
   display: inline-block;
