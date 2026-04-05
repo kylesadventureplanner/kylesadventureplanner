@@ -396,6 +396,12 @@
   }
 
   function getBikePreferenceFallbackState() {
+    const params = new URLSearchParams(window.location.search || '');
+    const inStandaloneExplorer = params.get('trailExplorerWindow') === '1' || params.get('trailExplorerWindow') === 'true';
+    if (inStandaloneExplorer) {
+      return { needsFallback: false, message: '' };
+    }
+
     const ratingCol = getBikeWritableColumnIndex(BIKE_PREFERENCE_COLUMNS.rating);
     const favoriteCol = getBikeWritableColumnIndex(BIKE_PREFERENCE_COLUMNS.favorite);
     const missingColumns = [];

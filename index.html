@@ -9811,24 +9811,15 @@
         console.log(`Cleared rating for adventure at index ${index}`);
       }
 
-      /**
-       * Open tag manager for a place
-       */
-      function openTagManager(placeId) {
-        if (!placeId || placeId === 'undefined' || placeId === '') {
-          showToast('This location does not have a Place ID', 'warning', 2000);
+      // Legacy helper kept for backward compatibility; delegates via alias to
+      // canonical owner `window.openTagManagerCanonical`.
+      function legacyOpenTagManager(placeId) {
+        if (typeof window.openTagManager === 'function') {
+          window.openTagManager(placeId);
           return;
         }
-
-        console.log(`Opening tag manager for place: ${placeId}`);
-
-        // Check if tag manager exists
-        if (window.tagManager) {
-          window.tagManager.showTagUI(placeId);
-          showToast('Tag manager opened', 'info', 1000);
-        } else {
+        if (typeof showToast === 'function') {
           showToast('Tag manager is not available', 'error', 2000);
-          console.error('Tag manager not initialized');
         }
       }
     // ...existing code...
@@ -11515,9 +11506,17 @@
     // Start with Excel tags
     const excelTagList = excelTags ? excelTags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-    // Note: Tag manager integration disabled - window.tagManager not initialized
-    // Tags are sourced only from Excel data
-    const allTags = [...new Set([...excelTagList])];
+    // Merge with managed tags when tagManager is available.
+    let managedTags = [];
+    try {
+      if (window.tagManager && typeof window.tagManager.getTagsForPlace === 'function' && googlePlaceId) {
+        managedTags = window.tagManager.getTagsForPlace(String(googlePlaceId).trim()) || [];
+      }
+    } catch (_err) {
+      managedTags = [];
+    }
+
+    const allTags = [...new Set([...excelTagList, ...managedTags].map((tag) => String(tag || '').trim()).filter(Boolean))];
     return allTags;
   }
 
@@ -18947,27 +18946,6 @@ COMMON ISSUES:
     console.log('🎯 NEXT STEPS: Implement cloud data sync for ratings/favorites');
     console.log('   See: EXECUTIVE_SUMMARY_RECOMMENDATIONS.md');
 
-    // ============================================================
-    // TAG MANAGER SAFE WRAPPER (v7.0.112+)
-    // ============================================================
-    // Wrapper function to safely open tag manager, handles undefined case
-    window.openTagManager = function(placeId) {
-      if (typeof window.tagUIManager === 'undefined') {
-        console.warn('⏳ Tag Manager still initializing, retrying in 1 second...');
-        setTimeout(() => {
-          if (typeof window.tagUIManager !== 'undefined') {
-            console.log('✅ Tag Manager now available, opening modal...');
-            window.tagUIManager.openModal(placeId);
-          } else {
-            console.error('❌ Tag Manager failed to load after retry');
-            alert('Tag Manager is still loading. Please wait a moment and try again.');
-          }
-        }, 1000);
-        return;
-      }
-      window.tagUIManager.openModal(placeId);
-    };
-
     // TAG MANAGER CHECK - DISABLED in v7.0.141
     // Now using consolidated tag system instead of individual tagManager/tagUIManager
     // console.log('✅ Tag Management System (v7.0.141+) using consolidated tag system');
@@ -19114,38 +19092,6 @@ COMMON ISSUES:
 
   })();
 
-</script>
-<script>
-  // Final override: always prefer cleanTagManager to avoid legacy modal artifacts.
-  window.openTagManager = function(placeId) {
-    const id = String(placeId || '').trim();
-    if (!id) {
-      if (typeof window.showToast === 'function') {
-        window.showToast('No Place ID available for this location', 'warning', 2500);
-      }
-      return;
-    }
-
-    if (window.cleanTagManager && typeof window.cleanTagManager.openModal === 'function') {
-      window.cleanTagManager.openModal(id, id);
-      return;
-    }
-
-    if (window.tagUIManager && typeof window.tagUIManager.openModal === 'function') {
-      window.tagUIManager.openModal(id);
-      return;
-    }
-
-    setTimeout(() => {
-      if (window.cleanTagManager && typeof window.cleanTagManager.openModal === 'function') {
-        window.cleanTagManager.openModal(id, id);
-      } else if (window.tagUIManager && typeof window.tagUIManager.openModal === 'function') {
-        window.tagUIManager.openModal(id);
-      } else {
-        alert('Tag Manager is still loading. Please wait a moment and try again.');
-      }
-    }, 300);
-  }
 
 </script>
 <script>
@@ -19178,8 +19124,69 @@ COMMON ISSUES:
     // Start checking immediately
     ensureTagManagerReady();
 
-    // Main openTagManager function
-    window.openTagManager = function (placeId) {
+    // Tag save sync helper used by canonical opener `window.openTagManagerCanonical`.
+    async function syncAdventureTagsToExcel(placeId, tags) {
+      const token = window.accessToken || '';
+      const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
+      const targetPlaceId = String(placeId || '').trim();
+      const csvTags = Array.isArray(tags) ? tags.map((t) => String(t || '').trim()).filter(Boolean).join(', ') : '';
+
+      if (!targetPlaceId) return { ok: false, reason: 'missing-place-id' };
+
+      const matches = [];
+      rows.forEach((row, rowIndex) => {
+        const values = row && row.values && Array.isArray(row.values[0]) ? row.values[0] : [];
+        if (String(values[1] || '').trim() === targetPlaceId) {
+          matches.push({ row, rowIndex, values });
+        }
+      });
+
+      if (!matches.length) return { ok: false, reason: 'row-not-found' };
+
+      // Update in-memory row values so cards refresh immediately even if sync is unavailable.
+      matches.forEach(({ row, values }) => {
+        const nextValues = values.slice();
+        while (nextValues.length <= 3) nextValues.push('');
+        nextValues[3] = csvTags;
+        row.values = [nextValues];
+      });
+
+      if (!token) return { ok: false, reason: 'not-signed-in' };
+
+      const resolvedFilePath = (typeof filePath !== 'undefined' && filePath) ? filePath : (window.filePath || '');
+      const resolvedTableName = (typeof tableName !== 'undefined' && tableName) ? tableName : (window.tableName || '');
+      if (!resolvedFilePath || !resolvedTableName) return { ok: false, reason: 'missing-config' };
+
+      const settled = await Promise.allSettled(matches.map(async ({ rowIndex, values }) => {
+        const excelRow = values.slice();
+        while (excelRow.length <= 3) excelRow.push('');
+        excelRow[3] = csvTags;
+
+        const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${resolvedFilePath}:/workbook/tables/${resolvedTableName}/rows/itemAt(index=${rowIndex})`;
+        const response = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ values: [excelRow] })
+        });
+
+        if (!response.ok) {
+          const detail = await response.text().catch(() => '');
+          throw new Error(`Excel sync failed (${response.status})${detail ? `: ${detail}` : ''}`);
+        }
+      }));
+
+      const failed = settled.filter((r) => r.status === 'rejected');
+      return failed.length
+        ? { ok: false, reason: 'sync-failed', detail: failed[0].reason && failed[0].reason.message ? failed[0].reason.message : 'Unknown sync failure' }
+        : { ok: true };
+    }
+
+    // Canonical owner for tag-manager opening flow.
+    // IMPORTANT: Do not redefine window.openTagManager elsewhere; keep it aliased to this function.
+    window.openTagManagerCanonical = function (placeId) {
       const id = String(placeId || '').trim();
 
       if (!id) {
@@ -19194,7 +19201,19 @@ COMMON ISSUES:
       // Try immediate open if ready
       if (tagManagerReady && window.cleanTagManager && typeof window.cleanTagManager.openModal === 'function') {
         console.log('🏷️ Opening tag manager for place:', id);
-        window.cleanTagManager.openModal(id, id);
+        window.cleanTagManager.openModal(id, id, {
+          domain: 'adventure',
+          onSave: async function(payload) {
+            const result = await syncAdventureTagsToExcel(id, payload && payload.tags ? payload.tags : []);
+            if (!result.ok && result.reason === 'not-signed-in') {
+              window.showToast?.('Tags updated locally. Sign in to sync tags to Excel.', 'warning', 2600);
+            } else if (!result.ok && result.reason === 'sync-failed') {
+              window.showToast?.(`Tag sync to Excel failed: ${result.detail || 'Unknown error'}`, 'error', 3500);
+            }
+            if (typeof window.applyFilters === 'function') window.applyFilters();
+            if (typeof window.renderPaginatedCards === 'function') window.renderPaginatedCards();
+          }
+        });
         return;
       }
 
@@ -19208,7 +19227,19 @@ COMMON ISSUES:
           clearInterval(waitInterval);
           tagManagerReady = true;
           console.log('✅ Tag Manager now ready, opening modal');
-          window.cleanTagManager.openModal(id, id);
+          window.cleanTagManager.openModal(id, id, {
+            domain: 'adventure',
+            onSave: async function(payload) {
+              const result = await syncAdventureTagsToExcel(id, payload && payload.tags ? payload.tags : []);
+              if (!result.ok && result.reason === 'not-signed-in') {
+                window.showToast?.('Tags updated locally. Sign in to sync tags to Excel.', 'warning', 2600);
+              } else if (!result.ok && result.reason === 'sync-failed') {
+                window.showToast?.(`Tag sync to Excel failed: ${result.detail || 'Unknown error'}`, 'error', 3500);
+              }
+              if (typeof window.applyFilters === 'function') window.applyFilters();
+              if (typeof window.renderPaginatedCards === 'function') window.renderPaginatedCards();
+            }
+          });
           return;
         }
 
@@ -19220,6 +19251,11 @@ COMMON ISSUES:
           return;
         }
       }, 100);
+    };
+
+    // Backward-compatible global alias used across existing call-sites.
+    window.openTagManager = function(placeId) {
+      return window.openTagManagerCanonical(placeId);
     };
 
     console.log('✅ Tag Manager wrapper initialized');
