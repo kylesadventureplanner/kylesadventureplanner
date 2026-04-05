@@ -3,6 +3,14 @@
  * Bike Trails bulk actions are handled in bike-trails-tab-system.js.
  */
 (function initAdventureBulkActions() {
+  const DEBUG = true; // Set to true to enable verbose logging
+
+  function debugLog(...args) {
+    if (DEBUG) {
+      console.log('[BULK-DEBUG]', ...args);
+    }
+  }
+
   const adventureState = {
     selectedSourceIndexes: new Set(),
     pulsedSelectionSourceIndexes: new Set(),
@@ -92,6 +100,7 @@
       '}'
     ].join('\n');
     document.head.appendChild(style);
+    debugLog('✅ Bulk selection styles ensured');
   }
 
   function prefersReducedMotion() {
@@ -191,12 +200,18 @@
   function pruneAdventureSelectionToVisible() {
     const visible = getAdventureVisibleSourceIndexSet();
     if (visible.size === 0) return;
+    const beforeCount = adventureState.selectedSourceIndexes.size;
     Array.from(adventureState.selectedSourceIndexes).forEach((idx) => {
       if (!visible.has(idx)) adventureState.selectedSourceIndexes.delete(idx);
     });
+    if (beforeCount !== adventureState.selectedSourceIndexes.size) {
+      debugLog(`⚠️ Pruned selection from ${beforeCount} to ${adventureState.selectedSourceIndexes.size}`);
+    }
   }
 
   function updateAdventureBulkSelectionUi() {
+    debugLog('🔄 updateAdventureBulkSelectionUi() called - Selection size:', adventureState.selectedSourceIndexes.size, 'Busy:', adventureState.busy);
+
     pruneAdventureSelectionToVisible();
     const count = adventureState.selectedSourceIndexes.size;
     const pageSet = getAdventureCurrentPageSourceIndexSet();
@@ -207,19 +222,28 @@
     if (countEl) countEl.textContent = `${pageSelectedCount} on page / ${count} total selected`;
 
     const disable = count === 0 || adventureState.busy;
+    debugLog(`  → Button disable state: ${disable} (count=${count}, busy=${adventureState.busy})`);
+
     ['adventureBulkApplyTagsBtn', 'adventureBulkApplyRatingBtn', 'adventureBulkMarkFavoriteBtn', 'adventureBulkUnmarkFavoriteBtn', 'adventureBulkMarkVisitedBtn', 'adventureBulkUnmarkVisitedBtn', 'adventureBulkClearSelectionBtn'].forEach((id) => {
       const el = document.getElementById(id);
-      if (el) el.disabled = disable;
+      if (el) {
+        el.disabled = disable;
+        debugLog(`    - ${id}: disabled=${disable}`);
+      }
     });
 
     const invertBtn = document.getElementById('adventureBulkInvertSelectionBtn');
     if (invertBtn) {
       const sourceSet = getAdventureScopeSourceIndexSet();
       invertBtn.disabled = adventureState.busy || sourceSet.size === 0;
+      debugLog(`    - adventureBulkInvertSelectionBtn: disabled=${invertBtn.disabled}`);
     }
 
     const selectVisibleBtn = document.getElementById('adventureBulkSelectVisibleBtn');
-    if (selectVisibleBtn) selectVisibleBtn.disabled = adventureState.busy;
+    if (selectVisibleBtn) {
+      selectVisibleBtn.disabled = adventureState.busy;
+      debugLog(`    - adventureBulkSelectVisibleBtn: disabled=${selectVisibleBtn.disabled}`);
+    }
 
     document.querySelectorAll('.adventure-bulk-select').forEach((checkbox) => {
       const raw = String(checkbox.getAttribute('data-adventure-source-index') || '').trim();
@@ -254,18 +278,28 @@
   }
 
   function setAdventureBulkBusy(isBusy) {
-    adventureState.busy = Boolean(isBusy);
+    const wasNotBusy = !adventureState.busy;
+    const isNowBusy = Boolean(isBusy);
+    if (wasNotBusy && isNowBusy) {
+      debugLog('🔒 BULK BUSY: TRUE');
+    } else if (!isNowBusy) {
+      debugLog('🔓 BULK BUSY: FALSE');
+    }
+    adventureState.busy = isNowBusy;
     updateAdventureBulkSelectionUi();
   }
 
   function setAdventureSelectionFromScope() {
-    adventureState.selectedSourceIndexes.clear();
+    const scope = getAdventureSelectionScope();
     const sourceSet = getAdventureScopeSourceIndexSet();
+    adventureState.selectedSourceIndexes.clear();
     sourceSet.forEach((idx) => adventureState.selectedSourceIndexes.add(idx));
+    debugLog(`✅ setAdventureSelectionFromScope (${scope}): Selected ${adventureState.selectedSourceIndexes.size} items`);
     updateAdventureBulkSelectionUi();
   }
 
   function invertAdventureSelectionFromScope() {
+    const scope = getAdventureSelectionScope();
     const sourceSet = getAdventureScopeSourceIndexSet();
     if (!sourceSet.size) {
       window.showToast?.('No locations available in this scope.', 'info', 2000);
@@ -276,11 +310,13 @@
       if (adventureState.selectedSourceIndexes.has(idx)) adventureState.selectedSourceIndexes.delete(idx);
       else adventureState.selectedSourceIndexes.add(idx);
     });
+    debugLog(`🔄 invertAdventureSelectionFromScope (${scope}): Now ${adventureState.selectedSourceIndexes.size} selected`);
     updateAdventureBulkSelectionUi();
     window.showToast?.(`Selection inverted for ${getAdventureSelectionScopeLabel()}.`, 'info', 2000);
   }
 
   function clearAdventureSelection() {
+    debugLog(`🗑️ clearAdventureSelection: Clearing ${adventureState.selectedSourceIndexes.size} items`);
     adventureState.selectedSourceIndexes.clear();
     updateAdventureBulkSelectionUi();
   }
@@ -301,6 +337,7 @@
       if (hintTextEl) hintTextEl.textContent = nextText;
       else hintEl.textContent = nextText;
     }
+    debugLog(`📝 Button labels synced to scope: ${scope}`);
   }
 
   function getCardSourceIndex(card) {
@@ -321,6 +358,7 @@
 
     ensureAdventureBulkSelectionRailStyles();
 
+    let decoratedCount = 0;
     grid.querySelectorAll('.adventure-card').forEach((card) => {
       if (card.querySelector('.adventure-bulk-select-wrap')) return;
       const sourceIndex = getCardSourceIndex(card);
@@ -333,7 +371,12 @@
       wrap.setAttribute('data-no-card-open', '1');
       wrap.innerHTML = `<label class="adventure-bulk-select-label" data-no-card-open="1"><input type="checkbox" class="adventure-bulk-select" data-no-card-open="1" data-adventure-source-index="${sourceIndex}"><span>Select for bulk actions</span></label><span class="adventure-bulk-selected-badge" data-no-card-open="1" aria-hidden="true" hidden>Selected</span>`;
       card.insertBefore(wrap, card.firstChild);
+      decoratedCount++;
     });
+
+    if (decoratedCount > 0) {
+      debugLog(`🎨 Decorated ${decoratedCount} cards with bulk selection UI`);
+    }
 
     updateAdventureBulkSelectionUi();
   }
@@ -341,6 +384,8 @@
   function bindAdventureGridSelectionHandlers() {
     const grid = document.getElementById('adventureCardsGrid');
     if (!grid || grid.dataset.adventureBulkDelegatesBound === '1') return;
+
+    debugLog('🔗 Binding grid selection handlers...');
 
     // Capture phase to keep card-open delegate from firing when checkbox is used.
     grid.addEventListener('pointerdown', (event) => {
@@ -368,14 +413,23 @@
 
       const raw = String(checkbox.getAttribute('data-adventure-source-index') || '').trim();
       const idx = /^\d+$/.test(raw) ? Number(raw) : NaN;
-      if (!Number.isInteger(idx) || idx < 0) return;
+      if (!Number.isInteger(idx) || idx < 0) {
+        debugLog('⚠️ Invalid index for checkbox:', raw);
+        return;
+      }
 
-      if (checkbox.checked) adventureState.selectedSourceIndexes.add(idx);
-      else adventureState.selectedSourceIndexes.delete(idx);
+      if (checkbox.checked) {
+        adventureState.selectedSourceIndexes.add(idx);
+        debugLog(`✅ Selected item ${idx} - Total now: ${adventureState.selectedSourceIndexes.size}`);
+      } else {
+        adventureState.selectedSourceIndexes.delete(idx);
+        debugLog(`❌ Deselected item ${idx} - Total now: ${adventureState.selectedSourceIndexes.size}`);
+      }
       updateAdventureBulkSelectionUi();
     }, true);
 
     grid.dataset.adventureBulkDelegatesBound = '1';
+    debugLog('✅ Grid selection handlers bound');
   }
 
   function getAdventureColumnIndex(name, fallback) {
