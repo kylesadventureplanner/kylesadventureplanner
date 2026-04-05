@@ -653,6 +653,8 @@
     document.addEventListener('click', (event) => {
       if (!isInAdventureCardsGrid(event.target)) return;
       if (!isAdventureDomainTarget(event.target)) return;
+      const grid = document.getElementById('adventureCardsGrid');
+      if (grid && grid.dataset.canonicalCardClickBound === '1') return;
       const card = event.target && event.target.closest ? event.target.closest('.adventure-card') : null;
       if (!card) return;
       if (isInteractiveCardTarget(event.target)) return;
@@ -957,6 +959,9 @@
   function installFilterReliabilityFallback() {
     // Intentionally re-runnable: bike/adventure tab DOM is injected dynamically.
 
+    const adventureCanonical = Boolean(window.__adventureFilterCanonicalBound);
+    const bikeCanonical = Boolean(window.__bikeFilterCanonicalBound);
+
     const adventureControlIds = [
       'searchName',
       'filterDifficulty',
@@ -1002,74 +1007,80 @@
 
     let boundAnything = false;
 
-    adventureControlIds.forEach((id) => {
-      const input = document.getElementById(id);
-      if (!input || input.dataset.filterReliabilityBound === '1') return;
-      input.addEventListener('input', callAdventureApply, false);
-      input.addEventListener('change', callAdventureApply, false);
-      input.dataset.filterReliabilityBound = '1';
-      boundAnything = true;
-    });
+    if (!adventureCanonical) {
+      adventureControlIds.forEach((id) => {
+        const input = document.getElementById(id);
+        if (!input || input.dataset.filterReliabilityBound === '1') return;
+        input.addEventListener('input', callAdventureApply, false);
+        input.addEventListener('change', callAdventureApply, false);
+        input.dataset.filterReliabilityBound = '1';
+        boundAnything = true;
+      });
 
-    const quickFiltersCard = document.getElementById('quickFiltersCard');
-    if (quickFiltersCard && quickFiltersCard.dataset.filterReliabilityBound !== '1') {
-      quickFiltersCard.addEventListener('click', (event) => {
-        const button = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
-        if (!button) return;
-        setTimeout(callAdventureApply, 0);
-      }, false);
-      quickFiltersCard.dataset.filterReliabilityBound = '1';
-      boundAnything = true;
+      const quickFiltersCard = document.getElementById('quickFiltersCard');
+      if (quickFiltersCard && quickFiltersCard.dataset.filterReliabilityBound !== '1') {
+        quickFiltersCard.addEventListener('click', (event) => {
+          const button = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
+          if (!button) return;
+          setTimeout(callAdventureApply, 0);
+        }, false);
+        quickFiltersCard.dataset.filterReliabilityBound = '1';
+        boundAnything = true;
+      }
+
+      ['resetAllFiltersTop', 'resetAllFiltersBottom', 'breadcrumbResetBtn'].forEach((id) => {
+        const button = document.getElementById(id);
+        if (!button || button.dataset.filterReliabilityBound === '1') return;
+        button.addEventListener('click', () => setTimeout(callAdventureApply, 0), false);
+        button.dataset.filterReliabilityBound = '1';
+        boundAnything = true;
+      });
     }
 
-    ['resetAllFiltersTop', 'resetAllFiltersBottom', 'breadcrumbResetBtn'].forEach((id) => {
-      const button = document.getElementById(id);
-      if (!button || button.dataset.filterReliabilityBound === '1') return;
-      button.addEventListener('click', () => setTimeout(callAdventureApply, 0), false);
-      button.dataset.filterReliabilityBound = '1';
-      boundAnything = true;
-    });
+    if (!bikeCanonical) {
+      bikeControlIds.forEach((id) => {
+        const input = document.getElementById(id);
+        if (!input || input.dataset.bikeFilterReliabilityBound === '1') return;
+        input.addEventListener('input', callBikeApply, false);
+        input.addEventListener('change', callBikeApply, false);
+        input.dataset.bikeFilterReliabilityBound = '1';
+        boundAnything = true;
+      });
 
-    bikeControlIds.forEach((id) => {
-      const input = document.getElementById(id);
-      if (!input || input.dataset.bikeFilterReliabilityBound === '1') return;
-      input.addEventListener('input', callBikeApply, false);
-      input.addEventListener('change', callBikeApply, false);
-      input.dataset.bikeFilterReliabilityBound = '1';
-      boundAnything = true;
-    });
+      const bikeQuickFiltersCard = document.getElementById('bikeQuickFiltersCard');
+      if (bikeQuickFiltersCard && bikeQuickFiltersCard.dataset.bikeFilterReliabilityBound !== '1') {
+        bikeQuickFiltersCard.addEventListener('click', (event) => {
+          const button = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
+          if (!button) return;
+          setTimeout(callBikeApply, 0);
+        }, false);
+        bikeQuickFiltersCard.dataset.bikeFilterReliabilityBound = '1';
+        boundAnything = true;
+      }
 
-    const bikeQuickFiltersCard = document.getElementById('bikeQuickFiltersCard');
-    if (bikeQuickFiltersCard && bikeQuickFiltersCard.dataset.bikeFilterReliabilityBound !== '1') {
-      bikeQuickFiltersCard.addEventListener('click', (event) => {
-        const button = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
-        if (!button) return;
-        setTimeout(callBikeApply, 0);
-      }, false);
-      bikeQuickFiltersCard.dataset.bikeFilterReliabilityBound = '1';
-      boundAnything = true;
+      ['bikeResetAllFiltersTop', 'bikeResetAllFiltersBottom', 'bikeBreadcrumbResetBtn'].forEach((id) => {
+        const button = document.getElementById(id);
+        if (!button || button.dataset.bikeFilterReliabilityBound === '1') return;
+        button.addEventListener('click', () => setTimeout(callBikeApply, 0), false);
+        button.dataset.bikeFilterReliabilityBound = '1';
+        boundAnything = true;
+      });
     }
 
-    ['bikeResetAllFiltersTop', 'bikeResetAllFiltersBottom', 'bikeBreadcrumbResetBtn'].forEach((id) => {
-      const button = document.getElementById(id);
-      if (!button || button.dataset.bikeFilterReliabilityBound === '1') return;
-      button.addEventListener('click', () => setTimeout(callBikeApply, 0), false);
-      button.dataset.bikeFilterReliabilityBound = '1';
-      boundAnything = true;
-    });
-
-    const bikeExplorerBtn = document.getElementById('bikeTrailExplorerBtn');
-    if (bikeExplorerBtn && bikeExplorerBtn.dataset.bikeExplorerReliabilityBound !== '1') {
-      bikeExplorerBtn.addEventListener('click', (event) => {
-        event.preventDefault();
-        if (typeof window.openTrailExplorerWindow === 'function') {
-          window.openTrailExplorerWindow();
-        } else {
-          window.openBikeTrailExplorer?.();
-        }
-      }, false);
-      bikeExplorerBtn.dataset.bikeExplorerReliabilityBound = '1';
-      boundAnything = true;
+    if (!bikeCanonical) {
+      const bikeExplorerBtn = document.getElementById('bikeTrailExplorerBtn');
+      if (bikeExplorerBtn && bikeExplorerBtn.dataset.bikeExplorerReliabilityBound !== '1') {
+        bikeExplorerBtn.addEventListener('click', (event) => {
+          event.preventDefault();
+          if (typeof window.openTrailExplorerWindow === 'function') {
+            window.openTrailExplorerWindow();
+          } else {
+            window.openBikeTrailExplorer?.();
+          }
+        }, false);
+        bikeExplorerBtn.dataset.bikeExplorerReliabilityBound = '1';
+        boundAnything = true;
+      }
     }
 
     if (boundAnything) {

@@ -6515,19 +6515,20 @@
        this.applyAllFilters();
      },
 
-     init: function() {
-       console.log('🎯 FilterManager.init() starting...');
-       const self = this;
-       this.cacheQuickFilterBaseLabels();
+      init: function() {
+        console.log('🎯 FilterManager.init() starting...');
+        const self = this;
+        this.cacheQuickFilterBaseLabels();
+        window.__adventureFilterCanonicalBound = true;
 
-       // Bind text input filters
-       ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'].forEach(id => {
-         const el = document.getElementById(id);
-         if (el) {
-           el.addEventListener('input', function() { self.applyAllFilters(); });
-           el.addEventListener('change', function() { self.applyAllFilters(); });
-         }
-       });
+        // Bind text input filters
+        ['searchName', 'filterDifficulty', 'filterState', 'filterCity', 'filterTags', 'filterCost'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', function() { self.applyAllFilters(); });
+            el.addEventListener('change', function() { self.applyAllFilters(); });
+          }
+        });
 
        document.querySelectorAll('#quickFiltersCard .quick-filter-btn').forEach((btn) => {
          btn.onclick = null;
@@ -6566,13 +6567,16 @@
          }, true);
        }
 
-       // Bind reset buttons
-       document.querySelectorAll('.pill-button.reset, [id*="reset"], [id*="Reset"]').forEach(btn => {
-         btn.addEventListener('click', function(e) {
-           e.preventDefault();
-           self.resetAllFilters();
-         }, false);
-       });
+    // Bind reset buttons
+    ['resetAllFiltersTop', 'resetAllFiltersBottom', 'breadcrumbResetBtn'].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn || btn.dataset.adventureFilterResetBound === '1') return;
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        self.resetAllFilters();
+      }, false);
+      btn.dataset.adventureFilterResetBound = '1';
+    });
 
        console.log('✅ FilterManager.init() complete');
        this.renderQuickFilterCounts();
@@ -11520,7 +11524,7 @@
   /**
    * Render cards for current page
    */
-  function renderPaginatedCards() {
+    function renderPaginatedCards() {
     console.log(`🎨 renderPaginatedCards() - page ${currentPage}, items=${totalFilteredAdventures.length}`);
 
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -11730,6 +11734,7 @@
     const newCardsGrid = cardsGrid.cloneNode(false);
     cardsGrid.parentNode.replaceChild(newCardsGrid, cardsGrid);
     const freshCardsGrid = document.getElementById("adventureCardsGrid");
+    freshCardsGrid.dataset.canonicalCardClickBound = '1';
 
     // Restore children to the fresh grid
     while (cardsGrid.firstChild) {
