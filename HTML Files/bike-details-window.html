@@ -56,6 +56,10 @@
     <a class="ab-btn ab-parking u-hidden" id="abParkingBtn" href="#" target="_blank" rel="noopener">
       🅿️ Parking Map
     </a>
+
+    <button type="button" class="ab-btn ab-visited" id="abVisitedBtn" title="Mark this trail as visited">
+      <span id="abVisitedIcon">✅</span> <span id="abVisitedText">Mark Visited</span>
+    </button>
   </div>
 </div>
 
@@ -90,6 +94,11 @@
 
   function normTag(text) {
     return String(text || '').trim().toLowerCase();
+  }
+
+  function parseVisitedFlag(value) {
+    var text = String(value || '').trim().toLowerCase();
+    return text === 'yes' || text === 'y' || text === 'true' || text === '1' || text === 'visited';
   }
 
   function uniqueTags(tags) {
@@ -675,6 +684,17 @@
     }
     var googleViewUrl = data.googleUrl || directionsUrl || '';
 
+    var openerWin = window.opener && !window.opener.closed ? window.opener : null;
+    var sourceIndex = payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null;
+    var bikeVisitedCol = openerWin && typeof openerWin.getBikeColumnIndexByName === 'function'
+      ? openerWin.getBikeColumnIndexByName('Visited')
+      : -1;
+    var openerRow = (openerWin && Number.isInteger(sourceIndex) && Array.isArray(openerWin.bikeTrailsData))
+      ? openerWin.bikeTrailsData[sourceIndex]
+      : null;
+    var openerValues = openerRow && openerRow.values && openerRow.values[0];
+    var isVisited = parseVisitedFlag((bikeVisitedCol >= 0 && openerValues) ? openerValues[bikeVisitedCol] : (data.visited || data.visitedStatus));
+
     var headerActions = [
       directionsUrl ? '<a class="ab-btn ab-maps" href="' + directionsUrl + '" target="_blank" rel="noopener" title="Open directions in a new tab" data-tooltip="Open directions in a new tab">🗺️ Open Maps</a>' : '',
       data.parkingLink ? '<a class="ab-btn ab-parking" href="' + data.parkingLink + '" target="_blank" rel="noopener" title="Open parking map in a new tab" data-tooltip="Open parking map in a new tab">🅿️ Parking Map</a>' : '',
@@ -684,12 +704,14 @@
     document.getElementById('header').innerHTML =
       '<div class="head-main">' +
       '<h1>' + (data.name || 'Bike Trail Details') + '</h1>' +
-      '<div class="meta">' + (data.region || data.city || 'Unknown region') + (data.state ? ', ' + data.state : '') + '</div>' +
+      '<div class="meta">' + (data.region || data.city || 'Unknown region') + (data.state ? ', ' + data.state : '') +
+      '<span id="bikeDetailVisitedBadge" class="detail-visited-badge' + (isVisited ? ' is-visited' : '') + '">' + (isVisited ? '✅ Visited' : '🕒 Not Visited') + '</span>' +
+      '</div>' +
       (headerActions ? '<div class="actions">' + headerActions + '</div>' : '') +
       '</div>' + getCloseButtonHtml();
 
     bindCloseButton();
-    initActionBar(data, directionsUrl);
+    initActionBar(data, directionsUrl, payload);
 
     // Overview tab
     document.getElementById('pane-overview').innerHTML =
@@ -803,7 +825,7 @@
     });
   }
 
-  function initActionBar(data, directionsUrl) {
+  function initActionBar(data, directionsUrl, payload) {
     var bar = document.getElementById('actionBar');
     if (!bar) return;
     bar.classList.remove('u-hidden');
@@ -874,6 +896,62 @@
     if (parkingUrl) {
       parkingBtn.setAttribute('href', parkingUrl);
       parkingBtn.classList.remove('u-hidden');
+    }
+
+    var visitedBtn = document.getElementById('abVisitedBtn');
+    var visitedIcon = document.getElementById('abVisitedIcon');
+    var visitedText = document.getElementById('abVisitedText');
+    var visitedBadge = document.getElementById('bikeDetailVisitedBadge');
+
+    var openerWin = window.opener && !window.opener.closed ? window.opener : null;
+    var sourceIndex = payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null;
+    var visitedCol = openerWin && typeof openerWin.getBikeColumnIndexByName === 'function'
+      ? openerWin.getBikeColumnIndexByName('Visited')
+      : -1;
+    var row = (openerWin && Number.isInteger(sourceIndex) && Array.isArray(openerWin.bikeTrailsData))
+      ? openerWin.bikeTrailsData[sourceIndex]
+      : null;
+    var rowValues = row && row.values && row.values[0];
+    var isVisited = parseVisitedFlag((visitedCol >= 0 && rowValues) ? rowValues[visitedCol] : (data.visited || data.visitedStatus));
+
+    function syncVisitedUi(flag) {
+      if (!visitedBtn || !visitedIcon || !visitedText) return;
+      visitedBtn.classList.toggle('active', !!flag);
+      visitedIcon.textContent = flag ? '✅' : '🕒';
+      visitedText.textContent = flag ? 'Visited' : 'Mark Visited';
+      if (visitedBadge) {
+        visitedBadge.classList.toggle('is-visited', !!flag);
+        visitedBadge.textContent = flag ? '✅ Visited' : '🕒 Not Visited';
+      }
+    }
+
+    syncVisitedUi(isVisited);
+
+    if (visitedBtn) {
+      visitedBtn.disabled = !(openerWin && Number.isInteger(sourceIndex) && sourceIndex >= 0 && visitedCol >= 0);
+      visitedBtn.onclick = async function () {
+        if (!openerWin || !Number.isInteger(sourceIndex) || sourceIndex < 0 || visitedCol < 0 || !rowValues) return;
+
+        var next = !isVisited;
+        while (rowValues.length <= visitedCol) rowValues.push('');
+        rowValues[visitedCol] = next ? 'Yes' : '';
+
+        try {
+          if (typeof openerWin.updateBikeTrailRowColumns === 'function') {
+            await openerWin.updateBikeTrailRowColumns(sourceIndex, { [visitedCol]: rowValues[visitedCol] }, {
+              accessToken: openerWin.accessToken,
+              filePath: openerWin.bikeTableConfig && openerWin.bikeTableConfig.filePath,
+              tableRef: openerWin.bikeTableConfig && (openerWin.bikeTableConfig.tableRef || openerWin.bikeTableConfig.tableName)
+            });
+          }
+
+          isVisited = next;
+          data.visitedStatus = next ? 'Yes' : '';
+          syncVisitedUi(isVisited);
+        } catch (err) {
+          console.warn('⚠️ Could not sync bike visited status to Excel:', err);
+        }
+      };
     }
   }
   // ── End Action Bar ───────────────────────────────────────────

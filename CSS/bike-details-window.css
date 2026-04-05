@@ -49,6 +49,24 @@ h1 {
   font-size: 14px;
 }
 
+.detail-visited-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.detail-visited-badge.is-visited {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.6);
+}
+
 .actions {
   display: flex;
   gap: 10px;
@@ -305,6 +323,23 @@ a:hover {
 .ab-parking:hover {
   background: #dcfce7;
   border-color: #86efac;
+}
+
+.ab-visited {
+  background: #f0f9ff;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.ab-visited:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
+.ab-visited.active {
+  background: #10b981;
+  color: #fff;
+  border-color: #059669;
 }
 
 /* ── Star rating ─────────────────────────────────────────── */

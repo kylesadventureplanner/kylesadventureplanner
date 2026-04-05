@@ -1,5 +1,5 @@
 (function initKhFeedbackRenderer() {
-  var VERSION = '1.0.0';
+  var VERSION = '1.2.0';
   var SOURCE = 'JS Files/kh-feedback-renderer.js';
 
   function escapeHtml(value) {
@@ -47,6 +47,16 @@
     return text;
   }
 
+  function parseTruthy(value) {
+    var text = String(value == null ? '' : value).trim().toLowerCase();
+    return text === 'true' || text === '1' || text === 'yes' || text === 'y' || text === 'favorite';
+  }
+
+  function parseVisited(value) {
+    var text = String(value == null ? '' : value).trim().toLowerCase();
+    return text === 'yes' || text === 'y' || text === 'true' || text === '1' || text === 'visited' || text === 'done';
+  }
+
   function buildRenderer() {
     return function renderKhFeedbackBlock(input) {
       var data = input || {};
@@ -54,25 +64,25 @@
       var rating = Math.max(0, Math.min(5, Number(data.ratingValue) || 0));
       var ratingText = rating > 0 ? ''.concat('\u2B50'.repeat(rating)).concat('\u2606'.repeat(5 - rating)) : 'Not yet Reviewed';
 
-      var favoriteRaw = data.favoriteValue;
-      var favoriteNorm = String(favoriteRaw || '').trim().toLowerCase();
-      var isFavorite = favoriteNorm === 'true' || favoriteNorm === '1' || favoriteRaw === 1;
-      var favoriteText = isFavorite ? 'Marked as Favorite' : 'Not marked as Favorite';
-
-      var visitedNorm = String(data.visitedValue || '').trim().toLowerCase();
-      var visitedHtml = visitedNorm === 'yes'
-        ? '<span class="kh-feedback-visited-yes">\u2705 Visited</span>'
-        : 'This Adventure still Awaits...';
+      var isFavorite = parseTruthy(data.favoriteValue);
+      var isVisited = parseVisited(data.visitedValue);
 
       var notesText = escapeHtml(parseNotesPreview(data.notesValue));
 
       return [
         '<div class="kh-feedback-block">',
-        '  <div class="kh-feedback-title">K&H Feedback</div>',
-        '  <div class="kh-feedback-row kh-feedback-row-first">Review Rating: <strong>' + ratingText + '</strong></div>',
-        '  <div class="kh-feedback-row">Favorite: <strong>' + favoriteText + '</strong></div>',
-        '  <div class="kh-feedback-row">Visited: ' + visitedHtml + '</div>',
-        '  <div class="kh-feedback-row kh-feedback-notes">Notes: ' + notesText + '</div>',
+        '  <div class="kh-feedback-header">',
+        '    <div class="kh-feedback-title">K&H Feedback</div>',
+        '    <div class="kh-feedback-status-row">',
+        '      <span class="kh-chip kh-chip-rating">⭐ ' + escapeHtml(ratingText) + '</span>',
+        '      <span class="kh-chip ' + (isFavorite ? 'kh-chip-fav-on' : 'kh-chip-fav-off') + '">' + (isFavorite ? '💖 Favorite' : '🤍 Not Favorite') + '</span>',
+        '      <span class="kh-chip ' + (isVisited ? 'kh-chip-visited' : 'kh-chip-not-visited') + '">' + (isVisited ? '✅ Visited' : '🕒 Not Visited') + '</span>',
+        '    </div>',
+        '  </div>',
+        '  <div class="kh-feedback-notes-wrap">',
+        '    <div class="kh-feedback-notes-label">Notes</div>',
+        '    <div class="kh-feedback-row kh-feedback-notes">' + notesText + '</div>',
+        '  </div>',
         '</div>'
       ].join('\n');
     };

@@ -2088,34 +2088,93 @@
     }
 
     .kh-feedback-block {
-      margin-top: 10px;
-      padding: 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      background: #f8fafc;
+      margin-top: 12px;
+      padding: 12px;
+      border: 2px solid #cbd5e1;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+    }
+
+    .kh-feedback-header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     .kh-feedback-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #1e293b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .kh-feedback-status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .kh-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
       font-size: 12px;
       font-weight: 700;
+      border: 1px solid #cbd5e1;
+      background: #fff;
       color: #334155;
+    }
+
+    .kh-chip-rating {
+      border-color: #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .kh-chip-fav-on {
+      border-color: #fecdd3;
+      background: #fff1f2;
+      color: #be123c;
+    }
+
+    .kh-chip-fav-off {
+      border-color: #e5e7eb;
+      background: #f8fafc;
+      color: #64748b;
+    }
+
+    .kh-chip-visited {
+      border-color: #86efac;
+      background: #ecfdf5;
+      color: #166534;
+    }
+
+    .kh-chip-not-visited {
+      border-color: #d1d5db;
+      background: #f9fafb;
+      color: #6b7280;
+    }
+
+    .kh-feedback-notes-wrap {
+      margin-top: 10px;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 8px;
+    }
+
+    .kh-feedback-notes-label {
+      font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      color: #64748b;
+      margin-bottom: 4px;
     }
 
     .kh-feedback-row {
-      font-size: 12px;
-      color: #475569;
-      margin-top: 4px;
-    }
-
-    .kh-feedback-row-first {
-      margin-top: 6px;
-    }
-
-    .kh-feedback-visited-yes {
-      color: #16a34a;
-      font-weight: 700;
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.45;
     }
 
     .kh-feedback-notes {
@@ -6121,11 +6180,16 @@
              googlePlaceId !== 'SKIP' && !String(googlePlaceId).toUpperCase().includes('SKIP');
 
            // Get feedback block HTML if function is available
+           const visitedColIndex = typeof window.getColumnIndexByName === 'function'
+             ? Number(window.getColumnIndexByName('Visited'))
+             : 24;
+           const visitedValue = values[(Number.isInteger(visitedColIndex) && visitedColIndex >= 0) ? visitedColIndex : 24];
+
            const khFeedbackHtml = typeof window.renderKhFeedbackBlock === 'function'
              ? window.renderKhFeedbackBlock({
                  ratingValue: myRating,
                  favoriteValue: favoriteStatus,
-                 visitedValue: values[24],
+                 visitedValue: visitedValue,
                  notesValue: notes
                })
              : '';
@@ -11792,11 +11856,16 @@
       // Get state color
       const stateUpper = (state || "").trim().toUpperCase();
 
+      const visitedColIndex = typeof window.getColumnIndexByName === 'function'
+        ? Number(window.getColumnIndexByName('Visited'))
+        : 24;
+      const visitedValue = values[(Number.isInteger(visitedColIndex) && visitedColIndex >= 0) ? visitedColIndex : 24];
+
       const khFeedbackHtml = typeof window.renderKhFeedbackBlock === 'function'
         ? window.renderKhFeedbackBlock({
             ratingValue: currentRating,
             favoriteValue: favoriteStatus,
-            visitedValue: values[24],
+            visitedValue: visitedValue,
             notesValue: notes
           })
         : '';

@@ -32,6 +32,49 @@
     h1 { margin: 0 0 8px; font-size: 30px; }
     .meta { opacity: 0.95; font-size: 14px; }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .head .actions .ab-btn {
+      border-width: 1px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: inherit;
+    }
+    .head .actions .ab-maps {
+      background: #f5f3ff;
+      color: #7c3aed;
+      border-color: #ddd6fe;
+    }
+    .head .actions .ab-maps:hover {
+      background: #ede9fe;
+      border-color: #c4b5fd;
+    }
+    .head .actions .ab-website,
+    .head .actions .ab-google {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border-color: #ddd6fe;
+    }
+    .head .actions .ab-website:hover,
+    .head .actions .ab-google:hover {
+      background: #ede9fe;
+      border-color: #c4b5fd;
+    }
+    .detail-visited-badge {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 8px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid rgba(255, 255, 255, 0.42);
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+    .detail-visited-badge.is-visited {
+      background: rgba(16, 185, 129, 0.25);
+      border-color: rgba(16, 185, 129, 0.6);
+    }
     .btn {
       border: 1px solid rgba(255,255,255,0.4);
       background: rgba(255,255,255,0.16);
@@ -265,12 +308,15 @@
     .ab-fav.active { background: #e11d48; color: #fff; border-color: #be123c; }
 
     /* Maps */
-    .ab-maps { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .ab-maps:hover { background: #dbeafe; border-color: #93c5fd; }
+    .ab-maps { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
+    .ab-maps:hover { background: #ede9fe; border-color: #c4b5fd; }
 
     /* Parking */
     .ab-parking { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
     .ab-parking:hover { background: #dcfce7; border-color: #86efac; }
+    .ab-visited { background: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
+    .ab-visited:hover { background: #e0f2fe; border-color: #7dd3fc; }
+    .ab-visited.active { background: #10b981; color: #fff; border-color: #059669; }
 
     /* Star Rating */
     .star-rating {
@@ -550,6 +596,10 @@
     <a class="ab-btn ab-parking u-hidden" id="abParkingBtn" href="#" target="_blank" rel="noopener">
       🅿️ Parking Map
     </a>
+
+    <button type="button" class="ab-btn ab-visited" id="abVisitedBtn" title="Mark this location as visited">
+      <span id="abVisitedIcon">✅</span> <span id="abVisitedText">Mark Visited</span>
+    </button>
   </div>
 </div>
 
@@ -1624,23 +1674,26 @@
 
     var directionsUrl = buildDetailDirectionsUrl(data);
     var googleViewUrl = buildDetailMapsSearchUrl(data) || String(data.googleUrl || '').trim() || directionsUrl || '';
+    var isVisited = String(data.visitedStatus || data.visited || '').trim().toLowerCase() === 'yes';
 
     var headerActions = [
-      directionsUrl ? '<a class="btn" href="' + directionsUrl + '" target="_blank" rel="noopener">Directions</a>' : '',
-      data.website ? '<a class="btn" href="' + data.website + '" target="_blank" rel="noopener">Website</a>' : '',
-      googleViewUrl ? '<a class="btn" href="' + googleViewUrl + '" target="_blank" rel="noopener">Google View</a>' : ''
+      directionsUrl ? '<a class="ab-btn ab-maps" href="' + directionsUrl + '" target="_blank" rel="noopener">🧭 Directions</a>' : '',
+      data.website ? '<a class="ab-btn ab-website" href="' + data.website + '" target="_blank" rel="noopener">🌐 Website</a>' : '',
+      googleViewUrl ? '<a class="ab-btn ab-google" href="' + googleViewUrl + '" target="_blank" rel="noopener">🔎 Google View</a>' : ''
     ].join('');
 
     document.getElementById('header').innerHTML =
       '<div class="head-main">' +
       '<h1>' + (data.name || 'Adventure Details') + '</h1>' +
-      '<div class="meta">' + (data.city || 'Unknown city') + (data.state ? ', ' + data.state : '') + '</div>' +
+      '<div class="meta">' + (data.city || 'Unknown city') + (data.state ? ', ' + data.state : '') +
+      '<span id="detailVisitedBadge" class="detail-visited-badge' + (isVisited ? ' is-visited' : '') + '">' + (isVisited ? '✅ Visited' : '🕒 Not Visited') + '</span>' +
+      '</div>' +
       (headerActions ? '<div class="actions">' + headerActions + '</div>' : '') +
       '</div>' + getCloseButtonHtml();
 
     bindCloseButton();
     renderDebugMarker(payload);
-    initActionBar(data, directionsUrl);
+    initActionBar(data, directionsUrl, payload);
 
     document.getElementById('pane-overview').innerHTML =
       '<div class="grid">' +
@@ -1708,7 +1761,90 @@
     });
   }
 
-  function initActionBar(data, directionsUrl) {
+  function getAdventureVisitedColumnIndex(openerWin) {
+    if (!openerWin) return 24;
+
+    var byKnownHelpers = [
+      'getColumnIndexByName',
+      'getAdventureColumnIndexByName'
+    ];
+
+    for (var i = 0; i < byKnownHelpers.length; i += 1) {
+      var helperName = byKnownHelpers[i];
+      if (typeof openerWin[helperName] === 'function') {
+        var idx = Number(openerWin[helperName]('Visited'));
+        if (Number.isInteger(idx) && idx >= 0) return idx;
+      }
+    }
+
+    if (openerWin.columnIndices && Number.isInteger(openerWin.columnIndices.Visited) && openerWin.columnIndices.Visited >= 0) {
+      return openerWin.columnIndices.Visited;
+    }
+
+    return 24;
+  }
+
+  async function persistAdventureVisitedCell(openerWin, rowMatch, rowValues, visitedColIndex) {
+    if (!openerWin || !rowMatch || !rowMatch.row || !Array.isArray(rowValues) || visitedColIndex < 0) return false;
+
+    if (typeof openerWin.updateAdventureRowColumns === 'function' && Number.isInteger(rowMatch.index) && rowMatch.index >= 0) {
+      var updateMap = {};
+      updateMap[visitedColIndex] = rowValues[visitedColIndex];
+      await openerWin.updateAdventureRowColumns(rowMatch.index, updateMap, {
+        accessToken: openerWin.accessToken,
+        filePath: openerWin.filePath,
+        tableRef: openerWin.tableName
+      });
+      return true;
+    }
+
+    var rowId = rowMatch.row.rowId;
+    if (rowId && openerWin.accessToken) {
+      var filePath = openerWin.filePath || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+      var tableName = openerWin.tableName || 'MyList';
+      var encodedPath = encodeURIComponent(filePath);
+      var apiUrl = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + tableName + '/rows/' + rowId;
+
+      var response = await fetch(apiUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': 'Bearer ' + openerWin.accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: [rowValues] })
+      });
+
+      if (response.ok) return true;
+
+      if (response.status === 401 && typeof openerWin.rehydrateAuthState === 'function') {
+        var refreshed = await openerWin.rehydrateAuthState();
+        if (refreshed && openerWin.accessToken) {
+          var retryResponse = await fetch(apiUrl, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': 'Bearer ' + openerWin.accessToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ values: [rowValues] })
+          });
+          if (retryResponse.ok) return true;
+        }
+      }
+    }
+
+    if (typeof openerWin.saveToExcel === 'function') {
+      if (rowId && openerWin.saveToExcel.length >= 2) {
+        await openerWin.saveToExcel(rowId, rowValues);
+      } else {
+        await openerWin.saveToExcel();
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  function initActionBar(data, directionsUrl, payload) {
     var bar = document.getElementById('actionBar');
     if (!bar) return;
     bar.classList.remove('u-hidden');
@@ -1773,6 +1909,57 @@
     if (parkingUrl) {
       parkingBtn.setAttribute('href', parkingUrl);
       parkingBtn.classList.remove('u-hidden');
+    }
+
+    var visitedBtn = document.getElementById('abVisitedBtn');
+    var visitedIcon = document.getElementById('abVisitedIcon');
+    var visitedText = document.getElementById('abVisitedText');
+    var visitedBadge = document.getElementById('detailVisitedBadge');
+
+    var openerWin = getOpenerWindow();
+    var rowMatch = findOpenerRowForTagSync(openerWin, {
+      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
+      data: data
+    });
+    var rowValues = rowMatch && rowMatch.row && rowMatch.row.values && rowMatch.row.values[0];
+    var visitedColIndex = getAdventureVisitedColumnIndex(openerWin);
+    var isVisited = String((rowValues && rowValues[visitedColIndex]) || data.visitedStatus || data.visited || '').trim().toLowerCase() === 'yes';
+
+    function syncVisitedUi(flag) {
+      if (!visitedBtn || !visitedIcon || !visitedText) return;
+      visitedBtn.classList.toggle('active', !!flag);
+      visitedIcon.textContent = flag ? '✅' : '🕒';
+      visitedText.textContent = flag ? 'Visited' : 'Mark Visited';
+      if (visitedBadge) {
+        visitedBadge.classList.toggle('is-visited', !!flag);
+        visitedBadge.textContent = flag ? '✅ Visited' : '🕒 Not Visited';
+      }
+    }
+
+    syncVisitedUi(isVisited);
+    if (visitedBtn) {
+      visitedBtn.disabled = !(rowMatch && Array.isArray(rowValues));
+      visitedBtn.onclick = async function () {
+        if (!rowMatch || !rowValues) return;
+        var next = !isVisited;
+        var previousValue = rowValues[visitedColIndex];
+        while (rowValues.length <= visitedColIndex) rowValues.push('');
+        rowValues[visitedColIndex] = next ? 'Yes' : '';
+
+        try {
+          var saved = await persistAdventureVisitedCell(openerWin, rowMatch, rowValues, visitedColIndex);
+          if (!saved) throw new Error('Visited cell could not be persisted to Excel.');
+          isVisited = next;
+          data.visitedStatus = next ? 'Yes' : '';
+          data.visited = next ? 'Yes' : '';
+          syncVisitedUi(isVisited);
+          showDetailToast(next ? '✅ Marked as visited and saved to Excel.' : '✅ Marked as not visited and saved to Excel.', 'success', 3200);
+        } catch (err) {
+          rowValues[visitedColIndex] = previousValue;
+          syncVisitedUi(isVisited);
+          showDetailToast('⚠️ Could not sync visited status to Excel.', 'error', 3600);
+        }
+      };
     }
   }
 

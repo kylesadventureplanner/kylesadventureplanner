@@ -321,6 +321,32 @@
     return await resolveTableVisitedColumnIndex(filePath, tableName, 'bike');
   }
 
+  function getSyncHealthStatus() {
+    const adventureCol = getKnownAdventureVisitedColumnIndex();
+    const bikeCol = getKnownBikeVisitedColumnIndex();
+
+    const adventureSynced = adventureCol >= 0;
+    const bikeSynced = bikeCol >= 0;
+
+    return {
+      adventureSynced,
+      bikeSynced,
+      adventureText: adventureSynced ? 'synced' : 'missing',
+      bikeText: bikeSynced ? 'synced' : 'missing',
+      allSynced: adventureSynced && bikeSynced
+    };
+  }
+
+  function renderSyncHealthBadge() {
+    const badge = document.getElementById('visitedSyncHealthBadge');
+    if (!badge) return;
+
+    const status = getSyncHealthStatus();
+    badge.classList.remove('ok', 'warn');
+    badge.classList.add(status.allSynced ? 'ok' : 'warn');
+    badge.textContent = `Sync - Adventure Visited: ${status.adventureText} | Bike Visited: ${status.bikeText}`;
+  }
+
   function getKnownAdventureVisitedColumnIndex() {
     return Number.isInteger(state.visitedColumnIndexCache.adventure) ? state.visitedColumnIndexCache.adventure : -1;
   }
@@ -1375,6 +1401,8 @@
       resolveBikeVisitedColumnIndex().catch(() => -1)
     ]);
 
+    renderSyncHealthBadge();
+
     const adventures = readAllLocations();
     let visitMap = getVisitMap();
     visitMap = hydrateVisitMapFromExcel(adventures, visitMap);
@@ -1585,5 +1613,6 @@
 
   window.initializeVisitedLocationsTab = initializeVisitedLocationsTab;
   window.initVisitedLocationsTab = window.initVisitedLocationsTab || initializeVisitedLocationsTab;
+  window.getVisitedTrackerSyncHealth = getSyncHealthStatus;
 })();
 
