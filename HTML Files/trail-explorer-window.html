@@ -158,15 +158,11 @@
           }
 
           var html = await response.text();
-          var parser = new DOMParser();
-          var doc = parser.parseFromString(html, 'text/html');
-          var explorerModal = doc.getElementById('bikeTrailExplorerModal');
-          if (!explorerModal) throw new Error('Trail Explorer markup not found in bike tab HTML');
-
           var root = document.getElementById('bikeTrailsTab');
           if (!root) throw new Error('Trail Explorer root mount not found');
 
-          root.innerHTML = explorerModal.outerHTML;
+          // Standalone explorer window keeps full bike tab markup so result cards render here.
+          root.innerHTML = html;
           root.style.display = 'block';
 
           var header = document.getElementById('trailExplorerHeader');

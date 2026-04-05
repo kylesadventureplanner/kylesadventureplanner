@@ -2209,7 +2209,8 @@
       return;
     }
 
-    if (!standaloneExplorer && Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length) {
+    const hasCardsGrid = !!document.getElementById('bikeTrailsCardsGrid');
+    if (hasCardsGrid && Array.isArray(window.bikeTrailsData) && window.bikeTrailsData.length) {
       applyBikeFilters();
     }
 
@@ -2890,28 +2891,36 @@
     if (!modal || modal.dataset.explorerStandaloneMode === '1') return;
     modal.dataset.explorerStandaloneMode = '1';
 
-    const parent = modal.parentElement;
-    if (parent) {
-      Array.from(parent.children).forEach((child) => {
-        if (child === modal || child.tagName === 'SCRIPT') return;
-        child.style.display = 'none';
-      });
+    const tabRoot = document.getElementById('bikeTrailsTab');
+    const explorerBtn = document.getElementById('bikeTrailExplorerBtn');
+    if (explorerBtn) explorerBtn.style.display = 'none';
+
+    // Move explorer to the top so it behaves like in-page content, not a popup layer.
+    if (tabRoot && modal.parentElement === tabRoot) {
+      const tabHeader = tabRoot.querySelector('header');
+      if (tabHeader && tabHeader.nextSibling !== modal) {
+        tabRoot.insertBefore(modal, tabHeader.nextSibling);
+      } else if (!tabHeader) {
+        tabRoot.insertBefore(modal, tabRoot.firstChild);
+      }
     }
 
     modal.style.position = 'static';
     modal.style.inset = 'auto';
     modal.style.background = 'transparent';
-    modal.style.padding = '16px';
+    modal.style.padding = '0 0 12px 0';
     modal.style.zIndex = 'auto';
-    modal.style.minHeight = '100vh';
+    modal.style.minHeight = 'auto';
+    modal.style.display = 'block';
 
     const panel = modal.firstElementChild;
     if (panel && panel.style) {
-      panel.style.width = 'min(1200px, 96vw)';
+      panel.style.width = '100%';
       panel.style.height = 'auto';
       panel.style.maxHeight = 'none';
-      panel.style.margin = '0 auto';
+      panel.style.margin = '0';
       panel.style.border = '1px solid #e5e7eb';
+      panel.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
     }
 
     const closeBtn = document.getElementById('bikeExplorerCloseBtn');
