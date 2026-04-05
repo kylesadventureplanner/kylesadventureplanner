@@ -1392,7 +1392,12 @@
 
   function isBikeInteractiveCardTarget(target) {
     if (!target || !target.closest) return false;
-    return Boolean(target.closest('a, button, input, select, textarea, label, [contenteditable=""], [contenteditable="true"], .tag-pill, .card-address-copy, .card-addr-copy-btn, .card-rating, .rating-star'));
+    // Only block clicks on TRUE interactive elements (native controls and copy buttons).
+    // Do NOT include .tag-pill (non-interactive <span>s), .card-rating (container <div>),
+    // or .rating-star (<button>s already caught by the explicit [data-bike-rating] check
+    // earlier in the delegate). Including those here creates dead zones where clicking
+    // does nothing instead of opening the details tab.
+    return Boolean(target.closest('a, button, input, select, textarea, label, [contenteditable=""], [contenteditable="true"], .card-address-copy, .card-addr-copy-btn'));
   }
 
   function bindBikeCardInteractionDelegates() {
@@ -2932,7 +2937,15 @@
   }
 
   // ─── Open Bike Trail Details in New Tab ─────────────────────────────────────
+  // Dedup guard: prevents double-clicks or rapid re-triggers from opening 2 tabs.
+  const BIKE_DETAIL_OPEN_DEDUP_MS = 700;
+
   window.openBikeTrailDetailsInNewTab = function(sourceIndex) {
+    // Ignore if a details tab was opened less than BIKE_DETAIL_OPEN_DEDUP_MS ago.
+    const now = Date.now();
+    if (now - (window.__bikeDetailLastOpenTs || 0) < BIKE_DETAIL_OPEN_DEDUP_MS) return;
+    window.__bikeDetailLastOpenTs = now;
+
     const trail = trailModel((window.bikeTrailsData || [])[sourceIndex], sourceIndex);
     if (!trail) {
       window.showToast?.('Trail data not available', 'warning', 2000);
