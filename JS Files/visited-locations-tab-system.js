@@ -84,43 +84,45 @@
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
 
-  const state = {
-    initialized: false,
-    activeProgressSubTab: 'overview',
-    weatherMode: 'auto',
-    searchText: '',
-    categoryFilter: 'all',
-    catalogVisitFilter: 'all',
-    catalogSourceFilter: 'all',
-    catalogRenderLimit: CATALOG_INITIAL_LIMIT,
-    latestVisitMap: {},
-    challengeState: {},
-    metaState: {},
-    latestLocations: [],
-    isRefreshing: false,
-    busyVisitToggles: new Set(),
-    bikeLoadRequested: false,
-    mobileTooltip: {
-      pressTimerId: 0,
-      hideTimerId: 0,
-      chipHideTimerId: 0,
-      longPressActive: false,
-      suppressClickUntil: 0,
-      targetEl: null,
-      lastLongPressTarget: null,
-      bubbleEl: null
-    },
-    loadingUiActive: false,
-    subTabCheckTimerId: 0,
-    lastSubTabBlockerLabel: '',
-    tracerEnabled: Boolean(window.__visitedClickTrace),
-    tracerLastPointer: null,
-    visitedColumnIndexCache: {
-      adventure: null,
-      bike: null
-    },
-    lastRenderAt: null
-  };
+   const state = {
+     initialized: false,
+     activeProgressSubTab: 'overview',
+     weatherMode: 'auto',
+     searchText: '',
+     categoryFilter: 'all',
+     catalogVisitFilter: 'all',
+     catalogSourceFilter: 'all',
+     catalogRenderLimit: CATALOG_INITIAL_LIMIT,
+     latestVisitMap: {},
+     challengeState: {},
+     metaState: {},
+     latestLocations: [],
+     isRefreshing: false,
+     busyVisitToggles: new Set(),
+     bikeLoadRequested: false,
+     mobileTooltip: {
+       pressTimerId: 0,
+       hideTimerId: 0,
+       chipHideTimerId: 0,
+       longPressActive: false,
+       suppressClickUntil: 0,
+       targetEl: null,
+       lastLongPressTarget: null,
+       bubbleEl: null
+     },
+     loadingUiActive: false,
+     subTabCheckTimerId: 0,
+     lastSubTabBlockerLabel: '',
+     tracerEnabled: Boolean(window.__visitedClickTrace),
+     tracerLastPointer: null,
+     visitedColumnIndexCache: {
+       adventure: null,
+       bike: null
+     },
+     lastRenderAt: null,
+     lastCategoryFilterClick: 0,
+     categoryFilterDebounceMs: 100
+   };
 
    function syncProgressSubTabs(root) {
      if (!root) return;
@@ -2360,9 +2362,32 @@
        const categoryBtn = event.target.closest('[data-category-filter]');
        if (categoryBtn) {
          event.preventDefault();
+         event.stopPropagation();
+
          const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
          const prevFilter = state.categoryFilter;
+
+         // DEBOUNCE: Prevent rapid repeated clicks on category buttons
+         const now = Date.now();
+         if (now - state.lastCategoryFilterClick < state.categoryFilterDebounceMs) {
+           console.log(`⏱️ Category filter click debounced (${now - state.lastCategoryFilterClick}ms since last click)`);
+           return;
+         }
+         state.lastCategoryFilterClick = now;
+
+         // IMMEDIATE VISUAL FEEDBACK: Update UI state instantly
          state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
+
+         // Update button visual state immediately
+         const grid = document.getElementById('visitedCategoryGrid');
+         if (grid) {
+           grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
+             const btnCategory = btn.getAttribute('data-category-filter');
+             const isActive = btnCategory === state.categoryFilter;
+             btn.classList.toggle('active', isActive);
+             btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+           });
+         }
 
          // DIAGNOSTIC: Log category filter clicks
          if (typeof window.__debugFocusButtons === 'undefined') {
