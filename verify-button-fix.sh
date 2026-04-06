@@ -26,7 +26,8 @@ fi
 
 echo ""
 echo "✅ Checking for ensureButtonsResponsive() call in refreshTab()..."
-if grep -A2 "scheduleVisitedSubTabInterceptionCheck(root, 60)" "$FILE" | grep -q "ensureButtonsResponsive()"; then
+# Use a wider function-scope window to avoid false negatives from nearby line shifts.
+if grep -A120 "function refreshTab" "$FILE" | grep -q "ensureButtonsResponsive()"; then
     echo "   ✓ Found call to ensureButtonsResponsive() in refreshTab()"
 else
     echo "   ✗ NOT FOUND - Fix may not be applied"

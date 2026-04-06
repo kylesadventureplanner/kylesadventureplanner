@@ -2239,58 +2239,67 @@
       }
     }
 
-   function bindControls() {
-     const root = document.getElementById('visitedLocationsRoot');
-     if (!root || root.dataset.bound === '1') return;
+    function bindControls() {
+      const root = document.getElementById('visitedLocationsRoot');
+      if (!root) return;
 
-     root.dataset.bound = '1';
+      // PREVENT DUPLICATE EVENT LISTENERS: Use a stronger check
+      if (root.dataset.bound === '1' && root.__visitedClickHandler) {
+        console.log('✅ Visited Locations controls already bound - skipping rebind');
+        return;
+      }
 
-     const subtabBar = root.querySelector('.visited-progress-subtabs');
-     if (subtabBar) {
-       subtabBar.style.pointerEvents = 'auto';
-       subtabBar.style.position = 'relative';
-       subtabBar.style.zIndex = '2500';
-     }
+      console.log('🔌 Binding Visited Locations controls...');
 
-     syncProgressSubTabs(root);
-     bindProgressSubTabButtons(root);
-     announceProgressSubTab(root, state.activeProgressSubTab);
-     state.latestVisitMap = getVisitMap();
-     renderSyncMeta(state.latestVisitMap);
-     initMobileTooltipSupport(root);
-     installVisitedClickTracer(root);
-     applyTooltipInfoIcons(root);
+      // Store bound flag and handler reference for cleanup/dedup
+      root.dataset.bound = '1';
 
-     // Monitor DOM for dynamically added buttons and ensure they're responsive
-     const observer = new MutationObserver((mutations) => {
-       let hasButtonChanges = false;
-       for (const mutation of mutations) {
-         if (mutation.type === 'childList' || mutation.type === 'subtree') {
-           const nodes = Array.from(mutation.addedNodes);
-           if (nodes.some(node => {
-             if (!node.querySelectorAll) return false;
-             return node.querySelectorAll('button, [data-visit-action], [data-progress-subtab]').length > 0;
-           })) {
-             hasButtonChanges = true;
-             break;
-           }
-         }
-       }
-       if (hasButtonChanges) {
-         // Use requestAnimationFrame to batch multiple mutations
-         requestAnimationFrame(() => {
-           ensureButtonsResponsive();
-         });
-       }
-     });
+      const subtabBar = root.querySelector('.visited-progress-subtabs');
+      if (subtabBar) {
+        subtabBar.style.pointerEvents = 'auto';
+        subtabBar.style.position = 'relative';
+        subtabBar.style.zIndex = '2500';
+      }
 
-     observer.observe(root, {
-       childList: true,
-       subtree: true,
-       attributes: false
-     });
+      syncProgressSubTabs(root);
+      bindProgressSubTabButtons(root);
+      announceProgressSubTab(root, state.activeProgressSubTab);
+      state.latestVisitMap = getVisitMap();
+      renderSyncMeta(state.latestVisitMap);
+      initMobileTooltipSupport(root);
+      installVisitedClickTracer(root);
+      applyTooltipInfoIcons(root);
 
-     root.addEventListener('keydown', (event) => {
+      // Monitor DOM for dynamically added buttons and ensure they're responsive
+      const observer = new MutationObserver((mutations) => {
+        let hasButtonChanges = false;
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList' || mutation.type === 'subtree') {
+            const nodes = Array.from(mutation.addedNodes);
+            if (nodes.some(node => {
+              if (!node.querySelectorAll) return false;
+              return node.querySelectorAll('button, [data-visit-action], [data-progress-subtab]').length > 0;
+            })) {
+              hasButtonChanges = true;
+              break;
+            }
+          }
+        }
+        if (hasButtonChanges) {
+          // Use requestAnimationFrame to batch multiple mutations
+          requestAnimationFrame(() => {
+            ensureButtonsResponsive();
+          });
+        }
+      });
+
+      observer.observe(root, {
+        childList: true,
+        subtree: true,
+        attributes: false
+      });
+
+      root.addEventListener('keydown', (event) => {
        const currentTabBtn = event.target.closest('[data-progress-subtab]');
        if (!currentTabBtn) return;
 
@@ -2311,147 +2320,154 @@
        const tabKey = nextButton.getAttribute('data-progress-subtab') || 'overview';
        setActiveProgressSubTab(root, tabKey);
        nextButton.focus();
-     });
+      });
 
-     root.addEventListener('click', (event) => {
-      const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
-      if (explainBtn) {
-        event.preventDefault();
-        const targetId = explainBtn.getAttribute('data-suggestion-explain-toggle');
-        const panel = targetId ? document.getElementById(targetId) : null;
-        if (panel) {
-          const expanded = explainBtn.getAttribute('aria-expanded') === 'true';
-          explainBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-          panel.hidden = expanded;
-        }
-        return;
+      // CREATE THE MAIN CLICK HANDLER FUNCTION (stored to prevent duplicate attachment)
+      if (!root.__visitedClickHandler) {
+        root.__visitedClickHandler = function handleVisitedClick(event) {
+          const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
+          if (explainBtn) {
+            event.preventDefault();
+            const targetId = explainBtn.getAttribute('data-suggestion-explain-toggle');
+            const panel = targetId ? document.getElementById(targetId) : null;
+            if (panel) {
+              const expanded = explainBtn.getAttribute('aria-expanded') === 'true';
+              explainBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+              panel.hidden = expanded;
+            }
+            return;
+          }
+
+          const loadMoreBtn = event.target.closest('[data-catalog-action="load-more"]');
+          if (loadMoreBtn) {
+            event.preventDefault();
+            state.catalogRenderLimit += CATALOG_LOAD_STEP;
+            renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
+            return;
+          }
+
+          const progressTabBtn = event.target.closest('[data-progress-subtab]');
+          if (progressTabBtn) {
+            event.preventDefault();
+            // Defensive reset: ensure tooltip long-press suppression never bleeds into normal subtab navigation.
+            state.mobileTooltip.longPressActive = false;
+            state.mobileTooltip.suppressClickUntil = 0;
+            state.mobileTooltip.lastLongPressTarget = null;
+            const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'overview';
+            if (tabKey !== state.activeProgressSubTab) {
+              setActiveProgressSubTab(root, tabKey);
+            }
+            scheduleVisitedSubTabInterceptionCheck(root, 0);
+            return;
+          }
+
+          const toggleBtn = event.target.closest('[data-visit-action="toggle"]');
+          if (toggleBtn) {
+            event.preventDefault();
+            const locationId = toggleBtn.getAttribute('data-location-id');
+            if (locationId && !state.busyVisitToggles.has(locationId)) {
+              state.busyVisitToggles.add(locationId);
+              setButtonBusy(toggleBtn, true, 'Saving...');
+              toggleVisited(locationId)
+                .catch((error) => {
+                  console.warn('Visited toggle failed:', error);
+                })
+                .finally(() => {
+                  state.busyVisitToggles.delete(locationId);
+                  setButtonBusy(toggleBtn, false);
+                });
+            }
+            return;
+          }
+
+          const categoryBtn = event.target.closest('[data-category-filter]');
+          if (categoryBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // SAFETY: Prevent clicking during refresh
+            if (state.isRefreshing) {
+              console.log(`⏸️ Category filter click blocked - refresh in progress`);
+              return;
+            }
+
+            const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
+            const prevFilter = state.categoryFilter;
+
+            // DEBOUNCE: Prevent rapid repeated clicks on category buttons
+            const now = Date.now();
+            if (now - state.lastCategoryFilterClick < state.categoryFilterDebounceMs) {
+              console.log(`⏱️ Category filter click debounced (${now - state.lastCategoryFilterClick}ms since last click)`);
+              return;
+            }
+            state.lastCategoryFilterClick = now;
+
+            // IMMEDIATE VISUAL FEEDBACK: Update UI state instantly
+            state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
+
+            // Update button visual state immediately + disable during refresh
+            const grid = document.getElementById('visitedCategoryGrid');
+            if (grid) {
+              grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
+                const btnCategory = btn.getAttribute('data-category-filter');
+                const isActive = btnCategory === state.categoryFilter;
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                // Disable all buttons during refresh
+                btn.disabled = state.isRefreshing;
+                btn.style.opacity = state.isRefreshing ? '0.6' : '1';
+              });
+            }
+
+            // DIAGNOSTIC: Log category filter clicks
+            if (typeof window.__debugFocusButtons === 'undefined') {
+              window.__debugFocusButtons = { clicks: 0, lastClick: null };
+            }
+            window.__debugFocusButtons.clicks += 1;
+            window.__debugFocusButtons.lastClick = {
+              timestamp: new Date().toISOString(),
+              btn: categoryBtn.getAttribute('data-category-filter'),
+              prevFilter,
+              newFilter: state.categoryFilter,
+              isRefreshing: state.isRefreshing,
+              btnDisabled: categoryBtn.disabled,
+              btnPointerEvents: window.getComputedStyle(categoryBtn).pointerEvents
+            };
+
+            console.log(`🔘 Focus button clicked: ${nextFilter} (was: ${prevFilter}), starting refresh...`);
+
+            resetCatalogRenderLimit();
+            runRefreshWithLock(categoryBtn);
+            return;
+          }
+
+          const catalogFilterBtn = event.target.closest('[data-catalog-filter]');
+          if (catalogFilterBtn) {
+            event.preventDefault();
+            const group = catalogFilterBtn.getAttribute('data-catalog-filter') || '';
+            const value = catalogFilterBtn.getAttribute('data-catalog-filter-value') || 'all';
+            if (group === 'visit') state.catalogVisitFilter = value;
+            if (group === 'source') state.catalogSourceFilter = value;
+            resetCatalogRenderLimit();
+            renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
+            return;
+          }
+
+          const celebrationBtn = event.target.closest('[data-celebration-toggle]');
+          if (celebrationBtn) {
+            event.preventDefault();
+            const prefType = celebrationBtn.getAttribute('data-celebration-toggle');
+            if (prefType) toggleCelebrationPreference(prefType);
+            return;
+          }
+        };
+
+        // ATTACH THE HANDLER ONCE
+        root.addEventListener('click', root.__visitedClickHandler);
+        console.log('✅ Visited Locations click handler attached (deduped)');
       }
 
-      const loadMoreBtn = event.target.closest('[data-catalog-action="load-more"]');
-      if (loadMoreBtn) {
-        event.preventDefault();
-        state.catalogRenderLimit += CATALOG_LOAD_STEP;
-        renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
-        return;
-      }
-
-      const progressTabBtn = event.target.closest('[data-progress-subtab]');
-      if (progressTabBtn) {
-        event.preventDefault();
-        // Defensive reset: ensure tooltip long-press suppression never bleeds into normal subtab navigation.
-        state.mobileTooltip.longPressActive = false;
-        state.mobileTooltip.suppressClickUntil = 0;
-        state.mobileTooltip.lastLongPressTarget = null;
-        const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'overview';
-        if (tabKey !== state.activeProgressSubTab) {
-          setActiveProgressSubTab(root, tabKey);
-        }
-        scheduleVisitedSubTabInterceptionCheck(root, 0);
-        return;
-      }
-
-      const toggleBtn = event.target.closest('[data-visit-action="toggle"]');
-      if (toggleBtn) {
-        event.preventDefault();
-        const locationId = toggleBtn.getAttribute('data-location-id');
-        if (locationId && !state.busyVisitToggles.has(locationId)) {
-          state.busyVisitToggles.add(locationId);
-          setButtonBusy(toggleBtn, true, 'Saving...');
-          toggleVisited(locationId)
-            .catch((error) => {
-              console.warn('Visited toggle failed:', error);
-            })
-            .finally(() => {
-              state.busyVisitToggles.delete(locationId);
-              setButtonBusy(toggleBtn, false);
-            });
-        }
-        return;
-      }
-
-       const categoryBtn = event.target.closest('[data-category-filter]');
-       if (categoryBtn) {
-         event.preventDefault();
-         event.stopPropagation();
-
-         // SAFETY: Prevent clicking during refresh
-         if (state.isRefreshing) {
-           console.log(`⏸️ Category filter click blocked - refresh in progress`);
-           return;
-         }
-
-         const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
-         const prevFilter = state.categoryFilter;
-
-         // DEBOUNCE: Prevent rapid repeated clicks on category buttons
-         const now = Date.now();
-         if (now - state.lastCategoryFilterClick < state.categoryFilterDebounceMs) {
-           console.log(`⏱️ Category filter click debounced (${now - state.lastCategoryFilterClick}ms since last click)`);
-           return;
-         }
-         state.lastCategoryFilterClick = now;
-
-         // IMMEDIATE VISUAL FEEDBACK: Update UI state instantly
-         state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
-
-         // Update button visual state immediately + disable during refresh
-         const grid = document.getElementById('visitedCategoryGrid');
-         if (grid) {
-           grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
-             const btnCategory = btn.getAttribute('data-category-filter');
-             const isActive = btnCategory === state.categoryFilter;
-             btn.classList.toggle('active', isActive);
-             btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-             // Disable all buttons during refresh
-             btn.disabled = state.isRefreshing;
-             btn.style.opacity = state.isRefreshing ? '0.6' : '1';
-           });
-         }
-
-         // DIAGNOSTIC: Log category filter clicks
-         if (typeof window.__debugFocusButtons === 'undefined') {
-           window.__debugFocusButtons = { clicks: 0, lastClick: null };
-         }
-         window.__debugFocusButtons.clicks += 1;
-         window.__debugFocusButtons.lastClick = {
-           timestamp: new Date().toISOString(),
-           btn: categoryBtn.getAttribute('data-category-filter'),
-           prevFilter,
-           newFilter: state.categoryFilter,
-           isRefreshing: state.isRefreshing,
-           btnDisabled: categoryBtn.disabled,
-           btnPointerEvents: window.getComputedStyle(categoryBtn).pointerEvents
-         };
-
-         console.log(`🔘 Focus button clicked: ${nextFilter} (was: ${prevFilter}), starting refresh...`);
-
-         resetCatalogRenderLimit();
-         runRefreshWithLock(categoryBtn);
-         return;
-       }
-
-      const catalogFilterBtn = event.target.closest('[data-catalog-filter]');
-      if (catalogFilterBtn) {
-        event.preventDefault();
-        const group = catalogFilterBtn.getAttribute('data-catalog-filter') || '';
-        const value = catalogFilterBtn.getAttribute('data-catalog-filter-value') || 'all';
-        if (group === 'visit') state.catalogVisitFilter = value;
-        if (group === 'source') state.catalogSourceFilter = value;
-        resetCatalogRenderLimit();
-        renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
-        return;
-      }
-
-      const celebrationBtn = event.target.closest('[data-celebration-toggle]');
-      if (celebrationBtn) {
-        event.preventDefault();
-        const prefType = celebrationBtn.getAttribute('data-celebration-toggle');
-        if (prefType) toggleCelebrationPreference(prefType);
-        return;
-      }
-    });
-
-    root.addEventListener('mousemove', (event) => {
+      root.addEventListener('mousemove', (event) => {
       const hotspot = event.target.closest('[data-hotspot-tooltip]');
       if (!hotspot) {
         hideHeatmapTooltip();
