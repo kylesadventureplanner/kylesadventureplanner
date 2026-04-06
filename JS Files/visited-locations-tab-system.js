@@ -113,6 +113,8 @@
     loadingUiActive: false,
     subTabCheckTimerId: 0,
     lastSubTabBlockerLabel: '',
+    tracerEnabled: Boolean(window.__visitedClickTrace),
+    tracerLastPointer: null,
     visitedColumnIndexCache: {
       adventure: null,
       bike: null
@@ -258,6 +260,80 @@
       state.subTabCheckTimerId = 0;
       checkVisitedSubTabInterception(root);
     }, wait);
+  }
+
+  function getTraceLabel(el) {
+    if (!el) return '(none)';
+    const tag = String(el.tagName || 'el').toLowerCase();
+    const id = el.id ? `#${el.id}` : '';
+    const cls = el.classList && el.classList.length ? `.${Array.from(el.classList).slice(0, 2).join('.')}` : '';
+    return `${tag}${id}${cls}`;
+  }
+
+  function isTraceCandidateTarget(target) {
+    if (!target || !target.closest) return false;
+    return Boolean(target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]'));
+  }
+
+  function installVisitedClickTracer(root) {
+    if (!root || root.dataset.visitedClickTracerBound === '1') return;
+    root.dataset.visitedClickTracerBound = '1';
+
+    root.addEventListener('pointerdown', (event) => {
+      if (!state.tracerEnabled) return;
+      if (!isTraceCandidateTarget(event.target)) return;
+      const topAtPoint = document.elementFromPoint(event.clientX, event.clientY);
+      state.tracerLastPointer = {
+        x: event.clientX,
+        y: event.clientY,
+        target: event.target,
+        topAtPoint,
+        ts: Date.now()
+      };
+
+      const targetBtn = event.target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
+      const topBtn = topAtPoint && topAtPoint.closest
+        ? topAtPoint.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]')
+        : null;
+      if (targetBtn && topBtn && targetBtn !== topBtn && !targetBtn.contains(topBtn)) {
+        console.warn('[visited-trace] pointerdown blocker mismatch', {
+          target: getTraceLabel(targetBtn),
+          topAtPoint: getTraceLabel(topBtn),
+          rawTopAtPoint: getTraceLabel(topAtPoint)
+        });
+      }
+    }, true);
+
+    root.addEventListener('click', (event) => {
+      if (!state.tracerEnabled) return;
+      if (!isTraceCandidateTarget(event.target)) return;
+
+      const targetBtn = event.target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
+      if (!targetBtn) return;
+
+      const topAtPoint = document.elementFromPoint(event.clientX, event.clientY);
+      const topBtn = topAtPoint && topAtPoint.closest
+        ? topAtPoint.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]')
+        : null;
+
+      const blockedByTopMismatch = Boolean(topBtn && topBtn !== targetBtn && !targetBtn.contains(topBtn));
+      const blockedByDefaultPrevented = event.defaultPrevented;
+      if (!blockedByTopMismatch && !blockedByDefaultPrevented) return;
+
+      console.warn('[visited-trace] click anomaly detected', {
+        target: getTraceLabel(targetBtn),
+        topAtPoint: getTraceLabel(topBtn || topAtPoint),
+        defaultPrevented: event.defaultPrevented,
+        pointer: state.tracerLastPointer
+          ? {
+              target: getTraceLabel(state.tracerLastPointer.target),
+              topAtPoint: getTraceLabel(state.tracerLastPointer.topAtPoint),
+              ageMs: Date.now() - state.tracerLastPointer.ts
+            }
+          : null,
+        path: event.composedPath ? event.composedPath().slice(0, 8).map(getTraceLabel) : []
+      });
+    }, true);
   }
 
   function getMobileTooltipLongPressMs() {
@@ -2110,6 +2186,7 @@
     state.latestVisitMap = getVisitMap();
     renderSyncMeta(state.latestVisitMap);
     initMobileTooltipSupport(root);
+    installVisitedClickTracer(root);
     applyTooltipInfoIcons(root);
 
     root.addEventListener('keydown', (event) => {
@@ -2321,5 +2398,15 @@
   window.initializeVisitedLocationsTab = initializeVisitedLocationsTab;
   window.initVisitedLocationsTab = window.initVisitedLocationsTab || initializeVisitedLocationsTab;
   window.getVisitedTrackerSyncHealth = getSyncHealthStatus;
+  window.enableVisitedClickTrace = function() {
+    state.tracerEnabled = true;
+    window.__visitedClickTrace = true;
+    console.log('✅ visited click trace enabled');
+  };
+  window.disableVisitedClickTrace = function() {
+    state.tracerEnabled = false;
+    window.__visitedClickTrace = false;
+    console.log('✅ visited click trace disabled');
+  };
 })();
 
