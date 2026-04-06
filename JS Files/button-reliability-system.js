@@ -1,5 +1,5 @@
 /**
- * ULTIMATE BUTTON RELIABILITY SYSTEM - v1.0.1 (CLEAN REBUILD)
+ * ULTIMATE BUTTON RELIABILITY SYSTEM - v1.0.2 (CLEAN REBUILD)
  * Ensures 100% button responsiveness through multiple layers of protection.
  *
  * NOTE: This file was rebuilt on 2026-04-05.
@@ -98,6 +98,8 @@
     SYSTEM.stats.totalButtonsTracked = buttons.length;
     SYSTEM.stats.buttonsWithIssues = 0;
 
+    neutralizeStaleOverlays();
+
     buttons.forEach((button) => {
       if (button.disabled) return;
       const issues = checkButtonIssues(button);
@@ -122,20 +124,60 @@
     return SYSTEM.stats;
   }
 
+  function normalizeInteractiveTargetFromEvent(event) {
+    const target = event && event.target && event.target.closest ? event.target.closest('button, [role="button"], .btn, .button') : null;
+    if (!target) return;
+
+    const computed = window.getComputedStyle(target);
+    const ariaDisabled = String(target.getAttribute('aria-disabled') || '').toLowerCase() === 'true';
+    const nativeDisabled = Boolean(target.disabled);
+
+    // Only normalize clickable targets; keep intentionally disabled controls untouched.
+    if (!ariaDisabled && !nativeDisabled && computed.pointerEvents === 'none') {
+      target.style.pointerEvents = 'auto';
+      SYSTEM.stats.repairsAttempted++;
+      SYSTEM.stats.repairsSuccessful++;
+      if (SYSTEM.debugModeEnabled) {
+        log('warn', `Normalized pointer-events for interactive target: ${target.id || target.className || target.tagName}`);
+      }
+    }
+  }
+
+  // ============================================================
+  // OVERLAY SAFETY
+  // ============================================================
+
+  function neutralizeStaleOverlays() {
+    const overlaySelectors = [
+      '#loadingOverlay',
+      '.modal-backdrop',
+      '[id$="Backdrop"]',
+      '#contextMenu',
+      '#cardContextMenu'
+    ].join(', ');
+
+    document.querySelectorAll(overlaySelectors).forEach((el) => {
+      const cs = window.getComputedStyle(el);
+      const isHiddenByStyle = cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity || '1') === 0;
+      const startupComplete = el.classList.contains('startup-complete') || el.dataset.startupLock === '0';
+      const isInactiveContextMenu = (el.id === 'contextMenu' || el.id === 'cardContextMenu') && !el.classList.contains('visible');
+
+      if (isHiddenByStyle || startupComplete || isInactiveContextMenu) {
+        if (el.style.pointerEvents !== 'none') el.style.pointerEvents = 'none';
+      }
+    });
+  }
+
   // ============================================================
   // BLOCKING OVERLAY DETECTION
   // ============================================================
 
-  /**
-   * Samples multiple points across the viewport to find visible blocking overlays.
-   * More thorough than the single-point check in runtime-hotfixes.js.
-   */
   function detectBlockingOverlays() {
     const checkPoints = [
-      { x: window.innerWidth * 0.25, y: window.innerHeight * 0.3,  label: 'left area' },
-      { x: window.innerWidth * 0.5,  y: window.innerHeight * 0.3,  label: 'center area' },
-      { x: window.innerWidth * 0.75, y: window.innerHeight * 0.3,  label: 'right area' },
-      { x: window.innerWidth * 0.5,  y: window.innerHeight * 0.6,  label: 'lower center' }
+      { x: window.innerWidth * 0.25, y: window.innerHeight * 0.3, label: 'left area' },
+      { x: window.innerWidth * 0.5, y: window.innerHeight * 0.3, label: 'center area' },
+      { x: window.innerWidth * 0.75, y: window.innerHeight * 0.3, label: 'right area' },
+      { x: window.innerWidth * 0.5, y: window.innerHeight * 0.6, label: 'lower center' }
     ];
 
     const seen = new Set();
@@ -148,7 +190,7 @@
       if (seen.has(suspect)) return;
 
       const cs = window.getComputedStyle(suspect);
-      const isVisible = cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.1;
+      const isVisible = cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity || '1') > 0.1;
       const blocksPointer = cs.pointerEvents !== 'none';
       const isOverlayLike =
         suspect.id === 'loadingOverlay' ||
@@ -170,6 +212,18 @@
   // INITIALIZATION
   // ============================================================
 
+  function getShortStack() {
+    try {
+      return String(new Error().stack || '')
+        .split('\n')
+        .slice(2, 6)
+        .map((line) => line.trim())
+        .join(' | ');
+    } catch (_err) {
+      return '';
+    }
+  }
+
   function initialize() {
     if (SYSTEM.initialized) return;
     SYSTEM.initialized = true;
@@ -179,16 +233,39 @@
     SYSTEM.healthCheckInterval = setInterval(scanAndRepairAllButtons, 5000);
 
     if (window.MutationObserver && document.body) {
-      const observer = new MutationObserver(() => {
+      const observer = new MutationObserver((mutations) => {
+        for (let i = 0; i < mutations.length; i += 1) {
+          const m = mutations[i];
+          if (m.type === 'attributes' && m.target && m.target.tagName === 'BUTTON' && (m.attributeName === 'disabled' || m.attributeName === 'class' || m.attributeName === 'style')) {
+            if (SYSTEM.debugModeEnabled) {
+              log('info', `Button attribute changed (${m.attributeName}): ${m.target.id || m.target.className || '(unnamed button)'}`, {
+                disabled: Boolean(m.target.disabled),
+                className: m.target.className,
+                stack: getShortStack()
+              });
+            }
+          }
+        }
+
         if (SYSTEM._scanPending) return;
         SYSTEM._scanPending = true;
         setTimeout(() => { SYSTEM._scanPending = false; scanAndRepairAllButtons(); }, 150);
       });
-      observer.observe(document.body, { childList: true, subtree: true });
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class', 'disabled', 'aria-disabled']
+      });
       SYSTEM.mutationObserverRunning = true;
     }
 
-    log('info', '✅ Button Reliability System v1.0.1 initialized', { buttonsFound: SYSTEM.stats.totalButtonsTracked });
+    // Normalize interactivity as early as possible for dynamically created controls.
+    ['pointerdown', 'mousedown', 'touchstart', 'mouseover', 'click', 'focusin'].forEach((type) => {
+      document.addEventListener(type, normalizeInteractiveTargetFromEvent, true);
+    });
+
+    log('info', '✅ Button Reliability System v1.0.2 initialized', { buttonsFound: SYSTEM.stats.totalButtonsTracked });
   }
 
   // ============================================================
@@ -244,7 +321,7 @@
           text: state.element ? state.element.textContent.trim().substring(0, 50) : '',
           isHovered: state.isHovered,
           clicksDetected: state.clicksDetected,
-          hasIssues: state.hasPointerEventsIssue || state.hasOpcityIssue,
+          hasIssues: state.hasPointerEventsIssue || state.hasOpacityIssue,
           isRepaired: state.isRepaired
         });
       });
@@ -281,6 +358,8 @@
       } else {
         console.log('✅ No blocking overlays found');
       }
+
+      neutralizeStaleOverlays();
 
       // Check loadingOverlay specifically
       const lo = document.getElementById('loadingOverlay');

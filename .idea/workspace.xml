@@ -5,10 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/BUTTON_RELIABILITY_COMPLETION.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/BUTTON_RELIABILITY_FINAL_PRE_TEST_REPORT.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/BUTTON_RELIABILITY_HARDENING_COMPLETION_SUMMARY.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/BUTTON_RELIABILITY_TEST_MATRIX.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_CONSOLE_DIAGNOSTIC.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/button_reliability_pre_test_validation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/automation-control-panel.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/automation-control-panel.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/bike-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/bike-details-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-new.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-new.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-simple.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-simple.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/find-near-me-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/find-near-me-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/trail-explorer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/trail-explorer-window.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/button-reliability-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/button-reliability-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-comprehensive-fix-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-comprehensive-fix-system-v7-0-141.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-debug-error-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-debug-error-system-v7-0-141.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -89,7 +103,7 @@
       <workItem from="1775053911750" duration="6601000" />
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
-      <workItem from="1775308318086" duration="68664000" />
+      <workItem from="1775308318086" duration="72476000" />
     </task>
     <servers />
   </component>
