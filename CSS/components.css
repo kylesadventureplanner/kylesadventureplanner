@@ -1104,3 +1104,14 @@ button:focus-visible, [role="button"]:focus-visible {
   visibility: visible !important;
   z-index: 200;
 }
+
+/* ============================================================
+   HIDDEN ATTRIBUTE SUPPORT
+   Ensure [hidden] attribute properly hides elements without relying on pointer-events
+============================================================ */
+
+[hidden] {
+  display: none !important;
+  visibility: hidden !important;
+}
+

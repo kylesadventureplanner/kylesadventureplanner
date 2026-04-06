@@ -122,35 +122,35 @@
     lastRenderAt: null
   };
 
-  function syncProgressSubTabs(root) {
-    if (!root) return;
-    const active = state.activeProgressSubTab || 'overview';
+   function syncProgressSubTabs(root) {
+     if (!root) return;
+     const active = state.activeProgressSubTab || 'overview';
 
-    root.querySelectorAll('[data-progress-subtab]').forEach((btn) => {
-      const tabKey = btn.getAttribute('data-progress-subtab');
-      const isActive = tabKey === active;
-      btn.classList.toggle('active', isActive);
-      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-      btn.setAttribute('tabindex', isActive ? '0' : '-1');
-      // Defensive: keep subtab controls always hit-testable, even if another runtime pass mutates styles.
-      btn.disabled = false;
-      btn.style.pointerEvents = 'auto';
-      btn.style.position = 'relative';
-      btn.style.zIndex = '2501';
-    });
+     root.querySelectorAll('[data-progress-subtab]').forEach((btn) => {
+       const tabKey = btn.getAttribute('data-progress-subtab');
+       const isActive = tabKey === active;
+       btn.classList.toggle('active', isActive);
+       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+       btn.setAttribute('tabindex', isActive ? '0' : '-1');
+       // Defensive: keep subtab controls always hit-testable, even if another runtime pass mutates styles.
+       btn.disabled = false;
+       btn.style.pointerEvents = 'auto';
+       btn.style.position = 'relative';
+       btn.style.zIndex = '2501';
+     });
 
-    root.querySelectorAll('[data-progress-pane]').forEach((pane) => {
-      const paneKey = pane.getAttribute('data-progress-pane');
-      const isActive = paneKey === active;
-      pane.classList.toggle('is-active', isActive);
-      pane.hidden = !isActive;
-      pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-      // Defensive: inactive panes should never intercept pointer input.
-      pane.style.pointerEvents = isActive ? 'auto' : 'none';
-      pane.style.position = 'relative';
-      pane.style.zIndex = isActive ? '1' : '0';
-    });
-  }
+     root.querySelectorAll('[data-progress-pane]').forEach((pane) => {
+       const paneKey = pane.getAttribute('data-progress-pane');
+       const isActive = paneKey === active;
+       pane.classList.toggle('is-active', isActive);
+       pane.hidden = !isActive;
+       pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+       // CSS hidden attribute + display:none prevents interaction without aggressive pointer-events toggling
+       // Avoid pointer-events: none to prevent race conditions during rapid tab switches
+       pane.style.position = 'relative';
+       pane.style.zIndex = isActive ? '1' : '0';
+     });
+   }
 
   function announceProgressSubTab(root, tabKey) {
     if (!root) return;
@@ -1787,27 +1787,27 @@
     `).join('');
   }
 
-  function renderCategories(stats) {
-    const grid = document.getElementById('visitedCategoryGrid');
-    if (!grid) return;
+   function renderCategories(stats) {
+     const grid = document.getElementById('visitedCategoryGrid');
+     if (!grid) return;
 
-    grid.innerHTML = CATEGORY_DEFS.map(category => {
-      const visitedCount = stats.visitedByCategory[category.key] || 0;
-      const totalCount = stats.totalByCategory[category.key] || 0;
-      const pct = totalCount > 0 ? Math.round((visitedCount / totalCount) * 100) : 0;
+     grid.innerHTML = CATEGORY_DEFS.map(category => {
+       const visitedCount = stats.visitedByCategory[category.key] || 0;
+       const totalCount = stats.totalByCategory[category.key] || 0;
+       const pct = totalCount > 0 ? Math.round((visitedCount / totalCount) * 100) : 0;
 
-      return `
-        <div class="visited-category-card" data-category="${category.key}">
-          <div class="visited-category-top">
-            <div class="visited-category-title">${category.icon} ${category.label}</div>
-            <button type="button" class="quick-filter-btn visited-category-filter-btn ${state.categoryFilter === category.key ? 'active' : ''}" data-category-filter="${category.key}" title="Filter tracker to ${escapeHtml(category.label)}" data-tooltip="Filter tracker to ${escapeHtml(category.label)}">Focus</button>
-          </div>
-          <div class="visited-category-meta">${visitedCount} / ${totalCount || 0} visited</div>
-          <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${pct}%;"></div></div>
-        </div>
-      `;
-    }).join('');
-  }
+       return `
+         <div class="visited-category-card" data-category="${category.key}">
+           <div class="visited-category-top">
+             <div class="visited-category-title">${category.icon} ${category.label}</div>
+             <button type="button" class="quick-filter-btn visited-category-filter-btn ${state.categoryFilter === category.key ? 'active' : ''}" data-category-filter="${category.key}" title="Filter tracker to ${escapeHtml(category.label)}" data-tooltip="Filter tracker to ${escapeHtml(category.label)}" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">Focus</button>
+           </div>
+           <div class="visited-category-meta">${visitedCount} / ${totalCount || 0} visited</div>
+           <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${pct}%;"></div></div>
+         </div>
+       `;
+     }).join('');
+   }
 
   function maybeCelebrateChallengeCompletions(challengeProgress) {
     let newlyCompleted = [];
@@ -1848,57 +1848,57 @@
     `).join('');
   }
 
-  function renderSuggestions(suggestions) {
-    const container = document.getElementById('visitedSuggestionList');
-    if (!container) return;
+   function renderSuggestions(suggestions) {
+     const container = document.getElementById('visitedSuggestionList');
+     if (!container) return;
 
-    if (suggestions.length === 0) {
-      container.innerHTML = '<div class="visited-empty">No recommendation candidates yet. Load adventure data first.</div>';
-      return;
-    }
+     if (suggestions.length === 0) {
+       container.innerHTML = '<div class="visited-empty">No recommendation candidates yet. Load adventure data first.</div>';
+       return;
+     }
 
-    container.innerHTML = suggestions.map(suggestion => {
-      const categoryLabels = suggestion.categories.map(category => getCategoryMeta(category)?.icon || '📍').join(' ');
-      const openBadge = suggestion.openState === true
-        ? '<span class="visited-pill open">Open now</span>'
-        : suggestion.openState === false
-          ? '<span class="visited-pill closed">Likely closed now</span>'
-          : '<span class="visited-pill">Check hours</span>';
+     container.innerHTML = suggestions.map(suggestion => {
+       const categoryLabels = suggestion.categories.map(category => getCategoryMeta(category)?.icon || '📍').join(' ');
+       const openBadge = suggestion.openState === true
+         ? '<span class="visited-pill open">Open now</span>'
+         : suggestion.openState === false
+           ? '<span class="visited-pill closed">Likely closed now</span>'
+           : '<span class="visited-pill">Check hours</span>';
 
-      const explainId = `visitedSuggestionExplain-${escapeHtml(suggestion.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-      const breakdown = suggestion.scoreBreakdown || {};
+       const explainId = `visitedSuggestionExplain-${escapeHtml(suggestion.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+       const breakdown = suggestion.scoreBreakdown || {};
 
-      return `
-        <div class="adventure-card visited-suggestion-card">
-          <div class="adventure-card-header">
-            <div class="adventure-card-title">${escapeHtml(suggestion.name)}</div>
-            <div class="adventure-card-location">📍 ${escapeHtml(suggestion.city)}, ${escapeHtml(suggestion.state)} ${categoryLabels}</div>
-            <div class="adventure-card-time">🚗 ${escapeHtml(suggestion.driveTime || 'Drive time unknown')}</div>
-          </div>
-          <div class="adventure-card-body">
-            <div class="visited-pill-row">${openBadge}</div>
-            <div class="visited-reason-list">${suggestion.reasons.map(reason => `<span class="visited-pill">${escapeHtml(reason)}</span>`).join('')}</div>
-            <button type="button" class="visited-suggestion-explain-btn" data-suggestion-explain-toggle="${explainId}" aria-expanded="false" title="See score breakdown" data-tooltip="See score breakdown">Why this now? (${Math.round(suggestion.score)})</button>
-            <div id="${explainId}" class="visited-suggestion-breakdown" hidden>
-              <div>Availability: ${breakdown.availability || 0}</div>
-              <div>Distance: ${breakdown.distance || 0}</div>
-              <div>Weather match: ${breakdown.weather || 0}</div>
-              <div>Category progress: ${breakdown.categoryProgress || 0}</div>
-              <div>Quest relevance: ${breakdown.questRelevance || 0}</div>
-              <div>Context bonus: ${breakdown.context || 0}</div>
-            </div>
-          </div>
-          <div class="adventure-card-footer">
-            <div class="card-action-buttons">
-              <button type="button" class="card-btn card-btn-primary" data-visit-action="toggle" data-location-id="${escapeHtml(suggestion.id)}" title="Mark ${escapeHtml(suggestion.name)} as visited" data-tooltip="Mark ${escapeHtml(suggestion.name)} as visited">✅ Mark Visited</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
+       return `
+         <div class="adventure-card visited-suggestion-card">
+           <div class="adventure-card-header">
+             <div class="adventure-card-title">${escapeHtml(suggestion.name)}</div>
+             <div class="adventure-card-location">📍 ${escapeHtml(suggestion.city)}, ${escapeHtml(suggestion.state)} ${categoryLabels}</div>
+             <div class="adventure-card-time">🚗 ${escapeHtml(suggestion.driveTime || 'Drive time unknown')}</div>
+           </div>
+           <div class="adventure-card-body">
+             <div class="visited-pill-row">${openBadge}</div>
+             <div class="visited-reason-list">${suggestion.reasons.map(reason => `<span class="visited-pill">${escapeHtml(reason)}</span>`).join('')}</div>
+             <button type="button" class="visited-suggestion-explain-btn" data-suggestion-explain-toggle="${explainId}" aria-expanded="false" title="See score breakdown" data-tooltip="See score breakdown" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">Why this now? (${Math.round(suggestion.score)})</button>
+             <div id="${explainId}" class="visited-suggestion-breakdown" hidden>
+               <div>Availability: ${breakdown.availability || 0}</div>
+               <div>Distance: ${breakdown.distance || 0}</div>
+               <div>Weather match: ${breakdown.weather || 0}</div>
+               <div>Category progress: ${breakdown.categoryProgress || 0}</div>
+               <div>Quest relevance: ${breakdown.questRelevance || 0}</div>
+               <div>Context bonus: ${breakdown.context || 0}</div>
+             </div>
+           </div>
+           <div class="adventure-card-footer">
+             <div class="card-action-buttons">
+               <button type="button" class="card-btn card-btn-primary" data-visit-action="toggle" data-location-id="${escapeHtml(suggestion.id)}" title="Mark ${escapeHtml(suggestion.name)} as visited" data-tooltip="Mark ${escapeHtml(suggestion.name)} as visited" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">✅ Mark Visited</button>
+             </div>
+           </div>
+         </div>
+       `;
+     }).join('');
 
-    applyTooltipInfoIcons(container);
-  }
+     applyTooltipInfoIcons(container);
+   }
 
   function renderRecentVisits(stats, visitMap) {
     const container = document.getElementById('visitedRecentList');
@@ -1965,33 +1965,36 @@
     state.catalogRenderLimit = CATALOG_INITIAL_LIMIT;
   }
 
-  function renderCatalogQuickFilters(adventures, visitMap) {
-    const root = document.getElementById('visitedTrackerQuickFilters');
-    if (!root) return;
+   function renderCatalogQuickFilters(adventures, visitMap) {
+     const root = document.getElementById('visitedTrackerQuickFilters');
+     if (!root) return;
 
-    const allCount = adventures.length;
-    const visitedCount = adventures.filter((adventure) => Boolean(visitMap[adventure.id])).length;
-    const unvisitedCount = Math.max(0, allCount - visitedCount);
-    const advCount = adventures.filter((adventure) => adventure.sourceType === 'adventure').length;
-    const bikeCount = adventures.filter((adventure) => adventure.sourceType === 'bike').length;
+     const allCount = adventures.length;
+     const visitedCount = adventures.filter((adventure) => Boolean(visitMap[adventure.id])).length;
+     const unvisitedCount = Math.max(0, allCount - visitedCount);
+     const advCount = adventures.filter((adventure) => adventure.sourceType === 'adventure').length;
+     const bikeCount = adventures.filter((adventure) => adventure.sourceType === 'bike').length;
 
-    root.querySelectorAll('[data-catalog-filter]').forEach((btn) => {
-      const group = btn.getAttribute('data-catalog-filter') || '';
-      const value = btn.getAttribute('data-catalog-filter-value') || 'all';
-      const active = group === 'visit'
-        ? state.catalogVisitFilter === value
-        : state.catalogSourceFilter === value;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+     root.querySelectorAll('[data-catalog-filter]').forEach((btn) => {
+       const group = btn.getAttribute('data-catalog-filter') || '';
+       const value = btn.getAttribute('data-catalog-filter-value') || 'all';
+       const active = group === 'visit'
+         ? state.catalogVisitFilter === value
+         : state.catalogSourceFilter === value;
+       btn.classList.toggle('active', active);
+       btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+       btn.style.pointerEvents = 'auto';
+       btn.style.position = 'relative';
+       btn.style.zIndex = '2501';
 
-      if (group === 'visit' && value === 'all') btn.textContent = `All (${allCount})`;
-      if (group === 'visit' && value === 'visited') btn.textContent = `Visited (${visitedCount})`;
-      if (group === 'visit' && value === 'unvisited') btn.textContent = `Unvisited (${unvisitedCount})`;
-      if (group === 'source' && value === 'all') btn.textContent = `All sources (${allCount})`;
-      if (group === 'source' && value === 'adventure') btn.textContent = `Adventure (${advCount})`;
-      if (group === 'source' && value === 'bike') btn.textContent = `Bike (${bikeCount})`;
-    });
-  }
+       if (group === 'visit' && value === 'all') btn.textContent = `All (${allCount})`;
+       if (group === 'visit' && value === 'visited') btn.textContent = `Visited (${visitedCount})`;
+       if (group === 'visit' && value === 'unvisited') btn.textContent = `Unvisited (${unvisitedCount})`;
+       if (group === 'source' && value === 'all') btn.textContent = `All sources (${allCount})`;
+       if (group === 'source' && value === 'adventure') btn.textContent = `Adventure (${advCount})`;
+       if (group === 'source' && value === 'bike') btn.textContent = `Bike (${bikeCount})`;
+     });
+   }
 
   async function persistVisitedToExcel(location, isVisited) {
     const writeValue = isVisited ? 'TRUE' : '';
@@ -2034,95 +2037,98 @@
     throw new Error('Unsupported location source type.');
   }
 
-  function renderCatalog(adventures, visitMap) {
-    const container = document.getElementById('visitedAdventureCatalog');
-    if (!container) return;
+   function renderCatalog(adventures, visitMap) {
+     const container = document.getElementById('visitedAdventureCatalog');
+     if (!container) return;
 
-    renderCatalogQuickFilters(adventures, visitMap);
-    const filtered = filterCatalog(adventures, visitMap);
-    if (filtered.length === 0) {
-      container.innerHTML = '<div class="visited-empty">No locations match your search right now.</div>';
-      return;
-    }
+     renderCatalogQuickFilters(adventures, visitMap);
+     const filtered = filterCatalog(adventures, visitMap);
+     if (filtered.length === 0) {
+       container.innerHTML = '<div class="visited-empty">No locations match your search right now.</div>';
+       return;
+     }
 
-    const renderLimit = Math.max(CATALOG_INITIAL_LIMIT, Number(state.catalogRenderLimit) || CATALOG_INITIAL_LIMIT);
-    const visible = filtered.slice(0, renderLimit);
-    const hasMore = filtered.length > visible.length;
+     const renderLimit = Math.max(CATALOG_INITIAL_LIMIT, Number(state.catalogRenderLimit) || CATALOG_INITIAL_LIMIT);
+     const visible = filtered.slice(0, renderLimit);
+     const hasMore = filtered.length > visible.length;
 
-    container.innerHTML = visible.map(adventure => {
-      const visited = Boolean(visitMap[adventure.id]);
-      const categories = categoriesForAdventure(adventure).map(category => getCategoryMeta(category)?.icon || '📍').join(' ');
-      return `
-        <div class="visited-catalog-row">
-          <div>
-            <div class="visited-catalog-name">${escapeHtml(adventure.name)} ${categories}</div>
-            <div class="visited-catalog-meta">${escapeHtml(adventure.city)}, ${escapeHtml(adventure.state)} • ${escapeHtml(adventure.driveTime || 'Drive time unknown')}</div>
-          </div>
-          <button type="button" class="quick-filter-btn ${visited ? 'active' : ''}" data-visit-action="toggle" data-location-id="${escapeHtml(adventure.id)}" title="${visited ? 'Mark as not visited' : 'Mark as visited'}" data-tooltip="${visited ? 'Mark as not visited' : 'Mark as visited'}">
-            ${visited ? '✅ Visited' : '➕ Mark'}
-          </button>
-        </div>
-      `;
-    }).join('') + (hasMore
-      ? `<div class="visited-catalog-footer"><button type="button" class="visited-load-more-btn" data-catalog-action="load-more">Load more (${visible.length}/${filtered.length})</button></div>`
-      : '');
+     container.innerHTML = visible.map(adventure => {
+       const visited = Boolean(visitMap[adventure.id]);
+       const categories = categoriesForAdventure(adventure).map(category => getCategoryMeta(category)?.icon || '📍').join(' ');
+       return `
+         <div class="visited-catalog-row">
+           <div>
+             <div class="visited-catalog-name">${escapeHtml(adventure.name)} ${categories}</div>
+             <div class="visited-catalog-meta">${escapeHtml(adventure.city)}, ${escapeHtml(adventure.state)} • ${escapeHtml(adventure.driveTime || 'Drive time unknown')}</div>
+           </div>
+           <button type="button" class="quick-filter-btn ${visited ? 'active' : ''}" data-visit-action="toggle" data-location-id="${escapeHtml(adventure.id)}" title="${visited ? 'Mark as not visited' : 'Mark as visited'}" data-tooltip="${visited ? 'Mark as not visited' : 'Mark as visited'}" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">
+             ${visited ? '✅ Visited' : '➕ Mark'}
+           </button>
+         </div>
+       `;
+     }).join('') + (hasMore
+       ? `<div class="visited-catalog-footer"><button type="button" class="visited-load-more-btn" data-catalog-action="load-more" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">Load more (${visible.length}/${filtered.length})</button></div>`
+       : '');
 
-    applyTooltipInfoIcons(container);
-  }
+     applyTooltipInfoIcons(container);
+   }
 
-  async function refreshTab() {
-    renderLoadingState();
-    try {
-      await Promise.all([
-        resolveAdventureVisitedColumnIndex().catch(() => -1),
-        resolveBikeVisitedColumnIndex().catch(() => -1)
-      ]);
+   async function refreshTab() {
+     renderLoadingState();
+     try {
+       await Promise.all([
+         resolveAdventureVisitedColumnIndex().catch(() => -1),
+         resolveBikeVisitedColumnIndex().catch(() => -1)
+       ]);
 
-      renderSyncHealthBadge();
+       renderSyncHealthBadge();
 
-      const adventures = readAllLocations();
-      let visitMap = getVisitMap();
-      visitMap = hydrateVisitMapFromExcel(adventures, visitMap);
-      saveVisitMap(visitMap);
+       const adventures = readAllLocations();
+       let visitMap = getVisitMap();
+       visitMap = hydrateVisitMapFromExcel(adventures, visitMap);
+       saveVisitMap(visitMap);
 
-      state.latestLocations = adventures;
-      state.latestVisitMap = visitMap;
+       state.latestLocations = adventures;
+       state.latestVisitMap = visitMap;
 
-      const stats = buildStats(adventures, visitMap);
-      const challengeProgress = buildChallengeProgress(stats);
-      const insights = computeVisitInsights(stats, visitMap);
-      const badges = buildBadgeProgress(stats, insights);
-      const questSet = buildRotatingQuests(insights);
-      const suggestions = generateSuggestions(adventures, visitMap, challengeProgress);
+       const stats = buildStats(adventures, visitMap);
+       const challengeProgress = buildChallengeProgress(stats);
+       const insights = computeVisitInsights(stats, visitMap);
+       const badges = buildBadgeProgress(stats, insights);
+       const questSet = buildRotatingQuests(insights);
+       const suggestions = generateSuggestions(adventures, visitMap, challengeProgress);
 
-      renderSummary(stats, challengeProgress, badges, questSet);
-      renderCategories(stats);
-      renderChallenges(challengeProgress);
-      renderBadges(badges);
-      renderRotatingQuests(questSet);
-      renderHeatmap(stats);
-      renderCelebrationControls();
-      renderSuggestions(suggestions);
-      renderRecentVisits(stats, visitMap);
-      renderCatalog(adventures, visitMap);
+       renderSummary(stats, challengeProgress, badges, questSet);
+       renderCategories(stats);
+       renderChallenges(challengeProgress);
+       renderBadges(badges);
+       renderRotatingQuests(questSet);
+       renderHeatmap(stats);
+       renderCelebrationControls();
+       renderSuggestions(suggestions);
+       renderRecentVisits(stats, visitMap);
+       renderCatalog(adventures, visitMap);
 
-      const dataStatus = document.getElementById('visitedDataStatus');
-      if (dataStatus) {
-        const adventureCount = adventures.filter(item => item.sourceType === 'adventure').length;
-        const bikeCount = adventures.filter(item => item.sourceType === 'bike').length;
-        dataStatus.textContent = `${adventures.length} total locations (${adventureCount} adventure + ${bikeCount} bike) • ${stats.visited.length} visited tracked`;
-      }
+       const dataStatus = document.getElementById('visitedDataStatus');
+       if (dataStatus) {
+         const adventureCount = adventures.filter(item => item.sourceType === 'adventure').length;
+         const bikeCount = adventures.filter(item => item.sourceType === 'bike').length;
+         dataStatus.textContent = `${adventures.length} total locations (${adventureCount} adventure + ${bikeCount} bike) • ${stats.visited.length} visited tracked`;
+       }
 
-      state.lastRenderAt = new Date().toISOString();
-      renderSyncMeta(visitMap);
+       state.lastRenderAt = new Date().toISOString();
+       renderSyncMeta(visitMap);
 
-      const root = document.getElementById('visitedLocationsRoot');
-      applyTooltipInfoIcons(root);
-      scheduleVisitedSubTabInterceptionCheck(root, 60);
-    } finally {
-      clearLoadingState();
-    }
-  }
+       const root = document.getElementById('visitedLocationsRoot');
+       applyTooltipInfoIcons(root);
+       scheduleVisitedSubTabInterceptionCheck(root, 60);
+
+       // Defensive: ensure all buttons are responsive after rendering
+       ensureButtonsResponsive();
+     } finally {
+       clearLoadingState();
+     }
+   }
 
   function findAdventureById(locationId) {
     const adventures = Array.isArray(state.latestLocations) && state.latestLocations.length > 0
@@ -2185,52 +2191,104 @@
     await refreshTab();
   }
 
-  function bindControls() {
-    const root = document.getElementById('visitedLocationsRoot');
-    if (!root || root.dataset.bound === '1') return;
+   function ensureButtonsResponsive() {
+     const root = document.getElementById('visitedLocationsRoot');
+     if (!root) return;
 
-    root.dataset.bound = '1';
+     // Defensive: ensure all interactive elements are clickable
+     const buttons = root.querySelectorAll(
+       'button, [role="button"], [data-visit-action], [data-progress-subtab], [data-catalog-filter], [data-category-filter], .quick-filter-btn, .card-btn'
+     );
 
-    const subtabBar = root.querySelector('.visited-progress-subtabs');
-    if (subtabBar) {
-      subtabBar.style.pointerEvents = 'auto';
-      subtabBar.style.position = 'relative';
-      subtabBar.style.zIndex = '2500';
-    }
+     buttons.forEach((btn) => {
+       if (btn.style && typeof btn.style.setProperty === 'function') {
+         btn.style.setProperty('pointer-events', 'auto', 'important');
+         btn.style.setProperty('position', 'relative', 'important');
+         btn.style.setProperty('z-index', '2501', 'important');
+       } else if (btn.style) {
+         btn.style.pointerEvents = 'auto';
+         btn.style.position = 'relative';
+         btn.style.zIndex = '2501';
+       }
+       btn.disabled = false;
+     });
+   }
 
-    syncProgressSubTabs(root);
-    bindProgressSubTabButtons(root);
-    announceProgressSubTab(root, state.activeProgressSubTab);
-    state.latestVisitMap = getVisitMap();
-    renderSyncMeta(state.latestVisitMap);
-    initMobileTooltipSupport(root);
-    installVisitedClickTracer(root);
-    applyTooltipInfoIcons(root);
+   function bindControls() {
+     const root = document.getElementById('visitedLocationsRoot');
+     if (!root || root.dataset.bound === '1') return;
 
-    root.addEventListener('keydown', (event) => {
-      const currentTabBtn = event.target.closest('[data-progress-subtab]');
-      if (!currentTabBtn) return;
+     root.dataset.bound = '1';
 
-      const buttons = getProgressSubTabButtons(root);
-      if (buttons.length === 0) return;
-      const index = buttons.indexOf(currentTabBtn);
-      if (index < 0) return;
+     const subtabBar = root.querySelector('.visited-progress-subtabs');
+     if (subtabBar) {
+       subtabBar.style.pointerEvents = 'auto';
+       subtabBar.style.position = 'relative';
+       subtabBar.style.zIndex = '2500';
+     }
 
-      let nextIndex = index;
-      if (event.key === 'ArrowRight') nextIndex = (index + 1) % buttons.length;
-      else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + buttons.length) % buttons.length;
-      else if (event.key === 'Home') nextIndex = 0;
-      else if (event.key === 'End') nextIndex = buttons.length - 1;
-      else return;
+     syncProgressSubTabs(root);
+     bindProgressSubTabButtons(root);
+     announceProgressSubTab(root, state.activeProgressSubTab);
+     state.latestVisitMap = getVisitMap();
+     renderSyncMeta(state.latestVisitMap);
+     initMobileTooltipSupport(root);
+     installVisitedClickTracer(root);
+     applyTooltipInfoIcons(root);
 
-      event.preventDefault();
-      const nextButton = buttons[nextIndex];
-      const tabKey = nextButton.getAttribute('data-progress-subtab') || 'overview';
-      setActiveProgressSubTab(root, tabKey);
-      nextButton.focus();
-    });
+     // Monitor DOM for dynamically added buttons and ensure they're responsive
+     const observer = new MutationObserver((mutations) => {
+       let hasButtonChanges = false;
+       for (const mutation of mutations) {
+         if (mutation.type === 'childList' || mutation.type === 'subtree') {
+           const nodes = Array.from(mutation.addedNodes);
+           if (nodes.some(node => {
+             if (!node.querySelectorAll) return false;
+             return node.querySelectorAll('button, [data-visit-action], [data-progress-subtab]').length > 0;
+           })) {
+             hasButtonChanges = true;
+             break;
+           }
+         }
+       }
+       if (hasButtonChanges) {
+         // Use requestAnimationFrame to batch multiple mutations
+         requestAnimationFrame(() => {
+           ensureButtonsResponsive();
+         });
+       }
+     });
 
-    root.addEventListener('click', (event) => {
+     observer.observe(root, {
+       childList: true,
+       subtree: true,
+       attributes: false
+     });
+
+     root.addEventListener('keydown', (event) => {
+       const currentTabBtn = event.target.closest('[data-progress-subtab]');
+       if (!currentTabBtn) return;
+
+       const buttons = getProgressSubTabButtons(root);
+       if (buttons.length === 0) return;
+       const index = buttons.indexOf(currentTabBtn);
+       if (index < 0) return;
+
+       let nextIndex = index;
+       if (event.key === 'ArrowRight') nextIndex = (index + 1) % buttons.length;
+       else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + buttons.length) % buttons.length;
+       else if (event.key === 'Home') nextIndex = 0;
+       else if (event.key === 'End') nextIndex = buttons.length - 1;
+       else return;
+
+       event.preventDefault();
+       const nextButton = buttons[nextIndex];
+       const tabKey = nextButton.getAttribute('data-progress-subtab') || 'overview';
+       setActiveProgressSubTab(root, tabKey);
+       nextButton.focus();
+     });
+
+     root.addEventListener('click', (event) => {
       const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
       if (explainBtn) {
         event.preventDefault();
