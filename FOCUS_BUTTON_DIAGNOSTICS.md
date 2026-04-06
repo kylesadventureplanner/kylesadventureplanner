@@ -16,6 +16,13 @@ Added **diagnostic console logging** to trace button click events and understand
 
 ### 2. **Look for These Log Messages**
 
+First, enable diagnostics logging (otherwise these verbose logs stay quiet by default):
+```javascript
+window.enableVisitedDiagnostics()
+// or:
+window.enableVisitedClickTrace()
+```
+
 #### When Categories are Rendered:
 ```
 🎨 renderCategories() rendered 9 category cards with Focus buttons
@@ -24,13 +31,18 @@ Added **diagnostic console logging** to trace button click events and understand
 
 #### When a Focus Button is Clicked:
 ```
-🔘 Focus button clicked: hiking (was: all), isRefreshing=false, disabled=false
+🔘 Focus button clicked: hiking (was: all), starting refresh...
 ```
 ✅ Shows:
 - Which category was clicked (e.g., "hiking")
 - Previous filter state
-- Whether a refresh is in progress
-- If the button was disabled
+- That a refresh was started
+
+You may also see these guardrail logs during rapid clicks:
+```
+⏸️ Category filter click blocked - refresh in progress
+⏱️ Category filter click debounced (XXms since last click)
+```
 
 #### After the Refresh Completes:
 ```
@@ -44,6 +56,10 @@ Run this in the console to see all Focus button clicks:
 ```javascript
 window.__debugFocusButtons
 ```
+
+Tip: Run `window.enableVisitedDiagnostics()` to turn on verbose visited logs, and `window.disableVisitedDiagnostics()` to turn them back off.
+
+Note: `window.__debugFocusButtons` is populated only after diagnostics (or click trace) is enabled and at least one Focus click is processed.
 
 You'll see:
 ```javascript
@@ -64,8 +80,7 @@ You'll see:
 ## What the Logs Tell Us
 
 ### Good Signs (✅ Button should work):
-- `isRefreshing=false` - No refresh in progress
-- `disabled=false` - Button is enabled
+- `🔘 Focus button clicked: ... starting refresh...` appears after click
 - `btnPointerEvents: "auto"` - Button can receive clicks
 
 ### Problem Signs (⚠️ Button might not work):
@@ -79,8 +94,8 @@ You'll see:
 2. **Open the browser console** (F12 → Console)
 3. **Click a Focus button** (e.g., "Hiking Trails" Focus button)
 4. **Watch the console** for:
-   - `🔘 Focus button clicked:` message
-   - Any subsequent `✅ ensureButtonsResponsive()` message
+   - `🔘 Focus button clicked:` message (if diagnostics are enabled)
+   - Any subsequent `✅ ensureButtonsResponsive()` message (if diagnostics are enabled)
    - No error messages
 5. **Try clicking another Focus button immediately** - see if second click works
 6. **Take a screenshot** of the console output
@@ -121,19 +136,26 @@ Now using native `[hidden]` attribute + CSS `display: none` instead.
 
 ### Check These:
 
-1. **Is the refresh completing?**
+1. **Is diagnostics enabled (if you expect verbose logs)?**
    ```javascript
-   // Check in console
-   console.log(window.__debugFocusButtons.lastClick);
+   window.enableVisitedDiagnostics();
+   // optional alternative tracer:
+   window.enableVisitedClickTrace();
    ```
 
-2. **Are the buttons actually there?**
+2. **Is the refresh completing?**
+   ```javascript
+   // Check in console
+   console.log(window.__debugFocusButtons?.lastClick);
+   ```
+
+3. **Are the buttons actually there?**
    ```javascript
    // Count Focus buttons in DOM
    document.querySelectorAll('[data-category-filter]').length
    ```
 
-3. **What's the computed style?**
+4. **What's the computed style?**
    ```javascript
    // Check a Focus button's actual computed properties
    const btn = document.querySelector('[data-category-filter="hiking"]');
@@ -156,6 +178,6 @@ This is intentional - it prevents click queuing that was causing the original is
 
 ---
 
-**Last Updated:** April 5, 2026  
+**Last Updated:** April 5, 2026 (diagnostics-gating docs pass)  
 **Diagnostic Status:** Ready for Testing ✅
 

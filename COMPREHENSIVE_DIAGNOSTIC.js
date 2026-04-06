@@ -121,6 +121,7 @@ console.log('   lastRender:', window.__visitedState?.lastRenderAt ?? 'unknown');
 
 // 8. Check debug data
 console.log('\n8. DEBUG DATA:');
+console.log('   Note: Focus-button click counters appear only when visited diagnostics are enabled.');
 console.log('   Focus button clicks recorded:', window.__debugFocusButtons?.clicks ?? 'none');
 if (window.__debugFocusButtons?.lastClick) {
   console.log('   Last click:', window.__debugFocusButtons.lastClick);

@@ -114,6 +114,7 @@
      subTabCheckTimerId: 0,
      lastSubTabBlockerLabel: '',
      tracerEnabled: Boolean(window.__visitedClickTrace),
+     diagnosticsEnabled: Boolean(window.__visitedDiagnostics),
      tracerLastPointer: null,
      visitedColumnIndexCache: {
        adventure: null,
@@ -123,6 +124,15 @@
      lastCategoryFilterClick: 0,
      categoryFilterDebounceMs: 100
    };
+
+  function shouldLogVisitedDiagnostics() {
+    return Boolean(state.tracerEnabled || state.diagnosticsEnabled);
+  }
+
+  function logVisitedDiagnostics(...args) {
+    if (!shouldLogVisitedDiagnostics()) return;
+    console.log(...args);
+  }
 
    function syncProgressSubTabs(root) {
      if (!root) return;
@@ -1811,7 +1821,7 @@
         `;
       }).join('');
 
-      console.log(`🎨 renderCategories() rendered ${categoryCount} category cards with Focus buttons`);
+      logVisitedDiagnostics(`🎨 renderCategories() rendered ${categoryCount} category cards with Focus buttons`);
     }
 
   function maybeCelebrateChallengeCompletions(challengeProgress) {
@@ -2138,7 +2148,7 @@
             btn.disabled = false;
             btn.style.opacity = '1';
           });
-          console.log(`✅ Category filter buttons re-enabled after refresh`);
+          logVisitedDiagnostics(`✅ Category filter buttons re-enabled after refresh`);
         }
       } finally {
         clearLoadingState();
@@ -2235,7 +2245,7 @@
       
       // DIAGNOSTIC: Log button fixes
       if (categoryFilterCount > 0) {
-        console.log(`✅ ensureButtonsResponsive() fixed ${buttons.length} buttons (${categoryFilterCount} category filters)`);
+        logVisitedDiagnostics(`✅ ensureButtonsResponsive() fixed ${buttons.length} buttons (${categoryFilterCount} category filters)`);
       }
     }
 
@@ -2245,11 +2255,11 @@
 
       // PREVENT DUPLICATE EVENT LISTENERS: Use a stronger check
       if (root.dataset.bound === '1' && root.__visitedClickHandler) {
-        console.log('✅ Visited Locations controls already bound - skipping rebind');
+        logVisitedDiagnostics('✅ Visited Locations controls already bound - skipping rebind');
         return;
       }
 
-      console.log('🔌 Binding Visited Locations controls...');
+      logVisitedDiagnostics('🔌 Binding Visited Locations controls...');
 
       // Store bound flag and handler reference for cleanup/dedup
       root.dataset.bound = '1';
@@ -2387,7 +2397,7 @@
 
             // SAFETY: Prevent clicking during refresh
             if (state.isRefreshing) {
-              console.log(`⏸️ Category filter click blocked - refresh in progress`);
+              logVisitedDiagnostics(`⏸️ Category filter click blocked - refresh in progress`);
               return;
             }
 
@@ -2397,7 +2407,7 @@
             // DEBOUNCE: Prevent rapid repeated clicks on category buttons
             const now = Date.now();
             if (now - state.lastCategoryFilterClick < state.categoryFilterDebounceMs) {
-              console.log(`⏱️ Category filter click debounced (${now - state.lastCategoryFilterClick}ms since last click)`);
+              logVisitedDiagnostics(`⏱️ Category filter click debounced (${now - state.lastCategoryFilterClick}ms since last click)`);
               return;
             }
             state.lastCategoryFilterClick = now;
@@ -2420,21 +2430,23 @@
             }
 
             // DIAGNOSTIC: Log category filter clicks
-            if (typeof window.__debugFocusButtons === 'undefined') {
-              window.__debugFocusButtons = { clicks: 0, lastClick: null };
+            if (shouldLogVisitedDiagnostics()) {
+              if (typeof window.__debugFocusButtons === 'undefined') {
+                window.__debugFocusButtons = { clicks: 0, lastClick: null };
+              }
+              window.__debugFocusButtons.clicks += 1;
+              window.__debugFocusButtons.lastClick = {
+                timestamp: new Date().toISOString(),
+                btn: categoryBtn.getAttribute('data-category-filter'),
+                prevFilter,
+                newFilter: state.categoryFilter,
+                isRefreshing: state.isRefreshing,
+                btnDisabled: categoryBtn.disabled,
+                btnPointerEvents: window.getComputedStyle(categoryBtn).pointerEvents
+              };
             }
-            window.__debugFocusButtons.clicks += 1;
-            window.__debugFocusButtons.lastClick = {
-              timestamp: new Date().toISOString(),
-              btn: categoryBtn.getAttribute('data-category-filter'),
-              prevFilter,
-              newFilter: state.categoryFilter,
-              isRefreshing: state.isRefreshing,
-              btnDisabled: categoryBtn.disabled,
-              btnPointerEvents: window.getComputedStyle(categoryBtn).pointerEvents
-            };
 
-            console.log(`🔘 Focus button clicked: ${nextFilter} (was: ${prevFilter}), starting refresh...`);
+            logVisitedDiagnostics(`🔘 Focus button clicked: ${nextFilter} (was: ${prevFilter}), starting refresh...`);
 
             resetCatalogRenderLimit();
             runRefreshWithLock(categoryBtn);
@@ -2464,7 +2476,7 @@
 
         // ATTACH THE HANDLER ONCE
         root.addEventListener('click', root.__visitedClickHandler);
-        console.log('✅ Visited Locations click handler attached (deduped)');
+        logVisitedDiagnostics('✅ Visited Locations click handler attached (deduped)');
       }
 
       root.addEventListener('mousemove', (event) => {
@@ -2562,7 +2574,7 @@
     scheduleDataRefreshCheck();
 
     if (!state.initialized) {
-      console.log('✅ Visited Locations tab initialized');
+      logVisitedDiagnostics('✅ Visited Locations tab initialized');
       state.initialized = true;
     }
   }
@@ -2579,6 +2591,16 @@
     state.tracerEnabled = false;
     window.__visitedClickTrace = false;
     console.log('✅ visited click trace disabled');
+  };
+  window.enableVisitedDiagnostics = function() {
+    state.diagnosticsEnabled = true;
+    window.__visitedDiagnostics = true;
+    console.log('✅ visited diagnostics enabled');
+  };
+  window.disableVisitedDiagnostics = function() {
+    state.diagnosticsEnabled = false;
+    window.__visitedDiagnostics = false;
+    console.log('✅ visited diagnostics disabled');
   };
 })();
 
