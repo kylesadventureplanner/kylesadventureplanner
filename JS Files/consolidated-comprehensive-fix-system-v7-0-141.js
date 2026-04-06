@@ -1149,8 +1149,27 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     window.__enhancedButtonMonitorActive = true;
     console.log('🔧 Setting up ENHANCED button responsiveness monitor...');
 
-    // Track button states to prevent hover locks
-    const buttonStates = new Map();
+    let lastInteractionAt = Date.now();
+
+    const markInteraction = () => {
+      lastInteractionAt = Date.now();
+    };
+
+    const canRunActiveRepairs = () => {
+      if (document.visibilityState === 'hidden') return false;
+      const hasVisibleButtons = document.querySelectorAll('button').length > 0;
+      if (!hasVisibleButtons) return false;
+
+      // Keep repairs responsive right after user input, otherwise run only when anomalies appear.
+      const recentlyInteracted = (Date.now() - lastInteractionAt) < 2500;
+      const pointerIssuePresent = Boolean(document.querySelector('button:not(:disabled)[style*="pointer-events: none"]'));
+      const hiddenOverlayWithEvents = Boolean(document.querySelector('.modal-backdrop[style*="display: none"][style*="pointer-events: auto"], .overlay[style*="display: none"][style*="pointer-events: auto"]'));
+      return recentlyInteracted || pointerIssuePresent || hiddenOverlayWithEvents;
+    };
+
+    document.addEventListener('pointerdown', markInteraction, { passive: true });
+    document.addEventListener('keydown', markInteraction, { passive: true });
+    document.addEventListener('focusin', markInteraction, { passive: true });
 
     /**
      * Fix 1: Restore hover/active states after interactions
@@ -1158,8 +1177,6 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     const restoreButtonStates = () => {
       const buttons = document.querySelectorAll('button');
       buttons.forEach(btn => {
-        const key = btn.id || btn.className;
-        const state = buttonStates.get(key);
 
         // Remove synthetic hover class only (real CSS :hover is managed by the browser)
         if (btn.classList.contains('hover') || btn.classList.contains(':hover')) {
@@ -1284,7 +1301,6 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
           btn.addEventListener('mouseleave', function() {
             // Clear any stuck states
-            this.blur();
             delete this.dataset.mouseDownAt;
           });
         }
@@ -1333,14 +1349,15 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     reattachButtonListeners();
     createHoverThrottler();
 
-    // Run comprehensive check every 500ms (more aggressive)
+    // Run a lighter watchdog on cadence; only repair when interaction/anomaly warrants it.
     setInterval(() => {
+      if (!canRunActiveRepairs()) return;
       fixPointerEventsOnButtons();
       fixOverlappingElements();
       fixCardButtonZIndex();
       ensureCityViewerContrast();
       restoreButtonStates();
-    }, 500);
+    }, 2200);
 
     // Run on scroll with aggressive debounce
     document.addEventListener('scroll', () => {
@@ -1356,10 +1373,11 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     const observer = new MutationObserver(() => {
       clearTimeout(window.domFixTimeout);
       window.domFixTimeout = setTimeout(() => {
+        if (!canRunActiveRepairs()) return;
         fixPointerEventsOnButtons();
         fixCardButtonZIndex();
         reattachButtonListeners();
-      }, 50);
+      }, 120);
     });
 
     observer.observe(document.body, {

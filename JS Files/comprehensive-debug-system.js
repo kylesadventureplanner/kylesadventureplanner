@@ -16,15 +16,19 @@
  */
 
 (function initComprehensiveDebugSystem() {
-  const DEBUG = true;
-  const DEBUG_BUTTON_CLICKS = true;
-  const DEBUG_MUTATIONS = true;
-  const DEBUG_STATE_CHANGES = true;
+  const DEBUG = Boolean(window.__debugVerbose);
+  const DEBUG_BUTTON_CLICKS = DEBUG;
+  const DEBUG_MUTATIONS = DEBUG;
+  const DEBUG_STATE_CHANGES = DEBUG;
   const DEBUG_ENABLE_REPLAY = true;
+  const DEBUG_POLL_INTERVALS = Boolean(window.__debugVerbosePolling);
+  const DEBUG_LISTENERS = Boolean(window.__debugVerboseListeners || window.__debugVerbose);
 
   const LOG_PREFIX = '[🔍 DEBUG]';
   const HISTORY_MAX = 500;
   let debugHistory = [];
+  let bulkStateIntervalId = 0;
+  let selectionStateIntervalId = 0;
 
   // Expose to window for debugging in console
   window.__debugSystem = {
@@ -33,7 +37,20 @@
     getAllHistory: () => debugHistory,
     clearHistory: () => { debugHistory = []; },
     export: () => JSON.stringify(debugHistory, null, 2),
-    replay: replayLastN
+    replay: replayLastN,
+    status: () => ({
+      verbose: DEBUG,
+      listenersEnabled: DEBUG_LISTENERS,
+      pollIntervals: Boolean(bulkStateIntervalId || selectionStateIntervalId)
+    }),
+    enablePolling: () => {
+      startDebugPollIntervals();
+      return { pollIntervals: Boolean(bulkStateIntervalId || selectionStateIntervalId) };
+    },
+    disablePolling: () => {
+      stopDebugPollIntervals();
+      return { pollIntervals: Boolean(bulkStateIntervalId || selectionStateIntervalId) };
+    }
   };
 
   function log(...args) {
@@ -137,7 +154,9 @@
   // ============================================================
 
   function setupAdventureBulkStateMonitor() {
-    setInterval(() => {
+    if (bulkStateIntervalId) return;
+    bulkStateIntervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
       const bulkActionCard = document.getElementById('adventureBulkActionsCard');
       const selectBtn = document.getElementById('adventureBulkSelectVisibleBtn');
       const applyTagsBtn = document.getElementById('adventureBulkApplyTagsBtn');
@@ -376,11 +395,20 @@
   // ============================================================
 
   function setupSelectionStateLogger() {
-    setInterval(() => {
+    let lastSelectionSignature = '';
+    if (selectionStateIntervalId) return;
+    selectionStateIntervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
       // Check all checkboxes
       const checkboxes = document.querySelectorAll('.adventure-bulk-select');
+      const checked = checkboxes.length > 0 ? Array.from(checkboxes).filter(cb => cb.checked).length : 0;
+      const selectedSize = window.adventureState?.selectedSourceIndexes?.size;
+      const busy = window.adventureState?.busy;
+      const signature = [checked, checkboxes.length, selectedSize, busy].join('|');
+      if (signature === lastSelectionSignature) return;
+      lastSelectionSignature = signature;
+
       if (checkboxes.length > 0) {
-        const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
         log(`✓ Checked boxes: ${checked}/${checkboxes.length}`);
       }
 
@@ -392,6 +420,22 @@
     }, 3000);
 
     log('✅ Selection state logger initialized');
+  }
+
+  function stopDebugPollIntervals() {
+    if (bulkStateIntervalId) {
+      clearInterval(bulkStateIntervalId);
+      bulkStateIntervalId = 0;
+    }
+    if (selectionStateIntervalId) {
+      clearInterval(selectionStateIntervalId);
+      selectionStateIntervalId = 0;
+    }
+  }
+
+  function startDebugPollIntervals() {
+    setupAdventureBulkStateMonitor();
+    setupSelectionStateLogger();
   }
 
   // ============================================================
@@ -414,30 +458,31 @@
 
   function init() {
     log('🚀 COMPREHENSIVE DEBUG SYSTEM STARTING');
+    if (!DEBUG_LISTENERS) {
+      console.log('ℹ️ Comprehensive debug listeners disabled (set window.__debugVerboseListeners = true before load to enable)');
+    }
 
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        setupGlobalButtonClickLogger();
-        setupAdventureBulkStateMonitor();
-        setupMutationObserver();
-        setupFocusTracker();
-        setupEventListenerDebugger();
-        setupTabClickDetector();
-        setupFilterChangeTracker();
-        setupSelectionStateLogger();
+        if (DEBUG_LISTENERS) setupGlobalButtonClickLogger();
+        if (DEBUG_POLL_INTERVALS) startDebugPollIntervals();
+        if (DEBUG_LISTENERS) setupMutationObserver();
+        if (DEBUG_LISTENERS) setupFocusTracker();
+        if (DEBUG_LISTENERS) setupEventListenerDebugger();
+        if (DEBUG_LISTENERS) setupTabClickDetector();
+        if (DEBUG_LISTENERS) setupFilterChangeTracker();
 
         log('✅ ALL DEBUG SYSTEMS INITIALIZED');
       });
     } else {
-      setupGlobalButtonClickLogger();
-      setupAdventureBulkStateMonitor();
-      setupMutationObserver();
-      setupFocusTracker();
-      setupEventListenerDebugger();
-      setupTabClickDetector();
-      setupFilterChangeTracker();
-      setupSelectionStateLogger();
+      if (DEBUG_LISTENERS) setupGlobalButtonClickLogger();
+      if (DEBUG_POLL_INTERVALS) startDebugPollIntervals();
+      if (DEBUG_LISTENERS) setupMutationObserver();
+      if (DEBUG_LISTENERS) setupFocusTracker();
+      if (DEBUG_LISTENERS) setupEventListenerDebugger();
+      if (DEBUG_LISTENERS) setupTabClickDetector();
+      if (DEBUG_LISTENERS) setupFilterChangeTracker();
 
       log('✅ ALL DEBUG SYSTEMS INITIALIZED');
     }

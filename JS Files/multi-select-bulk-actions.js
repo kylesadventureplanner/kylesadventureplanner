@@ -3,7 +3,7 @@
  * Bike Trails bulk actions are handled in bike-trails-tab-system.js.
  */
 (function initAdventureBulkActions() {
-  const DEBUG = true; // Set to true to enable verbose logging
+  const DEBUG = Boolean(window.__bulkDebugVerbose);
 
   function debugLog(...args) {
     if (DEBUG) {
@@ -16,8 +16,25 @@
     pulsedSelectionSourceIndexes: new Set(),
     busy: false,
     observer: null,
-    initialized: false
+    initialized: false,
+    initIntervalId: 0,
+    observerDebounceId: 0,
+    lastWiringSignature: ''
   };
+      function isElementVisible(el) {
+        if (!el) return false;
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        return el.getClientRects().length > 0;
+      }
+
+      function isAdventureBulkContextActive() {
+        if (document.visibilityState === 'hidden') return false;
+        const grid = document.getElementById('adventureCardsGrid');
+        const card = document.getElementById('adventureBulkActionsCard');
+        return Boolean(grid && card && isElementVisible(grid) && isElementVisible(card));
+      }
+
   const BULK_STATUS_CONFIRM_THRESHOLD = 20;
   const BULK_SELECTION_STYLE_ID = 'adventureBulkSelectionRailStyles';
   const BULK_BADGE_HIDE_TIMER_KEY = '__bulkBadgeHideTimer';
@@ -210,6 +227,7 @@
   }
 
   function updateAdventureBulkSelectionUi() {
+    if (!isAdventureBulkContextActive()) return;
     debugLog('🔄 updateAdventureBulkSelectionUi() called - Selection size:', adventureState.selectedSourceIndexes.size, 'Busy:', adventureState.busy);
 
     pruneAdventureSelectionToVisible();
@@ -674,16 +692,34 @@
   }
 
   function ensureAdventureBulkWiring() {
+    if (!isAdventureBulkContextActive()) return;
+
     bindAdventureBulkButtons();
     bindAdventureGridSelectionHandlers();
-    decorateAdventureCardsForBulkSelection();
 
     const grid = document.getElementById('adventureCardsGrid');
     if (!grid) return;
 
+    const wiringSignature = [
+      grid.querySelectorAll('.adventure-card').length,
+      grid.querySelectorAll('.adventure-bulk-select-wrap').length,
+      adventureState.busy ? 1 : 0,
+      adventureState.selectedSourceIndexes.size,
+      getAdventureSelectionScope(),
+      Number(window.currentPage || 1)
+    ].join('|');
+
+    if (adventureState.lastWiringSignature !== wiringSignature) {
+      adventureState.lastWiringSignature = wiringSignature;
+      decorateAdventureCardsForBulkSelection();
+    }
+
     if (!adventureState.observer) {
       adventureState.observer = new MutationObserver(() => {
-        decorateAdventureCardsForBulkSelection();
+        clearTimeout(adventureState.observerDebounceId);
+        adventureState.observerDebounceId = window.setTimeout(() => {
+          ensureAdventureBulkWiring();
+        }, 80);
       });
       adventureState.observer.observe(grid, { childList: true, subtree: false });
     }
@@ -695,8 +731,15 @@
 
     const tick = () => ensureAdventureBulkWiring();
     tick();
-    setInterval(tick, 800);
-    document.addEventListener('visibilitychange', tick);
+
+    if (!adventureState.initIntervalId) {
+      // Keep a light heartbeat for tab/pagination transitions without constant DOM rewrites.
+      adventureState.initIntervalId = window.setInterval(tick, 2200);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') tick();
+    });
   }
 
   if (document.readyState === 'loading') {

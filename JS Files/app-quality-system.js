@@ -648,10 +648,14 @@ console.log('🚀 App Quality System (Unified) initializing...');
 (function initComprehensiveDebugSystem() {
   console.log('🔍 Debug subsystem initializing...');
 
-  const DEBUG = true;
+  const DEBUG = Boolean(window.__debugVerbose);
+  const DEBUG_POLL_INTERVALS = Boolean(window.__debugVerbosePolling);
+  const DEBUG_LISTENERS = Boolean(window.__debugVerboseListeners || window.__debugVerbose);
   const LOG_PREFIX = '[🔍 DEBUG]';
   const HISTORY_MAX = 500;
   let debugHistory = [];
+  let bulkStateIntervalId = 0;
+  let selectionStateIntervalId = 0;
 
   window.__debugSystem = {
     history: debugHistory,
@@ -659,7 +663,16 @@ console.log('🚀 App Quality System (Unified) initializing...');
     getAllHistory: () => debugHistory,
     clearHistory: () => { debugHistory = []; },
     export: () => JSON.stringify(debugHistory, null, 2),
-    replay: replayLastN
+    replay: replayLastN,
+    status: () => ({ verbose: DEBUG, pollIntervals: Boolean(bulkStateIntervalId || selectionStateIntervalId) }),
+    enablePolling: () => {
+      startDebugPollIntervals();
+      return { pollIntervals: Boolean(bulkStateIntervalId || selectionStateIntervalId) };
+    },
+    disablePolling: () => {
+      stopDebugPollIntervals();
+      return { pollIntervals: Boolean(bulkStateIntervalId || selectionStateIntervalId) };
+    }
   };
 
   function log(...args) {
@@ -689,91 +702,148 @@ console.log('🚀 App Quality System (Unified) initializing...');
   }
 
   // Global click logger
-  document.addEventListener('click', (event) => {
-    const target = event.target;
-    if (target.matches('[id*="adventureBulk"]')) {
-      log(`🖱️ BUTTON: Clicked bulk action button | id=${target.id} | disabled=${target.disabled}`);
-      setTimeout(() => {
-        const buttons = document.querySelectorAll('[id*="adventureBulk"]');
-        buttons.forEach(btn => {
-          if (btn.id) log(`  └─ ${btn.id}: disabled=${btn.disabled}, text="${btn.innerText}"`);
-        });
-      }, 0);
-    }
-    if (target.tagName === 'BUTTON' && (target.id?.includes('progress') || target.id?.includes('filter'))) {
-      log(`🖱️ BUTTON: Clicked period/progress/filter button | id=${target.id}`);
-    }
-  }, true);
+  if (DEBUG_LISTENERS) {
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (target.matches('[id*="adventureBulk"]')) {
+        log(`🖱️ BUTTON: Clicked bulk action button | id=${target.id} | disabled=${target.disabled}`);
+        setTimeout(() => {
+          const buttons = document.querySelectorAll('[id*="adventureBulk"]');
+          buttons.forEach(btn => {
+            if (btn.id) log(`  └─ ${btn.id}: disabled=${btn.disabled}, text="${btn.innerText}"`);
+          });
+        }, 0);
+      }
+      if (target.tagName === 'BUTTON' && (target.id?.includes('progress') || target.id?.includes('filter'))) {
+        log(`🖱️ BUTTON: Clicked period/progress/filter button | id=${target.id}`);
+      }
+    }, true);
+  }
 
-  // Bulk state monitor
-  setInterval(() => {
-    const selectBtn = document.getElementById('adventureBulkSelectVisibleBtn');
-    const applyTagsBtn = document.getElementById('adventureBulkApplyTagsBtn');
-    const countEl = document.getElementById('adventureBulkSelectionCount');
-    const scopeSelect = document.getElementById('adventureBulkSelectionScope');
+  let lastBulkStateSignature = '';
+  let lastSelectionStateSignature = '';
 
-    if (selectBtn || applyTagsBtn) {
-      log(`📊 BULK STATE: scope=${scopeSelect?.value}, selectBtn.disabled=${selectBtn?.disabled}, applyTagsBtn.disabled=${applyTagsBtn?.disabled}, count=${countEl?.innerText}`);
-    }
-  }, 2000);
+  function startBulkStateMonitor() {
+    if (bulkStateIntervalId) return;
+    bulkStateIntervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      const selectBtn = document.getElementById('adventureBulkSelectVisibleBtn');
+      const applyTagsBtn = document.getElementById('adventureBulkApplyTagsBtn');
+      const countEl = document.getElementById('adventureBulkSelectionCount');
+      const scopeSelect = document.getElementById('adventureBulkSelectionScope');
+
+      if (selectBtn || applyTagsBtn) {
+        const signature = [
+          scopeSelect?.value || '',
+          String(Boolean(selectBtn?.disabled)),
+          String(Boolean(applyTagsBtn?.disabled)),
+          countEl?.innerText || ''
+        ].join('|');
+        if (signature !== lastBulkStateSignature) {
+          lastBulkStateSignature = signature;
+          log(`📊 BULK STATE: scope=${scopeSelect?.value}, selectBtn.disabled=${selectBtn?.disabled}, applyTagsBtn.disabled=${applyTagsBtn?.disabled}, count=${countEl?.innerText}`);
+        }
+      }
+    }, 2000);
+  }
 
   // Mutation observer
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.target?.tagName === 'BUTTON' && mutation.attributeName === 'disabled') {
-        const btnId = mutation.target?.id || mutation.target?.className || 'unknown';
-        log(`🔴 BUTTON DISABLED CHANGED: ${btnId} | new value: ${mutation.target?.disabled}`);
-        log(`  └─ Stack: ${getStackTrace()}`);
-      }
+  if (DEBUG_LISTENERS) {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.target?.tagName === 'BUTTON' && mutation.attributeName === 'disabled') {
+          const btnId = mutation.target?.id || mutation.target?.className || 'unknown';
+          log(`🔴 BUTTON DISABLED CHANGED: ${btnId} | new value: ${mutation.target?.disabled}`);
+          log(`  └─ Stack: ${getStackTrace()}`);
+        }
+      });
     });
-  });
 
-  const bulkCard = document.getElementById('adventureBulkActionsCard');
-  if (bulkCard) {
-    observer.observe(bulkCard, {
-      attributes: true,
-      attributeFilter: ['disabled', 'class'],
-      subtree: true,
-      childList: true
-    });
+    const bulkCard = document.getElementById('adventureBulkActionsCard');
+    if (bulkCard) {
+      observer.observe(bulkCard, {
+        attributes: true,
+        attributeFilter: ['disabled', 'class'],
+        subtree: true,
+        childList: true
+      });
+    }
   }
 
   // Tab click detector
-  document.addEventListener('click', (event) => {
-    const target = event.target;
-    if (target.closest('[role="tab"], .tab-btn, [id*="tab"], [class*="subtab"]')) {
-      const tabElement = target.closest('[role="tab"], .tab-btn, [id*="tab"], [class*="subtab"]');
-      log(`📑 TAB/SUBTAB CLICK: id=${tabElement?.id || 'none'} | class=${tabElement?.className || 'none'}`);
-      if (event.defaultPrevented) {
-        log(`  └─ ⚠️ DEFAULT PREVENTED by handler!`);
-        log(`  └─ Stack: ${getStackTrace()}`);
+  if (DEBUG_LISTENERS) {
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (target.closest('[role="tab"], .tab-btn, [id*="tab"], [class*="subtab"]')) {
+        const tabElement = target.closest('[role="tab"], .tab-btn, [id*="tab"], [class*="subtab"]');
+        log(`📑 TAB/SUBTAB CLICK: id=${tabElement?.id || 'none'} | class=${tabElement?.className || 'none'}`);
+        if (event.defaultPrevented) {
+          log(`  └─ ⚠️ DEFAULT PREVENTED by handler!`);
+          log(`  └─ Stack: ${getStackTrace()}`);
+        }
       }
-    }
-  }, true);
+    }, true);
+  }
 
-  // Selection state logger
-  setInterval(() => {
-    const checkboxes = document.querySelectorAll('.adventure-bulk-select');
-    if (checkboxes.length > 0) {
-      const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
-      log(`✓ Checked boxes: ${checked}/${checkboxes.length}`);
+  function startSelectionStateLogger() {
+    if (selectionStateIntervalId) return;
+    selectionStateIntervalId = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      const checkboxes = document.querySelectorAll('.adventure-bulk-select');
+      const checked = checkboxes.length > 0 ? Array.from(checkboxes).filter(cb => cb.checked).length : 0;
+      const selectedSize = window.adventureState?.selectedSourceIndexes?.size;
+      const busy = window.adventureState?.busy;
+      const signature = [checked, checkboxes.length, selectedSize, busy].join('|');
+      if (signature === lastSelectionStateSignature) return;
+      lastSelectionStateSignature = signature;
+
+      if (checkboxes.length > 0) {
+        log(`✓ Checked boxes: ${checked}/${checkboxes.length}`);
+      }
+      if (window.adventureState) {
+        log(`📦 adventureState.selectedSourceIndexes.size: ${window.adventureState.selectedSourceIndexes?.size || 'undefined'}`);
+        log(`📦 adventureState.busy: ${window.adventureState?.busy || 'undefined'}`);
+      }
+    }, 3000);
+  }
+
+  function stopDebugPollIntervals() {
+    if (bulkStateIntervalId) {
+      clearInterval(bulkStateIntervalId);
+      bulkStateIntervalId = 0;
     }
-    if (window.adventureState) {
-      log(`📦 adventureState.selectedSourceIndexes.size: ${window.adventureState.selectedSourceIndexes?.size || 'undefined'}`);
-      log(`📦 adventureState.busy: ${window.adventureState?.busy || 'undefined'}`);
+    if (selectionStateIntervalId) {
+      clearInterval(selectionStateIntervalId);
+      selectionStateIntervalId = 0;
     }
-  }, 3000);
+  }
+
+  function startDebugPollIntervals() {
+    startBulkStateMonitor();
+    startSelectionStateLogger();
+  }
 
   // Filter change tracker
-  document.addEventListener('change', (event) => {
-    const target = event.target;
-    if (target.id?.includes('filter') || target.id?.includes('bulk') || target.id?.includes('progress')) {
-      log(`⚙️ FILTER CHANGE: ${target.id} = ${target.value || target.checked}`);
-    }
-  }, true);
+  if (DEBUG_LISTENERS) {
+    document.addEventListener('change', (event) => {
+      const target = event.target;
+      if (target.id?.includes('filter') || target.id?.includes('bulk') || target.id?.includes('progress')) {
+        log(`⚙️ FILTER CHANGE: ${target.id} = ${target.value || target.checked}`);
+      }
+    }, true);
+  }
 
   function initialize() {
     log('🚀 DEBUG SUBSYSTEM STARTING');
+
+    if (!DEBUG_LISTENERS) {
+      console.log('ℹ️ Debug listeners disabled (set window.__debugVerboseListeners = true before load to enable)');
+    }
+
+    if (DEBUG_POLL_INTERVALS) {
+      startDebugPollIntervals();
+      log('✅ DEBUG POLL INTERVALS ENABLED');
+    }
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
