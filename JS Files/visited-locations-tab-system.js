@@ -589,6 +589,7 @@
     root.addEventListener('click', (event) => {
       const target = event.target.closest ? event.target.closest('[data-tooltip]') : null;
       if (!target) return;
+      if (!isTouchPrimaryInput()) return;
 
       if (isProgressSubTabElement(target)) return;
 
@@ -2237,6 +2238,10 @@
       const progressTabBtn = event.target.closest('[data-progress-subtab]');
       if (progressTabBtn) {
         event.preventDefault();
+        // Defensive reset: ensure tooltip long-press suppression never bleeds into normal subtab navigation.
+        state.mobileTooltip.longPressActive = false;
+        state.mobileTooltip.suppressClickUntil = 0;
+        state.mobileTooltip.lastLongPressTarget = null;
         const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'overview';
         if (tabKey !== state.activeProgressSubTab) {
           setActiveProgressSubTab(root, tabKey);
