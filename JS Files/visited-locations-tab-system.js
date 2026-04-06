@@ -73,6 +73,22 @@
     { id: 'mo-bike-pack', icon: '🚴', title: '3 Bike Spots This Month', metric: 'categoryInPeriod', category: 'bike', goal: 3, points: 160 }
   ];
 
+  const QUARTERLY_QUEST_POOL = [
+    { id: 'qt-twenty-visits', icon: '🚀', title: '20 Visits This Quarter', metric: 'visitsInPeriod', goal: 20, points: 300 },
+    { id: 'qt-six-categories', icon: '🧩', title: '6 Categories This Quarter', metric: 'categoriesInPeriod', goal: 6, points: 320 },
+    { id: 'qt-three-states', icon: '🗺️', title: '3 States This Quarter', metric: 'statesInPeriod', goal: 3, points: 290 },
+    { id: 'qt-park-pack', icon: '🌳', title: '4 Parks This Quarter', metric: 'categoryInPeriod', category: 'park', goal: 4, points: 280 },
+    { id: 'qt-hiking-run', icon: '🥾', title: '5 Hiking Spots This Quarter', metric: 'categoryInPeriod', category: 'hiking', goal: 5, points: 290 }
+  ];
+
+  const YEARLY_QUEST_POOL = [
+    { id: 'yr-fifty-visits', icon: '🏆', title: '50 Visits This Year', metric: 'visitsInPeriod', goal: 50, points: 700 },
+    { id: 'yr-all-categories', icon: '🌈', title: 'All 9 Categories This Year', metric: 'categoriesInPeriod', goal: 9, points: 760 },
+    { id: 'yr-five-states', icon: '🧭', title: '5 States This Year', metric: 'statesInPeriod', goal: 5, points: 680 },
+    { id: 'yr-waterfall-chase', icon: '💧', title: '8 Waterfalls This Year', metric: 'categoryInPeriod', category: 'waterfall', goal: 8, points: 640 },
+    { id: 'yr-bike-expedition', icon: '🚴', title: '10 Bike Spots This Year', metric: 'categoryInPeriod', category: 'bike', goal: 10, points: 660 }
+  ];
+
   const RARITY_STYLES = {
     common: { label: 'Common', className: 'rarity-common' },
     rare: { label: 'Rare', className: 'rarity-rare' },
@@ -423,6 +439,8 @@
       visitedBadgeGallery: `${skeleton}${skeleton}`,
       visitedWeeklyQuestPanel: skeleton,
       visitedMonthlyQuestPanel: skeleton,
+      visitedQuarterlyQuestPanel: skeleton,
+      visitedYearlyQuestPanel: skeleton,
       visitedHeatmapHotspots: skeleton,
       visitedAdventureCatalog: `${skeleton}${skeleton}`
     };
@@ -1191,16 +1209,29 @@
     return `${date.getFullYear()}-M${String(date.getMonth() + 1).padStart(2, '0')}`;
   }
 
+  function getQuarterKey(date) {
+    const quarter = Math.floor(date.getMonth() / 3) + 1;
+    return `${date.getFullYear()}-Q${quarter}`;
+  }
+
+  function getYearKey(date) {
+    return `${date.getFullYear()}-Y`;
+  }
+
   function computeVisitInsights(stats, visitMap) {
     const stateSet = new Set();
     const citySet = new Set();
     const weekendVisits = [];
     const weekEntries = [];
     const monthEntries = [];
+    const quarterEntries = [];
+    const yearEntries = [];
 
     const now = new Date();
     const nowWeek = getWeekKey(now);
     const nowMonth = getMonthKey(now);
+    const nowQuarter = getQuarterKey(now);
+    const nowYear = getYearKey(now);
 
     stats.visited.forEach((adventure) => {
       const stateText = norm(adventure.state);
@@ -1222,12 +1253,16 @@
         adventure,
         categories,
         weekKey: getWeekKey(date),
-        monthKey: getMonthKey(date)
+        monthKey: getMonthKey(date),
+        quarterKey: getQuarterKey(date),
+        yearKey: getYearKey(date)
       };
 
       if (date.getDay() === 0 || date.getDay() === 6) weekendVisits.push(payload);
       if (payload.weekKey === nowWeek) weekEntries.push(payload);
       if (payload.monthKey === nowMonth) monthEntries.push(payload);
+      if (payload.quarterKey === nowQuarter) quarterEntries.push(payload);
+      if (payload.yearKey === nowYear) yearEntries.push(payload);
     });
 
     return {
@@ -1236,8 +1271,12 @@
       weekendVisitCount: weekendVisits.length,
       weekEntries,
       monthEntries,
+      quarterEntries,
+      yearEntries,
       weekKey: nowWeek,
-      monthKey: nowMonth
+      monthKey: nowMonth,
+      quarterKey: nowQuarter,
+      yearKey: nowYear
     };
   }
 
@@ -1390,8 +1429,13 @@
   function buildRotatingQuests(insights) {
     const weekly = buildQuestSet('weekly', insights.weekKey, WEEKLY_QUEST_POOL, insights.weekEntries);
     const monthly = buildQuestSet('monthly', insights.monthKey, MONTHLY_QUEST_POOL, insights.monthEntries);
+    const quarterly = buildQuestSet('quarterly', insights.quarterKey, QUARTERLY_QUEST_POOL, insights.quarterEntries);
+    const yearly = buildQuestSet('yearly', insights.yearKey, YEARLY_QUEST_POOL, insights.yearEntries);
 
-    const allNew = weekly.justCompleted.concat(monthly.justCompleted);
+    const allNew = weekly.justCompleted
+      .concat(monthly.justCompleted)
+      .concat(quarterly.justCompleted)
+      .concat(yearly.justCompleted);
     if (allNew.length > 0) {
       saveMetaState();
       if (typeof window.showToast === 'function') {
@@ -1400,7 +1444,7 @@
       }
     }
 
-    return { weekly, monthly };
+    return { weekly, monthly, quarterly, yearly };
   }
 
   function getBadgeMetricProgress(badge, stats, insights) {
@@ -1564,7 +1608,10 @@
       .filter(challenge => challenge.completed)
       .reduce((sum, challenge) => sum + challenge.points, 0);
     const badgeXp = badges.filter(badge => badge.completed).reduce((sum, badge) => sum + badge.points, 0);
-    const questXp = questSet.weekly.quests.concat(questSet.monthly.quests)
+    const questXp = questSet.weekly.quests
+      .concat(questSet.monthly.quests)
+      .concat(questSet.quarterly.quests)
+      .concat(questSet.yearly.quests)
       .filter(quest => quest.completed)
       .reduce((sum, quest) => sum + quest.points, 0);
     const level = getPlayerLevel(stats.xpFromVisits + challengeXp + badgeXp + questXp);
@@ -1653,6 +1700,8 @@
   function renderRotatingQuests(questSet) {
     renderQuestPanel('visitedWeeklyQuestPanel', 'Weekly Quests', 'Rotates each week', questSet.weekly);
     renderQuestPanel('visitedMonthlyQuestPanel', 'Monthly Quests', 'Rotates each month', questSet.monthly);
+    renderQuestPanel('visitedQuarterlyQuestPanel', 'Quarterly Quests', 'Rotates each quarter', questSet.quarterly);
+    renderQuestPanel('visitedYearlyQuestPanel', 'Yearly Quests', 'Rotates each year', questSet.yearly);
   }
 
   function projectToCanvas(lat, lng, width, height) {
