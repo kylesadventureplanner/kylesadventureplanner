@@ -172,20 +172,27 @@ class TabContentLoader {
         preload: false,
         isInlineContent: false
       },
-      'budget': {
-        file: 'budget-planner-tab.html',
-        element: 'budgetTab',
-        priority: 6,
-        preload: false,
-        isInlineContent: false
-      },
-      'visited-locations': {
-        file: 'visited-locations-tab.html',
-        element: 'visitedLocationsTab',
-        priority: 7,
-        preload: false,
-        isInlineContent: false
-      }
+       'budget': {
+         file: 'budget-planner-tab.html',
+         element: 'budgetTab',
+         priority: 6,
+         preload: false,
+         isInlineContent: false
+       },
+       'nature-challenge': {
+         file: 'nature-challenge-tab.html',
+         element: 'natureChallengeTab',
+         priority: 7,
+         preload: false,
+         isInlineContent: false
+       },
+       'visited-locations': {
+         file: 'visited-locations-tab.html',
+         element: 'visitedLocationsTab',
+         priority: 8,
+         preload: false,
+         isInlineContent: false
+       }
     };
 
     // Set up tab switching event listeners
