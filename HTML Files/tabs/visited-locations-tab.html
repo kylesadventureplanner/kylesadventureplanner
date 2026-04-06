@@ -31,7 +31,7 @@
     <button id="visitedProgressTab-overview" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-overview" aria-selected="true" data-progress-subtab="overview" aria-label="Open Overview section" title="Open Overview section">Overview</button>
     <button id="visitedProgressTab-badges" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-badges" aria-selected="false" data-progress-subtab="badges" aria-label="Open Badges and Challenges section" title="Open Badges and Challenges section">Badges</button>
     <button id="visitedProgressTab-heatmap" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-heatmap" aria-selected="false" data-progress-subtab="heatmap" aria-label="Open Heat Map section" title="Open Heat Map section">Heat Map</button>
-    <button id="visitedProgressTab-quests" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-quests" aria-selected="false" data-progress-subtab="quests" aria-label="Open Weekly, Monthly, Quarterly, and Yearly Quests section" title="Open Weekly, Monthly, Quarterly, and Yearly Quests section">Quests</button>
+    <button id="visitedProgressTab-quests" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-quests" aria-selected="false" data-progress-subtab="quests" aria-label="Open Weekly, Monthly, Quarterly, Yearly, and Lifetime Quests section" title="Open Weekly, Monthly, Quarterly, Yearly, and Lifetime Quests section">Quests</button>
     <button id="visitedProgressTab-tracker" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-tracker" aria-selected="false" data-progress-subtab="tracker" aria-label="Open Visit Tracker section" title="Open Visit Tracker section">Tracker</button>
   </div>
   <div id="visitedSubTabBlockerWarning" class="visited-subtab-blocker-warning" role="status" aria-live="polite" hidden></div>
@@ -116,14 +116,15 @@
   <div id="visitedProgressPane-quests" class="visited-progress-pane" data-progress-pane="quests" role="tabpanel" aria-labelledby="visitedProgressTab-quests" hidden>
     <div class="card">
       <div class="card-header">
-        <div class="card-title">📆 Rotating Quests</div>
-        <div class="card-subtitle">Fresh objective sets every week, month, quarter, and year.</div>
+        <div class="card-title">📆 Quest Series</div>
+        <div class="card-subtitle">Fresh objective sets every week, month, quarter, and year, plus lifetime milestones.</div>
       </div>
       <div class="visited-quest-panels">
         <div id="visitedWeeklyQuestPanel" class="visited-quest-panel"></div>
         <div id="visitedMonthlyQuestPanel" class="visited-quest-panel"></div>
         <div id="visitedQuarterlyQuestPanel" class="visited-quest-panel"></div>
         <div id="visitedYearlyQuestPanel" class="visited-quest-panel"></div>
+        <div id="visitedLifetimeQuestPanel" class="visited-quest-panel"></div>
       </div>
     </div>
   </div>

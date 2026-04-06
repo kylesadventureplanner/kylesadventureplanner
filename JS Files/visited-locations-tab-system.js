@@ -89,6 +89,14 @@
     { id: 'yr-bike-expedition', icon: '🚴', title: '10 Bike Spots This Year', metric: 'categoryInPeriod', category: 'bike', goal: 10, points: 660 }
   ];
 
+  const LIFETIME_QUEST_POOL = [
+    { id: 'lt-fifty-visits', icon: '⭐', title: '50 Lifetime Visits', metric: 'visitsInPeriod', goal: 50, points: 900 },
+    { id: 'lt-hundred-visits', icon: '🌟', title: '100 Lifetime Visits', metric: 'visitsInPeriod', goal: 100, points: 1400 },
+    { id: 'lt-all-categories', icon: '🧠', title: 'Master All Categories', metric: 'categoriesInPeriod', goal: 9, points: 1100 },
+    { id: 'lt-ten-cities', icon: '🏙️', title: '10 Lifetime Cities', metric: 'citiesInPeriod', goal: 10, points: 980 },
+    { id: 'lt-five-states', icon: '🗺️', title: '5 Lifetime States', metric: 'statesInPeriod', goal: 5, points: 1020 }
+  ];
+
   const RARITY_STYLES = {
     common: { label: 'Common', className: 'rarity-common' },
     rare: { label: 'Rare', className: 'rarity-rare' },
@@ -441,6 +449,7 @@
       visitedMonthlyQuestPanel: skeleton,
       visitedQuarterlyQuestPanel: skeleton,
       visitedYearlyQuestPanel: skeleton,
+      visitedLifetimeQuestPanel: skeleton,
       visitedHeatmapHotspots: skeleton,
       visitedAdventureCatalog: `${skeleton}${skeleton}`
     };
@@ -1226,6 +1235,7 @@
     const monthEntries = [];
     const quarterEntries = [];
     const yearEntries = [];
+    const lifetimeEntries = [];
 
     const now = new Date();
     const nowWeek = getWeekKey(now);
@@ -1263,6 +1273,7 @@
       if (payload.monthKey === nowMonth) monthEntries.push(payload);
       if (payload.quarterKey === nowQuarter) quarterEntries.push(payload);
       if (payload.yearKey === nowYear) yearEntries.push(payload);
+      lifetimeEntries.push(payload);
     });
 
     return {
@@ -1273,6 +1284,7 @@
       monthEntries,
       quarterEntries,
       yearEntries,
+      lifetimeEntries,
       weekKey: nowWeek,
       monthKey: nowMonth,
       quarterKey: nowQuarter,
@@ -1431,11 +1443,13 @@
     const monthly = buildQuestSet('monthly', insights.monthKey, MONTHLY_QUEST_POOL, insights.monthEntries);
     const quarterly = buildQuestSet('quarterly', insights.quarterKey, QUARTERLY_QUEST_POOL, insights.quarterEntries);
     const yearly = buildQuestSet('yearly', insights.yearKey, YEARLY_QUEST_POOL, insights.yearEntries);
+    const lifetime = buildQuestSet('lifetime', 'all-time', LIFETIME_QUEST_POOL, insights.lifetimeEntries);
 
     const allNew = weekly.justCompleted
       .concat(monthly.justCompleted)
       .concat(quarterly.justCompleted)
-      .concat(yearly.justCompleted);
+      .concat(yearly.justCompleted)
+      .concat(lifetime.justCompleted);
     if (allNew.length > 0) {
       saveMetaState();
       if (typeof window.showToast === 'function') {
@@ -1444,7 +1458,7 @@
       }
     }
 
-    return { weekly, monthly, quarterly, yearly };
+    return { weekly, monthly, quarterly, yearly, lifetime };
   }
 
   function getBadgeMetricProgress(badge, stats, insights) {
@@ -1612,6 +1626,7 @@
       .concat(questSet.monthly.quests)
       .concat(questSet.quarterly.quests)
       .concat(questSet.yearly.quests)
+      .concat(questSet.lifetime.quests)
       .filter(quest => quest.completed)
       .reduce((sum, quest) => sum + quest.points, 0);
     const level = getPlayerLevel(stats.xpFromVisits + challengeXp + badgeXp + questXp);
@@ -1702,6 +1717,7 @@
     renderQuestPanel('visitedMonthlyQuestPanel', 'Monthly Quests', 'Rotates each month', questSet.monthly);
     renderQuestPanel('visitedQuarterlyQuestPanel', 'Quarterly Quests', 'Rotates each quarter', questSet.quarterly);
     renderQuestPanel('visitedYearlyQuestPanel', 'Yearly Quests', 'Rotates each year', questSet.yearly);
+    renderQuestPanel('visitedLifetimeQuestPanel', 'Lifetime Quest Series', 'All-time progression milestones', questSet.lifetime);
   }
 
   function projectToCanvas(lat, lng, width, height) {
@@ -1862,7 +1878,6 @@
           <div class="visited-category-card" data-category="${category.key}">
             <div class="visited-category-top">
               <div class="visited-category-title">${category.icon} ${category.label}</div>
-              <button type="button" class="quick-filter-btn visited-category-filter-btn ${state.categoryFilter === category.key ? 'active' : ''}" data-category-filter="${category.key}" title="Filter tracker to ${escapeHtml(category.label)}" data-tooltip="Filter tracker to ${escapeHtml(category.label)}" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">Focus</button>
             </div>
             <div class="visited-category-meta">${visitedCount} / ${totalCount || 0} visited</div>
             <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${pct}%;"></div></div>
@@ -1870,7 +1885,7 @@
         `;
       }).join('');
 
-      logVisitedDiagnostics(`🎨 renderCategories() rendered ${categoryCount} category cards with Focus buttons`);
+      logVisitedDiagnostics(`🎨 renderCategories() rendered ${categoryCount} category cards`);
     }
 
   function maybeCelebrateChallengeCompletions(challengeProgress) {
@@ -2189,16 +2204,6 @@
 
         // Defensive: ensure all buttons are responsive after rendering
         ensureButtonsResponsive();
-        
-        // RE-ENABLE CATEGORY FILTER BUTTONS after refresh completes
-        const grid = document.getElementById('visitedCategoryGrid');
-        if (grid) {
-          grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
-            btn.disabled = false;
-            btn.style.opacity = '1';
-          });
-          logVisitedDiagnostics(`✅ Category filter buttons re-enabled after refresh`);
-        }
       } finally {
         clearLoadingState();
       }
@@ -2271,10 +2276,9 @@
 
       // Defensive: ensure all interactive elements are clickable
       const buttons = root.querySelectorAll(
-        'button, [role="button"], [data-visit-action], [data-progress-subtab], [data-catalog-filter], [data-category-filter], .quick-filter-btn, .card-btn'
+        'button, [role="button"], [data-visit-action], [data-progress-subtab], [data-catalog-filter], .quick-filter-btn, .card-btn'
       );
 
-      let categoryFilterCount = 0;
       buttons.forEach((btn) => {
         if (btn.style && typeof btn.style.setProperty === 'function') {
           btn.style.setProperty('pointer-events', 'auto', 'important');
@@ -2286,16 +2290,9 @@
           btn.style.zIndex = '2501';
         }
         btn.disabled = false;
-        
-        if (btn.hasAttribute('data-category-filter')) {
-          categoryFilterCount += 1;
-        }
       });
-      
-      // DIAGNOSTIC: Log button fixes
-      if (categoryFilterCount > 0) {
-        logVisitedDiagnostics(`✅ ensureButtonsResponsive() fixed ${buttons.length} buttons (${categoryFilterCount} category filters)`);
-      }
+
+      logVisitedDiagnostics(`✅ ensureButtonsResponsive() fixed ${buttons.length} buttons`);
     }
 
     function bindControls() {
@@ -2436,69 +2433,6 @@
                   setButtonBusy(toggleBtn, false);
                 });
             }
-            return;
-          }
-
-          const categoryBtn = event.target.closest('[data-category-filter]');
-          if (categoryBtn) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            // SAFETY: Prevent clicking during refresh
-            if (state.isRefreshing) {
-              logVisitedDiagnostics(`⏸️ Category filter click blocked - refresh in progress`);
-              return;
-            }
-
-            const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
-            const prevFilter = state.categoryFilter;
-
-            // DEBOUNCE: Prevent rapid repeated clicks on category buttons
-            const now = Date.now();
-            if (now - state.lastCategoryFilterClick < state.categoryFilterDebounceMs) {
-              logVisitedDiagnostics(`⏱️ Category filter click debounced (${now - state.lastCategoryFilterClick}ms since last click)`);
-              return;
-            }
-            state.lastCategoryFilterClick = now;
-
-            // IMMEDIATE VISUAL FEEDBACK: Update UI state instantly
-            state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
-
-            // Update button visual state immediately + disable during refresh
-            const grid = document.getElementById('visitedCategoryGrid');
-            if (grid) {
-              grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
-                const btnCategory = btn.getAttribute('data-category-filter');
-                const isActive = btnCategory === state.categoryFilter;
-                btn.classList.toggle('active', isActive);
-                btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-                // Disable all buttons during refresh
-                btn.disabled = state.isRefreshing;
-                btn.style.opacity = state.isRefreshing ? '0.6' : '1';
-              });
-            }
-
-            // DIAGNOSTIC: Log category filter clicks
-            if (shouldLogVisitedDiagnostics()) {
-              if (typeof window.__debugFocusButtons === 'undefined') {
-                window.__debugFocusButtons = { clicks: 0, lastClick: null };
-              }
-              window.__debugFocusButtons.clicks += 1;
-              window.__debugFocusButtons.lastClick = {
-                timestamp: new Date().toISOString(),
-                btn: categoryBtn.getAttribute('data-category-filter'),
-                prevFilter,
-                newFilter: state.categoryFilter,
-                isRefreshing: state.isRefreshing,
-                btnDisabled: categoryBtn.disabled,
-                btnPointerEvents: window.getComputedStyle(categoryBtn).pointerEvents
-              };
-            }
-
-            logVisitedDiagnostics(`🔘 Focus button clicked: ${nextFilter} (was: ${prevFilter}), starting refresh...`);
-
-            resetCatalogRenderLimit();
-            runRefreshWithLock(categoryBtn);
             return;
           }
 
