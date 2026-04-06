@@ -552,13 +552,6 @@
     getProgressSubTabButtons(root).forEach((btn) => {
       if (btn.dataset.progressSubTabBound === '1') return;
       btn.dataset.progressSubTabBound = '1';
-      btn.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const tabKey = btn.getAttribute('data-progress-subtab') || 'overview';
-        if (tabKey !== state.activeProgressSubTab) setActiveProgressSubTab(root, tabKey);
-        scheduleVisitedSubTabInterceptionCheck(root, 0);
-      });
     });
   }
 
