@@ -1787,27 +1787,30 @@
     `).join('');
   }
 
-   function renderCategories(stats) {
-     const grid = document.getElementById('visitedCategoryGrid');
-     if (!grid) return;
+    function renderCategories(stats) {
+      const grid = document.getElementById('visitedCategoryGrid');
+      if (!grid) return;
 
-     grid.innerHTML = CATEGORY_DEFS.map(category => {
-       const visitedCount = stats.visitedByCategory[category.key] || 0;
-       const totalCount = stats.totalByCategory[category.key] || 0;
-       const pct = totalCount > 0 ? Math.round((visitedCount / totalCount) * 100) : 0;
+      const categoryCount = CATEGORY_DEFS.length;
+      grid.innerHTML = CATEGORY_DEFS.map(category => {
+        const visitedCount = stats.visitedByCategory[category.key] || 0;
+        const totalCount = stats.totalByCategory[category.key] || 0;
+        const pct = totalCount > 0 ? Math.round((visitedCount / totalCount) * 100) : 0;
 
-       return `
-         <div class="visited-category-card" data-category="${category.key}">
-           <div class="visited-category-top">
-             <div class="visited-category-title">${category.icon} ${category.label}</div>
-             <button type="button" class="quick-filter-btn visited-category-filter-btn ${state.categoryFilter === category.key ? 'active' : ''}" data-category-filter="${category.key}" title="Filter tracker to ${escapeHtml(category.label)}" data-tooltip="Filter tracker to ${escapeHtml(category.label)}" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">Focus</button>
-           </div>
-           <div class="visited-category-meta">${visitedCount} / ${totalCount || 0} visited</div>
-           <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${pct}%;"></div></div>
-         </div>
-       `;
-     }).join('');
-   }
+        return `
+          <div class="visited-category-card" data-category="${category.key}">
+            <div class="visited-category-top">
+              <div class="visited-category-title">${category.icon} ${category.label}</div>
+              <button type="button" class="quick-filter-btn visited-category-filter-btn ${state.categoryFilter === category.key ? 'active' : ''}" data-category-filter="${category.key}" title="Filter tracker to ${escapeHtml(category.label)}" data-tooltip="Filter tracker to ${escapeHtml(category.label)}" style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;">Focus</button>
+            </div>
+            <div class="visited-category-meta">${visitedCount} / ${totalCount || 0} visited</div>
+            <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${pct}%;"></div></div>
+          </div>
+        `;
+      }).join('');
+
+      console.log(`🎨 renderCategories() rendered ${categoryCount} category cards with Focus buttons`);
+    }
 
   function maybeCelebrateChallengeCompletions(challengeProgress) {
     let newlyCompleted = [];
@@ -2191,28 +2194,38 @@
     await refreshTab();
   }
 
-   function ensureButtonsResponsive() {
-     const root = document.getElementById('visitedLocationsRoot');
-     if (!root) return;
+    function ensureButtonsResponsive() {
+      const root = document.getElementById('visitedLocationsRoot');
+      if (!root) return;
 
-     // Defensive: ensure all interactive elements are clickable
-     const buttons = root.querySelectorAll(
-       'button, [role="button"], [data-visit-action], [data-progress-subtab], [data-catalog-filter], [data-category-filter], .quick-filter-btn, .card-btn'
-     );
+      // Defensive: ensure all interactive elements are clickable
+      const buttons = root.querySelectorAll(
+        'button, [role="button"], [data-visit-action], [data-progress-subtab], [data-catalog-filter], [data-category-filter], .quick-filter-btn, .card-btn'
+      );
 
-     buttons.forEach((btn) => {
-       if (btn.style && typeof btn.style.setProperty === 'function') {
-         btn.style.setProperty('pointer-events', 'auto', 'important');
-         btn.style.setProperty('position', 'relative', 'important');
-         btn.style.setProperty('z-index', '2501', 'important');
-       } else if (btn.style) {
-         btn.style.pointerEvents = 'auto';
-         btn.style.position = 'relative';
-         btn.style.zIndex = '2501';
-       }
-       btn.disabled = false;
-     });
-   }
+      let categoryFilterCount = 0;
+      buttons.forEach((btn) => {
+        if (btn.style && typeof btn.style.setProperty === 'function') {
+          btn.style.setProperty('pointer-events', 'auto', 'important');
+          btn.style.setProperty('position', 'relative', 'important');
+          btn.style.setProperty('z-index', '2501', 'important');
+        } else if (btn.style) {
+          btn.style.pointerEvents = 'auto';
+          btn.style.position = 'relative';
+          btn.style.zIndex = '2501';
+        }
+        btn.disabled = false;
+        
+        if (btn.hasAttribute('data-category-filter')) {
+          categoryFilterCount += 1;
+        }
+      });
+      
+      // DIAGNOSTIC: Log button fixes
+      if (categoryFilterCount > 0) {
+        console.log(`✅ ensureButtonsResponsive() fixed ${buttons.length} buttons (${categoryFilterCount} category filters)`);
+      }
+    }
 
    function bindControls() {
      const root = document.getElementById('visitedLocationsRoot');
@@ -2344,15 +2357,34 @@
         return;
       }
 
-      const categoryBtn = event.target.closest('[data-category-filter]');
-      if (categoryBtn) {
-        event.preventDefault();
-        const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
-        state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
-        resetCatalogRenderLimit();
-        runRefreshWithLock(categoryBtn);
-        return;
-      }
+       const categoryBtn = event.target.closest('[data-category-filter]');
+       if (categoryBtn) {
+         event.preventDefault();
+         const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
+         const prevFilter = state.categoryFilter;
+         state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
+
+         // DIAGNOSTIC: Log category filter clicks
+         if (typeof window.__debugFocusButtons === 'undefined') {
+           window.__debugFocusButtons = { clicks: 0, lastClick: null };
+         }
+         window.__debugFocusButtons.clicks += 1;
+         window.__debugFocusButtons.lastClick = {
+           timestamp: new Date().toISOString(),
+           btn: categoryBtn.getAttribute('data-category-filter'),
+           prevFilter,
+           newFilter: state.categoryFilter,
+           isRefreshing: state.isRefreshing,
+           btnDisabled: categoryBtn.disabled,
+           btnPointerEvents: window.getComputedStyle(categoryBtn).pointerEvents
+         };
+
+         console.log(`🔘 Focus button clicked: ${nextFilter} (was: ${prevFilter}), isRefreshing=${state.isRefreshing}, disabled=${categoryBtn.disabled}`);
+
+         resetCatalogRenderLimit();
+         runRefreshWithLock(categoryBtn);
+         return;
+       }
 
       const catalogFilterBtn = event.target.closest('[data-catalog-filter]');
       if (catalogFilterBtn) {
