@@ -2078,62 +2078,72 @@
      applyTooltipInfoIcons(container);
    }
 
-   async function refreshTab() {
-     renderLoadingState();
-     try {
-       await Promise.all([
-         resolveAdventureVisitedColumnIndex().catch(() => -1),
-         resolveBikeVisitedColumnIndex().catch(() => -1)
-       ]);
+    async function refreshTab() {
+      renderLoadingState();
+      try {
+        await Promise.all([
+          resolveAdventureVisitedColumnIndex().catch(() => -1),
+          resolveBikeVisitedColumnIndex().catch(() => -1)
+        ]);
 
-       renderSyncHealthBadge();
+        renderSyncHealthBadge();
 
-       const adventures = readAllLocations();
-       let visitMap = getVisitMap();
-       visitMap = hydrateVisitMapFromExcel(adventures, visitMap);
-       saveVisitMap(visitMap);
+        const adventures = readAllLocations();
+        let visitMap = getVisitMap();
+        visitMap = hydrateVisitMapFromExcel(adventures, visitMap);
+        saveVisitMap(visitMap);
 
-       state.latestLocations = adventures;
-       state.latestVisitMap = visitMap;
+        state.latestLocations = adventures;
+        state.latestVisitMap = visitMap;
 
-       const stats = buildStats(adventures, visitMap);
-       const challengeProgress = buildChallengeProgress(stats);
-       const insights = computeVisitInsights(stats, visitMap);
-       const badges = buildBadgeProgress(stats, insights);
-       const questSet = buildRotatingQuests(insights);
-       const suggestions = generateSuggestions(adventures, visitMap, challengeProgress);
+        const stats = buildStats(adventures, visitMap);
+        const challengeProgress = buildChallengeProgress(stats);
+        const insights = computeVisitInsights(stats, visitMap);
+        const badges = buildBadgeProgress(stats, insights);
+        const questSet = buildRotatingQuests(insights);
+        const suggestions = generateSuggestions(adventures, visitMap, challengeProgress);
 
-       renderSummary(stats, challengeProgress, badges, questSet);
-       renderCategories(stats);
-       renderChallenges(challengeProgress);
-       renderBadges(badges);
-       renderRotatingQuests(questSet);
-       renderHeatmap(stats);
-       renderCelebrationControls();
-       renderSuggestions(suggestions);
-       renderRecentVisits(stats, visitMap);
-       renderCatalog(adventures, visitMap);
+        renderSummary(stats, challengeProgress, badges, questSet);
+        renderCategories(stats);
+        renderChallenges(challengeProgress);
+        renderBadges(badges);
+        renderRotatingQuests(questSet);
+        renderHeatmap(stats);
+        renderCelebrationControls();
+        renderSuggestions(suggestions);
+        renderRecentVisits(stats, visitMap);
+        renderCatalog(adventures, visitMap);
 
-       const dataStatus = document.getElementById('visitedDataStatus');
-       if (dataStatus) {
-         const adventureCount = adventures.filter(item => item.sourceType === 'adventure').length;
-         const bikeCount = adventures.filter(item => item.sourceType === 'bike').length;
-         dataStatus.textContent = `${adventures.length} total locations (${adventureCount} adventure + ${bikeCount} bike) • ${stats.visited.length} visited tracked`;
-       }
+        const dataStatus = document.getElementById('visitedDataStatus');
+        if (dataStatus) {
+          const adventureCount = adventures.filter(item => item.sourceType === 'adventure').length;
+          const bikeCount = adventures.filter(item => item.sourceType === 'bike').length;
+          dataStatus.textContent = `${adventures.length} total locations (${adventureCount} adventure + ${bikeCount} bike) • ${stats.visited.length} visited tracked`;
+        }
 
-       state.lastRenderAt = new Date().toISOString();
-       renderSyncMeta(visitMap);
+        state.lastRenderAt = new Date().toISOString();
+        renderSyncMeta(visitMap);
 
-       const root = document.getElementById('visitedLocationsRoot');
-       applyTooltipInfoIcons(root);
-       scheduleVisitedSubTabInterceptionCheck(root, 60);
+        const root = document.getElementById('visitedLocationsRoot');
+        applyTooltipInfoIcons(root);
+        scheduleVisitedSubTabInterceptionCheck(root, 60);
 
-       // Defensive: ensure all buttons are responsive after rendering
-       ensureButtonsResponsive();
-     } finally {
-       clearLoadingState();
-     }
-   }
+        // Defensive: ensure all buttons are responsive after rendering
+        ensureButtonsResponsive();
+        
+        // RE-ENABLE CATEGORY FILTER BUTTONS after refresh completes
+        const grid = document.getElementById('visitedCategoryGrid');
+        if (grid) {
+          grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+          });
+          console.log(`✅ Category filter buttons re-enabled after refresh`);
+        }
+      } finally {
+        clearLoadingState();
+      }
+    }
 
   function findAdventureById(locationId) {
     const adventures = Array.isArray(state.latestLocations) && state.latestLocations.length > 0
@@ -2364,6 +2374,12 @@
          event.preventDefault();
          event.stopPropagation();
 
+         // SAFETY: Prevent clicking during refresh
+         if (state.isRefreshing) {
+           console.log(`⏸️ Category filter click blocked - refresh in progress`);
+           return;
+         }
+
          const nextFilter = categoryBtn.getAttribute('data-category-filter') || 'all';
          const prevFilter = state.categoryFilter;
 
@@ -2378,7 +2394,7 @@
          // IMMEDIATE VISUAL FEEDBACK: Update UI state instantly
          state.categoryFilter = state.categoryFilter === nextFilter ? 'all' : nextFilter;
 
-         // Update button visual state immediately
+         // Update button visual state immediately + disable during refresh
          const grid = document.getElementById('visitedCategoryGrid');
          if (grid) {
            grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
@@ -2386,6 +2402,9 @@
              const isActive = btnCategory === state.categoryFilter;
              btn.classList.toggle('active', isActive);
              btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+             // Disable all buttons during refresh
+             btn.disabled = state.isRefreshing;
+             btn.style.opacity = state.isRefreshing ? '0.6' : '1';
            });
          }
 
@@ -2404,7 +2423,7 @@
            btnPointerEvents: window.getComputedStyle(categoryBtn).pointerEvents
          };
 
-         console.log(`🔘 Focus button clicked: ${nextFilter} (was: ${prevFilter}), isRefreshing=${state.isRefreshing}, disabled=${categoryBtn.disabled}`);
+         console.log(`🔘 Focus button clicked: ${nextFilter} (was: ${prevFilter}), starting refresh...`);
 
          resetCatalogRenderLimit();
          runRefreshWithLock(categoryBtn);
