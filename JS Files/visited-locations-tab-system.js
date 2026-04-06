@@ -132,6 +132,11 @@
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
       btn.setAttribute('tabindex', isActive ? '0' : '-1');
+      // Defensive: keep subtab controls always hit-testable, even if another runtime pass mutates styles.
+      btn.disabled = false;
+      btn.style.pointerEvents = 'auto';
+      btn.style.position = 'relative';
+      btn.style.zIndex = '2501';
     });
 
     root.querySelectorAll('[data-progress-pane]').forEach((pane) => {
@@ -140,6 +145,10 @@
       pane.classList.toggle('is-active', isActive);
       pane.hidden = !isActive;
       pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      // Defensive: inactive panes should never intercept pointer input.
+      pane.style.pointerEvents = isActive ? 'auto' : 'none';
+      pane.style.position = 'relative';
+      pane.style.zIndex = isActive ? '1' : '0';
     });
   }
 
@@ -2181,6 +2190,14 @@
     if (!root || root.dataset.bound === '1') return;
 
     root.dataset.bound = '1';
+
+    const subtabBar = root.querySelector('.visited-progress-subtabs');
+    if (subtabBar) {
+      subtabBar.style.pointerEvents = 'auto';
+      subtabBar.style.position = 'relative';
+      subtabBar.style.zIndex = '2500';
+    }
+
     syncProgressSubTabs(root);
     bindProgressSubTabButtons(root);
     announceProgressSubTab(root, state.activeProgressSubTab);
