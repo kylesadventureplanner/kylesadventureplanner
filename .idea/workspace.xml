@@ -5,11 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/app-quality-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/app-quality-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/comprehensive-debug-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/comprehensive-debug-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-comprehensive-fix-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-comprehensive-fix-system-v7-0-141.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/multi-select-bulk-actions.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/multi-select-bulk-actions.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -90,7 +86,7 @@
       <workItem from="1775053911750" duration="6601000" />
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
-      <workItem from="1775308318086" duration="75003000" />
+      <workItem from="1775308318086" duration="75883000" />
     </task>
     <servers />
   </component>
