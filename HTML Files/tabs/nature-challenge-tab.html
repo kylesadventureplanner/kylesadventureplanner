@@ -71,7 +71,6 @@
           <input id="birdsOverviewCommandInput" class="filter-input" type="text" placeholder="Type a command (e.g., search heron, go badges, log)" aria-label="Birds command bar" aria-describedby="birdsOverviewCommandHelp" list="birdsOverviewCommandSuggestions" />
           <button type="button" id="birdsOverviewCommandRunBtn" class="pill-button nature-command-btn">Run</button>
           <button type="button" id="birdsOverviewCommandClearBtn" class="pill-button nature-command-btn" title="Clear command">x</button>
-          <button type="button" id="birdsShortcutHelpOpenBtn" class="pill-button nature-command-btn">Shortcuts</button>
           <button type="button" id="birdsResetUiBtn" class="pill-button nature-command-btn">Reset Birds UI</button>
           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="challenges">Challenges</button>
           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="badges">Badges</button>
@@ -83,8 +82,6 @@
           <code>search heron</code>
           <code>go badges</code>
           <code>log</code>
-          <span class="nature-command-help-sep">|</span>
-          <span class="nature-command-help-label">Press ? for full shortcut list</span>
         </div>
         <datalist id="birdsOverviewCommandSuggestions">
           <option value="log"></option>
@@ -262,26 +259,6 @@
           <div id="birdsDataQualityPanel"></div>
         </div>
       </details>
-
-      <div id="birdsShortcutHelpModal" class="nature-shortcut-help-modal" role="dialog" aria-modal="true" aria-labelledby="birdsShortcutHelpTitle" hidden>
-        <div class="nature-shortcut-help-panel">
-          <div class="card-title" id="birdsShortcutHelpTitle">Keyboard shortcuts</div>
-          <div class="nature-shortcut-help-grid">
-            <div><kbd>/</kbd> Focus command bar</div>
-            <div><kbd>g o</kbd> Open overview</div>
-            <div><kbd>g l</kbd> Open log</div>
-            <div><kbd>g e</kbd> Open explorer</div>
-            <div><kbd>1</kbd> Jump to Challenges</div>
-            <div><kbd>2</kbd> Jump to Badges</div>
-            <div><kbd>3</kbd> Jump to Quests</div>
-            <div><kbd>4</kbd> Jump to Bingo</div>
-            <div><kbd>?</kbd> Toggle this help</div>
-          </div>
-          <div class="nature-log-form-actions">
-            <button type="button" id="birdsShortcutHelpCloseBtn" class="pill-button">Close</button>
-          </div>
-        </div>
-      </div>
 
     </div>
 
@@ -1730,42 +1707,6 @@
     text-align: center;
   }
 
-  #natureChallengeRoot .nature-shortcut-help-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 1200;
-    background: rgba(15, 23, 42, 0.44);
-    display: grid;
-    place-items: center;
-    padding: var(--birds-space-16);
-  }
-
-  #natureChallengeRoot .nature-shortcut-help-panel {
-    width: min(560px, 100%);
-    border: 1px solid var(--birds-border-subtle);
-    border-radius: var(--birds-radius-elevated);
-    background: var(--birds-surface);
-    box-shadow: var(--birds-shadow-elevated);
-    padding: var(--birds-space-16);
-  }
-
-  #natureChallengeRoot .nature-shortcut-help-grid {
-    margin-top: var(--birds-space-12);
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: var(--birds-space-8);
-    font-size: 12px;
-    color: var(--birds-text-muted);
-    font-weight: 700;
-  }
-
-  #natureChallengeRoot .nature-shortcut-help-grid kbd {
-    border: 1px solid var(--birds-border-subtle);
-    background: var(--birds-surface-muted);
-    border-radius: 6px;
-    padding: 2px 6px;
-    color: var(--birds-text);
-  }
 
   #natureChallengeRoot.is-keyboard-mode .nature-birds-view :focus-visible {
     outline: 3px solid var(--birds-accent);

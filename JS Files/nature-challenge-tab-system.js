@@ -385,13 +385,6 @@
     strip.innerHTML = actions.slice(0, 3).join('');
   }
 
-  function toggleBirdShortcutHelpModal(forceState) {
-    const modal = document.getElementById('birdsShortcutHelpModal');
-    if (!modal) return;
-    const shouldOpen = typeof forceState === 'boolean' ? forceState : modal.hidden;
-    modal.hidden = !shouldOpen;
-  }
-
   function renderBirdUndoPrompt() {
     const prompt = document.getElementById('birdsUndoPrompt');
     const text = document.getElementById('birdsUndoPromptText');
@@ -955,12 +948,6 @@
       event.preventDefault();
       const cmdInput = document.getElementById('birdsOverviewCommandInput');
       if (cmdInput) cmdInput.focus();
-      return;
-    }
-
-    if (!inTextInput && event.key === '?') {
-      event.preventDefault();
-      toggleBirdShortcutHelpModal();
       return;
     }
 
@@ -3123,24 +3110,6 @@
         return;
       }
 
-      const shortcutOpenButton = event.target.closest('#birdsShortcutHelpOpenBtn');
-      if (shortcutOpenButton) {
-        toggleBirdShortcutHelpModal(true);
-        return;
-      }
-
-      const shortcutCloseButton = event.target.closest('#birdsShortcutHelpCloseBtn');
-      if (shortcutCloseButton) {
-        toggleBirdShortcutHelpModal(false);
-        return;
-      }
-
-      const shortcutBackdrop = event.target.closest('#birdsShortcutHelpModal');
-      if (shortcutBackdrop && event.target === shortcutBackdrop) {
-        toggleBirdShortcutHelpModal(false);
-        return;
-      }
-
       const clearFiltersButton = event.target.closest('#birdsExplorerClearFiltersBtn');
       if (clearFiltersButton) {
         resetBirdExplorerFilters();
@@ -3205,7 +3174,6 @@
 
     root.addEventListener('keydown', (event) => {
       if (event.key === 'Tab') root.classList.add('is-keyboard-mode');
-      if (event.key === 'Escape') toggleBirdShortcutHelpModal(false);
       handleBirdKeyboardShortcuts(root, event);
     });
 
@@ -3276,19 +3244,6 @@
       });
     }
 
-    const shortcutModal = document.getElementById('birdsShortcutHelpModal');
-    if (shortcutModal && shortcutModal.dataset.natureShortcutModalBound !== '1') {
-      shortcutModal.dataset.natureShortcutModalBound = '1';
-      shortcutModal.addEventListener('click', (event) => {
-        if (event.target === shortcutModal) toggleBirdShortcutHelpModal(false);
-      });
-    }
-
-    const shortcutCloseBtn = document.getElementById('birdsShortcutHelpCloseBtn');
-    if (shortcutCloseBtn && shortcutCloseBtn.dataset.natureShortcutCloseBound !== '1') {
-      shortcutCloseBtn.dataset.natureShortcutCloseBound = '1';
-      shortcutCloseBtn.addEventListener('click', () => toggleBirdShortcutHelpModal(false));
-    }
 
     const searchInput = document.getElementById('birdsSpeciesSearchInput');
     if (searchInput && searchInput.dataset.natureSearchBound !== '1') {

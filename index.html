@@ -7090,17 +7090,6 @@
   <button id="extendSessionBtn" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">Extend Session</button>
 </div>
 
-<!-- Keyboard Shortcuts Modal -->
-<div id="keyboardShortcutsModal" class="keyboard-shortcuts-modal">
-  <div class="shortcuts-header">
-    <div class="shortcuts-title">⌨️ Keyboard Shortcuts</div>
-    <button class="shortcuts-close" id="shortcutsCloseBtn">&times;</button>
-  </div>
-  <div class="shortcuts-body" id="shortcutsBody">
-    <!-- Will be populated by JavaScript -->
-  </div>
-</div>
-
 <!-- Error/Warning Notification Bar - Shows console errors and app errors -->
 <div id="errorNotificationBar" class="collapsed">
   <div class="error-header" onclick="toggleErrorBar(event)" style="cursor: pointer;" title="Click to expand/collapse errors">
@@ -9553,66 +9542,6 @@
   }
 
   // ============================================================
-  // KEYBOARD SHORTCUTS
-  // ============================================================
-  const KEYBOARD_SHORTCUTS = {
-    'Navigation': [
-      { keys: ['Esc'], description: 'Close modal or cancel operation' },
-      { keys: ['Enter'], description: 'Open detail modal for selected row' },
-      { keys: ['↑', '↓'], description: 'Navigate between rows' }
-    ],
-    'Search & Filter': [
-      { keys: ['Ctrl/Cmd', 'F'], description: 'Focus search box' },
-      { keys: ['Ctrl/Cmd', 'K'], description: 'Quick search' },
-      { keys: ['Ctrl/Cmd', 'R'], description: 'Reset all filters' }
-    ],
-    'Edit & Save': [
-      { keys: ['Ctrl/Cmd', 'S'], description: 'Save current changes' },
-      { keys: ['Ctrl/Cmd', 'Z'], description: 'Undo last action' },
-      { keys: ['Ctrl/Cmd', 'Shift', 'Z'], description: 'Redo last action' }
-    ],
-    'Selection': [
-      { keys: ['Space'], description: 'Toggle row selection' },
-      { keys: ['Ctrl/Cmd', 'A'], description: 'Select all rows' },
-      { keys: ['Shift', 'Click'], description: 'Select range' }
-    ],
-    'Help': [
-      { keys: ['?'], description: 'Show this help menu' }
-    ]
-  };
-
-  function showKeyboardShortcuts() {
-    const modal = document.getElementById('keyboardShortcutsModal');
-    const body = document.getElementById('shortcutsBody');
-
-    let html = '';
-    for (const [category, shortcuts] of Object.entries(KEYBOARD_SHORTCUTS)) {
-      html += `
-        <div class="shortcuts-category">
-          <div class="shortcuts-category-title">${category}</div>
-          <div class="shortcuts-list">
-      `;
-      shortcuts.forEach(shortcut => {
-        const keyDisplay = shortcut.keys.map(k => `<kbd>${k}</kbd>`).join(' + ');
-        html += `
-          <div class="shortcut-item">
-            <div class="shortcut-key">${keyDisplay}</div>
-            <div class="shortcut-description">${shortcut.description}</div>
-          </div>
-        `;
-      });
-      html += '</div></div>';
-    }
-
-    body.innerHTML = html;
-    modal.classList.add('visible');
-  }
-
-  function closeKeyboardShortcuts() {
-    document.getElementById('keyboardShortcutsModal').classList.remove('visible');
-  }
-
-  // ============================================================
   // SEARCH HIGHLIGHTING
   // ============================================================
   function highlightSearchTerm(text, searchTerm) {
@@ -10037,7 +9966,6 @@
     // Escape to close modals
     if (e.key === 'Escape') {
       closeRowDetailModal();
-      closeKeyboardShortcuts();
       document.querySelectorAll('[class*="modal"].visible').forEach(m => m.classList.remove('visible'));
     }
 
@@ -10078,19 +10006,6 @@
       redoFilter();
     }
 
-    // ? for help
-    if (e.key === '?' && document.activeElement.tagName !== 'INPUT') {
-      e.preventDefault();
-      showKeyboardShortcuts();
-    }
-  });
-
-  // Setup keyboard shortcuts modal close button
-  document.addEventListener('DOMContentLoaded', () => {
-    const shortcutsCloseBtn = document.getElementById('shortcutsCloseBtn');
-    if (shortcutsCloseBtn) {
-      shortcutsCloseBtn.addEventListener('click', closeKeyboardShortcuts);
-    }
   });
 
   // Use DOMContentLoaded to ensure all DOM elements are ready
