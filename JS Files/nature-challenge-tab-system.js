@@ -3050,6 +3050,9 @@
 
   const NATURE_DELEGATED_ACTION_SELECTOR = [
     '[data-nature-subtab]',
+    '#natureChallengeRefreshBtn',
+    '#birdsExploreBtn',
+    '#birdsOpenLogBtn',
     '[data-bird-toggle]',
     '[data-bird-favorite]',
     '[data-bird-open]',
@@ -3114,6 +3117,24 @@
       if (subTabButton) {
         ensureNatureButtonsResponsive(root);
         setActiveNatureSubTab(root, subTabButton.getAttribute('data-nature-subtab'));
+        return;
+      }
+
+      const refreshButton = event.target.closest('#natureChallengeRefreshBtn');
+      if (refreshButton) {
+        loadBirdDataset(true);
+        return;
+      }
+
+      const exploreButton = event.target.closest('#birdsExploreBtn');
+      if (exploreButton) {
+        setBirdView(root, 'explorer');
+        return;
+      }
+
+      const openLogButton = event.target.closest('#birdsOpenLogBtn');
+      if (openLogButton) {
+        setBirdView(root, 'log');
         return;
       }
 
@@ -3322,23 +3343,6 @@
       root.classList.remove('is-keyboard-mode');
     });
 
-    const refreshButton = document.getElementById('natureChallengeRefreshBtn');
-    if (refreshButton && refreshButton.dataset.natureRefreshBound !== '1') {
-      refreshButton.dataset.natureRefreshBound = '1';
-      refreshButton.addEventListener('click', () => loadBirdDataset(true));
-    }
-
-    const exploreButton = document.getElementById('birdsExploreBtn');
-    if (exploreButton && exploreButton.dataset.natureExploreBound !== '1') {
-      exploreButton.dataset.natureExploreBound = '1';
-      exploreButton.addEventListener('click', () => setBirdView(root, 'explorer'));
-    }
-
-    const openLogButton = document.getElementById('birdsOpenLogBtn');
-    if (openLogButton && openLogButton.dataset.natureOpenLogBound !== '1') {
-      openLogButton.dataset.natureOpenLogBound = '1';
-      openLogButton.addEventListener('click', () => setBirdView(root, 'log'));
-    }
 
     const logBackButton = document.getElementById('birdsLogBackBtn');
     if (logBackButton && logBackButton.dataset.natureLogBackBound !== '1') {

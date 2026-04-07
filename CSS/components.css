@@ -487,6 +487,7 @@ header h1 {
   font-weight: 500;
   letter-spacing: 0.3px;
   animation: tooltipFadeIn 0.2s ease-out;
+  pointer-events: none;
 }
 
 [data-tooltip]:is(:hover, :focus-visible)::before {
@@ -498,6 +499,7 @@ header h1 {
   border: 6px solid transparent;
   border-top-color: #1f2937;
   z-index: 10000;
+  pointer-events: none;
 }
 
 @keyframes tooltipFadeIn {
