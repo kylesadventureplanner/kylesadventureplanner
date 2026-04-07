@@ -486,9 +486,9 @@
     if (window.__bikeFilterHotfixBound) return;
     window.__bikeFilterHotfixBound = true;
 
-    document.addEventListener('click', function(event) {
-      var tabBtn = event.target && event.target.closest ? event.target.closest('.app-tab-btn[data-tab="bike-trails"]') : null;
-      if (!tabBtn) return;
+    window.addEventListener('app:tab-switched', function(event) {
+      var tabId = event && event.detail ? event.detail.tabId : '';
+      if (tabId !== 'bike-trails') return;
 
       window.setTimeout(function() {
         if (typeof window.initBikeTrailsTab === 'function') {
@@ -497,7 +497,7 @@
           window.initializeBikeTrailsTab();
         }
       }, 50);
-    }, true);
+    });
   }
 
   function init() {

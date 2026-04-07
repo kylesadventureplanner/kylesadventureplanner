@@ -24,6 +24,7 @@ class TabContentLoader {
     this.loadTimes = new Map();
     this.executedExternalScripts = new Set();
     this.executedInlineScriptHashes = new Set();
+    this.initializedTabs = new Set();
     this.isInitialized = false;
     this.statusHideTimer = null;
     this.handlePopState = this.handlePopState.bind(this);
@@ -235,7 +236,7 @@ class TabContentLoader {
     if (!requestedTab || !this.tabs[requestedTab]) return;
 
     // Let other startup scripts attach first, then switch.
-    setTimeout(() => this.switchTab(requestedTab, { syncUrl: false }), 0);
+    setTimeout(() => this.switchTab(requestedTab, { syncUrl: false, source: 'url-open' }), 0);
   }
 
   getTabIdFromUrl() {
@@ -263,25 +264,34 @@ class TabContentLoader {
   handlePopState() {
     const requestedTab = this.getTabIdFromUrl();
     if (!requestedTab || !this.tabs[requestedTab]) return;
-    this.switchTab(requestedTab, { syncUrl: false });
+    this.switchTab(requestedTab, { syncUrl: false, source: 'popstate' });
   }
 
   handleHashChange() {
     const requestedTab = this.getTabIdFromUrl();
     if (!requestedTab || !this.tabs[requestedTab]) return;
-    this.switchTab(requestedTab, { syncUrl: false });
+    this.switchTab(requestedTab, { syncUrl: false, source: 'hashchange' });
   }
 
-  syncUrlToTab(tabId) {
+  syncUrlToTab(tabId, options = {}) {
+    const { historyMode = 'replace' } = options;
     if (!tabId || !this.tabs[tabId]) return;
 
     const url = new URL(window.location.href);
+    const currentTab = String(url.searchParams.get('tab') || '').trim();
+    if (currentTab === tabId) return;
+
     url.searchParams.set('tab', tabId);
 
     // Canonicalize to query-based deep links while still accepting hash input.
     const hash = String(url.hash || '').replace(/^#/, '').trim();
     if (hash === tabId || hash === `tab=${tabId}`) {
       url.hash = '';
+    }
+
+    if (historyMode === 'push') {
+      window.history.pushState(window.history.state, '', url.toString());
+      return;
     }
 
     window.history.replaceState(window.history.state, '', url.toString());
@@ -338,7 +348,7 @@ class TabContentLoader {
       const tabId = btn.getAttribute('data-tab');
       if (tabId) {
         console.log(`📑 Tab button clicked (delegated): ${tabId}`);
-        this.switchTab(tabId);
+        this.switchTab(tabId, { syncUrl: true, historyMode: 'push', source: 'user-click' });
       }
     }, true); // Use capture phase for reliable event handling
 
@@ -349,7 +359,7 @@ class TabContentLoader {
    * Switch to a tab
    */
   switchTab(tabId, options = {}) {
-    const { syncUrl = true } = options;
+    const { syncUrl = true, historyMode = 'replace', source = 'programmatic' } = options;
     console.log(`📑 Switching to tab: ${tabId}`);
 
     // Hide all tabs
@@ -381,8 +391,23 @@ class TabContentLoader {
     tabPane.classList.add('active');
 
     if (syncUrl) {
-      this.syncUrlToTab(tabId);
+      this.syncUrlToTab(tabId, { historyMode });
     }
+
+    window.dispatchEvent(new CustomEvent('app:tab-switched', {
+      detail: {
+        tabId,
+        source,
+        loaded: this.loadedTabs.has(tabId),
+        timestamp: Date.now()
+      }
+    }));
+
+    // Keep sticky offsets in sync with the newly active tab layout.
+    setTimeout(() => {
+      window.updatePlannerTopStickyOffset?.();
+      window.requestPlannerTopStickyVisualUpdate?.();
+    }, 0);
 
     // Show loading indicator if not already loaded
     if (!this.loadedTabs.has(tabId) && !this.loadingTabs.has(tabId)) {
@@ -465,7 +490,7 @@ class TabContentLoader {
           this.loadTimes.set(tabId, loadTime);
           this.loadedTabs.add(tabId);
           this.loadingTabs.delete(tabId);
-          this.initializeTab(tabId);
+          this.initializeTabIfNeeded(tabId);
           const container = document.getElementById(this.tabs[tabId]?.element);
           if (container) this.hideLoadingIndicator(container);
           if (!isPreload) {
@@ -486,7 +511,7 @@ class TabContentLoader {
           this.loadedTabs.add(tabId);
           this.loadingTabs.delete(tabId);
           this.executeScripts(tabId);
-          this.initializeTab(tabId);
+          this.initializeTabIfNeeded(tabId);
           const container = document.getElementById(this.tabs[tabId]?.element);
           if (container) this.hideLoadingIndicator(container);
           if (!isPreload) {
@@ -534,7 +559,7 @@ class TabContentLoader {
         this.executeScripts(tabId);
 
         // Trigger tab-specific initialization
-        this.initializeTab(tabId);
+        this.initializeTabIfNeeded(tabId);
 
         const container = document.getElementById(this.tabs[tabId]?.element);
         if (container) this.hideLoadingIndicator(container);
@@ -674,6 +699,12 @@ class TabContentLoader {
   /**
    * Initialize tab-specific functionality
    */
+  initializeTabIfNeeded(tabId) {
+    if (this.initializedTabs.has(tabId)) return;
+    this.initializedTabs.add(tabId);
+    this.initializeTab(tabId);
+  }
+
   initializeTab(tabId) {
     console.log(`🔧 Initializing tab: ${tabId}`);
 

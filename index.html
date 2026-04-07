@@ -15657,30 +15657,10 @@
    * Initialize App Tabs Navigation
    */
   function initAppTabs() {
-    const tabButtons = document.querySelectorAll(".app-tab-btn");
-    const tabPanes = document.querySelectorAll(".app-tab-pane");
-
-    tabButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const tabId = btn.getAttribute("data-tab");
-
-        // Remove active from all buttons and panes
-        tabButtons.forEach(b => b.classList.remove("active"));
-        tabPanes.forEach(p => p.classList.remove("active"));
-
-        // Add active to clicked button and corresponding pane
-        btn.classList.add("active");
-        const activePane = document.querySelector(`.app-tab-pane[data-tab="${tabId}"]`);
-        if (activePane) activePane.classList.add("active");
-
-        // Recompute sticky offset and polish sticky visuals after tab layout updates.
-        setTimeout(() => {
-          window.updatePlannerTopStickyOffset?.();
-          window.requestPlannerTopStickyVisualUpdate?.();
-        }, 0);
-      });
-    });
-    console.log("✓ App tabs initialized");
+    // Canonical tab ownership is centralized in JS Files/tab-content-loader.js.
+    // Keep this function for legacy call-sites to avoid duplicate listeners.
+    const hasLoader = !!window.tabLoader;
+    console.log(`✓ App tabs initialized (delegated to TabContentLoader: ${hasLoader})`);
   }
 
   function updatePlannerTopStickyOffset() {
@@ -20490,6 +20470,9 @@ COMMON ISSUES:
 
 <!-- Tab Content Loader - Dynamically loads tab content from separate HTML files -->
 <script src="JS Files/tab-content-loader.js"></script>
+
+<!-- Minimal tab/deep-link browser regression harness (manual + query-triggered) -->
+<script src="JS Files/tab-regression-harness.js"></script>
 
 <!-- ============================================================
      STABILITY SYSTEMS - PHASE 1 (v7.0.113+)
