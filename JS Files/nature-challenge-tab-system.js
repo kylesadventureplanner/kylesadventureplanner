@@ -131,6 +131,7 @@
     sightings: loadSightings(),
     favorites: loadFavorites(),
     sightingLog: loadSightingLog(),
+    logSuccessMessage: '',
     gamification: loadGamificationState(),
     syncQueue: loadSyncQueue(),
     syncConflicts: loadSyncConflicts(),
@@ -1128,6 +1129,7 @@
     };
 
     addSightingLogEntry(entry);
+    state.logSuccessMessage = `Saved ${selectedBird.speciesName} for ${dateObserved}${locationName ? ` at ${locationName}` : ''}.`;
     if (typeof window.showToast === 'function') {
       window.showToast(`Logged sighting: ${selectedBird.speciesName}`, 'success', 2200);
     }
@@ -1441,6 +1443,53 @@
 
     freezeBtn.disabled = !streak.freezeAvailable;
     freezeBtn.textContent = streak.freezeAvailable ? 'Use Freeze Today' : 'Freeze Unavailable';
+  }
+
+  function renderBirdLogView(stats) {
+    const banner = document.getElementById('birdsLogSuccessBanner');
+    const trendStats = document.getElementById('birdsLogTrendStats');
+    const timeline = document.getElementById('birdsLogTimeline');
+    if (!banner || !trendStats || !timeline) return;
+
+    banner.hidden = !state.logSuccessMessage;
+    banner.textContent = state.logSuccessMessage || '';
+
+    trendStats.innerHTML = `
+      <div class="nature-stat-card">
+        <div class="nature-stat-label">Today</div>
+        <div class="nature-stat-value">${stats.todayLogCount}</div>
+        <div class="nature-stat-sub">logs today</div>
+      </div>
+      <div class="nature-stat-card">
+        <div class="nature-stat-label">This Week</div>
+        <div class="nature-stat-value">${stats.weeklyLogCount}</div>
+        <div class="nature-stat-sub">entries this week</div>
+      </div>
+      <div class="nature-stat-card">
+        <div class="nature-stat-label">Unique Today</div>
+        <div class="nature-stat-value">${stats.todayUniqueSpeciesCount}</div>
+        <div class="nature-stat-sub">species logged today</div>
+      </div>
+    `;
+
+    const recentEntries = state.sightingLog.slice(0, 6);
+    if (recentEntries.length === 0) {
+      timeline.innerHTML = '<div class="nature-empty-state">No sightings logged yet. Your newest entries will appear here.</div>';
+      return;
+    }
+
+    timeline.innerHTML = recentEntries.map((entry) => {
+      const when = parseObservedDate(entry.dateObserved || entry.createdAt);
+      const location = entry.locationName ? ` • ${escapeHtml(entry.locationName)}` : '';
+      const context = [entry.region, entry.habitat].filter(Boolean).map((value) => escapeHtml(value)).join(' • ');
+      return `
+        <div class="nature-log-item">
+          <strong>${escapeHtml(entry.speciesName)}</strong> • ${escapeHtml(when ? when.toLocaleDateString() : entry.dateObserved || '--')}${location}
+          <div>${escapeHtml(entry.confidence || 'certain')} confidence${context ? ` • ${context}` : ''}</div>
+          ${entry.notes ? `<div>${escapeHtml(entry.notes)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
   }
 
   function renderBirdBingoPanel(bingo) {
@@ -1963,6 +2012,7 @@
     renderBirdLegend(stats);
     renderBirdDailyChallenges(dailyChallenges);
     renderBirdStreakPanel(stats.streak);
+    renderBirdLogView(stats);
     renderBirdBingoPanel(bingo);
     renderSeasonQuestlinePanel(seasonQuestline, stats);
     renderBirdChallenges(challenges);
