@@ -476,14 +476,27 @@
     return score;
   }
 
+  const OVERVIEW_REASON_META = {
+    almostComplete: { key: 'almost-complete', label: 'Almost there', icon: '🎯' },
+    highProgress: { key: 'high-progress', label: 'Strong progress', icon: '⚡' },
+    seasonFocus: { key: 'season-focus', label: 'Season focus', icon: '🍃' },
+    highReward: { key: 'high-reward', label: 'Big reward', icon: '🏆' },
+    recommended: { key: 'recommended', label: 'Recommended', icon: '✨' }
+  };
+
   function getOverviewPriorityReason(card, stats) {
-    if (!card) return 'Recommended';
+    if (!card) return OVERVIEW_REASON_META.recommended;
     const remaining = Math.max(0, Number(card.goal) - Number(card.progress));
-    if (!card.completed && remaining <= 1) return 'Almost complete';
-    if (!card.completed && Number(card.pct) >= 70) return 'High progress';
-    if (isSeasonRelevantCard(card, stats)) return `${stats.currentSeasonLabel || 'Season'} focus`;
-    if (Number(card.xp) >= 180) return 'High reward';
-    return 'Recommended';
+    if (!card.completed && remaining <= 1) return OVERVIEW_REASON_META.almostComplete;
+    if (!card.completed && Number(card.pct) >= 70) return OVERVIEW_REASON_META.highProgress;
+    if (isSeasonRelevantCard(card, stats)) {
+      return {
+        ...OVERVIEW_REASON_META.seasonFocus,
+        label: `${stats.currentSeasonLabel || 'Season'} focus`
+      };
+    }
+    if (Number(card.xp) >= 180) return OVERVIEW_REASON_META.highReward;
+    return OVERVIEW_REASON_META.recommended;
   }
 
   function getPrioritizedOverviewCards(cards, stats, limit) {
@@ -495,10 +508,23 @@
         return String(a.title || '').localeCompare(String(b.title || ''));
       })
       .slice(0, Math.max(1, Number(limit) || 1))
-      .map((card) => ({
-        ...card,
-        whyShown: getOverviewPriorityReason(card, stats)
-      }));
+      .map((card) => {
+        const reason = getOverviewPriorityReason(card, stats);
+        return {
+          ...card,
+          whyShown: reason.label,
+          whyShownKey: reason.key,
+          whyShownClass: `nature-why-shown-badge--${reason.key}`,
+          whyShownIcon: reason.icon || OVERVIEW_REASON_META.recommended.icon
+        };
+      });
+  }
+
+  function renderWhyShownBadge(item) {
+    if (!item || !item.whyShown) return '';
+    const badgeClass = item.whyShownClass ? ` ${escapeHtml(item.whyShownClass)}` : '';
+    const icon = item.whyShownIcon ? `<span class="nature-why-shown-icon" aria-hidden="true">${escapeHtml(item.whyShownIcon)}</span>` : '';
+    return `<div class="nature-why-shown-badge${badgeClass}">${icon}<span>${escapeHtml(item.whyShown)}</span></div>`;
   }
 
   function updateBirdMoreButtons(counts) {
@@ -1486,7 +1512,7 @@
 
     container.innerHTML = challenges.map((challenge) => `
       <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''}">
-        ${challenge.whyShown ? `<div class="nature-why-shown-badge">Why shown: ${escapeHtml(challenge.whyShown)}</div>` : ''}
+        ${renderWhyShownBadge(challenge)}
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(challenge.icon, challenge.title))}</div>
         <div class="nature-challenge-card-description">${escapeHtml(challenge.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${challenge.pct}%;"></div></div>
@@ -1501,7 +1527,7 @@
 
     container.innerHTML = badges.map((badge) => `
       <div class="nature-badge-card ${badge.completed ? 'unlocked' : 'locked'} ${badge.rarityClass}">
-        ${badge.whyShown ? `<div class="nature-why-shown-badge">Why shown: ${escapeHtml(badge.whyShown)}</div>` : ''}
+        ${renderWhyShownBadge(badge)}
         <div class="nature-badge-icon">${escapeHtml(badge.icon)}</div>
         <div class="nature-badge-card-title">${escapeHtml(badge.title)}</div>
         <div class="nature-badge-card-description">${escapeHtml(badge.description)}</div>
@@ -1609,7 +1635,7 @@
     meta.textContent = `${completedCount}/${totalTileCount} tiles complete${bingo.bingoAchieved ? ' | Bingo unlocked!' : ''}`;
     grid.innerHTML = bingo.tiles.map((tile) => `
       <div class="nature-badge-card ${tile.completed ? 'unlocked' : 'locked'}">
-        ${tile.whyShown ? `<div class="nature-why-shown-badge">Why shown: ${escapeHtml(tile.whyShown)}</div>` : ''}
+        ${renderWhyShownBadge(tile)}
         <div class="nature-badge-card-title">${escapeHtml(tile.label)}</div>
         <div class="nature-badge-progress">${tile.progress}/${tile.goal}</div>
         <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${tile.pct}%;"></div></div>
@@ -1630,7 +1656,7 @@
     meta.textContent = `${stats.currentSeasonLabel} chapter: ${questline.completedCount}/${questline.steps.length} steps completed`;
     container.innerHTML = questline.steps.map((step) => `
       <div class="nature-challenge-card ${step.completed ? 'completed' : ''}">
-        ${step.whyShown ? `<div class="nature-why-shown-badge">Why shown: ${escapeHtml(step.whyShown)}</div>` : ''}
+        ${renderWhyShownBadge(step)}
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(step.icon, step.title))}</div>
         <div class="nature-challenge-card-description">${escapeHtml(step.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${step.pct}%;"></div></div>
