@@ -1,19 +1,25 @@
-# 📁 Documentation Organization Update
+# Documentation Organization
 
-## ✅ Documentation Moved to `/docs` Directory
+**Date:** April 7, 2026  
+**Status:** Current reference
 
-All debug documentation has been moved from the root directory to a dedicated `/docs` folder for better organization.
+## ✅ Current Documentation Layout
+
+Project documentation is organized under the `docs/` directory so implementation notes, testing guides, and troubleshooting references live together in one place.
 
 ---
 
-## New Structure
+## Current Structure
 
 ```
 kylesadventureplanner/
-├── docs/                              (NEW - Documentation folder)
+├── docs/                              (Documentation folder)
 │   ├── DEBUG_GUIDE.md                 ← Comprehensive troubleshooting guide
 │   ├── DEBUG_SYSTEM_README.md         ← Implementation details
-│   └── DEBUG_QUICK_REFERENCE.md       ← Quick copy-paste commands
+│   ├── DEBUG_QUICK_REFERENCE.md       ← Quick copy-paste commands
+│   ├── HOTFIX_REGISTRY.md             ← Project tracking / hotfix history
+│   ├── IPHONE_VIEW_FIX.md             ← iPhone-specific notes
+│   └── UI_CONSISTENCY_CHECKLIST.md    ← UI standards and checks
 │
 ├── JS Files/
 │   ├── app-quality-system.js          (Consolidated reliability/performance/debug)
@@ -21,42 +27,46 @@ kylesadventureplanner/
 │
 ├── CSS/
 ├── HTML Files/
-│
-├── docs/HOTFIX_REGISTRY.md            (Docs - project tracking)
-├── docs/IPHONE_VIEW_FIX.md            (Docs - specific fix doc)
-├── docs/UI_CONSISTENCY_CHECKLIST.md   (Docs - project checklist)
 ├── index.html                         (Entry point)
 └── ... other config files
 ```
 
 ---
 
-## What Was Moved
+## Documentation Focus
 
-| File | Old Location | New Location | Purpose |
-|------|---|---|---|
-| DEBUG_GUIDE.md | Root | `/docs/` | Comprehensive troubleshooting guide |
-| DEBUG_SYSTEM_README.md | Root | `/docs/` | Implementation & features summary |
-| DEBUG_QUICK_REFERENCE.md | Root | `/docs/` | Quick commands and reference |
+The `docs/` folder is the right home for:
+
+| Type | Examples |
+|------|---|
+| Troubleshooting guides | `DEBUG_GUIDE.md`, `BUTTON_RELIABILITY_GUIDE.md` |
+| Quick references | `DEBUG_QUICK_REFERENCE.md`, `BUTTON_RELIABILITY_QUICK_START.md` |
+| Implementation summaries | `DEBUG_SYSTEM_README.md`, `IMPLEMENTATION_STATUS.md` |
+| Testing / verification notes | `TAB_REGRESSION_HARNESS.md`, `UI_CONSISTENCY_CHECKLIST.md` |
+| Planning / change logs | `HOTFIX_REGISTRY.md`, `DOCUMENTATION_INDEX.md` |
 
 ---
 
 ## Documentation Location
 
-All project documentation now lives under `docs/`:
-- `docs/HOTFIX_REGISTRY.md` - Tracks active/archived hotfixes
-- `docs/IPHONE_VIEW_FIX.md` - Specific issue documentation
-- `docs/UI_CONSISTENCY_CHECKLIST.md` - Project consistency tracking
+All project documentation now lives under `docs/`.
+
+Useful starting points:
+- [`README.md`](./README.md) - docs folder home
+- [`INDEX.md`](./INDEX.md) - broad documentation index
+- [`DOCUMENTATION_INDEX.md`](./DOCUMENTATION_INDEX.md) - quick navigation for consolidated docs
+- [`HOTFIX_REGISTRY.md`](./HOTFIX_REGISTRY.md) - active/archived hotfixes
+- [`UI_CONSISTENCY_CHECKLIST.md`](./UI_CONSISTENCY_CHECKLIST.md) - project consistency tracking
 
 ---
 
 ## Benefits
 
 ✅ **Root directory cleaner** - Only essential files at root
-✅ **Better organization** - Debug docs grouped together
+✅ **Better organization** - docs grouped in one predictable place
 ✅ **Standard structure** - `/docs` is a common convention
 ✅ **No functionality changes** - Only documentation moved
-✅ **Easy to find** - All debug info in one place
+✅ **Easy to find** - implementation notes and guides live together
 
 ---
 
@@ -65,15 +75,17 @@ All project documentation now lives under `docs/`:
 ### Option 1: Browse in File Explorer
 ```
 docs/
-├── DEBUG_GUIDE.md           (START HERE - full guide)
-├── DEBUG_QUICK_REFERENCE.md (Copy-paste commands)
-└── DEBUG_SYSTEM_README.md   (Implementation details)
+├── README.md                (folder home)
+├── INDEX.md                 (broad docs index)
+├── DEBUG_GUIDE.md           (full guide)
+├── DEBUG_QUICK_REFERENCE.md (copy-paste commands)
+└── DEBUG_SYSTEM_README.md   (implementation details)
 ```
 
 ### Option 2: Direct File Links (in your IDE)
-- Quick reference: `docs/DEBUG_QUICK_REFERENCE.md`
-- Full guide: `docs/DEBUG_GUIDE.md`
-- Implementation: `docs/DEBUG_SYSTEM_README.md`
+- Quick reference: [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md)
+- Full guide: [`DEBUG_GUIDE.md`](./DEBUG_GUIDE.md)
+- Implementation: [`DEBUG_SYSTEM_README.md`](./DEBUG_SYSTEM_README.md)
 
 ### Option 3: Console Commands (unchanged)
 ```javascript
@@ -110,14 +122,14 @@ window.__debugSystem.export()
 ## Verification Checklist
 
 - ✅ `/docs` directory created
-- ✅ `DEBUG_GUIDE.md` moved to `/docs/`
-- ✅ `DEBUG_SYSTEM_README.md` moved to `/docs/`
-- ✅ `DEBUG_QUICK_REFERENCE.md` moved to `/docs/`
+- ✅ documentation is centralized in `docs/`
+- ✅ docs landing pages exist (`README.md`, `INDEX.md`, `DOCUMENTATION_INDEX.md`)
+- ✅ debug references point to files in `docs/`
 - ✅ `app-quality-system.js` still in `JS Files/`
 - ✅ `button-reliability-system.js` still in `JS Files/`
 - ✅ `index.html` unchanged (still loads debug system)
-- ✅ No broken links (documentation doesn't link to itself)
-- ✅ No code changes
+- ✅ no code/runtime dependency on markdown file placement
+- ✅ no functionality changes
 - ✅ No functionality lost
 
 ---
@@ -135,38 +147,22 @@ window.__debugSystem.export()        // Export as JSON
 
 ---
 
-## Root Directory Now Cleaner
+## Root Directory Guidance
 
-### Before
-```
-Root/
-├── docs/                         ✅ Organized
-├── index.html
-├── JS Files/
-├── CSS/
-└── ... other app files
-```
+Keep the project root focused on runtime and project-level files such as:
+- `index.html`
+- `CSS/`
+- `JS Files/`
+- `HTML Files/`
+- config/scripts used directly by the app
 
-### After
-```
-Root/
-├── docs/                         ✅ Organized
-│   ├── DEBUG_GUIDE.md
-│   ├── DEBUG_SYSTEM_README.md
-│   ├── DEBUG_QUICK_REFERENCE.md
-│   ├── HOTFIX_REGISTRY.md
-│   ├── IPHONE_VIEW_FIX.md
-│   └── UI_CONSISTENCY_CHECKLIST.md
-└── ... other app files
-```
-
-**Much cleaner!** 🎉
+Put human-readable notes and reference material in `docs/` whenever they are not required at the project root.
 
 ---
 
 ## Future Documentation
 
-If you add more documentation, consider putting it in `/docs/`:
+If you add more documentation, prefer placing it in `docs/`:
 - Feature guides
 - Setup instructions
 - Troubleshooting guides
@@ -177,16 +173,14 @@ If you add more documentation, consider putting it in `/docs/`:
 
 ## Summary
 
-✅ **Documentation organized into `/docs/` directory**
-✅ **Root directory is now cleaner**
+✅ **Documentation organized under `docs/`**
+✅ **Root directory reserved for app/runtime files**
 ✅ **All functionality unchanged**
-✅ **Safe, simple reorganization**
+✅ **Navigation is easier to maintain**
 ✅ **Follows standard conventions**
 
 ---
 
-**Status**: Organization Complete ✅
-**Date**: April 5, 2026
-**Impact**: Documentation structure only - no code changes
+**Page Role:** Reference for docs folder structure and placement guidelines
 
 

@@ -1,23 +1,32 @@
-# 📚 Performance & Debugging Documentation Index
+# Performance & Debugging Documentation
 
-A complete guide to the performance optimizations and debugging systems in your Adventure Planner app.
+**Date:** April 7, 2026  
+**Status:** Current reference
+
+Use this page as the main landing point for performance, debugging, and reliability-related documentation in the Adventure Planner workspace.
 
 ---
 
-## 🚀 Quick Navigation
+## Quick Navigation
 
-### **New This Session: Performance Enhancements**
-- 📖 **Start Here**: `docs/PERFORMANCE_ENHANCEMENTS.md` - Overview of all optimizations
-- 🔧 **Implement**: `docs/IMPLEMENTATION_GUIDE.md` - Step-by-step instructions
+### Start here
+- [`README.md`](./README.md) — docs folder home
+- [`DOCUMENTATION_INDEX.md`](./DOCUMENTATION_INDEX.md) — quick navigation for recently consolidated docs
+
+### Debug / performance focus
+
+### New This Session: Performance Enhancements
+- 📖 **Start Here**: [`PERFORMANCE_ENHANCEMENTS.md`](./PERFORMANCE_ENHANCEMENTS.md) - Overview of all optimizations
+- 🔧 **Implement**: [`IMPLEMENTATION_GUIDE.md`](./IMPLEMENTATION_GUIDE.md) - Step-by-step instructions
 - 📊 **Verify**: Check browser console for "PERFORMANCE OPTIMIZATIONS ACTIVE" message
 
-### **Reliability Merge Guidance**
-- 🛡️ **Merge Decision**: `docs/RELIABILITY_MERGE_DECISION.md` - Safe consolidation status and phased plan
+### Reliability Merge Guidance
+- 🛡️ **Merge Decision**: [`RELIABILITY_MERGE_DECISION.md`](./RELIABILITY_MERGE_DECISION.md) - Safe consolidation status and phased plan
 
-### **Debug System (Already Implemented)**
-- ⚡ **Quick Start**: `docs/DEBUG_QUICK_REFERENCE.md` - Copy-paste commands
-- 📋 **Full Guide**: `docs/DEBUG_GUIDE.md` - Complete troubleshooting
-- 📄 **Details**: `docs/DEBUG_SYSTEM_README.md` - Implementation details
+### Debug System (Already Implemented)
+- ⚡ **Quick Start**: [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md) - Copy-paste commands
+- 📋 **Full Guide**: [`DEBUG_GUIDE.md`](./DEBUG_GUIDE.md) - Complete troubleshooting
+- 📄 **Details**: [`DEBUG_SYSTEM_README.md`](./DEBUG_SYSTEM_README.md) - Implementation details
 
 ---
 
@@ -78,12 +87,25 @@ const myOptimizedFunc = window.debounce(myFunc, 300);
 
 | File | Purpose | When to Read |
 |------|---------|-------------|
-| `DEBUG_QUICK_REFERENCE.md` | Copy-paste debug commands | Need a command fast |
-| `DEBUG_GUIDE.md` | Full debugging guide | Learning to debug |
-| `DEBUG_SYSTEM_README.md` | Implementation details | Understanding the system |
-| `PERFORMANCE_ENHANCEMENTS.md` | Performance overview | Understanding optimizations |
-| `IMPLEMENTATION_GUIDE.md` | How to implement changes | Building on it |
-| `README.md` | Navigation guide | Getting started |
+| [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md) | Copy-paste debug commands | Need a command fast |
+| [`DEBUG_GUIDE.md`](./DEBUG_GUIDE.md) | Full debugging guide | Learning to debug |
+| [`DEBUG_SYSTEM_README.md`](./DEBUG_SYSTEM_README.md) | Implementation details | Understanding the system |
+| [`PERFORMANCE_ENHANCEMENTS.md`](./PERFORMANCE_ENHANCEMENTS.md) | Performance overview | Understanding optimizations |
+| [`IMPLEMENTATION_GUIDE.md`](./IMPLEMENTATION_GUIDE.md) | How to implement changes | Building on it |
+| [`README.md`](./README.md) | Navigation guide | Getting started |
+
+### Recently Consolidated from Project Root
+
+The project root markdown notes have been moved into `/docs/` so the root stays focused on app/runtime files.
+
+| File Group | Examples |
+|------|---------|
+| Button reliability reports | `BUTTON_RELIABILITY_COMPLETION.md`, `BUTTON_RELIABILITY_TEST_MATRIX.md`, `BUTTON_RELIABILITY_FINAL_PRE_TEST_REPORT.md` |
+| Diagnostic notes | `DIAGNOSTIC_INSTRUCTIONS.md`, `DIAGNOSTIC_LOGGING_ADDED.md`, `DIAGNOSTIC_QUICK_TEST.md`, `FOCUS_BUTTON_DIAGNOSTICS.md` |
+| Mobile polish docs | `MOBILE_POLISH_STATUS.md`, `MOBILE_POLISH_TESTING_GUIDE.md`, `MOBILE_POLISH_QUICK_REF.md`, `POLISH_IMPLEMENTATION_VERIFICATION.md`, `POLISH_LOG_RECOMMENDATION_RANKING.md` |
+| Nature Challenge setup | `NATURE_CHALLENGE_SETUP.md` |
+| Summary / fix writeups | `COMPLETE_SOLUTION.md`, `IMPLEMENTATION_COMPLETE.md`, `FIX_COMPLETE_GUIDE.md`, `FINAL_FIX_ENHANCED_UX.md` |
+| Documentation hubs | `DOCUMENTATION_INDEX.md`, `MOBILE_POLISH_DOCUMENTATION_INDEX.md` |
 
 ### Documentation Location
 
@@ -91,10 +113,10 @@ All documentation is stored in `/docs/`.
 
 | File | Purpose |
 |------|---------|
-| `HOTFIX_REGISTRY.md` | Active/archived hotfixes |
-| `IPHONE_VIEW_FIX.md` | iPhone-specific fixes |
-| `UI_CONSISTENCY_CHECKLIST.md` | UI standards |
-| `DOCUMENTATION_ORGANIZATION.md` | How docs are organized |
+| [`HOTFIX_REGISTRY.md`](./HOTFIX_REGISTRY.md) | Active/archived hotfixes |
+| [`IPHONE_VIEW_FIX.md`](./IPHONE_VIEW_FIX.md) | iPhone-specific fixes |
+| [`UI_CONSISTENCY_CHECKLIST.md`](./UI_CONSISTENCY_CHECKLIST.md) | UI standards |
+| [`DOCUMENTATION_ORGANIZATION.md`](./DOCUMENTATION_ORGANIZATION.md) | How docs are organized |
 
 ---
 
@@ -170,21 +192,21 @@ window.__debugSystem.clearHistory()  // Clear stored logs
 
 **For General Users:**
 1. This file (you're reading it!)
-2. `docs/PERFORMANCE_ENHANCEMENTS.md` - Understand what improved
+2. [`PERFORMANCE_ENHANCEMENTS.md`](./PERFORMANCE_ENHANCEMENTS.md) - Understand what improved
 3. Start using your app - feel the smoothness!
 
 **For Developers:**
-1. `docs/PERFORMANCE_ENHANCEMENTS.md` - What was optimized
-2. `docs/DEBUG_QUICK_REFERENCE.md` - How to debug
+1. [`PERFORMANCE_ENHANCEMENTS.md`](./PERFORMANCE_ENHANCEMENTS.md) - What was optimized
+2. [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md) - How to debug
 3. `JS Files/app-quality-system.js` - See the consolidated system code
-4. `docs/IMPLEMENTATION_GUIDE.md` - How to extend it
+4. [`IMPLEMENTATION_GUIDE.md`](./IMPLEMENTATION_GUIDE.md) - How to extend it
 
 **For Debugging an Issue:**
-1. `docs/DEBUG_QUICK_REFERENCE.md` - Get the command
+1. [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md) - Get the command
 2. Run command in browser console
 3. Look for the symbol (🚨, ⚠️, etc.)
 4. Read the stack trace to find the code
-5. `docs/DEBUG_GUIDE.md` - Full troubleshooting
+5. [`DEBUG_GUIDE.md`](./DEBUG_GUIDE.md) - Full troubleshooting
 
 ---
 
@@ -200,9 +222,5 @@ Everything is configured and working:
 
 ---
 
-**Last Updated**: April 5, 2026  
-**Status**: All systems active and optimized  
-**Ready to Use**: YES  
-
-If you need help, check the documentation in `/docs/` folder!
+**Page Role:** Main landing page for performance, debugging, and reliability docs
 

@@ -2393,6 +2393,29 @@
     return `${labels[filterType] || filterType}: ${prettyValue}`;
   }
 
+  // Mobile-friendly shortened labels for preview chips
+  function getExplorerFilterLabelShort(filterType, filterValue) {
+    const shortLabels = {
+      driveTime: 'Drive',
+      surface: 'Surface',
+      difficulty: 'Difficulty',
+      elevation: 'Elevation',
+      lengthBand: 'Length',
+      timeOfDay: 'Time',
+      condition: 'Condition'
+    };
+
+    const shortValueLabels = {
+      driveTime: { under30: '<30m', '30to60': '30-60m', over60: '>60m' },
+      lengthBand: { short: 'Short', medium: 'Med', long: 'Long' },
+      difficulty: { easy: 'Easy', moderate: 'Mod', hard: 'Hard' },
+      elevation: { low: 'Flat', medium: 'Climb', high: 'Steep' }
+    };
+
+    const prettyValue = shortValueLabels[filterType]?.[filterValue] || String(filterValue || '').trim();
+    return `${shortLabels[filterType] || filterType}: ${prettyValue}`;
+  }
+
   function buildExplorerFilterState(selection) {
     const base = {
       searchName: '',
@@ -2530,14 +2553,14 @@
     const entries = Array.isArray(selectionEntries) ? selectionEntries : [];
     const matched = entries
       .filter(([type, value]) => matchesExplorerCriterion(trail, type, value))
-      .map(([type, value]) => getExplorerFilterLabel(type, value));
+      .map(([type, value]) => getExplorerFilterLabelShort(type, value));
 
     if (matched.length) return matched.slice(0, 3);
 
     const fallback = [];
-    if (trail.driveMinutes > 0) fallback.push(`Drive: ${trail.driveMinutes} min`);
-    if (trail.lengthMiles > 0) fallback.push(`Length: ${trail.lengthMiles} mi`);
-    if (trail.difficulty) fallback.push(`Difficulty: ${trail.difficulty}`);
+    if (trail.driveMinutes > 0) fallback.push(`${trail.driveMinutes}m drive`);
+    if (trail.lengthMiles > 0) fallback.push(`${trail.lengthMiles}mi`);
+    if (trail.difficulty) fallback.push(trail.difficulty.charAt(0).toUpperCase() + trail.difficulty.slice(1));
     return fallback.slice(0, fallbackCount);
   }
 

@@ -105,7 +105,7 @@ All 11 app windows have been configured with the button reliability system. The 
 ## Testing Instructions
 
 ### Step 1: Review Test Matrix
-Open: `/Users/kylechavez/WebstormProjects/kylesadventureplanner/BUTTON_RELIABILITY_TEST_MATRIX.md`
+Open: [`BUTTON_RELIABILITY_TEST_MATRIX.md`](./BUTTON_RELIABILITY_TEST_MATRIX.md)
 
 ### Step 2: For Each Window, Run Interactive Test
 
@@ -137,7 +137,7 @@ Open: `/Users/kylechavez/WebstormProjects/kylesadventureplanner/BUTTON_RELIABILI
 
 ### Step 3: Full Diagnostic (Optional, More Thorough)
 Copy and run the full diagnostic script:
-**File**: `/Users/kylechavez/WebstormProjects/kylesadventureplanner/docs/BUTTON_RELIABILITY_CONSOLE_DIAGNOSTIC.js`
+**File**: `./BUTTON_RELIABILITY_CONSOLE_DIAGNOSTIC.js`
 
 ---
 

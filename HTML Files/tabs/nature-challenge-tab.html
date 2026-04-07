@@ -25,7 +25,6 @@
     <div class="nature-birds-view is-active" data-birds-view="overview">
       <div id="birdsUndoPrompt" class="nature-undo-prompt" aria-live="polite" hidden>
         <span id="birdsUndoPromptText">Last action available to undo.</span>
-        <button type="button" id="birdsUndoPromptBtn" class="pill-button" title="Undo the last Birds action" data-tooltip="Undo the last Birds action">Undo</button>
       </div>
 
       <div class="card nature-explore-cta-card" style="margin-top: 18px;">
@@ -303,49 +302,66 @@
           <section class="nature-log-panel nature-log-panel--form">
             <div class="card-title">Entry Form</div>
             <div class="card-subtitle">Capture what you saw, where you saw it, and how confident you feel.</div>
+            <div id="birdsLogRecommendationStrip" class="nature-log-recommendation-strip" aria-live="polite">Loading best birds to log now...</div>
+            <div id="birdsLogIntentChipRow" class="nature-log-intent-chip-row" aria-live="polite"></div>
+            <div class="nature-log-command-row">
+              <input id="birdsLogCommandInput" class="filter-input" type="text" placeholder="Fast log command (e.g. great blue heron marsh certain)" aria-label="Fast log command" />
+              <button id="birdsLogCommandApplyBtn" type="button" class="pill-button" title="Apply interpreted command" data-tooltip="Apply interpreted command">Apply</button>
+            </div>
+            <div class="nature-log-preset-row" role="group" aria-label="Log presets">
+              <button type="button" class="pill-button is-active" data-birds-log-preset="quick">Quick log</button>
+              <button type="button" class="pill-button" data-birds-log-preset="field-full">Field full</button>
+              <button type="button" class="pill-button" data-birds-log-preset="evidence">Evidence mode</button>
+            </div>
+            <div id="birdsLogValidationBadges" class="nature-log-validation-badges" aria-live="polite"></div>
+            <div id="birdsLogOfflineStatus" class="nature-offline-status-line" aria-live="polite">Recent logs saved locally.</div>
+            <div id="birdsLogHistoryCard" class="nature-log-history-card" aria-live="polite"></div>
             <div class="nature-log-form-grid">
-              <select id="birdsLogSpeciesSelect" class="filter-select" aria-label="Bird species" title="Choose the bird species to log" data-tooltip="Choose the bird species to log">
+              <select id="birdsLogSpeciesSelect" data-log-field="core" class="filter-select" aria-label="Bird species" title="Choose the bird species to log" data-tooltip="Choose the bird species to log">
                 <option value="">Select species...</option>
               </select>
-              <input id="birdsLogDateInput" class="filter-input" type="date" aria-label="Observation date" title="Choose the date you observed the bird" data-tooltip="Choose the date you observed the bird" />
-              <input id="birdsLogLocationInput" class="filter-input" type="text" placeholder="Location" aria-label="Observation location" title="Enter where you observed the bird" data-tooltip="Enter where you observed the bird" />
-              <input id="birdsLogCountInput" class="filter-input" type="number" min="1" value="1" placeholder="Count" aria-label="Bird count" title="Enter how many birds you observed" data-tooltip="Enter how many birds you observed" />
-              <select id="birdsLogRegionInput" class="filter-select" aria-label="Observation region" title="Choose the region for this sighting" data-tooltip="Choose the region for this sighting">
+              <input id="birdsLogDateInput" data-log-field="core" class="filter-input" type="date" aria-label="Observation date" title="Choose the date you observed the bird" data-tooltip="Choose the date you observed the bird" />
+              <input id="birdsLogLocationInput" data-log-field="context" class="filter-input" type="text" placeholder="Location" aria-label="Observation location" title="Enter where you observed the bird" data-tooltip="Enter where you observed the bird" />
+              <input id="birdsLogCountInput" data-log-field="core" class="filter-input" type="number" min="1" value="1" placeholder="Count" aria-label="Bird count" title="Enter how many birds you observed" data-tooltip="Enter how many birds you observed" />
+              <select id="birdsLogRegionInput" data-log-field="context" class="filter-select" aria-label="Observation region" title="Choose the region for this sighting" data-tooltip="Choose the region for this sighting">
                 <option value="">Region...</option>
                 <option value="coast">Coast</option>
                 <option value="marsh">Marsh</option>
                 <option value="forest">Forest</option>
                 <option value="urban">Urban</option>
               </select>
-              <select id="birdsLogHabitatInput" class="filter-select" aria-label="Observation habitat" title="Choose the habitat for this sighting" data-tooltip="Choose the habitat for this sighting">
+              <select id="birdsLogHabitatInput" data-log-field="context" class="filter-select" aria-label="Observation habitat" title="Choose the habitat for this sighting" data-tooltip="Choose the habitat for this sighting">
                 <option value="">Habitat...</option>
                 <option value="coast">Coast</option>
                 <option value="marsh">Marsh</option>
                 <option value="forest">Forest</option>
                 <option value="urban">Urban</option>
               </select>
-              <input id="birdsLogLatInput" class="filter-input" type="number" step="any" placeholder="Latitude (optional)" aria-label="Latitude" title="Enter the latitude for this sighting if you have it" data-tooltip="Enter the latitude for this sighting if you have it" />
-              <input id="birdsLogLngInput" class="filter-input" type="number" step="any" placeholder="Longitude (optional)" aria-label="Longitude" title="Enter the longitude for this sighting if you have it" data-tooltip="Enter the longitude for this sighting if you have it" />
-              <select id="birdsLogConfidenceInput" class="filter-select" aria-label="Observation confidence" title="Choose your confidence level for this sighting" data-tooltip="Choose your confidence level for this sighting">
+              <input id="birdsLogLatInput" data-log-field="context" class="filter-input" type="number" step="any" placeholder="Latitude (optional)" aria-label="Latitude" title="Enter the latitude for this sighting if you have it" data-tooltip="Enter the latitude for this sighting if you have it" />
+              <input id="birdsLogLngInput" data-log-field="context" class="filter-input" type="number" step="any" placeholder="Longitude (optional)" aria-label="Longitude" title="Enter the longitude for this sighting if you have it" data-tooltip="Enter the longitude for this sighting if you have it" />
+              <select id="birdsLogConfidenceInput" data-log-field="core" class="filter-select" aria-label="Observation confidence" title="Choose your confidence level for this sighting" data-tooltip="Choose your confidence level for this sighting">
                 <option value="certain">Confidence: Certain</option>
                 <option value="probable">Confidence: Probable</option>
                 <option value="needs-review">Confidence: Needs review</option>
               </select>
-              <div class="nature-log-field nature-log-field--stacked">
+              <div class="nature-log-field nature-log-field--stacked" data-log-field="evidence">
                 <label class="nature-log-field-label" for="birdsLogPhotoInput">Photo evidence <span class="nature-log-field-optional">optional</span></label>
                 <input id="birdsLogPhotoInput" class="filter-input" type="file" accept="image/*" aria-label="Add a photo" title="Add a photo for this bird sighting" data-tooltip="Add a photo for this bird sighting" aria-describedby="birdsLogPhotoHelp" />
                 <div id="birdsLogPhotoHelp" class="nature-log-field-help">Add a photo from your phone or camera roll if you want a visual record of this sighting.</div>
               </div>
-              <div class="nature-log-field nature-log-field--stacked">
+              <div class="nature-log-field nature-log-field--stacked" data-log-field="evidence">
                 <label class="nature-log-field-label" for="birdsLogAudioInput">Audio evidence <span class="nature-log-field-optional">optional</span></label>
                 <input id="birdsLogAudioInput" class="filter-input" type="file" accept="audio/*" aria-label="Add an audio recording" title="Add an audio recording for this bird sighting" data-tooltip="Add an audio recording for this bird sighting" aria-describedby="birdsLogAudioHelp" />
                 <div id="birdsLogAudioHelp" class="nature-log-field-help">Add a song or call recording if you want to keep an audio record of this sighting.</div>
               </div>
-              <textarea id="birdsLogNotesInput" class="filter-input" rows="3" placeholder="Notes" aria-label="Sighting notes" title="Add notes about this bird sighting" data-tooltip="Add notes about this bird sighting"></textarea>
+              <textarea id="birdsLogNotesInput" data-log-field="evidence" class="filter-input" rows="3" placeholder="Notes" aria-label="Sighting notes" title="Add notes about this bird sighting" data-tooltip="Add notes about this bird sighting"></textarea>
             </div>
-            <div class="nature-log-form-actions">
+            <div class="nature-log-form-actions nature-log-form-actions--sticky">
               <button id="birdsLogSightingBtn" type="button" class="pill-button" title="Save this bird sighting entry" data-tooltip="Save this bird sighting entry">Log Sighting</button>
+              <button id="birdsLogSaveNewBtn" type="button" class="pill-button" title="Save and start another log" data-tooltip="Save and start another log">Save + New</button>
+              <button id="birdsLogSaveOpenNextBtn" type="button" class="pill-button" title="Save and open next recommended bird" data-tooltip="Save and open next recommended bird">Save + Open Next</button>
             </div>
+            <div id="birdsLogPostSaveNudges" class="nature-log-postsave-row" aria-live="polite"></div>
           </section>
 
           <aside class="nature-log-panel nature-log-panel--activity">
@@ -2372,6 +2388,99 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 10px;
+  }
+
+  #natureChallengeRoot .nature-log-recommendation-strip {
+    margin: 10px 0;
+    display: grid;
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-log-reco-card {
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff;
+    padding: 8px 10px;
+  }
+
+  #natureChallengeRoot .nature-log-reco-title {
+    font-size: 12px;
+    font-weight: 800;
+    color: #1e3a8a;
+    margin-bottom: 6px;
+  }
+
+  #natureChallengeRoot .nature-log-reco-list {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-log-intent-chip-row,
+  #natureChallengeRoot .nature-log-postsave-row,
+  #natureChallengeRoot .nature-log-validation-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  #natureChallengeRoot .nature-log-intent-chip,
+  #natureChallengeRoot .nature-log-status-chip,
+  #natureChallengeRoot .nature-log-nudge-chip {
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #334155;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  #natureChallengeRoot .nature-log-command-row {
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-log-preset-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-log-preset-row .pill-button.is-active {
+    border-color: #1d4ed8;
+    background: #dbeafe;
+    color: #1e3a8a;
+  }
+
+  #natureChallengeRoot .nature-log-history-card {
+    margin-top: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #334155;
+  }
+
+  #natureChallengeRoot .nature-log-form-actions--sticky {
+    position: sticky;
+    bottom: 8px;
+    z-index: 6;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="log"].is-log-preset-field-full .nature-log-form-actions button,
+  #natureChallengeRoot .nature-birds-view[data-birds-view="log"].is-log-preset-field-full .nature-log-intent-chip {
+    min-height: 44px;
+    font-size: 13px;
   }
 
   #natureChallengeRoot .nature-log-field {

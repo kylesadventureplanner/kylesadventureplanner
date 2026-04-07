@@ -4,7 +4,37 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="" />
+    <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AGGRESSIVE_FIX_FINAL.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BUTTON_RELIABILITY_COMPLETION.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BUTTON_RELIABILITY_FINAL_PRE_TEST_REPORT.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BUTTON_RELIABILITY_HARDENING_COMPLETION_SUMMARY.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BUTTON_RELIABILITY_TEST_MATRIX.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BUTTON_RESPONSIVENESS_FINAL_FIX.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BUTTON_RESPONSIVENESS_FIX_v2.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/COMPLETE_SOLUTION.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/components.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/components.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DIAGNOSTIC_INSTRUCTIONS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/DIAGNOSTIC_LOGGING_ADDED.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/DIAGNOSTIC_QUICK_TEST.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/FINAL_FIX_ENHANCED_UX.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/FIX_COMPLETE_GUIDE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/FOCUS_BUTTON_DIAGNOSTICS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/IMPLEMENTATION_COMPLETE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/bike-trails-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/bike-trails-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NATURE_CHALLENGE_SETUP.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/TESTING_INSTRUCTIONS.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_DOCUMENTATION_INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_RELIABILITY_DOCUMENTATION_INDEX.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/DOCUMENTATION_ORGANIZATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/DOCUMENTATION_ORGANIZATION.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/IMPLEMENTATION_STATUS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/IMPLEMENTATION_STATUS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/INDEX.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/RELIABILITY_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/RELIABILITY_SUMMARY.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/SYSTEM_CONSOLIDATION_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/SYSTEM_CONSOLIDATION_SUMMARY.md" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -85,7 +115,7 @@
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
       <workItem from="1775308318086" duration="90230000" />
-      <workItem from="1775520086833" duration="39596000" />
+      <workItem from="1775520086833" duration="45284000" />
     </task>
     <servers />
   </component>

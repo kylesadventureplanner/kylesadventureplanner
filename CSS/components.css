@@ -322,11 +322,37 @@ header h1 {
   gap: 8px;
 }
 
+@media (max-width: 768px) {
+  .bike-explorer-preview-cards {
+    margin-top: 8px;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bike-explorer-preview-cards {
+    margin-top: 6px;
+    gap: 4px;
+  }
+}
+
 .bike-explorer-preview-card {
   border: 1px solid var(--trail-explorer-preview-card-border);
   border-radius: 8px;
   background: var(--trail-explorer-preview-card-bg);
   padding: 8px 10px;
+}
+
+@media (max-width: 768px) {
+  .bike-explorer-preview-card {
+    padding: 6px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bike-explorer-preview-card {
+    padding: 5px 7px;
+  }
 }
 
 .bike-explorer-preview-card-top {
@@ -347,11 +373,46 @@ header h1 {
   color: var(--trail-explorer-preview-meta-text);
 }
 
+@media (max-width: 768px) {
+  .bike-explorer-preview-card-title {
+    font-size: 11px;
+  }
+
+  .bike-explorer-preview-card-meta {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bike-explorer-preview-card-title {
+    font-size: 10px;
+  }
+
+  .bike-explorer-preview-card-meta {
+    font-size: 9px;
+  }
+}
+
 .bike-explorer-preview-chip-row {
   margin-top: 6px;
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .bike-explorer-preview-chip-row {
+    margin-top: 4px;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bike-explorer-preview-chip-row {
+    margin-top: 3px;
+    gap: 3px;
+  }
 }
 
 .bike-explorer-preview-why-chip {
@@ -363,6 +424,23 @@ header h1 {
   background: var(--trail-explorer-preview-chip-bg);
   color: var(--trail-explorer-preview-chip-text);
   font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .bike-explorer-preview-why-chip {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bike-explorer-preview-why-chip {
+    padding: 1px 5px;
+    font-size: 9px;
+  }
 }
 
 .bike-explorer-action-btn {
