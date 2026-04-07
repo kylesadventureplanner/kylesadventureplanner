@@ -11,6 +11,7 @@
   const BIRD_SIGHTING_LOG_KEY = 'natureChallengeBirdSightingLogV1';
   const BIRD_SYNC_QUEUE_KEY = 'natureChallengeBirdSyncQueueV1';
   const BIRD_SYNC_CONFLICTS_KEY = 'natureChallengeBirdSyncConflictsV1';
+  const BIRD_GAMIFICATION_KEY = 'natureChallengeBirdGamificationV1';
   const EXCEL_TABLE_NAME = 'birds';
   const EXCEL_FILE_CANDIDATES = [
     'Nature_records.xlsx',
@@ -69,6 +70,7 @@
     sightings: loadSightings(),
     favorites: loadFavorites(),
     sightingLog: loadSightingLog(),
+    gamification: loadGamificationState(),
     syncQueue: loadSyncQueue(),
     syncConflicts: loadSyncConflicts(),
     lastSyncAttemptAt: '',
@@ -137,6 +139,46 @@
     return Array.isArray(list) ? list : [];
   }
 
+  function defaultGamificationState() {
+    return {
+      streak: {
+        freezeCredits: 1,
+        bestStreak: 0,
+        lastAwardedMilestone: 0,
+        frozenDates: []
+      },
+      bingo: {
+        bySeason: {}
+      }
+    };
+  }
+
+  function loadGamificationState() {
+    const saved = safeJsonParse(localStorage.getItem(BIRD_GAMIFICATION_KEY), null);
+    const defaults = defaultGamificationState();
+    if (!saved || typeof saved !== 'object') return defaults;
+
+    return {
+      streak: {
+        freezeCredits: Math.max(0, Number(saved.streak && saved.streak.freezeCredits) || defaults.streak.freezeCredits),
+        bestStreak: Math.max(0, Number(saved.streak && saved.streak.bestStreak) || 0),
+        lastAwardedMilestone: Math.max(0, Number(saved.streak && saved.streak.lastAwardedMilestone) || 0),
+        frozenDates: Array.isArray(saved.streak && saved.streak.frozenDates)
+          ? saved.streak.frozenDates.filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value)))
+          : []
+      },
+      bingo: {
+        bySeason: saved.bingo && typeof saved.bingo.bySeason === 'object' && saved.bingo.bySeason
+          ? saved.bingo.bySeason
+          : {}
+      }
+    };
+  }
+
+  function saveGamificationState() {
+    localStorage.setItem(BIRD_GAMIFICATION_KEY, JSON.stringify(state.gamification || defaultGamificationState()));
+  }
+
   function saveSyncConflicts() {
     localStorage.setItem(BIRD_SYNC_CONFLICTS_KEY, JSON.stringify(state.syncConflicts || []));
   }
@@ -199,6 +241,78 @@
     copy.setDate(copy.getDate() - diff);
     copy.setHours(0, 0, 0, 0);
     return copy;
+  }
+
+  function getDateKey(input) {
+    const date = input instanceof Date ? input : new Date(input);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function parseObservedDate(value) {
+    if (!value) return null;
+    const str = String(value).trim();
+    if (!str) return null;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(str)
+      ? new Date(`${str}T12:00:00`)
+      : new Date(str);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function getSeasonWindow(date, seasonKey) {
+    const year = date.getFullYear();
+    if (seasonKey === 'winter') {
+      return {
+        key: `${year}-winter`,
+        start: new Date(year, 11, 1, 0, 0, 0, 0),
+        end: new Date(year + 1, 2, 1, 0, 0, 0, 0)
+      };
+    }
+    if (seasonKey === 'spring') {
+      return {
+        key: `${year}-spring`,
+        start: new Date(year, 2, 1, 0, 0, 0, 0),
+        end: new Date(year, 5, 1, 0, 0, 0, 0)
+      };
+    }
+    if (seasonKey === 'summer') {
+      return {
+        key: `${year}-summer`,
+        start: new Date(year, 5, 1, 0, 0, 0, 0),
+        end: new Date(year, 8, 1, 0, 0, 0, 0)
+      };
+    }
+    return {
+      key: `${year}-fall`,
+      start: new Date(year, 8, 1, 0, 0, 0, 0),
+      end: new Date(year, 11, 1, 0, 0, 0, 0)
+    };
+  }
+
+  function createSeededRandom(seedText) {
+    let seed = 0;
+    for (let i = 0; i < seedText.length; i += 1) {
+      seed = (seed * 31 + seedText.charCodeAt(i)) >>> 0;
+    }
+    return function next() {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+  }
+
+  function pickDeterministic(list, count, seedText) {
+    const items = list.slice();
+    const rand = createSeededRandom(seedText);
+    for (let i = items.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rand() * (i + 1));
+      const temp = items[i];
+      items[i] = items[j];
+      items[j] = temp;
+    }
+    return items.slice(0, Math.min(count, items.length));
   }
 
   function getCanonicalGroupKey(label) {
@@ -672,6 +786,232 @@
     enqueueSyncAction('log-sighting', entry);
   }
 
+  function getLogEntriesByDay() {
+    const byDay = {};
+    state.sightingLog.forEach((entry) => {
+      const parsed = parseObservedDate(entry.dateObserved || entry.createdAt);
+      const key = getDateKey(parsed);
+      if (!key) return;
+      if (!byDay[key]) byDay[key] = [];
+      byDay[key].push(entry);
+    });
+    return byDay;
+  }
+
+  function getDailyMicroChallenges(stats) {
+    const todayKey = getDateKey(new Date());
+    const pool = [
+      {
+        id: 'daily-log-1',
+        icon: 'Daily',
+        title: 'Show Up Today',
+        description: 'Log at least one sighting today.',
+        goal: 1,
+        getProgress: () => stats.todayLogCount
+      },
+      {
+        id: 'daily-new-species',
+        icon: 'Discovery',
+        title: 'Fresh Feathers',
+        description: 'Log 2 unique species today.',
+        goal: 2,
+        getProgress: () => stats.todayUniqueSpeciesCount
+      },
+      {
+        id: 'daily-context-mix',
+        icon: 'Explorer',
+        title: 'Context Mixer',
+        description: 'Log sightings in 2 different regions or habitats today.',
+        goal: 2,
+        getProgress: () => Math.max(stats.todayDistinctRegionCount, stats.todayDistinctHabitatCount)
+      },
+      {
+        id: 'daily-rare',
+        icon: 'Rare',
+        title: 'Rare Radar (Daily)',
+        description: 'Log one rare-or-better species today.',
+        goal: 1,
+        getProgress: () => stats.todayRareLogCount
+      },
+      {
+        id: 'daily-confidence',
+        icon: 'Quality',
+        title: 'Certain Signal',
+        description: 'Log 2 sightings with confidence set to Certain today.',
+        goal: 2,
+        getProgress: () => stats.todayCertainCount
+      }
+    ];
+
+    return pickDeterministic(pool, 3, `daily:${todayKey}`).map((challenge) => {
+      const progress = Math.max(0, Number(challenge.getProgress()) || 0);
+      const pct = Math.max(0, Math.min(100, Math.round((progress / challenge.goal) * 100)));
+      return {
+        id: challenge.id,
+        icon: challenge.icon,
+        title: challenge.title,
+        description: challenge.description,
+        progress,
+        goal: challenge.goal,
+        pct,
+        completed: progress >= challenge.goal
+      };
+    });
+  }
+
+  function computeStreakMetrics(dayEntries) {
+    const today = new Date();
+    const todayKey = getDateKey(today);
+    const loggedDays = new Set(Object.keys(dayEntries));
+    const frozenDays = new Set((state.gamification.streak.frozenDates || []).filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value))));
+
+    const hasActivityOn = (date) => {
+      const key = getDateKey(date);
+      return loggedDays.has(key) || frozenDays.has(key);
+    };
+
+    const countBack = (startDate) => {
+      const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      let count = 0;
+      while (hasActivityOn(cursor)) {
+        count += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      return count;
+    };
+
+    const currentStreak = countBack(today);
+    const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+    const atRiskStreak = !loggedDays.has(todayKey) && !frozenDays.has(todayKey) ? countBack(yesterday) : 0;
+    const freezeCredits = Math.max(0, Number(state.gamification.streak.freezeCredits) || 0);
+    const freezeAvailable = atRiskStreak > 0 && freezeCredits > 0;
+
+    return {
+      todayKey,
+      currentStreak,
+      atRiskStreak,
+      freezeCredits,
+      freezeAvailable,
+      loggedToday: loggedDays.has(todayKey),
+      frozenToday: frozenDays.has(todayKey)
+    };
+  }
+
+  function applyStreakAwards(streakMetrics) {
+    const streakState = state.gamification.streak;
+    const best = Math.max(Number(streakState.bestStreak) || 0, streakMetrics.currentStreak);
+    let changed = false;
+    if (best !== streakState.bestStreak) {
+      streakState.bestStreak = best;
+      changed = true;
+    }
+
+    const milestone = Math.floor(streakMetrics.currentStreak / 7);
+    if (milestone > (Number(streakState.lastAwardedMilestone) || 0)) {
+      const delta = milestone - (Number(streakState.lastAwardedMilestone) || 0);
+      streakState.lastAwardedMilestone = milestone;
+      streakState.freezeCredits = Math.min(3, (Number(streakState.freezeCredits) || 0) + delta);
+      changed = true;
+      if (typeof window.showToast === 'function' && delta > 0) {
+        window.showToast('Streak reward unlocked: +1 freeze credit', 'success', 2400);
+      }
+    }
+
+    if (changed) saveGamificationState();
+  }
+
+  function getBingoObjectiveDefinitions(stats) {
+    return [
+      { id: 'b1', label: 'Log 2 birds this week', goal: 2, progress: stats.weeklyLogCount },
+      { id: 'b2', label: 'Log 6 birds this month', goal: 6, progress: stats.monthlyLogCount },
+      { id: 'b3', label: 'Spot 1 rare-or-better', goal: 1, progress: stats.rareSightedCount },
+      { id: 'b4', label: 'Mark 3 in-season birds', goal: 3, progress: stats.inSeasonSightedCount },
+      { id: 'b5', label: 'Log 2 habitats this season', goal: 2, progress: stats.seasonHabitatCount },
+      { id: 'b6', label: 'Start 4 families', goal: 4, progress: stats.familiesStarted },
+      { id: 'b7', label: 'Log 2 certain sightings today', goal: 2, progress: stats.todayCertainCount },
+      { id: 'b8', label: 'Reach 15 total species', goal: 15, progress: stats.totalSighted },
+      { id: 'b9', label: 'Log 2 unique species today', goal: 2, progress: stats.todayUniqueSpeciesCount },
+      { id: 'b10', label: 'Log 3 regions this season', goal: 3, progress: stats.seasonRegionCount },
+      { id: 'b11', label: 'Spot 2 migration birds', goal: 2, progress: stats.migrationSightedCount },
+      { id: 'b12', label: 'Complete 1 family', goal: 1, progress: stats.familiesCompleted }
+    ].map((item) => ({
+      ...item,
+      pct: Math.max(0, Math.min(100, Math.round((item.progress / item.goal) * 100))),
+      completed: item.progress >= item.goal
+    }));
+  }
+
+  function getSeasonalBingo(stats) {
+    const seasonKey = getSeasonWindow(new Date(), stats.currentSeason).key;
+    const bingoStore = state.gamification.bingo.bySeason;
+    if (!bingoStore[seasonKey]) bingoStore[seasonKey] = { rerollsUsed: 0, objectiveIds: [] };
+    const seasonState = bingoStore[seasonKey];
+
+    const objectives = getBingoObjectiveDefinitions(stats);
+    if (!Array.isArray(seasonState.objectiveIds) || seasonState.objectiveIds.length !== 9) {
+      seasonState.objectiveIds = pickDeterministic(objectives.map((item) => item.id), 9, `bingo:${seasonKey}:0`);
+      saveGamificationState();
+    }
+
+    const objectiveMap = {};
+    objectives.forEach((item) => { objectiveMap[item.id] = item; });
+    const tiles = seasonState.objectiveIds
+      .map((id) => objectiveMap[id])
+      .filter(Boolean);
+    const completedCount = tiles.filter((tile) => tile.completed).length;
+
+    return {
+      seasonKey,
+      rerollsUsed: Number(seasonState.rerollsUsed) || 0,
+      canReroll: (Number(seasonState.rerollsUsed) || 0) < 1,
+      tiles,
+      completedCount,
+      bingoAchieved: completedCount >= 3
+    };
+  }
+
+  function rerollSeasonBingo(stats) {
+    const seasonKey = getSeasonWindow(new Date(), stats.currentSeason).key;
+    const bingoStore = state.gamification.bingo.bySeason;
+    if (!bingoStore[seasonKey]) bingoStore[seasonKey] = { rerollsUsed: 0, objectiveIds: [] };
+    const seasonState = bingoStore[seasonKey];
+
+    if ((Number(seasonState.rerollsUsed) || 0) >= 1) {
+      if (typeof window.showToast === 'function') window.showToast('You already used your seasonal bingo reroll.', 'info', 2200);
+      return;
+    }
+
+    const objectives = getBingoObjectiveDefinitions(stats);
+    seasonState.rerollsUsed = (Number(seasonState.rerollsUsed) || 0) + 1;
+    seasonState.objectiveIds = pickDeterministic(
+      objectives.map((item) => item.id),
+      9,
+      `bingo:${seasonKey}:${seasonState.rerollsUsed}`
+    );
+    saveGamificationState();
+    renderBirds();
+  }
+
+  function useStreakFreezeToday() {
+    const byDay = getLogEntriesByDay();
+    const streak = computeStreakMetrics(byDay);
+    if (!streak.freezeAvailable) {
+      if (typeof window.showToast === 'function') window.showToast('Freeze is not available right now.', 'info', 2200);
+      return;
+    }
+
+    state.gamification.streak.freezeCredits = Math.max(0, (Number(state.gamification.streak.freezeCredits) || 0) - 1);
+    const frozenDates = new Set(state.gamification.streak.frozenDates || []);
+    frozenDates.add(streak.todayKey);
+    state.gamification.streak.frozenDates = Array.from(frozenDates).sort();
+    saveGamificationState();
+
+    if (typeof window.showToast === 'function') {
+      window.showToast('Streak freeze used for today. Your streak is protected.', 'success', 2400);
+    }
+    renderBirds();
+  }
+
   function buildBirdingNowCandidates() {
     const currentSeason = getCurrentSeason();
     const region = state.birdNowFilters.region;
@@ -804,6 +1144,10 @@
     const quarterStart = getCurrentQuarterStart(now);
     const yearStart = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
     const currentSeason = getCurrentSeason();
+    const seasonWindow = getSeasonWindow(now, currentSeason);
+    const dayEntries = getLogEntriesByDay();
+    const todayKey = getDateKey(now);
+    const todayEntries = dayEntries[todayKey] || [];
 
     const sightedBirds = allBirds.filter(isBirdSighted);
     const rareSightedBirds = sightedBirds.filter((bird) => bird.rarity.weight >= RARITY_META.rare.weight);
@@ -833,6 +1177,34 @@
       return sightedAt && sightedAt >= yearStart;
     });
 
+    const allLogEntries = state.sightingLog.slice();
+    const weeklyLogEntries = allLogEntries.filter((entry) => {
+      const observed = parseObservedDate(entry.dateObserved || entry.createdAt);
+      return observed && observed >= weekStart;
+    });
+    const monthlyLogEntries = allLogEntries.filter((entry) => {
+      const observed = parseObservedDate(entry.dateObserved || entry.createdAt);
+      return observed && observed >= monthStart;
+    });
+    const seasonalLogEntries = allLogEntries.filter((entry) => {
+      const observed = parseObservedDate(entry.dateObserved || entry.createdAt);
+      return observed && observed >= seasonWindow.start && observed < seasonWindow.end;
+    });
+
+    const todayUniqueSpeciesCount = new Set(todayEntries.map((entry) => entry.speciesStatusKey).filter(Boolean)).size;
+    const todayDistinctRegionCount = new Set(todayEntries.map((entry) => norm(entry.region)).filter(Boolean)).size;
+    const todayDistinctHabitatCount = new Set(todayEntries.map((entry) => norm(entry.habitat)).filter(Boolean)).size;
+    const todayCertainCount = todayEntries.filter((entry) => norm(entry.confidence) === 'certain').length;
+    const todayRareLogCount = todayEntries.filter((entry) => {
+      const bird = findBirdById(entry.speciesId);
+      return bird && bird.rarity.weight >= RARITY_META.rare.weight;
+    }).length;
+
+    const seasonRegionCount = new Set(seasonalLogEntries.map((entry) => norm(entry.region)).filter(Boolean)).size;
+    const seasonHabitatCount = new Set(seasonalLogEntries.map((entry) => norm(entry.habitat)).filter(Boolean)).size;
+    const streak = computeStreakMetrics(dayEntries);
+    applyStreakAwards(streak);
+
     const familyProgress = state.families.map((family) => {
       const sightedCount = countSightedBirds(family.species);
       return {
@@ -861,12 +1233,26 @@
       monthlySightedCount: monthlySighted.length,
       quarterlySightedCount: quarterlySighted.length,
       yearlySightedCount: yearlySighted.length,
+      weeklyLogCount: weeklyLogEntries.length,
+      monthlyLogCount: monthlyLogEntries.length,
+      seasonalLogCount: seasonalLogEntries.length,
+      seasonWindowKey: seasonWindow.key,
+      todayLogCount: todayEntries.length,
+      todayUniqueSpeciesCount,
+      todayDistinctRegionCount,
+      todayDistinctHabitatCount,
+      todayCertainCount,
+      todayRareLogCount,
+      seasonRegionCount,
+      seasonHabitatCount,
+      streak,
       familyProgress
     };
   }
 
   function getBirdChallenges(stats) {
     return [
+      { icon: 'Daily', title: 'Daily Pulse', description: 'Keep your log active today.', progress: stats.todayLogCount, goal: 1 },
       { icon: 'Weekly', title: 'Weekly Wings', description: 'Log fresh bird species this week.', progress: stats.weeklySightedCount, goal: 3 },
       { icon: 'Monthly', title: 'Monthly Milestone', description: 'Build steady momentum across the month.', progress: stats.monthlySightedCount, goal: 10 },
       { icon: 'Quarterly', title: 'Quarterly Flight Plan', description: 'Keep your seasonal list moving this quarter.', progress: stats.quarterlySightedCount, goal: 25 },
@@ -874,7 +1260,8 @@
       { icon: stats.currentSeasonLabel, title: `${stats.currentSeasonLabel} Sweep`, description: `Mark birds that are available in ${stats.currentSeason.toLowerCase()} right now.`, progress: stats.inSeasonSightedCount, goal: 15 },
       { icon: 'Rare', title: 'Rare Radar', description: 'Find rare, very rare, or extremely rare species.', progress: stats.rareSightedCount, goal: 5 },
       { icon: 'Families', title: 'Family Forager', description: 'Get at least one sighting in different bird families.', progress: stats.familiesStarted, goal: 12 },
-      { icon: 'Migration', title: 'Migration Mapper', description: 'Track birds that show up during migration windows.', progress: stats.migrationSightedCount, goal: 8 }
+      { icon: 'Migration', title: 'Migration Mapper', description: 'Track birds that show up during migration windows.', progress: stats.migrationSightedCount, goal: 8 },
+      { icon: 'Quest', title: 'Season Questline', description: `Log 12 sightings during ${stats.currentSeason.toLowerCase()} to complete your chapter.`, progress: stats.seasonalLogCount, goal: 12 }
     ].map((challenge) => ({
       ...challenge,
       completed: challenge.progress >= challenge.goal,
@@ -891,7 +1278,10 @@
       { icon: stats.currentSeasonLabel, title: `${stats.currentSeasonLabel} Spotter`, description: `Track birds available during ${stats.currentSeason.toLowerCase()}.`, rarity: 'epic', progress: stats.inSeasonSightedCount, goal: 20 },
       { icon: 'Family', title: 'Family Finisher', description: 'Completely finish one family list.', rarity: 'epic', progress: stats.familiesCompleted, goal: 1 },
       { icon: 'Legend', title: 'Legendary Lister', description: 'Reach 100 total bird species sighted.', rarity: 'legendary', progress: stats.totalSighted, goal: 100 },
-      { icon: 'Ultra', title: 'Ultra-Rarity', description: 'Sight at least one very rare or extremely rare bird.', rarity: 'legendary', progress: stats.veryRareSightedCount, goal: 1 }
+      { icon: 'Ultra', title: 'Ultra-Rarity', description: 'Sight at least one very rare or extremely rare bird.', rarity: 'legendary', progress: stats.veryRareSightedCount, goal: 1 },
+      { icon: 'Streak', title: 'Streak Keeper', description: 'Build a 7-day birding streak.', rarity: 'rare', progress: stats.streak.currentStreak, goal: 7 },
+      { icon: 'Bingo', title: 'Bingo Beginner', description: 'Complete 3 bingo tiles in the current season.', rarity: 'epic', progress: Math.max(0, Number((stats.bingo && stats.bingo.completedCount) || 0)), goal: 3 },
+      { icon: 'Quest', title: 'Season Chapter Clear', description: 'Finish all seasonal questline steps.', rarity: 'legendary', progress: Math.max(0, Number((stats.seasonQuestCompletedCount) || 0)), goal: 4 }
     ];
 
     return badges.map((badge) => {
@@ -988,9 +1378,28 @@
       snapshot.innerHTML = `
         <strong>${escapeHtml(stats.currentSeasonLabel)} focus:</strong>
         ${stats.inSeasonSightedCount} of ${stats.inSeasonCount} currently available species marked sighted | 
-        ${stats.weeklySightedCount} this week | ${stats.monthlySightedCount} this month | ${stats.quarterlySightedCount} this quarter | ${stats.yearlySightedCount} this year.
+        ${stats.weeklySightedCount} this week | ${stats.monthlySightedCount} this month | ${stats.quarterlySightedCount} this quarter | ${stats.yearlySightedCount} this year | 
+        Streak: ${stats.streak.currentStreak} day(s) (${stats.streak.freezeCredits} freeze credit${stats.streak.freezeCredits === 1 ? '' : 's'}).
       `;
     }
+  }
+
+  function getSeasonQuestline(stats) {
+    const steps = [
+      { id: 'sq-1', icon: 'Scout', title: 'Scout Phase', description: 'Log 5 sightings this season.', progress: stats.seasonalLogCount, goal: 5 },
+      { id: 'sq-2', icon: 'Variety', title: 'Variety Phase', description: 'Log sightings across 3 habitats this season.', progress: stats.seasonHabitatCount, goal: 3 },
+      { id: 'sq-3', icon: 'Rare', title: 'Rare Phase', description: 'Find 2 rare-or-better species this season.', progress: stats.rareSightedCount, goal: 2 },
+      { id: 'sq-4', icon: 'Mastery', title: 'Mastery Phase', description: 'Reach 15 seasonal sightings.', progress: stats.seasonalLogCount, goal: 15 }
+    ].map((step) => ({
+      ...step,
+      completed: step.progress >= step.goal,
+      pct: Math.max(0, Math.min(100, Math.round((step.progress / step.goal) * 100)))
+    }));
+
+    return {
+      steps,
+      completedCount: steps.filter((step) => step.completed).length
+    };
   }
 
   function renderBirdChallenges(challenges) {
@@ -1018,6 +1427,122 @@
         <div class="nature-badge-card-description">${escapeHtml(badge.description)}</div>
         <div class="nature-badge-progress">${badge.progress}/${badge.goal}</div>
         <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${badge.pct}%;"></div></div>
+      </div>
+    `).join('');
+  }
+
+  function renderBirdDailyChallenges(challenges) {
+    const container = document.getElementById('birdsDailyChallengeGrid');
+    if (!container) return;
+
+    container.innerHTML = challenges.map((challenge) => `
+      <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''}">
+        <div class="nature-challenge-card-header">${escapeHtml(challenge.icon)} ${escapeHtml(challenge.title)}</div>
+        <div class="nature-challenge-card-description">${escapeHtml(challenge.description)}</div>
+        <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${challenge.pct}%;"></div></div>
+        <div class="nature-challenge-meta"><span>${challenge.progress}/${challenge.goal}</span><span>${challenge.completed ? 'Complete' : `${challenge.pct}%`}</span></div>
+      </div>
+    `).join('');
+  }
+
+  function renderBirdStreakPanel(streak) {
+    const body = document.getElementById('birdsStreakSummary');
+    const freezeBtn = document.getElementById('birdsUseFreezeBtn');
+    if (!body || !freezeBtn) return;
+
+    const riskLine = streak.atRiskStreak > 0 && !streak.frozenToday
+      ? `Streak at risk: ${streak.atRiskStreak} days. Use a freeze to protect today.`
+      : 'Streak is active and protected.';
+
+    body.innerHTML = `
+      <div><strong>${streak.currentStreak}</strong> day current streak</div>
+      <div>Best streak: ${Math.max(streak.currentStreak, Number(state.gamification.streak.bestStreak) || 0)} days</div>
+      <div>Freeze credits: ${streak.freezeCredits}</div>
+      <div>${escapeHtml(riskLine)}</div>
+    `;
+
+    freezeBtn.disabled = !streak.freezeAvailable;
+    freezeBtn.textContent = streak.freezeAvailable ? 'Use Freeze Today' : 'Freeze Unavailable';
+  }
+
+  function renderBirdBingoPanel(bingo) {
+    const meta = document.getElementById('birdsBingoMeta');
+    const grid = document.getElementById('birdsBingoGrid');
+    const rerollBtn = document.getElementById('birdsBingoRefreshBtn');
+    if (!meta || !grid || !rerollBtn) return;
+
+    meta.textContent = `${bingo.completedCount}/9 tiles complete${bingo.bingoAchieved ? ' | Bingo unlocked!' : ''}`;
+    grid.innerHTML = bingo.tiles.map((tile) => `
+      <div class="nature-badge-card ${tile.completed ? 'unlocked' : 'locked'}">
+        <div class="nature-badge-card-title">${escapeHtml(tile.label)}</div>
+        <div class="nature-badge-progress">${tile.progress}/${tile.goal}</div>
+        <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${tile.pct}%;"></div></div>
+      </div>
+    `).join('');
+
+    rerollBtn.disabled = !bingo.canReroll;
+    rerollBtn.textContent = bingo.canReroll ? 'Reroll Bingo Card (1/season)' : 'Bingo Reroll Used';
+  }
+
+  function renderSeasonQuestlinePanel(questline, stats) {
+    const container = document.getElementById('birdsSeasonQuestGrid');
+    const meta = document.getElementById('birdsSeasonQuestMeta');
+    if (!container || !meta) return;
+
+    meta.textContent = `${stats.currentSeasonLabel} chapter: ${questline.completedCount}/${questline.steps.length} steps completed`;
+    container.innerHTML = questline.steps.map((step) => `
+      <div class="nature-challenge-card ${step.completed ? 'completed' : ''}">
+        <div class="nature-challenge-card-header">${escapeHtml(step.icon)} ${escapeHtml(step.title)}</div>
+        <div class="nature-challenge-card-description">${escapeHtml(step.description)}</div>
+        <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${step.pct}%;"></div></div>
+        <div class="nature-challenge-meta"><span>${step.progress}/${step.goal}</span><span>${step.completed ? 'Complete' : `${step.pct}%`}</span></div>
+      </div>
+    `).join('');
+  }
+
+  function collectNearMissItems(challenges, badges, dailyChallenges, bingo, seasonQuestline) {
+    const nearMisses = [];
+
+    challenges.forEach((item) => {
+      if (item.completed) return;
+      nearMisses.push({ type: 'Challenge', title: item.title, remaining: Math.max(0, item.goal - item.progress) });
+    });
+    badges.forEach((item) => {
+      if (item.completed) return;
+      nearMisses.push({ type: 'Badge', title: item.title, remaining: Math.max(0, item.goal - item.progress) });
+    });
+    dailyChallenges.forEach((item) => {
+      if (item.completed) return;
+      nearMisses.push({ type: 'Daily', title: item.title, remaining: Math.max(0, item.goal - item.progress) });
+    });
+    bingo.tiles.forEach((item) => {
+      if (item.completed) return;
+      nearMisses.push({ type: 'Bingo', title: item.label, remaining: Math.max(0, item.goal - item.progress) });
+    });
+    seasonQuestline.steps.forEach((item) => {
+      if (item.completed) return;
+      nearMisses.push({ type: 'Quest', title: item.title, remaining: Math.max(0, item.goal - item.progress) });
+    });
+
+    return nearMisses
+      .filter((item) => item.remaining > 0)
+      .sort((a, b) => a.remaining - b.remaining || a.title.localeCompare(b.title))
+      .slice(0, 6);
+  }
+
+  function renderNearMissPanel(items) {
+    const container = document.getElementById('birdsNearMissList');
+    if (!container) return;
+
+    if (items.length === 0) {
+      container.innerHTML = '<div class="nature-empty-state">Everything nearby is completed. Time for new goals!</div>';
+      return;
+    }
+
+    container.innerHTML = items.map((item) => `
+      <div class="nature-bird-detail-row">
+        <div class="nature-bird-detail-label">${escapeHtml(item.type)}</div>
+        <div class="nature-bird-detail-value">${escapeHtml(item.title)} - just ${item.remaining} to go</div>
       </div>
     `).join('');
   }
@@ -1471,7 +1996,16 @@
   }
 
   function renderBirdError() {
-    ['birdsChallengeGrid', 'birdsBadgeGrid', 'birdsSpeciesCardGrid', 'birdsSpeciesDetailContent'].forEach((id) => {
+    [
+      'birdsDailyChallengeGrid',
+      'birdsBingoGrid',
+      'birdsNearMissList',
+      'birdsSeasonQuestGrid',
+      'birdsChallengeGrid',
+      'birdsBadgeGrid',
+      'birdsSpeciesCardGrid',
+      'birdsSpeciesDetailContent'
+    ].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         el.innerHTML = `<div class="nature-empty-state">${escapeHtml(state.birdsError || 'Bird data could not be loaded.')}</div>`;
@@ -1482,11 +2016,27 @@
   function renderBirds() {
     if (!state.birdsLoaded) return;
     const stats = getBirdStats();
+    const dailyChallenges = getDailyMicroChallenges(stats);
+    const bingo = getSeasonalBingo(stats);
+    const seasonQuestline = getSeasonQuestline(stats);
+    const badgeStats = {
+      ...stats,
+      bingo,
+      seasonQuestCompletedCount: seasonQuestline.completedCount
+    };
+    const challenges = getBirdChallenges(stats);
+    const badges = getBirdBadges(badgeStats);
+
     renderBirdHeaderStatus();
     renderBirdStats(stats);
     renderBirdLegend(stats);
-    renderBirdChallenges(getBirdChallenges(stats));
-    renderBirdBadges(getBirdBadges(stats));
+    renderBirdDailyChallenges(dailyChallenges);
+    renderBirdStreakPanel(stats.streak);
+    renderBirdBingoPanel(bingo);
+    renderSeasonQuestlinePanel(seasonQuestline, stats);
+    renderNearMissPanel(collectNearMissItems(challenges, badges, dailyChallenges, bingo, seasonQuestline));
+    renderBirdChallenges(challenges);
+    renderBirdBadges(badges);
     renderBirdExplorerList();
     renderBirdDetail();
   }
@@ -1760,6 +2310,77 @@
       });
     }
 
+    const regionFilter = document.getElementById('birdsExplorerRegionFilter');
+    if (regionFilter && regionFilter.dataset.natureRegionFilterBound !== '1') {
+      regionFilter.dataset.natureRegionFilterBound = '1';
+      regionFilter.addEventListener('change', () => {
+        state.birdFilters.region = regionFilter.value || 'all';
+        state.birdPage = 1;
+        renderBirdExplorerList();
+      });
+    }
+
+    const habitatFilter = document.getElementById('birdsExplorerHabitatFilter');
+    if (habitatFilter && habitatFilter.dataset.natureHabitatFilterBound !== '1') {
+      habitatFilter.dataset.natureHabitatFilterBound = '1';
+      habitatFilter.addEventListener('change', () => {
+        state.birdFilters.habitat = habitatFilter.value || 'all';
+        state.birdPage = 1;
+        renderBirdExplorerList();
+      });
+    }
+
+    const nowRegionFilter = document.getElementById('birdsNowRegionFilter');
+    if (nowRegionFilter && nowRegionFilter.dataset.natureNowRegionBound !== '1') {
+      nowRegionFilter.dataset.natureNowRegionBound = '1';
+      nowRegionFilter.addEventListener('change', () => {
+        state.birdNowFilters.region = nowRegionFilter.value || 'all';
+        renderBirds();
+      });
+    }
+
+    const nowHabitatFilter = document.getElementById('birdsNowHabitatFilter');
+    if (nowHabitatFilter && nowHabitatFilter.dataset.natureNowHabitatBound !== '1') {
+      nowHabitatFilter.dataset.natureNowHabitatBound = '1';
+      nowHabitatFilter.addEventListener('change', () => {
+        state.birdNowFilters.habitat = nowHabitatFilter.value || 'all';
+        renderBirds();
+      });
+    }
+
+    const logSightingBtn = document.getElementById('birdsLogSightingBtn');
+    if (logSightingBtn && logSightingBtn.dataset.natureLogBound !== '1') {
+      logSightingBtn.dataset.natureLogBound = '1';
+      logSightingBtn.addEventListener('click', () => logSightingFromForm());
+    }
+
+    const syncNowBtn = document.getElementById('birdsSyncNowBtn');
+    if (syncNowBtn && syncNowBtn.dataset.natureSyncNowBound !== '1') {
+      syncNowBtn.dataset.natureSyncNowBound = '1';
+      syncNowBtn.addEventListener('click', () => processSyncQueue());
+    }
+
+    const useFreezeBtn = document.getElementById('birdsUseFreezeBtn');
+    if (useFreezeBtn && useFreezeBtn.dataset.natureUseFreezeBound !== '1') {
+      useFreezeBtn.dataset.natureUseFreezeBound = '1';
+      useFreezeBtn.addEventListener('click', () => useStreakFreezeToday());
+    }
+
+    const bingoRefreshBtn = document.getElementById('birdsBingoRefreshBtn');
+    if (bingoRefreshBtn && bingoRefreshBtn.dataset.natureBingoRefreshBound !== '1') {
+      bingoRefreshBtn.dataset.natureBingoRefreshBound = '1';
+      bingoRefreshBtn.addEventListener('click', () => {
+        const stats = getBirdStats();
+        rerollSeasonBingo(stats);
+      });
+    }
+
+    const runQualityBtn = document.getElementById('birdsRunDataQualityBtn');
+    if (runQualityBtn && runQualityBtn.dataset.natureQualityBound !== '1') {
+      runQualityBtn.dataset.natureQualityBound = '1';
+      runQualityBtn.addEventListener('click', () => renderBirds());
+    }
+
     const favoritesOnlyToggle = document.getElementById('birdsExplorerFavoritesOnly');
     if (favoritesOnlyToggle && favoritesOnlyToggle.dataset.natureFavoritesOnlyBound !== '1') {
       favoritesOnlyToggle.dataset.natureFavoritesOnlyBound = '1';
@@ -1776,6 +2397,10 @@
     if (!root) return;
 
     bindNatureControls(root);
+    const logDateInput = document.getElementById('birdsLogDateInput');
+    if (logDateInput && !logDateInput.value) {
+      logDateInput.value = new Date().toISOString().slice(0, 10);
+    }
     renderPlaceholderSubTabs();
     setActiveNatureSubTab(root, state.activeSubTab || 'birds');
     setBirdView(root, state.activeBirdView || 'overview');
