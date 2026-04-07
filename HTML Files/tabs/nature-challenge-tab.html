@@ -122,8 +122,81 @@
           <input id="birdsSpeciesSearchInput" class="filter-input" type="text" placeholder="Search by species, family, genus, season, or rarity..." />
           <div id="birdsSpeciesSearchMeta" class="nature-search-meta">Loading birds...</div>
         </div>
+        <div class="nature-explorer-toolbar">
+          <select id="birdsExplorerSortSelect" class="filter-select" title="Sort bird species cards">
+            <option value="family-asc">Sort: Family / Species (A-Z)</option>
+            <option value="species-asc">Sort: Species (A-Z)</option>
+            <option value="species-desc">Sort: Species (Z-A)</option>
+            <option value="rarity-desc">Sort: Rarity (highest first)</option>
+            <option value="rarity-asc">Sort: Rarity (lowest first)</option>
+            <option value="sighted-recent">Sort: Recently sighted first</option>
+          </select>
+          <select id="birdsExplorerPageSizeSelect" class="filter-select" title="Cards per page">
+            <option value="12">12 per page</option>
+            <option value="24">24 per page</option>
+            <option value="48">48 per page</option>
+          </select>
+          <select id="birdsExplorerSeasonFilter" class="filter-select" title="Filter by season">
+            <option value="all">Season: All</option>
+            <option value="spring">Spring</option>
+            <option value="summer">Summer</option>
+            <option value="fall">Fall</option>
+            <option value="winter">Winter</option>
+            <option value="migration">Migration</option>
+          </select>
+          <select id="birdsExplorerRarityFilter" class="filter-select" title="Filter by rarity">
+            <option value="all">Rarity: All</option>
+            <option value="common">Common</option>
+            <option value="regular">Regular</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option>
+            <option value="veryRare">Very Rare</option>
+            <option value="extremelyRare">Extremely Rare</option>
+          </select>
+          <select id="birdsExplorerFamilyFilter" class="filter-select" title="Filter by family">
+            <option value="all">Family: All</option>
+          </select>
+          <label class="nature-toggle-pill" for="birdsExplorerFavoritesOnly">
+            <input id="birdsExplorerFavoritesOnly" type="checkbox" /> Favorites only
+          </label>
+          <button type="button" id="birdsExplorerClearFiltersBtn" class="pill-button">Clear Filters</button>
+        </div>
+        <div class="nature-chip-filter-groups" id="birdsExplorerQuickFilterBar">
+          <div class="nature-chip-filter-group" id="birdsSeasonChipGroup">
+            <span class="nature-chip-filter-label">Season chips</span>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="spring">Spring</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="summer">Summer</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="fall">Fall</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="winter">Winter</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="migration">Migration</button>
+          </div>
+          <div class="nature-chip-filter-group" id="birdsRarityChipGroup">
+            <span class="nature-chip-filter-label">Rarity chips</span>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="common">Common</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="regular">Regular</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="uncommon">Uncommon</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="rare">Rare</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="veryRare">Very Rare</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="extremelyRare">Extremely Rare</button>
+          </div>
+          <div class="nature-chip-filter-group" id="birdsFamilyChipGroup">
+            <span class="nature-chip-filter-label">Family chips</span>
+          </div>
+        </div>
+      </div>
+      <div id="birdsPinnedFavoritesSection" class="card" hidden>
+        <div class="card-header">
+          <div class="card-title">📌 Pinned Favorites</div>
+          <div id="birdsPinnedFavoritesMeta" class="card-subtitle">Your favorite species appear here.</div>
+        </div>
+        <div id="birdsPinnedFavoritesGrid" class="adventure-cards-grid nature-birds-card-grid"></div>
       </div>
       <div id="birdsSpeciesCardGrid" class="adventure-cards-grid nature-birds-card-grid"></div>
+      <div class="nature-explorer-pagination">
+        <button type="button" id="birdsExplorerPrevPageBtn" class="pill-button">← Prev</button>
+        <div id="birdsExplorerPageInfo" class="nature-search-meta">Page 1</div>
+        <button type="button" id="birdsExplorerNextPageBtn" class="pill-button">Next →</button>
+      </div>
     </div>
 
     <div class="nature-birds-view" data-birds-view="detail" hidden>
@@ -787,9 +860,108 @@
     white-space: nowrap;
   }
 
+  #natureChallengeRoot .nature-explorer-toolbar {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    align-items: center;
+  }
+
+  #natureChallengeRoot .nature-chip-filter-groups {
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-chip-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px;
+    background: #f8fafc;
+  }
+
+  #natureChallengeRoot .nature-chip-filter-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    margin-right: 4px;
+    white-space: nowrap;
+  }
+
+  #natureChallengeRoot .nature-chip-filter {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #natureChallengeRoot .nature-chip-filter.is-active {
+    border-color: #1d4ed8;
+    background: #dbeafe;
+    color: #1e3a8a;
+  }
+
+  #natureChallengeRoot .nature-toggle-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #374151;
+    background: #fff;
+    white-space: nowrap;
+  }
+
+  #natureChallengeRoot .nature-toggle-pill input {
+    margin: 0;
+  }
+
   #natureChallengeRoot .nature-birds-card-grid {
     padding: 8px 0;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  #natureChallengeRoot #birdsPinnedFavoritesSection {
+    margin-top: 12px;
+    border-color: #fde68a;
+    background: #fffbeb;
+  }
+
+  #natureChallengeRoot .nature-explorer-pagination {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  #natureChallengeRoot .nature-bird-fav-btn {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #6b7280;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #natureChallengeRoot .nature-bird-fav-btn.is-favorited {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #b45309;
   }
 
   #natureChallengeRoot .nature-bird-card {
