@@ -29,79 +29,108 @@
 
   <!-- BIRDS SUB-TAB -->
   <div id="natureChallengePane-birds" class="nature-challenge-pane is-active" data-nature-pane="birds" role="tabpanel" aria-labelledby="natureChallengeTab-birds">
-    <!-- Category Progression -->
-    <div class="card" style="margin-top: 10px;">
-      <div class="card-header">
-        <div>
-          <div class="card-title">📊 Category Progression</div>
-          <div class="card-subtitle">Track your bird species sightings.</div>
+    <div class="nature-birds-view is-active" data-birds-view="overview">
+      <!-- Category Progression -->
+      <div class="card" style="margin-top: 10px;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">📊 Category Progression</div>
+            <div class="card-subtitle">Track your bird species sightings.</div>
+          </div>
         </div>
+        <div class="nature-progression-stats">
+          <div class="nature-stat-card">
+            <div class="nature-stat-label">Total Species Sighted</div>
+            <div class="nature-stat-value" id="birdsTotalSighted">0</div>
+            <div class="nature-stat-sub">out of <span id="birdsTotalSpecies">0</span> species</div>
+          </div>
+          <div class="nature-stat-card">
+            <div class="nature-stat-label">In Season Now</div>
+            <div class="nature-stat-value" id="birdsInSeasonSighted">0</div>
+            <div class="nature-stat-sub">species marked sighted that are currently available</div>
+          </div>
+          <div class="nature-stat-card">
+            <div class="nature-stat-label">Rare or Better</div>
+            <div class="nature-stat-value" id="birdsRareSighted">0</div>
+            <div class="nature-stat-sub">rare, very rare, and extremely rare birds sighted</div>
+          </div>
+          <div class="nature-stat-card">
+            <div class="nature-stat-label">Families Completed</div>
+            <div class="nature-stat-value" id="birdsFamiliesCompleted">0</div>
+            <div class="nature-stat-sub">families where every listed species is sighted</div>
+          </div>
+          <div class="nature-stat-card">
+            <div class="nature-stat-label">Migration Species</div>
+            <div class="nature-stat-value" id="birdsMigrationSighted">0</div>
+            <div class="nature-stat-sub">migration-associated birds marked sighted</div>
+          </div>
+        </div>
+        <div id="birdsProgressSnapshot" class="nature-progress-note">Bird progress will update once the birds dataset loads.</div>
       </div>
-      <div class="nature-progression-stats">
-        <div class="nature-stat-card">
-          <div class="nature-stat-label">Total Species Sighted</div>
-          <div class="nature-stat-value" id="birdsTotalSighted">0</div>
-          <div class="nature-stat-sub">out of <span id="birdsTotalSpecies">0</span> species</div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🧭 Visual Legend</div>
+            <div class="card-subtitle">Use rarity and season markers to quickly scan species cards.</div>
+          </div>
         </div>
-        <div class="nature-stat-card">
-          <div class="nature-stat-label">In Season Now</div>
-          <div class="nature-stat-value" id="birdsInSeasonSighted">0</div>
-          <div class="nature-stat-sub">species marked sighted that are currently available</div>
-        </div>
-        <div class="nature-stat-card">
-          <div class="nature-stat-label">Rare or Better</div>
-          <div class="nature-stat-value" id="birdsRareSighted">0</div>
-          <div class="nature-stat-sub">rare, very rare, and extremely rare birds sighted</div>
-        </div>
-        <div class="nature-stat-card">
-          <div class="nature-stat-label">Families Completed</div>
-          <div class="nature-stat-value" id="birdsFamiliesCompleted">0</div>
-          <div class="nature-stat-sub">family cards where every listed species is sighted</div>
-        </div>
-        <div class="nature-stat-card">
-          <div class="nature-stat-label">Migration Species</div>
-          <div class="nature-stat-value" id="birdsMigrationSighted">0</div>
-          <div class="nature-stat-sub">migration-associated birds you have marked sighted</div>
-        </div>
+        <div id="birdsVisualLegend" class="nature-legend-grid"></div>
       </div>
-      <div id="birdsProgressSnapshot" class="nature-progress-note">Bird progress will update once the birds dataset loads.</div>
+
+      <div class="card nature-explore-cta-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🔎 Species Explorer</div>
+            <div class="card-subtitle">Search your full bird list and open species detail cards.</div>
+          </div>
+        </div>
+        <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open species explorer" data-tooltip="Open species explorer">
+          Explore Bird Species
+        </button>
+      </div>
+
+      <!-- Challenges -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🎯 Challenges</div>
+          <div class="card-subtitle">Complete challenges to earn rewards.</div>
+        </div>
+        <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
+      </div>
+
+      <!-- Badges -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏅 Badges</div>
+          <div class="card-subtitle">Unlock achievements as you progress.</div>
+        </div>
+        <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">🧭 Visual Legend</div>
-          <div class="card-subtitle">Use rarity and season markers to quickly scan the bird list.</div>
+    <div class="nature-birds-view" data-birds-view="explorer" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="nature-view-header-row">
+          <button type="button" id="birdsExplorerBackBtn" class="pill-button">← Back to Birds</button>
+          <div>
+            <div class="card-title">🐦 Explore Bird Species</div>
+            <div class="card-subtitle">Search your species list and open any card for full details.</div>
+          </div>
+        </div>
+        <div class="nature-search-row">
+          <input id="birdsSpeciesSearchInput" class="filter-input" type="text" placeholder="Search by species, family, genus, season, or rarity..." />
+          <div id="birdsSpeciesSearchMeta" class="nature-search-meta">Loading birds...</div>
         </div>
       </div>
-      <div id="birdsVisualLegend" class="nature-legend-grid"></div>
+      <div id="birdsSpeciesCardGrid" class="adventure-cards-grid nature-birds-card-grid"></div>
     </div>
 
-    <!-- Sightings by Family -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏷️ Sightings by Family</div>
-        <div class="card-subtitle">Each species row shows its rarity, seasonality, and whether you have marked it as sighted.</div>
+    <div class="nature-birds-view" data-birds-view="detail" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <button type="button" id="birdsDetailBackBtn" class="pill-button">← Back to Explore Bird Species</button>
       </div>
-      <div id="birdsFamilyGrid" class="nature-family-grid"></div>
-    </div>
-
-    <!-- Challenges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
-      </div>
-      <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
+      <div id="birdsSpeciesDetailContent"></div>
     </div>
   </div>
 
@@ -581,6 +610,14 @@
     display: block;
   }
 
+  #natureChallengeRoot .nature-birds-view {
+    display: none;
+  }
+
+  #natureChallengeRoot .nature-birds-view.is-active {
+    display: block;
+  }
+
   #natureChallengeRoot .nature-sr-only {
     position: absolute;
     width: 1px;
@@ -699,6 +736,92 @@
     font-size: 12px;
     line-height: 1.5;
     color: #475569;
+  }
+
+  #natureChallengeRoot .nature-explore-cta-card {
+    text-align: center;
+  }
+
+  #natureChallengeRoot .nature-explore-birds-btn {
+    width: 100%;
+    max-width: 460px;
+    margin: 8px auto 0;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 54px;
+    border: 2px solid #1d4ed8;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  #natureChallengeRoot .nature-explore-birds-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(29, 78, 216, 0.3);
+  }
+
+  #natureChallengeRoot .nature-view-header-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  #natureChallengeRoot .nature-search-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  #natureChallengeRoot .nature-search-meta {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  #natureChallengeRoot .nature-birds-card-grid {
+    padding: 8px 0;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  #natureChallengeRoot .nature-bird-card {
+    min-height: 240px;
+  }
+
+  #natureChallengeRoot .nature-bird-detail-list {
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-bird-detail-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+    background: #fff;
+  }
+
+  #natureChallengeRoot .nature-bird-detail-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+  }
+
+  #natureChallengeRoot .nature-bird-detail-value {
+    font-size: 13px;
+    color: #1f2937;
+    line-height: 1.45;
   }
 
   #natureChallengeRoot .nature-chip-row {
@@ -1058,6 +1181,16 @@
   }
 
   @media (max-width: 760px) {
+    #natureChallengeRoot .nature-search-row {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+
+    #natureChallengeRoot .nature-view-header-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
     #natureChallengeRoot .nature-species-item {
       flex-direction: column;
     }
@@ -1065,6 +1198,11 @@
     #natureChallengeRoot .nature-species-chips {
       max-width: 100%;
       justify-content: flex-start;
+    }
+
+    #natureChallengeRoot .nature-bird-detail-row {
+      grid-template-columns: 1fr;
+      gap: 6px;
     }
   }
 

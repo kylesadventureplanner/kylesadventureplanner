@@ -1,12 +1,19 @@
 /*
  * Nature Challenge Tab System
- * Birds sub-tab data, progression, challenges, badges, and local sighting state.
+ * Birds overview + species explorer + species detail workflow.
  */
 
 (function() {
   const BIRD_DATA_URL = 'data/nature-challenge-birds.tsv';
   const BIRD_SIGHTINGS_KEY = 'natureChallengeBirdSightingsV1';
+  const BIRD_CACHE_KEY = 'natureChallengeBirdDatasetCacheV1';
+  const EXCEL_TABLE_NAME = 'birds';
+  const EXCEL_FILE_CANDIDATES = [
+    'Nature_records.xlsx',
+    'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx'
+  ];
   const SUBTAB_KEYS = ['birds', 'mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees', 'shrubs'];
+  const BIRD_VIEWS = ['overview', 'explorer', 'detail'];
 
   const RARITY_META = {
     common: { label: 'Common', className: 'rarity-common', weight: 1 },
@@ -18,19 +25,23 @@
   };
 
   const SEASON_META = {
-    spring: { label: 'Spring', icon: '🌱', className: 'season-spring' },
-    summer: { label: 'Summer', icon: '☀️', className: 'season-summer' },
-    fall: { label: 'Fall', icon: '🍂', className: 'season-fall' },
-    winter: { label: 'Winter', icon: '❄️', className: 'season-winter' },
-    migration: { label: 'Migration', icon: '🧭', className: 'season-migration' }
+    spring: { label: 'Spring', icon: 'Spring', className: 'season-spring' },
+    summer: { label: 'Summer', icon: 'Summer', className: 'season-summer' },
+    fall: { label: 'Fall', icon: 'Fall', className: 'season-fall' },
+    winter: { label: 'Winter', icon: 'Winter', className: 'season-winter' },
+    migration: { label: 'Migration', icon: 'Migration', className: 'season-migration' }
   };
 
   const state = {
     initialized: false,
     activeSubTab: 'birds',
+    activeBirdView: 'overview',
+    selectedBirdId: '',
+    birdSearch: '',
     birdsLoaded: false,
     birdsLoading: false,
     birdsError: '',
+    birdsSource: '',
     birds: [],
     families: [],
     sightings: loadSightings(),
@@ -66,6 +77,44 @@
     localStorage.setItem(BIRD_SIGHTINGS_KEY, JSON.stringify(state.sightings || {}));
   }
 
+  function saveBirdCache(dataset, source) {
+    const payload = {
+      birds: dataset.birds || [],
+      families: dataset.families || [],
+      source: source || 'cache',
+      cachedAt: new Date().toISOString()
+    };
+    localStorage.setItem(BIRD_CACHE_KEY, JSON.stringify(payload));
+  }
+
+  function loadBirdCache() {
+    const cached = safeJsonParse(localStorage.getItem(BIRD_CACHE_KEY), null);
+    if (!cached || !Array.isArray(cached.birds) || !Array.isArray(cached.families)) return null;
+    return cached;
+  }
+
+  function encodeGraphPath(filePath) {
+    return String(filePath || '')
+      .split('/')
+      .filter(Boolean)
+      .map((part) => encodeURIComponent(part))
+      .join('/');
+  }
+
+  async function fetchGraphJson(url) {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Graph request failed (${response.status})`);
+    }
+    return response.json().catch(() => ({}));
+  }
+
   function getCurrentSeason() {
     const month = new Date().getMonth() + 1;
     if (month === 12 || month <= 2) return 'winter';
@@ -75,8 +124,7 @@
   }
 
   function getCurrentQuarterStart(date) {
-    const month = date.getMonth();
-    const quarterStartMonth = Math.floor(month / 3) * 3;
+    const quarterStartMonth = Math.floor(date.getMonth() / 3) * 3;
     return new Date(date.getFullYear(), quarterStartMonth, 1, 0, 0, 0, 0);
   }
 
@@ -107,17 +155,11 @@
     const lower = norm(raw);
     let key = 'common';
 
-    if (lower.includes('extremely rare')) {
-      key = 'extremelyRare';
-    } else if (lower.includes('very rare')) {
-      key = 'veryRare';
-    } else if (lower.includes('rare')) {
-      key = 'rare';
-    } else if (lower.includes('uncommon')) {
-      key = 'uncommon';
-    } else if (lower.includes('regular')) {
-      key = 'regular';
-    }
+    if (lower.includes('extremely rare')) key = 'extremelyRare';
+    else if (lower.includes('very rare')) key = 'veryRare';
+    else if (lower.includes('rare')) key = 'rare';
+    else if (lower.includes('uncommon')) key = 'uncommon';
+    else if (lower.includes('regular')) key = 'regular';
 
     const flags = [];
     ['introduced', 'escapee', 'vagrant', 'mountains', 'coastal', 'domestic'].forEach((flag) => {
@@ -159,35 +201,40 @@
       tokens.add('winter');
     }
 
-    const displayTokens = Object.keys(SEASON_META).filter((token) => tokens.has(token));
+    const orderedTokens = Object.keys(SEASON_META).filter((token) => tokens.has(token));
     return {
       raw,
-      tokens: displayTokens,
+      tokens: orderedTokens,
       isAvailableNow: tokens.has(getCurrentSeason())
     };
   }
 
-  function parseBirdData(tsvText) {
-    const rows = String(tsvText || '')
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-
-    if (rows.length <= 1) {
-      return { birds: [], families: [] };
+  function pickField(details, aliases) {
+    const detailsKeys = Object.keys(details || {});
+    for (let i = 0; i < aliases.length; i += 1) {
+      const alias = aliases[i];
+      const matchedKey = detailsKeys.find((key) => norm(key) === norm(alias));
+      if (matchedKey && String(details[matchedKey] || '').trim()) {
+        return String(details[matchedKey] || '').trim();
+      }
     }
+    return '';
+  }
 
+  function buildDatasetFromRecords(records) {
     const speciesMap = new Map();
     const familyLabelMap = new Map();
 
-    rows.slice(1).forEach((line) => {
-      const [familyLabel, genusLabel, speciesName, seasonsFound, rarityText] = line.split('\t');
+    records.forEach((record) => {
+      const familyLabel = String(record.family || '').trim();
+      const genusLabel = String(record.genus || '').trim();
+      const speciesName = String(record.species || '').trim();
       if (!familyLabel || !genusLabel || !speciesName) return;
 
       const familyKey = getCanonicalGroupKey(familyLabel);
       const speciesKey = getSpeciesKey(speciesName);
-      const rarity = normalizeRarity(rarityText);
-      const seasons = normalizeSeasons(seasonsFound);
+      const rarity = normalizeRarity(record.rarity || 'Common');
+      const seasons = normalizeSeasons(record.seasons || 'All seasons');
 
       familyLabelMap.set(familyKey, getDisplayLabel(familyLabel, familyLabelMap.get(familyKey) || ''));
 
@@ -199,11 +246,15 @@
         seasons.tokens.forEach((token) => {
           if (!existing.seasons.tokens.includes(token)) existing.seasons.tokens.push(token);
         });
+        existing.seasons.tokens.sort((a, b) => Object.keys(SEASON_META).indexOf(a) - Object.keys(SEASON_META).indexOf(b));
         existing.seasons.isAvailableNow = existing.seasons.tokens.includes(getCurrentSeason());
-        if (rarity.weight > existing.rarity.weight) {
-          existing.rarity = rarity;
-        }
+        if (rarity.weight > existing.rarity.weight) existing.rarity = rarity;
         existing.rarityNotes = Array.from(new Set(existing.rarityNotes.concat(rarity.flags)));
+        Object.entries(record.details || {}).forEach(([key, value]) => {
+          if (!existing.details[key] && String(value || '').trim()) {
+            existing.details[key] = String(value || '').trim();
+          }
+        });
         return;
       }
 
@@ -215,19 +266,12 @@
         speciesName,
         seasons,
         rarity,
-        rarityNotes: Array.from(rarity.flags)
+        rarityNotes: Array.from(rarity.flags),
+        details: { ...(record.details || {}) }
       });
     });
 
     const birds = Array.from(speciesMap.values())
-      .map((bird) => ({
-        ...bird,
-        seasons: {
-          ...bird.seasons,
-          tokens: bird.seasons.tokens.sort((a, b) => Object.keys(SEASON_META).indexOf(a) - Object.keys(SEASON_META).indexOf(b)),
-          isAvailableNow: bird.seasons.tokens.includes(getCurrentSeason())
-        }
-      }))
       .sort((a, b) => {
         if (a.familyLabel !== b.familyLabel) return a.familyLabel.localeCompare(b.familyLabel);
         return a.speciesName.localeCompare(b.speciesName);
@@ -255,6 +299,133 @@
     return { birds, families };
   }
 
+  function parseBirdData(tsvText) {
+    const lines = String(tsvText || '')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const rows = [];
+    lines.slice(1).forEach((line) => {
+      const [family, genus, species, seasons, rarity] = line.split('\t');
+      if (!family || !genus || !species) return;
+      rows.push({
+        family,
+        genus,
+        species,
+        seasons,
+        rarity,
+        details: {
+          'Family (English)': family,
+          'Genus (English)': genus,
+          'Species (English)': species,
+          'Seasons Found': seasons,
+          'Rare or Common': rarity
+        }
+      });
+    });
+
+    return buildDatasetFromRecords(rows);
+  }
+
+  function parseBirdDataFromExcelRows(columns, rows) {
+    const columnNamesByIndex = {};
+    (columns || []).forEach((column, index) => {
+      const idx = Number.isInteger(column.index) ? column.index : index;
+      columnNamesByIndex[idx] = String(column.name || `Column ${idx + 1}`);
+    });
+
+    const normalizedRows = [];
+
+    (rows || []).forEach((row) => {
+      const values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
+      const details = {};
+      values.forEach((value, index) => {
+        const key = columnNamesByIndex[index] || `Column ${index + 1}`;
+        details[key] = String(value == null ? '' : value).trim();
+      });
+
+      const family = pickField(details, ['Family (English)', 'Family']);
+      const genus = pickField(details, ['Genus (English)', 'Genus']);
+      const species = pickField(details, ['Species (English)', 'Species', 'Bird Species']);
+      const seasons = pickField(details, ['Seasons Found', 'Season', 'Seasons']);
+      const rarity = pickField(details, ['Rare or Common', 'Rarity', 'Commonality']);
+
+      if (!family || !genus || !species) return;
+
+      normalizedRows.push({
+        family,
+        genus,
+        species,
+        seasons: seasons || 'All seasons',
+        rarity: rarity || 'Common',
+        details
+      });
+    });
+
+    return buildDatasetFromRecords(normalizedRows);
+  }
+
+  function getBirdFileCandidates() {
+    const configured = window.natureBirdTableConfig && window.natureBirdTableConfig.filePath
+      ? [String(window.natureBirdTableConfig.filePath)]
+      : [];
+
+    return Array.from(new Set(configured.concat(EXCEL_FILE_CANDIDATES)));
+  }
+
+  async function loadBirdDataFromExcel() {
+    if (!window.accessToken) {
+      throw new Error('Excel source unavailable: you are not signed in.');
+    }
+
+    const tableName = window.natureBirdTableConfig?.tableName || EXCEL_TABLE_NAME;
+    const fileCandidates = getBirdFileCandidates();
+    const errors = [];
+
+    for (let i = 0; i < fileCandidates.length; i += 1) {
+      const filePath = fileCandidates[i];
+      const encodedPath = encodeGraphPath(filePath);
+      const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}`;
+
+      try {
+        const columnsPayload = await fetchGraphJson(`${baseUrl}/columns?$select=name,index`);
+        const rowsPayload = await fetchGraphJson(`${baseUrl}/rows?$top=5000`);
+
+        const dataset = parseBirdDataFromExcelRows(columnsPayload.value || [], rowsPayload.value || []);
+        return {
+          dataset,
+          source: `Excel table '${tableName}' in ${filePath}`
+        };
+      } catch (error) {
+        errors.push(`${filePath}: ${error && error.message ? error.message : 'Failed to read birds table.'}`);
+      }
+    }
+
+    throw new Error(errors.join(' | '));
+  }
+
+  async function loadBirdDataFromTsv(forceRefresh) {
+    const response = await fetch(BIRD_DATA_URL, { cache: forceRefresh ? 'reload' : 'default' });
+    if (!response.ok) {
+      throw new Error(`Unable to load local bird dataset (${response.status}).`);
+    }
+
+    return {
+      dataset: parseBirdData(await response.text()),
+      source: `Local dataset (${BIRD_DATA_URL})`
+    };
+  }
+
+  function applyBirdDataset(datasetResult) {
+    state.birds = datasetResult.dataset.birds;
+    state.families = datasetResult.dataset.families;
+    state.birdsLoaded = true;
+    state.birdsSource = datasetResult.source;
+    state.lastLoadedAt = new Date().toISOString();
+    saveBirdCache(datasetResult.dataset, datasetResult.source);
+  }
+
   async function loadBirdDataset(forceRefresh) {
     if (state.birdsLoading) return;
     if (state.birdsLoaded && !forceRefresh) return;
@@ -263,26 +434,50 @@
     state.birdsError = '';
     renderBirdHeaderStatus();
 
+    const errors = [];
+
     try {
-      const response = await fetch(BIRD_DATA_URL, { cache: forceRefresh ? 'reload' : 'default' });
-      if (!response.ok) {
-        throw new Error(`Unable to load bird dataset (${response.status})`);
+      try {
+        const excelResult = await loadBirdDataFromExcel();
+        applyBirdDataset(excelResult);
+      } catch (excelError) {
+        errors.push(excelError && excelError.message ? excelError.message : 'Excel birds source unavailable.');
+        const tsvResult = await loadBirdDataFromTsv(forceRefresh);
+        applyBirdDataset(tsvResult);
       }
 
-      const dataset = parseBirdData(await response.text());
-      state.birds = dataset.birds;
-      state.families = dataset.families;
-      state.birdsLoaded = true;
-      state.lastLoadedAt = new Date().toISOString();
+      if (state.activeBirdView === 'detail' && !findBirdById(state.selectedBirdId)) {
+        state.selectedBirdId = '';
+        state.activeBirdView = 'explorer';
+      }
+
       renderBirds();
     } catch (error) {
-      state.birdsError = error && error.message ? error.message : 'Unable to load bird data.';
-      renderBirdHeaderStatus();
-      renderBirdError();
+      errors.push(error && error.message ? error.message : 'Unable to load birds data.');
+      const cached = loadBirdCache();
+
+      if (cached) {
+        state.birds = cached.birds;
+        state.families = cached.families;
+        state.birdsLoaded = true;
+        state.birdsSource = `Cached dataset (${cached.source || 'local cache'})`;
+        state.lastLoadedAt = cached.cachedAt || new Date().toISOString();
+        state.birdsError = `Live sources unavailable. Using cached bird data. ${errors.join(' | ')}`;
+        renderBirds();
+      } else {
+        state.birdsError = errors.join(' | ');
+        renderBirdHeaderStatus();
+        renderBirdError();
+      }
     } finally {
       state.birdsLoading = false;
       renderBirdHeaderStatus();
     }
+  }
+
+  function findBirdById(birdId) {
+    if (!birdId) return null;
+    return state.birds.find((bird) => bird.id === birdId) || null;
   }
 
   function isBirdSighted(bird) {
@@ -348,9 +543,6 @@
       };
     });
 
-    const familiesStarted = familyProgress.filter((family) => family.started).length;
-    const familiesCompleted = familyProgress.filter((family) => family.completed).length;
-
     return {
       currentSeason,
       currentSeasonLabel: SEASON_META[currentSeason].label,
@@ -362,91 +554,26 @@
       commonSightedCount: commonSightedBirds.length,
       inSeasonCount: inSeasonBirds.length,
       inSeasonSightedCount: inSeasonSightedBirds.length,
-      familiesStarted,
-      familiesCompleted,
+      familiesStarted: familyProgress.filter((family) => family.started).length,
+      familiesCompleted: familyProgress.filter((family) => family.completed).length,
       weeklySightedCount: weeklySighted.length,
       monthlySightedCount: monthlySighted.length,
       quarterlySightedCount: quarterlySighted.length,
       yearlySightedCount: yearlySighted.length,
-      familyProgress,
-      sightedBirds
+      familyProgress
     };
   }
 
   function getBirdChallenges(stats) {
     return [
-      {
-        id: 'weekly-wings',
-        icon: '📅',
-        title: 'Weekly Wings',
-        description: 'Log fresh bird species this week.',
-        progress: stats.weeklySightedCount,
-        goal: 3,
-        emphasis: 'time'
-      },
-      {
-        id: 'monthly-milestone',
-        icon: '🗓️',
-        title: 'Monthly Milestone',
-        description: 'Build steady momentum across the month.',
-        progress: stats.monthlySightedCount,
-        goal: 10,
-        emphasis: 'time'
-      },
-      {
-        id: 'quarterly-flight-plan',
-        icon: '🧭',
-        title: 'Quarterly Flight Plan',
-        description: 'Keep your seasonal list moving this quarter.',
-        progress: stats.quarterlySightedCount,
-        goal: 25,
-        emphasis: 'time'
-      },
-      {
-        id: 'lifetime-lister',
-        icon: '🪶',
-        title: 'Lifetime Lister',
-        description: 'Grow your all-time bird checklist.',
-        progress: stats.totalSighted,
-        goal: 100,
-        emphasis: 'all-time'
-      },
-      {
-        id: 'seasonal-sweep',
-        icon: SEASON_META[stats.currentSeason].icon,
-        title: `${stats.currentSeasonLabel} Sweep`,
-        description: `Mark birds that are available in ${stats.currentSeason.toLowerCase()} right now.`,
-        progress: stats.inSeasonSightedCount,
-        goal: 15,
-        emphasis: 'seasonal'
-      },
-      {
-        id: 'rare-radar',
-        icon: '💎',
-        title: 'Rare Radar',
-        description: 'Find rare, very rare, or extremely rare species.',
-        progress: stats.rareSightedCount,
-        goal: 5,
-        emphasis: 'rarity'
-      },
-      {
-        id: 'family-forager',
-        icon: '🪺',
-        title: 'Family Forager',
-        description: 'Get at least one sighting in different bird families.',
-        progress: stats.familiesStarted,
-        goal: 12,
-        emphasis: 'families'
-      },
-      {
-        id: 'migration-mapper',
-        icon: '🛫',
-        title: 'Migration Mapper',
-        description: 'Track birds that show up during migration windows.',
-        progress: stats.migrationSightedCount,
-        goal: 8,
-        emphasis: 'migration'
-      }
+      { icon: 'Weekly', title: 'Weekly Wings', description: 'Log fresh bird species this week.', progress: stats.weeklySightedCount, goal: 3 },
+      { icon: 'Monthly', title: 'Monthly Milestone', description: 'Build steady momentum across the month.', progress: stats.monthlySightedCount, goal: 10 },
+      { icon: 'Quarterly', title: 'Quarterly Flight Plan', description: 'Keep your seasonal list moving this quarter.', progress: stats.quarterlySightedCount, goal: 25 },
+      { icon: 'All Time', title: 'Lifetime Lister', description: 'Grow your all-time bird checklist.', progress: stats.totalSighted, goal: 100 },
+      { icon: stats.currentSeasonLabel, title: `${stats.currentSeasonLabel} Sweep`, description: `Mark birds that are available in ${stats.currentSeason.toLowerCase()} right now.`, progress: stats.inSeasonSightedCount, goal: 15 },
+      { icon: 'Rare', title: 'Rare Radar', description: 'Find rare, very rare, or extremely rare species.', progress: stats.rareSightedCount, goal: 5 },
+      { icon: 'Families', title: 'Family Forager', description: 'Get at least one sighting in different bird families.', progress: stats.familiesStarted, goal: 12 },
+      { icon: 'Migration', title: 'Migration Mapper', description: 'Track birds that show up during migration windows.', progress: stats.migrationSightedCount, goal: 8 }
     ].map((challenge) => ({
       ...challenge,
       completed: challenge.progress >= challenge.goal,
@@ -455,80 +582,18 @@
   }
 
   function getBirdBadges(stats) {
-    return [
-      {
-        id: 'first-feather',
-        icon: '🐣',
-        title: 'First Feather',
-        description: 'Mark your first bird species as sighted.',
-        rarity: 'common',
-        progress: stats.totalSighted,
-        goal: 1
-      },
-      {
-        id: 'common-core',
-        icon: '🌿',
-        title: 'Common Core',
-        description: 'Build a strong base with common species.',
-        rarity: 'common',
-        progress: stats.commonSightedCount,
-        goal: 25
-      },
-      {
-        id: 'rare-find',
-        icon: '🔭',
-        title: 'Rare Find',
-        description: 'Spot five rare-or-better birds.',
-        rarity: 'rare',
-        progress: stats.rareSightedCount,
-        goal: 5
-      },
-      {
-        id: 'migration-mapper-badge',
-        icon: '🗺️',
-        title: 'Migration Mapper',
-        description: 'Log species associated with migration seasons.',
-        rarity: 'rare',
-        progress: stats.migrationSightedCount,
-        goal: 10
-      },
-      {
-        id: 'seasonal-spotter',
-        icon: SEASON_META[stats.currentSeason].icon,
-        title: `${stats.currentSeasonLabel} Spotter`,
-        description: `Track birds that are available during ${stats.currentSeason.toLowerCase()}.`,
-        rarity: 'epic',
-        progress: stats.inSeasonSightedCount,
-        goal: 20
-      },
-      {
-        id: 'family-finisher',
-        icon: '🏷️',
-        title: 'Family Finisher',
-        description: 'Completely finish one family card.',
-        rarity: 'epic',
-        progress: stats.familiesCompleted,
-        goal: 1
-      },
-      {
-        id: 'legendary-lister',
-        icon: '🏆',
-        title: 'Legendary Lister',
-        description: 'Reach 100 total bird species sighted.',
-        rarity: 'legendary',
-        progress: stats.totalSighted,
-        goal: 100
-      },
-      {
-        id: 'ultra-rarity',
-        icon: '✨',
-        title: 'Ultra-Rarity',
-        description: 'Sight at least one very rare or extremely rare bird.',
-        rarity: 'legendary',
-        progress: stats.veryRareSightedCount,
-        goal: 1
-      }
-    ].map((badge) => {
+    const badges = [
+      { icon: 'First', title: 'First Feather', description: 'Mark your first bird species as sighted.', rarity: 'common', progress: stats.totalSighted, goal: 1 },
+      { icon: 'Common', title: 'Common Core', description: 'Build a strong base with common species.', rarity: 'common', progress: stats.commonSightedCount, goal: 25 },
+      { icon: 'Rare', title: 'Rare Find', description: 'Spot five rare-or-better birds.', rarity: 'rare', progress: stats.rareSightedCount, goal: 5 },
+      { icon: 'Migration', title: 'Migration Mapper', description: 'Log species associated with migration seasons.', rarity: 'rare', progress: stats.migrationSightedCount, goal: 10 },
+      { icon: stats.currentSeasonLabel, title: `${stats.currentSeasonLabel} Spotter`, description: `Track birds available during ${stats.currentSeason.toLowerCase()}.`, rarity: 'epic', progress: stats.inSeasonSightedCount, goal: 20 },
+      { icon: 'Family', title: 'Family Finisher', description: 'Completely finish one family list.', rarity: 'epic', progress: stats.familiesCompleted, goal: 1 },
+      { icon: 'Legend', title: 'Legendary Lister', description: 'Reach 100 total bird species sighted.', rarity: 'legendary', progress: stats.totalSighted, goal: 100 },
+      { icon: 'Ultra', title: 'Ultra-Rarity', description: 'Sight at least one very rare or extremely rare bird.', rarity: 'legendary', progress: stats.veryRareSightedCount, goal: 1 }
+    ];
+
+    return badges.map((badge) => {
       const rarityClass = badge.rarity === 'legendary'
         ? 'badge-rarity-legendary'
         : badge.rarity === 'epic'
@@ -555,11 +620,11 @@
 
     if (state.birdsLoading) {
       syncBadge.textContent = 'Bird data: loading...';
-      syncMeta.textContent = 'Refreshing bird families, seasons, and rarity...';
+      syncMeta.textContent = 'Refreshing bird species source...';
       return;
     }
 
-    if (state.birdsError) {
+    if (state.birdsError && !state.birdsLoaded) {
       syncBadge.classList.add('warn');
       syncBadge.textContent = 'Bird data: unavailable';
       syncMeta.textContent = state.birdsError;
@@ -572,9 +637,12 @@
       return;
     }
 
-    syncBadge.classList.add('ok');
-    syncBadge.textContent = 'Bird data: ready';
-    syncMeta.textContent = `${state.birds.length} unique species • ${state.families.length} families • Updated ${new Date(state.lastLoadedAt).toLocaleString()}`;
+    syncBadge.classList.add(state.birdsError ? 'warn' : 'ok');
+    syncBadge.textContent = state.birdsError ? 'Bird data: fallback in use' : 'Bird data: ready';
+    const source = state.birdsSource ? `Source: ${state.birdsSource}` : 'Source: unknown';
+    const updated = state.lastLoadedAt ? new Date(state.lastLoadedAt).toLocaleString() : '--';
+    const warning = state.birdsError ? ` | ${state.birdsError}` : '';
+    syncMeta.textContent = `${state.birds.length} species | ${source} | Updated ${updated}${warning}`;
   }
 
   function renderBirdLegend(stats) {
@@ -585,107 +653,43 @@
       <div class="nature-legend-card">
         <div class="nature-legend-title">Rarity markers</div>
         <div class="nature-chip-row nature-chip-row--wrap">
-          ${Object.values(RARITY_META).map((rarity) => `
-            <span class="nature-chip ${rarity.className}">${escapeHtml(rarity.label)}</span>
-          `).join('')}
+          ${Object.values(RARITY_META).map((rarity) => `<span class="nature-chip ${rarity.className}">${escapeHtml(rarity.label)}</span>`).join('')}
         </div>
       </div>
       <div class="nature-legend-card">
         <div class="nature-legend-title">Season markers</div>
         <div class="nature-chip-row nature-chip-row--wrap">
-          ${Object.entries(SEASON_META).map(([key, season]) => `
-            <span class="nature-chip ${season.className} ${key === stats.currentSeason ? 'is-current' : ''}">${season.icon} ${escapeHtml(season.label)}</span>
-          `).join('')}
+          ${Object.entries(SEASON_META).map(([key, season]) => `<span class="nature-chip ${season.className} ${key === stats.currentSeason ? 'is-current' : ''}">${escapeHtml(season.label)}</span>`).join('')}
         </div>
       </div>
       <div class="nature-legend-card">
-        <div class="nature-legend-title">What the birds tab tracks</div>
-        <div class="nature-legend-copy">
-          Challenges and badges now use <strong>rarity</strong>, <strong>seasonal availability</strong>, and <strong>when you marked a bird as sighted</strong> for weekly, monthly, quarterly, and lifetime progress.
-        </div>
+        <div class="nature-legend-title">Explorer flow</div>
+        <div class="nature-legend-copy">Use <strong>Explore Bird Species</strong> to browse searchable species cards, then open a species detail page with all available fields from your bird records.</div>
       </div>
     `;
   }
 
   function renderBirdStats(stats) {
-    const totalSighted = document.getElementById('birdsTotalSighted');
-    const totalSpecies = document.getElementById('birdsTotalSpecies');
-    const inSeason = document.getElementById('birdsInSeasonSighted');
-    const rareSighted = document.getElementById('birdsRareSighted');
-    const familiesCompleted = document.getElementById('birdsFamiliesCompleted');
-    const migrationSighted = document.getElementById('birdsMigrationSighted');
+    const setText = (id, value) => {
+      const element = document.getElementById(id);
+      if (element) element.textContent = String(value);
+    };
+
+    setText('birdsTotalSighted', stats.totalSighted);
+    setText('birdsTotalSpecies', stats.totalBirds);
+    setText('birdsInSeasonSighted', stats.inSeasonSightedCount);
+    setText('birdsRareSighted', stats.rareSightedCount);
+    setText('birdsFamiliesCompleted', stats.familiesCompleted);
+    setText('birdsMigrationSighted', stats.migrationSightedCount);
+
     const snapshot = document.getElementById('birdsProgressSnapshot');
-
-    if (totalSighted) totalSighted.textContent = String(stats.totalSighted);
-    if (totalSpecies) totalSpecies.textContent = String(stats.totalBirds);
-    if (inSeason) inSeason.textContent = String(stats.inSeasonSightedCount);
-    if (rareSighted) rareSighted.textContent = String(stats.rareSightedCount);
-    if (familiesCompleted) familiesCompleted.textContent = String(stats.familiesCompleted);
-    if (migrationSighted) migrationSighted.textContent = String(stats.migrationSightedCount);
-
     if (snapshot) {
       snapshot.innerHTML = `
         <strong>${escapeHtml(stats.currentSeasonLabel)} focus:</strong>
-        ${stats.inSeasonSightedCount} of ${stats.inSeasonCount} currently available species marked sighted •
-        ${stats.weeklySightedCount} logged this week •
-        ${stats.monthlySightedCount} this month •
-        ${stats.quarterlySightedCount} this quarter •
-        ${stats.yearlySightedCount} this year.
+        ${stats.inSeasonSightedCount} of ${stats.inSeasonCount} currently available species marked sighted | 
+        ${stats.weeklySightedCount} this week | ${stats.monthlySightedCount} this month | ${stats.quarterlySightedCount} this quarter | ${stats.yearlySightedCount} this year.
       `;
     }
-  }
-
-  function renderBirdFamilies(stats) {
-    const container = document.getElementById('birdsFamilyGrid');
-    if (!container) return;
-
-    const families = stats.familyProgress
-      .slice()
-      .sort((a, b) => {
-        if (b.sightedCount !== a.sightedCount) return b.sightedCount - a.sightedCount;
-        return a.label.localeCompare(b.label);
-      });
-
-    container.innerHTML = families.map((family) => `
-      <div class="nature-family-card ${family.completed ? 'is-complete' : ''}">
-        <div class="nature-family-card-header">
-          <div>
-            <div class="nature-family-card-title">🏷️ ${escapeHtml(family.label)}</div>
-            <div class="nature-family-card-meta">${family.sightedCount}/${family.species.length} sighted • ${family.completed ? 'Family complete' : family.started ? 'In progress' : 'Not started'}</div>
-          </div>
-          <div class="nature-family-card-count">${family.completionPct}%</div>
-        </div>
-        <div class="nature-progress-track">
-          <div class="nature-progress-fill" style="width:${family.completionPct}%;"></div>
-        </div>
-        <div class="nature-family-card-body">
-          ${family.species.map((bird) => {
-            const sighted = isBirdSighted(bird);
-            const seasonChips = bird.seasons.tokens.map((seasonKey) => {
-              const season = SEASON_META[seasonKey];
-              const currentClass = seasonKey === stats.currentSeason ? 'is-current' : '';
-              return `<span class="nature-chip ${season.className} ${currentClass}">${season.icon} ${escapeHtml(season.label)}</span>`;
-            }).join('');
-
-            const rarityNoteChips = bird.rarityNotes.map((note) => `<span class="nature-chip nature-chip--note">${escapeHtml(note)}</span>`).join('');
-
-            return `
-              <button type="button" class="nature-species-item ${sighted ? 'sighted' : ''} ${bird.seasons.isAvailableNow ? 'is-current-season' : ''} ${bird.rarity.className}" data-bird-toggle="${escapeHtml(bird.id)}" aria-pressed="${sighted ? 'true' : 'false'}" title="${sighted ? 'Mark as not sighted' : 'Mark as sighted'}">
-                <span class="nature-species-main">
-                  <span class="nature-species-name">${sighted ? '✅' : '⬜️'} ${escapeHtml(bird.speciesName)}</span>
-                  <span class="nature-species-meta">${escapeHtml(bird.genusLabel)} • ${sighted && getSightingDate(bird) ? `Sighted ${escapeHtml(getSightingDate(bird).toLocaleDateString())}` : 'Not sighted yet'}</span>
-                </span>
-                <span class="nature-species-chips">
-                  <span class="nature-chip ${bird.rarity.className}">${escapeHtml(bird.rarity.label)}</span>
-                  ${seasonChips}
-                  ${rarityNoteChips}
-                </span>
-              </button>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    `).join('');
   }
 
   function renderBirdChallenges(challenges) {
@@ -694,7 +698,7 @@
 
     container.innerHTML = challenges.map((challenge) => `
       <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''}">
-        <div class="nature-challenge-card-header">${challenge.icon} ${escapeHtml(challenge.title)}</div>
+        <div class="nature-challenge-card-header">${escapeHtml(challenge.icon)} ${escapeHtml(challenge.title)}</div>
         <div class="nature-challenge-card-description">${escapeHtml(challenge.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${challenge.pct}%;"></div></div>
         <div class="nature-challenge-meta"><span>${challenge.progress}/${challenge.goal}</span><span>${challenge.completed ? 'Complete' : `${challenge.pct}%`}</span></div>
@@ -708,20 +712,152 @@
 
     container.innerHTML = badges.map((badge) => `
       <div class="nature-badge-card ${badge.completed ? 'unlocked' : 'locked'} ${badge.rarityClass}">
-        <div class="nature-badge-icon">${badge.icon}</div>
+        <div class="nature-badge-icon">${escapeHtml(badge.icon)}</div>
         <div class="nature-badge-card-title">${escapeHtml(badge.title)}</div>
         <div class="nature-badge-card-description">${escapeHtml(badge.description)}</div>
         <div class="nature-badge-progress">${badge.progress}/${badge.goal}</div>
-        <div class="nature-progress-track">
-          <div class="nature-progress-fill" style="width:${badge.pct}%;"></div>
-        </div>
+        <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${badge.pct}%;"></div></div>
       </div>
     `).join('');
   }
 
+  function getBirdSearchQuery() {
+    return norm(state.birdSearch);
+  }
+
+  function filterBirdsForExplorer() {
+    const query = getBirdSearchQuery();
+    if (!query) return state.birds.slice();
+
+    return state.birds.filter((bird) => {
+      const searchable = [
+        bird.speciesName,
+        bird.familyLabel,
+        bird.genusLabel,
+        bird.rarity.label,
+        bird.rarity.raw,
+        bird.seasons.raw,
+        bird.seasons.tokens.join(' '),
+        ...Object.values(bird.details || {})
+      ].join(' ');
+
+      return norm(searchable).includes(query);
+    });
+  }
+
+  function renderBirdExplorerList() {
+    const container = document.getElementById('birdsSpeciesCardGrid');
+    const meta = document.getElementById('birdsSpeciesSearchMeta');
+    if (!container || !meta) return;
+
+    if (!state.birdsLoaded) {
+      container.innerHTML = '<div class="nature-empty-state">Bird data is still loading.</div>';
+      meta.textContent = 'Loading birds...';
+      return;
+    }
+
+    const filtered = filterBirdsForExplorer();
+    meta.textContent = `${filtered.length} of ${state.birds.length} species shown`;
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="nature-empty-state">No birds matched your search. Try a different keyword.</div>';
+      return;
+    }
+
+    container.innerHTML = filtered.map((bird) => {
+      const sighted = isBirdSighted(bird);
+      const sightedDate = getSightingDate(bird);
+      const seasonChips = bird.seasons.tokens
+        .map((seasonKey) => `<span class="nature-chip ${SEASON_META[seasonKey].className}">${escapeHtml(SEASON_META[seasonKey].label)}</span>`)
+        .join('');
+
+      return `
+        <div class="adventure-card nature-bird-card ${bird.rarity.className}">
+          <div class="adventure-card-header">
+            <div class="adventure-card-title">${escapeHtml(bird.speciesName)}</div>
+            <div class="adventure-card-location">Family: ${escapeHtml(bird.familyLabel)}</div>
+            <div class="adventure-card-time">Genus: ${escapeHtml(bird.genusLabel)}</div>
+          </div>
+          <div class="adventure-card-body">
+            <div class="nature-chip-row nature-chip-row--wrap">
+              <span class="nature-chip ${bird.rarity.className}">${escapeHtml(bird.rarity.label)}</span>
+              ${seasonChips}
+            </div>
+            <div class="card-subtitle">${sighted ? `Sighted on ${escapeHtml(sightedDate ? sightedDate.toLocaleDateString() : '')}` : 'Not sighted yet'}</div>
+          </div>
+          <div class="adventure-card-footer">
+            <div class="card-action-buttons">
+              <button type="button" class="card-btn card-btn-primary" data-bird-open="${escapeHtml(bird.id)}">Open Details</button>
+              <button type="button" class="card-btn" data-bird-toggle="${escapeHtml(bird.id)}">${sighted ? 'Mark Not Sighted' : 'Mark Sighted'}</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function orderedBirdDetailEntries(bird) {
+    const priority = ['Species (English)', 'Family (English)', 'Genus (English)', 'Seasons Found', 'Rare or Common'];
+
+    const detailEntries = Object.entries(bird.details || {}).filter(([, value]) => String(value || '').trim());
+
+    return detailEntries.sort((a, b) => {
+      const aIndex = priority.findIndex((item) => norm(item) === norm(a[0]));
+      const bIndex = priority.findIndex((item) => norm(item) === norm(b[0]));
+      const av = aIndex === -1 ? 999 : aIndex;
+      const bv = bIndex === -1 ? 999 : bIndex;
+      if (av !== bv) return av - bv;
+      return a[0].localeCompare(b[0]);
+    });
+  }
+
+  function renderBirdDetail() {
+    const container = document.getElementById('birdsSpeciesDetailContent');
+    if (!container) return;
+
+    const bird = findBirdById(state.selectedBirdId);
+    if (!bird) {
+      container.innerHTML = '<div class="card"><div class="nature-empty-state">No bird selected. Go back to the explorer and choose a species card.</div></div>';
+      return;
+    }
+
+    const sighted = isBirdSighted(bird);
+    const sightedDate = getSightingDate(bird);
+    const seasonChips = bird.seasons.tokens
+      .map((seasonKey) => `<span class="nature-chip ${SEASON_META[seasonKey].className}">${escapeHtml(SEASON_META[seasonKey].label)}</span>`)
+      .join('');
+
+    const detailRows = orderedBirdDetailEntries(bird)
+      .map(([key, value]) => `
+        <div class="nature-bird-detail-row">
+          <div class="nature-bird-detail-label">${escapeHtml(key)}</div>
+          <div class="nature-bird-detail-value">${escapeHtml(value)}</div>
+        </div>
+      `)
+      .join('');
+
+    container.innerHTML = `
+      <div class="adventure-card nature-bird-card">
+        <div class="adventure-card-header">
+          <div class="adventure-card-title">${escapeHtml(bird.speciesName)}</div>
+          <div class="adventure-card-location">Family: ${escapeHtml(bird.familyLabel)}</div>
+          <div class="adventure-card-time">Genus: ${escapeHtml(bird.genusLabel)}</div>
+        </div>
+        <div class="adventure-card-body">
+          <div class="nature-chip-row nature-chip-row--wrap">
+            <span class="nature-chip ${bird.rarity.className}">${escapeHtml(bird.rarity.label)}</span>
+            ${seasonChips}
+          </div>
+          <div class="card-subtitle">${sighted ? `Sighted on ${escapeHtml(sightedDate ? sightedDate.toLocaleDateString() : '')}` : 'Not sighted yet'}</div>
+          <button type="button" class="card-btn" data-bird-toggle="${escapeHtml(bird.id)}">${sighted ? 'Mark Not Sighted' : 'Mark Sighted'}</button>
+          <div class="nature-bird-detail-list">${detailRows}</div>
+        </div>
+      </div>
+    `;
+  }
+
   function renderBirdError() {
-    const targets = ['birdsFamilyGrid', 'birdsChallengeGrid', 'birdsBadgeGrid'];
-    targets.forEach((id) => {
+    ['birdsChallengeGrid', 'birdsBadgeGrid', 'birdsSpeciesCardGrid', 'birdsSpeciesDetailContent'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         el.innerHTML = `<div class="nature-empty-state">${escapeHtml(state.birdsError || 'Bird data could not be loaded.')}</div>`;
@@ -735,9 +871,10 @@
     renderBirdHeaderStatus();
     renderBirdStats(stats);
     renderBirdLegend(stats);
-    renderBirdFamilies(stats);
     renderBirdChallenges(getBirdChallenges(stats));
     renderBirdBadges(getBirdBadges(stats));
+    renderBirdExplorerList();
+    renderBirdDetail();
   }
 
   function renderPlaceholderSubTabs() {
@@ -784,24 +921,52 @@
     announcer.textContent = `${button ? button.textContent.trim() : state.activeSubTab} section active`;
   }
 
+  function syncBirdViews(root) {
+    if (!root) return;
+
+    root.querySelectorAll('[data-birds-view]').forEach((viewPane) => {
+      const viewKey = viewPane.getAttribute('data-birds-view');
+      const isActive = viewKey === state.activeBirdView;
+      viewPane.classList.toggle('is-active', isActive);
+      viewPane.hidden = !isActive;
+      viewPane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    });
+  }
+
+  function setBirdView(root, viewKey) {
+    state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
+    syncBirdViews(root);
+    if (state.activeBirdView === 'explorer') renderBirdExplorerList();
+    if (state.activeBirdView === 'detail') renderBirdDetail();
+  }
+
   function setActiveNatureSubTab(root, key) {
     state.activeSubTab = SUBTAB_KEYS.includes(key) ? key : 'birds';
     syncNatureSubTabs(root);
     announceNatureSubTab(root);
+
+    if (state.activeSubTab !== 'birds') {
+      state.activeBirdView = 'overview';
+      state.selectedBirdId = '';
+      state.birdSearch = '';
+    }
+
+    syncBirdViews(root);
   }
 
   function toggleBirdSighting(birdId) {
-    if (!birdId) return;
+    const bird = findBirdById(birdId);
+    if (!bird) return;
 
-    if (state.sightings[birdId]) {
-      delete state.sightings[birdId];
+    if (state.sightings[bird.id]) {
+      delete state.sightings[bird.id];
       if (typeof window.showToast === 'function') {
         window.showToast('Bird removed from sightings', 'info', 2000);
       }
     } else {
-      state.sightings[birdId] = { sightedAt: new Date().toISOString() };
+      state.sightings[bird.id] = { sightedAt: new Date().toISOString() };
       if (typeof window.showToast === 'function') {
-        window.showToast('Bird marked as sighted', 'success', 2000);
+        window.showToast(`Sighted: ${bird.speciesName}`, 'success', 2000);
       }
     }
 
@@ -820,10 +985,16 @@
         return;
       }
 
-      const birdToggle = event.target.closest('[data-bird-toggle]');
-      if (birdToggle) {
-        toggleBirdSighting(birdToggle.getAttribute('data-bird-toggle'));
+      const toggleButton = event.target.closest('[data-bird-toggle]');
+      if (toggleButton) {
+        toggleBirdSighting(toggleButton.getAttribute('data-bird-toggle'));
         return;
+      }
+
+      const openButton = event.target.closest('[data-bird-open]');
+      if (openButton) {
+        state.selectedBirdId = openButton.getAttribute('data-bird-open') || '';
+        setBirdView(root, 'detail');
       }
     });
 
@@ -831,6 +1002,33 @@
     if (refreshButton && refreshButton.dataset.natureRefreshBound !== '1') {
       refreshButton.dataset.natureRefreshBound = '1';
       refreshButton.addEventListener('click', () => loadBirdDataset(true));
+    }
+
+    const exploreButton = document.getElementById('birdsExploreBtn');
+    if (exploreButton && exploreButton.dataset.natureExploreBound !== '1') {
+      exploreButton.dataset.natureExploreBound = '1';
+      exploreButton.addEventListener('click', () => setBirdView(root, 'explorer'));
+    }
+
+    const explorerBackButton = document.getElementById('birdsExplorerBackBtn');
+    if (explorerBackButton && explorerBackButton.dataset.natureExplorerBackBound !== '1') {
+      explorerBackButton.dataset.natureExplorerBackBound = '1';
+      explorerBackButton.addEventListener('click', () => setBirdView(root, 'overview'));
+    }
+
+    const detailBackButton = document.getElementById('birdsDetailBackBtn');
+    if (detailBackButton && detailBackButton.dataset.natureDetailBackBound !== '1') {
+      detailBackButton.dataset.natureDetailBackBound = '1';
+      detailBackButton.addEventListener('click', () => setBirdView(root, 'explorer'));
+    }
+
+    const searchInput = document.getElementById('birdsSpeciesSearchInput');
+    if (searchInput && searchInput.dataset.natureSearchBound !== '1') {
+      searchInput.dataset.natureSearchBound = '1';
+      searchInput.addEventListener('input', () => {
+        state.birdSearch = searchInput.value || '';
+        renderBirdExplorerList();
+      });
     }
   }
 
@@ -841,11 +1039,12 @@
     bindNatureControls(root);
     renderPlaceholderSubTabs();
     setActiveNatureSubTab(root, state.activeSubTab || 'birds');
+    setBirdView(root, state.activeBirdView || 'overview');
     renderBirdHeaderStatus();
     loadBirdDataset(false);
 
     if (!state.initialized) {
-      console.log('✅ Nature Challenge tab initialized');
+      console.log('Nature Challenge tab initialized');
       state.initialized = true;
     }
   }
