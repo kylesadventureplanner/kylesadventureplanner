@@ -25,7 +25,7 @@
     <div class="nature-birds-view is-active" data-birds-view="overview">
       <div id="birdsUndoPrompt" class="nature-undo-prompt" aria-live="polite" hidden>
         <span id="birdsUndoPromptText">Last action available to undo.</span>
-        <button type="button" id="birdsUndoPromptBtn" class="pill-button">Undo</button>
+        <button type="button" id="birdsUndoPromptBtn" class="pill-button" title="Undo the last Birds action" data-tooltip="Undo the last Birds action">Undo</button>
       </div>
 
       <div class="card nature-explore-cta-card" style="margin-top: 18px;">
@@ -35,13 +35,16 @@
             <div class="card-subtitle">Browse your full bird list or open the dedicated sighting log page.</div>
           </div>
           <div class="nature-explore-cta-actions nature-sticky-action-rail">
-            <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--refresh" title="Refresh nature data" data-tooltip="Refresh nature data">
+            <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--refresh" title="Refresh Birds data" data-tooltip="Refresh Birds data">
               Refresh Data
             </button>
-            <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open species explorer" data-tooltip="Open species explorer" aria-current="false">
+            <button id="birdsUndoActionBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--undo" title="No Birds action to undo yet" data-tooltip="No Birds action to undo yet" aria-disabled="true" disabled>
+              ↶ Undo
+            </button>
+            <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open the species explorer" data-tooltip="Open the species explorer" aria-current="false">
               Explore Species
             </button>
-            <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--secondary" title="Open sighting log" data-tooltip="Open sighting log" aria-current="false">
+            <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--secondary" title="Open the sighting log" data-tooltip="Open the sighting log" aria-current="false">
               Log a Sighting
             </button>
           </div>
@@ -56,29 +59,33 @@
           </div>
         </div>
         <div id="birdsTodayFocusStrip" class="nature-today-focus-strip" aria-live="polite">
-          <button type="button" class="pill-button" data-birds-overview-jump="daily">Finish a daily micro-challenge</button>
-          <button type="button" class="pill-button" data-birds-overview-jump="quests">Advance your seasonal quest</button>
-          <button type="button" class="pill-button" id="birdsTodayFocusLogBtn">Log one sighting now</button>
+          <button type="button" class="pill-button" data-birds-overview-jump="daily" title="Focus on daily micro-challenges" data-tooltip="Focus on daily micro-challenges">Finish a daily micro-challenge</button>
+          <button type="button" class="pill-button" data-birds-overview-jump="quests" title="Focus on seasonal quests" data-tooltip="Focus on seasonal quests">Advance your seasonal quest</button>
+          <button type="button" class="pill-button" id="birdsTodayFocusLogBtn" title="Open the sighting log" data-tooltip="Open the sighting log">Log one sighting now</button>
         </div>
       </div>
 
-      <div class="card nature-overview-command-card">
-        <div class="nature-overview-command-row">
-          <input id="birdsOverviewCommandInput" class="filter-input" type="text" placeholder="Type a command (e.g., search heron, go badges, log)" aria-label="Birds command bar" aria-describedby="birdsOverviewCommandHelp" list="birdsOverviewCommandSuggestions" />
-          <button type="button" id="birdsOverviewCommandRunBtn" class="pill-button nature-command-btn">Run</button>
-          <button type="button" id="birdsOverviewCommandClearBtn" class="pill-button nature-command-btn" title="Clear command">x</button>
-          <button type="button" id="birdsResetUiBtn" class="pill-button nature-command-btn">Reset Birds UI</button>
-          <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="challenges">Challenges</button>
-          <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="badges">Badges</button>
-          <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="quests">Quests</button>
-          <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="bingo">Bingo</button>
+      <div class="card nature-overview-command-card" role="search" aria-labelledby="birdsOverviewCommandLabel" aria-describedby="birdsOverviewCommandHint birdsOverviewCommandHelp">
+        <div class="nature-command-region-header">
+          <label id="birdsOverviewCommandLabel" class="nature-command-region-label" for="birdsOverviewCommandInput">Birds command bar</label>
+          <div id="birdsOverviewCommandHint" class="nature-command-region-hint">Use short commands to search birds, go to a section, or open the sighting log.</div>
         </div>
-        <div id="birdsOverviewCommandHelp" class="nature-command-help" aria-live="polite">
-          <span class="nature-command-help-label">Try:</span>
+        <div class="nature-overview-command-row">
+          <input id="birdsOverviewCommandInput" class="filter-input" type="text" placeholder="Type a command (e.g., search heron, go badges, log)" aria-label="Birds command bar" title="Type a Birds command such as search heron, go badges, or log" data-tooltip="Type a Birds command such as search heron, go badges, or log" aria-describedby="birdsOverviewCommandHint birdsOverviewCommandHelp" list="birdsOverviewCommandSuggestions" />
+          <button type="button" id="birdsOverviewCommandRunBtn" class="pill-button nature-command-btn" title="Run the current Birds command" data-tooltip="Run the current Birds command">Run</button>
+          <button type="button" id="birdsOverviewCommandClearBtn" class="pill-button nature-command-btn" title="Clear the current Birds command" data-tooltip="Clear the current Birds command" aria-label="Clear the current Birds command">x</button>
+           <button type="button" id="birdsResetUiBtn" class="pill-button nature-command-btn" title="Reset the Birds UI" data-tooltip="Reset the Birds UI">Reset Birds UI</button>
+           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="challenges" title="Go to the Challenges section" data-tooltip="Go to the Challenges section">Challenges</button>
+           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="badges" title="Go to the Badges section" data-tooltip="Go to the Badges section">Badges</button>
+           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="quests" title="Go to the Quests section" data-tooltip="Go to the Quests section">Quests</button>
+           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="bingo" title="Go to the Bingo section" data-tooltip="Go to the Bingo section">Bingo</button>
+        </div>
+         <div id="birdsOverviewCommandHelp" class="nature-command-help" aria-live="polite">
+          <span class="nature-command-help-label">Try commands like:</span>
           <code>search heron</code>
           <code>go badges</code>
           <code>log</code>
-        </div>
+         </div>
         <datalist id="birdsOverviewCommandSuggestions">
           <option value="log"></option>
           <option value="go overview"></option>
@@ -128,7 +135,7 @@
             <div class="nature-stat-label">Streak + Freeze</div>
             <div class="nature-stat-value" id="birdsCurrentStreakStat">0</div>
             <div id="birdsStreakSummary" class="nature-stat-sub">Streak info will appear after bird data loads.</div>
-            <button id="birdsUseFreezeBtn" type="button" class="pill-button nature-inline-freeze-btn">Use Freeze Today</button>
+            <button id="birdsUseFreezeBtn" type="button" class="pill-button nature-inline-freeze-btn" title="Use one streak freeze for today" data-tooltip="Use one streak freeze for today">Use Freeze Today</button>
           </div>
         </div>
         <div id="birdsProgressSnapshot" class="nature-progress-note">Bird progress will update once the birds dataset loads.</div>
@@ -136,28 +143,26 @@
 
       <div class="nature-overview-controls-row">
         <div class="nature-overview-filter-chips" id="birdsOverviewFilterChips">
-          <button type="button" class="nature-chip-filter" data-birds-overview-filter="in-season">In Season</button>
-          <button type="button" class="nature-chip-filter" data-birds-overview-filter="almost-there">Almost There</button>
-          <button type="button" class="nature-chip-filter" data-birds-overview-filter="high-reward">High Reward</button>
-          <button type="button" id="birdsOverviewClearFiltersBtn" class="nature-chip-clear-btn">Clear filters</button>
+          <button type="button" class="nature-chip-filter" data-birds-overview-filter="in-season" title="Filter to in-season species" data-tooltip="Filter to in-season species">In Season</button>
+          <button type="button" class="nature-chip-filter" data-birds-overview-filter="almost-there" title="Filter to nearly complete items" data-tooltip="Filter to nearly complete items">Almost There</button>
+          <button type="button" class="nature-chip-filter" data-birds-overview-filter="high-reward" title="Filter to high-value items" data-tooltip="Filter to high-value items">High Reward</button>
+          <button type="button" id="birdsOverviewClearFiltersBtn" class="nature-chip-clear-btn" title="Clear the overview filters" data-tooltip="Clear the overview filters">Clear filters</button>
         </div>
         <div class="nature-density-toggle-group" role="group" aria-label="Overview density">
-          <button type="button" id="birdsDensityComfortBtn" class="pill-button nature-density-btn is-active" data-birds-density="comfortable">Comfortable</button>
-          <button type="button" id="birdsDensityCompactBtn" class="pill-button nature-density-btn" data-birds-density="compact">Compact</button>
+          <button type="button" id="birdsDensityComfortBtn" class="pill-button nature-density-btn is-active" data-birds-density="comfortable" title="Switch to comfortable spacing" data-tooltip="Switch to comfortable spacing">Comfortable</button>
+          <button type="button" id="birdsDensityCompactBtn" class="pill-button nature-density-btn" data-birds-density="compact" title="Switch to compact spacing" data-tooltip="Switch to compact spacing">Compact</button>
         </div>
-        <button type="button" id="birdsBackToTopBtn" class="pill-button nature-command-btn">Back to top</button>
-        <button type="button" id="birdsToggleCollapsiblesBtn" class="pill-button nature-section-toggle-btn">Expand All</button>
       </div>
       <div id="birdsOverviewFilterAnnouncer" class="nature-sr-only" aria-live="polite" aria-atomic="true"></div>
       <div id="birdsOverviewJumpAnnouncer" class="nature-sr-only" aria-live="polite" aria-atomic="true"></div>
 
-      <div class="card nature-overview-section-card" id="birdsOverviewSectionDaily">
-        <div class="card-header">
-          <div>
-            <div class="card-title" role="heading" aria-level="3">⚡ Daily Micro-Challenges</div>
-            <div class="card-subtitle">Three rotating daily goals for quick momentum.</div>
+        <div class="card nature-overview-section-card" id="birdsOverviewSectionDaily">
+          <div class="card-header">
+            <div>
+              <div class="card-title" role="heading" aria-level="3">⚡ Daily Micro-Challenges</div>
+              <div class="card-subtitle">Three rotating daily goals for quick momentum.</div>
+            </div>
           </div>
-        </div>
         <div id="birdsDailySummary" class="nature-section-summary">Showing daily picks.</div>
         <div id="birdsDailyChallengeGrid" class="nature-challenge-grid"></div>
       </div>
@@ -168,7 +173,10 @@
             <div class="card-title" role="heading" aria-level="3">🎯 Challenges</div>
             <div class="card-subtitle">Complete challenges to earn rewards.</div>
           </div>
-          <button type="button" class="pill-button nature-more-btn" data-birds-more="challenges">More</button>
+          <div class="nature-overview-header-actions">
+            <button type="button" id="birdsChallengesBackToTopBtn" class="pill-button nature-command-btn" data-birds-back-to-top="challenges" title="Go to the top of Birds overview" data-tooltip="Go to the top of Birds overview">↑ Top</button>
+            <button type="button" class="pill-button nature-more-btn" data-birds-more="challenges" title="Open all challenge cards" data-tooltip="Open all challenge cards">More</button>
+          </div>
         </div>
         <div id="birdsChallengesCountBadge" class="nature-section-count-badge">4/10</div>
         <div id="birdsChallengesSummary" class="nature-section-summary">Showing prioritized challenge cards.</div>
@@ -181,7 +189,10 @@
             <div class="card-title" role="heading" aria-level="3">🏅 Badges</div>
             <div class="card-subtitle">Unlock achievements as you progress.</div>
           </div>
-          <button type="button" class="pill-button nature-more-btn" data-birds-more="badges">More</button>
+          <div class="nature-overview-header-actions">
+            <button type="button" id="birdsBadgesBackToTopBtn" class="pill-button nature-command-btn" data-birds-back-to-top="badges" title="Go to the top of Birds overview" data-tooltip="Go to the top of Birds overview">↑ Top</button>
+            <button type="button" class="pill-button nature-more-btn" data-birds-more="badges" title="Open all badge cards" data-tooltip="Open all badge cards">More</button>
+          </div>
         </div>
         <div id="birdsBadgesCountBadge" class="nature-section-count-badge">4/11</div>
         <div id="birdsBadgesSummary" class="nature-section-summary">Showing prioritized badge cards.</div>
@@ -194,7 +205,10 @@
             <div class="card-title" role="heading" aria-level="3">📚 Seasonal Quests</div>
             <div class="card-subtitle">Complete the current season chapter with multi-step goals.</div>
           </div>
-          <button type="button" class="pill-button nature-more-btn" data-birds-more="quests">More</button>
+          <div class="nature-overview-header-actions">
+            <button type="button" id="birdsQuestsBackToTopBtn" class="pill-button nature-command-btn" data-birds-back-to-top="quests" title="Go to the top of Birds overview" data-tooltip="Go to the top of Birds overview">↑ Top</button>
+            <button type="button" class="pill-button nature-more-btn" data-birds-more="quests" title="Open all seasonal quest cards" data-tooltip="Open all seasonal quest cards">More</button>
+          </div>
         </div>
         <div id="birdsQuestsCountBadge" class="nature-section-count-badge">3/4</div>
         <div id="birdsQuestsSummary" class="nature-section-summary">Showing prioritized seasonal quest cards.</div>
@@ -208,22 +222,25 @@
             <div class="card-title" role="heading" aria-level="3">🟩 Birding Bingo</div>
             <div class="card-subtitle">Complete seasonal bingo tiles and reroll once per season.</div>
           </div>
-          <button type="button" class="pill-button nature-more-btn" data-birds-more="bingo">More</button>
+          <div class="nature-overview-header-actions">
+            <button type="button" id="birdsBingoBackToTopBtn" class="pill-button nature-command-btn" data-birds-back-to-top="bingo" title="Go to the top of Birds overview" data-tooltip="Go to the top of Birds overview">↑ Top</button>
+            <button type="button" class="pill-button nature-more-btn" data-birds-more="bingo" title="Open all bingo tiles" data-tooltip="Open all bingo tiles">More</button>
+          </div>
         </div>
         <div id="birdsBingoCountBadge" class="nature-section-count-badge">4/9</div>
         <div id="birdsBingoSummary" class="nature-section-summary">Showing prioritized bingo tiles.</div>
         <div id="birdsBingoMeta" class="nature-progress-note">Bingo board will load with your seasonal progress.</div>
         <div id="birdsBingoGrid" class="nature-badge-grid"></div>
         <div class="nature-log-form-actions">
-          <button id="birdsBingoRefreshBtn" type="button" class="pill-button">Reroll Bingo Card (1/season)</button>
+            <button id="birdsBingoRefreshBtn" type="button" class="pill-button" title="Reroll the bingo card for this season" data-tooltip="Reroll the bingo card for this season">Reroll Bingo Card (1/season)</button>
         </div>
       </div>
 
-      <details id="birdsDiagnosticsDetails" class="card nature-collapsible-card nature-diagnostics-details" data-birds-collapsible>
-        <summary class="nature-collapsible-summary">
+      <details id="birdsDiagnosticsDetails" class="card nature-collapsible-card nature-diagnostics-details" data-birds-collapsible aria-labelledby="birdsDiagnosticsHeading" aria-describedby="birdsDiagnosticsSummaryHelp">
+        <summary class="nature-collapsible-summary" title="Open Birds diagnostics, sync, and clean up tools" data-tooltip="Open Birds diagnostics, sync, and clean up tools">
           <div>
-            <div class="card-title" role="heading" aria-level="3">🧰 Diagnostics, Sync and Clean Up</div>
-            <div class="card-subtitle">Quality tools and local/Excel sync controls.</div>
+            <div id="birdsDiagnosticsHeading" class="card-title" role="heading" aria-level="3">🧰 Diagnostics, Sync and Clean Up</div>
+            <div id="birdsDiagnosticsSummaryHelp" class="card-subtitle">Quality tools and local/Excel sync controls. Expand this section to inspect Birds diagnostics and repair tasks.</div>
           </div>
         </summary>
 
@@ -239,7 +256,7 @@
           </div>
           <div id="birdsSyncStatusPanel"></div>
           <div class="nature-log-form-actions">
-            <button id="birdsSyncNowBtn" type="button" class="pill-button">Sync Now</button>
+            <button id="birdsSyncNowBtn" type="button" class="pill-button" title="Run Excel and local sync now" data-tooltip="Run Excel and local sync now">Sync Now</button>
           </div>
           <div id="birdsSyncConflictsPanel"></div>
         </div>
@@ -250,9 +267,20 @@
             <div class="card-subtitle">Check duplicates, synonym clashes, rarity inconsistencies, and canonical ID stability.</div>
           </div>
           <div class="nature-log-form-actions">
-            <button id="birdsRunDataQualityBtn" type="button" class="pill-button">Run Data Quality Check</button>
+            <button id="birdsRunDataQualityBtn" type="button" class="pill-button" title="Run the Birds data quality check" data-tooltip="Run the Birds data quality check">Run Data Quality Check</button>
           </div>
           <div id="birdsDataQualityPanel"></div>
+        </div>
+
+        <div class="card nature-diagnostics-subcard">
+          <div class="card-header">
+            <div class="card-title">🖱️ Button Click Diagnostics</div>
+            <div class="card-subtitle">Track button interactions and click events for debugging.</div>
+          </div>
+          <div class="nature-log-form-actions">
+            <button id="birdsClearClickDiagnosticsBtn" type="button" class="pill-button" title="Clear Birds click diagnostics" data-tooltip="Clear Birds click diagnostics">Clear Diagnostics</button>
+          </div>
+          <div id="birdsButtonClickDiagnosticsPanel" class="nature-click-diagnostics-panel" aria-live="polite">Loading diagnostics...</div>
         </div>
       </details>
 
@@ -262,7 +290,7 @@
       <div class="card nature-log-view-shell" style="margin-top: 10px;">
         <div class="nature-log-view-header">
           <div class="nature-view-header-row nature-view-header-row--sticky">
-            <button type="button" id="birdsLogBackBtn" class="pill-button nature-back-to-birds-btn">← Back to Birds</button>
+            <button type="button" id="birdsLogBackBtn" class="pill-button nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
             <div>
               <div class="card-title">📝 Log a Sighting</div>
               <div class="card-subtitle">Add full sightings with confidence, evidence, and geography while keeping species status up to date.</div>
@@ -276,39 +304,47 @@
             <div class="card-title">Entry Form</div>
             <div class="card-subtitle">Capture what you saw, where you saw it, and how confident you feel.</div>
             <div class="nature-log-form-grid">
-              <select id="birdsLogSpeciesSelect" class="filter-select">
+              <select id="birdsLogSpeciesSelect" class="filter-select" aria-label="Bird species" title="Choose the bird species to log" data-tooltip="Choose the bird species to log">
                 <option value="">Select species...</option>
               </select>
-              <input id="birdsLogDateInput" class="filter-input" type="date" />
-              <input id="birdsLogLocationInput" class="filter-input" type="text" placeholder="Location" />
-              <input id="birdsLogCountInput" class="filter-input" type="number" min="1" value="1" placeholder="Count" />
-              <select id="birdsLogRegionInput" class="filter-select">
+              <input id="birdsLogDateInput" class="filter-input" type="date" aria-label="Observation date" title="Choose the date you observed the bird" data-tooltip="Choose the date you observed the bird" />
+              <input id="birdsLogLocationInput" class="filter-input" type="text" placeholder="Location" aria-label="Observation location" title="Enter where you observed the bird" data-tooltip="Enter where you observed the bird" />
+              <input id="birdsLogCountInput" class="filter-input" type="number" min="1" value="1" placeholder="Count" aria-label="Bird count" title="Enter how many birds you observed" data-tooltip="Enter how many birds you observed" />
+              <select id="birdsLogRegionInput" class="filter-select" aria-label="Observation region" title="Choose the region for this sighting" data-tooltip="Choose the region for this sighting">
                 <option value="">Region...</option>
                 <option value="coast">Coast</option>
                 <option value="marsh">Marsh</option>
                 <option value="forest">Forest</option>
                 <option value="urban">Urban</option>
               </select>
-              <select id="birdsLogHabitatInput" class="filter-select">
+              <select id="birdsLogHabitatInput" class="filter-select" aria-label="Observation habitat" title="Choose the habitat for this sighting" data-tooltip="Choose the habitat for this sighting">
                 <option value="">Habitat...</option>
                 <option value="coast">Coast</option>
                 <option value="marsh">Marsh</option>
                 <option value="forest">Forest</option>
                 <option value="urban">Urban</option>
               </select>
-              <input id="birdsLogLatInput" class="filter-input" type="number" step="any" placeholder="Latitude (optional)" />
-              <input id="birdsLogLngInput" class="filter-input" type="number" step="any" placeholder="Longitude (optional)" />
-              <select id="birdsLogConfidenceInput" class="filter-select">
+              <input id="birdsLogLatInput" class="filter-input" type="number" step="any" placeholder="Latitude (optional)" aria-label="Latitude" title="Enter the latitude for this sighting if you have it" data-tooltip="Enter the latitude for this sighting if you have it" />
+              <input id="birdsLogLngInput" class="filter-input" type="number" step="any" placeholder="Longitude (optional)" aria-label="Longitude" title="Enter the longitude for this sighting if you have it" data-tooltip="Enter the longitude for this sighting if you have it" />
+              <select id="birdsLogConfidenceInput" class="filter-select" aria-label="Observation confidence" title="Choose your confidence level for this sighting" data-tooltip="Choose your confidence level for this sighting">
                 <option value="certain">Confidence: Certain</option>
                 <option value="probable">Confidence: Probable</option>
                 <option value="needs-review">Confidence: Needs review</option>
               </select>
-              <input id="birdsLogPhotoInput" class="filter-input" type="file" accept="image/*" />
-              <input id="birdsLogAudioInput" class="filter-input" type="file" accept="audio/*" />
-              <textarea id="birdsLogNotesInput" class="filter-input" rows="3" placeholder="Notes"></textarea>
+              <div class="nature-log-field nature-log-field--stacked">
+                <label class="nature-log-field-label" for="birdsLogPhotoInput">Photo evidence <span class="nature-log-field-optional">optional</span></label>
+                <input id="birdsLogPhotoInput" class="filter-input" type="file" accept="image/*" aria-label="Add a photo" title="Add a photo for this bird sighting" data-tooltip="Add a photo for this bird sighting" aria-describedby="birdsLogPhotoHelp" />
+                <div id="birdsLogPhotoHelp" class="nature-log-field-help">Add a photo from your phone or camera roll if you want a visual record of this sighting.</div>
+              </div>
+              <div class="nature-log-field nature-log-field--stacked">
+                <label class="nature-log-field-label" for="birdsLogAudioInput">Audio evidence <span class="nature-log-field-optional">optional</span></label>
+                <input id="birdsLogAudioInput" class="filter-input" type="file" accept="audio/*" aria-label="Add an audio recording" title="Add an audio recording for this bird sighting" data-tooltip="Add an audio recording for this bird sighting" aria-describedby="birdsLogAudioHelp" />
+                <div id="birdsLogAudioHelp" class="nature-log-field-help">Add a song or call recording if you want to keep an audio record of this sighting.</div>
+              </div>
+              <textarea id="birdsLogNotesInput" class="filter-input" rows="3" placeholder="Notes" aria-label="Sighting notes" title="Add notes about this bird sighting" data-tooltip="Add notes about this bird sighting"></textarea>
             </div>
             <div class="nature-log-form-actions">
-              <button id="birdsLogSightingBtn" type="button" class="pill-button">Log Sighting</button>
+              <button id="birdsLogSightingBtn" type="button" class="pill-button" title="Save this bird sighting entry" data-tooltip="Save this bird sighting entry">Log Sighting</button>
             </div>
           </section>
 
@@ -325,18 +361,18 @@
     <div class="nature-birds-view" data-birds-view="explorer" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="nature-view-header-row">
-          <button type="button" id="birdsExplorerBackBtn" class="pill-button nature-back-to-birds-btn">← Back to Birds</button>
+          <button type="button" id="birdsExplorerBackBtn" class="pill-button nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
           <div>
             <div class="card-title">🐦 Explore Bird Species</div>
             <div class="card-subtitle">Search your species list and open any card for full details.</div>
           </div>
         </div>
         <div class="nature-search-row">
-          <input id="birdsSpeciesSearchInput" class="filter-input" type="text" placeholder="Search by species, family, genus, season, or rarity..." />
+          <input id="birdsSpeciesSearchInput" class="filter-input" type="text" placeholder="Search by species, family, genus, season, or rarity..." aria-label="Search bird species" title="Search Birds by species, family, genus, season, or rarity" data-tooltip="Search Birds by species, family, genus, season, or rarity" />
           <div id="birdsSpeciesSearchMeta" class="nature-search-meta">Loading birds...</div>
         </div>
         <div class="nature-explorer-toolbar">
-          <select id="birdsExplorerSortSelect" class="filter-select" title="Sort bird species cards">
+          <select id="birdsExplorerSortSelect" class="filter-select" aria-label="Sort bird species cards" title="Sort bird species cards" data-tooltip="Sort bird species cards">
             <option value="family-asc">Sort: Family / Species (A-Z)</option>
             <option value="favorites-first">Sort: Favorites first</option>
             <option value="species-asc">Sort: Species (A-Z)</option>
@@ -345,12 +381,12 @@
             <option value="rarity-asc">Sort: Rarity (lowest first)</option>
             <option value="sighted-recent">Sort: Recently sighted first</option>
           </select>
-          <select id="birdsExplorerPageSizeSelect" class="filter-select" title="Cards per page">
+          <select id="birdsExplorerPageSizeSelect" class="filter-select" aria-label="Cards per page" title="Choose how many Birds cards appear per page" data-tooltip="Choose how many Birds cards appear per page">
             <option value="12">12 per page</option>
             <option value="24">24 per page</option>
             <option value="48">48 per page</option>
           </select>
-          <select id="birdsExplorerSeasonFilter" class="filter-select" title="Filter by season">
+          <select id="birdsExplorerSeasonFilter" class="filter-select" aria-label="Filter birds by season" title="Filter Birds by season" data-tooltip="Filter Birds by season">
             <option value="all">Season: All</option>
             <option value="spring">Spring</option>
             <option value="summer">Summer</option>
@@ -358,7 +394,7 @@
             <option value="winter">Winter</option>
             <option value="migration">Migration</option>
           </select>
-          <select id="birdsExplorerRarityFilter" class="filter-select" title="Filter by rarity">
+          <select id="birdsExplorerRarityFilter" class="filter-select" aria-label="Filter birds by rarity" title="Filter Birds by rarity" data-tooltip="Filter Birds by rarity">
             <option value="all">Rarity: All</option>
             <option value="common">Common</option>
             <option value="regular">Regular</option>
@@ -367,48 +403,52 @@
             <option value="veryRare">Very Rare</option>
             <option value="extremelyRare">Extremely Rare</option>
           </select>
-          <select id="birdsExplorerFamilyFilter" class="filter-select" title="Filter by family">
+          <select id="birdsExplorerFamilyFilter" class="filter-select" aria-label="Filter birds by family" title="Filter Birds by family" data-tooltip="Filter Birds by family">
             <option value="all">Family: All</option>
           </select>
-          <select id="birdsExplorerRegionFilter" class="filter-select" title="Filter by region context">
+          <select id="birdsExplorerRegionFilter" class="filter-select" aria-label="Filter birds by region" title="Filter Birds by region" data-tooltip="Filter Birds by region">
             <option value="all">Region: All</option>
             <option value="coast">Coast</option>
             <option value="marsh">Marsh</option>
             <option value="forest">Forest</option>
             <option value="urban">Urban</option>
           </select>
-          <select id="birdsExplorerHabitatFilter" class="filter-select" title="Filter by habitat context">
+          <select id="birdsExplorerHabitatFilter" class="filter-select" aria-label="Filter birds by habitat" title="Filter Birds by habitat" data-tooltip="Filter Birds by habitat">
             <option value="all">Habitat: All</option>
             <option value="coast">Coast</option>
             <option value="marsh">Marsh</option>
             <option value="forest">Forest</option>
             <option value="urban">Urban</option>
           </select>
-          <label class="nature-toggle-pill" for="birdsExplorerFavoritesOnly">
-            <input id="birdsExplorerFavoritesOnly" type="checkbox" /> Favorites only
+          <label class="nature-toggle-pill" for="birdsExplorerFavoritesOnly" title="Show only favorited Birds" data-tooltip="Show only favorited Birds">
+            <input id="birdsExplorerFavoritesOnly" type="checkbox" aria-label="Show only favorited Birds" title="Show only favorited Birds" aria-describedby="birdsExplorerFavoritesOnlyHelp" />
+            <span class="nature-toggle-pill-copy">
+              <span>Favorites only</span>
+              <span id="birdsExplorerFavoritesOnlyHelp" class="nature-toggle-pill-help">Show only Birds you have pinned as favorites.</span>
+            </span>
           </label>
-          <button type="button" id="birdsExplorerClearFiltersBtn" class="pill-button">Clear Filters</button>
+          <button type="button" id="birdsExplorerClearFiltersBtn" class="pill-button" title="Clear the explorer filters" data-tooltip="Clear the explorer filters">Clear Filters</button>
         </div>
         <div class="nature-chip-filter-groups" id="birdsExplorerQuickFilterBar">
           <div class="nature-chip-filter-actions">
-            <button type="button" id="birdsExplorerClearChipFiltersBtn" class="nature-chip-clear-btn">Clear all chips</button>
+            <button type="button" id="birdsExplorerClearChipFiltersBtn" class="nature-chip-clear-btn" title="Clear the filter chips" data-tooltip="Clear the filter chips">Clear all chips</button>
           </div>
           <div class="nature-chip-filter-group" id="birdsSeasonChipGroup">
             <span class="nature-chip-filter-label">Season chips</span>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="spring">Spring</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="summer">Summer</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="fall">Fall</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="winter">Winter</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="migration">Migration</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="spring" title="Filter to Spring Birds" data-tooltip="Filter to Spring Birds">Spring</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="summer" title="Filter to Summer Birds" data-tooltip="Filter to Summer Birds">Summer</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="fall" title="Filter to Fall Birds" data-tooltip="Filter to Fall Birds">Fall</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="winter" title="Filter to Winter Birds" data-tooltip="Filter to Winter Birds">Winter</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="migration" title="Filter to Migration Birds" data-tooltip="Filter to Migration Birds">Migration</button>
           </div>
           <div class="nature-chip-filter-group" id="birdsRarityChipGroup">
             <span class="nature-chip-filter-label">Rarity chips</span>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="common">Common</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="regular">Regular</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="uncommon">Uncommon</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="rare">Rare</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="veryRare">Very Rare</button>
-            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="extremelyRare">Extremely Rare</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="common" title="Filter to Common Birds" data-tooltip="Filter to Common Birds">Common</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="regular" title="Filter to Regular Birds" data-tooltip="Filter to Regular Birds">Regular</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="uncommon" title="Filter to Uncommon Birds" data-tooltip="Filter to Uncommon Birds">Uncommon</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="rare" title="Filter to Rare Birds" data-tooltip="Filter to Rare Birds">Rare</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="veryRare" title="Filter to Very Rare Birds" data-tooltip="Filter to Very Rare Birds">Very Rare</button>
+            <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="extremelyRare" title="Filter to Extremely Rare Birds" data-tooltip="Filter to Extremely Rare Birds">Extremely Rare</button>
           </div>
           <div class="nature-chip-filter-group nature-chip-filter-group--family" id="birdsFamilyChipGroup">
             <span class="nature-chip-filter-label">Family chips</span>
@@ -428,15 +468,15 @@
       </div>
       <div id="birdsSpeciesCardGrid" class="adventure-cards-grid nature-birds-card-grid"></div>
       <div class="nature-explorer-pagination">
-        <button type="button" id="birdsExplorerPrevPageBtn" class="pill-button">← Prev</button>
+        <button type="button" id="birdsExplorerPrevPageBtn" class="pill-button" title="Go to the previous page" data-tooltip="Go to the previous page">← Prev</button>
         <div id="birdsExplorerPageInfo" class="nature-search-meta">Page 1</div>
-        <button type="button" id="birdsExplorerNextPageBtn" class="pill-button">Next →</button>
+        <button type="button" id="birdsExplorerNextPageBtn" class="pill-button" title="Go to the next page" data-tooltip="Go to the next page">Next →</button>
       </div>
     </div>
 
     <div class="nature-birds-view" data-birds-view="detail" hidden>
       <div class="card" style="margin-top: 10px;">
-        <button type="button" id="birdsDetailBackBtn" class="pill-button nature-back-to-birds-btn">← Back to Explore Bird Species</button>
+        <button type="button" id="birdsDetailBackBtn" class="pill-button nature-back-to-birds-btn" title="Back to the bird explorer" data-tooltip="Back to the bird explorer">← Back to Explore Bird Species</button>
       </div>
       <div id="birdsSpeciesDetailContent"></div>
     </div>
@@ -444,7 +484,7 @@
     <div class="nature-birds-view" data-birds-view="collection" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="nature-view-header-row">
-          <button type="button" id="birdsCollectionBackBtn" class="pill-button nature-back-to-birds-btn">← Back to Birds</button>
+          <button type="button" id="birdsCollectionBackBtn" class="pill-button nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
           <div>
             <div id="birdsCollectionTitle" class="card-title">All Items</div>
             <div id="birdsCollectionSubtitle" class="card-subtitle">View every item in this section.</div>
@@ -1170,6 +1210,19 @@
     box-shadow: 0 8px 18px rgba(124, 58, 237, 0.28);
   }
 
+  #natureChallengeRoot .nature-explore-birds-btn--undo {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 8px 18px rgba(217, 119, 6, 0.24);
+  }
+
+  #natureChallengeRoot .nature-explore-birds-btn--undo:disabled {
+    border-color: #cbd5e1;
+    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+    color: #f8fafc;
+    box-shadow: none;
+  }
+
   #natureChallengeRoot .nature-explore-birds-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 24px rgba(29, 78, 216, 0.3);
@@ -1207,6 +1260,24 @@
     color: #64748b;
     font-size: 12px;
     line-height: 1.4;
+  }
+
+  #natureChallengeRoot .nature-command-region-header {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  #natureChallengeRoot .nature-command-region-label {
+    font-size: 13px;
+    font-weight: 800;
+    color: #1f2937;
+  }
+
+  #natureChallengeRoot .nature-command-region-hint {
+    font-size: 12px;
+    line-height: 1.45;
+    color: #64748b;
   }
 
   #natureChallengeRoot .nature-command-help-label {
@@ -1486,6 +1557,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+  }
+
+  #natureChallengeRoot .nature-overview-header-actions {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   #natureChallengeRoot .nature-birds-view[data-birds-view="overview"].is-density-compact .nature-challenge-grid,
@@ -1814,6 +1893,87 @@
     margin: 0 14px 14px;
   }
 
+  #natureChallengeRoot .nature-click-diagnostics-panel {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    padding: 12px;
+    background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+    color: #1e3a8a;
+    font-size: 12px;
+    line-height: 1.5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-status {
+    color: #475569;
+    font-weight: 700;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-stat {
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 8px 10px;
+    display: grid;
+    gap: 4px;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-label {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-value {
+    color: #1e3a8a;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-meta {
+    display: grid;
+    gap: 6px;
+    color: #334155;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-row {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-row strong {
+    color: #0f172a;
+  }
+
+  #natureChallengeRoot .nature-click-diagnostics-empty {
+    color: #64748b;
+    font-weight: 700;
+  }
+
   #natureChallengeRoot .nature-view-header-row {
     display: flex;
     align-items: flex-start;
@@ -1912,6 +2072,37 @@
     gap: 10px;
   }
 
+  #natureChallengeRoot .nature-log-field {
+    min-width: 0;
+  }
+
+  #natureChallengeRoot .nature-log-field--stacked {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+
+  #natureChallengeRoot .nature-log-field-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #334155;
+  }
+
+  #natureChallengeRoot .nature-log-field-optional {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-left: 4px;
+  }
+
+  #natureChallengeRoot .nature-log-field-help {
+    font-size: 11px;
+    line-height: 1.45;
+    color: #64748b;
+  }
+
   #natureChallengeRoot .nature-log-form-actions {
     margin-top: 10px;
     display: flex;
@@ -1949,6 +2140,19 @@
     color: #374151;
     background: #fff;
     white-space: nowrap;
+  }
+
+  #natureChallengeRoot .nature-toggle-pill-copy {
+    display: grid;
+    gap: 2px;
+    white-space: normal;
+  }
+
+  #natureChallengeRoot .nature-toggle-pill-help {
+    font-size: 11px;
+    line-height: 1.4;
+    color: #64748b;
+    font-weight: 600;
   }
 
   #natureChallengeRoot .nature-toggle-pill input {
@@ -2353,6 +2557,15 @@
       width: 100%;
     }
 
+    #natureChallengeRoot .nature-overview-header-actions {
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    #natureChallengeRoot .nature-overview-header-actions > button {
+      flex: 1 1 180px;
+    }
+
     #natureChallengeRoot .nature-search-row {
       grid-template-columns: 1fr;
       align-items: stretch;
@@ -2370,6 +2583,10 @@
     #natureChallengeRoot .nature-bird-detail-row {
       grid-template-columns: 1fr;
       gap: 6px;
+    }
+
+    #natureChallengeRoot .nature-click-diagnostics-row {
+      grid-template-columns: 1fr;
     }
   }
 

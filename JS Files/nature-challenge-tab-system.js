@@ -165,9 +165,8 @@
   };
 
   const birdsClickDiagnostics = {
-    enabled: false,
+    enabled: true,
     panel: null,
-    hiddenByUser: false,
     total: 0,
     clickCount: 0,
     pointerupCount: 0,
@@ -178,76 +177,77 @@
 
   function isBirdClickDiagnosticsEnabled() {
     if (typeof window === 'undefined') return false;
+    if (window.__BIRDS_CLICK_DIAG__ === false) return false;
     if (window.__BIRDS_CLICK_DIAG__ === true) return true;
     try {
       const params = new URLSearchParams(window.location.search || '');
       if (params.get('birdsClickDiag') === '1') return true;
+      if (params.get('birdsClickDiag') === '0') return false;
     } catch (_error) {
       // Ignore malformed URL state and fall through.
     }
     try {
-      return window.localStorage.getItem('birdsClickDiag') === '1';
+      const stored = window.localStorage.getItem('birdsClickDiag');
+      if (stored === '1') return true;
+      if (stored === '0') return false;
     } catch (_error) {
-      return false;
+      // Ignore storage availability issues and use the visible in-app default.
     }
+    return true;
   }
 
   function renderBirdClickDiagnosticsPanel() {
-    if (!birdsClickDiagnostics.panel || !birdsClickDiagnostics.enabled) return;
-    const lastLabel = `${birdsClickDiagnostics.lastEvent}/${birdsClickDiagnostics.lastTarget}`;
-    birdsClickDiagnostics.panel.innerHTML =
-      `Bird Click Diag | total:${birdsClickDiagnostics.total} click:${birdsClickDiagnostics.clickCount} pointer:${birdsClickDiagnostics.pointerupCount} deduped:${birdsClickDiagnostics.dedupedClicks} last:${escapeHtml(lastLabel)} <button type="button" data-birds-diag-reset title="Reset Birds click diagnostics" style="margin-left:8px;border:1px solid #1d4ed8;border-radius:6px;background:#ffffff;color:#1e40af;font:inherit;font-size:11px;font-weight:800;padding:1px 6px;cursor:pointer;">[reset]</button> <button type="button" data-birds-diag-hide title="Hide Birds click diagnostics panel" style="margin-left:4px;border:1px solid #1d4ed8;border-radius:6px;background:#ffffff;color:#1e40af;font:inherit;font-size:11px;font-weight:800;padding:1px 6px;cursor:pointer;">[hide]</button>`;
+    if (!birdsClickDiagnostics.panel) return;
+    if (!birdsClickDiagnostics.enabled) {
+      birdsClickDiagnostics.panel.innerHTML = `
+        <div class="nature-click-diagnostics-heading">
+          <span>Bird button diagnostics</span>
+          <span class="nature-click-diagnostics-status">Paused</span>
+        </div>
+        <div class="nature-click-diagnostics-empty">Diagnostics are currently disabled. Use <code>window.setBirdClickDiagnosticsEnabled(true)</code> to turn live tracking back on.</div>
+      `;
+      return;
+    }
+
+    const hasEvents = birdsClickDiagnostics.total > 0 || birdsClickDiagnostics.dedupedClicks > 0;
+    birdsClickDiagnostics.panel.innerHTML = `
+      <div class="nature-click-diagnostics-heading">
+        <span>Bird button diagnostics</span>
+        <span class="nature-click-diagnostics-status">Live in-app tracking</span>
+      </div>
+      <div class="nature-click-diagnostics-grid">
+        <div class="nature-click-diagnostics-stat">
+          <span class="nature-click-diagnostics-label">Total</span>
+          <strong class="nature-click-diagnostics-value">${birdsClickDiagnostics.total}</strong>
+        </div>
+        <div class="nature-click-diagnostics-stat">
+          <span class="nature-click-diagnostics-label">Click</span>
+          <strong class="nature-click-diagnostics-value">${birdsClickDiagnostics.clickCount}</strong>
+        </div>
+        <div class="nature-click-diagnostics-stat">
+          <span class="nature-click-diagnostics-label">Pointer</span>
+          <strong class="nature-click-diagnostics-value">${birdsClickDiagnostics.pointerupCount}</strong>
+        </div>
+        <div class="nature-click-diagnostics-stat">
+          <span class="nature-click-diagnostics-label">Deduped</span>
+          <strong class="nature-click-diagnostics-value">${birdsClickDiagnostics.dedupedClicks}</strong>
+        </div>
+      </div>
+      <div class="nature-click-diagnostics-meta">
+        <div class="nature-click-diagnostics-row"><strong>Last event</strong><span>${escapeHtml(birdsClickDiagnostics.lastEvent || '-')}</span></div>
+        <div class="nature-click-diagnostics-row"><strong>Last target</strong><span>${escapeHtml(birdsClickDiagnostics.lastTarget || '-')}</span></div>
+        <div class="nature-click-diagnostics-row"><strong>Status</strong><span>${hasEvents ? 'Tracking recent Birds button activations.' : 'Waiting for your next Birds button interaction.'}</span></div>
+      </div>
+    `;
   }
 
   function ensureBirdClickDiagnosticsPanel(root) {
     birdsClickDiagnostics.enabled = isBirdClickDiagnosticsEnabled();
     if (!root) return;
-    if (!birdsClickDiagnostics.enabled) {
-      if (birdsClickDiagnostics.panel) birdsClickDiagnostics.panel.hidden = true;
-      return;
-    }
-    if (birdsClickDiagnostics.hiddenByUser) {
-      if (birdsClickDiagnostics.panel) birdsClickDiagnostics.panel.hidden = true;
-      return;
-    }
     if (!birdsClickDiagnostics.panel) {
-      const panel = document.createElement('div');
-      panel.id = 'birdsClickDiagnosticPanel';
-      panel.setAttribute('aria-live', 'polite');
-      panel.style.position = 'fixed';
-      panel.style.right = '10px';
-      panel.style.bottom = '10px';
-      panel.style.zIndex = '9999';
-      panel.style.maxWidth = 'min(92vw, 740px)';
-      panel.style.padding = '6px 10px';
-      panel.style.borderRadius = '8px';
-      panel.style.border = '1px solid #2563eb';
-      panel.style.background = 'rgba(239, 246, 255, 0.96)';
-      panel.style.color = '#1e3a8a';
-      panel.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
-      panel.style.fontSize = '11px';
-      panel.style.fontWeight = '700';
-      panel.style.lineHeight = '1.35';
-      panel.style.boxShadow = '0 6px 16px rgba(30, 64, 175, 0.25)';
-      panel.style.pointerEvents = 'auto';
-      panel.addEventListener('click', (event) => {
-        const resetBtn = event.target && event.target.closest ? event.target.closest('[data-birds-diag-reset]') : null;
-        if (resetBtn) {
-          event.preventDefault();
-          event.stopPropagation();
-          resetBirdClickDiagnosticsState();
-          return;
-        }
-        const hideBtn = event.target && event.target.closest ? event.target.closest('[data-birds-diag-hide]') : null;
-        if (!hideBtn) return;
-        event.preventDefault();
-        event.stopPropagation();
-        birdsClickDiagnostics.hiddenByUser = true;
-        if (birdsClickDiagnostics.panel) birdsClickDiagnostics.panel.hidden = true;
-      });
-      birdsClickDiagnostics.panel = panel;
-      root.appendChild(panel);
+      birdsClickDiagnostics.panel = document.getElementById('birdsButtonClickDiagnosticsPanel');
     }
+    if (!birdsClickDiagnostics.panel) return;
     birdsClickDiagnostics.panel.hidden = false;
     renderBirdClickDiagnosticsPanel();
   }
@@ -264,6 +264,7 @@
       target.getAttribute('data-bird-toggle') ||
       target.getAttribute('data-bird-open') ||
       target.getAttribute('data-birds-overview-jump') ||
+      target.getAttribute('data-birds-back-to-top') ||
       target.getAttribute('data-birds-more') ||
       target.getAttribute('data-sync-resolve') ||
       target.getAttribute('data-nature-subtab') ||
@@ -303,6 +304,11 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function tooltipAttrs(label) {
+    const safeLabel = escapeHtml(label);
+    return `title="${safeLabel}" data-tooltip="${safeLabel}"`;
   }
 
   function buildUnifiedStateHtml(message, options = {}) {
@@ -416,7 +422,7 @@
             <span class="nature-summary-filter-pill">
               <span class="nature-summary-filter-icon" aria-hidden="true">${escapeHtml(tagIcons[tag.key] || '✨')}</span>
               ${escapeHtml(tag.label)}
-              <button type="button" data-birds-overview-remove-filter="${escapeHtml(tag.key)}" title="Remove ${escapeHtml(tag.label)} filter">x</button>
+              <button type="button" data-birds-overview-remove-filter="${escapeHtml(tag.key)}" aria-label="Remove ${escapeHtml(tag.label)} filter" ${tooltipAttrs(`Remove ${tag.label} filter`)}>x</button>
             </span>
           `).join('')}</span>`
         : '<span class="nature-section-summary-filters"></span>';
@@ -465,24 +471,51 @@
     const strip = document.getElementById('birdsTodayFocusStrip');
     if (!strip || !stats) return;
     const actions = [];
-    if (stats.todayLogCount < 1) actions.push('<button type="button" class="pill-button" data-birds-overview-jump="daily">Log your first sighting today</button>');
-    if (stats.streak && stats.streak.atRiskStreak > 0) actions.push('<button type="button" class="pill-button" data-birds-overview-jump="daily">Protect your streak today</button>');
-    if (stats.inSeasonSightedCount < stats.inSeasonCount) actions.push('<button type="button" class="pill-button" data-birds-overview-jump="quests">Find one more in-season species</button>');
-    actions.push('<button type="button" class="pill-button" id="birdsTodayFocusLogBtn" data-birds-overview-jump="daily">Log one sighting now</button>');
+    if (stats.todayLogCount < 1) actions.push(`<button type="button" class="pill-button" data-birds-overview-jump="daily" ${tooltipAttrs('Go to daily micro-challenges')}>Log your first sighting today</button>`);
+    if (stats.streak && stats.streak.atRiskStreak > 0) actions.push(`<button type="button" class="pill-button" data-birds-overview-jump="daily" ${tooltipAttrs('Go to daily micro-challenges')}>Protect your streak today</button>`);
+    if (stats.inSeasonSightedCount < stats.inSeasonCount) actions.push(`<button type="button" class="pill-button" data-birds-overview-jump="quests" ${tooltipAttrs('Go to seasonal quests')}>Find one more in-season species</button>`);
+    actions.push(`<button type="button" class="pill-button" id="birdsTodayFocusLogBtn" data-birds-overview-jump="daily" ${tooltipAttrs('Open the sighting log')}>Log one sighting now</button>`);
     strip.innerHTML = actions.slice(0, 3).join('');
   }
 
   function renderBirdUndoPrompt() {
     const prompt = document.getElementById('birdsUndoPrompt');
     const text = document.getElementById('birdsUndoPromptText');
+    const promptButton = document.getElementById('birdsUndoPromptBtn');
+    const actionButton = document.getElementById('birdsUndoActionBtn');
     if (!prompt || !text) return;
     if (!state.lastUndoAction) {
       prompt.hidden = true;
+      if (promptButton) {
+        promptButton.disabled = true;
+        promptButton.setAttribute('aria-disabled', 'true');
+        promptButton.setAttribute('title', 'No Birds action to undo yet');
+        promptButton.setAttribute('data-tooltip', 'No Birds action to undo yet');
+      }
+      if (actionButton) {
+        actionButton.disabled = true;
+        actionButton.setAttribute('aria-disabled', 'true');
+        actionButton.setAttribute('title', 'No Birds action to undo yet');
+        actionButton.setAttribute('data-tooltip', 'No Birds action to undo yet');
+      }
       return;
     }
     const label = state.lastUndoAction.label || 'Last birds action';
     text.textContent = `${label} can be undone.`;
     prompt.hidden = false;
+    const tooltip = `Undo the last Birds action: ${label}`;
+    if (promptButton) {
+      promptButton.disabled = false;
+      promptButton.setAttribute('aria-disabled', 'false');
+      promptButton.setAttribute('title', tooltip);
+      promptButton.setAttribute('data-tooltip', tooltip);
+    }
+    if (actionButton) {
+      actionButton.disabled = false;
+      actionButton.setAttribute('aria-disabled', 'false');
+      actionButton.setAttribute('title', tooltip);
+      actionButton.setAttribute('data-tooltip', tooltip);
+    }
   }
 
   function setUndoAction(action) {
@@ -530,6 +563,14 @@
     }
 
     return false;
+  }
+
+  function handleBirdUndoAction() {
+    const undone = undoLastBirdAction();
+    if (undone && typeof window.showToast === 'function') {
+      window.showToast('Undid last birds action', 'success', 1800);
+    }
+    return undone;
   }
 
   function safeJsonParse(value, fallback) {
@@ -1039,10 +1080,7 @@
     }
 
     if (!inTextInput && norm(event.key) === 'z') {
-      const undone = undoLastBirdAction();
-      if (undone && typeof window.showToast === 'function') {
-        window.showToast('Undid last birds action', 'success', 1800);
-      }
+      const undone = handleBirdUndoAction();
       if (undone) return;
     }
 
@@ -2257,7 +2295,7 @@
     if (familyChipGroup) {
       familyChipGroup.innerHTML = '<span class="nature-chip-filter-label">Family chips</span>' + families.map((family) => {
         const isActive = state.birdFilters.familyChips.includes(family);
-        return `<button type="button" class="nature-chip-filter ${isActive ? 'is-active' : ''}" data-birds-filter-chip="family" data-chip-value="${escapeHtml(family)}">${escapeHtml(getFamilyChipLabel(family))}</button>`;
+        return `<button type="button" class="nature-chip-filter ${isActive ? 'is-active' : ''}" data-birds-filter-chip="family" data-chip-value="${escapeHtml(family)}" ${tooltipAttrs(`Filter to ${getFamilyChipLabel(family)} family Birds`)}>${escapeHtml(getFamilyChipLabel(family))}</button>`;
       }).join('');
     }
 
@@ -2457,7 +2495,7 @@
     pillsContainer.innerHTML = pills.map((pill) => `
       <span class="nature-active-filter-pill">
         ${escapeHtml(pill.label)}
-        <button type="button" data-birds-remove-filter="${escapeHtml(pill.key)}" title="Remove filter">x</button>
+        <button type="button" data-birds-remove-filter="${escapeHtml(pill.key)}" aria-label="Remove ${escapeHtml(pill.label)}" ${tooltipAttrs(`Remove ${pill.label}`)}>x</button>
       </span>
     `).join('');
   }
@@ -2542,9 +2580,9 @@
           </div>
           <div class="adventure-card-footer">
             <div class="card-action-buttons">
-              <button type="button" class="card-btn card-btn-primary" data-bird-open="${escapeHtml(bird.id)}">Open Details</button>
-              <button type="button" class="nature-bird-fav-btn is-favorited" data-bird-favorite="${escapeHtml(bird.id)}">★ Favorited</button>
-              <button type="button" class="card-btn" data-bird-toggle="${escapeHtml(bird.id)}">${sighted ? 'Mark Not Sighted' : 'Mark Sighted'}</button>
+              <button type="button" class="card-btn card-btn-primary" data-bird-open="${escapeHtml(bird.id)}" ${tooltipAttrs(`Open bird details for ${bird.speciesName}`)}>Open Details</button>
+              <button type="button" class="nature-bird-fav-btn is-favorited" data-bird-favorite="${escapeHtml(bird.id)}" ${tooltipAttrs(`Remove ${bird.speciesName} from favorites`)}>★ Favorited</button>
+              <button type="button" class="card-btn" data-bird-toggle="${escapeHtml(bird.id)}" ${tooltipAttrs(`Mark ${bird.speciesName} as ${sighted ? 'not sighted' : 'sighted'}`)}>${sighted ? 'Mark Not Sighted' : 'Mark Sighted'}</button>
             </div>
           </div>
         </div>
@@ -2591,9 +2629,9 @@
       container.innerHTML = `
         ${buildUnifiedStateHtml('No birds matched your search.', { icon: '🔎', hint: 'Try fewer filters or use one of the quick fixes below.' })}
         <div class="nature-log-form-actions" style="justify-content:center; margin-top:8px;">
-          <button type="button" class="pill-button" data-birds-empty-action="show-in-season">Show in-season only</button>
-          <button type="button" class="pill-button" data-birds-empty-action="clear-high-reward">Clear high reward filter</button>
-          <button type="button" class="pill-button" data-birds-empty-action="clear-overview">Clear overview filters</button>
+          <button type="button" class="pill-button" data-birds-empty-action="show-in-season" ${tooltipAttrs('Show only in-season Birds')}>Show in-season only</button>
+          <button type="button" class="pill-button" data-birds-empty-action="clear-high-reward" ${tooltipAttrs('Clear the high-value overview filter')}>Clear high reward filter</button>
+          <button type="button" class="pill-button" data-birds-empty-action="clear-overview" ${tooltipAttrs('Clear the overview filters')}>Clear overview filters</button>
         </div>
       `;
       return;
@@ -2623,9 +2661,9 @@
           </div>
           <div class="adventure-card-footer">
             <div class="card-action-buttons">
-              <button type="button" class="card-btn card-btn-primary" data-bird-open="${escapeHtml(bird.id)}">Open Details</button>
-              <button type="button" class="nature-bird-fav-btn ${favorited ? 'is-favorited' : ''}" data-bird-favorite="${escapeHtml(bird.id)}">${favorited ? '★ Favorited' : '☆ Favorite'}</button>
-              <button type="button" class="card-btn" data-bird-toggle="${escapeHtml(bird.id)}">${sighted ? 'Mark Not Sighted' : 'Mark Sighted'}</button>
+              <button type="button" class="card-btn card-btn-primary" data-bird-open="${escapeHtml(bird.id)}" ${tooltipAttrs(`Open bird details for ${bird.speciesName}`)}>Open Details</button>
+              <button type="button" class="nature-bird-fav-btn ${favorited ? 'is-favorited' : ''}" data-bird-favorite="${escapeHtml(bird.id)}" ${tooltipAttrs(`${favorited ? 'Remove' : 'Add'} ${bird.speciesName} ${favorited ? 'from' : 'to'} favorites`)}>${favorited ? '★ Favorited' : '☆ Favorite'}</button>
+              <button type="button" class="card-btn" data-bird-toggle="${escapeHtml(bird.id)}" ${tooltipAttrs(`Mark ${bird.speciesName} as ${sighted ? 'not sighted' : 'sighted'}`)}>${sighted ? 'Mark Not Sighted' : 'Mark Sighted'}</button>
             </div>
           </div>
         </div>
@@ -2687,8 +2725,8 @@
             ${seasonChips}
           </div>
           <div class="card-subtitle">${sighted ? `Sighted on ${escapeHtml(sightedDate ? sightedDate.toLocaleDateString() : '')}` : 'Not sighted yet'}</div>
-          <button type="button" class="nature-bird-fav-btn ${favorited ? 'is-favorited' : ''}" data-bird-favorite="${escapeHtml(bird.id)}">${favorited ? '★ Favorited' : '☆ Favorite'}</button>
-          <button type="button" class="card-btn" data-bird-toggle="${escapeHtml(bird.id)}">${sighted ? 'Mark Not Sighted' : 'Mark Sighted'}</button>
+          <button type="button" class="nature-bird-fav-btn ${favorited ? 'is-favorited' : ''}" data-bird-favorite="${escapeHtml(bird.id)}" ${tooltipAttrs(`${favorited ? 'Remove' : 'Add'} ${bird.speciesName} ${favorited ? 'from' : 'to'} favorites`)}>${favorited ? '★ Favorited' : '☆ Favorite'}</button>
+          <button type="button" class="card-btn" data-bird-toggle="${escapeHtml(bird.id)}" ${tooltipAttrs(`Mark ${bird.speciesName} as ${sighted ? 'not sighted' : 'sighted'}`)}>${sighted ? 'Mark Not Sighted' : 'Mark Sighted'}</button>
           <div class="nature-bird-detail-list">${detailRows}</div>
         </div>
       </div>
@@ -2921,37 +2959,6 @@
     });
   }
 
-  function getBirdCollapsibleSections(root) {
-    const scope = root || document;
-    return Array.from(scope.querySelectorAll('[data-birds-collapsible]'));
-  }
-
-  function syncBirdCollapseAllButton(root) {
-    const button = document.getElementById('birdsToggleCollapsiblesBtn');
-    if (!button) return;
-    const sections = getBirdCollapsibleSections(root);
-    if (sections.length === 0) {
-      button.disabled = true;
-      button.textContent = 'Expand All';
-      return;
-    }
-
-    button.disabled = false;
-    const allOpen = sections.every((section) => section.open);
-    button.textContent = allOpen ? 'Collapse All' : 'Expand All';
-    button.setAttribute('aria-pressed', allOpen ? 'true' : 'false');
-  }
-
-  function toggleBirdCollapsibleSections(root) {
-    const sections = getBirdCollapsibleSections(root);
-    if (sections.length === 0) return;
-    const shouldOpen = sections.some((section) => !section.open);
-    sections.forEach((section) => {
-      section.open = shouldOpen;
-    });
-    syncBirdCollapseAllButton(root);
-  }
-
   function ensureNatureButtonsResponsive(root) {
     if (!root) return;
     const controls = root.querySelectorAll(
@@ -3019,7 +3026,6 @@
     }
 
     syncBirdViews(root);
-    if (state.activeSubTab === 'birds') syncBirdCollapseAllButton(root);
   }
 
   function toggleBirdSighting(birdId) {
@@ -3051,6 +3057,7 @@
   const NATURE_DELEGATED_ACTION_SELECTOR = [
     '[data-nature-subtab]',
     '#natureChallengeRefreshBtn',
+    '#birdsUndoActionBtn',
     '#birdsExploreBtn',
     '#birdsOpenLogBtn',
     '[data-bird-toggle]',
@@ -3067,7 +3074,8 @@
     '[data-birds-overview-jump]',
     '#birdsOverviewCommandClearBtn',
     '#birdsResetUiBtn',
-    '#birdsBackToTopBtn',
+    '#birdsClearClickDiagnosticsBtn',
+    '[data-birds-back-to-top]',
     '#birdsExplorerClearFiltersBtn',
     '#birdsExplorerClearChipFiltersBtn',
     '[data-birds-remove-filter]',
@@ -3123,6 +3131,12 @@
       const refreshButton = event.target.closest('#natureChallengeRefreshBtn');
       if (refreshButton) {
         loadBirdDataset(true);
+        return;
+      }
+
+      const undoActionButton = event.target.closest('#birdsUndoActionBtn');
+      if (undoActionButton) {
+        handleBirdUndoAction();
         return;
       }
 
@@ -3219,8 +3233,7 @@
 
       const undoPromptButton = event.target.closest('#birdsUndoPromptBtn');
       if (undoPromptButton) {
-        const undone = undoLastBirdAction();
-        if (undone && typeof window.showToast === 'function') window.showToast('Undid last birds action', 'success', 1800);
+        handleBirdUndoAction();
         return;
       }
 
@@ -3261,7 +3274,14 @@
         return;
       }
 
-      const backToTopButton = event.target.closest('#birdsBackToTopBtn');
+      const clearDiagnosticsButton = event.target.closest('#birdsClearClickDiagnosticsBtn');
+      if (clearDiagnosticsButton) {
+        resetBirdClickDiagnosticsState();
+        if (typeof window.showToast === 'function') window.showToast('Bird button diagnostics cleared.', 'info', 1800);
+        return;
+      }
+
+      const backToTopButton = event.target.closest('[data-birds-back-to-top]');
       if (backToTopButton) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
@@ -3507,22 +3527,6 @@
       runQualityBtn.addEventListener('click', () => renderBirds());
     }
 
-    const collapseAllBtn = document.getElementById('birdsToggleCollapsiblesBtn');
-    if (collapseAllBtn && collapseAllBtn.dataset.natureCollapseAllBound !== '1') {
-      collapseAllBtn.dataset.natureCollapseAllBound = '1';
-      collapseAllBtn.addEventListener('click', () => {
-        toggleBirdCollapsibleSections(root);
-      });
-    }
-
-    getBirdCollapsibleSections(root).forEach((section) => {
-      if (section.dataset.natureCollapseSectionBound === '1') return;
-      section.dataset.natureCollapseSectionBound = '1';
-      section.addEventListener('toggle', () => {
-        syncBirdCollapseAllButton(root);
-      });
-    });
-
     const favoritesOnlyToggle = document.getElementById('birdsExplorerFavoritesOnly');
     if (favoritesOnlyToggle && favoritesOnlyToggle.dataset.natureFavoritesOnlyBound !== '1') {
       favoritesOnlyToggle.dataset.natureFavoritesOnlyBound = '1';
@@ -3542,7 +3546,7 @@
     ensureBirdClickDiagnosticsPanel(root);
     bindNatureControls(root);
     const diagnostics = document.getElementById('birdsDiagnosticsDetails');
-    if (diagnostics) diagnostics.open = false;
+    if (diagnostics) diagnostics.open = true;
     const logDateInput = document.getElementById('birdsLogDateInput');
     if (logDateInput && !logDateInput.value) {
       logDateInput.value = new Date().toISOString().slice(0, 10);
@@ -3551,7 +3555,6 @@
     syncBirdCommandInputFromState();
     setActiveNatureSubTab(root, state.activeSubTab || 'birds');
     setBirdView(root, state.activeBirdView || 'overview');
-    syncBirdCollapseAllButton(root);
     renderBirdHeaderStatus();
     loadBirdDataset(false);
 
@@ -3567,14 +3570,12 @@
   window.setBirdClickDiagnosticsEnabled = function(enabled) {
     try {
       if (enabled) window.localStorage.setItem('birdsClickDiag', '1');
-      else window.localStorage.removeItem('birdsClickDiag');
+      else window.localStorage.setItem('birdsClickDiag', '0');
     } catch (_error) {
       // Ignore storage availability issues.
     }
     birdsClickDiagnostics.enabled = Boolean(enabled);
-    if (enabled) birdsClickDiagnostics.hiddenByUser = false;
-    if (!enabled && birdsClickDiagnostics.panel) birdsClickDiagnostics.panel.hidden = true;
-    if (enabled) ensureBirdClickDiagnosticsPanel(document.getElementById('natureChallengeRoot'));
+    ensureBirdClickDiagnosticsPanel(document.getElementById('natureChallengeRoot'));
   };
   window.resetBirdClickDiagnostics = function() {
     return resetBirdClickDiagnosticsState();
