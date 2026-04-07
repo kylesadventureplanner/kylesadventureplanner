@@ -105,24 +105,33 @@
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🎯 Challenges</div>
-          <div class="card-subtitle">Complete challenges to earn rewards.</div>
+          <div>
+            <div class="card-title">🎯 Challenges</div>
+            <div class="card-subtitle">Complete challenges to earn rewards.</div>
+          </div>
+          <button type="button" class="pill-button" data-birds-more="challenges">More</button>
         </div>
         <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🏅 Badges</div>
-          <div class="card-subtitle">Unlock achievements as you progress.</div>
+          <div>
+            <div class="card-title">🏅 Badges</div>
+            <div class="card-subtitle">Unlock achievements as you progress.</div>
+          </div>
+          <button type="button" class="pill-button" data-birds-more="badges">More</button>
         </div>
         <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title">📚 Seasonal Questline</div>
-          <div class="card-subtitle">Complete the current season chapter with multi-step goals.</div>
+          <div>
+            <div class="card-title">📚 Seasonal Quests</div>
+            <div class="card-subtitle">Complete the current season chapter with multi-step goals.</div>
+          </div>
+          <button type="button" class="pill-button" data-birds-more="quests">More</button>
         </div>
         <div id="birdsSeasonQuestMeta" class="nature-progress-note">Season quest chapter progress appears here.</div>
         <div id="birdsSeasonQuestGrid" class="nature-challenge-grid"></div>
@@ -364,6 +373,20 @@
         <button type="button" id="birdsDetailBackBtn" class="pill-button">← Back to Explore Bird Species</button>
       </div>
       <div id="birdsSpeciesDetailContent"></div>
+    </div>
+
+    <div class="nature-birds-view" data-birds-view="collection" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="nature-view-header-row">
+          <button type="button" id="birdsCollectionBackBtn" class="pill-button">← Back to Birds</button>
+          <div>
+            <div id="birdsCollectionTitle" class="card-title">All Items</div>
+            <div id="birdsCollectionSubtitle" class="card-subtitle">View every item in this section.</div>
+          </div>
+        </div>
+      </div>
+      <div id="birdsCollectionMeta" class="nature-progress-note">Loading collection...</div>
+      <div id="birdsCollectionGrid" class="nature-challenge-grid"></div>
     </div>
   </div>
 
