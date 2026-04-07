@@ -368,16 +368,25 @@
           </div>
         </div>
         <div class="nature-search-row">
-          <input id="birdsSpeciesSearchInput" class="filter-input" type="text" placeholder="Search by species, family, genus, season, or rarity..." aria-label="Search bird species" title="Search Birds by species, family, genus, season, or rarity" data-tooltip="Search Birds by species, family, genus, season, or rarity" />
+          <input id="birdsSpeciesSearchInput" class="filter-input" type="text" list="birdsExplorerSearchSuggestions" placeholder="Search species, family, region, habitat, rarity, not seen, migration..." aria-label="Search bird species" title="Search Birds by species, family, genus, season, or rarity" data-tooltip="Search Birds by species, family, genus, season, or rarity" />
+          <datalist id="birdsExplorerSearchSuggestions"></datalist>
           <div id="birdsSpeciesSearchMeta" class="nature-search-meta">Loading birds...</div>
         </div>
+        <div id="birdsSearchIntentBadges" class="nature-search-intent-row" aria-live="polite" hidden></div>
         <div id="birdsExplorerRecommendationStrip" class="nature-explorer-recommendation-strip" aria-live="polite">
           Loading recommendations...
         </div>
+        <div id="birdsExplorerOfflineStatus" class="nature-offline-status-line" aria-live="polite">Explorer ready for field use.</div>
         <div class="nature-explorer-toolbar nature-explorer-toolbar--primary">
           <select id="birdsExplorerSortSelect" class="filter-select" aria-label="Sort bird species cards" title="Sort bird species cards" data-tooltip="Sort bird species cards">
             <option value="family-asc">Sort: Family / Species (A-Z)</option>
             <option value="favorites-first">Sort: Favorites first</option>
+            <option value="best-next-targets">Sort: Best next targets</option>
+            <option value="best-today">Sort: Best for today</option>
+            <option value="best-quests">Sort: Best for quests</option>
+            <option value="best-badges">Sort: Best for badges</option>
+            <option value="family-completion">Sort: Best for family completion</option>
+            <option value="not-seen-opportunity">Sort: Best not-yet-seen opportunities</option>
             <option value="species-asc">Sort: Species (A-Z)</option>
             <option value="species-desc">Sort: Species (Z-A)</option>
             <option value="rarity-desc">Sort: Rarity (highest first)</option>
@@ -399,6 +408,11 @@
               <span id="birdsExplorerFavoritesOnlyHelp" class="nature-toggle-pill-help">Show only Birds you have pinned as favorites.</span>
             </span>
           </label>
+          <div class="nature-density-mode-group" role="group" aria-label="Explorer card density mode">
+            <button type="button" id="birdsExplorerDensityComfortBtn" class="pill-button is-active" data-birds-explorer-density="comfortable" aria-pressed="true" title="Comfortable density" data-tooltip="Comfortable density">Comfortable</button>
+            <button type="button" id="birdsExplorerDensityCompactBtn" class="pill-button" data-birds-explorer-density="compact" aria-pressed="false" title="Compact density" data-tooltip="Compact density">Compact</button>
+            <button type="button" id="birdsExplorerDensityFieldBtn" class="pill-button" data-birds-explorer-density="field" aria-pressed="false" title="Field mode" data-tooltip="Field mode">Field</button>
+          </div>
           <button type="button" id="birdsExplorerClearFiltersBtn" class="pill-button" title="Clear the explorer filters" data-tooltip="Clear the explorer filters">Clear Filters</button>
         </div>
         <details id="birdsExplorerAdvancedFilters" class="nature-explorer-advanced-filters">
@@ -440,6 +454,15 @@
               <option value="24">24 per page</option>
               <option value="48">48 per page</option>
             </select>
+          </div>
+          <div class="nature-workflow-toggle-grid">
+            <label class="nature-toggle-pill" for="birdsExplorerToggleNotYetSeen"><input id="birdsExplorerToggleNotYetSeen" type="checkbox" /> <span>Not yet sighted</span></label>
+            <label class="nature-toggle-pill" for="birdsExplorerToggleAlreadySeen"><input id="birdsExplorerToggleAlreadySeen" type="checkbox" /> <span>Already sighted</span></label>
+            <label class="nature-toggle-pill" for="birdsExplorerToggleSeenRecently"><input id="birdsExplorerToggleSeenRecently" type="checkbox" /> <span>Sighted recently</span></label>
+            <label class="nature-toggle-pill" for="birdsExplorerToggleNotSeenRecently"><input id="birdsExplorerToggleNotSeenRecently" type="checkbox" /> <span>Not sighted recently</span></label>
+            <label class="nature-toggle-pill" for="birdsExplorerToggleFavorited"><input id="birdsExplorerToggleFavorited" type="checkbox" /> <span>Favorited</span></label>
+            <label class="nature-toggle-pill" for="birdsExplorerToggleInSeasonNotSeen"><input id="birdsExplorerToggleInSeasonNotSeen" type="checkbox" /> <span>In season + not seen</span></label>
+            <label class="nature-toggle-pill" for="birdsExplorerToggleRareNotSeen"><input id="birdsExplorerToggleRareNotSeen" type="checkbox" /> <span>Rare + not seen</span></label>
           </div>
         </details>
         <div class="nature-chip-filter-groups" id="birdsExplorerQuickFilterBar">
@@ -488,9 +511,23 @@
       </div>
       <div id="birdsSpeciesCardGrid" class="adventure-cards-grid nature-birds-card-grid"></div>
       <div class="nature-explorer-pagination">
+        <label class="nature-page-jump-label" for="birdsExplorerPaginationMode">View
+          <select id="birdsExplorerPaginationMode" class="filter-select" aria-label="Explorer pagination mode">
+            <option value="paged">Paged</option>
+            <option value="load-more">Load more</option>
+          </select>
+        </label>
+        <button type="button" id="birdsExplorerFirstPageBtn" class="pill-button" title="Go to the first page" data-tooltip="Go to the first page">« First</button>
         <button type="button" id="birdsExplorerPrevPageBtn" class="pill-button" title="Go to the previous page" data-tooltip="Go to the previous page">← Prev</button>
         <div id="birdsExplorerPageInfo" class="nature-search-meta">Page 1</div>
+        <div id="birdsExplorerRangeInfo" class="nature-search-meta">Showing 0-0 of 0</div>
+        <label class="nature-page-jump-label" for="birdsExplorerPageJumpInput">Page
+          <input id="birdsExplorerPageJumpInput" class="filter-input" type="number" min="1" value="1" />
+        </label>
+        <button type="button" id="birdsExplorerJumpPageBtn" class="pill-button" title="Jump to page" data-tooltip="Jump to page">Go</button>
         <button type="button" id="birdsExplorerNextPageBtn" class="pill-button" title="Go to the next page" data-tooltip="Go to the next page">Next →</button>
+        <button type="button" id="birdsExplorerLastPageBtn" class="pill-button" title="Go to the last page" data-tooltip="Go to the last page">Last »</button>
+        <button type="button" id="birdsExplorerLoadMoreBtn" class="pill-button" title="Load more birds" data-tooltip="Load more birds">Load more</button>
       </div>
     </div>
 
@@ -2015,6 +2052,23 @@
     white-space: nowrap;
   }
 
+  #natureChallengeRoot .nature-search-intent-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-search-intent-chip {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
 
   #natureChallengeRoot .nature-explorer-toolbar {
     margin-top: 10px;
@@ -2031,6 +2085,40 @@
   #natureChallengeRoot .nature-explorer-toolbar--advanced {
     margin-top: 8px;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+
+  #natureChallengeRoot .nature-workflow-toggle-grid {
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-workflow-toggle-grid .nature-toggle-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: #ffffff;
+  }
+
+  #natureChallengeRoot .nature-density-mode-group {
+    display: inline-flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-offline-status-line {
+    margin-top: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 8px 10px;
   }
 
   #natureChallengeRoot .nature-explorer-advanced-filters {
@@ -2152,11 +2240,40 @@
     color: #92400e;
   }
 
+  #natureChallengeRoot .nature-explorer-status-pill.is-rare {
+    border-color: #d8b4fe;
+    background: #faf5ff;
+    color: #6b21a8;
+  }
+
+  #natureChallengeRoot .nature-explorer-status-pill.is-out {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+
   #natureChallengeRoot .nature-explorer-insight {
     margin-top: 8px;
     font-size: 11px;
     color: #334155;
     line-height: 1.45;
+  }
+
+  #natureChallengeRoot .nature-why-showing-row {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-why-chip {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 700;
   }
 
   #natureChallengeRoot .nature-detail-section {
@@ -2361,6 +2478,28 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
+    flex-wrap: wrap;
+    position: sticky;
+    bottom: 6px;
+    z-index: 5;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 8px 10px;
+  }
+
+  #natureChallengeRoot .nature-page-jump-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #334155;
+    font-weight: 700;
+  }
+
+  #natureChallengeRoot #birdsExplorerPageJumpInput {
+    width: 68px;
+    padding: 4px 8px;
   }
 
   #natureChallengeRoot .nature-bird-fav-btn {
@@ -2382,6 +2521,31 @@
 
   #natureChallengeRoot .nature-bird-card {
     min-height: 240px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-compact .nature-bird-card {
+    min-height: 180px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .nature-bird-card {
+    min-height: 280px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .adventure-card-title {
+    font-size: 20px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .card-btn,
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .nature-bird-fav-btn {
+    min-height: 44px;
+    font-size: 14px;
+    padding: 10px 14px;
+    font-weight: 800;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .adventure-card {
+    border-width: 2px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
   }
 
   #natureChallengeRoot .nature-bird-detail-list {
