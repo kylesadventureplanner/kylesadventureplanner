@@ -33,7 +33,7 @@
       <div class="card nature-explore-cta-card" style="margin-top: 10px;">
         <div class="nature-explore-cta-row">
           <div>
-            <div class="card-title">🔎 Explore Species or Log a Sighting</div>
+            <div class="card-title">🔎 Explore a Sighting</div>
             <div class="card-subtitle">Browse your full bird list or open the dedicated sighting log page.</div>
           </div>
           <div class="nature-explore-cta-actions">
@@ -115,14 +115,18 @@
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🟩 Birding Bingo</div>
-          <div class="card-subtitle">Complete seasonal bingo tiles and reroll once per season.</div>
+          <div class="card-title">🎯 Challenges</div>
+          <div class="card-subtitle">Complete challenges to earn rewards.</div>
         </div>
-        <div id="birdsBingoMeta" class="nature-progress-note">Bingo board will load with your seasonal progress.</div>
-        <div id="birdsBingoGrid" class="nature-badge-grid"></div>
-        <div class="nature-log-form-actions">
-          <button id="birdsBingoRefreshBtn" type="button" class="pill-button">Reroll Bingo Card (1/season)</button>
+        <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏅 Badges</div>
+          <div class="card-subtitle">Unlock achievements as you progress.</div>
         </div>
+        <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
       </div>
 
       <div class="card">
@@ -134,22 +138,16 @@
         <div id="birdsSeasonQuestGrid" class="nature-challenge-grid"></div>
       </div>
 
-      <!-- Challenges -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🎯 Challenges</div>
-          <div class="card-subtitle">Complete challenges to earn rewards.</div>
+          <div class="card-title">🟩 Birding Bingo</div>
+          <div class="card-subtitle">Complete seasonal bingo tiles and reroll once per season.</div>
         </div>
-        <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
-      </div>
-
-      <!-- Badges -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🏅 Badges</div>
-          <div class="card-subtitle">Unlock achievements as you progress.</div>
+        <div id="birdsBingoMeta" class="nature-progress-note">Bingo board will load with your seasonal progress.</div>
+        <div id="birdsBingoGrid" class="nature-badge-grid"></div>
+        <div class="nature-log-form-actions">
+          <button id="birdsBingoRefreshBtn" type="button" class="pill-button">Reroll Bingo Card (1/season)</button>
         </div>
-        <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
       </div>
 
       <details id="birdsDiagnosticsDetails" class="card nature-collapsible-card nature-diagnostics-details" data-birds-collapsible>
@@ -189,7 +187,7 @@
       <div class="card nature-log-view-shell" style="margin-top: 10px;">
         <div class="nature-log-view-header">
           <div class="nature-view-header-row nature-view-header-row--sticky">
-            <button type="button" id="birdsLogBackBtn" class="pill-button">← Back to Birds</button>
+            <button type="button" id="birdsLogBackBtn" class="pill-button nature-back-to-birds-btn">← Back to Birds</button>
             <div>
               <div class="card-title">📝 Log a Sighting</div>
               <div class="card-subtitle">Add full sightings with confidence, evidence, and geography while keeping species status up to date.</div>
@@ -252,7 +250,7 @@
     <div class="nature-birds-view" data-birds-view="explorer" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="nature-view-header-row">
-          <button type="button" id="birdsExplorerBackBtn" class="pill-button">← Back to Birds</button>
+          <button type="button" id="birdsExplorerBackBtn" class="pill-button nature-back-to-birds-btn">← Back to Birds</button>
           <div>
             <div class="card-title">🐦 Explore Bird Species</div>
             <div class="card-subtitle">Search your species list and open any card for full details.</div>
@@ -1029,6 +1027,16 @@
     margin: 2px 0 8px;
   }
 
+  #natureChallengeRoot .nature-back-to-birds-btn {
+    min-height: 44px;
+    padding: 0 16px;
+    border: 2px solid #1d4ed8;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    color: #1e3a8a;
+    font-weight: 800;
+    box-shadow: 0 10px 22px rgba(29, 78, 216, 0.2);
+  }
+
   #natureChallengeRoot .nature-inline-freeze-btn {
     margin-top: 10px;
     align-self: flex-start;
@@ -1170,11 +1178,6 @@
     white-space: nowrap;
   }
 
-  #natureChallengeRoot .nature-overview-controls-row {
-    display: flex;
-    justify-content: flex-end;
-    margin: 2px 0 8px;
-  }
 
   #natureChallengeRoot .nature-explorer-toolbar {
     margin-top: 10px;
