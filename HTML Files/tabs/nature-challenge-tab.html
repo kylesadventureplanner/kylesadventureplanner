@@ -33,12 +33,17 @@
       <div class="card nature-explore-cta-card" style="margin-top: 10px;">
         <div class="nature-explore-cta-row">
           <div>
-            <div class="card-title">🔎 Species Explorer</div>
-            <div class="card-subtitle">Search your full bird list and open species detail cards.</div>
+            <div class="card-title">🔎 Explore Species or Log a Sighting</div>
+            <div class="card-subtitle">Browse your full bird list or open the dedicated sighting log page.</div>
           </div>
-          <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open species explorer" data-tooltip="Open species explorer">
-            Explore Bird Species
-          </button>
+          <div class="nature-explore-cta-actions">
+            <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open species explorer" data-tooltip="Open species explorer">
+              Explore Species
+            </button>
+            <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--secondary" title="Open sighting log" data-tooltip="Open sighting log">
+              Log a Sighting
+            </button>
+          </div>
         </div>
       </div>
 
@@ -76,12 +81,18 @@
             <div class="nature-stat-value" id="birdsMigrationSighted">0</div>
             <div class="nature-stat-sub">migration-associated birds marked sighted</div>
           </div>
+          <div class="nature-stat-card nature-stat-card--streak">
+            <div class="nature-stat-label">Streak + Freeze</div>
+            <div class="nature-stat-value" id="birdsCurrentStreakStat">0</div>
+            <div id="birdsStreakSummary" class="nature-stat-sub">Streak info will appear after bird data loads.</div>
+            <button id="birdsUseFreezeBtn" type="button" class="pill-button nature-inline-freeze-btn">Use Freeze Today</button>
+          </div>
         </div>
         <div id="birdsProgressSnapshot" class="nature-progress-note">Bird progress will update once the birds dataset loads.</div>
       </div>
 
       <div class="nature-overview-controls-row">
-        <button type="button" id="birdsToggleCollapsiblesBtn" class="pill-button">Expand All</button>
+        <button type="button" id="birdsToggleCollapsiblesBtn" class="pill-button nature-section-toggle-btn">Expand All</button>
       </div>
 
       <details id="birdsVisualLegendDetails" class="card nature-collapsible-card" data-birds-collapsible>
@@ -96,65 +107,10 @@
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title">📝 Sighting Log Mode</div>
-          <div class="card-subtitle">Add full sightings with confidence, evidence, and geography while keeping species status up to date.</div>
-        </div>
-        <div class="nature-log-form-grid">
-          <select id="birdsLogSpeciesSelect" class="filter-select">
-            <option value="">Select species...</option>
-          </select>
-          <input id="birdsLogDateInput" class="filter-input" type="date" />
-          <input id="birdsLogLocationInput" class="filter-input" type="text" placeholder="Location" />
-          <input id="birdsLogCountInput" class="filter-input" type="number" min="1" value="1" placeholder="Count" />
-          <select id="birdsLogRegionInput" class="filter-select">
-            <option value="">Region...</option>
-            <option value="coast">Coast</option>
-            <option value="marsh">Marsh</option>
-            <option value="forest">Forest</option>
-            <option value="urban">Urban</option>
-          </select>
-          <select id="birdsLogHabitatInput" class="filter-select">
-            <option value="">Habitat...</option>
-            <option value="coast">Coast</option>
-            <option value="marsh">Marsh</option>
-            <option value="forest">Forest</option>
-            <option value="urban">Urban</option>
-          </select>
-          <input id="birdsLogLatInput" class="filter-input" type="number" step="any" placeholder="Latitude (optional)" />
-          <input id="birdsLogLngInput" class="filter-input" type="number" step="any" placeholder="Longitude (optional)" />
-          <select id="birdsLogConfidenceInput" class="filter-select">
-            <option value="certain">Confidence: Certain</option>
-            <option value="probable">Confidence: Probable</option>
-            <option value="needs-review">Confidence: Needs review</option>
-          </select>
-          <input id="birdsLogPhotoInput" class="filter-input" type="file" accept="image/*" />
-          <input id="birdsLogAudioInput" class="filter-input" type="file" accept="audio/*" />
-          <textarea id="birdsLogNotesInput" class="filter-input" rows="2" placeholder="Notes"></textarea>
-        </div>
-        <div class="nature-log-form-actions">
-          <button id="birdsLogSightingBtn" type="button" class="pill-button">Log Sighting</button>
-        </div>
-        <div class="nature-progression-stats" id="birdsLogTrendStats"></div>
-        <div id="birdsLogTimeline" class="nature-log-timeline"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
           <div class="card-title">⚡ Daily Micro-Challenges</div>
           <div class="card-subtitle">Three rotating daily goals for quick momentum.</div>
         </div>
         <div id="birdsDailyChallengeGrid" class="nature-challenge-grid"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🔥 Streak + Freeze</div>
-          <div class="card-subtitle">Build consistency without losing progress on one missed day.</div>
-        </div>
-        <div id="birdsStreakSummary" class="nature-progress-note">Streak info will appear after bird data loads.</div>
-        <div class="nature-log-form-actions">
-          <button id="birdsUseFreezeBtn" type="button" class="pill-button">Use Freeze Today</button>
-        </div>
       </div>
 
       <div class="card">
@@ -227,6 +183,55 @@
           <div id="birdsDataQualityPanel"></div>
         </div>
       </details>
+    </div>
+
+    <div class="nature-birds-view" data-birds-view="log" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="nature-view-header-row">
+          <button type="button" id="birdsLogBackBtn" class="pill-button">← Back to Birds</button>
+          <div>
+            <div class="card-title">📝 Log a Sighting</div>
+            <div class="card-subtitle">Add full sightings with confidence, evidence, and geography while keeping species status up to date.</div>
+          </div>
+        </div>
+        <div class="nature-log-form-grid">
+          <select id="birdsLogSpeciesSelect" class="filter-select">
+            <option value="">Select species...</option>
+          </select>
+          <input id="birdsLogDateInput" class="filter-input" type="date" />
+          <input id="birdsLogLocationInput" class="filter-input" type="text" placeholder="Location" />
+          <input id="birdsLogCountInput" class="filter-input" type="number" min="1" value="1" placeholder="Count" />
+          <select id="birdsLogRegionInput" class="filter-select">
+            <option value="">Region...</option>
+            <option value="coast">Coast</option>
+            <option value="marsh">Marsh</option>
+            <option value="forest">Forest</option>
+            <option value="urban">Urban</option>
+          </select>
+          <select id="birdsLogHabitatInput" class="filter-select">
+            <option value="">Habitat...</option>
+            <option value="coast">Coast</option>
+            <option value="marsh">Marsh</option>
+            <option value="forest">Forest</option>
+            <option value="urban">Urban</option>
+          </select>
+          <input id="birdsLogLatInput" class="filter-input" type="number" step="any" placeholder="Latitude (optional)" />
+          <input id="birdsLogLngInput" class="filter-input" type="number" step="any" placeholder="Longitude (optional)" />
+          <select id="birdsLogConfidenceInput" class="filter-select">
+            <option value="certain">Confidence: Certain</option>
+            <option value="probable">Confidence: Probable</option>
+            <option value="needs-review">Confidence: Needs review</option>
+          </select>
+          <input id="birdsLogPhotoInput" class="filter-input" type="file" accept="image/*" />
+          <input id="birdsLogAudioInput" class="filter-input" type="file" accept="audio/*" />
+          <textarea id="birdsLogNotesInput" class="filter-input" rows="2" placeholder="Notes"></textarea>
+        </div>
+        <div class="nature-log-form-actions">
+          <button id="birdsLogSightingBtn" type="button" class="pill-button">Log Sighting</button>
+        </div>
+        <div class="nature-progression-stats" id="birdsLogTrendStats"></div>
+        <div id="birdsLogTimeline" class="nature-log-timeline"></div>
+      </div>
     </div>
 
     <div class="nature-birds-view" data-birds-view="explorer" hidden>
@@ -762,8 +767,7 @@
   }
 
   #natureChallengeRoot .planner-top-btn,
-  #natureChallengeRoot .nature-challenge-subtab,
-  #natureChallengeRoot .quick-filter-btn {
+  #natureChallengeRoot .nature-challenge-subtab {
     min-height: 38px;
     line-height: 1.2;
     pointer-events: auto;
@@ -964,6 +968,14 @@
     gap: 14px;
   }
 
+  #natureChallengeRoot .nature-explore-cta-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
   #natureChallengeRoot .nature-explore-birds-btn {
     width: auto;
     max-width: none;
@@ -985,9 +997,31 @@
     transition: transform 0.18s ease, box-shadow 0.18s ease;
   }
 
+  #natureChallengeRoot .nature-explore-birds-btn--secondary {
+    border-color: #0f766e;
+    background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+    box-shadow: 0 8px 18px rgba(15, 118, 110, 0.22);
+  }
+
   #natureChallengeRoot .nature-explore-birds-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 24px rgba(29, 78, 216, 0.3);
+  }
+
+  #natureChallengeRoot .nature-overview-controls-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: 2px 0 8px;
+  }
+
+  #natureChallengeRoot .nature-section-toggle-btn {
+    min-height: 42px;
+    padding: 0 16px;
+    border: 2px solid #2563eb;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    color: #1d4ed8;
+    font-weight: 800;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
   }
 
   #natureChallengeRoot .nature-collapsible-card {
@@ -998,11 +1032,14 @@
   #natureChallengeRoot .nature-collapsible-summary {
     list-style: none;
     cursor: pointer;
-    padding: 12px 14px;
+    padding: 14px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    border: 2px solid #dbeafe;
+    background: linear-gradient(135deg, #f8fbff 0%, #eef6ff 100%);
+    box-shadow: inset 0 -1px 0 rgba(191, 219, 254, 0.6);
   }
 
   #natureChallengeRoot .nature-collapsible-summary::-webkit-details-marker {
@@ -1011,10 +1048,18 @@
 
   #natureChallengeRoot .nature-collapsible-summary::after {
     content: '▾';
-    font-size: 14px;
-    color: #475569;
+    font-size: 18px;
+    color: #1d4ed8;
+    font-weight: 900;
     transform: rotate(-90deg);
     transition: transform 0.2s ease;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.12);
   }
 
   #natureChallengeRoot details[open] > .nature-collapsible-summary::after {
@@ -1027,6 +1072,7 @@
 
   #natureChallengeRoot .nature-diagnostics-details {
     margin-top: 4px;
+    margin-bottom: 88px;
   }
 
   #natureChallengeRoot .nature-diagnostics-subcard {
@@ -1090,56 +1136,12 @@
     cursor: pointer;
   }
 
-  #natureChallengeRoot .nature-chip-filter-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
-    border: 1px solid #e5e7eb;
     border-radius: 10px;
     padding: 8px;
     background: #f8fafc;
   }
 
   #natureChallengeRoot .nature-chip-filter-group--family {
-    max-height: 150px;
-    overflow-y: auto;
-    align-content: flex-start;
-  }
-
-  #natureChallengeRoot .nature-chip-filter-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    margin-right: 4px;
-    white-space: nowrap;
-  }
-
-  #natureChallengeRoot .nature-chip-filter {
-    border: 1px solid #d1d5db;
-    background: #fff;
-    color: #374151;
-    border-radius: 999px;
-    padding: 5px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-
-  #natureChallengeRoot .nature-chip-filter.is-active {
-    border-color: #1d4ed8;
-    background: #dbeafe;
-    color: #1e3a8a;
-  }
-
-  #natureChallengeRoot .nature-active-filters-row {
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   #natureChallengeRoot .nature-active-filters-label {
     font-size: 11px;
     font-weight: 700;
@@ -1204,37 +1206,6 @@
     color: #334155;
   }
 
-  #natureChallengeRoot .nature-birding-now-filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  #natureChallengeRoot .nature-birding-now-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 10px;
-  }
-
-  #natureChallengeRoot .nature-suggestion-item {
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 8px;
-    background: #f8fafc;
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
-
-  #natureChallengeRoot .nature-sync-mini-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 10px;
-    background: #fff;
-    font-size: 12px;
-    color: #475569;
-    margin-bottom: 8px;
-  }
 
   #natureChallengeRoot .nature-toggle-pill {
     display: inline-flex;
@@ -1339,43 +1310,6 @@
     gap: 12px;
   }
 
-  #natureChallengeRoot .nature-family-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 12px;
-    background: #fff;
-  }
-
-  #natureChallengeRoot .nature-family-card.is-complete {
-    border-color: #86efac;
-    background: #f0fdf4;
-  }
-
-  #natureChallengeRoot .nature-family-card-header {
-    color: #374151;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  #natureChallengeRoot .nature-family-card-title {
-    font-weight: 700;
-    font-size: 14px;
-    color: #1f2937;
-  }
-
-  #natureChallengeRoot .nature-family-card-meta,
-  #natureChallengeRoot .nature-family-card-count {
-    font-size: 12px;
-    color: #6b7280;
-  }
-
-  #natureChallengeRoot .nature-family-card-count {
-    font-weight: 700;
-    white-space: nowrap;
-  }
 
   #natureChallengeRoot .nature-progress-track {
     width: 100%;
@@ -1394,69 +1328,6 @@
     transition: width 0.35s ease;
   }
 
-  #natureChallengeRoot .nature-family-card-body {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  #natureChallengeRoot .nature-species-item {
-    width: 100%;
-    border: 1px solid #e5e7eb;
-    font-size: 13px;
-    color: #374151;
-    padding: 10px;
-    border-radius: 10px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
-    background: #f9fafb;
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background 0.18s ease;
-  }
-
-  #natureChallengeRoot .nature-species-item.sighted {
-    background: #ecfdf5;
-    color: #166534;
-    border-color: #86efac;
-  }
-
-  #natureChallengeRoot .nature-species-item.is-current-season {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
-  }
-
-  #natureChallengeRoot .nature-species-main {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  #natureChallengeRoot .nature-species-name {
-    font-size: 13px;
-    font-weight: 700;
-    color: #1f2937;
-  }
-
-  #natureChallengeRoot .nature-species-item.sighted .nature-species-name {
-    color: #166534;
-  }
-
-  #natureChallengeRoot .nature-species-meta {
-    font-size: 11px;
-    color: #6b7280;
-    line-height: 1.4;
-  }
-
-  #natureChallengeRoot .nature-species-chips {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 6px;
-    max-width: 45%;
-  }
 
   #natureChallengeRoot .nature-chip {
     display: inline-flex;
@@ -1474,12 +1345,6 @@
 
   #natureChallengeRoot .nature-chip.is-current {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
-  }
-
-  #natureChallengeRoot .nature-chip--note {
-    background: #f8fafc;
-    color: #475569;
-    border-color: #e2e8f0;
   }
 
   #natureChallengeRoot .rarity-common {
@@ -1721,6 +1586,12 @@
       align-items: stretch;
     }
 
+    #natureChallengeRoot .nature-explore-cta-actions {
+      width: 100%;
+      justify-content: stretch;
+      flex-direction: column;
+    }
+
     #natureChallengeRoot .nature-explore-birds-btn {
       width: 100%;
     }
@@ -1735,15 +1606,6 @@
       align-items: stretch;
     }
 
-    #natureChallengeRoot .nature-species-item {
-      flex-direction: column;
-    }
-
-    #natureChallengeRoot .nature-species-chips {
-      max-width: 100%;
-      justify-content: flex-start;
-    }
-
     #natureChallengeRoot .nature-bird-detail-row {
       grid-template-columns: 1fr;
       gap: 6px;
@@ -1751,7 +1613,6 @@
   }
 
   @media (hover: hover) {
-    #natureChallengeRoot .nature-family-card:hover,
     #natureChallengeRoot .nature-challenge-card:hover,
     #natureChallengeRoot .nature-badge-card:hover {
       box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);

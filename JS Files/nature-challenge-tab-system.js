@@ -18,7 +18,7 @@
     'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx'
   ];
   const SUBTAB_KEYS = ['birds', 'mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees', 'shrubs'];
-  const BIRD_VIEWS = ['overview', 'explorer', 'detail'];
+  const BIRD_VIEWS = ['overview', 'log', 'explorer', 'detail'];
 
   const RARITY_META = {
     common: { label: 'Common', className: 'rarity-common', weight: 1 },
@@ -1424,15 +1424,17 @@
   function renderBirdStreakPanel(streak) {
     const body = document.getElementById('birdsStreakSummary');
     const freezeBtn = document.getElementById('birdsUseFreezeBtn');
-    if (!body || !freezeBtn) return;
+    const streakValue = document.getElementById('birdsCurrentStreakStat');
+    if (!body || !freezeBtn || !streakValue) return;
 
     const riskLine = streak.atRiskStreak > 0 && !streak.frozenToday
       ? `Streak at risk: ${streak.atRiskStreak} days. Use a freeze to protect today.`
       : 'Streak is active and protected.';
 
+    streakValue.textContent = String(streak.currentStreak);
+
     body.innerHTML = `
-      <div><strong>${streak.currentStreak}</strong> day current streak</div>
-      <div>Best streak: ${Math.max(streak.currentStreak, Number(state.gamification.streak.bestStreak) || 0)} days</div>
+      <div>Best: ${Math.max(streak.currentStreak, Number(state.gamification.streak.bestStreak) || 0)} days</div>
       <div>Freeze credits: ${streak.freezeCredits}</div>
       <div>${escapeHtml(riskLine)}</div>
     `;
@@ -2059,6 +2061,7 @@
   function setBirdView(root, viewKey) {
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     syncBirdViews(root);
+    if (state.activeBirdView === 'log') return;
     if (state.activeBirdView === 'explorer') renderBirdExplorerList();
     if (state.activeBirdView === 'detail') renderBirdDetail();
   }
@@ -2193,6 +2196,18 @@
     if (exploreButton && exploreButton.dataset.natureExploreBound !== '1') {
       exploreButton.dataset.natureExploreBound = '1';
       exploreButton.addEventListener('click', () => setBirdView(root, 'explorer'));
+    }
+
+    const openLogButton = document.getElementById('birdsOpenLogBtn');
+    if (openLogButton && openLogButton.dataset.natureOpenLogBound !== '1') {
+      openLogButton.dataset.natureOpenLogBound = '1';
+      openLogButton.addEventListener('click', () => setBirdView(root, 'log'));
+    }
+
+    const logBackButton = document.getElementById('birdsLogBackBtn');
+    if (logBackButton && logBackButton.dataset.natureLogBackBound !== '1') {
+      logBackButton.dataset.natureLogBackBound = '1';
+      logBackButton.addEventListener('click', () => setBirdView(root, 'overview'));
     }
 
     const explorerBackButton = document.getElementById('birdsExplorerBackBtn');
