@@ -19,10 +19,15 @@ class TabContentLoader {
     this.tabsPath = 'HTML Files/tabs/';  // ← FIXED: Correct path to tabs folder
     this.loadedTabs = new Set();
     this.loadingTabs = new Set();
+    this.tabLoadPromises = new Map();
     this.tabCache = new Map();
     this.loadTimes = new Map();
+    this.executedExternalScripts = new Set();
+    this.executedInlineScriptHashes = new Set();
     this.isInitialized = false;
     this.statusHideTimer = null;
+    this.handlePopState = this.handlePopState.bind(this);
+    this.handleHashChange = this.handleHashChange.bind(this);
     this.ensureLoaderStyles();
     this.ensureGlobalStatusElement();
     this.initializeTabs();
@@ -207,6 +212,9 @@ class TabContentLoader {
     // Preload high-priority tabs
     this.preloadTabs();
 
+    // Keep tab state synchronized with URL for deep-linking/back-forward support.
+    this.setupUrlSync();
+
     // Support deep-linking directly to a tab (used by popup/new-tab flows).
     this.openRequestedTabFromUrl();
 
@@ -223,12 +231,60 @@ class TabContentLoader {
   }
 
   openRequestedTabFromUrl() {
-    const params = new URLSearchParams(window.location.search || '');
-    const requestedTab = String(params.get('tab') || '').trim();
+    const requestedTab = this.getTabIdFromUrl();
     if (!requestedTab || !this.tabs[requestedTab]) return;
 
     // Let other startup scripts attach first, then switch.
-    setTimeout(() => this.switchTab(requestedTab), 0);
+    setTimeout(() => this.switchTab(requestedTab, { syncUrl: false }), 0);
+  }
+
+  getTabIdFromUrl() {
+    const params = new URLSearchParams(window.location.search || '');
+    const queryTab = String(params.get('tab') || '').trim();
+    if (queryTab && this.tabs[queryTab]) return queryTab;
+
+    const hash = String(window.location.hash || '').replace(/^#/, '').trim();
+    if (!hash) return '';
+
+    if (hash.startsWith('tab=')) {
+      const hashTab = String(hash.slice(4)).trim();
+      if (this.tabs[hashTab]) return hashTab;
+    }
+
+    if (this.tabs[hash]) return hash;
+    return '';
+  }
+
+  setupUrlSync() {
+    window.addEventListener('popstate', this.handlePopState);
+    window.addEventListener('hashchange', this.handleHashChange);
+  }
+
+  handlePopState() {
+    const requestedTab = this.getTabIdFromUrl();
+    if (!requestedTab || !this.tabs[requestedTab]) return;
+    this.switchTab(requestedTab, { syncUrl: false });
+  }
+
+  handleHashChange() {
+    const requestedTab = this.getTabIdFromUrl();
+    if (!requestedTab || !this.tabs[requestedTab]) return;
+    this.switchTab(requestedTab, { syncUrl: false });
+  }
+
+  syncUrlToTab(tabId) {
+    if (!tabId || !this.tabs[tabId]) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabId);
+
+    // Canonicalize to query-based deep links while still accepting hash input.
+    const hash = String(url.hash || '').replace(/^#/, '').trim();
+    if (hash === tabId || hash === `tab=${tabId}`) {
+      url.hash = '';
+    }
+
+    window.history.replaceState(window.history.state, '', url.toString());
   }
 
   /**
@@ -292,7 +348,8 @@ class TabContentLoader {
   /**
    * Switch to a tab
    */
-  switchTab(tabId) {
+  switchTab(tabId, options = {}) {
+    const { syncUrl = true } = options;
     console.log(`📑 Switching to tab: ${tabId}`);
 
     // Hide all tabs
@@ -322,6 +379,10 @@ class TabContentLoader {
     }
 
     tabPane.classList.add('active');
+
+    if (syncUrl) {
+      this.syncUrlToTab(tabId);
+    }
 
     // Show loading indicator if not already loaded
     if (!this.loadedTabs.has(tabId) && !this.loadingTabs.has(tabId)) {
@@ -364,141 +425,190 @@ class TabContentLoader {
    * Load tab content from HTML file (lazy loading)
    */
   async loadTab(tabId, isPreload = false) {
-    try {
-      if (this.loadedTabs.has(tabId)) {
-        console.log(`✅ Tab already loaded: ${tabId}`);
-        return;
-      }
+    if (this.loadedTabs.has(tabId)) {
+      console.log(`✅ Tab already loaded: ${tabId}`);
+      return;
+    }
 
-      if (this.loadingTabs.has(tabId)) {
-        console.log(`⏳ Tab already loading: ${tabId}`);
-        return;
-      }
+    const existingLoadPromise = this.tabLoadPromises.get(tabId);
+    if (existingLoadPromise) {
+      console.log(`⏳ Tab already loading (joining existing promise): ${tabId}`);
+      await existingLoadPromise;
+      return;
+    }
 
-      if (!isPreload) {
-        this.updateGlobalStatus(`Loading ${this.getTabLabel(tabId)}...`);
-      }
+    const loadPromise = (async () => {
+      try {
+        if (this.loadingTabs.has(tabId)) {
+          console.log(`⏳ Tab already loading: ${tabId}`);
+          return;
+        }
 
-      this.loadingTabs.add(tabId);
-      const startTime = performance.now();
+        if (!isPreload) {
+          this.updateGlobalStatus(`Loading ${this.getTabLabel(tabId)}...`);
+        }
 
-      const tabInfo = this.tabs[tabId];
-      if (!tabInfo) {
-        console.error(`❌ Tab not found: ${tabId}`);
-        this.loadingTabs.delete(tabId);
-        return;
-      }
+        this.loadingTabs.add(tabId);
+        const startTime = performance.now();
 
-      // ← NEW: Handle inline content (already in index)
-      if (tabInfo.isInlineContent) {
-        console.log(`✅ Using inline content for tab: ${tabId}`);
+        const tabInfo = this.tabs[tabId];
+        if (!tabInfo) {
+          console.error(`❌ Tab not found: ${tabId}`);
+          this.loadingTabs.delete(tabId);
+          return;
+        }
+
+        // ← NEW: Handle inline content (already in index)
+        if (tabInfo.isInlineContent) {
+          console.log(`✅ Using inline content for tab: ${tabId}`);
+          const loadTime = performance.now() - startTime;
+          this.loadTimes.set(tabId, loadTime);
+          this.loadedTabs.add(tabId);
+          this.loadingTabs.delete(tabId);
+          this.initializeTab(tabId);
+          const container = document.getElementById(this.tabs[tabId]?.element);
+          if (container) this.hideLoadingIndicator(container);
+          if (!isPreload) {
+            this.updateGlobalStatus(`${this.getTabLabel(tabId)} ready`, true, 1200);
+          }
+          return;
+        }
+
+        const url = `${this.tabsPath}${tabInfo.file}`;
+        const loadType = isPreload ? 'PRELOAD' : 'USER-TRIGGERED';
+        console.log(`📥 [${loadType}] Loading tab content from: ${url}`);
+
+        // Check cache first
+        if (this.tabCache.has(tabId)) {
+          console.log(`💾 Using cached content for tab: ${tabId}`);
+          const cachedContent = this.tabCache.get(tabId);
+          this.insertTabContent(tabId, cachedContent);
+          this.loadedTabs.add(tabId);
+          this.loadingTabs.delete(tabId);
+          this.executeScripts(tabId);
+          this.initializeTab(tabId);
+          const container = document.getElementById(this.tabs[tabId]?.element);
+          if (container) this.hideLoadingIndicator(container);
+          if (!isPreload) {
+            this.updateGlobalStatus(`${this.getTabLabel(tabId)} ready`, true, 1200);
+          }
+          return;
+        }
+
+        // Fetch with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Failed to load ${url}: ${response.statusText}`);
+        }
+
+        const htmlContent = await response.text();
+
+        if (!tabInfo.isInlineContent && this.isFallbackShellResponse(htmlContent)) {
+          throw new Error(
+            `Tab HTML for '${tabId}' returned the app shell instead of tab markup. ` +
+            `Check navigation fallback excludes for nested paths (for example '/HTML Files/tabs/*').`
+          );
+        }
+
+        // Cache the content
+        this.tabCache.set(tabId, htmlContent);
+
+        // Calculate load time
         const loadTime = performance.now() - startTime;
         this.loadTimes.set(tabId, loadTime);
+        console.log(`⏱️  Tab loaded in ${loadTime.toFixed(2)}ms: ${tabId}`);
+
+        // Insert content
+        this.insertTabContent(tabId, htmlContent);
+
+        // Mark as loaded
         this.loadedTabs.add(tabId);
         this.loadingTabs.delete(tabId);
-        this.initializeTab(tabId);
-        const container = document.getElementById(this.tabs[tabId]?.element);
-        if (container) this.hideLoadingIndicator(container);
-        if (!isPreload) {
-          this.updateGlobalStatus(`${this.getTabLabel(tabId)} ready`, true, 1200);
-        }
-        return;
-      }
 
-      const url = `${this.tabsPath}${tabInfo.file}`;
-      const loadType = isPreload ? 'PRELOAD' : 'USER-TRIGGERED';
-      console.log(`📥 [${loadType}] Loading tab content from: ${url}`);
-
-      // Check cache first
-      if (this.tabCache.has(tabId)) {
-        console.log(`💾 Using cached content for tab: ${tabId}`);
-        const cachedContent = this.tabCache.get(tabId);
-        this.insertTabContent(tabId, cachedContent);
-        this.loadedTabs.add(tabId);
-        this.loadingTabs.delete(tabId);
+        // Execute any scripts in the loaded content
         this.executeScripts(tabId);
+
+        // Trigger tab-specific initialization
         this.initializeTab(tabId);
+
         const container = document.getElementById(this.tabs[tabId]?.element);
         if (container) this.hideLoadingIndicator(container);
+
+        // Log performance
         if (!isPreload) {
+          console.log(`✅ Tab loaded and displayed: ${tabId}`);
           this.updateGlobalStatus(`${this.getTabLabel(tabId)} ready`, true, 1200);
         }
-        return;
+
+      } catch (error) {
+        console.error(`❌ Error loading tab ${tabId}:`, error);
+        this.loadingTabs.delete(tabId);
+        this.tabCache.delete(tabId);
+
+        // Show error message in tab
+        const container = document.getElementById(this.tabs[tabId]?.element);
+        if (container) {
+          this.hideLoadingIndicator(container);
+          this.renderTabError(container, error);
+        }
+        if (!isPreload) {
+          this.updateGlobalStatus(`Failed to load ${this.getTabLabel(tabId)}`, false, 2200);
+        }
       }
+    })();
 
-      // Fetch with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    this.tabLoadPromises.set(tabId, loadPromise);
 
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Failed to load ${url}: ${response.statusText}`);
-      }
-
-      const htmlContent = await response.text();
-
-      if (!tabInfo.isInlineContent && this.isFallbackShellResponse(htmlContent)) {
-        throw new Error(
-          `Tab HTML for '${tabId}' returned the app shell instead of tab markup. ` +
-          `Check navigation fallback excludes for nested paths (for example '/HTML Files/tabs/*').`
-        );
-      }
-
-      // Cache the content
-      this.tabCache.set(tabId, htmlContent);
-
-      // Calculate load time
-      const loadTime = performance.now() - startTime;
-      this.loadTimes.set(tabId, loadTime);
-      console.log(`⏱️  Tab loaded in ${loadTime.toFixed(2)}ms: ${tabId}`);
-
-      // Insert content
-      this.insertTabContent(tabId, htmlContent);
-
-      // Mark as loaded
-      this.loadedTabs.add(tabId);
-      this.loadingTabs.delete(tabId);
-
-      // Execute any scripts in the loaded content
-      this.executeScripts(tabId);
-
-      // Trigger tab-specific initialization
-      this.initializeTab(tabId);
-
-      const container = document.getElementById(this.tabs[tabId]?.element);
-      if (container) this.hideLoadingIndicator(container);
-
-      // Log performance
-      if (!isPreload) {
-        console.log(`✅ Tab loaded and displayed: ${tabId}`);
-        this.updateGlobalStatus(`${this.getTabLabel(tabId)} ready`, true, 1200);
-      }
-
-    } catch (error) {
-      console.error(`❌ Error loading tab ${tabId}:`, error);
-      this.loadingTabs.delete(tabId);
-      this.tabCache.delete(tabId);
-
-      // Show error message in tab
-      const container = document.getElementById(this.tabs[tabId]?.element);
-      if (container) {
-        this.hideLoadingIndicator(container);
-        container.innerHTML = `
-          <div style="padding: 40px; text-align: center;">
-            <p style="color: #ef4444; font-weight: 600;">❌ Error loading tab content</p>
-            <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">${error.message}</p>
-            <button onclick="location.reload()" style="margin-top: 16px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-              🔄 Reload Page
-            </button>
-          </div>
-        `;
-      }
-      if (!isPreload) {
-        this.updateGlobalStatus(`Failed to load ${this.getTabLabel(tabId)}`, false, 2200);
-      }
+    try {
+      await loadPromise;
+    } finally {
+      this.tabLoadPromises.delete(tabId);
     }
+  }
+
+  renderTabError(container, error) {
+    if (!container) return;
+    const errorMessage = error && error.message ? String(error.message) : 'Unknown error';
+
+    const wrapper = document.createElement('div');
+    wrapper.style.padding = '40px';
+    wrapper.style.textAlign = 'center';
+
+    const title = document.createElement('p');
+    title.style.color = '#ef4444';
+    title.style.fontWeight = '600';
+    title.textContent = 'Error loading tab content';
+
+    const details = document.createElement('p');
+    details.style.color = '#6b7280';
+    details.style.fontSize = '14px';
+    details.style.marginTop = '8px';
+    details.textContent = errorMessage;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.style.marginTop = '16px';
+    button.style.padding = '8px 16px';
+    button.style.background = '#3b82f6';
+    button.style.color = 'white';
+    button.style.border = 'none';
+    button.style.borderRadius = '6px';
+    button.style.cursor = 'pointer';
+    button.style.fontWeight = '600';
+    button.textContent = 'Reload Page';
+    button.addEventListener('click', () => window.location.reload());
+
+    wrapper.appendChild(title);
+    wrapper.appendChild(details);
+    wrapper.appendChild(button);
+
+    container.innerHTML = '';
+    container.appendChild(wrapper);
   }
 
   /**
@@ -525,9 +635,24 @@ class TabContentLoader {
    */
   executeScripts(tabId) {
     const container = document.getElementById(this.tabs[tabId].element);
+    if (!container) return;
     const scripts = container.querySelectorAll('script');
 
     scripts.forEach(script => {
+      if (script.src) {
+        const srcKey = new URL(script.src, window.location.href).href;
+        if (this.executedExternalScripts.has(srcKey)) {
+          return;
+        }
+        this.executedExternalScripts.add(srcKey);
+      } else {
+        const inlineKey = this.hashScriptContent(script.textContent || '');
+        if (this.executedInlineScriptHashes.has(inlineKey)) {
+          return;
+        }
+        this.executedInlineScriptHashes.add(inlineKey);
+      }
+
       const newScript = document.createElement('script');
       newScript.textContent = script.textContent;
       if (script.src) {
@@ -535,6 +660,15 @@ class TabContentLoader {
       }
       document.body.appendChild(newScript);
     });
+  }
+
+  hashScriptContent(content) {
+    let hash = 0;
+    for (let i = 0; i < content.length; i += 1) {
+      hash = ((hash << 5) - hash) + content.charCodeAt(i);
+      hash |= 0;
+    }
+    return `inline:${hash}:${content.length}`;
   }
 
   /**

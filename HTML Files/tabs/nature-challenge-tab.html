@@ -90,6 +90,106 @@
         </button>
       </div>
 
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📝 Sighting Log Mode</div>
+          <div class="card-subtitle">Add full sightings with confidence, evidence, and geography while keeping species status up to date.</div>
+        </div>
+        <div class="nature-log-form-grid">
+          <select id="birdsLogSpeciesSelect" class="filter-select">
+            <option value="">Select species...</option>
+          </select>
+          <input id="birdsLogDateInput" class="filter-input" type="date" />
+          <input id="birdsLogLocationInput" class="filter-input" type="text" placeholder="Location" />
+          <input id="birdsLogCountInput" class="filter-input" type="number" min="1" value="1" placeholder="Count" />
+          <select id="birdsLogRegionInput" class="filter-select">
+            <option value="">Region...</option>
+            <option value="coast">Coast</option>
+            <option value="marsh">Marsh</option>
+            <option value="forest">Forest</option>
+            <option value="urban">Urban</option>
+          </select>
+          <select id="birdsLogHabitatInput" class="filter-select">
+            <option value="">Habitat...</option>
+            <option value="coast">Coast</option>
+            <option value="marsh">Marsh</option>
+            <option value="forest">Forest</option>
+            <option value="urban">Urban</option>
+          </select>
+          <input id="birdsLogLatInput" class="filter-input" type="number" step="any" placeholder="Latitude (optional)" />
+          <input id="birdsLogLngInput" class="filter-input" type="number" step="any" placeholder="Longitude (optional)" />
+          <select id="birdsLogConfidenceInput" class="filter-select">
+            <option value="certain">Confidence: Certain</option>
+            <option value="probable">Confidence: Probable</option>
+            <option value="needs-review">Confidence: Needs review</option>
+          </select>
+          <input id="birdsLogPhotoInput" class="filter-input" type="file" accept="image/*" />
+          <input id="birdsLogAudioInput" class="filter-input" type="file" accept="audio/*" />
+          <textarea id="birdsLogNotesInput" class="filter-input" rows="2" placeholder="Notes"></textarea>
+        </div>
+        <div class="nature-log-form-actions">
+          <button id="birdsLogSightingBtn" type="button" class="pill-button">Log Sighting</button>
+        </div>
+        <div class="nature-progression-stats" id="birdsLogTrendStats"></div>
+        <div id="birdsLogTimeline" class="nature-log-timeline"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧠 Birding Now</div>
+          <div class="card-subtitle">Likely birds for this week and rare in-season targets based on your context.</div>
+        </div>
+        <div class="nature-birding-now-filters">
+          <select id="birdsNowRegionFilter" class="filter-select">
+            <option value="all">Region context: All</option>
+            <option value="coast">Coast</option>
+            <option value="marsh">Marsh</option>
+            <option value="forest">Forest</option>
+            <option value="urban">Urban</option>
+          </select>
+          <select id="birdsNowHabitatFilter" class="filter-select">
+            <option value="all">Habitat context: All</option>
+            <option value="coast">Coast</option>
+            <option value="marsh">Marsh</option>
+            <option value="forest">Forest</option>
+            <option value="urban">Urban</option>
+          </select>
+        </div>
+        <div class="nature-birding-now-grid">
+          <div>
+            <div class="card-subtitle">Likely this week</div>
+            <div id="birdsNowLikelyList"></div>
+          </div>
+          <div>
+            <div class="card-subtitle">Suggested next targets</div>
+            <div id="birdsNowTargetsList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔄 Excel + Local Sync</div>
+          <div class="card-subtitle">Visibility into queue state, last write, and conflict resolution.</div>
+        </div>
+        <div id="birdsSyncStatusPanel"></div>
+        <div class="nature-log-form-actions">
+          <button id="birdsSyncNowBtn" type="button" class="pill-button">Sync Now</button>
+        </div>
+        <div id="birdsSyncConflictsPanel"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🛠️ Data Quality & Dedupe</div>
+          <div class="card-subtitle">Check duplicates, synonym clashes, rarity inconsistencies, and canonical ID stability.</div>
+        </div>
+        <div class="nature-log-form-actions">
+          <button id="birdsRunDataQualityBtn" type="button" class="pill-button">Run Data Quality Check</button>
+        </div>
+        <div id="birdsDataQualityPanel"></div>
+      </div>
+
       <!-- Challenges -->
       <div class="card">
         <div class="card-header">
@@ -156,6 +256,20 @@
           </select>
           <select id="birdsExplorerFamilyFilter" class="filter-select" title="Filter by family">
             <option value="all">Family: All</option>
+          </select>
+          <select id="birdsExplorerRegionFilter" class="filter-select" title="Filter by region context">
+            <option value="all">Region: All</option>
+            <option value="coast">Coast</option>
+            <option value="marsh">Marsh</option>
+            <option value="forest">Forest</option>
+            <option value="urban">Urban</option>
+          </select>
+          <select id="birdsExplorerHabitatFilter" class="filter-select" title="Filter by habitat context">
+            <option value="all">Habitat: All</option>
+            <option value="coast">Coast</option>
+            <option value="marsh">Marsh</option>
+            <option value="forest">Forest</option>
+            <option value="urban">Urban</option>
           </select>
           <label class="nature-toggle-pill" for="birdsExplorerFavoritesOnly">
             <input id="birdsExplorerFavoritesOnly" type="checkbox" /> Favorites only
@@ -982,6 +1096,66 @@
     cursor: pointer;
     padding: 0;
     line-height: 1;
+  }
+
+  #natureChallengeRoot .nature-log-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-log-form-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-log-timeline {
+    margin-top: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-log-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: #fff;
+    font-size: 12px;
+    color: #334155;
+  }
+
+  #natureChallengeRoot .nature-birding-now-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  #natureChallengeRoot .nature-birding-now-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+  }
+
+  #natureChallengeRoot .nature-suggestion-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px;
+    background: #f8fafc;
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  #natureChallengeRoot .nature-sync-mini-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+    background: #fff;
+    font-size: 12px;
+    color: #475569;
+    margin-bottom: 8px;
   }
 
   #natureChallengeRoot .nature-toggle-pill {
