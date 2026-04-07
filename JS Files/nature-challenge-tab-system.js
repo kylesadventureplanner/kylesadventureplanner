@@ -476,6 +476,16 @@
     return score;
   }
 
+  function getOverviewPriorityReason(card, stats) {
+    if (!card) return 'Recommended';
+    const remaining = Math.max(0, Number(card.goal) - Number(card.progress));
+    if (!card.completed && remaining <= 1) return 'Almost complete';
+    if (!card.completed && Number(card.pct) >= 70) return 'High progress';
+    if (isSeasonRelevantCard(card, stats)) return `${stats.currentSeasonLabel || 'Season'} focus`;
+    if (Number(card.xp) >= 180) return 'High reward';
+    return 'Recommended';
+  }
+
   function getPrioritizedOverviewCards(cards, stats, limit) {
     return (cards || [])
       .slice()
@@ -484,7 +494,22 @@
         if (scoreDiff !== 0) return scoreDiff;
         return String(a.title || '').localeCompare(String(b.title || ''));
       })
-      .slice(0, Math.max(1, Number(limit) || 1));
+      .slice(0, Math.max(1, Number(limit) || 1))
+      .map((card) => ({
+        ...card,
+        whyShown: getOverviewPriorityReason(card, stats)
+      }));
+  }
+
+  function updateBirdMoreButtons(counts) {
+    const sections = ['challenges', 'badges', 'quests', 'bingo'];
+    sections.forEach((section) => {
+      const button = document.querySelector(`[data-birds-more="${section}"]`);
+      if (!button) return;
+      const shown = Math.max(0, Number(counts && counts[section] && counts[section].shown) || 0);
+      const total = Math.max(shown, Number(counts && counts[section] && counts[section].total) || shown);
+      button.textContent = `More (${shown}/${total} shown)`;
+    });
   }
 
   function getCanonicalGroupKey(label) {
@@ -1461,6 +1486,7 @@
 
     container.innerHTML = challenges.map((challenge) => `
       <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''}">
+        ${challenge.whyShown ? `<div class="nature-why-shown-badge">Why shown: ${escapeHtml(challenge.whyShown)}</div>` : ''}
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(challenge.icon, challenge.title))}</div>
         <div class="nature-challenge-card-description">${escapeHtml(challenge.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${challenge.pct}%;"></div></div>
@@ -1475,6 +1501,7 @@
 
     container.innerHTML = badges.map((badge) => `
       <div class="nature-badge-card ${badge.completed ? 'unlocked' : 'locked'} ${badge.rarityClass}">
+        ${badge.whyShown ? `<div class="nature-why-shown-badge">Why shown: ${escapeHtml(badge.whyShown)}</div>` : ''}
         <div class="nature-badge-icon">${escapeHtml(badge.icon)}</div>
         <div class="nature-badge-card-title">${escapeHtml(badge.title)}</div>
         <div class="nature-badge-card-description">${escapeHtml(badge.description)}</div>
@@ -1582,6 +1609,7 @@
     meta.textContent = `${completedCount}/${totalTileCount} tiles complete${bingo.bingoAchieved ? ' | Bingo unlocked!' : ''}`;
     grid.innerHTML = bingo.tiles.map((tile) => `
       <div class="nature-badge-card ${tile.completed ? 'unlocked' : 'locked'}">
+        ${tile.whyShown ? `<div class="nature-why-shown-badge">Why shown: ${escapeHtml(tile.whyShown)}</div>` : ''}
         <div class="nature-badge-card-title">${escapeHtml(tile.label)}</div>
         <div class="nature-badge-progress">${tile.progress}/${tile.goal}</div>
         <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${tile.pct}%;"></div></div>
@@ -1602,6 +1630,7 @@
     meta.textContent = `${stats.currentSeasonLabel} chapter: ${questline.completedCount}/${questline.steps.length} steps completed`;
     container.innerHTML = questline.steps.map((step) => `
       <div class="nature-challenge-card ${step.completed ? 'completed' : ''}">
+        ${step.whyShown ? `<div class="nature-why-shown-badge">Why shown: ${escapeHtml(step.whyShown)}</div>` : ''}
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(step.icon, step.title))}</div>
         <div class="nature-challenge-card-description">${escapeHtml(step.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${step.pct}%;"></div></div>
@@ -2171,6 +2200,13 @@
       questline: seasonQuestline,
       bingo
     };
+
+    updateBirdMoreButtons({
+      challenges: { shown: overviewChallenges.length, total: challenges.length },
+      badges: { shown: overviewBadges.length, total: badges.length },
+      quests: { shown: overviewQuests.length, total: seasonQuestline.steps.length },
+      bingo: { shown: overviewBingoTiles.length, total: bingo.tiles.length }
+    });
 
     renderBirdHeaderStatus();
     renderBirdStats(stats);

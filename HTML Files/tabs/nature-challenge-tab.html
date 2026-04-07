@@ -4,13 +4,6 @@
 <div id="natureChallengeRoot">
   <div class="nature-challenge-header">
     <h1>Nature Challenge</h1>
-    <div class="planner-top-actions">
-      <button id="natureChallengeRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh nature data" data-tooltip="Refresh nature data">
-        🔄 Refresh
-      </button>
-      <span id="natureSyncHealthBadge" class="nature-sync-health" aria-live="polite">Sync: checking...</span>
-      <span id="natureSyncMeta" class="nature-sync-meta" aria-live="polite">Last synced: --</span>
-    </div>
   </div>
 
   <div class="nature-challenge-subtabs" role="tablist" aria-label="Nature Challenge categories">
@@ -37,6 +30,9 @@
             <div class="card-subtitle">Browse your full bird list or open the dedicated sighting log page.</div>
           </div>
           <div class="nature-explore-cta-actions">
+            <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--refresh" title="Refresh nature data" data-tooltip="Refresh nature data">
+              Refresh Data
+            </button>
             <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open species explorer" data-tooltip="Open species explorer">
               Explore Species
             </button>
@@ -109,7 +105,7 @@
             <div class="card-title">🎯 Challenges</div>
             <div class="card-subtitle">Complete challenges to earn rewards.</div>
           </div>
-          <button type="button" class="pill-button" data-birds-more="challenges">More</button>
+          <button type="button" class="pill-button nature-more-btn" data-birds-more="challenges">More</button>
         </div>
         <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
       </div>
@@ -120,7 +116,7 @@
             <div class="card-title">🏅 Badges</div>
             <div class="card-subtitle">Unlock achievements as you progress.</div>
           </div>
-          <button type="button" class="pill-button" data-birds-more="badges">More</button>
+          <button type="button" class="pill-button nature-more-btn" data-birds-more="badges">More</button>
         </div>
         <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
       </div>
@@ -131,7 +127,7 @@
             <div class="card-title">📚 Seasonal Quests</div>
             <div class="card-subtitle">Complete the current season chapter with multi-step goals.</div>
           </div>
-          <button type="button" class="pill-button" data-birds-more="quests">More</button>
+          <button type="button" class="pill-button nature-more-btn" data-birds-more="quests">More</button>
         </div>
         <div id="birdsSeasonQuestMeta" class="nature-progress-note">Season quest chapter progress appears here.</div>
         <div id="birdsSeasonQuestGrid" class="nature-challenge-grid"></div>
@@ -143,7 +139,7 @@
             <div class="card-title">🟩 Birding Bingo</div>
             <div class="card-subtitle">Complete seasonal bingo tiles and reroll once per season.</div>
           </div>
-          <button type="button" class="pill-button" data-birds-more="bingo">More</button>
+          <button type="button" class="pill-button nature-more-btn" data-birds-more="bingo">More</button>
         </div>
         <div id="birdsBingoMeta" class="nature-progress-note">Bingo board will load with your seasonal progress.</div>
         <div id="birdsBingoGrid" class="nature-badge-grid"></div>
@@ -159,6 +155,11 @@
             <div class="card-subtitle">Quality tools and local/Excel sync controls.</div>
           </div>
         </summary>
+
+        <div class="nature-diagnostics-sync-row">
+          <span id="natureSyncHealthBadge" class="nature-sync-health" aria-live="polite">Bird data: checking...</span>
+          <span id="natureSyncMeta" class="nature-sync-meta" aria-live="polite">Source details will appear after load.</span>
+        </div>
 
         <div class="card nature-diagnostics-subcard">
           <div class="card-header">
@@ -372,7 +373,7 @@
     <div class="nature-birds-view" data-birds-view="collection" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="nature-view-header-row">
-          <button type="button" id="birdsCollectionBackBtn" class="pill-button">← Back to Birds</button>
+          <button type="button" id="birdsCollectionBackBtn" class="pill-button nature-back-to-birds-btn">← Back to Birds</button>
           <div>
             <div id="birdsCollectionTitle" class="card-title">All Items</div>
             <div id="birdsCollectionSubtitle" class="card-subtitle">View every item in this section.</div>
@@ -1063,6 +1064,12 @@
     box-shadow: 0 8px 18px rgba(15, 118, 110, 0.22);
   }
 
+  #natureChallengeRoot .nature-explore-birds-btn--refresh {
+    border-color: #7c3aed;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    box-shadow: 0 8px 18px rgba(124, 58, 237, 0.28);
+  }
+
   #natureChallengeRoot .nature-explore-birds-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 24px rgba(29, 78, 216, 0.3);
@@ -1076,12 +1083,54 @@
 
   #natureChallengeRoot .nature-back-to-birds-btn {
     min-height: 44px;
-    padding: 0 16px;
-    border: 2px solid #1d4ed8;
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    color: #1e3a8a;
+    padding: 0 18px;
+    border: 2px solid #1e40af;
+    background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+    color: #ffffff;
     font-weight: 800;
-    box-shadow: 0 10px 22px rgba(29, 78, 216, 0.2);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.34);
+  }
+
+  #natureChallengeRoot .nature-back-to-birds-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.4);
+  }
+
+  #natureChallengeRoot .nature-more-btn {
+    min-height: 38px;
+    padding: 0 12px;
+    border: 2px solid #7c3aed;
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+    color: #5b21b6;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 8px 18px rgba(124, 58, 237, 0.2);
+  }
+
+  #natureChallengeRoot .nature-more-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(124, 58, 237, 0.28);
+  }
+
+  #natureChallengeRoot .nature-diagnostics-sync-row {
+    margin: 10px 14px 2px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  #natureChallengeRoot .nature-why-shown-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 11px;
+    font-weight: 700;
   }
 
   #natureChallengeRoot .nature-inline-freeze-btn {
