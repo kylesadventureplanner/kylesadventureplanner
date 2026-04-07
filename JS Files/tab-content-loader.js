@@ -579,6 +579,11 @@ class TabContentLoader {
           window.initBudgetTab();
         }
         break;
+      case 'nature-challenge':
+        if (typeof window.initNatureChallengeTab === 'function') {
+          window.initNatureChallengeTab();
+        }
+        break;
       case 'visited-locations':
         if (typeof window.initVisitedLocationsTab === 'function') {
           window.initVisitedLocationsTab();

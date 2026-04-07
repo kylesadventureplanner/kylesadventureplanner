@@ -43,14 +43,45 @@
           <div class="nature-stat-value" id="birdsTotalSighted">0</div>
           <div class="nature-stat-sub">out of <span id="birdsTotalSpecies">0</span> species</div>
         </div>
+        <div class="nature-stat-card">
+          <div class="nature-stat-label">In Season Now</div>
+          <div class="nature-stat-value" id="birdsInSeasonSighted">0</div>
+          <div class="nature-stat-sub">species marked sighted that are currently available</div>
+        </div>
+        <div class="nature-stat-card">
+          <div class="nature-stat-label">Rare or Better</div>
+          <div class="nature-stat-value" id="birdsRareSighted">0</div>
+          <div class="nature-stat-sub">rare, very rare, and extremely rare birds sighted</div>
+        </div>
+        <div class="nature-stat-card">
+          <div class="nature-stat-label">Families Completed</div>
+          <div class="nature-stat-value" id="birdsFamiliesCompleted">0</div>
+          <div class="nature-stat-sub">family cards where every listed species is sighted</div>
+        </div>
+        <div class="nature-stat-card">
+          <div class="nature-stat-label">Migration Species</div>
+          <div class="nature-stat-value" id="birdsMigrationSighted">0</div>
+          <div class="nature-stat-sub">migration-associated birds you have marked sighted</div>
+        </div>
       </div>
+      <div id="birdsProgressSnapshot" class="nature-progress-note">Bird progress will update once the birds dataset loads.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">🧭 Visual Legend</div>
+          <div class="card-subtitle">Use rarity and season markers to quickly scan the bird list.</div>
+        </div>
+      </div>
+      <div id="birdsVisualLegend" class="nature-legend-grid"></div>
     </div>
 
     <!-- Sightings by Family -->
     <div class="card">
       <div class="card-header">
         <div class="card-title">🏷️ Sightings by Family</div>
-        <div class="card-subtitle">View species grouped by family.</div>
+        <div class="card-subtitle">Each species row shows its rarity, seasonality, and whether you have marked it as sighted.</div>
       </div>
       <div id="birdsFamilyGrid" class="nature-family-grid"></div>
     </div>
@@ -634,6 +665,52 @@
     color: #6b7280;
   }
 
+  #natureChallengeRoot .nature-progress-note {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #475569;
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  #natureChallengeRoot .nature-legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  #natureChallengeRoot .nature-legend-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    padding: 12px;
+  }
+
+  #natureChallengeRoot .nature-legend-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 8px;
+  }
+
+  #natureChallengeRoot .nature-legend-copy {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #475569;
+  }
+
+  #natureChallengeRoot .nature-chip-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  #natureChallengeRoot .nature-chip-row--wrap {
+    flex-wrap: wrap;
+  }
+
   /* Family Grid Layout */
   #natureChallengeRoot .nature-family-grid {
     display: grid;
@@ -648,41 +725,214 @@
     background: #fff;
   }
 
+  #natureChallengeRoot .nature-family-card.is-complete {
+    border-color: #86efac;
+    background: #f0fdf4;
+  }
+
   #natureChallengeRoot .nature-family-card-header {
-    font-weight: 600;
-    font-size: 14px;
     color: #374151;
     margin-bottom: 8px;
     display: flex;
-    align-items: center;
-    gap: 6px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  #natureChallengeRoot .nature-family-card-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: #1f2937;
+  }
+
+  #natureChallengeRoot .nature-family-card-meta,
+  #natureChallengeRoot .nature-family-card-count {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  #natureChallengeRoot .nature-family-card-count {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  #natureChallengeRoot .nature-progress-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  #natureChallengeRoot .nature-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6 0%, #0ea5e9 100%);
+    transition: width 0.3s ease;
   }
 
   #natureChallengeRoot .nature-family-card-body {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
   }
 
   #natureChallengeRoot .nature-species-item {
+    width: 100%;
+    border: 1px solid #e5e7eb;
     font-size: 13px;
-    color: #6b7280;
-    padding: 6px 8px;
-    border-radius: 6px;
+    color: #374151;
+    padding: 10px;
+    border-radius: 10px;
     display: flex;
-    align-items: center;
-    gap: 6px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
     background: #f9fafb;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background 0.18s ease;
   }
 
   #natureChallengeRoot .nature-species-item.sighted {
     background: #ecfdf5;
     color: #166534;
-    font-weight: 600;
+    border-color: #86efac;
   }
 
-  #natureChallengeRoot .nature-species-icon {
-    font-size: 14px;
+  #natureChallengeRoot .nature-species-item.is-current-season {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+  }
+
+  #natureChallengeRoot .nature-species-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  #natureChallengeRoot .nature-species-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  #natureChallengeRoot .nature-species-item.sighted .nature-species-name {
+    color: #166534;
+  }
+
+  #natureChallengeRoot .nature-species-meta {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.4;
+  }
+
+  #natureChallengeRoot .nature-species-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 45%;
+  }
+
+  #natureChallengeRoot .nature-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #374151;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+
+  #natureChallengeRoot .nature-chip.is-current {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+  }
+
+  #natureChallengeRoot .nature-chip--note {
+    background: #f8fafc;
+    color: #475569;
+    border-color: #e2e8f0;
+  }
+
+  #natureChallengeRoot .rarity-common {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  #natureChallengeRoot .rarity-regular {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+  }
+
+  #natureChallengeRoot .rarity-uncommon {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  #natureChallengeRoot .rarity-rare {
+    border-color: #c4b5fd;
+    background: #f5f3ff;
+    color: #6d28d9;
+  }
+
+  #natureChallengeRoot .rarity-very-rare {
+    border-color: #fbcfe8;
+    background: #fdf2f8;
+    color: #be185d;
+  }
+
+  #natureChallengeRoot .rarity-extremely-rare {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #a16207;
+  }
+
+  #natureChallengeRoot .season-spring {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  #natureChallengeRoot .season-summer {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #a16207;
+  }
+
+  #natureChallengeRoot .season-fall {
+    border-color: #fdba74;
+    background: #fff7ed;
+    color: #c2410c;
+  }
+
+  #natureChallengeRoot .season-winter {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  #natureChallengeRoot .season-migration {
+    border-color: #d8b4fe;
+    background: #faf5ff;
+    color: #7e22ce;
+  }
+
+  #natureChallengeRoot .nature-empty-state {
+    padding: 18px;
+    text-align: center;
+    border: 1px dashed #d1d5db;
+    border-radius: 12px;
+    background: #f9fafb;
+    color: #6b7280;
+    font-size: 13px;
   }
 
   /* Challenge Grid Layout */
@@ -697,6 +947,11 @@
     border-radius: 12px;
     padding: 12px;
     background: #fff;
+  }
+
+  #natureChallengeRoot .nature-challenge-card.completed {
+    border-color: #86efac;
+    background: #f0fdf4;
   }
 
   #natureChallengeRoot .nature-challenge-card-header {
@@ -781,6 +1036,38 @@
     background: #fffbeb;
   }
 
+  #natureChallengeRoot .nature-badge-progress {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  #natureChallengeRoot .badge-rarity-common {
+    border-left: 4px solid #10b981;
+  }
+
+  #natureChallengeRoot .badge-rarity-rare {
+    border-left: 4px solid #6d28d9;
+  }
+
+  #natureChallengeRoot .badge-rarity-epic {
+    border-left: 4px solid #be185d;
+  }
+
+  #natureChallengeRoot .badge-rarity-legendary {
+    border-left: 4px solid #a16207;
+  }
+
+  @media (max-width: 760px) {
+    #natureChallengeRoot .nature-species-item {
+      flex-direction: column;
+    }
+
+    #natureChallengeRoot .nature-species-chips {
+      max-width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
   @media (hover: hover) {
     #natureChallengeRoot .nature-family-card:hover,
     #natureChallengeRoot .nature-challenge-card:hover,
@@ -793,46 +1080,12 @@
 </style>
 
 <script>
-  // Initialize Nature Challenge tab
   window.initNatureChallengeTab = function() {
-    console.log('✅ Nature Challenge tab initialized');
-
-    // Set up sub-tab navigation
-    const subtabButtons = document.querySelectorAll('#natureChallengeRoot .nature-challenge-subtab');
-    const subtabPanes = document.querySelectorAll('#natureChallengeRoot .nature-challenge-pane');
-
-    subtabButtons.forEach(button => {
-      button.addEventListener('click', function() {
-        const tabName = this.getAttribute('data-nature-subtab');
-
-        // Hide all panes
-        subtabPanes.forEach(pane => {
-          pane.classList.remove('is-active');
-          pane.hidden = true;
-        });
-
-        // Remove active state from all buttons
-        subtabButtons.forEach(btn => btn.classList.remove('active'));
-
-        // Show selected pane
-        const selectedPane = document.getElementById(`natureChallengePane-${tabName}`);
-        if (selectedPane) {
-          selectedPane.classList.add('is-active');
-          selectedPane.hidden = false;
-        }
-
-        // Add active state to clicked button
-        this.classList.add('active');
-
-        // Announce to screen readers
-        const announcer = document.getElementById('natureChallengeSubTabAnnouncer');
-        if (announcer) {
-          announcer.textContent = `${this.textContent} section loaded`;
-        }
-      });
-    });
-
-    console.log('✅ Nature Challenge sub-tabs initialized');
+    if (typeof window.initializeNatureChallengeTab === 'function') {
+      window.initializeNatureChallengeTab();
+      return;
+    }
+    console.log('✅ Nature Challenge tab initialized (UI only)');
   };
 </script>
 
