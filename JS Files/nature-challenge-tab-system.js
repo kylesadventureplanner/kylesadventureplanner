@@ -37,6 +37,71 @@
     migration: { label: 'Migration', icon: 'Migration', className: 'season-migration' }
   };
 
+  const BIRD_PROGRESSION_SPEC = {
+    dailyPickCount: 3,
+    streak: {
+      freezeAwardEveryDays: 7,
+      maxFreezeCredits: 3
+    },
+    bingo: {
+      tileCount: 9,
+      rerollLimitPerSeason: 1,
+      badgeGoalTiles: 3
+    },
+    challengeDefs: [
+      { id: 'challenge-daily-pulse', icon: 'Daily', title: 'Daily Pulse', description: 'Keep your log active today.', metric: 'todayLogCount', goal: 1, xp: 40 },
+      { id: 'challenge-weekly-wings', icon: 'Weekly', title: 'Weekly Wings', description: 'Log fresh bird species this week.', metric: 'weeklySightedCount', goal: 3, xp: 80 },
+      { id: 'challenge-monthly-milestone', icon: 'Monthly', title: 'Monthly Milestone', description: 'Build steady momentum across the month.', metric: 'monthlySightedCount', goal: 10, xp: 140 },
+      { id: 'challenge-quarterly-flight-plan', icon: 'Quarterly', title: 'Quarterly Flight Plan', description: 'Keep your seasonal list moving this quarter.', metric: 'quarterlySightedCount', goal: 25, xp: 220 },
+      { id: 'challenge-lifetime-lister', icon: 'All Time', title: 'Lifetime Lister', description: 'Grow your all-time bird checklist.', metric: 'totalSighted', goal: 100, xp: 300 },
+      { id: 'challenge-season-sweep', icon: '{seasonLabel}', title: '{seasonLabel} Sweep', description: 'Mark birds that are available in {season} right now.', metric: 'inSeasonSightedCount', goal: 15, xp: 130 },
+      { id: 'challenge-rare-radar', icon: 'Rare', title: 'Rare Radar', description: 'Find rare, very rare, or extremely rare species.', metric: 'rareSightedCount', goal: 5, xp: 170 },
+      { id: 'challenge-family-forager', icon: 'Families', title: 'Family Forager', description: 'Get at least one sighting in different bird families.', metric: 'familiesStarted', goal: 12, xp: 120 },
+      { id: 'challenge-migration-mapper', icon: 'Migration', title: 'Migration Mapper', description: 'Track birds that show up during migration windows.', metric: 'migrationSightedCount', goal: 8, xp: 150 },
+      { id: 'challenge-season-questline', icon: 'Quest', title: 'Season Questline', description: 'Log 12 sightings during {season} to complete your chapter.', metric: 'seasonalLogCount', goal: 12, xp: 180 }
+    ],
+    badgeDefs: [
+      { id: 'badge-first-feather', icon: 'First', title: 'First Feather', description: 'Mark your first bird species as sighted.', rarity: 'common', metric: 'totalSighted', goal: 1, xp: 50 },
+      { id: 'badge-common-core', icon: 'Common', title: 'Common Core', description: 'Build a strong base with common species.', rarity: 'common', metric: 'commonSightedCount', goal: 25, xp: 120 },
+      { id: 'badge-rare-find', icon: 'Rare', title: 'Rare Find', description: 'Spot five rare-or-better birds.', rarity: 'rare', metric: 'rareSightedCount', goal: 5, xp: 180 },
+      { id: 'badge-migration-mapper', icon: 'Migration', title: 'Migration Mapper', description: 'Log species associated with migration seasons.', rarity: 'rare', metric: 'migrationSightedCount', goal: 10, xp: 220 },
+      { id: 'badge-season-spotter', icon: '{seasonLabel}', title: '{seasonLabel} Spotter', description: 'Track birds available during {season}.', rarity: 'epic', metric: 'inSeasonSightedCount', goal: 20, xp: 260 },
+      { id: 'badge-family-finisher', icon: 'Family', title: 'Family Finisher', description: 'Completely finish one family list.', rarity: 'epic', metric: 'familiesCompleted', goal: 1, xp: 280 },
+      { id: 'badge-legendary-lister', icon: 'Legend', title: 'Legendary Lister', description: 'Reach 100 total bird species sighted.', rarity: 'legendary', metric: 'totalSighted', goal: 100, xp: 400 },
+      { id: 'badge-ultra-rarity', icon: 'Ultra', title: 'Ultra-Rarity', description: 'Sight at least one very rare or extremely rare bird.', rarity: 'legendary', metric: 'veryRareSightedCount', goal: 1, xp: 350 },
+      { id: 'badge-streak-keeper', icon: 'Streak', title: 'Streak Keeper', description: 'Build a 7-day birding streak.', rarity: 'rare', metric: 'streak.currentStreak', goal: 7, xp: 210 },
+      { id: 'badge-bingo-beginner', icon: 'Bingo', title: 'Bingo Beginner', description: 'Complete 3 bingo tiles in the current season.', rarity: 'epic', metric: 'bingo.completedCount', goal: 3, xp: 240 },
+      { id: 'badge-season-chapter-clear', icon: 'Quest', title: 'Season Chapter Clear', description: 'Finish all seasonal questline steps.', rarity: 'legendary', metric: 'seasonQuestCompletedCount', goal: 4, xp: 320 }
+    ],
+    dailyChallengeDefs: [
+      { id: 'daily-log-1', icon: 'Daily', title: 'Show Up Today', description: 'Log at least one sighting today.', metric: 'todayLogCount', goal: 1, xp: 30 },
+      { id: 'daily-new-species', icon: 'Discovery', title: 'Fresh Feathers', description: 'Log 2 unique species today.', metric: 'todayUniqueSpeciesCount', goal: 2, xp: 45 },
+      { id: 'daily-context-mix', icon: 'Explorer', title: 'Context Mixer', description: 'Log sightings in 2 different regions or habitats today.', metric: 'todayContextMixCount', goal: 2, xp: 35 },
+      { id: 'daily-rare', icon: 'Rare', title: 'Rare Radar (Daily)', description: 'Log one rare-or-better species today.', metric: 'todayRareLogCount', goal: 1, xp: 55 },
+      { id: 'daily-confidence', icon: 'Quality', title: 'Certain Signal', description: 'Log 2 sightings with confidence set to Certain today.', metric: 'todayCertainCount', goal: 2, xp: 40 }
+    ],
+    bingoObjectiveDefs: [
+      { id: 'b1', label: 'Log 2 birds this week', metric: 'weeklyLogCount', goal: 2, xp: 35 },
+      { id: 'b2', label: 'Log 6 birds this month', metric: 'monthlyLogCount', goal: 6, xp: 45 },
+      { id: 'b3', label: 'Spot 1 rare-or-better', metric: 'rareSightedCount', goal: 1, xp: 55 },
+      { id: 'b4', label: 'Mark 3 in-season birds', metric: 'inSeasonSightedCount', goal: 3, xp: 40 },
+      { id: 'b5', label: 'Log 2 habitats this season', metric: 'seasonHabitatCount', goal: 2, xp: 40 },
+      { id: 'b6', label: 'Start 4 families', metric: 'familiesStarted', goal: 4, xp: 40 },
+      { id: 'b7', label: 'Log 2 certain sightings today', metric: 'todayCertainCount', goal: 2, xp: 35 },
+      { id: 'b8', label: 'Reach 15 total species', metric: 'totalSighted', goal: 15, xp: 60 },
+      { id: 'b9', label: 'Log 2 unique species today', metric: 'todayUniqueSpeciesCount', goal: 2, xp: 35 },
+      { id: 'b10', label: 'Log 3 regions this season', metric: 'seasonRegionCount', goal: 3, xp: 40 },
+      { id: 'b11', label: 'Spot 2 migration birds', metric: 'migrationSightedCount', goal: 2, xp: 45 },
+      { id: 'b12', label: 'Complete 1 family', metric: 'familiesCompleted', goal: 1, xp: 70 }
+    ],
+    seasonQuestDefs: [
+      { id: 'sq-1', icon: 'Scout', title: 'Scout Phase', description: 'Log 5 sightings this season.', metric: 'seasonalLogCount', goal: 5, xp: 80 },
+      { id: 'sq-2', icon: 'Variety', title: 'Variety Phase', description: 'Log sightings across 3 habitats this season.', metric: 'seasonHabitatCount', goal: 3, xp: 90 },
+      { id: 'sq-3', icon: 'Rare', title: 'Rare Phase', description: 'Find 2 rare-or-better species this season.', metric: 'rareSightedCount', goal: 2, xp: 110 },
+      { id: 'sq-4', icon: 'Mastery', title: 'Mastery Phase', description: 'Reach 15 seasonal sightings.', metric: 'seasonalLogCount', goal: 15, xp: 140 }
+    ]
+  };
+
   const state = {
     initialized: false,
     activeSubTab: 'birds',
@@ -313,6 +378,41 @@
       items[j] = temp;
     }
     return items.slice(0, Math.min(count, items.length));
+  }
+
+  function getMetricValue(stats, metricPath) {
+    if (!metricPath) return 0;
+    if (metricPath === 'todayContextMixCount') {
+      return Math.max(Number(stats.todayDistinctRegionCount) || 0, Number(stats.todayDistinctHabitatCount) || 0);
+    }
+
+    return String(metricPath)
+      .split('.')
+      .reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), stats) || 0;
+  }
+
+  function applyProgressionTemplate(text, stats) {
+    return String(text || '')
+      .replace(/\{seasonLabel\}/g, String(stats.currentSeasonLabel || 'Season'))
+      .replace(/\{season\}/g, String(stats.currentSeason || 'season').toLowerCase());
+  }
+
+  function toProgressionCard(definition, stats) {
+    const goal = Math.max(1, Number(definition.goal) || 1);
+    const progress = Math.max(0, Number(getMetricValue(stats, definition.metric)) || 0);
+    return {
+      id: definition.id,
+      icon: applyProgressionTemplate(definition.icon, stats),
+      title: applyProgressionTemplate(definition.title, stats),
+      description: applyProgressionTemplate(definition.description, stats),
+      label: applyProgressionTemplate(definition.label, stats),
+      metric: definition.metric,
+      goal,
+      progress,
+      xp: Math.max(0, Number(definition.xp) || 0),
+      completed: progress >= goal,
+      pct: Math.max(0, Math.min(100, Math.round((progress / goal) * 100)))
+    };
   }
 
   function getCanonicalGroupKey(label) {
@@ -800,63 +900,8 @@
 
   function getDailyMicroChallenges(stats) {
     const todayKey = getDateKey(new Date());
-    const pool = [
-      {
-        id: 'daily-log-1',
-        icon: 'Daily',
-        title: 'Show Up Today',
-        description: 'Log at least one sighting today.',
-        goal: 1,
-        getProgress: () => stats.todayLogCount
-      },
-      {
-        id: 'daily-new-species',
-        icon: 'Discovery',
-        title: 'Fresh Feathers',
-        description: 'Log 2 unique species today.',
-        goal: 2,
-        getProgress: () => stats.todayUniqueSpeciesCount
-      },
-      {
-        id: 'daily-context-mix',
-        icon: 'Explorer',
-        title: 'Context Mixer',
-        description: 'Log sightings in 2 different regions or habitats today.',
-        goal: 2,
-        getProgress: () => Math.max(stats.todayDistinctRegionCount, stats.todayDistinctHabitatCount)
-      },
-      {
-        id: 'daily-rare',
-        icon: 'Rare',
-        title: 'Rare Radar (Daily)',
-        description: 'Log one rare-or-better species today.',
-        goal: 1,
-        getProgress: () => stats.todayRareLogCount
-      },
-      {
-        id: 'daily-confidence',
-        icon: 'Quality',
-        title: 'Certain Signal',
-        description: 'Log 2 sightings with confidence set to Certain today.',
-        goal: 2,
-        getProgress: () => stats.todayCertainCount
-      }
-    ];
-
-    return pickDeterministic(pool, 3, `daily:${todayKey}`).map((challenge) => {
-      const progress = Math.max(0, Number(challenge.getProgress()) || 0);
-      const pct = Math.max(0, Math.min(100, Math.round((progress / challenge.goal) * 100)));
-      return {
-        id: challenge.id,
-        icon: challenge.icon,
-        title: challenge.title,
-        description: challenge.description,
-        progress,
-        goal: challenge.goal,
-        pct,
-        completed: progress >= challenge.goal
-      };
-    });
+    const pool = (BIRD_PROGRESSION_SPEC.dailyChallengeDefs || []).map((definition) => toProgressionCard(definition, stats));
+    return pickDeterministic(pool, BIRD_PROGRESSION_SPEC.dailyPickCount || 3, `daily:${todayKey}`);
   }
 
   function computeStreakMetrics(dayEntries) {
@@ -906,11 +951,13 @@
       changed = true;
     }
 
-    const milestone = Math.floor(streakMetrics.currentStreak / 7);
+    const cadence = Math.max(1, Number(BIRD_PROGRESSION_SPEC.streak.freezeAwardEveryDays) || 7);
+    const maxCredits = Math.max(0, Number(BIRD_PROGRESSION_SPEC.streak.maxFreezeCredits) || 3);
+    const milestone = Math.floor(streakMetrics.currentStreak / cadence);
     if (milestone > (Number(streakState.lastAwardedMilestone) || 0)) {
       const delta = milestone - (Number(streakState.lastAwardedMilestone) || 0);
       streakState.lastAwardedMilestone = milestone;
-      streakState.freezeCredits = Math.min(3, (Number(streakState.freezeCredits) || 0) + delta);
+      streakState.freezeCredits = Math.min(maxCredits, (Number(streakState.freezeCredits) || 0) + delta);
       changed = true;
       if (typeof window.showToast === 'function' && delta > 0) {
         window.showToast('Streak reward unlocked: +1 freeze credit', 'success', 2400);
@@ -921,24 +968,18 @@
   }
 
   function getBingoObjectiveDefinitions(stats) {
-    return [
-      { id: 'b1', label: 'Log 2 birds this week', goal: 2, progress: stats.weeklyLogCount },
-      { id: 'b2', label: 'Log 6 birds this month', goal: 6, progress: stats.monthlyLogCount },
-      { id: 'b3', label: 'Spot 1 rare-or-better', goal: 1, progress: stats.rareSightedCount },
-      { id: 'b4', label: 'Mark 3 in-season birds', goal: 3, progress: stats.inSeasonSightedCount },
-      { id: 'b5', label: 'Log 2 habitats this season', goal: 2, progress: stats.seasonHabitatCount },
-      { id: 'b6', label: 'Start 4 families', goal: 4, progress: stats.familiesStarted },
-      { id: 'b7', label: 'Log 2 certain sightings today', goal: 2, progress: stats.todayCertainCount },
-      { id: 'b8', label: 'Reach 15 total species', goal: 15, progress: stats.totalSighted },
-      { id: 'b9', label: 'Log 2 unique species today', goal: 2, progress: stats.todayUniqueSpeciesCount },
-      { id: 'b10', label: 'Log 3 regions this season', goal: 3, progress: stats.seasonRegionCount },
-      { id: 'b11', label: 'Spot 2 migration birds', goal: 2, progress: stats.migrationSightedCount },
-      { id: 'b12', label: 'Complete 1 family', goal: 1, progress: stats.familiesCompleted }
-    ].map((item) => ({
-      ...item,
-      pct: Math.max(0, Math.min(100, Math.round((item.progress / item.goal) * 100))),
-      completed: item.progress >= item.goal
-    }));
+    return (BIRD_PROGRESSION_SPEC.bingoObjectiveDefs || []).map((definition) => {
+      const card = toProgressionCard(definition, stats);
+      return {
+        id: card.id,
+        label: card.label,
+        goal: card.goal,
+        progress: card.progress,
+        xp: card.xp,
+        pct: card.pct,
+        completed: card.completed
+      };
+    });
   }
 
   function getSeasonalBingo(stats) {
@@ -946,10 +987,11 @@
     const bingoStore = state.gamification.bingo.bySeason;
     if (!bingoStore[seasonKey]) bingoStore[seasonKey] = { rerollsUsed: 0, objectiveIds: [] };
     const seasonState = bingoStore[seasonKey];
+    const tileCount = BIRD_PROGRESSION_SPEC.bingo.tileCount || 9;
 
     const objectives = getBingoObjectiveDefinitions(stats);
-    if (!Array.isArray(seasonState.objectiveIds) || seasonState.objectiveIds.length !== 9) {
-      seasonState.objectiveIds = pickDeterministic(objectives.map((item) => item.id), 9, `bingo:${seasonKey}:0`);
+    if (!Array.isArray(seasonState.objectiveIds) || seasonState.objectiveIds.length !== tileCount) {
+      seasonState.objectiveIds = pickDeterministic(objectives.map((item) => item.id), tileCount, `bingo:${seasonKey}:0`);
       saveGamificationState();
     }
 
@@ -963,10 +1005,10 @@
     return {
       seasonKey,
       rerollsUsed: Number(seasonState.rerollsUsed) || 0,
-      canReroll: (Number(seasonState.rerollsUsed) || 0) < 1,
+      canReroll: (Number(seasonState.rerollsUsed) || 0) < (BIRD_PROGRESSION_SPEC.bingo.rerollLimitPerSeason || 1),
       tiles,
       completedCount,
-      bingoAchieved: completedCount >= 3
+      bingoAchieved: completedCount >= (BIRD_PROGRESSION_SPEC.bingo.badgeGoalTiles || 3)
     };
   }
 
@@ -976,7 +1018,7 @@
     if (!bingoStore[seasonKey]) bingoStore[seasonKey] = { rerollsUsed: 0, objectiveIds: [] };
     const seasonState = bingoStore[seasonKey];
 
-    if ((Number(seasonState.rerollsUsed) || 0) >= 1) {
+    if ((Number(seasonState.rerollsUsed) || 0) >= (BIRD_PROGRESSION_SPEC.bingo.rerollLimitPerSeason || 1)) {
       if (typeof window.showToast === 'function') window.showToast('You already used your seasonal bingo reroll.', 'info', 2200);
       return;
     }
@@ -985,7 +1027,7 @@
     seasonState.rerollsUsed = (Number(seasonState.rerollsUsed) || 0) + 1;
     seasonState.objectiveIds = pickDeterministic(
       objectives.map((item) => item.id),
-      9,
+      BIRD_PROGRESSION_SPEC.bingo.tileCount || 9,
       `bingo:${seasonKey}:${seasonState.rerollsUsed}`
     );
     saveGamificationState();
@@ -1251,38 +1293,14 @@
   }
 
   function getBirdChallenges(stats) {
-    return [
-      { icon: 'Daily', title: 'Daily Pulse', description: 'Keep your log active today.', progress: stats.todayLogCount, goal: 1 },
-      { icon: 'Weekly', title: 'Weekly Wings', description: 'Log fresh bird species this week.', progress: stats.weeklySightedCount, goal: 3 },
-      { icon: 'Monthly', title: 'Monthly Milestone', description: 'Build steady momentum across the month.', progress: stats.monthlySightedCount, goal: 10 },
-      { icon: 'Quarterly', title: 'Quarterly Flight Plan', description: 'Keep your seasonal list moving this quarter.', progress: stats.quarterlySightedCount, goal: 25 },
-      { icon: 'All Time', title: 'Lifetime Lister', description: 'Grow your all-time bird checklist.', progress: stats.totalSighted, goal: 100 },
-      { icon: stats.currentSeasonLabel, title: `${stats.currentSeasonLabel} Sweep`, description: `Mark birds that are available in ${stats.currentSeason.toLowerCase()} right now.`, progress: stats.inSeasonSightedCount, goal: 15 },
-      { icon: 'Rare', title: 'Rare Radar', description: 'Find rare, very rare, or extremely rare species.', progress: stats.rareSightedCount, goal: 5 },
-      { icon: 'Families', title: 'Family Forager', description: 'Get at least one sighting in different bird families.', progress: stats.familiesStarted, goal: 12 },
-      { icon: 'Migration', title: 'Migration Mapper', description: 'Track birds that show up during migration windows.', progress: stats.migrationSightedCount, goal: 8 },
-      { icon: 'Quest', title: 'Season Questline', description: `Log 12 sightings during ${stats.currentSeason.toLowerCase()} to complete your chapter.`, progress: stats.seasonalLogCount, goal: 12 }
-    ].map((challenge) => ({
-      ...challenge,
-      completed: challenge.progress >= challenge.goal,
-      pct: Math.max(0, Math.min(100, Math.round((challenge.progress / challenge.goal) * 100)))
-    }));
+    return (BIRD_PROGRESSION_SPEC.challengeDefs || []).map((definition) => toProgressionCard(definition, stats));
   }
 
   function getBirdBadges(stats) {
-    const badges = [
-      { icon: 'First', title: 'First Feather', description: 'Mark your first bird species as sighted.', rarity: 'common', progress: stats.totalSighted, goal: 1 },
-      { icon: 'Common', title: 'Common Core', description: 'Build a strong base with common species.', rarity: 'common', progress: stats.commonSightedCount, goal: 25 },
-      { icon: 'Rare', title: 'Rare Find', description: 'Spot five rare-or-better birds.', rarity: 'rare', progress: stats.rareSightedCount, goal: 5 },
-      { icon: 'Migration', title: 'Migration Mapper', description: 'Log species associated with migration seasons.', rarity: 'rare', progress: stats.migrationSightedCount, goal: 10 },
-      { icon: stats.currentSeasonLabel, title: `${stats.currentSeasonLabel} Spotter`, description: `Track birds available during ${stats.currentSeason.toLowerCase()}.`, rarity: 'epic', progress: stats.inSeasonSightedCount, goal: 20 },
-      { icon: 'Family', title: 'Family Finisher', description: 'Completely finish one family list.', rarity: 'epic', progress: stats.familiesCompleted, goal: 1 },
-      { icon: 'Legend', title: 'Legendary Lister', description: 'Reach 100 total bird species sighted.', rarity: 'legendary', progress: stats.totalSighted, goal: 100 },
-      { icon: 'Ultra', title: 'Ultra-Rarity', description: 'Sight at least one very rare or extremely rare bird.', rarity: 'legendary', progress: stats.veryRareSightedCount, goal: 1 },
-      { icon: 'Streak', title: 'Streak Keeper', description: 'Build a 7-day birding streak.', rarity: 'rare', progress: stats.streak.currentStreak, goal: 7 },
-      { icon: 'Bingo', title: 'Bingo Beginner', description: 'Complete 3 bingo tiles in the current season.', rarity: 'epic', progress: Math.max(0, Number((stats.bingo && stats.bingo.completedCount) || 0)), goal: 3 },
-      { icon: 'Quest', title: 'Season Chapter Clear', description: 'Finish all seasonal questline steps.', rarity: 'legendary', progress: Math.max(0, Number((stats.seasonQuestCompletedCount) || 0)), goal: 4 }
-    ];
+    const badges = (BIRD_PROGRESSION_SPEC.badgeDefs || []).map((definition) => ({
+      ...toProgressionCard(definition, stats),
+      rarity: definition.rarity || 'common'
+    }));
 
     return badges.map((badge) => {
       const rarityClass = badge.rarity === 'legendary'
@@ -1385,16 +1403,7 @@
   }
 
   function getSeasonQuestline(stats) {
-    const steps = [
-      { id: 'sq-1', icon: 'Scout', title: 'Scout Phase', description: 'Log 5 sightings this season.', progress: stats.seasonalLogCount, goal: 5 },
-      { id: 'sq-2', icon: 'Variety', title: 'Variety Phase', description: 'Log sightings across 3 habitats this season.', progress: stats.seasonHabitatCount, goal: 3 },
-      { id: 'sq-3', icon: 'Rare', title: 'Rare Phase', description: 'Find 2 rare-or-better species this season.', progress: stats.rareSightedCount, goal: 2 },
-      { id: 'sq-4', icon: 'Mastery', title: 'Mastery Phase', description: 'Reach 15 seasonal sightings.', progress: stats.seasonalLogCount, goal: 15 }
-    ].map((step) => ({
-      ...step,
-      completed: step.progress >= step.goal,
-      pct: Math.max(0, Math.min(100, Math.round((step.progress / step.goal) * 100)))
-    }));
+    const steps = (BIRD_PROGRESSION_SPEC.seasonQuestDefs || []).map((definition) => toProgressionCard(definition, stats));
 
     return {
       steps,
@@ -2415,5 +2424,6 @@
 
   window.initializeNatureChallengeTab = initializeNatureChallengeTab;
   window.initNatureChallengeTab = window.initNatureChallengeTab || initializeNatureChallengeTab;
+  window.BIRD_PROGRESSION_SPEC = BIRD_PROGRESSION_SPEC;
 })();
 

@@ -1349,17 +1349,19 @@
 
   #natureChallengeRoot .nature-progress-track {
     width: 100%;
-    height: 8px;
+    height: 10px;
     border-radius: 999px;
-    background: #e5e7eb;
+    background: linear-gradient(180deg, #eef2f7 0%, #e5e7eb 100%);
     overflow: hidden;
     margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
   }
 
   #natureChallengeRoot .nature-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #3b82f6 0%, #0ea5e9 100%);
-    transition: width 0.3s ease;
+    background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 55%, #22d3ee 100%);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.25);
+    transition: width 0.35s ease;
   }
 
   #natureChallengeRoot .nature-family-card-body {
@@ -1529,123 +1531,158 @@
   /* Challenge Grid Layout */
   #natureChallengeRoot .nature-challenge-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
   }
 
   #natureChallengeRoot .nature-challenge-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 12px;
-    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    position: relative;
+    overflow: hidden;
+  }
+
+  #natureChallengeRoot .nature-challenge-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 45%);
+    pointer-events: none;
   }
 
   #natureChallengeRoot .nature-challenge-card.completed {
     border-color: #86efac;
-    background: #f0fdf4;
+    background: linear-gradient(180deg, #f7fff9 0%, #ecfdf5 100%);
+    box-shadow: 0 8px 20px rgba(22, 163, 74, 0.12);
   }
 
   #natureChallengeRoot .nature-challenge-card-header {
-    font-weight: 600;
-    font-size: 14px;
-    color: #374151;
-    margin-bottom: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    color: #0f172a;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
     gap: 6px;
+    letter-spacing: 0.01em;
   }
 
   #natureChallengeRoot .nature-challenge-card-description {
     font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 8px;
+    color: #475569;
+    margin-bottom: 10px;
+    line-height: 1.45;
   }
 
   #natureChallengeRoot .nature-challenge-progress {
     width: 100%;
-    height: 8px;
+    height: 10px;
     border-radius: 999px;
-    background: #e5e7eb;
+    background: linear-gradient(180deg, #eef2f7 0%, #e5e7eb 100%);
     overflow: hidden;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+    border: 1px solid #e2e8f0;
   }
 
   #natureChallengeRoot .nature-challenge-progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #3b82f6 0%, #0ea5e9 100%);
-    transition: width 0.3s ease;
+    background: linear-gradient(90deg, #2563eb 0%, #06b6d4 60%, #22d3ee 100%);
+    box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.28);
+    transition: width 0.35s ease;
   }
 
   #natureChallengeRoot .nature-challenge-meta {
     font-size: 12px;
-    color: #6b7280;
+    color: #475569;
     display: flex;
     justify-content: space-between;
+    font-weight: 600;
   }
 
   /* Badge Grid Layout */
   #natureChallengeRoot .nature-badge-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px;
   }
 
   #natureChallengeRoot .nature-badge-card {
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 12px;
-    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    position: relative;
+    overflow: hidden;
+  }
+
+  #natureChallengeRoot .nature-badge-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.1), transparent 44%);
   }
 
   #natureChallengeRoot .nature-badge-icon {
-    font-size: 48px;
+    font-size: 42px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.18));
   }
 
   #natureChallengeRoot .nature-badge-card-title {
-    font-weight: 600;
-    font-size: 14px;
-    color: #374151;
+    font-weight: 700;
+    font-size: 15px;
+    color: #0f172a;
   }
 
   #natureChallengeRoot .nature-badge-card-description {
     font-size: 12px;
-    color: #6b7280;
+    color: #475569;
+    line-height: 1.45;
   }
 
   #natureChallengeRoot .nature-badge-card.locked {
-    opacity: 0.6;
-    background: #f9fafb;
+    opacity: 0.78;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.15);
   }
 
   #natureChallengeRoot .nature-badge-card.unlocked {
-    border-color: #fbbf24;
-    background: #fffbeb;
+    border-color: #f59e0b;
+    background: linear-gradient(180deg, #fffdf4 0%, #fffbeb 100%);
+    box-shadow: 0 10px 22px rgba(245, 158, 11, 0.16);
   }
 
   #natureChallengeRoot .nature-badge-progress {
     font-size: 12px;
-    color: #6b7280;
+    color: #475569;
+    font-weight: 600;
   }
 
   #natureChallengeRoot .badge-rarity-common {
-    border-left: 4px solid #10b981;
+    border-top: 4px solid #10b981;
   }
 
   #natureChallengeRoot .badge-rarity-rare {
-    border-left: 4px solid #6d28d9;
+    border-top: 4px solid #6d28d9;
   }
 
   #natureChallengeRoot .badge-rarity-epic {
-    border-left: 4px solid #be185d;
+    border-top: 4px solid #be185d;
   }
 
   #natureChallengeRoot .badge-rarity-legendary {
-    border-left: 4px solid #a16207;
+    border-top: 4px solid #a16207;
+    box-shadow: 0 10px 24px rgba(161, 98, 7, 0.16);
   }
 
   @media (max-width: 760px) {
@@ -1678,9 +1715,9 @@
     #natureChallengeRoot .nature-family-card:hover,
     #natureChallengeRoot .nature-challenge-card:hover,
     #natureChallengeRoot .nature-badge-card:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      transform: translateY(-2px);
-      border-color: #d1d5db;
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+      transform: translateY(-3px);
+      border-color: #cbd5e1;
     }
   }
 </style>
