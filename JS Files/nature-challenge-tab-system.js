@@ -118,6 +118,15 @@
     birdSort: 'family-asc',
     birdPage: 1,
     birdPageSize: 12,
+    overviewDensity: 'comfortable',
+    overviewQuickFilters: {
+      inSeason: false,
+      almostThere: false,
+      highReward: false
+    },
+    commandChordStartedAt: 0,
+    recentUpdateUntil: 0,
+    recentUpdateTimerId: 0,
     birdFilters: {
       season: 'all',
       rarity: 'all',
@@ -165,6 +174,79 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
+  }
+
+  function buildUnifiedStateHtml(message, options = {}) {
+    const icon = options.icon || 'ℹ️';
+    const hint = options.hint ? `<div class="nature-empty-state-hint">${escapeHtml(options.hint)}</div>` : '';
+    return `
+      <div class="nature-empty-state nature-empty-state--unified">
+        <div class="nature-empty-state-icon" aria-hidden="true">${escapeHtml(icon)}</div>
+        <div>${escapeHtml(message)}</div>
+        ${hint}
+      </div>
+    `;
+  }
+
+  function isRecentUpdateActive() {
+    return Number(state.recentUpdateUntil) > Date.now();
+  }
+
+  function markRecentUpdatePulse() {
+    state.recentUpdateUntil = Date.now() + 4200;
+    if (state.recentUpdateTimerId) {
+      clearTimeout(state.recentUpdateTimerId);
+    }
+    state.recentUpdateTimerId = window.setTimeout(() => {
+      state.recentUpdateUntil = 0;
+      state.recentUpdateTimerId = 0;
+      renderBirds();
+    }, 4300);
+  }
+
+  function formatProgressSummary(item) {
+    const progress = Math.max(0, Number(item && item.progress) || 0);
+    const goal = Math.max(1, Number(item && item.goal) || 1);
+    const pct = Math.max(0, Math.min(100, Number(item && item.pct) || 0));
+    const status = item && item.completed ? 'Complete' : `${pct}%`;
+    return {
+      fraction: `${progress}/${goal}`,
+      status,
+      summary: `${progress}/${goal} | ${status}`
+    };
+  }
+
+  function applyOverviewDensity(root) {
+    const overview = (root || document).querySelector('.nature-birds-view[data-birds-view="overview"]');
+    if (!overview) return;
+    const compact = state.overviewDensity === 'compact';
+    overview.classList.toggle('is-density-compact', compact);
+    const compactBtn = document.getElementById('birdsDensityCompactBtn');
+    const comfortBtn = document.getElementById('birdsDensityComfortBtn');
+    if (compactBtn) {
+      compactBtn.classList.toggle('is-active', compact);
+      compactBtn.setAttribute('aria-pressed', compact ? 'true' : 'false');
+    }
+    if (comfortBtn) {
+      comfortBtn.classList.toggle('is-active', !compact);
+      comfortBtn.setAttribute('aria-pressed', !compact ? 'true' : 'false');
+    }
+  }
+
+  function syncOverviewFilterChipState() {
+    const filterButtons = document.querySelectorAll('[data-birds-overview-filter]');
+    filterButtons.forEach((button) => {
+      const key = button.getAttribute('data-birds-overview-filter') || '';
+      const active = key === 'in-season'
+        ? Boolean(state.overviewQuickFilters.inSeason)
+        : key === 'almost-there'
+          ? Boolean(state.overviewQuickFilters.almostThere)
+          : key === 'high-reward'
+            ? Boolean(state.overviewQuickFilters.highReward)
+            : false;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
   }
 
   function safeJsonParse(value, fallback) {
@@ -525,6 +607,124 @@
     const badgeClass = item.whyShownClass ? ` ${escapeHtml(item.whyShownClass)}` : '';
     const icon = item.whyShownIcon ? `<span class="nature-why-shown-icon" aria-hidden="true">${escapeHtml(item.whyShownIcon)}</span>` : '';
     return `<div class="nature-why-shown-badge${badgeClass}">${icon}<span>${escapeHtml(item.whyShown)}</span></div>`;
+  }
+
+  function cardMatchesOverviewQuickFilters(card, stats) {
+    if (!card) return false;
+    const filters = state.overviewQuickFilters || {};
+    const noFilter = !filters.inSeason && !filters.almostThere && !filters.highReward;
+    if (noFilter) return true;
+
+    const remaining = Math.max(0, Number(card.goal) - Number(card.progress));
+    if (filters.inSeason && isSeasonRelevantCard(card, stats)) return true;
+    if (filters.almostThere && !card.completed && remaining <= 2) return true;
+    if (filters.highReward && Number(card.xp) >= 160) return true;
+    return false;
+  }
+
+  function applyOverviewQuickFilters(cards, stats) {
+    const list = Array.isArray(cards) ? cards : [];
+    return list.filter((card) => cardMatchesOverviewQuickFilters(card, stats));
+  }
+
+  function scrollToBirdOverviewSection(sectionKey) {
+    const map = {
+      daily: 'birdsOverviewSectionDaily',
+      challenges: 'birdsOverviewSectionChallenges',
+      badges: 'birdsOverviewSectionBadges',
+      quests: 'birdsOverviewSectionQuests',
+      bingo: 'birdsOverviewSectionBingo'
+    };
+    const target = document.getElementById(map[sectionKey] || '');
+    if (!target) return false;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return true;
+  }
+
+  function runBirdOverviewCommand(root, raw) {
+    const query = String(raw || '').trim();
+    if (!query) return;
+    const normalized = norm(query);
+
+    if (normalized === 'log' || normalized === 'open log' || normalized === 'go log') {
+      setBirdView(root, 'log');
+      return;
+    }
+    if (normalized === 'explore' || normalized === 'open explorer' || normalized === 'go explorer') {
+      setBirdView(root, 'explorer');
+      return;
+    }
+    if (normalized === 'go overview' || normalized === 'overview') {
+      setBirdView(root, 'overview');
+      return;
+    }
+    if (normalized.includes('go challenges') || normalized === 'challenges') {
+      setBirdView(root, 'overview');
+      scrollToBirdOverviewSection('challenges');
+      return;
+    }
+    if (normalized.includes('go badges') || normalized === 'badges') {
+      setBirdView(root, 'overview');
+      scrollToBirdOverviewSection('badges');
+      return;
+    }
+    if (normalized.includes('go quests') || normalized.includes('quest')) {
+      setBirdView(root, 'overview');
+      scrollToBirdOverviewSection('quests');
+      return;
+    }
+    if (normalized.includes('go bingo') || normalized === 'bingo') {
+      setBirdView(root, 'overview');
+      scrollToBirdOverviewSection('bingo');
+      return;
+    }
+    if (normalized.startsWith('search ')) {
+      const searchText = query.slice(7).trim();
+      state.birdSearch = searchText;
+      state.birdPage = 1;
+      setBirdView(root, 'explorer');
+      renderBirdExplorerList();
+      return;
+    }
+
+    state.birdSearch = query;
+    state.birdPage = 1;
+    setBirdView(root, 'explorer');
+    renderBirdExplorerList();
+  }
+
+  function handleBirdKeyboardShortcuts(root, event) {
+    if (!root || state.activeSubTab !== 'birds') return;
+    const target = event.target;
+    const inTextInput = target && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable
+    );
+
+    if (event.key === '/' && !inTextInput) {
+      event.preventDefault();
+      const cmdInput = document.getElementById('birdsOverviewCommandInput');
+      if (cmdInput) cmdInput.focus();
+      return;
+    }
+
+    const key = norm(event.key);
+    const now = Date.now();
+    if (!inTextInput && key === 'g') {
+      state.commandChordStartedAt = now;
+      return;
+    }
+    if (!inTextInput && state.commandChordStartedAt && now - state.commandChordStartedAt <= 900) {
+      state.commandChordStartedAt = 0;
+      if (key === 'o') {
+        setBirdView(root, 'overview');
+      } else if (key === 'l') {
+        setBirdView(root, 'log');
+      } else if (key === 'e') {
+        setBirdView(root, 'explorer');
+      }
+    }
   }
 
   function updateBirdMoreButtons(counts) {
@@ -1270,6 +1470,7 @@
     const audioInput = document.getElementById('birdsLogAudioInput');
     if (audioInput) audioInput.value = '';
 
+    markRecentUpdatePulse();
     renderBirds();
   }
 
@@ -1509,14 +1710,18 @@
   function renderBirdChallenges(challenges, containerId = 'birdsChallengeGrid') {
     const container = document.getElementById(containerId);
     if (!container) return;
+    if (!Array.isArray(challenges) || challenges.length === 0) {
+      container.innerHTML = buildUnifiedStateHtml('No challenge cards match current overview filters.', { icon: '🎯', hint: 'Try clearing overview filter chips.' });
+      return;
+    }
 
     container.innerHTML = challenges.map((challenge) => `
-      <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''}">
+      <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         ${renderWhyShownBadge(challenge)}
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(challenge.icon, challenge.title))}</div>
         <div class="nature-challenge-card-description">${escapeHtml(challenge.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${challenge.pct}%;"></div></div>
-        <div class="nature-challenge-meta"><span>${challenge.progress}/${challenge.goal}</span><span>${challenge.completed ? 'Complete' : `${challenge.pct}%`}</span></div>
+        <div class="nature-challenge-meta"><span>${escapeHtml(formatProgressSummary(challenge).fraction)}</span><span>${escapeHtml(formatProgressSummary(challenge).status)}</span></div>
       </div>
     `).join('');
   }
@@ -1524,14 +1729,18 @@
   function renderBirdBadges(badges, containerId = 'birdsBadgeGrid') {
     const container = document.getElementById(containerId);
     if (!container) return;
+    if (!Array.isArray(badges) || badges.length === 0) {
+      container.innerHTML = buildUnifiedStateHtml('No badge cards match current overview filters.', { icon: '🏅', hint: 'Try clearing overview filter chips.' });
+      return;
+    }
 
     container.innerHTML = badges.map((badge) => `
-      <div class="nature-badge-card ${badge.completed ? 'unlocked' : 'locked'} ${badge.rarityClass}">
+      <div class="nature-badge-card ${badge.completed ? 'unlocked' : 'locked'} ${badge.rarityClass} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         ${renderWhyShownBadge(badge)}
         <div class="nature-badge-icon">${escapeHtml(badge.icon)}</div>
         <div class="nature-badge-card-title">${escapeHtml(badge.title)}</div>
         <div class="nature-badge-card-description">${escapeHtml(badge.description)}</div>
-        <div class="nature-badge-progress">${badge.progress}/${badge.goal}</div>
+        <div class="nature-badge-progress">${escapeHtml(formatProgressSummary(badge).summary)}</div>
         <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${badge.pct}%;"></div></div>
       </div>
     `).join('');
@@ -1540,13 +1749,17 @@
   function renderBirdDailyChallenges(challenges) {
     const container = document.getElementById('birdsDailyChallengeGrid');
     if (!container) return;
+    if (!Array.isArray(challenges) || challenges.length === 0) {
+      container.innerHTML = buildUnifiedStateHtml('Daily micro-challenges will appear after load.', { icon: '⚡' });
+      return;
+    }
 
     container.innerHTML = challenges.map((challenge) => `
-      <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''}">
+      <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(challenge.icon, challenge.title))}</div>
         <div class="nature-challenge-card-description">${escapeHtml(challenge.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${challenge.pct}%;"></div></div>
-        <div class="nature-challenge-meta"><span>${challenge.progress}/${challenge.goal}</span><span>${challenge.completed ? 'Complete' : `${challenge.pct}%`}</span></div>
+        <div class="nature-challenge-meta"><span>${escapeHtml(formatProgressSummary(challenge).fraction)}</span><span>${escapeHtml(formatProgressSummary(challenge).status)}</span></div>
       </div>
     `).join('');
   }
@@ -1632,12 +1845,17 @@
     const totalTileCount = Number.isFinite(options.totalTileCountOverride)
       ? options.totalTileCountOverride
       : bingo.tiles.length;
+    if (!Array.isArray(bingo.tiles) || bingo.tiles.length === 0) {
+      meta.textContent = `${completedCount}/${totalTileCount} tiles complete`;
+      grid.innerHTML = buildUnifiedStateHtml('No bingo tiles match current overview filters.', { icon: '🟩', hint: 'Try clearing overview filter chips.' });
+      return;
+    }
     meta.textContent = `${completedCount}/${totalTileCount} tiles complete${bingo.bingoAchieved ? ' | Bingo unlocked!' : ''}`;
     grid.innerHTML = bingo.tiles.map((tile) => `
-      <div class="nature-badge-card ${tile.completed ? 'unlocked' : 'locked'}">
+      <div class="nature-badge-card ${tile.completed ? 'unlocked' : 'locked'} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         ${renderWhyShownBadge(tile)}
         <div class="nature-badge-card-title">${escapeHtml(tile.label)}</div>
-        <div class="nature-badge-progress">${tile.progress}/${tile.goal}</div>
+        <div class="nature-badge-progress">${escapeHtml(formatProgressSummary(tile).summary)}</div>
         <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${tile.pct}%;"></div></div>
       </div>
     `).join('');
@@ -1654,13 +1872,17 @@
     if (!container || !meta) return;
 
     meta.textContent = `${stats.currentSeasonLabel} chapter: ${questline.completedCount}/${questline.steps.length} steps completed`;
+    if (!Array.isArray(questline.steps) || questline.steps.length === 0) {
+      container.innerHTML = buildUnifiedStateHtml('No seasonal quests match current overview filters.', { icon: '📚', hint: 'Try clearing overview filter chips.' });
+      return;
+    }
     container.innerHTML = questline.steps.map((step) => `
-      <div class="nature-challenge-card ${step.completed ? 'completed' : ''}">
+      <div class="nature-challenge-card ${step.completed ? 'completed' : ''} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         ${renderWhyShownBadge(step)}
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(step.icon, step.title))}</div>
         <div class="nature-challenge-card-description">${escapeHtml(step.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${step.pct}%;"></div></div>
-        <div class="nature-challenge-meta"><span>${step.progress}/${step.goal}</span><span>${step.completed ? 'Complete' : `${step.pct}%`}</span></div>
+        <div class="nature-challenge-meta"><span>${escapeHtml(formatProgressSummary(step).fraction)}</span><span>${escapeHtml(formatProgressSummary(step).status)}</span></div>
       </div>
     `).join('');
   }
@@ -1986,7 +2208,7 @@
     if (!state.birdsLoaded) {
       renderPinnedFavorites();
       renderActiveFilterSummary();
-      container.innerHTML = '<div class="nature-empty-state">Bird data is still loading.</div>';
+      container.innerHTML = buildUnifiedStateHtml('Bird data is still loading.', { icon: '⏳', hint: 'Try refresh if loading takes unusually long.' });
       meta.textContent = 'Loading birds...';
       return;
     }
@@ -2014,7 +2236,7 @@
     if (nextBtn) nextBtn.disabled = state.birdPage >= totalPages;
 
     if (filtered.length === 0) {
-      container.innerHTML = '<div class="nature-empty-state">No birds matched your search. Try a different keyword.</div>';
+      container.innerHTML = buildUnifiedStateHtml('No birds matched your search.', { icon: '🔎', hint: 'Try fewer filters or a broader keyword.' });
       return;
     }
 
@@ -2073,7 +2295,7 @@
 
     const bird = findBirdById(state.selectedBirdId);
     if (!bird) {
-      container.innerHTML = '<div class="card"><div class="nature-empty-state">No bird selected. Go back to the explorer and choose a species card.</div></div>';
+      container.innerHTML = `<div class="card">${buildUnifiedStateHtml('No bird selected yet.', { icon: '🧭', hint: 'Go back to explorer and choose a species card.' })}</div>`;
       return;
     }
 
@@ -2132,7 +2354,7 @@
       subtitle.textContent = 'Bird data is still loading.';
       meta.textContent = 'Collection data will appear after bird data loads.';
       grid.className = 'nature-challenge-grid';
-      grid.innerHTML = '<div class="nature-empty-state">Bird data is still loading.</div>';
+      grid.innerHTML = buildUnifiedStateHtml('Bird data is still loading.', { icon: '⏳' });
       return;
     }
 
@@ -2165,7 +2387,7 @@
       grid.className = 'nature-badge-grid';
       if (!bingo) {
         meta.textContent = 'Bingo data is still loading.';
-        grid.innerHTML = '<div class="nature-empty-state">Bingo data is still loading.</div>';
+        grid.innerHTML = buildUnifiedStateHtml('Bingo data is still loading.', { icon: '🟩' });
         return;
       }
       renderBirdBingoPanel(bingo, {
@@ -2196,7 +2418,7 @@
     ].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
-        el.innerHTML = `<div class="nature-empty-state">${escapeHtml(state.birdsError || 'Bird data could not be loaded.')}</div>`;
+        el.innerHTML = buildUnifiedStateHtml(state.birdsError || 'Bird data could not be loaded.', { icon: '⚠️', hint: 'Open Diagnostics, Sync and Clean Up for details.' });
       }
     });
   }
@@ -2214,10 +2436,14 @@
     };
     const challenges = getBirdChallenges(stats);
     const badges = getBirdBadges(badgeStats);
-    const overviewChallenges = getPrioritizedOverviewCards(challenges, stats, BIRD_OVERVIEW_LIMITS.challenges);
-    const overviewBadges = getPrioritizedOverviewCards(badges, stats, BIRD_OVERVIEW_LIMITS.badges);
-    const overviewQuests = getPrioritizedOverviewCards(seasonQuestline.steps, stats, BIRD_OVERVIEW_LIMITS.quests);
-    const overviewBingoTiles = getPrioritizedOverviewCards(bingo.tiles, stats, BIRD_OVERVIEW_LIMITS.bingo);
+    const filteredChallenges = applyOverviewQuickFilters(challenges, stats);
+    const filteredBadges = applyOverviewQuickFilters(badges, stats);
+    const filteredQuests = applyOverviewQuickFilters(seasonQuestline.steps, stats);
+    const filteredBingoTiles = applyOverviewQuickFilters(bingo.tiles, stats);
+    const overviewChallenges = getPrioritizedOverviewCards(filteredChallenges, stats, BIRD_OVERVIEW_LIMITS.challenges);
+    const overviewBadges = getPrioritizedOverviewCards(filteredBadges, stats, BIRD_OVERVIEW_LIMITS.badges);
+    const overviewQuests = getPrioritizedOverviewCards(filteredQuests, stats, BIRD_OVERVIEW_LIMITS.quests);
+    const overviewBingoTiles = getPrioritizedOverviewCards(filteredBingoTiles, stats, BIRD_OVERVIEW_LIMITS.bingo);
 
     state.birdCollectionsCache = {
       stats,
@@ -2233,6 +2459,8 @@
       quests: { shown: overviewQuests.length, total: seasonQuestline.steps.length },
       bingo: { shown: overviewBingoTiles.length, total: bingo.tiles.length }
     });
+    syncOverviewFilterChipState();
+    applyOverviewDensity(document.getElementById('natureChallengeRoot'));
 
     renderBirdHeaderStatus();
     renderBirdStats(stats);
@@ -2386,6 +2614,7 @@
   function setBirdView(root, viewKey) {
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     syncBirdViews(root);
+    if (state.activeBirdView === 'overview') applyOverviewDensity(root);
     if (state.activeBirdView === 'log') return;
     if (state.activeBirdView === 'explorer') renderBirdExplorerList();
     if (state.activeBirdView === 'detail') renderBirdDetail();
@@ -2484,6 +2713,38 @@
         return;
       }
 
+      const overviewFilterButton = event.target.closest('[data-birds-overview-filter]');
+      if (overviewFilterButton) {
+        const filterKey = overviewFilterButton.getAttribute('data-birds-overview-filter') || '';
+        if (filterKey === 'in-season') state.overviewQuickFilters.inSeason = !state.overviewQuickFilters.inSeason;
+        if (filterKey === 'almost-there') state.overviewQuickFilters.almostThere = !state.overviewQuickFilters.almostThere;
+        if (filterKey === 'high-reward') state.overviewQuickFilters.highReward = !state.overviewQuickFilters.highReward;
+        renderBirds();
+        return;
+      }
+
+      const clearOverviewFiltersButton = event.target.closest('#birdsOverviewClearFiltersBtn');
+      if (clearOverviewFiltersButton) {
+        state.overviewQuickFilters = { inSeason: false, almostThere: false, highReward: false };
+        renderBirds();
+        return;
+      }
+
+      const densityButton = event.target.closest('[data-birds-density]');
+      if (densityButton) {
+        const densityMode = densityButton.getAttribute('data-birds-density') || 'comfortable';
+        state.overviewDensity = densityMode === 'compact' ? 'compact' : 'comfortable';
+        applyOverviewDensity(root);
+        return;
+      }
+
+      const jumpButton = event.target.closest('[data-birds-overview-jump]');
+      if (jumpButton) {
+        setBirdView(root, 'overview');
+        scrollToBirdOverviewSection(jumpButton.getAttribute('data-birds-overview-jump') || 'daily');
+        return;
+      }
+
       const clearFiltersButton = event.target.closest('#birdsExplorerClearFiltersBtn');
       if (clearFiltersButton) {
         resetBirdExplorerFilters();
@@ -2520,6 +2781,10 @@
         resolveSyncConflict(conflictId, strategy);
         return;
       }
+    });
+
+    root.addEventListener('keydown', (event) => {
+      handleBirdKeyboardShortcuts(root, event);
     });
 
     const refreshButton = document.getElementById('natureChallengeRefreshBtn');
@@ -2562,6 +2827,23 @@
     if (collectionBackButton && collectionBackButton.dataset.natureCollectionBackBound !== '1') {
       collectionBackButton.dataset.natureCollectionBackBound = '1';
       collectionBackButton.addEventListener('click', () => setBirdView(root, 'overview'));
+    }
+
+    const overviewCommandRunBtn = document.getElementById('birdsOverviewCommandRunBtn');
+    const overviewCommandInput = document.getElementById('birdsOverviewCommandInput');
+    if (overviewCommandRunBtn && overviewCommandRunBtn.dataset.natureCmdRunBound !== '1') {
+      overviewCommandRunBtn.dataset.natureCmdRunBound = '1';
+      overviewCommandRunBtn.addEventListener('click', () => {
+        runBirdOverviewCommand(root, overviewCommandInput ? overviewCommandInput.value : '');
+      });
+    }
+
+    if (overviewCommandInput && overviewCommandInput.dataset.natureCmdInputBound !== '1') {
+      overviewCommandInput.dataset.natureCmdInputBound = '1';
+      overviewCommandInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        runBirdOverviewCommand(root, overviewCommandInput.value || '');
+      });
     }
 
     const searchInput = document.getElementById('birdsSpeciesSearchInput');
