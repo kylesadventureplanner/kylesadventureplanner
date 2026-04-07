@@ -12,6 +12,7 @@
   const BIRD_SYNC_QUEUE_KEY = 'natureChallengeBirdSyncQueueV1';
   const BIRD_SYNC_CONFLICTS_KEY = 'natureChallengeBirdSyncConflictsV1';
   const BIRD_GAMIFICATION_KEY = 'natureChallengeBirdGamificationV1';
+  const BIRD_UI_PREFS_KEY = 'natureChallengeBirdUiPrefsV1';
   const EXCEL_TABLE_NAME = 'birds';
   const EXCEL_FILE_CANDIDATES = [
     'Nature_records.xlsx',
@@ -111,22 +112,19 @@
   const state = {
     initialized: false,
     activeSubTab: 'birds',
-    activeBirdView: 'overview',
+    activeBirdView: loadBirdUiPrefs().activeBirdView,
     activeBirdCollection: 'challenges',
     selectedBirdId: '',
     birdSearch: '',
     birdSort: 'family-asc',
     birdPage: 1,
     birdPageSize: 12,
-    overviewDensity: 'comfortable',
-    overviewQuickFilters: {
-      inSeason: false,
-      almostThere: false,
-      highReward: false
-    },
+    overviewDensity: loadBirdUiPrefs().overviewDensity,
+    overviewQuickFilters: loadBirdUiPrefs().overviewQuickFilters,
     commandChordStartedAt: 0,
     recentUpdateUntil: 0,
     recentUpdateTimerId: 0,
+    lastUndoAction: null,
     birdFilters: {
       season: 'all',
       rarity: 'all',
@@ -249,12 +247,200 @@
     });
   }
 
+  function renderBirdOverviewLastUpdated() {
+    const node = document.getElementById('birdsOverviewLastUpdated');
+    if (!node) return;
+    if (!state.lastLoadedAt) {
+      node.textContent = 'Updated recently';
+      return;
+    }
+    const diffMs = Math.max(0, Date.now() - new Date(state.lastLoadedAt).getTime());
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) {
+      node.textContent = 'Updated just now';
+      return;
+    }
+    if (mins < 60) {
+      node.textContent = `Updated ${mins} min ago`;
+      return;
+    }
+    const hours = Math.floor(mins / 60);
+    node.textContent = `Updated ${hours} hour${hours === 1 ? '' : 's'} ago`;
+  }
+
+  function renderOverviewSectionSummaries(summary) {
+    const tagIcons = {
+      'in-season': '🍃',
+      'almost-there': '🎯',
+      'high-reward': '🏆'
+    };
+    const activeTags = [];
+    if (state.overviewQuickFilters.inSeason) activeTags.push({ key: 'in-season', label: 'In Season' });
+    if (state.overviewQuickFilters.almostThere) activeTags.push({ key: 'almost-there', label: 'Almost There' });
+    if (state.overviewQuickFilters.highReward) activeTags.push({ key: 'high-reward', label: 'High Reward' });
+
+    const renderSummary = (mainText) => {
+      const chips = activeTags.length
+        ? `<span class="nature-section-summary-filters">${activeTags.map((tag) => `
+            <span class="nature-summary-filter-pill">
+              <span class="nature-summary-filter-icon" aria-hidden="true">${escapeHtml(tagIcons[tag.key] || '✨')}</span>
+              ${escapeHtml(tag.label)}
+              <button type="button" data-birds-overview-remove-filter="${escapeHtml(tag.key)}" title="Remove ${escapeHtml(tag.label)} filter">x</button>
+            </span>
+          `).join('')}</span>`
+        : '<span class="nature-section-summary-filters"></span>';
+
+      return `<span class="nature-section-summary-main">${escapeHtml(mainText)}</span>${chips}`;
+    };
+
+    const set = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = renderSummary(text);
+    };
+    set('birdsDailySummary', `Showing ${summary.dailyShown} of ${summary.dailyTotal} daily picks`);
+    set('birdsChallengesSummary', `Showing ${summary.challengeShown} of ${summary.challengeTotal} challenges`);
+    set('birdsBadgesSummary', `Showing ${summary.badgeShown} of ${summary.badgeTotal} badges`);
+    set('birdsQuestsSummary', `Showing ${summary.questShown} of ${summary.questTotal} quests`);
+    set('birdsBingoSummary', `Showing ${summary.bingoShown} of ${summary.bingoTotal} bingo tiles`);
+  }
+
+  function announceOverviewFilterState(summary) {
+    const announcer = document.getElementById('birdsOverviewFilterAnnouncer');
+    if (!announcer) return;
+    const flags = [];
+    if (state.overviewQuickFilters.inSeason) flags.push('In Season');
+    if (state.overviewQuickFilters.almostThere) flags.push('Almost There');
+    if (state.overviewQuickFilters.highReward) flags.push('High Reward');
+    const filterText = flags.length ? `Filters active: ${flags.join(', ')}` : 'No overview filters active';
+    announcer.textContent = `${filterText}. Showing ${summary.challengeShown} challenges, ${summary.badgeShown} badges, ${summary.questShown} quests, and ${summary.bingoShown} bingo tiles.`;
+  }
+
+  function renderBirdLoadingSkeletons() {
+    const shell = `
+      <div class="nature-skeleton-card">
+        <div class="nature-skeleton line-lg"></div>
+        <div class="nature-skeleton line-md"></div>
+        <div class="nature-skeleton line-md"></div>
+        <div class="nature-skeleton line-sm"></div>
+      </div>
+    `;
+    ['birdsDailyChallengeGrid', 'birdsChallengeGrid', 'birdsBadgeGrid', 'birdsSeasonQuestGrid', 'birdsBingoGrid'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && !el.innerHTML.trim()) el.innerHTML = shell.repeat(3);
+    });
+  }
+
+  function renderBirdTodayFocus(stats) {
+    const strip = document.getElementById('birdsTodayFocusStrip');
+    if (!strip || !stats) return;
+    const actions = [];
+    if (stats.todayLogCount < 1) actions.push('<button type="button" class="pill-button" data-birds-overview-jump="daily">Log your first sighting today</button>');
+    if (stats.streak && stats.streak.atRiskStreak > 0) actions.push('<button type="button" class="pill-button" data-birds-overview-jump="daily">Protect your streak today</button>');
+    if (stats.inSeasonSightedCount < stats.inSeasonCount) actions.push('<button type="button" class="pill-button" data-birds-overview-jump="quests">Find one more in-season species</button>');
+    actions.push('<button type="button" class="pill-button" id="birdsTodayFocusLogBtn" data-birds-overview-jump="daily">Log one sighting now</button>');
+    strip.innerHTML = actions.slice(0, 3).join('');
+  }
+
+  function toggleBirdShortcutHelpModal(forceState) {
+    const modal = document.getElementById('birdsShortcutHelpModal');
+    if (!modal) return;
+    const shouldOpen = typeof forceState === 'boolean' ? forceState : modal.hidden;
+    modal.hidden = !shouldOpen;
+  }
+
+  function renderBirdUndoPrompt() {
+    const prompt = document.getElementById('birdsUndoPrompt');
+    const text = document.getElementById('birdsUndoPromptText');
+    if (!prompt || !text) return;
+    if (!state.lastUndoAction) {
+      prompt.hidden = true;
+      return;
+    }
+    const label = state.lastUndoAction.label || 'Last birds action';
+    text.textContent = `${label} can be undone.`;
+    prompt.hidden = false;
+  }
+
+  function setUndoAction(action) {
+    state.lastUndoAction = action || null;
+    renderBirdUndoPrompt();
+  }
+
+  function undoLastBirdAction() {
+    const action = state.lastUndoAction;
+    if (!action) return false;
+
+    if (action.type === 'toggle-sighting') {
+      const bird = findBirdById(action.birdId);
+      if (!bird) return false;
+      if (action.wasSighted) state.sightings[bird.id] = action.snapshot || { sightedAt: new Date().toISOString() };
+      else delete state.sightings[bird.id];
+      saveSightings();
+      renderBirds();
+      state.lastUndoAction = null;
+      renderBirdUndoPrompt();
+      return true;
+    }
+
+    if (action.type === 'log-sighting') {
+      state.sightingLog = state.sightingLog.filter((entry) => entry.id !== action.entryId);
+      saveSightingLog();
+      updateBirdingStatusFromLog();
+      renderBirds();
+      state.lastUndoAction = null;
+      renderBirdUndoPrompt();
+      return true;
+    }
+
+    if (action.type === 'clear-overview-filters') {
+      state.overviewQuickFilters = {
+        inSeason: Boolean(action.prev && action.prev.inSeason),
+        almostThere: Boolean(action.prev && action.prev.almostThere),
+        highReward: Boolean(action.prev && action.prev.highReward)
+      };
+      saveBirdUiPrefs();
+      renderBirds();
+      state.lastUndoAction = null;
+      renderBirdUndoPrompt();
+      return true;
+    }
+
+    return false;
+  }
+
   function safeJsonParse(value, fallback) {
     try {
       return JSON.parse(value);
     } catch (_) {
       return fallback;
     }
+  }
+
+  function loadBirdUiPrefs() {
+    const prefs = safeJsonParse(localStorage.getItem(BIRD_UI_PREFS_KEY), {}) || {};
+    return {
+      overviewDensity: prefs.overviewDensity === 'compact' ? 'compact' : 'comfortable',
+      overviewQuickFilters: {
+        inSeason: Boolean(prefs.overviewQuickFilters && prefs.overviewQuickFilters.inSeason),
+        almostThere: Boolean(prefs.overviewQuickFilters && prefs.overviewQuickFilters.almostThere),
+        highReward: Boolean(prefs.overviewQuickFilters && prefs.overviewQuickFilters.highReward)
+      },
+      activeBirdView: ['overview', 'log', 'explorer', 'detail', 'collection'].includes(prefs.activeBirdView)
+        ? prefs.activeBirdView
+        : 'overview'
+    };
+  }
+
+  function saveBirdUiPrefs() {
+    localStorage.setItem(BIRD_UI_PREFS_KEY, JSON.stringify({
+      overviewDensity: state.overviewDensity === 'compact' ? 'compact' : 'comfortable',
+      overviewQuickFilters: {
+        inSeason: Boolean(state.overviewQuickFilters && state.overviewQuickFilters.inSeason),
+        almostThere: Boolean(state.overviewQuickFilters && state.overviewQuickFilters.almostThere),
+        highReward: Boolean(state.overviewQuickFilters && state.overviewQuickFilters.highReward)
+      },
+      activeBirdView: state.activeBirdView
+    }));
   }
 
   function loadSightings() {
@@ -709,6 +895,20 @@
       return;
     }
 
+    if (!inTextInput && event.key === '?') {
+      event.preventDefault();
+      toggleBirdShortcutHelpModal();
+      return;
+    }
+
+    if (!inTextInput && norm(event.key) === 'z') {
+      const undone = undoLastBirdAction();
+      if (undone && typeof window.showToast === 'function') {
+        window.showToast('Undid last birds action', 'success', 1800);
+      }
+      if (undone) return;
+    }
+
     const key = norm(event.key);
     const now = Date.now();
     if (!inTextInput && key === 'g') {
@@ -724,6 +924,13 @@
       } else if (key === 'e') {
         setBirdView(root, 'explorer');
       }
+    }
+
+    if (!inTextInput && state.activeBirdView === 'overview') {
+      if (key === '1') scrollToBirdOverviewSection('challenges');
+      if (key === '2') scrollToBirdOverviewSection('badges');
+      if (key === '3') scrollToBirdOverviewSection('quests');
+      if (key === '4') scrollToBirdOverviewSection('bingo');
     }
   }
 
@@ -1455,9 +1662,10 @@
     };
 
     addSightingLogEntry(entry);
+    setUndoAction({ type: 'log-sighting', entryId: entry.id, label: 'Logged sighting' });
     state.logSuccessMessage = `Saved ${selectedBird.speciesName} for ${dateObserved}${locationName ? ` at ${locationName}` : ''}.`;
     if (typeof window.showToast === 'function') {
-      window.showToast(`Logged sighting: ${selectedBird.speciesName}`, 'success', 2200);
+      window.showToast(`Logged sighting: ${selectedBird.speciesName}. Use Undo pill or press z.`, 'success', 2800);
     }
 
     if (locationInput) locationInput.value = '';
@@ -2424,7 +2632,11 @@
   }
 
   function renderBirds() {
-    if (!state.birdsLoaded) return;
+    if (!state.birdsLoaded) {
+      renderBirdLoadingSkeletons();
+      renderBirdOverviewLastUpdated();
+      return;
+    }
     const stats = getBirdStats();
     const dailyChallenges = getDailyMicroChallenges(stats);
     const bingo = getSeasonalBingo(stats);
@@ -2459,6 +2671,23 @@
       quests: { shown: overviewQuests.length, total: seasonQuestline.steps.length },
       bingo: { shown: overviewBingoTiles.length, total: bingo.tiles.length }
     });
+    const summary = {
+      dailyShown: dailyChallenges.length,
+      dailyTotal: BIRD_PROGRESSION_SPEC.dailyPickCount || dailyChallenges.length,
+      challengeShown: overviewChallenges.length,
+      challengeTotal: challenges.length,
+      badgeShown: overviewBadges.length,
+      badgeTotal: badges.length,
+      questShown: overviewQuests.length,
+      questTotal: seasonQuestline.steps.length,
+      bingoShown: overviewBingoTiles.length,
+      bingoTotal: bingo.tiles.length
+    };
+    renderOverviewSectionSummaries(summary);
+    announceOverviewFilterState(summary);
+    renderBirdOverviewLastUpdated();
+    renderBirdUndoPrompt();
+    renderBirdTodayFocus(stats);
     syncOverviewFilterChipState();
     applyOverviewDensity(document.getElementById('natureChallengeRoot'));
 
@@ -2613,6 +2842,7 @@
 
   function setBirdView(root, viewKey) {
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
+    saveBirdUiPrefs();
     syncBirdViews(root);
     if (state.activeBirdView === 'overview') applyOverviewDensity(root);
     if (state.activeBirdView === 'log') return;
@@ -2639,6 +2869,8 @@
   function toggleBirdSighting(birdId) {
     const bird = findBirdById(birdId);
     if (!bird) return;
+    const wasSighted = Boolean(state.sightings[bird.id]);
+    const snapshot = wasSighted ? { ...state.sightings[bird.id] } : null;
 
     if (state.sightings[bird.id]) {
       delete state.sightings[bird.id];
@@ -2653,6 +2885,10 @@
     }
 
     saveSightings();
+    setUndoAction({ type: 'toggle-sighting', birdId: bird.id, wasSighted, snapshot, label: 'Updated sighting status' });
+    if (typeof window.showToast === 'function') {
+      window.showToast('Use Undo pill or press z to undo', 'info', 2200);
+    }
     renderBirds();
   }
 
@@ -2719,14 +2955,40 @@
         if (filterKey === 'in-season') state.overviewQuickFilters.inSeason = !state.overviewQuickFilters.inSeason;
         if (filterKey === 'almost-there') state.overviewQuickFilters.almostThere = !state.overviewQuickFilters.almostThere;
         if (filterKey === 'high-reward') state.overviewQuickFilters.highReward = !state.overviewQuickFilters.highReward;
+        saveBirdUiPrefs();
+        renderBirds();
+        return;
+      }
+
+      const removeOverviewFilterButton = event.target.closest('[data-birds-overview-remove-filter]');
+      if (removeOverviewFilterButton) {
+        const filterKey = removeOverviewFilterButton.getAttribute('data-birds-overview-remove-filter') || '';
+        if (filterKey === 'in-season') state.overviewQuickFilters.inSeason = false;
+        if (filterKey === 'almost-there') state.overviewQuickFilters.almostThere = false;
+        if (filterKey === 'high-reward') state.overviewQuickFilters.highReward = false;
+        saveBirdUiPrefs();
         renderBirds();
         return;
       }
 
       const clearOverviewFiltersButton = event.target.closest('#birdsOverviewClearFiltersBtn');
       if (clearOverviewFiltersButton) {
+        setUndoAction({
+          type: 'clear-overview-filters',
+          prev: { ...state.overviewQuickFilters },
+          label: 'Cleared overview filters'
+        });
         state.overviewQuickFilters = { inSeason: false, almostThere: false, highReward: false };
+        saveBirdUiPrefs();
+        if (typeof window.showToast === 'function') window.showToast('Overview filters cleared. Use Undo pill or press z.', 'info', 2400);
         renderBirds();
+        return;
+      }
+
+      const undoPromptButton = event.target.closest('#birdsUndoPromptBtn');
+      if (undoPromptButton) {
+        const undone = undoLastBirdAction();
+        if (undone && typeof window.showToast === 'function') window.showToast('Undid last birds action', 'success', 1800);
         return;
       }
 
@@ -2734,14 +2996,31 @@
       if (densityButton) {
         const densityMode = densityButton.getAttribute('data-birds-density') || 'comfortable';
         state.overviewDensity = densityMode === 'compact' ? 'compact' : 'comfortable';
+        saveBirdUiPrefs();
         applyOverviewDensity(root);
         return;
       }
 
       const jumpButton = event.target.closest('[data-birds-overview-jump]');
       if (jumpButton) {
+        if (jumpButton.id === 'birdsTodayFocusLogBtn') {
+          setBirdView(root, 'log');
+          return;
+        }
         setBirdView(root, 'overview');
         scrollToBirdOverviewSection(jumpButton.getAttribute('data-birds-overview-jump') || 'daily');
+        return;
+      }
+
+      const shortcutCloseButton = event.target.closest('#birdsShortcutHelpCloseBtn');
+      if (shortcutCloseButton) {
+        toggleBirdShortcutHelpModal(false);
+        return;
+      }
+
+      const shortcutBackdrop = event.target.closest('#birdsShortcutHelpModal');
+      if (shortcutBackdrop && event.target === shortcutBackdrop) {
+        toggleBirdShortcutHelpModal(false);
         return;
       }
 
@@ -2784,7 +3063,13 @@
     });
 
     root.addEventListener('keydown', (event) => {
+      if (event.key === 'Tab') root.classList.add('is-keyboard-mode');
+      if (event.key === 'Escape') toggleBirdShortcutHelpModal(false);
       handleBirdKeyboardShortcuts(root, event);
+    });
+
+    root.addEventListener('mousedown', () => {
+      root.classList.remove('is-keyboard-mode');
     });
 
     const refreshButton = document.getElementById('natureChallengeRefreshBtn');
@@ -2996,6 +3281,8 @@
 
     ensureNatureButtonsResponsive(root);
     bindNatureControls(root);
+    const diagnostics = document.getElementById('birdsDiagnosticsDetails');
+    if (diagnostics) diagnostics.open = false;
     const logDateInput = document.getElementById('birdsLogDateInput');
     if (logDateInput && !logDateInput.value) {
       logDateInput.value = new Date().toISOString().slice(0, 10);

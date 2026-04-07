@@ -23,13 +23,21 @@
   <!-- BIRDS SUB-TAB -->
   <div id="natureChallengePane-birds" class="nature-challenge-pane is-active" data-nature-pane="birds" role="tabpanel" aria-labelledby="natureChallengeTab-birds">
     <div class="nature-birds-view is-active" data-birds-view="overview">
+      <div class="nature-overview-status-row">
+        <div id="birdsOverviewLastUpdated" class="nature-overview-last-updated" aria-live="polite">Updated just now</div>
+        <div id="birdsUndoPrompt" class="nature-undo-prompt" aria-live="polite" hidden>
+          <span id="birdsUndoPromptText">Last action available to undo.</span>
+          <button type="button" id="birdsUndoPromptBtn" class="pill-button">Undo</button>
+        </div>
+      </div>
+
       <div class="card nature-explore-cta-card" style="margin-top: 18px;">
         <div class="nature-explore-cta-row">
           <div>
-            <div class="card-title">🔎 Explore Species / Log a Sighting</div>
+            <div class="card-title" role="heading" aria-level="3">🔎 Explore Species / Log a Sighting</div>
             <div class="card-subtitle">Browse your full bird list or open the dedicated sighting log page.</div>
           </div>
-          <div class="nature-explore-cta-actions">
+          <div class="nature-explore-cta-actions nature-sticky-action-rail">
             <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--refresh" title="Refresh nature data" data-tooltip="Refresh nature data">
               Refresh Data
             </button>
@@ -43,9 +51,23 @@
         </div>
       </div>
 
+      <div class="card nature-today-focus-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title" role="heading" aria-level="3">📌 Today Focus</div>
+            <div class="card-subtitle">Recommended next actions based on your current momentum.</div>
+          </div>
+        </div>
+        <div id="birdsTodayFocusStrip" class="nature-today-focus-strip" aria-live="polite">
+          <button type="button" class="pill-button" data-birds-overview-jump="daily">Finish a daily micro-challenge</button>
+          <button type="button" class="pill-button" data-birds-overview-jump="quests">Advance your seasonal quest</button>
+          <button type="button" class="pill-button" id="birdsTodayFocusLogBtn">Log one sighting now</button>
+        </div>
+      </div>
+
       <div class="card nature-overview-command-card">
         <div class="nature-overview-command-row">
-          <input id="birdsOverviewCommandInput" class="filter-input" type="text" placeholder="Type a command (e.g., search heron, go badges, log)" aria-label="Birds command bar" aria-describedby="birdsOverviewCommandHelp" />
+          <input id="birdsOverviewCommandInput" class="filter-input" type="text" placeholder="Type a command (e.g., search heron, go badges, log)" aria-label="Birds command bar" aria-describedby="birdsOverviewCommandHelp" list="birdsOverviewCommandSuggestions" />
           <button type="button" id="birdsOverviewCommandRunBtn" class="pill-button nature-command-btn">Run</button>
           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="challenges">Challenges</button>
           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="badges">Badges</button>
@@ -64,6 +86,15 @@
           <kbd>g l</kbd> log
           <kbd>g e</kbd> explorer
         </div>
+        <datalist id="birdsOverviewCommandSuggestions">
+          <option value="log"></option>
+          <option value="go overview"></option>
+          <option value="go badges"></option>
+          <option value="go challenges"></option>
+          <option value="go quests"></option>
+          <option value="go bingo"></option>
+          <option value="search heron"></option>
+        </datalist>
       </div>
 
       <!-- Category Progression -->
@@ -123,45 +154,52 @@
         </div>
         <button type="button" id="birdsToggleCollapsiblesBtn" class="pill-button nature-section-toggle-btn">Expand All</button>
       </div>
+      <div id="birdsOverviewFilterAnnouncer" class="nature-sr-only" aria-live="polite" aria-atomic="true"></div>
 
       <div class="card nature-overview-section-card" id="birdsOverviewSectionDaily">
         <div class="card-header">
-          <div class="card-title">⚡ Daily Micro-Challenges</div>
-          <div class="card-subtitle">Three rotating daily goals for quick momentum.</div>
+          <div>
+            <div class="card-title" role="heading" aria-level="3">⚡ Daily Micro-Challenges</div>
+            <div class="card-subtitle">Three rotating daily goals for quick momentum.</div>
+          </div>
         </div>
+        <div id="birdsDailySummary" class="nature-section-summary">Showing daily picks.</div>
         <div id="birdsDailyChallengeGrid" class="nature-challenge-grid"></div>
       </div>
 
       <div class="card nature-overview-section-card" id="birdsOverviewSectionChallenges">
         <div class="card-header">
           <div>
-            <div class="card-title">🎯 Challenges</div>
+            <div class="card-title" role="heading" aria-level="3">🎯 Challenges</div>
             <div class="card-subtitle">Complete challenges to earn rewards.</div>
           </div>
           <button type="button" class="pill-button nature-more-btn" data-birds-more="challenges">More</button>
         </div>
+        <div id="birdsChallengesSummary" class="nature-section-summary">Showing prioritized challenge cards.</div>
         <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
       </div>
 
       <div class="card nature-overview-section-card" id="birdsOverviewSectionBadges">
         <div class="card-header">
           <div>
-            <div class="card-title">🏅 Badges</div>
+            <div class="card-title" role="heading" aria-level="3">🏅 Badges</div>
             <div class="card-subtitle">Unlock achievements as you progress.</div>
           </div>
           <button type="button" class="pill-button nature-more-btn" data-birds-more="badges">More</button>
         </div>
+        <div id="birdsBadgesSummary" class="nature-section-summary">Showing prioritized badge cards.</div>
         <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
       </div>
 
       <div class="card nature-overview-section-card" id="birdsOverviewSectionQuests">
         <div class="card-header">
           <div>
-            <div class="card-title">📚 Seasonal Quests</div>
+            <div class="card-title" role="heading" aria-level="3">📚 Seasonal Quests</div>
             <div class="card-subtitle">Complete the current season chapter with multi-step goals.</div>
           </div>
           <button type="button" class="pill-button nature-more-btn" data-birds-more="quests">More</button>
         </div>
+        <div id="birdsQuestsSummary" class="nature-section-summary">Showing prioritized seasonal quest cards.</div>
         <div id="birdsSeasonQuestMeta" class="nature-progress-note">Season quest chapter progress appears here.</div>
         <div id="birdsSeasonQuestGrid" class="nature-challenge-grid"></div>
       </div>
@@ -169,11 +207,12 @@
       <div class="card nature-overview-section-card" id="birdsOverviewSectionBingo">
         <div class="card-header">
           <div>
-            <div class="card-title">🟩 Birding Bingo</div>
+            <div class="card-title" role="heading" aria-level="3">🟩 Birding Bingo</div>
             <div class="card-subtitle">Complete seasonal bingo tiles and reroll once per season.</div>
           </div>
           <button type="button" class="pill-button nature-more-btn" data-birds-more="bingo">More</button>
         </div>
+        <div id="birdsBingoSummary" class="nature-section-summary">Showing prioritized bingo tiles.</div>
         <div id="birdsBingoMeta" class="nature-progress-note">Bingo board will load with your seasonal progress.</div>
         <div id="birdsBingoGrid" class="nature-badge-grid"></div>
         <div class="nature-log-form-actions">
@@ -184,7 +223,7 @@
       <details id="birdsDiagnosticsDetails" class="card nature-collapsible-card nature-diagnostics-details" data-birds-collapsible>
         <summary class="nature-collapsible-summary">
           <div>
-            <div class="card-title">🧰 Diagnostics, Sync and Clean Up</div>
+            <div class="card-title" role="heading" aria-level="3">🧰 Diagnostics, Sync and Clean Up</div>
             <div class="card-subtitle">Quality tools and local/Excel sync controls.</div>
           </div>
         </summary>
@@ -217,6 +256,26 @@
           <div id="birdsDataQualityPanel"></div>
         </div>
       </details>
+
+      <div id="birdsShortcutHelpModal" class="nature-shortcut-help-modal" role="dialog" aria-modal="true" aria-labelledby="birdsShortcutHelpTitle" hidden>
+        <div class="nature-shortcut-help-panel">
+          <div class="card-title" id="birdsShortcutHelpTitle">Keyboard shortcuts</div>
+          <div class="nature-shortcut-help-grid">
+            <div><kbd>/</kbd> Focus command bar</div>
+            <div><kbd>g o</kbd> Open overview</div>
+            <div><kbd>g l</kbd> Open log</div>
+            <div><kbd>g e</kbd> Open explorer</div>
+            <div><kbd>1</kbd> Jump to Challenges</div>
+            <div><kbd>2</kbd> Jump to Badges</div>
+            <div><kbd>3</kbd> Jump to Quests</div>
+            <div><kbd>4</kbd> Jump to Bingo</div>
+            <div><kbd>?</kbd> Toggle this help</div>
+          </div>
+          <div class="nature-log-form-actions">
+            <button type="button" id="birdsShortcutHelpCloseBtn" class="pill-button">Close</button>
+          </div>
+        </div>
+      </div>
 
     </div>
 
@@ -796,6 +855,27 @@
 </div>
 
 <style>
+  #natureChallengeRoot {
+    --birds-surface: var(--birds-surface, #ffffff);
+    --birds-surface-muted: var(--birds-surface-muted, #f8fafc);
+    --birds-surface-emphasis: var(--birds-surface-emphasis, #f0f9ff);
+    --birds-border-subtle: var(--birds-border-subtle, #e2e8f0);
+    --birds-border-emphasis: var(--birds-border-emphasis, #bfdbfe);
+    --birds-accent: var(--birds-accent, #2563eb);
+    --birds-accent-strong: var(--birds-accent-strong, #1d4ed8);
+    --birds-text: var(--birds-text, #0f172a);
+    --birds-text-muted: var(--birds-text-muted, #64748b);
+    --birds-shadow-subtle: var(--birds-shadow-subtle, 0 4px 14px rgba(15, 23, 42, 0.04));
+    --birds-shadow-elevated: var(--birds-shadow-elevated, 0 10px 22px rgba(15, 23, 42, 0.1));
+    --birds-radius-subtle: var(--birds-radius-subtle, 10px);
+    --birds-radius-elevated: var(--birds-radius-elevated, 14px);
+    --birds-space-8: var(--birds-space-8, 8px);
+    --birds-space-12: var(--birds-space-12, 12px);
+    --birds-space-16: var(--birds-space-16, 16px);
+    --birds-space-24: var(--birds-space-24, 24px);
+    --birds-space-32: var(--birds-space-32, 32px);
+  }
+
   #natureChallengeRoot .nature-challenge-header {
     margin-bottom: 14px;
   }
@@ -1118,10 +1198,10 @@
   }
 
   #natureChallengeRoot .nature-overview-command-card {
-    border-color: #dbeafe;
-    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-    box-shadow: 0 6px 16px rgba(30, 41, 59, 0.05);
-    padding: 12px;
+    border-color: var(--birds-border-emphasis);
+    background: linear-gradient(180deg, var(--birds-surface) 0%, var(--birds-surface-emphasis) 100%);
+    box-shadow: var(--birds-shadow-subtle);
+    padding: var(--birds-space-12);
   }
 
   #natureChallengeRoot .nature-overview-command-row {
@@ -1179,9 +1259,9 @@
     min-height: 40px;
     padding: 0 12px;
     border-radius: 999px;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    color: #334155;
+    border: 1px solid var(--birds-border-subtle);
+    background: var(--birds-surface);
+    color: var(--birds-text);
     font-size: 12px;
     font-weight: 700;
   }
@@ -1190,6 +1270,121 @@
     border-color: #0f766e;
     background: #ecfeff;
     color: #0f766e;
+  }
+
+  #natureChallengeRoot .nature-overview-status-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--birds-space-8);
+    flex-wrap: wrap;
+    margin-bottom: var(--birds-space-8);
+  }
+
+  #natureChallengeRoot .nature-overview-last-updated {
+    font-size: 12px;
+    color: var(--birds-text-muted);
+    font-weight: 700;
+    border: 1px solid var(--birds-border-subtle);
+    background: var(--birds-surface-muted);
+    border-radius: 999px;
+    padding: 4px 10px;
+  }
+
+  #natureChallengeRoot .nature-undo-prompt {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    color: #9a3412;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  #natureChallengeRoot .nature-undo-prompt .pill-button {
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid #fdba74;
+    background: #fff;
+    color: #9a3412;
+    font-size: 11px;
+  }
+
+  #natureChallengeRoot .nature-today-focus-card {
+    border-color: var(--birds-border-emphasis);
+    background: linear-gradient(180deg, var(--birds-surface) 0%, #f8fbff 100%);
+  }
+
+  #natureChallengeRoot .nature-today-focus-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--birds-space-8);
+    margin-top: var(--birds-space-8);
+  }
+
+  #natureChallengeRoot .nature-section-summary {
+    margin: 0 0 var(--birds-space-8);
+    font-size: 12px;
+    color: var(--birds-text-muted);
+    font-weight: 700;
+    border: 1px solid var(--birds-border-subtle);
+    background: var(--birds-surface-muted);
+    border-radius: var(--birds-radius-subtle);
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-section-summary-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-section-summary-filters {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-summary-filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+  }
+
+  #natureChallengeRoot .nature-summary-filter-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 1;
+  }
+
+  #natureChallengeRoot .nature-summary-filter-pill button {
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1;
+    padding: 0;
   }
 
   #natureChallengeRoot .nature-density-toggle-group {
@@ -1211,6 +1406,29 @@
     border-color: #2563eb;
     background: #eff6ff;
     color: #1d4ed8;
+  }
+
+  #natureChallengeRoot .nature-density-btn:hover,
+  #natureChallengeRoot .nature-command-btn:hover,
+  #natureChallengeRoot .nature-overview-filter-chips .nature-chip-filter:hover,
+  #natureChallengeRoot .nature-chip-clear-btn:hover {
+    filter: brightness(0.98);
+    transform: translateY(-1px);
+  }
+
+  #natureChallengeRoot .nature-density-btn:active,
+  #natureChallengeRoot .nature-command-btn:active,
+  #natureChallengeRoot .nature-overview-filter-chips .nature-chip-filter:active,
+  #natureChallengeRoot .nature-chip-clear-btn:active {
+    transform: translateY(0);
+  }
+
+  #natureChallengeRoot button:disabled,
+  #natureChallengeRoot .pill-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
   }
 
   #natureChallengeRoot .nature-birds-view .card-title {
@@ -1244,9 +1462,10 @@
   }
 
   #natureChallengeRoot .nature-birds-view .card {
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    border: 1px solid var(--birds-border-subtle);
+    background: var(--birds-surface);
+    box-shadow: var(--birds-shadow-subtle);
+    border-radius: var(--birds-radius-elevated);
   }
 
   #natureChallengeRoot .nature-overview-section-card > .card-header {
@@ -1254,13 +1473,18 @@
     top: 82px;
     z-index: 8;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--birds-border-subtle);
     min-height: 64px;
     padding: 10px 12px;
     margin: -2px -2px 12px;
     border-top-left-radius: 14px;
     border-top-right-radius: 14px;
     backdrop-filter: blur(6px);
+  }
+
+  #natureChallengeRoot .nature-overview-section-card {
+    scroll-margin-top: 110px;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
   }
 
   #natureChallengeRoot .nature-overview-section-card .card-header {
@@ -1459,6 +1683,93 @@
     justify-items: center;
     text-align: center;
   }
+
+  #natureChallengeRoot .nature-shortcut-help-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0.44);
+    display: grid;
+    place-items: center;
+    padding: var(--birds-space-16);
+  }
+
+  #natureChallengeRoot .nature-shortcut-help-panel {
+    width: min(560px, 100%);
+    border: 1px solid var(--birds-border-subtle);
+    border-radius: var(--birds-radius-elevated);
+    background: var(--birds-surface);
+    box-shadow: var(--birds-shadow-elevated);
+    padding: var(--birds-space-16);
+  }
+
+  #natureChallengeRoot .nature-shortcut-help-grid {
+    margin-top: var(--birds-space-12);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--birds-space-8);
+    font-size: 12px;
+    color: var(--birds-text-muted);
+    font-weight: 700;
+  }
+
+  #natureChallengeRoot .nature-shortcut-help-grid kbd {
+    border: 1px solid var(--birds-border-subtle);
+    background: var(--birds-surface-muted);
+    border-radius: 6px;
+    padding: 2px 6px;
+    color: var(--birds-text);
+  }
+
+  #natureChallengeRoot.is-keyboard-mode .nature-birds-view :focus-visible {
+    outline: 3px solid var(--birds-accent);
+    outline-offset: 2px;
+  }
+
+  #natureChallengeRoot .nature-sticky-action-rail {
+    position: sticky;
+    top: 78px;
+    z-index: 12;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--birds-border-subtle);
+    border-radius: var(--birds-radius-subtle);
+    padding: 6px;
+  }
+
+  #natureChallengeRoot .nature-skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--birds-radius-subtle);
+    background: #e2e8f0;
+    min-height: 14px;
+  }
+
+  #natureChallengeRoot .nature-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.75) 50%, transparent 100%);
+    animation: birdsSkeletonShimmer 1.1s infinite;
+  }
+
+  @keyframes birdsSkeletonShimmer {
+    100% { transform: translateX(100%); }
+  }
+
+  #natureChallengeRoot .nature-skeleton-card {
+    border: 1px solid var(--birds-border-subtle);
+    border-radius: var(--birds-radius-elevated);
+    background: var(--birds-surface);
+    padding: var(--birds-space-12);
+    display: grid;
+    gap: var(--birds-space-8);
+  }
+
+  #natureChallengeRoot .nature-skeleton-card .line-lg { height: 16px; width: 70%; }
+  #natureChallengeRoot .nature-skeleton-card .line-md { height: 12px; width: 100%; }
+  #natureChallengeRoot .nature-skeleton-card .line-sm { height: 12px; width: 48%; }
 
   #natureChallengeRoot .nature-empty-state-icon {
     font-size: 18px;
@@ -2058,6 +2369,14 @@
       border: none;
       background: transparent;
       backdrop-filter: none;
+    }
+
+    #natureChallengeRoot .nature-sticky-action-rail {
+      position: static;
+      border: none;
+      padding: 0;
+      backdrop-filter: none;
+      background: transparent;
     }
 
     #natureChallengeRoot .nature-explore-cta-row {

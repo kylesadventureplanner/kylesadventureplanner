@@ -138,6 +138,33 @@
   /* TYPOGRAPHY */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", sans-serif;
   --font-mono: "Monaco", "Courier New", monospace;
+
+  /* BIRDS TAB TOKENS - Shared polish layer */
+  --birds-surface: #ffffff;
+  --birds-surface-muted: #f8fafc;
+  --birds-surface-emphasis: #f0f9ff;
+  --birds-border-subtle: #e2e8f0;
+  --birds-border-emphasis: #bfdbfe;
+  --birds-accent: #2563eb;
+  --birds-accent-strong: #1d4ed8;
+  --birds-success: #0f766e;
+  --birds-warning: #92400e;
+  --birds-text: #0f172a;
+  --birds-text-muted: #64748b;
+  --birds-shadow-subtle: 0 4px 14px rgba(15, 23, 42, 0.04);
+  --birds-shadow-elevated: 0 10px 22px rgba(15, 23, 42, 0.1);
+  --birds-shadow-emphasis: 0 14px 28px rgba(37, 99, 235, 0.22);
+  --birds-radius-subtle: 10px;
+  --birds-radius-elevated: 14px;
+  --birds-radius-emphasis: 18px;
+  --birds-space-8: 8px;
+  --birds-space-12: 12px;
+  --birds-space-16: 16px;
+  --birds-space-24: 24px;
+  --birds-space-32: 32px;
+  --birds-icon-section: 18px;
+  --birds-icon-chip: 12px;
+  --birds-icon-badge: 14px;
 }
 
 /* ============================================================
