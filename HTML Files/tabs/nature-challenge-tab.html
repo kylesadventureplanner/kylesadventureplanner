@@ -30,10 +30,10 @@
   <!-- BIRDS SUB-TAB -->
   <div id="natureChallengePane-birds" class="nature-challenge-pane is-active" data-nature-pane="birds" role="tabpanel" aria-labelledby="natureChallengeTab-birds">
     <div class="nature-birds-view is-active" data-birds-view="overview">
-      <div class="card nature-explore-cta-card" style="margin-top: 10px;">
+      <div class="card nature-explore-cta-card" style="margin-top: 18px;">
         <div class="nature-explore-cta-row">
           <div>
-            <div class="card-title">🔎 Explore a Sighting</div>
+            <div class="card-title">🔎 Explore Species / Log a Sighting</div>
             <div class="card-subtitle">Browse your full bird list or open the dedicated sighting log page.</div>
           </div>
           <div class="nature-explore-cta-actions">
@@ -139,8 +139,11 @@
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title">🟩 Birding Bingo</div>
-          <div class="card-subtitle">Complete seasonal bingo tiles and reroll once per season.</div>
+          <div>
+            <div class="card-title">🟩 Birding Bingo</div>
+            <div class="card-subtitle">Complete seasonal bingo tiles and reroll once per season.</div>
+          </div>
+          <button type="button" class="pill-button" data-birds-more="bingo">More</button>
         </div>
         <div id="birdsBingoMeta" class="nature-progress-note">Bingo board will load with your seasonal progress.</div>
         <div id="birdsBingoGrid" class="nature-badge-grid"></div>
@@ -181,15 +184,6 @@
         </div>
       </details>
 
-      <details id="birdsVisualLegendDetails" class="card nature-collapsible-card" data-birds-collapsible>
-        <summary class="nature-collapsible-summary">
-          <div>
-            <div class="card-title">🧭 Visual Legend</div>
-            <div class="card-subtitle">Use rarity and season markers to quickly scan species cards.</div>
-          </div>
-        </summary>
-        <div id="birdsVisualLegend" class="nature-legend-grid"></div>
-      </details>
     </div>
 
     <div class="nature-birds-view" data-birds-view="log" hidden>
@@ -780,7 +774,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin: 8px 0 18px;
+    margin: 8px 0 24px;
     position: relative;
     z-index: 140;
     isolation: isolate;
@@ -936,6 +930,36 @@
     border-radius: 10px;
     background: #ffffff;
     padding: 12px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-progression-stats .nature-stat-card {
+    border-color: #dbeafe;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-progression-stats .nature-stat-card:nth-child(2) {
+    border-color: #bbf7d0;
+    background: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-progression-stats .nature-stat-card:nth-child(3) {
+    border-color: #fed7aa;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-progression-stats .nature-stat-card:nth-child(4) {
+    border-color: #ddd6fe;
+    background: linear-gradient(180deg, #ffffff 0%, #f5f3ff 100%);
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-progression-stats .nature-stat-card:nth-child(5) {
+    border-color: #bae6fd;
+    background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-progression-stats .nature-stat-card.nature-stat-card--streak {
+    border-color: #f5d0fe;
+    background: linear-gradient(180deg, #ffffff 0%, #fdf4ff 100%);
   }
 
   #natureChallengeRoot .nature-stat-label {

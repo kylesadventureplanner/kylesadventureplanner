@@ -22,7 +22,8 @@
   const BIRD_OVERVIEW_LIMITS = {
     challenges: 4,
     badges: 4,
-    quests: 3
+    quests: 3,
+    bingo: 4
   };
 
   const RARITY_META = {
@@ -145,7 +146,8 @@
       stats: null,
       challenges: [],
       badges: [],
-      questline: { steps: [], completedCount: 0 }
+      questline: { steps: [], completedCount: 0 },
+      bingo: null
     },
     lastSyncAttemptAt: '',
     lastSyncSuccessAt: '',
@@ -1565,13 +1567,19 @@
     }).join('');
   }
 
-  function renderBirdBingoPanel(bingo) {
-    const meta = document.getElementById('birdsBingoMeta');
-    const grid = document.getElementById('birdsBingoGrid');
+  function renderBirdBingoPanel(bingo, options = {}) {
+    const meta = document.getElementById(options.metaId || 'birdsBingoMeta');
+    const grid = document.getElementById(options.containerId || 'birdsBingoGrid');
     const rerollBtn = document.getElementById('birdsBingoRefreshBtn');
-    if (!meta || !grid || !rerollBtn) return;
+    if (!meta || !grid) return;
 
-    meta.textContent = `${bingo.completedCount}/9 tiles complete${bingo.bingoAchieved ? ' | Bingo unlocked!' : ''}`;
+    const completedCount = Number.isFinite(options.completedCountOverride)
+      ? options.completedCountOverride
+      : bingo.completedCount;
+    const totalTileCount = Number.isFinite(options.totalTileCountOverride)
+      ? options.totalTileCountOverride
+      : bingo.tiles.length;
+    meta.textContent = `${completedCount}/${totalTileCount} tiles complete${bingo.bingoAchieved ? ' | Bingo unlocked!' : ''}`;
     grid.innerHTML = bingo.tiles.map((tile) => `
       <div class="nature-badge-card ${tile.completed ? 'unlocked' : 'locked'}">
         <div class="nature-badge-card-title">${escapeHtml(tile.label)}</div>
@@ -1580,6 +1588,8 @@
       </div>
     `).join('');
 
+    if (!options.allowRerollControl) return;
+    if (!rerollBtn) return;
     rerollBtn.disabled = !bingo.canReroll;
     rerollBtn.textContent = bingo.canReroll ? 'Reroll Bingo Card (1/season)' : 'Bingo Reroll Used';
   }
@@ -2056,7 +2066,7 @@
     const grid = document.getElementById('birdsCollectionGrid');
     if (!title || !subtitle || !meta || !grid) return;
 
-    const key = ['challenges', 'badges', 'quests'].includes(state.activeBirdCollection)
+    const key = ['challenges', 'badges', 'quests', 'bingo'].includes(state.activeBirdCollection)
       ? state.activeBirdCollection
       : 'challenges';
     const cache = state.birdCollectionsCache || {};
@@ -2087,6 +2097,23 @@
       subtitle.textContent = 'Follow every quest step for the current season chapter.';
       grid.className = 'nature-challenge-grid';
       renderSeasonQuestlinePanel(questline, stats, {
+        containerId: 'birdsCollectionGrid',
+        metaId: 'birdsCollectionMeta'
+      });
+      return;
+    }
+
+    if (key === 'bingo') {
+      const bingo = cache.bingo;
+      title.textContent = '🟩 Birding Bingo';
+      subtitle.textContent = 'View every seasonal bingo tile and current progress.';
+      grid.className = 'nature-badge-grid';
+      if (!bingo) {
+        meta.textContent = 'Bingo data is still loading.';
+        grid.innerHTML = '<div class="nature-empty-state">Bingo data is still loading.</div>';
+        return;
+      }
+      renderBirdBingoPanel(bingo, {
         containerId: 'birdsCollectionGrid',
         metaId: 'birdsCollectionMeta'
       });
@@ -2135,21 +2162,30 @@
     const overviewChallenges = getPrioritizedOverviewCards(challenges, stats, BIRD_OVERVIEW_LIMITS.challenges);
     const overviewBadges = getPrioritizedOverviewCards(badges, stats, BIRD_OVERVIEW_LIMITS.badges);
     const overviewQuests = getPrioritizedOverviewCards(seasonQuestline.steps, stats, BIRD_OVERVIEW_LIMITS.quests);
+    const overviewBingoTiles = getPrioritizedOverviewCards(bingo.tiles, stats, BIRD_OVERVIEW_LIMITS.bingo);
 
     state.birdCollectionsCache = {
       stats,
       challenges,
       badges,
-      questline: seasonQuestline
+      questline: seasonQuestline,
+      bingo
     };
 
     renderBirdHeaderStatus();
     renderBirdStats(stats);
-    renderBirdLegend(stats);
     renderBirdDailyChallenges(dailyChallenges);
     renderBirdStreakPanel(stats.streak);
     renderBirdLogView(stats);
-    renderBirdBingoPanel(bingo);
+    renderBirdBingoPanel({
+      ...bingo,
+      tiles: overviewBingoTiles,
+      completedCount: overviewBingoTiles.filter((tile) => tile.completed).length
+    }, {
+      allowRerollControl: true,
+      completedCountOverride: bingo.completedCount,
+      totalTileCountOverride: bingo.tiles.length
+    });
     renderSeasonQuestlinePanel({
       steps: overviewQuests,
       completedCount: overviewQuests.filter((step) => step.completed).length
