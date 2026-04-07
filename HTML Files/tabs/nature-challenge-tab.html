@@ -24,6 +24,7 @@
   <div id="natureChallengePane-birds" class="nature-challenge-pane is-active" data-nature-pane="birds" role="tabpanel" aria-labelledby="natureChallengeTab-birds">
     <div class="nature-birds-view is-active" data-birds-view="overview">
       <div class="nature-overview-status-row">
+        <div id="birdsOverviewMiniStatus" class="nature-overview-mini-status" aria-live="polite">View: overview | Filters: none</div>
         <div id="birdsOverviewLastUpdated" class="nature-overview-last-updated" aria-live="polite">Updated just now</div>
         <div id="birdsUndoPrompt" class="nature-undo-prompt" aria-live="polite" hidden>
           <span id="birdsUndoPromptText">Last action available to undo.</span>
@@ -41,10 +42,10 @@
             <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--refresh" title="Refresh nature data" data-tooltip="Refresh nature data">
               Refresh Data
             </button>
-            <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open species explorer" data-tooltip="Open species explorer">
+            <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open species explorer" data-tooltip="Open species explorer" aria-current="false">
               Explore Species
             </button>
-            <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--secondary" title="Open sighting log" data-tooltip="Open sighting log">
+            <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--secondary" title="Open sighting log" data-tooltip="Open sighting log" aria-current="false">
               Log a Sighting
             </button>
           </div>
@@ -69,6 +70,9 @@
         <div class="nature-overview-command-row">
           <input id="birdsOverviewCommandInput" class="filter-input" type="text" placeholder="Type a command (e.g., search heron, go badges, log)" aria-label="Birds command bar" aria-describedby="birdsOverviewCommandHelp" list="birdsOverviewCommandSuggestions" />
           <button type="button" id="birdsOverviewCommandRunBtn" class="pill-button nature-command-btn">Run</button>
+          <button type="button" id="birdsOverviewCommandClearBtn" class="pill-button nature-command-btn" title="Clear command">x</button>
+          <button type="button" id="birdsShortcutHelpOpenBtn" class="pill-button nature-command-btn">Shortcuts</button>
+          <button type="button" id="birdsResetUiBtn" class="pill-button nature-command-btn">Reset Birds UI</button>
           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="challenges">Challenges</button>
           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="badges">Badges</button>
           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="quests">Quests</button>
@@ -80,11 +84,7 @@
           <code>go badges</code>
           <code>log</code>
           <span class="nature-command-help-sep">|</span>
-          <span class="nature-command-help-label">Shortcuts:</span>
-          <kbd>/</kbd> search
-          <kbd>g o</kbd> overview
-          <kbd>g l</kbd> log
-          <kbd>g e</kbd> explorer
+          <span class="nature-command-help-label">Press ? for full shortcut list</span>
         </div>
         <datalist id="birdsOverviewCommandSuggestions">
           <option value="log"></option>
@@ -152,9 +152,11 @@
           <button type="button" id="birdsDensityComfortBtn" class="pill-button nature-density-btn is-active" data-birds-density="comfortable">Comfortable</button>
           <button type="button" id="birdsDensityCompactBtn" class="pill-button nature-density-btn" data-birds-density="compact">Compact</button>
         </div>
+        <button type="button" id="birdsBackToTopBtn" class="pill-button nature-command-btn">Back to top</button>
         <button type="button" id="birdsToggleCollapsiblesBtn" class="pill-button nature-section-toggle-btn">Expand All</button>
       </div>
       <div id="birdsOverviewFilterAnnouncer" class="nature-sr-only" aria-live="polite" aria-atomic="true"></div>
+      <div id="birdsOverviewJumpAnnouncer" class="nature-sr-only" aria-live="polite" aria-atomic="true"></div>
 
       <div class="card nature-overview-section-card" id="birdsOverviewSectionDaily">
         <div class="card-header">
@@ -175,6 +177,7 @@
           </div>
           <button type="button" class="pill-button nature-more-btn" data-birds-more="challenges">More</button>
         </div>
+        <div id="birdsChallengesCountBadge" class="nature-section-count-badge">4/10</div>
         <div id="birdsChallengesSummary" class="nature-section-summary">Showing prioritized challenge cards.</div>
         <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
       </div>
@@ -187,6 +190,7 @@
           </div>
           <button type="button" class="pill-button nature-more-btn" data-birds-more="badges">More</button>
         </div>
+        <div id="birdsBadgesCountBadge" class="nature-section-count-badge">4/11</div>
         <div id="birdsBadgesSummary" class="nature-section-summary">Showing prioritized badge cards.</div>
         <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
       </div>
@@ -199,6 +203,7 @@
           </div>
           <button type="button" class="pill-button nature-more-btn" data-birds-more="quests">More</button>
         </div>
+        <div id="birdsQuestsCountBadge" class="nature-section-count-badge">3/4</div>
         <div id="birdsQuestsSummary" class="nature-section-summary">Showing prioritized seasonal quest cards.</div>
         <div id="birdsSeasonQuestMeta" class="nature-progress-note">Season quest chapter progress appears here.</div>
         <div id="birdsSeasonQuestGrid" class="nature-challenge-grid"></div>
@@ -212,6 +217,7 @@
           </div>
           <button type="button" class="pill-button nature-more-btn" data-birds-more="bingo">More</button>
         </div>
+        <div id="birdsBingoCountBadge" class="nature-section-count-badge">4/9</div>
         <div id="birdsBingoSummary" class="nature-section-summary">Showing prioritized bingo tiles.</div>
         <div id="birdsBingoMeta" class="nature-progress-note">Bingo board will load with your seasonal progress.</div>
         <div id="birdsBingoGrid" class="nature-badge-grid"></div>
@@ -874,6 +880,8 @@
     --birds-space-16: var(--birds-space-16, 16px);
     --birds-space-24: var(--birds-space-24, 24px);
     --birds-space-32: var(--birds-space-32, 32px);
+    --birds-motion-duration: 160ms;
+    --birds-motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   #natureChallengeRoot .nature-challenge-header {
@@ -1099,8 +1107,8 @@
     margin-top: 12px;
     font-size: 12px;
     color: #475569;
-    border: 1px solid #dbeafe;
-    background: #f8fbff;
+    border: 1px solid var(--birds-border-subtle);
+    background: var(--birds-surface-muted);
     border-radius: 10px;
     padding: 10px 12px;
   }
@@ -1168,7 +1176,7 @@
     white-space: nowrap;
     cursor: pointer;
     box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    transition: transform var(--birds-motion-duration) var(--birds-motion-ease), box-shadow var(--birds-motion-duration) var(--birds-motion-ease);
   }
 
   #natureChallengeRoot .nature-explore-birds-btn--secondary {
@@ -1206,9 +1214,19 @@
 
   #natureChallengeRoot .nature-overview-command-row {
     display: grid;
-    grid-template-columns: minmax(240px, 1.4fr) repeat(5, auto);
+    grid-template-columns: minmax(220px, 1fr) repeat(8, auto);
     gap: 8px;
     align-items: center;
+  }
+
+  #natureChallengeRoot .nature-overview-mini-status {
+    font-size: 12px;
+    color: var(--birds-text-muted);
+    font-weight: 700;
+    border: 1px solid var(--birds-border-subtle);
+    background: var(--birds-surface);
+    border-radius: 999px;
+    padding: 4px 10px;
   }
 
   #natureChallengeRoot .nature-command-help {
@@ -1246,6 +1264,7 @@
   #natureChallengeRoot .nature-command-btn {
     min-height: 44px;
     padding: 0 12px;
+    transition: transform var(--birds-motion-duration) var(--birds-motion-ease), box-shadow var(--birds-motion-duration) var(--birds-motion-ease);
   }
 
   #natureChallengeRoot .nature-overview-filter-chips {
@@ -1279,6 +1298,23 @@
     gap: var(--birds-space-8);
     flex-wrap: wrap;
     margin-bottom: var(--birds-space-8);
+    position: sticky;
+    top: 62px;
+    z-index: 16;
+    backdrop-filter: blur(6px);
+  }
+
+  #natureChallengeRoot .nature-section-count-badge {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--birds-border-subtle);
+    background: var(--birds-surface-muted);
+    color: var(--birds-text-muted);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    margin-bottom: 8px;
   }
 
   #natureChallengeRoot .nature-overview-last-updated {
@@ -1385,6 +1421,15 @@
     font-weight: 900;
     line-height: 1;
     padding: 0;
+    min-width: 18px;
+    min-height: 18px;
+    position: relative;
+  }
+
+  #natureChallengeRoot .nature-summary-filter-pill button::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
   }
 
   #natureChallengeRoot .nature-density-toggle-group {
@@ -1459,6 +1504,7 @@
     font-size: 13px;
     line-height: 1.45;
     color: #64748b;
+    max-width: 72ch;
   }
 
   #natureChallengeRoot .nature-birds-view .card {
@@ -1484,7 +1530,7 @@
 
   #natureChallengeRoot .nature-overview-section-card {
     scroll-margin-top: 110px;
-    transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+    transition: transform var(--birds-motion-duration) var(--birds-motion-ease), box-shadow var(--birds-motion-duration) var(--birds-motion-ease), opacity var(--birds-motion-duration) var(--birds-motion-ease);
   }
 
   #natureChallengeRoot .nature-overview-section-card .card-header {
@@ -2377,6 +2423,11 @@
       padding: 0;
       backdrop-filter: none;
       background: transparent;
+    }
+
+    #natureChallengeRoot .nature-overview-status-row {
+      position: static;
+      backdrop-filter: none;
     }
 
     #natureChallengeRoot .nature-explore-cta-row {

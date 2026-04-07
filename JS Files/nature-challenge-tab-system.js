@@ -122,6 +122,9 @@
     overviewDensity: loadBirdUiPrefs().overviewDensity,
     overviewQuickFilters: loadBirdUiPrefs().overviewQuickFilters,
     commandChordStartedAt: 0,
+    activeOverviewSection: loadBirdUiPrefs().activeOverviewSection,
+    commandInputValue: loadBirdUiPrefs().commandInputValue,
+    birdViewScrollPositions: {},
     recentUpdateUntil: 0,
     recentUpdateTimerId: 0,
     lastUndoAction: null,
@@ -191,6 +194,7 @@
   }
 
   function markRecentUpdatePulse() {
+    if (isRecentUpdateActive()) return;
     state.recentUpdateUntil = Date.now() + 4200;
     if (state.recentUpdateTimerId) {
       clearTimeout(state.recentUpdateTimerId);
@@ -266,6 +270,46 @@
     }
     const hours = Math.floor(mins / 60);
     node.textContent = `Updated ${hours} hour${hours === 1 ? '' : 's'} ago`;
+  }
+
+  function renderBirdOverviewMiniStatus() {
+    const node = document.getElementById('birdsOverviewMiniStatus');
+    if (!node) return;
+    const filters = [];
+    if (state.overviewQuickFilters.inSeason) filters.push('In season');
+    if (state.overviewQuickFilters.almostThere) filters.push('Almost there');
+    if (state.overviewQuickFilters.highReward) filters.push('High reward');
+    const filterText = filters.length ? filters.join(', ') : 'None';
+    const updatedText = !state.lastLoadedAt
+      ? 'Updated recently'
+      : (() => {
+        const mins = Math.max(0, Math.floor((Date.now() - new Date(state.lastLoadedAt).getTime()) / 60000));
+        if (mins < 1) return 'Updated just now';
+        if (mins < 60) return `Updated ${mins} min ago`;
+        const hours = Math.floor(mins / 60);
+        return `Updated ${hours}h ago`;
+      })();
+    node.textContent = `View: ${state.activeBirdView} | Filters: ${filterText} | ${updatedText}`;
+  }
+
+  function syncBirdCommandInputFromState() {
+    const input = document.getElementById('birdsOverviewCommandInput');
+    if (!input) return;
+    input.value = state.commandInputValue || '';
+  }
+
+  function resetBirdUiPreferences(root) {
+    state.overviewDensity = 'comfortable';
+    state.overviewQuickFilters = { inSeason: false, almostThere: false, highReward: false };
+    state.commandInputValue = '';
+    state.activeOverviewSection = 'daily';
+    state.activeBirdCollection = 'challenges';
+    state.birdViewScrollPositions = {};
+    saveBirdUiPrefs();
+    syncBirdCommandInputFromState();
+    setBirdView(root, 'overview');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    renderBirds();
   }
 
   function renderOverviewSectionSummaries(summary) {
@@ -427,7 +471,11 @@
       },
       activeBirdView: ['overview', 'log', 'explorer', 'detail', 'collection'].includes(prefs.activeBirdView)
         ? prefs.activeBirdView
-        : 'overview'
+        : 'overview',
+      activeOverviewSection: ['daily', 'challenges', 'badges', 'quests', 'bingo'].includes(prefs.activeOverviewSection)
+        ? prefs.activeOverviewSection
+        : 'daily',
+      commandInputValue: String(prefs.commandInputValue || '')
     };
   }
 
@@ -439,7 +487,9 @@
         almostThere: Boolean(state.overviewQuickFilters && state.overviewQuickFilters.almostThere),
         highReward: Boolean(state.overviewQuickFilters && state.overviewQuickFilters.highReward)
       },
-      activeBirdView: state.activeBirdView
+      activeBirdView: state.activeBirdView,
+      activeOverviewSection: state.activeOverviewSection || 'daily',
+      commandInputValue: state.commandInputValue || ''
     }));
   }
 
@@ -823,13 +873,26 @@
     };
     const target = document.getElementById(map[sectionKey] || '');
     if (!target) return false;
+    state.activeOverviewSection = sectionKey;
+    saveBirdUiPrefs();
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const header = target.querySelector('.card-header');
+    if (header) {
+      header.setAttribute('tabindex', '-1');
+      window.setTimeout(() => {
+        try { header.focus({ preventScroll: true }); } catch (_) { header.focus(); }
+      }, 180);
+    }
+    const announcer = document.getElementById('birdsOverviewJumpAnnouncer');
+    if (announcer) announcer.textContent = `Jumped to ${String(sectionKey || '').charAt(0).toUpperCase()}${String(sectionKey || '').slice(1)}`;
     return true;
   }
 
   function runBirdOverviewCommand(root, raw) {
     const query = String(raw || '').trim();
     if (!query) return;
+    state.commandInputValue = query;
+    saveBirdUiPrefs();
     const normalized = norm(query);
 
     if (normalized === 'log' || normalized === 'open log' || normalized === 'go log') {
@@ -936,12 +999,19 @@
 
   function updateBirdMoreButtons(counts) {
     const sections = ['challenges', 'badges', 'quests', 'bingo'];
+    const badgeMap = {
+      challenges: 'birdsChallengesCountBadge',
+      badges: 'birdsBadgesCountBadge',
+      quests: 'birdsQuestsCountBadge',
+      bingo: 'birdsBingoCountBadge'
+    };
     sections.forEach((section) => {
       const button = document.querySelector(`[data-birds-more="${section}"]`);
-      if (!button) return;
       const shown = Math.max(0, Number(counts && counts[section] && counts[section].shown) || 0);
       const total = Math.max(shown, Number(counts && counts[section] && counts[section].total) || shown);
-      button.textContent = `More (${shown}/${total} shown)`;
+      if (button) button.textContent = 'More';
+      const badge = document.getElementById(badgeMap[section]);
+      if (badge) badge.textContent = `${shown}/${total}`;
     });
   }
 
@@ -2444,7 +2514,14 @@
     if (nextBtn) nextBtn.disabled = state.birdPage >= totalPages;
 
     if (filtered.length === 0) {
-      container.innerHTML = buildUnifiedStateHtml('No birds matched your search.', { icon: '🔎', hint: 'Try fewer filters or a broader keyword.' });
+      container.innerHTML = `
+        ${buildUnifiedStateHtml('No birds matched your search.', { icon: '🔎', hint: 'Try fewer filters or use one of the quick fixes below.' })}
+        <div class="nature-log-form-actions" style="justify-content:center; margin-top:8px;">
+          <button type="button" class="pill-button" data-birds-empty-action="show-in-season">Show in-season only</button>
+          <button type="button" class="pill-button" data-birds-empty-action="clear-high-reward">Clear high reward filter</button>
+          <button type="button" class="pill-button" data-birds-empty-action="clear-overview">Clear overview filters</button>
+        </div>
+      `;
       return;
     }
 
@@ -2635,6 +2712,7 @@
     if (!state.birdsLoaded) {
       renderBirdLoadingSkeletons();
       renderBirdOverviewLastUpdated();
+      renderBirdOverviewMiniStatus();
       return;
     }
     const stats = getBirdStats();
@@ -2686,6 +2764,7 @@
     renderOverviewSectionSummaries(summary);
     announceOverviewFilterState(summary);
     renderBirdOverviewLastUpdated();
+    renderBirdOverviewMiniStatus();
     renderBirdUndoPrompt();
     renderBirdTodayFocus(stats);
     syncOverviewFilterChipState();
@@ -2841,14 +2920,22 @@
   }
 
   function setBirdView(root, viewKey) {
+    const previousView = state.activeBirdView;
+    state.birdViewScrollPositions[previousView || 'overview'] = window.scrollY || 0;
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     saveBirdUiPrefs();
     syncBirdViews(root);
+    const exploreButton = document.getElementById('birdsExploreBtn');
+    const logButton = document.getElementById('birdsOpenLogBtn');
+    if (exploreButton) exploreButton.setAttribute('aria-current', state.activeBirdView === 'explorer' ? 'page' : 'false');
+    if (logButton) logButton.setAttribute('aria-current', state.activeBirdView === 'log' ? 'page' : 'false');
+    renderBirdOverviewMiniStatus();
     if (state.activeBirdView === 'overview') applyOverviewDensity(root);
-    if (state.activeBirdView === 'log') return;
     if (state.activeBirdView === 'explorer') renderBirdExplorerList();
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
+    const restoreY = Number(state.birdViewScrollPositions[state.activeBirdView]) || 0;
+    window.scrollTo({ top: restoreY, behavior: 'auto' });
   }
 
   function setActiveNatureSubTab(root, key) {
@@ -3012,6 +3099,36 @@
         return;
       }
 
+      const clearCommandButton = event.target.closest('#birdsOverviewCommandClearBtn');
+      if (clearCommandButton) {
+        state.commandInputValue = '';
+        saveBirdUiPrefs();
+        syncBirdCommandInputFromState();
+        const cmdInput = document.getElementById('birdsOverviewCommandInput');
+        if (cmdInput) cmdInput.focus();
+        renderBirdOverviewMiniStatus();
+        return;
+      }
+
+      const resetUiButton = event.target.closest('#birdsResetUiBtn');
+      if (resetUiButton) {
+        resetBirdUiPreferences(root);
+        if (typeof window.showToast === 'function') window.showToast('Birds UI has been reset to defaults.', 'info', 2200);
+        return;
+      }
+
+      const backToTopButton = event.target.closest('#birdsBackToTopBtn');
+      if (backToTopButton) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      const shortcutOpenButton = event.target.closest('#birdsShortcutHelpOpenBtn');
+      if (shortcutOpenButton) {
+        toggleBirdShortcutHelpModal(true);
+        return;
+      }
+
       const shortcutCloseButton = event.target.closest('#birdsShortcutHelpCloseBtn');
       if (shortcutCloseButton) {
         toggleBirdShortcutHelpModal(false);
@@ -3044,6 +3161,30 @@
         removeExplorerFilter(removeFilterButton.getAttribute('data-birds-remove-filter') || '');
         renderBirdExplorerList();
         return;
+      }
+
+      const emptyActionButton = event.target.closest('[data-birds-empty-action]');
+      if (emptyActionButton) {
+        const action = emptyActionButton.getAttribute('data-birds-empty-action') || '';
+        if (action === 'show-in-season') {
+          const season = getCurrentSeason();
+          state.birdFilters.season = season;
+          state.birdPage = 1;
+          renderBirdExplorerList();
+          return;
+        }
+        if (action === 'clear-high-reward') {
+          state.overviewQuickFilters.highReward = false;
+          saveBirdUiPrefs();
+          renderBirds();
+          return;
+        }
+        if (action === 'clear-overview') {
+          state.overviewQuickFilters = { inSeason: false, almostThere: false, highReward: false };
+          saveBirdUiPrefs();
+          renderBirds();
+          return;
+        }
       }
 
       const moreButton = event.target.closest('[data-birds-more]');
@@ -3129,6 +3270,24 @@
         if (event.key !== 'Enter') return;
         runBirdOverviewCommand(root, overviewCommandInput.value || '');
       });
+      overviewCommandInput.addEventListener('input', () => {
+        state.commandInputValue = overviewCommandInput.value || '';
+        saveBirdUiPrefs();
+      });
+    }
+
+    const shortcutModal = document.getElementById('birdsShortcutHelpModal');
+    if (shortcutModal && shortcutModal.dataset.natureShortcutModalBound !== '1') {
+      shortcutModal.dataset.natureShortcutModalBound = '1';
+      shortcutModal.addEventListener('click', (event) => {
+        if (event.target === shortcutModal) toggleBirdShortcutHelpModal(false);
+      });
+    }
+
+    const shortcutCloseBtn = document.getElementById('birdsShortcutHelpCloseBtn');
+    if (shortcutCloseBtn && shortcutCloseBtn.dataset.natureShortcutCloseBound !== '1') {
+      shortcutCloseBtn.dataset.natureShortcutCloseBound = '1';
+      shortcutCloseBtn.addEventListener('click', () => toggleBirdShortcutHelpModal(false));
     }
 
     const searchInput = document.getElementById('birdsSpeciesSearchInput');
@@ -3288,6 +3447,7 @@
       logDateInput.value = new Date().toISOString().slice(0, 10);
     }
     renderPlaceholderSubTabs();
+    syncBirdCommandInputFromState();
     setActiveNatureSubTab(root, state.activeSubTab || 'birds');
     setBirdView(root, state.activeBirdView || 'overview');
     syncBirdCollapseAllButton(root);
