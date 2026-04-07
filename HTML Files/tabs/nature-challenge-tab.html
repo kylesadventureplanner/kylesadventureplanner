@@ -163,6 +163,9 @@
           <button type="button" id="birdsExplorerClearFiltersBtn" class="pill-button">Clear Filters</button>
         </div>
         <div class="nature-chip-filter-groups" id="birdsExplorerQuickFilterBar">
+          <div class="nature-chip-filter-actions">
+            <button type="button" id="birdsExplorerClearChipFiltersBtn" class="nature-chip-clear-btn">Clear all chips</button>
+          </div>
           <div class="nature-chip-filter-group" id="birdsSeasonChipGroup">
             <span class="nature-chip-filter-label">Season chips</span>
             <button type="button" class="nature-chip-filter" data-birds-filter-chip="season" data-chip-value="spring">Spring</button>
@@ -877,6 +880,22 @@
     margin-top: 10px;
     display: grid;
     gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-chip-filter-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  #natureChallengeRoot .nature-chip-clear-btn {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    cursor: pointer;
   }
 
   #natureChallengeRoot .nature-chip-filter-group {

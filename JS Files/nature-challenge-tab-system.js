@@ -838,6 +838,12 @@
     };
   }
 
+  function clearBirdChipFilters() {
+    state.birdFilters.seasonChips = [];
+    state.birdFilters.rarityChips = [];
+    state.birdFilters.familyChips = [];
+  }
+
   function removeExplorerFilter(filterKey) {
     if (!filterKey) return;
 
@@ -1349,6 +1355,14 @@
       const clearFiltersButton = event.target.closest('#birdsExplorerClearFiltersBtn');
       if (clearFiltersButton) {
         resetBirdExplorerFilters();
+        renderBirdExplorerList();
+        return;
+      }
+
+      const clearChipFiltersButton = event.target.closest('#birdsExplorerClearChipFiltersBtn');
+      if (clearChipFiltersButton) {
+        clearBirdChipFilters();
+        state.birdPage = 1;
         renderBirdExplorerList();
         return;
       }
