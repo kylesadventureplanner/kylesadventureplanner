@@ -164,6 +164,134 @@
     lastLoadedAt: null
   };
 
+  const birdsClickDiagnostics = {
+    enabled: false,
+    panel: null,
+    hiddenByUser: false,
+    total: 0,
+    clickCount: 0,
+    pointerupCount: 0,
+    dedupedClicks: 0,
+    lastEvent: '-',
+    lastTarget: '-'
+  };
+
+  function isBirdClickDiagnosticsEnabled() {
+    if (typeof window === 'undefined') return false;
+    if (window.__BIRDS_CLICK_DIAG__ === true) return true;
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      if (params.get('birdsClickDiag') === '1') return true;
+    } catch (_error) {
+      // Ignore malformed URL state and fall through.
+    }
+    try {
+      return window.localStorage.getItem('birdsClickDiag') === '1';
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function renderBirdClickDiagnosticsPanel() {
+    if (!birdsClickDiagnostics.panel || !birdsClickDiagnostics.enabled) return;
+    const lastLabel = `${birdsClickDiagnostics.lastEvent}/${birdsClickDiagnostics.lastTarget}`;
+    birdsClickDiagnostics.panel.innerHTML =
+      `Bird Click Diag | total:${birdsClickDiagnostics.total} click:${birdsClickDiagnostics.clickCount} pointer:${birdsClickDiagnostics.pointerupCount} deduped:${birdsClickDiagnostics.dedupedClicks} last:${escapeHtml(lastLabel)} <button type="button" data-birds-diag-reset title="Reset Birds click diagnostics" style="margin-left:8px;border:1px solid #1d4ed8;border-radius:6px;background:#ffffff;color:#1e40af;font:inherit;font-size:11px;font-weight:800;padding:1px 6px;cursor:pointer;">[reset]</button> <button type="button" data-birds-diag-hide title="Hide Birds click diagnostics panel" style="margin-left:4px;border:1px solid #1d4ed8;border-radius:6px;background:#ffffff;color:#1e40af;font:inherit;font-size:11px;font-weight:800;padding:1px 6px;cursor:pointer;">[hide]</button>`;
+  }
+
+  function ensureBirdClickDiagnosticsPanel(root) {
+    birdsClickDiagnostics.enabled = isBirdClickDiagnosticsEnabled();
+    if (!root) return;
+    if (!birdsClickDiagnostics.enabled) {
+      if (birdsClickDiagnostics.panel) birdsClickDiagnostics.panel.hidden = true;
+      return;
+    }
+    if (birdsClickDiagnostics.hiddenByUser) {
+      if (birdsClickDiagnostics.panel) birdsClickDiagnostics.panel.hidden = true;
+      return;
+    }
+    if (!birdsClickDiagnostics.panel) {
+      const panel = document.createElement('div');
+      panel.id = 'birdsClickDiagnosticPanel';
+      panel.setAttribute('aria-live', 'polite');
+      panel.style.position = 'fixed';
+      panel.style.right = '10px';
+      panel.style.bottom = '10px';
+      panel.style.zIndex = '9999';
+      panel.style.maxWidth = 'min(92vw, 740px)';
+      panel.style.padding = '6px 10px';
+      panel.style.borderRadius = '8px';
+      panel.style.border = '1px solid #2563eb';
+      panel.style.background = 'rgba(239, 246, 255, 0.96)';
+      panel.style.color = '#1e3a8a';
+      panel.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+      panel.style.fontSize = '11px';
+      panel.style.fontWeight = '700';
+      panel.style.lineHeight = '1.35';
+      panel.style.boxShadow = '0 6px 16px rgba(30, 64, 175, 0.25)';
+      panel.style.pointerEvents = 'auto';
+      panel.addEventListener('click', (event) => {
+        const resetBtn = event.target && event.target.closest ? event.target.closest('[data-birds-diag-reset]') : null;
+        if (resetBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          resetBirdClickDiagnosticsState();
+          return;
+        }
+        const hideBtn = event.target && event.target.closest ? event.target.closest('[data-birds-diag-hide]') : null;
+        if (!hideBtn) return;
+        event.preventDefault();
+        event.stopPropagation();
+        birdsClickDiagnostics.hiddenByUser = true;
+        if (birdsClickDiagnostics.panel) birdsClickDiagnostics.panel.hidden = true;
+      });
+      birdsClickDiagnostics.panel = panel;
+      root.appendChild(panel);
+    }
+    birdsClickDiagnostics.panel.hidden = false;
+    renderBirdClickDiagnosticsPanel();
+  }
+
+  function recordBirdClickDiagnostic(eventType, target, options = {}) {
+    if (!birdsClickDiagnostics.enabled) return;
+    if (options.deduped) birdsClickDiagnostics.dedupedClicks += 1;
+    else birdsClickDiagnostics.total += 1;
+    if (eventType === 'click') birdsClickDiagnostics.clickCount += 1;
+    if (eventType === 'pointerup') birdsClickDiagnostics.pointerupCount += 1;
+    birdsClickDiagnostics.lastEvent = eventType || '-';
+    const rawLabel =
+      target.id ||
+      target.getAttribute('data-bird-toggle') ||
+      target.getAttribute('data-bird-open') ||
+      target.getAttribute('data-birds-overview-jump') ||
+      target.getAttribute('data-birds-more') ||
+      target.getAttribute('data-sync-resolve') ||
+      target.getAttribute('data-nature-subtab') ||
+      target.textContent ||
+      target.tagName ||
+      '-';
+    birdsClickDiagnostics.lastTarget = String(rawLabel).trim().slice(0, 28) || '-';
+    renderBirdClickDiagnosticsPanel();
+  }
+
+  function resetBirdClickDiagnosticsState() {
+    birdsClickDiagnostics.total = 0;
+    birdsClickDiagnostics.clickCount = 0;
+    birdsClickDiagnostics.pointerupCount = 0;
+    birdsClickDiagnostics.dedupedClicks = 0;
+    birdsClickDiagnostics.lastEvent = '-';
+    birdsClickDiagnostics.lastTarget = '-';
+    renderBirdClickDiagnosticsPanel();
+    return {
+      total: birdsClickDiagnostics.total,
+      clickCount: birdsClickDiagnostics.clickCount,
+      pointerupCount: birdsClickDiagnostics.pointerupCount,
+      dedupedClicks: birdsClickDiagnostics.dedupedClicks,
+      lastEvent: birdsClickDiagnostics.lastEvent,
+      lastTarget: birdsClickDiagnostics.lastTarget
+    };
+  }
+
   function norm(value) {
     return String(value || '').trim().toLowerCase();
   }
@@ -249,47 +377,6 @@
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
-  }
-
-  function renderBirdOverviewLastUpdated() {
-    const node = document.getElementById('birdsOverviewLastUpdated');
-    if (!node) return;
-    if (!state.lastLoadedAt) {
-      node.textContent = 'Updated recently';
-      return;
-    }
-    const diffMs = Math.max(0, Date.now() - new Date(state.lastLoadedAt).getTime());
-    const mins = Math.floor(diffMs / 60000);
-    if (mins < 1) {
-      node.textContent = 'Updated just now';
-      return;
-    }
-    if (mins < 60) {
-      node.textContent = `Updated ${mins} min ago`;
-      return;
-    }
-    const hours = Math.floor(mins / 60);
-    node.textContent = `Updated ${hours} hour${hours === 1 ? '' : 's'} ago`;
-  }
-
-  function renderBirdOverviewMiniStatus() {
-    const node = document.getElementById('birdsOverviewMiniStatus');
-    if (!node) return;
-    const filters = [];
-    if (state.overviewQuickFilters.inSeason) filters.push('In season');
-    if (state.overviewQuickFilters.almostThere) filters.push('Almost there');
-    if (state.overviewQuickFilters.highReward) filters.push('High reward');
-    const filterText = filters.length ? filters.join(', ') : 'None';
-    const updatedText = !state.lastLoadedAt
-      ? 'Updated recently'
-      : (() => {
-        const mins = Math.max(0, Math.floor((Date.now() - new Date(state.lastLoadedAt).getTime()) / 60000));
-        if (mins < 1) return 'Updated just now';
-        if (mins < 60) return `Updated ${mins} min ago`;
-        const hours = Math.floor(mins / 60);
-        return `Updated ${hours}h ago`;
-      })();
-    node.textContent = `View: ${state.activeBirdView} | Filters: ${filterText} | ${updatedText}`;
   }
 
   function syncBirdCommandInputFromState() {
@@ -2698,8 +2785,6 @@
   function renderBirds() {
     if (!state.birdsLoaded) {
       renderBirdLoadingSkeletons();
-      renderBirdOverviewLastUpdated();
-      renderBirdOverviewMiniStatus();
       return;
     }
     const stats = getBirdStats();
@@ -2750,8 +2835,6 @@
     };
     renderOverviewSectionSummaries(summary);
     announceOverviewFilterState(summary);
-    renderBirdOverviewLastUpdated();
-    renderBirdOverviewMiniStatus();
     renderBirdUndoPrompt();
     renderBirdTodayFocus(stats);
     syncOverviewFilterChipState();
@@ -2916,7 +2999,6 @@
     const logButton = document.getElementById('birdsOpenLogBtn');
     if (exploreButton) exploreButton.setAttribute('aria-current', state.activeBirdView === 'explorer' ? 'page' : 'false');
     if (logButton) logButton.setAttribute('aria-current', state.activeBirdView === 'log' ? 'page' : 'false');
-    renderBirdOverviewMiniStatus();
     if (state.activeBirdView === 'overview') applyOverviewDensity(root);
     if (state.activeBirdView === 'explorer') renderBirdExplorerList();
     if (state.activeBirdView === 'detail') renderBirdDetail();
@@ -2966,13 +3048,68 @@
     renderBirds();
   }
 
+  const NATURE_DELEGATED_ACTION_SELECTOR = [
+    '[data-nature-subtab]',
+    '[data-bird-toggle]',
+    '[data-bird-favorite]',
+    '[data-bird-open]',
+    '#birdsExplorerPrevPageBtn',
+    '#birdsExplorerNextPageBtn',
+    '[data-birds-filter-chip]',
+    '[data-birds-overview-filter]',
+    '[data-birds-overview-remove-filter]',
+    '#birdsOverviewClearFiltersBtn',
+    '#birdsUndoPromptBtn',
+    '[data-birds-density]',
+    '[data-birds-overview-jump]',
+    '#birdsOverviewCommandClearBtn',
+    '#birdsResetUiBtn',
+    '#birdsBackToTopBtn',
+    '#birdsExplorerClearFiltersBtn',
+    '#birdsExplorerClearChipFiltersBtn',
+    '[data-birds-remove-filter]',
+    '[data-birds-empty-action]',
+    '[data-birds-more]',
+    '[data-sync-resolve]'
+  ].join(',');
+
+  function getDelegatedNatureActionTarget(root, event) {
+    if (!root || !event || !event.target || typeof event.target.closest !== 'function') return null;
+    const target = event.target.closest(NATURE_DELEGATED_ACTION_SELECTOR);
+    if (!target || !root.contains(target)) return null;
+    return target;
+  }
+
   function bindNatureControls(root) {
     if (!root || root.dataset.natureControlsBound === '1') return;
     root.dataset.natureControlsBound = '1';
     ensureNatureButtonsResponsive(root);
     installNatureButtonReliabilityObserver(root);
+    ensureBirdClickDiagnosticsPanel(root);
 
-    root.addEventListener('click', (event) => {
+    const handleDelegatedActivation = (event) => {
+      const delegatedTarget = getDelegatedNatureActionTarget(root, event);
+      if (!delegatedTarget) return;
+
+      if (event.type === 'pointerup') {
+        const pointerType = String(event.pointerType || '').toLowerCase();
+        if (pointerType !== 'touch' && pointerType !== 'pen') return;
+        if (event.isPrimary === false || Number(event.button) > 0) return;
+        delegatedTarget.dataset.naturePointerHandledAt = String(Date.now());
+        event.preventDefault();
+      }
+
+      if (event.type === 'click') {
+        const lastPointerHandledAt = Number(delegatedTarget.dataset.naturePointerHandledAt || 0);
+        if (lastPointerHandledAt && (Date.now() - lastPointerHandledAt) < 700) {
+          recordBirdClickDiagnostic(event.type, delegatedTarget, { deduped: true });
+          delegatedTarget.removeAttribute('data-nature-pointer-handled-at');
+          return;
+        }
+      }
+
+      recordBirdClickDiagnostic(event.type, delegatedTarget);
+
       const subTabButton = event.target.closest('[data-nature-subtab]');
       if (subTabButton) {
         ensureNatureButtonsResponsive(root);
@@ -3093,7 +3230,6 @@
         syncBirdCommandInputFromState();
         const cmdInput = document.getElementById('birdsOverviewCommandInput');
         if (cmdInput) cmdInput.focus();
-        renderBirdOverviewMiniStatus();
         return;
       }
 
@@ -3170,7 +3306,12 @@
         resolveSyncConflict(conflictId, strategy);
         return;
       }
-    });
+    };
+
+    root.addEventListener('click', handleDelegatedActivation, true);
+    if (typeof window.PointerEvent === 'function') {
+      root.addEventListener('pointerup', handleDelegatedActivation, true);
+    }
 
     root.addEventListener('keydown', (event) => {
       if (event.key === 'Tab') root.classList.add('is-keyboard-mode');
@@ -3394,6 +3535,7 @@
     if (!root) return;
 
     ensureNatureButtonsResponsive(root);
+    ensureBirdClickDiagnosticsPanel(root);
     bindNatureControls(root);
     const diagnostics = document.getElementById('birdsDiagnosticsDetails');
     if (diagnostics) diagnostics.open = false;
@@ -3418,5 +3560,20 @@
   window.initializeNatureChallengeTab = initializeNatureChallengeTab;
   window.initNatureChallengeTab = window.initNatureChallengeTab || initializeNatureChallengeTab;
   window.BIRD_PROGRESSION_SPEC = BIRD_PROGRESSION_SPEC;
+  window.setBirdClickDiagnosticsEnabled = function(enabled) {
+    try {
+      if (enabled) window.localStorage.setItem('birdsClickDiag', '1');
+      else window.localStorage.removeItem('birdsClickDiag');
+    } catch (_error) {
+      // Ignore storage availability issues.
+    }
+    birdsClickDiagnostics.enabled = Boolean(enabled);
+    if (enabled) birdsClickDiagnostics.hiddenByUser = false;
+    if (!enabled && birdsClickDiagnostics.panel) birdsClickDiagnostics.panel.hidden = true;
+    if (enabled) ensureBirdClickDiagnosticsPanel(document.getElementById('natureChallengeRoot'));
+  };
+  window.resetBirdClickDiagnostics = function() {
+    return resetBirdClickDiagnosticsState();
+  };
 })();
 

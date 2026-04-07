@@ -23,13 +23,9 @@
   <!-- BIRDS SUB-TAB -->
   <div id="natureChallengePane-birds" class="nature-challenge-pane is-active" data-nature-pane="birds" role="tabpanel" aria-labelledby="natureChallengeTab-birds">
     <div class="nature-birds-view is-active" data-birds-view="overview">
-      <div class="nature-overview-status-row">
-        <div id="birdsOverviewMiniStatus" class="nature-overview-mini-status" aria-live="polite">View: overview | Filters: none</div>
-        <div id="birdsOverviewLastUpdated" class="nature-overview-last-updated" aria-live="polite">Updated just now</div>
-        <div id="birdsUndoPrompt" class="nature-undo-prompt" aria-live="polite" hidden>
-          <span id="birdsUndoPromptText">Last action available to undo.</span>
-          <button type="button" id="birdsUndoPromptBtn" class="pill-button">Undo</button>
-        </div>
+      <div id="birdsUndoPrompt" class="nature-undo-prompt" aria-live="polite" hidden>
+        <span id="birdsUndoPromptText">Last action available to undo.</span>
+        <button type="button" id="birdsUndoPromptBtn" class="pill-button">Undo</button>
       </div>
 
       <div class="card nature-explore-cta-card" style="margin-top: 18px;">
@@ -1196,16 +1192,6 @@
     align-items: center;
   }
 
-  #natureChallengeRoot .nature-overview-mini-status {
-    font-size: 12px;
-    color: var(--birds-text-muted);
-    font-weight: 700;
-    border: 1px solid var(--birds-border-subtle);
-    background: var(--birds-surface);
-    border-radius: 999px;
-    padding: 4px 10px;
-  }
-
   #natureChallengeRoot .nature-command-help {
     margin-top: 8px;
     display: flex;
@@ -1268,19 +1254,6 @@
     color: #0f766e;
   }
 
-  #natureChallengeRoot .nature-overview-status-row {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: var(--birds-space-8);
-    flex-wrap: wrap;
-    margin-bottom: var(--birds-space-8);
-    position: sticky;
-    top: 62px;
-    z-index: 16;
-    backdrop-filter: blur(6px);
-  }
-
   #natureChallengeRoot .nature-section-count-badge {
     display: inline-flex;
     align-items: center;
@@ -1294,20 +1267,12 @@
     margin-bottom: 8px;
   }
 
-  #natureChallengeRoot .nature-overview-last-updated {
-    font-size: 12px;
-    color: var(--birds-text-muted);
-    font-weight: 700;
-    border: 1px solid var(--birds-border-subtle);
-    background: var(--birds-surface-muted);
-    border-radius: 999px;
-    padding: 4px 10px;
-  }
-
   #natureChallengeRoot .nature-undo-prompt {
     display: inline-flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
+    margin: 0 0 var(--birds-space-8) auto;
     border: 1px solid #fed7aa;
     background: #fff7ed;
     color: #9a3412;
@@ -2366,10 +2331,6 @@
       background: transparent;
     }
 
-    #natureChallengeRoot .nature-overview-status-row {
-      position: static;
-      backdrop-filter: none;
-    }
 
     #natureChallengeRoot .nature-explore-cta-row {
       flex-direction: column;
