@@ -125,6 +125,7 @@
         <div class="nature-explorer-toolbar">
           <select id="birdsExplorerSortSelect" class="filter-select" title="Sort bird species cards">
             <option value="family-asc">Sort: Family / Species (A-Z)</option>
+            <option value="favorites-first">Sort: Favorites first</option>
             <option value="species-asc">Sort: Species (A-Z)</option>
             <option value="species-desc">Sort: Species (Z-A)</option>
             <option value="rarity-desc">Sort: Rarity (highest first)</option>
@@ -179,9 +180,13 @@
             <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="veryRare">Very Rare</button>
             <button type="button" class="nature-chip-filter" data-birds-filter-chip="rarity" data-chip-value="extremelyRare">Extremely Rare</button>
           </div>
-          <div class="nature-chip-filter-group" id="birdsFamilyChipGroup">
+          <div class="nature-chip-filter-group nature-chip-filter-group--family" id="birdsFamilyChipGroup">
             <span class="nature-chip-filter-label">Family chips</span>
           </div>
+        </div>
+        <div id="birdsExplorerActiveFiltersRow" class="nature-active-filters-row" hidden>
+          <span class="nature-active-filters-label">Active filters</span>
+          <div id="birdsExplorerActiveFiltersPills" class="nature-active-filters-pills"></div>
         </div>
       </div>
       <div id="birdsPinnedFavoritesSection" class="card" hidden>
@@ -885,6 +890,12 @@
     background: #f8fafc;
   }
 
+  #natureChallengeRoot .nature-chip-filter-group--family {
+    max-height: 150px;
+    overflow-y: auto;
+    align-content: flex-start;
+  }
+
   #natureChallengeRoot .nature-chip-filter-label {
     font-size: 11px;
     font-weight: 700;
@@ -908,6 +919,50 @@
     border-color: #1d4ed8;
     background: #dbeafe;
     color: #1e3a8a;
+  }
+
+  #natureChallengeRoot .nature-active-filters-row {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-active-filters-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+  }
+
+  #natureChallengeRoot .nature-active-filters-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-active-filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+  }
+
+  #natureChallengeRoot .nature-active-filter-pill button {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
   }
 
   #natureChallengeRoot .nature-toggle-pill {

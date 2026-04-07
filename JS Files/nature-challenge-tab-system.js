@@ -838,6 +838,29 @@
     };
   }
 
+  function removeExplorerFilter(filterKey) {
+    if (!filterKey) return;
+
+    if (filterKey === 'search') state.birdSearch = '';
+    else if (filterKey === 'sort') state.birdSort = 'family-asc';
+    else if (filterKey === 'season-select') state.birdFilters.season = 'all';
+    else if (filterKey === 'rarity-select') state.birdFilters.rarity = 'all';
+    else if (filterKey === 'family-select') state.birdFilters.family = 'all';
+    else if (filterKey === 'favorites-only') state.birdFilters.favoritesOnly = false;
+    else if (filterKey.startsWith('season-chip:')) {
+      const value = filterKey.slice('season-chip:'.length);
+      state.birdFilters.seasonChips = (state.birdFilters.seasonChips || []).filter((entry) => entry !== value);
+    } else if (filterKey.startsWith('rarity-chip:')) {
+      const value = filterKey.slice('rarity-chip:'.length);
+      state.birdFilters.rarityChips = (state.birdFilters.rarityChips || []).filter((entry) => entry !== value);
+    } else if (filterKey.startsWith('family-chip:')) {
+      const value = filterKey.slice('family-chip:'.length);
+      state.birdFilters.familyChips = (state.birdFilters.familyChips || []).filter((entry) => entry !== value);
+    }
+
+    state.birdPage = 1;
+  }
+
   function applyExplorerControlsFromState() {
     const searchInput = document.getElementById('birdsSpeciesSearchInput');
     const sortSelect = document.getElementById('birdsExplorerSortSelect');
@@ -860,6 +883,16 @@
   function sortExplorerBirds(birds) {
     const sorted = birds.slice();
     const bySpecies = (a, b) => a.speciesName.localeCompare(b.speciesName);
+
+    if (state.birdSort === 'favorites-first') {
+      sorted.sort((a, b) => {
+        const af = isBirdFavorited(a) ? 1 : 0;
+        const bf = isBirdFavorited(b) ? 1 : 0;
+        if (bf !== af) return bf - af;
+        return a.familyLabel.localeCompare(b.familyLabel) || bySpecies(a, b);
+      });
+      return sorted;
+    }
 
     if (state.birdSort === 'species-asc') {
       sorted.sort(bySpecies);
@@ -895,6 +928,41 @@
 
     sorted.sort((a, b) => a.familyLabel.localeCompare(b.familyLabel) || bySpecies(a, b));
     return sorted;
+  }
+
+  function renderActiveFilterSummary() {
+    const row = document.getElementById('birdsExplorerActiveFiltersRow');
+    const pillsContainer = document.getElementById('birdsExplorerActiveFiltersPills');
+    if (!row || !pillsContainer) return;
+
+    const sortLabelMap = {
+      'family-asc': 'Family / Species (A-Z)',
+      'favorites-first': 'Favorites first',
+      'species-asc': 'Species (A-Z)',
+      'species-desc': 'Species (Z-A)',
+      'rarity-desc': 'Rarity (highest first)',
+      'rarity-asc': 'Rarity (lowest first)',
+      'sighted-recent': 'Recently sighted first'
+    };
+
+    const pills = [];
+    if (state.birdSearch.trim()) pills.push({ key: 'search', label: `Search: ${state.birdSearch.trim()}` });
+    if (state.birdSort !== 'family-asc') pills.push({ key: 'sort', label: `Sort: ${sortLabelMap[state.birdSort] || state.birdSort}` });
+    if (state.birdFilters.season !== 'all') pills.push({ key: 'season-select', label: `Season: ${state.birdFilters.season}` });
+    if (state.birdFilters.rarity !== 'all') pills.push({ key: 'rarity-select', label: `Rarity: ${state.birdFilters.rarity}` });
+    if (state.birdFilters.family !== 'all') pills.push({ key: 'family-select', label: `Family: ${state.birdFilters.family}` });
+    if (state.birdFilters.favoritesOnly) pills.push({ key: 'favorites-only', label: 'Favorites only' });
+    (state.birdFilters.seasonChips || []).forEach((value) => pills.push({ key: `season-chip:${value}`, label: `Season chip: ${value}` }));
+    (state.birdFilters.rarityChips || []).forEach((value) => pills.push({ key: `rarity-chip:${value}`, label: `Rarity chip: ${value}` }));
+    (state.birdFilters.familyChips || []).forEach((value) => pills.push({ key: `family-chip:${value}`, label: `Family chip: ${value}` }));
+
+    row.hidden = pills.length === 0;
+    pillsContainer.innerHTML = pills.map((pill) => `
+      <span class="nature-active-filter-pill">
+        ${escapeHtml(pill.label)}
+        <button type="button" data-birds-remove-filter="${escapeHtml(pill.key)}" title="Remove filter">x</button>
+      </span>
+    `).join('');
   }
 
   function filterBirdsForExplorer() {
@@ -977,6 +1045,7 @@
 
     if (!state.birdsLoaded) {
       renderPinnedFavorites();
+      renderActiveFilterSummary();
       container.innerHTML = '<div class="nature-empty-state">Bird data is still loading.</div>';
       meta.textContent = 'Loading birds...';
       return;
@@ -984,6 +1053,7 @@
 
     updateFamilyFilterOptions();
     applyExplorerControlsFromState();
+    renderActiveFilterSummary();
     renderPinnedFavorites();
 
     const filtered = filterBirdsForExplorer();
@@ -1279,6 +1349,13 @@
       const clearFiltersButton = event.target.closest('#birdsExplorerClearFiltersBtn');
       if (clearFiltersButton) {
         resetBirdExplorerFilters();
+        renderBirdExplorerList();
+        return;
+      }
+
+      const removeFilterButton = event.target.closest('[data-birds-remove-filter]');
+      if (removeFilterButton) {
+        removeExplorerFilter(removeFilterButton.getAttribute('data-birds-remove-filter') || '');
         renderBirdExplorerList();
       }
     });
