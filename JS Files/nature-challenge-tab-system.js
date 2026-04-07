@@ -2603,6 +2603,58 @@
     state.birdPage = 1;
   }
 
+  function renderActiveFilterSummary() {
+    const row = document.getElementById('birdsExplorerActiveFiltersRow');
+    const pillsContainer = document.getElementById('birdsExplorerActiveFiltersPills');
+    if (!row || !pillsContainer) return;
+
+    const sortLabelMap = {
+      'family-asc': 'Family / Species (A-Z)',
+      'favorites-first': 'Favorites first',
+      'species-asc': 'Species (A-Z)',
+      'species-desc': 'Species (Z-A)',
+      'rarity-desc': 'Rarity (highest first)',
+      'rarity-asc': 'Rarity (lowest first)',
+      'sighted-recent': 'Recently sighted first',
+      'best-next-targets': 'Best next targets',
+      'best-today': 'Best for today',
+      'best-quests': 'Best for quests',
+      'best-badges': 'Best for badges',
+      'family-completion': 'Best for family completion',
+      'not-seen-opportunity': 'Best not-yet-seen opportunities'
+    };
+
+    const pills = [];
+    if (state.birdSearch.trim()) pills.push({ key: 'search', label: `Search: ${state.birdSearch.trim()}` });
+    if (state.birdSort !== 'family-asc') pills.push({ key: 'sort', label: `Sort: ${sortLabelMap[state.birdSort] || state.birdSort}` });
+    if (state.birdFilters.season !== 'all') pills.push({ key: 'season-select', label: `Season: ${state.birdFilters.season}` });
+    if (state.birdFilters.rarity !== 'all') pills.push({ key: 'rarity-select', label: `Rarity: ${state.birdFilters.rarity}` });
+    if (state.birdFilters.family !== 'all') pills.push({ key: 'family-select', label: `Family: ${state.birdFilters.family}` });
+    if (state.birdFilters.region !== 'all') pills.push({ key: 'region-select', label: `Region: ${state.birdFilters.region}` });
+    if (state.birdFilters.habitat !== 'all') pills.push({ key: 'habitat-select', label: `Habitat: ${state.birdFilters.habitat}` });
+    if (state.birdFilters.sightingStatus && state.birdFilters.sightingStatus !== 'all') pills.push({ key: 'sighting-status', label: `Seen status: ${state.birdFilters.sightingStatus}` });
+    if (state.birdFilters.favoritesOnly) pills.push({ key: 'favorites-only', label: 'Favorites only' });
+    if (state.birdFilters.notYetSeenOnly) pills.push({ key: 'not-yet-seen', label: 'Not yet sighted' });
+    if (state.birdFilters.alreadySeenOnly) pills.push({ key: 'already-seen', label: 'Already sighted' });
+    if (state.birdFilters.seenRecentlyOnly) pills.push({ key: 'seen-recently', label: 'Seen recently' });
+    if (state.birdFilters.notSeenRecentlyOnly) pills.push({ key: 'not-seen-recently', label: 'Not seen recently' });
+    if (state.birdFilters.favoritedOnly) pills.push({ key: 'favorited-only', label: 'Favorited' });
+    if (state.birdFilters.inSeasonNotSeenOnly) pills.push({ key: 'in-season-not-seen', label: 'In season + not seen' });
+    if (state.birdFilters.rareNotSeenOnly) pills.push({ key: 'rare-not-seen', label: 'Rare + not seen' });
+    (state.birdFilters.seasonChips || []).forEach((value) => pills.push({ key: `season-chip:${value}`, label: `Season chip: ${value}` }));
+    (state.birdFilters.rarityChips || []).forEach((value) => pills.push({ key: `rarity-chip:${value}`, label: `Rarity chip: ${value}` }));
+    (state.birdFilters.familyChips || []).forEach((value) => pills.push({ key: `family-chip:${value}`, label: `Family chip: ${getFamilyChipLabel(value)}` }));
+    (state.birdFilters.focusChips || []).forEach((value) => pills.push({ key: `focus-chip:${value}`, label: `Focus chip: ${value}` }));
+
+    row.hidden = pills.length === 0;
+    pillsContainer.innerHTML = pills.map((pill) => `
+      <span class="nature-active-filter-pill">
+        ${escapeHtml(pill.label)}
+        <button type="button" data-birds-remove-filter="${escapeHtml(pill.key)}" aria-label="Remove ${escapeHtml(pill.label)}" ${tooltipAttrs(`Remove ${pill.label}`)}>x</button>
+      </span>
+    `).join('');
+  }
+
   function applyExplorerControlsFromState() {
     const searchInput = document.getElementById('birdsSpeciesSearchInput');
     const sortSelect = document.getElementById('birdsExplorerSortSelect');
