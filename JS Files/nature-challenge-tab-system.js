@@ -122,10 +122,6 @@
       rarityChips: [],
       familyChips: []
     },
-    birdNowFilters: {
-      region: 'all',
-      habitat: 'all'
-    },
     birdsLoaded: false,
     birdsLoading: false,
     birdsError: '',
@@ -1054,35 +1050,6 @@
     renderBirds();
   }
 
-  function buildBirdingNowCandidates() {
-    const currentSeason = getCurrentSeason();
-    const region = state.birdNowFilters.region;
-    const habitat = state.birdNowFilters.habitat;
-
-    const seenKeys = new Set(Object.keys(state.sightings));
-    const inSeason = state.birds.filter((bird) => bird.seasons.tokens.includes(currentSeason));
-    const notSeenInSeason = inSeason.filter((bird) => !seenKeys.has(getBirdStatusKey(bird)));
-
-    const contextFiltered = notSeenInSeason.filter((bird) => {
-      const regionOk = region === 'all' || !bird.defaultRegion || bird.defaultRegion === region;
-      const habitatOk = habitat === 'all' || !bird.defaultHabitat || bird.defaultHabitat === habitat;
-      return regionOk && habitatOk;
-    });
-
-    const likely = contextFiltered
-      .slice()
-      .sort((a, b) => a.rarity.weight - b.rarity.weight || a.speciesName.localeCompare(b.speciesName))
-      .slice(0, 8);
-
-    const rareTargets = contextFiltered
-      .filter((bird) => bird.rarity.weight >= RARITY_META.rare.weight)
-      .slice()
-      .sort((a, b) => b.rarity.weight - a.rarity.weight || a.speciesName.localeCompare(b.speciesName))
-      .slice(0, 8);
-
-    return { likely, rareTargets };
-  }
-
   async function processSyncQueue() {
     state.lastSyncAttemptAt = new Date().toISOString();
     if (!window.accessToken) {
@@ -1509,52 +1476,6 @@
     `).join('');
   }
 
-  function collectNearMissItems(challenges, badges, dailyChallenges, bingo, seasonQuestline) {
-    const nearMisses = [];
-
-    challenges.forEach((item) => {
-      if (item.completed) return;
-      nearMisses.push({ type: 'Challenge', title: item.title, remaining: Math.max(0, item.goal - item.progress) });
-    });
-    badges.forEach((item) => {
-      if (item.completed) return;
-      nearMisses.push({ type: 'Badge', title: item.title, remaining: Math.max(0, item.goal - item.progress) });
-    });
-    dailyChallenges.forEach((item) => {
-      if (item.completed) return;
-      nearMisses.push({ type: 'Daily', title: item.title, remaining: Math.max(0, item.goal - item.progress) });
-    });
-    bingo.tiles.forEach((item) => {
-      if (item.completed) return;
-      nearMisses.push({ type: 'Bingo', title: item.label, remaining: Math.max(0, item.goal - item.progress) });
-    });
-    seasonQuestline.steps.forEach((item) => {
-      if (item.completed) return;
-      nearMisses.push({ type: 'Quest', title: item.title, remaining: Math.max(0, item.goal - item.progress) });
-    });
-
-    return nearMisses
-      .filter((item) => item.remaining > 0)
-      .sort((a, b) => a.remaining - b.remaining || a.title.localeCompare(b.title))
-      .slice(0, 6);
-  }
-
-  function renderNearMissPanel(items) {
-    const container = document.getElementById('birdsNearMissList');
-    if (!container) return;
-
-    if (items.length === 0) {
-      container.innerHTML = '<div class="nature-empty-state">Everything nearby is completed. Time for new goals!</div>';
-      return;
-    }
-
-    container.innerHTML = items.map((item) => `
-      <div class="nature-bird-detail-row">
-        <div class="nature-bird-detail-label">${escapeHtml(item.type)}</div>
-        <div class="nature-bird-detail-value">${escapeHtml(item.title)} - just ${item.remaining} to go</div>
-      </div>
-    `).join('');
-  }
 
   function getBirdSearchQuery() {
     return norm(state.birdSearch);
@@ -2008,7 +1929,6 @@
     [
       'birdsDailyChallengeGrid',
       'birdsBingoGrid',
-      'birdsNearMissList',
       'birdsSeasonQuestGrid',
       'birdsChallengeGrid',
       'birdsBadgeGrid',
@@ -2043,7 +1963,6 @@
     renderBirdStreakPanel(stats.streak);
     renderBirdBingoPanel(bingo);
     renderSeasonQuestlinePanel(seasonQuestline, stats);
-    renderNearMissPanel(collectNearMissItems(challenges, badges, dailyChallenges, bingo, seasonQuestline));
     renderBirdChallenges(challenges);
     renderBirdBadges(badges);
     renderBirdExplorerList();
@@ -2106,6 +2025,37 @@
     });
   }
 
+  function getBirdCollapsibleSections(root) {
+    const scope = root || document;
+    return Array.from(scope.querySelectorAll('[data-birds-collapsible]'));
+  }
+
+  function syncBirdCollapseAllButton(root) {
+    const button = document.getElementById('birdsToggleCollapsiblesBtn');
+    if (!button) return;
+    const sections = getBirdCollapsibleSections(root);
+    if (sections.length === 0) {
+      button.disabled = true;
+      button.textContent = 'Expand All';
+      return;
+    }
+
+    button.disabled = false;
+    const allOpen = sections.every((section) => section.open);
+    button.textContent = allOpen ? 'Collapse All' : 'Expand All';
+    button.setAttribute('aria-pressed', allOpen ? 'true' : 'false');
+  }
+
+  function toggleBirdCollapsibleSections(root) {
+    const sections = getBirdCollapsibleSections(root);
+    if (sections.length === 0) return;
+    const shouldOpen = sections.some((section) => !section.open);
+    sections.forEach((section) => {
+      section.open = shouldOpen;
+    });
+    syncBirdCollapseAllButton(root);
+  }
+
   function setBirdView(root, viewKey) {
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     syncBirdViews(root);
@@ -2125,6 +2075,7 @@
     }
 
     syncBirdViews(root);
+    if (state.activeSubTab === 'birds') syncBirdCollapseAllButton(root);
   }
 
   function toggleBirdSighting(birdId) {
@@ -2339,23 +2290,6 @@
       });
     }
 
-    const nowRegionFilter = document.getElementById('birdsNowRegionFilter');
-    if (nowRegionFilter && nowRegionFilter.dataset.natureNowRegionBound !== '1') {
-      nowRegionFilter.dataset.natureNowRegionBound = '1';
-      nowRegionFilter.addEventListener('change', () => {
-        state.birdNowFilters.region = nowRegionFilter.value || 'all';
-        renderBirds();
-      });
-    }
-
-    const nowHabitatFilter = document.getElementById('birdsNowHabitatFilter');
-    if (nowHabitatFilter && nowHabitatFilter.dataset.natureNowHabitatBound !== '1') {
-      nowHabitatFilter.dataset.natureNowHabitatBound = '1';
-      nowHabitatFilter.addEventListener('change', () => {
-        state.birdNowFilters.habitat = nowHabitatFilter.value || 'all';
-        renderBirds();
-      });
-    }
 
     const logSightingBtn = document.getElementById('birdsLogSightingBtn');
     if (logSightingBtn && logSightingBtn.dataset.natureLogBound !== '1') {
@@ -2390,6 +2324,22 @@
       runQualityBtn.addEventListener('click', () => renderBirds());
     }
 
+    const collapseAllBtn = document.getElementById('birdsToggleCollapsiblesBtn');
+    if (collapseAllBtn && collapseAllBtn.dataset.natureCollapseAllBound !== '1') {
+      collapseAllBtn.dataset.natureCollapseAllBound = '1';
+      collapseAllBtn.addEventListener('click', () => {
+        toggleBirdCollapsibleSections(root);
+      });
+    }
+
+    getBirdCollapsibleSections(root).forEach((section) => {
+      if (section.dataset.natureCollapseSectionBound === '1') return;
+      section.dataset.natureCollapseSectionBound = '1';
+      section.addEventListener('toggle', () => {
+        syncBirdCollapseAllButton(root);
+      });
+    });
+
     const favoritesOnlyToggle = document.getElementById('birdsExplorerFavoritesOnly');
     if (favoritesOnlyToggle && favoritesOnlyToggle.dataset.natureFavoritesOnlyBound !== '1') {
       favoritesOnlyToggle.dataset.natureFavoritesOnlyBound = '1';
@@ -2413,6 +2363,7 @@
     renderPlaceholderSubTabs();
     setActiveNatureSubTab(root, state.activeSubTab || 'birds');
     setBirdView(root, state.activeBirdView || 'overview');
+    syncBirdCollapseAllButton(root);
     renderBirdHeaderStatus();
     loadBirdDataset(false);
 
