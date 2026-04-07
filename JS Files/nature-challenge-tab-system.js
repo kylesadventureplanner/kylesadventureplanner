@@ -2108,6 +2108,43 @@
     syncBirdCollapseAllButton(root);
   }
 
+  function ensureNatureButtonsResponsive(root) {
+    if (!root) return;
+    const controls = root.querySelectorAll(
+      'button, [role="button"], .pill-button, .card-btn, [data-bird-open], [data-bird-toggle], [data-bird-favorite], [data-birds-filter-chip], [data-sync-resolve]'
+    );
+
+    controls.forEach((btn) => {
+      if (!btn || !btn.style) return;
+      btn.style.setProperty('pointer-events', 'auto', 'important');
+      btn.style.setProperty('touch-action', 'manipulation', 'important');
+      btn.style.setProperty('position', 'relative', 'important');
+      btn.style.setProperty('z-index', '30', 'important');
+      btn.style.setProperty('cursor', 'pointer', 'important');
+    });
+  }
+
+  function installNatureButtonReliabilityObserver(root) {
+    if (!root || root.dataset.natureButtonObserverBound === '1') return;
+    root.dataset.natureButtonObserverBound = '1';
+
+    const observer = new MutationObserver((mutations) => {
+      let shouldRecheck = false;
+      for (const mutation of mutations) {
+        if (mutation.type !== 'childList') continue;
+        const added = Array.from(mutation.addedNodes || []);
+        if (added.some((node) => node.querySelectorAll && node.querySelectorAll('button, [role="button"], .pill-button').length > 0)) {
+          shouldRecheck = true;
+          break;
+        }
+      }
+      if (!shouldRecheck) return;
+      requestAnimationFrame(() => ensureNatureButtonsResponsive(root));
+    });
+
+    observer.observe(root, { childList: true, subtree: true });
+  }
+
   function setBirdView(root, viewKey) {
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     syncBirdViews(root);
@@ -2154,10 +2191,13 @@
   function bindNatureControls(root) {
     if (!root || root.dataset.natureControlsBound === '1') return;
     root.dataset.natureControlsBound = '1';
+    ensureNatureButtonsResponsive(root);
+    installNatureButtonReliabilityObserver(root);
 
     root.addEventListener('click', (event) => {
       const subTabButton = event.target.closest('[data-nature-subtab]');
       if (subTabButton) {
+        ensureNatureButtonsResponsive(root);
         setActiveNatureSubTab(root, subTabButton.getAttribute('data-nature-subtab'));
         return;
       }
@@ -2420,6 +2460,7 @@
     const root = document.getElementById('natureChallengeRoot');
     if (!root) return;
 
+    ensureNatureButtonsResponsive(root);
     bindNatureControls(root);
     const logDateInput = document.getElementById('birdsLogDateInput');
     if (logDateInput && !logDateInput.value) {

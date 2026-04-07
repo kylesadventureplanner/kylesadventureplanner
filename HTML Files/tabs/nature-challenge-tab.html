@@ -95,16 +95,6 @@
         <button type="button" id="birdsToggleCollapsiblesBtn" class="pill-button nature-section-toggle-btn">Expand All</button>
       </div>
 
-      <details id="birdsVisualLegendDetails" class="card nature-collapsible-card" data-birds-collapsible>
-        <summary class="nature-collapsible-summary">
-          <div>
-            <div class="card-title">🧭 Visual Legend</div>
-            <div class="card-subtitle">Use rarity and season markers to quickly scan species cards.</div>
-          </div>
-        </summary>
-        <div id="birdsVisualLegend" class="nature-legend-grid"></div>
-      </details>
-
       <div class="card">
         <div class="card-header">
           <div class="card-title">⚡ Daily Micro-Challenges</div>
@@ -180,6 +170,16 @@
           </div>
           <div id="birdsDataQualityPanel"></div>
         </div>
+      </details>
+
+      <details id="birdsVisualLegendDetails" class="card nature-collapsible-card" data-birds-collapsible>
+        <summary class="nature-collapsible-summary">
+          <div>
+            <div class="card-title">🧭 Visual Legend</div>
+            <div class="card-subtitle">Use rarity and season markers to quickly scan species cards.</div>
+          </div>
+        </summary>
+        <div id="birdsVisualLegend" class="nature-legend-grid"></div>
       </details>
     </div>
 
@@ -1693,6 +1693,29 @@
     #natureChallengeRoot .nature-log-view-grid {
       grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
       align-items: start;
+    }
+
+    /* Keep Birds overview card title/description blocks aligned on desktop. */
+    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-challenge-card-header,
+    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-badge-card-title {
+      line-height: 1.3;
+      min-height: calc(1.3em * 2);
+    }
+
+    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] .nature-badge-card-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      text-align: center;
+    }
+
+    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsDailyChallengeGrid .nature-challenge-card-description,
+    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsChallengeGrid .nature-challenge-card-description,
+    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsSeasonQuestGrid .nature-challenge-card-description,
+    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsBadgeGrid .nature-badge-card-description {
+      line-height: 1.45;
+      min-height: calc(1.45em * 2);
     }
 
     #natureChallengeRoot .nature-log-panel--activity {
