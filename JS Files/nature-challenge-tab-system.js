@@ -4129,6 +4129,26 @@
       explorerBackButton.addEventListener('click', () => setBirdView(root, 'overview'));
     }
 
+    // Fallback direct bindings: keep core Birds entry buttons responsive even if other
+    // global handlers interfere with delegated click routing.
+    const exploreSpeciesButton = document.getElementById('birdsExploreBtn');
+    if (exploreSpeciesButton && exploreSpeciesButton.dataset.natureExploreDirectBound !== '1') {
+      exploreSpeciesButton.dataset.natureExploreDirectBound = '1';
+      exploreSpeciesButton.addEventListener('click', (event) => {
+        if (event.defaultPrevented) return;
+        setBirdView(root, 'explorer');
+      });
+    }
+
+    const refreshBirdsButton = document.getElementById('natureChallengeRefreshBtn');
+    if (refreshBirdsButton && refreshBirdsButton.dataset.natureRefreshDirectBound !== '1') {
+      refreshBirdsButton.dataset.natureRefreshDirectBound = '1';
+      refreshBirdsButton.addEventListener('click', (event) => {
+        if (event.defaultPrevented) return;
+        loadBirdDataset(true);
+      });
+    }
+
     const detailBackButton = document.getElementById('birdsDetailBackBtn');
     if (detailBackButton && detailBackButton.dataset.natureDetailBackBound !== '1') {
       detailBackButton.dataset.natureDetailBackBound = '1';
