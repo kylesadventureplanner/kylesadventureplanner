@@ -2733,6 +2733,206 @@
       .join('');
   }
 
+  function toTitleCase(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return 'Unknown';
+    return raw
+      .split(/\s+/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  function buildFamilyProgressLookup(stats) {
+    const lookup = {};
+    const list = Array.isArray(stats && stats.familyProgress) ? stats.familyProgress : [];
+    list.forEach((family) => {
+      lookup[family.key] = family;
+    });
+    return lookup;
+  }
+
+  function getBirdExplorerInsight(bird, stats, familyLookup) {
+    const seen = isBirdSighted(bird);
+    const inSeason = Boolean(bird && bird.seasons && Array.isArray(bird.seasons.tokens) && bird.seasons.tokens.includes(stats.currentSeason));
+    const favorite = isBirdFavorited(bird);
+    const sightedAt = getSightingDate(bird);
+    const seenRecently = Boolean(sightedAt && ((Date.now() - sightedAt.getTime()) / (1000 * 60 * 60 * 24)) <= 14);
+    const family = familyLookup[bird.familyKey] || null;
+    const familyRemaining = family ? Math.max(0, family.species.length - family.sightedCount) : 99;
+    const nearCompletion = familyRemaining > 0 && familyRemaining <= 2;
+    const highValue = bird.rarity.weight >= RARITY_META.rare.weight;
+    const rareChance = bird.rarity.weight >= RARITY_META.veryRare.weight && inSeason;
+    const seasonalTarget = !seen && inSeason;
+    const recommended = seasonalTarget || nearCompletion || rareChance || (favorite && inSeason);
+
+    const reasons = [];
+    if (inSeason) reasons.push('In season now');
+    if (!seen) reasons.push('You have not seen this one yet');
+    if (favorite) reasons.push('Favorited');
+    if (highValue && !seen) reasons.push('Rare opportunity');
+    if (nearCompletion && !seen) reasons.push('Helps complete a family');
+    if (seasonalTarget || nearCompletion || (highValue && !seen)) reasons.push('Good fit for your current quest');
+    if (seenRecently) reasons.push('Seen recently');
+    if (!reasons.length) reasons.push('Good optional target');
+
+    let priorityLabel = 'Optional target';
+    let priorityClass = '';
+    if (rareChance && !seen) {
+      priorityLabel = 'Rare chance';
+      priorityClass = 'is-rare';
+    } else if (nearCompletion && !seen) {
+      priorityLabel = 'Progress boost';
+      priorityClass = 'is-progress';
+    } else if (seasonalTarget) {
+      priorityLabel = 'Look for now';
+      priorityClass = 'is-progress';
+    }
+
+    let score = 0;
+    if (!seen) score += 55;
+    if (inSeason) score += 28;
+    if (!inSeason) score -= 14;
+    if (nearCompletion) score += 24;
+    if (highValue) score += 16;
+    if (favorite) score += 8;
+    if (seenRecently) score -= 8;
+
+    return {
+      seen,
+      inSeason,
+      favorite,
+      nearCompletion,
+      highValue,
+      rareChance,
+      recommended,
+      seasonalTarget,
+      familyRemaining,
+      reasons,
+      primaryReason: reasons[0] || 'Good optional target',
+      priorityLabel,
+      priorityClass,
+      score,
+      seenRecently,
+      bestHabitat: toTitleCase(bird.defaultHabitat || ''),
+      bestRegion: toTitleCase(bird.defaultRegion || '')
+    };
+  }
+
+  function sortExplorerBirds(birds) {
+    const sorted = (Array.isArray(birds) ? birds : []).slice();
+    const bySpecies = (a, b) => a.speciesName.localeCompare(b.speciesName);
+
+    if (state.birdSort === 'favorites-first') {
+      sorted.sort((a, b) => {
+        const af = isBirdFavorited(a) ? 1 : 0;
+        const bf = isBirdFavorited(b) ? 1 : 0;
+        if (bf !== af) return bf - af;
+        return a.familyLabel.localeCompare(b.familyLabel) || bySpecies(a, b);
+      });
+      return sorted;
+    }
+
+    if (['best-next-targets', 'best-today', 'best-quests', 'best-badges', 'family-completion', 'not-seen-opportunity'].includes(state.birdSort)) {
+      const stats = state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats();
+      const familyLookup = buildFamilyProgressLookup(stats);
+      sorted.sort((a, b) => {
+        const ai = getBirdExplorerInsight(a, stats, familyLookup);
+        const bi = getBirdExplorerInsight(b, stats, familyLookup);
+        const aScore = state.birdSort === 'best-today'
+          ? ai.score + (ai.inSeason ? 18 : -6)
+          : state.birdSort === 'family-completion'
+            ? ai.score + (ai.familyRemaining === 1 ? 24 : ai.familyRemaining === 2 ? 12 : 0)
+            : state.birdSort === 'not-seen-opportunity'
+              ? ai.score + (ai.seen ? -24 : 20)
+              : ai.score;
+        const bScore = state.birdSort === 'best-today'
+          ? bi.score + (bi.inSeason ? 18 : -6)
+          : state.birdSort === 'family-completion'
+            ? bi.score + (bi.familyRemaining === 1 ? 24 : bi.familyRemaining === 2 ? 12 : 0)
+            : state.birdSort === 'not-seen-opportunity'
+              ? bi.score + (bi.seen ? -24 : 20)
+              : bi.score;
+        if (bScore !== aScore) return bScore - aScore;
+        return bySpecies(a, b);
+      });
+      return sorted;
+    }
+
+    if (state.birdSort === 'species-asc') {
+      sorted.sort(bySpecies);
+      return sorted;
+    }
+    if (state.birdSort === 'species-desc') {
+      sorted.sort((a, b) => bySpecies(b, a));
+      return sorted;
+    }
+    if (state.birdSort === 'rarity-desc') {
+      sorted.sort((a, b) => b.rarity.weight - a.rarity.weight || bySpecies(a, b));
+      return sorted;
+    }
+    if (state.birdSort === 'rarity-asc') {
+      sorted.sort((a, b) => a.rarity.weight - b.rarity.weight || bySpecies(a, b));
+      return sorted;
+    }
+    if (state.birdSort === 'sighted-recent') {
+      sorted.sort((a, b) => {
+        const at = getSightingDate(a);
+        const bt = getSightingDate(b);
+        const av = at ? at.getTime() : -1;
+        const bv = bt ? bt.getTime() : -1;
+        if (bv !== av) return bv - av;
+        return bySpecies(a, b);
+      });
+      return sorted;
+    }
+
+    sorted.sort((a, b) => a.familyLabel.localeCompare(b.familyLabel) || bySpecies(a, b));
+    return sorted;
+  }
+
+  function renderBirdExplorerRecommendationStrip(stats, familyLookup) {
+    const container = document.getElementById('birdsExplorerRecommendationStrip');
+    if (!container) return;
+    if (!state.birdsLoaded) {
+      container.textContent = 'Loading recommendations...';
+      return;
+    }
+
+    const candidates = sortExplorerBirds(state.birds)
+      .map((bird) => ({ bird, insight: getBirdExplorerInsight(bird, stats, familyLookup) }))
+      .filter((entry) => !entry.insight.seen)
+      .slice(0, 8);
+
+    if (!candidates.length) {
+      container.innerHTML = '<section class="nature-explorer-reco-card"><div class="nature-explorer-reco-title">What to look for now</div><div class="nature-explorer-reco-subtitle">No unlogged targets right now.</div></section>';
+      return;
+    }
+
+    const topNow = candidates.slice(0, 4);
+    const rareNow = candidates.filter((entry) => entry.insight.rareChance || entry.bird.rarity.weight >= RARITY_META.rare.weight).slice(0, 4);
+    const progressNow = candidates.filter((entry) => entry.insight.nearCompletion || entry.insight.seasonalTarget).slice(0, 4);
+
+    const renderBucket = (title, subtitle, list) => `
+      <section class="nature-explorer-reco-card">
+        <div class="nature-explorer-reco-title">${escapeHtml(title)}</div>
+        <div class="nature-explorer-reco-subtitle">${escapeHtml(subtitle)}</div>
+        <div class="nature-explorer-reco-list">
+          ${(list || []).map((entry) => `
+            <button type="button" class="nature-explorer-reco-btn" data-bird-open="${escapeHtml(entry.bird.id)}" ${tooltipAttrs(`Open bird details for ${entry.bird.speciesName}`)}>
+              ${escapeHtml(entry.bird.speciesName)} - ${escapeHtml(entry.insight.primaryReason)}
+            </button>
+          `).join('') || '<span class="card-subtitle">No recommendations in this bucket right now.</span>'}
+        </div>
+      </section>
+    `;
+
+    container.innerHTML = [
+      renderBucket('Look for these today', 'Best birds for right now', topNow),
+      renderBucket('Rare opportunities', 'High rarity birds worth prioritizing', rareNow),
+      renderBucket('Progress opportunities', 'Strong progress and completion targets', progressNow)
+    ].join('');
+  }
+
   function filterBirdsForExplorer() {
     const query = getBirdSearchQuery();
     const intent = getBirdSearchIntent();
