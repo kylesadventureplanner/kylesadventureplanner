@@ -12,6 +12,14 @@
 
   const scopes = new Map();
 
+  function emitReliabilityEvent(name, detail) {
+    try {
+      window.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
+    } catch (_error) {
+      // Ignore event dispatch failures.
+    }
+  }
+
   function getOrCreateScope(scopeName) {
     const key = String(scopeName || 'global').trim() || 'global';
     if (scopes.has(key)) return scopes.get(key);
@@ -64,34 +72,65 @@
 
     if (!target || !action) return false;
 
+    const key = String(getActionKey(target) || 'unknown');
+
     if (!isActivatable(target)) {
-      if (onBlocked) onBlocked('disabled', { target });
+      emitReliabilityEvent('reliability:action-blocked', {
+        scope: scope.name,
+        reason: 'disabled',
+        actionKey: key,
+        targetId: target && target.id ? target.id : ''
+      });
+      if (onBlocked) onBlocked('disabled', { key, target });
       return false;
     }
 
-    const key = String(getActionKey(target) || 'unknown');
     const now = Date.now();
 
     if (scope.inFlight.get(key)) {
+      emitReliabilityEvent('reliability:action-blocked', {
+        scope: scope.name,
+        reason: 'in-flight',
+        actionKey: key,
+        targetId: target && target.id ? target.id : ''
+      });
       if (onBlocked) onBlocked('in-flight', { key, target });
       return false;
     }
 
     const lastAt = Number(scope.lastAt.get(key) || 0);
     if (now - lastAt < dedupeMs) {
+      emitReliabilityEvent('reliability:action-blocked', {
+        scope: scope.name,
+        reason: 'dedupe',
+        actionKey: key,
+        targetId: target && target.id ? target.id : ''
+      });
       if (onBlocked) onBlocked('dedupe', { key, ageMs: now - lastAt, target });
       return false;
     }
 
     scope.inFlight.set(key, true);
     scope.lastAt.set(key, now);
-    if (target.dataset) target.dataset.busy = '1';
+    if (target.dataset) {
+      target.dataset.busy = '1';
+      target.dataset.busySince = String(now);
+    }
+    window.__lastActionKey = key;
+    emitReliabilityEvent('reliability:action-start', {
+      scope: scope.name,
+      actionKey: key,
+      targetId: target && target.id ? target.id : ''
+    });
 
     if (onStart) onStart({ key, target });
 
     const safetyTimer = window.setTimeout(() => {
       scope.inFlight.delete(key);
-      if (target.dataset) delete target.dataset.busy;
+      if (target.dataset) {
+        delete target.dataset.busy;
+        delete target.dataset.busySince;
+      }
     }, lockTimeoutMs);
 
     try {
@@ -100,7 +139,15 @@
     } finally {
       clearTimeout(safetyTimer);
       scope.inFlight.delete(key);
-      if (target.dataset) delete target.dataset.busy;
+      if (target.dataset) {
+        delete target.dataset.busy;
+        delete target.dataset.busySince;
+      }
+      emitReliabilityEvent('reliability:action-end', {
+        scope: scope.name,
+        actionKey: key,
+        targetId: target && target.id ? target.id : ''
+      });
       if (onEnd) onEnd({ key, target });
     }
   }

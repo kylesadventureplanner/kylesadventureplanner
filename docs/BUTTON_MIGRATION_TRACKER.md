@@ -38,7 +38,7 @@ Related plan: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEA
 | `recipes` | _unassigned_ | `not-started` | 2026-04-08 | Wk 2 | Consolidate action ownership | _none_ |
 | `garden` | _unassigned_ | `not-started` | 2026-04-08 | Wk 3 | Verify modal/backdrop pointer behavior | _none_ |
 | `budget` | _unassigned_ | `not-started` | 2026-04-08 | Wk 3 | Guard calculate/save actions | _none_ |
-| `nature-challenge` | _unassigned_ | `in-progress` | 2026-04-08 | Wk 0 | Core path stabilized with shared guard consumption; continue cross-system monitoring | `JS Files/nature-challenge-tab-system.js` (`withBirdsActionGuard` shared utility path); `index.html` startup timing telemetry |
+| `nature-challenge` | _unassigned_ | `in-progress` | 2026-04-08 | Wk 0 | Core path stabilized with shared guard, retry policy wrappers, and global reliability telemetry integration | `JS Files/nature-challenge-tab-system.js` (`withBirdsActionGuard`, Graph retry wrappers); `JS Files/reliability-ops.js`; `JS Files/button-action-guard.js`; `index.html` startup timing telemetry |
 | `visited-locations` | _unassigned_ | `not-started` | 2026-04-08 | Wk 4 | Confirm canonical ownership | _none_ |
 
 ---

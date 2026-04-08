@@ -1288,60 +1288,75 @@
     const encodedPath = encodeGraphPath(filePath);
     const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableRef)}/rows`;
 
-    const response = await fetch(apiUrl, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
+    const run = async () => {
+      const response = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Bike trail load failed for ${BIKE_FILE_NAME} / ${tableRef}: ${response.status} ${response.statusText}`);
       }
-    });
 
-    if (!response.ok) {
-      throw new Error(`Bike trail load failed for ${BIKE_FILE_NAME} / ${tableRef}: ${response.status} ${response.statusText}`);
+      const json = await response.json();
+      const rows = Array.isArray(json.value) ? json.value : [];
+
+      return rows.map((row, index) => ({
+        values: [Array.isArray(row.values?.[0]) ? row.values[0] : []],
+        rowId: row.id,
+        index
+      }));
+    };
+
+    if (window.ReliabilityAsync && typeof window.ReliabilityAsync.retryRead === 'function') {
+      return window.ReliabilityAsync.retryRead('Bike rows read', run, { retries: 2, backoffMs: 350 });
     }
-
-    const json = await response.json();
-    const rows = Array.isArray(json.value) ? json.value : [];
-
-    return rows.map((row, index) => ({
-      values: [Array.isArray(row.values?.[0]) ? row.values[0] : []],
-      rowId: row.id,
-      index
-    }));
+    return run();
   }
 
   async function loadBikeTableSchema(accessToken, filePath, tableRef) {
     const encodedPath = encodeGraphPath(filePath);
     const schemaUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableRef)}/columns`;
-    const response = await fetch(schemaUrl, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
+
+    const run = async () => {
+      const response = await fetch(schemaUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Unable to load schema for bike table '${tableRef}' (${response.status} ${response.statusText})`);
       }
-    });
 
-    if (!response.ok) {
-      throw new Error(`Unable to load schema for bike table '${tableRef}' (${response.status} ${response.statusText})`);
+      const json = await response.json();
+      const columnNames = (json.value || []).map((item) => item.name).filter(Boolean);
+      cacheBikeTableSchema(columnNames);
+      updateBikeDebugDetailsLine({ filePath, tableName: window.bikeTableConfig?.tableName || BIKE_TABLE_NAME, tableRef });
+
+      const schemaStatus = getBikeSchemaStatus(columnNames);
+      if (schemaStatus.missing.length === 0) {
+        updateBikeMetadataStatusLine('success', {
+          text: 'Excel metadata columns: My Rating / Favorite Status ready',
+          detail: `Schema aligned (${schemaStatus.columnCount} columns)`
+        });
+      } else {
+        updateBikeMetadataStatusLine('warning', {
+          text: 'Excel metadata columns need review',
+          detail: `Missing: ${schemaStatus.missing.join(', ')}`
+        });
+      }
+
+      return columnNames;
+    };
+
+    if (window.ReliabilityAsync && typeof window.ReliabilityAsync.retryRead === 'function') {
+      return window.ReliabilityAsync.retryRead('Bike schema read', run, { retries: 2, backoffMs: 350 });
     }
-
-    const json = await response.json();
-    const columnNames = (json.value || []).map((item) => item.name).filter(Boolean);
-    cacheBikeTableSchema(columnNames);
-    updateBikeDebugDetailsLine({ filePath, tableName: window.bikeTableConfig?.tableName || BIKE_TABLE_NAME, tableRef });
-
-    const schemaStatus = getBikeSchemaStatus(columnNames);
-    if (schemaStatus.missing.length === 0) {
-      updateBikeMetadataStatusLine('success', {
-        text: 'Excel metadata columns: My Rating / Favorite Status ready',
-        detail: `Schema aligned (${schemaStatus.columnCount} columns)`
-      });
-    } else {
-      updateBikeMetadataStatusLine('warning', {
-        text: 'Excel metadata columns need review',
-        detail: `Missing: ${schemaStatus.missing.join(', ')}`
-      });
-    }
-
-    return columnNames;
+    return run();
   }
 
   async function addBikeTableColumn(accessToken, filePath, tableRef, columnName, rowCount) {
@@ -1409,22 +1424,29 @@
 
     const encodedPath = encodeGraphPath(filePath);
     const rowUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableRef)}/rows/itemAt(index=${sourceIndex})`;
-    const response = await fetch(rowUrl, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ values: [values] })
-    });
+    const run = async () => {
+      const response = await fetch(rowUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: [values] })
+      });
 
-    if (!response.ok) {
-      const detail = await response.text().catch(() => response.statusText || '');
-      throw new Error(`Failed to save bike trail changes to Excel (${response.status})${detail ? `: ${detail}` : ''}`);
+      if (!response.ok) {
+        const detail = await response.text().catch(() => response.statusText || '');
+        throw new Error(`Failed to save bike trail changes to Excel (${response.status})${detail ? `: ${detail}` : ''}`);
+      }
+
+      row.values = [values];
+      return values;
+    };
+
+    if (window.ReliabilityAsync && typeof window.ReliabilityAsync.retryIdempotentWrite === 'function') {
+      return window.ReliabilityAsync.retryIdempotentWrite('Bike row update', run, { retries: 1, backoffMs: 500 });
     }
-
-    row.values = [values];
-    return values;
+    return run();
   }
 
   async function migrateLegacyBikePreferencesToExcel(accessToken, filePath, tableRef) {

@@ -162,6 +162,59 @@ Measure these via startup timing telemetry and button diagnostics evidence links
 
 ---
 
+## New Reliability Operations Layer
+
+- Global error boundary pipeline is centralized via `window.onerror` + `unhandledrejection`.
+- Each error report is tagged with:
+  - active tab
+  - last action key
+  - readiness state snapshot
+- Runtime snapshot API: `window.__reliabilityStatus()`
+
+---
+
+## Stuck-State Auto-Recovery
+
+Recovery loop runs every few seconds and auto-clears:
+
+- lingering loader overlays
+- stale `data-busy="1"` button states
+- stale `.tab-is-loading` panes / orphan loader indicators
+
+Each recovery action is logged for postmortem in reliability events.
+
+---
+
+## Retry Policy by Operation Type
+
+- **Read operations**: retry 2-3 attempts with exponential backoff.
+- **Write operations**: retry only idempotent-safe writes.
+- **User feedback** must distinguish:
+  - `Retrying ...`
+  - `Recovered ...`
+  - `Failed ...`
+
+Shared runtime helper: `window.ReliabilityAsync`
+
+---
+
+## Disaster Diagnostics Bundle
+
+One-command export for support/debug triage:
+
+```javascript
+window.exportReliabilityDiagnosticsBundle()
+```
+
+Bundle includes:
+
+- `__reliabilityStatus()` snapshot
+- startup timing snapshot
+- recent click traces
+- blocking overlays + click-path probe results
+
+---
+
 ## Validation Checklist (Per PR)
 
 - [ ] No duplicate owners for the same control.

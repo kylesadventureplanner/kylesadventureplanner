@@ -365,6 +365,16 @@
       if (result.ok) {
         console.log('✅ ButtonReliability.probeClickPath: target surface reachable', result);
       } else {
+        try {
+          window.dispatchEvent(new CustomEvent('reliability:overlay-interception', {
+            detail: {
+              buttonId: result.buttonId,
+              blockedPointCount: result.blockedPoints.length
+            }
+          }));
+        } catch (_error) {
+          // Ignore telemetry event issues.
+        }
         console.warn('⚠️ ButtonReliability.probeClickPath: surface blocked', result);
       }
       return result;

@@ -1,0 +1,15 @@
+{
+  "name": "kylesadventureplanner-reliability",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Reliability smoke tests and release gates",
+  "scripts": {
+    "reliability:smoke": "playwright test tests/reliability-smoke.spec.js",
+    "reliability:ownership": "node scripts/check-control-ownership.js",
+    "reliability:gate": "node scripts/reliability-gate.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}
+

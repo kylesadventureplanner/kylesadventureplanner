@@ -435,6 +435,7 @@ class TabContentLoader {
     container.classList.add('tab-is-loading');
     const indicator = document.createElement('div');
     indicator.className = 'tab-loading-indicator';
+    indicator.dataset.createdAt = String(Date.now());
     indicator.innerHTML = '<div class="tab-loading-spinner"></div><p class="tab-loading-text">Loading tab...</p>';
     container.appendChild(indicator);
   }

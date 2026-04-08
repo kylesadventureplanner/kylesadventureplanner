@@ -1211,34 +1211,54 @@
   }
 
   async function fetchGraphJson(url) {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${window.accessToken}`,
-        'Content-Type': 'application/json'
+    const run = async () => {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Graph request failed (${response.status})`);
       }
-    });
-    if (!response.ok) {
-      throw new Error(`Graph request failed (${response.status})`);
+      return response.json().catch(() => ({}));
+    };
+    if (window.ReliabilityAsync && typeof window.ReliabilityAsync.retryRead === 'function') {
+      return window.ReliabilityAsync.retryRead('Graph read', run, { retries: 2, backoffMs: 320 });
     }
-    return response.json().catch(() => ({}));
+    return run();
   }
 
   async function fetchGraphRequest(url, options = {}) {
-    const response = await fetch(url, {
-      method: options.method || 'GET',
-      headers: {
-        Authorization: `Bearer ${window.accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined
-    });
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      throw new Error(`Graph request failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+    const method = String(options.method || 'GET').toUpperCase();
+    const run = async () => {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(`Graph request failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+      }
+      if (response.status === 204) return {};
+      return response.json().catch(() => ({}));
+    };
+
+    if (window.ReliabilityAsync) {
+      if (method === 'GET' && typeof window.ReliabilityAsync.retryRead === 'function') {
+        return window.ReliabilityAsync.retryRead('Graph read', run, { retries: 2, backoffMs: 320 });
+      }
+      if (Boolean(options.idempotentWrite) && typeof window.ReliabilityAsync.retryIdempotentWrite === 'function') {
+        return window.ReliabilityAsync.retryIdempotentWrite('Graph idempotent write', run, { retries: 1, backoffMs: 450 });
+      }
     }
-    if (response.status === 204) return {};
-    return response.json().catch(() => ({}));
+
+    return run();
   }
 
   async function fetchTableColumnsAndRows(filePath, tableName, top = 5000) {
@@ -5412,6 +5432,7 @@
 
       recordBirdClickDiagnostic(event.type, delegatedTarget);
       emitBirdClickTrace('delegated-target-resolved', event, delegatedTarget);
+      window.__lastActionKey = getBirdDiagnosticActionKey(delegatedTarget);
 
       // ── Fail-closed disabled/aria-disabled/busy guard ───────────────────────
       // Applied once here so every branch below inherits the same contract.
@@ -6183,6 +6204,7 @@
 
   window.initializeNatureChallengeTab = initializeNatureChallengeTab;
   window.initNatureChallengeTab = window.initNatureChallengeTab || initializeNatureChallengeTab;
+  window.getRecentBirdClickTraceSnapshot = getRecentBirdClickTraceSnapshot;
   window.BIRD_PROGRESSION_SPEC = BIRD_PROGRESSION_SPEC;
   window.setBirdClickDiagnosticsEnabled = function(enabled) {
     try {

@@ -19,6 +19,22 @@ jobs:
         with:
           submodules: true
           lfs: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Dependencies
+        run: npm ci
+      - name: Install Playwright Browser
+        run: npx playwright install --with-deps chromium
+      - name: Reliability Ownership Check
+        run: npm run reliability:ownership
+      - name: Reliability Smoke Suite
+        env:
+          APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
+        run: npm run reliability:smoke
+      - name: Reliability Release Gate
+        run: npm run reliability:gate
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -33,14 +49,3 @@ jobs:
           output_location: "." # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
 
-  close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    name: Close Pull Request Job
-    steps:
-      - name: Close Pull Request
-        id: closepullrequest
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
-          action: "close"

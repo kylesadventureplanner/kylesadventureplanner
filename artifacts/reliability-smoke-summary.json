@@ -1,0 +1,53 @@
+{
+  "generatedAt": "2026-04-08T16:13:50.468Z",
+  "pass": true,
+  "startupSamplesMs": [
+    75,
+    74,
+    79,
+    75
+  ],
+  "startupMsP95": 79,
+  "firstClickChecks": 3,
+  "firstClickSuccesses": 3,
+  "firstClickSuccessRate": 1,
+  "checks": [
+    {
+      "name": "first-click:nature-explore",
+      "passed": true,
+      "detail": {
+        "explorerActive": true
+      },
+      "at": "2026-04-08T16:14:06.715Z"
+    },
+    {
+      "name": "first-click:nature-run",
+      "passed": true,
+      "detail": {
+        "runActive": true
+      },
+      "at": "2026-04-08T16:14:09.794Z"
+    },
+    {
+      "name": "first-click:bike-refresh",
+      "passed": true,
+      "detail": {
+        "scopeState": {
+          "scope": "bike-trails",
+          "inFlightCount": 0,
+          "trackedActionCount": 1
+        }
+      },
+      "at": "2026-04-08T16:14:12.291Z"
+    },
+    {
+      "name": "probe:hidden-overlay-detected",
+      "passed": true,
+      "detail": {
+        "blockedPoints": 5,
+        "reason": ""
+      },
+      "at": "2026-04-08T16:14:13.988Z"
+    }
+  ]
+}

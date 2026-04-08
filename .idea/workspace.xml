@@ -5,14 +5,24 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/JS Files/button-action-guard.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/BUTTON_ARCHITECTURE_CLEANUP_PLAN.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/BUTTON_MIGRATION_TRACKER.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.github/pull_request_template.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/JS Files/reliability-ops.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/RELIABILITY_HARNESS_README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/playwright.config.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/check-control-ownership.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts/reliability-gate.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/reliability-smoke.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/azure-static-web-apps-victorious-wave-0ec1bb10f.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/azure-static-web-apps-victorious-wave-0ec1bb10f.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/birding-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/birding-locations-tab.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/bike-trails-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/bike-trails-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/button-action-guard.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/button-action-guard.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/button-reliability-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/button-reliability-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/tab-content-loader.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/tab-content-loader.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/BUTTON_ARCHITECTURE_CLEANUP_PLAN.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_ARCHITECTURE_CLEANUP_PLAN.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/BUTTON_MIGRATION_TRACKER.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/BUTTON_MIGRATION_TRACKER.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/INDEX.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
     </list>
@@ -96,7 +106,7 @@
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
       <workItem from="1775308318086" duration="90230000" />
-      <workItem from="1775520086833" duration="67721000" />
+      <workItem from="1775520086833" duration="70898000" />
     </task>
     <servers />
   </component>

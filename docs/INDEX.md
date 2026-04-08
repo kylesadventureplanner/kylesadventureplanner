@@ -25,6 +25,9 @@ Use this page as the main landing point for performance, debugging, and reliabil
 - 🧭 **Button Architecture Cleanup Plan**: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEANUP_PLAN.md) - Do/Don't rules and per-tab migration checklist
 - 📅 **Button Migration Tracker**: [`BUTTON_MIGRATION_TRACKER.md`](./BUTTON_MIGRATION_TRACKER.md) - Weekly owner/status/date execution board
 - 🧱 **Shared Action Guard**: `JS Files/button-action-guard.js` - Common in-flight/dedupe/disabled guard utility
+- 🛰️ **Reliability Ops Layer**: `JS Files/reliability-ops.js` - Global error pipeline, recovery loop, retry helpers, diagnostics export
+- ✅ **Release Gate Scripts**: `scripts/check-control-ownership.js`, `scripts/reliability-gate.js`
+- 📘 **Reliability Harness Runbook**: [`RELIABILITY_HARNESS_README.md`](./RELIABILITY_HARNESS_README.md)
 
 ### Debug System (Already Implemented)
 - ⚡ **Quick Start**: [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md) - Copy-paste commands
