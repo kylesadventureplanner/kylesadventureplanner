@@ -1,5 +1,8 @@
 const { test, expect } = require('@playwright/test');
 
+const ASSERT_VISUAL_BASELINE = process.env.MOBILE_QA_ASSERT === '1';
+const MAX_DIFF_PIXEL_RATIO = Number(process.env.MOBILE_QA_MAX_DIFF_RATIO || 0.015);
+
 test.describe('Mobile UX snapshots', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -28,6 +31,13 @@ test.describe('Mobile UX snapshots', () => {
 	await expect(mainPage.locator('body')).toBeVisible();
 	await mainPage.waitForTimeout(250);
 	await mainPage.screenshot({ path: 'test-results/mobile-ux/index-mobile.png', fullPage: true });
+	if (ASSERT_VISUAL_BASELINE) {
+	  await expect(mainPage).toHaveScreenshot('index-mobile.png', {
+		fullPage: true,
+		animations: 'disabled',
+		maxDiffPixelRatio: MAX_DIFF_PIXEL_RATIO
+	  });
+	}
 
 	const pagePaths = [
 	  '/HTML%20Files/adventure-details-window.html',
@@ -54,6 +64,14 @@ test.describe('Mobile UX snapshots', () => {
 		path: `test-results/mobile-ux/${slug}.png`,
 		fullPage: true
 	  });
+
+	  if (ASSERT_VISUAL_BASELINE) {
+		await expect(page).toHaveScreenshot(`${slug}.png`, {
+		  fullPage: true,
+		  animations: 'disabled',
+		  maxDiffPixelRatio: MAX_DIFF_PIXEL_RATIO
+		});
+	  }
 
 	  await page.close();
 	}

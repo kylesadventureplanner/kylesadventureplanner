@@ -23,9 +23,6 @@
   <!-- BIRDS SUB-TAB -->
   <div id="natureChallengePane-birds" class="nature-challenge-pane is-active" data-nature-pane="birds" role="tabpanel" aria-labelledby="natureChallengeTab-birds">
     <div class="nature-birds-view is-active" data-birds-view="overview">
-      <div id="birdsUndoPrompt" class="nature-undo-prompt" aria-live="polite" hidden>
-        <span id="birdsUndoPromptText">Last action available to undo.</span>
-      </div>
 
       <div class="card nature-explore-cta-card" style="margin-top: 18px;">
         <div class="nature-explore-cta-row">
@@ -1470,29 +1467,6 @@
     margin-bottom: 8px;
   }
 
-  #natureChallengeRoot .nature-undo-prompt {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    margin: 0 0 var(--birds-space-8) auto;
-    border: 1px solid #fed7aa;
-    background: #fff7ed;
-    color: #9a3412;
-    border-radius: 999px;
-    padding: 4px 8px;
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  #natureChallengeRoot .nature-undo-prompt .pill-button {
-    min-height: 30px;
-    padding: 0 10px;
-    border: 1px solid #fdba74;
-    background: #fff;
-    color: #9a3412;
-    font-size: 11px;
-  }
 
   #natureChallengeRoot .nature-today-focus-card {
     border-color: var(--birds-border-emphasis);

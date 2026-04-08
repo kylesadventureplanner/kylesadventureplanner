@@ -208,6 +208,52 @@
   margin-top: 16px;
 }
 
+@media (max-width: 1024px) {
+  body.mobile-view .tabs-nav,
+  body.iphone-view .tabs-nav {
+    gap: 6px;
+    margin-bottom: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  body.mobile-view .tab-btn,
+  body.iphone-view .tab-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  body.mobile-view .edit-lead-text,
+  body.iphone-view .edit-lead-text {
+    margin-bottom: 10px;
+    line-height: 1.45;
+  }
+
+  body.mobile-view .edit-help-text,
+  body.iphone-view .edit-help-text {
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  body.mobile-view .button-group,
+  body.iphone-view .button-group {
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  body.mobile-view .button,
+  body.iphone-view .button {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  body.mobile-view .status-message,
+  body.iphone-view .status-message {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+}
+
 .edit-subcard-blue-soft {
   border: 1px solid var(--edit-subcard-blue-soft-border);
   background: var(--edit-subcard-blue-soft-bg);

@@ -8,6 +8,8 @@
     "build:azure": "npm run build",
     "reliability:smoke": "playwright test tests/reliability-smoke.spec.js",
     "mobile:qa": "playwright test tests/mobile-ux-snapshots.spec.js",
+    "mobile:qa:update": "playwright test tests/mobile-ux-snapshots.spec.js --update-snapshots",
+    "mobile:qa:gate": "MOBILE_QA_ASSERT=1 playwright test tests/mobile-ux-snapshots.spec.js",
     "reliability:ownership": "node scripts/check-control-ownership.js",
     "reliability:gate": "node scripts/reliability-gate.js"
   },

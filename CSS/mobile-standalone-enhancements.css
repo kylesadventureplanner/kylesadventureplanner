@@ -13,16 +13,32 @@
   --mobile-space-6: 24px;
   --mobile-radius: 12px;
   --mobile-touch-target: 44px;
+  --mobile-safe-top: env(safe-area-inset-top, 0px);
+  --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mobile-safe-left: env(safe-area-inset-left, 0px);
+  --mobile-safe-right: env(safe-area-inset-right, 0px);
 }
 
 body.mobile-view,
 body.iphone-view {
-  padding-left: max(12px, env(safe-area-inset-left, 0px));
-  padding-right: max(12px, env(safe-area-inset-right, 0px));
-  padding-top: max(12px, env(safe-area-inset-top, 0px));
-  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(12px, var(--mobile-safe-left));
+  padding-right: max(12px, var(--mobile-safe-right));
+  padding-top: max(12px, var(--mobile-safe-top));
+  padding-bottom: max(12px, var(--mobile-safe-bottom));
   font-size: var(--mobile-font-size-md);
   line-height: 1.45;
+}
+
+/* Per-page safe-area fine tuning for top-level headers. */
+body.mobile-view .app-header,
+body.mobile-view .header,
+body.mobile-view .head,
+body.mobile-view #trailExplorerHeader,
+body.iphone-view .app-header,
+body.iphone-view .header,
+body.iphone-view .head,
+body.iphone-view #trailExplorerHeader {
+  padding-top: calc(var(--mobile-space-3) + var(--mobile-safe-top));
 }
 
 body.mobile-view h1,
@@ -106,7 +122,7 @@ body.iphone-view .trail-results-controls-grid {
   body.mobile-view .mobile-sticky-actions,
   body.iphone-view .mobile-sticky-actions {
     position: sticky;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    bottom: calc(var(--mobile-safe-bottom) + 8px);
     z-index: 999;
     margin-top: var(--mobile-space-3);
     padding: var(--mobile-space-2);
@@ -116,9 +132,40 @@ body.iphone-view .trail-results-controls-grid {
     backdrop-filter: blur(4px);
   }
 
+  /* Keep sticky utility rows and trays above iOS gesture area. */
+  body.mobile-view .loc-shortlist-tray,
+  body.mobile-view .action-bar,
+  body.iphone-view .loc-shortlist-tray,
+  body.iphone-view .action-bar {
+    padding-bottom: calc(var(--mobile-space-2) + var(--mobile-safe-bottom));
+  }
+
   body.mobile-view .action-bar,
   body.iphone-view .action-bar {
     gap: var(--mobile-space-2);
+  }
+
+  /* Denser mobile forms for edit/automation-style standalone pages. */
+  body.mobile-view .app-container,
+  body.iphone-view .app-container {
+    padding: var(--mobile-space-3);
+  }
+
+  body.mobile-view .card,
+  body.iphone-view .card {
+    margin-bottom: var(--mobile-space-3);
+  }
+
+  body.mobile-view .input-group,
+  body.iphone-view .input-group {
+    margin-bottom: var(--mobile-space-2);
+  }
+
+  body.mobile-view .edit-section-body,
+  body.mobile-view .edit-subsection-body,
+  body.iphone-view .edit-section-body,
+  body.iphone-view .edit-subsection-body {
+    padding: var(--mobile-space-3);
   }
 }
 

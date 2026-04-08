@@ -825,30 +825,23 @@
   }
 
   function renderBirdUndoPrompt() {
-    const prompt = document.getElementById('birdsUndoPrompt');
-    const text = document.getElementById('birdsUndoPromptText');
     const actionButton = document.getElementById('birdsUndoActionBtn');
-    if (!prompt || !text) return;
+    const prompt = document.getElementById('birdsUndoPrompt');
+    if (prompt) prompt.hidden = true;
+    if (!actionButton) return;
     if (!state.lastUndoAction) {
-      prompt.hidden = true;
-      if (actionButton) {
-        actionButton.disabled = true;
-        actionButton.setAttribute('aria-disabled', 'true');
-        actionButton.setAttribute('title', 'No Birds action to undo yet');
-        actionButton.setAttribute('data-tooltip', 'No Birds action to undo yet');
-      }
+      actionButton.disabled = true;
+      actionButton.setAttribute('aria-disabled', 'true');
+      actionButton.setAttribute('title', 'No Birds action to undo yet');
+      actionButton.setAttribute('data-tooltip', 'No Birds action to undo yet');
       return;
     }
     const label = state.lastUndoAction.label || 'Last birds action';
-    text.textContent = `${label} can be undone.`;
-    prompt.hidden = false;
     const tooltip = `Undo the last Birds action: ${label}`;
-    if (actionButton) {
-      actionButton.disabled = false;
-      actionButton.setAttribute('aria-disabled', 'false');
-      actionButton.setAttribute('title', tooltip);
-      actionButton.setAttribute('data-tooltip', tooltip);
-    }
+    actionButton.disabled = false;
+    actionButton.setAttribute('aria-disabled', 'false');
+    actionButton.setAttribute('title', tooltip);
+    actionButton.setAttribute('data-tooltip', tooltip);
   }
 
   function setUndoAction(action) {
