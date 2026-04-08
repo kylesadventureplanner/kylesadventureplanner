@@ -365,6 +365,9 @@ class TabContentLoader {
     // Hide all tabs
     document.querySelectorAll('.app-tab-pane').forEach(pane => {
       pane.classList.remove('active');
+      // Proactively clear any stale loading overlay so it can never block the
+      // incoming tab's buttons. This is safe to call even if no indicator exists.
+      this.hideLoadingIndicator(pane);
     });
 
     // Remove active state from buttons

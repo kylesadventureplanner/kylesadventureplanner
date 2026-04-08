@@ -6065,6 +6065,36 @@
     ensureBirdClickDiagnosticsPanel(root);
     bindNatureControls(root);
     applyExplorerDensity(root);
+
+    // ── Re-run button responsiveness every time the nature-challenge tab becomes ──
+    // visible.  bindNatureControls only runs once (guard), but the tab may have been
+    // preloaded while hidden, leaving stale overlay/z-index state.  This listener
+    // fires on every tab switch and proactively clears any leftover loading overlay
+    // and re-checks all buttons so clicks are reliable the moment the tab appears.
+    if (!root.dataset.tabSwitchListenerBound) {
+      root.dataset.tabSwitchListenerBound = '1';
+      window.addEventListener('app:tab-switched', (event) => {
+        if (!event || !event.detail || event.detail.tabId !== 'nature-challenge') return;
+        const liveRoot = document.getElementById('natureChallengeRoot');
+        if (!liveRoot) return;
+
+        // 1. Remove stale loading overlay from the outer pane (sibling of root).
+        const outerPane = liveRoot.parentElement;
+        if (outerPane) {
+          outerPane.classList.remove('tab-is-loading');
+          const staleIndicator = outerPane.querySelector('.tab-loading-indicator');
+          if (staleIndicator) staleIndicator.remove();
+        }
+
+        // 2. Re-run button responsiveness immediately and after the next paint.
+        ensureNatureButtonsResponsive(liveRoot);
+        ensureBirdClickDiagnosticsPanel(liveRoot);
+        requestAnimationFrame(() => {
+          ensureNatureButtonsResponsive(liveRoot);
+        });
+      });
+    }
+
     const diagnostics = document.getElementById('birdsDiagnosticsDetails');
     if (diagnostics) diagnostics.open = false;
     const logDateInput = document.getElementById('birdsLogDateInput');
