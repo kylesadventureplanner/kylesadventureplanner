@@ -18,14 +18,14 @@
   const BIRD_SIGHTINGS_TABLE_NAME = 'birds_sightings';
   const BIRD_USER_STATE_TABLE_NAME = 'birds_user_state';
   const EXCEL_SYNC_FILE_CANDIDATES = [
-    'Nature_Sightings.xlsx',
-    'Copilot_Apps/Kyles_Adventure_Finder/Nature_Sightings.xlsx'
+    'Copilot_Apps/Kyles_Adventure_Finder/Nature_Sightings.xlsx',
+    'Nature_Sightings.xlsx'
   ];
   const BIRD_SIGHTINGS_REQUIRED_COLUMNS = ['event_id', 'user_id', 'device_id', 'species_status_key', 'species_id', 'canonical_id', 'date_observed', 'count', 'is_deleted', 'created_at', 'updated_at'];
   const BIRD_USER_STATE_REQUIRED_COLUMNS = ['state_id', 'user_id', 'species_status_key', 'species_id', 'canonical_id', 'is_favorite', 'created_at', 'updated_at'];
   const EXCEL_FILE_CANDIDATES = [
-    'Nature_records.xlsx',
-    'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx'
+    'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx',
+    'Nature_records.xlsx'
   ];
   const SUBTAB_KEYS = ['birds', 'mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees', 'shrubs'];
   const BIRD_VIEWS = ['overview', 'log', 'explorer', 'detail', 'collection'];
@@ -1211,7 +1211,7 @@
       .join('/');
   }
 
-  async function fetchGraphJson(url) {
+  async function fetchGraphJson(url, options = {}) {
     const run = async () => {
       const response = await fetch(url, {
         method: 'GET',
@@ -1221,12 +1221,18 @@
         }
       });
       if (!response.ok) {
-        throw new Error(`Graph request failed (${response.status})`);
+        const error = new Error(`Graph request failed (${response.status})`);
+        error.status = response.status;
+        error.url = url;
+        throw error;
       }
       return response.json().catch(() => ({}));
     };
+
+    const retries = Math.max(0, Number(options.retries != null ? options.retries : 2) || 0);
     if (window.ReliabilityAsync && typeof window.ReliabilityAsync.retryRead === 'function') {
-      return window.ReliabilityAsync.retryRead('Graph read', run, { retries: 2, backoffMs: 320 });
+      if (retries === 0) return run();
+      return window.ReliabilityAsync.retryRead('Graph read', run, { retries, backoffMs: 320 });
     }
     return run();
   }
@@ -1266,8 +1272,8 @@
     const encodedPath = encodeGraphPath(filePath);
     const tableRef = encodeURIComponent(tableName);
     const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableRef}`;
-    const columnsPayload = await fetchGraphJson(`${baseUrl}/columns?$select=name,index`);
-    const rowsPayload = await fetchGraphJson(`${baseUrl}/rows?$top=${Math.max(1, Number(top) || 5000)}`);
+    const columnsPayload = await fetchGraphJson(`${baseUrl}/columns?$select=name,index`, { retries: 0 });
+    const rowsPayload = await fetchGraphJson(`${baseUrl}/rows?$top=${Math.max(1, Number(top) || 5000)}`, { retries: 0 });
     return {
       columns: Array.isArray(columnsPayload.value) ? columnsPayload.value : [],
       rows: Array.isArray(rowsPayload.value) ? rowsPayload.value : []
@@ -2280,6 +2286,114 @@
     return Array.from(new Set(configured.concat(remembered, EXCEL_SYNC_FILE_CANDIDATES, dataWorkbookFallback)));
   }
 
+  function parseGraphStatusFromError(error) {
+    const message = String(error && error.message ? error.message : error || '');
+    const match = message.match(/\((\d{3})\)/);
+    return match ? Number(match[1]) : null;
+  }
+
+  async function probeWorkbookCandidates(candidatePaths, tableNames) {
+    const candidates = Array.isArray(candidatePaths) ? candidatePaths.filter(Boolean).map((v) => String(v).trim()).filter(Boolean) : [];
+    const tables = Array.isArray(tableNames) ? tableNames.filter(Boolean).map((v) => String(v).trim()) : [];
+    const attempts = [];
+    let winningWorkbookPath = '';
+
+    for (let i = 0; i < candidates.length; i += 1) {
+      const filePath = candidates[i];
+      const tableChecks = [];
+      for (let j = 0; j < tables.length; j += 1) {
+        const tableName = tables[j];
+        try {
+          const payload = await fetchTableColumnsAndRows(filePath, tableName, 1);
+          tableChecks.push({
+            tableName,
+            ok: true,
+            status: 200,
+            columnCount: Array.isArray(payload.columns) ? payload.columns.length : 0,
+            rowSampleCount: Array.isArray(payload.rows) ? payload.rows.length : 0,
+            error: ''
+          });
+        } catch (error) {
+          tableChecks.push({
+            tableName,
+            ok: false,
+            status: parseGraphStatusFromError(error),
+            columnCount: 0,
+            rowSampleCount: 0,
+            error: String(error && error.message ? error.message : error || 'Unknown probe error')
+          });
+        }
+      }
+
+      const failingTableNames = tableChecks.filter((row) => !row.ok).map((row) => row.tableName);
+      const ok = failingTableNames.length === 0;
+      if (ok && !winningWorkbookPath) winningWorkbookPath = filePath;
+      attempts.push({ filePath, ok, failingTableNames, tableChecks });
+    }
+
+    return { candidateList: candidates, winningWorkbookPath, attempts };
+  }
+
+  async function runBirdWorkbookDiagnostics() {
+    const diagnostics = {
+      generatedAt: toIsoNow(),
+      signedIn: Boolean(window.accessToken),
+      userId: getBirdSyncUserId(),
+      configured: {
+        natureBirdTableConfig: window.natureBirdTableConfig || null,
+        natureBirdSyncConfig: window.natureBirdSyncConfig || null
+      },
+      statePaths: {
+        birdDataWorkbookPath: String(state.birdDataWorkbookPath || ''),
+        birdSyncWorkbookPath: String(state.birdSyncWorkbookPath || '')
+      },
+      data: {
+        tableName: window.natureBirdTableConfig?.tableName || EXCEL_TABLE_NAME,
+        candidateProbe: null
+      },
+      sync: {
+        tableNames: [BIRD_SIGHTINGS_TABLE_NAME, BIRD_USER_STATE_TABLE_NAME],
+        candidateProbe: null
+      }
+    };
+
+    diagnostics.data.candidateProbe = await probeWorkbookCandidates(
+      getBirdFileCandidates(),
+      [diagnostics.data.tableName]
+    );
+    diagnostics.sync.candidateProbe = await probeWorkbookCandidates(
+      getBirdSyncFileCandidates(),
+      diagnostics.sync.tableNames
+    );
+
+    window.__birdsWorkbookDiagnosticsLast = diagnostics;
+
+    console.groupCollapsed('🧪 Birds workbook diagnostics');
+    console.log('Summary:', {
+      generatedAt: diagnostics.generatedAt,
+      signedIn: diagnostics.signedIn,
+      userId: diagnostics.userId,
+      dataWinningWorkbookPath: diagnostics.data.candidateProbe.winningWorkbookPath || '(none)',
+      syncWinningWorkbookPath: diagnostics.sync.candidateProbe.winningWorkbookPath || '(none)'
+    });
+    console.log('Data candidate list:', diagnostics.data.candidateProbe.candidateList);
+    console.log('Sync candidate list:', diagnostics.sync.candidateProbe.candidateList);
+    console.table(diagnostics.data.candidateProbe.attempts.map((row) => ({
+      filePath: row.filePath,
+      ok: row.ok,
+      failingTableNames: row.failingTableNames.join(', ') || '(none)'
+    })));
+    console.table(diagnostics.sync.candidateProbe.attempts.map((row) => ({
+      filePath: row.filePath,
+      ok: row.ok,
+      failingTableNames: row.failingTableNames.join(', ') || '(none)'
+    })));
+    console.log('Full diagnostics object:', diagnostics);
+    console.groupEnd();
+
+    return diagnostics;
+  }
+
   async function loadBirdDataFromExcel() {
     if (!window.accessToken) {
       throw new Error('Excel source unavailable: you are not signed in.');
@@ -2295,8 +2409,8 @@
       const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}`;
 
       try {
-        const columnsPayload = await fetchGraphJson(`${baseUrl}/columns?$select=name,index`);
-        const rowsPayload = await fetchGraphJson(`${baseUrl}/rows?$top=5000`);
+        const columnsPayload = await fetchGraphJson(`${baseUrl}/columns?$select=name,index`, { retries: 0 });
+        const rowsPayload = await fetchGraphJson(`${baseUrl}/rows?$top=5000`, { retries: 0 });
 
         const dataset = parseBirdDataFromExcelRows(columnsPayload.value || [], rowsPayload.value || []);
         return {
@@ -6113,6 +6227,25 @@
       syncNowBtn.addEventListener('click', () => processSyncQueue());
     }
 
+    const workbookDiagnosticsBtn = document.getElementById('birdsWorkbookDiagnosticsBtn');
+    if (workbookDiagnosticsBtn && workbookDiagnosticsBtn.dataset.natureWorkbookDiagBound !== '1') {
+      workbookDiagnosticsBtn.dataset.natureWorkbookDiagBound = '1';
+      workbookDiagnosticsBtn.addEventListener('click', () => {
+        withBirdsActionGuard(workbookDiagnosticsBtn, async () => {
+          const result = await runBirdWorkbookDiagnostics();
+          if (typeof window.showToast === 'function') {
+            const dataPath = result && result.data && result.data.candidateProbe
+              ? result.data.candidateProbe.winningWorkbookPath
+              : '';
+            const syncPath = result && result.sync && result.sync.candidateProbe
+              ? result.sync.candidateProbe.winningWorkbookPath
+              : '';
+            window.showToast(`Workbook diagnostics printed. Data: ${dataPath || 'not found'} | Sync: ${syncPath || 'not found'}`, 'info', 4200);
+          }
+        });
+      });
+    }
+
     const useFreezeBtn = document.getElementById('birdsUseFreezeBtn');
     if (useFreezeBtn && useFreezeBtn.dataset.natureUseFreezeBound !== '1') {
       useFreezeBtn.dataset.natureUseFreezeBound = '1';
@@ -6225,6 +6358,7 @@
   window.initializeNatureChallengeTab = initializeNatureChallengeTab;
   window.initNatureChallengeTab = window.initNatureChallengeTab || initializeNatureChallengeTab;
   window.getRecentBirdClickTraceSnapshot = getRecentBirdClickTraceSnapshot;
+  window.runBirdWorkbookDiagnostics = runBirdWorkbookDiagnostics;
   window.BIRD_PROGRESSION_SPEC = BIRD_PROGRESSION_SPEC;
   window.setBirdClickDiagnosticsEnabled = function(enabled) {
     try {

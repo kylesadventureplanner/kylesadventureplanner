@@ -591,29 +591,40 @@
       event.preventDefault();
       event.stopPropagation();
 
-      if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
-        ensureEditingRowFromModalDataset();
-      }
-      syncRowDetailContextFromGlobals();
-
-      if (isEditModeActive()) {
-        if (typeof window.__rowDetailSafeSaveEditedData === 'function') {
-          await window.__rowDetailSafeSaveEditedData();
-        } else {
-          logRowDetailSaveDiagnostic('SAFE_WRAPPER_MISSING', null, { path: 'editButton' });
-        }
-        syncRowDetailContextFromGlobals();
+      const liveParts = getRowDetailParts();
+      if (!isVisible(liveParts.modal)) {
+        // Ignore stale/floating edit clicks when modal is not actually open.
         return;
       }
+      if (editButton.dataset.rowDetailEditInFlight === '1') return;
+      editButton.dataset.rowDetailEditInFlight = '1';
 
-      if (typeof window.__rowDetailOriginalEnableEditMode === 'function') {
-        window.__rowDetailOriginalEnableEditMode();
+      try {
+        if (!window.currentEditingRow || !Number.isInteger(window.currentEditingRowIndex)) {
+          ensureEditingRowFromModalDataset();
+        }
         syncRowDetailContextFromGlobals();
-      } else if (typeof window.enableEditMode === 'function' && window.enableEditMode !== window.__rowDetailSafeEnableEditMode) {
-        window.enableEditMode();
-        syncRowDetailContextFromGlobals();
-      } else if (window.showToast) {
-        window.showToast('Edit mode is still loading. Please try again.', 'warning', 2000);
+
+        if (isEditModeActive()) {
+          if (typeof window.__rowDetailSafeSaveEditedData === 'function') {
+            await window.__rowDetailSafeSaveEditedData();
+          } else {
+            logRowDetailSaveDiagnostic('SAFE_WRAPPER_MISSING', null, { path: 'editButton' });
+          }
+          syncRowDetailContextFromGlobals();
+          return;
+        }
+
+        if (typeof window.__rowDetailSafeEnableEditMode === 'function') {
+          window.__rowDetailSafeEnableEditMode();
+          syncRowDetailContextFromGlobals();
+        } else {
+          window.showToast && window.showToast('Edit mode is still loading. Please try again.', 'warning', 2000);
+        }
+      } finally {
+        window.setTimeout(() => {
+          if (editButton && editButton.dataset) delete editButton.dataset.rowDetailEditInFlight;
+        }, 120);
       }
     }, true);
 
