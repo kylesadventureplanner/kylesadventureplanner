@@ -7,6 +7,7 @@
     "build": "node -e \"console.log('Static site detected: no build step required.')\"",
     "build:azure": "npm run build",
     "reliability:smoke": "playwright test tests/reliability-smoke.spec.js",
+    "mobile:qa": "playwright test tests/mobile-ux-snapshots.spec.js",
     "reliability:ownership": "node scripts/check-control-ownership.js",
     "reliability:gate": "node scripts/reliability-gate.js"
   },

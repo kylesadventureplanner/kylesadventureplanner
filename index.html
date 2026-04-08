@@ -22219,7 +22219,52 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
    */
   (function initializeIphoneViewCanonical() {
     const BTN_SELECTOR = '#iphoneToggleBtn, #bikeIphoneToggleBtn';
+    const STORAGE_KEY = 'iphoneViewEnabled';
     let initDone = false;
+
+    function readPersistedMobileView() {
+      try {
+        const localValue = localStorage.getItem(STORAGE_KEY);
+        if (localValue === '1' || localValue === 'true') return true;
+        if (localValue === '0' || localValue === 'false') return false;
+      } catch (_error) {
+        // Ignore storage availability problems.
+      }
+      try {
+        const sessionValue = sessionStorage.getItem(STORAGE_KEY);
+        if (sessionValue === '1' || sessionValue === 'true') return true;
+        if (sessionValue === '0' || sessionValue === 'false') return false;
+      } catch (_error) {
+        // Ignore storage availability problems.
+      }
+      return document.body.classList.contains('mobile-view') || document.body.classList.contains('iphone-view');
+    }
+
+    function persistMobileView(isMobileView) {
+      const persistedValue = isMobileView ? '1' : '0';
+      try {
+        localStorage.setItem(STORAGE_KEY, persistedValue);
+      } catch (_error) {
+        // Ignore storage availability problems.
+      }
+      try {
+        sessionStorage.setItem(STORAGE_KEY, persistedValue);
+      } catch (_error) {
+        // Ignore storage availability problems.
+      }
+    }
+
+    function applyMobileViewState(isMobileView, source = 'unknown') {
+      document.body.classList.toggle('mobile-view', isMobileView);
+      document.body.classList.toggle('iphone-view', isMobileView);
+      document.body.dataset.mobileView = isMobileView ? '1' : '0';
+      syncButtonStates(isMobileView);
+      window.dispatchEvent(new CustomEvent('app:mobile-view-changed', {
+        detail: { enabled: isMobileView, source }
+      }));
+      window.dispatchEvent(new Event('resize'));
+      return isMobileView;
+    }
 
     /**
      * Sync all iPhone toggle buttons to show current state
@@ -22236,11 +22281,21 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
      * Main toggle function - called on button click
      */
     window.toggleIphoneView = function() {
-      const isMobileView = document.body.classList.toggle('mobile-view');
-      localStorage.setItem('iphoneViewEnabled', isMobileView ? '1' : '0');
-      syncButtonStates(isMobileView);
+      const isMobileView = !document.body.classList.contains('mobile-view');
+      persistMobileView(isMobileView);
+      applyMobileViewState(isMobileView, 'toggle');
       console.log(`📱 iPhone View ${isMobileView ? 'enabled' : 'disabled'}`);
       return isMobileView;
+    };
+
+    window.isIphoneViewEnabled = function() {
+      return document.body.classList.contains('mobile-view');
+    };
+
+    window.applyIphoneViewState = function(enabled) {
+      const isMobileView = Boolean(enabled);
+      persistMobileView(isMobileView);
+      return applyMobileViewState(isMobileView, 'api');
     };
 
     /**
@@ -22251,9 +22306,8 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       initDone = true;
 
       // Restore persisted state
-      const isPersistedMobile = localStorage.getItem('iphoneViewEnabled') === '1';
-      document.body.classList.toggle('mobile-view', isPersistedMobile);
-      syncButtonStates(isPersistedMobile);
+      const isPersistedMobile = readPersistedMobileView();
+      applyMobileViewState(isPersistedMobile, 'init');
 
       // Event delegation: attach listener once, works for all present/future buttons
       document.addEventListener('click', (event) => {
@@ -22270,6 +22324,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         if (event.key === 'Escape' && document.body.classList.contains('mobile-view')) {
           window.toggleIphoneView();
         }
+      });
+
+      window.addEventListener('storage', (event) => {
+        if (!event || event.key !== STORAGE_KEY) return;
+        const isMobileView = event.newValue === '1' || event.newValue === 'true';
+        applyMobileViewState(isMobileView, 'storage');
       });
 
       console.log('✅ iPhone View toggle system initialized');

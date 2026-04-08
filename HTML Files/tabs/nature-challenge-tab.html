@@ -3025,6 +3025,156 @@
     box-shadow: 0 10px 24px rgba(161, 98, 7, 0.16);
   }
 
+  body.mobile-view #natureChallengeRoot .nature-overview-command-row,
+  body.iphone-view #natureChallengeRoot .nature-overview-command-row {
+    grid-template-columns: 1fr;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-sticky-action-rail,
+  body.iphone-view #natureChallengeRoot .nature-sticky-action-rail {
+    position: static;
+    border: none;
+    padding: 0;
+    backdrop-filter: none;
+    background: transparent;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-explore-cta-row,
+  body.iphone-view #natureChallengeRoot .nature-explore-cta-row,
+  body.mobile-view #natureChallengeRoot .nature-view-header-row,
+  body.iphone-view #natureChallengeRoot .nature-view-header-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-explore-cta-actions,
+  body.iphone-view #natureChallengeRoot .nature-explore-cta-actions {
+    width: 100%;
+    justify-content: stretch;
+    flex-direction: column;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-explore-birds-btn,
+  body.iphone-view #natureChallengeRoot .nature-explore-birds-btn,
+  body.mobile-view #natureChallengeRoot .nature-log-form-actions .pill-button,
+  body.iphone-view #natureChallengeRoot .nature-log-form-actions .pill-button,
+  body.mobile-view #natureChallengeRoot .nature-density-mode-group .pill-button,
+  body.iphone-view #natureChallengeRoot .nature-density-mode-group .pill-button {
+    width: 100%;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-search-row,
+  body.iphone-view #natureChallengeRoot .nature-search-row,
+  body.mobile-view #natureChallengeRoot .nature-log-command-row,
+  body.iphone-view #natureChallengeRoot .nature-log-command-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-search-meta,
+  body.iphone-view #natureChallengeRoot .nature-search-meta {
+    white-space: normal;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-explorer-toolbar,
+  body.iphone-view #natureChallengeRoot .nature-explorer-toolbar,
+  body.mobile-view #natureChallengeRoot .nature-explorer-toolbar--primary,
+  body.iphone-view #natureChallengeRoot .nature-explorer-toolbar--primary,
+  body.mobile-view #natureChallengeRoot .nature-explorer-toolbar--advanced,
+  body.iphone-view #natureChallengeRoot .nature-explorer-toolbar--advanced,
+  body.mobile-view #natureChallengeRoot .nature-workflow-toggle-grid,
+  body.iphone-view #natureChallengeRoot .nature-workflow-toggle-grid,
+  body.mobile-view #natureChallengeRoot .nature-log-form-grid,
+  body.iphone-view #natureChallengeRoot .nature-log-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-density-mode-group,
+  body.iphone-view #natureChallengeRoot .nature-density-mode-group {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-chip-filter-groups,
+  body.iphone-view #natureChallengeRoot .nature-chip-filter-groups {
+    gap: 10px;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-chip-filter-group,
+  body.iphone-view #natureChallengeRoot .nature-chip-filter-group {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-chip-filter-group > .nature-chip-filter-label,
+  body.iphone-view #natureChallengeRoot .nature-chip-filter-group > .nature-chip-filter-label {
+    flex: 0 0 auto;
+    min-width: max-content;
+    align-self: center;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-chip-filter-group .nature-chip-filter,
+  body.iphone-view #natureChallengeRoot .nature-chip-filter-group .nature-chip-filter,
+  body.mobile-view #natureChallengeRoot .nature-active-filters-pills,
+  body.iphone-view #natureChallengeRoot .nature-active-filters-pills {
+    flex-wrap: nowrap;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-log-view-grid,
+  body.iphone-view #natureChallengeRoot .nature-log-view-grid {
+    padding: 0 10px 16px;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-log-panel,
+  body.iphone-view #natureChallengeRoot .nature-log-panel,
+  body.mobile-view #natureChallengeRoot .nature-overview-command-card,
+  body.iphone-view #natureChallengeRoot .nature-overview-command-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-view-header-row--sticky,
+  body.iphone-view #natureChallengeRoot .nature-view-header-row--sticky {
+    position: sticky;
+    top: 0;
+    padding: 12px;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-log-form-actions--sticky,
+  body.iphone-view #natureChallengeRoot .nature-log-form-actions--sticky,
+  body.mobile-view #natureChallengeRoot .nature-explorer-pagination,
+  body.iphone-view #natureChallengeRoot .nature-explorer-pagination {
+    position: sticky;
+    bottom: 0;
+    z-index: 8;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-explorer-pagination,
+  body.iphone-view #natureChallengeRoot .nature-explorer-pagination {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-explorer-pagination > *,
+  body.iphone-view #natureChallengeRoot .nature-explorer-pagination > * {
+    min-width: 0;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-page-jump-label,
+  body.iphone-view #natureChallengeRoot .nature-page-jump-label {
+    display: grid;
+    gap: 6px;
+  }
+
   @media (max-width: 760px) {
     #natureChallengeRoot .nature-overview-command-row {
       grid-template-columns: 1fr;

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Trail Explorer - Kyle's Adventure Finder</title>
+  <script src="../JS Files/mobile-view-persistence-bootstrap.js"></script>
   <link rel="stylesheet" href="../CSS/design-tokens.css" />
   <link rel="stylesheet" href="../CSS/components.css" />
   <link rel="stylesheet" href="../CSS/utilities.css" />
@@ -704,7 +705,7 @@
   </div>
 
   <section id="trailCitiesPage" class="hidden">
-    <div class="trail-cities-controls">
+    <div class="trail-cities-controls mobile-sticky-actions">
       <input id="trailCitySearchInput" class="trail-cities-input" type="text" placeholder="Search regions..." />
       <select id="trailCitySortSelect" class="trail-cities-select" aria-label="Sort regions">
         <option value="count">Sort by Region Count</option>
@@ -741,7 +742,7 @@
         <button id="trailCopyShareBtn" type="button" class="trail-mini-btn">Copy Share Link</button>
       </div>
 
-      <div class="trail-results-controls-grid">
+      <div class="trail-results-controls-grid mobile-sticky-actions">
         <div>
           <label for="trailResultDifficultyFilter">Difficulty</label>
           <select id="trailResultDifficultyFilter" class="trail-results-filter-select">

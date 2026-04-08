@@ -1,0 +1,124 @@
+/* Shared mobile polish for standalone windows. */
+:root {
+  --mobile-font-size-xs: 12px;
+  --mobile-font-size-sm: 13px;
+  --mobile-font-size-md: 15px;
+  --mobile-font-size-lg: 17px;
+  --mobile-font-size-xl: 20px;
+  --mobile-space-1: 4px;
+  --mobile-space-2: 8px;
+  --mobile-space-3: 12px;
+  --mobile-space-4: 16px;
+  --mobile-space-5: 20px;
+  --mobile-space-6: 24px;
+  --mobile-radius: 12px;
+  --mobile-touch-target: 44px;
+}
+
+body.mobile-view,
+body.iphone-view {
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  font-size: var(--mobile-font-size-md);
+  line-height: 1.45;
+}
+
+body.mobile-view h1,
+body.iphone-view h1 {
+  font-size: var(--mobile-font-size-xl);
+}
+
+body.mobile-view h2,
+body.mobile-view h3,
+body.iphone-view h2,
+body.iphone-view h3 {
+  font-size: var(--mobile-font-size-lg);
+}
+
+/* Enforce minimum touch target sizes for tappable controls. */
+body.mobile-view button,
+body.mobile-view .button,
+body.mobile-view .ab-btn,
+body.mobile-view .loc-action-btn,
+body.mobile-view .loc-mini-btn,
+body.mobile-view .trail-cities-btn,
+body.mobile-view .trail-results-btn,
+body.mobile-view .tab-btn,
+body.mobile-view a.loc-action-btn,
+body.mobile-view input[type="button"],
+body.mobile-view input[type="submit"],
+body.iphone-view button,
+body.iphone-view .button,
+body.iphone-view .ab-btn,
+body.iphone-view .loc-action-btn,
+body.iphone-view .loc-mini-btn,
+body.iphone-view .trail-cities-btn,
+body.iphone-view .trail-results-btn,
+body.iphone-view .tab-btn,
+body.iphone-view a.loc-action-btn,
+body.iphone-view input[type="button"],
+body.iphone-view input[type="submit"] {
+  min-height: var(--mobile-touch-target);
+  min-width: var(--mobile-touch-target);
+}
+
+body.mobile-view input,
+body.mobile-view select,
+body.mobile-view textarea,
+body.iphone-view input,
+body.iphone-view select,
+body.iphone-view textarea {
+  min-height: var(--mobile-touch-target);
+  font-size: 16px;
+}
+
+/* Stack dense layouts for mobile-mode even on wide desktop screens. */
+body.mobile-view .city-grid,
+body.mobile-view .locations-grid,
+body.mobile-view .trail-city-grid,
+body.mobile-view .trail-results-grid,
+body.mobile-view .u-grid-3-gap-8,
+body.iphone-view .city-grid,
+body.iphone-view .locations-grid,
+body.iphone-view .trail-city-grid,
+body.iphone-view .trail-results-grid,
+body.iphone-view .u-grid-3-gap-8 {
+  grid-template-columns: 1fr !important;
+}
+
+body.mobile-view .controls,
+body.mobile-view .locations-controls-grid,
+body.mobile-view .trail-cities-controls,
+body.mobile-view .trail-results-controls-grid,
+body.iphone-view .controls,
+body.iphone-view .locations-controls-grid,
+body.iphone-view .trail-cities-controls,
+body.iphone-view .trail-results-controls-grid {
+  grid-template-columns: 1fr !important;
+  display: grid !important;
+  gap: var(--mobile-space-3);
+}
+
+/* Shared sticky action rows for pages that opt in with mobile-sticky-actions. */
+@media (max-width: 1024px) {
+  body.mobile-view .mobile-sticky-actions,
+  body.iphone-view .mobile-sticky-actions {
+    position: sticky;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    z-index: 999;
+    margin-top: var(--mobile-space-3);
+    padding: var(--mobile-space-2);
+    border-radius: var(--mobile-radius);
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(4px);
+  }
+
+  body.mobile-view .action-bar,
+  body.iphone-view .action-bar {
+    gap: var(--mobile-space-2);
+  }
+}
+
