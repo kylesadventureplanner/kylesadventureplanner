@@ -53,6 +53,33 @@
     migration: { label: 'Migration', icon: 'Migration', className: 'season-migration' }
   };
 
+  const PROGRESSION_TIER_META = {
+    beginner: {
+      label: 'Beginner',
+      order: 1,
+      className: 'nature-progression-chip--beginner',
+      learningCopy: 'Build consistent field habits and learn the core logging loop.'
+    },
+    intermediate: {
+      label: 'Intermediate',
+      order: 2,
+      className: 'nature-progression-chip--intermediate',
+      learningCopy: 'Expand variety across habitats, regions, and seasonal opportunities.'
+    },
+    advanced: {
+      label: 'Advanced',
+      order: 3,
+      className: 'nature-progression-chip--advanced',
+      learningCopy: 'Sharpen identification quality with confidence, evidence, and taxonomy depth.'
+    },
+    'seasonal-mastery': {
+      label: 'Seasonal / Mastery',
+      order: 4,
+      className: 'nature-progression-chip--mastery',
+      learningCopy: 'Sustain long-term progression and complete chapter-level milestones.'
+    }
+  };
+
   const BIRD_PROGRESSION_SPEC = {
     dailyPickCount: 3,
     streak: {
@@ -65,36 +92,50 @@
       badgeGoalTiles: 3
     },
     challengeDefs: [
-      { id: 'challenge-daily-pulse', icon: 'Daily', title: 'Daily Pulse', description: 'Keep your log active today.', metric: 'todayLogCount', goal: 1, xp: 40 },
-      { id: 'challenge-weekly-wings', icon: 'Weekly', title: 'Weekly Wings', description: 'Log fresh bird species this week.', metric: 'weeklySightedCount', goal: 3, xp: 80 },
-      { id: 'challenge-monthly-milestone', icon: 'Monthly', title: 'Monthly Milestone', description: 'Build steady momentum across the month.', metric: 'monthlySightedCount', goal: 10, xp: 140 },
-      { id: 'challenge-quarterly-flight-plan', icon: 'Quarterly', title: 'Quarterly Flight Plan', description: 'Keep your seasonal list moving this quarter.', metric: 'quarterlySightedCount', goal: 25, xp: 220 },
-      { id: 'challenge-lifetime-lister', icon: 'All Time', title: 'Lifetime Lister', description: 'Grow your all-time bird checklist.', metric: 'totalSighted', goal: 100, xp: 300 },
-      { id: 'challenge-season-sweep', icon: '{seasonLabel}', title: '{seasonLabel} Sweep', description: 'Mark birds that are available in {season} right now.', metric: 'inSeasonSightedCount', goal: 15, xp: 130 },
-      { id: 'challenge-rare-radar', icon: 'Rare', title: 'Rare Radar', description: 'Find rare, very rare, or extremely rare species.', metric: 'rareSightedCount', goal: 5, xp: 170 },
-      { id: 'challenge-family-forager', icon: 'Families', title: 'Family Forager', description: 'Get at least one sighting in different bird families.', metric: 'familiesStarted', goal: 12, xp: 120 },
-      { id: 'challenge-migration-mapper', icon: 'Migration', title: 'Migration Mapper', description: 'Track birds that show up during migration windows.', metric: 'migrationSightedCount', goal: 8, xp: 150 },
-      { id: 'challenge-season-questline', icon: 'Quest', title: 'Season Questline', description: 'Log 12 sightings during {season} to complete your chapter.', metric: 'seasonalLogCount', goal: 12, xp: 180 }
+      { id: 'challenge-daily-pulse', tier: 'beginner', order: 10, icon: 'Daily', title: 'Daily Pulse', description: 'Keep your log active today.', metric: 'todayLogCount', goal: 1, xp: 40 },
+      { id: 'challenge-weekly-wings', tier: 'beginner', order: 20, icon: 'Weekly', title: 'Weekly Wings', description: 'Log fresh bird species this week.', metric: 'weeklySightedCount', goal: 3, xp: 80 },
+      { id: 'challenge-family-forager', tier: 'beginner', order: 30, icon: 'Families', title: 'Family Forager', description: 'Get at least one sighting in different bird families.', metric: 'familiesStarted', goal: 12, xp: 120 },
+      { id: 'challenge-monthly-milestone', tier: 'intermediate', order: 40, icon: 'Monthly', title: 'Monthly Milestone', description: 'Build steady momentum across the month.', metric: 'monthlySightedCount', goal: 10, xp: 140 },
+      { id: 'challenge-season-sweep', tier: 'intermediate', order: 50, icon: '{seasonLabel}', title: '{seasonLabel} Sweep', description: 'Mark birds that are available in {season} right now.', metric: 'inSeasonSightedCount', goal: 15, xp: 130 },
+      { id: 'challenge-rare-radar', tier: 'intermediate', order: 60, icon: 'Rare', title: 'Rare Radar', description: 'Find rare, very rare, or extremely rare species.', metric: 'rareSightedCount', goal: 5, xp: 170 },
+      { id: 'challenge-migration-mapper', tier: 'intermediate', order: 70, icon: 'Migration', title: 'Migration Mapper', description: 'Track birds that show up during migration windows.', metric: 'migrationSightedCount', goal: 8, xp: 150 },
+      { id: 'challenge-habitat-hopper', tier: 'intermediate', order: 80, icon: 'Habitat', title: 'Habitat Hopper', description: 'Log birds across every habitat type this season.', metric: 'seasonHabitatCount', goal: 4, xp: 165 },
+      { id: 'challenge-region-circuit', tier: 'intermediate', order: 90, icon: 'Map', title: 'Region Circuit', description: 'Cover every region option in your log this season.', metric: 'seasonRegionCount', goal: 4, xp: 165 },
+      { id: 'challenge-confident-calls', tier: 'advanced', order: 100, icon: 'Confidence', title: 'Confident Calls', description: 'Build a track record of certain identifications.', metric: 'totalCertainLogCount', goal: 12, xp: 160 },
+      { id: 'challenge-proof-of-presence', tier: 'advanced', order: 110, icon: 'Evidence', title: 'Proof of Presence', description: 'Document sightings with photo or audio evidence.', metric: 'evidenceLogCount', goal: 6, xp: 170 },
+      { id: 'challenge-genus-journey', tier: 'advanced', order: 120, icon: 'Genus', title: 'Genus Journey', description: 'Broaden your taxonomy knowledge across distinct genera.', metric: 'generaSightedCount', goal: 18, xp: 190 },
+      { id: 'challenge-quarterly-flight-plan', tier: 'advanced', order: 130, icon: 'Quarterly', title: 'Quarterly Flight Plan', description: 'Keep your seasonal list moving this quarter.', metric: 'quarterlySightedCount', goal: 25, xp: 220 },
+      { id: 'challenge-season-questline', tier: 'seasonal-mastery', order: 140, icon: 'Quest', title: 'Season Questline', description: 'Log 12 sightings during {season} to complete your chapter.', metric: 'seasonalLogCount', goal: 12, xp: 180 },
+      { id: 'challenge-season-bridge', tier: 'seasonal-mastery', order: 150, icon: 'Seasons', title: 'Season Bridge', description: 'Keep birding going across multiple seasons of the year.', metric: 'loggedSeasonCount', goal: 2, xp: 175 },
+      { id: 'challenge-lifetime-lister', tier: 'seasonal-mastery', order: 160, icon: 'All Time', title: 'Lifetime Lister', description: 'Grow your all-time bird checklist.', metric: 'totalSighted', goal: 100, xp: 300 }
     ],
     badgeDefs: [
-      { id: 'badge-first-feather', icon: 'First', title: 'First Feather', description: 'Mark your first bird species as sighted.', rarity: 'common', metric: 'totalSighted', goal: 1, xp: 50 },
-      { id: 'badge-common-core', icon: 'Common', title: 'Common Core', description: 'Build a strong base with common species.', rarity: 'common', metric: 'commonSightedCount', goal: 25, xp: 120 },
-      { id: 'badge-rare-find', icon: 'Rare', title: 'Rare Find', description: 'Spot five rare-or-better birds.', rarity: 'rare', metric: 'rareSightedCount', goal: 5, xp: 180 },
-      { id: 'badge-migration-mapper', icon: 'Migration', title: 'Migration Mapper', description: 'Log species associated with migration seasons.', rarity: 'rare', metric: 'migrationSightedCount', goal: 10, xp: 220 },
-      { id: 'badge-season-spotter', icon: '{seasonLabel}', title: '{seasonLabel} Spotter', description: 'Track birds available during {season}.', rarity: 'epic', metric: 'inSeasonSightedCount', goal: 20, xp: 260 },
-      { id: 'badge-family-finisher', icon: 'Family', title: 'Family Finisher', description: 'Completely finish one family list.', rarity: 'epic', metric: 'familiesCompleted', goal: 1, xp: 280 },
-      { id: 'badge-legendary-lister', icon: 'Legend', title: 'Legendary Lister', description: 'Reach 100 total bird species sighted.', rarity: 'legendary', metric: 'totalSighted', goal: 100, xp: 400 },
-      { id: 'badge-ultra-rarity', icon: 'Ultra', title: 'Ultra-Rarity', description: 'Sight at least one very rare or extremely rare bird.', rarity: 'legendary', metric: 'veryRareSightedCount', goal: 1, xp: 350 },
-      { id: 'badge-streak-keeper', icon: 'Streak', title: 'Streak Keeper', description: 'Build a 7-day birding streak.', rarity: 'rare', metric: 'streak.currentStreak', goal: 7, xp: 210 },
-      { id: 'badge-bingo-beginner', icon: 'Bingo', title: 'Bingo Beginner', description: 'Complete 3 bingo tiles in the current season.', rarity: 'epic', metric: 'bingo.completedCount', goal: 3, xp: 240 },
-      { id: 'badge-season-chapter-clear', icon: 'Quest', title: 'Season Chapter Clear', description: 'Finish all seasonal questline steps.', rarity: 'legendary', metric: 'seasonQuestCompletedCount', goal: 4, xp: 320 }
+      { id: 'badge-first-feather', tier: 'beginner', order: 10, icon: 'First', title: 'First Feather', description: 'Mark your first bird species as sighted.', rarity: 'common', metric: 'totalSighted', goal: 1, xp: 50 },
+      { id: 'badge-common-core', tier: 'beginner', order: 20, icon: 'Common', title: 'Common Core', description: 'Build a strong base with common species.', rarity: 'common', metric: 'commonSightedCount', goal: 25, xp: 120 },
+      { id: 'badge-streak-keeper', tier: 'intermediate', order: 30, icon: 'Streak', title: 'Streak Keeper', description: 'Build a 7-day birding streak.', rarity: 'rare', metric: 'streak.currentStreak', goal: 7, xp: 210 },
+      { id: 'badge-rare-find', tier: 'intermediate', order: 40, icon: 'Rare', title: 'Rare Find', description: 'Spot five rare-or-better birds.', rarity: 'rare', metric: 'rareSightedCount', goal: 5, xp: 180 },
+      { id: 'badge-migration-mapper', tier: 'intermediate', order: 50, icon: 'Migration', title: 'Migration Mapper', description: 'Log species associated with migration seasons.', rarity: 'rare', metric: 'migrationSightedCount', goal: 10, xp: 220 },
+      { id: 'badge-habitat-naturalist', tier: 'intermediate', order: 60, icon: 'Habitat', title: 'Habitat Naturalist', description: 'Log birds in all habitat options available in the field log.', rarity: 'rare', metric: 'totalHabitatCount', goal: 4, xp: 220 },
+      { id: 'badge-region-ranger', tier: 'intermediate', order: 70, icon: 'Map', title: 'Region Ranger', description: 'Log birds across every region option in the tracker.', rarity: 'rare', metric: 'totalRegionCount', goal: 4, xp: 220 },
+      { id: 'badge-season-spotter', tier: 'advanced', order: 80, icon: '{seasonLabel}', title: '{seasonLabel} Spotter', description: 'Track birds available during {season}.', rarity: 'epic', metric: 'inSeasonSightedCount', goal: 20, xp: 260 },
+      { id: 'badge-family-finisher', tier: 'advanced', order: 90, icon: 'Family', title: 'Family Finisher', description: 'Completely finish one family list.', rarity: 'epic', metric: 'familiesCompleted', goal: 1, xp: 280 },
+      { id: 'badge-sharp-eyed', tier: 'advanced', order: 100, icon: 'Confidence', title: 'Sharp-Eyed', description: 'Accumulate 30 certain sightings through careful identification.', rarity: 'epic', metric: 'totalCertainLogCount', goal: 30, xp: 290 },
+      { id: 'badge-proof-positive', tier: 'advanced', order: 110, icon: 'Evidence', title: 'Proof Positive', description: 'Back up 12 sightings with photo or audio evidence.', rarity: 'epic', metric: 'evidenceLogCount', goal: 12, xp: 300 },
+      { id: 'badge-genus-guide', tier: 'advanced', order: 120, icon: 'Genus', title: 'Genus Guide', description: 'Sight birds from 30 distinct genera.', rarity: 'epic', metric: 'generaSightedCount', goal: 30, xp: 320 },
+      { id: 'badge-bingo-beginner', tier: 'seasonal-mastery', order: 130, icon: 'Bingo', title: 'Bingo Beginner', description: 'Complete 3 bingo tiles in the current season.', rarity: 'epic', metric: 'bingo.completedCount', goal: 3, xp: 240 },
+      { id: 'badge-ultra-rarity', tier: 'seasonal-mastery', order: 140, icon: 'Ultra', title: 'Ultra-Rarity', description: 'Sight at least one very rare or extremely rare bird.', rarity: 'legendary', metric: 'veryRareSightedCount', goal: 1, xp: 350 },
+      { id: 'badge-season-chapter-clear', tier: 'seasonal-mastery', order: 150, icon: 'Quest', title: 'Season Chapter Clear', description: 'Finish all seasonal questline steps.', rarity: 'legendary', metric: 'seasonQuestCompletedCount', goal: 4, xp: 320 },
+      { id: 'badge-year-round-birder', tier: 'seasonal-mastery', order: 160, icon: 'Seasons', title: 'Year-Round Birder', description: 'Log birds in spring, summer, fall, and winter.', rarity: 'legendary', metric: 'loggedSeasonCount', goal: 4, xp: 360 },
+      { id: 'badge-legendary-lister', tier: 'seasonal-mastery', order: 170, icon: 'Legend', title: 'Legendary Lister', description: 'Reach 100 total bird species sighted.', rarity: 'legendary', metric: 'totalSighted', goal: 100, xp: 400 }
     ],
     dailyChallengeDefs: [
       { id: 'daily-log-1', icon: 'Daily', title: 'Show Up Today', description: 'Log at least one sighting today.', metric: 'todayLogCount', goal: 1, xp: 30 },
       { id: 'daily-new-species', icon: 'Discovery', title: 'Fresh Feathers', description: 'Log 2 unique species today.', metric: 'todayUniqueSpeciesCount', goal: 2, xp: 45 },
       { id: 'daily-context-mix', icon: 'Explorer', title: 'Context Mixer', description: 'Log sightings in 2 different regions or habitats today.', metric: 'todayContextMixCount', goal: 2, xp: 35 },
       { id: 'daily-rare', icon: 'Rare', title: 'Rare Radar (Daily)', description: 'Log one rare-or-better species today.', metric: 'todayRareLogCount', goal: 1, xp: 55 },
-      { id: 'daily-confidence', icon: 'Quality', title: 'Certain Signal', description: 'Log 2 sightings with confidence set to Certain today.', metric: 'todayCertainCount', goal: 2, xp: 40 }
+      { id: 'daily-confidence', icon: 'Quality', title: 'Certain Signal', description: 'Log 2 sightings with confidence set to Certain today.', metric: 'todayCertainCount', goal: 2, xp: 40 },
+      { id: 'daily-evidence', icon: 'Evidence', title: 'Field Proof', description: 'Add photo or audio evidence to a sighting today.', metric: 'todayEvidenceLogCount', goal: 1, xp: 45 },
+      { id: 'daily-family-mix', icon: 'Family', title: 'Family Mix', description: 'Log birds from 2 different families today.', metric: 'todayFamilyMixCount', goal: 2, xp: 45 }
     ],
     bingoObjectiveDefs: [
       { id: 'b1', label: 'Log 2 birds this week', metric: 'weeklyLogCount', goal: 2, xp: 35 },
@@ -108,13 +149,16 @@
       { id: 'b9', label: 'Log 2 unique species today', metric: 'todayUniqueSpeciesCount', goal: 2, xp: 35 },
       { id: 'b10', label: 'Log 3 regions this season', metric: 'seasonRegionCount', goal: 3, xp: 40 },
       { id: 'b11', label: 'Spot 2 migration birds', metric: 'migrationSightedCount', goal: 2, xp: 45 },
-      { id: 'b12', label: 'Complete 1 family', metric: 'familiesCompleted', goal: 1, xp: 70 }
+      { id: 'b12', label: 'Complete 1 family', metric: 'familiesCompleted', goal: 1, xp: 70 },
+      { id: 'b13', label: 'Log 1 evidence-backed sighting this season', metric: 'seasonEvidenceLogCount', goal: 1, xp: 45 },
+      { id: 'b14', label: 'Reach 10 certain sightings', metric: 'totalCertainLogCount', goal: 10, xp: 50 },
+      { id: 'b15', label: 'Sight 10 genera', metric: 'generaSightedCount', goal: 10, xp: 55 }
     ],
     seasonQuestDefs: [
-      { id: 'sq-1', icon: 'Scout', title: 'Scout Phase', description: 'Log 5 sightings this season.', metric: 'seasonalLogCount', goal: 5, xp: 80 },
-      { id: 'sq-2', icon: 'Variety', title: 'Variety Phase', description: 'Log sightings across 3 habitats this season.', metric: 'seasonHabitatCount', goal: 3, xp: 90 },
-      { id: 'sq-3', icon: 'Rare', title: 'Rare Phase', description: 'Find 2 rare-or-better species this season.', metric: 'rareSightedCount', goal: 2, xp: 110 },
-      { id: 'sq-4', icon: 'Mastery', title: 'Mastery Phase', description: 'Reach 15 seasonal sightings.', metric: 'seasonalLogCount', goal: 15, xp: 140 }
+      { id: 'sq-1', tier: 'beginner', order: 10, icon: 'Scout', title: 'Scout Phase', description: 'Log 5 sightings this season.', metric: 'seasonalLogCount', goal: 5, xp: 80 },
+      { id: 'sq-2', tier: 'intermediate', order: 20, icon: 'Variety', title: 'Variety Phase', description: 'Log sightings across 3 habitats this season.', metric: 'seasonHabitatCount', goal: 3, xp: 90 },
+      { id: 'sq-3', tier: 'advanced', order: 30, icon: 'Rare', title: 'Rare Phase', description: 'Find 2 rare-or-better species this season.', metric: 'rareSightedCount', goal: 2, xp: 110 },
+      { id: 'sq-4', tier: 'seasonal-mastery', order: 40, icon: 'Mastery', title: 'Mastery Phase', description: 'Reach 15 seasonal sightings.', metric: 'seasonalLogCount', goal: 15, xp: 140 }
     ]
   };
 
@@ -123,6 +167,9 @@
     activeSubTab: 'birds',
     activeBirdView: loadBirdUiPrefs().activeBirdView,
     activeBirdCollection: 'challenges',
+    collectionTierFilter: loadBirdUiPrefs().collectionTierFilter,
+    collectionPathMode: loadBirdUiPrefs().collectionPathMode,
+    collectionAlmostCompleteOnly: loadBirdUiPrefs().collectionAlmostCompleteOnly,
     selectedBirdId: '',
     birdSearch: '',
     birdSort: 'family-asc',
@@ -779,7 +826,12 @@
       birdLogPreset: ['quick', 'field-full', 'evidence'].includes(prefs.birdLogPreset)
         ? prefs.birdLogPreset
         : 'field-full',
-      birdLogCommandValue: String(prefs.birdLogCommandValue || '')
+      birdLogCommandValue: String(prefs.birdLogCommandValue || ''),
+      collectionTierFilter: ['all', 'beginner', 'intermediate', 'advanced', 'seasonal-mastery'].includes(prefs.collectionTierFilter)
+        ? prefs.collectionTierFilter
+        : 'all',
+      collectionPathMode: Boolean(prefs.collectionPathMode),
+      collectionAlmostCompleteOnly: Boolean(prefs.collectionAlmostCompleteOnly)
     };
   }
 
@@ -806,7 +858,12 @@
       birdLogPreset: ['quick', 'field-full', 'evidence'].includes(state.birdLogPreset)
         ? state.birdLogPreset
         : 'field-full',
-      birdLogCommandValue: state.birdLogCommandValue || ''
+      birdLogCommandValue: state.birdLogCommandValue || '',
+      collectionTierFilter: ['all', 'beginner', 'intermediate', 'advanced', 'seasonal-mastery'].includes(state.collectionTierFilter)
+        ? state.collectionTierFilter
+        : 'all',
+      collectionPathMode: Boolean(state.collectionPathMode),
+      collectionAlmostCompleteOnly: Boolean(state.collectionAlmostCompleteOnly)
     }));
   }
 
@@ -1157,6 +1214,17 @@
       .reduce((acc, key) => (acc && typeof acc === 'object' ? acc[key] : undefined), stats) || 0;
   }
 
+  function getProgressionTierMeta(tierKey) {
+    const key = String(tierKey || '').trim();
+    return PROGRESSION_TIER_META[key] || PROGRESSION_TIER_META.intermediate;
+  }
+
+  function normalizeProgressionTier(tierKey) {
+    return Object.prototype.hasOwnProperty.call(PROGRESSION_TIER_META, String(tierKey || '').trim())
+      ? String(tierKey || '').trim()
+      : 'intermediate';
+  }
+
   function applyProgressionTemplate(text, stats) {
     return String(text || '')
       .replace(/\{seasonLabel\}/g, String(stats.currentSeasonLabel || 'Season'))
@@ -1166,6 +1234,8 @@
   function toProgressionCard(definition, stats) {
     const goal = Math.max(1, Number(definition.goal) || 1);
     const progress = Math.max(0, Number(getMetricValue(stats, definition.metric)) || 0);
+    const tier = normalizeProgressionTier(definition.tier);
+    const tierMeta = getProgressionTierMeta(tier);
     return {
       id: definition.id,
       icon: applyProgressionTemplate(definition.icon, stats),
@@ -1176,9 +1246,29 @@
       goal,
       progress,
       xp: Math.max(0, Number(definition.xp) || 0),
+      tier,
+      tierLabel: tierMeta.label,
+      tierOrder: tierMeta.order,
+      tierClassName: tierMeta.className,
+      learningCopy: String(tierMeta.learningCopy || ''),
+      sortOrder: Math.max(0, Number(definition.order) || 0),
       completed: progress >= goal,
       pct: Math.max(0, Math.min(100, Math.round((progress / goal) * 100)))
     };
+  }
+
+  function compareProgressionCards(a, b) {
+    const tierDiff = (Number(a && a.tierOrder) || 0) - (Number(b && b.tierOrder) || 0);
+    if (tierDiff !== 0) return tierDiff;
+    const orderDiff = (Number(a && a.sortOrder) || 0) - (Number(b && b.sortOrder) || 0);
+    if (orderDiff !== 0) return orderDiff;
+    const xpDiff = (Number(a && a.xp) || 0) - (Number(b && b.xp) || 0);
+    if (xpDiff !== 0) return xpDiff;
+    return String(a && a.title || '').localeCompare(String(b && b.title || ''));
+  }
+
+  function sortProgressionCards(cards) {
+    return (Array.isArray(cards) ? cards : []).slice().sort(compareProgressionCards);
   }
 
   function normalizePhrase(value) {
@@ -1228,6 +1318,12 @@
     if (!card.completed && Math.max(0, Number(card.goal) - Number(card.progress)) <= 1) score += 18;
     if (isSeasonRelevantCard(card, stats)) score += 30;
     score += Math.min(40, Math.round((Number(card.xp) || 0) / 10));
+    if (!card.completed) {
+      if (card.tier === 'beginner') score += 16;
+      else if (card.tier === 'intermediate') score += 9;
+      else if (card.tier === 'advanced') score += 4;
+      else if (card.tier === 'seasonal-mastery' && isSeasonRelevantCard(card, stats)) score += 12;
+    }
     return score;
   }
 
@@ -1260,7 +1356,7 @@
       .sort((a, b) => {
         const scoreDiff = getOverviewPriorityScore(b, stats) - getOverviewPriorityScore(a, stats);
         if (scoreDiff !== 0) return scoreDiff;
-        return String(a.title || '').localeCompare(String(b.title || ''));
+        return compareProgressionCards(a, b);
       })
       .slice(0, Math.max(1, Number(limit) || 1))
       .map((card) => {
@@ -1280,6 +1376,232 @@
     const badgeClass = item.whyShownClass ? ` ${escapeHtml(item.whyShownClass)}` : '';
     const icon = item.whyShownIcon ? `<span class="nature-why-shown-icon" aria-hidden="true">${escapeHtml(item.whyShownIcon)}</span>` : '';
     return `<div class="nature-why-shown-badge${badgeClass}">${icon}<span>${escapeHtml(item.whyShown)}</span></div>`;
+  }
+
+  function renderProgressionChipRow(item, options = {}) {
+    if (!item) return '';
+    const chips = [];
+    if (options.showTier !== false && item.tierLabel) {
+      const tierClass = item.tierClassName ? ` ${escapeHtml(item.tierClassName)}` : '';
+      chips.push(`<span class="nature-progression-chip${tierClass}">${escapeHtml(item.tierLabel)}</span>`);
+    }
+    if (options.showXp !== false && Number(item.xp) > 0) {
+      chips.push(`<span class="nature-progression-chip nature-progression-chip--xp">${escapeHtml(String(item.xp))} XP</span>`);
+    }
+    if (options.showRarity && item.rarity) {
+      chips.push(`<span class="nature-progression-chip nature-progression-chip--rarity">${escapeHtml(String(item.rarity))}</span>`);
+    }
+    if (options.showTimeHorizon !== false) {
+      const horizon = getTimeHorizonLabel(item);
+      chips.push(`<span class="nature-progression-chip nature-progression-chip--time">${escapeHtml(horizon)}</span>`);
+    }
+    if (!chips.length) return '';
+    return `<div class="nature-progression-chip-row">${chips.join('')}</div>`;
+  }
+
+  function formatTierBreakdown(items) {
+    const counts = { beginner: 0, intermediate: 0, advanced: 0, 'seasonal-mastery': 0 };
+    (Array.isArray(items) ? items : []).forEach((item) => {
+      const key = normalizeProgressionTier(item && item.tier);
+      counts[key] += 1;
+    });
+    return Object.keys(counts)
+      .filter((key) => counts[key] > 0)
+      .map((key) => `${getProgressionTierMeta(key).label}: ${counts[key]}`)
+      .join(' | ');
+  }
+
+  function getCollectionTierFilter() {
+    const filter = String(state.collectionTierFilter || 'all').trim();
+    if (filter === 'all') return 'all';
+    return Object.prototype.hasOwnProperty.call(PROGRESSION_TIER_META, filter) ? filter : 'all';
+  }
+
+  function filterCardsByTier(items, tierFilter) {
+    const list = Array.isArray(items) ? items : [];
+    const wanted = String(tierFilter || 'all').trim();
+    if (!wanted || wanted === 'all') return list.slice();
+    return list.filter((item) => normalizeProgressionTier(item && item.tier) === wanted);
+  }
+
+  function getCollectionTierPathState(items) {
+    const ordered = Object.keys(PROGRESSION_TIER_META)
+      .map((key) => ({ key, ...getProgressionTierMeta(key) }))
+      .sort((a, b) => a.order - b.order);
+    const byTier = {};
+    ordered.forEach((tier, index) => {
+      const tierItems = filterCardsByTier(items, tier.key);
+      const total = tierItems.length;
+      const completed = tierItems.filter((item) => item && item.completed).length;
+      const completionPct = total ? Math.round((completed / total) * 100) : 0;
+      const prior = ordered[index - 1];
+      const priorState = prior ? byTier[prior.key] : null;
+      const unlocked = index === 0 || !priorState || priorState.completionPct >= 60;
+      byTier[tier.key] = {
+        key: tier.key,
+        label: tier.label,
+        unlocked,
+        completionPct,
+        completed,
+        total,
+        lockHint: unlocked ? '' : `Reach 60% in ${prior.label} to unlock this lane.`
+      };
+    });
+    return byTier;
+  }
+
+  function getCollectionOverallPathProgress(pathState) {
+    const lanes = Object.keys(PROGRESSION_TIER_META)
+      .map((key) => pathState && pathState[key])
+      .filter(Boolean);
+    const totals = lanes.reduce((acc, lane) => {
+      acc.completed += Math.max(0, Number(lane.completed) || 0);
+      acc.total += Math.max(0, Number(lane.total) || 0);
+      return acc;
+    }, { completed: 0, total: 0 });
+    const pct = totals.total > 0
+      ? Math.max(0, Math.min(100, Math.round((totals.completed / totals.total) * 100)))
+      : 0;
+    return {
+      ...totals,
+      pct,
+      label: `${pct}% complete`,
+      summary: `${totals.completed}/${totals.total} goals complete`
+    };
+  }
+
+  function getCollectionTierPathProgress(pathState, tierKey) {
+    const key = normalizeProgressionTier(tierKey);
+    const lane = pathState && pathState[key] ? pathState[key] : null;
+    const completed = lane ? Math.max(0, Number(lane.completed) || 0) : 0;
+    const total = lane ? Math.max(0, Number(lane.total) || 0) : 0;
+    const pct = total > 0
+      ? Math.max(0, Math.min(100, Math.round((completed / total) * 100)))
+      : 0;
+    const tierMeta = getProgressionTierMeta(key);
+    return {
+      key,
+      label: tierMeta.label,
+      completed,
+      total,
+      pct,
+      summary: `${completed}/${total} goals complete`
+    };
+  }
+
+  function renderProgressionLearningCopy(item, options = {}) {
+    if (!options.showLearning || !item || !item.learningCopy) return '';
+    return `<div class="nature-progression-learning-copy"><strong>Why this matters:</strong> ${escapeHtml(item.learningCopy)}</div>`;
+  }
+
+  function getTimeHorizonLabel(item) {
+    if (!item) return 'Quick';
+    const metric = String(item.metric || '');
+    if (metric.startsWith('today')) return 'Quick';
+    if (metric.startsWith('weekly') || metric === 'streak.currentStreak') return 'This week';
+    if (metric.startsWith('season') || metric.includes('Season') || metric === 'migrationSightedCount' || metric === 'inSeasonSightedCount' || metric === 'bingo.completedCount') {
+      return 'Seasonal';
+    }
+    if (metric.startsWith('monthly') || metric.startsWith('quarterly')) return 'Seasonal';
+    if (metric.startsWith('total') || metric.includes('lifetime') || metric === 'generaSightedCount' || metric === 'familiesCompleted' || metric === 'loggedSeasonCount') {
+      return 'Long-term';
+    }
+    return (Number(item.goal) || 0) >= 20 ? 'Long-term' : 'Quick';
+  }
+
+  function isAlmostCompleteCard(item) {
+    if (!item) return false;
+    if (item.completed) return false;
+    const goal = Math.max(1, Number(item.goal) || 1);
+    const progress = Math.max(0, Number(item.progress) || 0);
+    const remaining = Math.max(0, goal - progress);
+    const pct = Math.max(0, Math.min(100, Number(item.pct) || 0));
+    return remaining <= 1 || pct >= 80;
+  }
+
+  function filterAlmostCompleteCards(items) {
+    const list = Array.isArray(items) ? items : [];
+    if (!state.collectionAlmostCompleteOnly) return list.slice();
+    return list.filter((item) => isAlmostCompleteCard(item));
+  }
+
+  function renderCollectionTierControls(items, options = {}) {
+    const controls = document.getElementById('birdsCollectionControls');
+    if (!controls) return;
+    const list = Array.isArray(items) ? items : [];
+    const hasTiers = list.some((item) => item && item.tier);
+    if (!hasTiers) {
+      controls.hidden = true;
+      controls.innerHTML = '';
+      return;
+    }
+
+    const filter = getCollectionTierFilter();
+    const pathToggleAllowed = options.pathToggleAllowed !== false;
+    const pathState = getCollectionTierPathState(list);
+    const overall = getCollectionOverallPathProgress(pathState);
+    const filtered = filter !== 'all' ? getCollectionTierPathProgress(pathState, filter) : null;
+    const scopedItems = filterCardsByTier(list, filter);
+    const almostCompleteCount = scopedItems.filter((item) => isAlmostCompleteCard(item)).length;
+    const tierButtons = ['all'].concat(Object.keys(PROGRESSION_TIER_META)).map((key) => {
+      if (key === 'all') {
+        const active = filter === 'all';
+        return `<button type="button" class="pill-button nature-tier-filter-btn ${active ? 'is-active' : ''}" data-birds-collection-tier="all" aria-pressed="${active ? 'true' : 'false'}">All tiers</button>`;
+      }
+      const tierMeta = getProgressionTierMeta(key);
+      const stateInfo = pathState[key];
+      const active = filter === key;
+      const lockIcon = state.collectionPathMode && stateInfo && !stateInfo.unlocked ? ' 🔒' : '';
+      return `<button type="button" class="pill-button nature-tier-filter-btn ${active ? 'is-active' : ''}" data-birds-collection-tier="${escapeHtml(key)}" aria-pressed="${active ? 'true' : 'false'}">${escapeHtml(tierMeta.label)}${lockIcon}</button>`;
+    }).join('');
+
+    const laneSummary = Object.keys(PROGRESSION_TIER_META)
+      .map((key) => {
+        const lane = pathState[key];
+        if (!lane || lane.total < 1) return '';
+        const lockText = state.collectionPathMode && !lane.unlocked ? ' | Locked lane' : '';
+        return `<span class="nature-collection-lane-pill">${escapeHtml(lane.label)}: ${lane.completed}/${lane.total}${lockText}</span>`;
+      })
+      .filter(Boolean)
+      .join('');
+
+    controls.hidden = false;
+    controls.innerHTML = `
+      <div class="nature-collection-progress-header" role="status" aria-live="polite">
+        <div class="nature-collection-progress-top">
+          <strong>Path progress</strong>
+          <span>${escapeHtml(overall.label)}</span>
+        </div>
+        ${filtered ? `
+        <div class="nature-collection-progress-legend" aria-hidden="true">
+          <span class="nature-collection-progress-legend-item"><span class="nature-collection-progress-swatch"></span><span class="nature-collection-progress-legend-label-full">Overall</span><span class="nature-collection-progress-legend-label-short">O</span></span>
+          <span class="nature-collection-progress-legend-item"><span class="nature-collection-progress-swatch nature-collection-progress-swatch--secondary"></span><span class="nature-collection-progress-legend-label-full">Filtered</span><span class="nature-collection-progress-legend-label-short">F</span></span>
+        </div>` : ''}
+        <div class="nature-collection-progress-track" aria-hidden="true">
+          <span class="nature-collection-progress-fill" style="width:${overall.pct}%;"></span>
+        </div>
+        <div class="nature-collection-progress-meta">${escapeHtml(overall.summary)}</div>
+        ${filtered ? `
+        <div class="nature-collection-progress-secondary">
+          <div class="nature-collection-progress-top nature-collection-progress-top--secondary">
+            <strong>${escapeHtml(filtered.label)} progress</strong>
+            <span>${escapeHtml(String(filtered.pct))}% complete</span>
+          </div>
+          <div class="nature-collection-progress-track nature-collection-progress-track--secondary" aria-hidden="true">
+            <span class="nature-collection-progress-fill nature-collection-progress-fill--secondary" style="width:${filtered.pct}%;"></span>
+          </div>
+          <div class="nature-collection-progress-meta">${escapeHtml(filtered.summary)}</div>
+        </div>` : ''}
+      </div>
+      <div class="nature-collection-control-row">
+        <div class="nature-collection-tier-filter-row">${tierButtons}</div>
+        <div class="nature-collection-toggle-row">
+          <button type="button" id="birdsCollectionAlmostCompleteToggleBtn" class="pill-button nature-tier-path-btn ${state.collectionAlmostCompleteOnly ? 'is-active' : ''}" aria-pressed="${state.collectionAlmostCompleteOnly ? 'true' : 'false'}">${state.collectionAlmostCompleteOnly ? 'Almost complete: On' : 'Almost complete: Off'} (${almostCompleteCount})</button>
+          ${pathToggleAllowed ? `<button type="button" id="birdsCollectionPathToggleBtn" class="pill-button nature-tier-path-btn ${state.collectionPathMode ? 'is-active' : ''}" aria-pressed="${state.collectionPathMode ? 'true' : 'false'}">${state.collectionPathMode ? 'Path mode: On' : 'Path mode: Off'}</button>` : ''}
+        </div>
+      </div>
+      <div class="nature-collection-lane-row">${laneSummary}</div>
+    `;
   }
 
   function cardMatchesOverviewQuickFilters(card, stats) {
@@ -2126,6 +2448,20 @@
     return byDay;
   }
 
+  function hasBirdLogEvidence(entry) {
+    if (!entry || typeof entry !== 'object') return false;
+    return Boolean(String(entry.photoName || '').trim() || String(entry.audioName || '').trim());
+  }
+
+  function getSeasonKeyForDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const month = date.getMonth() + 1;
+    if (month === 12 || month <= 2) return 'winter';
+    if (month >= 3 && month <= 5) return 'spring';
+    if (month >= 6 && month <= 8) return 'summer';
+    return 'fall';
+  }
+
   function getDailyMicroChallenges(stats) {
     const todayKey = getDateKey(new Date());
     const pool = (BIRD_PROGRESSION_SPEC.dailyChallengeDefs || []).map((definition) => toProgressionCard(definition, stats));
@@ -2812,10 +3148,25 @@
       return observed && observed >= seasonWindow.start && observed < seasonWindow.end;
     });
 
+    const totalRegionCount = new Set(allLogEntries.map((entry) => norm(entry.region)).filter(Boolean)).size;
+    const totalHabitatCount = new Set(allLogEntries.map((entry) => norm(entry.habitat)).filter(Boolean)).size;
+    const totalCertainLogCount = allLogEntries.filter((entry) => norm(entry.confidence) === 'certain').length;
+    const evidenceLogCount = allLogEntries.filter((entry) => hasBirdLogEvidence(entry)).length;
+    const seasonEvidenceLogCount = seasonalLogEntries.filter((entry) => hasBirdLogEvidence(entry)).length;
+    const generaSightedCount = new Set(sightedBirds.map((bird) => norm(bird.genusLabel)).filter(Boolean)).size;
+    const loggedSeasonCount = new Set(allLogEntries
+      .map((entry) => getSeasonKeyForDate(parseObservedDate(entry.dateObserved || entry.createdAt)))
+      .filter(Boolean)).size;
+
     const todayUniqueSpeciesCount = new Set(todayEntries.map((entry) => entry.speciesStatusKey).filter(Boolean)).size;
     const todayDistinctRegionCount = new Set(todayEntries.map((entry) => norm(entry.region)).filter(Boolean)).size;
     const todayDistinctHabitatCount = new Set(todayEntries.map((entry) => norm(entry.habitat)).filter(Boolean)).size;
     const todayCertainCount = todayEntries.filter((entry) => norm(entry.confidence) === 'certain').length;
+    const todayEvidenceLogCount = todayEntries.filter((entry) => hasBirdLogEvidence(entry)).length;
+    const todayFamilyMixCount = new Set(todayEntries.map((entry) => {
+      const bird = findBirdById(entry.speciesId);
+      return bird ? norm(bird.familyKey || bird.familyLabel) : '';
+    }).filter(Boolean)).size;
     const todayRareLogCount = todayEntries.filter((entry) => {
       const bird = findBirdById(entry.speciesId);
       return bird && bird.rarity.weight >= RARITY_META.rare.weight;
@@ -2857,12 +3208,21 @@
       weeklyLogCount: weeklyLogEntries.length,
       monthlyLogCount: monthlyLogEntries.length,
       seasonalLogCount: seasonalLogEntries.length,
+      totalRegionCount,
+      totalHabitatCount,
+      totalCertainLogCount,
+      evidenceLogCount,
+      seasonEvidenceLogCount,
+      generaSightedCount,
+      loggedSeasonCount,
       seasonWindowKey: seasonWindow.key,
       todayLogCount: todayEntries.length,
       todayUniqueSpeciesCount,
       todayDistinctRegionCount,
       todayDistinctHabitatCount,
       todayCertainCount,
+      todayEvidenceLogCount,
+      todayFamilyMixCount,
       todayRareLogCount,
       seasonRegionCount,
       seasonHabitatCount,
@@ -2872,14 +3232,14 @@
   }
 
   function getBirdChallenges(stats) {
-    return (BIRD_PROGRESSION_SPEC.challengeDefs || []).map((definition) => toProgressionCard(definition, stats));
+    return sortProgressionCards((BIRD_PROGRESSION_SPEC.challengeDefs || []).map((definition) => toProgressionCard(definition, stats)));
   }
 
   function getBirdBadges(stats) {
-    const badges = (BIRD_PROGRESSION_SPEC.badgeDefs || []).map((definition) => ({
+    const badges = sortProgressionCards((BIRD_PROGRESSION_SPEC.badgeDefs || []).map((definition) => ({
       ...toProgressionCard(definition, stats),
       rarity: definition.rarity || 'common'
-    }));
+    })));
 
     return badges.map((badge) => {
       const rarityClass = badge.rarity === 'legendary'
@@ -2982,7 +3342,7 @@
   }
 
   function getSeasonQuestline(stats) {
-    const steps = (BIRD_PROGRESSION_SPEC.seasonQuestDefs || []).map((definition) => toProgressionCard(definition, stats));
+    const steps = sortProgressionCards((BIRD_PROGRESSION_SPEC.seasonQuestDefs || []).map((definition) => toProgressionCard(definition, stats)));
 
     return {
       steps,
@@ -2990,7 +3350,23 @@
     };
   }
 
-  function renderBirdChallenges(challenges, containerId = 'birdsChallengeGrid') {
+  function renderTierSectionHeader(item, options = {}) {
+    if (!options.groupByTier || !item || !item.tierLabel) return '';
+    const lane = options.pathState && item.tier ? options.pathState[item.tier] : null;
+    const lockNote = lane && state.collectionPathMode && !lane.unlocked
+      ? `<span class="nature-tier-header-note">Locked lane - ${escapeHtml(lane.lockHint || '')}</span>`
+      : '';
+    return `<div class="nature-tier-section-header">${escapeHtml(item.tierLabel)}${lockNote}</div>`;
+  }
+
+  function getPathLockClass(item, options = {}) {
+    if (!state.collectionPathMode || !options.pathState || !item || !item.tier) return '';
+    const lane = options.pathState[item.tier];
+    if (!lane || lane.unlocked || item.completed) return '';
+    return 'is-tier-locked';
+  }
+
+  function renderBirdChallenges(challenges, containerId = 'birdsChallengeGrid', options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
     if (!Array.isArray(challenges) || challenges.length === 0) {
@@ -2998,18 +3374,26 @@
       return;
     }
 
-    container.innerHTML = challenges.map((challenge) => `
-      <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
+    let previousTier = '';
+    container.innerHTML = challenges.map((challenge) => {
+      const tierKey = normalizeProgressionTier(challenge && challenge.tier);
+      const header = previousTier !== tierKey ? renderTierSectionHeader(challenge, options) : '';
+      previousTier = tierKey;
+      return `${header}
+      <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''} ${getPathLockClass(challenge, options)} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         ${renderWhyShownBadge(challenge)}
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(challenge.icon, challenge.title))}</div>
+        ${renderProgressionChipRow(challenge)}
+        ${renderProgressionLearningCopy(challenge, options)}
         <div class="nature-challenge-card-description">${escapeHtml(challenge.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${challenge.pct}%;"></div></div>
         <div class="nature-challenge-meta"><span>${escapeHtml(formatProgressSummary(challenge).fraction)}</span><span>${escapeHtml(formatProgressSummary(challenge).status)}</span></div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
-  function renderBirdBadges(badges, containerId = 'birdsBadgeGrid') {
+  function renderBirdBadges(badges, containerId = 'birdsBadgeGrid', options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
     if (!Array.isArray(badges) || badges.length === 0) {
@@ -3017,16 +3401,24 @@
       return;
     }
 
-    container.innerHTML = badges.map((badge) => `
-      <div class="nature-badge-card ${badge.completed ? 'unlocked' : 'locked'} ${badge.rarityClass} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
+    let previousTier = '';
+    container.innerHTML = badges.map((badge) => {
+      const tierKey = normalizeProgressionTier(badge && badge.tier);
+      const header = previousTier !== tierKey ? renderTierSectionHeader(badge, options) : '';
+      previousTier = tierKey;
+      return `${header}
+      <div class="nature-badge-card ${badge.completed ? 'unlocked' : 'locked'} ${getPathLockClass(badge, options)} ${badge.rarityClass} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         ${renderWhyShownBadge(badge)}
         <div class="nature-badge-icon">${escapeHtml(badge.icon)}</div>
         <div class="nature-badge-card-title">${escapeHtml(badge.title)}</div>
+        ${renderProgressionChipRow(badge, { showRarity: true })}
+        ${renderProgressionLearningCopy(badge, options)}
         <div class="nature-badge-card-description">${escapeHtml(badge.description)}</div>
         <div class="nature-badge-progress">${escapeHtml(formatProgressSummary(badge).summary)}</div>
         <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${badge.pct}%;"></div></div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   function renderBirdDailyChallenges(challenges) {
@@ -3178,20 +3570,28 @@
     const meta = document.getElementById(options.metaId || 'birdsSeasonQuestMeta');
     if (!container || !meta) return;
 
-    meta.textContent = `${stats.currentSeasonLabel} chapter: ${questline.completedCount}/${questline.steps.length} steps completed`;
+    meta.textContent = `${stats.currentSeasonLabel} chapter: ${questline.completedCount}/${questline.steps.length} steps completed | ${formatTierBreakdown(questline.steps)}`;
     if (!Array.isArray(questline.steps) || questline.steps.length === 0) {
       container.innerHTML = buildUnifiedStateHtml('No seasonal quests match current overview filters.', { icon: '📚', hint: 'Try clearing overview filter chips.' });
       return;
     }
-    container.innerHTML = questline.steps.map((step) => `
-      <div class="nature-challenge-card ${step.completed ? 'completed' : ''} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
+    let previousTier = '';
+    container.innerHTML = questline.steps.map((step) => {
+      const tierKey = normalizeProgressionTier(step && step.tier);
+      const header = previousTier !== tierKey ? renderTierSectionHeader(step, options) : '';
+      previousTier = tierKey;
+      return `${header}
+      <div class="nature-challenge-card ${step.completed ? 'completed' : ''} ${getPathLockClass(step, options)} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         ${renderWhyShownBadge(step)}
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(step.icon, step.title))}</div>
+        ${renderProgressionChipRow(step)}
+        ${renderProgressionLearningCopy(step, options)}
         <div class="nature-challenge-card-description">${escapeHtml(step.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${step.pct}%;"></div></div>
         <div class="nature-challenge-meta"><span>${escapeHtml(formatProgressSummary(step).fraction)}</span><span>${escapeHtml(formatProgressSummary(step).status)}</span></div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
 
@@ -4277,6 +4677,7 @@
     const subtitle = document.getElementById('birdsCollectionSubtitle');
     const meta = document.getElementById('birdsCollectionMeta');
     const grid = document.getElementById('birdsCollectionGrid');
+    const controls = document.getElementById('birdsCollectionControls');
     if (!title || !subtitle || !meta || !grid) return;
 
     const key = ['challenges', 'badges', 'quests', 'bingo'].includes(state.activeBirdCollection)
@@ -4289,29 +4690,58 @@
       title.textContent = 'All Items';
       subtitle.textContent = 'Bird data is still loading.';
       meta.textContent = 'Collection data will appear after bird data loads.';
+      if (controls) {
+        controls.hidden = true;
+        controls.innerHTML = '';
+      }
       grid.className = 'nature-challenge-grid';
       grid.innerHTML = buildUnifiedStateHtml('Bird data is still loading.', { icon: '⏳' });
       return;
     }
 
     if (key === 'badges') {
-      const items = Array.isArray(cache.badges) ? cache.badges : [];
+      const allItems = Array.isArray(cache.badges) ? cache.badges : [];
+      const tierFilter = getCollectionTierFilter();
+      const tierItems = filterCardsByTier(allItems, tierFilter);
+      const items = filterAlmostCompleteCards(tierItems);
+      const pathState = getCollectionTierPathState(allItems);
       title.textContent = '🏅 All Badges';
-      subtitle.textContent = 'See every birding badge and your current progress.';
-      meta.textContent = `${items.filter((item) => item.completed).length}/${items.length} badges unlocked`;
+      subtitle.textContent = state.collectionPathMode
+        ? 'Tier path mode is on. Progress each lane to unlock deeper mastery content.'
+        : 'See every birding badge and your current progress.';
+      meta.textContent = `${items.filter((item) => item.completed).length}/${items.length} badges unlocked | ${formatTierBreakdown(items)}`;
+      renderCollectionTierControls(allItems, { pathToggleAllowed: true });
       grid.className = 'nature-badge-grid';
-      renderBirdBadges(items, 'birdsCollectionGrid');
+      renderBirdBadges(items, 'birdsCollectionGrid', {
+        showLearning: true,
+        groupByTier: tierFilter === 'all' && !state.collectionAlmostCompleteOnly,
+        pathState
+      });
       return;
     }
 
     if (key === 'quests') {
-      const questline = cache.questline || { steps: [], completedCount: 0 };
+      const fullQuestline = cache.questline || { steps: [], completedCount: 0 };
+      const tierFilter = getCollectionTierFilter();
+      const tierSteps = filterCardsByTier(fullQuestline.steps || [], tierFilter);
+      const steps = filterAlmostCompleteCards(tierSteps);
+      const questline = {
+        steps,
+        completedCount: steps.filter((step) => step.completed).length
+      };
+      const pathState = getCollectionTierPathState(fullQuestline.steps || []);
       title.textContent = '📚 Seasonal Quests';
-      subtitle.textContent = 'Follow every quest step for the current season chapter.';
+      subtitle.textContent = state.collectionPathMode
+        ? 'Quest lanes now follow a game-like path. Clear earlier lanes to unlock the next lane.'
+        : 'Follow every quest step for the current season chapter.';
+      renderCollectionTierControls(fullQuestline.steps || [], { pathToggleAllowed: true });
       grid.className = 'nature-challenge-grid';
       renderSeasonQuestlinePanel(questline, stats, {
         containerId: 'birdsCollectionGrid',
-        metaId: 'birdsCollectionMeta'
+        metaId: 'birdsCollectionMeta',
+        showLearning: true,
+        groupByTier: tierFilter === 'all' && !state.collectionAlmostCompleteOnly,
+        pathState
       });
       return;
     }
@@ -4320,6 +4750,10 @@
       const bingo = cache.bingo;
       title.textContent = '🟩 Birding Bingo';
       subtitle.textContent = 'View every seasonal bingo tile and current progress.';
+      if (controls) {
+        controls.hidden = true;
+        controls.innerHTML = '';
+      }
       grid.className = 'nature-badge-grid';
       if (!bingo) {
         meta.textContent = 'Bingo data is still loading.';
@@ -4333,12 +4767,23 @@
       return;
     }
 
-    const items = Array.isArray(cache.challenges) ? cache.challenges : [];
+    const allItems = Array.isArray(cache.challenges) ? cache.challenges : [];
+    const tierFilter = getCollectionTierFilter();
+    const tierItems = filterCardsByTier(allItems, tierFilter);
+    const items = filterAlmostCompleteCards(tierItems);
+    const pathState = getCollectionTierPathState(allItems);
     title.textContent = '🎯 All Challenges';
-    subtitle.textContent = 'See every challenge and focus on what is closest to completion.';
-    meta.textContent = `${items.filter((item) => item.completed).length}/${items.length} challenges complete`;
+    subtitle.textContent = state.collectionPathMode
+      ? 'Path mode is on. Complete earlier tier lanes to reveal deeper challenge lanes.'
+      : 'See every challenge and focus on what is closest to completion.';
+    meta.textContent = `${items.filter((item) => item.completed).length}/${items.length} challenges complete | ${formatTierBreakdown(items)}`;
+    renderCollectionTierControls(allItems, { pathToggleAllowed: true });
     grid.className = 'nature-challenge-grid';
-    renderBirdChallenges(items, 'birdsCollectionGrid');
+    renderBirdChallenges(items, 'birdsCollectionGrid', {
+      showLearning: true,
+      groupByTier: tierFilter === 'all' && !state.collectionAlmostCompleteOnly,
+      pathState
+    });
   }
 
   function renderBirdError() {
@@ -4637,6 +5082,9 @@
     '[data-birds-remove-filter]',
     '[data-birds-empty-action]',
     '[data-birds-more]',
+    '[data-birds-collection-tier]',
+    '#birdsCollectionAlmostCompleteToggleBtn',
+    '#birdsCollectionPathToggleBtn',
     '[data-sync-resolve]'
   ].join(',');
 
@@ -5024,6 +5472,30 @@
       if (moreButton) {
         state.activeBirdCollection = moreButton.getAttribute('data-birds-more') || 'challenges';
         setBirdView(root, 'collection');
+        return;
+      }
+
+      const collectionTierButton = event.target.closest('[data-birds-collection-tier]');
+      if (collectionTierButton) {
+        state.collectionTierFilter = collectionTierButton.getAttribute('data-birds-collection-tier') || 'all';
+        saveBirdUiPrefs();
+        renderBirdCollectionView();
+        return;
+      }
+
+      const almostCompleteToggleButton = event.target.closest('#birdsCollectionAlmostCompleteToggleBtn');
+      if (almostCompleteToggleButton) {
+        state.collectionAlmostCompleteOnly = !state.collectionAlmostCompleteOnly;
+        saveBirdUiPrefs();
+        renderBirdCollectionView();
+        return;
+      }
+
+      const pathToggleButton = event.target.closest('#birdsCollectionPathToggleBtn');
+      if (pathToggleButton) {
+        state.collectionPathMode = !state.collectionPathMode;
+        saveBirdUiPrefs();
+        renderBirdCollectionView();
         return;
       }
 

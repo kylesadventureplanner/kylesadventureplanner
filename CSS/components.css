@@ -1195,3 +1195,262 @@ button:focus-visible, [role="button"]:focus-visible {
   visibility: hidden !important;
 }
 
+/* ============================================================
+   BIRDS PROGRESSION TIER CHIPS
+============================================================ */
+
+.nature-progression-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+
+.nature-progression-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.78);
+  color: #334155;
+}
+
+.nature-progression-chip--beginner {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.28);
+  color: #166534;
+}
+
+.nature-progression-chip--intermediate {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(59, 130, 246, 0.28);
+  color: #1d4ed8;
+}
+
+.nature-progression-chip--advanced {
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.28);
+  color: #c2410c;
+}
+
+.nature-progression-chip--mastery {
+  background: rgba(168, 85, 247, 0.14);
+  border-color: rgba(168, 85, 247, 0.28);
+  color: #7e22ce;
+}
+
+.nature-progression-chip--xp {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
+.nature-progression-chip--rarity {
+  text-transform: capitalize;
+  background: rgba(251, 191, 36, 0.14);
+  border-color: rgba(251, 191, 36, 0.28);
+  color: #92400e;
+}
+
+.nature-progression-chip--time {
+  background: rgba(14, 165, 233, 0.1);
+  border-color: rgba(14, 165, 233, 0.24);
+  color: #0c4a6e;
+}
+
+.nature-progression-learning-copy {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #475569;
+  margin: -2px 0 8px;
+}
+
+.nature-tier-section-header {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(248, 250, 252, 0.85);
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f2937;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.nature-tier-header-note {
+  font-weight: 600;
+  color: #9a3412;
+}
+
+.nature-collection-controls {
+  margin: 8px 0 12px;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.nature-collection-progress-header {
+  margin-bottom: 10px;
+}
+
+.nature-collection-progress-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #1f2937;
+}
+
+.nature-collection-progress-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #475569;
+}
+
+.nature-collection-progress-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nature-collection-progress-legend-label-short {
+  display: none;
+}
+
+.nature-collection-progress-swatch {
+  width: 12px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+}
+
+.nature-collection-progress-swatch--secondary {
+  background: linear-gradient(90deg, #0ea5e9, #6366f1);
+}
+
+@media (max-width: 390px) {
+  .nature-collection-progress-legend {
+    gap: 8px;
+  }
+
+  .nature-collection-progress-swatch {
+    width: 16px;
+  }
+
+  .nature-collection-progress-legend-label-full {
+    display: none;
+  }
+
+  .nature-collection-progress-legend-label-short {
+    display: inline;
+  }
+}
+
+.nature-collection-progress-track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.nature-collection-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+}
+
+.nature-collection-progress-meta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #475569;
+}
+
+.nature-collection-progress-secondary {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.35);
+}
+
+.nature-collection-progress-top--secondary {
+  font-size: 11px;
+  color: #334155;
+}
+
+.nature-collection-progress-track--secondary {
+  height: 6px;
+}
+
+.nature-collection-progress-fill--secondary {
+  background: linear-gradient(90deg, #0ea5e9, #6366f1);
+}
+
+.nature-collection-control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nature-collection-tier-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nature-collection-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.nature-tier-filter-btn.is-active,
+.nature-tier-path-btn.is-active {
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.nature-collection-lane-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.nature-collection-lane-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #334155;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.nature-challenge-card.is-tier-locked,
+.nature-badge-card.is-tier-locked {
+  opacity: 0.72;
+  filter: saturate(0.8);
+}
+
