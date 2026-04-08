@@ -40,7 +40,8 @@ class TabContentLoader {
     style.id = 'tabLoaderRuntimeStyles';
     style.textContent = `
       .app-tab-pane { position: relative; }
-      .app-tab-pane.tab-is-loading { pointer-events: none; }
+      /* Fail-open: stale loading state must never disable tab interactions. */
+      .app-tab-pane.tab-is-loading { pointer-events: auto; }
       .tab-loading-indicator {
         position: absolute;
         inset: 0;
@@ -51,6 +52,7 @@ class TabContentLoader {
         gap: 12px;
         background: rgba(255, 255, 255, 0.9);
         z-index: 20;
+        pointer-events: none;
       }
       .tab-loading-spinner {
         width: 34px;

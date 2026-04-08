@@ -5175,6 +5175,49 @@
     });
   }
 
+  function forceUnblockNaturePane(root, reason) {
+    if (!root) return;
+    const pane = root.closest('.app-tab-pane[data-tab="nature-challenge"]');
+    if (!pane) return;
+
+    // Remove stale tab loader blockers that can sit on top of the tab surface.
+    pane.classList.remove('tab-is-loading');
+    const staleIndicators = pane.querySelectorAll('.tab-loading-indicator');
+    staleIndicators.forEach((node) => node.remove());
+
+    pane.style.setProperty('pointer-events', 'auto', 'important');
+    root.style.setProperty('pointer-events', 'auto', 'important');
+
+    if (isBirdConsoleTraceEnabled()) {
+      emitBirdClickTrace('pane-unblocked', null, pane, {
+        reason: String(reason || 'unknown'),
+        staleIndicatorCount: staleIndicators.length
+      });
+    }
+  }
+
+  function diagnoseNatureButtonSurface(root) {
+    if (!root || !isBirdConsoleTraceEnabled()) return;
+    const ids = ['natureChallengeRefreshBtn', 'birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOverviewCommandRunBtn'];
+    ids.forEach((id) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      if (!rect || rect.width < 4 || rect.height < 4) return;
+      const x = rect.left + (rect.width / 2);
+      const y = rect.top + (rect.height / 2);
+      const topEl = document.elementFromPoint(x, y);
+      const isReachable = Boolean(topEl && (topEl === button || button.contains(topEl)));
+      if (isReachable) return;
+      emitBirdClickTrace('surface-blocked', null, button, {
+        buttonId: id,
+        blockerTag: topEl && topEl.tagName ? String(topEl.tagName).toLowerCase() : '',
+        blockerId: topEl && topEl.id ? String(topEl.id) : '',
+        blockerClass: topEl && topEl.className ? String(topEl.className).slice(0, 120) : ''
+      });
+    });
+  }
+
   function installNatureButtonReliabilityObserver(root) {
     if (!root || root.dataset.natureButtonObserverBound === '1') return;
     root.dataset.natureButtonObserverBound = '1';
@@ -5281,6 +5324,7 @@
     '[data-birds-density]',
     '[data-birds-overview-jump]',
     '#birdsOverviewCommandClearBtn',
+    '#birdsOverviewCommandRunBtn',
     '#birdsResetUiBtn',
     '#birdsClearClickDiagnosticsBtn',
     '#birdsCopyRecentClickTraceBtn',
@@ -5549,6 +5593,13 @@
         return;
       }
 
+      const runCommandButton = event.target.closest('#birdsOverviewCommandRunBtn');
+      if (runCommandButton) {
+        const cmdInput = document.getElementById('birdsOverviewCommandInput');
+        runBirdOverviewCommand(root, cmdInput ? (cmdInput.value || '') : '');
+        return;
+      }
+
       const resetUiButton = event.target.closest('#birdsResetUiBtn');
       if (resetUiButton) {
         resetBirdUiPreferences(root);
@@ -5782,25 +5833,10 @@
       explorerBackButton.addEventListener('click', () => setBirdView(root, 'overview'));
     }
 
-    // Fallback direct bindings: keep core Birds entry buttons responsive even if other
-    // global handlers interfere with delegated click routing.
-    const exploreSpeciesButton = document.getElementById('birdsExploreBtn');
-    if (exploreSpeciesButton && exploreSpeciesButton.dataset.natureExploreDirectBound !== '1') {
-      exploreSpeciesButton.dataset.natureExploreDirectBound = '1';
-      exploreSpeciesButton.addEventListener('click', (event) => {
-        if (event.defaultPrevented) return;
-        setBirdView(root, 'explorer');
-      });
-    }
-
-    const refreshBirdsButton = document.getElementById('natureChallengeRefreshBtn');
-    if (refreshBirdsButton && refreshBirdsButton.dataset.natureRefreshDirectBound !== '1') {
-      refreshBirdsButton.dataset.natureRefreshDirectBound = '1';
-      refreshBirdsButton.addEventListener('click', (event) => {
-        if (event.defaultPrevented) return;
-        loadBirdDataset(true);
-      });
-    }
+    // Canonical routing policy:
+    // Keep core Birds controls delegated-only (#natureChallengeRefreshBtn,
+    // #birdsExploreBtn, #birdsOpenLogBtn, #birdsOverviewCommandRunBtn) so a
+    // single click path owns activation/diagnostics/guard behavior.
 
     const detailBackButton = document.getElementById('birdsDetailBackBtn');
     if (detailBackButton && detailBackButton.dataset.natureDetailBackBound !== '1') {
@@ -5814,14 +5850,7 @@
       collectionBackButton.addEventListener('click', () => setBirdView(root, 'overview'));
     }
 
-    const overviewCommandRunBtn = document.getElementById('birdsOverviewCommandRunBtn');
     const overviewCommandInput = document.getElementById('birdsOverviewCommandInput');
-    if (overviewCommandRunBtn && overviewCommandRunBtn.dataset.natureCmdRunBound !== '1') {
-      overviewCommandRunBtn.dataset.natureCmdRunBound = '1';
-      overviewCommandRunBtn.addEventListener('click', () => {
-        runBirdOverviewCommand(root, overviewCommandInput ? overviewCommandInput.value : '');
-      });
-    }
 
     if (overviewCommandInput && overviewCommandInput.dataset.natureCmdInputBound !== '1') {
       overviewCommandInput.dataset.natureCmdInputBound = '1';
@@ -6061,6 +6090,7 @@
     const root = document.getElementById('natureChallengeRoot');
     if (!root) return;
 
+    forceUnblockNaturePane(root, 'init');
     ensureNatureButtonsResponsive(root);
     ensureBirdClickDiagnosticsPanel(root);
     bindNatureControls(root);
@@ -6078,21 +6108,29 @@
         const liveRoot = document.getElementById('natureChallengeRoot');
         if (!liveRoot) return;
 
-        // 1. Remove stale loading overlay from the outer pane (sibling of root).
-        const outerPane = liveRoot.parentElement;
-        if (outerPane) {
-          outerPane.classList.remove('tab-is-loading');
-          const staleIndicator = outerPane.querySelector('.tab-loading-indicator');
-          if (staleIndicator) staleIndicator.remove();
-        }
+        forceUnblockNaturePane(liveRoot, 'tab-switch');
 
         // 2. Re-run button responsiveness immediately and after the next paint.
         ensureNatureButtonsResponsive(liveRoot);
         ensureBirdClickDiagnosticsPanel(liveRoot);
+        diagnoseNatureButtonSurface(liveRoot);
         requestAnimationFrame(() => {
+          forceUnblockNaturePane(liveRoot, 'tab-switch-raf');
           ensureNatureButtonsResponsive(liveRoot);
+          diagnoseNatureButtonSurface(liveRoot);
         });
       });
+    }
+
+    if (!root.dataset.natureReliabilityWatchdogBound) {
+      root.dataset.natureReliabilityWatchdogBound = '1';
+      window.setInterval(() => {
+        if (state.activeSubTab !== 'birds') return;
+        const liveRoot = document.getElementById('natureChallengeRoot');
+        if (!liveRoot) return;
+        forceUnblockNaturePane(liveRoot, 'watchdog');
+        ensureNatureButtonsResponsive(liveRoot);
+      }, 1800);
     }
 
     const diagnostics = document.getElementById('birdsDiagnosticsDetails');
