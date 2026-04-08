@@ -11,6 +11,15 @@
 <script>
   // Initialize Birding tab
   window.initBirdingTab = function() {
+    // Shared action guard slice: create a dedicated scope for this tab.
+    // Future birding actions should use window.BirdingActionGuard.withActionGuard(...)
+    // for consistent dedupe/in-flight/disabled semantics.
+    if (window.ButtonActionGuard && typeof window.ButtonActionGuard.createScope === 'function') {
+      window.BirdingActionGuard = window.ButtonActionGuard.createScope('birding-locations', {
+        dedupeMs: 300,
+        lockTimeoutMs: 8000
+      });
+    }
     console.log('✅ Birding Locations tab initialized');
     // Add your birding-specific initialization here
     // All JS functions are available from main index

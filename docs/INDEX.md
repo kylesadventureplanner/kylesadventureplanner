@@ -22,6 +22,9 @@ Use this page as the main landing point for performance, debugging, and reliabil
 
 ### Reliability Merge Guidance
 - 🛡️ **Merge Decision**: [`RELIABILITY_MERGE_DECISION.md`](./RELIABILITY_MERGE_DECISION.md) - Safe consolidation status and phased plan
+- 🧭 **Button Architecture Cleanup Plan**: [`BUTTON_ARCHITECTURE_CLEANUP_PLAN.md`](./BUTTON_ARCHITECTURE_CLEANUP_PLAN.md) - Do/Don't rules and per-tab migration checklist
+- 📅 **Button Migration Tracker**: [`BUTTON_MIGRATION_TRACKER.md`](./BUTTON_MIGRATION_TRACKER.md) - Weekly owner/status/date execution board
+- 🧱 **Shared Action Guard**: `JS Files/button-action-guard.js` - Common in-flight/dedupe/disabled guard utility
 
 ### Debug System (Already Implemented)
 - ⚡ **Quick Start**: [`DEBUG_QUICK_REFERENCE.md`](./DEBUG_QUICK_REFERENCE.md) - Copy-paste commands

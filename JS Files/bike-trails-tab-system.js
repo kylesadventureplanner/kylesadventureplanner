@@ -146,6 +146,14 @@
     }
   };
   const BULK_STATUS_CONFIRM_THRESHOLD = 20;
+  const BIKE_ACTION_GUARD_DEFAULTS = {
+    dedupeMs: 300,
+    lockTimeoutMs: 8000
+  };
+  const bikeGuardFallback = {
+    inFlight: new Map(),
+    lastAt: new Map()
+  };
 
   window.bikeTrailsData = window.bikeTrailsData || [];
   window.bikeFilteredTrails = window.bikeFilteredTrails || [];
@@ -181,6 +189,64 @@
     const cleaned = String(value || '').replace(/[^0-9.-]/g, '');
     const num = Number(cleaned);
     return Number.isFinite(num) ? num : 0;
+  }
+
+  function getBikeActionKey(target, explicitKey) {
+    const key = String(explicitKey || '').trim();
+    if (key) return key;
+    if (target && target.id) return `id:${target.id}`;
+    if (target && typeof target.getAttribute === 'function') {
+      const attrs = ['data-bike-filter', 'data-bike-managed-tag', 'data-bike-source-index'];
+      for (let i = 0; i < attrs.length; i += 1) {
+        const value = target.getAttribute(attrs[i]);
+        if (value != null) return `${attrs[i]}:${value}`;
+      }
+    }
+    return `tag:${String(target && target.tagName || '').toLowerCase()}`;
+  }
+
+  async function withBikeActionGuard(target, action, options = {}) {
+    const dedupeMs = Math.max(0, Number(options.dedupeMs) || BIKE_ACTION_GUARD_DEFAULTS.dedupeMs);
+    const lockTimeoutMs = Math.max(1000, Number(options.lockTimeoutMs) || BIKE_ACTION_GUARD_DEFAULTS.lockTimeoutMs);
+    const actionKey = getBikeActionKey(target, options.actionKey);
+
+    if (window.ButtonActionGuard && typeof window.ButtonActionGuard.withActionGuard === 'function') {
+      return window.ButtonActionGuard.withActionGuard({
+        scope: 'bike-trails',
+        target,
+        action,
+        dedupeMs,
+        lockTimeoutMs,
+        getActionKey: () => actionKey
+      });
+    }
+
+    if (!target || target.disabled === true || (typeof target.getAttribute === 'function' && target.getAttribute('aria-disabled') === 'true') || (target.dataset && target.dataset.busy === '1')) {
+      return false;
+    }
+
+    const now = Date.now();
+    if (bikeGuardFallback.inFlight.get(actionKey)) return false;
+    const lastAt = Number(bikeGuardFallback.lastAt.get(actionKey) || 0);
+    if (now - lastAt < dedupeMs) return false;
+
+    bikeGuardFallback.inFlight.set(actionKey, true);
+    bikeGuardFallback.lastAt.set(actionKey, now);
+    if (target.dataset) target.dataset.busy = '1';
+
+    const safetyTimer = window.setTimeout(() => {
+      bikeGuardFallback.inFlight.delete(actionKey);
+      if (target.dataset) delete target.dataset.busy;
+    }, lockTimeoutMs);
+
+    try {
+      await action();
+      return true;
+    } finally {
+      clearTimeout(safetyTimer);
+      bikeGuardFallback.inFlight.delete(actionKey);
+      if (target.dataset) delete target.dataset.busy;
+    }
   }
 
   function parseDriveMinutes(value) {
@@ -2164,7 +2230,7 @@
     const tagsBtn = document.getElementById('bikeBulkApplyTagsBtn');
     if (tagsBtn && tagsBtn.dataset.bound !== '1') {
       tagsBtn.addEventListener('click', () => {
-        applyBikeBulkTags();
+        withBikeActionGuard(tagsBtn, () => applyBikeBulkTags(), { actionKey: 'bulk:tags' });
       });
       tagsBtn.dataset.bound = '1';
     }
@@ -2172,7 +2238,7 @@
     const ratingBtn = document.getElementById('bikeBulkApplyRatingBtn');
     if (ratingBtn && ratingBtn.dataset.bound !== '1') {
       ratingBtn.addEventListener('click', () => {
-        applyBikeBulkRating();
+        withBikeActionGuard(ratingBtn, () => applyBikeBulkRating(), { actionKey: 'bulk:rating' });
       });
       ratingBtn.dataset.bound = '1';
     }
@@ -2180,7 +2246,7 @@
     const favoriteBtn = document.getElementById('bikeBulkMarkFavoriteBtn');
     if (favoriteBtn && favoriteBtn.dataset.bound !== '1') {
       favoriteBtn.addEventListener('click', () => {
-        applyBikeBulkFavorite();
+        withBikeActionGuard(favoriteBtn, () => applyBikeBulkFavorite(), { actionKey: 'bulk:favorite' });
       });
       favoriteBtn.dataset.bound = '1';
     }
@@ -2188,7 +2254,7 @@
     const unfavoriteBtn = document.getElementById('bikeBulkUnmarkFavoriteBtn');
     if (unfavoriteBtn && unfavoriteBtn.dataset.bound !== '1') {
       unfavoriteBtn.addEventListener('click', () => {
-        applyBikeBulkUnfavorite();
+        withBikeActionGuard(unfavoriteBtn, () => applyBikeBulkUnfavorite(), { actionKey: 'bulk:unfavorite' });
       });
       unfavoriteBtn.dataset.bound = '1';
     }
@@ -2196,7 +2262,7 @@
     const visitedBtn = document.getElementById('bikeBulkMarkVisitedBtn');
     if (visitedBtn && visitedBtn.dataset.bound !== '1') {
       visitedBtn.addEventListener('click', () => {
-        applyBikeBulkVisited();
+        withBikeActionGuard(visitedBtn, () => applyBikeBulkVisited(), { actionKey: 'bulk:visited' });
       });
       visitedBtn.dataset.bound = '1';
     }
@@ -2204,7 +2270,7 @@
     const unvisitedBtn = document.getElementById('bikeBulkUnmarkVisitedBtn');
     if (unvisitedBtn && unvisitedBtn.dataset.bound !== '1') {
       unvisitedBtn.addEventListener('click', () => {
-        applyBikeBulkUnvisited();
+        withBikeActionGuard(unvisitedBtn, () => applyBikeBulkUnvisited(), { actionKey: 'bulk:unvisited' });
       });
       unvisitedBtn.dataset.bound = '1';
     }
@@ -2217,7 +2283,15 @@
   }
 
   async function refreshBikeTrailData() {
-    await loadBikeData();
+    const refreshBtn = document.getElementById('bikeRefreshBtn');
+    if (refreshBtn) {
+      return withBikeActionGuard(refreshBtn, () => loadBikeData(), {
+        actionKey: 'refresh:bike-data',
+        dedupeMs: 900,
+        lockTimeoutMs: 15000
+      });
+    }
+    return loadBikeData();
   }
 
   function initializeBikeTrailsTab() {
@@ -3059,15 +3133,7 @@
     }
   }
 
-  window.openTrailExplorerWindow = function() {
-    const now = Date.now();
-    const dedupeWindowMs = 1200;
-    const lastOpenAttempt = Number(window.__trailExplorerLastOpenAttemptTs || 0);
-    if (now - lastOpenAttempt < dedupeWindowMs) {
-      return true;
-    }
-    window.__trailExplorerLastOpenAttemptTs = now;
-
+  function openTrailExplorerWindowImpl() {
     const params = new URLSearchParams(window.location.search || '');
     const isExplorerContext =
       params.get('trailExplorerWindow') === '1' ||
@@ -3107,6 +3173,18 @@
       window.showToast?.('❌ Error opening Trail Explorer: ' + (error?.message || error), 'error', 5000);
       return false;
     }
+  }
+
+  window.openTrailExplorerWindow = function() {
+    const explorerBtn = document.getElementById('bikeTrailExplorerBtn');
+    if (explorerBtn) {
+      return withBikeActionGuard(explorerBtn, () => openTrailExplorerWindowImpl(), {
+        actionKey: 'open:trail-explorer-window',
+        dedupeMs: 1200,
+        lockTimeoutMs: 5000
+      });
+    }
+    return openTrailExplorerWindowImpl();
   };
 
   function closeBikeTrailExplorer() {

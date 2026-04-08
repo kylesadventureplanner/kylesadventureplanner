@@ -514,6 +514,9 @@
    * Fails closed: disabled, aria-disabled="true", or data-busy="1" all block.
    */
   function isButtonActivatable(target) {
+    if (window.ButtonActionGuard && typeof window.ButtonActionGuard.isActivatable === 'function') {
+      return window.ButtonActionGuard.isActivatable(target);
+    }
     if (!target) return false;
     if (target.disabled === true) return false;
     if (target.getAttribute('aria-disabled') === 'true') return false;
@@ -552,6 +555,22 @@
    * Works with both sync and async `fn`.
    */
   async function withBirdsActionGuard(target, fn) {
+    if (window.ButtonActionGuard && typeof window.ButtonActionGuard.withActionGuard === 'function') {
+      return window.ButtonActionGuard.withActionGuard({
+        scope: 'nature-birds',
+        target,
+        action: fn,
+        dedupeMs: BIRDS_ACTIVATION_DEDUPE_MS,
+        lockTimeoutMs: BIRDS_ACTIVATION_LOCK_TIMEOUT_MS,
+        getActionKey: getBirdsActivationKey,
+        onBlocked(reason, meta = {}) {
+          if (reason === 'disabled') emitBirdClickTrace('guard-blocked-disabled', null, target);
+          else if (reason === 'in-flight') emitBirdClickTrace('guard-blocked-in-flight', null, target, { key: meta.key || '' });
+          else if (reason === 'dedupe') emitBirdClickTrace('guard-blocked-dedupe', null, target, { key: meta.key || '', ageMs: Number(meta.ageMs) || 0 });
+        }
+      });
+    }
+
     if (!isButtonActivatable(target)) {
       emitBirdClickTrace('guard-blocked-disabled', null, target);
       return;

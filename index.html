@@ -4765,6 +4765,26 @@
       gap: 8px;
     }
 
+    .debug-startup-timing {
+      font-size: 11px;
+      color: #93c5fd;
+      font-weight: 500;
+      opacity: 0.95;
+      white-space: nowrap;
+    }
+
+    .debug-startup-timing.state-ok {
+      color: #86efac;
+    }
+
+    .debug-startup-timing.state-warn {
+      color: #fcd34d;
+    }
+
+    .debug-startup-timing.state-alert {
+      color: #fca5a5;
+    }
+
     .debug-console-buttons {
       display: flex;
       gap: 8px;
@@ -7034,22 +7054,54 @@
 
 <script>
   (function initStartupPreparingIndicator() {
-    let dismissed = false;
+    const startupPerf = {
+      scriptInitAt: performance.now(),
+      domContentLoadedAt: 0,
+      interactiveReadyAt: 0,
+      firstTabSwitchAt: 0,
+      dismissedAt: 0,
+      dismissReason: '',
+      interactiveReady: false,
+      dismissed: false
+    };
 
     function setStartupMessage(message) {
       const textEl = document.getElementById('loadingText');
       if (textEl) textEl.textContent = message;
     }
 
+    function setOverlayBadge(text, isWarn) {
+      const badge = document.getElementById('overlayStatusBadge');
+      if (!badge) return;
+      badge.textContent = text;
+      badge.classList.toggle('overlay-warn', Boolean(isWarn));
+      badge.classList.toggle('overlay-ok', !isWarn);
+    }
+
+    function telemetrySnapshot() {
+      const now = performance.now();
+      const sinceInit = Math.max(0, now - startupPerf.scriptInitAt);
+      return {
+        ...startupPerf,
+        msSinceInit: Math.round(sinceInit),
+        msToDomContentLoaded: startupPerf.domContentLoadedAt ? Math.round(startupPerf.domContentLoadedAt - startupPerf.scriptInitAt) : 0,
+        msToInteractiveReady: startupPerf.interactiveReadyAt ? Math.round(startupPerf.interactiveReadyAt - startupPerf.scriptInitAt) : 0,
+        msToDismissed: startupPerf.dismissedAt ? Math.round(startupPerf.dismissedAt - startupPerf.scriptInitAt) : 0
+      };
+    }
+
     function dismissStartupOverlay(reason) {
-      if (dismissed) return;
-      dismissed = true;
+      if (startupPerf.dismissed) return;
+      startupPerf.dismissed = true;
+      startupPerf.dismissedAt = performance.now();
+      startupPerf.dismissReason = String(reason || 'ready');
 
       const overlay = document.getElementById('loadingOverlay');
       if (!overlay) return;
 
       overlay.dataset.startupLock = '0';
       overlay.classList.add('startup-complete');
+      setOverlayBadge('Overlay: OK', false);
 
       window.setTimeout(() => {
         if (typeof window.hideLoading === 'function') {
@@ -7060,17 +7112,49 @@
         overlay.classList.remove('startup-complete');
       }, 220);
 
-      console.log('✅ Startup preparing indicator dismissed:', reason || 'ready');
+      console.log('✅ Startup preparing indicator dismissed:', reason || 'ready', telemetrySnapshot());
     }
 
     window.dismissStartupPreparingOverlay = dismissStartupOverlay;
+    window.__appReadiness = {
+      getStatus() {
+        const snapshot = telemetrySnapshot();
+        return {
+          interactiveReady: snapshot.interactiveReady,
+          dismissed: snapshot.dismissed,
+          dismissReason: snapshot.dismissReason,
+          msSinceInit: snapshot.msSinceInit,
+          msToInteractiveReady: snapshot.msToInteractiveReady,
+          msToDismissed: snapshot.msToDismissed
+        };
+      },
+      getTelemetry() {
+        return telemetrySnapshot();
+      }
+    };
+
+    setOverlayBadge('Overlay: STARTUP LOCK', true);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      startupPerf.domContentLoadedAt = performance.now();
+      setStartupMessage('Core UI loaded...');
+    }, { once: true });
+
+    window.addEventListener('app:tab-switched', () => {
+      if (!startupPerf.firstTabSwitchAt) startupPerf.firstTabSwitchAt = performance.now();
+    });
 
     window.addEventListener('app:interactive-ready', () => {
-      setStartupMessage('Tabs ready');
+      startupPerf.interactiveReady = true;
+      startupPerf.interactiveReadyAt = performance.now();
+      setStartupMessage('Buttons and tabs are ready');
       window.setTimeout(() => dismissStartupOverlay('interactive-ready'), 350);
     }, { once: true });
 
     window.addEventListener('load', () => {
+      if (!startupPerf.interactiveReady) {
+        setStartupMessage('Finalizing startup...');
+      }
       window.setTimeout(() => dismissStartupOverlay('window-load-fallback'), 4500);
     }, { once: true });
 
@@ -7108,6 +7192,7 @@
   <div class="debug-console-header" onclick="toggleDebugConsole()" style="cursor: pointer;" title="Click to expand/collapse">
     <div class="debug-console-title">
       🔧 Advanced Debug Console
+      <span id="startupTimingLine" class="debug-startup-timing">Startup timing: waiting...</span>
     </div>
     <div class="debug-console-buttons" onclick="event.stopPropagation();">
       <button class="debug-btn" onclick="copyDebugConsoleToClipboard()" title="Copy all debug logs">
@@ -8167,6 +8252,57 @@
     if (activeErrorBarTab === 'debug-flow' && errorBar && !errorBar.classList.contains('collapsed')) {
       updateErrorBar();
     }
+
+    refreshStartupTimingLine();
+  }
+
+  function formatStartupTimingSummary() {
+    const readiness = window.__appReadiness;
+    if (!readiness || typeof readiness.getStatus !== 'function') {
+      return { text: 'Startup timing: telemetry unavailable', level: 'warn' };
+    }
+
+    const status = readiness.getStatus() || {};
+    const interactiveMs = Math.max(0, Number(status.msToInteractiveReady) || 0);
+    const dismissedMs = Math.max(0, Number(status.msToDismissed) || 0);
+    const waitingMs = Math.max(0, Number(status.msSinceInit) || 0);
+
+    const getLevelForMs = (ms) => {
+      if (ms <= 1500) return 'ok';
+      if (ms <= 3500) return 'warn';
+      return 'alert';
+    };
+
+    if (!status.interactiveReady) {
+      const waitingLevel = waitingMs > 3500 ? 'alert' : waitingMs > 1500 ? 'warn' : 'ok';
+      return {
+        text: `Startup timing: waiting (${waitingMs} ms)`,
+        level: waitingLevel
+      };
+    }
+    if (!status.dismissed) {
+      return {
+        text: `Startup timing: interactive in ${interactiveMs} ms (overlay pending)`,
+        level: getLevelForMs(interactiveMs)
+      };
+    }
+    const headlineMs = Math.max(interactiveMs, dismissedMs || interactiveMs);
+    return {
+      text: `Startup timing: interactive ${interactiveMs} ms | overlay off ${dismissedMs} ms`,
+      level: getLevelForMs(headlineMs)
+    };
+  }
+
+  function refreshStartupTimingLine() {
+    const line = document.getElementById('startupTimingLine');
+    if (!line) return;
+    const summary = formatStartupTimingSummary();
+    line.textContent = summary && summary.text ? summary.text : 'Startup timing: telemetry unavailable';
+    const level = summary && summary.level ? summary.level : 'warn';
+    line.classList.remove('state-ok', 'state-warn', 'state-alert');
+    if (level === 'ok') line.classList.add('state-ok');
+    else if (level === 'alert') line.classList.add('state-alert');
+    else line.classList.add('state-warn');
   }
 
   /**
@@ -8178,6 +8314,7 @@
       console_el.classList.toggle('collapsed');
       const isCollapsed = console_el.classList.contains('collapsed');
       if (!isCollapsed) {
+        refreshStartupTimingLine();
         addDebugLog('success', 'Debug console expanded');
         // Scroll to bottom when expanded
         setTimeout(() => {
@@ -8257,7 +8394,17 @@
     if (console_el && !console_el.classList.contains('visible')) {
       console_el.classList.add('visible');
     }
+        refreshStartupTimingLine();
     }
+
+        if (!window.__startupTimingDebugBound) {
+        window.__startupTimingDebugBound = true;
+        window.addEventListener('app:interactive-ready', refreshStartupTimingLine);
+        window.addEventListener('app:tab-switched', refreshStartupTimingLine);
+        window.addEventListener('DOMContentLoaded', () => {
+          window.setTimeout(refreshStartupTimingLine, 0);
+        }, { once: true });
+        }
 
     if (typeof window.__isExpectedAuthCancellation !== 'function') {
     window.__isExpectedAuthCancellation = function(errorOrMessage) {
@@ -20373,6 +20520,9 @@ COMMON ISSUES:
     }
   });
 </script>
+
+<!-- Bike Trails Tab System -->
+<script src="JS Files/button-action-guard.js"></script>
 
 <!-- Bike Trails Tab System -->
 <script src="JS Files/bike-trails-tab-system.js"></script>

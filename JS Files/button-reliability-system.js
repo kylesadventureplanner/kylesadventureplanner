@@ -306,6 +306,70 @@
       return blockers.length;
     },
 
+    probeClickPath(buttonId) {
+      const target = document.getElementById(buttonId);
+      if (!target) {
+        const missing = { ok: false, reason: 'not-found', buttonId: String(buttonId || '') };
+        console.warn('⚠️ ButtonReliability.probeClickPath: button not found', missing);
+        return missing;
+      }
+
+      const rect = target.getBoundingClientRect();
+      if (!rect || rect.width < 2 || rect.height < 2) {
+        const invalid = {
+          ok: false,
+          reason: 'invalid-rect',
+          buttonId: target.id || '',
+          rect: { width: rect ? rect.width : 0, height: rect ? rect.height : 0 }
+        };
+        console.warn('⚠️ ButtonReliability.probeClickPath: invalid rect', invalid);
+        return invalid;
+      }
+
+      const sample = {
+        center: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 },
+        topLeftInset: { x: rect.left + 6, y: rect.top + 6 },
+        topRightInset: { x: rect.right - 6, y: rect.top + 6 },
+        bottomLeftInset: { x: rect.left + 6, y: rect.bottom - 6 },
+        bottomRightInset: { x: rect.right - 6, y: rect.bottom - 6 }
+      };
+
+      const points = Object.entries(sample).map(([label, point]) => {
+        const topEl = document.elementFromPoint(point.x, point.y);
+        const reachable = Boolean(topEl && (topEl === target || target.contains(topEl)));
+        return {
+          label,
+          x: Math.round(point.x),
+          y: Math.round(point.y),
+          reachable,
+          topTag: topEl && topEl.tagName ? String(topEl.tagName).toLowerCase() : '',
+          topId: topEl && topEl.id ? topEl.id : '',
+          topClass: topEl && topEl.className ? String(topEl.className).slice(0, 120) : ''
+        };
+      });
+
+      const blockedPoints = points.filter((entry) => !entry.reachable);
+      const result = {
+        ok: blockedPoints.length === 0,
+        buttonId: target.id || '',
+        rect: {
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        },
+        points,
+        blockedPoints
+      };
+
+      if (result.ok) {
+        console.log('✅ ButtonReliability.probeClickPath: target surface reachable', result);
+      } else {
+        console.warn('⚠️ ButtonReliability.probeClickPath: surface blocked', result);
+      }
+      return result;
+    },
+
     getEventLog(limit) { return SYSTEM.eventLog.slice(-(limit || 50)); },
     clearEventLog() { SYSTEM.eventLog = []; },
     setDebugMode(enabled) {
