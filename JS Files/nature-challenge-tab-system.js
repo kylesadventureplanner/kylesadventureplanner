@@ -232,6 +232,7 @@
       userStateMissing: [],
       details: ''
     },
+    birdDataWorkbookPath: '',
     birdSyncWorkbookPath: '',
     birdCollectionsCache: {
       stats: null,
@@ -2275,7 +2276,8 @@
       ? [String(window.natureBirdSyncConfig.filePath)]
       : [];
     const remembered = state && state.birdSyncWorkbookPath ? [String(state.birdSyncWorkbookPath)] : [];
-    return Array.from(new Set(configured.concat(remembered, EXCEL_SYNC_FILE_CANDIDATES, getBirdFileCandidates())));
+    const dataWorkbookFallback = state && state.birdDataWorkbookPath ? [String(state.birdDataWorkbookPath)] : [];
+    return Array.from(new Set(configured.concat(remembered, EXCEL_SYNC_FILE_CANDIDATES, dataWorkbookFallback)));
   }
 
   async function loadBirdDataFromExcel() {
@@ -2327,9 +2329,29 @@
     state.families = datasetResult.dataset.families;
     state.birdsLoaded = true;
     state.birdsSource = datasetResult.source;
-    state.birdSyncWorkbookPath = String(datasetResult.filePath || state.birdSyncWorkbookPath || '').trim();
+    state.birdDataWorkbookPath = String(datasetResult.filePath || state.birdDataWorkbookPath || '').trim();
     state.lastLoadedAt = new Date().toISOString();
     saveBirdCache(datasetResult.dataset, datasetResult.source);
+  }
+
+  async function resolveBirdSyncWorkbookPath() {
+    const remembered = String(state.birdSyncWorkbookPath || '').trim();
+    if (remembered) {
+      try {
+        await fetchTableColumnsAndRows(remembered, BIRD_SIGHTINGS_TABLE_NAME, 1);
+        await fetchTableColumnsAndRows(remembered, BIRD_USER_STATE_TABLE_NAME, 1);
+        return remembered;
+      } catch (_error) {
+        state.birdSyncWorkbookPath = '';
+      }
+    }
+
+    const workbookPath = await findWorkbookPathWithTables(
+      [BIRD_SIGHTINGS_TABLE_NAME, BIRD_USER_STATE_TABLE_NAME],
+      getBirdSyncFileCandidates()
+    );
+    if (workbookPath) state.birdSyncWorkbookPath = workbookPath;
+    return workbookPath;
   }
 
   async function loadBirdDataset(forceRefresh) {
@@ -2668,9 +2690,8 @@
     const userId = getBirdSyncUserId();
     if (!userId) return;
 
-    const workbookPath = state.birdSyncWorkbookPath || await findWorkbookPathWithTables([BIRD_SIGHTINGS_TABLE_NAME, BIRD_USER_STATE_TABLE_NAME], getBirdSyncFileCandidates());
+    const workbookPath = await resolveBirdSyncWorkbookPath();
     if (!workbookPath) return;
-    state.birdSyncWorkbookPath = workbookPath;
 
     const sightingsPayload = await fetchTableColumnsAndRows(workbookPath, BIRD_SIGHTINGS_TABLE_NAME, 5000);
     const userStatePayload = await fetchTableColumnsAndRows(workbookPath, BIRD_USER_STATE_TABLE_NAME, 5000);
@@ -2889,13 +2910,12 @@
     }
 
     const deviceId = getBirdSyncDeviceId();
-    const workbookPath = state.birdSyncWorkbookPath || await findWorkbookPathWithTables([BIRD_SIGHTINGS_TABLE_NAME, BIRD_USER_STATE_TABLE_NAME], getBirdSyncFileCandidates());
+    const workbookPath = await resolveBirdSyncWorkbookPath();
     if (!workbookPath) {
       state.syncLastError = `Sync skipped: workbook with tables '${BIRD_SIGHTINGS_TABLE_NAME}' and '${BIRD_USER_STATE_TABLE_NAME}' was not found.`;
       renderSyncStatusPanel();
       return;
     }
-    state.birdSyncWorkbookPath = workbookPath;
 
     let schemaSightings = null;
     let schemaUserState = null;
