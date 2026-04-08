@@ -4785,6 +4785,26 @@
       color: #fca5a5;
     }
 
+    .debug-reliability-status {
+      font-size: 11px;
+      color: #a7f3d0;
+      font-weight: 500;
+      opacity: 0.95;
+      white-space: nowrap;
+    }
+
+    .debug-reliability-status.state-ok {
+      color: #86efac;
+    }
+
+    .debug-reliability-status.state-warn {
+      color: #fcd34d;
+    }
+
+    .debug-reliability-status.state-alert {
+      color: #fca5a5;
+    }
+
     .debug-console-buttons {
       display: flex;
       gap: 8px;
@@ -7193,6 +7213,7 @@
     <div class="debug-console-title">
       🔧 Advanced Debug Console
       <span id="startupTimingLine" class="debug-startup-timing">Startup timing: waiting...</span>
+      <span id="reliabilityStatusLine" class="debug-reliability-status">Reliability: waiting...</span>
     </div>
     <div class="debug-console-buttons" onclick="event.stopPropagation();">
       <button class="debug-btn" onclick="copyDebugConsoleToClipboard()" title="Copy all debug logs">
@@ -8254,6 +8275,41 @@
     }
 
     refreshStartupTimingLine();
+    refreshReliabilityStatusLine();
+  }
+
+  function formatReliabilityStatusSummary() {
+    if (!window.__reliabilityStatus || typeof window.__reliabilityStatus !== 'function') {
+      return { text: 'Reliability: telemetry unavailable', level: 'warn' };
+    }
+
+    const status = window.__reliabilityStatus() || {};
+    const blocked = status.blockedActions || {};
+    const blockedTotal = Number(blocked.disabled || 0) + Number(blocked['in-flight'] || 0) + Number(blocked.dedupe || 0);
+    const overlays = Math.max(0, Number(status.overlayInterceptions || 0));
+    const errors = Math.max(0, Number(status.errorCount || 0));
+    const recoveries = Math.max(0, Number(status.recoveryEventCount || 0));
+
+    let level = 'ok';
+    if (errors > 0 || overlays > 0) level = 'alert';
+    else if (blockedTotal > 0 || recoveries > 0) level = 'warn';
+
+    return {
+      text: `Reliability: blocked ${blockedTotal} | overlays ${overlays} | recoveries ${recoveries} | errors ${errors}`,
+      level
+    };
+  }
+
+  function refreshReliabilityStatusLine() {
+    const line = document.getElementById('reliabilityStatusLine');
+    if (!line) return;
+    const summary = formatReliabilityStatusSummary();
+    line.textContent = summary && summary.text ? summary.text : 'Reliability: telemetry unavailable';
+    const level = summary && summary.level ? summary.level : 'warn';
+    line.classList.remove('state-ok', 'state-warn', 'state-alert');
+    if (level === 'ok') line.classList.add('state-ok');
+    else if (level === 'alert') line.classList.add('state-alert');
+    else line.classList.add('state-warn');
   }
 
   function formatStartupTimingSummary() {
@@ -8315,6 +8371,7 @@
       const isCollapsed = console_el.classList.contains('collapsed');
       if (!isCollapsed) {
         refreshStartupTimingLine();
+        refreshReliabilityStatusLine();
         addDebugLog('success', 'Debug console expanded');
         // Scroll to bottom when expanded
         setTimeout(() => {
@@ -8395,6 +8452,7 @@
       console_el.classList.add('visible');
     }
         refreshStartupTimingLine();
+        refreshReliabilityStatusLine();
     }
 
         if (!window.__startupTimingDebugBound) {
@@ -8403,6 +8461,18 @@
         window.addEventListener('app:tab-switched', refreshStartupTimingLine);
         window.addEventListener('DOMContentLoaded', () => {
           window.setTimeout(refreshStartupTimingLine, 0);
+        }, { once: true });
+        }
+
+        if (!window.__reliabilityStatusDebugBound) {
+        window.__reliabilityStatusDebugBound = true;
+        window.addEventListener('app:interactive-ready', refreshReliabilityStatusLine);
+        window.addEventListener('app:tab-switched', refreshReliabilityStatusLine);
+        window.addEventListener('reliability:action-start', refreshReliabilityStatusLine);
+        window.addEventListener('reliability:action-blocked', refreshReliabilityStatusLine);
+        window.addEventListener('reliability:overlay-interception', refreshReliabilityStatusLine);
+        window.addEventListener('DOMContentLoaded', () => {
+          window.setTimeout(refreshReliabilityStatusLine, 0);
         }, { once: true });
         }
 

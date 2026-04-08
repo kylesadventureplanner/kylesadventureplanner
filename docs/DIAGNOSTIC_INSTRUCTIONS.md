@@ -8,7 +8,7 @@ I apologize for applying fixes blindly. Let's actually figure out what's going w
 
 1. **Open your browser** and go to the app
 2. **Open Console** - F12 → Console tab
-3. **Copy this script** from `/COMPREHENSIVE_DIAGNOSTIC.js` (in the repo root)
+3. **Copy this script** from `/JS Files/COMPREHENSIVE_DIAGNOSTIC.js`
 4. **Paste it in the console** and press Enter
 5. **Wait for it to complete**
 

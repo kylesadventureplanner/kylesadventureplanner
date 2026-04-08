@@ -79,12 +79,38 @@
            <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="quests" title="Go to the Quests section" data-tooltip="Go to the Quests section">Quests</button>
            <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="bingo" title="Go to the Bingo section" data-tooltip="Go to the Bingo section">Bingo</button>
         </div>
-         <div id="birdsOverviewCommandHelp" class="nature-command-help" aria-live="polite">
-          <span class="nature-command-help-label">Try commands like:</span>
-          <code>search heron</code>
-          <code>go badges</code>
-          <code>log</code>
-         </div>
+         <details id="birdsOverviewCommandHelp" class="nature-command-help" aria-live="polite">
+          <summary class="nature-command-help-summary">
+            <span class="nature-command-help-label">Try commands like:</span>
+            <code>search heron</code>
+          </summary>
+          <div class="nature-command-help-body">
+            <div><strong>Navigation</strong></div>
+            <code>go overview</code>
+            <code>overview</code>
+            <code>explore</code>
+            <code>open explorer</code>
+            <code>go badges</code>
+            <code>go challenges</code>
+            <code>go quests</code>
+            <code>go bingo</code>
+
+            <div><strong>Search and filtering</strong></div>
+            <code>search heron</code>
+            <code>search warbler</code>
+            <code>search migration</code>
+            <code>search rarity high</code>
+            <code>heron</code>
+
+            <div><strong>Workflow shortcuts</strong></div>
+            <code>log</code>
+            <code>open log</code>
+            <code>go log</code>
+            <code>go quests</code>
+
+            <div class="nature-command-help-note">Tips: press <kbd>Enter</kbd> to run; if a command is not recognized, the text is treated as an explorer search.</div>
+          </div>
+         </details>
         <datalist id="birdsOverviewCommandSuggestions">
           <option value="log"></option>
           <option value="go overview"></option>
@@ -1327,13 +1353,38 @@
 
   #natureChallengeRoot .nature-command-help {
     margin-top: 8px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    align-items: center;
+    display: block;
     color: #64748b;
     font-size: 12px;
     line-height: 1.4;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 6px 8px;
+  }
+
+  #natureChallengeRoot .nature-command-help-summary {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  #natureChallengeRoot .nature-command-help summary::-webkit-details-marker {
+    display: none;
+  }
+
+  #natureChallengeRoot .nature-command-help-body {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+  }
+
+  #natureChallengeRoot .nature-command-help-note {
+    color: #475569;
+    font-size: 11px;
   }
 
   #natureChallengeRoot .nature-command-region-header {

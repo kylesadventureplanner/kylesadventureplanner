@@ -1864,6 +1864,22 @@
     `).join('');
   }
 
+  function syncCategoryFocusButtons(root) {
+    const scope = root || document.getElementById('visitedLocationsRoot');
+    const grid = scope ? scope.querySelector('#visitedCategoryGrid') : document.getElementById('visitedCategoryGrid');
+    if (!grid) return;
+
+    grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
+      const btnCategory = btn.getAttribute('data-category-filter') || 'all';
+      const isActive = btnCategory === state.categoryFilter;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      btn.textContent = isActive ? 'Focused' : 'Focus';
+      btn.setAttribute('title', isActive ? `Clear ${btnCategory} focus` : `Focus tracker on ${btnCategory}`);
+      btn.setAttribute('data-tooltip', isActive ? `Clear ${btnCategory} focus` : `Focus tracker on ${btnCategory}`);
+    });
+  }
+
     function renderCategories(stats) {
       const grid = document.getElementById('visitedCategoryGrid');
       if (!grid) return;
@@ -1873,11 +1889,25 @@
         const visitedCount = stats.visitedByCategory[category.key] || 0;
         const totalCount = stats.totalByCategory[category.key] || 0;
         const pct = totalCount > 0 ? Math.round((visitedCount / totalCount) * 100) : 0;
+        const isActive = state.categoryFilter === category.key;
+        const focusLabel = isActive ? 'Focused' : 'Focus';
+        const focusTooltip = isActive
+          ? `Clear ${category.label} focus`
+          : `Focus tracker on ${category.label}`;
 
         return `
           <div class="visited-category-card" data-category="${category.key}">
             <div class="visited-category-top">
               <div class="visited-category-title">${category.icon} ${category.label}</div>
+              <button
+                type="button"
+                class="quick-filter-btn ${isActive ? 'active' : ''}"
+                data-category-filter="${category.key}"
+                aria-pressed="${isActive ? 'true' : 'false'}"
+                title="${escapeHtml(focusTooltip)}"
+                data-tooltip="${escapeHtml(focusTooltip)}"
+                style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;"
+              >${focusLabel}</button>
             </div>
             <div class="visited-category-meta">${visitedCount} / ${totalCount || 0} visited</div>
             <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${pct}%;"></div></div>
@@ -1885,7 +1915,7 @@
         `;
       }).join('');
 
-      logVisitedDiagnostics(`🎨 renderCategories() rendered ${categoryCount} category cards`);
+      logVisitedDiagnostics(`🎨 renderCategories() rendered ${categoryCount} category cards with Focus buttons`);
     }
 
   function maybeCelebrateChallengeCompletions(challengeProgress) {
@@ -2276,8 +2306,9 @@
 
       // Defensive: ensure all interactive elements are clickable
       const buttons = root.querySelectorAll(
-        'button, [role="button"], [data-visit-action], [data-progress-subtab], [data-catalog-filter], .quick-filter-btn, .card-btn'
+        'button, [role="button"], [data-visit-action], [data-progress-subtab], [data-catalog-filter], [data-category-filter], .quick-filter-btn, .card-btn'
       );
+      const categoryFilterButtons = root.querySelectorAll('[data-category-filter]');
 
       buttons.forEach((btn) => {
         if (btn.style && typeof btn.style.setProperty === 'function') {
@@ -2292,7 +2323,9 @@
         btn.disabled = false;
       });
 
-      logVisitedDiagnostics(`✅ ensureButtonsResponsive() fixed ${buttons.length} buttons`);
+      syncCategoryFocusButtons(root);
+
+      logVisitedDiagnostics(`✅ ensureButtonsResponsive() fixed ${buttons.length} buttons (${categoryFilterButtons.length} category filters)`);
     }
 
     function bindControls() {
@@ -2414,6 +2447,47 @@
               setActiveProgressSubTab(root, tabKey);
             }
             scheduleVisitedSubTabInterceptionCheck(root, 0);
+            return;
+          }
+
+          const categoryFilterBtn = event.target.closest('[data-category-filter]');
+          if (categoryFilterBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const nextCategory = categoryFilterBtn.getAttribute('data-category-filter') || 'all';
+            const prevFilter = state.categoryFilter || 'all';
+            const now = Date.now();
+            const elapsed = now - (state.lastCategoryFilterClick || 0);
+
+            if (elapsed < state.categoryFilterDebounceMs) {
+              logVisitedDiagnostics(`⏱️ Category filter click debounced (${elapsed}ms since last click)`);
+              return;
+            }
+
+            state.lastCategoryFilterClick = now;
+            state.categoryFilter = prevFilter === nextCategory ? 'all' : nextCategory;
+
+            window.__debugFocusButtons = {
+              clicks: (window.__debugFocusButtons?.clicks || 0) + 1,
+              lastClick: {
+                timestamp: new Date().toISOString(),
+                btn: nextCategory,
+                prevFilter,
+                newFilter: state.categoryFilter,
+                isRefreshing: state.isRefreshing,
+                btnDisabled: Boolean(categoryFilterBtn.disabled),
+                btnPointerEvents: window.getComputedStyle(categoryFilterBtn).pointerEvents
+              }
+            };
+
+            logVisitedDiagnostics(
+              `🔘 Focus button clicked: ${nextCategory} (was: ${prevFilter}), isRefreshing=${state.isRefreshing}, disabled=${Boolean(categoryFilterBtn.disabled)}`
+            );
+
+            resetCatalogRenderLimit();
+            syncCategoryFocusButtons(root);
+            renderCatalog(state.latestLocations || [], state.latestVisitMap || getVisitMap());
             return;
           }
 
@@ -2565,6 +2639,7 @@
   window.initializeVisitedLocationsTab = initializeVisitedLocationsTab;
   window.initVisitedLocationsTab = window.initVisitedLocationsTab || initializeVisitedLocationsTab;
   window.getVisitedTrackerSyncHealth = getSyncHealthStatus;
+  window.__visitedState = state;
   window.enableVisitedClickTrace = function() {
     state.tracerEnabled = true;
     window.__visitedClickTrace = true;
