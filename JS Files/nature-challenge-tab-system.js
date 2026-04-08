@@ -253,8 +253,18 @@
     pointerupCount: 0,
     dedupedClicks: 0,
     lastEvent: '-',
-    lastTarget: '-'
+    lastTarget: '-',
+    recentTraces: [],
+    maxRecentTraces: 40
   };
+
+  // Per-action-key reliability guard state.
+  const birdsActivationGuard = {
+    inFlight: new Map(),  // actionKey -> true while async action is running
+    lastAt: new Map()     // actionKey -> timestamp of last successful activation
+  };
+  const BIRDS_ACTIVATION_DEDUPE_MS = 300;      // ignore re-activation within this window
+  const BIRDS_ACTIVATION_LOCK_TIMEOUT_MS = 8000; // safety-release stuck lock after this long
 
   function isBirdClickDiagnosticsEnabled() {
     if (typeof window === 'undefined') return false;
@@ -286,6 +296,10 @@
           <span class="nature-click-diagnostics-status">Paused</span>
         </div>
         <div class="nature-click-diagnostics-empty">Diagnostics are currently disabled. Use <code>window.setBirdClickDiagnosticsEnabled(true)</code> to turn live tracking back on.</div>
+        <div class="nature-log-form-actions" style="margin-top:8px;">
+          <button type="button" id="birdsCopyRecentClickTraceBtn" class="pill-button" ${birdsClickDiagnostics.recentTraces.length ? '' : 'disabled'}>Copy recent click trace JSON (${birdsClickDiagnostics.recentTraces.length})</button>
+          <button type="button" id="birdsDownloadRecentClickTraceBtn" class="pill-button" ${birdsClickDiagnostics.recentTraces.length ? '' : 'disabled'}>Download click trace JSON (${birdsClickDiagnostics.recentTraces.length})</button>
+        </div>
       `;
       return;
     }
@@ -318,6 +332,10 @@
         <div class="nature-click-diagnostics-row"><strong>Last event</strong><span>${escapeHtml(birdsClickDiagnostics.lastEvent || '-')}</span></div>
         <div class="nature-click-diagnostics-row"><strong>Last target</strong><span>${escapeHtml(birdsClickDiagnostics.lastTarget || '-')}</span></div>
         <div class="nature-click-diagnostics-row"><strong>Status</strong><span>${hasEvents ? 'Tracking recent Birds button activations.' : 'Waiting for your next Birds button interaction.'}</span></div>
+      </div>
+      <div class="nature-log-form-actions" style="margin-top:8px;">
+        <button type="button" id="birdsCopyRecentClickTraceBtn" class="pill-button" ${birdsClickDiagnostics.recentTraces.length ? '' : 'disabled'}>Copy recent click trace JSON (${birdsClickDiagnostics.recentTraces.length})</button>
+        <button type="button" id="birdsDownloadRecentClickTraceBtn" class="pill-button" ${birdsClickDiagnostics.recentTraces.length ? '' : 'disabled'}>Download click trace JSON (${birdsClickDiagnostics.recentTraces.length})</button>
       </div>
     `;
   }
@@ -356,6 +374,119 @@
     renderBirdClickDiagnosticsPanel();
   }
 
+  function isBirdConsoleTraceEnabled() {
+    if (typeof window === 'undefined') return false;
+    return window.__BIRDS_CLICK_DIAG__ === true;
+  }
+
+  function getBirdDiagnosticActionKey(target) {
+    if (!target || typeof target.getAttribute !== 'function') return 'unknown';
+    if (target.id) return `id:${target.id}`;
+    if (target.getAttribute('data-nature-subtab')) return `subtab:${target.getAttribute('data-nature-subtab')}`;
+    if (target.getAttribute('data-birds-more')) return `more:${target.getAttribute('data-birds-more')}`;
+    if (target.getAttribute('data-birds-collection-tier')) return `tier:${target.getAttribute('data-birds-collection-tier')}`;
+    if (target.getAttribute('data-birds-overview-jump')) return `jump:${target.getAttribute('data-birds-overview-jump')}`;
+    if (target.getAttribute('data-bird-toggle')) return `toggle:${target.getAttribute('data-bird-toggle')}`;
+    if (target.getAttribute('data-bird-open')) return `open:${target.getAttribute('data-bird-open')}`;
+    if (target.getAttribute('data-bird-favorite')) return `favorite:${target.getAttribute('data-bird-favorite')}`;
+    if (target.getAttribute('data-sync-resolve')) return `sync:${target.getAttribute('data-sync-resolve')}`;
+    return `tag:${String(target.tagName || '').toLowerCase()}`;
+  }
+
+  function emitBirdClickTrace(phase, event, target, extra = {}) {
+    if (!isBirdConsoleTraceEnabled()) return;
+    const payload = {
+      traceId: `birds-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      ts: new Date().toISOString(),
+      phase: String(phase || 'unknown'),
+      eventType: event && event.type ? event.type : 'none',
+      actionKey: getBirdDiagnosticActionKey(target),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      selectedBirdId: state.selectedBirdId || '',
+      pointerType: event && event.pointerType ? String(event.pointerType) : '',
+      isPrimary: event && Object.prototype.hasOwnProperty.call(event, 'isPrimary') ? Boolean(event.isPrimary) : null,
+      button: event && Object.prototype.hasOwnProperty.call(event, 'button') ? Number(event.button) : null,
+      defaultPrevented: Boolean(event && event.defaultPrevented),
+      isTrusted: Boolean(event && event.isTrusted),
+      ...extra
+    };
+    birdsClickDiagnostics.recentTraces.push(payload);
+    if (birdsClickDiagnostics.recentTraces.length > birdsClickDiagnostics.maxRecentTraces) {
+      birdsClickDiagnostics.recentTraces = birdsClickDiagnostics.recentTraces.slice(-birdsClickDiagnostics.maxRecentTraces);
+    }
+    try {
+      console.debug('[BirdsClickTrace]', payload);
+    } catch (_error) {
+      // Ignore console sink errors.
+    }
+  }
+
+  function getRecentBirdClickTraceSnapshot() {
+    return {
+      copiedAt: new Date().toISOString(),
+      traceCount: birdsClickDiagnostics.recentTraces.length,
+      traces: birdsClickDiagnostics.recentTraces.slice()
+    };
+  }
+
+  async function downloadRecentBirdClickTraceJson() {
+    const snapshot = getRecentBirdClickTraceSnapshot();
+    if (!snapshot.traceCount) {
+      if (typeof window.showToast === 'function') window.showToast('No click traces captured yet.', 'info', 1800);
+      return false;
+    }
+
+    const text = JSON.stringify(snapshot, null, 2);
+    const blob = new Blob([text], { type: 'application/json' });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `birds-click-trace-${stamp}.json`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    if (typeof window.showToast === 'function') {
+      window.showToast(`Downloaded ${snapshot.traceCount} click trace entries.`, 'success', 2200);
+    }
+    return true;
+  }
+
+  async function copyRecentBirdClickTraceJson() {
+    const snapshot = getRecentBirdClickTraceSnapshot();
+    const text = JSON.stringify(snapshot, null, 2);
+    if (!snapshot.traceCount) {
+      if (typeof window.showToast === 'function') window.showToast('No click traces captured yet.', 'info', 1800);
+      return false;
+    }
+    try {
+      if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+    } catch (_error) {
+      const probe = document.createElement('textarea');
+      probe.value = text;
+      probe.setAttribute('readonly', 'readonly');
+      probe.style.position = 'fixed';
+      probe.style.top = '-9999px';
+      document.body.appendChild(probe);
+      probe.select();
+      document.execCommand('copy');
+      document.body.removeChild(probe);
+    }
+    if (typeof window.showToast === 'function') {
+      window.showToast(`Copied ${snapshot.traceCount} click trace entries.`, 'success', 2000);
+    }
+    return true;
+  }
+
   function resetBirdClickDiagnosticsState() {
     birdsClickDiagnostics.total = 0;
     birdsClickDiagnostics.clickCount = 0;
@@ -363,6 +494,7 @@
     birdsClickDiagnostics.dedupedClicks = 0;
     birdsClickDiagnostics.lastEvent = '-';
     birdsClickDiagnostics.lastTarget = '-';
+    birdsClickDiagnostics.recentTraces = [];
     renderBirdClickDiagnosticsPanel();
     return {
       total: birdsClickDiagnostics.total,
@@ -370,9 +502,93 @@
       pointerupCount: birdsClickDiagnostics.pointerupCount,
       dedupedClicks: birdsClickDiagnostics.dedupedClicks,
       lastEvent: birdsClickDiagnostics.lastEvent,
-      lastTarget: birdsClickDiagnostics.lastTarget
+      lastTarget: birdsClickDiagnostics.lastTarget,
+      recentTraceCount: birdsClickDiagnostics.recentTraces.length
     };
   }
+
+  // ── Button reliability helpers ───────────────────────────────────────────────
+
+  /**
+   * Returns true when a button element is safe to activate.
+   * Fails closed: disabled, aria-disabled="true", or data-busy="1" all block.
+   */
+  function isButtonActivatable(target) {
+    if (!target) return false;
+    if (target.disabled === true) return false;
+    if (target.getAttribute('aria-disabled') === 'true') return false;
+    if (target.dataset && target.dataset.busy === '1') return false;
+    return true;
+  }
+
+  /**
+   * Derives a stable, unique activation key from a target element.
+   * Prefers the element id; falls back to the most specific data-attribute.
+   */
+  function getBirdsActivationKey(target) {
+    if (!target) return 'unknown';
+    if (target.id) return target.id;
+    const keyAttrs = [
+      'data-bird-toggle', 'data-bird-favorite', 'data-bird-open',
+      'data-nature-subtab', 'data-birds-more', 'data-sync-resolve',
+      'data-birds-collection-tier', 'data-birds-overview-jump',
+      'data-birds-overview-filter', 'data-birds-filter-chip'
+    ];
+    for (let i = 0; i < keyAttrs.length; i++) {
+      const val = target.getAttribute(keyAttrs[i]);
+      if (val != null) return `${keyAttrs[i]}:${val}`;
+    }
+    return `tag:${String(target.tagName || '').toLowerCase()}`;
+  }
+
+  /**
+   * Runs `fn` with three automatic protections applied:
+   *   1. Fail-closed disabled/aria-disabled/busy check.
+   *   2. Per-action-key in-flight lock (prevents double-activation of async work).
+   *   3. 300 ms activation dedupe window (catches rapid repeat taps/clicks).
+   * The lock is always released via `finally`; a 8 s safety timeout prevents
+   * a hung `fn` from permanently locking a button.
+   *
+   * Works with both sync and async `fn`.
+   */
+  async function withBirdsActionGuard(target, fn) {
+    if (!isButtonActivatable(target)) {
+      emitBirdClickTrace('guard-blocked-disabled', null, target);
+      return;
+    }
+    const key = getBirdsActivationKey(target);
+    const now = Date.now();
+
+    if (birdsActivationGuard.inFlight.get(key)) {
+      emitBirdClickTrace('guard-blocked-in-flight', null, target, { key });
+      return;
+    }
+
+    const lastAt = birdsActivationGuard.lastAt.get(key) || 0;
+    if (now - lastAt < BIRDS_ACTIVATION_DEDUPE_MS) {
+      emitBirdClickTrace('guard-blocked-dedupe', null, target, { key, ageMs: now - lastAt });
+      return;
+    }
+
+    birdsActivationGuard.inFlight.set(key, true);
+    birdsActivationGuard.lastAt.set(key, now);
+    if (target.dataset) target.dataset.busy = '1';
+
+    const safetyTimer = window.setTimeout(() => {
+      birdsActivationGuard.inFlight.delete(key);
+      if (target.dataset) delete target.dataset.busy;
+    }, BIRDS_ACTIVATION_LOCK_TIMEOUT_MS);
+
+    try {
+      await fn();
+    } finally {
+      clearTimeout(safetyTimer);
+      birdsActivationGuard.inFlight.delete(key);
+      if (target.dataset) delete target.dataset.busy;
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   function norm(value) {
     return String(value || '').trim().toLowerCase();
@@ -5067,6 +5283,8 @@
     '#birdsOverviewCommandClearBtn',
     '#birdsResetUiBtn',
     '#birdsClearClickDiagnosticsBtn',
+    '#birdsCopyRecentClickTraceBtn',
+    '#birdsDownloadRecentClickTraceBtn',
     '[data-birds-back-to-top]',
     '#birdsExplorerClearFiltersBtn',
     '#birdsExplorerClearChipFiltersBtn',
@@ -5104,7 +5322,10 @@
 
     const handleDelegatedActivation = (event) => {
       const delegatedTarget = getDelegatedNatureActionTarget(root, event);
-      if (!delegatedTarget) return;
+      if (!delegatedTarget) {
+        emitBirdClickTrace('no-delegated-target', event, event && event.target ? event.target : null);
+        return;
+      }
 
       if (event.type === 'pointerup') {
         const pointerType = String(event.pointerType || '').toLowerCase();
@@ -5112,18 +5333,30 @@
         if (event.isPrimary === false || Number(event.button) > 0) return;
         delegatedTarget.dataset.naturePointerHandledAt = String(Date.now());
         event.preventDefault();
+        emitBirdClickTrace('pointerup-handled', event, delegatedTarget);
       }
 
       if (event.type === 'click') {
         const lastPointerHandledAt = Number(delegatedTarget.dataset.naturePointerHandledAt || 0);
-        if (lastPointerHandledAt && (Date.now() - lastPointerHandledAt) < 700) {
+        const dedupeAgeMs = lastPointerHandledAt ? (Date.now() - lastPointerHandledAt) : 0;
+        if (lastPointerHandledAt && dedupeAgeMs < 700) {
           recordBirdClickDiagnostic(event.type, delegatedTarget, { deduped: true });
+          emitBirdClickTrace('click-deduped', event, delegatedTarget, { dedupeAgeMs });
           delegatedTarget.removeAttribute('data-nature-pointer-handled-at');
           return;
         }
       }
 
       recordBirdClickDiagnostic(event.type, delegatedTarget);
+      emitBirdClickTrace('delegated-target-resolved', event, delegatedTarget);
+
+      // ── Fail-closed disabled/aria-disabled/busy guard ───────────────────────
+      // Applied once here so every branch below inherits the same contract.
+      if (!isButtonActivatable(delegatedTarget)) {
+        emitBirdClickTrace('guard-disabled', event, delegatedTarget);
+        return;
+      }
+      // ────────────────────────────────────────────────────────────────────────
 
       const subTabButton = event.target.closest('[data-nature-subtab]');
       if (subTabButton) {
@@ -5134,7 +5367,7 @@
 
       const refreshButton = event.target.closest('#natureChallengeRefreshBtn');
       if (refreshButton) {
-        loadBirdDataset(true);
+        withBirdsActionGuard(refreshButton, () => loadBirdDataset(true));
         return;
       }
 
@@ -5158,13 +5391,13 @@
 
       const toggleButton = event.target.closest('[data-bird-toggle]');
       if (toggleButton) {
-        toggleBirdSighting(toggleButton.getAttribute('data-bird-toggle'));
+        withBirdsActionGuard(toggleButton, () => toggleBirdSighting(toggleButton.getAttribute('data-bird-toggle')));
         return;
       }
 
       const favoriteButton = event.target.closest('[data-bird-favorite]');
       if (favoriteButton) {
-        toggleBirdFavorite(favoriteButton.getAttribute('data-bird-favorite'));
+        withBirdsActionGuard(favoriteButton, () => toggleBirdFavorite(favoriteButton.getAttribute('data-bird-favorite')));
         return;
       }
 
@@ -5330,6 +5563,18 @@
         return;
       }
 
+      const copyDiagnosticsButton = event.target.closest('#birdsCopyRecentClickTraceBtn');
+      if (copyDiagnosticsButton) {
+        withBirdsActionGuard(copyDiagnosticsButton, () => copyRecentBirdClickTraceJson());
+        return;
+      }
+
+      const downloadDiagnosticsButton = event.target.closest('#birdsDownloadRecentClickTraceBtn');
+      if (downloadDiagnosticsButton) {
+        withBirdsActionGuard(downloadDiagnosticsButton, () => downloadRecentBirdClickTraceJson());
+        return;
+      }
+
       const backToTopButton = event.target.closest('[data-birds-back-to-top]');
       if (backToTopButton) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -5354,13 +5599,13 @@
 
       const logSaveNewButton = event.target.closest('#birdsLogSaveNewBtn');
       if (logSaveNewButton) {
-        logSightingFromForm('save-new');
+        withBirdsActionGuard(logSaveNewButton, () => logSightingFromForm('save-new'));
         return;
       }
 
       const logSaveOpenNextButton = event.target.closest('#birdsLogSaveOpenNextBtn');
       if (logSaveOpenNextButton) {
-        logSightingFromForm('save-open-next');
+        withBirdsActionGuard(logSaveOpenNextButton, () => logSightingFromForm('save-open-next'));
         return;
       }
 
@@ -5503,9 +5748,11 @@
       if (conflictResolveButton) {
         const conflictId = conflictResolveButton.getAttribute('data-conflict-id') || '';
         const strategy = conflictResolveButton.getAttribute('data-sync-resolve') || 'local';
-        resolveSyncConflict(conflictId, strategy);
+        withBirdsActionGuard(conflictResolveButton, () => resolveSyncConflict(conflictId, strategy));
         return;
       }
+
+      emitBirdClickTrace('action-unmatched', event, delegatedTarget);
     };
 
     root.addEventListener('click', handleDelegatedActivation, true);

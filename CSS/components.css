@@ -1423,6 +1423,45 @@ button:focus-visible, [role="button"]:focus-visible {
   justify-content: flex-end;
 }
 
+@media (max-width: 480px) {
+  .nature-collection-control-row,
+  .nature-collection-tier-filter-row,
+  .nature-collection-toggle-row {
+    gap: 6px;
+  }
+
+  .nature-tier-filter-btn,
+  .nature-tier-path-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    line-height: 1.1;
+  }
+}
+
+@media (max-width: 390px) {
+  .nature-collection-controls {
+    padding: 8px;
+  }
+
+  .nature-collection-control-row,
+  .nature-collection-tier-filter-row,
+  .nature-collection-toggle-row,
+  .nature-collection-lane-row {
+    gap: 5px;
+  }
+
+  .nature-tier-filter-btn,
+  .nature-tier-path-btn {
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+
+  .nature-collection-toggle-row {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
 .nature-tier-filter-btn.is-active,
 .nature-tier-path-btn.is-active {
   border: 1px solid rgba(59, 130, 246, 0.5);

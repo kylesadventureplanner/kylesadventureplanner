@@ -7181,6 +7181,9 @@
           <button id="adventureRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh adventure data from Excel" data-tooltip="Refresh adventure data from Excel" onclick="refreshAdventureData()">
             🔄 Refresh Data
           </button>
+          <button id="downloadSessionJsonBtn" class="planner-top-btn planner-top-btn--accent" title="Download your current session as JSON" data-tooltip="Download your current session as JSON" onclick="downloadSessionJson()">
+            📥 Download JSON
+          </button>
         </div>
       </header>
 
@@ -21350,6 +21353,100 @@ window.applyClosingSoonFilter = function() {
 // ============================================================
 // 13. INITIALIZE ACTION BUTTONS
 // ============================================================
+
+function normalizeSessionValueForJson(value) {
+  if (value instanceof Set) {
+    return Array.from(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(normalizeSessionValueForJson);
+  }
+  if (value && typeof value === 'object') {
+    const normalized = {};
+    Object.keys(value).forEach((key) => {
+      normalized[key] = normalizeSessionValueForJson(value[key]);
+    });
+    return normalized;
+  }
+  return value;
+}
+
+function getParsedStorageValue(key, fallback) {
+  try {
+    const rawValue = localStorage.getItem(key);
+    if (!rawValue) return fallback;
+    return JSON.parse(rawValue);
+  } catch (error) {
+    console.warn(`Failed to parse localStorage key: ${key}`, error);
+    return fallback;
+  }
+}
+
+window.downloadSessionJson = function() {
+  try {
+    const now = new Date();
+    const pad = (num) => String(num).padStart(2, '0');
+    const fileTimestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+
+    const currentFavorites = Array.isArray(window.adventureFavorites)
+      ? window.adventureFavorites
+      : (typeof favorites !== 'undefined' && Array.isArray(favorites)
+          ? favorites
+          : getParsedStorageValue('adventureFavorites', []));
+
+    const currentRatings = (typeof adventureRatings === 'object' && adventureRatings !== null)
+      ? adventureRatings
+      : getParsedStorageValue('adventureRatings', {});
+
+    const activeTab = document.querySelector('.app-tab-btn.active')?.getAttribute('data-tab') || null;
+    const selectedRowsCount = (typeof selectedRows !== 'undefined' && selectedRows && typeof selectedRows.size === 'number')
+      ? selectedRows.size
+      : 0;
+
+    const sessionPayload = {
+      exportedAt: now.toISOString(),
+      exportType: 'adventure-session',
+      appState: normalizeSessionValueForJson(window.appState?.state || {}),
+      filters: {
+        filterManager: normalizeSessionValueForJson(window.FilterManager?.state || {}),
+        legacyActiveFilters: normalizeSessionValueForJson(typeof activeFilters !== 'undefined' ? activeFilters : {}),
+        legacyFilterState: normalizeSessionValueForJson(typeof filterState !== 'undefined' ? filterState : {})
+      },
+      preferences: {
+        favorites: normalizeSessionValueForJson(currentFavorites),
+        ratings: normalizeSessionValueForJson(currentRatings)
+      },
+      ui: {
+        activeTab,
+        selectedRowsCount
+      },
+      dataSnapshot: {
+        totalAdventureRows: Array.isArray(window.adventuresData) ? window.adventuresData.length : 0,
+        filteredAdventureRows: Array.isArray(window.totalFilteredAdventures) ? window.totalFilteredAdventures.length : null
+      }
+    };
+
+    const json = JSON.stringify(sessionPayload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `adventure-session_${fileTimestamp}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+
+    if (typeof showToast === 'function') {
+      showToast('✅ Session JSON downloaded', 'success', 2200);
+    }
+  } catch (error) {
+    console.error('❌ Failed to download session JSON:', error);
+    if (typeof showToast === 'function') {
+      showToast(`❌ Download failed: ${error.message}`, 'error', 3500);
+    }
+  }
+};
 
 window.initializeActionButtons = function() {
   console.log('🔘 Initializing action buttons...');
