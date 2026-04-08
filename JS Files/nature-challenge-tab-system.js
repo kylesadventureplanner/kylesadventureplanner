@@ -13,7 +13,16 @@
   const BIRD_SYNC_CONFLICTS_KEY = 'natureChallengeBirdSyncConflictsV1';
   const BIRD_GAMIFICATION_KEY = 'natureChallengeBirdGamificationV1';
   const BIRD_UI_PREFS_KEY = 'natureChallengeBirdUiPrefsV1';
+  const BIRD_SYNC_DEVICE_KEY = 'natureChallengeBirdSyncDeviceIdV1';
   const EXCEL_TABLE_NAME = 'birds';
+  const BIRD_SIGHTINGS_TABLE_NAME = 'birds_sightings';
+  const BIRD_USER_STATE_TABLE_NAME = 'birds_user_state';
+  const EXCEL_SYNC_FILE_CANDIDATES = [
+    'Nature_Sightings.xlsx',
+    'Copilot_Apps/Kyles_Adventure_Finder/Nature_Sightings.xlsx'
+  ];
+  const BIRD_SIGHTINGS_REQUIRED_COLUMNS = ['event_id', 'user_id', 'device_id', 'species_status_key', 'species_id', 'canonical_id', 'date_observed', 'count', 'is_deleted', 'created_at', 'updated_at'];
+  const BIRD_USER_STATE_REQUIRED_COLUMNS = ['state_id', 'user_id', 'species_status_key', 'species_id', 'canonical_id', 'is_favorite', 'created_at', 'updated_at'];
   const EXCEL_FILE_CANDIDATES = [
     'Nature_records.xlsx',
     'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx'
@@ -168,6 +177,15 @@
     gamification: loadGamificationState(),
     syncQueue: loadSyncQueue(),
     syncConflicts: loadSyncConflicts(),
+    syncLastError: '',
+    syncSchemaDiagnostics: {
+      status: 'unknown',
+      checkedAt: '',
+      sightingsMissing: [],
+      userStateMissing: [],
+      details: ''
+    },
+    birdSyncWorkbookPath: '',
     birdCollectionsCache: {
       stats: null,
       challenges: [],
@@ -613,6 +631,126 @@
     }
   }
 
+  function getBirdSyncDeviceId() {
+    const existing = String(localStorage.getItem(BIRD_SYNC_DEVICE_KEY) || '').trim();
+    if (existing) return existing;
+    const created = `device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(BIRD_SYNC_DEVICE_KEY, created);
+    return created;
+  }
+
+  function getBirdSyncUserId() {
+    const account = window.activeAccount || null;
+    if (!account) return '';
+    return String(account.username || account.homeAccountId || account.localAccountId || '').trim();
+  }
+
+  function parseBooleanFlag(value) {
+    const text = norm(value);
+    return text === 'true' || text === '1' || text === 'yes';
+  }
+
+  function normalizeSyncColumnName(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  function getMissingRequiredColumns(columns, requiredColumns) {
+    const available = new Set((columns || [])
+      .map((column) => normalizeSyncColumnName(column && column.name))
+      .filter(Boolean));
+    return (requiredColumns || [])
+      .map((name) => normalizeSyncColumnName(name))
+      .filter((name) => name && !available.has(name));
+  }
+
+  function setSyncSchemaDiagnosticsFromColumns(sightingsColumns, userStateColumns) {
+    const sightingsMissing = getMissingRequiredColumns(sightingsColumns, BIRD_SIGHTINGS_REQUIRED_COLUMNS);
+    const userStateMissing = getMissingRequiredColumns(userStateColumns, BIRD_USER_STATE_REQUIRED_COLUMNS);
+    state.syncSchemaDiagnostics = {
+      status: (sightingsMissing.length || userStateMissing.length) ? 'missing-columns' : 'ok',
+      checkedAt: toIsoNow(),
+      sightingsMissing,
+      userStateMissing,
+      details: ''
+    };
+  }
+
+  function setSyncSchemaDiagnosticsUnknown(details) {
+    state.syncSchemaDiagnostics = {
+      status: 'unknown',
+      checkedAt: toIsoNow(),
+      sightingsMissing: [],
+      userStateMissing: [],
+      details: String(details || '').trim()
+    };
+  }
+
+  function getSyncSchemaDiagnosticsSummary() {
+    const diag = state.syncSchemaDiagnostics || {};
+    if (diag.status === 'ok') return 'OK - required columns detected for both sync tables.';
+    if (diag.status === 'missing-columns') {
+      const notes = [];
+      if (Array.isArray(diag.sightingsMissing) && diag.sightingsMissing.length) {
+        notes.push(`birds_sightings missing: ${diag.sightingsMissing.join(', ')}`);
+      }
+      if (Array.isArray(diag.userStateMissing) && diag.userStateMissing.length) {
+        notes.push(`birds_user_state missing: ${diag.userStateMissing.join(', ')}`);
+      }
+      return notes.join(' | ');
+    }
+    if (diag.details) return `Unknown - ${diag.details}`;
+    return 'Unknown - schema has not been checked yet.';
+  }
+
+  function getSyncSchemaDiagnosticsChip() {
+    const diag = state.syncSchemaDiagnostics || {};
+    if (diag.status === 'ok') {
+      return { label: 'OK', className: 'is-good' };
+    }
+    if (diag.status === 'missing-columns') {
+      return { label: 'Needs review', className: 'is-alert' };
+    }
+    return { label: 'Unknown', className: '' };
+  }
+
+  function parseSyncTimestamp(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return 0;
+    const parsed = Date.parse(raw);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function toIsoNow() {
+    return new Date().toISOString();
+  }
+
+  function toSafeDateObserved(value) {
+    const parsed = parseObservedDate(value);
+    return parsed ? getDateKey(parsed) : getDateKey(new Date());
+  }
+
+  function normalizeSightingEntry(entry) {
+    const base = entry || {};
+    const eventId = String(base.eventId || base.id || '').trim() || `s-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const createdAt = String(base.createdAt || '').trim() || toIsoNow();
+    const updatedAt = String(base.updatedAt || '').trim() || createdAt;
+    return {
+      ...base,
+      id: eventId,
+      eventId,
+      dateObserved: toSafeDateObserved(base.dateObserved || createdAt),
+      count: Math.max(1, Number(base.count || 1) || 1),
+      createdAt,
+      updatedAt,
+      synced: Boolean(base.synced),
+      syncedAt: base.syncedAt ? String(base.syncedAt) : ''
+    };
+  }
+
   function loadBirdUiPrefs() {
     const prefs = safeJsonParse(localStorage.getItem(BIRD_UI_PREFS_KEY), {}) || {};
     return {
@@ -792,6 +930,126 @@
       throw new Error(`Graph request failed (${response.status})`);
     }
     return response.json().catch(() => ({}));
+  }
+
+  async function fetchGraphRequest(url, options = {}) {
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(`Graph request failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+    }
+    if (response.status === 204) return {};
+    return response.json().catch(() => ({}));
+  }
+
+  async function fetchTableColumnsAndRows(filePath, tableName, top = 5000) {
+    const encodedPath = encodeGraphPath(filePath);
+    const tableRef = encodeURIComponent(tableName);
+    const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableRef}`;
+    const columnsPayload = await fetchGraphJson(`${baseUrl}/columns?$select=name,index`);
+    const rowsPayload = await fetchGraphJson(`${baseUrl}/rows?$top=${Math.max(1, Number(top) || 5000)}`);
+    return {
+      columns: Array.isArray(columnsPayload.value) ? columnsPayload.value : [],
+      rows: Array.isArray(rowsPayload.value) ? rowsPayload.value : []
+    };
+  }
+
+  function toRowObjects(columns, rows) {
+    const namesByIndex = {};
+    (columns || []).forEach((column, idx) => {
+      const index = Number.isInteger(column.index) ? column.index : idx;
+      namesByIndex[index] = String(column.name || `column_${index}`).trim();
+    });
+
+    return (rows || []).map((row) => {
+      const values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
+      const record = {};
+      values.forEach((value, index) => {
+        const key = namesByIndex[index] || `column_${index}`;
+        record[key] = value;
+      });
+      return record;
+    });
+  }
+
+  async function appendRowsToTable(filePath, tableName, rows) {
+    const rowValues = Array.isArray(rows) ? rows.filter((row) => Array.isArray(row)) : [];
+    if (!rowValues.length) return;
+    const encodedPath = encodeGraphPath(filePath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/add`;
+    await fetchGraphRequest(url, { method: 'POST', body: { values: rowValues } });
+  }
+
+  function mapRecordToRowByColumns(record, columns, requiredColumns = []) {
+    const source = record && typeof record === 'object' ? record : {};
+    const valueByNormalizedKey = {};
+    Object.entries(source).forEach(([key, value]) => {
+      const normalized = normalizeSyncColumnName(key);
+      if (!normalized) return;
+      valueByNormalizedKey[normalized] = value;
+    });
+
+    const availableColumns = (columns || []).map((column, idx) => {
+      const index = Number.isInteger(column.index) ? column.index : idx;
+      const name = String(column.name || '').trim();
+      return { index, name, normalized: normalizeSyncColumnName(name) };
+    });
+
+    const availableSet = new Set(availableColumns.map((col) => col.normalized).filter(Boolean));
+    const missingRequired = (requiredColumns || [])
+      .map((name) => normalizeSyncColumnName(name))
+      .filter((name) => name && !availableSet.has(name));
+
+    if (missingRequired.length) {
+      throw new Error(`Table schema missing required columns: ${missingRequired.join(', ')}`);
+    }
+
+    const sorted = availableColumns.slice().sort((a, b) => a.index - b.index);
+    return sorted.map((column) => {
+      if (!column.normalized) return '';
+      const value = Object.prototype.hasOwnProperty.call(valueByNormalizedKey, column.normalized)
+        ? valueByNormalizedKey[column.normalized]
+        : '';
+      return value == null ? '' : value;
+    });
+  }
+
+  async function appendRecordsToTable(filePath, tableName, records, requiredColumns = []) {
+    const list = Array.isArray(records) ? records.filter((record) => record && typeof record === 'object') : [];
+    if (!list.length) return;
+    const schema = await fetchTableColumnsAndRows(filePath, tableName, 1);
+    const rows = list.map((record) => mapRecordToRowByColumns(record, schema.columns || [], requiredColumns));
+    await appendRowsToTable(filePath, tableName, rows);
+  }
+
+  async function findWorkbookPathWithTables(tableNames, candidatePaths) {
+    const needed = Array.isArray(tableNames) ? tableNames.filter(Boolean) : [];
+    if (!needed.length) return '';
+    const candidates = Array.isArray(candidatePaths) && candidatePaths.length
+      ? candidatePaths
+      : getBirdFileCandidates();
+    for (let i = 0; i < candidates.length; i += 1) {
+      const path = String(candidates[i] || '').trim();
+      if (!path) continue;
+      let allFound = true;
+      for (let j = 0; j < needed.length; j += 1) {
+        try {
+          await fetchTableColumnsAndRows(path, needed[j], 1);
+        } catch (_) {
+          allFound = false;
+          break;
+        }
+      }
+      if (allFound) return path;
+    }
+    return '';
   }
 
   function getCurrentSeason() {
@@ -1435,6 +1693,14 @@
     return Array.from(new Set(configured.concat(EXCEL_FILE_CANDIDATES)));
   }
 
+  function getBirdSyncFileCandidates() {
+    const configured = window.natureBirdSyncConfig && window.natureBirdSyncConfig.filePath
+      ? [String(window.natureBirdSyncConfig.filePath)]
+      : [];
+    const remembered = state && state.birdSyncWorkbookPath ? [String(state.birdSyncWorkbookPath)] : [];
+    return Array.from(new Set(configured.concat(remembered, EXCEL_SYNC_FILE_CANDIDATES, getBirdFileCandidates())));
+  }
+
   async function loadBirdDataFromExcel() {
     if (!window.accessToken) {
       throw new Error('Excel source unavailable: you are not signed in.');
@@ -1456,7 +1722,8 @@
         const dataset = parseBirdDataFromExcelRows(columnsPayload.value || [], rowsPayload.value || []);
         return {
           dataset,
-          source: `Excel table '${tableName}' in ${filePath}`
+          source: `Excel table '${tableName}' in ${filePath}`,
+          filePath
         };
       } catch (error) {
         errors.push(`${filePath}: ${error && error.message ? error.message : 'Failed to read birds table.'}`);
@@ -1483,6 +1750,7 @@
     state.families = datasetResult.dataset.families;
     state.birdsLoaded = true;
     state.birdsSource = datasetResult.source;
+    state.birdSyncWorkbookPath = String(datasetResult.filePath || state.birdSyncWorkbookPath || '').trim();
     state.lastLoadedAt = new Date().toISOString();
     saveBirdCache(datasetResult.dataset, datasetResult.source);
   }
@@ -1560,7 +1828,16 @@
       ? state.favorites.filter((id) => id !== birdId)
       : state.favorites.concat([birdId]);
     saveFavorites();
-    enqueueSyncAction('favorite-toggle', { birdId, favorited: !has });
+    const timestamp = toIsoNow();
+    const bird = findBirdById(birdId);
+    enqueueSyncAction('favorite-toggle', {
+      stateId: `fav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      birdId,
+      speciesStatusKey: bird ? getBirdStatusKey(bird) : '',
+      canonicalId: bird ? (bird.canonicalId || bird.id) : '',
+      favorited: !has,
+      updatedAt: timestamp
+    });
     renderBirdExplorerList();
     if (state.activeBirdView === 'detail') renderBirdDetail();
     renderSyncStatusPanel();
@@ -1582,7 +1859,8 @@
       id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type,
       payload,
-      queuedAt: new Date().toISOString()
+      queuedAt: toIsoNow(),
+      attempts: 0
     });
     saveSyncQueue();
   }
@@ -1648,12 +1926,192 @@
   }
 
   function addSightingLogEntry(entry) {
-    state.sightingLog.unshift(entry);
+    const normalized = normalizeSightingEntry(entry);
+    state.sightingLog.unshift(normalized);
     state.sightingLog = state.sightingLog.slice(0, 600);
     saveSightingLog();
-    addConflictIfNeeded(entry);
+    addConflictIfNeeded(normalized);
     updateBirdingStatusFromLog();
-    enqueueSyncAction('log-sighting', entry);
+    enqueueSyncAction('log-sighting', normalized);
+  }
+
+  function toBirdSightingRecord(entry, userId, deviceId) {
+    const normalized = normalizeSightingEntry(entry);
+    const syncedAt = toIsoNow();
+    return {
+      event_id: normalized.eventId,
+      user_id: userId,
+      device_id: deviceId,
+      species_status_key: String(normalized.speciesStatusKey || ''),
+      species_id: String(normalized.speciesId || ''),
+      canonical_id: String(normalized.canonicalId || ''),
+      date_observed: String(normalized.dateObserved || ''),
+      count: Number(normalized.count || 1),
+      location_name: String(normalized.locationName || ''),
+      region: String(normalized.region || ''),
+      habitat: String(normalized.habitat || ''),
+      latitude: normalized.latitude == null ? '' : Number(normalized.latitude),
+      longitude: normalized.longitude == null ? '' : Number(normalized.longitude),
+      confidence: String(normalized.confidence || 'certain'),
+      notes: String(normalized.notes || ''),
+      photo_name: String(normalized.photoName || ''),
+      audio_name: String(normalized.audioName || ''),
+      is_deleted: normalized.isDeleted ? 'TRUE' : 'FALSE',
+      created_at: String(normalized.createdAt || ''),
+      updated_at: String(normalized.updatedAt || normalized.createdAt || ''),
+      synced_at: syncedAt
+    };
+  }
+
+  function toBirdUserStateRecord(payload, userId, deviceId) {
+    const updatedAt = String(payload && payload.updatedAt ? payload.updatedAt : toIsoNow());
+    return {
+      state_id: String(payload && payload.stateId ? payload.stateId : `fav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+      user_id: userId,
+      species_status_key: String(payload && payload.speciesStatusKey ? payload.speciesStatusKey : ''),
+      species_id: String(payload && payload.birdId ? payload.birdId : ''),
+      canonical_id: String(payload && payload.canonicalId ? payload.canonicalId : ''),
+      is_favorite: payload && payload.favorited ? 'TRUE' : 'FALSE',
+      last_viewed_at: '',
+      last_logged_at: updatedAt,
+      total_logs: '',
+      user_tags: '',
+      ui_prefs_json: '',
+      created_at: updatedAt,
+      updated_at: updatedAt
+    };
+  }
+
+  function markQueueItemSucceeded(queueItem) {
+    if (!queueItem || !queueItem.type || !queueItem.payload) return;
+    if (queueItem.type === 'log-sighting') {
+      const eventId = String(queueItem.payload.eventId || queueItem.payload.id || '').trim();
+      if (!eventId) return;
+      const syncedAt = toIsoNow();
+      state.sightingLog = (state.sightingLog || []).map((entry) => {
+        const normalized = normalizeSightingEntry(entry);
+        if (normalized.eventId !== eventId) return entry;
+        return { ...normalized, synced: true, syncedAt };
+      });
+      saveSightingLog();
+    }
+  }
+
+  function parseBirdSightingRecord(record) {
+    const eventId = String(record.event_id || '').trim();
+    const speciesStatusKey = String(record.species_status_key || '').trim();
+    if (!eventId || !speciesStatusKey) return null;
+    const createdAt = String(record.created_at || '').trim() || toIsoNow();
+    const updatedAt = String(record.updated_at || '').trim() || createdAt;
+    return normalizeSightingEntry({
+      id: eventId,
+      eventId,
+      speciesId: String(record.species_id || '').trim(),
+      speciesStatusKey,
+      canonicalId: String(record.canonical_id || '').trim(),
+      speciesName: String(record.species_name || '').trim(),
+      familyLabel: String(record.family_label || '').trim(),
+      dateObserved: String(record.date_observed || '').trim() || getDateKey(createdAt),
+      locationName: String(record.location_name || '').trim(),
+      count: Math.max(1, Number(record.count || 1) || 1),
+      region: String(record.region || '').trim(),
+      habitat: String(record.habitat || '').trim(),
+      latitude: record.latitude === '' || record.latitude == null ? null : Number(record.latitude),
+      longitude: record.longitude === '' || record.longitude == null ? null : Number(record.longitude),
+      confidence: String(record.confidence || 'certain').trim() || 'certain',
+      notes: String(record.notes || '').trim(),
+      photoName: String(record.photo_name || '').trim(),
+      audioName: String(record.audio_name || '').trim(),
+      isDeleted: parseBooleanFlag(record.is_deleted),
+      createdAt,
+      updatedAt,
+      synced: true,
+      syncedAt: String(record.synced_at || '').trim() || toIsoNow()
+    });
+  }
+
+  function mergeSightingLogsByEventId(localEntries, remoteEntries) {
+    const merged = new Map();
+    const ingest = (entry, source) => {
+      const normalized = normalizeSightingEntry(entry);
+      const current = merged.get(normalized.eventId);
+      if (!current) {
+        merged.set(normalized.eventId, { ...normalized, synced: source === 'remote' || normalized.synced });
+        return;
+      }
+      const curTs = parseSyncTimestamp(current.updatedAt || current.createdAt);
+      const nextTs = parseSyncTimestamp(normalized.updatedAt || normalized.createdAt);
+      if (nextTs >= curTs) {
+        merged.set(normalized.eventId, {
+          ...normalized,
+          synced: source === 'remote' || normalized.synced
+        });
+      }
+    };
+
+    (Array.isArray(localEntries) ? localEntries : []).forEach((entry) => ingest(entry, 'local'));
+    (Array.isArray(remoteEntries) ? remoteEntries : []).forEach((entry) => ingest(entry, 'remote'));
+
+    return Array.from(merged.values())
+      .filter((entry) => !entry.isDeleted)
+      .sort((a, b) => parseSyncTimestamp(b.createdAt) - parseSyncTimestamp(a.createdAt));
+  }
+
+  function applyFavoriteStateRows(rows) {
+    if (!Array.isArray(rows) || !rows.length) return;
+    const latestByKey = {};
+    rows.forEach((record) => {
+      const key = String(record.species_status_key || record.canonical_id || record.species_id || '').trim();
+      if (!key) return;
+      const nextTs = parseSyncTimestamp(record.updated_at || record.created_at);
+      const current = latestByKey[key];
+      const currentTs = current ? parseSyncTimestamp(current.updated_at || current.created_at) : 0;
+      if (!current || nextTs >= currentTs) latestByKey[key] = record;
+    });
+
+    const nextFavorites = new Set(state.favorites || []);
+    Object.values(latestByKey).forEach((record) => {
+      const birdId = String(record.species_id || '').trim();
+      const statusKey = String(record.species_status_key || '').trim();
+      let resolvedBirdId = birdId;
+      if (!resolvedBirdId && statusKey) {
+        const bird = state.birds.find((item) => getBirdStatusKey(item) === statusKey);
+        resolvedBirdId = bird ? bird.id : '';
+      }
+      if (!resolvedBirdId) return;
+      if (parseBooleanFlag(record.is_favorite)) nextFavorites.add(resolvedBirdId);
+      else nextFavorites.delete(resolvedBirdId);
+    });
+    state.favorites = Array.from(nextFavorites);
+    saveFavorites();
+  }
+
+  async function pullBirdSyncStateFromRemote() {
+    if (!window.accessToken) return;
+    const userId = getBirdSyncUserId();
+    if (!userId) return;
+
+    const workbookPath = state.birdSyncWorkbookPath || await findWorkbookPathWithTables([BIRD_SIGHTINGS_TABLE_NAME, BIRD_USER_STATE_TABLE_NAME], getBirdSyncFileCandidates());
+    if (!workbookPath) return;
+    state.birdSyncWorkbookPath = workbookPath;
+
+    const sightingsPayload = await fetchTableColumnsAndRows(workbookPath, BIRD_SIGHTINGS_TABLE_NAME, 5000);
+    const userStatePayload = await fetchTableColumnsAndRows(workbookPath, BIRD_USER_STATE_TABLE_NAME, 5000);
+    setSyncSchemaDiagnosticsFromColumns(sightingsPayload.columns, userStatePayload.columns);
+
+    const sightingRecords = toRowObjects(sightingsPayload.columns, sightingsPayload.rows)
+      .filter((row) => String(row.user_id || '').trim() === userId)
+      .map(parseBirdSightingRecord)
+      .filter(Boolean);
+
+    state.sightingLog = mergeSightingLogsByEventId(state.sightingLog, sightingRecords);
+    saveSightingLog();
+    updateBirdingStatusFromLog();
+
+    const userStateRows = toRowObjects(userStatePayload.columns, userStatePayload.rows)
+      .filter((row) => String(row.user_id || '').trim() === userId);
+    applyFavoriteStateRows(userStateRows);
+    renderBirdLogOfflineStatus();
   }
 
   function getLogEntriesByDay() {
@@ -1826,17 +2284,153 @@
 
   async function processSyncQueue() {
     state.lastSyncAttemptAt = new Date().toISOString();
+    state.syncLastError = '';
     if (!window.accessToken) {
       renderSyncStatusPanel();
       return;
     }
 
-    // This queue currently provides resilient local-first behavior and status visibility.
-    // Excel row writes can be attached here once table schema for sightings log is finalized.
-    state.syncQueue = [];
-    state.lastSyncSuccessAt = new Date().toISOString();
+    const userId = getBirdSyncUserId();
+    if (!userId) {
+      state.syncLastError = 'Sync skipped: signed-in account identity is unavailable.';
+      renderSyncStatusPanel();
+      return;
+    }
+
+    const deviceId = getBirdSyncDeviceId();
+    const workbookPath = state.birdSyncWorkbookPath || await findWorkbookPathWithTables([BIRD_SIGHTINGS_TABLE_NAME, BIRD_USER_STATE_TABLE_NAME], getBirdSyncFileCandidates());
+    if (!workbookPath) {
+      state.syncLastError = `Sync skipped: workbook with tables '${BIRD_SIGHTINGS_TABLE_NAME}' and '${BIRD_USER_STATE_TABLE_NAME}' was not found.`;
+      renderSyncStatusPanel();
+      return;
+    }
+    state.birdSyncWorkbookPath = workbookPath;
+
+    let schemaSightings = null;
+    let schemaUserState = null;
+    try {
+      schemaSightings = await fetchTableColumnsAndRows(workbookPath, BIRD_SIGHTINGS_TABLE_NAME, 1);
+      schemaUserState = await fetchTableColumnsAndRows(workbookPath, BIRD_USER_STATE_TABLE_NAME, 1);
+      setSyncSchemaDiagnosticsFromColumns(schemaSightings.columns, schemaUserState.columns);
+    } catch (error) {
+      const reason = error && error.message ? error.message : 'failed to fetch table schema';
+      setSyncSchemaDiagnosticsUnknown(reason);
+      state.syncLastError = `Sync skipped: could not validate table schemas (${reason}).`;
+      renderSyncStatusPanel();
+      return;
+    }
+
+    const pending = Array.isArray(state.syncQueue) ? state.syncQueue.slice() : [];
+    if (!pending.length) {
+      state.lastSyncSuccessAt = toIsoNow();
+      renderSyncStatusPanel();
+      return;
+    }
+
+    const nextQueue = [];
+    const failedNotes = [];
+
+    for (let i = 0; i < pending.length; i += 1) {
+      const item = pending[i];
+      try {
+        if (item.type === 'log-sighting') {
+          await appendRecordsToTable(
+            workbookPath,
+            BIRD_SIGHTINGS_TABLE_NAME,
+            [toBirdSightingRecord(item.payload || {}, userId, deviceId)],
+            BIRD_SIGHTINGS_REQUIRED_COLUMNS
+          );
+          markQueueItemSucceeded(item);
+        } else if (item.type === 'favorite-toggle') {
+          await appendRecordsToTable(
+            workbookPath,
+            BIRD_USER_STATE_TABLE_NAME,
+            [toBirdUserStateRecord(item.payload || {}, userId, deviceId)],
+            BIRD_USER_STATE_REQUIRED_COLUMNS
+          );
+        } else {
+          // Unknown queue item type: keep for future processors.
+          nextQueue.push(item);
+        }
+      } catch (error) {
+        const attempts = Math.max(0, Number(item.attempts || 0)) + 1;
+        nextQueue.push({ ...item, attempts, lastError: String(error && error.message ? error.message : error || 'Unknown sync error') });
+        failedNotes.push(`${item.type}: ${error && error.message ? error.message : 'sync failed'}`);
+      }
+    }
+
+    state.syncQueue = nextQueue;
     saveSyncQueue();
+    if (!nextQueue.length) {
+      state.lastSyncSuccessAt = toIsoNow();
+      state.syncLastError = '';
+    } else {
+      state.syncLastError = failedNotes.join(' | ').slice(0, 600);
+    }
     renderSyncStatusPanel();
+    renderBirdLogOfflineStatus();
+  }
+
+  function renderSyncStatusPanel() {
+    const panel = document.getElementById('birdsSyncStatusPanel');
+    const conflictsPanel = document.getElementById('birdsSyncConflictsPanel');
+    if (!panel || !conflictsPanel) return;
+
+    const pending = Array.isArray(state.syncQueue) ? state.syncQueue.length : 0;
+    const lastAttempt = state.lastSyncAttemptAt ? new Date(state.lastSyncAttemptAt).toLocaleString() : 'Never';
+    const lastSuccess = state.lastSyncSuccessAt ? new Date(state.lastSyncSuccessAt).toLocaleString() : 'Not yet';
+    const workbook = state.birdSyncWorkbookPath || 'Not resolved';
+    const signedIn = Boolean(window.accessToken && getBirdSyncUserId());
+    const schemaSummary = getSyncSchemaDiagnosticsSummary();
+    const schemaChip = getSyncSchemaDiagnosticsChip();
+
+    panel.innerHTML = `
+      <div class="nature-sync-kpi-row">
+        <span class="nature-sync-kpi-label">Auth</span>
+        <strong>${signedIn ? 'Signed in' : 'Local only'}</strong>
+      </div>
+      <div class="nature-sync-kpi-row">
+        <span class="nature-sync-kpi-label">Pending queue</span>
+        <strong>${pending}</strong>
+      </div>
+      <div class="nature-sync-kpi-row">
+        <span class="nature-sync-kpi-label">Last attempt</span>
+        <strong>${escapeHtml(lastAttempt)}</strong>
+      </div>
+      <div class="nature-sync-kpi-row">
+        <span class="nature-sync-kpi-label">Last success</span>
+        <strong>${escapeHtml(lastSuccess)}</strong>
+      </div>
+      <div class="nature-sync-kpi-row">
+        <span class="nature-sync-kpi-label">Workbook</span>
+        <strong>${escapeHtml(workbook)}</strong>
+      </div>
+      <div class="nature-sync-kpi-row">
+        <span class="nature-sync-kpi-label">Sync schema diagnostics</span>
+        <strong>
+          <span class="nature-explorer-status-pill ${escapeHtml(schemaChip.className)}">${escapeHtml(schemaChip.label)}</span>
+          <span>${escapeHtml(schemaSummary)}</span>
+        </strong>
+      </div>
+      ${state.syncLastError ? `<div class="nature-sync-error">${escapeHtml(state.syncLastError)}</div>` : ''}
+    `;
+
+    const conflicts = Array.isArray(state.syncConflicts) ? state.syncConflicts : [];
+    if (!conflicts.length) {
+      conflictsPanel.innerHTML = '<div class="nature-sync-conflict-empty">No sync conflicts detected.</div>';
+      return;
+    }
+
+    conflictsPanel.innerHTML = conflicts.map((conflict) => `
+      <div class="nature-sync-conflict-card">
+        <div><strong>${escapeHtml(conflict.speciesName || 'Bird sighting')}</strong></div>
+        <div class="nature-sync-conflict-meta">Created: ${escapeHtml(conflict.createdAt || '--')}</div>
+        <div class="nature-sync-conflict-actions">
+          <button type="button" class="pill-button" data-conflict-id="${escapeHtml(conflict.id)}" data-sync-resolve="local">Keep Local</button>
+          <button type="button" class="pill-button" data-conflict-id="${escapeHtml(conflict.id)}" data-sync-resolve="remote">Use Remote</button>
+        </div>
+      </div>
+    `).join('');
   }
 
   function resolveSyncConflict(conflictId, strategy) {
@@ -4763,7 +5357,17 @@
     setActiveNatureSubTab(root, state.activeSubTab || 'birds');
     setBirdView(root, state.activeBirdView || 'overview');
     renderBirdHeaderStatus();
+    renderSyncStatusPanel();
     loadBirdDataset(false);
+    pullBirdSyncStateFromRemote()
+      .then(() => {
+        renderBirds();
+        renderSyncStatusPanel();
+      })
+      .catch((error) => {
+        state.syncLastError = `Remote pull skipped: ${error && error.message ? error.message : 'unknown error'}`;
+        renderSyncStatusPanel();
+      });
 
     if (!state.initialized) {
       console.log('Nature Challenge tab initialized');
