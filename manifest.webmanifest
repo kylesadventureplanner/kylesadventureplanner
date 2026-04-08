@@ -1,0 +1,11 @@
+{
+  "name": "Kyle's Adventure Finder",
+  "short_name": "Adventure Finder",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#1d4ed8",
+  "description": "Adventure planning with offline-ready field tools and sync queues."
+}
+

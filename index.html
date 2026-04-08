@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Adventure Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="manifest" href="manifest.webmanifest" />
 
   <!-- ============================================================
        GOOGLE PLACES API KEY CONFIGURATION
@@ -256,6 +257,62 @@
       border-color: #10b981;
       color: white;
       box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .offline-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .offline-badge[data-state="online"] {
+      border-color: #86efac;
+      background: #f0fdf4;
+      color: #166534;
+    }
+
+    .offline-badge[data-state="offline"] {
+      border-color: #fdba74;
+      background: #fff7ed;
+      color: #9a3412;
+    }
+
+    .offline-badge[data-state="syncing"] {
+      border-color: #93c5fd;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .offline-checklist-card {
+      border: 1px solid #dbeafe;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border-radius: 12px;
+      padding: 12px;
+      margin: 8px 0 12px;
+    }
+
+    .offline-checklist-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #1e3a8a;
+    }
+
+    .offline-checklist-list {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      color: #334155;
     }
 
     .planner-top-btn--success:hover {
@@ -7290,8 +7347,22 @@
           <button id="downloadSessionJsonBtn" class="planner-top-btn planner-top-btn--accent" title="Download your current session as JSON" data-tooltip="Download your current session as JSON" onclick="downloadSessionJson()">
             📥 Download JSON
           </button>
+          <button id="offlinePackBtn" class="planner-top-btn" title="Cache the app shell for offline field use" data-tooltip="Cache the app shell for offline field use">
+            📦 Offline Pack
+          </button>
+          <span id="offlinePlannerConnectionBadge" class="offline-badge" data-state="syncing" aria-live="polite">Offline: checking...</span>
+          <span id="offlinePlannerQueueBadge" class="offline-badge" data-state="syncing" aria-live="polite">Pending sync: 0</span>
         </div>
       </header>
+
+      <div class="offline-checklist-card" id="plannerOfflineChecklist">
+        <div class="offline-checklist-title">Offline-ready checklist</div>
+        <ol class="offline-checklist-list">
+          <li>Cache pack: <strong class="offline-cache-status">Checking...</strong></li>
+          <li>Last offline pack: <strong class="offline-last-pack">Not yet prepared</strong></li>
+          <li>Pending queued writes: <strong class="offline-pending-count">0</strong></li>
+        </ol>
+      </div>
 
       <!-- Filters Active Badge -->
       <div style="padding: 8px 0; margin-bottom: 8px;">
@@ -20603,6 +20674,9 @@ COMMON ISSUES:
 
 <!-- Visited Locations Tab System -->
 <script src="JS Files/visited-locations-tab-system.js"></script>
+
+<!-- PWA + Offline Queue System -->
+<script src="JS Files/pwa-offline-system.js"></script>
 
 <!-- Nature Challenge Tab System -->
 <script src="JS Files/nature-challenge-tab-system.js"></script>

@@ -269,6 +269,8 @@
         <div class="nature-diagnostics-sync-row">
           <span id="natureSyncHealthBadge" class="nature-sync-health" aria-live="polite">Bird data: checking...</span>
           <span id="natureSyncMeta" class="nature-sync-meta" aria-live="polite">Source details will appear after load.</span>
+          <span id="offlineBirdConnectionBadge" class="offline-badge" data-state="syncing" aria-live="polite">Offline: checking...</span>
+          <span id="offlineBirdQueueBadge" class="offline-badge" data-state="syncing" aria-live="polite">Pending sync: 0</span>
         </div>
 
         <div class="card nature-diagnostics-subcard">
@@ -280,6 +282,15 @@
           <div class="nature-log-form-actions">
             <button id="birdsSyncNowBtn" type="button" class="pill-button" title="Run Excel and local sync now" data-tooltip="Run Excel and local sync now">Sync Now</button>
             <button id="birdsWorkbookDiagnosticsBtn" type="button" class="pill-button" title="Print workbook path and table diagnostics" data-tooltip="Print workbook path and table diagnostics">Workbook Diagnostics</button>
+            <button id="birdsOfflinePackBtn" type="button" class="pill-button" title="Cache app assets for offline birding use" data-tooltip="Cache app assets for offline birding use">Offline Pack</button>
+          </div>
+          <div class="offline-checklist-card" id="birdsOfflineChecklist">
+            <div class="offline-checklist-title">Field readiness</div>
+            <ol class="offline-checklist-list">
+              <li>Cache pack: <strong class="offline-cache-status">Checking...</strong></li>
+              <li>Last offline pack: <strong class="offline-last-pack">Not yet prepared</strong></li>
+              <li>Pending queued writes: <strong class="offline-pending-count">0</strong></li>
+            </ol>
           </div>
           <div id="birdsSyncConflictsPanel"></div>
         </div>

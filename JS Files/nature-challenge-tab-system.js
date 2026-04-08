@@ -2561,14 +2561,27 @@
   }
 
   function enqueueSyncAction(type, payload) {
-    state.syncQueue.push({
+    const queuedItem = {
       id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type,
       payload,
       queuedAt: toIsoNow(),
       attempts: 0
-    });
+    };
+    state.syncQueue.push(queuedItem);
     saveSyncQueue();
+
+    if (window.OfflinePwa && typeof window.OfflinePwa.enqueueWrite === 'function') {
+      window.OfflinePwa.enqueueWrite('bird-sync-action', {
+        type,
+        payload
+      }, {
+        source: 'birds',
+        sourceQueueId: queuedItem.id
+      }).catch(() => {
+        // Keep local queue authoritative even if IndexedDB mirror fails.
+      });
+    }
   }
 
   function isValidLatLng(lat, lng) {
@@ -2700,6 +2713,15 @@
         return { ...normalized, synced: true, syncedAt };
       });
       saveSightingLog();
+    }
+
+    if (window.OfflinePwa && typeof window.OfflinePwa.removeQueuedWrites === 'function') {
+      window.OfflinePwa.removeQueuedWrites({
+        type: 'bird-sync-action',
+        sourceQueueId: queueItem.id
+      }).catch(() => {
+        // Queue mirror cleanup is best-effort.
+      });
     }
   }
 
@@ -6350,6 +6372,13 @@
 
   window.initializeNatureChallengeTab = initializeNatureChallengeTab;
   window.initNatureChallengeTab = window.initNatureChallengeTab || initializeNatureChallengeTab;
+  window.runBirdSyncNow = async function() {
+    await processSyncQueue();
+    return {
+      pendingQueue: Array.isArray(state.syncQueue) ? state.syncQueue.length : 0,
+      lastSyncSuccessAt: state.lastSyncSuccessAt || ''
+    };
+  };
   window.getRecentBirdClickTraceSnapshot = getRecentBirdClickTraceSnapshot;
   window.runBirdWorkbookDiagnostics = runBirdWorkbookDiagnostics;
   window.BIRD_PROGRESSION_SPEC = BIRD_PROGRESSION_SPEC;
