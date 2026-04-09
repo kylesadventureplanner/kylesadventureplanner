@@ -15,26 +15,48 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy Job
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
           lfs: false
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
       - name: Install Dependencies
         run: npm ci
       - name: Install Playwright Browser
         run: npx playwright install --with-deps chromium
+      - name: Start Local Static Server For Smoke Tests
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/swa-local-server.log 2>&1 &
+          echo $! > /tmp/swa-local-server.pid
+      - name: Wait For Local Server
+        run: |
+          for i in {1..40}; do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then
+              echo "Local server is ready"
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "Local server failed to start"
+          cat /tmp/swa-local-server.log || true
+          exit 1
       - name: Reliability Ownership Check
         run: npm run reliability:ownership
       - name: Reliability Smoke Suite
         env:
-          APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
+          APP_URL: http://127.0.0.1:4173
         run: npm run reliability:smoke
       - name: Reliability Release Gate
         run: npm run reliability:gate
+      - name: Stop Local Static Server
+        if: always()
+        run: |
+          if [ -f /tmp/swa-local-server.pid ]; then
+            kill "$(cat /tmp/swa-local-server.pid)" || true
+          fi
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
@@ -48,4 +70,15 @@ jobs:
           api_location: "" # Api source code path - optional
           output_location: "." # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
+
+      # Informational-only: checks live deployment health without blocking release.
+      - name: Post-Deploy Smoke Check (non-blocking)
+        if: ${{ github.event_name == 'push' }}
+        continue-on-error: true
+        env:
+          APP_URL: https://victorious-wave-0ec1bb10f.1.azurestaticapps.net/
+        run: |
+          echo "Running non-blocking live smoke check against ${APP_URL}"
+          curl -fsS "${APP_URL}" >/dev/null
+          npx playwright test tests/reliability-smoke.spec.js --grep "first-click success: nature explore" --reporter=list
 
