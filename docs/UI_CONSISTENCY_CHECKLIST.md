@@ -25,10 +25,10 @@ Current check:
 
 ## 3) CSS architecture boundaries
 
-- [ ] `CSS/components.css`: reusable UI components only (buttons, cards, badges, chips, notifications).
-- [ ] `CSS/utilities.css`: tiny single-purpose utility classes only.
+- [x] `CSS/components.css`: reusable UI components only (buttons, cards, badges, chips, notifications). Feature-specific styles moved from utilities: offline hints, tags, state badges, favorite buttons, find-near-me buttons, breadcrumb menus, ratings, history controls, sort indicators, modal backdrops.
+- [x] `CSS/utilities.css`: tiny single-purpose utility classes only (u-*, mark, mobile responsiveness).
 - [ ] `CSS/browse-page.css` and `CSS/edit-page.css`: page/screen layout and page-specific rules only.
-- [ ] Avoid duplicating selectors across component/page files unless intentionally overriding.
+- [x] Avoid duplicating selectors across component/page files unless intentionally overriding.
 
 ## 4) Page shell consistency
 
@@ -58,7 +58,7 @@ Reference file: `HTML Files/trail-explorer-window.html`
 2. `HTML Files/find-near-me-window.html` and `HTML Files/city-viewer-window.html` (inline `style="..."` attributes completed).
 3. `HTML Files/adventure-details-window.html` and `HTML Files/bike-details-window.html` (inline `style="..."` attributes completed).
    - [x] `HTML Files/bike-details-window.html` — inline `<style>` block extracted to `CSS/bike-details-window.css`; canonical 4-stylesheet import order applied (design-tokens → components → utilities → bike-details-window).
-   - [ ] `HTML Files/adventure-details-window.html` — inline `<style>` block still present; extract to `CSS/adventure-details-window.css`.
+   - [x] `HTML Files/adventure-details-window.html` — inline `<style>` block extracted to `CSS/adventure-details-window.css`; canonical 4-stylesheet import order applied (design-tokens -> components -> utilities -> adventure-details-window).
 4. Tabs under `HTML Files/tabs/` after shell/component patterns are stable.
 
 ## 8) QA pass for each migrated page

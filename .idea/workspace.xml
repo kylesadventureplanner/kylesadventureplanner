@@ -5,24 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/HTML Files/offline-pack-health.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/offline-airplane-mode.spec.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CSS/adventure-details-window.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/components.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/components.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CSS/utilities.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/utilities.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/pwa-offline-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/pwa-offline-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/OFFLINE_PWA_QUICK_START.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/OFFLINE_PWA_QUICK_START.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-adventure-details-window.html.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-bike-details-window.html.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-city-viewer-window.html.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-edit-mode-new.html.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-find-near-me-window.html.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-trail-explorer-window.html.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/index-mobile.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/UI_CONSISTENCY_CHECKLIST.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/UI_CONSISTENCY_CHECKLIST.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -104,7 +92,7 @@
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
       <workItem from="1775308318086" duration="90230000" />
-      <workItem from="1775520086833" duration="90869000" />
+      <workItem from="1775520086833" duration="94158000" />
     </task>
     <servers />
   </component>

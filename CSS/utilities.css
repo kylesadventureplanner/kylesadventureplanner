@@ -1,41 +1,161 @@
 /* ============================================================
-   OFFLINE CONFLICT HINT SEVERITY COLORS
+   UTILITIES.CSS - SINGLE-PURPOSE UTILITY CLASSES ONLY (u-*)
    ============================================================
+   This file contains only true utility classes (prefixed with u-).
+   Component-specific styles (.tag-*, .state-badge, etc.) moved to
+   components.css; page-specific styles in page CSS files.
 */
-.offline-hint--warning {
-  color: #92400e;
-  background: #fef3c7;
-  border-left: 3px solid #f59e0b;
-  padding: 2px 7px;
-  border-radius: 4px;
-  display: inline-block;
-  font-size: inherit;
+
+/* ============================================================
+   SINGLE-PURPOSE UTILITY CLASSES
+   ============================================================ */
+
+.u-hidden {
+  display: none !important;
 }
-.offline-hint--info {
-  color: #1e40af;
-  background: #dbeafe;
-  border-left: 3px solid #3b82f6;
-  padding: 2px 7px;
-  border-radius: 4px;
-  display: inline-block;
-  font-size: inherit;
+
+.u-stack-gap-sm {
+  display: grid;
+  gap: 8px;
 }
-.offline-hint--error {
-  color: #991b1b;
-  background: #fee2e2;
-  border-left: 3px solid #ef4444;
-  padding: 2px 7px;
-  border-radius: 4px;
-  display: inline-block;
-  font-size: inherit;
+
+.u-mt-10 {
+  margin-top: 10px;
+}
+
+.u-text-xs-dim {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.u-grid-full-span {
+  grid-column: 1 / -1;
+}
+
+.u-note-muted {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.u-note-sm {
+  font-size: 13px;
+}
+
+.u-text-center {
+  text-align: center;
+}
+
+.u-w-full {
+  width: 100%;
+}
+
+.u-grid-3-gap-8 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.u-text-12-strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.u-text-12-light {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.u-text-11-light {
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.u-mb-10 {
+  margin-bottom: 10px;
+}
+
+.u-mb-8 {
+  margin-bottom: 8px;
+}
+
+.u-mb-4 {
+  margin-bottom: 4px;
 }
 
 /* ============================================================
-   TAG STYLES - SHARED ACROSS ALL PAGES
-   ============================================================
-*/
+   TEXT FORMATTING UTILITY
+   ============================================================ */
 
-.tag-pill {
+mark {
+  background-color: #fef3c7;
+  color: #92400e;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVENESS
+   ============================================================ */
+
+body.mobile-view .control-panel-grid {
+  grid-template-columns: 1fr;
+}
+
+body.mobile-view .quick-filters-container {
+  flex-direction: column;
+}
+
+body.mobile-view .quick-filter-btn,
+body.mobile-view .pill-button.reset,
+body.mobile-view .automation-btn {
+  width: 100%;
+  text-align: center;
+}
+
+body.mobile-view table {
+  font-size: 12px;
+}
+
+body.mobile-view th,
+body.mobile-view td {
+  padding: 6px 6px;
+}
+
+body.mobile-view .iphone-toggle-btn {
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  table {
+    font-size: 10px;
+  }
+
+  th, td {
+    padding: 4px 3px;
+  }
+}
+
+/* NOTE: The following component-specific and feature-specific
+   styles have been moved to components.css:
+   - .offline-hint-* (conflict hint badges)
+   - .tag-* (all tag variants)
+   - .state-badge
+   - .favorite-btn
+   - .find-near-me-btn, .distance-pill
+   - .breadcrumb-filter-menu, .breadcrumb-reset-btn, #breadcrumbContainer
+   - .rating-btn
+   - .history-controls, .history-button
+   - .sort-indicator
+   - Modal backdrops (#...Backdrop)
+*/
   display: inline-block;
   padding: 6px 12px;
   border-radius: var(--radius-full);
