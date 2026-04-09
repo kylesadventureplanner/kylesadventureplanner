@@ -200,6 +200,13 @@ class TabContentLoader {
          priority: 8,
          preload: false,
          isInlineContent: false
+       },
+       'offline-mode': {
+         file: null,
+         element: 'offlineModeTab',
+         priority: 9,
+         preload: false,
+         isInlineContent: true
        }
     };
 

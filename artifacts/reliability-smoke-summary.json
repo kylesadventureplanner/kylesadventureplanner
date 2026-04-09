@@ -1,33 +1,15 @@
 {
-  "generatedAt": "2026-04-08T18:50:17.768Z",
+  "generatedAt": "2026-04-09T16:20:30.683Z",
   "pass": true,
   "startupSamplesMs": [
-    89,
-    79,
-    78,
-    79
+    103,
+    99
   ],
-  "startupMsP95": 89,
-  "firstClickChecks": 3,
-  "firstClickSuccesses": 3,
+  "startupMsP95": 103,
+  "firstClickChecks": 1,
+  "firstClickSuccesses": 1,
   "firstClickSuccessRate": 1,
   "checks": [
-    {
-      "name": "first-click:nature-explore",
-      "passed": true,
-      "detail": {
-        "explorerActive": true
-      },
-      "at": "2026-04-08T18:50:44.982Z"
-    },
-    {
-      "name": "first-click:nature-run",
-      "passed": true,
-      "detail": {
-        "runActive": true
-      },
-      "at": "2026-04-08T18:50:47.998Z"
-    },
     {
       "name": "first-click:bike-refresh",
       "passed": true,
@@ -38,7 +20,7 @@
           "trackedActionCount": 1
         }
       },
-      "at": "2026-04-08T18:50:50.569Z"
+      "at": "2026-04-09T16:20:33.382Z"
     },
     {
       "name": "probe:hidden-overlay-detected",
@@ -47,7 +29,7 @@
         "blockedPoints": 5,
         "reason": ""
       },
-      "at": "2026-04-08T18:50:52.255Z"
+      "at": "2026-04-09T16:20:34.530Z"
     }
   ]
 }

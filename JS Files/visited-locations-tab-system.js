@@ -1,5 +1,5 @@
 /*
- * Visited Locations Tab System
+ * Adventure Challenge Tab System
  * Gamified progress tracking + smart suggestions for adventures.
  */
 
@@ -111,6 +111,7 @@
    const state = {
      initialized: false,
      activeProgressSubTab: 'overview',
+     activeOverviewView: 'main',
      weatherMode: 'auto',
      searchText: '',
      categoryFilter: 'all',
@@ -198,10 +199,51 @@
   }
 
   function setActiveProgressSubTab(root, tabKey) {
+    if (state.activeOverviewView !== 'main') {
+      state.activeOverviewView = 'main';
+      syncVisitedOverviewView(root);
+    }
     state.activeProgressSubTab = tabKey || 'overview';
     syncProgressSubTabs(root);
     announceProgressSubTab(root, state.activeProgressSubTab);
     scheduleVisitedSubTabInterceptionCheck(root, 0);
+  }
+
+  function syncVisitedOverviewView(root) {
+    const scope = root || document.getElementById('visitedLocationsRoot');
+    if (!scope) return;
+    const suggestionsView = scope.querySelector('#visitedSuggestionsView');
+    const mainView = scope.querySelector('#visitedOverviewMainView');
+    const subtabBar = scope.querySelector('.visited-progress-subtabs');
+    const overviewPane = scope.querySelector('[data-progress-pane="overview"]');
+
+    const isSuggestions = state.activeOverviewView === 'suggestions';
+
+    if (mainView) mainView.hidden = isSuggestions;
+    if (suggestionsView) suggestionsView.hidden = !isSuggestions;
+    if (subtabBar) subtabBar.hidden = isSuggestions;
+
+    if (overviewPane && isSuggestions) {
+      scope.querySelectorAll('[data-progress-pane]').forEach((pane) => {
+        const isOverview = pane === overviewPane;
+        pane.classList.toggle('is-active', isOverview);
+        pane.hidden = !isOverview;
+        pane.setAttribute('aria-hidden', isOverview ? 'false' : 'true');
+      });
+    }
+
+    if (!isSuggestions) {
+      syncProgressSubTabs(scope);
+      announceProgressSubTab(scope, state.activeProgressSubTab);
+    }
+  }
+
+  function setVisitedOverviewView(root, viewKey) {
+    state.activeOverviewView = viewKey === 'suggestions' ? 'suggestions' : 'main';
+    if (state.activeOverviewView === 'suggestions') {
+      state.activeProgressSubTab = 'overview';
+    }
+    syncVisitedOverviewView(root);
   }
 
   function getElementDebugLabel(el) {
@@ -460,7 +502,7 @@
     });
 
     const dataStatus = document.getElementById('visitedDataStatus');
-    if (dataStatus) dataStatus.textContent = 'Refreshing adventure progress...';
+    if (dataStatus) dataStatus.textContent = 'Refreshing Adventure Challenge data...';
   }
 
   function clearLoadingState() {
@@ -712,10 +754,6 @@
     }
   }
 
-  function prefersReducedMotion() {
-    return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  }
-
   function norm(value) {
     return String(value || '').trim().toLowerCase();
   }
@@ -765,108 +803,27 @@
       badges: base.badges || {},
       quests: {
         completions: (base.quests && base.quests.completions) || {}
-      },
-      preferences: {
-        confettiEnabled: base.preferences?.confettiEnabled !== false,
-        soundEnabled: Boolean(base.preferences?.soundEnabled)
       }
     };
-
-    if (prefersReducedMotion()) {
-      state.metaState.preferences.confettiEnabled = false;
-    }
   }
 
   function saveMetaState() {
     localStorage.setItem(VISITED_META_KEY, JSON.stringify(state.metaState || {}));
   }
 
-  function getCelebrationPreferences() {
-    if (!state.metaState.preferences) {
-      state.metaState.preferences = { confettiEnabled: true, soundEnabled: false };
-    }
-    return state.metaState.preferences;
-  }
-
-  function renderCelebrationControls() {
-    const confettiBtn = document.querySelector('[data-celebration-toggle="confetti"]');
-    const soundBtn = document.querySelector('[data-celebration-toggle="sound"]');
-    const prefs = getCelebrationPreferences();
-
-    if (confettiBtn) {
-      confettiBtn.classList.toggle('active', Boolean(prefs.confettiEnabled));
-      confettiBtn.setAttribute('aria-pressed', prefs.confettiEnabled ? 'true' : 'false');
-    }
-    if (soundBtn) {
-      soundBtn.classList.toggle('active', Boolean(prefs.soundEnabled));
-      soundBtn.setAttribute('aria-pressed', prefs.soundEnabled ? 'true' : 'false');
-    }
-  }
-
-  function toggleCelebrationPreference(type) {
-    const prefs = getCelebrationPreferences();
-    if (type === 'confetti') prefs.confettiEnabled = !prefs.confettiEnabled;
-    if (type === 'sound') prefs.soundEnabled = !prefs.soundEnabled;
-    saveMetaState();
-    renderCelebrationControls();
-  }
-
-  function playBadgeSound() {
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-
-      const tones = [523.25, 659.25, 783.99];
-      tones.forEach((freq, idx) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = freq;
-        gain.gain.value = 0.0001;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        const start = ctx.currentTime + (idx * 0.08);
-        gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.05, start + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
-        osc.start(start);
-        osc.stop(start + 0.17);
-      });
-    } catch (error) {
-      // Audio is optional; ignore blocked autoplay contexts.
-    }
-  }
-
-  function launchBadgeConfetti(count) {
-    const layer = document.getElementById('visitedConfettiLayer');
-    if (!layer) return;
-
-    const pieces = Math.max(12, Math.min(48, (count || 1) * 16));
-    const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
-
-    for (let i = 0; i < pieces; i += 1) {
-      const piece = document.createElement('span');
-      piece.className = 'visited-confetti-piece';
-      piece.style.left = `${Math.random() * 100}%`;
-      piece.style.background = colors[i % colors.length];
-      piece.style.animationDelay = `${Math.random() * 0.12}s`;
-      piece.style.transform = `translateY(-10px) rotate(${Math.round(Math.random() * 360)}deg)`;
-      layer.appendChild(piece);
-
-      setTimeout(() => piece.remove(), 1400);
-    }
-  }
 
   function triggerBadgeCelebration(newlyUnlocked) {
-    const prefs = getCelebrationPreferences();
-    if (prefs.confettiEnabled) {
-      launchBadgeConfetti(newlyUnlocked.length);
-    }
-    if (prefs.soundEnabled) {
-      playBadgeSound();
-    }
+    // Celebration FX disabled by UX request (no confetti / no sound toggles).
+    void newlyUnlocked;
+  }
+
+  function renderVisitedDiagnosticsPanel(visitMap) {
+    const panel = document.getElementById('visitedDiagnosticsPanel');
+    if (!panel) return;
+    const status = getSyncHealthStatus();
+    const map = visitMap || state.latestVisitMap || {};
+    const pending = Object.values(map).filter((entry) => entry && entry.synced === false).length;
+    panel.textContent = `Adventure visited column: ${status.adventureText} | Bike visited column: ${status.bikeText} | Pending local-only rows: ${pending}`;
   }
 
   function getVisitMap() {
@@ -2188,7 +2145,6 @@
         renderBadges(badges);
         renderRotatingQuests(questSet);
         renderHeatmap(stats);
-        renderCelebrationControls();
         renderSuggestions(suggestions);
         renderRecentVisits(stats, visitMap);
         renderCatalog(adventures, visitMap);
@@ -2202,6 +2158,7 @@
 
         state.lastRenderAt = new Date().toISOString();
         renderSyncMeta(visitMap);
+        renderVisitedDiagnosticsPanel(visitMap);
 
         const root = document.getElementById('visitedLocationsRoot');
         applyTooltipInfoIcons(root);
@@ -2309,11 +2266,11 @@
 
       // PREVENT DUPLICATE EVENT LISTENERS: Use a stronger check
       if (root.dataset.bound === '1' && root.__visitedClickHandler) {
-        logVisitedDiagnostics('✅ Visited Locations controls already bound - skipping rebind');
+        logVisitedDiagnostics('✅ Adventure Challenge controls already bound - skipping rebind');
         return;
       }
 
-      logVisitedDiagnostics('🔌 Binding Visited Locations controls...');
+      logVisitedDiagnostics('🔌 Binding Adventure Challenge controls...');
 
       // Store bound flag and handler reference for cleanup/dedup
       root.dataset.bound = '1';
@@ -2326,6 +2283,7 @@
       }
 
       syncProgressSubTabs(root);
+      syncVisitedOverviewView(root);
       bindProgressSubTabButtons(root);
       announceProgressSubTab(root, state.activeProgressSubTab);
       state.latestVisitMap = getVisitMap();
@@ -2389,6 +2347,20 @@
       // CREATE THE MAIN CLICK HANDLER FUNCTION (stored to prevent duplicate attachment)
       if (!root.__visitedClickHandler) {
         root.__visitedClickHandler = function handleVisitedClick(event) {
+          const openSuggestionsBtn = event.target.closest('#visitedOpenSuggestionsBtn');
+          if (openSuggestionsBtn) {
+            event.preventDefault();
+            setVisitedOverviewView(root, 'suggestions');
+            return;
+          }
+
+          const backSuggestionsBtn = event.target.closest('#visitedSuggestionsBackBtn');
+          if (backSuggestionsBtn) {
+            event.preventDefault();
+            setVisitedOverviewView(root, 'main');
+            return;
+          }
+
           const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
           if (explainBtn) {
             event.preventDefault();
@@ -2497,18 +2469,11 @@
             return;
           }
 
-          const celebrationBtn = event.target.closest('[data-celebration-toggle]');
-          if (celebrationBtn) {
-            event.preventDefault();
-            const prefType = celebrationBtn.getAttribute('data-celebration-toggle');
-            if (prefType) toggleCelebrationPreference(prefType);
-            return;
-          }
         };
 
         // ATTACH THE HANDLER ONCE
         root.addEventListener('click', root.__visitedClickHandler);
-        logVisitedDiagnostics('✅ Visited Locations click handler attached (deduped)');
+        logVisitedDiagnostics('✅ Adventure Challenge click handler attached (deduped)');
       }
 
       root.addEventListener('mousemove', (event) => {
@@ -2606,7 +2571,7 @@
     scheduleDataRefreshCheck();
 
     if (!state.initialized) {
-      logVisitedDiagnostics('✅ Visited Locations tab initialized');
+      logVisitedDiagnostics('✅ Adventure Challenge tab initialized');
       state.initialized = true;
     }
   }

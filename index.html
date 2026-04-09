@@ -3502,10 +3502,68 @@
       background: #f3f4f6;
     }
 
+    .auth-btn.active {
+      background: #1e3a8a;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(30, 58, 138, 0.35);
+    }
+
     .auth-btn.iphone-toggle-btn.active {
       background: #1e3a8a;
       color: #ffffff;
       box-shadow: 0 2px 8px rgba(30, 58, 138, 0.35);
+    }
+
+    .app-tab-btn.tab-utility-hidden {
+      display: none !important;
+    }
+
+    .offline-mode-page {
+      display: grid;
+      gap: 12px;
+    }
+
+    .offline-mode-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .offline-mode-header h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .offline-mode-actions,
+    .offline-mode-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .offline-mode-actions {
+      margin-bottom: 10px;
+    }
+
+    .offline-mode-install-status {
+      margin-bottom: 10px;
+    }
+
+    .offline-mode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .offline-mode-list {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: #334155;
     }
 
     /* ============================================================
@@ -7381,24 +7439,24 @@
 
   <div class="header-right">
     <span id="authStatus">Not signed in</span>
-    <button id="refreshBtn" class="auth-btn" title="Refresh the page" onclick="location.reload()">🔄 Refresh</button>
+    <button id="refreshBtn" class="auth-btn" title="Reload the whole app" data-tooltip="Reload the whole app" onclick="location.reload()">🔄 Reload App</button>
+    <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
     <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
     <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
     <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
   </div>
 </header>
 <div id="offlineInstallBanner" class="offline-install-banner" hidden>
-  <span>Install this app for faster field launch and offline support.</span>
+  <span>Open Offline Mode to install this app and prepare it for field use.</span>
   <div class="offline-install-actions">
-    <button id="offlineInstallNowBtn" type="button" class="offline-action-btn">Install App</button>
+    <button id="offlineInstallOpenModeBtn" type="button" class="offline-action-btn">Offline Mode</button>
     <button id="offlineInstallDismissBtn" type="button" class="offline-action-btn">Dismiss</button>
-    <button id="offlineInstallOpenHealthBtn" type="button" class="offline-action-btn">Offline Health</button>
   </div>
 </div>
 <div class="app-container">
   <!-- Tab Navigation -->
   <div class="app-tabs-nav" id="appTabsNav">
-    <button class="app-tab-btn active" data-tab="visited-locations" title="Track visited adventures and challenges" data-tooltip="Track visited adventures and challenges">🎮 Adventure Progress</button>
+    <button class="app-tab-btn active" data-tab="visited-locations" title="Open Adventure Challenge" data-tooltip="Open Adventure Challenge">🎮 Adventure Challenge</button>
     <button class="app-tab-btn" data-tab="nature-challenge" title="Track nature species sightings and challenges" data-tooltip="Track nature species sightings and challenges">🌿 Nature Challenge</button>
     <button class="app-tab-btn" data-tab="adventure-planner" title="Browse and manage adventures" data-tooltip="Browse and manage adventures">🏔️ Adventure Planner</button>
     <button class="app-tab-btn" data-tab="bike-trails" title="Explore bike trails" data-tooltip="Explore bike trails">🚴 Bike Trails</button>
@@ -7406,6 +7464,7 @@
     <button class="app-tab-btn" data-tab="recipes" title="View recipes" data-tooltip="View recipes">👨‍🍳 Recipes</button>
     <button class="app-tab-btn" data-tab="garden" title="Manage garden planner" data-tooltip="Manage garden planner">🌱 Garden Planner</button>
     <button class="app-tab-btn" data-tab="budget" title="Manage budget planner" data-tooltip="Manage budget planner">💰 Budget Planner</button>
+    <button class="app-tab-btn tab-utility-hidden" data-tab="offline-mode" aria-hidden="true" tabindex="-1">Offline Mode</button>
   </div>
 
   <!-- Tab Content -->
@@ -7430,26 +7489,8 @@
           <button id="downloadSessionJsonBtn" class="planner-top-btn planner-top-btn--accent" title="Download your current session as JSON" data-tooltip="Download your current session as JSON" onclick="downloadSessionJson()">
             📥 Download JSON
           </button>
-          <button id="offlinePackBtn" class="planner-top-btn" title="Cache the app shell for offline field use" data-tooltip="Cache the app shell for offline field use">
-            📦 Offline Pack
-          </button>
-          <button id="offlineHealthBtn" class="planner-top-btn" title="Open Offline Pack diagnostics" data-tooltip="Open Offline Pack diagnostics">
-            🩺 Offline Health
-          </button>
-          <span id="offlinePlannerConnectionBadge" class="offline-badge" data-state="syncing" aria-live="polite">Offline: checking...</span>
-          <span id="offlinePlannerQueueBadge" class="offline-badge" data-state="syncing" aria-live="polite">Pending sync: 0</span>
         </div>
       </header>
-
-      <div class="offline-checklist-card" id="plannerOfflineChecklist">
-        <div class="offline-checklist-title">Offline-ready checklist</div>
-        <ol class="offline-checklist-list">
-          <li>Cache pack: <strong class="offline-cache-status">Checking...</strong></li>
-          <li>Last offline pack: <strong class="offline-last-pack">Not yet prepared</strong></li>
-          <li>Pending queued writes: <strong class="offline-pending-count">0</strong></li>
-        </ol>
-      </div>
-      <div id="offlineQueueConflictPanel" class="offline-conflict-card" hidden></div>
 
       <!-- Filters Active Badge -->
       <div style="padding: 8px 0; margin-bottom: 8px;">
@@ -7953,12 +7994,86 @@
       </div>
     </div>
 
-    <!-- Visited Locations Tab -->
+    <!-- Adventure Challenge Tab -->
     <div class="app-tab-pane active" data-tab="visited-locations" id="visitedLocationsTab">
       <div class="tab-placeholder">
         <div class="tab-placeholder-icon">🎮</div>
-        <div class="tab-placeholder-text">Adventure Progress</div>
-        <div class="tab-placeholder-subtext">Gamify your adventure progress and discover what to do next</div>
+        <div class="tab-placeholder-text">Adventure Challenge</div>
+        <div class="tab-placeholder-subtext">Take on the Adventure Challenge and discover what to do next</div>
+      </div>
+    </div>
+
+    <!-- Offline Mode Tab -->
+    <div class="app-tab-pane" data-tab="offline-mode" id="offlineModeTab">
+      <div class="offline-mode-page">
+        <div class="offline-mode-header">
+          <button id="offlineModeBackBtn" type="button" class="pill-button" title="Go back to your previous page" data-tooltip="Go back to your previous page">← Back</button>
+          <div>
+            <h1>Offline Mode</h1>
+            <div class="card-subtitle">Prepare the app for field use, install it, and manage queued syncs in one place.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">📦 Offline Readiness Center</div>
+              <div class="card-subtitle">This page is now the single home for offline pack prep, install actions, queue sync, and conflict review.</div>
+            </div>
+          </div>
+          <div class="offline-mode-actions">
+            <button id="offlineModeInstallBtn" type="button" class="planner-top-btn" title="Install this app for faster offline launch" data-tooltip="Install this app for faster offline launch" hidden>⬇️ Install App</button>
+            <button id="offlineModePackBtn" type="button" class="planner-top-btn planner-top-btn--accent" title="Cache the app shell for offline use" data-tooltip="Cache the app shell for offline use">📦 Prepare Offline Pack</button>
+            <button id="offlineModeSyncBtn" type="button" class="planner-top-btn planner-top-btn--success" title="Flush the offline sync queue now" data-tooltip="Flush the offline sync queue now">🔄 Sync Pending Queue</button>
+            <button id="offlineModeHealthBtn" type="button" class="planner-top-btn" title="Open Offline Pack diagnostics" data-tooltip="Open Offline Pack diagnostics">🩺 Offline Health</button>
+          </div>
+          <div id="offlineModeInstallStatus" class="card-subtitle offline-mode-install-status">Install prompt availability will appear here.</div>
+          <div class="offline-mode-badges">
+            <span id="offlineModeConnectionBadge" class="offline-badge" data-state="syncing" aria-live="polite">Offline: checking...</span>
+            <span id="offlineModeQueueBadge" class="offline-badge" data-state="syncing" aria-live="polite">Pending sync: 0</span>
+          </div>
+          <div class="offline-checklist-card" id="offlineModeChecklist">
+            <div class="offline-checklist-title">Offline-ready checklist</div>
+            <ol class="offline-checklist-list">
+              <li>Cache pack: <strong class="offline-cache-status">Checking...</strong></li>
+              <li>Last offline pack: <strong class="offline-last-pack">Not yet prepared</strong></li>
+              <li>Pending queued writes: <strong class="offline-pending-count">0</strong></li>
+            </ol>
+          </div>
+          <div id="offlineModeQueueConflictPanel" class="offline-conflict-card" hidden></div>
+        </div>
+
+        <div class="offline-mode-grid">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">🧭 What moved here</div>
+                <div class="card-subtitle">Offline controls that were previously scattered across tabs now live here.</div>
+              </div>
+            </div>
+            <ul class="offline-mode-list">
+              <li>Prepare the offline pack before heading into the field.</li>
+              <li>Check whether the app is online or currently working offline.</li>
+              <li>See how many local-only changes are queued for sync.</li>
+              <li>Resolve repeated sync conflicts from one central place.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <div class="card-title">ℹ️ Refresh behavior</div>
+                <div class="card-subtitle">The top header reload is different from the tab-specific refresh buttons.</div>
+              </div>
+            </div>
+            <ul class="offline-mode-list">
+              <li><strong>Reload App</strong> refreshes the whole browser page.</li>
+              <li><strong>Adventure Planner</strong> reloads Excel adventure data only.</li>
+              <li><strong>Adventure Challenge</strong> refreshes tracker summaries and visited sync state.</li>
+              <li><strong>Nature Challenge</strong> refreshes Birds data and Bird-specific UI state.</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -20759,7 +20874,7 @@ COMMON ISSUES:
 <!-- Multi-select + Bulk Actions -->
 <script src="JS Files/multi-select-bulk-actions.js"></script>
 
-<!-- Visited Locations Tab System -->
+<!-- Adventure Challenge Tab System -->
 <script src="JS Files/visited-locations-tab-system.js"></script>
 
 <!-- PWA + Offline Queue System -->

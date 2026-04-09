@@ -6,15 +6,15 @@ test.describe('Offline airplane mode regression', () => {
     const page = await context.newPage();
 
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.click('.app-tab-btn[data-tab="adventure-planner"]');
+    await page.click('#offlineModeBtn');
     await page.waitForTimeout(250);
-    await expect(page.locator('#offlinePackBtn')).toBeVisible();
-    await page.click('#offlinePackBtn');
+    await expect(page.locator('#offlineModePackBtn')).toBeVisible();
+    await page.click('#offlineModePackBtn');
     await page.waitForTimeout(500);
 
     await context.setOffline(true);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await expect(page.locator('#offlinePlannerConnectionBadge')).toContainText('Offline');
+    await expect(page.locator('#offlineModeConnectionBadge')).toContainText('Offline');
 
     await page.evaluate(async () => {
       if (!window.OfflinePwa || typeof window.OfflinePwa.enqueueWrite !== 'function') {
@@ -23,7 +23,7 @@ test.describe('Offline airplane mode regression', () => {
       await window.OfflinePwa.enqueueWrite('test-airplane-mode', { probe: true }, { source: 'playwright' });
     });
 
-    await expect(page.locator('#offlinePlannerQueueBadge')).toContainText('Pending sync');
+    await expect(page.locator('#offlineModeQueueBadge')).toContainText('Pending sync');
     const pending = await page.evaluate(() => {
       if (!window.OfflinePwa || typeof window.OfflinePwa.getPendingCount !== 'function') return -1;
       return window.OfflinePwa.getPendingCount();

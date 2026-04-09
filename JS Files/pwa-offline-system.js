@@ -47,6 +47,7 @@
   var plannerSaveWrapperInstalled = false;
   var deferredInstallPrompt = null;
   var DISMISS_INSTALL_KEY = 'kafInstallPromptDismissed';
+  var swRegistrationPromise = null;
 
   function emitStatus() {
     listeners.forEach(function (listener) {
@@ -71,6 +72,167 @@
     var banner = document.getElementById('offlineInstallBanner');
     if (!banner) return;
     banner.hidden = !shouldShowInstallPrompt();
+    renderInstallActions();
+  }
+
+  function renderInstallActions() {
+    var installBtn = document.getElementById('offlineModeInstallBtn');
+    var statusEl = document.getElementById('offlineModeInstallStatus');
+    var standalone = Boolean(
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      (window.navigator && window.navigator.standalone === true)
+    );
+    var installReady = shouldShowInstallPrompt();
+
+    if (installBtn) {
+      installBtn.hidden = !installReady;
+      installBtn.disabled = !installReady;
+    }
+
+    if (!statusEl) return;
+    if (standalone) {
+      statusEl.textContent = 'This app is already installed or running in standalone mode.';
+      return;
+    }
+    if (installReady) {
+      statusEl.textContent = 'Install is ready on this device. Use Install App for faster launches and better offline support.';
+      return;
+    }
+    statusEl.textContent = 'Install will appear here automatically when this browser exposes a supported app-install prompt.';
+  }
+
+  function waitForServiceWorkerControl(timeoutMs) {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(false);
+    if (navigator.serviceWorker.controller) return Promise.resolve(true);
+
+    return new Promise(function (resolve) {
+      var settled = false;
+      var timeoutId = window.setTimeout(function () {
+        finish(Boolean(navigator.serviceWorker.controller));
+      }, Number(timeoutMs || 0) > 0 ? Number(timeoutMs) : 5000);
+
+      function finish(value) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeoutId);
+        navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange);
+        resolve(Boolean(value));
+      }
+
+      function handleControllerChange() {
+        finish(Boolean(navigator.serviceWorker.controller));
+      }
+
+      navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange);
+    });
+  }
+
+  function ensureServiceWorkerRegistration() {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    if (!swRegistrationPromise) {
+      swRegistrationPromise = navigator.serviceWorker.register(SERVICE_WORKER_PATH).catch(function (error) {
+        swRegistrationPromise = null;
+        throw error;
+      });
+    }
+    return swRegistrationPromise;
+  }
+
+  function ensureServiceWorkerReady(timeoutMs) {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(false);
+
+    return ensureServiceWorkerRegistration()
+      .then(function () {
+        return Promise.race([
+          navigator.serviceWorker.ready.then(function (registration) {
+            return registration;
+          }),
+          new Promise(function (resolve) {
+            window.setTimeout(function () {
+              resolve(null);
+            }, Number(timeoutMs || 0) > 0 ? Number(timeoutMs) : 5000);
+          })
+        ]);
+      })
+      .then(function (_registration) {
+        return waitForServiceWorkerControl(timeoutMs).then(function (controlled) {
+          status.swReady = Boolean(controlled || navigator.serviceWorker.controller);
+          emitStatus();
+          return status.swReady;
+        });
+      })
+      .catch(function () {
+        status.swReady = false;
+        emitStatus();
+        return false;
+      });
+  }
+
+  function getActiveTabId() {
+    var activeBtn = document.querySelector('.app-tab-btn.active[data-tab]');
+    return activeBtn ? String(activeBtn.getAttribute('data-tab') || '') : '';
+  }
+
+  function syncOfflineModeButtonState() {
+    var isActive = getActiveTabId() === 'offline-mode';
+    var button = document.getElementById('offlineModeBtn');
+    if (!button) return;
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  }
+
+  function dismissBlockingOverlays() {
+    if (typeof window.closeRowDetailModal === 'function') {
+      try {
+        window.closeRowDetailModal();
+      } catch (_error) {
+        // Fall through to direct DOM cleanup below.
+      }
+    }
+
+    ['rowDetailModal', 'rowDetailModalBackdrop'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove('visible');
+      el.style.display = 'none';
+      el.style.pointerEvents = 'none';
+    });
+  }
+
+  function openOfflineModePage() {
+    dismissBlockingOverlays();
+
+    var currentTab = getActiveTabId();
+    if (currentTab && currentTab !== 'offline-mode') {
+      window.__offlineModePreviousTab = currentTab;
+    }
+
+    if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
+      window.tabLoader.switchTab('offline-mode', { syncUrl: true, historyMode: 'push', source: 'offline-mode-open' });
+      syncOfflineModeButtonState();
+      return true;
+    }
+
+    var url = new URL(window.location.href);
+    url.searchParams.set('tab', 'offline-mode');
+    window.location.href = url.toString();
+    return false;
+  }
+
+  function closeOfflineModePage() {
+    var previousTab = String(window.__offlineModePreviousTab || '').trim();
+    if (!previousTab || previousTab === 'offline-mode') previousTab = 'adventure-planner';
+
+    if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
+      window.tabLoader.switchTab(previousTab, { syncUrl: true, historyMode: 'push', source: 'offline-mode-close' });
+      syncOfflineModeButtonState();
+      return true;
+    }
+
+    var url = new URL(window.location.href);
+    url.searchParams.set('tab', previousTab);
+    window.location.href = url.toString();
+    return false;
   }
 
   function subscribe(listener) {
@@ -381,14 +543,14 @@
     var queueText = status.syncing ? 'Syncing queue...' : ('Pending sync: ' + String(status.pendingCount));
     var queueState = status.syncing ? 'syncing' : (status.pendingCount > 0 ? 'offline' : 'online');
 
-    ['offlinePlannerConnectionBadge', 'offlineBirdConnectionBadge'].forEach(function (id) {
+    ['offlineModeConnectionBadge'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
       el.dataset.state = onlineState;
       el.textContent = 'Offline: ' + connectionText;
     });
 
-    ['offlinePlannerQueueBadge', 'offlineBirdQueueBadge'].forEach(function (id) {
+    ['offlineModeQueueBadge'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
       el.dataset.state = queueState;
@@ -415,7 +577,7 @@
         .map(summarizeQueueItem)
         .filter(function (item) { return item.hasConflict; });
 
-      ['offlineQueueConflictPanel', 'birdsOfflineQueueConflictPanel'].forEach(function (panelId) {
+      ['offlineModeQueueConflictPanel'].forEach(function (panelId) {
         var panel = document.getElementById(panelId);
         if (!panel) return;
 
@@ -496,6 +658,8 @@
   }
 
   async function warmOfflinePack() {
+    await ensureServiceWorkerReady(6000);
+
     var cacheName = 'kaf-offline-pack-v1';
     var cache = await caches.open(cacheName);
     for (var i = 0; i < OFFLINE_PACK_ASSETS.length; i += 1) {
@@ -507,6 +671,18 @@
       }
     }
 
+    if ('serviceWorker' in navigator) {
+      try {
+        var registration = await navigator.serviceWorker.ready;
+        if (registration && registration.active) {
+          registration.active.postMessage({ type: 'WARM_OFFLINE_PACK' });
+        }
+        status.swReady = Boolean(status.swReady || (registration && registration.active));
+      } catch (_error) {
+        // Offline pack can still rely on Cache Storage even if SW messaging fails.
+      }
+    }
+
     status.lastPackAt = new Date().toISOString();
     localStorage.setItem(LAST_PACK_KEY, status.lastPackAt);
     emitStatus();
@@ -514,7 +690,7 @@
   }
 
   function bindOfflineButtons() {
-    ['offlinePackBtn', 'birdsOfflinePackBtn'].forEach(function (id) {
+    ['offlineModePackBtn'].forEach(function (id) {
       var btn = document.getElementById(id);
       if (!btn || btn.dataset.offlinePackBound === '1') return;
       btn.addEventListener('click', async function () {
@@ -535,7 +711,7 @@
       btn.dataset.offlinePackBound = '1';
     });
 
-    ['offlineHealthBtn', 'birdsOfflineHealthBtn', 'offlineInstallOpenHealthBtn'].forEach(function (id) {
+    ['offlineModeHealthBtn'].forEach(function (id) {
       var healthBtn = document.getElementById(id);
       if (!healthBtn || healthBtn.dataset.offlineHealthBound === '1') return;
       healthBtn.dataset.offlineHealthBound = '1';
@@ -546,8 +722,9 @@
       });
     });
 
-    var installNowBtn = document.getElementById('offlineInstallNowBtn');
-    if (installNowBtn && installNowBtn.dataset.offlineInstallBound !== '1') {
+    ['offlineModeInstallBtn'].forEach(function (id) {
+      var installNowBtn = document.getElementById(id);
+      if (!installNowBtn || installNowBtn.dataset.offlineInstallBound === '1') return;
       installNowBtn.dataset.offlineInstallBound = '1';
       installNowBtn.addEventListener('click', async function () {
         if (!deferredInstallPrompt) return;
@@ -559,6 +736,50 @@
         }
         deferredInstallPrompt = null;
         renderInstallBanner();
+      });
+    });
+
+    var offlineModeOpenBtn = document.getElementById('offlineModeBtn');
+    if (offlineModeOpenBtn && offlineModeOpenBtn.dataset.offlineModeBound !== '1') {
+      offlineModeOpenBtn.dataset.offlineModeBound = '1';
+      offlineModeOpenBtn.addEventListener('click', function () {
+        openOfflineModePage();
+      });
+    }
+
+    var offlineInstallOpenModeBtn = document.getElementById('offlineInstallOpenModeBtn');
+    if (offlineInstallOpenModeBtn && offlineInstallOpenModeBtn.dataset.offlineModeBound !== '1') {
+      offlineInstallOpenModeBtn.dataset.offlineModeBound = '1';
+      offlineInstallOpenModeBtn.addEventListener('click', function () {
+        openOfflineModePage();
+      });
+    }
+
+    var offlineModeBackBtn = document.getElementById('offlineModeBackBtn');
+    if (offlineModeBackBtn && offlineModeBackBtn.dataset.offlineModeBound !== '1') {
+      offlineModeBackBtn.dataset.offlineModeBound = '1';
+      offlineModeBackBtn.addEventListener('click', function () {
+        closeOfflineModePage();
+      });
+    }
+
+    var offlineModeSyncBtn = document.getElementById('offlineModeSyncBtn');
+    if (offlineModeSyncBtn && offlineModeSyncBtn.dataset.offlineSyncBound !== '1') {
+      offlineModeSyncBtn.dataset.offlineSyncBound = '1';
+      offlineModeSyncBtn.addEventListener('click', async function () {
+        offlineModeSyncBtn.disabled = true;
+        try {
+          var result = await flushQueue();
+          if (typeof window.showToast === 'function') {
+            window.showToast('Offline sync finished. Processed ' + String(result && result.processed || 0) + ' item(s).', 'success', 2600);
+          }
+        } catch (error) {
+          if (typeof window.showToast === 'function') {
+            window.showToast('Offline sync failed: ' + String(error && error.message ? error.message : error), 'error', 3200);
+          }
+        } finally {
+          offlineModeSyncBtn.disabled = false;
+        }
       });
     }
 
@@ -589,11 +810,11 @@
 
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return Promise.resolve(false);
-    return navigator.serviceWorker.register(SERVICE_WORKER_PATH)
-      .then(function () {
-        status.swReady = true;
+    return ensureServiceWorkerReady(6000)
+      .then(function (ready) {
+        status.swReady = Boolean(ready);
         emitStatus();
-        return true;
+        return ready;
       })
       .catch(function () {
         status.swReady = false;
@@ -614,6 +835,11 @@
       renderInstallBanner();
     });
 
+    window.addEventListener('app:tab-switched', function () {
+      syncOfflineModeButtonState();
+      bindOfflineButtons();
+    });
+
     window.addEventListener('online', function () {
       status.online = true;
       emitStatus();
@@ -632,6 +858,7 @@
         registerPlannerSaveFallback();
         refreshPendingCount();
         renderInstallBanner();
+        syncOfflineModeButtonState();
       }
     });
 
@@ -660,14 +887,20 @@
       if (tab) tab.focus();
       return Boolean(tab);
     },
+    openOfflineModePage: openOfflineModePage,
+    closeOfflineModePage: closeOfflineModePage,
     getStatus: function () { return { ...status }; },
     getPendingCount: function () { return status.pendingCount; }
   };
+
+  window.openOfflineModePage = openOfflineModePage;
+  window.closeOfflineModePage = closeOfflineModePage;
 
   initGlobalEvents();
   emitStatus();
   bindOfflineButtons();
   renderInstallBanner();
+  syncOfflineModeButtonState();
   registerPlannerSaveFallback();
   registerProcessor('bird-sync-action', function () {
     return triggerBirdSyncBridge();

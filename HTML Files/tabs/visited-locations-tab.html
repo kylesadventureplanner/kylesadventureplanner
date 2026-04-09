@@ -1,20 +1,12 @@
-<!-- VISITED LOCATIONS TAB CONTENT -->
+<!-- ADVENTURE CHALLENGE TAB CONTENT -->
 <!-- Gamified tracker + smart recommendations -->
 
 <div id="visitedLocationsRoot">
   <div class="visited-progress-header">
-    <h1>Visited Adventures</h1>
+    <h1>Adventure Challenge</h1>
     <div class="planner-top-actions">
       <button id="visitedRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh tracker data" data-tooltip="Refresh tracker data">
         🔄 Refresh Tracker
-      </button>
-      <span id="visitedSyncHealthBadge" class="visited-sync-health" aria-live="polite">Sync: checking...</span>
-      <span id="visitedSyncMeta" class="visited-sync-meta" aria-live="polite">Last synced: --</span>
-      <button type="button" class="quick-filter-btn" data-celebration-toggle="confetti" aria-pressed="true" title="Toggle confetti celebration" data-tooltip="Toggle confetti celebration">
-        🎉 Confetti
-      </button>
-      <button type="button" class="quick-filter-btn" data-celebration-toggle="sound" aria-pressed="false" title="Toggle celebration sound" data-tooltip="Toggle celebration sound">
-        🔊 Sound
       </button>
       <select id="visitedWeatherMode" class="filter-select" title="Choose weather mode for recommendations" data-tooltip="Choose weather mode for recommendations" style="max-width: 240px;">
         <option value="auto">🌦️ Auto Weather Mode</option>
@@ -27,7 +19,7 @@
     </div>
   </div>
 
-  <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Progress sections">
+  <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Challenge sections">
     <button id="visitedProgressTab-overview" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-overview" aria-selected="true" data-progress-subtab="overview" aria-label="Open Overview section" title="Open Overview section">Overview</button>
     <button id="visitedProgressTab-badges" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-badges" aria-selected="false" data-progress-subtab="badges" aria-label="Open Badges and Challenges section" title="Open Badges and Challenges section">Badges</button>
     <button id="visitedProgressTab-heatmap" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-heatmap" aria-selected="false" data-progress-subtab="heatmap" aria-label="Open Heat Map section" title="Open Heat Map section">Heat Map</button>
@@ -40,43 +32,60 @@
   <div id="visitedMobileTooltipChip" class="visited-mobile-tooltip-chip" aria-live="polite" hidden></div>
 
   <div id="visitedProgressPane-overview" class="visited-progress-pane is-active" data-progress-pane="overview" role="tabpanel" aria-labelledby="visitedProgressTab-overview">
-    <div class="card" style="margin-top: 10px;">
-      <div class="card-header">
-        <div>
-          <div class="card-title">🎮 Your Adventure Quest</div>
-          <div class="card-subtitle" id="visitedDataStatus">Loading adventures...</div>
+    <div id="visitedOverviewMainView" class="visited-overview-view is-active" data-visited-overview-view="main">
+      <div class="card" style="margin-top: 10px;">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🎮 Your Adventure Quest</div>
+            <div class="card-subtitle" id="visitedDataStatus">Loading adventures...</div>
+          </div>
+        </div>
+        <div id="visitedSummaryStats" class="visited-summary-grid"></div>
+        <div class="visited-level-track">
+          <div id="visitedLevelBarFill" class="visited-level-fill"></div>
         </div>
       </div>
-      <div id="visitedSummaryStats" class="visited-summary-grid"></div>
-      <div class="visited-level-track">
-        <div id="visitedLevelBarFill" class="visited-level-fill"></div>
-      </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">📊 Category Progress</div>
-        <div class="card-subtitle">Track the categories you asked for and level up each one.</div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 Category Progress</div>
+          <div class="card-subtitle">Track the categories you asked for and level up each one.</div>
+        </div>
+        <div id="visitedCategoryGrid" class="visited-category-grid"></div>
       </div>
-      <div id="visitedCategoryGrid" class="visited-category-grid"></div>
-    </div>
 
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">🧠 Smart Adventure Suggestions</div>
-          <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🧠 Smart Adventure Suggestions</div>
+            <div class="card-subtitle">Open the dedicated suggestions page for weather-aware ranked picks.</div>
+          </div>
+        </div>
+        <div class="visited-suggestions-cta-row">
+          <button id="visitedOpenSuggestionsBtn" type="button" class="pill-button" title="Open Smart Adventure Suggestions" data-tooltip="Open Smart Adventure Suggestions">Open Suggestions Page</button>
         </div>
       </div>
-      <div id="visitedSuggestionList" class="adventure-cards-grid" style="padding: 8px 0;"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🕓 Recent Check-Ins</div>
+          <div class="card-subtitle">Your newest visits at a glance.</div>
+        </div>
+        <div id="visitedRecentList" class="visited-recent-list"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🕓 Recent Check-Ins</div>
-        <div class="card-subtitle">Your newest visits at a glance.</div>
+    <div id="visitedSuggestionsView" class="visited-overview-view" data-visited-overview-view="suggestions" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="visited-view-header-row">
+          <button id="visitedSuggestionsBackBtn" type="button" class="pill-button" title="Back to Adventure Challenge overview" data-tooltip="Back to Adventure Challenge overview">← Back</button>
+          <div>
+            <div class="card-title">🧠 Smart Adventure Suggestions</div>
+            <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
+          </div>
+        </div>
+        <div id="visitedSuggestionList" class="adventure-cards-grid" style="padding: 8px 0;"></div>
       </div>
-      <div id="visitedRecentList" class="visited-recent-list"></div>
     </div>
   </div>
 
@@ -152,9 +161,18 @@
       <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
     </div>
   </div>
+  <details id="visitedDiagnosticsDetails" class="card visited-diagnostics-details" aria-labelledby="visitedDiagnosticsHeading" style="margin-top: 14px;">
+    <summary class="visited-diagnostics-summary" title="Open Adventure Challenge diagnostics, sync, and clean up" data-tooltip="Open Adventure Challenge diagnostics, sync, and clean up">
+      <span id="visitedDiagnosticsHeading" class="card-title">🧰 Diagnostics, Sync and Clean Up</span>
+      <span class="card-subtitle visited-diagnostics-subtitle">Sync health, local queue visibility, and visited tracker diagnostics.</span>
+    </summary>
+    <div class="visited-diagnostics-sync-row">
+      <span id="visitedSyncHealthBadge" class="visited-sync-health" aria-live="polite">Sync: checking...</span>
+      <span id="visitedSyncMeta" class="visited-sync-meta" aria-live="polite">Last synced: --</span>
+    </div>
+    <div id="visitedDiagnosticsPanel" class="visited-diagnostics-panel" aria-live="polite">Diagnostics are ready.</div>
+  </details>
 </div>
-
-<div id="visitedConfettiLayer" class="visited-confetti-layer" aria-hidden="true"></div>
 
 <style>
   #visitedLocationsRoot .visited-summary-grid {
@@ -453,6 +471,59 @@
     display: block;
   }
 
+  #visitedLocationsRoot .visited-overview-view[hidden] {
+    display: none !important;
+  }
+
+  #visitedLocationsRoot .visited-suggestions-cta-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+  }
+
+  #visitedLocationsRoot .visited-view-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  #visitedLocationsRoot .visited-diagnostics-details {
+    border: 1px solid #e5e7eb;
+  }
+
+  #visitedLocationsRoot .visited-diagnostics-summary {
+    cursor: pointer;
+    list-style: none;
+  }
+
+  #visitedLocationsRoot .visited-diagnostics-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  #visitedLocationsRoot .visited-diagnostics-subtitle {
+    display: block;
+    margin-top: 4px;
+  }
+
+  #visitedLocationsRoot .visited-diagnostics-sync-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  #visitedLocationsRoot .visited-diagnostics-panel {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #475569;
+  }
+
   #visitedLocationsRoot .visited-sync-health {
     display: inline-flex;
     align-items: center;
@@ -721,28 +792,6 @@
     cursor: default;
   }
 
-  .visited-confetti-layer {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1300;
-    overflow: hidden;
-  }
-
-  .visited-confetti-piece {
-    position: absolute;
-    top: -14px;
-    width: 8px;
-    height: 14px;
-    border-radius: 2px;
-    opacity: 0.95;
-    animation: visitedConfettiFall 1.3s ease-in forwards;
-  }
-
-  @keyframes visitedConfettiFall {
-    0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
-  }
 
   #visitedLocationsRoot .visited-challenge-card.completed {
     border-color: #86efac;
@@ -863,7 +912,7 @@
       window.initializeVisitedLocationsTab();
       return;
     }
-    console.log('✅ Visited Locations tab initialized (UI only)');
+    console.log('✅ Adventure Challenge tab initialized (UI only)');
   };
 </script>
 
