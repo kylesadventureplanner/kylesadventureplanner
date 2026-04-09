@@ -5559,6 +5559,27 @@
     requestAnimationFrame(() => positionNatureSubTabDock());
   }
 
+  function bindNaturePrimaryTabFallbackSync(root) {
+    if (!root || root.dataset.naturePrimaryTabFallbackBound === '1') return;
+    root.dataset.naturePrimaryTabFallbackBound = '1';
+
+    const resync = () => {
+      const liveRoot = document.getElementById('natureChallengeRoot');
+      if (!liveRoot) return;
+      syncNatureSubTabDock(liveRoot);
+    };
+
+    // Fallback: some legacy tab flows may not emit app:tab-switched.
+    document.addEventListener('click', (event) => {
+      const button = event.target && event.target.closest ? event.target.closest('.app-tab-btn[data-tab]') : null;
+      if (!button) return;
+      requestAnimationFrame(resync);
+      window.setTimeout(resync, 40);
+    }, true);
+
+    window.addEventListener('pageshow', resync);
+  }
+
   function syncNatureSubTabs(root) {
     if (!root) return;
 
@@ -6611,6 +6632,8 @@
         syncNatureSubTabDock(liveRoot);
       });
     }
+
+    bindNaturePrimaryTabFallbackSync(root);
 
     if (!root.dataset.natureReliabilityWatchdogBound) {
       root.dataset.natureReliabilityWatchdogBound = '1';
