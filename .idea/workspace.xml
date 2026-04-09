@@ -5,12 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/CSS/species-explorer-enhancements.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/JS/ Files/species-explorer-enhancements.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/PHASE2_IMPLEMENTATION_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/PHASE2_SUMMARY.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/docs/PHASE2_SPECIES_EXPLORER_GUIDE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/species-explorer-phase2.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CSS/sighting-history-dashboard.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CSS/sighting-logger-enhancements.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docs/PHASE3_SIGHTING_LOGGER_GUIDE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sighting-history-phase4.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sighting-logger-phase3.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -93,7 +92,7 @@
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
       <workItem from="1775308318086" duration="90230000" />
-      <workItem from="1775520086833" duration="97128000" />
+      <workItem from="1775520086833" duration="98697000" />
     </task>
     <servers />
   </component>

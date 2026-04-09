@@ -1,0 +1,695 @@
+/* ============================================================
+   SIGHTING HISTORY & DASHBOARD - PHASE 4
+   ============================================================
+   Timeline view, search/filter, statistics, details modal
+*/
+
+/* ============================================================
+   STATISTICS DASHBOARD
+   ============================================================
+   Key metrics and progress indicators.
+*/
+
+.statistics-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--neutral-200);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.stat-card.featured {
+  background: linear-gradient(135deg, var(--primary-light) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border-color: var(--primary);
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-meta {
+  font-size: 12px;
+  color: var(--neutral-500);
+  margin-top: 8px;
+}
+
+.stat-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--neutral-200);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.stat-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--accent-info) 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ============================================================
+   TIMELINE VIEW
+   ============================================================
+   Chronological sighting list with cards.
+*/
+
+.sighting-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sighting-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--neutral-200);
+  padding: 16px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.sighting-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.sighting-card.new {
+  border: 2px solid var(--accent-success);
+  background: rgba(16, 185, 129, 0.02);
+}
+
+.sighting-thumbnail {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--neutral-100);
+  border: 1px solid var(--neutral-200);
+}
+
+.sighting-thumbnail.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+}
+
+.sighting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sighting-species {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.sighting-location {
+  font-size: 13px;
+  color: var(--neutral-600);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sighting-date {
+  font-size: 12px;
+  color: var(--neutral-500);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sighting-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.sighting-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+}
+
+.sighting-badge.photos {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+}
+
+.sighting-badge.notes {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-success);
+}
+
+.sighting-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sighting-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--neutral-300);
+  background: white;
+  color: var(--neutral-600);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.sighting-action-btn:hover {
+  background: var(--neutral-50);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ============================================================
+   SEARCH & FILTER PANEL
+   ============================================================
+   Advanced filtering options.
+*/
+
+.search-filter-panel {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--neutral-200);
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search-filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-700);
+}
+
+.filter-input,
+.filter-select {
+  padding: 10px 12px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--neutral-300);
+  background: white;
+  color: var(--neutral-700);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  background: var(--neutral-50);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.filter-btn.primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.filter-btn.primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.filter-status {
+  font-size: 12px;
+  color: var(--neutral-500);
+  padding: 0 4px;
+}
+
+.filter-status.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ============================================================
+   SIGHTING DETAILS MODAL
+   ============================================================
+   Full sighting information and photo gallery.
+*/
+
+.sighting-details-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.sighting-details-modal[hidden] {
+  display: none !important;
+}
+
+.sighting-details-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sighting-details-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--neutral-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sighting-details-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.sighting-details-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--neutral-500);
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.sighting-details-close:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+.sighting-details-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sighting-details-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sighting-details-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--neutral-900);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--neutral-200);
+  padding-bottom: 8px;
+}
+
+.sighting-details-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+}
+
+.sighting-details-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sighting-details-value {
+  font-size: 14px;
+  color: var(--neutral-900);
+  line-height: 1.6;
+}
+
+/* Photo Gallery */
+.sighting-photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.gallery-photo {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--neutral-200);
+  aspect-ratio: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.gallery-photo:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  transform: scale(1.05);
+}
+
+.gallery-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gallery-photo.cover::after {
+  content: '📌';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 16px;
+  background: var(--accent-success);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Modal Actions */
+.sighting-details-actions {
+  padding: 16px 20px;
+  border-top: 1px solid var(--neutral-200);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.details-action-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--neutral-300);
+  background: white;
+  color: var(--neutral-700);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.details-action-btn:hover {
+  background: var(--neutral-50);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.details-action-btn.primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.details-action-btn.primary:hover {
+  background: var(--primary-dark);
+}
+
+.details-action-btn.danger {
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+}
+
+.details-action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================
+*/
+
+.sighting-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--neutral-500);
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--neutral-700);
+  margin-bottom: 8px;
+}
+
+.empty-state-description {
+  font-size: 13px;
+  color: var(--neutral-500);
+  margin-bottom: 20px;
+}
+
+.empty-state-action {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.empty-state-action:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   EXPORT OPTIONS
+   ============================================================
+*/
+
+.export-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  min-width: 150px;
+}
+
+.export-menu[hidden] {
+  display: none !important;
+}
+
+.export-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid var(--neutral-100);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-option:hover {
+  background: var(--neutral-50);
+  color: var(--primary);
+}
+
+.export-option:last-child {
+  border-bottom: none;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVENESS
+   ============================================================
+*/
+
+@media (max-width: 768px) {
+  .statistics-dashboard {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .stat-card {
+    padding: 16px 12px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .sighting-card {
+    grid-template-columns: 60px 1fr;
+  }
+
+  .sighting-thumbnail {
+    width: 60px;
+    height: 60px;
+  }
+
+  .sighting-actions {
+    order: 3;
+    grid-column: 1 / -1;
+  }
+
+  .search-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .sighting-details-modal {
+    padding: 0;
+  }
+
+  .sighting-details-content {
+    border-radius: 16px 16px 0 0;
+    max-height: 100vh;
+  }
+
+  .sighting-details-row {
+    grid-template-columns: 1fr;
+  }
+
+  .sighting-photo-gallery {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .statistics-dashboard {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .sighting-card {
+    grid-template-columns: 50px 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .sighting-thumbnail {
+    width: 50px;
+    height: 50px;
+  }
+
+  .sighting-details-header {
+    padding: 16px;
+  }
+
+  .sighting-details-body {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .sighting-photo-gallery {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+

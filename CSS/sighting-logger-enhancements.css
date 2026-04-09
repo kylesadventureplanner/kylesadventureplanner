@@ -1,0 +1,724 @@
+/* ============================================================
+   SIGHTING LOGGER ENHANCEMENTS - PHASE 3
+   ============================================================
+   Draft Auto-Save, Location Suggestions, Photo Management
+*/
+
+/* ============================================================
+   DRAFT AUTO-SAVE SYSTEM
+   ============================================================
+   Visual indicators and UI for draft management.
+*/
+
+.draft-save-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 50;
+  animation: slideInRight 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.draft-save-indicator.saving {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+.draft-save-indicator.saved {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.draft-save-indicator.error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.draft-save-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.draft-save-checkmark {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.draft-save-checkmark::after {
+  content: '✓';
+  font-weight: 700;
+}
+
+/* Draft recovery banner */
+.draft-recovery-banner {
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  border-left: 4px solid var(--accent-warning);
+  background: #fffbeb;
+  color: #92400e;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.draft-recovery-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.draft-recovery-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.draft-recovery-time {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.draft-recovery-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.draft-recovery-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.draft-recovery-btn.restore {
+  background: var(--accent-warning);
+  color: white;
+}
+
+.draft-recovery-btn.restore:hover {
+  background: #f59e0b;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.draft-recovery-btn.discard {
+  background: white;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+.draft-recovery-btn.discard:hover {
+  background: #fffbeb;
+}
+
+/* ============================================================
+   LOCATION SUGGESTIONS & MAP PREVIEW
+   ============================================================
+   Smart location entry with autocomplete and map.
+*/
+
+.location-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.location-input-wrapper {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.location-input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.location-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.location-gps-btn {
+  padding: 10px 16px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 8px;
+  background: white;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.location-gps-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.location-gps-btn:active {
+  transform: scale(0.98);
+}
+
+.location-gps-btn.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Location suggestions dropdown */
+.location-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.location-suggestions[hidden] {
+  display: none !important;
+}
+
+.location-suggestion {
+  padding: 12px;
+  border-bottom: 1px solid var(--neutral-100);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.location-suggestion:hover {
+  background: var(--neutral-50);
+}
+
+.location-suggestion:last-child {
+  border-bottom: none;
+}
+
+.location-suggestion-name {
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin-bottom: 4px;
+}
+
+.location-suggestion-meta {
+  font-size: 12px;
+  color: var(--neutral-500);
+}
+
+.location-suggestion-distance {
+  font-size: 12px;
+  color: var(--primary);
+}
+
+/* Map preview */
+.location-map-container {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--neutral-200);
+  height: 200px;
+  background: var(--neutral-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neutral-500);
+  font-size: 14px;
+}
+
+.location-map-container.loaded {
+  background: white;
+}
+
+.location-map-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.location-marker {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================================
+   PHOTO GRID WITH REORDER CAPABILITY
+   ============================================================
+   Sortable photo grid with drag-and-drop support.
+*/
+
+.sighting-photos-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sighting-photos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sighting-photos-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--neutral-900);
+}
+
+.sighting-photos-counter {
+  font-size: 12px;
+  color: var(--neutral-500);
+}
+
+.sighting-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.photo-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: var(--neutral-100);
+  border: 2px solid var(--neutral-200);
+  cursor: grab;
+  transition: all 0.2s;
+  group: "photo-item";
+}
+
+.photo-item:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.photo-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  cursor: grabbing;
+}
+
+.photo-item.drag-over {
+  border: 2px dashed var(--primary);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.photo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-actions {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.photo-item:hover .photo-actions {
+  opacity: 1;
+}
+
+.photo-action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: none;
+  background: white;
+  color: var(--neutral-900);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.photo-action-btn:hover {
+  transform: scale(1.1);
+}
+
+.photo-action-btn:active {
+  transform: scale(0.95);
+}
+
+.photo-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.photo-badge.cover {
+  background: var(--accent-success);
+}
+
+.photo-badge.position {
+  background: var(--primary);
+}
+
+/* Photo upload area */
+.photo-upload-area {
+  border: 2px dashed var(--neutral-300);
+  border-radius: 8px;
+  padding: 32px 16px;
+  text-align: center;
+  background: var(--neutral-50);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.photo-upload-area:hover {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.photo-upload-area.drag-over {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.1);
+  transform: scale(1.02);
+}
+
+.photo-upload-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.photo-upload-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-900);
+  margin-bottom: 4px;
+}
+
+.photo-upload-hint {
+  font-size: 12px;
+  color: var(--neutral-500);
+}
+
+.photo-input {
+  display: none;
+}
+
+/* Photo count indicator */
+.photo-count-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   SIGHTING FORM ENHANCEMENTS
+   ============================================================
+   Improved form styling for sighting entry.
+*/
+
+.sighting-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  background: white;
+  border: 1px solid var(--neutral-200);
+  margin-bottom: 16px;
+}
+
+.sighting-form-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--neutral-900);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-700);
+}
+
+.form-label.required::after {
+  content: ' *';
+  color: var(--accent-danger);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  padding: 10px 12px;
+  border: 1px solid var(--neutral-300);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--neutral-500);
+}
+
+/* ============================================================
+   SAVE & ACTIONS BUTTONS
+   ============================================================
+   Primary action buttons for sighting form.
+*/
+
+.sighting-form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--neutral-50);
+  border-radius: 8px;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+.sighting-action-button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.sighting-action-button.primary {
+  background: var(--primary);
+  color: white;
+  flex: 1;
+  min-width: 120px;
+}
+
+.sighting-action-button.primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: translateY(-2px);
+}
+
+.sighting-action-button.secondary {
+  background: white;
+  color: var(--neutral-700);
+  border: 1px solid var(--neutral-300);
+}
+
+.sighting-action-button.secondary:hover:not(:disabled) {
+  background: var(--neutral-50);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.sighting-action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sighting-action-button.loading::after {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* ============================================================
+   VALIDATION & ERROR STATES
+   ============================================================
+*/
+
+.form-group.error .form-input,
+.form-group.error .form-textarea,
+.form-group.error .form-select {
+  border-color: var(--accent-danger);
+}
+
+.form-group.error .form-input:focus,
+.form-group.error .form-textarea:focus,
+.form-group.error .form-select:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-error {
+  font-size: 12px;
+  color: var(--accent-danger);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-error::before {
+  content: '⚠️';
+}
+
+.form-success {
+  font-size: 12px;
+  color: var(--accent-success);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-success::before {
+  content: '✓';
+  font-weight: 700;
+}
+
+/* ============================================================
+   MOBILE RESPONSIVENESS
+   ============================================================
+*/
+
+@media (max-width: 768px) {
+  .sighting-photos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+  }
+
+  .sighting-form-actions {
+    flex-direction: column;
+  }
+
+  .sighting-action-button {
+    width: 100%;
+  }
+
+  .location-input-wrapper {
+    flex-direction: column;
+  }
+
+  .location-gps-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .draft-save-indicator {
+    bottom: 70px;
+    right: 12px;
+    left: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sighting-photos-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .photo-item {
+    aspect-ratio: 1;
+  }
+
+  .sighting-form-section {
+    padding: 12px;
+  }
+
+  .photo-upload-area {
+    padding: 24px 12px;
+  }
+}
+
