@@ -371,6 +371,17 @@ class TabContentLoader {
     const { syncUrl = true, historyMode = 'replace', source = 'programmatic' } = options;
     console.log(`📑 Switching to tab: ${tabId}`);
 
+    if (typeof window.clearStaleModalBackdrops === 'function') {
+      window.clearStaleModalBackdrops();
+    }
+    if (typeof window.closeRowDetailModal === 'function') {
+      try {
+        window.closeRowDetailModal();
+      } catch (_error) {
+        // Keep tab switching resilient even if modal cleanup fails.
+      }
+    }
+
     // Hide all tabs
     document.querySelectorAll('.app-tab-pane').forEach(pane => {
       pane.classList.remove('active');

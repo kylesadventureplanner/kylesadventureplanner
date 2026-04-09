@@ -136,6 +136,80 @@ test('hidden overlay probe catches interception', async ({ page }) => {
   expect(passed).toBeTruthy();
 });
 
+test('stale row-detail blocker is cleared before nature interactions', async ({ page }) => {
+  await page.evaluate(() => {
+    let backdrop = document.getElementById('rowDetailModalBackdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'rowDetailModalBackdrop';
+      backdrop.className = 'modal-backdrop';
+      document.body.appendChild(backdrop);
+    }
+
+    const modal = document.getElementById('rowDetailModal');
+    if (!modal) throw new Error('rowDetailModal not found');
+
+    modal.classList.remove('visible');
+    modal.style.display = 'flex';
+    modal.style.opacity = '0';
+    modal.style.pointerEvents = 'auto';
+
+    backdrop.classList.remove('visible');
+    backdrop.style.display = 'block';
+    backdrop.style.opacity = '0';
+    backdrop.style.pointerEvents = 'auto';
+    backdrop.style.zIndex = '1001';
+  });
+
+  await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
+  await expect(page.locator('#birdsExploreBtn')).toBeVisible();
+  await page.locator('#birdsExploreBtn').click();
+
+  const explorerActive = await page.evaluate(() => {
+    const node = document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]');
+    const modal = document.getElementById('rowDetailModal');
+    return {
+      explorerActive: Boolean(node),
+      modalHidden: modal ? window.getComputedStyle(modal).display === 'none' : true
+    };
+  });
+
+  const passed = Boolean(explorerActive && explorerActive.explorerActive && explorerActive.modalHidden);
+  recordCheck('overlay:stale-row-detail-cleared', passed, explorerActive || {});
+  expect(passed).toBeTruthy();
+});
+
+test('nature explore remains responsive across repeated tab switches', async ({ page }) => {
+  let passed = true;
+  const iterations = [];
+
+  for (let i = 0; i < 5; i += 1) {
+    await page.locator('.app-tab-btn[data-tab="bike-trails"]').click();
+    await expect(page.locator('#bikeRefreshBtn')).toBeVisible();
+
+    await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
+    await expect(page.locator('#birdsExploreBtn')).toBeVisible();
+    await page.locator('#birdsExploreBtn').click();
+
+    const explorerActive = await page.evaluate(() => Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]')));
+    iterations.push({ iteration: i + 1, explorerActive });
+    if (!explorerActive) {
+      passed = false;
+      break;
+    }
+
+    const backBtn = page.locator('#birdsExplorerBackBtn');
+    if (await backBtn.count()) {
+      await backBtn.click();
+    } else {
+      await page.locator('#birdsOverviewCommandRunBtn').click();
+    }
+  }
+
+  recordCheck('repeat:nature-explore-tab-switches', passed, { iterations });
+  expect(passed).toBeTruthy();
+});
+
 test.afterAll(async () => {
   const sorted = summary.startupSamplesMs.slice().sort((a, b) => a - b);
   if (sorted.length) {

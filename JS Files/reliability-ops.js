@@ -289,6 +289,9 @@
       buttonReliabilityLog: window.ButtonReliability && typeof window.ButtonReliability.getEventLog === 'function'
         ? window.ButtonReliability.getEventLog(80)
         : [],
+      blockedInteractionLog: window.ButtonReliability && typeof window.ButtonReliability.getBlockedInteractionLog === 'function'
+        ? window.ButtonReliability.getBlockedInteractionLog(80)
+        : [],
       blockingOverlays: window.ButtonReliability && typeof window.ButtonReliability.detectBlockingOverlays === 'function'
         ? window.ButtonReliability.detectBlockingOverlays().map((item) => ({ id: item.id, classes: item.classes, area: item.area }))
         : [],

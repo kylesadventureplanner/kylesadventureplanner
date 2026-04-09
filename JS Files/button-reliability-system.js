@@ -18,7 +18,9 @@
     lastClickedButton: null,
     buttonStates: new Map(),
     eventLog: [],
+    blockedInteractionLog: [],
     maxLogSize: 200,
+    maxBlockedLogSize: 80,
     healthCheckInterval: null,
     _scanPending: false,
     stats: {
@@ -26,6 +28,7 @@
       hoverEventsDetected: 0,
       clickEventsDetected: 0,
       interferedClicks: 0,
+      blockedInteractionsDetected: 0,
       repairsAttempted: 0,
       repairsSuccessful: 0,
       buttonsWithIssues: 0
@@ -47,6 +50,103 @@
       else if (level === 'error') console.error(prefix, data || '');
       else console.log(prefix, data || '');
     }
+  }
+
+  function capBlockedInteractionLog() {
+    if (SYSTEM.blockedInteractionLog.length > SYSTEM.maxBlockedLogSize) {
+      SYSTEM.blockedInteractionLog.splice(0, SYSTEM.blockedInteractionLog.length - SYSTEM.maxBlockedLogSize);
+    }
+  }
+
+  function getInteractiveSelector() {
+    return 'button, [role="button"], a[href], input:not([type="hidden"]), select, textarea, summary, .pill-button, .planner-top-btn, .nature-explore-birds-btn, .nature-command-btn, .quick-filter-btn, .card-btn, .action-btn';
+  }
+
+  function describeElement(element) {
+    if (!element) return null;
+    const rect = typeof element.getBoundingClientRect === 'function' ? element.getBoundingClientRect() : null;
+    return {
+      tag: element.tagName ? String(element.tagName).toLowerCase() : '',
+      id: element.id || '',
+      className: element.className ? String(element.className).slice(0, 180) : '',
+      text: element.textContent ? String(element.textContent).replace(/\s+/g, ' ').trim().slice(0, 120) : '',
+      pointerEvents: window.getComputedStyle ? window.getComputedStyle(element).pointerEvents : '',
+      rect: rect ? {
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+      } : null
+    };
+  }
+
+  function getActiveTabId() {
+    const pane = document.querySelector('.app-tab-pane.active[data-tab]');
+    if (pane) return String(pane.getAttribute('data-tab') || '');
+    const button = document.querySelector('.app-tab-btn.active[data-tab]');
+    return button ? String(button.getAttribute('data-tab') || '') : '';
+  }
+
+  function recordBlockedInteraction(kind, event, target, blocker, stack) {
+    const entry = {
+      at: new Date().toISOString(),
+      kind: String(kind || 'blocked-interaction'),
+      eventType: event && event.type ? String(event.type) : '',
+      activeTab: getActiveTabId(),
+      pointerType: event && event.pointerType ? String(event.pointerType) : '',
+      x: event && Number.isFinite(event.clientX) ? Math.round(event.clientX) : null,
+      y: event && Number.isFinite(event.clientY) ? Math.round(event.clientY) : null,
+      target: describeElement(target),
+      blocker: describeElement(blocker),
+      stack: Array.isArray(stack) ? stack.slice(0, 6).map(describeElement) : []
+    };
+
+    SYSTEM.stats.blockedInteractionsDetected += 1;
+    SYSTEM.stats.interferedClicks += 1;
+    SYSTEM.blockedInteractionLog.push(entry);
+    capBlockedInteractionLog();
+    log('warn', 'Blocked interactive attempt detected', entry);
+
+    try {
+      window.dispatchEvent(new CustomEvent('reliability:overlay-interception', {
+        detail: {
+          buttonId: entry.target && entry.target.id ? entry.target.id : '',
+          blockedPointCount: entry.stack.length,
+          kind: entry.kind,
+          activeTab: entry.activeTab
+        }
+      }));
+    } catch (_error) {
+      // Ignore telemetry event issues.
+    }
+  }
+
+  function inspectInteractionPath(event) {
+    if (!event || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY) || typeof document.elementsFromPoint !== 'function') return;
+
+    const interactiveSelector = getInteractiveSelector();
+    const stack = document.elementsFromPoint(event.clientX, event.clientY) || [];
+    if (!stack.length) return;
+
+    const topElement = stack[0] || null;
+    const directTarget = event.target && event.target.closest ? event.target.closest(interactiveSelector) : null;
+    const intendedTarget = directTarget || stack
+      .map((node) => (node && node.closest ? node.closest(interactiveSelector) : null))
+      .find(Boolean);
+
+    if (!intendedTarget || !topElement) return;
+    if (topElement === intendedTarget || intendedTarget.contains(topElement)) return;
+
+    const blocker = topElement.closest
+      ? (topElement.closest('#loadingOverlay, .modal-backdrop, [id$="Backdrop"], #rowDetailModal, #contextMenu, #cardContextMenu, .tab-loading-indicator') || topElement)
+      : topElement;
+
+    const blockerStyle = window.getComputedStyle ? window.getComputedStyle(blocker) : null;
+    const blocksPointer = !blockerStyle || blockerStyle.pointerEvents !== 'none';
+    const visible = !blockerStyle || (blockerStyle.display !== 'none' && blockerStyle.visibility !== 'hidden' && parseFloat(blockerStyle.opacity || '1') > 0.01);
+    if (!blocksPointer || !visible) return;
+
+    recordBlockedInteraction('overlay-intercepted', event, intendedTarget, blocker, stack);
   }
 
   // ============================================================
@@ -265,6 +365,10 @@
       document.addEventListener(type, normalizeInteractiveTargetFromEvent, true);
     });
 
+    ['pointerdown', 'click'].forEach((type) => {
+      document.addEventListener(type, inspectInteractionPath, true);
+    });
+
     log('info', '✅ Button Reliability System v1.0.2 initialized', { buttonsFound: SYSTEM.stats.totalButtonsTracked });
   }
 
@@ -382,6 +486,8 @@
 
     getEventLog(limit) { return SYSTEM.eventLog.slice(-(limit || 50)); },
     clearEventLog() { SYSTEM.eventLog = []; },
+    getBlockedInteractionLog(limit) { return SYSTEM.blockedInteractionLog.slice(-(limit || 30)); },
+    clearBlockedInteractionLog() { SYSTEM.blockedInteractionLog = []; },
     setDebugMode(enabled) {
       SYSTEM.debugModeEnabled = Boolean(enabled);
       console.log(`🔘 ButtonReliability debug mode: ${SYSTEM.debugModeEnabled ? 'ON' : 'OFF'}`);

@@ -5991,38 +5991,12 @@
         return;
       }
 
-            <div class="nature-explorer-section">
-              <div class="nature-explorer-section-label">Status</div>
-              <div class="nature-explorer-status-row">
-                <span class="nature-explorer-status-pill ${sighted ? 'is-good' : 'is-alert'}">${sighted ? 'Seen' : 'Not seen'}</span>
-                <span class="nature-explorer-status-pill ${insight.inSeason ? 'is-good' : ''}">${insight.inSeason ? 'In season now' : 'Out of season'}</span>
-                <span class="nature-explorer-status-pill ${insight.recommended ? 'is-alert' : ''}">${insight.recommended ? 'Recommended' : 'Optional'}</span>
-                <span class="nature-explorer-status-pill ${bird.rarity.weight >= RARITY_META.rare.weight ? 'is-rare' : ''}">${escapeHtml(bird.rarity.label)}</span>
-              </div>
+      const detailBackToExplorerButton = event.target.closest('#birdsDetailBackToExplorerBtn');
+      if (detailBackToExplorerButton) {
+        setBirdView(root, 'explorer');
+        return;
+      }
 
-
-            <div class="nature-explorer-section">
-              <div class="nature-explorer-section-label">Tags and Seasons</div>
-              <div class="nature-chip-row nature-chip-row--wrap">
-                <span class="nature-chip ${bird.rarity.className}">${escapeHtml(bird.rarity.label)}</span>
-                ${seasonChips}
-              </div>
-        renderBirdExplorerList();
-
-            <div class="nature-explorer-section">
-              <div class="nature-explorer-section-label">Sighting Snapshot</div>
-              <div class="card-subtitle">${sighted ? `Sighted on ${escapeHtml(sightedDate ? sightedDate.toLocaleDateString() : '')}` : 'Not sighted yet'}</div>
-            </div>
-
-            <div class="nature-explorer-section">
-              <div class="nature-explorer-section-label">Field Insight</div>
-              <div class="nature-explorer-insight">Best habitat: ${escapeHtml(insight.bestHabitat)} | Best region: ${escapeHtml(insight.bestRegion)} | Quick ID cue: ${escapeHtml(idPointsFromBird(bird)[0])}</div>
-            </div>
-
-            <div class="nature-explorer-section">
-              <div class="nature-explorer-section-label">Why this card appears</div>
-              <div class="nature-why-showing-row">${whyReasonChips}</div>
-            </div>
       const emptyActionButton = event.target.closest('[data-birds-empty-action]');
       if (emptyActionButton) {
         const action = emptyActionButton.getAttribute('data-birds-empty-action') || '';

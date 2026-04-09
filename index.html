@@ -5630,15 +5630,16 @@
       width: 900px;
       overflow: hidden;
       opacity: 0;
+      pointer-events: none;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       border: 1px solid var(--neutral-100);
-      display: flex;
       flex-direction: column;
     }
 
     #rowDetailModal.visible {
       display: flex;
       opacity: 1;
+      pointer-events: auto;
       transform: translate(-50%, -50%) scale(1);
     }
 
@@ -11024,11 +11025,14 @@
     if (modal) {
       modal.classList.remove('visible');
       modal.style.display = 'none';
+      modal.style.pointerEvents = 'none';
+      modal.style.opacity = '0';
     }
     if (backdrop) {
       backdrop.classList.remove('visible');
       backdrop.style.display = 'none';
       backdrop.style.pointerEvents = 'none';
+      backdrop.style.opacity = '0';
     }
 
     window.clearStaleModalBackdrops();
