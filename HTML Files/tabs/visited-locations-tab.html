@@ -161,16 +161,32 @@
       <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
     </div>
   </div>
-  <details id="visitedDiagnosticsDetails" class="card visited-diagnostics-details" aria-labelledby="visitedDiagnosticsHeading" style="margin-top: 14px;">
+  <details id="visitedDiagnosticsDetails" class="card visited-collapsible-card visited-diagnostics-details" aria-labelledby="visitedDiagnosticsHeading" aria-describedby="visitedDiagnosticsSummaryHelp" style="margin-top: 14px;">
     <summary class="visited-diagnostics-summary" title="Open Adventure Challenge diagnostics, sync, and clean up" data-tooltip="Open Adventure Challenge diagnostics, sync, and clean up">
-      <span id="visitedDiagnosticsHeading" class="card-title">🧰 Diagnostics, Sync and Clean Up</span>
-      <span class="card-subtitle visited-diagnostics-subtitle">Sync health, local queue visibility, and visited tracker diagnostics.</span>
+      <div>
+        <div id="visitedDiagnosticsHeading" class="card-title">🧰 Diagnostics, Sync and Clean Up</div>
+        <div id="visitedDiagnosticsSummaryHelp" class="card-subtitle visited-diagnostics-subtitle">Sync health, local queue visibility, and visited tracker diagnostics.</div>
+      </div>
     </summary>
-    <div class="visited-diagnostics-sync-row">
-      <span id="visitedSyncHealthBadge" class="visited-sync-health" aria-live="polite">Sync: checking...</span>
-      <span id="visitedSyncMeta" class="visited-sync-meta" aria-live="polite">Last synced: --</span>
+
+    <div class="card visited-diagnostics-subcard">
+      <div class="card-header">
+        <div class="card-title">🔄 Sync Health</div>
+        <div class="card-subtitle">Adventure/Bike visited-column status plus recent sync metadata.</div>
+      </div>
+      <div class="visited-diagnostics-sync-row">
+        <span id="visitedSyncHealthBadge" class="visited-sync-health" aria-live="polite">Sync: checking...</span>
+        <span id="visitedSyncMeta" class="visited-sync-meta" aria-live="polite">Last synced: --</span>
+      </div>
     </div>
-    <div id="visitedDiagnosticsPanel" class="visited-diagnostics-panel" aria-live="polite">Diagnostics are ready.</div>
+
+    <div class="card visited-diagnostics-subcard">
+      <div class="card-header">
+        <div class="card-title">🖱️ Tracker Diagnostics</div>
+        <div class="card-subtitle">Runtime status for local queue and visited tracker diagnostics.</div>
+      </div>
+      <div id="visitedDiagnosticsPanel" class="visited-diagnostics-panel" aria-live="polite">Diagnostics are ready.</div>
+    </div>
   </details>
 </div>
 
@@ -490,12 +506,22 @@
   }
 
   #visitedLocationsRoot .visited-diagnostics-details {
+    margin-top: 4px;
+    margin-bottom: 88px;
     border: 1px solid #e5e7eb;
+  }
+
+  #visitedLocationsRoot .visited-collapsible-card {
+    overflow: hidden;
   }
 
   #visitedLocationsRoot .visited-diagnostics-summary {
     cursor: pointer;
     list-style: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
   }
 
   #visitedLocationsRoot .visited-diagnostics-summary::-webkit-details-marker {
@@ -505,23 +531,35 @@
   #visitedLocationsRoot .visited-diagnostics-subtitle {
     display: block;
     margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  #visitedLocationsRoot .visited-diagnostics-subcard {
+    margin: 0 14px 14px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
   }
 
   #visitedLocationsRoot .visited-diagnostics-sync-row {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 10px;
-    margin-bottom: 10px;
+    margin: 10px 14px 2px;
+    align-items: center;
   }
 
   #visitedLocationsRoot .visited-diagnostics-panel {
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    border-radius: 10px;
-    padding: 10px 12px;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    padding: 12px;
+    background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
     font-size: 12px;
-    color: #475569;
+    line-height: 1.5;
+    color: #1e3a8a;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   }
 
   #visitedLocationsRoot .visited-sync-health {

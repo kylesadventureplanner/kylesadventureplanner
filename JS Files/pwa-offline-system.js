@@ -38,6 +38,9 @@
     swReady: false,
     pendingCount: 0,
     syncing: false,
+    failedCount: 0,
+    replayState: 'idle',
+    lastSyncAt: '',
     lastPackAt: localStorage.getItem(LAST_PACK_KEY) || ''
   };
 
@@ -48,6 +51,7 @@
   var deferredInstallPrompt = null;
   var DISMISS_INSTALL_KEY = 'kafInstallPromptDismissed';
   var swRegistrationPromise = null;
+  var offlineModeDelegatedBound = false;
 
   function emitStatus() {
     listeners.forEach(function (listener) {
@@ -199,7 +203,105 @@
     });
   }
 
-  function openOfflineModePage() {
+  function isOfflineDiagnosticsModeEnabled() {
+    if (window.__offlineModeDiagnostics === true || window.__offlineDiagnostics === true) return true;
+    var params = new URL(window.location.href).searchParams;
+    var flag = String(params.get('offlineDebug') || params.get('offlineDiag') || '').trim().toLowerCase();
+    return flag === '1' || flag === 'true' || flag === 'on' || flag === 'yes';
+  }
+
+  function normalizeOfflineModeOpenSource(options) {
+    var rawSource = typeof options === 'string'
+      ? options
+      : (options && typeof options === 'object' ? options.source : '');
+    return String(rawSource || '').trim() || 'programmatic';
+  }
+
+  function buildOfflineDebugDetail(source, detail) {
+    var parts = ['source=' + normalizeOfflineModeOpenSource(source)];
+    var detailText = String(detail || '').trim();
+    if (detailText) parts.push(detailText);
+    return parts.join(' | ');
+  }
+
+  function syncOfflineDebugToolsVisibility() {
+    var tools = document.getElementById('offlineModeDebugTools');
+    var indicator = document.getElementById('offlineModeDebugIndicator');
+    var copyBtn = document.getElementById('offlineModeDebugCopyBtn');
+    var enabled = isOfflineDiagnosticsModeEnabled();
+    var hasText = Boolean(indicator && String(indicator.textContent || '').trim());
+    var shouldShow = enabled && hasText;
+
+    if (tools) tools.hidden = !shouldShow;
+    if (indicator) indicator.hidden = !shouldShow;
+    if (copyBtn) {
+      copyBtn.hidden = !shouldShow;
+      copyBtn.disabled = !shouldShow;
+    }
+  }
+
+  function copyOfflineDebugIndicatorText() {
+    var indicator = document.getElementById('offlineModeDebugIndicator');
+    var text = indicator ? String(indicator.textContent || '').trim() : '';
+    if (!text) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('No Offline debug message is available to copy yet.', 'info', 1800);
+      }
+      return Promise.resolve(false);
+    }
+
+    return Promise.resolve().then(function () {
+      if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        return navigator.clipboard.writeText(text);
+      }
+
+      var probe = document.createElement('textarea');
+      probe.value = text;
+      probe.setAttribute('readonly', 'readonly');
+      probe.style.position = 'fixed';
+      probe.style.top = '-9999px';
+      document.body.appendChild(probe);
+      probe.select();
+      document.execCommand('copy');
+      document.body.removeChild(probe);
+      return true;
+    }).then(function () {
+      if (typeof window.showToast === 'function') {
+        window.showToast('Offline debug details copied.', 'success', 2000);
+      }
+      return true;
+    }).catch(function () {
+      if (typeof window.showToast === 'function') {
+        window.showToast('Unable to copy Offline debug details on this device.', 'warning', 2200);
+      }
+      return false;
+    });
+  }
+
+  function renderOfflineDebugIndicator(stage, detail) {
+    var indicator = document.getElementById('offlineModeDebugIndicator');
+    if (!indicator) return;
+    if (!isOfflineDiagnosticsModeEnabled()) {
+      indicator.textContent = '';
+      syncOfflineDebugToolsVisibility();
+      return;
+    }
+
+    var activeTab = getActiveTabId() || 'none';
+    var timestamp = new Date().toLocaleTimeString();
+    var detailText = String(detail || '').trim();
+    indicator.textContent = [
+      '[Offline Debug ' + timestamp + ']',
+      stage,
+      'activeTab=' + activeTab,
+      'tabLoader=' + (window.tabLoader && typeof window.tabLoader.switchTab === 'function' ? 'ready' : 'fallback')
+    ].concat(detailText ? [detailText] : []).join(' | ');
+    syncOfflineDebugToolsVisibility();
+  }
+
+  function openOfflineModePage(options) {
+    var openSource = normalizeOfflineModeOpenSource(options);
+    renderOfflineDebugIndicator('openOfflineModePage() triggered', buildOfflineDebugDetail(openSource, 'start'));
     dismissBlockingOverlays();
 
     var currentTab = getActiveTabId();
@@ -208,13 +310,19 @@
     }
 
     if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
-      window.tabLoader.switchTab('offline-mode', { syncUrl: true, historyMode: 'push', source: 'offline-mode-open' });
+      window.tabLoader.switchTab('offline-mode', {
+        syncUrl: true,
+        historyMode: 'push',
+        source: 'offline-mode-open:' + openSource
+      });
       syncOfflineModeButtonState();
+      renderOfflineDebugIndicator('openOfflineModePage() tab switch attempted', buildOfflineDebugDetail(openSource, 'path=tabLoader.switchTab'));
       return true;
     }
 
     var url = new URL(window.location.href);
     url.searchParams.set('tab', 'offline-mode');
+    renderOfflineDebugIndicator('openOfflineModePage() location fallback', buildOfflineDebugDetail(openSource, 'path=window.location.href'));
     window.location.href = url.toString();
     return false;
   }
@@ -365,6 +473,18 @@
     return listQueueItems()
       .then(function (items) {
         status.pendingCount = items.length;
+        status.failedCount = items
+          .map(summarizeQueueItem)
+          .filter(function (item) { return item.hasConflict; }).length;
+        if (status.syncing) {
+          status.replayState = 'syncing';
+        } else if (status.failedCount > 0) {
+          status.replayState = 'failed';
+        } else if (status.pendingCount > 0) {
+          status.replayState = 'queued';
+        } else {
+          status.replayState = 'synced';
+        }
         emitStatus();
         return items;
       })
@@ -423,6 +543,7 @@
     }
 
     status.syncing = true;
+    status.replayState = 'syncing';
     emitStatus();
 
     return listQueueItems()
@@ -456,6 +577,7 @@
 
         return chain.then(function () {
           return refreshPendingCount().then(function () {
+            status.lastSyncAt = new Date().toISOString();
             return { processed: processed, remaining: status.pendingCount };
           });
         });
@@ -540,8 +662,22 @@
   function renderStatusBadges() {
     var onlineState = status.online ? 'online' : 'offline';
     var connectionText = status.online ? 'Online' : 'Offline mode';
-    var queueText = status.syncing ? 'Syncing queue...' : ('Pending sync: ' + String(status.pendingCount));
+    var queueText = 'Pending sync: ' + String(status.pendingCount);
     var queueState = status.syncing ? 'syncing' : (status.pendingCount > 0 ? 'offline' : 'online');
+
+    if (status.replayState === 'syncing') {
+      queueText = 'Syncing queue...';
+      queueState = 'syncing';
+    } else if (status.replayState === 'failed') {
+      queueText = 'Failed queued writes: ' + String(status.failedCount);
+      queueState = 'offline';
+    } else if (status.replayState === 'queued') {
+      queueText = 'Queued for replay: ' + String(status.pendingCount);
+      queueState = 'offline';
+    } else if (status.replayState === 'synced') {
+      queueText = 'Queue synced';
+      queueState = 'online';
+    }
 
     ['offlineModeConnectionBadge'].forEach(function (id) {
       var el = document.getElementById(id);
@@ -556,6 +692,19 @@
       el.dataset.state = queueState;
       el.textContent = queueText;
     });
+
+    var replayStatusEl = document.getElementById('offlineModeReplayStatus');
+    if (replayStatusEl) {
+      var replayText = status.replayState === 'syncing'
+        ? 'Syncing queued changes now...'
+        : status.replayState === 'failed'
+          ? ('Some queued writes need attention (' + String(status.failedCount) + ' failed).')
+          : status.replayState === 'queued'
+            ? ('Queued changes waiting to sync: ' + String(status.pendingCount))
+            : 'All queued changes are synced.';
+      if (status.lastSyncAt) replayText += ' Last sync: ' + new Date(status.lastSyncAt).toLocaleTimeString();
+      replayStatusEl.textContent = replayText;
+    }
 
     var cacheText = status.swReady ? 'Ready' : 'Preparing';
     var lastPackText = formatLastPackText(status.lastPackAt);
@@ -690,23 +839,35 @@
   }
 
   function bindOfflineButtons() {
+    function runGuardedButtonAction(button, key, busyLabel, action) {
+      if (!button || typeof action !== 'function') return Promise.resolve(false);
+      if (window.ButtonActionGuard && typeof window.ButtonActionGuard.withActionGuard === 'function') {
+        return window.ButtonActionGuard.withActionGuard({
+          scope: 'offline-mode',
+          target: button,
+          showBusyLabel: true,
+          busyLabel: busyLabel,
+          getActionKey: function () { return key; },
+          action: action
+        });
+      }
+      return Promise.resolve(action()).then(function () { return true; });
+    }
+
     ['offlineModePackBtn'].forEach(function (id) {
       var btn = document.getElementById(id);
       if (!btn || btn.dataset.offlinePackBound === '1') return;
       btn.addEventListener('click', async function () {
-        btn.disabled = true;
-        try {
+        await runGuardedButtonAction(btn, 'offline-pack', 'Preparing...', async function () {
           var result = await warmOfflinePack();
           if (typeof window.showToast === 'function') {
             window.showToast('Offline pack prepared (' + result.cachedCount + ' assets).', 'success', 2600);
           }
-        } catch (error) {
+        }).catch(function (error) {
           if (typeof window.showToast === 'function') {
             window.showToast('Offline pack failed: ' + String(error && error.message ? error.message : error), 'error', 3600);
           }
-        } finally {
-          btn.disabled = false;
-        }
+        });
       });
       btn.dataset.offlinePackBound = '1';
     });
@@ -739,19 +900,45 @@
       });
     });
 
+    var offlineDebugCopyBtn = document.getElementById('offlineModeDebugCopyBtn');
+    if (offlineDebugCopyBtn && offlineDebugCopyBtn.dataset.offlineDebugBound !== '1') {
+      offlineDebugCopyBtn.dataset.offlineDebugBound = '1';
+      offlineDebugCopyBtn.addEventListener('click', function () {
+        copyOfflineDebugIndicatorText();
+      });
+    }
+    syncOfflineDebugToolsVisibility();
+
     var offlineModeOpenBtn = document.getElementById('offlineModeBtn');
     if (offlineModeOpenBtn && offlineModeOpenBtn.dataset.offlineModeBound !== '1') {
       offlineModeOpenBtn.dataset.offlineModeBound = '1';
       offlineModeOpenBtn.addEventListener('click', function () {
-        openOfflineModePage();
+        openOfflineModePage({ source: 'direct:offlineModeBtn' });
       });
+    }
+
+    if (!offlineModeDelegatedBound) {
+      offlineModeDelegatedBound = true;
+      document.addEventListener('click', function (event) {
+        var target = event && event.target && event.target.closest
+          ? event.target.closest('#offlineModeBtn, #offlineInstallOpenModeBtn')
+          : null;
+        if (!target) return;
+        var delegatedSource = 'delegated:' + String(target.id || 'unknown');
+        if (target.dataset && target.dataset.offlineModeBound === '1') {
+          renderOfflineDebugIndicator('offlineMode delegated click observed', buildOfflineDebugDetail(delegatedSource, 'bound=1'));
+          return;
+        }
+        event.preventDefault();
+        openOfflineModePage({ source: delegatedSource });
+      }, true);
     }
 
     var offlineInstallOpenModeBtn = document.getElementById('offlineInstallOpenModeBtn');
     if (offlineInstallOpenModeBtn && offlineInstallOpenModeBtn.dataset.offlineModeBound !== '1') {
       offlineInstallOpenModeBtn.dataset.offlineModeBound = '1';
       offlineInstallOpenModeBtn.addEventListener('click', function () {
-        openOfflineModePage();
+        openOfflineModePage({ source: 'direct:offlineInstallOpenModeBtn' });
       });
     }
 
@@ -767,19 +954,16 @@
     if (offlineModeSyncBtn && offlineModeSyncBtn.dataset.offlineSyncBound !== '1') {
       offlineModeSyncBtn.dataset.offlineSyncBound = '1';
       offlineModeSyncBtn.addEventListener('click', async function () {
-        offlineModeSyncBtn.disabled = true;
-        try {
+        await runGuardedButtonAction(offlineModeSyncBtn, 'offline-sync', 'Syncing...', async function () {
           var result = await flushQueue();
           if (typeof window.showToast === 'function') {
             window.showToast('Offline sync finished. Processed ' + String(result && result.processed || 0) + ' item(s).', 'success', 2600);
           }
-        } catch (error) {
+        }).catch(function (error) {
           if (typeof window.showToast === 'function') {
             window.showToast('Offline sync failed: ' + String(error && error.message ? error.message : error), 'error', 3200);
           }
-        } finally {
-          offlineModeSyncBtn.disabled = false;
-        }
+        });
       });
     }
 
@@ -798,11 +982,13 @@
       button.addEventListener('click', function () {
         var action = String(button.getAttribute('data-offline-conflict-action') || '');
         var queueId = String(button.getAttribute('data-offline-queue-id') || '');
-        resolveConflictAction(action, queueId).then(function (resolved) {
-          if (typeof window.showToast === 'function') {
-            window.showToast(resolved ? 'Queue item updated.' : 'Unable to resolve queue item.', resolved ? 'success' : 'warning', 2200);
-          }
-          renderQueueConflictPanels();
+        runGuardedButtonAction(button, 'offline-conflict-' + queueId + '-' + action, 'Working...', function () {
+          return resolveConflictAction(action, queueId).then(function (resolved) {
+            if (typeof window.showToast === 'function') {
+              window.showToast(resolved ? 'Queue item updated.' : 'Unable to resolve queue item.', resolved ? 'success' : 'warning', 2200);
+            }
+            renderQueueConflictPanels();
+          });
         });
       });
     });
@@ -835,9 +1021,14 @@
       renderInstallBanner();
     });
 
-    window.addEventListener('app:tab-switched', function () {
+    window.addEventListener('app:tab-switched', function (event) {
       syncOfflineModeButtonState();
       bindOfflineButtons();
+      var switchSource = event && event.detail ? String(event.detail.source || '').trim() : '';
+      renderOfflineDebugIndicator('app:tab-switched', [
+        'current=' + (getActiveTabId() || 'none'),
+        switchSource ? 'switchSource=' + switchSource : ''
+      ].filter(Boolean).join(' | '));
     });
 
     window.addEventListener('online', function () {

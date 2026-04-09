@@ -7,15 +7,15 @@
   </div>
 
   <div class="nature-challenge-subtabs" role="tablist" aria-label="Nature Challenge categories">
-    <button id="natureChallengeTab-birds" type="button" class="nature-challenge-subtab active" role="tab" aria-controls="natureChallengePane-birds" aria-selected="true" data-nature-subtab="birds" aria-label="Open Birds section" title="Open Birds section">🐦 Birds</button>
-    <button id="natureChallengeTab-mammals" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-mammals" aria-selected="false" data-nature-subtab="mammals" aria-label="Open Mammals section" title="Open Mammals section">🦊 Mammals</button>
-    <button id="natureChallengeTab-reptiles" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-reptiles" aria-selected="false" data-nature-subtab="reptiles" aria-label="Open Reptiles section" title="Open Reptiles section">🐢 Reptiles</button>
-    <button id="natureChallengeTab-amphibians" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-amphibians" aria-selected="false" data-nature-subtab="amphibians" aria-label="Open Amphibians section" title="Open Amphibians section">🐸 Amphibians</button>
-    <button id="natureChallengeTab-insects" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-insects" aria-selected="false" data-nature-subtab="insects" aria-label="Open Insects section" title="Open Insects section">🦋 Insects</button>
-    <button id="natureChallengeTab-arachnids" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-arachnids" aria-selected="false" data-nature-subtab="arachnids" aria-label="Open Arachnids section" title="Open Arachnids section">🕷️ Arachnids</button>
-    <button id="natureChallengeTab-wildflowers" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-wildflowers" aria-selected="false" data-nature-subtab="wildflowers" aria-label="Open Wildflowers section" title="Open Wildflowers section">🌼 Wildflowers</button>
-    <button id="natureChallengeTab-trees" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-trees" aria-selected="false" data-nature-subtab="trees" aria-label="Open Trees section" title="Open Trees section">🌲 Trees</button>
-    <button id="natureChallengeTab-shrubs" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-shrubs" aria-selected="false" data-nature-subtab="shrubs" aria-label="Open Shrubs section" title="Open Shrubs section">🌿 Shrubs</button>
+    <button id="natureChallengeTab-birds" type="button" class="nature-challenge-subtab active" role="tab" aria-controls="natureChallengePane-birds" aria-selected="true" data-nature-subtab="birds" aria-label="Open Birds section" title="Open Birds section" data-tooltip="Open Birds section">🐦 Birds</button>
+    <button id="natureChallengeTab-mammals" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-mammals" aria-selected="false" data-nature-subtab="mammals" aria-label="Open Mammals section" title="Open Mammals section" data-tooltip="Open Mammals section">🦊 Mammals</button>
+    <button id="natureChallengeTab-reptiles" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-reptiles" aria-selected="false" data-nature-subtab="reptiles" aria-label="Open Reptiles section" title="Open Reptiles section" data-tooltip="Open Reptiles section">🐢 Reptiles</button>
+    <button id="natureChallengeTab-amphibians" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-amphibians" aria-selected="false" data-nature-subtab="amphibians" aria-label="Open Amphibians section" title="Open Amphibians section" data-tooltip="Open Amphibians section">🐸 Amphibians</button>
+    <button id="natureChallengeTab-insects" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-insects" aria-selected="false" data-nature-subtab="insects" aria-label="Open Insects section" title="Open Insects section" data-tooltip="Open Insects section">🦋 Insects</button>
+    <button id="natureChallengeTab-arachnids" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-arachnids" aria-selected="false" data-nature-subtab="arachnids" aria-label="Open Arachnids section" title="Open Arachnids section" data-tooltip="Open Arachnids section">🕷️ Arachnids</button>
+    <button id="natureChallengeTab-wildflowers" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-wildflowers" aria-selected="false" data-nature-subtab="wildflowers" aria-label="Open Wildflowers section" title="Open Wildflowers section" data-tooltip="Open Wildflowers section">🌼 Wildflowers</button>
+    <button id="natureChallengeTab-trees" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-trees" aria-selected="false" data-nature-subtab="trees" aria-label="Open Trees section" title="Open Trees section" data-tooltip="Open Trees section">🌲 Trees</button>
+    <button id="natureChallengeTab-shrubs" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-shrubs" aria-selected="false" data-nature-subtab="shrubs" aria-label="Open Shrubs section" title="Open Shrubs section" data-tooltip="Open Shrubs section">🌿 Shrubs</button>
   </div>
 
   <div id="natureChallengeSubTabAnnouncer" class="nature-sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -1014,7 +1014,7 @@
   #natureChallengeRoot .nature-challenge-subtabs {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     margin: 8px 0 24px;
     position: relative;
     z-index: 140;
@@ -1047,9 +1047,9 @@
   }
 
   #natureChallengeRoot .nature-challenge-subtab {
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    color: #374151;
+    border: 1px solid #86efac;
+    background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #166534;
     font-size: 12px;
     font-weight: 700;
     border-radius: 999px;
@@ -1061,6 +1061,10 @@
     pointer-events: auto;
     min-height: 40px;
     min-width: 100px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
   @media (min-width: 1024px) {
@@ -1075,20 +1079,20 @@
   }
 
   #natureChallengeRoot .nature-challenge-subtab:hover {
-    border-color: #93c5fd;
-    color: #1d4ed8;
-    background: #eff6ff;
+    border-color: #22c55e;
+    color: #14532d;
+    background: #dcfce7;
   }
 
   #natureChallengeRoot .nature-challenge-subtab.active {
-    border-color: #1d4ed8;
-    background: #dbeafe;
-    color: #1e3a8a;
+    border-color: #15803d;
+    background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #14532d;
   }
 
   #natureChallengeRoot .nature-challenge-subtab:focus-visible,
   #natureChallengeRoot .planner-top-btn:focus-visible {
-    outline: 2px solid #2563eb;
+    outline: 2px solid #15803d;
     outline-offset: 2px;
   }
 
@@ -2809,8 +2813,10 @@
   #natureChallengeRoot .nature-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #2563eb 0%, #0ea5e9 55%, #22d3ee 100%);
+    background-size: 220% 100%;
     box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.25);
     transition: width 0.35s ease;
+    animation: natureProgressFlow 3.8s linear infinite;
   }
 
 
@@ -2970,8 +2976,22 @@
   #natureChallengeRoot .nature-challenge-progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #2563eb 0%, #06b6d4 60%, #22d3ee 100%);
+    background-size: 220% 100%;
     box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.28);
     transition: width 0.35s ease;
+    animation: natureProgressFlow 4.2s linear infinite;
+  }
+
+  @keyframes natureProgressFlow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #natureChallengeRoot .nature-progress-fill,
+    #natureChallengeRoot .nature-challenge-progress-fill {
+      animation: none;
+    }
   }
 
   #natureChallengeRoot .nature-challenge-meta {

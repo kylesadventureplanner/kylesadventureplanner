@@ -49,18 +49,19 @@ class TabContentLoader {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        background: rgba(255, 255, 255, 0.9);
+        gap: 8px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.86));
         z-index: 20;
         pointer-events: none;
       }
       .tab-loading-spinner {
         width: 34px;
         height: 34px;
-        border: 3px solid #e5e7eb;
-        border-top-color: #3b82f6;
+        border: 3px solid rgba(34, 197, 94, 0.24);
+        border-top-color: #16a34a;
+        border-right-color: #15803d;
         border-radius: 50%;
-        animation: tabLoaderSpin 0.8s linear infinite;
+        animation: tabLoaderSpin 0.9s linear infinite, tabLoaderPulse 1.4s ease-in-out infinite;
       }
       .tab-loading-text {
         color: #4b5563;
@@ -94,6 +95,16 @@ class TabContentLoader {
       }
       @keyframes tabLoaderSpin {
         to { transform: rotate(360deg); }
+      }
+      @keyframes tabLoaderPulse {
+        0%, 100% {
+          opacity: 1;
+          filter: saturate(1);
+        }
+        50% {
+          opacity: 0.72;
+          filter: saturate(1.25);
+        }
       }
     `;
     document.head.appendChild(style);
@@ -544,12 +555,22 @@ class TabContentLoader {
           return;
         }
 
-        // Fetch with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-        const response = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
+        // Fetch with timeout/retry resilience when reliability helpers are available.
+        let response;
+        if (window.ReliabilityAsync && typeof window.ReliabilityAsync.fetchWithRetry === 'function') {
+          response = await window.ReliabilityAsync.fetchWithRetry(url, {}, {
+            operationName: `load tab ${tabId}`,
+            timeoutMs: 10000,
+            retries: 2,
+            backoffMs: 350,
+            idempotent: true
+          });
+        } else {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          response = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
           throw new Error(`Failed to load ${url}: ${response.statusText}`);

@@ -550,19 +550,33 @@
        Shows when active filters are applied to the table.
     */
     .filters-active-badge {
-      padding: 2px 8px;
+      padding: 4px 12px;
       border-radius: 999px;
       background: var(--mint-bg);
       border: 1px solid var(--mint-border);
       color: var(--mint-strong);
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       display: none; /* Hidden by default */
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.1);
     }
 
     /* Badge appears when any filters are active */
     .filters-active-badge.visible {
       display: inline-flex;
+      animation: badgeSlideIn 0.3s ease;
+    }
+
+    @keyframes badgeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-2px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* ============================================================
@@ -577,6 +591,14 @@
       border: 1px solid var(--gray-border);
       padding: 12px 14px;
       margin-bottom: 12px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card:hover {
+      border-color: var(--blue-border);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
     }
 
     .card-header {
@@ -3551,6 +3573,43 @@
       margin-bottom: 10px;
     }
 
+    .offline-mode-debug-indicator {
+      border: 1px solid #dbeafe;
+      background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+      color: #1e3a8a;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+      white-space: pre-wrap;
+    }
+
+    .offline-mode-debug-indicator[hidden] {
+      display: none;
+    }
+
+    .offline-mode-debug-tools {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 2px 0 10px;
+    }
+
+    .offline-mode-debug-tools[hidden] {
+      display: none;
+    }
+
+    .offline-mode-debug-tools .offline-mode-debug-indicator {
+      flex: 1 1 auto;
+      margin: 0;
+    }
+
+    .offline-mode-debug-copy {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
     .offline-mode-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -4089,6 +4148,41 @@
       backdrop-filter: blur(10px);
     }
 
+    .toast-action-btn {
+      margin-left: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.2);
+      color: inherit;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .toast-action-btn:hover {
+      background: rgba(255, 255, 255, 0.32);
+    }
+
+    .session-recovery-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1e3a8a;
+      margin: 8px 12px;
+    }
+
+    .session-recovery-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     @keyframes slideInRight {
       from {
         transform: translateX(400px);
@@ -4118,6 +4212,10 @@
     .toast-success {
       background: #10b981;
       color: white;
+    }
+
+    .toast-success .toast-icon {
+      animation: toastSuccessPop 220ms cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .toast-error {
@@ -4155,22 +4253,89 @@
       opacity: 1;
     }
 
+    @keyframes toastSuccessPop {
+      0% {
+        transform: scale(0.7);
+        opacity: 0.6;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .btn-success-flash {
+      position: relative;
+      overflow: visible;
+      animation: buttonSuccessFlash 260ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-success-flash::after {
+      content: '✓';
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #10b981;
+      color: #ffffff;
+      font-size: 12px;
+      line-height: 18px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      animation: buttonSuccessCheck 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes buttonSuccessFlash {
+      0% {
+        filter: brightness(1.08);
+      }
+      100% {
+        filter: brightness(1);
+      }
+    }
+
+    @keyframes buttonSuccessCheck {
+      0% {
+        transform: scale(0.7);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
     /* ============================================================
        LOADING SPINNER
        ============================================================
        Visual feedback during async operations
     */
     .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: white;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.28);
+      border-top-color: #f8fafc;
+      border-right-color: #bfdbfe;
       border-radius: 50%;
-      animation: spin 0.6s linear infinite;
+      animation: spin 0.85s linear infinite, spinnerPulse 1.4s ease-in-out infinite;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    @keyframes spinnerPulse {
+      0%,
+      100% {
+        opacity: 1;
+        filter: saturate(1);
+      }
+      50% {
+        opacity: 0.72;
+        filter: saturate(1.25);
+      }
     }
 
     .loading-overlay {
@@ -4203,8 +4368,9 @@
     }
 
     .loading-content .spinner {
-      border-color: rgba(29, 78, 216, 0.3);
-      border-top-color: #1d4ed8;
+      border-color: rgba(34, 197, 94, 0.28);
+      border-top-color: #16a34a;
+      border-right-color: #15803d;
       width: 32px;
       height: 32px;
       border-width: 3px;
@@ -5451,12 +5617,27 @@
       font-weight: 500;
       font-size: 14px;
       transition: all 0.2s;
+      animation: emptyStateCtaBreathe 3.2s ease-in-out infinite;
     }
 
     .empty-state-action:hover {
       background: #1e40af;
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .empty-state-action:is(:hover, :active) {
+      animation-play-state: paused;
+    }
+
+    @keyframes emptyStateCtaBreathe {
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.12);
+      }
+      50% {
+        box-shadow: 0 0 0 6px rgba(29, 78, 216, 0.08);
+      }
     }
 
     /* ============================================================
@@ -5542,18 +5723,199 @@
       margin-bottom: -11px;
       position: relative;
       top: 2px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .app-tab-btn:hover {
       color: var(--blue-strong);
       background: var(--blue-bg);
       border-bottom-color: var(--blue-border);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(59, 130, 246, 0.15);
     }
 
     .app-tab-btn.active {
-      color: var(--blue-strong);
+      color: #1e3a8a;
       border-bottom-color: var(--blue-strong);
       font-weight: 600;
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      border-radius: 8px 8px 0 0;
+    }
+
+    .app-subtabs-row {
+      position: relative;
+      min-height: 0;
+      margin: -6px 0 18px;
+      z-index: 4;
+    }
+
+    .app-subtabs-row[hidden] {
+      display: none;
+    }
+
+    .app-subtabs-cutout {
+      position: relative;
+      left: 50%;
+      transform: translateX(-50%);
+      display: inline-flex;
+      justify-content: center;
+      width: max-content;
+      max-width: min(calc(100% - 8px), 760px);
+      padding: 14px 16px 12px;
+      border: 1.5px solid #bfdbfe;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow: 0 16px 32px rgba(37, 99, 235, 0.12), 0 4px 12px rgba(37, 99, 235, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+      transition: left 0.22s ease, box-shadow 0.22s ease;
+      overflow: visible;
+      backdrop-filter: blur(0.5px);
+    }
+
+    .app-subtabs-cutout::before {
+      content: '';
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-bottom: 18px solid #dbeafe;
+      filter: drop-shadow(0 -2px 4px rgba(37, 99, 235, 0.15));
+    }
+
+    .app-subtabs-cutout::after {
+      content: '';
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 13px solid transparent;
+      border-right: 13px solid transparent;
+      border-bottom: 15px solid #ffffff;
+    }
+
+    .app-subtabs-slot {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .app-subtabs-slot > * {
+      width: 100%;
+    }
+
+    .app-subtabs-row .nature-challenge-subtabs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin: 0;
+      position: relative;
+      z-index: 1;
+      isolation: isolate;
+      pointer-events: auto;
+    }
+
+    .app-subtabs-row .nature-challenge-subtab {
+      border: 1px solid #86efac;
+      background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+      color: #166534;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      position: relative;
+      z-index: 1;
+      pointer-events: auto;
+      min-height: 40px;
+      min-width: 100px;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .app-subtabs-row .nature-challenge-subtab:hover {
+      border-color: #22c55e;
+      color: #14532d;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(22, 163, 74, 0.22);
+      background: #dcfce7;
+    }
+
+    .app-subtabs-row .nature-challenge-subtab.active {
+      border-color: #15803d;
+      background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%);
+      color: #14532d;
+      font-weight: 700;
+      transform: scale(1.05);
+      box-shadow: 0 4px 14px rgba(22, 163, 74, 0.28);
+      animation: activeSubTabPulse 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes activeSubTabPulse {
+      0% {
+        transform: scale(0.95);
+        opacity: 0.85;
+      }
+      100% {
+        transform: scale(1.05);
+        opacity: 1;
+      }
+    }
+
+    .app-subtabs-row .nature-challenge-subtab:focus-visible {
+      outline: 3px solid #15803d;
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 640px) {
+      .offline-mode-debug-tools {
+        flex-direction: column;
+      }
+
+      .offline-mode-debug-copy {
+        align-self: flex-start;
+      }
+
+      .app-subtabs-row {
+        margin: -2px 0 16px;
+      }
+
+      .app-subtabs-cutout {
+        max-width: calc(100% - 4px);
+        padding: 12px 10px 10px;
+      }
+
+      .app-subtabs-row .nature-challenge-subtabs {
+        gap: 8px;
+      }
+
+      .app-subtabs-row .nature-challenge-subtab {
+        min-width: 92px;
+        font-size: 11px;
+        padding: 7px 10px;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .app-subtabs-row .nature-challenge-subtabs {
+        gap: 12px;
+      }
+
+      .app-subtabs-row .nature-challenge-subtab {
+        font-size: 13px;
+        padding: 9px 14px;
+      }
     }
 
     .app-tabs-content {
@@ -5563,17 +5925,17 @@
 
     .app-tab-pane {
       display: none;
-      animation: fadeIn 0.3s ease;
     }
 
     .app-tab-pane.active {
       display: block;
+      animation: tabPaneFadeIn 160ms cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    @keyframes fadeIn {
+    @keyframes tabPaneFadeIn {
       from {
         opacity: 0;
-        transform: translateY(5px);
+        transform: translateY(2px);
       }
       to {
         opacity: 1;
@@ -7454,6 +7816,13 @@
     <button id="offlineInstallDismissBtn" type="button" class="offline-action-btn">Dismiss</button>
   </div>
 </div>
+<div id="sessionRecoveryBanner" class="session-recovery-banner" hidden>
+  <span id="sessionRecoveryText">Looks like you had in-progress changes from your previous session.</span>
+  <div class="session-recovery-actions">
+    <button id="sessionRecoveryRestoreBtn" type="button" class="offline-action-btn">Restore</button>
+    <button id="sessionRecoveryDismissBtn" type="button" class="offline-action-btn">Dismiss</button>
+  </div>
+</div>
 <div class="app-container">
   <!-- Tab Navigation -->
   <div class="app-tabs-nav" id="appTabsNav">
@@ -7466,6 +7835,11 @@
     <button class="app-tab-btn" data-tab="garden" title="Manage garden planner" data-tooltip="Manage garden planner">🌱 Garden Planner</button>
     <button class="app-tab-btn" data-tab="budget" title="Manage budget planner" data-tooltip="Manage budget planner">💰 Budget Planner</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="offline-mode" aria-hidden="true" tabindex="-1">Offline Mode</button>
+  </div>
+  <div id="appSubTabsRow" class="app-subtabs-row" hidden>
+    <div id="appSubTabsCutout" class="app-subtabs-cutout">
+      <div id="appSubTabsSlot" class="app-subtabs-slot" aria-live="polite"></div>
+    </div>
   </div>
 
   <!-- Tab Content -->
@@ -8033,6 +8407,10 @@
             <span id="offlineModeConnectionBadge" class="offline-badge" data-state="syncing" aria-live="polite">Offline: checking...</span>
             <span id="offlineModeQueueBadge" class="offline-badge" data-state="syncing" aria-live="polite">Pending sync: 0</span>
           </div>
+          <div id="offlineModeDebugTools" class="offline-mode-debug-tools" hidden>
+            <div id="offlineModeDebugIndicator" class="offline-mode-debug-indicator" hidden aria-live="polite"></div>
+            <button id="offlineModeDebugCopyBtn" type="button" class="offline-action-btn offline-mode-debug-copy" hidden title="Copy the latest Offline debug status" data-tooltip="Copy the latest Offline debug status">Copy Offline Debug</button>
+          </div>
           <div class="offline-checklist-card" id="offlineModeChecklist">
             <div class="offline-checklist-title">Offline-ready checklist</div>
             <ol class="offline-checklist-list">
@@ -8040,6 +8418,7 @@
               <li>Last offline pack: <strong class="offline-last-pack">Not yet prepared</strong></li>
               <li>Pending queued writes: <strong class="offline-pending-count">0</strong></li>
             </ol>
+            <div id="offlineModeReplayStatus" class="card-subtitle">Checking queue replay status...</div>
           </div>
           <div id="offlineModeQueueConflictPanel" class="offline-conflict-card" hidden></div>
         </div>
@@ -9922,6 +10301,170 @@
   // ============================================================
   // TOAST NOTIFICATIONS
   // ============================================================
+  const AUTOSAVE_DRAFT_KEY = 'kaf.autosave.draft.v1';
+  const AUTOSAVE_DIRTY_KEY = 'kaf.autosave.dirty.v1';
+  const AUTOSAVE_TRACKED_IDS = [
+    'searchName',
+    'filterDifficulty',
+    'filterState',
+    'filterCity',
+    'filterTags',
+    'filterCost',
+    'groupBy',
+    'groupBySecondary'
+  ];
+  let autosaveTimer = null;
+
+  function getDraftPayload() {
+    const fields = {};
+    AUTOSAVE_TRACKED_IDS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      fields[id] = String(el.value || '');
+    });
+    return {
+      updatedAt: new Date().toISOString(),
+      activeTab: document.querySelector('.app-tab-btn.active[data-tab]')?.getAttribute('data-tab') || '',
+      fields
+    };
+  }
+
+  function saveAutosaveDraft() {
+    try {
+      localStorage.setItem(AUTOSAVE_DRAFT_KEY, JSON.stringify(getDraftPayload()));
+      localStorage.setItem(AUTOSAVE_DIRTY_KEY, '1');
+    } catch (_error) {
+      // Keep autosave best-effort.
+    }
+  }
+
+  function scheduleAutosaveDraft() {
+    if (autosaveTimer) window.clearTimeout(autosaveTimer);
+    autosaveTimer = window.setTimeout(saveAutosaveDraft, 220);
+  }
+
+  function restoreAutosaveDraft() {
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_DRAFT_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      const fields = parsed && parsed.fields ? parsed.fields : {};
+      AUTOSAVE_TRACKED_IDS.forEach((id) => {
+        if (!Object.prototype.hasOwnProperty.call(fields, id)) return;
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = String(fields[id] || '');
+      });
+      if (typeof applyFilters === 'function') applyFilters();
+      if (typeof updateBreadcrumbMenu === 'function') updateBreadcrumbMenu();
+      if (typeof updateFiltersIndicator === 'function') updateFiltersIndicator();
+      localStorage.setItem(AUTOSAVE_DIRTY_KEY, '0');
+      showToast('Restored in-progress draft from your previous session.', 'success', 2200);
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function clearAutosaveDraft() {
+    try {
+      localStorage.removeItem(AUTOSAVE_DRAFT_KEY);
+      localStorage.setItem(AUTOSAVE_DIRTY_KEY, '0');
+    } catch (_error) {
+      // Ignore storage failures.
+    }
+  }
+
+  function renderSessionRecoveryBanner() {
+    const banner = document.getElementById('sessionRecoveryBanner');
+    const restoreBtn = document.getElementById('sessionRecoveryRestoreBtn');
+    const dismissBtn = document.getElementById('sessionRecoveryDismissBtn');
+    if (!banner || !restoreBtn || !dismissBtn) return;
+    const hasDirty = localStorage.getItem(AUTOSAVE_DIRTY_KEY) === '1';
+    const hasDraft = Boolean(localStorage.getItem(AUTOSAVE_DRAFT_KEY));
+    banner.hidden = !(hasDirty && hasDraft);
+
+    if (restoreBtn.dataset.bound !== '1') {
+      restoreBtn.dataset.bound = '1';
+      restoreBtn.addEventListener('click', function () {
+        restoreAutosaveDraft();
+        banner.hidden = true;
+      });
+    }
+    if (dismissBtn.dataset.bound !== '1') {
+      dismissBtn.dataset.bound = '1';
+      dismissBtn.addEventListener('click', function () {
+        clearAutosaveDraft();
+        banner.hidden = true;
+      });
+    }
+  }
+
+  const undoStack = [];
+
+  function pushUndoAction(label, undoFn, ttlMs) {
+    const expiresAt = Date.now() + Math.max(1000, Number(ttlMs || 7000));
+    undoStack.push({ label: String(label || 'Undo'), undo: undoFn, expiresAt });
+    if (undoStack.length > 20) undoStack.shift();
+  }
+
+  function showUndoToast(message, undoFn, duration = 7000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-warning';
+    const undoLabel = 'Undo';
+    pushUndoAction(undoLabel, undoFn, duration);
+    toast.innerHTML = '<span class="toast-icon">↩</span><span>' + String(message || 'Action completed') + '</span><button type="button" class="toast-action-btn">Undo</button><button class="toast-close">×</button>';
+    container.appendChild(toast);
+
+    const close = function () {
+      toast.classList.add('removing');
+      window.setTimeout(function () { if (toast.parentElement) toast.remove(); }, 300);
+    };
+
+    const undoBtn = toast.querySelector('.toast-action-btn');
+    if (undoBtn) {
+      undoBtn.addEventListener('click', function () {
+        const entry = undoStack.pop();
+        if (entry && typeof entry.undo === 'function' && Date.now() <= entry.expiresAt) {
+          entry.undo();
+          showToast('Undo applied.', 'success', 1600);
+        }
+        close();
+      });
+    }
+
+    const closeBtn = toast.querySelector('.toast-close');
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    window.setTimeout(close, duration);
+  }
+
+  window.pushUndoAction = pushUndoAction;
+  window.showUndoToast = showUndoToast;
+
+  let lastActionButton = null;
+
+  document.addEventListener('click', (event) => {
+    const trigger = event.target && event.target.closest
+      ? event.target.closest('button, [role="button"], .btn')
+      : null;
+    if (!trigger) return;
+    lastActionButton = trigger;
+  }, true);
+
+  function triggerSuccessButtonFeedback() {
+    if (!lastActionButton || !lastActionButton.classList) return;
+    lastActionButton.classList.remove('btn-success-flash');
+    void lastActionButton.offsetWidth;
+    lastActionButton.classList.add('btn-success-flash');
+    setTimeout(() => {
+      if (lastActionButton && lastActionButton.classList) {
+        lastActionButton.classList.remove('btn-success-flash');
+      }
+    }, 520);
+  }
+
   function showToast(message, type = 'success', duration = 3000) {
     syncToastOffsetWithErrorBar();
     const container = document.getElementById('toastContainer');
@@ -9946,6 +10489,10 @@
 
     container.appendChild(toast);
 
+    if (type === 'success' && /save|saved|apply|applied|update|updated|sync|synced|complete|completed/i.test(displayMessage)) {
+      triggerSuccessButtonFeedback();
+    }
+
     toast.querySelector('.toast-close').addEventListener('click', () => {
       toast.classList.add('removing');
       setTimeout(() => toast.remove(), 300);
@@ -9969,6 +10516,26 @@
     window.__toastOffsetSyncBound = true;
   }
   window.setTimeout(syncToastOffsetWithErrorBar, 0);
+
+  document.addEventListener('input', function (event) {
+    const target = event && event.target;
+    if (!target || !target.id) return;
+    if (AUTOSAVE_TRACKED_IDS.indexOf(target.id) === -1) return;
+    scheduleAutosaveDraft();
+  }, true);
+
+  document.addEventListener('change', function (event) {
+    const target = event && event.target;
+    if (!target || !target.id) return;
+    if (AUTOSAVE_TRACKED_IDS.indexOf(target.id) === -1) return;
+    scheduleAutosaveDraft();
+  }, true);
+
+  window.addEventListener('beforeunload', function () {
+    saveAutosaveDraft();
+  });
+
+  window.setTimeout(renderSessionRecoveryBanner, 0);
 
   // ============================================================
   // LOADING OVERLAY
@@ -10126,7 +10693,17 @@
 
   function deleteSelected() {
     if (!confirm(`Delete ${selectedRows.size} adventures? This cannot be undone.`)) return;
-    showToast(`Deleted ${selectedRows.size} adventures`, 'success');
+    const rowsSnapshot = Array.from(selectedRows);
+    rowsSnapshot.forEach((row) => row.classList.remove('row-selected'));
+    selectedRows.clear();
+    updateBulkActionToolbar();
+    showUndoToast(`Deleted ${rowsSnapshot.length} adventures`, function () {
+      rowsSnapshot.forEach((row) => {
+        row.classList.add('row-selected');
+        selectedRows.add(row);
+      });
+      updateBulkActionToolbar();
+    }, 8000);
   }
 
   // ============================================================
@@ -15398,6 +15975,18 @@
       return;
     }
 
+    const adventure = totalFilteredAdventures[filteredIndex];
+    const rowValues = Array.isArray(adventure && adventure.row && adventure.row.values && adventure.row.values[0])
+      ? adventure.row.values[0]
+      : [];
+    const ratingColumnIndex = typeof getColumnIndexByName === 'function'
+      ? Number(getColumnIndexByName('My Rating'))
+      : 21;
+    const safeRatingColumnIndex = Number.isInteger(ratingColumnIndex) && ratingColumnIndex >= 0 ? ratingColumnIndex : 21;
+    const previousRatingRaw = rowValues[safeRatingColumnIndex];
+    const previousRating = Number.parseInt(previousRatingRaw, 10);
+    const canUndo = Number.isFinite(previousRating) && previousRating > 0;
+
     // Clear rating in Excel (set to 0) and wait for completion
     console.log(`📊 Clearing rating in Excel for index ${filteredIndex}`);
     const success = await updateExcelRating(filteredIndex, 0);
@@ -15419,7 +16008,25 @@
       });
     }
 
-    showToast('Rating cleared', 'success', 1500);
+    if (canUndo && typeof showUndoToast === 'function') {
+      showUndoToast('Rating cleared', function () {
+        updateExcelRating(filteredIndex, previousRating)
+          .then(function(restored) {
+            if (!restored) {
+              showToast('Undo failed: could not restore rating', 'error', 2200);
+              return;
+            }
+            showToast(`Rating restored to ${previousRating}`, 'success', 1600);
+            window.setTimeout(function () { renderPaginatedCards(); }, 100);
+          })
+          .catch(function(error) {
+            console.error('Undo rating clear failed:', error);
+            showToast('Undo failed: could not restore rating', 'error', 2200);
+          });
+      }, 8000);
+    } else {
+      showToast('Rating cleared', 'success', 1500);
+    }
 
     // Re-render the current page to reflect changes
     console.log(`🔄 Re-rendering cards after clear...`);
@@ -16543,6 +17150,17 @@
   function resetAllFilters() {
     console.log("🔄 Resetting all filters...");
 
+    const snapshot = {
+      searchName: document.getElementById("searchName")?.value || '',
+      filterDifficulty: document.getElementById("filterDifficulty")?.value || '',
+      filterState: document.getElementById("filterState")?.value || '',
+      filterCity: document.getElementById("filterCity")?.value || '',
+      filterTags: document.getElementById("filterTags")?.value || '',
+      filterCost: document.getElementById("filterCost")?.value || '',
+      quickFilters: Array.from((activeFilters && activeFilters.quickFilters) ? activeFilters.quickFilters : []),
+      showFavoritesOnly: Boolean(activeFilters && activeFilters.showFavoritesOnly)
+    };
+
     // Clear filter inputs
     const searchName = document.getElementById("searchName");
     const filterDifficulty = document.getElementById("filterDifficulty");
@@ -16580,7 +17198,42 @@
     updateBreadcrumbMenu();
     updateFiltersIndicator();
 
-    showToast("✅ Filters reset", "success", 2000);
+    showUndoToast("Filters reset", function () {
+      const searchNameRestore = document.getElementById("searchName");
+      const filterDifficultyRestore = document.getElementById("filterDifficulty");
+      const filterStateRestore = document.getElementById("filterState");
+      const filterCityRestore = document.getElementById("filterCity");
+      const filterTagsRestore = document.getElementById("filterTags");
+      const filterCostRestore = document.getElementById("filterCost");
+
+      if (searchNameRestore) searchNameRestore.value = snapshot.searchName;
+      if (filterDifficultyRestore) filterDifficultyRestore.value = snapshot.filterDifficulty;
+      if (filterStateRestore) filterStateRestore.value = snapshot.filterState;
+      if (filterCityRestore) filterCityRestore.value = snapshot.filterCity;
+      if (filterTagsRestore) filterTagsRestore.value = snapshot.filterTags;
+      if (filterCostRestore) filterCostRestore.value = snapshot.filterCost;
+
+      activeFilters.searchName = snapshot.searchName;
+      activeFilters.filterDifficulty = snapshot.filterDifficulty;
+      activeFilters.filterState = snapshot.filterState;
+      activeFilters.filterCity = snapshot.filterCity;
+      activeFilters.filterTags = snapshot.filterTags;
+      activeFilters.filterCost = snapshot.filterCost;
+      activeFilters.quickFilters = new Set(snapshot.quickFilters);
+      activeFilters.showFavoritesOnly = snapshot.showFavoritesOnly;
+
+      document.querySelectorAll("#quickFiltersCard .quick-filter-btn").forEach((btn) => {
+        const filterValue = btn.getAttribute("data-filter") || btn.getAttribute("data-tag") || '';
+        btn.classList.toggle("active", snapshot.quickFilters.indexOf(filterValue) !== -1);
+      });
+
+      applyFilters();
+      updateBreadcrumbMenu();
+      updateFiltersIndicator();
+      scheduleAutosaveDraft();
+    }, 8000);
+
+    scheduleAutosaveDraft();
     console.log("✓ All filters reset");
   }
 

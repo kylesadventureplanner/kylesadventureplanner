@@ -193,6 +193,51 @@
     throw lastError || new Error(`${opName} failed`);
   }
 
+  async function fetchWithRetry(url, fetchOptions, retryOptions) {
+    const requestUrl = String(url || '').trim();
+    if (!requestUrl) throw new Error('fetchWithRetry requires a url');
+
+    const fOpts = fetchOptions || {};
+    const rOpts = retryOptions || {};
+    const timeoutMs = Math.max(1000, Number(rOpts.timeoutMs || fOpts.timeoutMs || 10000));
+    const method = String(fOpts.method || 'GET').toUpperCase();
+    const isWrite = method !== 'GET' && method !== 'HEAD';
+    const allowRetry = Boolean(rOpts.idempotent != null ? rOpts.idempotent : !isWrite);
+    const retries = Math.max(0, Number(rOpts.retries != null ? rOpts.retries : (allowRetry ? 2 : 0)));
+
+    return runWithRetry({
+      operationName: String(rOpts.operationName || `fetch ${method} ${requestUrl}`),
+      kind: isWrite ? 'write' : 'read',
+      idempotent: allowRetry,
+      retries,
+      backoffMs: Number(rOpts.backoffMs || 350),
+      operation: async function () {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(function () {
+          controller.abort();
+        }, timeoutMs);
+
+        try {
+          const response = await fetch(requestUrl, {
+            ...fOpts,
+            signal: controller.signal
+          });
+
+          if (!response.ok) {
+            const error = new Error(`Request failed (${response.status})`);
+            error.status = response.status;
+            error.response = response;
+            throw error;
+          }
+
+          return response;
+        } finally {
+          window.clearTimeout(timeoutId);
+        }
+      }
+    });
+  }
+
   function installActionEventHooks() {
     window.addEventListener('reliability:action-start', (event) => {
       const key = event && event.detail && event.detail.actionKey ? String(event.detail.actionKey) : '';
@@ -257,6 +302,9 @@
         retries: options.retries != null ? options.retries : 1,
         backoffMs: options.backoffMs != null ? options.backoffMs : 450
       });
+    },
+    fetchWithRetry(url, fetchOptions, retryOptions = {}) {
+      return fetchWithRetry(url, fetchOptions, retryOptions);
     },
     runWithRetry
   };

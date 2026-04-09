@@ -38,6 +38,8 @@
   const BULK_STATUS_CONFIRM_THRESHOLD = 20;
   const BULK_SELECTION_STYLE_ID = 'adventureBulkSelectionRailStyles';
   const BULK_BADGE_HIDE_TIMER_KEY = '__bulkBadgeHideTimer';
+  const BULK_UNDO_MAX_SNAPSHOTS = 250;
+  const BULK_UNDO_RESTORE_CHUNK = 24;
 
   function ensureAdventureBulkSelectionRailStyles() {
     if (document.getElementById(BULK_SELECTION_STYLE_ID)) return;
@@ -463,6 +465,12 @@
     return row || null;
   }
 
+  function getAdventurePlaceId(sourceIndex) {
+    const row = getAdventureRow(sourceIndex);
+    const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
+    return String(values[1] || '').trim() || `adventure:${sourceIndex}`;
+  }
+
   async function persistAdventureRowValues(sourceIndex, values) {
     const row = getAdventureRow(sourceIndex);
     if (!row) throw new Error('Adventure row not found.');
@@ -489,6 +497,65 @@
     await persistAdventureRowValues(sourceIndex, values);
   }
 
+  function snapshotAdventureRowValues(sourceIndex) {
+    const row = getAdventureRow(sourceIndex);
+    if (!row) return null;
+    const values = Array.isArray(row.values && row.values[0]) ? row.values[0].slice() : [];
+    return {
+      kind: 'row',
+      sourceIndex,
+      values
+    };
+  }
+
+  function snapshotAdventureTagValues(sourceIndex) {
+    if (!window.tagManager || typeof window.tagManager.getTagsForPlace !== 'function') return null;
+    const placeId = getAdventurePlaceId(sourceIndex);
+    const currentTags = window.tagManager.getTagsForPlace(placeId) || [];
+    return {
+      kind: 'tags',
+      placeId,
+      tags: Array.isArray(currentTags) ? currentTags.slice() : []
+    };
+  }
+
+  async function restoreAdventureSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return false;
+
+    if (snapshot.kind === 'tags') {
+      if (!window.tagManager || typeof window.tagManager.setTagsForPlace !== 'function') return false;
+      const placeId = String(snapshot.placeId || '').trim();
+      if (!placeId) return false;
+      const nextTags = Array.isArray(snapshot.tags) ? snapshot.tags.slice() : [];
+      window.tagManager.setTagsForPlace(placeId, nextTags);
+      return true;
+    }
+
+    if (!Number.isInteger(snapshot.sourceIndex) || snapshot.sourceIndex < 0) return false;
+    if (!Array.isArray(snapshot.values)) return false;
+    await persistAdventureRowValues(snapshot.sourceIndex, snapshot.values.slice());
+    return true;
+  }
+
+  async function restoreAdventureSnapshots(snapshots, options = {}) {
+    const list = Array.isArray(snapshots) ? snapshots : [];
+    const chunkSize = Math.max(1, Number(options.chunkSize) || BULK_UNDO_RESTORE_CHUNK);
+    let restored = 0;
+
+    for (let i = 0; i < list.length; i += chunkSize) {
+      const chunk = list.slice(i, i + chunkSize);
+      for (const snapshot of chunk) {
+        const didRestore = await restoreAdventureSnapshot(snapshot);
+        if (didRestore) restored += 1;
+      }
+      if (i + chunkSize < list.length) {
+        await new Promise((resolve) => window.setTimeout(resolve, 0));
+      }
+    }
+
+    return restored;
+  }
+
   function refreshAdventureUiAfterBulk() {
     if (window.FilterManager && typeof window.FilterManager.applyAllFilters === 'function') {
       window.FilterManager.applyAllFilters();
@@ -499,7 +566,7 @@
     }
   }
 
-  async function runAdventureBulkOperation(label, worker) {
+  async function runAdventureBulkOperation(label, worker, options = {}) {
     const targets = Array.from(adventureState.selectedSourceIndexes).filter((idx) => Number.isInteger(idx) && idx >= 0);
     if (!targets.length) {
       window.showToast?.('Select one or more locations first.', 'warning', 2200);
@@ -511,12 +578,33 @@
     setAdventureBulkBusy(true);
     let success = 0;
     let failed = 0;
+    const undoSnapshots = [];
+    const snapshotBefore = typeof options.snapshotBefore === 'function' ? options.snapshotBefore : null;
+    const restoreSnapshots = typeof options.restoreSnapshots === 'function' ? options.restoreSnapshots : restoreAdventureSnapshots;
+    const maxUndoSnapshots = Math.max(0, Number(options.maxUndoSnapshots) || BULK_UNDO_MAX_SNAPSHOTS);
+    const restoreChunkSize = Math.max(1, Number(options.restoreChunkSize) || BULK_UNDO_RESTORE_CHUNK);
+    let undoCoverageLimited = false;
 
     try {
       for (const sourceIndex of targets) {
         try {
+          let snapshot = null;
+          if (snapshotBefore) {
+            try {
+              snapshot = snapshotBefore(sourceIndex);
+            } catch (snapshotError) {
+              console.warn(`[adventure] Bulk ${label} snapshot failed for sourceIndex ${sourceIndex}:`, snapshotError);
+            }
+          }
           // Sequential updates keep Excel writes predictable and easier to recover.
           await worker(sourceIndex);
+          if (snapshot) {
+            if (undoSnapshots.length < maxUndoSnapshots) {
+              undoSnapshots.push(snapshot);
+            } else {
+              undoCoverageLimited = true;
+            }
+          }
           success += 1;
         } catch (error) {
           failed += 1;
@@ -531,6 +619,26 @@
         window.showToast?.(`Bulk ${label} (${scopeLabel}): ${success}/${attempted} updated, ${failed} failed`, 'warning', 3400);
       } else {
         window.showToast?.(`Bulk ${label} (${scopeLabel}): ${success}/${attempted} updated`, 'success', 2400);
+      }
+
+      if (success > 0 && undoSnapshots.length > 0 && typeof window.showUndoToast === 'function') {
+        const descriptor = String(options.undoLabel || label);
+        const coverageNote = undoCoverageLimited ? ` (undo covers first ${undoSnapshots.length})` : '';
+        window.showUndoToast(`Bulk ${descriptor} applied to ${undoSnapshots.length} location${undoSnapshots.length === 1 ? '' : 's'}${coverageNote}`, () => {
+          restoreSnapshots(undoSnapshots, { chunkSize: restoreChunkSize })
+            .then((restoredCount) => {
+              window.showToast?.(`Undo applied for bulk ${descriptor}.`, 'success', 2000);
+              if (undoCoverageLimited) {
+                window.showToast?.(`Undo restored ${restoredCount} of ${attempted} updates (snapshot cap).`, 'info', 2800);
+              }
+              refreshAdventureUiAfterBulk();
+              decorateAdventureCardsForBulkSelection();
+            })
+            .catch((error) => {
+              console.warn(`[adventure] Undo failed for bulk ${descriptor}:`, error);
+              window.showToast?.(`Undo failed for bulk ${descriptor}.`, 'error', 2600);
+            });
+        }, 9000);
       }
 
       if (autoClear && failed === 0) {
@@ -552,13 +660,14 @@
     }
 
     await runAdventureBulkOperation('tag add', async (sourceIndex) => {
-      const row = getAdventureRow(sourceIndex);
-      const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
-      const placeId = String(values[1] || '').trim() || `adventure:${sourceIndex}`;
+      const placeId = getAdventurePlaceId(sourceIndex);
       if (!window.tagManager || typeof window.tagManager.addTagsToPlace !== 'function') {
         throw new Error('Tag manager is unavailable.');
       }
       window.tagManager.addTagsToPlace(placeId, tagsToAdd);
+    }, {
+      undoLabel: 'tag add',
+      snapshotBefore: snapshotAdventureTagValues
     });
   }
 
@@ -573,6 +682,9 @@
     const ratingIdx = getAdventureColumnIndex('My Rating', 21);
     await runAdventureBulkOperation('rating', async (sourceIndex) => {
       await updateAdventureColumns(sourceIndex, { [ratingIdx]: String(value) });
+    }, {
+      undoLabel: 'rating update',
+      snapshotBefore: snapshotAdventureRowValues
     });
   }
 
@@ -582,6 +694,9 @@
     if (selected > BULK_STATUS_CONFIRM_THRESHOLD && !window.confirm(`Apply "Mark Favorite" to ${selected} selected locations?`)) return;
     await runAdventureBulkOperation('favorite', async (sourceIndex) => {
       await updateAdventureColumns(sourceIndex, { [favoriteIdx]: 'TRUE' });
+    }, {
+      undoLabel: 'favorite mark',
+      snapshotBefore: snapshotAdventureRowValues
     });
   }
 
@@ -591,6 +706,9 @@
     if (selected > BULK_STATUS_CONFIRM_THRESHOLD && !window.confirm(`Apply "Unmark Favorite" to ${selected} selected locations?`)) return;
     await runAdventureBulkOperation('unfavorite', async (sourceIndex) => {
       await updateAdventureColumns(sourceIndex, { [favoriteIdx]: '' });
+    }, {
+      undoLabel: 'favorite clear',
+      snapshotBefore: snapshotAdventureRowValues
     });
   }
 
@@ -600,6 +718,9 @@
     if (selected > BULK_STATUS_CONFIRM_THRESHOLD && !window.confirm(`Apply "Mark Visited" to ${selected} selected locations?`)) return;
     await runAdventureBulkOperation('visited', async (sourceIndex) => {
       await updateAdventureColumns(sourceIndex, { [visitedIdx]: 'TRUE' });
+    }, {
+      undoLabel: 'visited mark',
+      snapshotBefore: snapshotAdventureRowValues
     });
   }
 
@@ -609,6 +730,9 @@
     if (selected > BULK_STATUS_CONFIRM_THRESHOLD && !window.confirm(`Apply "Unmark Visited" to ${selected} selected locations?`)) return;
     await runAdventureBulkOperation('unvisited', async (sourceIndex) => {
       await updateAdventureColumns(sourceIndex, { [visitedIdx]: '' });
+    }, {
+      undoLabel: 'visited clear',
+      snapshotBefore: snapshotAdventureRowValues
     });
   }
 

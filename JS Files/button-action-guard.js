@@ -69,6 +69,10 @@
     const onBlocked = typeof opts.onBlocked === 'function' ? opts.onBlocked : null;
     const onStart = typeof opts.onStart === 'function' ? opts.onStart : null;
     const onEnd = typeof opts.onEnd === 'function' ? opts.onEnd : null;
+    const showBusyLabel = Boolean(opts.showBusyLabel);
+    const busyLabel = String(opts.busyLabel || (target && target.dataset && target.dataset.busyLabel) || 'Working...');
+    const originalDisabled = !!(target && target.disabled);
+    const originalHtml = target && typeof target.innerHTML === 'string' ? target.innerHTML : '';
 
     if (!target || !action) return false;
 
@@ -116,6 +120,13 @@
       target.dataset.busy = '1';
       target.dataset.busySince = String(now);
     }
+    if (target) {
+      target.disabled = true;
+      target.setAttribute('aria-busy', 'true');
+      if (showBusyLabel && typeof target.innerHTML === 'string') {
+        target.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>' + busyLabel + '</span>';
+      }
+    }
     window.__lastActionKey = key;
     emitReliabilityEvent('reliability:action-start', {
       scope: scope.name,
@@ -142,6 +153,13 @@
       if (target.dataset) {
         delete target.dataset.busy;
         delete target.dataset.busySince;
+      }
+      if (target) {
+        target.disabled = originalDisabled;
+        target.removeAttribute('aria-busy');
+        if (showBusyLabel && typeof target.innerHTML === 'string') {
+          target.innerHTML = originalHtml;
+        }
       }
       emitReliabilityEvent('reliability:action-end', {
         scope: scope.name,

@@ -13,6 +13,7 @@
   const BIRD_SYNC_CONFLICTS_KEY = 'natureChallengeBirdSyncConflictsV1';
   const BIRD_GAMIFICATION_KEY = 'natureChallengeBirdGamificationV1';
   const BIRD_UI_PREFS_KEY = 'natureChallengeBirdUiPrefsV1';
+  const BIRD_LOG_DRAFT_KEY = 'natureChallengeBirdLogDraftV1';
   const BIRD_SYNC_DEVICE_KEY = 'natureChallengeBirdSyncDeviceIdV1';
   const EXCEL_TABLE_NAME = 'birds';
   const BIRD_SIGHTINGS_TABLE_NAME = 'birds_sightings';
@@ -925,6 +926,69 @@
   function parseBooleanFlag(value) {
     const text = norm(value);
     return text === 'true' || text === '1' || text === 'yes';
+  }
+
+  function getBirdLogDraftFieldIds() {
+    return [
+      'birdsLogSpeciesSelect',
+      'birdsLogDateInput',
+      'birdsLogLocationInput',
+      'birdsLogCountInput',
+      'birdsLogRegionInput',
+      'birdsLogHabitatInput',
+      'birdsLogLatInput',
+      'birdsLogLngInput',
+      'birdsLogConfidenceInput',
+      'birdsLogNotesInput',
+      'birdsLogCommandInput'
+    ];
+  }
+
+  function saveBirdLogDraft() {
+    const fields = {};
+    getBirdLogDraftFieldIds().forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      fields[id] = String(el.value || '');
+    });
+    try {
+      localStorage.setItem(BIRD_LOG_DRAFT_KEY, JSON.stringify({ updatedAt: toIsoNow(), fields }));
+    } catch (_error) {
+      // Draft autosave is best-effort only.
+    }
+  }
+
+  function clearBirdLogDraft() {
+    try {
+      localStorage.removeItem(BIRD_LOG_DRAFT_KEY);
+    } catch (_error) {
+      // Ignore storage failures.
+    }
+  }
+
+  function restoreBirdLogDraft() {
+    const raw = localStorage.getItem(BIRD_LOG_DRAFT_KEY);
+    if (!raw) return false;
+    const parsed = safeJsonParse(raw, null);
+    if (!parsed || !parsed.fields) return false;
+    let restoredAny = false;
+    getBirdLogDraftFieldIds().forEach((id) => {
+      if (!Object.prototype.hasOwnProperty.call(parsed.fields, id)) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      const value = String(parsed.fields[id] || '');
+      if (!value) return;
+      el.value = value;
+      restoredAny = true;
+    });
+    if (restoredAny) {
+      renderBirdLogValidationBadges();
+      renderBirdLogHistoryCard();
+      if (typeof window.showToast === 'function') {
+        window.showToast('Restored your unsaved bird log draft.', 'info', 2200);
+      }
+    }
+    return restoredAny;
   }
 
   function normalizeSyncColumnName(value) {
@@ -3522,6 +3586,8 @@
 
     markRecentUpdatePulse();
     renderBirds();
+    if (mode === 'save-new') clearBirdLogDraft();
+    else saveBirdLogDraft();
   }
 
   function getBirdStats() {
@@ -5373,10 +5439,130 @@
     });
   }
 
+  function getNatureSubTabDockElements() {
+    return {
+      row: document.getElementById('appSubTabsRow'),
+      cutout: document.getElementById('appSubTabsCutout'),
+      slot: document.getElementById('appSubTabsSlot')
+    };
+  }
+
+  function getNatureSubTabsElement(root) {
+    const docked = document.querySelector('#appSubTabsSlot .nature-challenge-subtabs');
+    if (docked) return docked;
+    return root ? root.querySelector('.nature-challenge-subtabs') : null;
+  }
+
+  function getNatureSubTabButtons(root) {
+    const subTabs = getNatureSubTabsElement(root);
+    return subTabs ? Array.from(subTabs.querySelectorAll('[data-nature-subtab]')) : [];
+  }
+
+  function bindNatureSubTabDock(root, subTabs) {
+    if (!root || !subTabs || subTabs.dataset.natureDockBound === '1') return;
+    subTabs.dataset.natureDockBound = '1';
+
+    subTabs.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-nature-subtab]');
+      if (!button || !subTabs.contains(button)) return;
+      event.preventDefault();
+      setActiveNatureSubTab(root, button.getAttribute('data-nature-subtab'));
+    });
+
+    subTabs.addEventListener('keydown', (event) => {
+      const button = event.target.closest('[data-nature-subtab]');
+      if (!button || !subTabs.contains(button)) return;
+      const buttons = getNatureSubTabButtons(root);
+      if (!buttons.length) return;
+
+      const currentIndex = buttons.indexOf(button);
+      if (currentIndex < 0) return;
+
+      let nextIndex = currentIndex;
+      switch (event.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+          nextIndex = (currentIndex + 1) % buttons.length;
+          break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+          nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+          break;
+        case 'Home':
+          nextIndex = 0;
+          break;
+        case 'End':
+          nextIndex = buttons.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      event.preventDefault();
+      const nextButton = buttons[nextIndex];
+      if (!nextButton) return;
+      setActiveNatureSubTab(root, nextButton.getAttribute('data-nature-subtab'));
+      nextButton.focus();
+    });
+  }
+
+  function positionNatureSubTabDock() {
+    const { row, cutout } = getNatureSubTabDockElements();
+    if (!row || !cutout || row.hidden) return;
+
+    const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab="nature-challenge"]');
+    if (!activePrimaryTab) {
+      cutout.style.left = '50%';
+      return;
+    }
+
+    const rowRect = row.getBoundingClientRect();
+    const activeRect = activePrimaryTab.getBoundingClientRect();
+    const cutoutWidth = Math.min(cutout.offsetWidth || 0, Math.max(rowRect.width - 8, 0));
+    if (!rowRect.width || !cutoutWidth) {
+      cutout.style.left = '50%';
+      return;
+    }
+
+    const preferredCenter = (activeRect.left - rowRect.left) + (activeRect.width / 2);
+    const padding = 8;
+    const minCenter = cutoutWidth / 2 + padding;
+    const maxCenter = Math.max(rowRect.width - (cutoutWidth / 2) - padding, minCenter);
+    const clampedCenter = Math.min(Math.max(preferredCenter, minCenter), maxCenter);
+    cutout.style.left = `${clampedCenter}px`;
+  }
+
+  function syncNatureSubTabDock(root) {
+    const { row, slot } = getNatureSubTabDockElements();
+    if (!row || !slot || !root) return;
+
+    const subTabs = getNatureSubTabsElement(root);
+    if (!subTabs) {
+      row.hidden = true;
+      row.setAttribute('aria-hidden', 'true');
+      return;
+    }
+
+    if (!slot.contains(subTabs)) {
+      slot.appendChild(subTabs);
+    }
+
+    bindNatureSubTabDock(root, subTabs);
+
+    const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab]');
+    const activeTabId = activePrimaryTab ? String(activePrimaryTab.getAttribute('data-tab') || '') : '';
+    const shouldShow = activeTabId === 'nature-challenge';
+    row.hidden = !shouldShow;
+    row.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+
+    if (!shouldShow) return;
+    requestAnimationFrame(() => positionNatureSubTabDock());
+  }
+
   function syncNatureSubTabs(root) {
     if (!root) return;
 
-    root.querySelectorAll('[data-nature-subtab]').forEach((button) => {
+    getNatureSubTabButtons(root).forEach((button) => {
       const key = button.getAttribute('data-nature-subtab');
       const isActive = key === state.activeSubTab;
       button.classList.toggle('active', isActive);
@@ -5391,12 +5577,14 @@
       pane.hidden = !isActive;
       pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
     });
+
+    syncNatureSubTabDock(root);
   }
 
   function announceNatureSubTab(root) {
     const announcer = document.getElementById('natureChallengeSubTabAnnouncer');
     if (!announcer || !root) return;
-    const button = root.querySelector(`[data-nature-subtab="${state.activeSubTab}"]`);
+    const button = getNatureSubTabButtons(root).find((candidate) => candidate.getAttribute('data-nature-subtab') === state.activeSubTab);
     announcer.textContent = `${button ? button.textContent.trim() : state.activeSubTab} section active`;
   }
 
@@ -6280,6 +6468,7 @@
         applyBirdLogSpeciesDefaults(logSpeciesSelect.value || '', { preferHistory: true });
         renderBirdLogValidationBadges();
         renderBirdLogHistoryCard();
+        saveBirdLogDraft();
       });
     }
 
@@ -6289,6 +6478,7 @@
       logCommandInput.addEventListener('input', () => {
         state.birdLogCommandValue = logCommandInput.value || '';
         saveBirdUiPrefs();
+        saveBirdLogDraft();
       });
       logCommandInput.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') return;
@@ -6301,8 +6491,21 @@
         const el = document.getElementById(id);
         if (!el || el.dataset.natureLogValidationBound === '1') return;
         el.dataset.natureLogValidationBound = '1';
-        el.addEventListener('change', () => renderBirdLogValidationBadges());
+        el.addEventListener('change', () => {
+          renderBirdLogValidationBadges();
+          saveBirdLogDraft();
+        });
       });
+
+    ['birdsLogLocationInput', 'birdsLogCountInput', 'birdsLogNotesInput']
+      .forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.natureLogDraftBound === '1') return;
+        el.dataset.natureLogDraftBound = '1';
+        el.addEventListener('input', saveBirdLogDraft);
+      });
+
+    restoreBirdLogDraft();
 
     const syncNowBtn = document.getElementById('birdsSyncNowBtn');
     if (syncNowBtn && syncNowBtn.dataset.natureSyncNowBound !== '1') {
@@ -6371,6 +6574,7 @@
     ensureBirdClickDiagnosticsPanel(root);
     bindNatureControls(root);
     applyExplorerDensity(root);
+    syncNatureSubTabDock(root);
 
     // ── Re-run button responsiveness every time the nature-challenge tab becomes ──
     // visible.  bindNatureControls only runs once (guard), but the tab may have been
@@ -6380,9 +6584,10 @@
     if (!root.dataset.tabSwitchListenerBound) {
       root.dataset.tabSwitchListenerBound = '1';
       window.addEventListener('app:tab-switched', (event) => {
-        if (!event || !event.detail || event.detail.tabId !== 'nature-challenge') return;
         const liveRoot = document.getElementById('natureChallengeRoot');
         if (!liveRoot) return;
+        syncNatureSubTabDock(liveRoot);
+        if (!event || !event.detail || event.detail.tabId !== 'nature-challenge') return;
 
         forceUnblockNaturePane(liveRoot, 'tab-switch');
 
@@ -6395,6 +6600,15 @@
           ensureNatureButtonsResponsive(liveRoot);
           diagnoseNatureButtonSurface(liveRoot);
         });
+      });
+    }
+
+    if (!root.dataset.natureSubTabDockResizeBound) {
+      root.dataset.natureSubTabDockResizeBound = '1';
+      window.addEventListener('resize', () => {
+        const liveRoot = document.getElementById('natureChallengeRoot');
+        if (!liveRoot) return;
+        syncNatureSubTabDock(liveRoot);
       });
     }
 
