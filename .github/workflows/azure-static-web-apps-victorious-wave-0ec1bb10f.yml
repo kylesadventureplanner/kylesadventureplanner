@@ -1,5 +1,8 @@
 name: Azure Static Web Apps CI/CD
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches:
@@ -15,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build and Deploy Job
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
           lfs: false
@@ -26,7 +29,13 @@ jobs:
       - name: Install Dependencies
         run: npm ci
       - name: Install Playwright Browser
-        run: npx playwright install --with-deps chromium
+        run: |
+          # Retry once to smooth over transient apt/network failures on runners.
+          npx playwright install --with-deps chromium || (
+            echo "Playwright install failed on first attempt, retrying..." &&
+            sleep 8 &&
+            npx playwright install --with-deps chromium
+          )
       - name: Start Local Static Server For Smoke Tests
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/swa-local-server.log 2>&1 &
