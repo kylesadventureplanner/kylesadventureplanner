@@ -5538,22 +5538,28 @@
 
     const subTabs = getNatureSubTabsElement(root);
     if (!subTabs) {
-      row.hidden = true;
-      row.setAttribute('aria-hidden', 'true');
+      const hasVisibleChild = Array.from(slot.children || []).some((child) => !child.hidden && child.getAttribute('aria-hidden') !== 'true');
+      row.hidden = !hasVisibleChild;
+      row.setAttribute('aria-hidden', hasVisibleChild ? 'false' : 'true');
       return;
     }
 
-    if (!slot.contains(subTabs)) {
+    const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab]');
+    const activeTabId = activePrimaryTab ? String(activePrimaryTab.getAttribute('data-tab') || '') : '';
+    const shouldShow = activeTabId === 'nature-challenge';
+
+    if (shouldShow && !slot.contains(subTabs)) {
       slot.appendChild(subTabs);
     }
 
     bindNatureSubTabDock(root, subTabs);
 
-    const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab]');
-    const activeTabId = activePrimaryTab ? String(activePrimaryTab.getAttribute('data-tab') || '') : '';
-    const shouldShow = activeTabId === 'nature-challenge';
-    row.hidden = !shouldShow;
-    row.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+    subTabs.hidden = !shouldShow;
+    subTabs.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+
+    const hasVisibleChild = Array.from(slot.children || []).some((child) => !child.hidden && child.getAttribute('aria-hidden') !== 'true');
+    row.hidden = !hasVisibleChild;
+    row.setAttribute('aria-hidden', hasVisibleChild ? 'false' : 'true');
 
     if (!shouldShow) return;
     requestAnimationFrame(() => positionNatureSubTabDock());

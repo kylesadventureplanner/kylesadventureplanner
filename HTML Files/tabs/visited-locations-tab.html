@@ -19,19 +19,18 @@
     </div>
   </div>
 
-  <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Challenge sections">
-    <button id="visitedProgressTab-overview" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-overview" aria-selected="true" data-progress-subtab="overview" aria-label="Open Overview section" title="Open Overview section">Overview</button>
-    <button id="visitedProgressTab-badges" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-badges" aria-selected="false" data-progress-subtab="badges" aria-label="Open Badges and Challenges section" title="Open Badges and Challenges section">Badges</button>
-    <button id="visitedProgressTab-heatmap" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-heatmap" aria-selected="false" data-progress-subtab="heatmap" aria-label="Open Heat Map section" title="Open Heat Map section">Heat Map</button>
-    <button id="visitedProgressTab-quests" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-quests" aria-selected="false" data-progress-subtab="quests" aria-label="Open Weekly, Monthly, Quarterly, Yearly, and Lifetime Quests section" title="Open Weekly, Monthly, Quarterly, Yearly, and Lifetime Quests section">Quests</button>
-    <button id="visitedProgressTab-tracker" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-tracker" aria-selected="false" data-progress-subtab="tracker" aria-label="Open Visit Tracker section" title="Open Visit Tracker section">Tracker</button>
+  <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Challenge categories">
+    <button id="visitedProgressTab-outdoors" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-outdoors" aria-selected="true" data-progress-subtab="outdoors" aria-label="Open Outdoors section" title="Open Outdoors section">Outdoors</button>
+    <button id="visitedProgressTab-entertainment" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-entertainment" aria-selected="false" data-progress-subtab="entertainment" aria-label="Open Entertainment section" title="Open Entertainment section">Entertainment</button>
+    <button id="visitedProgressTab-food-drink" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-food-drink" aria-selected="false" data-progress-subtab="food-drink" aria-label="Open Food and Drink section" title="Open Food and Drink section">Food &amp; Drink</button>
+    <button id="visitedProgressTab-retail" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-retail" aria-selected="false" data-progress-subtab="retail" aria-label="Open Retail section" title="Open Retail section">Retail</button>
   </div>
   <div id="visitedSubTabBlockerWarning" class="visited-subtab-blocker-warning" role="status" aria-live="polite" hidden></div>
 
   <div id="visitedSubTabAnnouncer" class="visited-sr-only" aria-live="polite" aria-atomic="true"></div>
   <div id="visitedMobileTooltipChip" class="visited-mobile-tooltip-chip" aria-live="polite" hidden></div>
 
-  <div id="visitedProgressPane-overview" class="visited-progress-pane is-active" data-progress-pane="overview" role="tabpanel" aria-labelledby="visitedProgressTab-overview">
+  <div id="visitedProgressPane-outdoors" class="visited-progress-pane is-active" data-progress-pane="outdoors" role="tabpanel" aria-labelledby="visitedProgressTab-outdoors">
     <div id="visitedOverviewMainView" class="visited-overview-view is-active" data-visited-overview-view="main">
       <div class="card" style="margin-top: 10px;">
         <div class="card-header">
@@ -73,12 +72,77 @@
         </div>
         <div id="visitedRecentList" class="visited-recent-list"></div>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏁 Challenges</div>
+          <div class="card-subtitle">Complete challenge cards to stack XP and unlock bragging rights.</div>
+        </div>
+        <div id="visitedChallengeGrid" class="visited-challenge-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏅 Badge Gallery</div>
+          <div class="card-subtitle">Unlock achievements by rarity: Common, Rare, Epic, and Legendary.</div>
+        </div>
+        <div id="visitedBadgeGallery" class="visited-badge-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🗺️ Visited Heatmap</div>
+          <div class="card-subtitle">Hot spots by city/state based on your logged visits.</div>
+        </div>
+        <div class="visited-heatmap-wrap">
+          <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
+          <div id="visitedHeatmapOverlay" class="visited-heat-overlay" aria-hidden="true"></div>
+          <div id="visitedHeatmapTooltip" class="visited-heat-tooltip" role="tooltip"></div>
+        </div>
+        <div id="visitedHeatmapHotspots" class="visited-hotspots-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📆 Quest Series</div>
+          <div class="card-subtitle">Fresh objective sets every week, month, quarter, and year, plus lifetime milestones.</div>
+        </div>
+        <div class="visited-quest-panels">
+          <div id="visitedWeeklyQuestPanel" class="visited-quest-panel"></div>
+          <div id="visitedMonthlyQuestPanel" class="visited-quest-panel"></div>
+          <div id="visitedQuarterlyQuestPanel" class="visited-quest-panel"></div>
+          <div id="visitedYearlyQuestPanel" class="visited-quest-panel"></div>
+          <div id="visitedLifetimeQuestPanel" class="visited-quest-panel"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🗂️ Visit Tracker</div>
+            <div class="card-subtitle">Search your adventures and quickly mark places as visited.</div>
+          </div>
+          <div>
+            <label for="visitedSearchInput" style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">Search adventures</label>
+            <input id="visitedSearchInput" class="filter-input" type="text" placeholder="Search by name, city, state, or tags..." data-tooltip="Search by name, city, state, or tags" style="max-width: 340px;" />
+            <div id="visitedTrackerQuickFilters" class="visited-tracker-quick-filters" role="group" aria-label="Visit Tracker quick filters">
+              <button type="button" class="quick-filter-btn active" data-catalog-filter="visit" data-catalog-filter-value="all" aria-pressed="true" title="Show all visited states" data-tooltip="Show all visited states">All</button>
+              <button type="button" class="quick-filter-btn" data-catalog-filter="visit" data-catalog-filter-value="visited" aria-pressed="false" title="Show only visited locations" data-tooltip="Show only visited locations">Visited only</button>
+              <button type="button" class="quick-filter-btn" data-catalog-filter="visit" data-catalog-filter-value="unvisited" aria-pressed="false" title="Show only unvisited locations" data-tooltip="Show only unvisited locations">Unvisited only</button>
+              <button type="button" class="quick-filter-btn active" data-catalog-filter="source" data-catalog-filter-value="all" aria-pressed="true" title="Show all sources" data-tooltip="Show all sources">All sources</button>
+              <button type="button" class="quick-filter-btn" data-catalog-filter="source" data-catalog-filter-value="adventure" aria-pressed="false" title="Show only Adventure entries" data-tooltip="Show only Adventure entries">Adventure only</button>
+              <button type="button" class="quick-filter-btn" data-catalog-filter="source" data-catalog-filter-value="bike" aria-pressed="false" title="Show only Bike entries" data-tooltip="Show only Bike entries">Bike only</button>
+            </div>
+          </div>
+        </div>
+        <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
+      </div>
     </div>
 
     <div id="visitedSuggestionsView" class="visited-overview-view" data-visited-overview-view="suggestions" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="visited-view-header-row">
-          <button id="visitedSuggestionsBackBtn" type="button" class="pill-button" title="Back to Adventure Challenge overview" data-tooltip="Back to Adventure Challenge overview">← Back</button>
+          <button id="visitedSuggestionsBackBtn" type="button" class="pill-button" title="Back to Adventure Challenge outdoors" data-tooltip="Back to Adventure Challenge outdoors">← Back</button>
           <div>
             <div class="card-title">🧠 Smart Adventure Suggestions</div>
             <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
@@ -89,76 +153,33 @@
     </div>
   </div>
 
-  <div id="visitedProgressPane-badges" class="visited-progress-pane" data-progress-pane="badges" role="tabpanel" aria-labelledby="visitedProgressTab-badges" hidden>
+  <div id="visitedProgressPane-entertainment" class="visited-progress-pane" data-progress-pane="entertainment" role="tabpanel" aria-labelledby="visitedProgressTab-entertainment" hidden>
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🏁 Challenges</div>
-        <div class="card-subtitle">Complete challenge cards to stack XP and unlock bragging rights.</div>
+        <div class="card-title">🎬 Entertainment</div>
+        <div class="card-subtitle">This new category is ready for refinement.</div>
       </div>
-      <div id="visitedChallengeGrid" class="visited-challenge-grid"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badge Gallery</div>
-        <div class="card-subtitle">Unlock achievements by rarity: Common, Rare, Epic, and Legendary.</div>
-      </div>
-      <div id="visitedBadgeGallery" class="visited-badge-grid"></div>
+      <div class="visited-empty">We’ve added the new Entertainment subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
     </div>
   </div>
 
-  <div id="visitedProgressPane-heatmap" class="visited-progress-pane" data-progress-pane="heatmap" role="tabpanel" aria-labelledby="visitedProgressTab-heatmap" hidden>
+  <div id="visitedProgressPane-food-drink" class="visited-progress-pane" data-progress-pane="food-drink" role="tabpanel" aria-labelledby="visitedProgressTab-food-drink" hidden>
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🗺️ Visited Heatmap</div>
-        <div class="card-subtitle">Hot spots by city/state based on your logged visits.</div>
+        <div class="card-title">🍽️ Food &amp; Drink</div>
+        <div class="card-subtitle">This new category is ready for refinement.</div>
       </div>
-      <div class="visited-heatmap-wrap">
-        <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
-        <div id="visitedHeatmapOverlay" class="visited-heat-overlay" aria-hidden="true"></div>
-        <div id="visitedHeatmapTooltip" class="visited-heat-tooltip" role="tooltip"></div>
-      </div>
-      <div id="visitedHeatmapHotspots" class="visited-hotspots-list"></div>
+      <div class="visited-empty">We’ve added the new Food &amp; Drink subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
     </div>
   </div>
 
-  <div id="visitedProgressPane-quests" class="visited-progress-pane" data-progress-pane="quests" role="tabpanel" aria-labelledby="visitedProgressTab-quests" hidden>
+  <div id="visitedProgressPane-retail" class="visited-progress-pane" data-progress-pane="retail" role="tabpanel" aria-labelledby="visitedProgressTab-retail" hidden>
     <div class="card">
       <div class="card-header">
-        <div class="card-title">📆 Quest Series</div>
-        <div class="card-subtitle">Fresh objective sets every week, month, quarter, and year, plus lifetime milestones.</div>
+        <div class="card-title">🛍️ Retail</div>
+        <div class="card-subtitle">This new category is ready for refinement.</div>
       </div>
-      <div class="visited-quest-panels">
-        <div id="visitedWeeklyQuestPanel" class="visited-quest-panel"></div>
-        <div id="visitedMonthlyQuestPanel" class="visited-quest-panel"></div>
-        <div id="visitedQuarterlyQuestPanel" class="visited-quest-panel"></div>
-        <div id="visitedYearlyQuestPanel" class="visited-quest-panel"></div>
-        <div id="visitedLifetimeQuestPanel" class="visited-quest-panel"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="visitedProgressPane-tracker" class="visited-progress-pane" data-progress-pane="tracker" role="tabpanel" aria-labelledby="visitedProgressTab-tracker" hidden>
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">🗂️ Visit Tracker</div>
-          <div class="card-subtitle">Search your adventures and quickly mark places as visited.</div>
-        </div>
-        <div>
-          <label for="visitedSearchInput" style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">Search adventures</label>
-          <input id="visitedSearchInput" class="filter-input" type="text" placeholder="Search by name, city, state, or tags..." data-tooltip="Search by name, city, state, or tags" style="max-width: 340px;" />
-          <div id="visitedTrackerQuickFilters" class="visited-tracker-quick-filters" role="group" aria-label="Visit Tracker quick filters">
-            <button type="button" class="quick-filter-btn active" data-catalog-filter="visit" data-catalog-filter-value="all" aria-pressed="true" title="Show all visited states" data-tooltip="Show all visited states">All</button>
-            <button type="button" class="quick-filter-btn" data-catalog-filter="visit" data-catalog-filter-value="visited" aria-pressed="false" title="Show only visited locations" data-tooltip="Show only visited locations">Visited only</button>
-            <button type="button" class="quick-filter-btn" data-catalog-filter="visit" data-catalog-filter-value="unvisited" aria-pressed="false" title="Show only unvisited locations" data-tooltip="Show only unvisited locations">Unvisited only</button>
-            <button type="button" class="quick-filter-btn active" data-catalog-filter="source" data-catalog-filter-value="all" aria-pressed="true" title="Show all sources" data-tooltip="Show all sources">All sources</button>
-            <button type="button" class="quick-filter-btn" data-catalog-filter="source" data-catalog-filter-value="adventure" aria-pressed="false" title="Show only Adventure entries" data-tooltip="Show only Adventure entries">Adventure only</button>
-            <button type="button" class="quick-filter-btn" data-catalog-filter="source" data-catalog-filter-value="bike" aria-pressed="false" title="Show only Bike entries" data-tooltip="Show only Bike entries">Bike only</button>
-          </div>
-        </div>
-      </div>
-      <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
+      <div class="visited-empty">We’ve added the new Retail subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
     </div>
   </div>
   <details id="visitedDiagnosticsDetails" class="card visited-collapsible-card visited-diagnostics-details" aria-labelledby="visitedDiagnosticsHeading" aria-describedby="visitedDiagnosticsSummaryHelp" style="margin-top: 14px;">

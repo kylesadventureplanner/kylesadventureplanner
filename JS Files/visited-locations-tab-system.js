@@ -107,10 +107,11 @@
   const CATALOG_INITIAL_LIMIT = 60;
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
+  const PROGRESS_SUBTAB_KEYS = ['outdoors', 'entertainment', 'food-drink', 'retail'];
 
    const state = {
      initialized: false,
-     activeProgressSubTab: 'overview',
+     activeProgressSubTab: 'outdoors',
      activeOverviewView: 'main',
      weatherMode: 'auto',
      searchText: '',
@@ -159,11 +160,104 @@
     console.log(...args);
   }
 
+  function getVisitedSubTabDockElements() {
+    return {
+      row: document.getElementById('appSubTabsRow'),
+      cutout: document.getElementById('appSubTabsCutout'),
+      slot: document.getElementById('appSubTabsSlot')
+    };
+  }
+
+  function getVisitedSubTabsElement(root) {
+    const docked = document.querySelector('#appSubTabsSlot .visited-progress-subtabs');
+    if (docked) return docked;
+    return root ? root.querySelector('.visited-progress-subtabs') : null;
+  }
+
+  function updateVisitedSubTabRowVisibility(row, slot) {
+    if (!row || !slot) return;
+    const hasVisibleChild = Array.from(slot.children || []).some((child) => !child.hidden && child.getAttribute('aria-hidden') !== 'true');
+    row.hidden = !hasVisibleChild;
+    row.setAttribute('aria-hidden', hasVisibleChild ? 'false' : 'true');
+  }
+
+  function positionVisitedSubTabDock() {
+    const { row, cutout } = getVisitedSubTabDockElements();
+    if (!row || !cutout || row.hidden) return;
+
+    const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab="visited-locations"]');
+    if (!activePrimaryTab) {
+      cutout.style.left = '50%';
+      return;
+    }
+
+    const rowRect = row.getBoundingClientRect();
+    const activeRect = activePrimaryTab.getBoundingClientRect();
+    const cutoutWidth = Math.min(cutout.offsetWidth || 0, Math.max(rowRect.width - 8, 0));
+    if (!rowRect.width || !cutoutWidth) {
+      cutout.style.left = '50%';
+      return;
+    }
+
+    const preferredCenter = (activeRect.left - rowRect.left) + (activeRect.width / 2);
+    const padding = 8;
+    const minCenter = cutoutWidth / 2 + padding;
+    const maxCenter = Math.max(rowRect.width - (cutoutWidth / 2) - padding, minCenter);
+    const clampedCenter = Math.min(Math.max(preferredCenter, minCenter), maxCenter);
+    cutout.style.left = `${clampedCenter}px`;
+  }
+
+  function syncVisitedSubTabDock(root) {
+    const { row, slot } = getVisitedSubTabDockElements();
+    if (!row || !slot || !root) return;
+
+    const subTabs = getVisitedSubTabsElement(root);
+    if (!subTabs) {
+      updateVisitedSubTabRowVisibility(row, slot);
+      return;
+    }
+
+    const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab]');
+    const activeTabId = activePrimaryTab ? String(activePrimaryTab.getAttribute('data-tab') || '') : '';
+    const shouldShow = activeTabId === 'visited-locations' && state.activeOverviewView !== 'suggestions';
+
+    if (shouldShow && !slot.contains(subTabs)) {
+      slot.appendChild(subTabs);
+    }
+
+    subTabs.hidden = !shouldShow;
+    subTabs.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+
+    updateVisitedSubTabRowVisibility(row, slot);
+    if (!shouldShow) return;
+    requestAnimationFrame(() => positionVisitedSubTabDock());
+  }
+
+  function bindVisitedPrimaryTabFallbackSync(root) {
+    if (!root || root.dataset.visitedPrimaryTabFallbackBound === '1') return;
+    root.dataset.visitedPrimaryTabFallbackBound = '1';
+
+    const resync = () => {
+      const liveRoot = document.getElementById('visitedLocationsRoot');
+      if (!liveRoot) return;
+      syncVisitedSubTabDock(liveRoot);
+    };
+
+    document.addEventListener('click', (event) => {
+      const button = event.target && event.target.closest ? event.target.closest('.app-tab-btn[data-tab]') : null;
+      if (!button) return;
+      requestAnimationFrame(resync);
+      window.setTimeout(resync, 40);
+    }, true);
+
+    window.addEventListener('pageshow', resync);
+  }
+
    function syncProgressSubTabs(root) {
      if (!root) return;
-     const active = state.activeProgressSubTab || 'overview';
+     const active = PROGRESS_SUBTAB_KEYS.includes(state.activeProgressSubTab) ? state.activeProgressSubTab : 'outdoors';
 
-     root.querySelectorAll('[data-progress-subtab]').forEach((btn) => {
+     getProgressSubTabButtons(root).forEach((btn) => {
        const tabKey = btn.getAttribute('data-progress-subtab');
        const isActive = tabKey === active;
        btn.classList.toggle('active', isActive);
@@ -187,14 +281,16 @@
        pane.style.position = 'relative';
        pane.style.zIndex = isActive ? '1' : '0';
      });
+
+      syncVisitedSubTabDock(root);
    }
 
   function announceProgressSubTab(root, tabKey) {
     if (!root) return;
     const announcer = document.getElementById('visitedSubTabAnnouncer');
     if (!announcer) return;
-    const btn = root.querySelector(`[data-progress-subtab="${tabKey}"]`);
-    const label = btn ? btn.textContent.trim() : 'Overview';
+    const btn = getProgressSubTabButtons(root).find((candidate) => candidate.getAttribute('data-progress-subtab') === tabKey);
+    const label = btn ? btn.textContent.trim() : 'Outdoors';
     announcer.textContent = `${label} section active`;
   }
 
@@ -203,7 +299,7 @@
       state.activeOverviewView = 'main';
       syncVisitedOverviewView(root);
     }
-    state.activeProgressSubTab = tabKey || 'overview';
+    state.activeProgressSubTab = PROGRESS_SUBTAB_KEYS.includes(tabKey) ? tabKey : 'outdoors';
     syncProgressSubTabs(root);
     announceProgressSubTab(root, state.activeProgressSubTab);
     scheduleVisitedSubTabInterceptionCheck(root, 0);
@@ -214,8 +310,8 @@
     if (!scope) return;
     const suggestionsView = scope.querySelector('#visitedSuggestionsView');
     const mainView = scope.querySelector('#visitedOverviewMainView');
-    const subtabBar = scope.querySelector('.visited-progress-subtabs');
-    const overviewPane = scope.querySelector('[data-progress-pane="overview"]');
+    const subtabBar = getVisitedSubTabsElement(scope);
+    const outdoorsPane = scope.querySelector('[data-progress-pane="outdoors"]');
 
     const isSuggestions = state.activeOverviewView === 'suggestions';
 
@@ -223,25 +319,23 @@
     if (suggestionsView) suggestionsView.hidden = !isSuggestions;
     if (subtabBar) subtabBar.hidden = isSuggestions;
 
-    if (overviewPane && isSuggestions) {
+    if (outdoorsPane && isSuggestions) {
       scope.querySelectorAll('[data-progress-pane]').forEach((pane) => {
-        const isOverview = pane === overviewPane;
-        pane.classList.toggle('is-active', isOverview);
-        pane.hidden = !isOverview;
-        pane.setAttribute('aria-hidden', isOverview ? 'false' : 'true');
+        const isOutdoors = pane === outdoorsPane;
+        pane.classList.toggle('is-active', isOutdoors);
+        pane.hidden = !isOutdoors;
+        pane.setAttribute('aria-hidden', isOutdoors ? 'false' : 'true');
       });
     }
 
-    if (!isSuggestions) {
-      syncProgressSubTabs(scope);
-      announceProgressSubTab(scope, state.activeProgressSubTab);
-    }
+    syncProgressSubTabs(scope);
+    if (!isSuggestions) announceProgressSubTab(scope, state.activeProgressSubTab);
   }
 
   function setVisitedOverviewView(root, viewKey) {
     state.activeOverviewView = viewKey === 'suggestions' ? 'suggestions' : 'main';
     if (state.activeOverviewView === 'suggestions') {
-      state.activeProgressSubTab = 'overview';
+      state.activeProgressSubTab = 'outdoors';
     }
     syncVisitedOverviewView(root);
   }
@@ -267,7 +361,7 @@
 
   function findVisitedSubTabBlockingElement(root) {
     if (!root || !root.isConnected) return null;
-    const buttons = root.querySelectorAll('[data-progress-subtab]');
+    const buttons = getProgressSubTabButtons(root);
     for (const btn of buttons) {
       const rect = btn.getBoundingClientRect();
       if (rect.width < 6 || rect.height < 6) continue;
@@ -287,11 +381,13 @@
     if (!root || !root.isConnected) return false;
     const pane = root.closest('.app-tab-pane');
     if (pane && !pane.classList.contains('active')) return false;
-    const subtabs = root.querySelector('.visited-progress-subtabs');
+    const subtabs = getVisitedSubTabsElement(root);
     if (!subtabs) return false;
-    const cs = window.getComputedStyle(subtabs);
+    const dockRow = document.getElementById('appSubTabsRow');
+    const surface = dockRow && dockRow.contains(subtabs) ? dockRow : subtabs;
+    const cs = window.getComputedStyle(surface);
     if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
-    const rect = subtabs.getBoundingClientRect();
+    const rect = surface.getBoundingClientRect();
     return rect.width > 8 && rect.height > 8;
   }
 
@@ -711,14 +807,54 @@
   }
 
   function getProgressSubTabButtons(root) {
-    return root ? Array.from(root.querySelectorAll('[data-progress-subtab]')) : [];
+    const subTabs = getVisitedSubTabsElement(root);
+    return subTabs ? Array.from(subTabs.querySelectorAll('[data-progress-subtab]')) : [];
   }
 
   function bindProgressSubTabButtons(root) {
-    if (!root) return;
-    getProgressSubTabButtons(root).forEach((btn) => {
-      if (btn.dataset.progressSubTabBound === '1') return;
-      btn.dataset.progressSubTabBound = '1';
+    const subTabs = getVisitedSubTabsElement(root);
+    if (!root || !subTabs || subTabs.dataset.progressSubTabBound === '1') return;
+    subTabs.dataset.progressSubTabBound = '1';
+
+    subTabs.addEventListener('pointerdown', () => {
+      scheduleVisitedSubTabInterceptionCheck(root, 0);
+    }, true);
+
+    subTabs.addEventListener('click', (event) => {
+      const progressTabBtn = event.target.closest('[data-progress-subtab]');
+      if (!progressTabBtn || !subTabs.contains(progressTabBtn)) return;
+      event.preventDefault();
+      state.mobileTooltip.longPressActive = false;
+      state.mobileTooltip.suppressClickUntil = 0;
+      state.mobileTooltip.lastLongPressTarget = null;
+      const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'outdoors';
+      if (tabKey !== state.activeProgressSubTab) {
+        setActiveProgressSubTab(root, tabKey);
+      }
+      scheduleVisitedSubTabInterceptionCheck(root, 0);
+    });
+
+    subTabs.addEventListener('keydown', (event) => {
+      const currentTabBtn = event.target.closest('[data-progress-subtab]');
+      if (!currentTabBtn || !subTabs.contains(currentTabBtn)) return;
+
+      const buttons = getProgressSubTabButtons(root);
+      if (buttons.length === 0) return;
+      const index = buttons.indexOf(currentTabBtn);
+      if (index < 0) return;
+
+      let nextIndex = index;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % buttons.length;
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + buttons.length) % buttons.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = buttons.length - 1;
+      else return;
+
+      event.preventDefault();
+      const nextButton = buttons[nextIndex];
+      const tabKey = nextButton.getAttribute('data-progress-subtab') || 'outdoors';
+      setActiveProgressSubTab(root, tabKey);
+      nextButton.focus();
     });
   }
 
@@ -2237,9 +2373,11 @@
       if (!root) return;
 
       // Defensive: ensure all interactive elements are clickable
-      const buttons = root.querySelectorAll(
+      const rootButtons = root.querySelectorAll(
         'button, [role="button"], [data-visit-action], [data-progress-subtab], [data-catalog-filter], [data-category-filter], .quick-filter-btn, .card-btn'
       );
+      const subTabButtons = getProgressSubTabButtons(root);
+      const buttons = Array.from(new Set([...Array.from(rootButtons), ...subTabButtons]));
       const categoryFilterButtons = root.querySelectorAll('[data-category-filter]');
 
       buttons.forEach((btn) => {
@@ -2275,7 +2413,7 @@
       // Store bound flag and handler reference for cleanup/dedup
       root.dataset.bound = '1';
 
-      const subtabBar = root.querySelector('.visited-progress-subtabs');
+      const subtabBar = getVisitedSubTabsElement(root);
       if (subtabBar) {
         subtabBar.style.pointerEvents = 'auto';
         subtabBar.style.position = 'relative';
@@ -2285,6 +2423,7 @@
       syncProgressSubTabs(root);
       syncVisitedOverviewView(root);
       bindProgressSubTabButtons(root);
+      syncVisitedSubTabDock(root);
       announceProgressSubTab(root, state.activeProgressSubTab);
       state.latestVisitMap = getVisitMap();
       renderSyncMeta(state.latestVisitMap);
@@ -2319,29 +2458,6 @@
         childList: true,
         subtree: true,
         attributes: false
-      });
-
-      root.addEventListener('keydown', (event) => {
-       const currentTabBtn = event.target.closest('[data-progress-subtab]');
-       if (!currentTabBtn) return;
-
-       const buttons = getProgressSubTabButtons(root);
-       if (buttons.length === 0) return;
-       const index = buttons.indexOf(currentTabBtn);
-       if (index < 0) return;
-
-       let nextIndex = index;
-       if (event.key === 'ArrowRight') nextIndex = (index + 1) % buttons.length;
-       else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + buttons.length) % buttons.length;
-       else if (event.key === 'Home') nextIndex = 0;
-       else if (event.key === 'End') nextIndex = buttons.length - 1;
-       else return;
-
-       event.preventDefault();
-       const nextButton = buttons[nextIndex];
-       const tabKey = nextButton.getAttribute('data-progress-subtab') || 'overview';
-       setActiveProgressSubTab(root, tabKey);
-       nextButton.focus();
       });
 
       // CREATE THE MAIN CLICK HANDLER FUNCTION (stored to prevent duplicate attachment)
@@ -2389,7 +2505,7 @@
             state.mobileTooltip.longPressActive = false;
             state.mobileTooltip.suppressClickUntil = 0;
             state.mobileTooltip.lastLongPressTarget = null;
-            const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'overview';
+            const tabKey = progressTabBtn.getAttribute('data-progress-subtab') || 'outdoors';
             if (tabKey !== state.activeProgressSubTab) {
               setActiveProgressSubTab(root, tabKey);
             }
@@ -2524,9 +2640,29 @@
       scheduleVisitedSubTabInterceptionCheck(root, 0);
     }, true);
 
-    window.addEventListener('resize', () => {
-      scheduleVisitedSubTabInterceptionCheck(root, 50);
-    });
+      if (!root.dataset.tabSwitchListenerBound) {
+        root.dataset.tabSwitchListenerBound = '1';
+        window.addEventListener('app:tab-switched', (event) => {
+          const liveRoot = document.getElementById('visitedLocationsRoot');
+          if (!liveRoot) return;
+          syncVisitedSubTabDock(liveRoot);
+          if (!event || !event.detail || event.detail.tabId !== 'visited-locations') return;
+          ensureButtonsResponsive();
+          scheduleVisitedSubTabInterceptionCheck(liveRoot, 40);
+        });
+      }
+
+      if (!root.dataset.visitedSubTabDockResizeBound) {
+        root.dataset.visitedSubTabDockResizeBound = '1';
+        window.addEventListener('resize', () => {
+          const liveRoot = document.getElementById('visitedLocationsRoot');
+          if (!liveRoot) return;
+          syncVisitedSubTabDock(liveRoot);
+          scheduleVisitedSubTabInterceptionCheck(liveRoot, 50);
+        });
+      }
+
+      bindVisitedPrimaryTabFallbackSync(root);
 
     scheduleVisitedSubTabInterceptionCheck(root, 80);
   }
