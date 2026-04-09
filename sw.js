@@ -20,6 +20,7 @@ const PRECACHE_ASSETS = [
   '/HTML%20Files/tabs/visited-locations-tab.html',
   '/HTML%20Files/tabs/nature-challenge-tab.html',
   '/HTML%20Files/tabs/bike-trails-tab.html',
+  '/HTML%20Files/offline-pack-health.html',
   '/data/nature-challenge-birds.tsv'
 ];
 

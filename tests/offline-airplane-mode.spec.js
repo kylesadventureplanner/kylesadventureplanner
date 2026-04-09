@@ -1,0 +1,43 @@
+const { test, expect } = require('@playwright/test');
+
+test.describe('Offline airplane mode regression', () => {
+  test('keeps planner usable and queues writes when offline', async ({ browser }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.click('.app-tab-btn[data-tab="adventure-planner"]');
+    await page.waitForTimeout(250);
+    await expect(page.locator('#offlinePackBtn')).toBeVisible();
+    await page.click('#offlinePackBtn');
+    await page.waitForTimeout(500);
+
+    await context.setOffline(true);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#offlinePlannerConnectionBadge')).toContainText('Offline');
+
+    await page.evaluate(async () => {
+      if (!window.OfflinePwa || typeof window.OfflinePwa.enqueueWrite !== 'function') {
+        throw new Error('OfflinePwa.enqueueWrite is unavailable');
+      }
+      await window.OfflinePwa.enqueueWrite('test-airplane-mode', { probe: true }, { source: 'playwright' });
+    });
+
+    await expect(page.locator('#offlinePlannerQueueBadge')).toContainText('Pending sync');
+    const pending = await page.evaluate(() => {
+      if (!window.OfflinePwa || typeof window.OfflinePwa.getPendingCount !== 'function') return -1;
+      return window.OfflinePwa.getPendingCount();
+    });
+    expect(pending).toBeGreaterThan(0);
+
+    await context.setOffline(false);
+    await page.evaluate(async () => {
+      if (window.OfflinePwa && typeof window.OfflinePwa.flushQueue === 'function') {
+        await window.OfflinePwa.flushQueue();
+      }
+    });
+
+    await context.close();
+  });
+});
+

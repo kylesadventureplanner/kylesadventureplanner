@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline Pack Health</title>
+  <script src="../JS Files/mobile-view-persistence-bootstrap.js"></script>
+  <link rel="stylesheet" href="../CSS/utilities.css" />
+  <link rel="stylesheet" href="../CSS/mobile-standalone-enhancements.css" />
+  <style>
+    body { margin: 0; padding: 20px; background: #f8fafc; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .card { background: #fff; border: 1px solid #dbeafe; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+    .row { display: grid; grid-template-columns: 180px 1fr; gap: 10px; margin-bottom: 6px; font-size: 13px; }
+    .k { color: #475569; font-weight: 700; }
+    .v { color: #0f172a; }
+    .queue-item { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; margin-top: 8px; background: #f8fafc; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    button { border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #1e293b; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .hint-warning { color: #92400e; background: #fef3c7; border-left: 3px solid #f59e0b; padding: 2px 7px; border-radius: 4px; display: inline-block; }
+    .hint-info    { color: #1e40af; background: #dbeafe; border-left: 3px solid #3b82f6; padding: 2px 7px; border-radius: 4px; display: inline-block; }
+    .hint-error   { color: #991b1b; background: #fee2e2; border-left: 3px solid #ef4444; padding: 2px 7px; border-radius: 4px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2>Offline Pack Health</h2>
+      <div class="actions">
+        <button id="offlineHealthRefreshBtn" type="button">Refresh</button>
+        <button id="offlineHealthWarmPackBtn" type="button">Warm Offline Pack</button>
+        <button id="offlineHealthFlushQueueBtn" type="button">Flush Queue</button>
+      </div>
+    </div>
+
+    <div class="card" id="offlineHealthSummary"></div>
+    <div class="card" id="offlineHealthQueue"></div>
+  </div>
+
+  <script src="../JS Files/pwa-offline-system.js"></script>
+  <script>
+    function esc(text) {
+      return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    async function renderHealth() {
+      var summaryEl = document.getElementById('offlineHealthSummary');
+      var queueEl = document.getElementById('offlineHealthQueue');
+      if (!summaryEl || !queueEl) return;
+
+      if (!window.OfflinePwa) {
+        summaryEl.innerHTML = '<div class="v">Offline runtime is unavailable.</div>';
+        queueEl.innerHTML = '';
+        return;
+      }
+
+      var status = window.OfflinePwa.getStatus();
+      var queue = await window.OfflinePwa.getQueueItems();
+
+      summaryEl.innerHTML = [
+        '<h3>Summary</h3>',
+        '<div class="row"><div class="k">Online</div><div class="v">' + esc(status.online ? 'Yes' : 'No') + '</div></div>',
+        '<div class="row"><div class="k">Service worker</div><div class="v">' + esc(status.swReady ? 'Ready' : 'Not ready') + '</div></div>',
+        '<div class="row"><div class="k">Pending queue</div><div class="v">' + esc(status.pendingCount) + '</div></div>',
+        '<div class="row"><div class="k">Last pack</div><div class="v">' + esc(status.lastPackAt || 'Not prepared') + '</div></div>'
+      ].join('');
+
+      if (!queue.length) {
+        queueEl.innerHTML = '<h3>Queued Writes</h3><div class="v">Queue is empty.</div>';
+        return;
+      }
+
+      queueEl.innerHTML = '<h3>Queued Writes</h3>' + queue.map(function (item) {
+        var hint = (window.OfflinePwa && typeof window.OfflinePwa.getConflictActionHint === 'function')
+          ? window.OfflinePwa.getConflictActionHint(item.conflictCode || '')
+          : '';
+        var severity = (window.OfflinePwa && typeof window.OfflinePwa.getConflictHintSeverity === 'function')
+          ? window.OfflinePwa.getConflictHintSeverity(item.conflictCode || '')
+          : '';
+        var hintText = hint || 'Retry and inspect details.';
+        var hintHtml = severity
+          ? '<span class="hint-' + severity + '">' + esc(hintText) + '</span>'
+          : esc(hintText);
+        return [
+          '<div class="queue-item">',
+          '<div><strong>' + esc(item.type) + '</strong> • attempts ' + esc(item.attempts || 0) + '</div>',
+          '<div>conflictCode: ' + esc(item.conflictCode || 'n/a') + '</div>',
+          '<div>suggestedAction: ' + hintHtml + '</div>',
+          '<div>queuedAt: ' + esc(item.queuedAt || '') + '</div>',
+          '<div>lastError: ' + esc(item.lastError || 'none') + '</div>',
+          '<div class="actions">',
+          '<button type="button" data-action="retry" data-id="' + esc(item.id) + '">Retry</button>',
+          '<button type="button" data-action="keep-local" data-id="' + esc(item.id) + '">Keep local</button>',
+          '<button type="button" data-action="discard" data-id="' + esc(item.id) + '">Discard</button>',
+          '</div>',
+          '</div>'
+        ].join('');
+      }).join('');
+
+      queueEl.querySelectorAll('[data-action]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          var action = btn.getAttribute('data-action');
+          var id = btn.getAttribute('data-id');
+          await window.OfflinePwa.resolveConflict(action, id);
+          renderHealth();
+        });
+      });
+    }
+
+    document.getElementById('offlineHealthRefreshBtn').addEventListener('click', renderHealth);
+    document.getElementById('offlineHealthWarmPackBtn').addEventListener('click', async function () {
+      if (window.OfflinePwa) await window.OfflinePwa.warmOfflinePack();
+      renderHealth();
+    });
+    document.getElementById('offlineHealthFlushQueueBtn').addEventListener('click', async function () {
+      if (window.OfflinePwa) await window.OfflinePwa.flushQueue();
+      renderHealth();
+    });
+
+    renderHealth();
+  </script>
+</body>
+</html>
+

@@ -315,6 +315,76 @@
       color: #334155;
     }
 
+    .offline-conflict-card {
+      border: 1px solid #fdba74;
+      background: #fff7ed;
+      border-radius: 12px;
+      padding: 10px;
+      margin: 8px 0 12px;
+    }
+
+    .offline-conflict-card[hidden] {
+      display: none;
+    }
+
+    .offline-conflict-item {
+      border: 1px solid #fed7aa;
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .offline-conflict-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .offline-action-btn {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .offline-action-btn--danger {
+      border-color: #fecaca;
+      color: #b91c1c;
+      background: #fff1f2;
+    }
+
+    .offline-install-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 10px 16px;
+      padding: 10px 12px;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .offline-install-banner[hidden] {
+      display: none;
+    }
+
+    .offline-install-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
     .planner-top-btn--success:hover {
       background: linear-gradient(135deg, #059669 0%, #047857 100%);
       border-color: #059669;
@@ -7309,6 +7379,14 @@
     <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
   </div>
 </header>
+<div id="offlineInstallBanner" class="offline-install-banner" hidden>
+  <span>Install this app for faster field launch and offline support.</span>
+  <div class="offline-install-actions">
+    <button id="offlineInstallNowBtn" type="button" class="offline-action-btn">Install App</button>
+    <button id="offlineInstallDismissBtn" type="button" class="offline-action-btn">Dismiss</button>
+    <button id="offlineInstallOpenHealthBtn" type="button" class="offline-action-btn">Offline Health</button>
+  </div>
+</div>
 <div class="app-container">
   <!-- Tab Navigation -->
   <div class="app-tabs-nav" id="appTabsNav">
@@ -7350,6 +7428,9 @@
           <button id="offlinePackBtn" class="planner-top-btn" title="Cache the app shell for offline field use" data-tooltip="Cache the app shell for offline field use">
             📦 Offline Pack
           </button>
+          <button id="offlineHealthBtn" class="planner-top-btn" title="Open Offline Pack diagnostics" data-tooltip="Open Offline Pack diagnostics">
+            🩺 Offline Health
+          </button>
           <span id="offlinePlannerConnectionBadge" class="offline-badge" data-state="syncing" aria-live="polite">Offline: checking...</span>
           <span id="offlinePlannerQueueBadge" class="offline-badge" data-state="syncing" aria-live="polite">Pending sync: 0</span>
         </div>
@@ -7363,6 +7444,7 @@
           <li>Pending queued writes: <strong class="offline-pending-count">0</strong></li>
         </ol>
       </div>
+      <div id="offlineQueueConflictPanel" class="offline-conflict-card" hidden></div>
 
       <!-- Filters Active Badge -->
       <div style="padding: 8px 0; margin-bottom: 8px;">

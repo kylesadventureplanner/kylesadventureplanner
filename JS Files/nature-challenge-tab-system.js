@@ -225,6 +225,7 @@
     syncQueue: loadSyncQueue(),
     syncConflicts: loadSyncConflicts(),
     syncLastError: '',
+    syncLastErrorCode: '',
     syncSchemaDiagnostics: {
       status: 'unknown',
       checkedAt: '',
@@ -2285,6 +2286,19 @@
     return match ? Number(match[1]) : null;
   }
 
+  function classifyBirdSyncError(error) {
+    const message = String(error && error.message ? error.message : error || '').toLowerCase();
+    const status = parseGraphStatusFromError(error);
+    if (status === 401 || status === 403) return 'AUTH';
+    if (status === 404) return 'NOT_FOUND';
+    if (status === 409) return 'CONFLICT';
+    if (status === 429) return 'RATE_LIMIT';
+    if (status && status >= 500) return 'SERVER';
+    if (message.includes('network') || message.includes('failed to fetch') || message.includes('timeout')) return 'NETWORK';
+    if (message.includes('schema') || message.includes('column') || message.includes('table')) return 'SCHEMA';
+    return 'UNKNOWN';
+  }
+
   async function probeWorkbookCandidates(candidatePaths, tableNames) {
     const candidates = Array.isArray(candidatePaths) ? candidatePaths.filter(Boolean).map((v) => String(v).trim()).filter(Boolean) : [];
     const tables = Array.isArray(tableNames) ? tableNames.filter(Boolean).map((v) => String(v).trim()) : [];
@@ -3026,7 +3040,9 @@
   async function processSyncQueue() {
     state.lastSyncAttemptAt = new Date().toISOString();
     state.syncLastError = '';
+    state.syncLastErrorCode = '';
     if (!window.accessToken) {
+      state.syncLastErrorCode = 'AUTH';
       renderSyncStatusPanel();
       return;
     }
@@ -3034,6 +3050,7 @@
     const userId = getBirdSyncUserId();
     if (!userId) {
       state.syncLastError = 'Sync skipped: signed-in account identity is unavailable.';
+      state.syncLastErrorCode = 'AUTH';
       renderSyncStatusPanel();
       return;
     }
@@ -3042,6 +3059,7 @@
     const workbookPath = await resolveBirdSyncWorkbookPath();
     if (!workbookPath) {
       state.syncLastError = `Sync skipped: workbook with tables '${BIRD_SIGHTINGS_TABLE_NAME}' and '${BIRD_USER_STATE_TABLE_NAME}' was not found.`;
+      state.syncLastErrorCode = 'NOT_FOUND';
       renderSyncStatusPanel();
       return;
     }
@@ -3056,6 +3074,7 @@
       const reason = error && error.message ? error.message : 'failed to fetch table schema';
       setSyncSchemaDiagnosticsUnknown(reason);
       state.syncLastError = `Sync skipped: could not validate table schemas (${reason}).`;
+      state.syncLastErrorCode = classifyBirdSyncError(error);
       renderSyncStatusPanel();
       return;
     }
@@ -3094,7 +3113,13 @@
         }
       } catch (error) {
         const attempts = Math.max(0, Number(item.attempts || 0)) + 1;
-        nextQueue.push({ ...item, attempts, lastError: String(error && error.message ? error.message : error || 'Unknown sync error') });
+        const classifiedCode = classifyBirdSyncError(error);
+        nextQueue.push({
+          ...item,
+          attempts,
+          conflictCode: classifiedCode,
+          lastError: String(error && error.message ? error.message : error || 'Unknown sync error')
+        });
         failedNotes.push(`${item.type}: ${error && error.message ? error.message : 'sync failed'}`);
       }
     }
@@ -3104,8 +3129,10 @@
     if (!nextQueue.length) {
       state.lastSyncSuccessAt = toIsoNow();
       state.syncLastError = '';
+      state.syncLastErrorCode = '';
     } else {
       state.syncLastError = failedNotes.join(' | ').slice(0, 600);
+      state.syncLastErrorCode = String((nextQueue[0] && nextQueue[0].conflictCode) || 'UNKNOWN');
     }
     renderSyncStatusPanel();
     renderBirdLogOfflineStatus();
@@ -6376,7 +6403,9 @@
     await processSyncQueue();
     return {
       pendingQueue: Array.isArray(state.syncQueue) ? state.syncQueue.length : 0,
-      lastSyncSuccessAt: state.lastSyncSuccessAt || ''
+      lastSyncSuccessAt: state.lastSyncSuccessAt || '',
+      syncLastError: state.syncLastError || '',
+      syncLastErrorCode: state.syncLastErrorCode || ''
     };
   };
   window.getRecentBirdClickTraceSnapshot = getRecentBirdClickTraceSnapshot;

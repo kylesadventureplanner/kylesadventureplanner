@@ -1,4 +1,36 @@
 /* ============================================================
+   OFFLINE CONFLICT HINT SEVERITY COLORS
+   ============================================================
+*/
+.offline-hint--warning {
+  color: #92400e;
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  font-size: inherit;
+}
+.offline-hint--info {
+  color: #1e40af;
+  background: #dbeafe;
+  border-left: 3px solid #3b82f6;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  font-size: inherit;
+}
+.offline-hint--error {
+  color: #991b1b;
+  background: #fee2e2;
+  border-left: 3px solid #ef4444;
+  padding: 2px 7px;
+  border-radius: 4px;
+  display: inline-block;
+  font-size: inherit;
+}
+
+/* ============================================================
    TAG STYLES - SHARED ACROSS ALL PAGES
    ============================================================
 */

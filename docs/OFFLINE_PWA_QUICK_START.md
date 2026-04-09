@@ -12,6 +12,8 @@ This app now includes a first-pass offline pack and write queue bridge.
 - IndexedDB offline write queue (`kafOfflineDb` / `writeQueue`)
 - Offline/sync badges and checklists in Planner and Birds
 - Auto bridge to Birds sync when device comes back online
+- Conflict-resolution controls for queued writes (retry, keep local only, discard)
+- Install prompt banner + Offline Health diagnostics page
 
 ## How to use in the field
 
@@ -21,6 +23,8 @@ This app now includes a first-pass offline pack and write queue bridge.
 4. Confirm checklist badges show cached status and pending queue count.
 5. Use the app offline; writes are queued.
 6. When back online, queued writes will sync automatically, or press `Sync Now` in Birds.
+7. If queue items fail repeatedly, use conflict controls shown in Planner/Birds to resolve each item.
+8. Open Offline Health (`🩺 Offline Health`) to inspect cache readiness and queued writes.
 
 ## Notes
 
