@@ -3691,37 +3691,49 @@
   }
 
   function renderBirdHeaderStatus() {
-    const syncBadge = document.getElementById('natureSyncHealthBadge');
-    const syncMeta = document.getElementById('natureSyncMeta');
-    if (!syncBadge || !syncMeta) return;
+    const syncBadges = [
+      document.getElementById('natureSyncHealthBadge'),
+      document.getElementById('natureSyncHealthBadgeInline')
+    ].filter(Boolean);
+    const syncMetas = [
+      document.getElementById('natureSyncMeta'),
+      document.getElementById('natureSyncMetaInline')
+    ].filter(Boolean);
+    if (!syncBadges.length || !syncMetas.length) return;
 
-    syncBadge.classList.remove('ok', 'warn');
+    syncBadges.forEach((badge) => badge.classList.remove('ok', 'warn'));
+
+    function setStatus(badgeText, metaText, badgeClass) {
+      syncBadges.forEach((badge) => {
+        badge.textContent = badgeText;
+        if (badgeClass) badge.classList.add(badgeClass);
+      });
+      syncMetas.forEach((meta) => {
+        meta.textContent = metaText;
+      });
+    }
 
     if (state.birdsLoading) {
-      syncBadge.textContent = 'Bird data: loading...';
-      syncMeta.textContent = 'Refreshing bird species source...';
+      setStatus('Bird data: loading...', 'Refreshing bird species source...', '');
       return;
     }
 
     if (state.birdsError && !state.birdsLoaded) {
-      syncBadge.classList.add('warn');
-      syncBadge.textContent = 'Bird data: unavailable';
-      syncMeta.textContent = state.birdsError;
+      setStatus('Bird data: unavailable', state.birdsError, 'warn');
       return;
     }
 
     if (!state.birdsLoaded) {
-      syncBadge.textContent = 'Bird data: waiting';
-      syncMeta.textContent = 'Bird dataset has not been loaded yet.';
+      setStatus('Bird data: waiting', 'Bird dataset has not been loaded yet.', '');
       return;
     }
 
-    syncBadge.classList.add(state.birdsError ? 'warn' : 'ok');
-    syncBadge.textContent = state.birdsError ? 'Bird data: fallback in use' : 'Bird data: ready';
+    const badgeClass = state.birdsError ? 'warn' : 'ok';
+    const badgeText = state.birdsError ? 'Bird data: fallback in use' : 'Bird data: ready';
     const source = state.birdsSource ? `Source: ${state.birdsSource}` : 'Source: unknown';
     const updated = state.lastLoadedAt ? new Date(state.lastLoadedAt).toLocaleString() : '--';
     const warning = state.birdsError ? ` | ${state.birdsError}` : '';
-    syncMeta.textContent = `${state.birds.length} species | ${source} | Updated ${updated}${warning}`;
+    setStatus(badgeText, `${state.birds.length} species | ${source} | Updated ${updated}${warning}`, badgeClass);
   }
 
   function renderBirdLegend(stats) {
@@ -3896,6 +3908,7 @@
     const banner = document.getElementById('birdsLogSuccessBanner');
     const trendStats = document.getElementById('birdsLogTrendStats');
     const timeline = document.getElementById('birdsLogTimeline');
+    const timelineMeta = document.getElementById('birdsLogTimelineMeta');
     const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
     const commandInput = document.getElementById('birdsLogCommandInput');
     const intentRow = document.getElementById('birdsLogIntentChipRow');
@@ -3944,6 +3957,12 @@
     `;
 
     const recentEntries = state.sightingLog.slice(0, 6);
+    if (timelineMeta) {
+      const totalLogs = Array.isArray(state.sightingLog) ? state.sightingLog.length : 0;
+      timelineMeta.textContent = totalLogs > 6
+        ? `Showing latest 6 of ${totalLogs} logs. Use species history in the Entry Form for deeper history by species.`
+        : `Showing ${totalLogs} total log${totalLogs === 1 ? '' : 's'}.`;
+    }
     if (recentEntries.length === 0) {
       timeline.innerHTML = '<div class="nature-empty-state">No sightings logged yet. Your newest entries will appear here.</div>';
       return;
@@ -4854,19 +4873,38 @@
             <div class="adventure-card-time">Genus: ${escapeHtml(bird.genusLabel)}</div>
           </div>
           <div class="adventure-card-body">
-            <div class="nature-explorer-status-row">
-              <span class="nature-explorer-status-pill ${sighted ? 'is-good' : 'is-alert'}">${sighted ? 'Seen' : 'Not seen'}</span>
-              <span class="nature-explorer-status-pill ${insight.inSeason ? 'is-good' : ''}">${insight.inSeason ? 'In season now' : 'Out of season'}</span>
-              <span class="nature-explorer-status-pill ${insight.recommended ? 'is-alert' : ''}">${insight.recommended ? 'Recommended' : 'Optional'}</span>
-              <span class="nature-explorer-status-pill ${bird.rarity.weight >= RARITY_META.rare.weight ? 'is-rare' : ''}">${escapeHtml(bird.rarity.label)}</span>
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Status</div>
+              <div class="nature-explorer-status-row">
+                <span class="nature-explorer-status-pill ${sighted ? 'is-good' : 'is-alert'}">${sighted ? 'Seen' : 'Not seen'}</span>
+                <span class="nature-explorer-status-pill ${insight.inSeason ? 'is-good' : ''}">${insight.inSeason ? 'In season now' : 'Out of season'}</span>
+                <span class="nature-explorer-status-pill ${insight.recommended ? 'is-alert' : ''}">${insight.recommended ? 'Recommended' : 'Optional'}</span>
+                <span class="nature-explorer-status-pill ${bird.rarity.weight >= RARITY_META.rare.weight ? 'is-rare' : ''}">${escapeHtml(bird.rarity.label)}</span>
+              </div>
             </div>
-            <div class="nature-chip-row nature-chip-row--wrap">
-              <span class="nature-chip ${bird.rarity.className}">${escapeHtml(bird.rarity.label)}</span>
-              ${seasonChips}
+
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Tags and Seasons</div>
+              <div class="nature-chip-row nature-chip-row--wrap">
+                <span class="nature-chip ${bird.rarity.className}">${escapeHtml(bird.rarity.label)}</span>
+                ${seasonChips}
+              </div>
             </div>
-            <div class="card-subtitle">${sighted ? `Sighted on ${escapeHtml(sightedDate ? sightedDate.toLocaleDateString() : '')}` : 'Not sighted yet'}</div>
-            <div class="nature-explorer-insight">Best habitat: ${escapeHtml(insight.bestHabitat)} | Best region: ${escapeHtml(insight.bestRegion)} | Quick ID cue: ${escapeHtml(idPointsFromBird(bird)[0])}</div>
-            <div class="nature-why-showing-row">${whyReasonChips}</div>
+
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Sighting Snapshot</div>
+              <div class="card-subtitle">${sighted ? `Sighted on ${escapeHtml(sightedDate ? sightedDate.toLocaleDateString() : '')}` : 'Not sighted yet'}</div>
+            </div>
+
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Field Insight</div>
+              <div class="nature-explorer-insight">Best habitat: ${escapeHtml(insight.bestHabitat)} | Best region: ${escapeHtml(insight.bestRegion)} | Quick ID cue: ${escapeHtml(idPointsFromBird(bird)[0])}</div>
+            </div>
+
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Why this card appears</div>
+              <div class="nature-why-showing-row">${whyReasonChips}</div>
+            </div>
           </div>
           <div class="adventure-card-footer">
             <div class="card-action-buttons">
@@ -5935,6 +5973,16 @@
         }
       }
 
+      const viewFullHistoryButton = event.target.closest('#birdsViewFullHistoryBtn');
+      if (viewFullHistoryButton) {
+        if (window.SightingMap && typeof window.SightingMap.open === 'function') {
+          window.SightingMap.open();
+        } else if (typeof window.showToast === 'function') {
+          window.showToast('Map history is not available yet. Reload and try again.', 'info', 2600);
+        }
+        return;
+      }
+
       const detailLogButton = event.target.closest('#birdsDetailLogSightingBtn');
       if (detailLogButton) {
         setBirdView(root, 'log');
@@ -5943,19 +5991,38 @@
         return;
       }
 
-      const detailBackToExplorerButton = event.target.closest('#birdsDetailBackToExplorerBtn');
-      if (detailBackToExplorerButton) {
-        setBirdView(root, 'explorer');
-        return;
-      }
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Status</div>
+              <div class="nature-explorer-status-row">
+                <span class="nature-explorer-status-pill ${sighted ? 'is-good' : 'is-alert'}">${sighted ? 'Seen' : 'Not seen'}</span>
+                <span class="nature-explorer-status-pill ${insight.inSeason ? 'is-good' : ''}">${insight.inSeason ? 'In season now' : 'Out of season'}</span>
+                <span class="nature-explorer-status-pill ${insight.recommended ? 'is-alert' : ''}">${insight.recommended ? 'Recommended' : 'Optional'}</span>
+                <span class="nature-explorer-status-pill ${bird.rarity.weight >= RARITY_META.rare.weight ? 'is-rare' : ''}">${escapeHtml(bird.rarity.label)}</span>
+              </div>
 
-      const removeFilterButton = event.target.closest('[data-birds-remove-filter]');
-      if (removeFilterButton) {
-        removeExplorerFilter(removeFilterButton.getAttribute('data-birds-remove-filter') || '');
+
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Tags and Seasons</div>
+              <div class="nature-chip-row nature-chip-row--wrap">
+                <span class="nature-chip ${bird.rarity.className}">${escapeHtml(bird.rarity.label)}</span>
+                ${seasonChips}
+              </div>
         renderBirdExplorerList();
-        return;
-      }
 
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Sighting Snapshot</div>
+              <div class="card-subtitle">${sighted ? `Sighted on ${escapeHtml(sightedDate ? sightedDate.toLocaleDateString() : '')}` : 'Not sighted yet'}</div>
+            </div>
+
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Field Insight</div>
+              <div class="nature-explorer-insight">Best habitat: ${escapeHtml(insight.bestHabitat)} | Best region: ${escapeHtml(insight.bestRegion)} | Quick ID cue: ${escapeHtml(idPointsFromBird(bird)[0])}</div>
+            </div>
+
+            <div class="nature-explorer-section">
+              <div class="nature-explorer-section-label">Why this card appears</div>
+              <div class="nature-why-showing-row">${whyReasonChips}</div>
+            </div>
       const emptyActionButton = event.target.closest('[data-birds-empty-action]');
       if (emptyActionButton) {
         const action = emptyActionButton.getAttribute('data-birds-empty-action') || '';

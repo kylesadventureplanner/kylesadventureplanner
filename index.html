@@ -3484,6 +3484,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-wrap: wrap;
       font-size: 14px;
     }
 
@@ -3499,6 +3500,12 @@
 
     .auth-btn:hover {
       background: #f3f4f6;
+    }
+
+    .auth-btn.iphone-toggle-btn.active {
+      background: #1e3a8a;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(30, 58, 138, 0.35);
     }
 
     /* ============================================================
@@ -7375,6 +7382,7 @@
   <div class="header-right">
     <span id="authStatus">Not signed in</span>
     <button id="refreshBtn" class="auth-btn" title="Refresh the page" onclick="location.reload()">🔄 Refresh</button>
+    <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
     <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
     <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
   </div>
@@ -7415,9 +7423,6 @@
           </button>
           <button id="cityViewerBtn" class="planner-top-btn" title="View and explore locations by city" data-tooltip="View and explore locations by city" onclick="openCityViewerWindow()">
             🌆 City Explorer
-          </button>
-          <button id="iphoneToggleBtn" class="planner-top-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
-            📱 iPhone View
           </button>
           <button id="adventureRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh adventure data from Excel" data-tooltip="Refresh adventure data from Excel" onclick="refreshAdventureData()">
             🔄 Refresh Data

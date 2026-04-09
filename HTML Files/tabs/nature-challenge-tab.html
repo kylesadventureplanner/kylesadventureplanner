@@ -29,6 +29,10 @@
           <div>
             <div class="card-title" role="heading" aria-level="3">🔎 Explore Species / Log a Sighting</div>
             <div class="card-subtitle">Browse your full bird list or open the dedicated sighting log page.</div>
+            <div class="nature-inline-load-status" aria-live="polite">
+              <span id="natureSyncHealthBadgeInline" class="nature-sync-health">Bird data: checking...</span>
+              <span id="natureSyncMetaInline" class="nature-sync-meta">Status updates will appear here while Birds loads.</span>
+            </div>
           </div>
           <div class="nature-explore-cta-actions nature-sticky-action-rail">
             <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--refresh" title="Refresh Birds data" data-tooltip="Refresh Birds data">
@@ -403,8 +407,12 @@
 
           <aside class="nature-log-panel nature-log-panel--activity">
             <div class="card-title">Recent Activity</div>
-            <div class="card-subtitle">Track your latest entries and quick logging momentum.</div>
+            <div class="card-subtitle">Shows your latest 6 entries. Use the species history card in Entry Form or the map view for broader history.</div>
             <div class="nature-progression-stats" id="birdsLogTrendStats"></div>
+            <div id="birdsLogTimelineMeta" class="nature-log-timeline-meta" aria-live="polite"></div>
+            <div class="nature-log-timeline-actions">
+              <button id="birdsViewFullHistoryBtn" type="button" class="pill-button" title="Open full map and timeline history" data-tooltip="Open full map and timeline history">View full history</button>
+            </div>
             <div id="birdsLogTimeline" class="nature-log-timeline"></div>
           </aside>
         </div>
@@ -1269,20 +1277,41 @@
 
   #natureChallengeRoot .nature-explore-cta-row {
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  #natureChallengeRoot .nature-inline-load-status {
+    display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
   }
 
   #natureChallengeRoot .nature-explore-cta-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
+    row-gap: 12px;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     flex-wrap: wrap;
     position: relative;
     z-index: 24;
     isolation: isolate;
+    width: 100%;
+  }
+
+  #natureChallengeRoot .nature-explore-cta-actions.nature-sticky-action-rail {
+    position: static;
+    top: auto;
+    background: transparent;
+    backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
   }
 
   #natureChallengeRoot .nature-explore-birds-btn {
@@ -1307,6 +1336,43 @@
     pointer-events: auto;
     box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
     transition: transform var(--birds-motion-duration) var(--birds-motion-ease), box-shadow var(--birds-motion-duration) var(--birds-motion-ease);
+    margin: 0;
+    min-width: 148px;
+  }
+
+  #natureChallengeRoot .nature-log-timeline-meta {
+    margin-top: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  #natureChallengeRoot .nature-log-timeline-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  #natureChallengeRoot .nature-explorer-section {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  #natureChallengeRoot .nature-explorer-section:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+
+  #natureChallengeRoot .nature-explorer-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
   }
 
   #natureChallengeRoot .nature-explore-birds-btn--secondary {

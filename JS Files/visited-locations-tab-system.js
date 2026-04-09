@@ -1865,19 +1865,9 @@
   }
 
   function syncCategoryFocusButtons(root) {
-    const scope = root || document.getElementById('visitedLocationsRoot');
-    const grid = scope ? scope.querySelector('#visitedCategoryGrid') : document.getElementById('visitedCategoryGrid');
-    if (!grid) return;
-
-    grid.querySelectorAll('[data-category-filter]').forEach((btn) => {
-      const btnCategory = btn.getAttribute('data-category-filter') || 'all';
-      const isActive = btnCategory === state.categoryFilter;
-      btn.classList.toggle('active', isActive);
-      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-      btn.textContent = isActive ? 'Focused' : 'Focus';
-      btn.setAttribute('title', isActive ? `Clear ${btnCategory} focus` : `Focus tracker on ${btnCategory}`);
-      btn.setAttribute('data-tooltip', isActive ? `Clear ${btnCategory} focus` : `Focus tracker on ${btnCategory}`);
-    });
+    // Focus buttons removed from category cards by UX request.
+    // Keep function as no-op to avoid changing caller flow.
+    void root;
   }
 
     function renderCategories(stats) {
@@ -1889,25 +1879,10 @@
         const visitedCount = stats.visitedByCategory[category.key] || 0;
         const totalCount = stats.totalByCategory[category.key] || 0;
         const pct = totalCount > 0 ? Math.round((visitedCount / totalCount) * 100) : 0;
-        const isActive = state.categoryFilter === category.key;
-        const focusLabel = isActive ? 'Focused' : 'Focus';
-        const focusTooltip = isActive
-          ? `Clear ${category.label} focus`
-          : `Focus tracker on ${category.label}`;
-
         return `
           <div class="visited-category-card" data-category="${category.key}">
             <div class="visited-category-top">
               <div class="visited-category-title">${category.icon} ${category.label}</div>
-              <button
-                type="button"
-                class="quick-filter-btn ${isActive ? 'active' : ''}"
-                data-category-filter="${category.key}"
-                aria-pressed="${isActive ? 'true' : 'false'}"
-                title="${escapeHtml(focusTooltip)}"
-                data-tooltip="${escapeHtml(focusTooltip)}"
-                style="pointer-events: auto !important; position: relative !important; z-index: 2501 !important;"
-              >${focusLabel}</button>
             </div>
             <div class="visited-category-meta">${visitedCount} / ${totalCount || 0} visited</div>
             <div class="visited-progress-track"><div class="visited-progress-fill" style="width:${pct}%;"></div></div>
@@ -1915,7 +1890,7 @@
         `;
       }).join('');
 
-      logVisitedDiagnostics(`🎨 renderCategories() rendered ${categoryCount} category cards with Focus buttons`);
+      logVisitedDiagnostics(`🎨 renderCategories() rendered ${categoryCount} category cards`);
     }
 
   function maybeCelebrateChallengeCompletions(challengeProgress) {
