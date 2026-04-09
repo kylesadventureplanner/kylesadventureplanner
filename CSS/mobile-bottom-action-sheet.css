@@ -1,0 +1,521 @@
+/* ============================================================
+   MOBILE BOTTOM ACTION SHEET
+   ============================================================
+   Replaces sticky top bar on mobile for better viewport usage.
+   Provides thumb-friendly action buttons at bottom of screen.
+*/
+
+@media (max-width: 768px) {
+  /* Reclaim top space - disable sticky top bar */
+  .planner-top-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 6px;
+    padding: 8px;
+    background: white;
+    border-top: 1px solid #e5e7eb;
+    z-index: 100;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+    max-width: 100%;
+    top: auto;
+    margin: 0;
+  }
+
+  /* Prevent content from hiding under action sheet */
+  body {
+    padding-bottom: 70px;
+  }
+
+  /* Optimize buttons for mobile thumb zone */
+  .planner-top-actions button {
+    padding: 10px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s;
+    line-height: 1.2;
+    word-break: break-word;
+    text-align: center;
+  }
+
+  .planner-top-actions button:active {
+    background: #f3f4f6;
+    transform: scale(0.95);
+  }
+
+  .planner-top-actions button:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+  }
+
+  /* Emoji/icon on first line */
+  .planner-top-actions button span:first-child {
+    font-size: 18px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  /* Text label on second line */
+  .planner-top-actions button span:nth-child(2) {
+    font-size: 10px;
+    display: block;
+  }
+
+  /* Primary action emphasis */
+  .planner-top-actions button.primary,
+  .planner-top-actions button.edit-mode-btn {
+    background: #1d4ed8;
+    color: white;
+    border-color: #1e40af;
+  }
+
+  .planner-top-actions button.primary:hover,
+  .planner-top-actions button.edit-mode-btn:hover {
+    background: #1e40af;
+    border-color: #1e3a8a;
+  }
+
+  /* Disabled state */
+  .planner-top-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* ============================================================
+   MOBILE TOUCH-FRIENDLY CARD BUTTONS
+   ============================================================
+   Expand hit targets and spacing on mobile cards.
+*/
+
+@media (max-width: 768px) {
+  .card button,
+  .card a,
+  .adventure-card button,
+  .nature-challenge-card button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 12px 14px;
+    font-size: 13px;
+    border-radius: 6px;
+    gap: 6px;
+  }
+
+  .adventure-card,
+  .adventure-planner-card,
+  .nature-challenge-card,
+  .card {
+    padding: 14px;
+  }
+
+  .adventure-card-actions,
+  .card-actions,
+  .nature-challenge-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .adventure-card-actions button,
+  .card-actions button,
+  .nature-challenge-actions button {
+    flex: 1;
+    min-width: 100px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE GRID ADJUSTMENTS FOR MOBILE
+   ============================================================
+   Adjust column counts and gaps for smaller screens.
+*/
+
+@media (max-width: 1024px) {
+  .adventure-grid,
+  .nature-challenge-grid,
+  .bike-trail-grid,
+  .nature-badge-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .adventure-grid,
+  .nature-challenge-grid,
+  .bike-trail-grid,
+  .nature-badge-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+
+  /* Single column on very small screens */
+  @media (max-width: 480px) {
+    .adventure-grid,
+    .nature-challenge-grid {
+      grid-template-columns: 1fr;
+    }
+
+    /* Allow 2-column in compact mode */
+    .nature-challenge-grid.compact {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .bike-trail-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .nature-badge-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+  }
+}
+
+/* ============================================================
+   MOBILE PAGINATION & FILTERING
+   ============================================================
+   Compact filter/sort controls on mobile.
+*/
+
+@media (max-width: 768px) {
+  .quick-filters-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .quick-filter-btn {
+    padding: 8px 10px;
+    font-size: 12px;
+    min-height: 40px;
+    border-radius: 6px;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .control-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Compact sort/view controls */
+  .browse-controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .sort-controls,
+  .view-controls {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+}
+
+/* ============================================================
+   MOBILE-OPTIMIZED MODALS
+   ============================================================
+   Bottom sheet style on mobile instead of centered overlay.
+*/
+
+@media (max-width: 768px) {
+  .modal-backdrop {
+    align-items: flex-end;
+    justify-content: stretch;
+    background: rgba(15, 23, 42, 0.3);
+  }
+
+  .modal {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .modal-header {
+    flex-shrink: 0;
+    padding: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .modal-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    min-width: 36px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-footer {
+    flex-shrink: 0;
+    padding: 16px;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .modal-footer button {
+    flex: 1;
+    min-width: 80px;
+    min-height: 44px;
+  }
+}
+
+/* ============================================================
+   KEYBOARD-AWARE INPUT HANDLING
+   ============================================================
+   Prevent iOS zoom and improve focus behavior.
+*/
+
+@media (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Prevents iOS auto-zoom on focus */
+    border-radius: 6px;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    scroll-behavior: smooth;
+    outline: 2px solid #3b82f6;
+    outline-offset: -1px;
+  }
+
+  /* Improve visible focus for accessibility */
+  .form-group {
+    margin-bottom: 12px;
+  }
+
+  .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    box-sizing: border-box;
+  }
+}
+
+/* ============================================================
+   MOBILE TYPOGRAPHY & SPACING
+   ============================================================
+   Optimize readability and touch interaction on small screens.
+*/
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  h2 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .card-subtitle {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  p {
+    line-height: 1.6;
+    margin: 0 0 10px;
+  }
+
+  /* Improve list readability */
+  li {
+    margin-bottom: 6px;
+    line-height: 1.6;
+  }
+}
+
+/* ============================================================
+   MOBILE TABLE OPTIMIZATION
+   ============================================================
+   Convert wide tables to card layout on mobile.
+*/
+
+@media (max-width: 768px) {
+  table {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  tbody tr {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: white;
+  }
+
+  tbody td {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+  }
+
+  tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    min-width: 100px;
+    color: #6b7280;
+    font-size: 12px;
+  }
+}
+
+/* ============================================================
+   ACCESSIBILITY & SAFE AREAS
+   ============================================================
+   Support notched devices and ensure readable text size.
+*/
+
+@media (max-width: 768px) {
+  body {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: max(70px, calc(70px + env(safe-area-inset-bottom)));
+  }
+
+  .app-container {
+    padding: 12px;
+  }
+
+  /* Ensure minimum tap target sizes */
+  button,
+  a[href],
+  input[type="button"],
+  input[type="submit"],
+  [role="button"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-container {
+    padding: 8px;
+  }
+
+  body {
+    padding-bottom: max(70px, calc(70px + env(safe-area-inset-bottom)));
+  }
+
+  .planner-top-actions {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .planner-top-actions button span:nth-child(2) {
+    display: none; /* Hide text labels on very small screens */
+  }
+}
+
+/* ============================================================
+   PERFORMANCE: REDUCE ANIMATIONS ON MOBILE
+   ============================================================
+   Honor prefers-reduced-motion and disable heavy animations.
+*/
+
+@media (max-width: 768px) {
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Disable expensive animations by default on mobile */
+  @media (prefers-reduced-motion: no-preference) {
+    button {
+      transition: all 0.15s ease; /* Shorter transitions */
+    }
+  }
+}
+
