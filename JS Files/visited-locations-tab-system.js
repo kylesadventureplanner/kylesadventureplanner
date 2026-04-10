@@ -2433,9 +2433,107 @@
       logVisitedDiagnostics(`✅ ensureButtonsResponsive() fixed ${buttons.length} buttons (${categoryFilterButtons.length} category filters)`);
     }
 
+    function ensureVisitedSubtabCtaButtons(root) {
+      if (!root) return { total: 0, present: 0, added: 0, missing: [] };
+      const requiredActions = [
+        'find-outdoor-adventure',
+        'find-entertainment-spot',
+        'find-food-drink-spot',
+        'find-retail-location',
+        'find-bike-trail'
+      ];
+      let addedCount = 0;
+
+      const ensureActionRow = (paneSelector) => {
+        const pane = root.querySelector(paneSelector);
+        if (!pane) return null;
+        let row = pane.querySelector('.visited-subtab-action-row');
+        if (row) return row;
+        row = document.createElement('div');
+        row.className = 'visited-subtab-action-row';
+        row.style.marginTop = '12px';
+        row.style.display = 'flex';
+        row.style.gap = '8px';
+        row.style.flexWrap = 'wrap';
+        const card = pane.querySelector('.card');
+        if (card) {
+          card.appendChild(row);
+        }
+        return row;
+      };
+
+      const ensureButton = (container, action, label, title) => {
+        if (!container) return false;
+        if (container.querySelector(`[data-visited-subtab-action="${action}"]`)) return false;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pill-button';
+        btn.setAttribute('data-visited-subtab-action', action);
+        btn.setAttribute('title', title);
+        btn.setAttribute('data-tooltip', title);
+        btn.textContent = label;
+        container.appendChild(btn);
+        addedCount += 1;
+        return true;
+      };
+
+      const outdoorsRow = root.querySelector('#visitedProgressPane-outdoors .visited-suggestions-cta-row');
+      ensureButton(outdoorsRow, 'find-outdoor-adventure', 'Find an Outdoor Adventures', 'Find an Outdoor Adventures');
+
+      const entertainmentRow = ensureActionRow('#visitedProgressPane-entertainment');
+      ensureButton(entertainmentRow, 'find-entertainment-spot', 'Find an Entertainment Spot', 'Find an Entertainment Spot');
+
+      const foodDrinkRow = ensureActionRow('#visitedProgressPane-food-drink');
+      ensureButton(foodDrinkRow, 'find-food-drink-spot', 'Find a Food and Drink Spot', 'Find a Food and Drink Spot');
+
+      const retailRow = ensureActionRow('#visitedProgressPane-retail');
+      ensureButton(retailRow, 'find-retail-location', 'Find a Retail Location', 'Find a Retail Location');
+
+      const bikePane = root.querySelector('#visitedProgressPane-bike-trails');
+      const bikeRow = bikePane
+        ? (bikePane.querySelector('.visited-subtab-action-row') || bikePane.querySelector('.pill-button')?.parentElement || ensureActionRow('#visitedProgressPane-bike-trails'))
+        : null;
+      ensureButton(bikeRow, 'find-bike-trail', 'Find a Bike Trail', 'Find a Bike Trail');
+
+      const present = requiredActions.reduce((count, action) => {
+        return count + (root.querySelector(`[data-visited-subtab-action="${action}"]`) ? 1 : 0);
+      }, 0);
+      const missing = requiredActions.filter((action) => !root.querySelector(`[data-visited-subtab-action="${action}"]`));
+      return {
+        total: requiredActions.length,
+        present,
+        added: addedCount,
+        missing
+      };
+    }
+
+    function renderVisitedCtaInjectorStatus(root, report) {
+      if (!root) return;
+      const chip = root.querySelector('#visitedCtaInjectorStatus');
+      if (!chip) return;
+
+      const data = report || { total: 0, present: 0, added: 0, missing: [] };
+      chip.classList.remove('ok', 'warn');
+
+      if (data.total > 0 && data.present === data.total) {
+        chip.classList.add('ok');
+        chip.textContent = data.added > 0
+          ? `CTA buttons: synced (+${data.added} recovered)`
+          : 'CTA buttons: synced';
+        return;
+      }
+
+      chip.classList.add('warn');
+      chip.textContent = `CTA buttons: partial (${data.present}/${data.total})`;
+    }
+
     function bindControls() {
       const root = document.getElementById('visitedLocationsRoot');
       if (!root) return;
+
+      // Fail-safe for stale cached tab markup: ensure requested CTA buttons always exist.
+      const ctaSyncReport = ensureVisitedSubtabCtaButtons(root);
+      renderVisitedCtaInjectorStatus(root, ctaSyncReport);
 
       // PREVENT DUPLICATE EVENT LISTENERS: Use a stronger check
       if (root.dataset.bound === '1' && root.__visitedClickHandler) {
@@ -2484,6 +2582,8 @@
         if (hasButtonChanges) {
           // Use requestAnimationFrame to batch multiple mutations
           requestAnimationFrame(() => {
+            const mutationCtaSyncReport = ensureVisitedSubtabCtaButtons(root);
+            renderVisitedCtaInjectorStatus(root, mutationCtaSyncReport);
             ensureButtonsResponsive();
           });
         }

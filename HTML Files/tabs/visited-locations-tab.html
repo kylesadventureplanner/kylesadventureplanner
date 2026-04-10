@@ -16,6 +16,7 @@
         <option value="hot">🔥 Hot</option>
         <option value="cloudy">☁️ Cloudy</option>
       </select>
+      <span id="visitedCtaInjectorStatus" class="visited-cta-injector-chip" role="status" aria-live="polite">CTA buttons: checking...</span>
     </div>
   </div>
 
@@ -315,6 +316,31 @@
     border-radius: 999px;
     padding: 8px 12px;
     white-space: nowrap;
+  }
+
+  #visitedLocationsRoot .visited-cta-injector-chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid #d1d5db;
+    background: #f8fafc;
+    color: #334155;
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  #visitedLocationsRoot .visited-cta-injector-chip.ok {
+    border-color: #86efac;
+    background: #ecfdf5;
+    color: #166534;
+  }
+
+  #visitedLocationsRoot .visited-cta-injector-chip.warn {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #991b1b;
   }
 
   #visitedLocationsRoot .visited-tracker-quick-filters {
