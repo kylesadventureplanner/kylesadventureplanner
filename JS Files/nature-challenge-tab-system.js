@@ -25,6 +25,8 @@
   const BIRD_SIGHTINGS_REQUIRED_COLUMNS = ['event_id', 'user_id', 'device_id', 'species_status_key', 'species_id', 'canonical_id', 'date_observed', 'count', 'is_deleted', 'created_at', 'updated_at'];
   const BIRD_USER_STATE_REQUIRED_COLUMNS = ['state_id', 'user_id', 'species_status_key', 'species_id', 'canonical_id', 'is_favorite', 'created_at', 'updated_at'];
   const EXCEL_FILE_CANDIDATES = [
+    'Copilot_Apps/Kyles_Adventure_Finder/Nature_by_County.xlsx',
+    'Nature_by_County.xlsx',
     'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx',
     'Nature_records.xlsx'
   ];
@@ -341,7 +343,13 @@
         families: [],
         sightings: {},
         favorites: [],
-        sightingLog: []
+        sightingLog: [],
+        diagnostics: {
+          authState: 'checking',
+          workbookPath: '',
+          speciesProbe: 'waiting',
+          syncProbe: 'waiting'
+        }
       };
       return acc;
     }, {})
@@ -2648,6 +2656,13 @@
     subState.sightings = loadSubTabSightings(subTabKey);
     subState.favorites = loadSubTabFavorites(subTabKey);
     subState.sightingLog = loadSubTabSightingLog(subTabKey);
+    subState.diagnostics = {
+      authState: window.accessToken ? 'signed in' : 'sign-in required',
+      workbookPath: subState.workbookPath || '',
+      speciesProbe: window.accessToken ? `probing ${cfg.speciesTableName}...` : 'sign-in required',
+      syncProbe: window.accessToken ? `probing ${cfg.sightingsTableName} / ${cfg.userStateTableName}...` : 'sign-in required'
+    };
+    renderConfiguredSubTabDiagnostics(subTabKey);
 
     const tableName = cfg.speciesTableName;
     const fileCandidates = Array.from(new Set(EXCEL_FILE_CANDIDATES));
@@ -2687,6 +2702,14 @@
           subState.source = `Excel table '${tableName}' in ${filePath}`;
           subState.workbookPath = filePath;
           subState.loaded = true;
+          subState.diagnostics = {
+            authState: 'signed in',
+            workbookPath: filePath,
+            speciesProbe: `ready (${cfg.speciesTableName})`,
+            syncProbe: syncWorkbookPath
+              ? `ready (${cfg.sightingsTableName} / ${cfg.userStateTableName})`
+              : `not found (${cfg.sightingsTableName} / ${cfg.userStateTableName})`
+          };
           loaded = true;
           break;
         } catch (error) {
@@ -2699,7 +2722,24 @@
       }
     } catch (error) {
       subState.loaded = false;
-      subState.error = String(error && error.message ? error.message : error || 'Unable to load category data.');
+      const rawError = String(error && error.message ? error.message : error || 'Unable to load category data.');
+      if (!window.accessToken) {
+        subState.error = `${cfg.label} data requires sign-in. Use Sign In, then refresh this tab.`;
+        subState.diagnostics = {
+          authState: 'sign-in required',
+          workbookPath: '',
+          speciesProbe: 'blocked until sign-in',
+          syncProbe: 'blocked until sign-in'
+        };
+      } else {
+        subState.error = `${cfg.label} data load failed (${cfg.speciesTableName}). ${rawError}`;
+        subState.diagnostics = {
+          authState: 'signed in',
+          workbookPath: subState.workbookPath || '',
+          speciesProbe: `failed (${cfg.speciesTableName})`,
+          syncProbe: `check ${cfg.sightingsTableName} / ${cfg.userStateTableName}`
+        };
+      }
       subState.birds = [];
       subState.families = [];
       subState.sightings = loadSubTabSightings(subTabKey);
@@ -2707,6 +2747,7 @@
       subState.sightingLog = loadSubTabSightingLog(subTabKey);
     } finally {
       subState.loading = false;
+      renderConfiguredSubTabDiagnostics(subTabKey);
     }
   }
 
@@ -2762,6 +2803,82 @@
         <div class="nature-badge-card ${favoriteCount >= 5 ? 'unlocked' : ''}"><div class="nature-badge-title">Favorites Curator</div><div class="nature-badge-desc">Mark 5 favorite ${escapeHtml(cfg.label.toLowerCase())}.</div></div>
       `;
     }
+
+    renderConfiguredSubTabDiagnostics(subTabKey);
+  }
+
+  function renderConfiguredSubTabDiagnostics(subTabKey) {
+    const cfg = getSubTabConfig(subTabKey);
+    const subState = state.subTabData[subTabKey];
+    const row = document.getElementById(`${subTabKey}DiagnosticsRow`);
+    if (!cfg || !subState || !row) return;
+
+    const diagnostics = subState.diagnostics || {};
+    const authText = diagnostics.authState || (window.accessToken ? 'signed in' : 'sign-in required');
+    const workbookText = diagnostics.workbookPath || 'not selected';
+    const speciesText = diagnostics.speciesProbe || 'waiting';
+    const syncText = diagnostics.syncProbe || 'waiting';
+
+    const authClass = /signed in|authenticated/i.test(authText) ? 'ok' : 'warn';
+    const speciesClass = /ready|loaded|found|ok/i.test(speciesText) ? 'ok' : /failed|missing|sign-in/i.test(speciesText) ? 'warn' : '';
+    const syncClass = /ready|found|ok/i.test(syncText) ? 'ok' : /failed|missing|sign-in/i.test(syncText) ? 'warn' : '';
+
+    row.innerHTML = `
+      <span class="nature-subtab-diagnostics-pill ${authClass}"><strong>Auth</strong> ${escapeHtml(authText)}</span>
+      <span class="nature-subtab-diagnostics-pill"><strong>Workbook</strong> ${escapeHtml(workbookText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${speciesClass}"><strong>Species</strong> ${escapeHtml(speciesText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${syncClass}"><strong>Sightings/User State</strong> ${escapeHtml(syncText)}</span>
+    `;
+  }
+
+  function renderBirdSubtabDiagnostics() {
+    const row = document.getElementById('birdsDiagnosticsRow');
+    if (!row) return;
+
+    const signedIn = Boolean(window.accessToken && getBirdSyncUserId());
+    const authText = signedIn ? 'signed in' : 'local only';
+    const authClass = signedIn ? 'ok' : 'warn';
+
+    const workbookParts = [];
+    if (state.birdDataWorkbookPath) workbookParts.push(`data: ${state.birdDataWorkbookPath}`);
+    if (state.birdSyncWorkbookPath) workbookParts.push(`sync: ${state.birdSyncWorkbookPath}`);
+    const workbookText = workbookParts.length ? workbookParts.join(' | ') : 'not resolved';
+
+    let speciesText = 'waiting';
+    let speciesClass = '';
+    if (state.birdsLoading) {
+      speciesText = 'loading dataset';
+    } else if (state.birdsLoaded && state.birdsError) {
+      speciesText = 'fallback in use';
+      speciesClass = 'warn';
+    } else if (state.birdsLoaded) {
+      speciesText = `ready (${state.birds.length} species)`;
+      speciesClass = 'ok';
+    } else if (state.birdsError) {
+      speciesText = 'unavailable';
+      speciesClass = 'warn';
+    }
+
+    let syncText = 'waiting';
+    let syncClass = '';
+    const pending = Array.isArray(state.syncQueue) ? state.syncQueue.length : 0;
+    if (!signedIn) {
+      syncText = 'local only';
+      syncClass = 'warn';
+    } else if (state.syncLastError) {
+      syncText = `issue (${state.syncLastErrorCode || 'sync'})`;
+      syncClass = 'warn';
+    } else if (state.birdSyncWorkbookPath) {
+      syncText = pending > 0 ? `ready (${pending} queued)` : 'ready';
+      syncClass = 'ok';
+    }
+
+    row.innerHTML = `
+      <span class="nature-subtab-diagnostics-pill ${authClass}"><strong>Auth</strong> ${escapeHtml(authText)}</span>
+      <span class="nature-subtab-diagnostics-pill"><strong>Workbook</strong> ${escapeHtml(workbookText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${speciesClass}"><strong>Species</strong> ${escapeHtml(speciesText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${syncClass}"><strong>Sightings/User State</strong> ${escapeHtml(syncText)}</span>
+    `;
   }
 
   function getBirdFileCandidates() {
@@ -2897,6 +3014,46 @@
       failingTableNames: row.failingTableNames.join(', ') || '(none)'
     })));
     console.log('Full diagnostics object:', diagnostics);
+    console.groupEnd();
+
+    return diagnostics;
+  }
+
+  async function runNatureWorkbookDiagnostics(subTabKey) {
+    const key = String(subTabKey || state.activeSubTab || 'birds').trim().toLowerCase();
+    const cfg = getSubTabConfig(key);
+    if (!cfg) {
+      const payload = {
+        ok: false,
+        subTabKey: key,
+        reason: 'Unsupported or non-config-driven subtab.'
+      };
+      console.warn('🧪 Nature workbook diagnostics:', payload);
+      return payload;
+    }
+
+    const diagnostics = {
+      generatedAt: toIsoNow(),
+      subTabKey: key,
+      label: cfg.label,
+      signedIn: Boolean(window.accessToken),
+      speciesTableName: cfg.speciesTableName,
+      syncTableNames: [cfg.sightingsTableName, cfg.userStateTableName],
+      speciesProbe: null,
+      syncProbe: null
+    };
+
+    diagnostics.speciesProbe = await probeWorkbookCandidates(EXCEL_FILE_CANDIDATES, [cfg.speciesTableName]);
+    diagnostics.syncProbe = await probeWorkbookCandidates(EXCEL_SYNC_FILE_CANDIDATES, [cfg.sightingsTableName, cfg.userStateTableName]);
+
+    window.__natureWorkbookDiagnosticsLast = diagnostics;
+    console.groupCollapsed(`🧪 Nature workbook diagnostics (${cfg.label})`);
+    console.log('Summary:', {
+      signedIn: diagnostics.signedIn,
+      speciesWorkbook: diagnostics.speciesProbe && diagnostics.speciesProbe.winningWorkbookPath ? diagnostics.speciesProbe.winningWorkbookPath : '(none)',
+      syncWorkbook: diagnostics.syncProbe && diagnostics.syncProbe.winningWorkbookPath ? diagnostics.syncProbe.winningWorkbookPath : '(none)'
+    });
+    console.log('Diagnostics:', diagnostics);
     console.groupEnd();
 
     return diagnostics;
@@ -3684,6 +3841,7 @@
     `;
 
     const conflicts = Array.isArray(state.syncConflicts) ? state.syncConflicts : [];
+    renderBirdSubtabDiagnostics();
     if (!conflicts.length) {
       conflictsPanel.innerHTML = '<div class="nature-sync-conflict-empty">No sync conflicts detected.</div>';
       return;
@@ -4242,6 +4400,7 @@
     const updated = state.lastLoadedAt ? new Date(state.lastLoadedAt).toLocaleString() : '--';
     const warning = state.birdsError ? ` | ${state.birdsError}` : '';
     setStatus(badgeText, `${state.birds.length} species | ${source} | Updated ${updated}${warning}`, badgeClass);
+    renderBirdSubtabDiagnostics();
   }
 
   function renderBirdLegend(stats) {
@@ -5784,6 +5943,7 @@
   function renderBirds() {
     if (!state.birdsLoaded) {
       renderBirdLoadingSkeletons();
+      renderBirdSubtabDiagnostics();
       return;
     }
     const stats = getBirdStats();
@@ -5858,6 +6018,7 @@
       completedCount: overviewQuests.filter((step) => step.completed).length
     }, stats);
     renderBirdChallenges(overviewChallenges);
+    renderBirdSubtabDiagnostics();
     renderBirdBadges(overviewBadges);
     renderBirdCollectionView();
     renderBirdExplorerList();
@@ -7274,6 +7435,7 @@
   };
   window.getRecentBirdClickTraceSnapshot = getRecentBirdClickTraceSnapshot;
   window.runBirdWorkbookDiagnostics = runBirdWorkbookDiagnostics;
+  window.runNatureWorkbookDiagnostics = runNatureWorkbookDiagnostics;
   window.BIRD_PROGRESSION_SPEC = BIRD_PROGRESSION_SPEC;
   window.setBirdClickDiagnosticsEnabled = function(enabled) {
     try {

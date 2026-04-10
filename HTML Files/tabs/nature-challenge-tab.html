@@ -165,6 +165,7 @@
           </div>
         </div>
         <div id="birdsProgressSnapshot" class="nature-progress-note">Bird progress will update once the birds dataset loads.</div>
+``        <div id="birdsDiagnosticsRow" class="nature-subtab-diagnostics-row" aria-live="polite"></div>
       </div>
 
       <div class="nature-overview-controls-row">
@@ -619,6 +620,7 @@
           <div class="nature-stat-sub">out of <span id="mammalsTotalSpecies">0</span> species</div>
         </div>
       </div>
+      <div id="mammalsDiagnosticsRow" class="nature-subtab-diagnostics-row" aria-live="polite"></div>
     </div>
 
     <!-- Sightings by Family -->
@@ -666,6 +668,7 @@
           <div class="nature-stat-sub">out of <span id="reptilesTotalSpecies">0</span> species</div>
         </div>
       </div>
+      <div id="reptilesDiagnosticsRow" class="nature-subtab-diagnostics-row" aria-live="polite"></div>
     </div>
 
     <!-- Sightings by Family -->
@@ -713,6 +716,7 @@
           <div class="nature-stat-sub">out of <span id="amphibiansTotalSpecies">0</span> species</div>
         </div>
       </div>
+      <div id="amphibiansDiagnosticsRow" class="nature-subtab-diagnostics-row" aria-live="polite"></div>
     </div>
 
     <!-- Sightings by Family -->
@@ -760,6 +764,7 @@
           <div class="nature-stat-sub">out of <span id="insectsTotalSpecies">0</span> species</div>
         </div>
       </div>
+      <div id="insectsDiagnosticsRow" class="nature-subtab-diagnostics-row" aria-live="polite"></div>
     </div>
 
     <!-- Sightings by Family -->
@@ -807,6 +812,7 @@
           <div class="nature-stat-sub">out of <span id="arachnidsTotalSpecies">0</span> species</div>
         </div>
       </div>
+      <div id="arachnidsDiagnosticsRow" class="nature-subtab-diagnostics-row" aria-live="polite"></div>
     </div>
 
     <!-- Sightings by Family -->
@@ -854,6 +860,7 @@
           <div class="nature-stat-sub">out of <span id="wildflowersTotalSpecies">0</span> species</div>
         </div>
       </div>
+      <div id="wildflowersDiagnosticsRow" class="nature-subtab-diagnostics-row" aria-live="polite"></div>
     </div>
 
     <!-- Sightings by Family -->
@@ -1161,6 +1168,44 @@
     border-radius: 999px;
     padding: 8px 12px;
     white-space: nowrap;
+  }
+
+  #natureChallengeRoot .nature-subtab-diagnostics-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  #natureChallengeRoot .nature-subtab-diagnostics-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #334155;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 7px 10px;
+    white-space: nowrap;
+  }
+
+  #natureChallengeRoot .nature-subtab-diagnostics-pill strong {
+    color: #0f172a;
+    font-weight: 800;
+  }
+
+  #natureChallengeRoot .nature-subtab-diagnostics-pill.ok {
+    border-color: #86efac;
+    background: #ecfdf5;
+    color: #166534;
+  }
+
+  #natureChallengeRoot .nature-subtab-diagnostics-pill.warn {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #991b1b;
   }
 
   /* Category Progression Stats */
