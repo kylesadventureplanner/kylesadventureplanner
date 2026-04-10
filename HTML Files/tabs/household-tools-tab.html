@@ -1,0 +1,318 @@
+<!-- HOUSEHOLD TOOLS TAB CONTENT -->
+<!-- Consolidates recipes, garden planner, and budget utilities into one tab -->
+
+<div id="householdToolsRoot">
+  <div class="household-tools-header">
+    <h1>Household Tools</h1>
+    <p class="household-tools-subtitle">Keep your kitchen, garden, and budget planning in one workflow.</p>
+  </div>
+
+  <div class="household-tools-subtabs" role="tablist" aria-label="Household tools sections">
+    <button id="householdToolsTab-recipes" type="button" class="household-tools-subtab active" role="tab" aria-controls="householdToolsPane-recipes" aria-selected="true" data-household-subtab="recipes">👨‍🍳 Recipes</button>
+    <button id="householdToolsTab-garden" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-garden" aria-selected="false" data-household-subtab="garden">🌱 Garden Planner</button>
+    <button id="householdToolsTab-budget" type="button" class="household-tools-subtab" role="tab" aria-controls="householdToolsPane-budget" aria-selected="false" data-household-subtab="budget">💰 Budget</button>
+  </div>
+
+  <div id="householdToolsPane-recipes" class="household-tools-pane is-active" data-household-pane="recipes" role="tabpanel" aria-labelledby="householdToolsTab-recipes">
+    <div class="tab-placeholder">
+      <div class="tab-placeholder-icon">👨‍🍳</div>
+      <div class="tab-placeholder-text">Recipes</div>
+      <div class="tab-placeholder-subtext">Browse and manage your favorite recipes.</div>
+    </div>
+  </div>
+
+  <div id="householdToolsPane-garden" class="household-tools-pane" data-household-pane="garden" role="tabpanel" aria-labelledby="householdToolsTab-garden" hidden>
+    <div class="tab-placeholder">
+      <div class="tab-placeholder-icon">🌱</div>
+      <div class="tab-placeholder-text">Garden Planner</div>
+      <div class="tab-placeholder-subtext">Plan and organize your garden activities.</div>
+    </div>
+  </div>
+
+  <div id="householdToolsPane-budget" class="household-tools-pane" data-household-pane="budget" role="tabpanel" aria-labelledby="householdToolsTab-budget" hidden>
+    <div class="tab-placeholder">
+      <div class="tab-placeholder-icon">💰</div>
+      <div class="tab-placeholder-text">Budget Planner</div>
+      <div class="tab-placeholder-subtext">Track and manage your household and adventure budget.</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #householdToolsRoot .household-tools-header {
+    margin-bottom: 12px;
+  }
+
+  #householdToolsRoot .household-tools-header h1 {
+    margin: 0 0 6px;
+  }
+
+  #householdToolsRoot .household-tools-subtitle {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  #householdToolsRoot .household-tools-subtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  #householdToolsRoot .household-tools-subtab {
+    border: 1px solid #93c5fd;
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+
+  #householdToolsRoot .household-tools-subtab:hover {
+    border-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  }
+
+  #householdToolsRoot .household-tools-subtab.active {
+    border-color: #1d4ed8;
+    background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.24);
+  }
+</style>
+
+<script>
+  (function () {
+    const HOUSEHOLD_SUBTAB_KEYS = ['recipes', 'garden', 'budget'];
+    const state = { activeSubTab: 'recipes' };
+
+    function getHouseholdSubTabDockElements() {
+      return {
+        row: document.getElementById('appSubTabsRow'),
+        cutout: document.getElementById('appSubTabsCutout'),
+        slot: document.getElementById('appSubTabsSlot')
+      };
+    }
+
+    function getHouseholdSubTabsElement(root) {
+      const docked = document.querySelector('#appSubTabsSlot .household-tools-subtabs');
+      if (docked) return docked;
+      return root ? root.querySelector('.household-tools-subtabs') : null;
+    }
+
+    function getHouseholdSubTabButtons(root) {
+      const subTabs = getHouseholdSubTabsElement(root);
+      return subTabs ? Array.from(subTabs.querySelectorAll('[data-household-subtab]')) : [];
+    }
+
+    function updateHouseholdSubTabRowVisibility(row, slot) {
+      if (!row || !slot) return;
+      const hasVisibleChild = Array.from(slot.children || []).some((child) => !child.hidden && child.getAttribute('aria-hidden') !== 'true');
+      row.hidden = !hasVisibleChild;
+      row.setAttribute('aria-hidden', hasVisibleChild ? 'false' : 'true');
+    }
+
+    function positionHouseholdSubTabDock() {
+      const elements = getHouseholdSubTabDockElements();
+      const row = elements.row;
+      const cutout = elements.cutout;
+      if (!row || !cutout || row.hidden) return;
+
+      const subTabs = document.querySelector('#appSubTabsSlot .household-tools-subtabs');
+      if (!subTabs || subTabs.hidden || subTabs.getAttribute('aria-hidden') === 'true') return;
+
+      const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab="household-tools"]');
+      if (!activePrimaryTab) return;
+
+      const rowRect = row.getBoundingClientRect();
+      const activeRect = activePrimaryTab.getBoundingClientRect();
+      const cutoutWidth = Math.min(cutout.offsetWidth || 0, Math.max(rowRect.width - 8, 0));
+
+      if (!rowRect.width || !cutoutWidth) {
+        cutout.style.left = '50%';
+        cutout.style.setProperty('--app-subtabs-pointer-left', '50%');
+        return;
+      }
+
+      const preferredCenter = (activeRect.left - rowRect.left) + (activeRect.width / 2);
+      const padding = 8;
+      const minCenter = cutoutWidth / 2 + padding;
+      const maxCenter = Math.max(rowRect.width - (cutoutWidth / 2) - padding, minCenter);
+      const clampedCenter = Math.min(Math.max(preferredCenter, minCenter), maxCenter);
+      cutout.style.left = `${clampedCenter}px`;
+
+      const pointerMin = 14;
+      const pointerMax = Math.max(cutoutWidth - 14, pointerMin);
+      const pointerLeft = Math.min(
+        Math.max((preferredCenter - clampedCenter) + (cutoutWidth / 2), pointerMin),
+        pointerMax
+      );
+      cutout.style.setProperty('--app-subtabs-pointer-left', `${pointerLeft}px`);
+    }
+
+    function bindHouseholdSubTabDock(root, subTabs) {
+      if (!root || !subTabs || subTabs.dataset.householdDockBound === '1') return;
+      subTabs.dataset.householdDockBound = '1';
+
+      subTabs.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-household-subtab]');
+        if (!button || !subTabs.contains(button)) return;
+        event.preventDefault();
+        setActiveHouseholdSubTab(root, button.getAttribute('data-household-subtab'));
+      });
+
+      subTabs.addEventListener('keydown', function (event) {
+        const button = event.target.closest('[data-household-subtab]');
+        if (!button || !subTabs.contains(button)) return;
+        const buttons = getHouseholdSubTabButtons(root);
+        if (!buttons.length) return;
+
+        const currentIndex = buttons.indexOf(button);
+        if (currentIndex < 0) return;
+
+        let nextIndex = currentIndex;
+        switch (event.key) {
+          case 'ArrowRight':
+          case 'ArrowDown':
+            nextIndex = (currentIndex + 1) % buttons.length;
+            break;
+          case 'ArrowLeft':
+          case 'ArrowUp':
+            nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+            break;
+          case 'Home':
+            nextIndex = 0;
+            break;
+          case 'End':
+            nextIndex = buttons.length - 1;
+            break;
+          default:
+            return;
+        }
+
+        event.preventDefault();
+        const nextButton = buttons[nextIndex];
+        if (!nextButton) return;
+        setActiveHouseholdSubTab(root, nextButton.getAttribute('data-household-subtab'));
+        nextButton.focus();
+      });
+    }
+
+    function syncHouseholdSubTabDock(root) {
+      const elements = getHouseholdSubTabDockElements();
+      const row = elements.row;
+      const slot = elements.slot;
+      if (!row || !slot || !root) return;
+
+      const subTabs = getHouseholdSubTabsElement(root);
+      if (!subTabs) {
+        updateHouseholdSubTabRowVisibility(row, slot);
+        return;
+      }
+
+      const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab]');
+      const activeTabId = activePrimaryTab ? String(activePrimaryTab.getAttribute('data-tab') || '') : '';
+      const shouldShow = activeTabId === 'household-tools';
+
+      if (shouldShow && !slot.contains(subTabs)) {
+        slot.appendChild(subTabs);
+      }
+
+      bindHouseholdSubTabDock(root, subTabs);
+
+      if (shouldShow) {
+        Array.from(slot.children || []).forEach((child) => {
+          const isCurrent = child === subTabs;
+          child.hidden = !isCurrent;
+          child.setAttribute('aria-hidden', isCurrent ? 'false' : 'true');
+        });
+      } else {
+        subTabs.hidden = true;
+        subTabs.setAttribute('aria-hidden', 'true');
+      }
+
+      updateHouseholdSubTabRowVisibility(row, slot);
+      if (!shouldShow) return;
+      requestAnimationFrame(positionHouseholdSubTabDock);
+    }
+
+    function bindHouseholdPrimaryTabFallbackSync(root) {
+      if (!root || root.dataset.householdPrimaryTabFallbackBound === '1') return;
+      root.dataset.householdPrimaryTabFallbackBound = '1';
+
+      const resync = function () {
+        const liveRoot = document.getElementById('householdToolsRoot');
+        if (!liveRoot) return;
+        syncHouseholdSubTabDock(liveRoot);
+      };
+
+      document.addEventListener('click', function (event) {
+        const button = event.target && event.target.closest ? event.target.closest('.app-tab-btn[data-tab]') : null;
+        if (!button) return;
+        requestAnimationFrame(resync);
+        window.setTimeout(resync, 40);
+      }, true);
+
+      window.addEventListener('pageshow', resync);
+    }
+
+    function syncHouseholdSubTabs(root) {
+      getHouseholdSubTabButtons(root).forEach((button) => {
+        const tabKey = button.getAttribute('data-household-subtab');
+        const isActive = tabKey === state.activeSubTab;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        button.setAttribute('tabindex', isActive ? '0' : '-1');
+      });
+
+      root.querySelectorAll('[data-household-pane]').forEach((pane) => {
+        const paneKey = pane.getAttribute('data-household-pane');
+        const isActive = paneKey === state.activeSubTab;
+        pane.classList.toggle('is-active', isActive);
+        pane.hidden = !isActive;
+        pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      });
+
+      syncHouseholdSubTabDock(root);
+    }
+
+    function setActiveHouseholdSubTab(root, tabKey) {
+      const safeTab = HOUSEHOLD_SUBTAB_KEYS.indexOf(tabKey) >= 0 ? tabKey : 'recipes';
+      state.activeSubTab = safeTab;
+      syncHouseholdSubTabs(root);
+    }
+
+    window.initHouseholdToolsTab = function () {
+      const root = document.getElementById('householdToolsRoot');
+      if (!root) return;
+
+      if (!root.dataset.householdTabSwitchBound) {
+        root.dataset.householdTabSwitchBound = '1';
+        window.addEventListener('app:tab-switched', function () {
+          const liveRoot = document.getElementById('householdToolsRoot');
+          if (!liveRoot) return;
+          syncHouseholdSubTabDock(liveRoot);
+        });
+      }
+
+      if (!root.dataset.householdSubTabDockResizeBound) {
+        root.dataset.householdSubTabDockResizeBound = '1';
+        window.addEventListener('resize', function () {
+          const liveRoot = document.getElementById('householdToolsRoot');
+          if (!liveRoot) return;
+          syncHouseholdSubTabDock(liveRoot);
+        });
+      }
+
+      bindHouseholdPrimaryTabFallbackSync(root);
+
+      setActiveHouseholdSubTab(root, 'recipes');
+      console.log('✅ Household Tools tab initialized');
+    };
+  })();
+</script>
+

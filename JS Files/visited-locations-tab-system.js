@@ -107,7 +107,7 @@
   const CATALOG_INITIAL_LIMIT = 60;
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
-  const PROGRESS_SUBTAB_KEYS = ['outdoors', 'entertainment', 'food-drink', 'retail'];
+  const PROGRESS_SUBTAB_KEYS = ['outdoors', 'entertainment', 'food-drink', 'retail', 'bike-trails'];
 
    const state = {
      initialized: false,

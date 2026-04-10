@@ -20,10 +20,11 @@
   </div>
 
   <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Challenge categories" hidden>
-    <button id="visitedProgressTab-outdoors" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-outdoors" aria-selected="true" data-progress-subtab="outdoors" aria-label="Open Outdoors section" title="Open Outdoors section">Outdoors</button>
-    <button id="visitedProgressTab-entertainment" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-entertainment" aria-selected="false" data-progress-subtab="entertainment" aria-label="Open Entertainment section" title="Open Entertainment section">Entertainment</button>
-    <button id="visitedProgressTab-food-drink" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-food-drink" aria-selected="false" data-progress-subtab="food-drink" aria-label="Open Food and Drink section" title="Open Food and Drink section">Food &amp; Drink</button>
-    <button id="visitedProgressTab-retail" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-retail" aria-selected="false" data-progress-subtab="retail" aria-label="Open Retail section" title="Open Retail section">Retail</button>
+    <button id="visitedProgressTab-outdoors" type="button" class="visited-progress-subtab active" role="tab" aria-controls="visitedProgressPane-outdoors" aria-selected="true" data-progress-subtab="outdoors" aria-label="Open Outdoors section" title="Open Outdoors section">🌲 Outdoors</button>
+    <button id="visitedProgressTab-entertainment" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-entertainment" aria-selected="false" data-progress-subtab="entertainment" aria-label="Open Entertainment section" title="Open Entertainment section">🎬 Entertainment</button>
+    <button id="visitedProgressTab-food-drink" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-food-drink" aria-selected="false" data-progress-subtab="food-drink" aria-label="Open Food and Drink section" title="Open Food and Drink section">🍽️ Food &amp; Drink</button>
+    <button id="visitedProgressTab-retail" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-retail" aria-selected="false" data-progress-subtab="retail" aria-label="Open Retail section" title="Open Retail section">🛍️ Retail</button>
+    <button id="visitedProgressTab-bike-trails" type="button" class="visited-progress-subtab" role="tab" aria-controls="visitedProgressPane-bike-trails" aria-selected="false" data-progress-subtab="bike-trails" aria-label="Open Bike Trails section" title="Open Bike Trails section">🚴 Bike Trails</button>
   </div>
   <div id="visitedSubTabBlockerWarning" class="visited-subtab-blocker-warning" role="status" aria-live="polite" hidden></div>
 
@@ -180,6 +181,20 @@
         <div class="card-subtitle">This new category is ready for refinement.</div>
       </div>
       <div class="visited-empty">We’ve added the new Retail subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+    </div>
+  </div>
+
+  <div id="visitedProgressPane-bike-trails" class="visited-progress-pane" data-progress-pane="bike-trails" role="tabpanel" aria-labelledby="visitedProgressTab-bike-trails" hidden>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🚴 Bike Trails</div>
+        <div class="card-subtitle">Bike trails is now grouped under Adventure Challenge.</div>
+      </div>
+      <div class="visited-empty">Use this category to jump into the full Bike Trails workspace when you are planning or reviewing rides.</div>
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" onclick="window.tabLoader?.switchTab('bike-trails', { syncUrl: true, historyMode: 'push', source: 'visited-bike-subtab' })">Open Bike Trails Workspace</button>
+        <button type="button" class="pill-button" onclick="window.openTrailExplorerWindow?.()">Open Trail Explorer</button>
+      </div>
     </div>
   </div>
   <details id="visitedDiagnosticsDetails" class="card visited-collapsible-card visited-diagnostics-details" aria-labelledby="visitedDiagnosticsHeading" aria-describedby="visitedDiagnosticsSummaryHelp" style="margin-top: 14px;">

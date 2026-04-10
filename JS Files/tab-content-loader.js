@@ -177,45 +177,52 @@ class TabContentLoader {
         preload: false,
         isInlineContent: false
       },
+      'household-tools': {
+        file: 'household-tools-tab.html',
+        element: 'householdToolsTab',
+        priority: 4,
+        preload: false,
+        isInlineContent: false
+      },
       'recipes': {
         file: 'recipes-tab.html',
         element: 'recipesTab',
-        priority: 4,
+        priority: 5,
         preload: false,
         isInlineContent: false
       },
       'garden': {
         file: 'garden-planner-tab.html',
         element: 'gardenTab',
-        priority: 5,
+        priority: 6,
         preload: false,
         isInlineContent: false
       },
        'budget': {
          file: 'budget-planner-tab.html',
          element: 'budgetTab',
-         priority: 6,
+         priority: 7,
          preload: false,
          isInlineContent: false
        },
        'nature-challenge': {
          file: 'nature-challenge-tab.html',
          element: 'natureChallengeTab',
-         priority: 7,
+         priority: 8,
          preload: false,
          isInlineContent: false
        },
        'visited-locations': {
          file: 'visited-locations-tab.html',
          element: 'visitedLocationsTab',
-         priority: 8,
+         priority: 9,
          preload: false,
          isInlineContent: false
        },
        'offline-mode': {
          file: null,
          element: 'offlineModeTab',
-         priority: 9,
+         priority: 10,
          preload: false,
          isInlineContent: true
        }
@@ -772,6 +779,11 @@ class TabContentLoader {
       case 'birding':
         if (typeof window.initBirdingTab === 'function') {
           window.initBirdingTab();
+        }
+        break;
+      case 'household-tools':
+        if (typeof window.initHouseholdToolsTab === 'function') {
+          window.initHouseholdToolsTab();
         }
         break;
       case 'recipes':
