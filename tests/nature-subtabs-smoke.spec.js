@@ -6,7 +6,8 @@ const CONFIG_DRIVEN_SUBTABS = [
   { key: 'amphibians', label: 'Amphibians' },
   { key: 'insects', label: 'Insects' },
   { key: 'arachnids', label: 'Arachnids' },
-  { key: 'wildflowers', label: 'Wildflowers' }
+  { key: 'wildflowers', label: 'Wildflowers' },
+  { key: 'trees', label: 'Trees & Shrubs' }
 ];
 
 test.describe('Nature config-driven subtabs smoke', () => {
@@ -32,6 +33,10 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(mammalsDiagnosticsRow).toContainText('Workbook');
     await expect(mammalsDiagnosticsRow).toContainText('Species');
     await expect(mammalsDiagnosticsRow).toContainText('Sightings/User State');
+  });
+
+  test('shrubs subtab is removed from the dock', async ({ page }) => {
+    await expect(page.locator('#appSubTabsSlot [data-nature-subtab="shrubs"]')).toHaveCount(0);
   });
 
   CONFIG_DRIVEN_SUBTABS.forEach(({ key, label }) => {

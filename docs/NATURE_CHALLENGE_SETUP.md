@@ -31,7 +31,7 @@
 
 ## 📋 Tab Structure Details
 
-### Sub-Tabs (9 Total)
+### Sub-Tabs (8 Total)
 All sub-tabs follow the same structure with proper ARIA labels and role attributes:
 
 1. **🐦 Birds**
@@ -41,8 +41,9 @@ All sub-tabs follow the same structure with proper ARIA labels and role attribut
 5. **🦋 Insects**
 6. **🕷️ Arachnids**
 7. **🌼 Wildflowers**
-8. **🌲 Trees**
-9. **🌿 Shrubs**
+8. **🌲 Trees & Shrubs**
+
+> Update: the previous standalone **Shrubs** sub-tab was removed and consolidated into **Trees & Shrubs**.
 
 ### Content Sections Per Sub-Tab
 Each sub-tab includes three main sections:
@@ -111,6 +112,20 @@ Each sub-tab includes three main sections:
 - Active state styling
 - Smooth transitions between content panes
 - Screen reader announcements for tab changes
+- Trees/Shrubs now share one normalized config-driven sub-tab (`trees`), including species/sightings/user-state wiring.
+
+### Log a Sighting UX (Current)
+- **Species typeahead**: `#birdsLogSpeciesSearchInput` with `#birdsLogSpeciesSearchList` lets you type to narrow species quickly.
+- **Hidden canonical species selector**: `#birdsLogSpeciesSelect` is still used for canonical IDs and save logic.
+- **Location chooser with manual fallback**:
+  - `#birdsLogLocationInput` is a dropdown of known locations.
+  - Selecting `Other (type manually)` reveals `#birdsLogLocationOtherInput`.
+- **Contextual fast-log examples**: the placeholder in `#birdsLogCommandInput` updates by active sub-tab (for example, insects shows a dragonfly example instead of bird-specific text).
+
+### Trees & Shrubs Workbook Mapping
+- Species table: `Nature_records.xlsx` / `Trees_Shrubs`
+- Sightings table: `Nature_Sightings.xlsx` / `Trees_Shrubs_sightings`
+- User-state table: `Nature_Sightings.xlsx` / `Trees_Shrubs_user_data`
 
 ### Layout Systems
 - Category Progression stats grid
@@ -152,8 +167,8 @@ When you provide the species/family data and badge details, we can:
 ## ✨ Notes
 
 - The tab is fully styled and ready for data integration
-- All sub-tabs follow the same structure for consistency
+- All active sub-tabs follow the same structure for consistency
 - The design is responsive and works on mobile/tablet
-- Ready to receive species data, challenges, and badge definitions
+- Log UX now includes typeahead species selection and location "Other" fallback for field flexibility
 - Initialization script (`initNatureChallengeTab`) is in place and will run when the tab is first loaded
 

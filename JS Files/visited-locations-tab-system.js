@@ -108,6 +108,74 @@
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
   const PROGRESS_SUBTAB_KEYS = ['outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
+  const EXPLORER_WORKBOOK_PREFIXES = ['', 'Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/'];
+  const EXPLORER_COLUMN_CANDIDATES = {
+    title: ['name', 'location', 'place', 'venue', 'destination', 'business', 'shop', 'restaurant', 'coffee', 'festival', 'event', 'site'],
+    city: ['city', 'town', 'municipality'],
+    state: ['state', 'province', 'region'],
+    tags: ['tags', 'keywords', 'category', 'categories', 'type'],
+    description: ['description', 'notes', 'summary', 'details'],
+    address: ['address', 'street', 'location address'],
+    hours: ['hours', 'open hours', 'business hours'],
+    drive: ['drive time', 'distance', 'travel time']
+  };
+  const ADVENTURE_SUBTAB_EXPLORER_CONFIG = {
+    outdoors: {
+      key: 'outdoors',
+      openAction: 'open-explorer-outdoors',
+      closeAction: 'close-explorer-outdoors',
+      emptyLabel: 'outdoor locations',
+      sources: [
+        { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations' }
+      ]
+    },
+    entertainment: {
+      key: 'entertainment',
+      openAction: 'open-explorer-entertainment',
+      closeAction: 'close-explorer-entertainment',
+      emptyLabel: 'entertainment locations',
+      sources: [
+        { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment' }
+      ]
+    },
+    'food-drink': {
+      key: 'food-drink',
+      openAction: 'open-explorer-food-drink',
+      closeAction: 'close-explorer-food-drink',
+      emptyLabel: 'food and drink locations',
+      sources: [
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Restaurants' },
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Coffee' }
+      ]
+    },
+    retail: {
+      key: 'retail',
+      openAction: 'open-explorer-retail',
+      closeAction: 'close-explorer-retail',
+      emptyLabel: 'retail locations',
+      sources: [
+        { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Retail' }
+      ]
+    },
+    'wildlife-animals': {
+      key: 'wildlife-animals',
+      openAction: 'open-explorer-wildlife-animals',
+      closeAction: 'close-explorer-wildlife-animals',
+      emptyLabel: 'wildlife and animal locations',
+      sources: [
+        { workbook: 'Entertainment_Locations.xlsx', table: 'Wildlife_Animals' }
+      ]
+    },
+    'regional-festivals': {
+      key: 'regional-festivals',
+      openAction: 'open-explorer-regional-festivals',
+      closeAction: 'close-explorer-regional-festivals',
+      emptyLabel: 'regional festivals',
+      sources: [
+        { workbook: 'Entertainment_Locations.xlsx', table: 'Festivals' }
+      ]
+    }
+  };
 
    const state = {
      initialized: false,
@@ -149,6 +217,8 @@
      lastRenderAt: null,
      lastCategoryFilterClick: 0,
      categoryFilterDebounceMs: 100
+      ,
+      subtabExplorer: {}
    };
 
   function shouldLogVisitedDiagnostics() {
@@ -313,6 +383,9 @@
        // Avoid pointer-events: none to prevent race conditions during rapid tab switches
        pane.style.position = 'relative';
        pane.style.zIndex = isActive ? '1' : '0';
+        if (getExplorerConfig(paneKey)) {
+          setExplorerView(root, paneKey, getExplorerState(paneKey).view || 'overview');
+        }
      });
 
       updateVisitedChallengeTitle(root);
@@ -1003,6 +1076,336 @@
 
   function saveVisitMap(map) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  }
+
+  function getExplorerConfig(subtabKey) {
+    return ADVENTURE_SUBTAB_EXPLORER_CONFIG[subtabKey] || null;
+  }
+
+  function getExplorerState(subtabKey) {
+    if (!state.subtabExplorer[subtabKey]) {
+      state.subtabExplorer[subtabKey] = {
+        view: 'overview',
+        loading: false,
+        loaded: false,
+        error: '',
+        items: [],
+        query: '',
+        sort: 'name-asc',
+        stateFilter: 'all',
+        cityFilter: 'all'
+      };
+    }
+    return state.subtabExplorer[subtabKey];
+  }
+
+  function setExplorerView(root, subtabKey, view) {
+    const pane = root ? root.querySelector(`#visitedProgressPane-${subtabKey}`) : null;
+    if (!pane) return;
+    const explorerState = getExplorerState(subtabKey);
+    explorerState.view = view === 'explorer' ? 'explorer' : 'overview';
+    pane.querySelectorAll('[data-visited-subtab-view]').forEach((node) => {
+      const nodeView = node.getAttribute('data-visited-subtab-view');
+      const show = nodeView === explorerState.view;
+      node.hidden = !show;
+      node.setAttribute('aria-hidden', show ? 'false' : 'true');
+    });
+  }
+
+  function workbookPathCandidates(workbook) {
+    const clean = String(workbook || '').trim();
+    if (!clean) return [];
+    if (clean.includes('/')) return [clean];
+    const unique = new Set();
+    EXPLORER_WORKBOOK_PREFIXES.forEach((prefix) => {
+      unique.add(`${prefix}${clean}`);
+    });
+    return Array.from(unique);
+  }
+
+  async function fetchTableRangeValues(filePath, tableName) {
+    if (!window.accessToken) throw new Error('Sign in required to read workbook data.');
+    const encodedPath = encodeGraphPath(filePath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/range?$select=values`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Unable to load ${tableName} from ${filePath} (HTTP ${response.status})`);
+    }
+    const payload = await response.json().catch(() => ({}));
+    return Array.isArray(payload.values) ? payload.values : [];
+  }
+
+  function normalizeExplorerCell(value) {
+    return String(value === undefined || value === null ? '' : value).trim();
+  }
+
+  function buildExplorerRowObject(headers, rowValues) {
+    const row = {};
+    headers.forEach((header, idx) => {
+      const key = header || `Column ${idx + 1}`;
+      row[key] = normalizeExplorerCell(rowValues[idx]);
+    });
+    return row;
+  }
+
+  function pickExplorerValue(row, candidateKeys) {
+    const entries = Object.entries(row || {});
+    if (!entries.length) return '';
+    for (const candidate of (candidateKeys || [])) {
+      const candidateNorm = norm(candidate);
+      const exact = entries.find(([key]) => norm(key) === candidateNorm);
+      if (exact && normalizeExplorerCell(exact[1])) return normalizeExplorerCell(exact[1]);
+      const partial = entries.find(([key]) => norm(key).includes(candidateNorm));
+      if (partial && normalizeExplorerCell(partial[1])) return normalizeExplorerCell(partial[1]);
+    }
+    return '';
+  }
+
+  function toExplorerItems(matrix, source) {
+    if (!Array.isArray(matrix) || matrix.length < 2) return [];
+    const headers = (matrix[0] || []).map((header, idx) => {
+      const text = normalizeExplorerCell(header);
+      return text || `Column ${idx + 1}`;
+    });
+
+    return matrix.slice(1).map((values, index) => {
+      const row = buildExplorerRowObject(headers, Array.isArray(values) ? values : []);
+      const title = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.title)
+        || Object.values(row).find((value) => normalizeExplorerCell(value))
+        || `Location ${index + 1}`;
+      const city = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.city);
+      const stateText = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.state);
+      const tagsRaw = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.tags);
+      const description = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.description);
+      const address = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.address);
+      const hours = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.hours);
+      const drive = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.drive);
+      const tags = String(tagsRaw || '')
+        .split(/[;,]/)
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+        .slice(0, 6);
+
+      return {
+        id: `${source.key}:${source.table}:${index}:${norm(title) || 'row'}`,
+        title,
+        city,
+        state: stateText,
+        tags,
+        description,
+        address,
+        hours,
+        driveTime: drive,
+        sourceLabel: `${source.workbook} / ${source.table}`
+      };
+    }).filter((item) => norm(item.title));
+  }
+
+  async function loadExplorerSource(source) {
+    const candidates = workbookPathCandidates(source.workbook);
+    let lastError = null;
+    for (const candidate of candidates) {
+      try {
+        const matrix = await fetchTableRangeValues(candidate, source.table);
+        return toExplorerItems(matrix, { ...source, key: source.key || source.table });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError || new Error(`Unable to load ${source.table}.`);
+  }
+
+  async function ensureExplorerDataLoaded(root, subtabKey, forceReload) {
+    const config = getExplorerConfig(subtabKey);
+    if (!config) return;
+    const explorerState = getExplorerState(subtabKey);
+    if (explorerState.loading) return;
+    if (explorerState.loaded && !forceReload) return;
+
+    explorerState.loading = true;
+    explorerState.error = '';
+    renderExplorerList(root, subtabKey);
+    try {
+      const groups = await Promise.all(config.sources.map((source) => loadExplorerSource({ ...source, key: subtabKey })));
+      explorerState.items = groups.flat();
+      explorerState.loaded = true;
+    } catch (error) {
+      explorerState.error = error && error.message ? error.message : 'Explorer data could not be loaded.';
+      explorerState.items = [];
+      explorerState.loaded = false;
+    } finally {
+      explorerState.loading = false;
+      renderExplorerList(root, subtabKey);
+    }
+  }
+
+  function buildExplorerFilters(explorerState) {
+    const values = {
+      query: norm(explorerState.query),
+      stateFilter: norm(explorerState.stateFilter),
+      cityFilter: norm(explorerState.cityFilter),
+      sort: explorerState.sort || 'name-asc'
+    };
+    return values;
+  }
+
+  function filterAndSortExplorerItems(items, explorerState) {
+    const filters = buildExplorerFilters(explorerState);
+    const filtered = (items || []).filter((item) => {
+      if (filters.stateFilter && filters.stateFilter !== 'all' && norm(item.state) !== filters.stateFilter) return false;
+      if (filters.cityFilter && filters.cityFilter !== 'all' && norm(item.city) !== filters.cityFilter) return false;
+      if (!filters.query) return true;
+      const haystack = [item.title, item.city, item.state, item.description, item.address, (item.tags || []).join(' ')].map(norm).join(' ');
+      return haystack.includes(filters.query);
+    });
+
+    filtered.sort((a, b) => {
+      if (filters.sort === 'name-desc') return b.title.localeCompare(a.title);
+      if (filters.sort === 'city-asc') return (a.city || '').localeCompare(b.city || '') || a.title.localeCompare(b.title);
+      if (filters.sort === 'state-asc') return (a.state || '').localeCompare(b.state || '') || a.title.localeCompare(b.title);
+      return a.title.localeCompare(b.title);
+    });
+
+    return filtered;
+  }
+
+  function syncExplorerFilterOptions(subtabKey, explorerState) {
+    const stateSelect = document.getElementById(`visitedExplorerState-${subtabKey}`);
+    const citySelect = document.getElementById(`visitedExplorerCity-${subtabKey}`);
+    if (!stateSelect || !citySelect) return;
+
+    const states = Array.from(new Set((explorerState.items || []).map((item) => item.state).filter(Boolean))).sort();
+    const cities = Array.from(new Set((explorerState.items || []).map((item) => item.city).filter(Boolean))).sort();
+    const currentState = explorerState.stateFilter || 'all';
+    const currentCity = explorerState.cityFilter || 'all';
+
+    stateSelect.innerHTML = ['<option value="all">State: All</option>']
+      .concat(states.map((value) => `<option value="${escapeHtml(norm(value))}">${escapeHtml(value)}</option>`))
+      .join('');
+    citySelect.innerHTML = ['<option value="all">City: All</option>']
+      .concat(cities.map((value) => `<option value="${escapeHtml(norm(value))}">${escapeHtml(value)}</option>`))
+      .join('');
+    stateSelect.value = states.some((value) => norm(value) === norm(currentState)) ? norm(currentState) : 'all';
+    citySelect.value = cities.some((value) => norm(value) === norm(currentCity)) ? norm(currentCity) : 'all';
+  }
+
+  function renderExplorerList(root, subtabKey) {
+    const config = getExplorerConfig(subtabKey);
+    if (!config) return;
+    const explorerState = getExplorerState(subtabKey);
+    const listEl = document.getElementById(`visitedExplorerList-${subtabKey}`);
+    const metaEl = document.getElementById(`visitedExplorerMeta-${subtabKey}`);
+    if (!listEl || !metaEl) return;
+
+    const searchEl = document.getElementById(`visitedExplorerSearch-${subtabKey}`);
+    const sortEl = document.getElementById(`visitedExplorerSort-${subtabKey}`);
+    if (searchEl && searchEl.value !== explorerState.query) searchEl.value = explorerState.query;
+    if (sortEl && sortEl.value !== explorerState.sort) sortEl.value = explorerState.sort;
+
+    if (explorerState.loading) {
+      metaEl.textContent = 'Loading location directory...';
+      listEl.innerHTML = '<div class="visited-empty">Loading explorer cards...</div>';
+      return;
+    }
+    if (explorerState.error) {
+      metaEl.textContent = 'Explorer data unavailable.';
+      listEl.innerHTML = `<div class="visited-empty">${escapeHtml(explorerState.error)}</div>`;
+      return;
+    }
+
+    syncExplorerFilterOptions(subtabKey, explorerState);
+    const filtered = filterAndSortExplorerItems(explorerState.items || [], explorerState);
+    metaEl.textContent = `${filtered.length} of ${(explorerState.items || []).length} ${config.emptyLabel} shown.`;
+
+    if (!filtered.length) {
+      listEl.innerHTML = '<div class="visited-empty">No locations matched your filters.</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map((item) => {
+      const chips = (item.tags || []).slice(0, 4).map((tag) => `<span class="nature-chip">${escapeHtml(tag)}</span>`).join('');
+      return `
+        <div class="adventure-card">
+          <div class="adventure-card-header">
+            <div class="adventure-card-title">${escapeHtml(item.title)}</div>
+            <div class="adventure-card-location">${escapeHtml([item.city, item.state].filter(Boolean).join(', ') || 'Location not specified')}</div>
+            <div class="adventure-card-time">Source: ${escapeHtml(item.sourceLabel)}</div>
+          </div>
+          <div class="adventure-card-body">
+            <div class="card-subtitle">${escapeHtml(item.description || item.address || 'No additional details yet.')}</div>
+            ${chips ? `<div class="nature-chip-row nature-chip-row--wrap" style="margin-top:8px;">${chips}</div>` : ''}
+          </div>
+          <div class="adventure-card-footer">
+            <div class="card-subtitle">${escapeHtml(item.hours ? `Hours: ${item.hours}` : '')}${item.hours && item.driveTime ? ' | ' : ''}${escapeHtml(item.driveTime ? `Drive: ${item.driveTime}` : '')}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function bindExplorerFilterInputs(root, subtabKey) {
+    const explorerState = getExplorerState(subtabKey);
+    const searchEl = root.querySelector(`#visitedExplorerSearch-${subtabKey}`);
+    const sortEl = root.querySelector(`#visitedExplorerSort-${subtabKey}`);
+    const stateEl = root.querySelector(`#visitedExplorerState-${subtabKey}`);
+    const cityEl = root.querySelector(`#visitedExplorerCity-${subtabKey}`);
+
+    if (searchEl && !searchEl.dataset.bound) {
+      searchEl.dataset.bound = '1';
+      searchEl.addEventListener('input', () => {
+        explorerState.query = searchEl.value || '';
+        renderExplorerList(root, subtabKey);
+      });
+    }
+    if (sortEl && !sortEl.dataset.bound) {
+      sortEl.dataset.bound = '1';
+      sortEl.addEventListener('change', () => {
+        explorerState.sort = sortEl.value || 'name-asc';
+        renderExplorerList(root, subtabKey);
+      });
+    }
+    if (stateEl && !stateEl.dataset.bound) {
+      stateEl.dataset.bound = '1';
+      stateEl.addEventListener('change', () => {
+        explorerState.stateFilter = stateEl.value || 'all';
+        renderExplorerList(root, subtabKey);
+      });
+    }
+    if (cityEl && !cityEl.dataset.bound) {
+      cityEl.dataset.bound = '1';
+      cityEl.addEventListener('change', () => {
+        explorerState.cityFilter = cityEl.value || 'all';
+        renderExplorerList(root, subtabKey);
+      });
+    }
+  }
+
+  function bindAllExplorerFilterInputs(root) {
+    Object.keys(ADVENTURE_SUBTAB_EXPLORER_CONFIG).forEach((subtabKey) => bindExplorerFilterInputs(root, subtabKey));
+  }
+
+  async function openSubtabExplorer(root, subtabKey) {
+    if (!getExplorerConfig(subtabKey)) return;
+    if (state.activeOverviewView !== 'main') {
+      state.activeOverviewView = 'main';
+      syncVisitedOverviewView(root);
+    }
+    if (state.activeProgressSubTab !== subtabKey) {
+      setActiveProgressSubTab(root, subtabKey);
+    }
+    setExplorerView(root, subtabKey, 'explorer');
+    await ensureExplorerDataLoaded(root, subtabKey, false);
+  }
+
+  function closeSubtabExplorer(root, subtabKey) {
+    if (!getExplorerConfig(subtabKey)) return;
+    setExplorerView(root, subtabKey, 'overview');
   }
 
   async function resolveTableVisitedColumnIndex(filePath, tableName, cacheKey) {
@@ -2436,6 +2839,12 @@
     function ensureVisitedSubtabCtaButtons(root) {
       if (!root) return { total: 0, present: 0, added: 0, missing: [] };
       const requiredActions = [
+        'open-explorer-outdoors',
+        'open-explorer-entertainment',
+        'open-explorer-food-drink',
+        'open-explorer-retail',
+        'open-explorer-wildlife-animals',
+        'open-explorer-regional-festivals',
         'find-outdoor-adventure',
         'find-entertainment-spot',
         'find-food-drink-spot',
@@ -2480,21 +2889,27 @@
       };
 
       const outdoorsRow = root.querySelector('#visitedProgressPane-outdoors .visited-suggestions-cta-row');
+      ensureButton(outdoorsRow, 'open-explorer-outdoors', 'Explore the Outdoors', 'Explore the Outdoors');
       ensureButton(outdoorsRow, 'find-outdoor-adventure', 'Find an Outdoor Adventures', 'Find an Outdoor Adventures');
 
       const entertainmentRow = ensureActionRow('#visitedProgressPane-entertainment');
+      ensureButton(entertainmentRow, 'open-explorer-entertainment', 'Explore Entertainment', 'Explore Entertainment');
       ensureButton(entertainmentRow, 'find-entertainment-spot', 'Find an Entertainment Spot', 'Find an Entertainment Spot');
 
       const foodDrinkRow = ensureActionRow('#visitedProgressPane-food-drink');
+      ensureButton(foodDrinkRow, 'open-explorer-food-drink', 'Explore Food & Drink', 'Explore Food & Drink');
       ensureButton(foodDrinkRow, 'find-food-drink-spot', 'Find a Food and Drink Spot', 'Find a Food and Drink Spot');
 
       const retailRow = ensureActionRow('#visitedProgressPane-retail');
+      ensureButton(retailRow, 'open-explorer-retail', 'Explore Retail', 'Explore Retail');
       ensureButton(retailRow, 'find-retail-location', 'Find a Retail Location', 'Find a Retail Location');
 
       const wildlifeAnimalsRow = ensureActionRow('#visitedProgressPane-wildlife-animals');
+      ensureButton(wildlifeAnimalsRow, 'open-explorer-wildlife-animals', 'Explore Wildlife & Animal Locations', 'Explore Wildlife & Animal Locations');
       ensureButton(wildlifeAnimalsRow, 'find-wildlife-animals', 'Find Wildlife and Animals', 'Find Wildlife and Animals');
 
       const regionalFestivalsRow = ensureActionRow('#visitedProgressPane-regional-festivals');
+      ensureButton(regionalFestivalsRow, 'open-explorer-regional-festivals', 'Explore Regional Festivals', 'Explore Regional Festivals');
       ensureButton(regionalFestivalsRow, 'find-regional-festivals', 'Find Regional Festivals', 'Find Regional Festivals');
 
       const bikePane = root.querySelector('#visitedProgressPane-bike-trails');
@@ -2563,6 +2978,7 @@
 
       syncProgressSubTabs(root);
       syncVisitedOverviewView(root);
+      bindAllExplorerFilterInputs(root);
       bindProgressSubTabButtons(root);
       syncVisitedSubTabDock(root);
       announceProgressSubTab(root, state.activeProgressSubTab);
@@ -2624,6 +3040,19 @@
           if (subtabActionBtn) {
             event.preventDefault();
             const action = String(subtabActionBtn.getAttribute('data-visited-subtab-action') || '').trim();
+
+            const explorerOpenConfig = Object.values(ADVENTURE_SUBTAB_EXPLORER_CONFIG).find((config) => config.openAction === action);
+            if (explorerOpenConfig) {
+              openSubtabExplorer(root, explorerOpenConfig.key);
+              return;
+            }
+
+            const explorerCloseConfig = Object.values(ADVENTURE_SUBTAB_EXPLORER_CONFIG).find((config) => config.closeAction === action);
+            if (explorerCloseConfig) {
+              closeSubtabExplorer(root, explorerCloseConfig.key);
+              return;
+            }
+
             const openAdventureFallback = () => {
               if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
                 window.tabLoader.switchTab('adventure-planner', { syncUrl: true, historyMode: 'push', source: 'visited-subtab-cta' });

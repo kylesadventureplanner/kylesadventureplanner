@@ -248,11 +248,39 @@ header h1 {
   display: flex;
   align-items: center;
   gap: 6px;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 .card-subtitle {
   font-size: 12px;
   color: #6b7280;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Prevent compressed text in progression/achievement cards across tabs. */
+.visited-challenge-title,
+.visited-badge-title,
+.visited-badge-desc,
+.visited-quest-item-title,
+.nature-progression-title,
+.nature-progression-desc,
+.nature-bingo-title,
+.nature-bingo-desc,
+.nature-challenge-progress,
+.nature-log-entry-summary,
+.adventure-card-title,
+.adventure-card-location,
+.adventure-card-time {
+  line-height: 1.4;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 
 .control-panel-card.filters-active,

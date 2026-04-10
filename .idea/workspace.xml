@@ -5,13 +5,21 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/tests/adventure-explorer-flows.spec.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/nature-log-ux.spec.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/tests/nature-map-context.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/components.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/components.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/sighting-map.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/sighting-map.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/NATURE_CHALLENGE_SETUP.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/NATURE_CHALLENGE_SETUP.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sighting-map-phase5.js" beforeDir="false" afterPath="$PROJECT_DIR$/sighting-map-phase5.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -94,7 +102,7 @@
       <workItem from="1775061217529" duration="77850000" />
       <workItem from="1775308220563" duration="68000" />
       <workItem from="1775308318086" duration="90230000" />
-      <workItem from="1775520086833" duration="151330000" />
+      <workItem from="1775520086833" duration="158686000" />
     </task>
     <servers />
   </component>

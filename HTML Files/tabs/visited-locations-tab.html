@@ -35,7 +35,7 @@
   <div id="visitedMobileTooltipChip" class="visited-mobile-tooltip-chip" aria-live="polite" hidden></div>
 
   <div id="visitedProgressPane-outdoors" class="visited-progress-pane is-active" data-progress-pane="outdoors" role="tabpanel" aria-labelledby="visitedProgressTab-outdoors">
-    <div id="visitedOverviewMainView" class="visited-overview-view is-active" data-visited-overview-view="main">
+    <div id="visitedOverviewMainView" class="visited-overview-view is-active" data-visited-overview-view="main" data-visited-subtab-view="overview">
       <div class="card" style="margin-top: 10px;">
         <div class="card-header">
           <div>
@@ -66,6 +66,7 @@
         </div>
         <div class="visited-suggestions-cta-row">
           <button id="visitedOpenSuggestionsBtn" type="button" class="pill-button" title="Open Smart Adventure Suggestions" data-tooltip="Open Smart Adventure Suggestions">Open Suggestions Page</button>
+          <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-outdoors" title="Explore the Outdoors" data-tooltip="Explore the Outdoors">Explore the Outdoors</button>
           <button type="button" class="pill-button" data-visited-subtab-action="find-outdoor-adventure" title="Find an Outdoor Adventures" data-tooltip="Find an Outdoor Adventures">Find an Outdoor Adventures</button>
         </div>
       </div>
@@ -156,70 +157,190 @@
         <div id="visitedSuggestionList" class="adventure-cards-grid" style="padding: 8px 0;"></div>
       </div>
     </div>
+
+    <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="visited-view-header-row">
+          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-outdoors" title="Back to Outdoors" data-tooltip="Back to Outdoors">← Back to Outdoors</button>
+          <div class="visited-view-header-copy">
+            <div class="card-title">🌲 Explore the Outdoors</div>
+            <div class="card-subtitle">Directory sourced from <code>Nature_Locations.xlsx</code> / <code>Nature_Locations</code>.</div>
+          </div>
+        </div>
+        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+          <input id="visitedExplorerSearch-outdoors" class="filter-input" type="text" placeholder="Search outdoor locations..." />
+          <select id="visitedExplorerSort-outdoors" class="filter-select" aria-label="Sort outdoor locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+          <select id="visitedExplorerState-outdoors" class="filter-select" aria-label="Filter outdoor locations by state"><option value="all">State: All</option></select>
+          <select id="visitedExplorerCity-outdoors" class="filter-select" aria-label="Filter outdoor locations by city"><option value="all">City: All</option></select>
+        </div>
+        <div id="visitedExplorerMeta-outdoors" class="card-subtitle" style="margin-top:8px;">Loading outdoor locations...</div>
+      </div>
+      <div id="visitedExplorerList-outdoors" class="adventure-cards-grid" aria-live="polite"></div>
+    </div>
   </div>
 
   <div id="visitedProgressPane-entertainment" class="visited-progress-pane" data-progress-pane="entertainment" role="tabpanel" aria-labelledby="visitedProgressTab-entertainment" hidden>
-    <div class="card">
+    <div class="card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🎬 Entertainment</div>
-        <div class="card-subtitle">This new category is ready for refinement.</div>
+        <div class="card-subtitle">Browse and plan entertainment locations you want to visit.</div>
       </div>
-      <div class="visited-empty">We’ve added the new Entertainment subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+      <div class="visited-empty">Open the explorer to browse, sort, and filter your Entertainment directory.</div>
       <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-entertainment" title="Explore Entertainment" data-tooltip="Explore Entertainment">Explore Entertainment</button>
         <button type="button" class="pill-button" data-visited-subtab-action="find-entertainment-spot" title="Find an Entertainment Spot" data-tooltip="Find an Entertainment Spot">Find an Entertainment Spot</button>
       </div>
+    </div>
+    <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="visited-view-header-row">
+          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-entertainment" title="Back to Entertainment" data-tooltip="Back to Entertainment">← Back to Entertainment</button>
+          <div class="visited-view-header-copy">
+            <div class="card-title">🎬 Explore Entertainment</div>
+            <div class="card-subtitle">Directory of entertainment locations from <code>Entertainment_Locations.xlsx</code> / <code>General_Entertainment</code>.</div>
+          </div>
+        </div>
+        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+          <input id="visitedExplorerSearch-entertainment" class="filter-input" type="text" placeholder="Search entertainment locations..." />
+          <select id="visitedExplorerSort-entertainment" class="filter-select" aria-label="Sort entertainment locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+          <select id="visitedExplorerState-entertainment" class="filter-select" aria-label="Filter entertainment by state"><option value="all">State: All</option></select>
+          <select id="visitedExplorerCity-entertainment" class="filter-select" aria-label="Filter entertainment by city"><option value="all">City: All</option></select>
+        </div>
+        <div id="visitedExplorerMeta-entertainment" class="card-subtitle" style="margin-top:8px;">Loading entertainment locations...</div>
+      </div>
+      <div id="visitedExplorerList-entertainment" class="adventure-cards-grid" aria-live="polite"></div>
     </div>
   </div>
 
   <div id="visitedProgressPane-food-drink" class="visited-progress-pane" data-progress-pane="food-drink" role="tabpanel" aria-labelledby="visitedProgressTab-food-drink" hidden>
-    <div class="card">
+    <div class="card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🍽️ Food &amp; Drink</div>
-        <div class="card-subtitle">This new category is ready for refinement.</div>
+        <div class="card-subtitle">Browse and plan restaurants and coffee spots you want to try.</div>
       </div>
-      <div class="visited-empty">We’ve added the new Food &amp; Drink subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+      <div class="visited-empty">Open the explorer to browse, sort, and filter Food &amp; Drink locations.</div>
       <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-food-drink" title="Explore Food and Drink" data-tooltip="Explore Food and Drink">Explore Food &amp; Drink</button>
         <button type="button" class="pill-button" data-visited-subtab-action="find-food-drink-spot" title="Find a Food and Drink Spot" data-tooltip="Find a Food and Drink Spot">Find a Food and Drink Spot</button>
       </div>
+    </div>
+    <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="visited-view-header-row">
+          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-food-drink" title="Back to Food and Drink" data-tooltip="Back to Food and Drink">← Back to Food &amp; Drink</button>
+          <div class="visited-view-header-copy">
+            <div class="card-title">🍽️ Explore Food &amp; Drink</div>
+            <div class="card-subtitle">Directory sourced from <code>Retail_Food_and_Drink.xlsx</code> tables <code>Restaurants</code> and <code>Coffee</code>.</div>
+          </div>
+        </div>
+        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+          <input id="visitedExplorerSearch-food-drink" class="filter-input" type="text" placeholder="Search food and drink locations..." />
+          <select id="visitedExplorerSort-food-drink" class="filter-select" aria-label="Sort food and drink locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+          <select id="visitedExplorerState-food-drink" class="filter-select" aria-label="Filter food and drink by state"><option value="all">State: All</option></select>
+          <select id="visitedExplorerCity-food-drink" class="filter-select" aria-label="Filter food and drink by city"><option value="all">City: All</option></select>
+        </div>
+        <div id="visitedExplorerMeta-food-drink" class="card-subtitle" style="margin-top:8px;">Loading food and drink locations...</div>
+      </div>
+      <div id="visitedExplorerList-food-drink" class="adventure-cards-grid" aria-live="polite"></div>
     </div>
   </div>
 
   <div id="visitedProgressPane-retail" class="visited-progress-pane" data-progress-pane="retail" role="tabpanel" aria-labelledby="visitedProgressTab-retail" hidden>
-    <div class="card">
+    <div class="card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🛍️ Retail</div>
-        <div class="card-subtitle">This new category is ready for refinement.</div>
+        <div class="card-subtitle">Browse and plan retail locations you want to visit.</div>
       </div>
-      <div class="visited-empty">We’ve added the new Retail subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+      <div class="visited-empty">Open the explorer to browse, sort, and filter Retail locations.</div>
       <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-retail" title="Explore Retail" data-tooltip="Explore Retail">Explore Retail</button>
         <button type="button" class="pill-button" data-visited-subtab-action="find-retail-location" title="Find a Retail Location" data-tooltip="Find a Retail Location">Find a Retail Location</button>
       </div>
+    </div>
+    <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="visited-view-header-row">
+          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-retail" title="Back to Retail" data-tooltip="Back to Retail">← Back to Retail</button>
+          <div class="visited-view-header-copy">
+            <div class="card-title">🛍️ Explore Retail</div>
+            <div class="card-subtitle">Directory sourced from <code>Retail_Food_and_Drink.xlsx</code> / <code>Retail</code>.</div>
+          </div>
+        </div>
+        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+          <input id="visitedExplorerSearch-retail" class="filter-input" type="text" placeholder="Search retail locations..." />
+          <select id="visitedExplorerSort-retail" class="filter-select" aria-label="Sort retail locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+          <select id="visitedExplorerState-retail" class="filter-select" aria-label="Filter retail by state"><option value="all">State: All</option></select>
+          <select id="visitedExplorerCity-retail" class="filter-select" aria-label="Filter retail by city"><option value="all">City: All</option></select>
+        </div>
+        <div id="visitedExplorerMeta-retail" class="card-subtitle" style="margin-top:8px;">Loading retail locations...</div>
+      </div>
+      <div id="visitedExplorerList-retail" class="adventure-cards-grid" aria-live="polite"></div>
     </div>
   </div>
 
   <div id="visitedProgressPane-wildlife-animals" class="visited-progress-pane" data-progress-pane="wildlife-animals" role="tabpanel" aria-labelledby="visitedProgressTab-wildlife-animals" hidden>
-    <div class="card">
+    <div class="card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🦌 Wildlife &amp; Animals</div>
-        <div class="card-subtitle">This new category is ready for refinement.</div>
+        <div class="card-subtitle">Browse and plan wildlife and animal locations you want to visit.</div>
       </div>
-      <div class="visited-empty">We’ve added the new Wildlife &amp; Animals subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+      <div class="visited-empty">Open the explorer to browse, sort, and filter Wildlife &amp; Animal locations.</div>
       <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-wildlife-animals" title="Explore Wildlife and Animal Locations" data-tooltip="Explore Wildlife and Animal Locations">Explore Wildlife &amp; Animal Locations</button>
         <button type="button" class="pill-button" data-visited-subtab-action="find-wildlife-animals" title="Find Wildlife and Animals" data-tooltip="Find Wildlife and Animals">Find Wildlife and Animals</button>
       </div>
+    </div>
+    <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="visited-view-header-row">
+          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-wildlife-animals" title="Back to Wildlife and Animals" data-tooltip="Back to Wildlife and Animals">← Back to Wildlife &amp; Animals</button>
+          <div class="visited-view-header-copy">
+            <div class="card-title">🦌 Explore Wildlife &amp; Animal Locations</div>
+            <div class="card-subtitle">Directory sourced from <code>Entertainment_Locations.xlsx</code> / <code>Wildlife_Animals</code>.</div>
+          </div>
+        </div>
+        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+          <input id="visitedExplorerSearch-wildlife-animals" class="filter-input" type="text" placeholder="Search wildlife and animal locations..." />
+          <select id="visitedExplorerSort-wildlife-animals" class="filter-select" aria-label="Sort wildlife and animal locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+          <select id="visitedExplorerState-wildlife-animals" class="filter-select" aria-label="Filter wildlife and animal locations by state"><option value="all">State: All</option></select>
+          <select id="visitedExplorerCity-wildlife-animals" class="filter-select" aria-label="Filter wildlife and animal locations by city"><option value="all">City: All</option></select>
+        </div>
+        <div id="visitedExplorerMeta-wildlife-animals" class="card-subtitle" style="margin-top:8px;">Loading wildlife and animal locations...</div>
+      </div>
+      <div id="visitedExplorerList-wildlife-animals" class="adventure-cards-grid" aria-live="polite"></div>
     </div>
   </div>
 
   <div id="visitedProgressPane-regional-festivals" class="visited-progress-pane" data-progress-pane="regional-festivals" role="tabpanel" aria-labelledby="visitedProgressTab-regional-festivals" hidden>
-    <div class="card">
+    <div class="card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🎉 Regional Festivals</div>
-        <div class="card-subtitle">This new category is ready for refinement.</div>
+        <div class="card-subtitle">Browse and plan regional festivals you want to visit.</div>
       </div>
-      <div class="visited-empty">We’ve added the new Regional Festivals subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+      <div class="visited-empty">Open the explorer to browse, sort, and filter Regional Festivals.</div>
       <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-regional-festivals" title="Explore Regional Festivals" data-tooltip="Explore Regional Festivals">Explore Regional Festivals</button>
         <button type="button" class="pill-button" data-visited-subtab-action="find-regional-festivals" title="Find Regional Festivals" data-tooltip="Find Regional Festivals">Find Regional Festivals</button>
       </div>
+    </div>
+    <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
+      <div class="card" style="margin-top: 10px;">
+        <div class="visited-view-header-row">
+          <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-regional-festivals" title="Back to Regional Festivals" data-tooltip="Back to Regional Festivals">← Back to Regional Festivals</button>
+          <div class="visited-view-header-copy">
+            <div class="card-title">🎉 Explore Regional Festivals</div>
+            <div class="card-subtitle">Directory sourced from <code>Entertainment_Locations.xlsx</code> / <code>Festivals</code>.</div>
+          </div>
+        </div>
+        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+          <input id="visitedExplorerSearch-regional-festivals" class="filter-input" type="text" placeholder="Search regional festivals..." />
+          <select id="visitedExplorerSort-regional-festivals" class="filter-select" aria-label="Sort regional festivals"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
+          <select id="visitedExplorerState-regional-festivals" class="filter-select" aria-label="Filter regional festivals by state"><option value="all">State: All</option></select>
+          <select id="visitedExplorerCity-regional-festivals" class="filter-select" aria-label="Filter regional festivals by city"><option value="all">City: All</option></select>
+        </div>
+        <div id="visitedExplorerMeta-regional-festivals" class="card-subtitle" style="margin-top:8px;">Loading regional festivals...</div>
+      </div>
+      <div id="visitedExplorerList-regional-festivals" class="adventure-cards-grid" aria-live="polite"></div>
     </div>
   </div>
 

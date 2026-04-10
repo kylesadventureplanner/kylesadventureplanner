@@ -30,8 +30,8 @@
     'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx',
     'Nature_records.xlsx'
   ];
-  const SUBTAB_KEYS = ['birds', 'mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees', 'shrubs'];
-  const CONFIG_DRIVEN_SUBTABS = ['mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers'];
+  const SUBTAB_KEYS = ['birds', 'mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees'];
+  const CONFIG_DRIVEN_SUBTABS = ['mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees'];
   const NATURE_SUBTAB_CONFIG = {
     mammals: {
       label: 'Mammals',
@@ -110,8 +110,45 @@
         seasons: ['Bloom Months', 'Peak Bloom', 'Seasonal Visibility'],
         rarity: ['Regional Abundance', 'Conservation Status']
       }
+    },
+    trees: {
+      label: 'Trees & Shrubs',
+      speciesTableName: 'Trees_Shrubs',
+      sightingsTableName: 'Trees_Shrubs_sightings',
+      userStateTableName: 'Trees_Shrubs_user_data',
+      aliases: {
+        family: ['Family (English)', 'Family'],
+        genus: ['Genus (English)', 'Genus'],
+        species: ['Species (English)', 'Common Name', 'Species'],
+        seasons: ['Seasons Active', 'Bloom Months', 'Seasonality', 'Year Round or Seasonal Presence'],
+        rarity: ['Rare or Common', 'Regional Abundance', 'Conservation Status']
+      },
+      speciesFileCandidates: [
+        'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx',
+        'Nature_records.xlsx'
+      ],
+      syncFileCandidates: [
+        'Copilot_Apps/Kyles_Adventure_Finder/Nature_Sightings.xlsx',
+        'Nature_Sightings.xlsx'
+      ]
     }
   };
+  const NATURE_LOCATION_TABLE_SOURCES = [
+    { workbook: 'Copilot_Apps/Kyles_Adventure_Finder/Nature_Locations.xlsx', table: 'Nature_Locations' },
+    { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations' },
+    { workbook: 'Copilot_Apps/Kyles_Adventure_Finder/Entertainment_Locations.xlsx', table: 'General_Entertainment' },
+    { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment' },
+    { workbook: 'Copilot_Apps/Kyles_Adventure_Finder/Retail_Food_and_Drink.xlsx', table: 'Restaurants' },
+    { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Restaurants' },
+    { workbook: 'Copilot_Apps/Kyles_Adventure_Finder/Retail_Food_and_Drink.xlsx', table: 'Coffee' },
+    { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Coffee' },
+    { workbook: 'Copilot_Apps/Kyles_Adventure_Finder/Retail_Food_and_Drink.xlsx', table: 'Retail' },
+    { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Retail' },
+    { workbook: 'Copilot_Apps/Kyles_Adventure_Finder/Entertainment_Locations.xlsx', table: 'Wildlife_Animals' },
+    { workbook: 'Entertainment_Locations.xlsx', table: 'Wildlife_Animals' },
+    { workbook: 'Copilot_Apps/Kyles_Adventure_Finder/Entertainment_Locations.xlsx', table: 'Festivals' },
+    { workbook: 'Entertainment_Locations.xlsx', table: 'Festivals' }
+  ];
   const BIRD_VIEWS = ['overview', 'log', 'explorer', 'detail', 'collection'];
   const BIRD_OVERVIEW_LIMITS = {
     challenges: 4,
@@ -273,6 +310,7 @@
     birdRecommendationStrategy: loadBirdUiPrefs().birdRecommendationStrategy,
     birdLogPreset: loadBirdUiPrefs().birdLogPreset,
     birdLogCommandValue: loadBirdUiPrefs().birdLogCommandValue,
+    birdLogSpeciesQuery: '',
     lastLoggedBirdId: '',
     birdViewScrollPositions: {},
     recentUpdateUntil: 0,
@@ -328,6 +366,11 @@
       badges: [],
       questline: { steps: [], completedCount: 0 },
       bingo: null
+    },
+    locationOptions: {
+      loading: false,
+      loaded: false,
+      values: []
     },
     lastSyncAttemptAt: '',
     lastSyncSuccessAt: '',
@@ -1043,8 +1086,10 @@
   function getBirdLogDraftFieldIds() {
     return [
       'birdsLogSpeciesSelect',
+      'birdsLogSpeciesSearchInput',
       'birdsLogDateInput',
       'birdsLogLocationInput',
+      'birdsLogLocationOtherInput',
       'birdsLogCountInput',
       'birdsLogRegionInput',
       'birdsLogHabitatInput',
@@ -1093,6 +1138,20 @@
       el.value = value;
       restoredAny = true;
     });
+    const locationSelect = document.getElementById('birdsLogLocationInput');
+    const locationOtherInput = document.getElementById('birdsLogLocationOtherInput');
+    if (locationSelect && locationOtherInput) {
+      const isOther = locationSelect.value === '__other__';
+      locationOtherInput.hidden = !isOther;
+    }
+
+    const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
+    const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
+    if (speciesSearchInput && speciesSelect && !speciesSelect.value && speciesSearchInput.value) {
+      const resolvedId = resolveBirdIdFromLogSpeciesInput(speciesSearchInput.value);
+      if (resolvedId) speciesSelect.value = resolvedId;
+    }
+
     if (restoredAny) {
       renderBirdLogValidationBadges();
       renderBirdLogHistoryCard();
@@ -2679,7 +2738,7 @@
     renderConfiguredSubTabDiagnostics(subTabKey);
 
     const tableName = cfg.speciesTableName;
-    const fileCandidates = Array.from(new Set(EXCEL_FILE_CANDIDATES));
+    const fileCandidates = Array.from(new Set((cfg.speciesFileCandidates || []).concat(EXCEL_FILE_CANDIDATES)));
     const errors = [];
 
     try {
@@ -2704,7 +2763,7 @@
 
           const syncWorkbookPath = await findWorkbookPathWithTables(
             [cfg.sightingsTableName, cfg.userStateTableName],
-            EXCEL_SYNC_FILE_CANDIDATES
+            Array.from(new Set((cfg.syncFileCandidates || []).concat(EXCEL_SYNC_FILE_CANDIDATES)))
           );
           const remoteState = await hydrateSubTabRemoteState(subTabKey, dataset, syncWorkbookPath);
 
@@ -3914,6 +3973,112 @@
     applyBirdLogCommand(nextValue);
   }
 
+  function getFastLogExampleForActiveSubTab() {
+    const examples = {
+      birds: 'great blue heron marsh certain',
+      mammals: 'white-tailed deer forest certain',
+      reptiles: 'painted turtle marsh probable',
+      amphibians: 'spring peeper forest certain',
+      insects: 'dragonfly marsh certain',
+      arachnids: 'orb weaver forest probable',
+      wildflowers: 'milkweed meadow certain',
+      trees: 'red oak forest certain'
+    };
+    const key = String(state.activeSubTab || 'birds').trim();
+    return examples[key] || examples.birds;
+  }
+
+  function getActiveSpeciesOptionsForLog() {
+    const query = norm(state.birdLogSpeciesQuery || '');
+    const base = Array.isArray(state.birds) ? state.birds.slice() : [];
+    if (!query) return base;
+    return base.filter((bird) => {
+      const haystack = [bird.speciesName, bird.familyLabel, bird.genusLabel, bird.canonicalId].map(norm).join(' ');
+      return haystack.includes(query);
+    });
+  }
+
+  function resolveBirdIdFromLogSpeciesInput(rawValue) {
+    const value = String(rawValue || '').trim();
+    if (!value) return '';
+    const direct = findBirdById(value);
+    if (direct) return direct.id;
+    const exact = state.birds.find((bird) => norm(bird.speciesName) === norm(value));
+    if (exact) return exact.id;
+    const contains = state.birds.find((bird) => norm(bird.speciesName).includes(norm(value)));
+    return contains ? contains.id : '';
+  }
+
+  function toLocationOptionFromRecord(record) {
+    const entries = Object.entries(record || {});
+    if (!entries.length) return '';
+    const pick = (names) => {
+      for (let i = 0; i < names.length; i += 1) {
+        const key = names[i];
+        const exact = entries.find(([k]) => norm(k) === norm(key));
+        if (exact && String(exact[1] || '').trim()) return String(exact[1]).trim();
+        const fuzzy = entries.find(([k]) => norm(k).includes(norm(key)));
+        if (fuzzy && String(fuzzy[1] || '').trim()) return String(fuzzy[1]).trim();
+      }
+      return '';
+    };
+    const name = pick(['location', 'name', 'place', 'venue', 'destination', 'site']);
+    const city = pick(['city', 'town']);
+    const stateName = pick(['state', 'province', 'region']);
+    const parts = [name, city, stateName].filter(Boolean);
+    return parts.join(', ').trim();
+  }
+
+  async function ensureLocationOptionsLoaded() {
+    if (state.locationOptions.loading || state.locationOptions.loaded) return;
+    if (!window.accessToken) {
+      state.locationOptions.loaded = true;
+      state.locationOptions.values = [];
+      return;
+    }
+    state.locationOptions.loading = true;
+    try {
+      const values = new Set();
+      for (let i = 0; i < NATURE_LOCATION_TABLE_SOURCES.length; i += 1) {
+        const source = NATURE_LOCATION_TABLE_SOURCES[i];
+        try {
+          const payload = await fetchTableColumnsAndRows(source.workbook, source.table, 2000);
+          const rows = toRowObjects(payload.columns || [], payload.rows || []);
+          rows.forEach((row) => {
+            const label = toLocationOptionFromRecord(row);
+            if (label) values.add(label);
+          });
+        } catch (_error) {
+          // Skip unavailable tables and continue through configured sources.
+        }
+      }
+      state.locationOptions.values = Array.from(values).sort((a, b) => a.localeCompare(b));
+      state.locationOptions.loaded = true;
+    } finally {
+      state.locationOptions.loading = false;
+    }
+  }
+
+  function syncBirdLogLocationOptions() {
+    const select = document.getElementById('birdsLogLocationInput');
+    const otherInput = document.getElementById('birdsLogLocationOtherInput');
+    if (!select) return;
+    const previous = String(select.value || '');
+    const options = state.locationOptions.values || [];
+    const optionHtml = options.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join('');
+    select.innerHTML = `<option value="">Location...</option>${optionHtml}<option value="__other__">Other (type manually)</option>`;
+    if (previous && options.includes(previous)) select.value = previous;
+    else if (previous && previous !== '__other__') {
+      select.value = '__other__';
+      if (otherInput) otherInput.value = previous;
+    }
+    if (select.value === '__other__') {
+      if (otherInput) otherInput.hidden = false;
+    } else if (otherInput) {
+      otherInput.hidden = true;
+    }
+  }
+
   function parseBirdLogCommand(raw) {
     const text = String(raw || '').trim();
     const normalized = norm(text);
@@ -3945,6 +4110,7 @@
     const parsed = parseBirdLogCommand(raw);
     if (!parsed) return;
     const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
+    const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
     const regionInput = document.getElementById('birdsLogRegionInput');
     const habitatInput = document.getElementById('birdsLogHabitatInput');
     const confidenceInput = document.getElementById('birdsLogConfidenceInput');
@@ -3952,6 +4118,8 @@
     if (speciesSelect && parsed.speciesId) {
       speciesSelect.value = parsed.speciesId;
       applyBirdLogSpeciesDefaults(parsed.speciesId, { preferHistory: true });
+      const parsedBird = findBirdById(parsed.speciesId);
+      if (speciesSearchInput && parsedBird) speciesSearchInput.value = parsedBird.speciesName;
     }
     if (regionInput && parsed.region) regionInput.value = parsed.region;
     if (habitatInput && parsed.habitat) habitatInput.value = parsed.habitat;
@@ -4110,6 +4278,7 @@
     const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
     const dateInput = document.getElementById('birdsLogDateInput');
     const locationInput = document.getElementById('birdsLogLocationInput');
+    const locationOtherInput = document.getElementById('birdsLogLocationOtherInput');
     const countInput = document.getElementById('birdsLogCountInput');
     const regionInput = document.getElementById('birdsLogRegionInput');
     const habitatInput = document.getElementById('birdsLogHabitatInput');
@@ -4125,7 +4294,9 @@
     }
 
     const dateObserved = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().slice(0, 10);
-    const locationName = locationInput ? locationInput.value.trim() : '';
+    const selectedLocation = locationInput ? String(locationInput.value || '').trim() : '';
+    const otherLocation = locationOtherInput ? String(locationOtherInput.value || '').trim() : '';
+    const locationName = selectedLocation === '__other__' ? otherLocation : selectedLocation;
     const count = Math.max(1, Number(countInput && countInput.value ? countInput.value : 1) || 1);
     const region = regionInput ? (regionInput.value || '').trim().toLowerCase() : '';
     const habitat = habitatInput ? (habitatInput.value || '').trim().toLowerCase() : '';
@@ -4169,7 +4340,13 @@
     const resetForNew = mode === 'save-new';
     if (resetForNew) {
       if (speciesSelect) speciesSelect.value = '';
+      const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
+      if (speciesSearchInput) speciesSearchInput.value = '';
       if (locationInput) locationInput.value = '';
+      if (locationOtherInput) {
+        locationOtherInput.value = '';
+        locationOtherInput.hidden = true;
+      }
       if (notesInput) notesInput.value = '';
       if (countInput) countInput.value = '1';
       if (latInput) latInput.value = '';
@@ -4593,6 +4770,8 @@
     const timeline = document.getElementById('birdsLogTimeline');
     const timelineMeta = document.getElementById('birdsLogTimelineMeta');
     const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
+    const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
+    const speciesSearchList = document.getElementById('birdsLogSpeciesSearchList');
     const commandInput = document.getElementById('birdsLogCommandInput');
     const intentRow = document.getElementById('birdsLogIntentChipRow');
     if (!banner || !trendStats || !timeline) return;
@@ -4603,7 +4782,20 @@
       speciesSelect.innerHTML = `<option value="">Select species...</option>${options}`;
       if (currentValue) speciesSelect.value = currentValue;
     }
+
+    if (speciesSearchInput && speciesSearchList) {
+      const currentBird = findBirdById(speciesSelect ? speciesSelect.value : '');
+      if (currentBird && !speciesSearchInput.value) {
+        speciesSearchInput.value = currentBird.speciesName;
+      }
+      const visibleOptions = getActiveSpeciesOptionsForLog()
+        .slice(0, 400)
+        .map((bird) => `<option value="${escapeHtml(bird.speciesName)}"></option>`)
+        .join('');
+      speciesSearchList.innerHTML = visibleOptions;
+    }
     if (commandInput) commandInput.value = state.birdLogCommandValue || '';
+    syncBirdLogLocationOptions();
     if (intentRow) {
       intentRow.innerHTML = getBirdLogIntentChipDefs(stats)
         .map((chip) => `<button type="button" class="nature-log-intent-chip" data-birds-log-intent="${escapeHtml(chip.key)}">${escapeHtml(chip.label)}</button>`)
@@ -6113,12 +6305,16 @@
     return cfg && cfg.label ? cfg.label : 'Birds';
   }
 
-  function getActiveCategorySingularLabel() {
-    const plural = getActiveCategoryLabel();
+  function toCategorySingularLabel(pluralLabel) {
+    const plural = String(pluralLabel || 'Birds').trim() || 'Birds';
     if (plural === 'Birds') return 'Bird';
     if (plural.endsWith('ies')) return `${plural.slice(0, -3)}y`;
     if (plural.endsWith('s')) return plural.slice(0, -1);
     return plural;
+  }
+
+  function getActiveCategorySingularLabel() {
+    return toCategorySingularLabel(getActiveCategoryLabel());
   }
 
   function applyActiveCategoryUiLabels(root) {
@@ -6134,6 +6330,20 @@
       const placeholderNoun = labelPlural === 'Birds' ? 'bird' : labelSingular.toLowerCase();
       commandInput.placeholder = `Type a command (e.g., search ${placeholderNoun}, go badges, log)`;
       commandInput.setAttribute('aria-label', `${labelPlural} command bar`);
+    }
+
+    const logCommandInput = document.getElementById('birdsLogCommandInput');
+    if (logCommandInput) {
+      const example = getFastLogExampleForActiveSubTab();
+      logCommandInput.placeholder = `Fast log command (e.g. ${example})`;
+      logCommandInput.setAttribute('title', `Fast command for ${labelPlural} logs (e.g. ${example})`);
+      logCommandInput.setAttribute('data-tooltip', `Fast command for ${labelPlural} logs (e.g. ${example})`);
+    }
+
+    const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
+    if (speciesSearchInput) {
+      speciesSearchInput.setAttribute('aria-label', `${labelSingular} species`);
+      speciesSearchInput.setAttribute('placeholder', `Select ${labelSingular.toLowerCase()}...`);
     }
 
     const backButtons = [
@@ -6344,9 +6554,7 @@
 
   function syncNatureSubTabs(root) {
     if (!root) return;
-    const activePaneKey = (state.activeSubTab === 'trees' || state.activeSubTab === 'shrubs')
-      ? state.activeSubTab
-      : 'birds';
+    const activePaneKey = isConfigDrivenSubTab(state.activeSubTab) ? 'birds' : state.activeSubTab;
 
     getNatureSubTabButtons(root).forEach((button) => {
       const key = button.getAttribute('data-nature-subtab');
@@ -6503,6 +6711,10 @@
 
     state.activeSubTab = nextSubTab;
     activePersistenceSubTab = getPersistenceSubTabKey(nextSubTab);
+
+    // Immediately reflect selected subtab in UI so activation feels single-click responsive.
+    syncNatureSubTabs(root);
+    announceNatureSubTab(root);
 
     if (switchedSubTab && state.activeBirdView === 'detail') {
       state.activeBirdView = 'explorer';
@@ -6942,7 +7154,10 @@
       if (logPrefillButton) {
         const speciesId = logPrefillButton.getAttribute('data-birds-log-prefill') || '';
         const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
+        const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
         if (speciesSelect && speciesId) speciesSelect.value = speciesId;
+        const bird = findBirdById(speciesId);
+        if (speciesSearchInput && bird) speciesSearchInput.value = bird.speciesName;
         applyBirdLogSpeciesDefaults(speciesId, { preferHistory: true });
         renderBirdLogValidationBadges();
         renderBirdLogHistoryCard();
@@ -6963,7 +7178,9 @@
         const action = logNextActionButton.getAttribute('data-birds-log-next-action') || '';
         if (action === 'log-another') {
           const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
+          const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
           if (speciesSelect) speciesSelect.value = '';
+          if (speciesSearchInput) speciesSearchInput.value = '';
           renderBirdLogValidationBadges();
           renderBirdLogHistoryCard();
           return;
@@ -6996,7 +7213,10 @@
       if (detailLogButton) {
         setBirdView(root, 'log');
         const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
+        const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
         if (speciesSelect && state.selectedBirdId) speciesSelect.value = state.selectedBirdId;
+        const selectedBird = findBirdById(state.selectedBirdId);
+        if (speciesSearchInput && selectedBird) speciesSearchInput.value = selectedBird.speciesName;
         return;
       }
 
@@ -7286,7 +7506,35 @@
     if (logSpeciesSelect && logSpeciesSelect.dataset.natureLogSpeciesBound !== '1') {
       logSpeciesSelect.dataset.natureLogSpeciesBound = '1';
       logSpeciesSelect.addEventListener('change', () => {
+        const speciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
+        const bird = findBirdById(logSpeciesSelect.value || '');
+        if (speciesSearchInput) speciesSearchInput.value = bird ? bird.speciesName : '';
         applyBirdLogSpeciesDefaults(logSpeciesSelect.value || '', { preferHistory: true });
+        renderBirdLogValidationBadges();
+        renderBirdLogHistoryCard();
+        saveBirdLogDraft();
+      });
+    }
+
+    const logSpeciesSearchInput = document.getElementById('birdsLogSpeciesSearchInput');
+    if (logSpeciesSearchInput && logSpeciesSearchInput.dataset.natureLogSpeciesSearchBound !== '1') {
+      logSpeciesSearchInput.dataset.natureLogSpeciesSearchBound = '1';
+      logSpeciesSearchInput.addEventListener('input', () => {
+        state.birdLogSpeciesQuery = logSpeciesSearchInput.value || '';
+        const resolvedId = resolveBirdIdFromLogSpeciesInput(logSpeciesSearchInput.value || '');
+        if (logSpeciesSelect && resolvedId) {
+          logSpeciesSelect.value = resolvedId;
+          applyBirdLogSpeciesDefaults(resolvedId, { preferHistory: true });
+        }
+        renderBirdLogView(state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats());
+        renderBirdLogValidationBadges();
+        renderBirdLogHistoryCard();
+        saveBirdLogDraft();
+      });
+      logSpeciesSearchInput.addEventListener('change', () => {
+        const resolvedId = resolveBirdIdFromLogSpeciesInput(logSpeciesSearchInput.value || '');
+        if (logSpeciesSelect) logSpeciesSelect.value = resolvedId || '';
+        if (resolvedId) applyBirdLogSpeciesDefaults(resolvedId, { preferHistory: true });
         renderBirdLogValidationBadges();
         renderBirdLogHistoryCard();
         saveBirdLogDraft();
@@ -7307,7 +7555,7 @@
       });
     }
 
-    ['birdsLogDateInput', 'birdsLogLatInput', 'birdsLogLngInput', 'birdsLogRegionInput', 'birdsLogHabitatInput', 'birdsLogConfidenceInput']
+    ['birdsLogDateInput', 'birdsLogLatInput', 'birdsLogLngInput', 'birdsLogRegionInput', 'birdsLogHabitatInput', 'birdsLogConfidenceInput', 'birdsLogLocationInput']
       .forEach((id) => {
         const el = document.getElementById(id);
         if (!el || el.dataset.natureLogValidationBound === '1') return;
@@ -7318,13 +7566,27 @@
         });
       });
 
-    ['birdsLogLocationInput', 'birdsLogCountInput', 'birdsLogNotesInput']
+    ['birdsLogCountInput', 'birdsLogNotesInput', 'birdsLogLocationOtherInput']
       .forEach((id) => {
         const el = document.getElementById(id);
         if (!el || el.dataset.natureLogDraftBound === '1') return;
         el.dataset.natureLogDraftBound = '1';
         el.addEventListener('input', saveBirdLogDraft);
       });
+
+    const locationSelect = document.getElementById('birdsLogLocationInput');
+    const locationOtherInput = document.getElementById('birdsLogLocationOtherInput');
+    if (locationSelect && locationSelect.dataset.natureLocationSelectBound !== '1') {
+      locationSelect.dataset.natureLocationSelectBound = '1';
+      locationSelect.addEventListener('change', () => {
+        const isOther = locationSelect.value === '__other__';
+        if (locationOtherInput) locationOtherInput.hidden = !isOther;
+        if (!isOther && locationOtherInput) locationOtherInput.value = '';
+        saveBirdLogDraft();
+      });
+    }
+
+    ensureLocationOptionsLoaded().finally(() => syncBirdLogLocationOptions());
 
     restoreBirdLogDraft();
 
@@ -7489,6 +7751,34 @@
   window.getRecentBirdClickTraceSnapshot = getRecentBirdClickTraceSnapshot;
   window.runBirdWorkbookDiagnostics = runBirdWorkbookDiagnostics;
   window.runNatureWorkbookDiagnostics = runNatureWorkbookDiagnostics;
+  window.getNatureMapContext = function() {
+    const selectedDockButtons = Array.from(document.querySelectorAll('#appSubTabsSlot .nature-challenge-subtabs [data-nature-subtab][aria-selected="true"]'));
+    const selectedDockButton = selectedDockButtons.find((button) => {
+      const host = button.closest('.nature-challenge-subtabs');
+      if (!host || host.hidden || host.getAttribute('aria-hidden') === 'true') return false;
+      return button.offsetParent !== null || button.getClientRects().length > 0;
+    }) || selectedDockButtons[0] || null;
+    const dockedSubTabKey = String(selectedDockButton && selectedDockButton.getAttribute('data-nature-subtab') || '').trim();
+    const fallbackSubTabKey = String(state.activeSubTab || 'birds').trim() || 'birds';
+    const subTabKey = SUBTAB_KEYS.includes(dockedSubTabKey) ? dockedSubTabKey : (SUBTAB_KEYS.includes(fallbackSubTabKey) ? fallbackSubTabKey : 'birds');
+    const persistenceKey = getPersistenceSubTabKey(subTabKey);
+    const keys = getSubTabStorageKeys(persistenceKey);
+    const cfg = getSubTabConfig(subTabKey);
+    const labelPlural = subTabKey === 'birds'
+      ? 'Birds'
+      : (cfg && cfg.label ? cfg.label : 'Birds');
+    const fallbackLog = loadSubTabSightingLog(persistenceKey);
+    const liveLog = persistenceKey === getPersistenceSubTabKey(activePersistenceSubTab)
+      ? (Array.isArray(state.sightingLog) ? state.sightingLog.slice() : fallbackLog)
+      : fallbackLog;
+    return {
+      subTabKey,
+      labelPlural,
+      labelSingular: toCategorySingularLabel(labelPlural),
+      storageKey: keys.sightingLog,
+      sightings: liveLog
+    };
+  };
   window.BIRD_PROGRESSION_SPEC = BIRD_PROGRESSION_SPEC;
   window.setBirdClickDiagnosticsEnabled = function(enabled) {
     try {

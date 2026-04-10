@@ -56,8 +56,35 @@
   let filters = { species: 'all', habitat: 'all', rarity: 'all', dateFrom: '', dateTo: '' };
 
   /* ─── Data helpers ───────────────────────────────────────── */
+  function getMapContext() {
+    const fallback = {
+      subTabKey: 'birds',
+      labelPlural: 'Birds',
+      labelSingular: 'Bird',
+      storageKey: SIGHTING_LOG_KEY,
+      sightings: null
+    };
+    try {
+      if (typeof window.getNatureMapContext === 'function') {
+        const ctx = window.getNatureMapContext() || {};
+        return {
+          subTabKey: String(ctx.subTabKey || fallback.subTabKey),
+          labelPlural: String(ctx.labelPlural || fallback.labelPlural),
+          labelSingular: String(ctx.labelSingular || fallback.labelSingular),
+          storageKey: String(ctx.storageKey || fallback.storageKey),
+          sightings: Array.isArray(ctx.sightings) ? ctx.sightings : null
+        };
+      }
+    } catch (_) {
+      // Fallback to birds context when helper is unavailable.
+    }
+    return fallback;
+  }
+
   function loadLog() {
-    try { return JSON.parse(localStorage.getItem(SIGHTING_LOG_KEY) || '[]'); }
+    const ctx = getMapContext();
+    if (Array.isArray(ctx.sightings)) return ctx.sightings;
+    try { return JSON.parse(localStorage.getItem(ctx.storageKey || SIGHTING_LOG_KEY) || '[]'); }
     catch (_) { return []; }
   }
 
@@ -161,21 +188,25 @@
   function updateBadge(shown, total) {
     const b = document.getElementById('birdsMapCountBadge');
     if (!b) return;
+    const ctx = getMapContext();
+    const noun = ctx && ctx.labelSingular ? String(ctx.labelSingular).toLowerCase() : 'sighting';
     b.textContent = shown === total
-      ? `${total} sighting${total!==1?'s':''}`
-      : `${shown} of ${total} sightings`;
+      ? `${total} ${noun}${total!==1?'s':''}`
+      : `${shown} of ${total} ${noun}s`;
     b.className = 'birds-map-count-badge' + (shown > 0 ? ' has-pins' : '');
   }
 
   function updateStats(entries) {
     const bar = document.getElementById('birdsMapStatsBar');
     if (!bar) return;
+    const ctx = getMapContext();
+    const labelPlural = ctx && ctx.labelPlural ? ctx.labelPlural : 'Birds';
     const sp  = new Set(entries.map((e) => e.speciesName)).size;
     const loc = new Set(entries.map((e) => e.locationName).filter(Boolean)).size;
     const ph  = entries.filter((e) => e.photoName).length;
     bar.innerHTML =
       `<span class="birds-map-stat"><span class="birds-map-stat-value">${entries.length}</span> pins</span>` +
-      `<span class="birds-map-stat"><span class="birds-map-stat-value">${sp}</span> species</span>` +
+      `<span class="birds-map-stat"><span class="birds-map-stat-value">${sp}</span> ${esc(labelPlural).toLowerCase()}</span>` +
       `<span class="birds-map-stat"><span class="birds-map-stat-value">${loc}</span> locations</span>` +
       (ph ? `<span class="birds-map-stat"><span class="birds-map-stat-value">${ph}</span> with photo</span>` : '');
   }
@@ -183,11 +214,14 @@
   function updateEmpty(noFiltered, noGeo) {
     const el = document.getElementById('birdsMapEmpty');
     if (!el) return;
+    const ctx = getMapContext();
+    const labelPlural = ctx && ctx.labelPlural ? ctx.labelPlural : 'Birds';
+    const labelSingular = ctx && ctx.labelSingular ? ctx.labelSingular : 'Bird';
     if (noGeo) {
       el.removeAttribute('hidden');
-      el.querySelector('.birds-map-empty-title').textContent = 'No GPS sightings yet';
+      el.querySelector('.birds-map-empty-title').textContent = `No GPS ${labelPlural.toLowerCase()} logged yet`;
       el.querySelector('.birds-map-empty-desc').textContent  =
-        'Add latitude & longitude when logging a sighting to see it here.';
+        `Add latitude & longitude when logging a ${labelSingular.toLowerCase()} entry to see it here.`;
     } else if (noFiltered) {
       el.removeAttribute('hidden');
       el.querySelector('.birds-map-empty-title').textContent = 'No sightings match these filters';
@@ -200,6 +234,8 @@
   /* ─── Filter bar population ──────────────────────────────── */
   function populateFilters() {
     const entries = geoEntries();
+    const ctx = getMapContext();
+    const labelPlural = ctx && ctx.labelPlural ? ctx.labelPlural : 'Birds';
 
     const fill = (id, vals, label) => {
       const sel = document.getElementById(id);
@@ -211,7 +247,7 @@
       sel.value = filters[id.replace('birdsMapFilter','').toLowerCase()] || 'all';
     };
 
-    fill('birdsMapFilterSpecies', entries.map((e) => e.speciesName),                     'All Species');
+    fill('birdsMapFilterSpecies', entries.map((e) => e.speciesName),                     `All ${labelPlural}`);
     fill('birdsMapFilterHabitat', entries.map((e) => (e.habitat||'').toLowerCase()),     'All Habitats');
     fill('birdsMapFilterRarity',  entries.map((e) => e.rarity||''),                      'All Rarities');
   }
@@ -227,7 +263,7 @@
     el.setAttribute('aria-label', 'Sighting Map');
     el.innerHTML = `
 <div class="birds-map-header">
-  <button id="birdsMapCloseBtn" class="birds-map-back-btn" type="button">← Back to Birds</button>
+  <button id="birdsMapCloseBtn" class="birds-map-back-btn app-back-btn" type="button">← Back</button>
   <span class="birds-map-title">🗺️ Sighting Map</span>
   <span id="birdsMapCountBadge" class="birds-map-count-badge">0 sightings</span>
 </div>
@@ -311,6 +347,11 @@
   /* ─── Open / Close ───────────────────────────────────────── */
   function openMap() {
     if (!overlayEl) return;
+    const ctx = getMapContext();
+    const closeBtn = document.getElementById('birdsMapCloseBtn');
+    const titleEl = document.querySelector('#birdsMapOverlay .birds-map-title');
+    if (closeBtn) closeBtn.textContent = `← Back to ${ctx.labelPlural}`;
+    if (titleEl) titleEl.textContent = `🗺️ ${ctx.labelPlural} Map`;
     overlayEl.removeAttribute('hidden');
     document.body.style.overflow = 'hidden';
     loadLeaflet(() => { populateFilters(); initMap(); });

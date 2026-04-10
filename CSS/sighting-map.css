@@ -46,10 +46,10 @@
 
 .birds-map-back-btn {
   padding: 7px 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #1d4ed8;
   border-radius: 8px;
-  background: white !important;
-  color: #374151 !important;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -61,8 +61,8 @@
 }
 
 .birds-map-back-btn:hover {
-  background: #f3f4f6 !important;
-  border-color: #d1d5db !important;
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border-color: #1e40af !important;
 }
 
 .birds-map-title {

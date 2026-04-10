@@ -14,8 +14,7 @@
     <button id="natureChallengeTab-insects" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-insects" aria-selected="false" data-nature-subtab="insects" aria-label="Open Insects section" title="Open Insects section" data-tooltip="Open Insects section">🦋 Insects</button>
     <button id="natureChallengeTab-arachnids" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-arachnids" aria-selected="false" data-nature-subtab="arachnids" aria-label="Open Arachnids section" title="Open Arachnids section" data-tooltip="Open Arachnids section">🕷️ Arachnids</button>
     <button id="natureChallengeTab-wildflowers" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-wildflowers" aria-selected="false" data-nature-subtab="wildflowers" aria-label="Open Wildflowers section" title="Open Wildflowers section" data-tooltip="Open Wildflowers section">🌼 Wildflowers</button>
-    <button id="natureChallengeTab-trees" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-trees" aria-selected="false" data-nature-subtab="trees" aria-label="Open Trees section" title="Open Trees section" data-tooltip="Open Trees section">🌲 Trees</button>
-    <button id="natureChallengeTab-shrubs" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-shrubs" aria-selected="false" data-nature-subtab="shrubs" aria-label="Open Shrubs section" title="Open Shrubs section" data-tooltip="Open Shrubs section">🌿 Shrubs</button>
+    <button id="natureChallengeTab-trees" type="button" class="nature-challenge-subtab" role="tab" aria-controls="natureChallengePane-trees" aria-selected="false" data-nature-subtab="trees" aria-label="Open Trees and Shrubs section" title="Open Trees and Shrubs section" data-tooltip="Open Trees and Shrubs section">🌲 Trees &amp; Shrubs</button>
   </div>
 
   <div id="natureChallengeSubTabAnnouncer" class="nature-sr-only" aria-live="polite" aria-atomic="true"></div>
@@ -346,11 +345,17 @@
             <div id="birdsLogOfflineStatus" class="nature-offline-status-line" aria-live="polite">Recent logs saved locally.</div>
             <div id="birdsLogHistoryCard" class="nature-log-history-card" aria-live="polite"></div>
             <div class="nature-log-form-grid">
-              <select id="birdsLogSpeciesSelect" data-log-field="core" class="filter-select" aria-label="Bird species" title="Choose the bird species to log" data-tooltip="Choose the bird species to log">
+              <input id="birdsLogSpeciesSearchInput" data-log-field="core" class="filter-input" type="text" list="birdsLogSpeciesSearchList" placeholder="Select species..." aria-label="Bird species" title="Type to narrow species" data-tooltip="Type to narrow species" autocomplete="off" />
+              <datalist id="birdsLogSpeciesSearchList"></datalist>
+              <select id="birdsLogSpeciesSelect" data-log-field="core" class="filter-select" aria-label="Bird species" title="Choose the bird species to log" data-tooltip="Choose the bird species to log" hidden>
                 <option value="">Select species...</option>
               </select>
               <input id="birdsLogDateInput" data-log-field="core" class="filter-input" type="date" aria-label="Observation date" title="Choose the date you observed the bird" data-tooltip="Choose the date you observed the bird" />
-              <input id="birdsLogLocationInput" data-log-field="context" class="filter-input" type="text" placeholder="Location" aria-label="Observation location" title="Enter where you observed the bird" data-tooltip="Enter where you observed the bird" />
+              <select id="birdsLogLocationInput" data-log-field="context" class="filter-select" aria-label="Observation location" title="Choose where you observed this sighting" data-tooltip="Choose where you observed this sighting">
+                <option value="">Location...</option>
+                <option value="__other__">Other (type manually)</option>
+              </select>
+              <input id="birdsLogLocationOtherInput" data-log-field="context" class="filter-input" type="text" placeholder="Enter custom location" aria-label="Custom observation location" title="Type a custom location name" data-tooltip="Type a custom location name" hidden />
               <input id="birdsLogCountInput" data-log-field="core" class="filter-input" type="number" min="1" value="1" placeholder="Count" aria-label="Bird count" title="Enter how many birds you observed" data-tooltip="Enter how many birds you observed" />
               <select id="birdsLogRegionInput" data-log-field="context" class="filter-select" aria-label="Observation region" title="Choose the region for this sighting" data-tooltip="Choose the region for this sighting">
                 <option value="">Region...</option>
@@ -891,14 +896,14 @@
     </div>
   </div>
 
-  <!-- TREES SUB-TAB -->
+  <!-- TREES & SHRUBS SUB-TAB -->
   <div id="natureChallengePane-trees" class="nature-challenge-pane" data-nature-pane="trees" role="tabpanel" aria-labelledby="natureChallengeTab-trees" hidden>
     <!-- Category Progression -->
     <div class="card" style="margin-top: 10px;">
       <div class="card-header">
         <div>
           <div class="card-title">📊 Category Progression</div>
-          <div class="card-subtitle">Track your tree species sightings.</div>
+          <div class="card-subtitle">Track your trees and shrubs sightings.</div>
         </div>
       </div>
       <div class="nature-progression-stats">
@@ -938,52 +943,6 @@
     </div>
   </div>
 
-  <!-- SHRUBS SUB-TAB -->
-  <div id="natureChallengePane-shrubs" class="nature-challenge-pane" data-nature-pane="shrubs" role="tabpanel" aria-labelledby="natureChallengeTab-shrubs" hidden>
-    <!-- Category Progression -->
-    <div class="card" style="margin-top: 10px;">
-      <div class="card-header">
-        <div>
-          <div class="card-title">📊 Category Progression</div>
-          <div class="card-subtitle">Track your shrub species sightings.</div>
-        </div>
-      </div>
-      <div class="nature-progression-stats">
-        <div class="nature-stat-card">
-          <div class="nature-stat-label">Total Species Sighted</div>
-          <div class="nature-stat-value" id="shrubsTotalSighted">0</div>
-          <div class="nature-stat-sub">out of <span id="shrubsTotalSpecies">0</span> species</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sightings by Family -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏷️ Sightings by Family</div>
-        <div class="card-subtitle">View species grouped by family.</div>
-      </div>
-      <div id="shrubsFamilyGrid" class="nature-family-grid"></div>
-    </div>
-
-    <!-- Challenges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
-      </div>
-      <div id="shrubsChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="shrubsBadgeGrid" class="nature-badge-grid"></div>
-    </div>
-  </div>
 </div>
 
 <style>
