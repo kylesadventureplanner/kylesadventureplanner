@@ -23,7 +23,8 @@ test.describe('Offline airplane mode regression', () => {
       await window.OfflinePwa.enqueueWrite('test-airplane-mode', { probe: true }, { source: 'playwright' });
     });
 
-    await expect(page.locator('#offlineModeQueueBadge')).toContainText('Pending sync');
+    // Accept both legacy and current queue badge copy while asserting queued state is visible.
+    await expect(page.locator('#offlineModeQueueBadge')).toContainText(/Pending sync|Queued for replay/);
     const pending = await page.evaluate(() => {
       if (!window.OfflinePwa || typeof window.OfflinePwa.getPendingCount !== 'function') return -1;
       return window.OfflinePwa.getPendingCount();

@@ -332,6 +332,7 @@
     lastSyncAttemptAt: '',
     lastSyncSuccessAt: '',
     lastLoadedAt: null,
+    subTabSwitchToken: 0,
     subTabData: CONFIG_DRIVEN_SUBTABS.reduce((acc, key) => {
       acc[key] = {
         loaded: false,
@@ -399,10 +400,12 @@
 
   function renderBirdClickDiagnosticsPanel() {
     if (!birdsClickDiagnostics.panel) return;
+    const categoryLabel = getActiveCategoryLabel();
+    const categorySingular = getActiveCategorySingularLabel();
     if (!birdsClickDiagnostics.enabled) {
       birdsClickDiagnostics.panel.innerHTML = `
         <div class="nature-click-diagnostics-heading">
-          <span>Bird button diagnostics</span>
+          <span>${escapeHtml(categoryLabel)} click diagnostics</span>
           <span class="nature-click-diagnostics-status">Paused</span>
         </div>
         <div class="nature-click-diagnostics-empty">Diagnostics are currently disabled. Use <code>window.setBirdClickDiagnosticsEnabled(true)</code> to turn live tracking back on.</div>
@@ -417,7 +420,7 @@
     const hasEvents = birdsClickDiagnostics.total > 0 || birdsClickDiagnostics.dedupedClicks > 0;
     birdsClickDiagnostics.panel.innerHTML = `
       <div class="nature-click-diagnostics-heading">
-        <span>Bird button diagnostics</span>
+        <span>${escapeHtml(categoryLabel)} click diagnostics</span>
         <span class="nature-click-diagnostics-status">Live in-app tracking</span>
       </div>
       <div class="nature-click-diagnostics-grid">
@@ -441,7 +444,7 @@
       <div class="nature-click-diagnostics-meta">
         <div class="nature-click-diagnostics-row"><strong>Last event</strong><span>${escapeHtml(birdsClickDiagnostics.lastEvent || '-')}</span></div>
         <div class="nature-click-diagnostics-row"><strong>Last target</strong><span>${escapeHtml(birdsClickDiagnostics.lastTarget || '-')}</span></div>
-        <div class="nature-click-diagnostics-row"><strong>Status</strong><span>${hasEvents ? 'Tracking recent Birds button activations.' : 'Waiting for your next Birds button interaction.'}</span></div>
+        <div class="nature-click-diagnostics-row"><strong>Status</strong><span>${hasEvents ? `Tracking recent ${categoryLabel} button activations.` : `Waiting for your next ${categorySingular} button interaction.`}</span></div>
       </div>
       <div class="nature-log-form-actions" style="margin-top:8px;">
         <button type="button" id="birdsCopyRecentClickTraceBtn" class="pill-button" ${birdsClickDiagnostics.recentTraces.length ? '' : 'disabled'}>Copy recent click trace JSON (${birdsClickDiagnostics.recentTraces.length})</button>
@@ -1692,9 +1695,22 @@
   }
 
   function applyProgressionTemplate(text, stats) {
+    const categoryPlural = String(getActiveCategoryLabel() || 'Birds');
+    const categorySingular = String(getActiveCategorySingularLabel() || 'Bird');
+    const categoryPluralLower = categoryPlural.toLowerCase();
+    const categorySingularLower = categorySingular.toLowerCase();
+
     return String(text || '')
       .replace(/\{seasonLabel\}/g, String(stats.currentSeasonLabel || 'Season'))
-      .replace(/\{season\}/g, String(stats.currentSeason || 'season').toLowerCase());
+      .replace(/\{season\}/g, String(stats.currentSeason || 'season').toLowerCase())
+      .replace(/\{categoryPlural\}/g, categoryPlural)
+      .replace(/\{categoryPluralLower\}/g, categoryPluralLower)
+      .replace(/\{categorySingular\}/g, categorySingular)
+      .replace(/\{categorySingularLower\}/g, categorySingularLower)
+      .replace(/\bbirding\b/gi, `${categorySingularLower} tracking`)
+      .replace(/\bbird checklist\b/gi, `${categorySingularLower} checklist`)
+      .replace(/\bbirds\b/gi, categoryPluralLower)
+      .replace(/\bbird\b/gi, categorySingularLower);
   }
 
   function toProgressionCard(definition, stats) {
@@ -1711,7 +1727,7 @@
       metric: definition.metric,
       goal,
       progress,
-      xp: Math.max(0, Number(definition.xp) || 0),
+      valueScore: Math.max(0, Number(definition.xp) || 0),
       tier,
       tierLabel: tierMeta.label,
       tierOrder: tierMeta.order,
@@ -1728,8 +1744,8 @@
     if (tierDiff !== 0) return tierDiff;
     const orderDiff = (Number(a && a.sortOrder) || 0) - (Number(b && b.sortOrder) || 0);
     if (orderDiff !== 0) return orderDiff;
-    const xpDiff = (Number(a && a.xp) || 0) - (Number(b && b.xp) || 0);
-    if (xpDiff !== 0) return xpDiff;
+    const valueDiff = (Number(a && a.valueScore) || 0) - (Number(b && b.valueScore) || 0);
+    if (valueDiff !== 0) return valueDiff;
     return String(a && a.title || '').localeCompare(String(b && b.title || ''));
   }
 
@@ -1783,7 +1799,7 @@
     else if (!card.completed && Number(card.pct) >= 40) score += 20;
     if (!card.completed && Math.max(0, Number(card.goal) - Number(card.progress)) <= 1) score += 18;
     if (isSeasonRelevantCard(card, stats)) score += 30;
-    score += Math.min(40, Math.round((Number(card.xp) || 0) / 10));
+    score += Math.min(35, Math.max(0, Number(card.goal) || 0));
     if (!card.completed) {
       if (card.tier === 'beginner') score += 16;
       else if (card.tier === 'intermediate') score += 9;
@@ -1797,7 +1813,7 @@
     almostComplete: { key: 'almost-complete', label: 'Almost there', icon: '🎯' },
     highProgress: { key: 'high-progress', label: 'Strong progress', icon: '⚡' },
     seasonFocus: { key: 'season-focus', label: 'Season focus', icon: '🍃' },
-    highReward: { key: 'high-reward', label: 'Big reward', icon: '🏆' },
+    highReward: { key: 'high-reward', label: 'Big milestone', icon: '🏆' },
     recommended: { key: 'recommended', label: 'Recommended', icon: '✨' }
   };
 
@@ -1812,7 +1828,7 @@
         label: `${stats.currentSeasonLabel || 'Season'} focus`
       };
     }
-    if (Number(card.xp) >= 180) return OVERVIEW_REASON_META.highReward;
+    if (Number(card.goal) >= 20) return OVERVIEW_REASON_META.highReward;
     return OVERVIEW_REASON_META.recommended;
   }
 
@@ -1851,9 +1867,7 @@
       const tierClass = item.tierClassName ? ` ${escapeHtml(item.tierClassName)}` : '';
       chips.push(`<span class="nature-progression-chip${tierClass}">${escapeHtml(item.tierLabel)}</span>`);
     }
-    if (options.showXp !== false && Number(item.xp) > 0) {
-      chips.push(`<span class="nature-progression-chip nature-progression-chip--xp">${escapeHtml(String(item.xp))} XP</span>`);
-    }
+    // XP chips intentionally removed to keep progression copy simple.
     if (options.showRarity && item.rarity) {
       chips.push(`<span class="nature-progression-chip nature-progression-chip--rarity">${escapeHtml(String(item.rarity))}</span>`);
     }
@@ -2079,7 +2093,7 @@
     const remaining = Math.max(0, Number(card.goal) - Number(card.progress));
     if (filters.inSeason && isSeasonRelevantCard(card, stats)) return true;
     if (filters.almostThere && !card.completed && remaining <= 2) return true;
-    if (filters.highReward && Number(card.xp) >= 160) return true;
+    if (filters.highReward && Number(card.valueScore) >= 160) return true;
     return false;
   }
 
@@ -2814,6 +2828,7 @@
     if (!cfg || !subState || !row) return;
 
     const diagnostics = subState.diagnostics || {};
+    const categoryLabel = cfg.label || getActiveCategoryLabel();
     const authText = diagnostics.authState || (window.accessToken ? 'signed in' : 'sign-in required');
     const workbookText = diagnostics.workbookPath || 'not selected';
     const speciesText = diagnostics.speciesProbe || 'waiting';
@@ -2826,14 +2841,15 @@
     row.innerHTML = `
       <span class="nature-subtab-diagnostics-pill ${authClass}"><strong>Auth</strong> ${escapeHtml(authText)}</span>
       <span class="nature-subtab-diagnostics-pill"><strong>Workbook</strong> ${escapeHtml(workbookText)}</span>
-      <span class="nature-subtab-diagnostics-pill ${speciesClass}"><strong>Species</strong> ${escapeHtml(speciesText)}</span>
-      <span class="nature-subtab-diagnostics-pill ${syncClass}"><strong>Sightings/User State</strong> ${escapeHtml(syncText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${speciesClass}"><strong>${escapeHtml(categoryLabel)} Species</strong> ${escapeHtml(speciesText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${syncClass}"><strong>${escapeHtml(categoryLabel)} Sightings/User State</strong> ${escapeHtml(syncText)}</span>
     `;
   }
 
   function renderBirdSubtabDiagnostics() {
     const row = document.getElementById('birdsDiagnosticsRow');
     if (!row) return;
+    const categoryLabel = getActiveCategoryLabel();
 
     const signedIn = Boolean(window.accessToken && getBirdSyncUserId());
     const authText = signedIn ? 'signed in' : 'local only';
@@ -2876,8 +2892,8 @@
     row.innerHTML = `
       <span class="nature-subtab-diagnostics-pill ${authClass}"><strong>Auth</strong> ${escapeHtml(authText)}</span>
       <span class="nature-subtab-diagnostics-pill"><strong>Workbook</strong> ${escapeHtml(workbookText)}</span>
-      <span class="nature-subtab-diagnostics-pill ${speciesClass}"><strong>Species</strong> ${escapeHtml(speciesText)}</span>
-      <span class="nature-subtab-diagnostics-pill ${syncClass}"><strong>Sightings/User State</strong> ${escapeHtml(syncText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${speciesClass}"><strong>${escapeHtml(categoryLabel)} Species</strong> ${escapeHtml(speciesText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${syncClass}"><strong>${escapeHtml(categoryLabel)} Sightings/User State</strong> ${escapeHtml(syncText)}</span>
     `;
   }
 
@@ -5675,10 +5691,12 @@
   function renderBirdDetail() {
     const container = document.getElementById('birdsSpeciesDetailContent');
     if (!container) return;
+    const categoryLabel = getActiveCategoryLabel();
+    const categoryLower = categoryLabel.toLowerCase();
 
     const bird = findBirdById(state.selectedBirdId);
     if (!bird) {
-      container.innerHTML = `<div class="card">${buildUnifiedStateHtml('No bird selected yet.', { icon: '🧭', hint: 'Go back to explorer and choose a species card.' })}</div>`;
+      container.innerHTML = `<div class="card">${buildUnifiedStateHtml(`No ${categoryLower} selected yet.`, { icon: '🧭', hint: `Go back to explorer and choose a ${categoryLower} card.` })}</div>`;
       return;
     }
 
@@ -5796,7 +5814,7 @@
             <div class="nature-detail-section-title">Quick Actions</div>
             <div class="nature-log-form-actions">
               <button type="button" id="birdsDetailLogSightingBtn" class="pill-button" ${tooltipAttrs(`Open the sighting log for ${bird.speciesName}`)}>Log a sighting</button>
-              <button type="button" id="birdsDetailBackToExplorerBtn" class="pill-button" ${tooltipAttrs('Back to the bird explorer')}>← Back to Birds</button>
+              <button type="button" id="birdsDetailBackToExplorerBtn" class="pill-button" ${tooltipAttrs(`Back to the ${categoryLower} explorer`)}>← Back to ${categoryLabel}</button>
             </div>
           </section>
 
@@ -5819,19 +5837,22 @@
     const key = ['challenges', 'badges', 'quests', 'bingo'].includes(state.activeBirdCollection)
       ? state.activeBirdCollection
       : 'challenges';
+    const categoryLabel = getActiveCategoryLabel();
+    const categorySingular = getActiveCategorySingularLabel();
+    const categoryLower = categoryLabel.toLowerCase();
     const cache = state.birdCollectionsCache || {};
     const stats = cache.stats;
 
     if (!stats) {
       title.textContent = 'All Items';
-      subtitle.textContent = 'Bird data is still loading.';
-      meta.textContent = 'Collection data will appear after bird data loads.';
+      subtitle.textContent = `${categoryLabel} data is still loading.`;
+      meta.textContent = `Collection data will appear after ${categoryLower} data loads.`;
       if (controls) {
         controls.hidden = true;
         controls.innerHTML = '';
       }
       grid.className = 'nature-challenge-grid';
-      grid.innerHTML = buildUnifiedStateHtml('Bird data is still loading.', { icon: '⏳' });
+      grid.innerHTML = buildUnifiedStateHtml(`${categoryLabel} data is still loading.`, { icon: '⏳' });
       return;
     }
 
@@ -5844,7 +5865,7 @@
       title.textContent = '🏅 All Badges';
       subtitle.textContent = state.collectionPathMode
         ? 'Tier path mode is on. Progress each lane to unlock deeper mastery content.'
-        : 'See every birding badge and your current progress.';
+        : `See every ${categorySingular.toLowerCase()} badge and your current progress.`;
       meta.textContent = `${items.filter((item) => item.completed).length}/${items.length} badges unlocked | ${formatTierBreakdown(items)}`;
       renderCollectionTierControls(allItems, { pathToggleAllowed: true });
       grid.className = 'nature-badge-grid';
@@ -5884,8 +5905,8 @@
 
     if (key === 'bingo') {
       const bingo = cache.bingo;
-      title.textContent = '🟩 Birding Bingo';
-      subtitle.textContent = 'View every seasonal bingo tile and current progress.';
+      title.textContent = `🟩 ${categoryLabel} Bingo`;
+      subtitle.textContent = `View every seasonal ${categoryLower} bingo tile and current progress.`;
       if (controls) {
         controls.hidden = true;
         controls.innerHTML = '';
@@ -6118,6 +6139,7 @@
     const backButtons = [
       document.getElementById('birdsLogBackBtn'),
       document.getElementById('birdsExplorerBackBtn'),
+      document.getElementById('birdsDetailBackBtn'),
       document.getElementById('birdsCollectionBackBtn')
     ];
     backButtons.forEach((button) => {
@@ -6126,6 +6148,24 @@
       button.setAttribute('title', `Back to ${labelPlural} overview`);
       button.setAttribute('data-tooltip', `Back to ${labelPlural} overview`);
     });
+
+    const diagnosticsHeading = document.getElementById('birdsDiagnosticsHeading');
+    if (diagnosticsHeading) diagnosticsHeading.textContent = `🧰 ${labelPlural} Diagnostics, Sync and Clean Up`;
+
+    const diagnosticsSummary = document.getElementById('birdsDiagnosticsSummaryHelp');
+    if (diagnosticsSummary) diagnosticsSummary.textContent = `Quality tools and local/Excel sync controls. Expand this section to inspect ${labelPlural} diagnostics and repair tasks.`;
+
+    const diagnosticsSummaryToggle = root.querySelector('#birdsDiagnosticsDetails > summary');
+    if (diagnosticsSummaryToggle) {
+      diagnosticsSummaryToggle.setAttribute('title', `Open ${labelPlural} diagnostics, sync, and clean up tools`);
+      diagnosticsSummaryToggle.setAttribute('data-tooltip', `Open ${labelPlural} diagnostics, sync, and clean up tools`);
+    }
+
+    const bingoTitle = document.getElementById('birdsBingoSectionTitle');
+    if (bingoTitle) bingoTitle.textContent = `🟩 ${labelPlural} Bingo`;
+
+    const bingoSubtitle = document.getElementById('birdsBingoSectionSubtitle');
+    if (bingoSubtitle) bingoSubtitle.textContent = `Complete seasonal bingo tiles for ${labelPlural.toLowerCase()} and reroll once per season.`;
 
     const syncBadgeInline = document.getElementById('natureSyncHealthBadgeInline');
     if (syncBadgeInline) syncBadgeInline.textContent = `${labelPlural} data: checking...`;
@@ -6454,22 +6494,25 @@
   async function setActiveNatureSubTab(root, key) {
     const previousSubTab = state.activeSubTab;
     const nextSubTab = SUBTAB_KEYS.includes(key) ? key : 'birds';
+    const switchToken = ++state.subTabSwitchToken;
+    const switchedSubTab = previousSubTab !== nextSubTab;
 
-    if (previousSubTab && previousSubTab !== nextSubTab) {
+    if (previousSubTab && switchedSubTab) {
       persistConfigDrivenWorkspaceState(previousSubTab);
     }
 
     state.activeSubTab = nextSubTab;
     activePersistenceSubTab = getPersistenceSubTabKey(nextSubTab);
-    syncNatureSubTabs(root);
-    announceNatureSubTab(root);
+
+    if (switchedSubTab && state.activeBirdView === 'detail') {
+      state.activeBirdView = 'explorer';
+      state.selectedBirdId = '';
+    }
 
     if (state.activeSubTab !== 'birds') {
-      state.activeBirdView = 'overview';
-      state.selectedBirdId = '';
-      state.birdSearch = '';
       if (isConfigDrivenSubTab(state.activeSubTab)) {
-        await loadConfiguredSubTabDataset(state.activeSubTab, false);
+        await loadConfiguredSubTabDataset(state.activeSubTab, true);
+        if (switchToken !== state.subTabSwitchToken) return;
         renderConfiguredSubTab(state.activeSubTab);
         activateConfigDrivenWorkspaceState(state.activeSubTab);
       }
@@ -6480,8 +6523,18 @@
       if (!state.birdsLoaded) await loadBirdDataset(false);
     }
 
+    if (switchToken !== state.subTabSwitchToken) return;
+
+    syncNatureSubTabs(root);
+    announceNatureSubTab(root);
     syncBirdViews(root);
     renderBirds();
+
+    if (state.activeBirdView === 'explorer' || state.activeBirdView === 'detail' || state.activeBirdView === 'collection') {
+      renderBirdExplorerList();
+    }
+    if (state.activeBirdView === 'detail') renderBirdDetail();
+    if (state.activeBirdView === 'collection') renderBirdCollectionView();
   }
 
   function toggleBirdSighting(birdId) {

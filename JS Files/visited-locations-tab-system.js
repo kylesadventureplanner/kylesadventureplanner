@@ -1766,7 +1766,7 @@
       <div class="visited-stat-card">
         <div class="visited-stat-label">Explorer Level</div>
         <div class="visited-stat-value">Lv ${level.level}</div>
-        <div class="visited-stat-sub">${level.remainingXp} XP to next level</div>
+        <div class="visited-stat-sub">${level.remainingXp} points to next level</div>
       </div>
       <div class="visited-stat-card">
         <div class="visited-stat-label">Visited</div>
