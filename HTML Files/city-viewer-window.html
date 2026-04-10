@@ -233,24 +233,29 @@
       border-radius: 12px;
       margin-bottom: 20px;
       display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
     }
 
     .back-btn {
-      background: rgba(255,255,255,0.2);
-      border: none;
-      color: white;
-      padding: 8px 14px;
-      border-radius: 8px;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 10px;
+      border: 2px solid #1e40af;
+      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+      color: #ffffff;
       cursor: pointer;
-      font-weight: 700;
+      font-weight: 800;
       font-size: 14px;
-      transition: all 0.2s;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.34);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
       white-space: nowrap;
     }
-    .back-btn:hover { background: rgba(255,255,255,0.35); }
+    .back-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.4);
+    }
 
     .locations-title {
       flex: 1;
@@ -496,8 +501,9 @@
     }
     .location-detail-header {
       display: flex;
-      align-items: center;
-      gap: 12px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
       margin-bottom: 12px;
       padding-bottom: 10px;
       border-bottom: 1px solid #e5e7eb;
@@ -819,7 +825,7 @@
 
       <!-- Header with back button -->
       <div class="locations-header">
-        <button class="back-btn" onclick="goBackToCities()">← Back</button>
+        <button class="back-btn" onclick="goBackToCities()">← Back to Cities</button>
         <div class="locations-title">
           <h2 id="locationsPageTitle">Locations</h2>
           <div class="subtitle" id="locationsPageSubtitle"></div>
@@ -924,7 +930,7 @@
 
       <div id="locationDetailPage">
         <div class="location-detail-header">
-          <button class="back-btn" onclick="goBackToLocationResults()">← Back to Results</button>
+          <button class="back-btn" onclick="goBackToLocationResults()">← Back to Locations</button>
           <div>
             <h3 id="locationDetailTitle" class="location-detail-title">Location Details</h3>
             <div id="locationDetailSubtitle" class="location-detail-subtitle"></div>

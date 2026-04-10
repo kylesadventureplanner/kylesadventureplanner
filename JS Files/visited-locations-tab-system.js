@@ -174,6 +174,21 @@
     return root ? root.querySelector('.visited-progress-subtabs') : null;
   }
 
+  function getVisitedSubTabLabel(rawLabel) {
+    const text = String(rawLabel || '').trim().replace(/^[^A-Za-z0-9]+/, '').trim();
+    return text || 'Outdoors';
+  }
+
+  function updateVisitedChallengeTitle(root) {
+    if (!root) return;
+    const titleEl = root.querySelector('#visitedChallengeTitle');
+    if (!titleEl) return;
+    const active = PROGRESS_SUBTAB_KEYS.includes(state.activeProgressSubTab) ? state.activeProgressSubTab : 'outdoors';
+    const activeButton = getProgressSubTabButtons(root).find((btn) => btn.getAttribute('data-progress-subtab') === active);
+    const label = getVisitedSubTabLabel(activeButton ? activeButton.textContent : active);
+    titleEl.textContent = `Adventure Challenge - ${label}`;
+  }
+
   function updateVisitedSubTabRowVisibility(row, slot) {
     if (!row || !slot) return;
     const hasVisibleChild = Array.from(slot.children || []).some((child) => !child.hidden && child.getAttribute('aria-hidden') !== 'true');
@@ -289,6 +304,8 @@
        pane.style.position = 'relative';
        pane.style.zIndex = isActive ? '1' : '0';
      });
+
+      updateVisitedChallengeTitle(root);
 
       syncVisitedSubTabDock(root);
    }

@@ -3,7 +3,7 @@
 
 <div id="visitedLocationsRoot">
   <div class="visited-progress-header">
-    <h1>Adventure Challenge</h1>
+    <h1 id="visitedChallengeTitle">Adventure Challenge - Outdoors</h1>
     <div class="planner-top-actions">
       <button id="visitedRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh tracker data" data-tooltip="Refresh tracker data">
         🔄 Refresh Tracker
@@ -142,8 +142,8 @@
     <div id="visitedSuggestionsView" class="visited-overview-view" data-visited-overview-view="suggestions" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="visited-view-header-row">
-          <button id="visitedSuggestionsBackBtn" type="button" class="pill-button" title="Back to Adventure Challenge outdoors" data-tooltip="Back to Adventure Challenge outdoors">← Back</button>
-          <div>
+          <button id="visitedSuggestionsBackBtn" type="button" class="pill-button app-back-btn" title="Back to Visited Locations" data-tooltip="Back to Visited Locations">← Back to Visited</button>
+          <div class="visited-view-header-copy">
             <div class="card-title">🧠 Smart Adventure Suggestions</div>
             <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
           </div>
@@ -183,7 +183,7 @@
     </div>
   </div>
   <details id="visitedDiagnosticsDetails" class="card visited-collapsible-card visited-diagnostics-details" aria-labelledby="visitedDiagnosticsHeading" aria-describedby="visitedDiagnosticsSummaryHelp" style="margin-top: 14px;">
-    <summary class="visited-diagnostics-summary" title="Open Adventure Challenge diagnostics, sync, and clean up" data-tooltip="Open Adventure Challenge diagnostics, sync, and clean up">
+    <summary class="visited-diagnostics-summary visited-collapsible-summary" title="Open Adventure Challenge diagnostics, sync, and clean up" data-tooltip="Open Adventure Challenge diagnostics, sync, and clean up">
       <div>
         <div id="visitedDiagnosticsHeading" class="card-title">🧰 Diagnostics, Sync and Clean Up</div>
         <div id="visitedDiagnosticsSummaryHelp" class="card-subtitle visited-diagnostics-subtitle">Sync health, local queue visibility, and visited tracker diagnostics.</div>
@@ -521,9 +521,15 @@
 
   #visitedLocationsRoot .visited-view-header-row {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
     margin-bottom: 10px;
+  }
+
+  #visitedLocationsRoot .visited-view-header-copy {
+    display: grid;
+    gap: 4px;
   }
 
   #visitedLocationsRoot .visited-diagnostics-details {
@@ -547,6 +553,26 @@
 
   #visitedLocationsRoot .visited-diagnostics-summary::-webkit-details-marker {
     display: none;
+  }
+
+  #visitedLocationsRoot .visited-collapsible-summary::after {
+    content: '▾';
+    font-size: 18px;
+    color: #1d4ed8;
+    font-weight: 900;
+    transform: rotate(-90deg);
+    transition: transform 0.2s ease;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37, 99, 235, 0.12);
+  }
+
+  #visitedLocationsRoot details[open] > .visited-collapsible-summary::after {
+    transform: rotate(0deg);
   }
 
   #visitedLocationsRoot .visited-diagnostics-subtitle {

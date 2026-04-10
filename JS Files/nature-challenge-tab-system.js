@@ -5195,7 +5195,7 @@
             <div class="nature-detail-section-title">Quick Actions</div>
             <div class="nature-log-form-actions">
               <button type="button" id="birdsDetailLogSightingBtn" class="pill-button" ${tooltipAttrs(`Open the sighting log for ${bird.speciesName}`)}>Log a sighting</button>
-              <button type="button" id="birdsDetailBackToExplorerBtn" class="pill-button" ${tooltipAttrs('Back to the filtered explorer list')}>Back to filtered list</button>
+              <button type="button" id="birdsDetailBackToExplorerBtn" class="pill-button" ${tooltipAttrs('Back to the bird explorer')}>← Back to Birds</button>
             </div>
           </section>
 
@@ -5458,6 +5458,20 @@
     return subTabs ? Array.from(subTabs.querySelectorAll('[data-nature-subtab]')) : [];
   }
 
+  function getNatureTitleLabel(rawLabel) {
+    const text = String(rawLabel || '').trim().replace(/^[^A-Za-z0-9]+/, '').trim();
+    return text || 'Birds';
+  }
+
+  function updateNatureChallengeTitle(root) {
+    if (!root) return;
+    const titleEl = root.querySelector('#natureChallengeTitle');
+    if (!titleEl) return;
+    const activeButton = getNatureSubTabButtons(root).find((button) => button.getAttribute('data-nature-subtab') === state.activeSubTab);
+    const label = getNatureTitleLabel(activeButton ? activeButton.textContent : state.activeSubTab);
+    titleEl.textContent = `Nature Challenge - ${label}`;
+  }
+
   function bindNatureSubTabDock(root, subTabs) {
     if (!root || !subTabs || subTabs.dataset.natureDockBound === '1') return;
     subTabs.dataset.natureDockBound = '1';
@@ -5612,6 +5626,8 @@
       pane.hidden = !isActive;
       pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
     });
+
+    updateNatureChallengeTitle(root);
 
     syncNatureSubTabDock(root);
   }

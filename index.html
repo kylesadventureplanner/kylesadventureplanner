@@ -3504,10 +3504,44 @@
 
     .header-right {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-end;
       gap: 12px;
       flex-wrap: wrap;
       font-size: 14px;
+    }
+
+    .header-actions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .auth-status-line {
+      font-size: 13px;
+      color: #dbeafe;
+      font-weight: 700;
+    }
+
+    .app-back-btn {
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 10px;
+      border: 2px solid #1e40af;
+      background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+      color: #ffffff;
+      font-weight: 800;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.34);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .app-back-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.4);
     }
 
     .auth-btn {
@@ -3547,9 +3581,15 @@
 
     .offline-mode-header {
       display: flex;
+      flex-direction: column;
       align-items: flex-start;
-      gap: 12px;
+      gap: 8px;
       margin-bottom: 4px;
+    }
+
+    .offline-mode-header-copy {
+      display: grid;
+      gap: 4px;
     }
 
     .offline-mode-header h1 {
@@ -4055,7 +4095,13 @@
       }
 
       .header-right {
-        align-self: flex-end;
+        align-items: flex-start;
+        width: 100%;
+      }
+
+      .header-actions-row {
+        width: 100%;
+        justify-content: flex-start;
       }
     }
 
@@ -7842,12 +7888,14 @@
   </div>
 
   <div class="header-right">
-    <span id="authStatus">Not signed in</span>
-    <button id="refreshBtn" class="auth-btn" title="Reload the whole app" data-tooltip="Reload the whole app" onclick="location.reload()">🔄 Reload App</button>
-    <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
-    <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
-    <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
-    <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
+    <div class="header-actions-row">
+      <button id="refreshBtn" class="auth-btn" title="Reload the whole app" data-tooltip="Reload the whole app" onclick="location.reload()">🔄 Reload App</button>
+      <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
+      <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
+      <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
+      <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
+    </div>
+    <span id="authStatus" class="auth-status-line">Not signed in</span>
   </div>
 </header>
 <div id="offlineInstallBanner" class="offline-install-banner" hidden>
@@ -8423,8 +8471,8 @@
     <div class="app-tab-pane" data-tab="offline-mode" id="offlineModeTab">
       <div class="offline-mode-page">
         <div class="offline-mode-header">
-          <button id="offlineModeBackBtn" type="button" class="pill-button" title="Go back to your previous page" data-tooltip="Go back to your previous page">← Back</button>
-          <div>
+          <button id="offlineModeBackBtn" type="button" class="pill-button app-back-btn" title="Back to Main App" data-tooltip="Back to Main App">← Back to App</button>
+          <div class="offline-mode-header-copy">
             <h1>Offline Mode</h1>
             <div class="card-subtitle">Prepare the app for field use, install it, and manage queued syncs in one place.</div>
           </div>

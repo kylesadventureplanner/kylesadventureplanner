@@ -3,7 +3,7 @@
 
 <div id="natureChallengeRoot">
   <div class="nature-challenge-header">
-    <h1>Nature Challenge</h1>
+    <h1 id="natureChallengeTitle">Nature Challenge - Birds</h1>
   </div>
 
   <div class="nature-challenge-subtabs" role="tablist" aria-label="Nature Challenge categories">
@@ -317,8 +317,8 @@
       <div class="card nature-log-view-shell" style="margin-top: 10px;">
         <div class="nature-log-view-header">
           <div class="nature-view-header-row nature-view-header-row--sticky">
-            <button type="button" id="birdsLogBackBtn" class="pill-button nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
-            <div>
+            <button type="button" id="birdsLogBackBtn" class="pill-button app-back-btn nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
+            <div class="nature-view-header-copy">
               <div class="card-title">📝 Log a Sighting</div>
               <div class="card-subtitle">Add full sightings with confidence, evidence, and geography while keeping species status up to date.</div>
             </div>
@@ -409,10 +409,10 @@
     <div class="nature-birds-view" data-birds-view="explorer" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="nature-view-header-row">
-          <button type="button" id="birdsExplorerBackBtn" class="pill-button nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
-          <div>
-            <div class="card-title">🐦 Explore Bird Species</div>
-            <div class="card-subtitle">Search your species list and open any card for full details.</div>
+          <button type="button" id="birdsExplorerBackBtn" class="pill-button app-back-btn nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
+          <div class="nature-view-header-copy">
+            <div class="card-title">📝 Log a Sighting</div>
+            <div class="card-subtitle">Add full sightings with confidence, evidence, and geography while keeping species status up to date.</div>
           </div>
         </div>
         <div class="nature-search-row">
@@ -581,7 +581,7 @@
 
     <div class="nature-birds-view" data-birds-view="detail" hidden>
       <div class="card" style="margin-top: 10px;">
-        <button type="button" id="birdsDetailBackBtn" class="pill-button nature-back-to-birds-btn" title="Back to the bird explorer" data-tooltip="Back to the bird explorer">← Back to Explore Bird Species</button>
+             <button type="button" id="birdsDetailBackBtn" class="pill-button app-back-btn nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
       </div>
       <div id="birdsSpeciesDetailContent"></div>
     </div>
@@ -589,8 +589,8 @@
     <div class="nature-birds-view" data-birds-view="collection" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="nature-view-header-row">
-          <button type="button" id="birdsCollectionBackBtn" class="pill-button nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
-          <div>
+          <button type="button" id="birdsCollectionBackBtn" class="pill-button app-back-btn nature-back-to-birds-btn" title="Back to Birds overview" data-tooltip="Back to Birds overview">← Back to Birds</button>
+          <div class="nature-view-header-copy">
             <div id="birdsCollectionTitle" class="card-title">All Items</div>
             <div id="birdsCollectionSubtitle" class="card-subtitle">View every item in this section.</div>
           </div>
@@ -2146,9 +2146,15 @@
 
   #natureChallengeRoot .nature-view-header-row {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
     margin-bottom: 12px;
+  }
+
+  #natureChallengeRoot .nature-view-header-copy {
+    display: grid;
+    gap: 4px;
   }
 
   #natureChallengeRoot .nature-search-row {
