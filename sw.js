@@ -1,6 +1,7 @@
-const CACHE_VERSION = 'kaf-shell-v1';
-const RUNTIME_CACHE = 'kaf-runtime-v1';
-const OFFLINE_CACHE = 'kaf-offline-pack-v1';
+const SW_VERSION = '2026.04.09.1';
+const CACHE_VERSION = 'kaf-shell-v2';
+const RUNTIME_CACHE = 'kaf-runtime-v2';
+const OFFLINE_CACHE = 'kaf-offline-pack-v2';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -20,6 +21,11 @@ const PRECACHE_ASSETS = [
   '/HTML%20Files/tabs/visited-locations-tab.html',
   '/HTML%20Files/tabs/nature-challenge-tab.html',
   '/HTML%20Files/tabs/bike-trails-tab.html',
+  '/HTML%20Files/tabs/birding-locations-tab.html',
+  '/HTML%20Files/tabs/household-tools-tab.html',
+  '/HTML%20Files/tabs/recipes-tab.html',
+  '/HTML%20Files/tabs/garden-planner-tab.html',
+  '/HTML%20Files/tabs/budget-planner-tab.html',
   '/HTML%20Files/offline-pack-health.html',
   '/data/nature-challenge-birds.tsv'
 ];
@@ -47,6 +53,19 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('message', (event) => {
   if (!event || !event.data) return;
+  if (event.data.type === 'GET_SW_VERSION') {
+    const payload = {
+      type: 'SW_VERSION',
+      swVersion: SW_VERSION,
+      cacheVersion: CACHE_VERSION,
+      runtimeCache: RUNTIME_CACHE,
+      offlineCache: OFFLINE_CACHE
+    };
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage(payload);
+    }
+    return;
+  }
   if (event.data.type === 'WARM_OFFLINE_PACK') {
     event.waitUntil((async () => {
       const cache = await caches.open(OFFLINE_CACHE);

@@ -24,6 +24,11 @@
     '/HTML%20Files/tabs/visited-locations-tab.html',
     '/HTML%20Files/tabs/nature-challenge-tab.html',
     '/HTML%20Files/tabs/bike-trails-tab.html',
+    '/HTML%20Files/tabs/birding-locations-tab.html',
+    '/HTML%20Files/tabs/household-tools-tab.html',
+    '/HTML%20Files/tabs/recipes-tab.html',
+    '/HTML%20Files/tabs/garden-planner-tab.html',
+    '/HTML%20Files/tabs/budget-planner-tab.html',
     '/HTML%20Files/adventure-details-window.html',
     '/HTML%20Files/bike-details-window.html',
     '/HTML%20Files/city-viewer-window.html',
@@ -52,6 +57,72 @@
   var DISMISS_INSTALL_KEY = 'kafInstallPromptDismissed';
   var swRegistrationPromise = null;
   var offlineModeDelegatedBound = false;
+  var APP_VERSION = '2026.04.09.1';
+  var lastVersionBannerKey = '';
+
+  function requestServiceWorkerVersion(timeoutMs) {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(null);
+    var controller = navigator.serviceWorker.controller;
+    if (!controller || typeof MessageChannel !== 'function') return Promise.resolve(null);
+
+    return new Promise(function (resolve) {
+      var settled = false;
+      var channel = new MessageChannel();
+      var timerId = window.setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        resolve(null);
+      }, Number(timeoutMs || 0) > 0 ? Number(timeoutMs) : 1200);
+
+      channel.port1.onmessage = function (event) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timerId);
+        resolve(event && event.data ? event.data : null);
+      };
+
+      try {
+        controller.postMessage({ type: 'GET_SW_VERSION' }, [channel.port2]);
+      } catch (_error) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timerId);
+        resolve(null);
+      }
+    });
+  }
+
+  function logVersionBanner(source) {
+    var controller = ('serviceWorker' in navigator) ? navigator.serviceWorker.controller : null;
+    var controllerUrl = controller && controller.scriptURL ? String(controller.scriptURL) : 'none';
+    requestServiceWorkerVersion(1200)
+      .then(function (swInfo) {
+        var swVersion = swInfo && swInfo.swVersion ? String(swInfo.swVersion) : 'unknown';
+        var shellCache = swInfo && swInfo.cacheVersion ? String(swInfo.cacheVersion) : 'unknown';
+        var key = [APP_VERSION, swVersion, shellCache, controllerUrl].join('|');
+        if (key === lastVersionBannerKey) return;
+        lastVersionBannerKey = key;
+        console.info('[KAP Version] app=%s sw=%s shell=%s source=%s controller=%s',
+          APP_VERSION,
+          swVersion,
+          shellCache,
+          String(source || 'startup'),
+          controllerUrl
+        );
+      })
+      .catch(function () {
+        var key = [APP_VERSION, 'unknown', 'unknown', controllerUrl].join('|');
+        if (key === lastVersionBannerKey) return;
+        lastVersionBannerKey = key;
+        console.info('[KAP Version] app=%s sw=%s shell=%s source=%s controller=%s',
+          APP_VERSION,
+          'unknown',
+          'unknown',
+          String(source || 'startup'),
+          controllerUrl
+        );
+      });
+  }
 
   function emitStatus() {
     listeners.forEach(function (listener) {
@@ -1000,11 +1071,13 @@
       .then(function (ready) {
         status.swReady = Boolean(ready);
         emitStatus();
+        logVersionBanner('register-service-worker');
         return ready;
       })
       .catch(function () {
         status.swReady = false;
         emitStatus();
+        logVersionBanner('register-service-worker-failed');
         return false;
       });
   }
@@ -1042,6 +1115,12 @@
       status.online = false;
       emitStatus();
     });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        logVersionBanner('controllerchange');
+      });
+    }
 
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) {
