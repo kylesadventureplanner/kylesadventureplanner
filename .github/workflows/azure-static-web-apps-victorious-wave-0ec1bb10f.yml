@@ -68,6 +68,7 @@ jobs:
           fi
       - name: Build And Deploy
         id: builddeploy
+        continue-on-error: true
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
@@ -79,6 +80,45 @@ jobs:
           api_location: "" # Api source code path - optional
           output_location: "." # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
+
+      # Fallback path for transient MCR/Docker pull failures in Azure/static-web-apps-deploy.
+      - name: Build And Deploy (SWA CLI fallback)
+        id: fallbackdeploy
+        if: ${{ steps.builddeploy.outcome == 'failure' }}
+        env:
+          SWA_DEPLOYMENT_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_VICTORIOUS_WAVE_0EC1BB10F }}
+          SWA_EVENT_NAME: ${{ github.event_name }}
+          SWA_PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -z "${SWA_DEPLOYMENT_TOKEN}" ]; then
+            echo "Missing SWA deployment token secret"
+            exit 1
+          fi
+
+          if [ "${SWA_EVENT_NAME}" = "pull_request" ] && [ -n "${SWA_PR_NUMBER}" ]; then
+            SWA_ENVIRONMENT="pr-${SWA_PR_NUMBER}"
+          else
+            SWA_ENVIRONMENT="production"
+          fi
+
+          echo "Primary deploy action failed, falling back to SWA CLI deploy (${SWA_ENVIRONMENT})"
+          npx --yes @azure/static-web-apps-cli@2.0.7 deploy . \
+            --deployment-token "${SWA_DEPLOYMENT_TOKEN}" \
+            --env "${SWA_ENVIRONMENT}"
+
+      - name: Deploy Path Summary
+        if: always()
+        run: |
+          if [ "${{ steps.builddeploy.outcome }}" = "success" ]; then
+            echo "::notice::Deploy source: primary Azure/static-web-apps-deploy action"
+            echo "- **Deploy path:** primary (Azure/static-web-apps-deploy)" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.fallbackdeploy.outcome }}" = "success" ]; then
+            echo "::notice::Deploy source: SWA CLI fallback"
+            echo "- **Deploy path:** fallback (SWA CLI)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Deploy source: unresolved (primary=${{ steps.builddeploy.outcome }}, fallback=${{ steps.fallbackdeploy.outcome }})"
+            echo "- **Deploy path:** unresolved (primary=${{ steps.builddeploy.outcome }}, fallback=${{ steps.fallbackdeploy.outcome }})" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # Informational-only: checks live deployment health without blocking release.
       - name: Post-Deploy Smoke Check (non-blocking)
