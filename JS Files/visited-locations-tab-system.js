@@ -1298,6 +1298,54 @@
     citySelect.value = cities.some((value) => norm(value) === norm(currentCity)) ? norm(currentCity) : 'all';
   }
 
+  function formatExplorerAddressLine(item) {
+    return [item && item.address, item && item.city, item && item.state]
+      .map((part) => String(part || '').trim())
+      .filter(Boolean)
+      .join(' - ') || 'Address not specified';
+  }
+
+  function getExplorerItemById(subtabKey, itemId) {
+    const explorerState = getExplorerState(subtabKey);
+    const target = String(itemId || '').trim();
+    if (!target) return null;
+    return (explorerState.items || []).find((item) => String(item && item.id ? item.id : '').trim() === target) || null;
+  }
+
+  function buildExplorerDetailsHtml(item) {
+    if (!item) return '<div class="visited-explorer-details-row">No details available.</div>';
+    return [
+      `<div class="visited-explorer-details-row"><strong>Location Name:</strong> ${escapeHtml(item.title || 'Unknown')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Tags:</strong> ${escapeHtml((item.tags || []).join(', ') || 'No tags')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Description:</strong> ${escapeHtml(item.description || 'No description yet.')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Hours:</strong> ${escapeHtml(item.hours || 'Unknown')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Source:</strong> ${escapeHtml(item.sourceLabel || 'Unknown')}</div>`
+    ].join('');
+  }
+
+  function openExplorerDetailsModal(subtabKey, itemId) {
+    const modal = document.getElementById('visitedExplorerDetailsModal');
+    const backdrop = document.getElementById('visitedExplorerDetailsBackdrop');
+    const body = document.getElementById('visitedExplorerDetailsBody');
+    const title = document.getElementById('visitedExplorerDetailsTitle');
+    if (!modal || !backdrop || !body || !title) return;
+
+    const item = getExplorerItemById(subtabKey, itemId);
+    title.textContent = item && item.title ? item.title : 'Location Details';
+    body.innerHTML = buildExplorerDetailsHtml(item);
+    modal.hidden = false;
+    backdrop.hidden = false;
+  }
+
+  function closeExplorerDetailsModal() {
+    const modal = document.getElementById('visitedExplorerDetailsModal');
+    const backdrop = document.getElementById('visitedExplorerDetailsBackdrop');
+    if (modal) modal.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+  }
+
   function renderExplorerList(root, subtabKey) {
     const config = getExplorerConfig(subtabKey);
     if (!config) return;
@@ -1332,24 +1380,34 @@
     }
 
     listEl.innerHTML = filtered.map((item) => {
-      const chips = (item.tags || []).slice(0, 4).map((tag) => `<span class="nature-chip">${escapeHtml(tag)}</span>`).join('');
+      const chips = (item.tags || []).slice(0, 6).map((tag) => `<span class="visited-explorer-tag">${escapeHtml(tag)}</span>`).join('');
       return `
-        <div class="adventure-card">
-          <div class="adventure-card-header">
-            <div class="adventure-card-title">${escapeHtml(item.title)}</div>
-            <div class="adventure-card-location">${escapeHtml([item.city, item.state].filter(Boolean).join(', ') || 'Location not specified')}</div>
-            <div class="adventure-card-time">Source: ${escapeHtml(item.sourceLabel)}</div>
+        <div class="visited-explorer-card">
+          <div class="visited-explorer-card-head">
+            <div class="visited-explorer-card-title">${escapeHtml(item.title || 'Unknown')}</div>
+            <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
           </div>
-          <div class="adventure-card-body">
-            <div class="card-subtitle">${escapeHtml(item.description || item.address || 'No additional details yet.')}</div>
-            ${chips ? `<div class="nature-chip-row nature-chip-row--wrap" style="margin-top:8px;">${chips}</div>` : ''}
-          </div>
-          <div class="adventure-card-footer">
-            <div class="card-subtitle">${escapeHtml(item.hours ? `Hours: ${item.hours}` : '')}${item.hours && item.driveTime ? ' | ' : ''}${escapeHtml(item.driveTime ? `Drive: ${item.driveTime}` : '')}</div>
-          </div>
+          <div class="visited-explorer-field"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>
+          <div class="visited-explorer-field"><strong>Tags:</strong></div>
+          ${chips ? `<div class="visited-explorer-tag-row">${chips}</div>` : '<div class="visited-explorer-field">No tags</div>'}
+          <div class="visited-explorer-field"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>
+          <div class="visited-explorer-field"><strong>Description:</strong> ${escapeHtml(item.description || 'No description yet.')}</div>
         </div>
       `;
     }).join('');
+  }
+
+  function installExplorerDetailsKeyboardClose() {
+    if (window.__visitedExplorerDetailsEscBound) return;
+    window.__visitedExplorerDetailsEscBound = true;
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        const modal = document.getElementById('visitedExplorerDetailsModal');
+        if (modal && !modal.hidden) {
+          closeExplorerDetailsModal();
+        }
+      }
+    });
   }
 
   function bindExplorerFilterInputs(root, subtabKey) {
@@ -3018,6 +3076,7 @@
       initMobileTooltipSupport(root);
       installVisitedClickTracer(root);
       applyTooltipInfoIcons(root);
+      installExplorerDetailsKeyboardClose();
 
       // Monitor DOM for dynamically added buttons and ensure they're responsive
       const observer = new MutationObserver((mutations) => {
@@ -3117,6 +3176,24 @@
               explainBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
               panel.hidden = expanded;
             }
+            return;
+          }
+
+          const explorerDetailsBtn = event.target.closest('[data-visited-explorer-details]');
+          if (explorerDetailsBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerDetailsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerDetailsBtn.getAttribute('data-visited-explorer-details') || '').trim();
+            if (subtabKey && itemId) {
+              openExplorerDetailsModal(subtabKey, itemId);
+            }
+            return;
+          }
+
+          const closeExplorerModalBtn = event.target.closest('#visitedExplorerDetailsCloseBtn, #visitedExplorerDetailsBackdrop');
+          if (closeExplorerModalBtn) {
+            event.preventDefault();
+            closeExplorerDetailsModal();
             return;
           }
 

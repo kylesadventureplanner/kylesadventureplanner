@@ -4,20 +4,6 @@
 <div id="visitedLocationsRoot">
   <div class="visited-progress-header">
     <h1 id="visitedChallengeTitle">Adventure Challenge - Outdoors</h1>
-    <div class="planner-top-actions">
-      <button id="visitedRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh tracker data" data-tooltip="Refresh tracker data">
-        🔄 Refresh Tracker
-      </button>
-      <select id="visitedWeatherMode" class="filter-select" title="Choose weather mode for recommendations" data-tooltip="Choose weather mode for recommendations" style="max-width: 240px;">
-        <option value="auto">🌦️ Auto Weather Mode</option>
-        <option value="sunny">☀️ Sunny</option>
-        <option value="rainy">🌧️ Rainy</option>
-        <option value="cold">❄️ Cold</option>
-        <option value="hot">🔥 Hot</option>
-        <option value="cloudy">☁️ Cloudy</option>
-      </select>
-      <span id="visitedCtaInjectorStatus" class="visited-cta-injector-chip" role="status" aria-live="polite">CTA buttons: checking...</span>
-    </div>
   </div>
 
   <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Challenge categories" hidden>
@@ -396,6 +382,15 @@
       <div id="visitedDiagnosticsPanel" class="visited-diagnostics-panel" aria-live="polite">Diagnostics are ready.</div>
     </div>
   </details>
+
+  <div id="visitedExplorerDetailsBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedExplorerDetailsModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedExplorerDetailsTitle" hidden>
+    <div class="visited-explorer-details-head">
+      <div id="visitedExplorerDetailsTitle" class="card-title">Location Details</div>
+      <button type="button" id="visitedExplorerDetailsCloseBtn" class="pill-button" aria-label="Close location details">Close</button>
+    </div>
+    <div id="visitedExplorerDetailsBody" class="visited-explorer-details-body"></div>
+  </div>
 </div>
 
 <style>
@@ -715,6 +710,118 @@
     border-radius: 12px;
     background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
     color: #fff;
+
+  #visitedLocationsRoot .visited-explorer-card {
+    display: grid;
+    gap: 10px;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 12px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  }
+
+  #visitedLocationsRoot .visited-explorer-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-card-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  #visitedLocationsRoot .visited-explorer-detail-btn {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  #visitedLocationsRoot .visited-explorer-field {
+    font-size: 13px;
+    color: #334155;
+  }
+
+  #visitedLocationsRoot .visited-explorer-field strong {
+    color: #0f172a;
+    font-weight: 800;
+  }
+
+  #visitedLocationsRoot .visited-explorer-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-tag {
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  #visitedLocationsRoot .visited-explorer-details-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.42);
+    z-index: 4100;
+  }
+
+  #visitedLocationsRoot .visited-explorer-details-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(680px, calc(100vw - 28px));
+    max-height: calc(100vh - 42px);
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    z-index: 4101;
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
+    padding: 14px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-details-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-details-body {
+    display: grid;
+    gap: 8px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-details-row {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: #334155;
+  }
+
+  #visitedLocationsRoot .visited-explorer-details-row strong {
+    color: #0f172a;
+    font-weight: 800;
+  }
     font-size: 14px;
     font-weight: 700;
     white-space: nowrap;
@@ -1260,6 +1367,10 @@
     margin: 12px 0;
   }
 
+  #visitedLocationsRoot [data-achv-container][hidden] {
+    display: none !important;
+  }
+
   #visitedLocationsRoot .adventure-achv-count-badge {
     display: inline-flex;
     align-items: center;
@@ -1323,6 +1434,7 @@
   }
 
   #visitedLocationsRoot .adventure-achv-cat-count,
+  #visitedLocationsRoot .adventure-achv-cat-pct,
   #visitedLocationsRoot .adventure-achv-badge-prog,
   #visitedLocationsRoot .adventure-achv-challenge-meta,
   #visitedLocationsRoot .adventure-achv-quest-progress,
@@ -1331,6 +1443,11 @@
     font-size: 12px;
     color: #475569;
     font-weight: 700;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-pct {
+    color: #1e3a8a;
+    font-weight: 800;
   }
 
   #visitedLocationsRoot .adventure-achv-cat-total {
@@ -1392,8 +1509,64 @@
   }
 
   #visitedLocationsRoot .adventure-achv-challenge-card {
-    display: flex;
+    display: grid;
     gap: 10px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-list {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #f8fbff;
+    padding: 6px 8px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-item.is-complete {
+    border-color: #86efac;
+    background: #ecfdf5;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-item.is-locked {
+    border-color: #e5e7eb;
+    background: #f8fafc;
+    opacity: 0.7;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-badge {
+    font-size: 11px;
+    font-weight: 800;
+    color: #1d4ed8;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    padding: 2px 7px;
+    white-space: nowrap;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-goal {
+    font-size: 12px;
+    color: #334155;
+    font-weight: 700;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-state {
+    font-size: 11px;
+    font-weight: 800;
+    color: #0f766e;
+    white-space: nowrap;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-item.is-locked .adventure-achv-tier-state {
+    color: #64748b;
   }
 
   #visitedLocationsRoot .adventure-achv-challenge-tip,

@@ -28,12 +28,36 @@ test.describe('Adventure explorer open/close flows', () => {
       const explorerView = page.locator(`#visitedProgressPane-${key} [data-visited-subtab-view="explorer"]`).first();
       await expect(explorerView).toBeVisible();
 
+      const overviewView = page.locator(`#visitedProgressPane-${key} [data-visited-subtab-view="overview"]`).first();
+      await expect(overviewView).toBeHidden();
+
+      const achvRoot = page.locator(`#achv-root-${key}`).first();
+      if ((await achvRoot.count()) > 0) {
+        await expect(achvRoot).toBeHidden();
+      }
+
       const meta = page.locator(`#visitedExplorerMeta-${key}`).first();
       await expect(meta).toBeVisible();
       await expect(meta).not.toHaveText('');
 
       const list = page.locator(`#visitedExplorerList-${key}`).first();
       await expect(list).toBeVisible();
+
+      const detailsBtn = page.locator(`#visitedExplorerList-${key} [data-visited-explorer-details]`).first();
+      const hasDetailsBtn = (await detailsBtn.count()) > 0;
+      if (hasDetailsBtn) {
+        await expect(page.locator(`#visitedExplorerList-${key}`).getByText(/Estimated Drive Time:/i).first()).toBeVisible();
+        await expect(page.locator(`#visitedExplorerList-${key}`).getByText(/Tags:/i).first()).toBeVisible();
+        await expect(page.locator(`#visitedExplorerList-${key}`).getByText(/Physical Address - City - State:/i).first()).toBeVisible();
+        await expect(page.locator(`#visitedExplorerList-${key}`).getByText(/Description:/i).first()).toBeVisible();
+
+        await detailsBtn.click();
+        await expect(page.locator('#visitedExplorerDetailsModal')).toBeVisible();
+        await page.locator('#visitedExplorerDetailsCloseBtn').click();
+        await expect(page.locator('#visitedExplorerDetailsModal')).toBeHidden();
+      } else {
+        await expect(page.locator(`#visitedExplorerList-${key} .visited-empty`).first()).toBeVisible();
+      }
 
       const closeBtn = page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${closeAction}"]`).first();
       await expect(closeBtn).toBeVisible();

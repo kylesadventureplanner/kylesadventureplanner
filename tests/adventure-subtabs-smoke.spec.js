@@ -34,6 +34,12 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
   });
 
+  test('legacy top header controls are removed from Adventure Challenge', async ({ page }) => {
+    await expect(page.locator('#visitedRefreshBtn')).toHaveCount(0);
+    await expect(page.locator('#visitedWeatherMode')).toHaveCount(0);
+    await expect(page.locator('#visitedCtaInjectorStatus')).toHaveCount(0);
+  });
+
   ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, legacyFindAction }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
       const dockButton = page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"]`).first();
