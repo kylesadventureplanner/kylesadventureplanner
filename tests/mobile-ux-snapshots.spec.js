@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./reliability-test');
 
 const ASSERT_VISUAL_BASELINE = process.env.MOBILE_QA_ASSERT === '1';
 const MAX_DIFF_PIXEL_RATIO = Number(process.env.MOBILE_QA_MAX_DIFF_RATIO || 0.015);

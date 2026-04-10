@@ -1,4 +1,4 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./reliability-test');
 
 test.describe('Offline airplane mode regression', () => {
   test('keeps planner usable and queues writes when offline', async ({ browser }) => {

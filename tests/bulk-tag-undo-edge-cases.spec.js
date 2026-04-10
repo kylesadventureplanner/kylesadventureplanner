@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./reliability-test');
 
 const BULK_SCRIPT_PATH = path.resolve(process.cwd(), 'JS Files', 'multi-select-bulk-actions.js');
 const TOTAL_ROWS = 300;

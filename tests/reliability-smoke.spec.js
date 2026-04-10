@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./reliability-test');
 
 const summary = {
   generatedAt: new Date().toISOString(),
