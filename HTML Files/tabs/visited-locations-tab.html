@@ -71,6 +71,8 @@
         </div>
       </div>
 
+      <div id="achv-root-outdoors" data-achv-container="outdoors"></div>
+
       <div class="card">
         <div class="card-header">
           <div class="card-title">🕓 Recent Check-Ins</div>
@@ -192,6 +194,7 @@
         <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-entertainment" title="Explore Entertainment" data-tooltip="Explore Entertainment">Explore Entertainment</button>
       </div>
     </div>
+    <div id="achv-root-entertainment" data-achv-container="entertainment" data-visited-subtab-view="overview"></div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="visited-view-header-row">
@@ -226,6 +229,7 @@
         <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-food-drink" title="Explore Food and Drink" data-tooltip="Explore Food and Drink">Explore Food &amp; Drink</button>
       </div>
     </div>
+    <div id="achv-root-food-drink" data-achv-container="food-drink" data-visited-subtab-view="overview"></div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="visited-view-header-row">
@@ -260,6 +264,7 @@
         <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-retail" title="Explore Retail" data-tooltip="Explore Retail">Explore Retail</button>
       </div>
     </div>
+    <div id="achv-root-retail" data-achv-container="retail" data-visited-subtab-view="overview"></div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="visited-view-header-row">
@@ -294,6 +299,7 @@
         <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-wildlife-animals" title="Explore Wildlife and Animal Locations" data-tooltip="Explore Wildlife and Animal Locations">Explore Wildlife &amp; Animal Locations</button>
       </div>
     </div>
+    <div id="achv-root-wildlife-animals" data-achv-container="wildlife-animals" data-visited-subtab-view="overview"></div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
       <div class="card" style="margin-top: 10px;">
         <div class="visited-view-header-row">
@@ -1247,6 +1253,262 @@
     border-radius: 10px;
     background: #f9fafb;
   }
+
+  #visitedLocationsRoot [data-achv-container] {
+    display: grid;
+    gap: 12px;
+    margin: 12px 0;
+  }
+
+  #visitedLocationsRoot .adventure-achv-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1e40af;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-grid,
+  #visitedLocationsRoot .adventure-achv-badge-grid,
+  #visitedLocationsRoot .adventure-achv-bingo-board,
+  #visitedLocationsRoot .adventure-achv-quest-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-challenge-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-card,
+  #visitedLocationsRoot .adventure-achv-badge-card,
+  #visitedLocationsRoot .adventure-achv-quest-card,
+  #visitedLocationsRoot .adventure-achv-bingo-tile,
+  #visitedLocationsRoot .adventure-achv-challenge-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-card,
+  #visitedLocationsRoot .adventure-achv-badge-card,
+  #visitedLocationsRoot .adventure-achv-quest-card,
+  #visitedLocationsRoot .adventure-achv-challenge-card {
+    padding: 10px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-icon,
+  #visitedLocationsRoot .adventure-achv-badge-icon,
+  #visitedLocationsRoot .adventure-achv-challenge-icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-label,
+  #visitedLocationsRoot .adventure-achv-badge-title,
+  #visitedLocationsRoot .adventure-achv-challenge-title,
+  #visitedLocationsRoot .adventure-achv-quest-title {
+    margin-top: 6px;
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 13px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-count,
+  #visitedLocationsRoot .adventure-achv-badge-prog,
+  #visitedLocationsRoot .adventure-achv-challenge-meta,
+  #visitedLocationsRoot .adventure-achv-quest-progress,
+  #visitedLocationsRoot .adventure-achv-bingo-meta {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #475569;
+    font-weight: 700;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-total {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  #visitedLocationsRoot .adventure-achv-sync-breakdown {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 700;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-bar,
+  #visitedLocationsRoot .adventure-achv-progress-bar {
+    margin-top: 7px;
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-fill,
+  #visitedLocationsRoot .adventure-achv-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #2563eb, #10b981);
+  }
+
+  #visitedLocationsRoot .adventure-achv-progress-fill.is-done {
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+  }
+
+  #visitedLocationsRoot .adventure-achv-cat-actions,
+  #visitedLocationsRoot .adventure-achv-challenge-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-adj-btn,
+  #visitedLocationsRoot .adventure-achv-step-btn {
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+    color: #1e40af;
+    border-radius: 8px;
+    padding: 6px 9px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #visitedLocationsRoot .adventure-achv-adj-btn--add {
+    background: #ecfdf5;
+    border-color: #86efac;
+    color: #166534;
+  }
+
+  #visitedLocationsRoot .adventure-achv-challenge-card {
+    display: flex;
+    gap: 10px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-challenge-tip,
+  #visitedLocationsRoot .adventure-achv-badge-desc,
+  #visitedLocationsRoot .adventure-achv-quest-season,
+  #visitedLocationsRoot .adventure-achv-step-text,
+  #visitedLocationsRoot .adventure-achv-bingo-label {
+    margin-top: 4px;
+    color: #475569;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-card {
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-card.is-unlocked {
+    border-color: var(--rarity-color, #16a34a);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--rarity-color, #16a34a) 25%, white 75%);
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-rarity {
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  #visitedLocationsRoot .adventure-achv-quest-card.is-current-season {
+    border-color: #93c5fd;
+    background: #f8fbff;
+  }
+
+  #visitedLocationsRoot .adventure-achv-season-now {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  #visitedLocationsRoot .adventure-achv-quest-steps {
+    margin-top: 8px;
+    display: grid;
+    gap: 6px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-quest-step {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 6px 8px;
+    background: #fff;
+  }
+
+  #visitedLocationsRoot .adventure-achv-quest-step.is-done {
+    border-color: #86efac;
+    background: #ecfdf5;
+  }
+
+  #visitedLocationsRoot .adventure-achv-step-check {
+    font-size: 12px;
+    font-weight: 800;
+    color: #0f766e;
+  }
+
+  #visitedLocationsRoot .adventure-achv-bingo-board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #visitedLocationsRoot .adventure-achv-bingo-tile {
+    display: grid;
+    gap: 6px;
+    align-content: center;
+    justify-items: center;
+    min-height: 92px;
+    padding: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+  }
+
+  #visitedLocationsRoot .adventure-achv-bingo-tile.is-marked {
+    border-color: #4ade80;
+    background: #ecfdf5;
+    color: #14532d;
+  }
+
+  #visitedLocationsRoot .adventure-achv-bingo-icon {
+    font-size: 20px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-bingo-check {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 12px;
+    font-weight: 900;
+    color: #15803d;
+  }
+
+  #visitedLocationsRoot .adventure-achv-done-check {
+    color: #16a34a;
+    font-size: 12px;
+    font-weight: 900;
+  }
 </style>
 
 <script>
@@ -1257,5 +1519,11 @@
     }
     console.log('✅ Adventure Challenge tab initialized (UI only)');
   };
+</script>
+
+<script>
+  if (window.AdventureAchievements && typeof window.AdventureAchievements.init === 'function') {
+    window.AdventureAchievements.init();
+  }
 </script>
 

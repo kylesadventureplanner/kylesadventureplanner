@@ -111,6 +111,7 @@
   const EXPLORER_WORKBOOK_PREFIXES = ['', 'Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/'];
   const EXPLORER_COLUMN_CANDIDATES = {
     title: ['name', 'location', 'place', 'venue', 'destination', 'business', 'shop', 'restaurant', 'coffee', 'festival', 'event', 'site'],
+    placeId: ['google place id', 'googleplaceid', 'place id', 'placeid'],
     city: ['city', 'town', 'municipality'],
     state: ['state', 'province', 'region'],
     tags: ['tags', 'keywords', 'category', 'categories', 'type'],
@@ -1179,6 +1180,7 @@
       const title = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.title)
         || Object.values(row).find((value) => normalizeExplorerCell(value))
         || `Location ${index + 1}`;
+      const placeId = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.placeId);
       const city = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.city);
       const stateText = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.state);
       const tagsRaw = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.tags);
@@ -1194,6 +1196,7 @@
 
       return {
         id: `${source.key}:${source.table}:${index}:${norm(title) || 'row'}`,
+        placeId: String(placeId || '').trim(),
         title,
         city,
         state: stateText,
