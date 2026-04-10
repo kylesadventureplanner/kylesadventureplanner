@@ -5535,6 +5535,7 @@
     const cutoutWidth = Math.min(cutout.offsetWidth || 0, Math.max(rowRect.width - 8, 0));
     if (!rowRect.width || !cutoutWidth) {
       cutout.style.left = '50%';
+      cutout.style.setProperty('--app-subtabs-pointer-left', '50%');
       return;
     }
 
@@ -5544,6 +5545,15 @@
     const maxCenter = Math.max(rowRect.width - (cutoutWidth / 2) - padding, minCenter);
     const clampedCenter = Math.min(Math.max(preferredCenter, minCenter), maxCenter);
     cutout.style.left = `${clampedCenter}px`;
+
+    // Keep the bubble within bounds, but let the pointer align to the true active tab center.
+    const pointerMin = 14;
+    const pointerMax = Math.max(cutoutWidth - 14, pointerMin);
+    const pointerLeft = Math.min(
+      Math.max((preferredCenter - clampedCenter) + (cutoutWidth / 2), pointerMin),
+      pointerMax
+    );
+    cutout.style.setProperty('--app-subtabs-pointer-left', `${pointerLeft}px`);
   }
 
   function syncNatureSubTabDock(root) {

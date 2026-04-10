@@ -5804,6 +5804,8 @@
     }
 
     .app-subtabs-cutout {
+      --app-subtabs-bubble-move: 220ms cubic-bezier(0.22, 1, 0.36, 1);
+      --app-subtabs-pointer-move: 130ms cubic-bezier(0.16, 1, 0.3, 1);
       position: relative;
       left: 50%;
       transform: translateX(-50%);
@@ -5816,7 +5818,7 @@
       border-radius: 18px;
       background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
       box-shadow: 0 16px 32px rgba(37, 99, 235, 0.12), 0 4px 12px rgba(37, 99, 235, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.8);
-      transition: left 0.22s ease, box-shadow 0.22s ease;
+      transition: left var(--app-subtabs-bubble-move), box-shadow var(--app-subtabs-bubble-move);
       overflow: visible;
       backdrop-filter: blur(0.5px);
     }
@@ -5825,8 +5827,9 @@
       content: '';
       position: absolute;
       top: -18px;
-      left: 50%;
+      left: var(--app-subtabs-pointer-left, 50%);
       transform: translateX(-50%);
+      transition: left var(--app-subtabs-pointer-move);
       border-left: 16px solid transparent;
       border-right: 16px solid transparent;
       border-bottom: 18px solid #dbeafe;
@@ -5837,8 +5840,9 @@
       content: '';
       position: absolute;
       top: -15px;
-      left: 50%;
+      left: var(--app-subtabs-pointer-left, 50%);
       transform: translateX(-50%);
+      transition: left var(--app-subtabs-pointer-move);
       border-left: 13px solid transparent;
       border-right: 13px solid transparent;
       border-bottom: 15px solid #ffffff;
