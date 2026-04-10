@@ -2512,6 +2512,40 @@
             return;
           }
 
+          const subtabActionBtn = event.target.closest('[data-visited-subtab-action]');
+          if (subtabActionBtn) {
+            event.preventDefault();
+            const action = String(subtabActionBtn.getAttribute('data-visited-subtab-action') || '').trim();
+            const openAdventureFallback = () => {
+              if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
+                window.tabLoader.switchTab('adventure-planner', { syncUrl: true, historyMode: 'push', source: 'visited-subtab-cta' });
+              }
+            };
+
+            if (action === 'find-bike-trail') {
+              if (typeof window.openTrailExplorerWindow === 'function') {
+                window.openTrailExplorerWindow();
+              } else if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
+                window.tabLoader.switchTab('bike-trails', { syncUrl: true, historyMode: 'push', source: 'visited-subtab-cta' });
+              }
+              return;
+            }
+
+            if (
+              action === 'find-outdoor-adventure' ||
+              action === 'find-entertainment-spot' ||
+              action === 'find-food-drink-spot' ||
+              action === 'find-retail-location'
+            ) {
+              if (typeof window.openFindNearMeWindow === 'function') {
+                window.openFindNearMeWindow();
+              } else {
+                openAdventureFallback();
+              }
+              return;
+            }
+          }
+
           const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
           if (explainBtn) {
             event.preventDefault();

@@ -63,6 +63,7 @@
         </div>
         <div class="visited-suggestions-cta-row">
           <button id="visitedOpenSuggestionsBtn" type="button" class="pill-button" title="Open Smart Adventure Suggestions" data-tooltip="Open Smart Adventure Suggestions">Open Suggestions Page</button>
+          <button type="button" class="pill-button" data-visited-subtab-action="find-outdoor-adventure" title="Find an Outdoor Adventures" data-tooltip="Find an Outdoor Adventures">Find an Outdoor Adventures</button>
         </div>
       </div>
 
@@ -161,6 +162,9 @@
         <div class="card-subtitle">This new category is ready for refinement.</div>
       </div>
       <div class="visited-empty">We’ve added the new Entertainment subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="find-entertainment-spot" title="Find an Entertainment Spot" data-tooltip="Find an Entertainment Spot">Find an Entertainment Spot</button>
+      </div>
     </div>
   </div>
 
@@ -171,6 +175,9 @@
         <div class="card-subtitle">This new category is ready for refinement.</div>
       </div>
       <div class="visited-empty">We’ve added the new Food &amp; Drink subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="find-food-drink-spot" title="Find a Food and Drink Spot" data-tooltip="Find a Food and Drink Spot">Find a Food and Drink Spot</button>
+      </div>
     </div>
   </div>
 
@@ -181,6 +188,9 @@
         <div class="card-subtitle">This new category is ready for refinement.</div>
       </div>
       <div class="visited-empty">We’ve added the new Retail subtab. For now, all existing Adventure Challenge content lives under <strong>Outdoors</strong> until we sort each category into its own space.</div>
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="find-retail-location" title="Find a Retail Location" data-tooltip="Find a Retail Location">Find a Retail Location</button>
+      </div>
     </div>
   </div>
 
@@ -192,6 +202,7 @@
       </div>
       <div class="visited-empty">Use this category to jump into the full Bike Trails workspace when you are planning or reviewing rides.</div>
       <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="pill-button" data-visited-subtab-action="find-bike-trail" title="Find a Bike Trail" data-tooltip="Find a Bike Trail">Find a Bike Trail</button>
         <button type="button" class="pill-button" onclick="window.tabLoader?.switchTab('bike-trails', { syncUrl: true, historyMode: 'push', source: 'visited-bike-subtab' })">Open Bike Trails Workspace</button>
         <button type="button" class="pill-button" onclick="window.openTrailExplorerWindow?.()">Open Trail Explorer</button>
       </div>
