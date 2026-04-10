@@ -8075,6 +8075,7 @@
   <div class="header-right">
     <div class="header-actions-row">
       <button id="refreshBtn" class="auth-btn" title="Reload the whole app" data-tooltip="Reload the whole app" onclick="location.reload()">🔄 Reload App</button>
+      <button id="globalEditModeBtn" class="auth-btn" title="Open Edit Mode" data-tooltip="Open Edit Mode" onclick="openEditModeWindow()" style="background:#667eea;color:#fff;">📝 Edit Mode</button>
       <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
       <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
       <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
@@ -8124,9 +8125,6 @@
       <header>
         <h1>Adventure Planner</h1>
         <div class="planner-top-actions">
-          <button id="editModeBtn" class="planner-top-btn" title="Open edit mode to manage your data" data-tooltip="Open edit mode to manage your data" onclick="openEditModeWindow()">
-            📝 Edit Mode
-          </button>
           <button id="findNearMeBtn" class="planner-top-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location" onclick="startFindNearMe()">
             📍 Find Near Me
           </button>
@@ -16117,13 +16115,12 @@
     }
 
     try {
-      // Build update array with only the specific column changed
-      const excelRow = sourceRow.values[0].slice(); // Copy current row
-
-      // Ensure row has 24 columns (0-23)
-      while (excelRow.length < 24) {
-        excelRow.push('');
-      }
+      // Build update array with only the specific column changed while preserving all existing columns.
+      const excelRow = sourceRow.values[0].slice();
+      const schemaColumns = Number.isInteger(window.__excelColumnCount) && window.__excelColumnCount > 0
+        ? window.__excelColumnCount
+        : excelRow.length;
+      while (excelRow.length < schemaColumns) excelRow.push('');
 
       excelRow[columnIndex] = value;
 
@@ -16145,9 +16142,7 @@
       }
 
       // Update local data to reflect change
-      while (sourceRow.values[0].length < 24) {
-        sourceRow.values[0].push('');
-      }
+      while (sourceRow.values[0].length < schemaColumns) sourceRow.values[0].push('');
       sourceRow.values[0][columnIndex] = value;
 
       console.log(`✓ Excel column ${columnIndex} updated to:`, value);
@@ -16163,7 +16158,11 @@
    * Update My Rating column (column 21)
    */
   async function updateExcelRating(filteredIndex, rating) {
-    const success = await updateExcelColumn(filteredIndex, 21, rating);
+    const ratingColumnIndex = typeof window.getColumnIndexByName === 'function'
+      ? Number(window.getColumnIndexByName('My Rating', ['MyRating', 'Rating']))
+      : 21;
+    const safeIndex = Number.isInteger(ratingColumnIndex) && ratingColumnIndex >= 0 ? ratingColumnIndex : 21;
+    const success = await updateExcelColumn(filteredIndex, safeIndex, rating);
     if (success) {
       console.log(`✓ Rating saved to Excel: ${rating} stars`);
       showToast(`Rating saved: ${rating} stars`, 'success', 2000);
@@ -16176,7 +16175,11 @@
    */
   async function updateExcelFavoriteStatus(filteredIndex, isFavorite) {
     const value = isFavorite ? 'TRUE' : 'FALSE';
-    const success = await updateExcelColumn(filteredIndex, 22, value);
+    const favoriteColumnIndex = typeof window.getColumnIndexByName === 'function'
+      ? Number(window.getColumnIndexByName('Favorite Status', ['FavoriteStatus', 'Favorite']))
+      : 22;
+    const safeIndex = Number.isInteger(favoriteColumnIndex) && favoriteColumnIndex >= 0 ? favoriteColumnIndex : 22;
+    const success = await updateExcelColumn(filteredIndex, safeIndex, value);
     if (success) {
       const message = isFavorite ? 'Added to favorites' : 'Removed from favorites';
       console.log(`✓ ${message}`);
@@ -16189,7 +16192,11 @@
    * Update Directions column (column 15)
    */
   async function updateExcelDirections(filteredIndex, directionsUrl) {
-    const success = await updateExcelColumn(filteredIndex, 15, directionsUrl);
+    const directionsColumnIndex = typeof window.getColumnIndexByName === 'function'
+      ? Number(window.getColumnIndexByName('Directions', ['Directions ']))
+      : 15;
+    const safeIndex = Number.isInteger(directionsColumnIndex) && directionsColumnIndex >= 0 ? directionsColumnIndex : 15;
+    const success = await updateExcelColumn(filteredIndex, safeIndex, directionsUrl);
     if (success) {
       console.log('✓ Directions URL saved to Excel');
     }
@@ -16200,7 +16207,11 @@
    * Update Google URL column (column 23)
    */
   async function updateExcelGoogleUrl(filteredIndex, googleUrl) {
-    const success = await updateExcelColumn(filteredIndex, 23, googleUrl);
+    const googleUrlColumnIndex = typeof window.getColumnIndexByName === 'function'
+      ? Number(window.getColumnIndexByName('Google URL', ['GoogleURL']))
+      : 23;
+    const safeIndex = Number.isInteger(googleUrlColumnIndex) && googleUrlColumnIndex >= 0 ? googleUrlColumnIndex : 23;
+    const success = await updateExcelColumn(filteredIndex, safeIndex, googleUrl);
     if (success) {
       console.log('✓ Google URL saved to Excel');
     }
@@ -16331,12 +16342,12 @@
     const adventure = totalFilteredAdventures[filteredIndex];
     const currentValues = adventure.row.values[0];
 
-    // Ensure row has enough columns
-    while (currentValues.length < 24) {
-      currentValues.push('');
-    }
-
-    const currentFavoriteStatus = currentValues[22]; // Column 22: Favorite Status
+    const favoriteColumnIndex = typeof window.getColumnIndexByName === 'function'
+      ? Number(window.getColumnIndexByName('Favorite Status', ['FavoriteStatus', 'Favorite']))
+      : 22;
+    const safeFavoriteColumnIndex = Number.isInteger(favoriteColumnIndex) && favoriteColumnIndex >= 0 ? favoriteColumnIndex : 22;
+    while (currentValues.length <= safeFavoriteColumnIndex) currentValues.push('');
+    const currentFavoriteStatus = currentValues[safeFavoriteColumnIndex];
 
     // Determine new favorite state
     const isFavorite = (currentFavoriteStatus || '').toLowerCase() === 'true' || currentFavoriteStatus === '1' || currentFavoriteStatus === 1;
@@ -16346,7 +16357,7 @@
     updateExcelFavoriteStatus(filteredIndex, newFavoriteState);
 
     // Update local data immediately so filters work
-    adventure.row.values[0][22] = newFavoriteState ? 'TRUE' : 'FALSE';
+    adventure.row.values[0][safeFavoriteColumnIndex] = newFavoriteState ? 'TRUE' : 'FALSE';
 
     // Update UI immediately for responsiveness
     updateCardFavoriteButtons();
@@ -16360,7 +16371,11 @@
 
     const adventure = totalFilteredAdventures[filteredIndex];
     const values = adventure.row.values[0];
-    return Number(values[21]) || 0; // Column 21: My Rating
+    const ratingColumnIndex = typeof window.getColumnIndexByName === 'function'
+      ? Number(window.getColumnIndexByName('My Rating', ['MyRating', 'Rating']))
+      : 21;
+    const safeIndex = Number.isInteger(ratingColumnIndex) && ratingColumnIndex >= 0 ? ratingColumnIndex : 21;
+    return Number(values[safeIndex]) || 0;
   }
 
   /**
@@ -16377,12 +16392,12 @@
       const adventure = totalFilteredAdventures[idx];
       const values = adventure.row.values[0];
 
-      // Ensure row has enough columns
-      while (values.length < 24) {
-        values.push('');
-      }
-
-      const favoriteStatus = values[22]; // Column 22
+      const favoriteColumnIndex = typeof window.getColumnIndexByName === 'function'
+        ? Number(window.getColumnIndexByName('Favorite Status', ['FavoriteStatus', 'Favorite']))
+        : 22;
+      const safeFavoriteColumnIndex = Number.isInteger(favoriteColumnIndex) && favoriteColumnIndex >= 0 ? favoriteColumnIndex : 22;
+      while (values.length <= safeFavoriteColumnIndex) values.push('');
+      const favoriteStatus = values[safeFavoriteColumnIndex];
       const isFavorite = String(favoriteStatus || '').trim().toLowerCase() === 'true' || favoriteStatus === '1' || favoriteStatus === 1;
 
       btn.textContent = isFavorite ? '💖' : '🤍';
@@ -16441,35 +16456,41 @@
 
       const rowIndex = currentEditingRowIndex;
 
-      // Map UI field names to Excel column indices
-      // Based on Excel structure: [Name, GooglePlaceId, Website, Tags, DriveTime, ...]
-      const fieldMapping = {
-        "Name": 0,
-        "Website": 2,
-        "Tags": 3,
-        "Drive Time": 4,
-        "Activity Duration": 6,
-        "Difficulty": 7,
-        "Trail Length": 8,
-        "State": 9,
-        "City": 10,
-        "Address": 11,
-        "Phone Number": 12,
-        "Cost": 14,
-        "Directions": 15,
-        "Description": 16,
-        "Nearby Attractions": 17,
-        "Links": 18,
-        "Links2": 19,
+      // Build update row from the existing row so unmanaged columns are preserved.
+      const currentRow = Array.isArray(currentEditingRow?.values?.[0]) ? currentEditingRow.values[0].slice() : [];
+      const schemaColumns = Number.isInteger(window.__excelColumnCount) && window.__excelColumnCount > 0
+        ? window.__excelColumnCount
+        : currentRow.length;
+      while (currentRow.length < schemaColumns) currentRow.push('');
+
+      const fieldNameCandidates = {
+        'Name': ['Name'],
+        'Website': ['Website'],
+        'Tags': ['Tags'],
+        'Drive Time': ['Drive Time', 'DriveTime'],
+        'Activity Duration': ['Activity Duration', 'Trail Durations'],
+        'Difficulty': ['Difficulty', 'Trail Difficulties'],
+        'Trail Length': ['Trail Length', 'Trail Lengths'],
+        'State': ['State'],
+        'City': ['City'],
+        'Address': ['Address'],
+        'Phone Number': ['Phone Number'],
+        'Cost': ['Cost'],
+        'Directions': ['Directions', 'Directions '],
+        'Description': ['Description'],
+        'Nearby Attractions': ['Nearby Attractions', 'Nearest Town / Services'],
+        'Links': ['Links', 'Official Website', 'Other Informational URLs'],
+        'Links2': ['Links2', 'Google URL']
       };
 
-      // Build Excel update array (23 columns total)
-      const excelRow = new Array(23).fill(null);
-
-      Object.keys(editedData).forEach(fieldName => {
-        const columnIndex = fieldMapping[fieldName];
-        if (columnIndex !== undefined) {
-          excelRow[columnIndex] = editedData[fieldName];
+      Object.keys(editedData).forEach((fieldName) => {
+        const names = fieldNameCandidates[fieldName] || [fieldName];
+        const columnIndex = typeof window.getColumnIndexByName === 'function'
+          ? Number(window.getColumnIndexByName(names[0], names.slice(1)))
+          : -1;
+        if (Number.isInteger(columnIndex) && columnIndex >= 0) {
+          while (currentRow.length <= columnIndex) currentRow.push('');
+          currentRow[columnIndex] = editedData[fieldName];
         }
       });
 
@@ -16482,7 +16503,7 @@
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ values: [excelRow] })
+        body: JSON.stringify({ values: [currentRow] })
       });
 
       if (!response.ok) {
@@ -18859,42 +18880,56 @@ COMMON ISSUES:
       description += ` (${details.userRatingsTotal} reviews)`;
     }
 
-    // Populate columns
-    // Column mapping:
-    // 0: Name, 1: Google Place ID, 2: Website, 3: Tags, 4: Drive Time,
-    // 5: Hours of Operation, 6: Activity Duration, 7: Difficulty, 8: Trail Length,
-    // 9: State, 10: City, 11: Address, 12: Phone Number, 13: Google Rating,
-    // 14: Cost, 15: Directions, 16: Description, 17: Nearby, 18: Links, 19: Links 2,
-    // 20: Notes, 21: My Rating, 22: Favorite Status, 23: Google URL
+    const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
+    const setByName = (names, value) => {
+      if (!schemaColumns.length) return false;
+      if (!Array.isArray(names) || !names.length) return false;
+      const normalized = names.map((n) => String(n || '').trim().toLowerCase()).filter(Boolean);
+      let idx = -1;
+      for (let i = 0; i < schemaColumns.length; i += 1) {
+        const col = String(schemaColumns[i] || '').trim().toLowerCase();
+        if (normalized.includes(col)) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx < 0 || idx >= row.length) return false;
+      row[idx] = value == null ? '' : String(value);
+      return true;
+    };
 
-    if (actualColumnCount > 0) row[0] = name;
-    if (actualColumnCount > 1) row[1] = strVal(placeId);
-    if (actualColumnCount > 2) row[2] = strVal(details && details.website);
-    if (actualColumnCount > 3) row[3] = details && details.businessType ? details.businessType.replace(/^[\p{So}]\s/u, '') : "";
-    if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
-    if (actualColumnCount > 9) row[9] = cityState.state;
-    if (actualColumnCount > 10) row[10] = cityState.city;
-    if (actualColumnCount > 11) row[11] = address;
-    if (actualColumnCount > 12) row[12] = strVal(details && details.phone);
-    if (actualColumnCount > 13) row[13] = details && details.rating != null ? String(details.rating) : "";
-    if (actualColumnCount > 15) row[15] = buildDirectionsUrl(placeId, address, name);
-    if (actualColumnCount > 16) row[16] = description;
-    if (actualColumnCount > 18) row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
-    if (actualColumnCount > 20) {
-      // Column 20: Notes - add info about business status and data quality
-      let notes = "";
-      if (details && details.businessStatus) {
-        notes = `Status: ${details.businessStatus}`;
-      }
-      if (details && details.userRatingsTotal) {
-        notes += (notes ? " | " : "") + `${details.userRatingsTotal} Google reviews`;
-      }
-      if (details && details.timezone) {
-        notes += (notes ? " | " : "") + `Timezone: ${details.timezone}`;
-      }
-      if (notes) row[20] = notes;
+    // Schema-driven mapping first (works across Nature/Retail/Entertainment table layouts).
+    setByName(['Name'], name);
+    setByName(['Google Place ID', 'GooglePlaceId'], strVal(placeId));
+    setByName(['Website', 'Official Website'], strVal(details && details.website));
+    setByName(['Tags'], details && details.businessType ? details.businessType.replace(/^[\p{So}]\s/u, '') : '');
+    setByName(['Hours of Operation', 'Hours'], normalizeOperationHours(details && details.hours));
+    setByName(['State'], cityState.state);
+    setByName(['City'], cityState.city);
+    setByName(['Address'], address);
+    setByName(['Phone Number', 'Phone'], strVal(details && details.phone));
+    setByName(['Google Rating', 'Rating'], details && details.rating != null ? String(details.rating) : '');
+    setByName(['Directions', 'Directions '], buildDirectionsUrl(placeId, address, name));
+    setByName(['Description'], description);
+    setByName(['Google URL'], "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId)));
+
+    // Backward-compatible positional fallback for legacy schemas without named columns.
+    if (!schemaColumns.length) {
+      if (actualColumnCount > 0) row[0] = name;
+      if (actualColumnCount > 1) row[1] = strVal(placeId);
+      if (actualColumnCount > 2) row[2] = strVal(details && details.website);
+      if (actualColumnCount > 3) row[3] = details && details.businessType ? details.businessType.replace(/^[\p{So}]\s/u, '') : "";
+      if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
+      if (actualColumnCount > 9) row[9] = cityState.state;
+      if (actualColumnCount > 10) row[10] = cityState.city;
+      if (actualColumnCount > 11) row[11] = address;
+      if (actualColumnCount > 12) row[12] = strVal(details && details.phone);
+      if (actualColumnCount > 13) row[13] = details && details.rating != null ? String(details.rating) : "";
+      if (actualColumnCount > 15) row[15] = buildDirectionsUrl(placeId, address, name);
+      if (actualColumnCount > 16) row[16] = description;
+      if (actualColumnCount > 18) row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
+      if (actualColumnCount > 23) row[23] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
     }
-    if (actualColumnCount > 23) row[23] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
 
     // Store metadata for retry logic
     row._columnCount = actualColumnCount;
@@ -18906,8 +18941,17 @@ COMMON ISSUES:
 
   function placeExistsInData(newRow) {
     const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
-    const targetPlaceId = strVal(newRow[1]);
-    const targetAddress = strVal(newRow[11]); // Column 11 is address
+    const placeIdCol = typeof window.getColumnIndexByName === 'function'
+      ? Number(window.getColumnIndexByName('Google Place ID', ['GooglePlaceId']))
+      : 1;
+    const addressCol = typeof window.getColumnIndexByName === 'function'
+      ? Number(window.getColumnIndexByName('Address'))
+      : 11;
+    const safePlaceIdCol = Number.isInteger(placeIdCol) && placeIdCol >= 0 ? placeIdCol : 1;
+    const safeAddressCol = Number.isInteger(addressCol) && addressCol >= 0 ? addressCol : 11;
+
+    const targetPlaceId = strVal(newRow[safePlaceIdCol]);
+    const targetAddress = strVal(newRow[safeAddressCol]);
 
     if (!targetPlaceId) return false;
 
@@ -18915,8 +18959,8 @@ COMMON ISSUES:
     // Only consider it a duplicate if BOTH Place ID AND address match
     return rows.some(function (r) {
       const vals = (r && r.values && r.values[0]) || [];
-      const existingPlaceId = strVal(vals[1]);
-      const existingAddress = strVal(vals[11]);
+      const existingPlaceId = strVal(vals[safePlaceIdCol]);
+      const existingAddress = strVal(vals[safeAddressCol]);
 
       // If Place IDs match AND addresses also match (or both empty), it's a true duplicate
       if (existingPlaceId === targetPlaceId) {
@@ -20880,8 +20924,8 @@ COMMON ISSUES:
         return;
       }
 
-      // Check if button already exists
-      if (document.getElementById('editModeBtn')) {
+      // Check if a global edit button already exists
+      if (document.getElementById('globalEditModeBtn') || document.getElementById('editModeBtn')) {
         console.log('ℹ️ Edit Mode button already exists');
         return;
       }
@@ -23183,6 +23227,49 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       window.__excelColumnCount = Array.isArray(firstRow) ? firstRow.length : null;
       console.log(`📌 Excel baseline synced: ${window.__excelLoadedRowCount} rows`);
     }
+
+    const DEFAULT_COLUMN_MAP = {
+      'Name': 0,
+      'Google Place ID': 1,
+      'Website': 2,
+      'Tags': 3,
+      'Drive Time': 4,
+      'Hours of Operation': 5,
+      'State': 6,
+      'City': 7,
+      'Address': 8,
+      'Phone Number': 9,
+      'Google Rating': 10,
+      'Directions': 11,
+      'Description': 12,
+      'Google URL': 13,
+      'Notes': 14,
+      'My Rating': 15,
+      'Favorite Status': 16,
+      'Visited': 17
+    };
+
+    window.getColumnIndexByName = window.getColumnIndexByName || function(name, aliases = []) {
+      const wanted = [name].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
+      if (!wanted.length) return -1;
+
+      const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
+      if (schemaColumns.length) {
+        for (let i = 0; i < schemaColumns.length; i += 1) {
+          const col = String(schemaColumns[i] || '').trim().toLowerCase();
+          if (wanted.includes(col)) return i;
+        }
+      }
+
+      // Fallback for known retail/entertainment schema when column list is unavailable.
+      for (let i = 0; i < wanted.length; i += 1) {
+        const key = wanted[i];
+        const mapKey = Object.keys(DEFAULT_COLUMN_MAP).find((label) => label.toLowerCase() === key);
+        if (mapKey) return DEFAULT_COLUMN_MAP[mapKey];
+      }
+
+      return -1;
+    };
 
     const originalLoadTable = window.loadTable;
     if (typeof originalLoadTable === 'function' && !window.__loadTableExcelBaselineWrapped) {

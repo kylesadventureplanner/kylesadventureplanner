@@ -613,7 +613,17 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
 
         if (Array.isArray(mainWindow.adventuresData)) {
           const lastRow = mainWindow.adventuresData[mainWindow.adventuresData.length - 1]?.values?.[0];
-          const alreadyAppended = Array.isArray(lastRow) && safeString(lastRow[1]) === placeId && safeString(lastRow[0]) === safeString(details.name);
+          const nameCol = typeof mainWindow.getColumnIndexByName === 'function'
+            ? Number(mainWindow.getColumnIndexByName('Name'))
+            : 0;
+          const placeIdCol = typeof mainWindow.getColumnIndexByName === 'function'
+            ? Number(mainWindow.getColumnIndexByName('Google Place ID', ['GooglePlaceId']))
+            : 1;
+          const safeNameCol = Number.isInteger(nameCol) && nameCol >= 0 ? nameCol : 0;
+          const safePlaceIdCol = Number.isInteger(placeIdCol) && placeIdCol >= 0 ? placeIdCol : 1;
+          const alreadyAppended = Array.isArray(lastRow)
+            && safeString(lastRow[safePlaceIdCol]) === placeId
+            && safeString(lastRow[safeNameCol]) === safeString(details.name);
           if (!alreadyAppended) {
             mainWindow.adventuresData.push({ values: [rowValues] });
           }

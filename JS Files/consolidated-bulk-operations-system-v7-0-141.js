@@ -45,6 +45,35 @@ const COLS = {
   DIRECTIONS: 15
 };
 
+function getActiveCols(mainWindow) {
+  const source = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
+  const getByName = source && typeof source.getColumnIndexByName === 'function'
+    ? source.getColumnIndexByName
+    : null;
+  if (!getByName) return COLS;
+
+  const pick = (primary, aliases, fallback) => {
+    const idx = Number(getByName(primary, aliases));
+    return Number.isInteger(idx) && idx >= 0 ? idx : fallback;
+  };
+
+  return {
+    NAME: pick('Name', [], COLS.NAME),
+    PLACE_ID: pick('Google Place ID', ['GooglePlaceId'], COLS.PLACE_ID),
+    WEBSITE: pick('Website', [], COLS.WEBSITE),
+    TAGS: pick('Tags', [], COLS.TAGS),
+    DRIVE_TIME: pick('Drive Time', ['DriveTime'], COLS.DRIVE_TIME),
+    HOURS: pick('Hours of Operation', ['Hours'], COLS.HOURS),
+    STATE: pick('State', [], COLS.STATE),
+    CITY: pick('City', [], COLS.CITY),
+    ADDRESS: pick('Address', [], COLS.ADDRESS),
+    PHONE: pick('Phone Number', ['Phone'], COLS.PHONE),
+    RATING: pick('Google Rating', ['Rating'], COLS.RATING),
+    COST: pick('Cost', [], COLS.COST),
+    DIRECTIONS: pick('Directions', ['Directions '], COLS.DIRECTIONS)
+  };
+}
+
 function getSchemaColumnCount(mainWindow) {
   const countFromGlobal = Number(mainWindow?.__excelColumnCount || window.__excelColumnCount || 0);
   if (Number.isInteger(countFromGlobal) && countFromGlobal > 0) return countFromGlobal;
@@ -70,15 +99,16 @@ function normalizeRowForSchema(rowValues, schemaCount) {
 }
 
 function buildFallbackSchemaRow(location, placeId, details, schemaCount) {
+  const activeCols = getActiveCols(window.opener && !window.opener.closed ? window.opener : window);
   const row = new Array(schemaCount).fill('');
-  row[COLS.NAME] = location || '';
-  row[COLS.PLACE_ID] = placeId || '';
-  row[COLS.WEBSITE] = details?.website || '';
-  row[COLS.HOURS] = details?.hours || '';
-  row[COLS.ADDRESS] = details?.address || '';
-  row[COLS.PHONE] = details?.phone || '';
-  row[COLS.RATING] = details?.rating || '';
-  row[COLS.DIRECTIONS] = details?.directions || `https://www.google.com/maps/place/?q=place_id:${placeId || ''}`;
+  row[activeCols.NAME] = location || '';
+  row[activeCols.PLACE_ID] = placeId || '';
+  row[activeCols.WEBSITE] = details?.website || '';
+  row[activeCols.HOURS] = details?.hours || '';
+  row[activeCols.ADDRESS] = details?.address || '';
+  row[activeCols.PHONE] = details?.phone || '';
+  row[activeCols.RATING] = details?.rating || '';
+  row[activeCols.DIRECTIONS] = details?.directions || `https://www.google.com/maps/place/?q=place_id:${placeId || ''}`;
   return row;
 }
 
@@ -202,7 +232,8 @@ async function verifyRowInExcel(rowIndex, expectedName) {
     }
 
     const data = await response.json();
-    const name = data.values?.[0]?.[COLS.NAME] || '';
+    const activeCols = getActiveCols(window.opener && !window.opener.closed ? window.opener : window);
+    const name = data.values?.[0]?.[activeCols.NAME] || '';
     return {
       verified: true,
       name: name,
@@ -563,6 +594,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
   `);
 
   try {
+    const activeCols = getActiveCols(window.opener && !window.opener.closed ? window.opener : window);
     for (let i = 0; i < adventuresData.length; i++) {
       const place = adventuresData[i];
       const values = place.values ? place.values[0] : place;
@@ -576,13 +608,13 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
         if (i > 0) await delay(PLACES_API_DELAY_MS);
 
         // Ensure all values are strings and trim them
-        const name = (values[COLS.NAME] || '').toString().trim();
-        const placeId = (values[COLS.PLACE_ID] || '').toString().trim();
-        const website = (values[COLS.WEBSITE] || '').toString().trim();
-        const phone = (values[COLS.PHONE] || '').toString().trim();
-        const hours = (values[COLS.HOURS] || '').toString().trim();
-        const address = (values[COLS.ADDRESS] || '').toString().trim();
-        const rating = (values[COLS.RATING] || '').toString().trim();
+        const name = (values[activeCols.NAME] || '').toString().trim();
+        const placeId = (values[activeCols.PLACE_ID] || '').toString().trim();
+        const website = (values[activeCols.WEBSITE] || '').toString().trim();
+        const phone = (values[activeCols.PHONE] || '').toString().trim();
+        const hours = (values[activeCols.HOURS] || '').toString().trim();
+        const address = (values[activeCols.ADDRESS] || '').toString().trim();
+        const rating = (values[activeCols.RATING] || '').toString().trim();
 
         const emptyFields = [];
         if (!website) emptyFields.push('Website');
@@ -616,23 +648,23 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
 
         if (!dryRun) {
           if (!website && details.website) {
-            values[COLS.WEBSITE] = details.website;
+            values[activeCols.WEBSITE] = details.website;
             fieldsCorrected.push('Website');
           }
           if (!phone && details.phone) {
-            values[COLS.PHONE] = details.phone;
+            values[activeCols.PHONE] = details.phone;
             fieldsCorrected.push('Phone');
           }
           if (!hours && details.hours) {
-            values[COLS.HOURS] = details.hours;
+            values[activeCols.HOURS] = details.hours;
             fieldsCorrected.push('Hours');
           }
           if (!address && details.address) {
-            values[COLS.ADDRESS] = details.address;
+            values[activeCols.ADDRESS] = details.address;
             fieldsCorrected.push('Address');
           }
           if (!rating && details.rating) {
-            values[COLS.RATING] = details.rating;
+            values[activeCols.RATING] = details.rating;
             fieldsCorrected.push('Rating');
           }
 

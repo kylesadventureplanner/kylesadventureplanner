@@ -342,6 +342,22 @@
       margin-top: 4px;
       line-height: 1.4;
     }
+
+    .target-chip-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-top: 10px;
+    }
+
+    .target-chip {
+      border: 1px solid #dbeafe;
+      background: #f8fbff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #1e3a8a;
+    }
   </style>
 </head>
 <body>
@@ -360,6 +376,29 @@
       <button class="tab-btn" data-tab="automation">🔄 Automation</button>
       <button class="tab-btn" data-tab="backup">💾 Backup</button>
       <button class="tab-btn" data-tab="history">📅 History</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 Edit Mode Target Tables</div>
+      <div class="input-group">
+        <label for="actionTargetSelect">Add / Bulk Add target table</label>
+        <select id="actionTargetSelect"></select>
+        <div class="help-text">Used by: Add Single Place, Bulk Add Places, Bulk Add Chain Locations.</div>
+      </div>
+      <div class="input-group">
+        <label for="automationTargetSelect">Automation default target table</label>
+        <select id="automationTargetSelect"></select>
+      </div>
+      <div class="input-group">
+        <label for="automationTargetMulti">Automation multi-target selection (Ctrl/Cmd + click for multiple)</label>
+        <select id="automationTargetMulti" multiple size="8"></select>
+        <div class="help-text">Used by: Refresh Place IDs, Auto-Tag All, Populate Missing Fields Only, Update Hours Only.</div>
+      </div>
+      <div class="button-group">
+        <button class="button button-secondary" type="button" onclick="selectAllAutomationTargets()">Select All Tables</button>
+        <button class="button button-secondary" type="button" onclick="clearAutomationTargets()">Clear Multi-Selection</button>
+      </div>
+      <div id="targetSelectionStatus" class="target-chip-grid"></div>
     </div>
 
     <!-- Add Places Tab -->
@@ -671,30 +710,228 @@
       console.log('✅ Tab listeners initialized successfully');
     }
 
-    /**
-     * Update feature dry run state and toggle appearance
-     */
-    function updateDryRunToggle(checkbox, feature) {
-      const toggleId = checkbox.id.replace('DryRun', '') + 'DryRunToggle';
-      const statusId = checkbox.id.replace('DryRun', '') + 'DryRunStatus';
-      const toggle = document.getElementById(toggleId);
-      const status = document.getElementById(statusId);
+    const EDIT_MODE_TARGETS = [
+      { id: 'nature_locations', label: 'Nature_Locations.xlsx / Nature_Locations', filePath: 'Nature_Locations.xlsx', tableName: 'Nature_Locations' },
+      { id: 'retail_coffee', label: 'Retail_Food_and_Drink.xlsx / Coffee', filePath: 'Retail_Food_and_Drink.xlsx', tableName: 'Coffee' },
+      { id: 'retail_retail', label: 'Retail_Food_and_Drink.xlsx / Retail', filePath: 'Retail_Food_and_Drink.xlsx', tableName: 'Retail' },
+      { id: 'retail_restaurants', label: 'Retail_Food_and_Drink.xlsx / Restaurants', filePath: 'Retail_Food_and_Drink.xlsx', tableName: 'Restaurants' },
+      { id: 'ent_festivals', label: 'Entertainment_Locations.xlsx / Festivals', filePath: 'Entertainment_Locations.xlsx', tableName: 'Festivals' },
+      { id: 'ent_wildlife_animals', label: 'Entertainment_Locations.xlsx / Wildlife_Animals', filePath: 'Entertainment_Locations.xlsx', tableName: 'Wildlife_Animals' },
+      { id: 'ent_general', label: 'Entertainment_Locations.xlsx / General_Entertainment', filePath: 'Entertainment_Locations.xlsx', tableName: 'General_Entertainment' }
+    ];
+    const targetSchemaCache = {};
 
-      if (checkbox.checked) {
-        toggle.classList.add('enabled');
-        status.textContent = 'ENABLED';
-        status.classList.remove('off');
-        status.classList.add('on');
-      } else {
-        toggle.classList.remove('enabled');
-        status.textContent = 'DISABLED';
-        status.classList.remove('on');
-        status.classList.add('off');
-      }
+    function getMainWindowSafe() {
+      return window.opener && !window.opener.closed ? window.opener : window;
+    }
 
-      if (window.enhancedAutomation) {
-        window.enhancedAutomation.setDryRunState(feature, checkbox.checked);
+    function renderTargetSelectionStatus() {
+      const status = document.getElementById('targetSelectionStatus');
+      if (!status) return;
+      const addTarget = getSelectedTarget('actionTargetSelect');
+      const autoSingle = getSelectedTarget('automationTargetSelect');
+      const autoMulti = getSelectedAutomationTargets();
+      status.innerHTML = `
+        <div class="target-chip"><strong>Add/Bulk:</strong> ${addTarget ? addTarget.label : 'Not selected'}</div>
+        <div class="target-chip"><strong>Automation default:</strong> ${autoSingle ? autoSingle.label : 'Not selected'}</div>
+        <div class="target-chip"><strong>Automation multi:</strong> ${autoMulti.length ? autoMulti.map((t) => t.tableName).join(', ') : 'None selected'}</div>
+      `;
+    }
+
+    function initTargetSelectors() {
+      const actionSel = document.getElementById('actionTargetSelect');
+      const autoSel = document.getElementById('automationTargetSelect');
+      const multiSel = document.getElementById('automationTargetMulti');
+      if (!actionSel || !autoSel || !multiSel) return;
+
+      const options = EDIT_MODE_TARGETS.map((target) => `<option value="${target.id}">${target.label}</option>`).join('');
+      actionSel.innerHTML = options;
+      autoSel.innerHTML = options;
+      multiSel.innerHTML = options;
+
+      actionSel.value = EDIT_MODE_TARGETS[0].id;
+      autoSel.value = EDIT_MODE_TARGETS[0].id;
+      Array.from(multiSel.options).forEach((opt, idx) => {
+        opt.selected = idx === 0;
+      });
+
+      [actionSel, autoSel, multiSel].forEach((el) => {
+        el.addEventListener('change', renderTargetSelectionStatus);
+      });
+      renderTargetSelectionStatus();
+    }
+
+    function getSelectedTarget(selectId) {
+      const select = document.getElementById(selectId);
+      const targetId = select ? String(select.value || '').trim() : '';
+      return EDIT_MODE_TARGETS.find((item) => item.id === targetId) || null;
+    }
+
+    function getSelectedAutomationTargets() {
+      const multiSel = document.getElementById('automationTargetMulti');
+      if (!multiSel) return [];
+      const ids = Array.from(multiSel.selectedOptions || []).map((opt) => String(opt.value || '').trim()).filter(Boolean);
+      return EDIT_MODE_TARGETS.filter((item) => ids.includes(item.id));
+    }
+
+    function selectAllAutomationTargets() {
+      const multiSel = document.getElementById('automationTargetMulti');
+      if (!multiSel) return;
+      Array.from(multiSel.options).forEach((opt) => {
+        opt.selected = true;
+      });
+      renderTargetSelectionStatus();
+    }
+
+    function clearAutomationTargets() {
+      const multiSel = document.getElementById('automationTargetMulti');
+      if (!multiSel) return;
+      Array.from(multiSel.options).forEach((opt) => {
+        opt.selected = false;
+      });
+      renderTargetSelectionStatus();
+    }
+
+    function applyTargetToMainWindow(target, statusDiv) {
+      if (!target) {
+        if (statusDiv) statusDiv.innerHTML = '<div class="status-message status-error">❌ Please select a target table first.</div>';
+        return false;
       }
+      const mainWindow = getMainWindowSafe();
+      mainWindow.filePath = target.filePath;
+      mainWindow.tableName = target.tableName;
+      mainWindow.__editModeTarget = { ...target };
+      window.filePath = target.filePath;
+      window.tableName = target.tableName;
+      const cachedSchema = targetSchemaCache[target.id];
+      if (cachedSchema && Number.isInteger(cachedSchema.columnCount) && cachedSchema.columnCount > 0) {
+        mainWindow.__excelColumnCount = cachedSchema.columnCount;
+        window.__excelColumnCount = cachedSchema.columnCount;
+        mainWindow.__excelSchemaColumns = Array.isArray(cachedSchema.columns) ? cachedSchema.columns.slice() : [];
+        window.__excelSchemaColumns = Array.isArray(cachedSchema.columns) ? cachedSchema.columns.slice() : [];
+      }
+      return true;
+    }
+
+    async function probeTargetSchema(target) {
+      if (!target) return null;
+      if (targetSchemaCache[target.id]) return targetSchemaCache[target.id];
+      const mainWindow = getMainWindowSafe();
+      if (!mainWindow.accessToken) return null;
+      try {
+        const encodedPath = String(target.filePath)
+          .split('/')
+          .filter(Boolean)
+          .map((part) => encodeURIComponent(part))
+          .join('/');
+        const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/columns?$select=name,index`;
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${mainWindow.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) return null;
+        const payload = await response.json().catch(() => ({}));
+        const columns = Array.isArray(payload.value) ? payload.value : [];
+        const schema = {
+          columnCount: columns.length,
+          columns: columns.map((item) => String(item && item.name ? item.name : '').trim()).filter(Boolean)
+        };
+        targetSchemaCache[target.id] = schema;
+        mainWindow.__excelColumnCount = schema.columnCount;
+        window.__excelColumnCount = schema.columnCount;
+        mainWindow.__excelSchemaColumns = Array.isArray(schema.columns) ? schema.columns.slice() : [];
+        window.__excelSchemaColumns = Array.isArray(schema.columns) ? schema.columns.slice() : [];
+        return schema;
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    async function loadTargetRows(target) {
+      const mainWindow = getMainWindowSafe();
+      if (!target || !mainWindow.accessToken) return false;
+      try {
+        const encodedPath = String(target.filePath)
+          .split('/')
+          .filter(Boolean)
+          .map((part) => encodeURIComponent(part))
+          .join('/');
+        const rowsUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/rows?$top=5000`;
+        const rowsResponse = await fetch(rowsUrl, {
+          headers: {
+            Authorization: `Bearer ${mainWindow.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!rowsResponse.ok) return false;
+        const rowsPayload = await rowsResponse.json().catch(() => ({}));
+        const rows = Array.isArray(rowsPayload.value) ? rowsPayload.value : [];
+        const schema = await probeTargetSchema(target);
+        const width = schema && Number.isInteger(schema.columnCount) && schema.columnCount > 0 ? schema.columnCount : 0;
+        const normalizedRows = rows.map((row) => {
+          const values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0].slice() : [];
+          if (width > 0) {
+            if (values.length > width) values.length = width;
+            while (values.length < width) values.push('');
+          }
+          return { values: [values] };
+        });
+
+        mainWindow.adventuresData = normalizedRows;
+        window.adventuresData = normalizedRows;
+        mainWindow.__excelLoadedRowCount = normalizedRows.length;
+        window.__excelLoadedRowCount = normalizedRows.length;
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    async function runAutomationAcrossTargets(targets, statusDiv, runner) {
+      if (!targets.length) {
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ Select one or more automation target tables.</div>';
+        return;
+      }
+      const mainWindow = getMainWindowSafe();
+      const originalContext = {
+        filePath: mainWindow.filePath,
+        tableName: mainWindow.tableName,
+        adventuresData: mainWindow.adventuresData,
+        excelColumnCount: mainWindow.__excelColumnCount,
+        excelSchemaColumns: mainWindow.__excelSchemaColumns,
+        excelLoadedRowCount: mainWindow.__excelLoadedRowCount
+      };
+
+      const messages = [];
+      for (let i = 0; i < targets.length; i += 1) {
+        const target = targets[i];
+        applyTargetToMainWindow(target, statusDiv);
+        await probeTargetSchema(target);
+        const loaded = await loadTargetRows(target);
+        if (!loaded) {
+          messages.push(`❌ ${target.tableName}: unable to load rows for selected table`);
+          continue;
+        }
+        statusDiv.innerHTML = `<div class="status-message"><span class="spinner"></span> Processing ${target.label} (${i + 1}/${targets.length})...</div>`;
+        try {
+          const result = await runner(target, i, targets.length);
+          const msg = result && (result.message || result.error) ? (result.message || result.error) : 'Completed';
+          messages.push(`✅ ${target.tableName}: ${msg}`);
+        } catch (error) {
+          messages.push(`❌ ${target.tableName}: ${error && error.message ? error.message : 'Failed'}`);
+        }
+      }
+      statusDiv.innerHTML = `<div class="status-message status-success">${messages.join('<br>')}</div>`;
+
+      // Restore main-window context after multi-target pass.
+      mainWindow.filePath = originalContext.filePath;
+      mainWindow.tableName = originalContext.tableName;
+      mainWindow.adventuresData = originalContext.adventuresData;
+      mainWindow.__excelColumnCount = originalContext.excelColumnCount;
+      mainWindow.__excelSchemaColumns = originalContext.excelSchemaColumns;
+      mainWindow.__excelLoadedRowCount = originalContext.excelLoadedRowCount;
     }
 
     /**
@@ -849,143 +1086,6 @@
       }
     }
 
-    /**
-     * Submit Populate Missing Fields
-     */
-    async function submitPopulateMissing() {
-      const dryRun = document.getElementById('missingDryRun')?.checked || false;
-      const statusDiv = document.getElementById('missing-status');
-
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      try {
-        if (window.enhancedAutomation && typeof window.enhancedAutomation.populateMissingFields === 'function') {
-          const result = await window.enhancedAutomation.populateMissingFields(dryRun);
-          statusDiv.innerHTML = `<div class="status-message status-success">✅ ${result.message || 'Completed'}</div>`;
-        } else {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Feature not available yet</div>';
-        }
-      } catch (error) {
-        console.error('❌ Error:', error);
-        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-      }
-    }
-
-    /**
-     * Submit Update Hours Only
-     */
-    async function submitUpdateHours() {
-      const dryRun = document.getElementById('hoursDryRun')?.checked || false;
-      const statusDiv = document.getElementById('hours-status');
-
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      try {
-        if (window.enhancedAutomation && typeof window.enhancedAutomation.updateHoursOnly === 'function') {
-          const result = await window.enhancedAutomation.updateHoursOnly(dryRun);
-          statusDiv.innerHTML = `<div class="status-message status-success">✅ ${result.message || 'Completed'}</div>`;
-        } else {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Feature not available yet</div>';
-        }
-      } catch (error) {
-        console.error('❌ Error:', error);
-        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-      }
-    }
-
-    /**
-     * Submit Refresh Place IDs
-     */
-    async function submitRefreshPlaceIds() {
-      console.log('🔄 submitRefreshPlaceIds called from edit mode');
-      const dryRun = document.getElementById('refreshDryRun')?.checked || false;
-      const statusDiv = document.getElementById('refresh-status');
-
-      if (!statusDiv) {
-        console.error('❌ refresh-status div not found');
-        return;
-      }
-
-      statusDiv.innerHTML = '<div class="status-message" style="background: #dbeafe; color: #1e40af; border-left: 4px solid #1e40af; padding: 16px; border-radius: 8px;"><span style="display: inline-block; width: 20px; height: 20px; border: 3px solid #e5e7eb; border-top-color: #1e40af; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px;"></span>🔄 Initializing refresh...</div>';
-
-      try {
-        // Call the main window's refresh function
-        if (window.opener && window.opener.refreshPlaceIdsFromEditMode) {
-          console.log('✅ Calling opener.refreshPlaceIdsFromEditMode');
-          await window.opener.refreshPlaceIdsFromEditMode(dryRun);
-        } else if (window.opener && window.opener.refreshPlaceIdsWithProgress) {
-          console.log('✅ Calling opener.refreshPlaceIdsWithProgress');
-          await window.opener.refreshPlaceIdsWithProgress(dryRun);
-        } else if (window.refreshPlaceIdsFromEditMode) {
-          console.log('✅ Calling local refreshPlaceIdsFromEditMode');
-          await window.refreshPlaceIdsFromEditMode(dryRun);
-        } else {
-          statusDiv.innerHTML = '<div class="status-message status-error" style="padding: 16px; border-radius: 8px;">❌ Error: Refresh function not available. Make sure the main window is open.</div>';
-          console.error('❌ No refresh function found');
-        }
-      } catch (error) {
-        console.error('❌ Error:', error);
-        statusDiv.innerHTML = `<div class="status-message status-error" style="padding: 16px; border-radius: 8px;">❌ Error: ${error.message}</div>`;
-      }
-    }
-
-    /**
-     * Submit Auto Tag All
-     */
-    async function submitAutoTagAll() {
-      const dryRun = document.getElementById('autoTagDryRun')?.checked || false;
-      const statusDiv = document.getElementById('autotag-status');
-
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-
-      try {
-        if (window.enhancedAutomation && typeof window.enhancedAutomation.autoTagAll === 'function') {
-          const result = await window.enhancedAutomation.autoTagAll(dryRun);
-          statusDiv.innerHTML = `<div class="status-message status-success">✅ ${result.message || 'Completed'}</div>`;
-        } else {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Feature not available yet</div>';
-        }
-      } catch (error) {
-        console.error('❌ Error:', error);
-        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-      }
-    }
-
-    /**
-     * Submit Backup
-     */
-    async function submitBackup() {
-      const statusDiv = document.getElementById('backup-status');
-
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Creating backup...</div>';
-
-      try {
-        if (window.opener && window.opener.createBackup && typeof window.opener.createBackup === 'function') {
-          await window.opener.createBackup();
-          statusDiv.innerHTML = '<div class="status-message status-success">✅ Backup created successfully!</div>';
-        } else {
-          statusDiv.innerHTML = '<div class="status-message status-error">❌ Backup system not available</div>';
-        }
-      } catch (error) {
-        console.error('❌ Error:', error);
-        statusDiv.innerHTML = `<div class="status-message status-error">❌ Error: ${error.message}</div>`;
-      }
-    }
-
-    /**
-     * History sorting functions
-     */
-    function sortHistoryNewest() {
-      showToast('📅 Sorting by newest...', 'info', 2000);
-    }
-
-    function sortHistoryOldest() {
-      showToast('📅 Sorting by oldest...', 'info', 2000);
-    }
-
-    function sortHistoryName() {
-      showToast('📅 Sorting alphabetically...', 'info', 2000);
-    }
 
     /**
      * Update feature dry run state
@@ -1004,6 +1104,10 @@
       const inputType = document.getElementById('singleInputType').value;
       const dryRun = document.getElementById('singleDryRun').checked;
       const statusDiv = document.getElementById('single-status');
+      const target = getSelectedTarget('actionTargetSelect');
+      if (!applyTargetToMainWindow(target, statusDiv)) return;
+      await probeTargetSchema(target);
+      await loadTargetRows(target);
 
       if (!input.trim()) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a location</div>';
@@ -1040,6 +1144,10 @@
       const inputType = document.getElementById('bulkInputType').value;
       const dryRun = document.getElementById('bulkDryRun').checked;
       const statusDiv = document.getElementById('bulk-status');
+      const target = getSelectedTarget('actionTargetSelect');
+      if (!applyTargetToMainWindow(target, statusDiv)) return;
+      await probeTargetSchema(target);
+      await loadTargetRows(target);
 
       if (!input.trim()) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
@@ -1083,6 +1191,10 @@
       const inputType = document.getElementById('chainInputType').value;
       const dryRun = document.getElementById('chainDryRun').checked;
       const statusDiv = document.getElementById('chain-status');
+      const target = getSelectedTarget('actionTargetSelect');
+      if (!applyTargetToMainWindow(target, statusDiv)) return;
+      await probeTargetSchema(target);
+      await loadTargetRows(target);
 
       if (!input.trim()) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
@@ -1140,28 +1252,22 @@
     async function submitPopulateMissing() {
       const dryRun = document.getElementById('missingDryRun').checked;
       const statusDiv = document.getElementById('missing-status');
+      const single = getSelectedTarget('automationTargetSelect');
+      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      // Try enhanced function first (preferred)
-      if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
-        await window.handlePopulateMissingFieldsEnhanced(statusDiv, dryRun);
-        return;
-      }
-
-      // Fallback to standard function
-      if (typeof window.handlePopulateMissingFields === 'function') {
-        await window.handlePopulateMissingFields(statusDiv, dryRun);
-        return;
-      }
-
-      // Fallback to old system
-      if (window.enhancedAutomation) {
-        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-        const result = await window.enhancedAutomation.populateMissingFieldsOnly(dryRun);
-        window.enhancedAutomation.displayResults(result, statusDiv);
-        return;
-      }
-
-      statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+        if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
+          return await window.handlePopulateMissingFieldsEnhanced(document.createElement('div'), dryRun);
+        }
+        if (typeof window.handlePopulateMissingFields === 'function') {
+          return await window.handlePopulateMissingFields(document.createElement('div'), dryRun);
+        }
+        if (window.enhancedAutomation) {
+          return await window.enhancedAutomation.populateMissingFieldsOnly(dryRun);
+        }
+        throw new Error('System not ready');
+      });
+      return;
     }
 
     /**
@@ -1170,28 +1276,25 @@
     async function submitUpdateHours() {
       const dryRun = document.getElementById('hoursDryRun').checked;
       const statusDiv = document.getElementById('hours-status');
+      const single = getSelectedTarget('automationTargetSelect');
+      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      // Try new progress tracking system first
-      if (typeof window.handleUpdateHoursWithProgress === 'function') {
-        await window.handleUpdateHoursWithProgress(statusDiv, dryRun);
-        return;
-      }
-
-      // Try enhanced function
-      if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
-        await window.handleUpdateHoursOnlyEnhanced(statusDiv, dryRun);
-        return;
-      }
-
-      // Fallback to old system
-      if (window.enhancedAutomation) {
-        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-        const result = await window.enhancedAutomation.updateHoursOnly(dryRun);
-        window.enhancedAutomation.displayResults(result, statusDiv);
-        return;
-      }
-
-      statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+        if (typeof window.handleUpdateHoursWithProgress === 'function') {
+          return await window.handleUpdateHoursWithProgress(document.createElement('div'), dryRun);
+        }
+        if (typeof window.handleUpdateHoursOnlyEnhanced === 'function') {
+          return await window.handleUpdateHoursOnlyEnhanced(document.createElement('div'), dryRun);
+        }
+        if (typeof window.handleUpdateHoursOnly === 'function') {
+          return await window.handleUpdateHoursOnly(document.createElement('div'), dryRun);
+        }
+        if (window.enhancedAutomation) {
+          return await window.enhancedAutomation.updateHoursOnly(dryRun);
+        }
+        throw new Error('System not ready');
+      });
+      return;
     }
 
     /**
@@ -1200,23 +1303,19 @@
     async function submitRefreshPlaceIds() {
       const dryRun = document.getElementById('refreshDryRun').checked;
       const statusDiv = document.getElementById('refresh-status');
+      const single = getSelectedTarget('automationTargetSelect');
+      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      // Use the consolidated system function
-      if (typeof window.refreshPlaceIdsWithProgress === 'function') {
-        await window.refreshPlaceIdsWithProgress(dryRun);
-        statusDiv.innerHTML = '<div class="status-message status-success">✅ Place IDs refreshed successfully</div>';
-        return;
-      }
-
-      // Fallback to the edit mode handler
-      if (typeof window.handleRefreshPlaceIdsWithProgress === 'function') {
-        await window.handleRefreshPlaceIdsWithProgress(statusDiv, dryRun);
-        return;
-      }
-
-      statusDiv.innerHTML = '<div class="status-message status-error">❌ Refresh system not available</div>';
-
-      statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+        if (typeof window.refreshPlaceIdsWithProgress === 'function') {
+          return await window.refreshPlaceIdsWithProgress(dryRun);
+        }
+        if (typeof window.handleRefreshPlaceIdsWithProgress === 'function') {
+          return await window.handleRefreshPlaceIdsWithProgress(document.createElement('div'), dryRun);
+        }
+        throw new Error('Refresh system not available');
+      });
+      return;
     }
 
     /**
@@ -1225,27 +1324,19 @@
     async function submitAutoTagAll() {
       const dryRun = document.getElementById('autoTagDryRun').checked;
       const statusDiv = document.getElementById('autotag-status');
+      const single = getSelectedTarget('automationTargetSelect');
+      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      // Try new progress tracking system first
-      if (typeof window.handleAutoTagWithProgress === 'function') {
-        await window.handleAutoTagWithProgress(statusDiv, dryRun);
-        return;
-      }
-
-      // Try unified auto-tag system
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-      if (typeof window.autoTagAllLocationsUnified === 'function') {
-        const result = await window.autoTagAllLocationsUnified({
-          dryRun: dryRun
-        });
-        const message = dryRun
-          ? `🧪 Preview: Would tag locations`
-          : `✅ Successfully tagged ${result.success || 0} locations`;
-        window.enhancedAutomation?.displayResults({ success: true, message, dryRun }, statusDiv);
-        return;
-      }
-
-      statusDiv.innerHTML = '<div class="status-message status-error">❌ Auto-tag system not available</div>';
+      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+        if (typeof window.handleAutoTagWithProgress === 'function') {
+          return await window.handleAutoTagWithProgress(document.createElement('div'), dryRun);
+        }
+        if (typeof window.autoTagAllLocationsUnified === 'function') {
+          return await window.autoTagAllLocationsUnified({ dryRun: dryRun });
+        }
+        throw new Error('Auto-tag system not available');
+      });
+      return;
     }
 
     /**
@@ -1306,7 +1397,10 @@
     console.log('✅ Edit Mode UI Loaded');
 
     // Initialize tabs
-    document.addEventListener('DOMContentLoaded', initializeTabs);
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeTabs();
+      initTargetSelectors();
+    });
 
     // Also try immediately in case DOM is already ready
     if (document.readyState === 'loading') {
@@ -1314,6 +1408,7 @@
     } else {
       console.log('📄 Page already loaded, initializing tabs now...');
       initializeTabs();
+      initTargetSelectors();
     }
 
     console.log('📋 Available functions:', {
