@@ -44,11 +44,146 @@ window.closeEnhancedCityVisualizer = window.closeEnhancedCityVisualizer || funct
 
 /**
  * Cache adventure data for City Viewer tab
- * Stores filtered adventure data in sessionStorage for the city viewer window to access
+ * Stores curated city-viewer data in sessionStorage for the city viewer window to access.
  */
-function cacheCityViewerDataForTab(correlationId) {
-  if (!Array.isArray(window.adventuresData)) {
-    console.warn('⚠️ Adventure data not available for city viewer');
+const CITY_VIEWER_SOURCE_PREFIXES = ['', 'Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/'];
+const CITY_VIEWER_TABLE_SOURCES = [
+  { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Coffee', sourceType: 'coffee' },
+  { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Restaurants', sourceType: 'restaurants' },
+  { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Retail', sourceType: 'retail' },
+  { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations', sourceType: 'nature' },
+  { workbook: 'Entertainment_Locations.xlsx', table: 'Festivals', sourceType: 'festivals' },
+  { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment', sourceType: 'entertainment' }
+];
+
+function encodeCityViewerGraphPath(filePath) {
+  return String(filePath || '')
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+function cityViewerWorkbookCandidates(workbook) {
+  const clean = String(workbook || '').trim();
+  if (!clean) return [];
+  if (clean.includes('/')) return [clean];
+  return CITY_VIEWER_SOURCE_PREFIXES.map((prefix) => `${prefix}${clean}`);
+}
+
+async function fetchCityViewerTableValues(workbook, table) {
+  if (!window.accessToken || typeof fetch !== 'function') {
+    throw new Error('Missing authentication token for city viewer table load.');
+  }
+
+  const candidates = cityViewerWorkbookCandidates(workbook);
+  let lastError = null;
+  for (const candidate of candidates) {
+    const encodedPath = encodeCityViewerGraphPath(candidate);
+    const rangeUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(table)}/range?$select=values`;
+    try {
+      const response = await fetch(rangeUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Graph ${response.status} for ${candidate} / ${table}`);
+      }
+      const payload = await response.json();
+      const values = Array.isArray(payload && payload.values) ? payload.values : [];
+      if (!values.length) {
+        throw new Error(`No rows returned for ${candidate} / ${table}`);
+      }
+      return values;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error(`Unable to load workbook/table ${workbook} / ${table}`);
+}
+
+function cityViewerHeaderIndexMap(headers) {
+  const map = {};
+  headers.forEach((header, idx) => {
+    const key = String(header || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, ' ');
+    if (key) map[key] = idx;
+  });
+  return map;
+}
+
+function getCellByAliases(row, headerMap, aliases) {
+  for (const alias of aliases) {
+    const key = String(alias || '').toLowerCase().trim();
+    if (!Object.prototype.hasOwnProperty.call(headerMap, key)) continue;
+    const idx = headerMap[key];
+    const value = Array.isArray(row) ? row[idx] : '';
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      return String(value).trim();
+    }
+  }
+  return '';
+}
+
+function normalizeCityViewerRow(row, headerMap, sourceLabel) {
+  const name = getCellByAliases(row, headerMap, ['name']);
+  if (!name) return null;
+
+  const canonical = new Array(27).fill('');
+  canonical[0] = name;
+  canonical[1] = getCellByAliases(row, headerMap, ['google place id', 'googleplaceid', 'place id', 'placeid']);
+  canonical[2] = getCellByAliases(row, headerMap, ['website', 'official website']);
+  canonical[3] = getCellByAliases(row, headerMap, ['tags', 'tag', 'categories', 'category']);
+  canonical[4] = getCellByAliases(row, headerMap, ['drive time', 'travel time', 'distance']);
+  canonical[5] = getCellByAliases(row, headerMap, ['hours of operation', 'hours', 'business hours']);
+  canonical[7] = getCellByAliases(row, headerMap, ['trail difficulties', 'difficulty']);
+  canonical[8] = getCellByAliases(row, headerMap, ['trail lengths', 'trail length']);
+  canonical[9] = getCellByAliases(row, headerMap, ['state']);
+  canonical[10] = getCellByAliases(row, headerMap, ['city']);
+  canonical[11] = getCellByAliases(row, headerMap, ['address']);
+  canonical[12] = getCellByAliases(row, headerMap, ['phone number', 'phone']);
+  canonical[13] = getCellByAliases(row, headerMap, ['google rating', 'rating']);
+  canonical[14] = getCellByAliases(row, headerMap, ['cost', 'price']);
+  canonical[16] = getCellByAliases(row, headerMap, ['description']);
+  canonical[23] = getCellByAliases(row, headerMap, ['google url', 'maps url', 'directions']);
+  canonical[25] = getCellByAliases(row, headerMap, ['gps', 'latitude', 'lat']);
+  canonical[26] = getCellByAliases(row, headerMap, ['longitude', 'lng']);
+
+  return {
+    sourceLabel,
+    city: canonical[10],
+    state: canonical[9],
+    name: canonical[0],
+    googlePlaceId: canonical[1],
+    values: [canonical]
+  };
+}
+
+async function buildCityViewerCuratedData() {
+  const results = [];
+  for (const source of CITY_VIEWER_TABLE_SOURCES) {
+    try {
+      const matrix = await fetchCityViewerTableValues(source.workbook, source.table);
+      if (!Array.isArray(matrix) || matrix.length < 2) continue;
+      const headers = Array.isArray(matrix[0]) ? matrix[0] : [];
+      const headerMap = cityViewerHeaderIndexMap(headers);
+      matrix.slice(1).forEach((row) => {
+        const normalized = normalizeCityViewerRow(Array.isArray(row) ? row : [], headerMap, `${source.workbook} / ${source.table}`);
+        if (normalized) results.push(normalized);
+      });
+    } catch (error) {
+      console.warn(`⚠️ City Viewer source load failed for ${source.workbook}/${source.table}:`, error.message || error);
+    }
+  }
+  return results;
+}
+
+async function cacheCityViewerDataForTab(correlationId) {
+  const curatedRows = await buildCityViewerCuratedData();
+  if (!Array.isArray(curatedRows) || curatedRows.length === 0) {
+    console.warn('⚠️ No curated City Explorer rows available from configured sources.');
     return null;
   }
 
@@ -56,14 +191,16 @@ function cacheCityViewerDataForTab(correlationId) {
   const payload = {
     correlationId: String(correlationId || ''),
     exportedAt: new Date().toISOString(),
-    adventuresData: window.adventuresData,
-    totalCount: window.adventuresData.length
+    dataMode: 'curated-only',
+    adventuresData: curatedRows,
+    totalCount: curatedRows.length,
+    configuredSources: CITY_VIEWER_TABLE_SOURCES.map((source) => `${source.workbook} / ${source.table}`)
   };
 
   try {
     window.sessionStorage.setItem(cacheKey, JSON.stringify(payload));
     window.sessionStorage.setItem('city_viewer_data_latest', cacheKey);
-    console.log(`✅ City Viewer data cached: ${cacheKey} (${window.adventuresData.length} adventures)`);
+    console.log(`✅ City Viewer curated data cached: ${cacheKey} (${curatedRows.length} rows)`);
     return cacheKey;
   } catch (error) {
     console.warn('⚠️ Could not cache city viewer data:', error);
@@ -75,24 +212,21 @@ function cacheCityViewerDataForTab(correlationId) {
  * Open City Viewer in a new browser tab
  * Similar to openAdventureDetailsTab but for city viewing
  */
-window.openCityViewerInNewTab = function() {
+window.openCityViewerInNewTab = async function() {
   console.log('🌆 Opening City Explorer in new browser tab');
-
-  if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) {
-    if (typeof window.showToast === 'function') {
-      window.showToast('⚠️ No adventure data available. Please load data first.', 'warning', 3000);
-    } else {
-      alert('No adventure data available. Please load data first.');
-    }
-    return false;
-  }
 
   try {
     // Create correlation ID for tracking
     const correlationId = `corr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     // Cache the adventure data for the new tab to access
-    const dataKey = cacheCityViewerDataForTab(correlationId);
+    const dataKey = await cacheCityViewerDataForTab(correlationId);
+    if (!dataKey) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('⚠️ City Explorer could not load curated source tables. Sign in and try again.', 'warning', 4200);
+      }
+      return false;
+    }
 
     // Resolve the URL to the city viewer window
     const cityViewerUrl = typeof window.resolvePlannerPageUrl === 'function'
@@ -103,6 +237,7 @@ window.openCityViewerInNewTab = function() {
     const url = new URL(cityViewerUrl);
     url.searchParams.set('corrId', correlationId);
     if (dataKey) url.searchParams.set('dataKey', dataKey);
+    url.searchParams.set('dataMode', 'curated-only');
     url.searchParams.set('ts', String(Date.now()));
 
     // Open in new tab

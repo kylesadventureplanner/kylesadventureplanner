@@ -69,6 +69,46 @@
       flex-wrap: wrap;
     }
 
+    .active-sources-row {
+      flex-basis: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 2px;
+    }
+
+    .active-sources-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6b7280;
+      margin-right: 2px;
+    }
+
+    .active-source-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color: #1e40af;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+      max-width: 210px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: help;
+    }
+
+    .active-sources-row.is-empty .active-source-chip {
+      border-color: #e5e7eb;
+      background: #f9fafb;
+      color: #6b7280;
+    }
+
     .search-box {
       flex: 1;
       min-width: 200px;
@@ -813,6 +853,7 @@
       <button class="sort-btn active" id="sortByCountBtn" onclick="sortBy('count')">Sort by Count</button>
       <button class="sort-btn" id="sortByDistanceBtn" onclick="sortBy('distance')" title="Sort by drive time (requires location permission)">🚗 Sort by Drive Time</button>
       <button class="sort-btn" id="getLocationBtn" onclick="enableDriveTimes()" title="Get your location to show drive times">📍 Show My Drive Times</button>
+      <div class="active-sources-row" id="activeSourcesRow" aria-live="polite"></div>
     </div>
 
     <div id="cityGrid" class="city-grid">
@@ -988,6 +1029,76 @@
     let adventuresData = [];
     let citiesData = {};
     let currentSort = 'count';
+    const DEFAULT_CITY_VIEWER_SOURCES = [
+      'Retail_Food_and_Drink.xlsx / Coffee',
+      'Retail_Food_and_Drink.xlsx / Restaurants',
+      'Retail_Food_and_Drink.xlsx / Retail',
+      'Nature_Locations.xlsx / Nature_Locations',
+      'Entertainment_Locations.xlsx / Festivals',
+      'Entertainment_Locations.xlsx / General_Entertainment'
+    ];
+    let cityViewerDataMeta = {
+      configuredSources: [],
+      dataMode: '',
+      loadedFrom: 'unknown'
+    };
+
+    function sanitizeSourceList(values) {
+      return Array.from(new Set((Array.isArray(values) ? values : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean)));
+    }
+
+    function resolveActiveSources() {
+      const configured = sanitizeSourceList(cityViewerDataMeta.configuredSources);
+      if (configured.length) return configured;
+
+      const fromRows = sanitizeSourceList(adventuresData.map(row => row && row.sourceLabel));
+      if (fromRows.length) return fromRows;
+
+      if (String(cityViewerDataMeta.dataMode || '').toLowerCase() === 'curated-only') {
+        return DEFAULT_CITY_VIEWER_SOURCES.slice();
+      }
+
+      return ['Unknown source'];
+    }
+
+    function toActiveSourceChipModel(source) {
+      const fullLabel = String(source || '').trim() || 'Unknown source';
+      if (fullLabel === 'Unknown source') {
+        return { shortLabel: fullLabel, fullLabel };
+      }
+
+      const splitIndex = fullLabel.indexOf(' / ');
+      const tableName = splitIndex >= 0 ? fullLabel.slice(splitIndex + 3) : fullLabel;
+      const shortLabel = String(tableName || fullLabel)
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      return {
+        shortLabel: shortLabel || fullLabel,
+        fullLabel
+      };
+    }
+
+    function renderActiveSources() {
+      const row = document.getElementById('activeSourcesRow');
+      if (!row) return;
+
+      const sources = resolveActiveSources();
+      const label = String(cityViewerDataMeta.dataMode || '').toLowerCase() === 'curated-only'
+        ? 'Active curated feeds:'
+        : 'Active sources:';
+
+      row.classList.toggle('is-empty', sources.length === 1 && sources[0] === 'Unknown source');
+      row.innerHTML = `<span class="active-sources-label">${escHtml(label)}</span>${sources
+        .map(source => {
+          const model = toActiveSourceChipModel(source);
+          return `<span class="active-source-chip" title="${escAttr(model.fullLabel)}">${escHtml(model.shortLabel)}</span>`;
+        })
+        .join('')}`;
+    }
 
     // Helper function to load data from sessionStorage
     function loadCityViewerData() {
@@ -996,6 +1107,13 @@
         const urlParams = new URLSearchParams(window.location.search);
         const dataKey = urlParams.get('dataKey');
         const corrId = urlParams.get('corrId');
+        const dataMode = String(urlParams.get('dataMode') || '').trim();
+
+        cityViewerDataMeta = {
+          configuredSources: [],
+          dataMode,
+          loadedFrom: 'unknown'
+        };
 
         console.log(`🔗 City Viewer loaded with corrId=${corrId}, dataKey=${dataKey}`);
 
@@ -1006,6 +1124,9 @@
               const payload = JSON.parse(cachedData);
               if (Array.isArray(payload.adventuresData)) {
                 adventuresData = payload.adventuresData;
+                cityViewerDataMeta.configuredSources = sanitizeSourceList(payload.configuredSources);
+                cityViewerDataMeta.dataMode = String(payload.dataMode || cityViewerDataMeta.dataMode || '').trim();
+                cityViewerDataMeta.loadedFrom = 'dataKey';
                 console.log(`✅ Loaded ${adventuresData.length} adventures from sessionStorage`);
                 return true;
               }
@@ -1024,6 +1145,9 @@
               const payload = JSON.parse(cachedData);
               if (Array.isArray(payload.adventuresData)) {
                 adventuresData = payload.adventuresData;
+                cityViewerDataMeta.configuredSources = sanitizeSourceList(payload.configuredSources);
+                cityViewerDataMeta.dataMode = String(payload.dataMode || cityViewerDataMeta.dataMode || '').trim();
+                cityViewerDataMeta.loadedFrom = 'latestCache';
                 console.log(`✅ Loaded ${adventuresData.length} adventures from latest cache`);
                 return true;
               }
@@ -1033,10 +1157,17 @@
           }
         }
 
+        // If curated-only mode was requested, avoid broad fallback sources.
+        if (dataMode === 'curated-only') {
+          console.warn('⚠️ Curated City Explorer mode requested, but curated cache is unavailable.');
+          return false;
+        }
+
         // Fallback: Try to get from parent window (for popup windows)
         const parentWindow = window.opener || window;
         if (parentWindow && Array.isArray(parentWindow.adventuresData)) {
           adventuresData = parentWindow.adventuresData;
+          cityViewerDataMeta.loadedFrom = 'parentWindow';
           console.log(`✅ Loaded ${adventuresData.length} adventures from parent window`);
           return true;
         }
@@ -1065,6 +1196,7 @@
       }
 
       console.log('🌆 City Viewer initializing with', adventuresData.length, 'adventures');
+      renderActiveSources();
 
       // Group by city
       adventuresData.forEach(adventure => {
