@@ -21,128 +21,57 @@
   <div id="visitedMobileTooltipChip" class="visited-mobile-tooltip-chip" aria-live="polite" hidden></div>
 
   <div id="visitedProgressPane-outdoors" class="visited-progress-pane is-active" data-progress-pane="outdoors" role="tabpanel" aria-labelledby="visitedProgressTab-outdoors">
-    <div id="visitedOverviewMainView" class="visited-overview-view is-active" data-visited-overview-view="main" data-visited-subtab-view="overview">
-      <div class="card" style="margin-top: 10px;">
-        <div class="card-header">
-          <div>
-            <div class="card-title">🎮 Your Adventure Quest</div>
-            <div class="card-subtitle" id="visitedDataStatus">Loading adventures...</div>
-          </div>
-        </div>
-        <div id="visitedSummaryStats" class="visited-summary-grid"></div>
-        <div class="visited-level-track">
-          <div id="visitedLevelBarFill" class="visited-level-fill"></div>
-        </div>
+    <!-- Simple intro card matching other Adventure Challenge sub-tabs -->
+    <div class="card" data-visited-subtab-view="overview">
+      <div class="card-header">
+        <div class="card-title">🌲 Outdoors</div>
+        <div class="card-subtitle">Browse and plan outdoor locations you want to visit.</div>
       </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📊 Category Progress</div>
-          <div class="card-subtitle">Track the categories you asked for and level up each one.</div>
-        </div>
-        <div id="visitedCategoryGrid" class="visited-category-grid"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">🧠 Smart Adventure Suggestions</div>
-            <div class="card-subtitle">Open the dedicated suggestions page for weather-aware ranked picks.</div>
-          </div>
-        </div>
-        <div class="visited-subtab-action-row">
-          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-outdoors" title="Refresh Outdoors data" data-tooltip="Refresh Outdoors data">Refresh Data</button>
-          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-outdoors" title="No Outdoors action to undo yet" data-tooltip="No Outdoors action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
-          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-outdoors" title="Explore the Outdoors" data-tooltip="Explore the Outdoors">Explore Outdoors</button>
-        </div>
-      </div>
-
-      <div id="achv-root-outdoors" data-achv-container="outdoors"></div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🕓 Recent Check-Ins</div>
-          <div class="card-subtitle">Your newest visits at a glance.</div>
-        </div>
-        <div id="visitedRecentList" class="visited-recent-list"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🏁 Challenges</div>
-          <div class="card-subtitle">Complete challenge cards to track progress and unlock bragging rights.</div>
-        </div>
-        <div id="visitedChallengeGrid" class="visited-challenge-grid"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🏅 Badge Gallery</div>
-          <div class="card-subtitle">Unlock achievements by rarity: Common, Rare, Epic, and Legendary.</div>
-        </div>
-        <div id="visitedBadgeGallery" class="visited-badge-grid"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">🗺️ Visited Heatmap</div>
-          <div class="card-subtitle">Hot spots by city/state based on your logged visits.</div>
-        </div>
-        <div class="visited-heatmap-wrap">
-          <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
-          <div id="visitedHeatmapOverlay" class="visited-heat-overlay" aria-hidden="true"></div>
-          <div id="visitedHeatmapTooltip" class="visited-heat-tooltip" role="tooltip"></div>
-        </div>
-        <div id="visitedHeatmapHotspots" class="visited-hotspots-list"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📆 Quest Series</div>
-          <div class="card-subtitle">Fresh objective sets every week, month, quarter, and year, plus lifetime milestones.</div>
-        </div>
-        <div class="visited-quest-panels">
-          <div id="visitedWeeklyQuestPanel" class="visited-quest-panel"></div>
-          <div id="visitedMonthlyQuestPanel" class="visited-quest-panel"></div>
-          <div id="visitedQuarterlyQuestPanel" class="visited-quest-panel"></div>
-          <div id="visitedYearlyQuestPanel" class="visited-quest-panel"></div>
-          <div id="visitedLifetimeQuestPanel" class="visited-quest-panel"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">🗂️ Visit Tracker</div>
-            <div class="card-subtitle">Search your adventures and quickly mark places as visited.</div>
-          </div>
-          <div>
-            <label for="visitedSearchInput" style="font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px;">Search adventures</label>
-            <input id="visitedSearchInput" class="filter-input" type="text" placeholder="Search by name, city, state, or tags..." data-tooltip="Search by name, city, state, or tags" style="max-width: 340px;" />
-            <div id="visitedTrackerQuickFilters" class="visited-tracker-quick-filters" role="group" aria-label="Visit Tracker quick filters">
-              <button type="button" class="quick-filter-btn active" data-catalog-filter="visit" data-catalog-filter-value="all" aria-pressed="true" title="Show all visited states" data-tooltip="Show all visited states">All</button>
-              <button type="button" class="quick-filter-btn" data-catalog-filter="visit" data-catalog-filter-value="visited" aria-pressed="false" title="Show only visited locations" data-tooltip="Show only visited locations">Visited only</button>
-              <button type="button" class="quick-filter-btn" data-catalog-filter="visit" data-catalog-filter-value="unvisited" aria-pressed="false" title="Show only unvisited locations" data-tooltip="Show only unvisited locations">Unvisited only</button>
-              <button type="button" class="quick-filter-btn active" data-catalog-filter="source" data-catalog-filter-value="all" aria-pressed="true" title="Show all sources" data-tooltip="Show all sources">All sources</button>
-              <button type="button" class="quick-filter-btn" data-catalog-filter="source" data-catalog-filter-value="adventure" aria-pressed="false" title="Show only Adventure entries" data-tooltip="Show only Adventure entries">Adventure only</button>
-              <button type="button" class="quick-filter-btn" data-catalog-filter="source" data-catalog-filter-value="bike" aria-pressed="false" title="Show only Bike entries" data-tooltip="Show only Bike entries">Bike only</button>
-            </div>
-          </div>
-        </div>
-        <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
+      <div class="visited-empty">Open the explorer to browse, sort, and filter Outdoors locations.</div>
+      <div class="visited-subtab-action-row">
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-outdoors" title="Refresh Outdoors data" data-tooltip="Refresh Outdoors data">Refresh Data</button>
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-outdoors" title="No Outdoors action to undo yet" data-tooltip="No Outdoors action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
+        <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-outdoors" title="Explore the Outdoors" data-tooltip="Explore the Outdoors">Explore Outdoors</button>
       </div>
     </div>
 
-    <div id="visitedSuggestionsView" class="visited-overview-view" data-visited-overview-view="suggestions" hidden>
-      <div class="card" style="margin-top: 10px;">
-        <div class="visited-view-header-row">
-          <button id="visitedSuggestionsBackBtn" type="button" class="pill-button app-back-btn" title="Back to Visited Locations" data-tooltip="Back to Visited Locations">← Back to Visited</button>
-          <div class="visited-view-header-copy">
-            <div class="card-title">🧠 Smart Adventure Suggestions</div>
-            <div class="card-subtitle">Ranked by weather mode, season, open hours, drive-time convenience, and challenge progress.</div>
-          </div>
+    <div id="achv-root-outdoors" data-achv-container="outdoors" data-visited-subtab-view="overview"></div>
+
+    <!-- Legacy DOM elements kept hidden for JS compatibility -->
+    <div id="visitedOutdoorsLegacyDom" hidden aria-hidden="true" style="display:none!important">
+      <div id="visitedOverviewMainView" class="visited-overview-view is-active" data-visited-overview-view="main" data-visited-subtab-view="overview">
+        <div class="card">
+          <div class="card-subtitle" id="visitedDataStatus">Loading adventures...</div>
+          <div id="visitedSummaryStats" class="visited-summary-grid"></div>
+          <div class="visited-level-track"><div id="visitedLevelBarFill" class="visited-level-fill"></div></div>
         </div>
-        <div id="visitedSuggestionList" class="adventure-cards-grid" style="padding: 8px 0;"></div>
+        <div id="visitedCategoryGrid" class="visited-category-grid"></div>
+        <div id="visitedRecentList" class="visited-recent-list"></div>
+        <div id="visitedChallengeGrid" class="visited-challenge-grid"></div>
+        <div id="visitedBadgeGallery" class="visited-badge-grid"></div>
+        <canvas id="visitedHeatmapCanvas" class="visited-heatmap-canvas" aria-label="Visited location heatmap"></canvas>
+        <div id="visitedHeatmapOverlay" class="visited-heat-overlay" aria-hidden="true"></div>
+        <div id="visitedHeatmapTooltip" class="visited-heat-tooltip" role="tooltip"></div>
+        <div id="visitedHeatmapHotspots" class="visited-hotspots-list"></div>
+        <div id="visitedWeeklyQuestPanel" class="visited-quest-panel"></div>
+        <div id="visitedMonthlyQuestPanel" class="visited-quest-panel"></div>
+        <div id="visitedQuarterlyQuestPanel" class="visited-quest-panel"></div>
+        <div id="visitedYearlyQuestPanel" class="visited-quest-panel"></div>
+        <div id="visitedLifetimeQuestPanel" class="visited-quest-panel"></div>
+        <input id="visitedSearchInput" class="filter-input" type="text" placeholder="Search by name, city, state, or tags..." />
+        <div id="visitedTrackerQuickFilters" role="group" aria-label="Visit Tracker quick filters">
+          <button type="button" class="quick-filter-btn active" data-catalog-filter="visit" data-catalog-filter-value="all" aria-pressed="true">All</button>
+          <button type="button" class="quick-filter-btn" data-catalog-filter="visit" data-catalog-filter-value="visited" aria-pressed="false">Visited only</button>
+          <button type="button" class="quick-filter-btn" data-catalog-filter="visit" data-catalog-filter-value="unvisited" aria-pressed="false">Unvisited only</button>
+          <button type="button" class="quick-filter-btn active" data-catalog-filter="source" data-catalog-filter-value="all" aria-pressed="true">All sources</button>
+          <button type="button" class="quick-filter-btn" data-catalog-filter="source" data-catalog-filter-value="adventure" aria-pressed="false">Adventure only</button>
+          <button type="button" class="quick-filter-btn" data-catalog-filter="source" data-catalog-filter-value="bike" aria-pressed="false">Bike only</button>
+        </div>
+        <div id="visitedAdventureCatalog" class="visited-catalog-list"></div>
+      </div>
+      <div id="visitedSuggestionsView" class="visited-overview-view" data-visited-overview-view="suggestions">
+        <button id="visitedSuggestionsBackBtn" type="button" class="pill-button app-back-btn" title="Back to Visited Locations">← Back to Visited</button>
+        <div id="visitedSuggestionList" class="adventure-cards-grid"></div>
       </div>
     </div>
 
@@ -1681,6 +1610,278 @@
     color: #16a34a;
     font-size: 12px;
     font-weight: 900;
+  }
+
+  /* ── Horizontal tier chips (Challenges) ──────────────────────────────── */
+
+  #visitedLocationsRoot .adventure-achv-tier-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 5px 9px;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #f8fbff;
+    cursor: default;
+    min-width: 54px;
+    text-align: center;
+    position: relative;
+    transition: box-shadow 0.15s ease;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip.is-complete {
+    border-color: #86efac;
+    background: #ecfdf5;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip.is-active {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip.is-locked {
+    border-color: #e5e7eb;
+    background: #f8fafc;
+    opacity: 0.62;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip-lvl {
+    font-size: 11px;
+    font-weight: 800;
+    color: #1d4ed8;
+    line-height: 1;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip.is-complete .adventure-achv-tier-chip-lvl {
+    color: #15803d;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip.is-locked .adventure-achv-tier-chip-lvl {
+    color: #64748b;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip-name {
+    font-size: 9px;
+    font-weight: 700;
+    color: #475569;
+    white-space: nowrap;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip-status {
+    font-size: 10px;
+    font-weight: 900;
+    color: #15803d;
+    line-height: 1;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip.is-active .adventure-achv-tier-chip-status {
+    color: #1d4ed8;
+  }
+
+  #visitedLocationsRoot .adventure-achv-tier-chip.is-locked .adventure-achv-tier-chip-status {
+    color: #9ca3af;
+  }
+
+  /* ── Enhanced badge card layout ─────────────────────────────────────── */
+
+  #visitedLocationsRoot .adventure-achv-badge-card {
+    display: block; /* override any grid default */
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-main {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-card .adventure-achv-badge-icon {
+    font-size: 28px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 0;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-card .adventure-achv-badge-title {
+    margin-top: 0;
+    font-size: 13px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.25;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-card .adventure-achv-badge-rarity {
+    margin-top: 0;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-level-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-top: 5px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-level-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-level-pill--active {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-level-pill--none {
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-next-info {
+    margin-top: 6px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-next-text {
+    font-size: 11px;
+    color: #475569;
+    font-weight: 700;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-next-text strong {
+    color: #1e40af;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-maxed {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #d97706;
+    font-weight: 800;
+  }
+
+  /* ── ⓘ Info button + popover ──────────────────────────────────────── */
+
+  #visitedLocationsRoot .adventure-achv-info-btn-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1e40af;
+    font-size: 11px;
+    font-weight: 900;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+    /* reset any global button min-height for small buttons */
+    min-height: unset !important;
+    min-width: unset !important;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-btn:hover,
+  #visitedLocationsRoot .adventure-achv-info-btn:focus-visible {
+    background: #dbeafe;
+    border-color: #93c5fd;
+    outline: none;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-popover {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    background: #1f2937;
+    color: #f8fafc;
+    padding: 9px 11px;
+    border-radius: 8px;
+    font-size: 11px;
+    line-height: 1.5;
+    width: 218px;
+    white-space: normal;
+    z-index: 10001;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+    text-align: left;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-popover strong {
+    font-size: 12px;
+    font-weight: 800;
+    display: block;
+    margin-bottom: 3px;
+    color: #ffffff;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-btn:hover .adventure-achv-info-popover,
+  #visitedLocationsRoot .adventure-achv-info-btn:focus-visible .adventure-achv-info-popover,
+  #visitedLocationsRoot .adventure-achv-info-btn:focus-within .adventure-achv-info-popover {
+    display: block;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-desc {
+    margin: 3px 0 4px;
+    color: rgba(248, 250, 252, 0.8);
+    font-size: 10.5px;
+    line-height: 1.4;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-divider {
+    height: 1px;
+    background: rgba(248, 250, 252, 0.18);
+    margin: 5px 0;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-level-row {
+    padding: 1px 0;
+    color: rgba(248, 250, 252, 0.7);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  #visitedLocationsRoot .adventure-achv-info-level-row.is-done {
+    color: #4ade80;
   }
 </style>
 
