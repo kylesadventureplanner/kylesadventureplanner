@@ -5854,6 +5854,12 @@
       width: 100%;
     }
 
+    /* Ensure docked subtab groups truly hide when JS sets hidden/aria-hidden. */
+    .app-subtabs-slot > [hidden],
+    .app-subtabs-slot > [aria-hidden="true"] {
+      display: none !important;
+    }
+
     .app-subtabs-row .nature-challenge-subtabs,
     .app-subtabs-row .visited-progress-subtabs {
       display: flex;
