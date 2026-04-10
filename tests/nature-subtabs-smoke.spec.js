@@ -16,6 +16,23 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(page.locator('#natureChallengeRoot')).toBeVisible();
   });
 
+  test('birds diagnostics row is visible', async ({ page }) => {
+    const birdsDiagnosticsRow = page.locator('#birdsDiagnosticsRow');
+    await expect(birdsDiagnosticsRow).toBeVisible();
+    await expect(birdsDiagnosticsRow).toContainText('Auth');
+    await expect(birdsDiagnosticsRow).toContainText('Workbook');
+    await expect(birdsDiagnosticsRow).toContainText('Species');
+  });
+
+  test('mammals diagnostics row contains stable labels', async ({ page }) => {
+    await page.locator('#appSubTabsSlot [data-nature-subtab="mammals"]').click();
+    const mammalsDiagnosticsRow = page.locator('#mammalsDiagnosticsRow');
+    await expect(mammalsDiagnosticsRow).toContainText('Auth');
+    await expect(mammalsDiagnosticsRow).toContainText('Workbook');
+    await expect(mammalsDiagnosticsRow).toContainText('Species');
+    await expect(mammalsDiagnosticsRow).toContainText('Sightings/User State');
+  });
+
   CONFIG_DRIVEN_SUBTABS.forEach(({ key, label }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
       await page.locator(`#appSubTabsSlot [data-nature-subtab="${key}"]`).click();
