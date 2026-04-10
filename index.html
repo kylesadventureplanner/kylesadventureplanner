@@ -8077,6 +8077,7 @@
       <button id="refreshBtn" class="auth-btn" title="Reload the whole app" data-tooltip="Reload the whole app" onclick="location.reload()">🔄 Reload App</button>
       <button id="globalEditModeBtn" class="auth-btn" title="Open Edit Mode" data-tooltip="Open Edit Mode" onclick="openEditModeWindow()" style="background:#667eea;color:#fff;">📝 Edit Mode</button>
       <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
+      <button id="appBackupBtn" class="auth-btn" title="Open App Backup" data-tooltip="Open App Backup">💾 App Backup</button>
       <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
       <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
       <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
@@ -8111,6 +8112,7 @@
     <button class="app-tab-btn tab-utility-hidden" data-tab="garden" aria-hidden="true" tabindex="-1">Garden Planner</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="budget" aria-hidden="true" tabindex="-1">Budget Planner</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="offline-mode" aria-hidden="true" tabindex="-1">Offline Mode</button>
+    <button class="app-tab-btn tab-utility-hidden" data-tab="app-backup" aria-hidden="true" tabindex="-1">App Backup</button>
   </div>
   <div id="appSubTabsRow" class="app-subtabs-row" hidden>
     <div id="appSubTabsCutout" class="app-subtabs-cutout">
@@ -8735,6 +8737,47 @@
               <li><strong>Nature Challenge</strong> refreshes Birds data and Bird-specific UI state.</li>
             </ul>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- App Backup Tab -->
+    <div class="app-tab-pane" data-tab="app-backup" id="appBackupTab">
+      <div class="offline-mode-page">
+        <div class="offline-mode-header">
+          <button id="appBackupBackBtn" type="button" class="pill-button app-back-btn" title="Back to previous page" data-tooltip="Back to previous page">← Back</button>
+          <div class="offline-mode-header-copy">
+            <h1>App Backup</h1>
+            <div class="card-subtitle">Create a full backup of app files in one timestamped zip download.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">🗜️ Full App Zip Backup</div>
+              <div class="card-subtitle">Includes all files listed in the app backup manifest and downloads as a single zip.</div>
+            </div>
+          </div>
+
+          <div class="offline-mode-actions">
+            <button id="appBackupCreateZipBtn" type="button" class="planner-top-btn planner-top-btn--accent" title="Create and download a full app backup zip" data-tooltip="Create and download a full app backup zip">📦 Create Backup Zip</button>
+          </div>
+
+          <div class="offline-mode-badges">
+            <span class="offline-badge" data-state="syncing">Manifest scope: <strong id="appBackupManifestCount">Checking...</strong></span>
+          </div>
+
+          <details id="appBackupManifestPreview" class="app-backup-manifest-preview">
+            <summary>Manifest Preview</summary>
+            <input type="search" id="appBackupManifestFilter" class="app-backup-manifest-filter" placeholder="🔍 Filter files by name…" autocomplete="off" spellcheck="false" />
+            <div id="appBackupManifestPreviewMeta" class="app-backup-manifest-preview-meta">Checking manifest...</div>
+            <ul id="appBackupManifestPreviewList" class="app-backup-manifest-preview-list"></ul>
+          </details>
+
+          <div id="appBackupProgress" class="card-subtitle" hidden>Preparing backup...</div>
+          <div id="appBackupStatus" class="card-subtitle">Ready to generate a full backup zip.</div>
+          <div class="card-subtitle" style="margin-top:10px;">Last backup: <span id="appBackupLastBackup">No backups downloaded yet.</span></div>
         </div>
       </div>
     </div>

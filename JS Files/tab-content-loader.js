@@ -225,6 +225,13 @@ class TabContentLoader {
          priority: 10,
          preload: false,
          isInlineContent: true
+       },
+       'app-backup': {
+         file: null,
+         element: 'appBackupTab',
+         priority: 11,
+         preload: false,
+         isInlineContent: true
        }
     };
 
@@ -809,6 +816,11 @@ class TabContentLoader {
       case 'visited-locations':
         if (typeof window.initVisitedLocationsTab === 'function') {
           window.initVisitedLocationsTab();
+        }
+        break;
+      case 'app-backup':
+        if (window.backupManager && typeof window.backupManager.refreshBackupPageSummary === 'function') {
+          window.backupManager.refreshBackupPageSummary();
         }
         break;
     }

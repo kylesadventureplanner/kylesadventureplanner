@@ -12,14 +12,18 @@
  * - List recent backups
  * - Download backups
  *
- * Version: v7.0.116
- * Date: March 13, 2026
+ * Version: v7.0.143
+ * Date: April 10, 2026
  */
 
 class BackupManager {
   constructor() {
     this.backupKey = 'adventureFinderBackupHistory';
     this.backupHistory = [];
+    this.manifestPath = 'data/app-backup-manifest.json';
+    this.lastNonBackupTab = '';
+    this.uiBound = false;
+    this._crcTable = null;
     this.init();
   }
 
@@ -29,6 +33,46 @@ class BackupManager {
   init() {
     this.loadBackupHistory();
     this.createStyles();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.bindBackupUi(), { once: true });
+    } else {
+      this.bindBackupUi();
+    }
+  }
+
+  bindBackupUi() {
+    if (this.uiBound) return;
+    this.uiBound = true;
+
+    const openBtn = document.getElementById('appBackupBtn');
+    if (openBtn && openBtn.dataset.backupBound !== '1') {
+      openBtn.addEventListener('click', () => this.openBackupPage());
+      openBtn.dataset.backupBound = '1';
+    }
+
+    const backBtn = document.getElementById('appBackupBackBtn');
+    if (backBtn && backBtn.dataset.backupBound !== '1') {
+      backBtn.addEventListener('click', () => this.goBackFromBackupPage());
+      backBtn.dataset.backupBound = '1';
+    }
+
+    const createBtn = document.getElementById('appBackupCreateZipBtn');
+    if (createBtn && createBtn.dataset.backupBound !== '1') {
+      createBtn.addEventListener('click', () => this.handleBackupPageCreateClick());
+      createBtn.dataset.backupBound = '1';
+    }
+
+    window.addEventListener('app:tab-switched', (event) => {
+      const tabId = String(event && event.detail && event.detail.tabId || '').trim();
+      if (!tabId) return;
+      if (tabId !== 'app-backup') {
+        this.lastNonBackupTab = tabId;
+        return;
+      }
+      this.refreshBackupPageSummary();
+    });
+
+    this.refreshBackupPageSummary();
   }
 
   /**
@@ -374,6 +418,70 @@ class BackupManager {
         color: #991b1b;
         border: 1px solid #ef4444;
       }
+
+      .app-backup-manifest-preview {
+        margin-top: 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #f9fafb;
+        padding: 8px 10px;
+      }
+
+      .app-backup-manifest-preview > summary {
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 700;
+        color: #374151;
+      }
+
+      .app-backup-manifest-preview-meta {
+        margin-top: 6px;
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      .app-backup-manifest-preview-list {
+        margin: 8px 0 0 18px;
+        max-height: 220px;
+        overflow: auto;
+        font-size: 12px;
+        color: #374151;
+      }
+
+      .app-backup-manifest-preview-list li {
+        margin-bottom: 4px;
+      }
+
+      .app-backup-manifest-filter {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        margin: 8px 0 6px;
+        padding: 6px 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #374151;
+        background: #fff;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .app-backup-manifest-filter:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.25);
+      }
+
+      .app-backup-manifest-preview-list li.hidden {
+        display: none;
+      }
+
+      .app-backup-manifest-no-results {
+        padding: 6px 0;
+        font-size: 12px;
+        color: #9ca3af;
+        font-style: italic;
+      }
     `;
 
     document.head.appendChild(style);
@@ -421,6 +529,233 @@ class BackupManager {
    */
   getBackupFolderName() {
     return `backup_${this.getTimestamp()}`;
+  }
+
+  getZipFileName() {
+    return `kyles-adventure-planner_backup_${this.getTimestamp()}.zip`;
+  }
+
+  resolveAssetUrl(relativePath) {
+    const clean = String(relativePath || '').replace(/^\/+/, '');
+    if (typeof window.resolvePlannerPageUrl === 'function') {
+      return window.resolvePlannerPageUrl(clean);
+    }
+    return new URL(encodeURI(clean), window.location.href).toString();
+  }
+
+  sanitizeManifestPaths(paths) {
+    return Array.from(new Set((Array.isArray(paths) ? paths : [])
+      .map((value) => String(value || '').trim())
+      .filter((value) => value && !value.startsWith('http://') && !value.startsWith('https://') && !value.startsWith('/'))));
+  }
+
+  async getAppFileManifest() {
+    try {
+      const response = await fetch(this.resolveAssetUrl(this.manifestPath), { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Manifest fetch failed (${response.status})`);
+      }
+      const payload = await response.json();
+      const files = this.sanitizeManifestPaths(payload && payload.files);
+      if (files.length) {
+        return files;
+      }
+      throw new Error('Manifest contains no file entries');
+    } catch (error) {
+      console.warn('⚠️ Using fallback backup file list:', error.message || error);
+      return this.getFallbackManifestFiles();
+    }
+  }
+
+  getFallbackManifestFiles() {
+    const core = [
+      'index.html',
+      'manifest.webmanifest',
+      'sw.js',
+      'auth-popup-callback.html',
+      'staticwebapp.config.json'
+    ];
+
+    const discovered = [];
+    document.querySelectorAll('script[src], link[rel="stylesheet"][href]').forEach((node) => {
+      const raw = node.getAttribute('src') || node.getAttribute('href') || '';
+      const cleaned = String(raw)
+        .replace(/^\/+/, '')
+        .replace(/%20/g, ' ')
+        .split('?')[0]
+        .trim();
+      if (cleaned) discovered.push(cleaned);
+    });
+
+    return this.sanitizeManifestPaths(core.concat(discovered));
+  }
+
+  getCrc32(bytes) {
+    if (!this._crcTable) {
+      const table = new Uint32Array(256);
+      for (let n = 0; n < 256; n += 1) {
+        let c = n;
+        for (let k = 0; k < 8; k += 1) {
+          c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        table[n] = c >>> 0;
+      }
+      this._crcTable = table;
+    }
+
+    let crc = 0xffffffff;
+    for (let i = 0; i < bytes.length; i += 1) {
+      crc = this._crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  getDosDateTime(date) {
+    const d = date instanceof Date ? date : new Date();
+    const year = Math.max(1980, d.getFullYear());
+    const dosTime = ((d.getHours() & 0x1f) << 11)
+      | ((d.getMinutes() & 0x3f) << 5)
+      | ((Math.floor(d.getSeconds() / 2)) & 0x1f);
+    const dosDate = (((year - 1980) & 0x7f) << 9)
+      | (((d.getMonth() + 1) & 0x0f) << 5)
+      | (d.getDate() & 0x1f);
+    return { dosDate, dosTime };
+  }
+
+  createZipBlob(entries) {
+    const encoder = new TextEncoder();
+    const chunks = [];
+    const centralChunks = [];
+    let offset = 0;
+
+    const toBytes = (numbers) => Uint8Array.from(numbers);
+    const u16 = (value, out) => { out.push(value & 0xff, (value >>> 8) & 0xff); };
+    const u32 = (value, out) => {
+      out.push(value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff);
+    };
+
+    entries.forEach((entry) => {
+      const fileName = String(entry.path || '').replace(/^\/+/, '');
+      const nameBytes = encoder.encode(fileName);
+      const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data || []);
+      const crc = this.getCrc32(data);
+      const { dosDate, dosTime } = this.getDosDateTime(entry.lastModified);
+
+      const localHeader = [];
+      u32(0x04034b50, localHeader);
+      u16(20, localHeader); // version needed
+      u16(0, localHeader);  // flags
+      u16(0, localHeader);  // method: store
+      u16(dosTime, localHeader);
+      u16(dosDate, localHeader);
+      u32(crc, localHeader);
+      u32(data.length, localHeader);
+      u32(data.length, localHeader);
+      u16(nameBytes.length, localHeader);
+      u16(0, localHeader); // extra length
+
+      const localBytes = toBytes(localHeader);
+      chunks.push(localBytes, nameBytes, data);
+
+      const centralHeader = [];
+      u32(0x02014b50, centralHeader);
+      u16(20, centralHeader); // made by
+      u16(20, centralHeader); // needed
+      u16(0, centralHeader);  // flags
+      u16(0, centralHeader);  // method
+      u16(dosTime, centralHeader);
+      u16(dosDate, centralHeader);
+      u32(crc, centralHeader);
+      u32(data.length, centralHeader);
+      u32(data.length, centralHeader);
+      u16(nameBytes.length, centralHeader);
+      u16(0, centralHeader); // extra
+      u16(0, centralHeader); // comment
+      u16(0, centralHeader); // disk
+      u16(0, centralHeader); // attrs int
+      u32(0, centralHeader); // attrs ext
+      u32(offset, centralHeader);
+
+      centralChunks.push(toBytes(centralHeader), nameBytes);
+      offset += localBytes.length + nameBytes.length + data.length;
+    });
+
+    const centralOffset = offset;
+    let centralSize = 0;
+    centralChunks.forEach((chunk) => { centralSize += chunk.length; });
+
+    const eocd = [];
+    u32(0x06054b50, eocd);
+    u16(0, eocd); // disk
+    u16(0, eocd); // start disk
+    u16(entries.length, eocd);
+    u16(entries.length, eocd);
+    u32(centralSize, eocd);
+    u32(centralOffset, eocd);
+    u16(0, eocd); // comment length
+
+    return new Blob([...chunks, ...centralChunks, toBytes(eocd)], { type: 'application/zip' });
+  }
+
+  async buildBackupEntries(filePaths, onProgress) {
+    const entries = [];
+    const failures = [];
+    const total = filePaths.length;
+
+    for (let index = 0; index < filePaths.length; index += 1) {
+      const path = filePaths[index];
+      try {
+        const response = await fetch(this.resolveAssetUrl(path), { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        entries.push({ path, data: bytes, lastModified: new Date() });
+      } catch (error) {
+        failures.push({ path, error: error.message || String(error) });
+      }
+
+      if (typeof onProgress === 'function') {
+        onProgress({ completed: index + 1, total, currentPath: path, loadedCount: entries.length, failedCount: failures.length });
+      }
+    }
+
+    return { entries, failures };
+  }
+
+  downloadBlob(blob, fileName) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  async performBackup(options = {}) {
+    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
+    const allFiles = await this.getAppFileManifest();
+    const { entries, failures } = await this.buildBackupEntries(allFiles, onProgress);
+
+    if (!entries.length) {
+      throw new Error('No files were available to include in the backup zip.');
+    }
+
+    const zipName = this.getZipFileName();
+    const zipBlob = this.createZipBlob(entries);
+    this.downloadBlob(zipBlob, zipName);
+    this.recordBackup(zipName, entries.length, zipBlob.size, failures.length);
+
+    return {
+      success: true,
+      backupName: zipName,
+      fileCount: entries.length,
+      failedCount: failures.length,
+      sizeBytes: zipBlob.size,
+      failures
+    };
   }
 
   /**
@@ -477,12 +812,14 @@ class BackupManager {
   /**
    * Record backup in history
    */
-  recordBackup(backupName, fileCount) {
+  recordBackup(backupName, fileCount, sizeBytes = 0, failedCount = 0) {
     this.backupHistory.push({
       name: backupName,
       date: new Date().toISOString(),
       readableDate: new Date().toLocaleString(),
-      fileCount: fileCount
+      fileCount: fileCount,
+      sizeBytes: Number(sizeBytes || 0),
+      failedCount: Number(failedCount || 0)
     });
 
     // Keep only last 20 backups
@@ -497,31 +834,191 @@ class BackupManager {
    * Create backup (client-side simulation)
    */
   async createBackup() {
-    return new Promise((resolve) => {
-      try {
-        const backupName = this.getBackupFolderName();
-        const manifest = this.createManifest(backupName);
-        const files = this.getFilesToBackup();
-        const totalFiles = files.html.length + files.js.length + files.data.length;
+    try {
+      const result = await this.performBackup();
+      return {
+        success: true,
+        backupName: result.backupName,
+        message: `✅ Backup downloaded: ${result.backupName}`
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message,
+        message: `❌ Backup failed: ${err.message}`
+      };
+    }
+  }
 
-        // Record backup
-        this.recordBackup(backupName, totalFiles);
+  openBackupPage() {
+    const activeTab = document.querySelector('.app-tab-btn.active[data-tab]')?.getAttribute('data-tab') || '';
+    if (activeTab && activeTab !== 'app-backup') {
+      this.lastNonBackupTab = activeTab;
+    }
+    if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
+      window.tabLoader.switchTab('app-backup', { syncUrl: true, historyMode: 'push', source: 'header-backup' });
+      return;
+    }
+    const pane = document.querySelector('.app-tab-pane[data-tab="app-backup"]');
+    if (pane) pane.classList.add('active');
+    this.refreshBackupPageSummary();
+  }
 
-        // Return backup info
-        resolve({
-          success: true,
-          backupName: backupName,
-          manifest: manifest,
-          message: `✅ Backup created: ${backupName}`
-        });
-      } catch (err) {
-        resolve({
-          success: false,
-          error: err.message,
-          message: `❌ Backup failed: ${err.message}`
-        });
+  goBackFromBackupPage() {
+    const returnTab = this.lastNonBackupTab || 'visited-locations';
+    if (window.tabLoader && typeof window.tabLoader.switchTab === 'function' && returnTab !== 'app-backup') {
+      window.tabLoader.switchTab(returnTab, { syncUrl: true, historyMode: 'push', source: 'backup-back' });
+      return;
+    }
+    if (window.history.length > 1) {
+      window.history.back();
+    }
+  }
+
+  formatBytes(sizeBytes) {
+    const bytes = Number(sizeBytes || 0);
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    const precision = unitIndex === 0 ? 0 : 1;
+    return `${value.toFixed(precision)} ${units[unitIndex]}`;
+  }
+
+  renderManifestPreview(files, errorMessage = '') {
+    const metaNode = document.getElementById('appBackupManifestPreviewMeta');
+    const listNode = document.getElementById('appBackupManifestPreviewList');
+    if (!metaNode || !listNode) return;
+
+    if (errorMessage) {
+      metaNode.textContent = `Preview unavailable: ${errorMessage}`;
+      listNode.innerHTML = '';
+      this._manifestFiles = [];
+      return;
+    }
+
+    const items = Array.isArray(files) ? files : [];
+    this._manifestFiles = items;
+    metaNode.textContent = `${items.length} files included in the backup zip.`;
+
+    if (!items.length) {
+      listNode.innerHTML = '<li>No files detected.</li>';
+      return;
+    }
+
+    listNode.innerHTML = items
+      .map((path) => `<li data-path="${this.escapeHtml(path.toLowerCase())}"><code>${this.escapeHtml(path)}</code></li>`)
+      .join('');
+
+    this.bindManifestFilter();
+  }
+
+  bindManifestFilter() {
+    const filterInput = document.getElementById('appBackupManifestFilter');
+    const listNode = document.getElementById('appBackupManifestPreviewList');
+    const metaNode = document.getElementById('appBackupManifestPreviewMeta');
+    if (!filterInput || !listNode) return;
+
+    // Avoid double-binding
+    if (filterInput.dataset.filterBound === '1') return;
+    filterInput.dataset.filterBound = '1';
+
+    filterInput.addEventListener('input', () => {
+      const query = filterInput.value.trim().toLowerCase();
+      const items = listNode.querySelectorAll('li[data-path]');
+      let visibleCount = 0;
+
+      items.forEach((li) => {
+        const match = !query || li.dataset.path.includes(query);
+        li.classList.toggle('hidden', !match);
+        if (match) visibleCount += 1;
+      });
+
+      // Update or remove the no-results notice
+      let noResults = listNode.querySelector('.app-backup-manifest-no-results');
+      if (visibleCount === 0 && query) {
+        if (!noResults) {
+          noResults = document.createElement('li');
+          noResults.className = 'app-backup-manifest-no-results';
+          listNode.appendChild(noResults);
+        }
+        noResults.textContent = `No files match "${filterInput.value.trim()}"`;
+      } else if (noResults) {
+        noResults.remove();
+      }
+
+      // Update meta count to reflect filtered view
+      if (metaNode) {
+        const total = this._manifestFiles ? this._manifestFiles.length : items.length;
+        metaNode.textContent = query
+          ? `${visibleCount} of ${total} files match "${filterInput.value.trim()}"`
+          : `${total} files included in the backup zip.`;
       }
     });
+  }
+
+  async refreshBackupPageSummary() {
+    const totalNode = document.getElementById('appBackupManifestCount');
+    const lastNode = document.getElementById('appBackupLastBackup');
+    if (totalNode) {
+      try {
+        const files = await this.getAppFileManifest();
+        totalNode.textContent = `${files.length} files`;
+        this.renderManifestPreview(files);
+      } catch (error) {
+        totalNode.textContent = 'Unavailable';
+        this.renderManifestPreview([], error && error.message ? error.message : 'Unknown error');
+      }
+    }
+    if (lastNode) {
+      const latest = this.backupHistory[this.backupHistory.length - 1];
+      if (!latest) {
+        lastNode.textContent = 'No backups downloaded yet.';
+      } else {
+        const failures = latest.failedCount ? ` (${latest.failedCount} skipped)` : '';
+        lastNode.textContent = `${latest.name} - ${latest.readableDate} - ${this.formatBytes(latest.sizeBytes)}${failures}`;
+      }
+    }
+  }
+
+  async handleBackupPageCreateClick() {
+    const createBtn = document.getElementById('appBackupCreateZipBtn');
+    const status = document.getElementById('appBackupStatus');
+    const progress = document.getElementById('appBackupProgress');
+
+    if (createBtn) createBtn.disabled = true;
+    if (progress) {
+      progress.hidden = false;
+      progress.textContent = 'Preparing backup...';
+    }
+
+    try {
+      const result = await this.performBackup({
+        onProgress: ({ completed, total, currentPath, failedCount }) => {
+          if (!progress) return;
+          progress.textContent = `Packing ${completed}/${total}: ${currentPath}${failedCount ? ` (${failedCount} skipped)` : ''}`;
+        }
+      });
+
+      if (status) {
+        const skipped = result.failedCount ? ` (${result.failedCount} skipped)` : '';
+        status.textContent = `✅ Backup downloaded: ${result.backupName} (${result.fileCount} files, ${this.formatBytes(result.sizeBytes)})${skipped}`;
+        status.className = 'card-subtitle';
+      }
+    } catch (error) {
+      if (status) {
+        status.textContent = `❌ Backup failed: ${error.message}`;
+        status.className = 'card-subtitle';
+      }
+    } finally {
+      if (createBtn) createBtn.disabled = false;
+      if (progress) progress.hidden = true;
+      this.refreshBackupPageSummary();
+    }
   }
 
   /**
