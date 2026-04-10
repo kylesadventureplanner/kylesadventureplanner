@@ -29,6 +29,87 @@
     'Nature_records.xlsx'
   ];
   const SUBTAB_KEYS = ['birds', 'mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees', 'shrubs'];
+  const CONFIG_DRIVEN_SUBTABS = ['mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers'];
+  const NATURE_SUBTAB_CONFIG = {
+    mammals: {
+      label: 'Mammals',
+      speciesTableName: 'Mammals',
+      sightingsTableName: 'mammals_sightings',
+      userStateTableName: 'mammals_user_state',
+      aliases: {
+        family: ['Family (English)', 'Family'],
+        genus: ['Genus (English)', 'Genus'],
+        species: ['Species (English)', 'Common Name', 'Species'],
+        seasons: ['Seasons Found', 'Year-Round or Seasonal Presence', 'Seasonality'],
+        rarity: ['Rare or Common', 'Regional Abundance', 'Conservation Status (IUCN)']
+      }
+    },
+    reptiles: {
+      label: 'Reptiles',
+      speciesTableName: 'reptiles',
+      sightingsTableName: 'reptiles_sightings',
+      userStateTableName: 'reptiles_user_state',
+      aliases: {
+        family: ['Family (English)', 'Family'],
+        genus: ['Genus (English)', 'Genus'],
+        species: ['Species (English)', 'Common Name', 'Species'],
+        seasons: ['Seasons Active', 'Year Round or Seasonal Presence', 'Seasonality'],
+        rarity: ['Rare or Common', 'Regional Abundance', 'Conservation Status (IUCN)']
+      }
+    },
+    amphibians: {
+      label: 'Amphibians',
+      speciesTableName: 'amphibians',
+      sightingsTableName: 'Amphibians_sightings',
+      userStateTableName: 'Amphibians_user_data',
+      aliases: {
+        family: ['Family (English)', 'Family'],
+        genus: ['Genus (English)', 'Genus'],
+        species: ['Species (English)', 'Common Name', 'Species'],
+        seasons: ['Seasons Active', 'Year Round or Seasonal Presence', 'Seasonality', 'Breeding Months'],
+        rarity: ['Rare or Common', 'Regional Abundance', 'Conservation Status (IUCN)']
+      }
+    },
+    insects: {
+      label: 'Insects',
+      speciesTableName: 'insects',
+      sightingsTableName: 'Insects_sightings',
+      userStateTableName: 'Insects_user_data',
+      aliases: {
+        family: ['Family (English)', 'Family'],
+        genus: ['Genus (English)', 'Genus'],
+        species: ['Species (English)', 'Common Name', 'Species'],
+        seasons: ['Seasons Active', 'Active Months', 'Peak Months', 'Year Round or Seasonal Presence'],
+        rarity: ['Rare or Common', 'Regional Abundance', 'Conservation Status (IUCN)']
+      }
+    },
+    arachnids: {
+      label: 'Arachnids',
+      speciesTableName: 'Arachnids',
+      sightingsTableName: 'arachnids_sightings',
+      userStateTableName: 'arachnids_user_data',
+      aliases: {
+        family: ['Family'],
+        genus: ['Genus'],
+        species: ['Common Name', 'Species'],
+        seasons: ['Seasonality', 'Active Months', 'Peak Months', 'Presence'],
+        rarity: ['Regional Abundance', 'Conservation Status']
+      }
+    },
+    wildflowers: {
+      label: 'Wildflowers',
+      speciesTableName: 'Wildflowers',
+      sightingsTableName: 'Wildflowers_sightings',
+      userStateTableName: 'Wildflowers_user_data',
+      aliases: {
+        family: ['Family'],
+        genus: ['Genus'],
+        species: ['Common Name', 'Species'],
+        seasons: ['Bloom Months', 'Peak Bloom', 'Seasonal Visibility'],
+        rarity: ['Regional Abundance', 'Conservation Status']
+      }
+    }
+  };
   const BIRD_VIEWS = ['overview', 'log', 'explorer', 'detail', 'collection'];
   const BIRD_OVERVIEW_LIMITS = {
     challenges: 4,
@@ -163,6 +244,9 @@
     ]
   };
 
+  // Keep storage routing independent of `state` initialization to avoid TDZ errors.
+  let activePersistenceSubTab = 'birds';
+
   const state = {
     initialized: false,
     activeSubTab: 'birds',
@@ -245,7 +329,22 @@
     },
     lastSyncAttemptAt: '',
     lastSyncSuccessAt: '',
-    lastLoadedAt: null
+    lastLoadedAt: null,
+    subTabData: CONFIG_DRIVEN_SUBTABS.reduce((acc, key) => {
+      acc[key] = {
+        loaded: false,
+        loading: false,
+        source: '',
+        error: '',
+        workbookPath: '',
+        birds: [],
+        families: [],
+        sightings: {},
+        favorites: [],
+        sightingLog: []
+      };
+      return acc;
+    }, {})
   };
 
   const birdsClickDiagnostics = {
@@ -831,15 +930,17 @@
     const prompt = document.getElementById('birdsUndoPrompt');
     if (prompt) prompt.hidden = true;
     if (!actionButton) return;
+    const categoryLabel = getActiveCategoryLabel();
+    const categoryLower = categoryLabel.toLowerCase();
     if (!state.lastUndoAction) {
       actionButton.disabled = true;
       actionButton.setAttribute('aria-disabled', 'true');
-      actionButton.setAttribute('title', 'No Birds action to undo yet');
-      actionButton.setAttribute('data-tooltip', 'No Birds action to undo yet');
+      actionButton.setAttribute('title', `No ${categoryLabel} action to undo yet`);
+      actionButton.setAttribute('data-tooltip', `No ${categoryLabel} action to undo yet`);
       return;
     }
-    const label = state.lastUndoAction.label || 'Last birds action';
-    const tooltip = `Undo the last Birds action: ${label}`;
+    const label = state.lastUndoAction.label || `Last ${categoryLower} action`;
+    const tooltip = `Undo the last ${categoryLabel} action: ${label}`;
     actionButton.disabled = false;
     actionButton.setAttribute('aria-disabled', 'false');
     actionButton.setAttribute('title', tooltip);
@@ -1161,30 +1262,67 @@
     }));
   }
 
+  function getPersistenceSubTabKey(subTabKey) {
+    const active = String(subTabKey || activePersistenceSubTab || 'birds').trim();
+    return isConfigDrivenSubTab(active) ? active : 'birds';
+  }
+
+  function getSubTabStorageKeys(subTabKey) {
+    if (subTabKey === 'birds') {
+      return {
+        sightings: BIRD_SIGHTINGS_KEY,
+        favorites: BIRD_FAVORITES_KEY,
+        sightingLog: BIRD_SIGHTING_LOG_KEY
+      };
+    }
+    return {
+      sightings: getSubTabStorageKey(subTabKey, 'sightings'),
+      favorites: getSubTabStorageKey(subTabKey, 'favorites'),
+      sightingLog: getSubTabStorageKey(subTabKey, 'sighting-log')
+    };
+  }
+
+  function loadSubTabSightingLog(key) {
+    const keys = getSubTabStorageKeys(key);
+    const list = safeJsonParse(localStorage.getItem(keys.sightingLog), []);
+    return Array.isArray(list) ? list : [];
+  }
+
+  function saveSubTabSightingLog(key, sightingLog) {
+    const keys = getSubTabStorageKeys(key);
+    localStorage.setItem(keys.sightingLog, JSON.stringify(Array.isArray(sightingLog) ? sightingLog : []));
+  }
+
   function loadSightings() {
-    return safeJsonParse(localStorage.getItem(BIRD_SIGHTINGS_KEY), {}) || {};
+    const keys = getSubTabStorageKeys(getPersistenceSubTabKey(activePersistenceSubTab));
+    return safeJsonParse(localStorage.getItem(keys.sightings), {}) || {};
   }
 
   function saveSightings() {
-    localStorage.setItem(BIRD_SIGHTINGS_KEY, JSON.stringify(state.sightings || {}));
+    const keys = getSubTabStorageKeys(getPersistenceSubTabKey(activePersistenceSubTab));
+    localStorage.setItem(keys.sightings, JSON.stringify(state.sightings || {}));
   }
 
   function loadFavorites() {
-    const list = safeJsonParse(localStorage.getItem(BIRD_FAVORITES_KEY), []);
+    const keys = getSubTabStorageKeys(getPersistenceSubTabKey(activePersistenceSubTab));
+    const list = safeJsonParse(localStorage.getItem(keys.favorites), []);
     return Array.isArray(list) ? list : [];
   }
 
   function saveFavorites() {
-    localStorage.setItem(BIRD_FAVORITES_KEY, JSON.stringify(state.favorites || []));
+    const keys = getSubTabStorageKeys(getPersistenceSubTabKey(activePersistenceSubTab));
+    localStorage.setItem(keys.favorites, JSON.stringify(state.favorites || []));
   }
 
   function loadSightingLog() {
-    const list = safeJsonParse(localStorage.getItem(BIRD_SIGHTING_LOG_KEY), []);
+    const keys = getSubTabStorageKeys(getPersistenceSubTabKey(activePersistenceSubTab));
+    const list = safeJsonParse(localStorage.getItem(keys.sightingLog), []);
     return Array.isArray(list) ? list : [];
   }
 
   function saveSightingLog() {
-    localStorage.setItem(BIRD_SIGHTING_LOG_KEY, JSON.stringify(state.sightingLog || []));
+    const keys = getSubTabStorageKeys(getPersistenceSubTabKey(activePersistenceSubTab));
+    localStorage.setItem(keys.sightingLog, JSON.stringify(state.sightingLog || []));
   }
 
   function loadSyncQueue() {
@@ -2325,6 +2463,305 @@
     });
 
     return buildDatasetFromRecords(normalizedRows);
+  }
+
+  function parseNatureDataFromExcelRows(columns, rows, aliases) {
+    const aliasConfig = aliases || {};
+    const speciesAliases = Array.isArray(aliasConfig.species) && aliasConfig.species.length
+      ? aliasConfig.species
+      : ['Species (English)', 'Common Name', 'Species', 'Bird Species'];
+    const familyAliases = Array.isArray(aliasConfig.family) && aliasConfig.family.length
+      ? aliasConfig.family
+      : ['Family (English)', 'Family'];
+    const genusAliases = Array.isArray(aliasConfig.genus) && aliasConfig.genus.length
+      ? aliasConfig.genus
+      : ['Genus (English)', 'Genus'];
+    const seasonsAliases = Array.isArray(aliasConfig.seasons) && aliasConfig.seasons.length
+      ? aliasConfig.seasons
+      : ['Seasons Found', 'Season', 'Seasons'];
+    const rarityAliases = Array.isArray(aliasConfig.rarity) && aliasConfig.rarity.length
+      ? aliasConfig.rarity
+      : ['Rare or Common', 'Rarity', 'Commonality', 'Regional Abundance'];
+
+    const columnNamesByIndex = {};
+    (columns || []).forEach((column, index) => {
+      const idx = Number.isInteger(column.index) ? column.index : index;
+      columnNamesByIndex[idx] = String(column.name || `Column ${idx + 1}`);
+    });
+
+    const normalizedRows = [];
+    (rows || []).forEach((row) => {
+      const values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
+      const details = {};
+      values.forEach((value, index) => {
+        const key = columnNamesByIndex[index] || `Column ${index + 1}`;
+        details[key] = String(value == null ? '' : value).trim();
+      });
+
+      const family = pickField(details, familyAliases);
+      const genus = pickField(details, genusAliases);
+      const species = pickField(details, speciesAliases);
+      const seasons = pickField(details, seasonsAliases);
+      const rarity = pickField(details, rarityAliases);
+
+      if (!family || !genus || !species) return;
+      normalizedRows.push({
+        family,
+        genus,
+        species,
+        seasons: seasons || 'All seasons',
+        rarity: rarity || 'Common',
+        details
+      });
+    });
+
+    return buildDatasetFromRecords(normalizedRows);
+  }
+
+  function getSubTabConfig(key) {
+    return NATURE_SUBTAB_CONFIG[String(key || '').trim()] || null;
+  }
+
+  function isConfigDrivenSubTab(key) {
+    return Boolean(getSubTabConfig(key));
+  }
+
+  function getSubTabStorageKey(key, suffix) {
+    return `natureChallenge-${String(key || '').trim()}-${String(suffix || '').trim()}-v1`;
+  }
+
+  function loadSubTabStorageValue(key, fallbackValue) {
+    try {
+      return safeJsonParse(localStorage.getItem(key), fallbackValue);
+    } catch (_error) {
+      return fallbackValue;
+    }
+  }
+
+  function saveSubTabStorageValue(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (_error) {
+      // Ignore storage availability limits for optional category state.
+    }
+  }
+
+  function loadSubTabSightings(key) {
+    return loadSubTabStorageValue(getSubTabStorageKey(key, 'sightings'), {}) || {};
+  }
+
+  function saveSubTabSightings(key, sightings) {
+    saveSubTabStorageValue(getSubTabStorageKey(key, 'sightings'), sightings || {});
+  }
+
+  function loadSubTabFavorites(key) {
+    const list = loadSubTabStorageValue(getSubTabStorageKey(key, 'favorites'), []);
+    return Array.isArray(list) ? list.filter(Boolean).map((v) => String(v)) : [];
+  }
+
+  function saveSubTabFavorites(key, favorites) {
+    const list = Array.isArray(favorites) ? favorites.filter(Boolean).map((v) => String(v)) : [];
+    saveSubTabStorageValue(getSubTabStorageKey(key, 'favorites'), list);
+  }
+
+  function resolveSubTabSightingsFromRows(rows, dataset) {
+    const lookup = new Map();
+    (dataset && Array.isArray(dataset.birds) ? dataset.birds : []).forEach((species) => {
+      lookup.set(norm(species.id), species.id);
+      lookup.set(norm(species.canonicalId || ''), species.id);
+      lookup.set(norm(species.speciesName || ''), species.id);
+    });
+
+    const result = {};
+    (rows || []).forEach((row) => {
+      const values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
+      const joined = values.map((v) => String(v == null ? '' : v).trim());
+      const candidate = joined.find((value) => lookup.has(norm(value)));
+      if (!candidate) return;
+      const id = lookup.get(norm(candidate));
+      result[id] = { sightedAt: toIsoNow(), source: 'sync' };
+    });
+    return result;
+  }
+
+  function resolveSubTabFavoritesFromRows(rows, dataset) {
+    const lookup = new Map();
+    (dataset && Array.isArray(dataset.birds) ? dataset.birds : []).forEach((species) => {
+      lookup.set(norm(species.id), species.id);
+      lookup.set(norm(species.canonicalId || ''), species.id);
+      lookup.set(norm(species.speciesName || ''), species.id);
+    });
+
+    const favorites = new Set();
+    (rows || []).forEach((row) => {
+      const values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0] : [];
+      const joined = values.map((v) => String(v == null ? '' : v).trim());
+      const favoriteFlag = joined.some((value) => ['1', 'true', 'yes'].includes(norm(value)));
+      if (!favoriteFlag) return;
+      const candidate = joined.find((value) => lookup.has(norm(value)));
+      if (!candidate) return;
+      favorites.add(lookup.get(norm(candidate)));
+    });
+    return Array.from(favorites);
+  }
+
+  async function hydrateSubTabRemoteState(subTabKey, dataset, workbookPath) {
+    const cfg = getSubTabConfig(subTabKey);
+    if (!cfg || !workbookPath || !window.accessToken) {
+      return {
+        sightings: loadSubTabSightings(subTabKey),
+        favorites: loadSubTabFavorites(subTabKey)
+      };
+    }
+
+    let sightings = loadSubTabSightings(subTabKey);
+    let favorites = loadSubTabFavorites(subTabKey);
+
+    try {
+      const sightingsPayload = await fetchTableColumnsAndRows(workbookPath, cfg.sightingsTableName, 5000);
+      sightings = resolveSubTabSightingsFromRows(sightingsPayload.rows || [], dataset);
+      saveSubTabSightings(subTabKey, sightings);
+    } catch (_error) {
+      // Keep local sightings if remote table is unavailable.
+    }
+
+    try {
+      const userStatePayload = await fetchTableColumnsAndRows(workbookPath, cfg.userStateTableName, 5000);
+      favorites = resolveSubTabFavoritesFromRows(userStatePayload.rows || [], dataset);
+      saveSubTabFavorites(subTabKey, favorites);
+    } catch (_error) {
+      // Keep local favorites if remote table is unavailable.
+    }
+
+    return { sightings, favorites };
+  }
+
+  async function loadConfiguredSubTabDataset(subTabKey, forceRefresh) {
+    const cfg = getSubTabConfig(subTabKey);
+    const subState = state.subTabData[subTabKey];
+    if (!cfg || !subState) return;
+    if (subState.loading) return;
+    if (subState.loaded && !forceRefresh) return;
+
+    subState.loading = true;
+    subState.error = '';
+    subState.sightings = loadSubTabSightings(subTabKey);
+    subState.favorites = loadSubTabFavorites(subTabKey);
+    subState.sightingLog = loadSubTabSightingLog(subTabKey);
+
+    const tableName = cfg.speciesTableName;
+    const fileCandidates = Array.from(new Set(EXCEL_FILE_CANDIDATES));
+    const errors = [];
+
+    try {
+      if (!window.accessToken) {
+        throw new Error('Excel source unavailable: sign in to load this category.');
+      }
+
+      let loaded = false;
+      for (let i = 0; i < fileCandidates.length; i += 1) {
+        const filePath = fileCandidates[i];
+        const encodedPath = encodeGraphPath(filePath);
+        const baseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}`;
+
+        try {
+          const columnsPayload = await fetchGraphJson(`${baseUrl}/columns?$select=name,index`, { retries: 0 });
+          const rowsPayload = await fetchGraphJson(`${baseUrl}/rows?$top=5000`, { retries: 0 });
+          const dataset = parseNatureDataFromExcelRows(
+            columnsPayload.value || [],
+            rowsPayload.value || [],
+            cfg.aliases
+          );
+
+          const syncWorkbookPath = await findWorkbookPathWithTables(
+            [cfg.sightingsTableName, cfg.userStateTableName],
+            EXCEL_SYNC_FILE_CANDIDATES
+          );
+          const remoteState = await hydrateSubTabRemoteState(subTabKey, dataset, syncWorkbookPath);
+
+          subState.birds = dataset.birds;
+          subState.families = dataset.families;
+          subState.sightings = remoteState.sightings;
+          subState.favorites = remoteState.favorites;
+          subState.sightingLog = loadSubTabSightingLog(subTabKey);
+          subState.source = `Excel table '${tableName}' in ${filePath}`;
+          subState.workbookPath = filePath;
+          subState.loaded = true;
+          loaded = true;
+          break;
+        } catch (error) {
+          errors.push(`${filePath}: ${error && error.message ? error.message : 'table read failed'}`);
+        }
+      }
+
+      if (!loaded) {
+        throw new Error(errors.join(' | ') || `Unable to load ${cfg.label} species data.`);
+      }
+    } catch (error) {
+      subState.loaded = false;
+      subState.error = String(error && error.message ? error.message : error || 'Unable to load category data.');
+      subState.birds = [];
+      subState.families = [];
+      subState.sightings = loadSubTabSightings(subTabKey);
+      subState.favorites = loadSubTabFavorites(subTabKey);
+      subState.sightingLog = loadSubTabSightingLog(subTabKey);
+    } finally {
+      subState.loading = false;
+    }
+  }
+
+  function renderConfiguredSubTab(subTabKey) {
+    const cfg = getSubTabConfig(subTabKey);
+    const subState = state.subTabData[subTabKey];
+    if (!cfg || !subState) return;
+
+    const totalSpeciesEl = document.getElementById(`${subTabKey}TotalSpecies`);
+    const totalSightedEl = document.getElementById(`${subTabKey}TotalSighted`);
+    const familyGrid = document.getElementById(`${subTabKey}FamilyGrid`);
+    const challengeGrid = document.getElementById(`${subTabKey}ChallengeGrid`);
+    const badgeGrid = document.getElementById(`${subTabKey}BadgeGrid`);
+
+    const totalSpecies = Array.isArray(subState.birds) ? subState.birds.length : 0;
+    const sightedKeys = new Set(Object.keys(subState.sightings || {}));
+    const totalSighted = Array.isArray(subState.birds)
+      ? subState.birds.filter((species) => sightedKeys.has(species.id) || sightedKeys.has(species.canonicalId || '')).length
+      : 0;
+
+    if (totalSpeciesEl) totalSpeciesEl.textContent = String(totalSpecies);
+    if (totalSightedEl) totalSightedEl.textContent = String(totalSighted);
+
+    if (familyGrid) {
+      if (subState.loading) {
+        familyGrid.innerHTML = `<div class="nature-empty-state">Loading ${escapeHtml(cfg.label)} data...</div>`;
+      } else if (subState.error) {
+        familyGrid.innerHTML = `<div class="nature-empty-state">${escapeHtml(subState.error)}</div>`;
+      } else if (!subState.families.length) {
+        familyGrid.innerHTML = `<div class="nature-empty-state">No ${escapeHtml(cfg.label.toLowerCase())} species found yet.</div>`;
+      } else {
+        familyGrid.innerHTML = subState.families.slice(0, 12).map((family) => {
+          const familySighted = family.species.filter((species) => sightedKeys.has(species.id) || sightedKeys.has(species.canonicalId || '')).length;
+          return `<div class="nature-family-card"><div class="nature-family-name">${escapeHtml(family.label)}</div><div class="nature-family-progress">${familySighted}/${family.species.length} sighted</div></div>`;
+        }).join('');
+      }
+    }
+
+    const progressPct = totalSpecies > 0 ? Math.round((totalSighted / totalSpecies) * 100) : 0;
+    if (challengeGrid) {
+      challengeGrid.innerHTML = `
+        <div class="nature-challenge-card ${totalSighted >= 1 ? 'completed' : ''}"><div class="nature-challenge-title">First ${escapeHtml(cfg.label.slice(0, -1) || cfg.label)} Logged</div><div class="nature-challenge-progress">${Math.min(totalSighted, 1)}/1</div></div>
+        <div class="nature-challenge-card ${progressPct >= 25 ? 'completed' : ''}"><div class="nature-challenge-title">${escapeHtml(cfg.label)} Quarter Checkpoint</div><div class="nature-challenge-progress">${progressPct}% / 25%</div></div>
+        <div class="nature-challenge-card ${progressPct >= 50 ? 'completed' : ''}"><div class="nature-challenge-title">${escapeHtml(cfg.label)} Midpoint</div><div class="nature-challenge-progress">${progressPct}% / 50%</div></div>
+      `;
+    }
+
+    if (badgeGrid) {
+      const favoriteCount = (subState.favorites || []).length;
+      badgeGrid.innerHTML = `
+        <div class="nature-badge-card ${totalSighted >= 5 ? 'unlocked' : ''}"><div class="nature-badge-title">Starter Observer</div><div class="nature-badge-desc">Log 5 ${escapeHtml(cfg.label.toLowerCase())} species.</div></div>
+        <div class="nature-badge-card ${totalSighted >= 15 ? 'unlocked' : ''}"><div class="nature-badge-title">Field Tracker</div><div class="nature-badge-desc">Log 15 ${escapeHtml(cfg.label.toLowerCase())} species.</div></div>
+        <div class="nature-badge-card ${favoriteCount >= 5 ? 'unlocked' : ''}"><div class="nature-badge-title">Favorites Curator</div><div class="nature-badge-desc">Mark 5 favorite ${escapeHtml(cfg.label.toLowerCase())}.</div></div>
+      `;
+    }
   }
 
   function getBirdFileCandidates() {
@@ -3757,6 +4194,9 @@
   }
 
   function renderBirdHeaderStatus() {
+            const categoryLabel = getActiveCategoryLabel();
+            const categorySingular = getActiveCategorySingularLabel();
+            const categoryLower = categoryLabel.toLowerCase();
     const syncBadges = [
       document.getElementById('natureSyncHealthBadge'),
       document.getElementById('natureSyncHealthBadgeInline')
@@ -3780,22 +4220,24 @@
     }
 
     if (state.birdsLoading) {
-      setStatus('Bird data: loading...', 'Refreshing bird species source...', '');
+      setStatus(`${categorySingular} data: loading...`, `Refreshing ${categoryLower} species source...`, '');
       return;
     }
 
     if (state.birdsError && !state.birdsLoaded) {
-      setStatus('Bird data: unavailable', state.birdsError, 'warn');
+      setStatus(`${categorySingular} data: unavailable`, state.birdsError, 'warn');
       return;
     }
 
     if (!state.birdsLoaded) {
-      setStatus('Bird data: waiting', 'Bird dataset has not been loaded yet.', '');
+      setStatus(`${categorySingular} data: waiting`, `${categoryLabel} dataset has not been loaded yet.`, '');
       return;
     }
 
     const badgeClass = state.birdsError ? 'warn' : 'ok';
-    const badgeText = state.birdsError ? 'Bird data: fallback in use' : 'Bird data: ready';
+    const badgeText = state.birdsError
+      ? `${categorySingular} data: fallback in use`
+      : `${categorySingular} data: ready`;
     const source = state.birdsSource ? `Source: ${state.birdsSource}` : 'Source: unknown';
     const updated = state.lastLoadedAt ? new Date(state.lastLoadedAt).toLocaleString() : '--';
     const warning = state.birdsError ? ` | ${state.birdsError}` : '';
@@ -5429,6 +5871,17 @@
       const badgeGrid = document.getElementById(`${key}BadgeGrid`);
       const totalSpecies = document.getElementById(`${key}TotalSpecies`);
 
+      if (isConfigDrivenSubTab(key)) {
+        if (totalSpecies) totalSpecies.textContent = '...';
+        [familyGrid, challengeGrid, badgeGrid].forEach((el) => {
+          if (el && !el.dataset.placeholderReady) {
+            el.dataset.placeholderReady = '1';
+            el.innerHTML = '<div class="nature-empty-state">Loading category configuration...</div>';
+          }
+        });
+        return;
+      }
+
       if (totalSpecies) totalSpecies.textContent = '0';
       [familyGrid, challengeGrid, badgeGrid].forEach((el) => {
         if (el && !el.dataset.placeholderReady) {
@@ -5470,6 +5923,76 @@
     const activeButton = getNatureSubTabButtons(root).find((button) => button.getAttribute('data-nature-subtab') === state.activeSubTab);
     const label = getNatureTitleLabel(activeButton ? activeButton.textContent : state.activeSubTab);
     titleEl.textContent = `Nature Challenge - ${label}`;
+  }
+
+  function getActiveCategoryLabel() {
+    if (state.activeSubTab === 'birds') return 'Birds';
+    const cfg = getSubTabConfig(state.activeSubTab);
+    return cfg && cfg.label ? cfg.label : 'Birds';
+  }
+
+  function getActiveCategorySingularLabel() {
+    const plural = getActiveCategoryLabel();
+    if (plural === 'Birds') return 'Bird';
+    if (plural.endsWith('ies')) return `${plural.slice(0, -3)}y`;
+    if (plural.endsWith('s')) return plural.slice(0, -1);
+    return plural;
+  }
+
+  function applyActiveCategoryUiLabels(root) {
+    if (!root) return;
+    const labelPlural = getActiveCategoryLabel();
+    const labelSingular = getActiveCategorySingularLabel();
+
+    const commandLabel = document.getElementById('birdsOverviewCommandLabel');
+    if (commandLabel) commandLabel.textContent = `${labelPlural} command bar`;
+
+    const commandInput = document.getElementById('birdsOverviewCommandInput');
+    if (commandInput) {
+      const placeholderNoun = labelPlural === 'Birds' ? 'bird' : labelSingular.toLowerCase();
+      commandInput.placeholder = `Type a command (e.g., search ${placeholderNoun}, go badges, log)`;
+      commandInput.setAttribute('aria-label', `${labelPlural} command bar`);
+    }
+
+    const backButtons = [
+      document.getElementById('birdsLogBackBtn'),
+      document.getElementById('birdsExplorerBackBtn'),
+      document.getElementById('birdsCollectionBackBtn')
+    ];
+    backButtons.forEach((button) => {
+      if (!button) return;
+      button.textContent = `← Back to ${labelPlural}`;
+      button.setAttribute('title', `Back to ${labelPlural} overview`);
+      button.setAttribute('data-tooltip', `Back to ${labelPlural} overview`);
+    });
+
+    const syncBadgeInline = document.getElementById('natureSyncHealthBadgeInline');
+    if (syncBadgeInline) syncBadgeInline.textContent = `${labelPlural} data: checking...`;
+  }
+
+  function persistConfigDrivenWorkspaceState(subTabKey) {
+    if (!isConfigDrivenSubTab(subTabKey)) return;
+    const subState = state.subTabData[subTabKey];
+    if (!subState) return;
+    subState.sightings = { ...(state.sightings || {}) };
+    subState.favorites = Array.isArray(state.favorites) ? state.favorites.slice() : [];
+    subState.sightingLog = Array.isArray(state.sightingLog) ? state.sightingLog.slice() : [];
+    saveSubTabSightings(subTabKey, subState.sightings);
+    saveSubTabFavorites(subTabKey, subState.favorites);
+    saveSubTabSightingLog(subTabKey, subState.sightingLog);
+  }
+
+  function activateConfigDrivenWorkspaceState(subTabKey) {
+    const subState = state.subTabData[subTabKey];
+    if (!subState) return;
+    state.birds = Array.isArray(subState.birds) ? subState.birds.slice() : [];
+    state.families = Array.isArray(subState.families) ? subState.families.slice() : [];
+    state.sightings = { ...(subState.sightings || {}) };
+    state.favorites = Array.isArray(subState.favorites) ? subState.favorites.slice() : [];
+    state.sightingLog = Array.isArray(subState.sightingLog) ? subState.sightingLog.slice() : [];
+    state.birdsLoaded = true;
+    state.birdsError = subState.error || '';
+    state.birdsSource = subState.source || '';
   }
 
   function bindNatureSubTabDock(root, subTabs) {
@@ -5620,6 +6143,9 @@
 
   function syncNatureSubTabs(root) {
     if (!root) return;
+    const activePaneKey = (state.activeSubTab === 'trees' || state.activeSubTab === 'shrubs')
+      ? state.activeSubTab
+      : 'birds';
 
     getNatureSubTabButtons(root).forEach((button) => {
       const key = button.getAttribute('data-nature-subtab');
@@ -5631,13 +6157,14 @@
 
     root.querySelectorAll('[data-nature-pane]').forEach((pane) => {
       const key = pane.getAttribute('data-nature-pane');
-      const isActive = key === state.activeSubTab;
+      const isActive = key === activePaneKey;
       pane.classList.toggle('is-active', isActive);
       pane.hidden = !isActive;
       pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
     });
 
     updateNatureChallengeTitle(root);
+    applyActiveCategoryUiLabels(root);
 
     syncNatureSubTabDock(root);
   }
@@ -5763,8 +6290,16 @@
     window.scrollTo({ top: restoreY, behavior: 'auto' });
   }
 
-  function setActiveNatureSubTab(root, key) {
-    state.activeSubTab = SUBTAB_KEYS.includes(key) ? key : 'birds';
+  async function setActiveNatureSubTab(root, key) {
+    const previousSubTab = state.activeSubTab;
+    const nextSubTab = SUBTAB_KEYS.includes(key) ? key : 'birds';
+
+    if (previousSubTab && previousSubTab !== nextSubTab) {
+      persistConfigDrivenWorkspaceState(previousSubTab);
+    }
+
+    state.activeSubTab = nextSubTab;
+    activePersistenceSubTab = getPersistenceSubTabKey(nextSubTab);
     syncNatureSubTabs(root);
     announceNatureSubTab(root);
 
@@ -5772,9 +6307,20 @@
       state.activeBirdView = 'overview';
       state.selectedBirdId = '';
       state.birdSearch = '';
+      if (isConfigDrivenSubTab(state.activeSubTab)) {
+        await loadConfiguredSubTabDataset(state.activeSubTab, false);
+        renderConfiguredSubTab(state.activeSubTab);
+        activateConfigDrivenWorkspaceState(state.activeSubTab);
+      }
+    } else {
+      state.sightings = loadSightings();
+      state.favorites = loadFavorites();
+      state.sightingLog = loadSightingLog();
+      if (!state.birdsLoaded) await loadBirdDataset(false);
     }
 
     syncBirdViews(root);
+    renderBirds();
   }
 
   function toggleBirdSighting(birdId) {

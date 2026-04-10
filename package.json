@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node -e \"console.log('Static site detected: no build step required.')\"",
     "build:azure": "npm run build",
-    "reliability:smoke": "playwright test tests/reliability-smoke.spec.js tests/bulk-tag-undo-edge-cases.spec.js",
+    "reliability:smoke": "playwright test tests/reliability-smoke.spec.js tests/bulk-tag-undo-edge-cases.spec.js tests/nature-subtabs-smoke.spec.js tests/adventure-subtabs-smoke.spec.js",
     "reliability:bulk-undo": "playwright test tests/bulk-tag-undo-edge-cases.spec.js",
     "mobile:qa": "playwright test tests/mobile-ux-snapshots.spec.js",
     "mobile:qa:update": "playwright test tests/mobile-ux-snapshots.spec.js --update-snapshots",

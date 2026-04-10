@@ -107,7 +107,7 @@
   const CATALOG_INITIAL_LIMIT = 60;
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
-  const PROGRESS_SUBTAB_KEYS = ['outdoors', 'entertainment', 'food-drink', 'retail', 'bike-trails'];
+  const PROGRESS_SUBTAB_KEYS = ['outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
 
    const state = {
      initialized: false,
@@ -2440,6 +2440,8 @@
         'find-entertainment-spot',
         'find-food-drink-spot',
         'find-retail-location',
+        'find-wildlife-animals',
+        'find-regional-festivals',
         'find-bike-trail'
       ];
       let addedCount = 0;
@@ -2488,6 +2490,12 @@
 
       const retailRow = ensureActionRow('#visitedProgressPane-retail');
       ensureButton(retailRow, 'find-retail-location', 'Find a Retail Location', 'Find a Retail Location');
+
+      const wildlifeAnimalsRow = ensureActionRow('#visitedProgressPane-wildlife-animals');
+      ensureButton(wildlifeAnimalsRow, 'find-wildlife-animals', 'Find Wildlife and Animals', 'Find Wildlife and Animals');
+
+      const regionalFestivalsRow = ensureActionRow('#visitedProgressPane-regional-festivals');
+      ensureButton(regionalFestivalsRow, 'find-regional-festivals', 'Find Regional Festivals', 'Find Regional Festivals');
 
       const bikePane = root.querySelector('#visitedProgressPane-bike-trails');
       const bikeRow = bikePane
@@ -2635,7 +2643,9 @@
               action === 'find-outdoor-adventure' ||
               action === 'find-entertainment-spot' ||
               action === 'find-food-drink-spot' ||
-              action === 'find-retail-location'
+              action === 'find-retail-location' ||
+              action === 'find-wildlife-animals' ||
+              action === 'find-regional-festivals'
             ) {
               if (typeof window.openFindNearMeWindow === 'function') {
                 window.openFindNearMeWindow();
