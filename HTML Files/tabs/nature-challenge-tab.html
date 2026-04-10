@@ -1056,6 +1056,20 @@
     color: #14532d;
   }
 
+  #natureChallengeRoot .nature-challenge-subtab.is-loading,
+  #natureChallengeRoot .nature-challenge-subtab[aria-busy="true"] {
+    border-color: #2563eb;
+    background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+    color: #1e3a8a;
+  }
+
+  #natureChallengeRoot .nature-challenge-subtab[aria-busy="true"]::after {
+    content: ' • Loading';
+    font-size: 11px;
+    font-weight: 800;
+    color: #1d4ed8;
+  }
+
   #natureChallengeRoot .nature-challenge-subtab:focus-visible,
   #natureChallengeRoot .planner-top-btn:focus-visible {
     outline: 2px solid #15803d;

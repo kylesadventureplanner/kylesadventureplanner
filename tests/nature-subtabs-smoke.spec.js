@@ -39,6 +39,11 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(page.locator('#appSubTabsSlot [data-nature-subtab="shrubs"]')).toHaveCount(0);
   });
 
+  test('nature subtabs expose loading state attributes', async ({ page }) => {
+    const mammalsBtn = page.locator('#appSubTabsSlot [data-nature-subtab="mammals"]');
+    await expect(mammalsBtn).toHaveAttribute('aria-busy', /(true|false)/);
+  });
+
   CONFIG_DRIVEN_SUBTABS.forEach(({ key, label }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
       await page.locator(`#appSubTabsSlot [data-nature-subtab="${key}"]`).click();

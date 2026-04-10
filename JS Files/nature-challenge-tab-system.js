@@ -2736,6 +2736,8 @@
       syncProbe: window.accessToken ? `probing ${cfg.sightingsTableName} / ${cfg.userStateTableName}...` : 'sign-in required'
     };
     renderConfiguredSubTabDiagnostics(subTabKey);
+    const liveRoot = document.getElementById('natureChallengeRoot');
+    if (liveRoot) syncNatureSubTabs(liveRoot);
 
     const tableName = cfg.speciesTableName;
     const fileCandidates = Array.from(new Set((cfg.speciesFileCandidates || []).concat(EXCEL_FILE_CANDIDATES)));
@@ -2821,6 +2823,8 @@
     } finally {
       subState.loading = false;
       renderConfiguredSubTabDiagnostics(subTabKey);
+      const liveRoot = document.getElementById('natureChallengeRoot');
+      if (liveRoot) syncNatureSubTabs(liveRoot);
     }
   }
 
@@ -6285,6 +6289,15 @@
     return subTabs ? Array.from(subTabs.querySelectorAll('[data-nature-subtab]')) : [];
   }
 
+  function isNatureSubTabLoading(subTabKey) {
+    const key = String(subTabKey || '').trim();
+    if (!key) return false;
+    if (key === 'birds') return Boolean(state.birdsLoading);
+    if (!isConfigDrivenSubTab(key)) return false;
+    const subState = state.subTabData[key];
+    return Boolean(subState && subState.loading);
+  }
+
   function getNatureTitleLabel(rawLabel) {
     const text = String(rawLabel || '').trim().replace(/^[^A-Za-z0-9]+/, '').trim();
     return text || 'Birds';
@@ -6559,9 +6572,12 @@
     getNatureSubTabButtons(root).forEach((button) => {
       const key = button.getAttribute('data-nature-subtab');
       const isActive = key === state.activeSubTab;
+      const isLoading = isNatureSubTabLoading(key);
       button.classList.toggle('active', isActive);
+      button.classList.toggle('is-loading', isLoading);
       button.setAttribute('aria-selected', isActive ? 'true' : 'false');
       button.setAttribute('tabindex', isActive ? '0' : '-1');
+      button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
     });
 
     root.querySelectorAll('[data-nature-pane]').forEach((pane) => {
@@ -6582,7 +6598,10 @@
     const announcer = document.getElementById('natureChallengeSubTabAnnouncer');
     if (!announcer || !root) return;
     const button = getNatureSubTabButtons(root).find((candidate) => candidate.getAttribute('data-nature-subtab') === state.activeSubTab);
-    announcer.textContent = `${button ? button.textContent.trim() : state.activeSubTab} section active`;
+    const label = button ? button.textContent.trim() : state.activeSubTab;
+    announcer.textContent = isNatureSubTabLoading(state.activeSubTab)
+      ? `${label} is loading...`
+      : `${label} section active`;
   }
 
   function syncBirdViews(root) {

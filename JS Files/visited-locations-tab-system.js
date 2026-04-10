@@ -2839,12 +2839,15 @@
     function ensureVisitedSubtabCtaButtons(root) {
       if (!root) return { total: 0, present: 0, added: 0, missing: [] };
       const requiredActions = [
-        'open-explorer-outdoors',
-        'open-explorer-entertainment',
-        'open-explorer-food-drink',
-        'open-explorer-retail',
-        'open-explorer-wildlife-animals',
-        'open-explorer-regional-festivals',
+        'refresh-subtab-outdoors', 'undo-subtab-outdoors', 'open-explorer-outdoors',
+        'refresh-subtab-entertainment', 'undo-subtab-entertainment', 'open-explorer-entertainment',
+        'refresh-subtab-food-drink', 'undo-subtab-food-drink', 'open-explorer-food-drink',
+        'refresh-subtab-retail', 'undo-subtab-retail', 'open-explorer-retail',
+        'refresh-subtab-wildlife-animals', 'undo-subtab-wildlife-animals', 'open-explorer-wildlife-animals',
+        'refresh-subtab-regional-festivals', 'undo-subtab-regional-festivals', 'open-explorer-regional-festivals',
+        'refresh-subtab-bike-trails', 'undo-subtab-bike-trails', 'explore-bike-trails'
+      ];
+      const legacyActions = [
         'find-outdoor-adventure',
         'find-entertainment-spot',
         'find-food-drink-spot',
@@ -2878,45 +2881,70 @@
         if (container.querySelector(`[data-visited-subtab-action="${action}"]`)) return false;
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'pill-button';
+        const className = action.startsWith('refresh-subtab-')
+          ? 'visited-subtab-action-btn visited-subtab-action-btn--refresh'
+          : action.startsWith('undo-subtab-')
+            ? 'visited-subtab-action-btn visited-subtab-action-btn--undo'
+            : 'visited-subtab-action-btn';
+        btn.className = className;
         btn.setAttribute('data-visited-subtab-action', action);
         btn.setAttribute('title', title);
         btn.setAttribute('data-tooltip', title);
         btn.textContent = label;
+        if (action.startsWith('undo-subtab-')) {
+          btn.setAttribute('aria-disabled', 'true');
+          btn.disabled = true;
+        }
         container.appendChild(btn);
         addedCount += 1;
         return true;
       };
 
-      const outdoorsRow = root.querySelector('#visitedProgressPane-outdoors .visited-suggestions-cta-row');
-      ensureButton(outdoorsRow, 'open-explorer-outdoors', 'Explore the Outdoors', 'Explore the Outdoors');
-      ensureButton(outdoorsRow, 'find-outdoor-adventure', 'Find an Outdoor Adventures', 'Find an Outdoor Adventures');
+      legacyActions.forEach((action) => {
+        root.querySelectorAll(`[data-visited-subtab-action="${action}"]`).forEach((node) => node.remove());
+      });
 
-      const entertainmentRow = ensureActionRow('#visitedProgressPane-entertainment');
+      const ensureCanonicalActionRow = (subtabKey) => {
+        const pane = root.querySelector(`#visitedProgressPane-${subtabKey}`);
+        if (!pane) return null;
+        const row = pane.querySelector('.visited-subtab-action-row') || ensureActionRow(`#visitedProgressPane-${subtabKey}`);
+        return row;
+      };
+
+      const outdoorsRow = ensureCanonicalActionRow('outdoors');
+      ensureButton(outdoorsRow, 'refresh-subtab-outdoors', 'Refresh Data', 'Refresh Outdoors data');
+      ensureButton(outdoorsRow, 'undo-subtab-outdoors', '↶ Undo', 'No Outdoors action to undo yet');
+      ensureButton(outdoorsRow, 'open-explorer-outdoors', 'Explore Outdoors', 'Explore the Outdoors');
+
+      const entertainmentRow = ensureCanonicalActionRow('entertainment');
+      ensureButton(entertainmentRow, 'refresh-subtab-entertainment', 'Refresh Data', 'Refresh Entertainment data');
+      ensureButton(entertainmentRow, 'undo-subtab-entertainment', '↶ Undo', 'No Entertainment action to undo yet');
       ensureButton(entertainmentRow, 'open-explorer-entertainment', 'Explore Entertainment', 'Explore Entertainment');
-      ensureButton(entertainmentRow, 'find-entertainment-spot', 'Find an Entertainment Spot', 'Find an Entertainment Spot');
 
-      const foodDrinkRow = ensureActionRow('#visitedProgressPane-food-drink');
-      ensureButton(foodDrinkRow, 'open-explorer-food-drink', 'Explore Food & Drink', 'Explore Food & Drink');
-      ensureButton(foodDrinkRow, 'find-food-drink-spot', 'Find a Food and Drink Spot', 'Find a Food and Drink Spot');
+      const foodDrinkRow = ensureCanonicalActionRow('food-drink');
+      ensureButton(foodDrinkRow, 'refresh-subtab-food-drink', 'Refresh Data', 'Refresh Food and Drink data');
+      ensureButton(foodDrinkRow, 'undo-subtab-food-drink', '↶ Undo', 'No Food and Drink action to undo yet');
+      ensureButton(foodDrinkRow, 'open-explorer-food-drink', 'Explore Food & Drink', 'Explore Food and Drink');
 
-      const retailRow = ensureActionRow('#visitedProgressPane-retail');
+      const retailRow = ensureCanonicalActionRow('retail');
+      ensureButton(retailRow, 'refresh-subtab-retail', 'Refresh Data', 'Refresh Retail data');
+      ensureButton(retailRow, 'undo-subtab-retail', '↶ Undo', 'No Retail action to undo yet');
       ensureButton(retailRow, 'open-explorer-retail', 'Explore Retail', 'Explore Retail');
-      ensureButton(retailRow, 'find-retail-location', 'Find a Retail Location', 'Find a Retail Location');
 
-      const wildlifeAnimalsRow = ensureActionRow('#visitedProgressPane-wildlife-animals');
-      ensureButton(wildlifeAnimalsRow, 'open-explorer-wildlife-animals', 'Explore Wildlife & Animal Locations', 'Explore Wildlife & Animal Locations');
-      ensureButton(wildlifeAnimalsRow, 'find-wildlife-animals', 'Find Wildlife and Animals', 'Find Wildlife and Animals');
+      const wildlifeAnimalsRow = ensureCanonicalActionRow('wildlife-animals');
+      ensureButton(wildlifeAnimalsRow, 'refresh-subtab-wildlife-animals', 'Refresh Data', 'Refresh Wildlife and Animals data');
+      ensureButton(wildlifeAnimalsRow, 'undo-subtab-wildlife-animals', '↶ Undo', 'No Wildlife and Animals action to undo yet');
+      ensureButton(wildlifeAnimalsRow, 'open-explorer-wildlife-animals', 'Explore Wildlife & Animal Locations', 'Explore Wildlife and Animal Locations');
 
-      const regionalFestivalsRow = ensureActionRow('#visitedProgressPane-regional-festivals');
+      const regionalFestivalsRow = ensureCanonicalActionRow('regional-festivals');
+      ensureButton(regionalFestivalsRow, 'refresh-subtab-regional-festivals', 'Refresh Data', 'Refresh Regional Festivals data');
+      ensureButton(regionalFestivalsRow, 'undo-subtab-regional-festivals', '↶ Undo', 'No Regional Festivals action to undo yet');
       ensureButton(regionalFestivalsRow, 'open-explorer-regional-festivals', 'Explore Regional Festivals', 'Explore Regional Festivals');
-      ensureButton(regionalFestivalsRow, 'find-regional-festivals', 'Find Regional Festivals', 'Find Regional Festivals');
 
-      const bikePane = root.querySelector('#visitedProgressPane-bike-trails');
-      const bikeRow = bikePane
-        ? (bikePane.querySelector('.visited-subtab-action-row') || bikePane.querySelector('.pill-button')?.parentElement || ensureActionRow('#visitedProgressPane-bike-trails'))
-        : null;
-      ensureButton(bikeRow, 'find-bike-trail', 'Find a Bike Trail', 'Find a Bike Trail');
+      const bikeRow = ensureCanonicalActionRow('bike-trails');
+      ensureButton(bikeRow, 'refresh-subtab-bike-trails', 'Refresh Data', 'Refresh Bike Trails data');
+      ensureButton(bikeRow, 'undo-subtab-bike-trails', '↶ Undo', 'No Bike Trails action to undo yet');
+      ensureButton(bikeRow, 'explore-bike-trails', 'Explore Bike Trails', 'Explore Bike Trails');
 
       const present = requiredActions.reduce((count, action) => {
         return count + (root.querySelector(`[data-visited-subtab-action="${action}"]`) ? 1 : 0);
@@ -3053,13 +3081,19 @@
               return;
             }
 
-            const openAdventureFallback = () => {
-              if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
-                window.tabLoader.switchTab('adventure-planner', { syncUrl: true, historyMode: 'push', source: 'visited-subtab-cta' });
-              }
-            };
+            if (action.startsWith('refresh-subtab-')) {
+              runRefreshWithLock(subtabActionBtn);
+              return;
+            }
 
-            if (action === 'find-bike-trail') {
+            if (action.startsWith('undo-subtab-')) {
+              if (typeof window.showToast === 'function') {
+                window.showToast('No Adventure action to undo yet.', 'info', 2200);
+              }
+              return;
+            }
+
+            if (action === 'explore-bike-trails') {
               if (typeof window.openTrailExplorerWindow === 'function') {
                 window.openTrailExplorerWindow();
               } else if (window.tabLoader && typeof window.tabLoader.switchTab === 'function') {
@@ -3068,21 +3102,6 @@
               return;
             }
 
-            if (
-              action === 'find-outdoor-adventure' ||
-              action === 'find-entertainment-spot' ||
-              action === 'find-food-drink-spot' ||
-              action === 'find-retail-location' ||
-              action === 'find-wildlife-animals' ||
-              action === 'find-regional-festivals'
-            ) {
-              if (typeof window.openFindNearMeWindow === 'function') {
-                window.openFindNearMeWindow();
-              } else {
-                openAdventureFallback();
-              }
-              return;
-            }
           }
 
           const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');

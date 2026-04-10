@@ -64,10 +64,10 @@
             <div class="card-subtitle">Open the dedicated suggestions page for weather-aware ranked picks.</div>
           </div>
         </div>
-        <div class="visited-suggestions-cta-row">
-          <button id="visitedOpenSuggestionsBtn" type="button" class="pill-button" title="Open Smart Adventure Suggestions" data-tooltip="Open Smart Adventure Suggestions">Open Suggestions Page</button>
-          <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-outdoors" title="Explore the Outdoors" data-tooltip="Explore the Outdoors">Explore the Outdoors</button>
-          <button type="button" class="pill-button" data-visited-subtab-action="find-outdoor-adventure" title="Find an Outdoor Adventures" data-tooltip="Find an Outdoor Adventures">Find an Outdoor Adventures</button>
+        <div class="visited-subtab-action-row">
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-outdoors" title="Refresh Outdoors data" data-tooltip="Refresh Outdoors data">Refresh Data</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-outdoors" title="No Outdoors action to undo yet" data-tooltip="No Outdoors action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
+          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-outdoors" title="Explore the Outdoors" data-tooltip="Explore the Outdoors">Explore Outdoors</button>
         </div>
       </div>
 
@@ -186,9 +186,10 @@
         <div class="card-subtitle">Browse and plan entertainment locations you want to visit.</div>
       </div>
       <div class="visited-empty">Open the explorer to browse, sort, and filter your Entertainment directory.</div>
-      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-entertainment" title="Explore Entertainment" data-tooltip="Explore Entertainment">Explore Entertainment</button>
-        <button type="button" class="pill-button" data-visited-subtab-action="find-entertainment-spot" title="Find an Entertainment Spot" data-tooltip="Find an Entertainment Spot">Find an Entertainment Spot</button>
+      <div class="visited-subtab-action-row">
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-entertainment" title="Refresh Entertainment data" data-tooltip="Refresh Entertainment data">Refresh Data</button>
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-entertainment" title="No Entertainment action to undo yet" data-tooltip="No Entertainment action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
+        <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-entertainment" title="Explore Entertainment" data-tooltip="Explore Entertainment">Explore Entertainment</button>
       </div>
     </div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
@@ -219,9 +220,10 @@
         <div class="card-subtitle">Browse and plan restaurants and coffee spots you want to try.</div>
       </div>
       <div class="visited-empty">Open the explorer to browse, sort, and filter Food &amp; Drink locations.</div>
-      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-food-drink" title="Explore Food and Drink" data-tooltip="Explore Food and Drink">Explore Food &amp; Drink</button>
-        <button type="button" class="pill-button" data-visited-subtab-action="find-food-drink-spot" title="Find a Food and Drink Spot" data-tooltip="Find a Food and Drink Spot">Find a Food and Drink Spot</button>
+      <div class="visited-subtab-action-row">
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-food-drink" title="Refresh Food and Drink data" data-tooltip="Refresh Food and Drink data">Refresh Data</button>
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-food-drink" title="No Food and Drink action to undo yet" data-tooltip="No Food and Drink action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
+        <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-food-drink" title="Explore Food and Drink" data-tooltip="Explore Food and Drink">Explore Food &amp; Drink</button>
       </div>
     </div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
@@ -252,9 +254,10 @@
         <div class="card-subtitle">Browse and plan retail locations you want to visit.</div>
       </div>
       <div class="visited-empty">Open the explorer to browse, sort, and filter Retail locations.</div>
-      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-retail" title="Explore Retail" data-tooltip="Explore Retail">Explore Retail</button>
-        <button type="button" class="pill-button" data-visited-subtab-action="find-retail-location" title="Find a Retail Location" data-tooltip="Find a Retail Location">Find a Retail Location</button>
+      <div class="visited-subtab-action-row">
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-retail" title="Refresh Retail data" data-tooltip="Refresh Retail data">Refresh Data</button>
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-retail" title="No Retail action to undo yet" data-tooltip="No Retail action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
+        <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-retail" title="Explore Retail" data-tooltip="Explore Retail">Explore Retail</button>
       </div>
     </div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
@@ -285,9 +288,10 @@
         <div class="card-subtitle">Browse and plan wildlife and animal locations you want to visit.</div>
       </div>
       <div class="visited-empty">Open the explorer to browse, sort, and filter Wildlife &amp; Animal locations.</div>
-      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-wildlife-animals" title="Explore Wildlife and Animal Locations" data-tooltip="Explore Wildlife and Animal Locations">Explore Wildlife &amp; Animal Locations</button>
-        <button type="button" class="pill-button" data-visited-subtab-action="find-wildlife-animals" title="Find Wildlife and Animals" data-tooltip="Find Wildlife and Animals">Find Wildlife and Animals</button>
+      <div class="visited-subtab-action-row">
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-wildlife-animals" title="Refresh Wildlife and Animals data" data-tooltip="Refresh Wildlife and Animals data">Refresh Data</button>
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-wildlife-animals" title="No Wildlife and Animals action to undo yet" data-tooltip="No Wildlife and Animals action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
+        <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-wildlife-animals" title="Explore Wildlife and Animal Locations" data-tooltip="Explore Wildlife and Animal Locations">Explore Wildlife &amp; Animal Locations</button>
       </div>
     </div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
@@ -318,9 +322,10 @@
         <div class="card-subtitle">Browse and plan regional festivals you want to visit.</div>
       </div>
       <div class="visited-empty">Open the explorer to browse, sort, and filter Regional Festivals.</div>
-      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="pill-button" data-visited-subtab-action="open-explorer-regional-festivals" title="Explore Regional Festivals" data-tooltip="Explore Regional Festivals">Explore Regional Festivals</button>
-        <button type="button" class="pill-button" data-visited-subtab-action="find-regional-festivals" title="Find Regional Festivals" data-tooltip="Find Regional Festivals">Find Regional Festivals</button>
+      <div class="visited-subtab-action-row">
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-regional-festivals" title="Refresh Regional Festivals data" data-tooltip="Refresh Regional Festivals data">Refresh Data</button>
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-regional-festivals" title="No Regional Festivals action to undo yet" data-tooltip="No Regional Festivals action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
+        <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-regional-festivals" title="Explore Regional Festivals" data-tooltip="Explore Regional Festivals">Explore Regional Festivals</button>
       </div>
     </div>
     <div class="visited-overview-view" data-visited-subtab-view="explorer" hidden>
@@ -351,10 +356,10 @@
         <div class="card-subtitle">Bike trails is now grouped under Adventure Challenge.</div>
       </div>
       <div class="visited-empty">Use this category to jump into the full Bike Trails workspace when you are planning or reviewing rides.</div>
-      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="pill-button" data-visited-subtab-action="find-bike-trail" title="Find a Bike Trail" data-tooltip="Find a Bike Trail">Find a Bike Trail</button>
-        <button type="button" class="pill-button" onclick="window.tabLoader?.switchTab('bike-trails', { syncUrl: true, historyMode: 'push', source: 'visited-bike-subtab' })">Open Bike Trails Workspace</button>
-        <button type="button" class="pill-button" onclick="window.openTrailExplorerWindow?.()">Open Trail Explorer</button>
+      <div class="visited-subtab-action-row">
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-bike-trails" title="Refresh Bike Trails data" data-tooltip="Refresh Bike Trails data">Refresh Data</button>
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-bike-trails" title="No Bike Trails action to undo yet" data-tooltip="No Bike Trails action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
+        <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="explore-bike-trails" title="Explore Bike Trails" data-tooltip="Explore Bike Trails">Explore Bike Trails</button>
       </div>
     </div>
   </div>
@@ -646,9 +651,9 @@
    }
 
   #visitedLocationsRoot .visited-progress-subtab {
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    color: #374151;
+    border: 1px solid #86efac;
+    background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #166534;
     font-size: 12px;
     font-weight: 700;
     border-radius: 999px;
@@ -674,15 +679,67 @@
   }
 
   #visitedLocationsRoot .visited-progress-subtab:hover {
-    border-color: #93c5fd;
-    color: #1d4ed8;
-    background: #eff6ff;
+    border-color: #22c55e;
+    color: #14532d;
+    background: #dcfce7;
   }
 
   #visitedLocationsRoot .visited-progress-subtab.active {
-    border-color: #1d4ed8;
-    background: #dbeafe;
-    color: #1e3a8a;
+    border-color: #15803d;
+    background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #14532d;
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-row {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn {
+    width: auto;
+    margin: 0;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 42px;
+    padding: 0 16px;
+    border: 2px solid #1d4ed8;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
+    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(29, 78, 216, 0.3);
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--refresh {
+    border-color: #7c3aed;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    box-shadow: 0 8px 18px rgba(124, 58, 237, 0.28);
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--undo {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 8px 18px rgba(217, 119, 6, 0.24);
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--undo:disabled {
+    border-color: #cbd5e1;
+    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+    color: #f8fafc;
+    box-shadow: none;
+    cursor: not-allowed;
   }
 
   #visitedLocationsRoot .visited-progress-subtab:focus-visible,

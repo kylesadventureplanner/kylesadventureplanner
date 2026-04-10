@@ -4,12 +4,26 @@ const ADVENTURE_SUBTABS = [
   {
     key: 'wildlife-animals',
     label: 'Wildlife & Animals',
-    ctaAction: 'find-wildlife-animals'
+    refreshAction: 'refresh-subtab-wildlife-animals',
+    undoAction: 'undo-subtab-wildlife-animals',
+    exploreAction: 'open-explorer-wildlife-animals',
+    legacyFindAction: 'find-wildlife-animals'
   },
   {
     key: 'regional-festivals',
     label: 'Regional Festivals',
-    ctaAction: 'find-regional-festivals'
+    refreshAction: 'refresh-subtab-regional-festivals',
+    undoAction: 'undo-subtab-regional-festivals',
+    exploreAction: 'open-explorer-regional-festivals',
+    legacyFindAction: 'find-regional-festivals'
+  },
+  {
+    key: 'retail',
+    label: 'Retail',
+    refreshAction: 'refresh-subtab-retail',
+    undoAction: 'undo-subtab-retail',
+    exploreAction: 'open-explorer-retail',
+    legacyFindAction: 'find-retail-location'
   }
 ];
 
@@ -20,7 +34,7 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
   });
 
-  ADVENTURE_SUBTABS.forEach(({ key, label, ctaAction }) => {
+  ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, legacyFindAction }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
       const dockButton = page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"]`).first();
       await expect(dockButton).toBeVisible();
@@ -28,7 +42,10 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
 
       await expect(page.locator(`#visitedProgressPane-${key}`)).toBeVisible();
       await expect(page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"][aria-selected="true"]`)).toBeVisible();
-      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${ctaAction}"]`).first()).toBeVisible();
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${refreshAction}"]`)).toHaveCount(1);
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${undoAction}"]`)).toHaveCount(1);
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${exploreAction}"]`)).toHaveCount(1);
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${legacyFindAction}"]`)).toHaveCount(0);
 
       await dockButton.focus();
       await expect(dockButton).toBeFocused();
