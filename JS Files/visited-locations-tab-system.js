@@ -185,11 +185,11 @@
     const { row, cutout } = getVisitedSubTabDockElements();
     if (!row || !cutout || row.hidden) return;
 
+    const subTabs = document.querySelector('#appSubTabsSlot .visited-progress-subtabs');
+    if (!subTabs || subTabs.hidden || subTabs.getAttribute('aria-hidden') === 'true') return;
+
     const activePrimaryTab = document.querySelector('.app-tab-btn.active[data-tab="visited-locations"]');
-    if (!activePrimaryTab) {
-      cutout.style.left = '50%';
-      return;
-    }
+    if (!activePrimaryTab) return;
 
     const rowRect = row.getBoundingClientRect();
     const activeRect = activePrimaryTab.getBoundingClientRect();
@@ -225,8 +225,16 @@
       slot.appendChild(subTabs);
     }
 
-    subTabs.hidden = !shouldShow;
-    subTabs.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+    if (shouldShow) {
+      Array.from(slot.children || []).forEach((child) => {
+        const isCurrent = child === subTabs;
+        child.hidden = !isCurrent;
+        child.setAttribute('aria-hidden', isCurrent ? 'false' : 'true');
+      });
+    } else {
+      subTabs.hidden = true;
+      subTabs.setAttribute('aria-hidden', 'true');
+    }
 
     updateVisitedSubTabRowVisibility(row, slot);
     if (!shouldShow) return;
