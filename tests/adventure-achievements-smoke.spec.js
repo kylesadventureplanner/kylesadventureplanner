@@ -53,8 +53,8 @@ test.describe('Adventure achievements dashboard smoke', () => {
     await expect(page.locator('#achv-root-outdoors').getByText(/Matched by place ID:/i).first()).toBeVisible({ timeout: 12000 });
     await expect(page.locator('#achv-root-outdoors').getByText(/catalog rows scanned:/i).first()).toBeVisible({ timeout: 12000 });
     await expect(page.locator('#achv-root-outdoors').getByText(/categorized rows:/i).first()).toBeVisible({ timeout: 12000 });
-    await expect(page.locator('#achv-root-outdoors').getByText(/L1\s+Rookie/i).first()).toBeVisible({ timeout: 12000 });
-    await expect(page.locator('#achv-root-outdoors').getByText(/MVP/i).first()).toBeVisible({ timeout: 12000 });
+    await expect(page.locator('#achv-root-outdoors .adventure-achv-tier-chip:visible .adventure-achv-tier-chip-name').filter({ hasText: /Rookie/i }).first()).toBeVisible({ timeout: 12000 });
+    await expect(page.locator('#achv-root-outdoors .adventure-achv-tier-chip:visible .adventure-achv-tier-chip-name').filter({ hasText: /MVP/i }).first()).toBeVisible({ timeout: 12000 });
 
     await modeSelect.selectOption('manual');
     await expect(modeSelect).toHaveValue('manual');
