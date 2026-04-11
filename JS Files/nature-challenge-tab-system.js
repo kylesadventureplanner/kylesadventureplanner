@@ -302,7 +302,7 @@
     initialized: false,
     activeSubTab: 'birds',
     activeBirdView: loadBirdUiPrefs().activeBirdView,
-    activeBirdCollection: 'challenges',
+    activeBirdCollection: 'challenges-badges',
     collectionTierFilter: loadBirdUiPrefs().collectionTierFilter,
     collectionPathMode: loadBirdUiPrefs().collectionPathMode,
     collectionAlmostCompleteOnly: loadBirdUiPrefs().collectionAlmostCompleteOnly,
@@ -909,7 +909,7 @@
     state.birdLogPreset = 'field-full';
     state.birdLogCommandValue = '';
     state.activeOverviewSection = 'daily';
-    state.activeBirdCollection = 'challenges';
+    state.activeBirdCollection = 'challenges-badges';
     state.birdViewScrollPositions = {};
     saveBirdUiPrefs();
     syncBirdCommandInputFromState();
@@ -948,8 +948,7 @@
       if (el) el.innerHTML = renderSummary(text);
     };
     set('birdsDailySummary', `Showing ${summary.dailyShown} of ${summary.dailyTotal} daily picks`);
-    set('birdsChallengesSummary', `Showing ${summary.challengeShown} of ${summary.challengeTotal} challenges`);
-    set('birdsBadgesSummary', `Showing ${summary.badgeShown} of ${summary.badgeTotal} badges`);
+    set('birdsChallengesBadgesSummary', `Showing ${summary.achievementShown} of ${summary.achievementTotal} challenge and badge cards`);
     set('birdsQuestsSummary', `Showing ${summary.questShown} of ${summary.questTotal} quests`);
     set('birdsBingoSummary', `Showing ${summary.bingoShown} of ${summary.bingoTotal} bingo tiles`);
   }
@@ -962,7 +961,7 @@
     if (state.overviewQuickFilters.almostThere) flags.push('Almost There');
     if (state.overviewQuickFilters.highReward) flags.push('High Reward');
     const filterText = flags.length ? `Filters active: ${flags.join(', ')}` : 'No overview filters active';
-    announcer.textContent = `${filterText}. Showing ${summary.challengeShown} challenges, ${summary.badgeShown} badges, ${summary.questShown} quests, and ${summary.bingoShown} bingo tiles.`;
+    announcer.textContent = `${filterText}. Showing ${summary.achievementShown} challenge and badge cards, ${summary.questShown} quests, and ${summary.bingoShown} bingo tiles.`;
   }
 
   function renderBirdLoadingSkeletons() {
@@ -974,7 +973,7 @@
         <div class="nature-skeleton line-sm"></div>
       </div>
     `;
-    ['birdsDailyChallengeGrid', 'birdsChallengeGrid', 'birdsBadgeGrid', 'birdsSeasonQuestGrid', 'birdsBingoGrid'].forEach((id) => {
+    ['birdsDailyChallengeGrid', 'birdsChallengesBadgesGrid', 'birdsSeasonQuestGrid', 'birdsBingoGrid'].forEach((id) => {
       const el = document.getElementById(id);
       if (el && !el.innerHTML.trim()) el.innerHTML = shell.repeat(3);
     });
@@ -1315,9 +1314,11 @@
       activeBirdView: ['overview', 'log', 'explorer', 'detail', 'collection'].includes(prefs.activeBirdView)
         ? prefs.activeBirdView
         : 'overview',
-      activeOverviewSection: ['daily', 'challenges', 'badges', 'quests', 'bingo'].includes(prefs.activeOverviewSection)
+      activeOverviewSection: ['daily', 'challenges-badges', 'quests', 'bingo'].includes(prefs.activeOverviewSection)
         ? prefs.activeOverviewSection
-        : 'daily',
+        : ['challenges', 'badges'].includes(prefs.activeOverviewSection)
+          ? 'challenges-badges'
+          : 'daily',
       commandInputValue: String(prefs.commandInputValue || ''),
       birdRecommendationStrategy: ['progress-first', 'rarity-first', 'season-first'].includes(prefs.birdRecommendationStrategy)
         ? prefs.birdRecommendationStrategy
@@ -2201,8 +2202,9 @@
   function scrollToBirdOverviewSection(sectionKey) {
     const map = {
       daily: 'birdsOverviewSectionDaily',
-      challenges: 'birdsOverviewSectionChallenges',
-      badges: 'birdsOverviewSectionBadges',
+      challenges: 'birdsOverviewSectionChallengesBadges',
+      badges: 'birdsOverviewSectionChallengesBadges',
+      'challenges-badges': 'birdsOverviewSectionChallengesBadges',
       quests: 'birdsOverviewSectionQuests',
       bingo: 'birdsOverviewSectionBingo'
     };
@@ -2242,14 +2244,9 @@
       setBirdView(root, 'overview');
       return;
     }
-    if (normalized.includes('go challenges') || normalized === 'challenges') {
+    if (normalized.includes('go challenges') || normalized.includes('go badges') || normalized.includes('go achievements') || normalized === 'challenges' || normalized === 'badges' || normalized === 'achievements') {
       setBirdView(root, 'overview');
-      scrollToBirdOverviewSection('challenges');
-      return;
-    }
-    if (normalized.includes('go badges') || normalized === 'badges') {
-      setBirdView(root, 'overview');
-      scrollToBirdOverviewSection('badges');
+      scrollToBirdOverviewSection('challenges-badges');
       return;
     }
     if (normalized.includes('go quests') || normalized.includes('quest')) {
@@ -2316,18 +2313,16 @@
     }
 
     if (!inTextInput && state.activeBirdView === 'overview') {
-      if (key === '1') scrollToBirdOverviewSection('challenges');
-      if (key === '2') scrollToBirdOverviewSection('badges');
-      if (key === '3') scrollToBirdOverviewSection('quests');
-      if (key === '4') scrollToBirdOverviewSection('bingo');
+      if (key === '1') scrollToBirdOverviewSection('challenges-badges');
+      if (key === '2') scrollToBirdOverviewSection('quests');
+      if (key === '3') scrollToBirdOverviewSection('bingo');
     }
   }
 
   function updateBirdMoreButtons(counts) {
-    const sections = ['challenges', 'badges', 'quests', 'bingo'];
+    const sections = ['challenges-badges', 'quests', 'bingo'];
     const badgeMap = {
-      challenges: 'birdsChallengesCountBadge',
-      badges: 'birdsBadgesCountBadge',
+      'challenges-badges': 'birdsChallengesBadgesCountBadge',
       quests: 'birdsQuestsCountBadge',
       bingo: 'birdsBingoCountBadge'
     };
@@ -2873,8 +2868,7 @@
     const totalSpeciesEl = document.getElementById(`${subTabKey}TotalSpecies`);
     const totalSightedEl = document.getElementById(`${subTabKey}TotalSighted`);
     const familyGrid = document.getElementById(`${subTabKey}FamilyGrid`);
-    const challengeGrid = document.getElementById(`${subTabKey}ChallengeGrid`);
-    const badgeGrid = document.getElementById(`${subTabKey}BadgeGrid`);
+    const challengeBadgeGrid = document.getElementById(`${subTabKey}ChallengeBadgeGrid`);
 
     const totalSpecies = Array.isArray(subState.birds) ? subState.birds.length : 0;
     const sightedKeys = new Set(Object.keys(subState.sightings || {}));
@@ -2901,20 +2895,57 @@
     }
 
     const progressPct = totalSpecies > 0 ? Math.round((totalSighted / totalSpecies) * 100) : 0;
-    if (challengeGrid) {
-      challengeGrid.innerHTML = `
-        <div class="nature-challenge-card ${totalSighted >= 1 ? 'completed' : ''}"><div class="nature-challenge-title">First ${escapeHtml(cfg.label.slice(0, -1) || cfg.label)} Logged</div><div class="nature-challenge-progress">${Math.min(totalSighted, 1)}/1</div></div>
-        <div class="nature-challenge-card ${progressPct >= 25 ? 'completed' : ''}"><div class="nature-challenge-title">${escapeHtml(cfg.label)} Quarter Checkpoint</div><div class="nature-challenge-progress">${progressPct}% / 25%</div></div>
-        <div class="nature-challenge-card ${progressPct >= 50 ? 'completed' : ''}"><div class="nature-challenge-title">${escapeHtml(cfg.label)} Midpoint</div><div class="nature-challenge-progress">${progressPct}% / 50%</div></div>
-      `;
-    }
-
-    if (badgeGrid) {
+    if (challengeBadgeGrid) {
       const favoriteCount = (subState.favorites || []).length;
-      badgeGrid.innerHTML = `
-        <div class="nature-badge-card ${totalSighted >= 5 ? 'unlocked' : ''}"><div class="nature-badge-title">Starter Observer</div><div class="nature-badge-desc">Log 5 ${escapeHtml(cfg.label.toLowerCase())} species.</div></div>
-        <div class="nature-badge-card ${totalSighted >= 15 ? 'unlocked' : ''}"><div class="nature-badge-title">Field Tracker</div><div class="nature-badge-desc">Log 15 ${escapeHtml(cfg.label.toLowerCase())} species.</div></div>
-        <div class="nature-badge-card ${favoriteCount >= 5 ? 'unlocked' : ''}"><div class="nature-badge-title">Favorites Curator</div><div class="nature-badge-desc">Mark 5 favorite ${escapeHtml(cfg.label.toLowerCase())}.</div></div>
+      challengeBadgeGrid.innerHTML = `
+        <div class="nature-badge-card ${totalSighted >= 1 ? 'unlocked' : 'locked'} nature-badge-card--challenge">
+          <div class="nature-badge-kind-pill nature-badge-kind-pill--challenge">Challenge</div>
+          <div class="nature-badge-icon">🎯</div>
+          <div class="nature-badge-card-title">First ${escapeHtml(cfg.label.slice(0, -1) || cfg.label)} Logged</div>
+          <div class="nature-badge-card-description">Log your first ${escapeHtml(cfg.label.toLowerCase())} sighting.</div>
+          <div class="nature-badge-progress">${Math.min(totalSighted, 1)}/1 complete</div>
+          <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${Math.min(100, totalSighted >= 1 ? 100 : totalSighted * 100)}%;"></div></div>
+        </div>
+        <div class="nature-badge-card ${progressPct >= 25 ? 'unlocked' : 'locked'} nature-badge-card--challenge">
+          <div class="nature-badge-kind-pill nature-badge-kind-pill--challenge">Challenge</div>
+          <div class="nature-badge-icon">📈</div>
+          <div class="nature-badge-card-title">${escapeHtml(cfg.label)} Quarter Checkpoint</div>
+          <div class="nature-badge-card-description">Reach 25% completion in your ${escapeHtml(cfg.label.toLowerCase())} collection.</div>
+          <div class="nature-badge-progress">${progressPct}% / 25%</div>
+          <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${Math.min(100, Math.round((progressPct / 25) * 100))}%;"></div></div>
+        </div>
+        <div class="nature-badge-card ${progressPct >= 50 ? 'unlocked' : 'locked'} nature-badge-card--challenge">
+          <div class="nature-badge-kind-pill nature-badge-kind-pill--challenge">Challenge</div>
+          <div class="nature-badge-icon">🏔️</div>
+          <div class="nature-badge-card-title">${escapeHtml(cfg.label)} Midpoint</div>
+          <div class="nature-badge-card-description">Reach 50% completion in your ${escapeHtml(cfg.label.toLowerCase())} collection.</div>
+          <div class="nature-badge-progress">${progressPct}% / 50%</div>
+          <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${Math.min(100, Math.round((progressPct / 50) * 100))}%;"></div></div>
+        </div>
+        <div class="nature-badge-card ${totalSighted >= 5 ? 'unlocked' : 'locked'}">
+          <div class="nature-badge-kind-pill nature-badge-kind-pill--badge">Badge</div>
+          <div class="nature-badge-icon">🏅</div>
+          <div class="nature-badge-card-title">Starter Observer</div>
+          <div class="nature-badge-card-description">Log 5 ${escapeHtml(cfg.label.toLowerCase())} species.</div>
+          <div class="nature-badge-progress">${Math.min(totalSighted, 5)}/5 progress</div>
+          <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${Math.min(100, Math.round((Math.min(totalSighted, 5) / 5) * 100))}%;"></div></div>
+        </div>
+        <div class="nature-badge-card ${totalSighted >= 15 ? 'unlocked' : 'locked'}">
+          <div class="nature-badge-kind-pill nature-badge-kind-pill--badge">Badge</div>
+          <div class="nature-badge-icon">🧭</div>
+          <div class="nature-badge-card-title">Field Tracker</div>
+          <div class="nature-badge-card-description">Log 15 ${escapeHtml(cfg.label.toLowerCase())} species.</div>
+          <div class="nature-badge-progress">${Math.min(totalSighted, 15)}/15 progress</div>
+          <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${Math.min(100, Math.round((Math.min(totalSighted, 15) / 15) * 100))}%;"></div></div>
+        </div>
+        <div class="nature-badge-card ${favoriteCount >= 5 ? 'unlocked' : 'locked'}">
+          <div class="nature-badge-kind-pill nature-badge-kind-pill--badge">Badge</div>
+          <div class="nature-badge-icon">⭐</div>
+          <div class="nature-badge-card-title">Favorites Curator</div>
+          <div class="nature-badge-card-description">Mark 5 favorite ${escapeHtml(cfg.label.toLowerCase())}.</div>
+          <div class="nature-badge-progress">${Math.min(favoriteCount, 5)}/5 progress</div>
+          <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${Math.min(100, Math.round((Math.min(favoriteCount, 5) / 5) * 100))}%;"></div></div>
+        </div>
       `;
     }
 
@@ -4894,6 +4925,58 @@
     }).join('');
   }
 
+  function renderBirdChallengesAndBadges(challenges, badges, containerId = 'birdsChallengesBadgesGrid', options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const challengeItems = Array.isArray(challenges) ? challenges : [];
+    const badgeItems = Array.isArray(badges) ? badges : [];
+    const items = challengeItems.map((challenge) => ({
+      ...challenge,
+      kind: 'challenge',
+      kindLabel: 'Challenge',
+      unlocked: Boolean(challenge.completed),
+      rarityClass: 'nature-badge-card--challenge',
+      summary: formatProgressSummary(challenge).summary,
+      showRarity: false
+    })).concat(badgeItems.map((badge) => ({
+      ...badge,
+      kind: 'badge',
+      kindLabel: 'Badge',
+      unlocked: Boolean(badge.completed),
+      summary: formatProgressSummary(badge).summary,
+      showRarity: true
+    })));
+
+    if (!items.length) {
+      container.innerHTML = buildUnifiedStateHtml('No challenge or badge cards match current overview filters.', { icon: '🏅', hint: 'Try clearing overview filter chips.' });
+      return;
+    }
+
+    let previousKind = '';
+    let previousTier = '';
+    container.innerHTML = items.map((item) => {
+      const tierKey = normalizeProgressionTier(item && item.tier);
+      const groupHeader = options.showKindHeaders !== false && previousKind !== item.kind
+        ? `<div class="nature-achievement-group-heading">${escapeHtml(item.kind === 'challenge' ? 'Challenges' : 'Badges')}</div>`
+        : '';
+      const tierHeader = previousTier !== tierKey ? renderTierSectionHeader(item, options) : '';
+      previousKind = item.kind;
+      previousTier = tierKey;
+      return `${groupHeader}${tierHeader}
+      <div class="nature-badge-card ${item.unlocked ? 'unlocked' : 'locked'} ${getPathLockClass(item, options)} ${escapeHtml(item.rarityClass || '')} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
+        ${renderWhyShownBadge(item)}
+        <div class="nature-badge-kind-pill nature-badge-kind-pill--${escapeHtml(item.kind)}">${escapeHtml(item.kindLabel)}</div>
+        <div class="nature-badge-icon">${escapeHtml(item.icon || (item.kind === 'challenge' ? '🎯' : '🏅'))}</div>
+        <div class="nature-badge-card-title">${escapeHtml(item.title)}</div>
+        ${renderProgressionChipRow(item, { showRarity: item.showRarity })}
+        ${renderProgressionLearningCopy(item, options)}
+        <div class="nature-badge-card-description">${escapeHtml(item.description)}</div>
+        <div class="nature-badge-progress">${escapeHtml(item.summary)}</div>
+        <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${item.pct}%;"></div></div>
+      </div>`;
+    }).join('');
+  }
+
   function renderBirdBadges(badges, containerId = 'birdsBadgeGrid', options = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -6224,9 +6307,9 @@
     const controls = document.getElementById('birdsCollectionControls');
     if (!title || !subtitle || !meta || !grid) return;
 
-    const key = ['challenges', 'badges', 'quests', 'bingo'].includes(state.activeBirdCollection)
+    const key = ['challenges-badges', 'challenges', 'badges', 'quests', 'bingo'].includes(state.activeBirdCollection)
       ? state.activeBirdCollection
-      : 'challenges';
+      : 'challenges-badges';
     const categoryLabel = getActiveCategoryLabel();
     const categorySingular = getActiveCategorySingularLabel();
     const categoryLower = categoryLabel.toLowerCase();
@@ -6246,23 +6329,26 @@
       return;
     }
 
-    if (key === 'badges') {
-      const allItems = Array.isArray(cache.badges) ? cache.badges : [];
+    if (key === 'challenges-badges' || key === 'challenges' || key === 'badges') {
+      const allChallenges = Array.isArray(cache.challenges) ? cache.challenges : [];
+      const allBadges = Array.isArray(cache.badges) ? cache.badges : [];
       const tierFilter = getCollectionTierFilter();
-      const tierItems = filterCardsByTier(allItems, tierFilter);
-      const items = filterAlmostCompleteCards(tierItems);
-      const pathState = getCollectionTierPathState(allItems);
-      title.textContent = '🏅 All Badges';
+      const challengeItems = filterAlmostCompleteCards(filterCardsByTier(allChallenges, tierFilter));
+      const badgeItems = filterAlmostCompleteCards(filterCardsByTier(allBadges, tierFilter));
+      const combined = allChallenges.concat(allBadges);
+      const pathState = getCollectionTierPathState(combined);
+      title.textContent = '🏅 Challenges & Badges';
       subtitle.textContent = state.collectionPathMode
-        ? 'Tier path mode is on. Progress each lane to unlock deeper mastery content.'
-        : `See every ${categorySingular.toLowerCase()} badge and your current progress.`;
-      meta.textContent = `${items.filter((item) => item.completed).length}/${items.length} badges unlocked | ${formatTierBreakdown(items)}`;
-      renderCollectionTierControls(allItems, { pathToggleAllowed: true });
+        ? 'Tier path mode is on. Progress each lane to unlock deeper mastery content across challenge and badge cards.'
+        : `See every ${categorySingular.toLowerCase()} challenge and badge in one achievement wall.`;
+      meta.textContent = `${challengeItems.filter((item) => item.completed).length + badgeItems.filter((item) => item.completed).length}/${challengeItems.length + badgeItems.length} cards complete or unlocked | ${formatTierBreakdown(challengeItems.concat(badgeItems))}`;
+      renderCollectionTierControls(combined, { pathToggleAllowed: true });
       grid.className = 'nature-badge-grid';
-      renderBirdBadges(items, 'birdsCollectionGrid', {
+      renderBirdChallengesAndBadges(challengeItems, badgeItems, 'birdsCollectionGrid', {
         showLearning: true,
         groupByTier: tierFilter === 'all' && !state.collectionAlmostCompleteOnly,
-        pathState
+        pathState,
+        showKindHeaders: true
       });
       return;
     }
@@ -6314,23 +6400,6 @@
       return;
     }
 
-    const allItems = Array.isArray(cache.challenges) ? cache.challenges : [];
-    const tierFilter = getCollectionTierFilter();
-    const tierItems = filterCardsByTier(allItems, tierFilter);
-    const items = filterAlmostCompleteCards(tierItems);
-    const pathState = getCollectionTierPathState(allItems);
-    title.textContent = '🎯 All Challenges';
-    subtitle.textContent = state.collectionPathMode
-      ? 'Path mode is on. Complete earlier tier lanes to reveal deeper challenge lanes.'
-      : 'See every challenge and focus on what is closest to completion.';
-    meta.textContent = `${items.filter((item) => item.completed).length}/${items.length} challenges complete | ${formatTierBreakdown(items)}`;
-    renderCollectionTierControls(allItems, { pathToggleAllowed: true });
-    grid.className = 'nature-challenge-grid';
-    renderBirdChallenges(items, 'birdsCollectionGrid', {
-      showLearning: true,
-      groupByTier: tierFilter === 'all' && !state.collectionAlmostCompleteOnly,
-      pathState
-    });
   }
 
   function renderBirdError() {
@@ -6338,8 +6407,7 @@
       'birdsDailyChallengeGrid',
       'birdsBingoGrid',
       'birdsSeasonQuestGrid',
-      'birdsChallengeGrid',
-      'birdsBadgeGrid',
+      'birdsChallengesBadgesGrid',
       'birdsCollectionGrid',
       'birdsSpeciesCardGrid',
       'birdsSpeciesDetailContent'
@@ -6386,18 +6454,15 @@
     };
 
     updateBirdMoreButtons({
-      challenges: { shown: overviewChallenges.length, total: challenges.length },
-      badges: { shown: overviewBadges.length, total: badges.length },
+      'challenges-badges': { shown: overviewChallenges.length + overviewBadges.length, total: challenges.length + badges.length },
       quests: { shown: overviewQuests.length, total: seasonQuestline.steps.length },
       bingo: { shown: overviewBingoTiles.length, total: bingo.tiles.length }
     });
     const summary = {
       dailyShown: dailyChallenges.length,
       dailyTotal: BIRD_PROGRESSION_SPEC.dailyPickCount || dailyChallenges.length,
-      challengeShown: overviewChallenges.length,
-      challengeTotal: challenges.length,
-      badgeShown: overviewBadges.length,
-      badgeTotal: badges.length,
+      achievementShown: overviewChallenges.length + overviewBadges.length,
+      achievementTotal: challenges.length + badges.length,
       questShown: overviewQuests.length,
       questTotal: seasonQuestline.steps.length,
       bingoShown: overviewBingoTiles.length,
@@ -6428,9 +6493,8 @@
       steps: overviewQuests,
       completedCount: overviewQuests.filter((step) => step.completed).length
     }, stats);
-    renderBirdChallenges(overviewChallenges);
+    renderBirdChallengesAndBadges(overviewChallenges, overviewBadges);
     renderBirdSubtabDiagnostics();
-    renderBirdBadges(overviewBadges);
     renderBirdCollectionView();
     renderBirdExplorerList();
     renderBirdDetail();
@@ -6439,13 +6503,12 @@
   function renderPlaceholderSubTabs() {
     SUBTAB_KEYS.filter((key) => key !== 'birds').forEach((key) => {
       const familyGrid = document.getElementById(`${key}FamilyGrid`);
-      const challengeGrid = document.getElementById(`${key}ChallengeGrid`);
-      const badgeGrid = document.getElementById(`${key}BadgeGrid`);
+      const challengeBadgeGrid = document.getElementById(`${key}ChallengeBadgeGrid`);
       const totalSpecies = document.getElementById(`${key}TotalSpecies`);
 
       if (isConfigDrivenSubTab(key)) {
         if (totalSpecies) totalSpecies.textContent = '...';
-        [familyGrid, challengeGrid, badgeGrid].forEach((el) => {
+        [familyGrid, challengeBadgeGrid].forEach((el) => {
           if (el && !el.dataset.placeholderReady) {
             el.dataset.placeholderReady = '1';
             el.innerHTML = '<div class="nature-empty-state">Loading category configuration...</div>';
@@ -6455,7 +6518,7 @@
       }
 
       if (totalSpecies) totalSpecies.textContent = '0';
-      [familyGrid, challengeGrid, badgeGrid].forEach((el) => {
+      [familyGrid, challengeBadgeGrid].forEach((el) => {
         if (el && !el.dataset.placeholderReady) {
           el.dataset.placeholderReady = '1';
           el.innerHTML = '<div class="nature-empty-state">Structure is ready. Species data, season logic, badges, and challenges can be added next.</div>';
@@ -7465,7 +7528,8 @@
 
       const moreButton = event.target.closest('[data-birds-more]');
       if (moreButton) {
-        state.activeBirdCollection = moreButton.getAttribute('data-birds-more') || 'challenges';
+        const requested = moreButton.getAttribute('data-birds-more') || 'challenges-badges';
+        state.activeBirdCollection = (requested === 'challenges' || requested === 'badges') ? 'challenges-badges' : requested;
         setBirdView(root, 'collection');
         return;
       }

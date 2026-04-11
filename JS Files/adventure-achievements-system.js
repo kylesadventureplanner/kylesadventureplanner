@@ -638,15 +638,56 @@ window.AdventureAchievements = (function () {
   }
 
   function renderChallengesSection(key, config, sub, progress) {
-    const doneCount = config.challenges.reduce((sum, ch) => {
+    function getBadgeProgress(badge) {
+      if (badge.metric === 'total') return config.categories.reduce((s, c) => s + Number(progress.categoryVisited[c.key] || 0), 0);
+      if (badge.metric === 'challenges') return config.challenges.filter((ch) => Number(progress.challengesById[ch.id] || 0) >= ch.goal).length;
+      if (badge.metric === 'total_types') return config.categories.filter((c) => Number(progress.categoryVisited[c.key] || 0) >= 1).length;
+      return Number(progress.categoryVisited[badge.metric] || 0);
+    }
+
+    function isBadgeUnlocked(badge) {
+      return getBadgeProgress(badge) >= Number(badge.goal || 0);
+    }
+
+    function metricLabelForBadge(badge) {
+      if (badge.metric === 'total') return 'total visits';
+      if (badge.metric === 'challenges') return 'completed challenges';
+      if (badge.metric === 'total_types') return 'category types';
+      const category = config.categories.find((cat) => cat.key === badge.metric);
+      return category ? category.label.toLowerCase() : toHumanLabel(badge.metric || 'visits');
+    }
+
+    const challengeLevelCount = config.challenges.reduce((sum, ch) => {
       const progressValue = Number(progress.challengesById[ch.id] || 0);
       return sum + CHALLENGE_TIER_TARGETS.filter((target) => progressValue >= target).length;
     }, 0);
-    const totalCount = config.challenges.length * CHALLENGE_TIER_TARGETS.length;
+    const challengeTotalCount = config.challenges.length * CHALLENGE_TIER_TARGETS.length;
+    const badgeLevelCount = config.badges.reduce((sum, badge) => {
+      const progressValue = getBadgeProgress(badge);
+      return sum + BADGE_LEVEL_TARGETS.filter((target) => progressValue >= target).length;
+    }, 0);
+    const badgeTotalCount = config.badges.length * BADGE_LEVEL_TARGETS.length;
 
-    const chHtml = config.challenges.map(ch => {
+    const challengeHtml = config.challenges.map((ch) => {
       const progressValue = Number(progress.challengesById[ch.id] || 0);
       const highestTier = CHALLENGE_TIER_TARGETS.filter((target) => progressValue >= target).length;
+      let currentLevelIdx = -1;
+      CHALLENGE_TIER_TARGETS.forEach((target, idx) => {
+        if (progressValue >= target) currentLevelIdx = idx;
+      });
+      const hasNextLevel = currentLevelIdx + 1 < CHALLENGE_TIER_TARGETS.length;
+      const nextLevelIdx = currentLevelIdx + 1;
+      const nextTarget = hasNextLevel ? CHALLENGE_TIER_TARGETS[nextLevelIdx] : null;
+      const prevTarget = currentLevelIdx >= 0 ? CHALLENGE_TIER_TARGETS[currentLevelIdx] : 0;
+      const currentLevelName = currentLevelIdx >= 0 ? LEVEL_NAMES[currentLevelIdx] : null;
+      const nextLevelName = hasNextLevel ? LEVEL_NAMES[nextLevelIdx] : null;
+      let pctToNext = 0;
+      if (hasNextLevel && nextTarget > prevTarget) {
+        pctToNext = Math.max(0, Math.min(100, Math.round(((progressValue - prevTarget) / (nextTarget - prevTarget)) * 100)));
+      }
+      const levelPillHtml = currentLevelIdx >= 0
+        ? `<span class="adventure-achv-badge-level-pill adventure-achv-badge-level-pill--active">L${currentLevelIdx + 1} ${esc(currentLevelName)}</span>`
+        : `<span class="adventure-achv-badge-level-pill adventure-achv-badge-level-pill--none">Not Started</span>`;
       const tiersHtml = CHALLENGE_TIER_TARGETS.map((target, idx) => {
         const isComplete = progressValue >= target;
         const isLocked = idx > 0 && progressValue < CHALLENGE_TIER_TARGETS[idx - 1];
@@ -663,32 +704,123 @@ window.AdventureAchievements = (function () {
             <span class="adventure-achv-tier-chip-status" aria-hidden="true">${isComplete ? '✓' : (isLocked ? '🔒' : '●')}</span>
           </div>`;
       }).join('');
+      const progressHtml = hasNextLevel
+        ? `
+          <div class="adventure-achv-badge-next-info">
+            <span class="adventure-achv-badge-next-text">${progressValue}/${nextTarget} visits → <strong>L${nextLevelIdx + 1} ${esc(nextLevelName)}</strong></span>
+          </div>
+          <div class="adventure-achv-cat-bar" style="margin-top:5px;">
+            <div class="adventure-achv-cat-fill" style="width:${pctToNext}%"></div>
+          </div>`
+        : `<div class="adventure-achv-badge-maxed">🏆 Max Level – ${progressValue} visits</div>`;
 
       return `
-        <div class="adventure-achv-challenge-card${highestTier >= CHALLENGE_TIER_TARGETS.length ? ' is-complete' : ''}">
-          <div class="adventure-achv-challenge-icon">${esc(ch.icon)}</div>
-          <div class="adventure-achv-challenge-body">
-            <div class="adventure-achv-challenge-title">${esc(ch.title)}${highestTier >= CHALLENGE_TIER_TARGETS.length ? ' <span class="adventure-achv-done-check">✓</span>' : ''}</div>
-            <div class="adventure-achv-challenge-tip">${esc(ch.tip)}</div>
-            <div class="adventure-achv-challenge-meta">Progress: ${progressValue} visits • Tier ${Math.max(0, highestTier)}/${CHALLENGE_TIER_TARGETS.length}</div>
-            <div class="adventure-achv-tier-chips">${tiersHtml}</div>
-            ${progress.autoMode ? '<div class="adventure-achv-challenge-actions"><span class="adventure-achv-cat-total">Auto-synced from visited data</span></div>' : `<div class="adventure-achv-challenge-actions">
-              <button class="adventure-achv-adj-btn" data-achv-btn data-achv-type="challenges" data-achv-id="${ch.id}" data-achv-delta="-1" data-achv-goal="${ch.goal}" title="Remove one">−</button>
-              <button class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-btn data-achv-type="challenges" data-achv-id="${ch.id}" data-achv-delta="1" data-achv-goal="${ch.goal}" title="Log a visit toward this challenge">+ Log</button>
-            </div>`}
+        <div class="adventure-achv-badge-card adventure-achv-badge-card--challenge${highestTier >= CHALLENGE_TIER_TARGETS.length ? ' is-unlocked' : ''}" style="--rarity-color:#2563eb">
+          <div class="adventure-achv-badge-main">
+            <div class="adventure-achv-badge-icon">${esc(ch.icon)}</div>
+            <div class="adventure-achv-badge-body">
+              <div class="adventure-achv-badge-top-row">
+                <span class="adventure-achv-badge-title">${esc(ch.title)}${highestTier >= CHALLENGE_TIER_TARGETS.length ? ' <span class="adventure-achv-done-check">✓</span>' : ''}</span>
+                <span class="adventure-achv-badge-rarity adventure-achv-badge-rarity--challenge">Challenge</span>
+              </div>
+              <div class="adventure-achv-badge-level-row">
+                ${levelPillHtml}
+                <div class="adventure-achv-info-btn-wrap">
+                  <button class="adventure-achv-info-btn" type="button" tabindex="0" aria-label="View all levels for ${esc(ch.title)}">ⓘ
+                    <span class="adventure-achv-info-popover">
+                      <strong>${esc(ch.title)}</strong>
+                      <div class="adventure-achv-info-desc">${esc(ch.tip)}</div>
+                      <div class="adventure-achv-info-divider"></div>
+                      ${tiersHtml.replace(/data-tooltip="[^"]*"/g, '').replace(/ title="[^"]*"/g, '')}
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div class="adventure-achv-challenge-tip">${esc(ch.tip)}</div>
+              <div class="adventure-achv-challenge-meta">Progress: ${progressValue} visits • Tier ${Math.max(0, highestTier)}/${CHALLENGE_TIER_TARGETS.length}</div>
+              ${progressHtml}
+              <div class="adventure-achv-tier-chips">${tiersHtml}</div>
+              ${progress.autoMode ? '<div class="adventure-achv-challenge-actions"><span class="adventure-achv-cat-total">Auto-synced from visited data</span></div>' : `<div class="adventure-achv-challenge-actions"><button class="adventure-achv-adj-btn" data-achv-btn data-achv-type="challenges" data-achv-id="${ch.id}" data-achv-delta="-1" data-achv-goal="${ch.goal}" title="Remove one">−</button><button class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-btn data-achv-type="challenges" data-achv-id="${ch.id}" data-achv-delta="1" data-achv-goal="${ch.goal}" title="Log a visit toward this challenge">+ Log</button></div>`}
+            </div>
           </div>
         </div>`;
     }).join('');
+
+    const badgeHtml = config.badges.map((badge) => {
+      const unlocked = isBadgeUnlocked(badge);
+      const badgeProgress = getBadgeProgress(badge);
+      const color = RARITY_COLORS[badge.rarity] || '#6b7280';
+      const focusLabel = metricLabelForBadge(badge);
+      let currentLevelIdx = -1;
+      BADGE_LEVEL_TARGETS.forEach((target, idx) => {
+        if (badgeProgress >= target) currentLevelIdx = idx;
+      });
+      const hasNextLevel = currentLevelIdx + 1 < BADGE_LEVEL_TARGETS.length;
+      const nextLevelIdx = currentLevelIdx + 1;
+      const nextTarget = hasNextLevel ? BADGE_LEVEL_TARGETS[nextLevelIdx] : null;
+      const currentLevelName = currentLevelIdx >= 0 ? LEVEL_NAMES[currentLevelIdx] : null;
+      const nextLevelName = hasNextLevel ? LEVEL_NAMES[nextLevelIdx] : null;
+      const prevTarget = currentLevelIdx >= 0 ? BADGE_LEVEL_TARGETS[currentLevelIdx] : 0;
+      let pctToNext = 0;
+      if (hasNextLevel && nextTarget > prevTarget) {
+        pctToNext = Math.max(0, Math.min(100, Math.round(((badgeProgress - prevTarget) / (nextTarget - prevTarget)) * 100)));
+      }
+      const levelPillHtml = currentLevelIdx >= 0
+        ? `<span class="adventure-achv-badge-level-pill adventure-achv-badge-level-pill--active">L${currentLevelIdx + 1} ${esc(currentLevelName)}</span>`
+        : `<span class="adventure-achv-badge-level-pill adventure-achv-badge-level-pill--none">Not Started</span>`;
+      const progressHtml = hasNextLevel
+        ? `
+          <div class="adventure-achv-badge-next-info">
+            <span class="adventure-achv-badge-next-text">${badgeProgress}/${nextTarget} ${esc(focusLabel)} → <strong>L${nextLevelIdx + 1} ${esc(nextLevelName)}</strong></span>
+          </div>
+          <div class="adventure-achv-cat-bar" style="margin-top:5px;">
+            <div class="adventure-achv-cat-fill" style="width:${pctToNext}%"></div>
+          </div>`
+        : `<div class="adventure-achv-badge-maxed">🏆 Max Level – ${badgeProgress} ${esc(focusLabel)}</div>`;
+      const allLevelsDivs = BADGE_LEVEL_TARGETS.map((target, idx) => {
+        const done = badgeProgress >= target;
+        const plus = idx === BADGE_LEVEL_TARGETS.length - 1 ? '+' : '';
+        return `<div class="adventure-achv-info-level-row${done ? ' is-done' : ''}">${done ? '✓' : '○'} L${idx + 1} ${esc(LEVEL_NAMES[idx])}: ${target}${plus} ${esc(focusLabel)}</div>`;
+      }).join('');
+
+      return `
+        <div class="adventure-achv-badge-card${unlocked ? ' is-unlocked' : ''}" style="--rarity-color:${color}">
+          <div class="adventure-achv-badge-main">
+            <div class="adventure-achv-badge-icon">${unlocked ? esc(badge.icon) : '🔒'}</div>
+            <div class="adventure-achv-badge-body">
+              <div class="adventure-achv-badge-top-row">
+                <span class="adventure-achv-badge-title">${esc(badge.title)}</span>
+                <span class="adventure-achv-badge-rarity" style="color:${color}">${RARITY_LABELS[badge.rarity] || badge.rarity}</span>
+              </div>
+              <div class="adventure-achv-badge-level-row">
+                ${levelPillHtml}
+                <div class="adventure-achv-info-btn-wrap">
+                  <button class="adventure-achv-info-btn" type="button" tabindex="0" aria-label="View all levels for ${esc(badge.title)}">ⓘ
+                    <span class="adventure-achv-info-popover">
+                      <strong>${esc(badge.title)}</strong>
+                      <div class="adventure-achv-info-desc">${esc(badge.description)}</div>
+                      <div class="adventure-achv-info-divider"></div>
+                      ${allLevelsDivs}
+                    </span>
+                  </button>
+                </div>
+              </div>
+              ${progressHtml}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
     return `
       <div class="card adventure-achv-section">
         <div class="card-header">
           <div>
-            <div class="card-title">🎯 Challenges</div>
-            <div class="card-subtitle">Progressive challenge gates unlock one-by-one as you advance.</div>
+            <div class="card-title">🏅 Challenges &amp; Badges</div>
+            <div class="card-subtitle">Challenge goals and badges now share one achievement wall using the same badge layout.</div>
           </div>
-          <div class="adventure-achv-count-badge">${doneCount}/${totalCount}</div>
+          <div class="adventure-achv-count-badge">${challengeLevelCount + badgeLevelCount}/${challengeTotalCount + badgeTotalCount}</div>
         </div>
-        <div class="adventure-achv-challenge-grid">${chHtml}</div>
+        <div class="adventure-achv-badge-grid">${challengeHtml}${badgeHtml}</div>
       </div>`;
   }
 
@@ -909,7 +1041,6 @@ window.AdventureAchievements = (function () {
       renderSyncModeSection(key, progress) +
       renderCategorySection(key, config, sub, progress) +
       renderChallengesSection(key, config, sub, progress) +
-      renderBadgesSection(key, config, sub, progress) +
       renderQuestsSection(key, config, sub) +
       renderBingoSection(key, config, sub);
 

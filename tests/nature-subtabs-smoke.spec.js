@@ -26,6 +26,7 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(birdsDiagnosticsRow).toContainText('Sightings/User State');
   });
 
+
   test('mammals diagnostics row contains stable labels', async ({ page }) => {
     await page.locator('#appSubTabsSlot [data-nature-subtab="mammals"]').click();
     const mammalsDiagnosticsRow = page.locator('#mammalsDiagnosticsRow');

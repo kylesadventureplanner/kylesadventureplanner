@@ -70,12 +70,11 @@
           <div id="birdsOverviewCommandHint" class="nature-command-region-hint">Use short commands to search birds, go to a section, or open the sighting log.</div>
         </div>
         <div class="nature-overview-command-row">
-          <input id="birdsOverviewCommandInput" class="filter-input" type="text" placeholder="Type a command (e.g., search heron, go badges, log)" aria-label="Birds command bar" title="Type a Birds command such as search heron, go badges, or log" data-tooltip="Type a Birds command such as search heron, go badges, or log" aria-describedby="birdsOverviewCommandHint birdsOverviewCommandHelp" list="birdsOverviewCommandSuggestions" />
+          <input id="birdsOverviewCommandInput" class="filter-input" type="text" placeholder="Type a command (e.g., search heron, go challenges and badges, log)" aria-label="Birds command bar" title="Type a Birds command such as search heron, go challenges and badges, or log" data-tooltip="Type a Birds command such as search heron, go challenges and badges, or log" aria-describedby="birdsOverviewCommandHint birdsOverviewCommandHelp" list="birdsOverviewCommandSuggestions" />
           <button type="button" id="birdsOverviewCommandRunBtn" class="pill-button nature-command-btn" title="Run the current Birds command" data-tooltip="Run the current Birds command">Run</button>
           <button type="button" id="birdsOverviewCommandClearBtn" class="pill-button nature-command-btn" title="Clear the current Birds command" data-tooltip="Clear the current Birds command" aria-label="Clear the current Birds command">x</button>
            <button type="button" id="birdsResetUiBtn" class="pill-button nature-command-btn" title="Reset the Birds UI" data-tooltip="Reset the Birds UI">Reset Birds UI</button>
-           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="challenges" title="Go to the Challenges section" data-tooltip="Go to the Challenges section">Challenges</button>
-           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="badges" title="Go to the Badges section" data-tooltip="Go to the Badges section">Badges</button>
+           <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="challenges-badges" title="Go to the Challenges and Badges section" data-tooltip="Go to the Challenges and Badges section">Challenges &amp; Badges</button>
            <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="quests" title="Go to the Quests section" data-tooltip="Go to the Quests section">Quests</button>
            <button type="button" class="pill-button nature-command-btn" data-birds-overview-jump="bingo" title="Go to the Bingo section" data-tooltip="Go to the Bingo section">Bingo</button>
         </div>
@@ -90,6 +89,8 @@
             <code>overview</code>
             <code>explore</code>
             <code>open explorer</code>
+            <code>go challenges and badges</code>
+            <code>go achievements</code>
             <code>go badges</code>
             <code>go challenges</code>
             <code>go quests</code>
@@ -114,6 +115,8 @@
         <datalist id="birdsOverviewCommandSuggestions">
           <option value="log"></option>
           <option value="go overview"></option>
+          <option value="go challenges and badges"></option>
+          <option value="go achievements"></option>
           <option value="go badges"></option>
           <option value="go challenges"></option>
           <option value="go quests"></option>
@@ -193,36 +196,20 @@
         <div id="birdsDailyChallengeGrid" class="nature-challenge-grid"></div>
       </div>
 
-      <div class="card nature-overview-section-card" id="birdsOverviewSectionChallenges">
+      <div class="card nature-overview-section-card" id="birdsOverviewSectionChallengesBadges">
         <div class="card-header">
           <div>
-            <div class="card-title" role="heading" aria-level="3">🎯 Challenges</div>
-            <div class="card-subtitle">Complete challenges to earn rewards.</div>
+            <div class="card-title" role="heading" aria-level="3">🏅 Challenges &amp; Badges</div>
+            <div class="card-subtitle">Your challenge goals and badges now live together in one achievement wall.</div>
           </div>
           <div class="nature-overview-header-actions">
-            <button type="button" id="birdsChallengesBackToTopBtn" class="pill-button nature-command-btn" data-birds-back-to-top="challenges" title="Go to the top of Birds overview" data-tooltip="Go to the top of Birds overview">↑ Top</button>
-            <button type="button" class="pill-button nature-more-btn" data-birds-more="challenges" title="Open all challenge cards" data-tooltip="Open all challenge cards">More</button>
+            <button type="button" id="birdsChallengesBadgesBackToTopBtn" class="pill-button nature-command-btn" data-birds-back-to-top="challenges-badges" title="Go to the top of Birds overview" data-tooltip="Go to the top of Birds overview">↑ Top</button>
+            <button type="button" class="pill-button nature-more-btn" data-birds-more="challenges-badges" title="Open all challenge and badge cards" data-tooltip="Open all challenge and badge cards">More</button>
           </div>
         </div>
-        <div id="birdsChallengesCountBadge" class="nature-section-count-badge">4/10</div>
-        <div id="birdsChallengesSummary" class="nature-section-summary">Showing prioritized challenge cards.</div>
-        <div id="birdsChallengeGrid" class="nature-challenge-grid"></div>
-      </div>
-
-      <div class="card nature-overview-section-card" id="birdsOverviewSectionBadges">
-        <div class="card-header">
-          <div>
-            <div class="card-title" role="heading" aria-level="3">🏅 Badges</div>
-            <div class="card-subtitle">Unlock achievements as you progress.</div>
-          </div>
-          <div class="nature-overview-header-actions">
-            <button type="button" id="birdsBadgesBackToTopBtn" class="pill-button nature-command-btn" data-birds-back-to-top="badges" title="Go to the top of Birds overview" data-tooltip="Go to the top of Birds overview">↑ Top</button>
-            <button type="button" class="pill-button nature-more-btn" data-birds-more="badges" title="Open all badge cards" data-tooltip="Open all badge cards">More</button>
-          </div>
-        </div>
-        <div id="birdsBadgesCountBadge" class="nature-section-count-badge">4/11</div>
-        <div id="birdsBadgesSummary" class="nature-section-summary">Showing prioritized badge cards.</div>
-        <div id="birdsBadgeGrid" class="nature-badge-grid"></div>
+        <div id="birdsChallengesBadgesCountBadge" class="nature-section-count-badge">8/21</div>
+        <div id="birdsChallengesBadgesSummary" class="nature-section-summary">Showing prioritized challenge and badge cards.</div>
+        <div id="birdsChallengesBadgesGrid" class="nature-badge-grid"></div>
       </div>
 
       <div class="card nature-overview-section-card" id="birdsOverviewSectionQuests">
@@ -638,22 +625,12 @@
       <div id="mammalsFamilyGrid" class="nature-family-grid"></div>
     </div>
 
-    <!-- Challenges -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
+        <div class="card-title">🏅 Challenges &amp; Badges</div>
+        <div class="card-subtitle">Challenge goals and badges share one achievement wall.</div>
       </div>
-      <div id="mammalsChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="mammalsBadgeGrid" class="nature-badge-grid"></div>
+      <div id="mammalsChallengeBadgeGrid" class="nature-badge-grid"></div>
     </div>
   </div>
 
@@ -686,22 +663,12 @@
       <div id="reptilesFamilyGrid" class="nature-family-grid"></div>
     </div>
 
-    <!-- Challenges -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
+        <div class="card-title">🏅 Challenges &amp; Badges</div>
+        <div class="card-subtitle">Challenge goals and badges share one achievement wall.</div>
       </div>
-      <div id="reptilesChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="reptilesBadgeGrid" class="nature-badge-grid"></div>
+      <div id="reptilesChallengeBadgeGrid" class="nature-badge-grid"></div>
     </div>
   </div>
 
@@ -734,22 +701,12 @@
       <div id="amphibiansFamilyGrid" class="nature-family-grid"></div>
     </div>
 
-    <!-- Challenges -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
+        <div class="card-title">🏅 Challenges &amp; Badges</div>
+        <div class="card-subtitle">Challenge goals and badges share one achievement wall.</div>
       </div>
-      <div id="amphibiansChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="amphibiansBadgeGrid" class="nature-badge-grid"></div>
+      <div id="amphibiansChallengeBadgeGrid" class="nature-badge-grid"></div>
     </div>
   </div>
 
@@ -782,22 +739,12 @@
       <div id="insectsFamilyGrid" class="nature-family-grid"></div>
     </div>
 
-    <!-- Challenges -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
+        <div class="card-title">🏅 Challenges &amp; Badges</div>
+        <div class="card-subtitle">Challenge goals and badges share one achievement wall.</div>
       </div>
-      <div id="insectsChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="insectsBadgeGrid" class="nature-badge-grid"></div>
+      <div id="insectsChallengeBadgeGrid" class="nature-badge-grid"></div>
     </div>
   </div>
 
@@ -830,22 +777,12 @@
       <div id="arachnidsFamilyGrid" class="nature-family-grid"></div>
     </div>
 
-    <!-- Challenges -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
+        <div class="card-title">🏅 Challenges &amp; Badges</div>
+        <div class="card-subtitle">Challenge goals and badges share one achievement wall.</div>
       </div>
-      <div id="arachnidsChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="arachnidsBadgeGrid" class="nature-badge-grid"></div>
+      <div id="arachnidsChallengeBadgeGrid" class="nature-badge-grid"></div>
     </div>
   </div>
 
@@ -878,22 +815,12 @@
       <div id="wildflowersFamilyGrid" class="nature-family-grid"></div>
     </div>
 
-    <!-- Challenges -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
+        <div class="card-title">🏅 Challenges &amp; Badges</div>
+        <div class="card-subtitle">Challenge goals and badges share one achievement wall.</div>
       </div>
-      <div id="wildflowersChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="wildflowersBadgeGrid" class="nature-badge-grid"></div>
+      <div id="wildflowersChallengeBadgeGrid" class="nature-badge-grid"></div>
     </div>
   </div>
 
@@ -925,22 +852,12 @@
       <div id="treesFamilyGrid" class="nature-family-grid"></div>
     </div>
 
-    <!-- Challenges -->
     <div class="card">
       <div class="card-header">
-        <div class="card-title">🎯 Challenges</div>
-        <div class="card-subtitle">Complete challenges to earn rewards.</div>
+        <div class="card-title">🏅 Challenges &amp; Badges</div>
+        <div class="card-subtitle">Challenge goals and badges share one achievement wall.</div>
       </div>
-      <div id="treesChallengeGrid" class="nature-challenge-grid"></div>
-    </div>
-
-    <!-- Badges -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">🏅 Badges</div>
-        <div class="card-subtitle">Unlock achievements as you progress.</div>
-      </div>
-      <div id="treesBadgeGrid" class="nature-badge-grid"></div>
+      <div id="treesChallengeBadgeGrid" class="nature-badge-grid"></div>
     </div>
   </div>
 
@@ -3150,6 +3067,55 @@
     box-shadow: 0 10px 22px rgba(245, 158, 11, 0.16);
   }
 
+  #natureChallengeRoot .nature-badge-card--challenge {
+    border-color: #bfdbfe;
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
+  }
+
+  #natureChallengeRoot .nature-badge-card--challenge.unlocked {
+    border-color: #60a5fa;
+    background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.14);
+  }
+
+  #natureChallengeRoot .nature-badge-kind-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+  }
+
+  #natureChallengeRoot .nature-badge-kind-pill--challenge {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  #natureChallengeRoot .nature-badge-kind-pill--badge {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #a16207;
+  }
+
+  #natureChallengeRoot .nature-achievement-group-heading {
+    grid-column: 1 / -1;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #475569;
+    margin: 6px 0 -2px;
+  }
+
   #natureChallengeRoot .nature-badge-progress {
     font-size: 12px;
     color: #475569;
@@ -3421,9 +3387,8 @@
     }
 
     #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsDailyChallengeGrid .nature-challenge-card-description,
-    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsChallengeGrid .nature-challenge-card-description,
     #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsSeasonQuestGrid .nature-challenge-card-description,
-    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsBadgeGrid .nature-badge-card-description {
+    #natureChallengeRoot .nature-birds-view[data-birds-view="overview"] #birdsChallengesBadgesGrid .nature-badge-card-description {
       line-height: 1.45;
       min-height: calc(1.45em * 2);
     }
