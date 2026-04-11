@@ -447,6 +447,92 @@ window.AdventureAchievements = (function () {
     return { loaded: Boolean(exp.loaded), items: exp.items };
   }
 
+  function collectVisitRecordCategoryCounts(subtabKey, config) {
+    const records = Array.isArray(window.__visitedState?.visitRecords) ? window.__visitedState.visitRecords : [];
+    const counts = {};
+    (config.categories || []).forEach((cat) => {
+      counts[cat.key] = 0;
+    });
+    let total = 0;
+
+    records.forEach((record) => {
+      if (!record || record.subtabKey !== subtabKey) return;
+      const keys = Array.isArray(record.categoryKeys) ? record.categoryKeys : [];
+      keys.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(counts, key)) {
+          counts[key] += 1;
+          total += 1;
+        }
+      });
+    });
+
+    return { counts, total };
+  }
+
+  function getVisitRecordsForSubtab(subtabKey) {
+    const records = Array.isArray(window.__visitedState?.visitRecords) ? window.__visitedState.visitRecords : [];
+    return records.filter((record) => record && record.subtabKey === subtabKey);
+  }
+
+  function countVisitRecordsForWindow(records, windowKey) {
+    const list = Array.isArray(records) ? records : [];
+    if (windowKey === 'all') return list.length;
+    const now = new Date();
+    if (windowKey === 'today') {
+      const ymd = now.toISOString().slice(0, 10);
+      return list.filter((record) => String(record?.visitedAt || '').slice(0, 10) === ymd).length;
+    }
+    if (windowKey === 'week') {
+      const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      return list.filter((record) => new Date(record?.visitedAt || 0).getTime() >= cutoff).length;
+    }
+    if (windowKey === 'month') {
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      return list.filter((record) => {
+        const d = new Date(record?.visitedAt || 0);
+        return d.getFullYear() === y && d.getMonth() === m;
+      }).length;
+    }
+    return list.length;
+  }
+
+  function getQuestStepGoal(stepText) {
+    const match = String(stepText || '').match(/(\d+)/);
+    return match ? Math.max(1, parseInt(match[1], 10)) : 1;
+  }
+
+  function getQuestStepCategoryKeys(subtabKey, stepText, config) {
+    const text = norm(stepText);
+    const keys = new Set();
+    const keywordMap = CATEGORY_KEYWORDS[subtabKey] || {};
+    Object.keys(keywordMap).forEach((catKey) => {
+      const words = keywordMap[catKey] || [];
+      if (words.some((word) => text.includes(norm(word)))) keys.add(catKey);
+    });
+
+    (config.categories || []).forEach((cat) => {
+      const label = norm(cat.label || '');
+      if (label && text.includes(label)) keys.add(cat.key);
+    });
+    return Array.from(keys);
+  }
+
+  function isQuestStepDoneFromVisits(subtabKey, stepText, config, progress, records) {
+    const goal = getQuestStepGoal(stepText);
+    const text = norm(stepText);
+    const matchedKeys = getQuestStepCategoryKeys(subtabKey, stepText, config);
+    if (matchedKeys.length > 0) {
+      const value = matchedKeys.reduce((sum, key) => sum + Number(progress.categoryVisited[key] || 0), 0);
+      return value >= goal;
+    }
+
+    if (text.includes('today')) return countVisitRecordsForWindow(records, 'today') >= goal;
+    if (text.includes('week')) return countVisitRecordsForWindow(records, 'week') >= goal;
+    if (text.includes('month')) return countVisitRecordsForWindow(records, 'month') >= goal;
+    return countVisitRecordsForWindow(records, 'all') >= goal;
+  }
+
   function collectVisitedSignals() {
     const visitMap = window.__visitedState?.latestVisitMap || {};
     const names = new Set();
@@ -549,6 +635,15 @@ window.AdventureAchievements = (function () {
       });
     }
 
+    if (!isManual) {
+      const recordCounts = collectVisitRecordCategoryCounts(subtabKey, config);
+      if (recordCounts.total > 0) {
+        config.categories.forEach((cat) => {
+          categoryVisited[cat.key] = Number(recordCounts.counts[cat.key] || 0);
+        });
+      }
+    }
+
     const challengesById = {};
     config.challenges.forEach((challenge) => {
       let progress = 0;
@@ -644,6 +739,7 @@ window.AdventureAchievements = (function () {
         </div>`;
     }).join('');
     const totalVisited = progress.totalVisited;
+    const visitLogCtaHtml = ` <button type="button" class="adventure-achv-adj-btn" data-achv-log-visit data-achv-subtab="${key}" title="Log a dated visit with notes">Log Visit</button>`;
     const totalsHintHtml = progress.explorerLoaded
       ? ''
       : ` <button type="button" class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-sync-totals data-achv-subtab="${key}" title="Load category totals now">Sync category totals now</button>`;
@@ -652,7 +748,7 @@ window.AdventureAchievements = (function () {
         <div class="card-header">
           <div>
             <div class="card-title">📊 Category Progression</div>
-            <div class="card-subtitle">Track your ${esc(config.label)} visits by category. Total logged: <strong>${totalVisited}</strong>.${totalsHintHtml}</div>
+            <div class="card-subtitle">Track your ${esc(config.label)} visits by category. Total logged: <strong>${totalVisited}</strong>.${visitLogCtaHtml}${totalsHintHtml}</div>
           </div>
         </div>
         <div class="adventure-achv-cat-grid">${catHtml}</div>
@@ -742,8 +838,10 @@ window.AdventureAchievements = (function () {
             <div class="adventure-achv-badge-icon">${esc(ch.icon)}</div>
             <div class="adventure-achv-badge-body">
               <div class="adventure-achv-badge-top-row">
-                <span class="adventure-achv-badge-title">${esc(ch.title)}${highestTier >= CHALLENGE_TIER_TARGETS.length ? ' <span class="adventure-achv-done-check">✓</span>' : ''}</span>
-                <span class="adventure-achv-badge-rarity adventure-achv-badge-rarity--challenge">Challenge</span>
+                <span class="adventure-achv-badge-title-wrap">
+                  <span class="adventure-achv-badge-title">${esc(ch.title)}${highestTier >= CHALLENGE_TIER_TARGETS.length ? ' <span class="adventure-achv-done-check">✓</span>' : ''}</span>
+                  <span class="adventure-achv-badge-rarity adventure-achv-badge-rarity--challenge">Challenge</span>
+                </span>
               </div>
               <div class="adventure-achv-badge-level-row">
                 ${levelPillHtml}
@@ -811,8 +909,10 @@ window.AdventureAchievements = (function () {
             <div class="adventure-achv-badge-icon">${unlocked ? esc(badge.icon) : '🔒'}</div>
             <div class="adventure-achv-badge-body">
               <div class="adventure-achv-badge-top-row">
-                <span class="adventure-achv-badge-title">${esc(badge.title)}</span>
-                <span class="adventure-achv-badge-rarity" style="color:${color}">${RARITY_LABELS[badge.rarity] || badge.rarity}</span>
+                <span class="adventure-achv-badge-title-wrap">
+                  <span class="adventure-achv-badge-title">${esc(badge.title)}</span>
+                  <span class="adventure-achv-badge-rarity" style="color:${color}">${RARITY_LABELS[badge.rarity] || badge.rarity}</span>
+                </span>
               </div>
               <div class="adventure-achv-badge-level-row">
                 ${levelPillHtml}
@@ -977,22 +1077,22 @@ window.AdventureAchievements = (function () {
       </div>`;
   }
 
-  function renderQuestsSection(key, config, sub) {
+  function renderQuestsSection(key, config, progress) {
     const season = currentSeason();
+    const records = getVisitRecordsForSubtab(key);
     const questHtml = config.quests.map(quest => {
       const isCurrent = quest.season === season;
       const meta = SEASON_MAP[quest.season];
       const stepsHtml = quest.steps.map((step, i) => {
-        const stepKey = `${quest.id}-step-${i}`;
-        const done = getVal(sub.quest, stepKey) >= 1;
+        const done = isQuestStepDoneFromVisits(key, step, config, progress, records);
         return `
           <div class="adventure-achv-quest-step${done ? ' is-done' : ''}">
             <span class="adventure-achv-step-check">${done ? '✅' : '○'}</span>
             <span class="adventure-achv-step-text">${esc(step)}</span>
-            <button class="adventure-achv-step-btn" data-achv-btn data-achv-type="quest" data-achv-id="${stepKey}" data-achv-delta="${done ? -1 : 1}" data-achv-goal="1" title="${done ? 'Unmark' : 'Mark done'}">${done ? 'Undo' : 'Done'}</button>
+            <span class="adventure-achv-cat-total">Auto</span>
           </div>`;
       }).join('');
-      const doneSteps = quest.steps.filter((_, i) => getVal(sub.quest, `${quest.id}-step-${i}`) >= 1).length;
+      const doneSteps = quest.steps.filter((step) => isQuestStepDoneFromVisits(key, step, config, progress, records)).length;
       const questDone = doneSteps >= quest.steps.length;
       return `
         <div class="adventure-achv-quest-card${isCurrent ? ' is-current-season' : ''}${questDone ? ' is-complete' : ''}">
@@ -1014,32 +1114,32 @@ window.AdventureAchievements = (function () {
       </div>`;
   }
 
-  function renderBingoSection(key, config, sub) {
-    const markedCount = config.bingo.filter(tile => Boolean(sub.bingo?.[tile.key])).length;
+  function renderBingoSection(key, config, progress) {
+    const markedCount = config.bingo.filter(tile => Number(progress.categoryVisited[tile.key] || 0) > 0).length;
     const total = config.bingo.length;
     // Check rows/columns/diagonal for 3x3 (9 tiles)
     let bingo = false;
     if (total === 9) {
-      const m = (idx) => Boolean(sub.bingo?.[config.bingo[idx].key]);
+      const m = (idx) => Number(progress.categoryVisited[config.bingo[idx].key] || 0) > 0;
       bingo = (m(0)&&m(1)&&m(2)) || (m(3)&&m(4)&&m(5)) || (m(6)&&m(7)&&m(8)) ||
               (m(0)&&m(3)&&m(6)) || (m(1)&&m(4)&&m(7)) || (m(2)&&m(5)&&m(8)) ||
               (m(0)&&m(4)&&m(8)) || (m(2)&&m(4)&&m(6));
     }
     const tilesHtml = config.bingo.map(tile => {
-      const marked = Boolean(sub.bingo?.[tile.key]);
+      const marked = Number(progress.categoryVisited[tile.key] || 0) > 0;
       return `
-        <button class="adventure-achv-bingo-tile${marked ? ' is-marked' : ''}" data-bingo-tile="${tile.key}" title="${marked ? 'Unmark' : 'Mark'}: ${esc(tile.label)}" aria-pressed="${marked}">
+        <div class="adventure-achv-bingo-tile${marked ? ' is-marked' : ''}" title="${marked ? 'Completed from visit log' : 'Not yet completed from visit log'}: ${esc(tile.label)}" aria-label="${esc(tile.label)} ${marked ? 'completed' : 'not completed'}">
           <span class="adventure-achv-bingo-icon">${esc(tile.icon)}</span>
           <span class="adventure-achv-bingo-label">${esc(tile.label)}</span>
           ${marked ? '<span class="adventure-achv-bingo-check" aria-hidden="true">✓</span>' : ''}
-        </button>`;
+        </div>`;
     }).join('');
     return `
       <div id="${getAchvSectionId(key, 'bingo')}" class="card adventure-achv-section">
         <div class="card-header">
           <div>
             <div class="card-title">🟩 ${esc(config.label)} Bingo</div>
-            <div class="card-subtitle">Tap tiles when you visit that category. Complete a row, column, or diagonal for BINGO!</div>
+            <div class="card-subtitle">Auto-synced from your logged visits. Complete a row, column, or diagonal for BINGO!</div>
           </div>
           <div class="adventure-achv-count-badge">${markedCount}/${total}</div>
         </div>
@@ -1062,8 +1162,8 @@ window.AdventureAchievements = (function () {
     container.innerHTML =
       renderCategorySection(key, config, sub, progress) +
       renderChallengesSection(key, config, sub, progress) +
-      renderQuestsSection(key, config, sub) +
-      renderBingoSection(key, config, sub);
+      renderQuestsSection(key, config, progress) +
+      renderBingoSection(key, config, progress);
 
     renderSyncModeInDiagnostics(key, progress);
 
@@ -1100,12 +1200,31 @@ window.AdventureAchievements = (function () {
       });
     }
 
+    const logVisitBtn = container.querySelector('[data-achv-log-visit]');
+    if (logVisitBtn) {
+      logVisitBtn.addEventListener('click', async () => {
+        if (typeof window.openVisitedVisitLogFromAchievements === 'function') {
+          await window.openVisitedVisitLogFromAchievements(key);
+        }
+      });
+    }
+
     container.querySelectorAll('[data-achv-btn]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const type = btn.getAttribute('data-achv-type');
         const id = btn.getAttribute('data-achv-id');
         const delta = parseInt(btn.getAttribute('data-achv-delta') || '1', 10);
+        if (type !== 'quest' && typeof window.openVisitedVisitLogFromAchievements === 'function') {
+          await window.openVisitedVisitLogFromAchievements({
+            subtabKey: key,
+            mode: delta < 0 ? 'remove' : 'add',
+            hint: delta < 0
+              ? 'Choose a location/date to remove one logged visit record.'
+              : 'Choose a qualifying location/date and optionally add notes.'
+          });
+          return;
+        }
         const goal = parseInt(btn.getAttribute('data-achv-goal') || '1', 10);
         const sub = getSubState(state, key);
         if (!sub[type]) sub[type] = {};

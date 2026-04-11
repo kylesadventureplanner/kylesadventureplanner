@@ -7,6 +7,7 @@
   const STORAGE_KEY = 'visitedLocationsTrackerV1';
   const CHALLENGE_STATE_KEY = 'visitedLocationsChallengeStateV1';
   const VISITED_META_KEY = 'visitedLocationsMetaV1';
+  const VISIT_RECORDS_KEY = 'visitedLocationRecordsV1';
 
   const CATEGORY_DEFS = [
     { key: 'hiking', label: 'Hiking Trails', icon: '🥾', keywords: ['hiking', 'trail', 'mountain', 'summit'] },
@@ -116,6 +117,24 @@
     'wildlife-animals': 'Wildlife & Animals',
     'regional-festivals': 'Regional Festivals',
     'bike-trails': 'Bike Trails'
+  };
+  const PROGRESS_SUBTAB_EXPLORE_LABELS = {
+    outdoors: 'Outdoors',
+    entertainment: 'Entertainment',
+    'food-drink': 'Food & Drink',
+    retail: 'Retail',
+    'wildlife-animals': 'Wildlife & Animal Locations',
+    'regional-festivals': 'Regional Festivals',
+    'bike-trails': 'Bike Trails'
+  };
+  const CITY_EXPLORER_PREFILTERS = {
+    outdoors: { tag: 'hiking', label: 'Outdoors' },
+    entertainment: { tag: 'entertainment', label: 'Entertainment' },
+    'food-drink': { tag: 'restaurant', label: 'Food & Drink' },
+    retail: { tag: 'retail', label: 'Retail' },
+    'wildlife-animals': { tag: 'wildlife', label: 'Wildlife & Animals' },
+    'regional-festivals': { tag: 'festival', label: 'Regional Festivals' },
+    'bike-trails': { tag: 'bike', label: 'Bike Trails' }
   };
   // Prefer known Copilot workbook folders first to avoid predictable root-level 404 probe noise.
   const EXPLORER_WORKBOOK_PREFIXES = ['Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/', ''];
@@ -229,7 +248,8 @@
      lastCategoryFilterClick: 0,
      categoryFilterDebounceMs: 100
       ,
-      subtabExplorer: {}
+      subtabExplorer: {},
+      visitRecords: []
    };
 
   function shouldLogVisitedDiagnostics() {
@@ -453,6 +473,50 @@
       el.focus({ preventScroll: true });
       window.setTimeout(() => el.removeAttribute('tabindex'), 700);
     }
+  }
+
+  function openCityExplorerForSubtab(subtabKey) {
+    const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
+    const filter = CITY_EXPLORER_PREFILTERS[key] || { tag: '', label: PROGRESS_SUBTAB_EXPLORE_LABELS[key] || 'Adventure' };
+    if (typeof window.openCityViewerInNewTab === 'function') {
+      window.openCityViewerInNewTab({
+        prefilterTag: filter.tag,
+        prefilterLabel: filter.label,
+        sourceSubtab: key
+      });
+      return;
+    }
+    if (typeof window.openCityViewerWindow === 'function') {
+      window.openCityViewerWindow();
+    }
+  }
+
+  function syncExploreActionButtons() {
+    PROGRESS_SUBTAB_KEYS.forEach((subtabKey) => {
+      const label = PROGRESS_SUBTAB_EXPLORE_LABELS[subtabKey] || 'Locations';
+      const exploreAction = subtabKey === 'bike-trails' ? 'explore-bike-trails' : `open-explorer-${subtabKey}`;
+      const cityAction = `open-city-explorer-${subtabKey}`;
+      const exploreBtn = document.querySelector(`[data-visited-subtab-action="${exploreAction}"]`);
+      const cityBtn = document.querySelector(`[data-visited-subtab-action="${cityAction}"]`);
+      if (exploreBtn) {
+        exploreBtn.classList.add('visited-subtab-action-btn--explore');
+        exploreBtn.textContent = `🔎 Explore ${label}`;
+        if (subtabKey === 'bike-trails') {
+          const bikeCount = (state.latestLocations || []).filter((item) => item && item.sourceType === 'bike').length;
+          exploreBtn.setAttribute('data-explore-count', bikeCount > 0 ? String(bikeCount) : '');
+        } else {
+          const explorerState = getExplorerState(subtabKey);
+          const total = Array.isArray(explorerState.items) ? explorerState.items.length : 0;
+          exploreBtn.setAttribute('data-explore-count', total > 0 ? String(total) : '');
+        }
+      }
+      if (cityBtn) {
+        cityBtn.classList.add('visited-subtab-action-btn--city');
+        cityBtn.textContent = '🏙️ City Explorer';
+        cityBtn.setAttribute('title', `Open City Explorer filtered for ${label}`);
+        cityBtn.setAttribute('data-tooltip', `Open City Explorer filtered for ${label}`);
+      }
+    });
   }
 
   function syncVisitedOverviewView(root) {
@@ -791,6 +855,7 @@
         tone
       });
     });
+    syncExploreActionButtons();
   }
 
   function renderLoadingState() {
@@ -1170,6 +1235,20 @@
     localStorage.setItem(VISITED_META_KEY, JSON.stringify(state.metaState || {}));
   }
 
+  function loadVisitRecords() {
+    state.visitRecords = safeJsonParse(localStorage.getItem(VISIT_RECORDS_KEY), []) || [];
+    if (!Array.isArray(state.visitRecords)) state.visitRecords = [];
+  }
+
+  function saveVisitRecords() {
+    localStorage.setItem(VISIT_RECORDS_KEY, JSON.stringify(state.visitRecords || []));
+  }
+
+  function getVisitRecordsForSubtab(subtabKey) {
+    const key = String(subtabKey || '').trim();
+    return (state.visitRecords || []).filter((record) => record && record.subtabKey === key);
+  }
+
 
   function triggerBadgeCelebration(newlyUnlocked) {
     // Celebration FX disabled by UX request (no confetti / no sound toggles).
@@ -1374,6 +1453,21 @@
     return true;
   }
 
+  async function openVisitedVisitLogFromAchievements(options) {
+    const raw = options && typeof options === 'object' ? options : { subtabKey: options };
+    const key = String(raw.subtabKey || state.activeProgressSubTab || 'outdoors').trim();
+    const root = document.getElementById('visitedLocationsRoot');
+    if (root && key !== state.activeProgressSubTab) {
+      setActiveProgressSubTab(root, key);
+    }
+    await openVisitLogModal({
+      subtabKey: key,
+      itemId: raw.itemId,
+      mode: raw.mode,
+      hint: raw.hint
+    });
+  }
+
   function buildExplorerFilters(explorerState) {
     const values = {
       query: norm(explorerState.query),
@@ -1436,6 +1530,127 @@
     const target = String(itemId || '').trim();
     if (!target) return null;
     return (explorerState.items || []).find((item) => String(item && item.id ? item.id : '').trim() === target) || null;
+  }
+
+  function getVisitLogQualifyingOptions(subtabKey) {
+    const explorerState = getExplorerState(subtabKey);
+    const items = Array.isArray(explorerState.items) ? explorerState.items : [];
+    return items
+      .map((item) => ({
+        id: String(item && item.id ? item.id : '').trim(),
+        title: String(item && item.title ? item.title : '').trim(),
+        sourceLabel: String(item && item.sourceLabel ? item.sourceLabel : '').trim()
+      }))
+      .filter((item) => item.id && item.title);
+  }
+
+  function closeVisitLogModal() {
+    const modal = document.getElementById('visitedVisitLogModal');
+    const backdrop = document.getElementById('visitedVisitLogBackdrop');
+    if (modal) modal.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+  }
+
+  async function openVisitLogModal(options) {
+    const modal = document.getElementById('visitedVisitLogModal');
+    const backdrop = document.getElementById('visitedVisitLogBackdrop');
+    const subtabKeyInput = document.getElementById('visitedVisitLogSubtabKey');
+    const itemIdInput = document.getElementById('visitedVisitLogItemId');
+    const modeInput = document.getElementById('visitedVisitLogMode');
+    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
+    const dateInput = document.getElementById('visitedVisitLogDate');
+    const notesInput = document.getElementById('visitedVisitLogNotes');
+    const help = document.getElementById('visitedVisitLogHelp');
+    const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
+    if (!modal || !backdrop || !subtabKeyInput || !itemIdInput || !modeInput || !locationSelect || !dateInput || !notesInput) return;
+
+    const subtabKey = String(options && options.subtabKey ? options.subtabKey : state.activeProgressSubTab || 'outdoors').trim();
+    if (typeof forceVisitedExplorerSync === 'function' && getExplorerConfig(subtabKey)) {
+      await forceVisitedExplorerSync(subtabKey);
+    }
+
+    const items = getVisitLogQualifyingOptions(subtabKey);
+    locationSelect.innerHTML = '<option value="">Select a location...</option>' + items
+      .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}${item.sourceLabel ? ` - ${escapeHtml(item.sourceLabel)}` : ''}</option>`)
+      .join('');
+
+    const preselectedItemId = String(options && options.itemId ? options.itemId : '').trim();
+    if (preselectedItemId && items.some((item) => item.id === preselectedItemId)) {
+      locationSelect.value = preselectedItemId;
+    } else {
+      locationSelect.value = '';
+    }
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+    notesInput.value = '';
+    subtabKeyInput.value = subtabKey;
+    itemIdInput.value = locationSelect.value || '';
+    const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
+    modeInput.value = mode;
+    if (submitBtn) submitBtn.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
+    if (help) {
+      const hint = String(options && options.hint ? options.hint : '').trim();
+      const base = `${items.length} qualifying locations loaded for ${subtabKey.replace('-', ' ')}.`;
+      help.textContent = hint ? `${base} ${hint}` : base;
+    }
+
+    modal.hidden = false;
+    backdrop.hidden = false;
+    locationSelect.focus();
+  }
+
+  async function submitVisitLogForm() {
+    const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || '').trim();
+    const itemId = String(document.getElementById('visitedVisitLogLocationSelect')?.value || '').trim();
+    const dateValue = String(document.getElementById('visitedVisitLogDate')?.value || '').trim();
+    const notes = String(document.getElementById('visitedVisitLogNotes')?.value || '').trim();
+    const mode = String(document.getElementById('visitedVisitLogMode')?.value || 'add').trim() === 'remove' ? 'remove' : 'add';
+    if (!subtabKey || !itemId || !dateValue) return;
+
+    const item = getExplorerItemById(subtabKey, itemId);
+    if (!item) return;
+    const categoryKeys = classifyCategoryKeys(subtabKey, item);
+    if (mode === 'remove') {
+      const dayPrefix = `${dateValue}T`;
+      const records = Array.isArray(state.visitRecords) ? state.visitRecords.slice() : [];
+      const idx = records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId && String(record.visitedAt || '').startsWith(dayPrefix));
+      const fallbackIdx = idx >= 0 ? idx : records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId);
+      if (fallbackIdx >= 0) {
+        const removed = records.splice(fallbackIdx, 1)[0];
+        state.visitRecords = records;
+        saveVisitRecords();
+        if (typeof window.showToast === 'function') {
+          window.showToast(`Visit removed: ${removed.locationTitle || item.title}`, 'info', 2200);
+        }
+      } else if (typeof window.showToast === 'function') {
+        window.showToast('No matching visit record found to remove.', 'warning', 2600);
+      }
+    } else {
+      const record = {
+        id: `visit:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+        subtabKey,
+        locationId: itemId,
+        locationTitle: String(item.title || 'Unknown').trim(),
+        sourceLabel: String(item.sourceLabel || '').trim(),
+        categoryKeys,
+        visitedAt: new Date(`${dateValue}T12:00:00`).toISOString(),
+        notes,
+        createdAt: new Date().toISOString()
+      };
+      state.visitRecords = [record].concat(state.visitRecords || []).slice(0, 1200);
+      saveVisitRecords();
+
+      if (typeof window.showToast === 'function') {
+        window.showToast(`Visit logged: ${record.locationTitle}`, 'success', 2200);
+      }
+    }
+
+    closeVisitLogModal();
+    await refreshTab();
   }
 
   function buildExplorerDetailsHtml(item) {
@@ -1511,7 +1726,10 @@
         <div class="visited-explorer-card">
           <div class="visited-explorer-card-head">
             <div class="visited-explorer-card-title">${escapeHtml(item.title || 'Unknown')}</div>
-            <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+              <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Log Visit</button>
+              <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
+            </div>
           </div>
           <div class="visited-explorer-field"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>
           <div class="visited-explorer-field"><strong>Tags:</strong></div>
@@ -3027,13 +3245,13 @@
     function ensureVisitedSubtabCtaButtons(root) {
       if (!root) return { total: 0, present: 0, added: 0, missing: [] };
       const requiredActions = [
-        'refresh-subtab-outdoors', 'undo-subtab-outdoors', 'open-explorer-outdoors',
-        'refresh-subtab-entertainment', 'undo-subtab-entertainment', 'open-explorer-entertainment',
-        'refresh-subtab-food-drink', 'undo-subtab-food-drink', 'open-explorer-food-drink',
-        'refresh-subtab-retail', 'undo-subtab-retail', 'open-explorer-retail',
-        'refresh-subtab-wildlife-animals', 'undo-subtab-wildlife-animals', 'open-explorer-wildlife-animals',
-        'refresh-subtab-regional-festivals', 'undo-subtab-regional-festivals', 'open-explorer-regional-festivals',
-        'refresh-subtab-bike-trails', 'undo-subtab-bike-trails', 'explore-bike-trails'
+        'refresh-subtab-outdoors', 'undo-subtab-outdoors', 'open-explorer-outdoors', 'open-city-explorer-outdoors',
+        'refresh-subtab-entertainment', 'undo-subtab-entertainment', 'open-explorer-entertainment', 'open-city-explorer-entertainment',
+        'refresh-subtab-food-drink', 'undo-subtab-food-drink', 'open-explorer-food-drink', 'open-city-explorer-food-drink',
+        'refresh-subtab-retail', 'undo-subtab-retail', 'open-explorer-retail', 'open-city-explorer-retail',
+        'refresh-subtab-wildlife-animals', 'undo-subtab-wildlife-animals', 'open-explorer-wildlife-animals', 'open-city-explorer-wildlife-animals',
+        'refresh-subtab-regional-festivals', 'undo-subtab-regional-festivals', 'open-explorer-regional-festivals', 'open-city-explorer-regional-festivals',
+        'refresh-subtab-bike-trails', 'undo-subtab-bike-trails', 'explore-bike-trails', 'open-city-explorer-bike-trails'
       ];
       const legacyActions = [
         'find-outdoor-adventure',
@@ -3106,36 +3324,43 @@
       ensureButton(outdoorsRow, 'refresh-subtab-outdoors', 'Refresh Data', 'Refresh Outdoors data');
       ensureButton(outdoorsRow, 'undo-subtab-outdoors', '↶ Undo', 'No Outdoors action to undo yet');
       ensureButton(outdoorsRow, 'open-explorer-outdoors', 'Explore Outdoors', 'Explore the Outdoors');
+      ensureButton(outdoorsRow, 'open-city-explorer-outdoors', 'City Explorer', 'Open City Explorer filtered for Outdoors');
 
       const entertainmentRow = ensureCanonicalActionRow('entertainment');
       ensureButton(entertainmentRow, 'refresh-subtab-entertainment', 'Refresh Data', 'Refresh Entertainment data');
       ensureButton(entertainmentRow, 'undo-subtab-entertainment', '↶ Undo', 'No Entertainment action to undo yet');
       ensureButton(entertainmentRow, 'open-explorer-entertainment', 'Explore Entertainment', 'Explore Entertainment');
+      ensureButton(entertainmentRow, 'open-city-explorer-entertainment', 'City Explorer', 'Open City Explorer filtered for Entertainment');
 
       const foodDrinkRow = ensureCanonicalActionRow('food-drink');
       ensureButton(foodDrinkRow, 'refresh-subtab-food-drink', 'Refresh Data', 'Refresh Food and Drink data');
       ensureButton(foodDrinkRow, 'undo-subtab-food-drink', '↶ Undo', 'No Food and Drink action to undo yet');
       ensureButton(foodDrinkRow, 'open-explorer-food-drink', 'Explore Food & Drink', 'Explore Food and Drink');
+      ensureButton(foodDrinkRow, 'open-city-explorer-food-drink', 'City Explorer', 'Open City Explorer filtered for Food & Drink');
 
       const retailRow = ensureCanonicalActionRow('retail');
       ensureButton(retailRow, 'refresh-subtab-retail', 'Refresh Data', 'Refresh Retail data');
       ensureButton(retailRow, 'undo-subtab-retail', '↶ Undo', 'No Retail action to undo yet');
       ensureButton(retailRow, 'open-explorer-retail', 'Explore Retail', 'Explore Retail');
+      ensureButton(retailRow, 'open-city-explorer-retail', 'City Explorer', 'Open City Explorer filtered for Retail');
 
       const wildlifeAnimalsRow = ensureCanonicalActionRow('wildlife-animals');
       ensureButton(wildlifeAnimalsRow, 'refresh-subtab-wildlife-animals', 'Refresh Data', 'Refresh Wildlife and Animals data');
       ensureButton(wildlifeAnimalsRow, 'undo-subtab-wildlife-animals', '↶ Undo', 'No Wildlife and Animals action to undo yet');
       ensureButton(wildlifeAnimalsRow, 'open-explorer-wildlife-animals', 'Explore Wildlife & Animal Locations', 'Explore Wildlife and Animal Locations');
+      ensureButton(wildlifeAnimalsRow, 'open-city-explorer-wildlife-animals', 'City Explorer', 'Open City Explorer filtered for Wildlife & Animals');
 
       const regionalFestivalsRow = ensureCanonicalActionRow('regional-festivals');
       ensureButton(regionalFestivalsRow, 'refresh-subtab-regional-festivals', 'Refresh Data', 'Refresh Regional Festivals data');
       ensureButton(regionalFestivalsRow, 'undo-subtab-regional-festivals', '↶ Undo', 'No Regional Festivals action to undo yet');
       ensureButton(regionalFestivalsRow, 'open-explorer-regional-festivals', 'Explore Regional Festivals', 'Explore Regional Festivals');
+      ensureButton(regionalFestivalsRow, 'open-city-explorer-regional-festivals', 'City Explorer', 'Open City Explorer filtered for Regional Festivals');
 
       const bikeRow = ensureCanonicalActionRow('bike-trails');
       ensureButton(bikeRow, 'refresh-subtab-bike-trails', 'Refresh Data', 'Refresh Bike Trails data');
       ensureButton(bikeRow, 'undo-subtab-bike-trails', '↶ Undo', 'No Bike Trails action to undo yet');
       ensureButton(bikeRow, 'explore-bike-trails', 'Explore Bike Trails', 'Explore Bike Trails');
+      ensureButton(bikeRow, 'open-city-explorer-bike-trails', 'City Explorer', 'Open City Explorer filtered for Bike Trails');
 
       const present = requiredActions.reduce((count, action) => {
         return count + (root.querySelector(`[data-visited-subtab-action="${action}"]`) ? 1 : 0);
@@ -3295,6 +3520,12 @@
               return;
             }
 
+            if (action.startsWith('open-city-explorer-')) {
+              const subtabKey = action.replace('open-city-explorer-', '');
+              openCityExplorerForSubtab(subtabKey);
+              return;
+            }
+
           }
 
           const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
@@ -3321,10 +3552,28 @@
             return;
           }
 
+          const explorerLogBtn = event.target.closest('[data-visited-explorer-log]');
+          if (explorerLogBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerLogBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerLogBtn.getAttribute('data-visited-explorer-log') || '').trim();
+            if (subtabKey) {
+              openVisitLogModal({ subtabKey, itemId });
+            }
+            return;
+          }
+
           const closeExplorerModalBtn = event.target.closest('#visitedExplorerDetailsCloseBtn, #visitedExplorerDetailsBackdrop');
           if (closeExplorerModalBtn) {
             event.preventDefault();
             closeExplorerDetailsModal();
+            return;
+          }
+
+          const closeVisitLogBtn = event.target.closest('#visitedVisitLogCloseBtn, #visitedVisitLogCancelBtn, #visitedVisitLogBackdrop');
+          if (closeVisitLogBtn) {
+            event.preventDefault();
+            closeVisitLogModal();
             return;
           }
 
@@ -3480,6 +3729,15 @@
       });
     }
 
+    const visitLogForm = document.getElementById('visitedVisitLogForm');
+    if (visitLogForm && visitLogForm.dataset.bound !== '1') {
+      visitLogForm.dataset.bound = '1';
+      visitLogForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await submitVisitLogForm();
+      });
+    }
+
     root.addEventListener('pointerdown', (event) => {
       if (!event.target.closest || !event.target.closest('[data-progress-subtab]')) return;
       scheduleVisitedSubTabInterceptionCheck(root, 0);
@@ -3547,6 +3805,7 @@
   function initializeVisitedLocationsTab() {
     loadChallengeState();
     loadMetaState();
+    loadVisitRecords();
     bindControls();
     ensureBikeDataLoadedForTracker().finally(() => refreshTab());
     scheduleDataRefreshCheck();
@@ -3560,6 +3819,7 @@
   window.initializeVisitedLocationsTab = initializeVisitedLocationsTab;
   window.initVisitedLocationsTab = window.initVisitedLocationsTab || initializeVisitedLocationsTab;
   window.forceVisitedExplorerSync = forceVisitedExplorerSync;
+  window.openVisitedVisitLogFromAchievements = openVisitedVisitLogFromAchievements;
   window.getVisitedTrackerSyncHealth = getSyncHealthStatus;
   window.__visitedState = state;
   window.enableVisitedClickTrace = function() {

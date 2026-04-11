@@ -212,8 +212,11 @@ async function cacheCityViewerDataForTab(correlationId) {
  * Open City Viewer in a new browser tab
  * Similar to openAdventureDetailsTab but for city viewing
  */
-window.openCityViewerInNewTab = async function() {
+window.openCityViewerInNewTab = async function(options) {
   console.log('🌆 Opening City Explorer in new browser tab');
+  const prefilterTag = String(options && options.prefilterTag ? options.prefilterTag : '').trim();
+  const prefilterLabel = String(options && options.prefilterLabel ? options.prefilterLabel : '').trim();
+  const sourceSubtab = String(options && options.sourceSubtab ? options.sourceSubtab : '').trim();
 
   try {
     // Create correlation ID for tracking
@@ -238,6 +241,9 @@ window.openCityViewerInNewTab = async function() {
     url.searchParams.set('corrId', correlationId);
     if (dataKey) url.searchParams.set('dataKey', dataKey);
     url.searchParams.set('dataMode', 'curated-only');
+    if (prefilterTag) url.searchParams.set('prefilterTag', prefilterTag);
+    if (prefilterLabel) url.searchParams.set('prefilterLabel', prefilterLabel);
+    if (sourceSubtab) url.searchParams.set('sourceSubtab', sourceSubtab);
     url.searchParams.set('ts', String(Date.now()));
 
     // Open in new tab
@@ -271,9 +277,9 @@ window.openCityViewerInNewTab = async function() {
  * Open City Viewer in GUARANTEED new tab
  * This is the primary function called by the UI
  */
-window.openCityViewerWindow = function() {
+window.openCityViewerWindow = function(options) {
   console.log('🌆 Opening City Explorer - ENFORCED NEW TAB');
-  return window.openCityViewerInNewTab();
+  return window.openCityViewerInNewTab(options);
 };
 
 // Override all possible function names for compatibility

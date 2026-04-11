@@ -336,12 +336,37 @@
   </details>
 
   <div id="visitedExplorerDetailsBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedVisitLogBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedExplorerDetailsModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedExplorerDetailsTitle" hidden>
     <div class="visited-explorer-details-head">
       <div id="visitedExplorerDetailsTitle" class="card-title">Location Details</div>
       <button type="button" id="visitedExplorerDetailsCloseBtn" class="pill-button" aria-label="Close location details">Close</button>
     </div>
     <div id="visitedExplorerDetailsBody" class="visited-explorer-details-body"></div>
+  </div>
+  <div id="visitedVisitLogModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedVisitLogTitle" hidden>
+    <div class="visited-explorer-details-head">
+      <div id="visitedVisitLogTitle" class="card-title">Log Visit</div>
+      <button type="button" id="visitedVisitLogCloseBtn" class="pill-button" aria-label="Close visit log form">Close</button>
+    </div>
+    <form id="visitedVisitLogForm" class="visited-visit-log-form">
+      <input type="hidden" id="visitedVisitLogSubtabKey" value="" />
+      <input type="hidden" id="visitedVisitLogItemId" value="" />
+      <input type="hidden" id="visitedVisitLogMode" value="add" />
+      <label class="visited-visit-log-label" for="visitedVisitLogLocationSelect">Qualifying location</label>
+      <select id="visitedVisitLogLocationSelect" class="filter-select" required>
+        <option value="">Select a location...</option>
+      </select>
+      <label class="visited-visit-log-label" for="visitedVisitLogDate">Date visited</label>
+      <input id="visitedVisitLogDate" class="filter-input" type="date" required />
+      <label class="visited-visit-log-label" for="visitedVisitLogNotes">Notes (optional)</label>
+      <textarea id="visitedVisitLogNotes" class="filter-input" rows="4" placeholder="Add notes about this visit..."></textarea>
+      <div id="visitedVisitLogHelp" class="card-subtitle" aria-live="polite"></div>
+      <div class="visited-subtab-action-row" style="margin-top: 4px;">
+        <button type="submit" id="visitedVisitLogSubmitBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Save Visit</button>
+        <button type="button" id="visitedVisitLogCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -788,6 +813,17 @@
     color: #0f172a;
     font-weight: 800;
   }
+
+  #visitedLocationsRoot .visited-visit-log-form {
+    display: grid;
+    gap: 8px;
+  }
+
+  #visitedLocationsRoot .visited-visit-log-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #334155;
+  }
     font-size: 14px;
     font-weight: 700;
     white-space: nowrap;
@@ -819,6 +855,46 @@
     color: #f8fafc;
     box-shadow: none;
     cursor: not-allowed;
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--explore {
+    border-color: #0ea5e9;
+    background: linear-gradient(135deg, #0284c7 0%, #22c55e 100%);
+    box-shadow: 0 10px 22px rgba(14, 165, 233, 0.35);
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    position: relative;
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--explore::after {
+    content: attr(data-explore-count);
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 16px;
+    display: none;
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--explore[data-explore-count]:not([data-explore-count=""])::after {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #visitedLocationsRoot .visited-subtab-action-btn--city {
+    border-color: #93c5fd;
+    background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
   }
 
   #visitedLocationsRoot .visited-progress-subtab:focus-visible,
@@ -1432,6 +1508,12 @@
     #visitedLocationsRoot .visited-empty .visited-subtab-action-row {
       gap: 6px;
     }
+
+    #visitedLocationsRoot .visited-empty .visited-subtab-action-row .visited-subtab-action-btn--explore {
+      order: -1;
+      width: 100%;
+      min-height: 44px;
+    }
   }
 
   #visitedLocationsRoot [data-achv-container] {
@@ -1465,6 +1547,10 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 10px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-grid {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   }
 
   #visitedLocationsRoot .adventure-achv-challenge-grid {
@@ -1793,7 +1879,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
   #visitedLocationsRoot .adventure-achv-tier-chip {
@@ -1870,6 +1956,7 @@
 
   #visitedLocationsRoot .adventure-achv-badge-card {
     display: block; /* override any grid default */
+    min-height: 100%;
   }
 
   #visitedLocationsRoot .adventure-achv-badge-main {
@@ -1879,7 +1966,7 @@
   }
 
   #visitedLocationsRoot .adventure-achv-badge-card .adventure-achv-badge-icon {
-    font-size: 28px;
+    font-size: 26px;
     line-height: 1;
     flex-shrink: 0;
     margin-top: 0;
@@ -1891,11 +1978,13 @@
   }
 
   #visitedLocationsRoot .adventure-achv-badge-top-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 6px;
-    flex-wrap: wrap;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  #visitedLocationsRoot .adventure-achv-badge-title-wrap {
+    display: inline-grid;
+    gap: 1px;
   }
 
   #visitedLocationsRoot .adventure-achv-badge-card .adventure-achv-badge-title {
@@ -1912,7 +2001,7 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    flex-shrink: 0;
+    display: block;
   }
 
   #visitedLocationsRoot .adventure-achv-badge-level-row {
@@ -1946,7 +2035,7 @@
   }
 
   #visitedLocationsRoot .adventure-achv-badge-next-info {
-    margin-top: 6px;
+    margin-top: 4px;
   }
 
   #visitedLocationsRoot .adventure-achv-badge-next-text {
@@ -1960,7 +2049,7 @@
   }
 
   #visitedLocationsRoot .adventure-achv-badge-maxed {
-    margin-top: 6px;
+    margin-top: 4px;
     font-size: 11px;
     color: #d97706;
     font-weight: 800;

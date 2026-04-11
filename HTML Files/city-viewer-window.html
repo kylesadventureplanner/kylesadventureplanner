@@ -1037,6 +1037,32 @@
       'Entertainment_Locations.xlsx / Festivals',
       'Entertainment_Locations.xlsx / General_Entertainment'
     ];
+
+    // ── Subtab → exact source/table prefilter mapping ────────────────────────
+    // Keys must be lowercased (they are matched against a lowercased prefilterTag).
+    // Values are arrays of exact sourceLabel strings for that subtab.
+    // Add a new entry here whenever a new worksheet tab / data source is onboarded.
+    const SUBTAB_SOURCE_MAP = {
+      // Food & Drink subtabs
+      'coffee':                ['Retail_Food_and_Drink.xlsx / Coffee'],
+      'restaurants':           ['Retail_Food_and_Drink.xlsx / Restaurants'],
+      'restaurant':            ['Retail_Food_and_Drink.xlsx / Restaurants'],
+      'retail':                ['Retail_Food_and_Drink.xlsx / Retail'],
+      'food':                  ['Retail_Food_and_Drink.xlsx / Coffee',
+                                'Retail_Food_and_Drink.xlsx / Restaurants'],
+      'food_and_drink':        ['Retail_Food_and_Drink.xlsx / Coffee',
+                                'Retail_Food_and_Drink.xlsx / Restaurants',
+                                'Retail_Food_and_Drink.xlsx / Retail'],
+      // Nature subtabs
+      'nature':                ['Nature_Locations.xlsx / Nature_Locations'],
+      'nature_locations':      ['Nature_Locations.xlsx / Nature_Locations'],
+      // Entertainment subtabs
+      'festivals':             ['Entertainment_Locations.xlsx / Festivals'],
+      'festival':              ['Entertainment_Locations.xlsx / Festivals'],
+      'entertainment':         ['Entertainment_Locations.xlsx / Festivals',
+                                'Entertainment_Locations.xlsx / General_Entertainment'],
+      'general_entertainment': ['Entertainment_Locations.xlsx / General_Entertainment'],
+    };
     let cityViewerDataMeta = {
       configuredSources: [],
       dataMode: '',
@@ -1181,6 +1207,7 @@
 
     // Initialize city viewer
     function init() {
+      resolvePrefilterFromUrl();
       // Load data from sessionStorage or parent window
       if (!loadCityViewerData()) {
         console.error('❌ Failed to load adventure data');
@@ -1247,6 +1274,10 @@
       }
 
       let citiesArray = Object.values(citiesData);
+
+      if (prefilterTag) {
+        citiesArray = citiesArray.filter((city) => Array.isArray(city.locations) && city.locations.some((loc) => locationMatchesPrefilter(loc)));
+      }
 
       // Sort
       if (currentSort === 'name') {
@@ -1390,6 +1421,8 @@
     let locGoogleMarkers = [];
     let locMapboxMap = null;
     let locMapboxMarkers = [];
+    let prefilterTag = '';
+    let prefilterLabel = '';
 
     function cityStateKey(cityKey) { return `cityViewer:lastState:${cityKey}`; }
     function cityPresetKey(cityKey) { return `cityViewer:presets:${cityKey}`; }
@@ -1402,6 +1435,34 @@
       const name = String(locVal(loc, 0, 'name') || '').trim();
       const addr = String(locVal(loc, 11, 'address') || '').trim();
       return `fallback:${name}::${addr}`;
+    }
+
+    function resolvePrefilterFromUrl() {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        prefilterTag = String(p.get('prefilterTag') || '').trim().toLowerCase();
+        prefilterLabel = String(p.get('prefilterLabel') || '').trim();
+      } catch (_) {
+        prefilterTag = '';
+        prefilterLabel = '';
+      }
+    }
+
+    function locationMatchesPrefilter(loc) {
+      if (!prefilterTag) return true;
+
+      // ── 1. Exact source/table lookup (fast, precise) ─────────────────────
+      const mappedSources = SUBTAB_SOURCE_MAP[prefilterTag];
+      if (mappedSources && mappedSources.length) {
+        const srcLabel = String(loc.sourceLabel || '').trim();
+        return mappedSources.some(s => srcLabel === s);
+      }
+
+      // ── 2. Fallback: fuzzy tag / name / description scan ──────────────────
+      const tags = String(locVal(loc, 3, 'tags') || '').toLowerCase();
+      const name = String(locVal(loc, 0, 'name') || '').toLowerCase();
+      const desc = String(locVal(loc, 16, 'description') || '').toLowerCase();
+      return tags.includes(prefilterTag) || name.includes(prefilterTag) || desc.includes(prefilterTag);
     }
 
     function getLocFilterState() {
@@ -2187,6 +2248,9 @@
       const sortBy = document.getElementById('locSortBy').value;
 
       let results = cityEntry.locations.filter(loc => {
+        // ── prefilter guard (exact source mapping or fuzzy fallback) ──────────
+        if (!locationMatchesPrefilter(loc)) return false;
+
         const name = String(locVal(loc, 0, 'name')).toLowerCase();
         const tags = String(locVal(loc, 3, 'tags')).toLowerCase();
         const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
@@ -2338,6 +2402,13 @@
         if (pendingShareState.filters) applyLocFilterState(pendingShareState.filters);
         if (Array.isArray(pendingShareState.shortlist)) setShortlistSet(new Set(pendingShareState.shortlist));
         pendingShareState = null;
+      } else if (prefilterTag) {
+        // Only inject into the tag text-filter when there is no dedicated
+        // source mapping — exact-mapped prefilters are applied transparently
+        // by locationMatchesPrefilter / applyLocFilters.
+        if (!SUBTAB_SOURCE_MAP[prefilterTag]) {
+          document.getElementById('locFilterTag').value = prefilterTag;
+        }
       }
 
       document.querySelector('.controls').style.display = 'none';

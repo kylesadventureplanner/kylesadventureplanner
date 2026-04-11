@@ -48,18 +48,29 @@ test.describe('Adventure achievements dashboard smoke', () => {
     await dockButton.click();
     await expect(dockButton).toHaveAttribute('aria-selected', 'true', { timeout: 8000 });
 
-    const modeSelect = page.locator('#visitedDiagnosticsSyncModeHost [data-achv-sync-mode][data-achv-subtab="outdoors"], #achv-root-outdoors [data-achv-sync-mode]').first();
+    const diagnosticsDetails = page.locator('#visitedDiagnosticsDetails');
+    await expect(diagnosticsDetails).toBeVisible({ timeout: 12000 });
+    if (!(await diagnosticsDetails.evaluate((el) => Boolean(el && el.open)))) {
+      await diagnosticsDetails.locator('summary').click();
+    }
+
+    const diagnosticsModeSelect = page.locator('#visitedDiagnosticsSyncModeHost [data-achv-sync-mode][data-achv-subtab="outdoors"]:visible').first();
+    const legacyModeSelect = page.locator('#achv-root-outdoors [data-achv-sync-mode]:visible').first();
+    const modeSelect = (await diagnosticsModeSelect.count()) > 0 ? diagnosticsModeSelect : legacyModeSelect;
+    const syncScope = (await diagnosticsModeSelect.count()) > 0
+      ? page.locator('#visitedDiagnosticsSyncModeHost')
+      : page.locator('#achv-root-outdoors');
     await expect(modeSelect).toBeVisible({ timeout: 12000 });
-    await expect(page.locator('#visitedDiagnosticsSyncModeHost, #achv-root-outdoors').getByText(/Matched by place ID:/i).first()).toBeVisible({ timeout: 12000 });
-    await expect(page.locator('#visitedDiagnosticsSyncModeHost, #achv-root-outdoors').getByText(/catalog rows scanned:/i).first()).toBeVisible({ timeout: 12000 });
-    await expect(page.locator('#visitedDiagnosticsSyncModeHost, #achv-root-outdoors').getByText(/categorized rows:/i).first()).toBeVisible({ timeout: 12000 });
+    await expect(syncScope.getByText(/Matched by place ID:/i).first()).toBeVisible({ timeout: 12000 });
+    await expect(syncScope.getByText(/catalog rows scanned:/i).first()).toBeVisible({ timeout: 12000 });
+    await expect(syncScope.getByText(/categorized rows:/i).first()).toBeVisible({ timeout: 12000 });
     await expect(page.locator('#achv-root-outdoors .adventure-achv-tier-chip:visible .adventure-achv-tier-chip-name').filter({ hasText: /Rookie/i }).first()).toBeVisible({ timeout: 12000 });
     await expect(page.locator('#achv-root-outdoors .adventure-achv-tier-chip:visible .adventure-achv-tier-chip-name').filter({ hasText: /MVP/i }).first()).toBeVisible({ timeout: 12000 });
 
     await modeSelect.selectOption('manual');
     await expect(modeSelect).toHaveValue('manual');
 
-    await expect(page.locator('#visitedDiagnosticsSyncModeHost, #achv-root-outdoors').getByText(/Manual mode active/i).first()).toBeVisible();
+    await expect(syncScope.getByText(/Manual mode active/i).first()).toBeVisible();
 
     // Ensure dashboard content still renders in fallback mode.
     await expect(page.locator('#achv-root-outdoors').getByText(/Category Progression/i).first()).toBeVisible();
