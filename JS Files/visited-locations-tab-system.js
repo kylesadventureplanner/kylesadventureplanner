@@ -108,6 +108,15 @@
   const CATALOG_LOAD_STEP = 40;
   const TOOLTIP_INFO_ICON_MIN_CHARS = 34;
   const PROGRESS_SUBTAB_KEYS = ['outdoors', 'entertainment', 'food-drink', 'retail', 'wildlife-animals', 'regional-festivals', 'bike-trails'];
+  const PROGRESS_SUBTAB_STATUS_LABELS = {
+    outdoors: 'Outdoors',
+    entertainment: 'Entertainment',
+    'food-drink': 'Food & Drink',
+    retail: 'Retail',
+    'wildlife-animals': 'Wildlife & Animals',
+    'regional-festivals': 'Regional Festivals',
+    'bike-trails': 'Bike Trails'
+  };
   const EXPLORER_WORKBOOK_PREFIXES = ['', 'Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/'];
   const EXPLORER_COLUMN_CANDIDATES = {
     title: ['name', 'location', 'place', 'venue', 'destination', 'business', 'shop', 'restaurant', 'coffee', 'festival', 'event', 'site'],
@@ -679,6 +688,79 @@
     el.textContent = `Last synced: ${since} • Pending local-only: ${pending} • Sources: ${sourceCounts.adventure} adv / ${sourceCounts.bike} bike`;
   }
 
+  function getSubtabStatusSourceSummary(subtabKey, explorerState) {
+    if (subtabKey === 'bike-trails') return 'Bike Trails workspace';
+    const items = explorerState && Array.isArray(explorerState.items) ? explorerState.items : [];
+    const itemSources = Array.from(new Set(items.map((item) => String(item && item.sourceLabel ? item.sourceLabel : '').trim()).filter(Boolean)));
+    if (itemSources.length) return itemSources.slice(0, 2).join(' + ');
+    const cfg = getExplorerConfig(subtabKey);
+    if (!cfg || !Array.isArray(cfg.sources) || !cfg.sources.length) return 'unknown';
+    return cfg.sources.slice(0, 2).map((source) => `${source.workbook} / ${source.table}`).join(' + ');
+  }
+
+  function renderVisitedSubtabStatusBar(el, options) {
+    if (!el) return;
+    const label = options && options.label ? String(options.label) : 'Adventure';
+    const message = options && options.message ? String(options.message) : '';
+    const tone = options && options.tone ? String(options.tone) : '';
+    el.classList.remove('is-ok', 'is-warn');
+    if (tone === 'ok') el.classList.add('is-ok');
+    if (tone === 'warn') el.classList.add('is-warn');
+    el.innerHTML = `
+      <span class="visited-subtab-status-prefix"><span class="visited-subtab-status-dot" aria-hidden="true"></span><span class="visited-subtab-status-label">${escapeHtml(label)}</span></span>
+      <span class="visited-subtab-status-message">${escapeHtml(message)}</span>
+    `;
+  }
+
+  function renderSubtabStatusBars() {
+    const signedIn = Boolean(window.accessToken);
+    PROGRESS_SUBTAB_KEYS.forEach((subtabKey) => {
+      const el = document.getElementById(`visitedSubtabStatus-${subtabKey}`);
+      if (!el) return;
+      const label = PROGRESS_SUBTAB_STATUS_LABELS[subtabKey] || 'Adventure';
+
+      if (subtabKey === 'bike-trails') {
+        const updatedText = state.lastRenderAt ? new Date(state.lastRenderAt).toLocaleString() : '--';
+        renderVisitedSubtabStatusBar(el, {
+          label: `${label} data`,
+          message: `linked workspace | Source: Bike Trails workspace | Updated ${updatedText} | Use Explore Bike Trails to open the full bike workspace.`,
+          tone: 'ok'
+        });
+        return;
+      }
+
+      const explorerState = getExplorerState(subtabKey);
+      const total = Array.isArray(explorerState.items) ? explorerState.items.length : 0;
+      const sourceSummary = getSubtabStatusSourceSummary(subtabKey, explorerState);
+      const updatedAt = explorerState.updatedAt || state.lastRenderAt || '';
+      const updatedText = updatedAt ? new Date(updatedAt).toLocaleString() : '--';
+      let mode = 'waiting';
+      let tail = '';
+      let tone = '';
+
+      if (!signedIn) {
+        mode = 'sign-in required';
+        tail = 'Use Sign In, then refresh this tab.';
+        tone = 'warn';
+      } else if (explorerState.loading) {
+        mode = 'refreshing';
+      } else if (explorerState.error) {
+        mode = 'fallback in use';
+        tail = explorerState.error;
+        tone = 'warn';
+      } else if (explorerState.loaded) {
+        mode = 'ready';
+        tone = 'ok';
+      }
+
+      renderVisitedSubtabStatusBar(el, {
+        label: `${label} data`,
+        message: `${mode} ${total} locations | Source: ${sourceSummary} | Updated ${updatedText}${tail ? ` | ${tail}` : ''}`,
+        tone
+      });
+    });
+  }
+
   function renderLoadingState() {
     if (state.loadingUiActive) return;
     state.loadingUiActive = true;
@@ -1089,6 +1171,7 @@
         view: 'overview',
         loading: false,
         loaded: false,
+        updatedAt: '',
         error: '',
         items: [],
         query: '',
@@ -1243,8 +1326,10 @@
       explorerState.items = [];
       explorerState.loaded = false;
     } finally {
+      explorerState.updatedAt = new Date().toISOString();
       explorerState.loading = false;
       renderExplorerList(root, subtabKey);
+      renderSubtabStatusBars();
     }
   }
 
@@ -2794,6 +2879,7 @@
         state.lastRenderAt = new Date().toISOString();
         renderSyncMeta(visitMap);
         renderVisitedDiagnosticsPanel(visitMap);
+        renderSubtabStatusBars();
 
         const root = document.getElementById('visitedLocationsRoot');
         applyTooltipInfoIcons(root);
@@ -2930,9 +3016,12 @@
         row.style.display = 'flex';
         row.style.gap = '8px';
         row.style.flexWrap = 'wrap';
-        const card = pane.querySelector('.card');
-        if (card) {
-          card.appendChild(row);
+        const empty = pane.querySelector('.visited-empty');
+        if (empty) {
+          empty.appendChild(row);
+        } else {
+          const card = pane.querySelector('.card');
+          if (card) card.appendChild(row);
         }
         return row;
       };
@@ -3073,6 +3162,7 @@
       announceProgressSubTab(root, state.activeProgressSubTab);
       state.latestVisitMap = getVisitMap();
       renderSyncMeta(state.latestVisitMap);
+      renderSubtabStatusBars();
       initMobileTooltipSupport(root);
       installVisitedClickTracer(root);
       applyTooltipInfoIcons(root);
