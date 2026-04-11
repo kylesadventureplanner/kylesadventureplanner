@@ -4789,13 +4789,21 @@
 
     syncBadges.forEach((badge) => badge.classList.remove('ok', 'warn'));
 
+    function formatSyncMetaTwoLines(text) {
+      const raw = String(text || '').trim();
+      if (!raw) return raw;
+      if (raw.includes(' | Updated ')) return raw.replace(' | Updated ', '\nUpdated ');
+      if (raw.includes(' | Source: ')) return raw.replace(' | Source: ', '\nSource: ');
+      return raw;
+    }
+
     function setStatus(badgeText, metaText, badgeClass) {
       syncBadges.forEach((badge) => {
         badge.textContent = badgeText;
         if (badgeClass) badge.classList.add(badgeClass);
       });
       syncMetas.forEach((meta) => {
-        meta.textContent = metaText;
+        meta.textContent = formatSyncMetaTwoLines(metaText);
       });
     }
 

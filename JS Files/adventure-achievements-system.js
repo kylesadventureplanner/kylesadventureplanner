@@ -581,6 +581,16 @@ window.AdventureAchievements = (function () {
 
   // ─── Renderers ─────────────────────────────────────────────────────────────
 
+  function getActiveProgressSubtabKey() {
+    const activeBtn = document.querySelector('#appSubTabsSlot [data-progress-subtab].active, [data-progress-subtab].active');
+    const key = activeBtn ? String(activeBtn.getAttribute('data-progress-subtab') || '').trim() : '';
+    return CONFIGS[key] ? key : 'outdoors';
+  }
+
+  function getAchvSectionId(key, sectionKey) {
+    return `achv-section-${key}-${sectionKey}`;
+  }
+
   function renderSyncModeSection(key, progress) {
     const options = Object.keys(MATCH_MODES).map((modeKey) => {
       const mode = MATCH_MODES[modeKey];
@@ -606,6 +616,15 @@ window.AdventureAchievements = (function () {
       </div>`;
   }
 
+  function renderSyncModeInDiagnostics(key, progress) {
+    const host = document.getElementById('visitedDiagnosticsSyncModeHost');
+    if (!host) return;
+    const activeKey = getActiveProgressSubtabKey();
+    if (key !== activeKey) return;
+    host.innerHTML = renderSyncModeSection(key, progress);
+    host.setAttribute('data-achv-sync-subtab', key);
+  }
+
   function renderCategorySection(key, config, sub, progress) {
     const catHtml = config.categories.map(cat => {
       const visited = Number(progress.categoryVisited[cat.key] || 0);
@@ -625,12 +644,15 @@ window.AdventureAchievements = (function () {
         </div>`;
     }).join('');
     const totalVisited = progress.totalVisited;
+    const totalsHintHtml = progress.explorerLoaded
+      ? ''
+      : ` <button type="button" class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-sync-totals data-achv-subtab="${key}" title="Load category totals now">Sync category totals now</button>`;
     return `
-      <div class="card adventure-achv-section">
+      <div id="${getAchvSectionId(key, 'category-progression')}" class="card adventure-achv-section">
         <div class="card-header">
           <div>
             <div class="card-title">📊 Category Progression</div>
-            <div class="card-subtitle">Track your ${esc(config.label)} visits by category. Total logged: <strong>${totalVisited}</strong>${progress.explorerLoaded ? '' : ' <em style="font-size:11px;color:#9ca3af;">(Open the explorer once to sync category totals)</em>'}.</div>
+            <div class="card-subtitle">Track your ${esc(config.label)} visits by category. Total logged: <strong>${totalVisited}</strong>.${totalsHintHtml}</div>
           </div>
         </div>
         <div class="adventure-achv-cat-grid">${catHtml}</div>
@@ -812,7 +834,7 @@ window.AdventureAchievements = (function () {
     }).join('');
 
     return `
-      <div class="card adventure-achv-section">
+      <div id="${getAchvSectionId(key, 'challenges-badges')}" class="card adventure-achv-section">
         <div class="card-header">
           <div>
             <div class="card-title">🏅 Challenges &amp; Badges</div>
@@ -981,7 +1003,7 @@ window.AdventureAchievements = (function () {
         </div>`;
     }).join('');
     return `
-      <div class="card adventure-achv-section">
+      <div id="${getAchvSectionId(key, 'seasonal-quests')}" class="card adventure-achv-section">
         <div class="card-header">
           <div>
             <div class="card-title">📚 Seasonal Quests</div>
@@ -1013,7 +1035,7 @@ window.AdventureAchievements = (function () {
         </button>`;
     }).join('');
     return `
-      <div class="card adventure-achv-section">
+      <div id="${getAchvSectionId(key, 'bingo')}" class="card adventure-achv-section">
         <div class="card-header">
           <div>
             <div class="card-title">🟩 ${esc(config.label)} Bingo</div>
@@ -1038,17 +1060,18 @@ window.AdventureAchievements = (function () {
     const progress = buildProgressModel(key, config, sub, settings);
 
     container.innerHTML =
-      renderSyncModeSection(key, progress) +
       renderCategorySection(key, config, sub, progress) +
       renderChallengesSection(key, config, sub, progress) +
       renderQuestsSection(key, config, sub) +
       renderBingoSection(key, config, sub);
 
+    renderSyncModeInDiagnostics(key, progress);
+
     bindEvents(container, key, config, state);
   }
 
   function bindEvents(container, key, config, state) {
-    const modeSelect = container.querySelector('[data-achv-sync-mode]');
+    const modeSelect = document.querySelector(`#visitedDiagnosticsSyncModeHost [data-achv-sync-mode][data-achv-subtab="${key}"]`) || container.querySelector('[data-achv-sync-mode]');
     if (modeSelect) {
       modeSelect.addEventListener('change', () => {
         const settings = getSubSettings(state, key);
@@ -1056,6 +1079,24 @@ window.AdventureAchievements = (function () {
         settings.mode = MATCH_MODES[nextMode] ? nextMode : 'balanced';
         saveState(state);
         renderAll(key);
+      });
+    }
+
+    const syncTotalsBtn = container.querySelector('[data-achv-sync-totals]');
+    if (syncTotalsBtn) {
+      syncTotalsBtn.addEventListener('click', async () => {
+        const prevLabel = syncTotalsBtn.textContent;
+        syncTotalsBtn.disabled = true;
+        syncTotalsBtn.textContent = 'Syncing...';
+        try {
+          if (typeof window.forceVisitedExplorerSync === 'function') {
+            await window.forceVisitedExplorerSync(key);
+          }
+        } finally {
+          syncTotalsBtn.disabled = false;
+          syncTotalsBtn.textContent = prevLabel;
+          renderAll(key);
+        }
       });
     }
 

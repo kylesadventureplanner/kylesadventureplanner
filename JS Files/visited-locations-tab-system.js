@@ -423,6 +423,37 @@
     scheduleVisitedSubTabInterceptionCheck(root, 0);
   }
 
+  function jumpToVisitedSection(targetKey) {
+    const key = PROGRESS_SUBTAB_KEYS.includes(state.activeProgressSubTab) ? state.activeProgressSubTab : 'outdoors';
+    const target = String(targetKey || '').trim();
+    const sectionIdByTarget = {
+      categories: `achv-section-${key}-category-progression`,
+      'challenges-badges': `achv-section-${key}-challenges-badges`,
+      quests: `achv-section-${key}-seasonal-quests`,
+      bingo: `achv-section-${key}-bingo`
+    };
+
+    let el = null;
+    if (target === 'diagnostics') {
+      const details = document.getElementById('visitedDiagnosticsDetails');
+      if (details) {
+        details.open = true;
+        el = details;
+      }
+    } else {
+      const sectionId = sectionIdByTarget[target] || '';
+      if (sectionId) el = document.getElementById(sectionId);
+    }
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (typeof el.focus === 'function') {
+      el.setAttribute('tabindex', '-1');
+      el.focus({ preventScroll: true });
+      window.setTimeout(() => el.removeAttribute('tabindex'), 700);
+    }
+  }
+
   function syncVisitedOverviewView(root) {
     const scope = root || document.getElementById('visitedLocationsRoot');
     if (!scope) return;
@@ -1331,6 +1362,15 @@
       renderExplorerList(root, subtabKey);
       renderSubtabStatusBars();
     }
+  }
+
+  async function forceVisitedExplorerSync(subtabKey) {
+    const key = String(subtabKey || '').trim();
+    const root = document.getElementById('visitedLocationsRoot');
+    if (!root || !getExplorerConfig(key)) return false;
+    await ensureExplorerDataLoaded(root, key, true);
+    renderSubtabStatusBars();
+    return true;
   }
 
   function buildExplorerFilters(explorerState) {
@@ -3351,6 +3391,13 @@
             return;
           }
 
+          const jumpBtn = event.target.closest('[data-visited-jump]');
+          if (jumpBtn) {
+            event.preventDefault();
+            jumpToVisitedSection(jumpBtn.getAttribute('data-visited-jump') || '');
+            return;
+          }
+
           const toggleBtn = event.target.closest('[data-visit-action="toggle"]');
           if (toggleBtn) {
             event.preventDefault();
@@ -3511,6 +3558,7 @@
 
   window.initializeVisitedLocationsTab = initializeVisitedLocationsTab;
   window.initVisitedLocationsTab = window.initVisitedLocationsTab || initializeVisitedLocationsTab;
+  window.forceVisitedExplorerSync = forceVisitedExplorerSync;
   window.getVisitedTrackerSyncHealth = getSyncHealthStatus;
   window.__visitedState = state;
   window.enableVisitedClickTrace = function() {

@@ -4,6 +4,14 @@
 <div id="visitedLocationsRoot">
   <div class="visited-progress-header">
     <h1 id="visitedChallengeTitle">Adventure Challenge - Outdoors</h1>
+    <div class="visited-jump-links" role="navigation" aria-label="Jump to section links">
+      <span class="visited-jump-links-label">Jump to section:</span>
+      <button type="button" class="pill-button" data-visited-jump="categories">📊 Category Progression</button>
+      <button type="button" class="pill-button" data-visited-jump="challenges-badges">🏅 Challenges &amp; Badges</button>
+      <button type="button" class="pill-button" data-visited-jump="quests">📚 Seasonal Quests</button>
+      <button type="button" class="pill-button" data-visited-jump="bingo">🟩 Outdoors Bingo</button>
+      <button type="button" class="pill-button" data-visited-jump="diagnostics">🧰 Diagnostics, Sync and Clean Up</button>
+    </div>
   </div>
 
   <div class="visited-progress-subtabs" role="tablist" aria-label="Adventure Challenge categories" hidden>
@@ -315,6 +323,7 @@
         <span id="visitedSyncHealthBadge" class="visited-sync-health" aria-live="polite">Sync: checking...</span>
         <span id="visitedSyncMeta" class="visited-sync-meta" aria-live="polite">Last synced: --</span>
       </div>
+      <div id="visitedDiagnosticsSyncModeHost" class="visited-diagnostics-sync-mode-host" aria-live="polite"></div>
     </div>
 
     <div class="card visited-diagnostics-subcard">
@@ -349,6 +358,20 @@
 
   #visitedLocationsRoot .visited-progress-header h1 {
     margin-bottom: 10px;
+  }
+
+  #visitedLocationsRoot .visited-jump-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  #visitedLocationsRoot .visited-jump-links-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #475569;
   }
 
   #visitedLocationsRoot .visited-progress-subtabs {
@@ -908,6 +931,10 @@
     gap: 8px;
     margin: 10px 14px 2px;
     align-items: center;
+  }
+
+  #visitedLocationsRoot .visited-diagnostics-sync-mode-host {
+    margin: 10px 14px 14px;
   }
 
   #visitedLocationsRoot .visited-diagnostics-panel {
