@@ -117,7 +117,8 @@
     'regional-festivals': 'Regional Festivals',
     'bike-trails': 'Bike Trails'
   };
-  const EXPLORER_WORKBOOK_PREFIXES = ['', 'Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/'];
+  // Prefer known Copilot workbook folders first to avoid predictable root-level 404 probe noise.
+  const EXPLORER_WORKBOOK_PREFIXES = ['Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/', ''];
   const EXPLORER_COLUMN_CANDIDATES = {
     title: ['name', 'location', 'place', 'venue', 'destination', 'business', 'shop', 'restaurant', 'coffee', 'festival', 'event', 'site'],
     placeId: ['google place id', 'googleplaceid', 'place id', 'placeid'],

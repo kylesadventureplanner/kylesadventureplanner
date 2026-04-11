@@ -2772,7 +2772,7 @@
     if (liveRoot) syncNatureSubTabs(liveRoot);
 
     const tableName = cfg.speciesTableName;
-    const fileCandidates = Array.from(new Set((cfg.speciesFileCandidates || []).concat(EXCEL_FILE_CANDIDATES)));
+    const fileCandidates = prioritizeWorkbookCandidates((cfg.speciesFileCandidates || []).concat(EXCEL_FILE_CANDIDATES));
     const errors = [];
 
     try {
@@ -2797,7 +2797,7 @@
 
           const syncWorkbookPath = await findWorkbookPathWithTables(
             [cfg.sightingsTableName, cfg.userStateTableName],
-            Array.from(new Set((cfg.syncFileCandidates || []).concat(EXCEL_SYNC_FILE_CANDIDATES)))
+            prioritizeWorkbookCandidates((cfg.syncFileCandidates || []).concat(EXCEL_SYNC_FILE_CANDIDATES))
           );
           const remoteState = await hydrateSubTabRemoteState(subTabKey, dataset, syncWorkbookPath);
 
@@ -3028,12 +3028,23 @@
     `;
   }
 
+  function prioritizeWorkbookCandidates(candidates) {
+    const unique = Array.from(new Set((candidates || []).map((item) => String(item || '').trim()).filter(Boolean)));
+    const preferred = [];
+    const fallback = [];
+    unique.forEach((path) => {
+      if (/^Copilot_Apps\/Kyles_Adventure_Finder\//i.test(path)) preferred.push(path);
+      else fallback.push(path);
+    });
+    return preferred.concat(fallback);
+  }
+
   function getBirdFileCandidates() {
     const configured = window.natureBirdTableConfig && window.natureBirdTableConfig.filePath
       ? [String(window.natureBirdTableConfig.filePath)]
       : [];
 
-    return Array.from(new Set(configured.concat(EXCEL_FILE_CANDIDATES)));
+    return prioritizeWorkbookCandidates(configured.concat(EXCEL_FILE_CANDIDATES));
   }
 
   function getBirdSyncFileCandidates() {
@@ -3042,7 +3053,7 @@
       : [];
     const remembered = state && state.birdSyncWorkbookPath ? [String(state.birdSyncWorkbookPath)] : [];
     const dataWorkbookFallback = state && state.birdDataWorkbookPath ? [String(state.birdDataWorkbookPath)] : [];
-    return Array.from(new Set(configured.concat(remembered, EXCEL_SYNC_FILE_CANDIDATES, dataWorkbookFallback)));
+    return prioritizeWorkbookCandidates(configured.concat(remembered, EXCEL_SYNC_FILE_CANDIDATES, dataWorkbookFallback));
   }
 
   function parseGraphStatusFromError(error) {
@@ -4195,17 +4206,30 @@
     state.locationOptions.loading = true;
     try {
       const values = new Set();
-      for (let i = 0; i < NATURE_LOCATION_TABLE_SOURCES.length; i += 1) {
-        const source = NATURE_LOCATION_TABLE_SOURCES[i];
-        try {
-          const payload = await fetchTableColumnsAndRows(source.workbook, source.table, 2000);
-          const rows = toRowObjects(payload.columns || [], payload.rows || []);
-          rows.forEach((row) => {
-            const label = toLocationOptionFromRecord(row);
-            if (label) values.add(label);
-          });
-        } catch (_error) {
-          // Skip unavailable tables and continue through configured sources.
+      const tableCandidates = {};
+      NATURE_LOCATION_TABLE_SOURCES.forEach((source) => {
+        const tableName = String(source && source.table ? source.table : '').trim();
+        const workbookPath = String(source && source.workbook ? source.workbook : '').trim();
+        if (!tableName || !workbookPath) return;
+        if (!tableCandidates[tableName]) tableCandidates[tableName] = [];
+        tableCandidates[tableName].push(workbookPath);
+      });
+
+      for (const tableName of Object.keys(tableCandidates)) {
+        const workbooks = prioritizeWorkbookCandidates(tableCandidates[tableName]);
+        for (let i = 0; i < workbooks.length; i += 1) {
+          const workbook = workbooks[i];
+          try {
+            const payload = await fetchTableColumnsAndRows(workbook, tableName, 2000);
+            const rows = toRowObjects(payload.columns || [], payload.rows || []);
+            rows.forEach((row) => {
+              const label = toLocationOptionFromRecord(row);
+              if (label) values.add(label);
+            });
+            break;
+          } catch (_error) {
+            // Try next workbook candidate for this specific table.
+          }
         }
       }
       state.locationOptions.values = Array.from(values).sort((a, b) => a.localeCompare(b));
