@@ -23,6 +23,7 @@
     'Nature_Sightings.xlsx'
   ];
   const BIRD_SIGHTINGS_REQUIRED_COLUMNS = ['event_id', 'user_id', 'device_id', 'species_status_key', 'species_id', 'canonical_id', 'date_observed', 'count', 'is_deleted', 'created_at', 'updated_at'];
+  const BIRD_SIGHTINGS_EVIDENCE_COLUMNS = ['photo_url', 'audio_url'];
   const BIRD_USER_STATE_REQUIRED_COLUMNS = ['state_id', 'user_id', 'species_status_key', 'species_id', 'canonical_id', 'is_favorite', 'created_at', 'updated_at'];
   const EXCEL_FILE_CANDIDATES = [
     'Copilot_Apps/Kyles_Adventure_Finder/Nature_by_County.xlsx',
@@ -31,6 +32,17 @@
     'Nature_records.xlsx'
   ];
   const SUBTAB_KEYS = ['birds', 'mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees'];
+  const EVIDENCE_UPLOAD_ROOT_DEFAULT = 'Copilot_Apps/Kyles_Adventure_Finder/Photo-Video-Sightings';
+  const EVIDENCE_SUBTAB_FOLDER_MAP = {
+    birds: 'Birds',
+    mammals: 'Mammals',
+    reptiles: 'Reptiles',
+    amphibians: 'Amphibians',
+    insects: 'Insects',
+    arachnids: 'Arachnids',
+    wildflowers: 'Wildflowers',
+    trees: 'Tree-Shrubs'
+  };
   const CONFIG_DRIVEN_SUBTABS = ['mammals', 'reptiles', 'amphibians', 'insects', 'arachnids', 'wildflowers', 'trees'];
   const NATURE_SUBTAB_CONFIG = {
     mammals: {
@@ -1182,11 +1194,16 @@
   function setSyncSchemaDiagnosticsFromColumns(sightingsColumns, userStateColumns) {
     const sightingsMissing = getMissingRequiredColumns(sightingsColumns, BIRD_SIGHTINGS_REQUIRED_COLUMNS);
     const userStateMissing = getMissingRequiredColumns(userStateColumns, BIRD_USER_STATE_REQUIRED_COLUMNS);
+    const sightingsOptionalMissing = getMissingRequiredColumns(sightingsColumns, BIRD_SIGHTINGS_EVIDENCE_COLUMNS);
+    const hasRequiredMissing = sightingsMissing.length || userStateMissing.length;
+    const hasOptionalMissing = sightingsOptionalMissing.length > 0;
+    const status = hasRequiredMissing ? 'missing-columns' : (hasOptionalMissing ? 'optional-columns-missing' : 'ok');
     state.syncSchemaDiagnostics = {
-      status: (sightingsMissing.length || userStateMissing.length) ? 'missing-columns' : 'ok',
+      status,
       checkedAt: toIsoNow(),
       sightingsMissing,
       userStateMissing,
+      sightingsOptionalMissing,
       details: ''
     };
   }
@@ -1197,6 +1214,7 @@
       checkedAt: toIsoNow(),
       sightingsMissing: [],
       userStateMissing: [],
+      sightingsOptionalMissing: [],
       details: String(details || '').trim()
     };
   }
@@ -1204,6 +1222,10 @@
   function getSyncSchemaDiagnosticsSummary() {
     const diag = state.syncSchemaDiagnostics || {};
     if (diag.status === 'ok') return 'OK - required columns detected for both sync tables.';
+    if (diag.status === 'optional-columns-missing') {
+      const missing = Array.isArray(diag.sightingsOptionalMissing) ? diag.sightingsOptionalMissing : [];
+      return `Evidence URL columns not yet added to sightings table (${missing.join(', ')}). Add them to enable OneDrive media link storage. Sightings and filename-only evidence will still save normally.`;
+    }
     if (diag.status === 'missing-columns') {
       const notes = [];
       if (Array.isArray(diag.sightingsMissing) && diag.sightingsMissing.length) {
@@ -1223,10 +1245,21 @@
     if (diag.status === 'ok') {
       return { label: 'OK', className: 'is-good' };
     }
+    if (diag.status === 'optional-columns-missing') {
+      return { label: 'Evidence columns missing', className: 'is-warn' };
+    }
     if (diag.status === 'missing-columns') {
       return { label: 'Needs review', className: 'is-alert' };
     }
     return { label: 'Unknown', className: '' };
+  }
+
+  function evidenceColumnsAreMissing() {
+    const diag = state.syncSchemaDiagnostics || {};
+    return (
+      diag.status === 'optional-columns-missing'
+      || (Array.isArray(diag.sightingsOptionalMissing) && diag.sightingsOptionalMissing.length > 0)
+    );
   }
 
   function parseSyncTimestamp(value) {
@@ -1256,6 +1289,10 @@
       eventId,
       dateObserved: toSafeDateObserved(base.dateObserved || createdAt),
       count: Math.max(1, Number(base.count || 1) || 1),
+      photoName: String(base.photoName || '').trim(),
+      audioName: String(base.audioName || '').trim(),
+      photoUrl: String(base.photoUrl || '').trim(),
+      audioUrl: String(base.audioUrl || '').trim(),
       createdAt,
       updatedAt,
       synced: Boolean(base.synced),
@@ -3342,10 +3379,77 @@
     return !Number.isNaN(latNum) && !Number.isNaN(lngNum) && latNum >= -90 && latNum <= 90 && lngNum >= -180 && lngNum <= 180;
   }
 
-  function readAttachmentName(inputId) {
+  function readAttachmentFile(inputId) {
     const input = document.getElementById(inputId);
-    if (!input || !input.files || !input.files[0]) return '';
-    return input.files[0].name || '';
+    if (!input || !input.files || !input.files[0]) return null;
+    return input.files[0];
+  }
+
+  function readAttachmentName(inputId) {
+    const file = readAttachmentFile(inputId);
+    return file && file.name ? file.name : '';
+  }
+
+  function sanitizeEvidenceFileName(fileName) {
+    return String(fileName || '')
+      .replace(/[\\/:*?"<>|]/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function getEvidenceUploadRootPath() {
+    const configured = window.natureBirdSyncConfig && window.natureBirdSyncConfig.mediaFolderPath
+      ? String(window.natureBirdSyncConfig.mediaFolderPath)
+      : EVIDENCE_UPLOAD_ROOT_DEFAULT;
+    return configured.replace(/^\/+|\/+$/g, '');
+  }
+
+  function getEvidenceCategoryFolderName(subTabKey) {
+    const key = String(subTabKey || state.activeSubTab || 'birds').trim().toLowerCase();
+    return EVIDENCE_SUBTAB_FOLDER_MAP[key] || EVIDENCE_SUBTAB_FOLDER_MAP.birds;
+  }
+
+  async function uploadEvidenceToOneDrive(file, options = {}) {
+    if (!file) return null;
+    if (!window.accessToken) {
+      throw new Error('Graph upload failed (401): missing access token');
+    }
+
+    const kind = String(options.kind || 'media').trim().toLowerCase();
+    const categoryFolder = getEvidenceCategoryFolderName(options.subTabKey);
+    const safeName = sanitizeEvidenceFileName(file.name || `${kind}-${Date.now()}`) || `${kind}-${Date.now()}`;
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${safeName}`;
+    const relativePath = `${getEvidenceUploadRootPath()}/${categoryFolder}/${uniqueName}`;
+    const encodedPath = encodeGraphPath(relativePath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/content?@microsoft.graph.conflictBehavior=rename`;
+
+    const run = async () => {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': file.type || 'application/octet-stream'
+        },
+        body: file
+      });
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(`Graph upload failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+      }
+      return response.json().catch(() => ({}));
+    };
+
+    const payload = window.ReliabilityAsync && typeof window.ReliabilityAsync.retryIdempotentWrite === 'function'
+      ? await window.ReliabilityAsync.retryIdempotentWrite('Graph evidence upload', run, { retries: 1, backoffMs: 450 })
+      : await run();
+
+    return {
+      id: String(payload.id || ''),
+      name: String(payload.name || safeName),
+      webUrl: String(payload.webUrl || ''),
+      downloadUrl: String(payload['@microsoft.graph.downloadUrl'] || ''),
+      path: relativePath
+    };
   }
 
   function getBirdLogBySpeciesKey(statusKey) {
@@ -3426,6 +3530,8 @@
       notes: String(normalized.notes || ''),
       photo_name: String(normalized.photoName || ''),
       audio_name: String(normalized.audioName || ''),
+      photo_url: String(normalized.photoUrl || ''),
+      audio_url: String(normalized.audioUrl || ''),
       is_deleted: normalized.isDeleted ? 'TRUE' : 'FALSE',
       created_at: String(normalized.createdAt || ''),
       updated_at: String(normalized.updatedAt || normalized.createdAt || ''),
@@ -3501,6 +3607,8 @@
       notes: String(record.notes || '').trim(),
       photoName: String(record.photo_name || '').trim(),
       audioName: String(record.audio_name || '').trim(),
+      photoUrl: String(record.photo_url || '').trim(),
+      audioUrl: String(record.audio_url || '').trim(),
       isDeleted: parseBooleanFlag(record.is_deleted),
       createdAt,
       updatedAt,
@@ -3606,7 +3714,12 @@
 
   function hasBirdLogEvidence(entry) {
     if (!entry || typeof entry !== 'object') return false;
-    return Boolean(String(entry.photoName || '').trim() || String(entry.audioName || '').trim());
+    return Boolean(
+      String(entry.photoName || '').trim()
+      || String(entry.audioName || '').trim()
+      || String(entry.photoUrl || '').trim()
+      || String(entry.audioUrl || '').trim()
+    );
   }
 
   function getSeasonKeyForDate(date) {
@@ -3916,6 +4029,14 @@
           <span>${escapeHtml(schemaSummary)}</span>
         </strong>
       </div>
+      ${evidenceColumnsAreMissing() ? `
+      <div class="nature-sync-kpi-row">
+        <span class="nature-sync-kpi-label">Evidence URL columns</span>
+        <strong>
+          <span class="nature-explorer-status-pill is-warn">⚠️ Missing</span>
+          <span>Add <code>${escapeHtml((state.syncSchemaDiagnostics && Array.isArray(state.syncSchemaDiagnostics.sightingsOptionalMissing) ? state.syncSchemaDiagnostics.sightingsOptionalMissing : ['photo_url', 'audio_url']).join(', '))}</code> columns to <code>birds_sightings</code> in your Excel workbook to save OneDrive media links. Sightings are unaffected.</span>
+        </strong>
+      </div>` : ''}
       ${state.syncLastError ? `<div class="nature-sync-error">${escapeHtml(state.syncLastError)}</div>` : ''}
     `;
 
@@ -4227,13 +4348,53 @@
     const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
     const latInput = document.getElementById('birdsLogLatInput');
     const lngInput = document.getElementById('birdsLogLngInput');
+    const photoInput = document.getElementById('birdsLogPhotoInput');
+    const audioInput = document.getElementById('birdsLogAudioInput');
     const hasSpecies = Boolean(speciesSelect && speciesSelect.value);
     const hasCoords = isValidLatLng(latInput ? latInput.value : '', lngInput ? lngInput.value : '');
+    const hasEvidenceFile = Boolean(
+      (photoInput && photoInput.files && photoInput.files.length)
+      || (audioInput && audioInput.files && audioInput.files.length)
+    );
     const chips = [
       hasSpecies ? 'Ready to save' : 'Missing species',
       hasCoords ? 'Coordinates ready' : 'Coordinates optional'
     ];
-    row.innerHTML = chips.map((label) => `<span class="nature-log-status-chip">${escapeHtml(label)}</span>`).join('');
+    let html = chips.map((label) => `<span class="nature-log-status-chip">${escapeHtml(label)}</span>`).join('');
+    if (hasEvidenceFile && evidenceColumnsAreMissing()) {
+      html += `<span class="nature-log-status-chip nature-log-status-chip--warn" title="Add photo_url and audio_url columns to your birds_sightings Excel table to save OneDrive media links. Your file will still upload to OneDrive, but the link won\'t be stored in the sheet.">⚠️ Media URL columns missing in Excel table</span>`;
+    } else if (hasEvidenceFile && window.accessToken) {
+      html += `<span class="nature-log-status-chip nature-log-status-chip--ok">📎 Evidence will upload to OneDrive</span>`;
+    } else if (hasEvidenceFile) {
+      html += `<span class="nature-log-status-chip nature-log-status-chip--warn">⚠️ Sign in to upload evidence to OneDrive</span>`;
+    }
+    row.innerHTML = html;
+    renderBirdLogEvidenceSchemaHint(hasEvidenceFile);
+  }
+
+  function renderBirdLogEvidenceSchemaHint(hasEvidenceFile) {
+    const hint = document.getElementById('birdsLogEvidenceSchemaWarn');
+    if (!hint) return;
+    if (!hasEvidenceFile || !evidenceColumnsAreMissing()) {
+      hint.hidden = true;
+      hint.innerHTML = '';
+      return;
+    }
+    const missing = Array.isArray(state.syncSchemaDiagnostics && state.syncSchemaDiagnostics.sightingsOptionalMissing)
+      ? state.syncSchemaDiagnostics.sightingsOptionalMissing
+      : ['photo_url', 'audio_url'];
+    hint.hidden = false;
+    hint.innerHTML = `
+      <div class="nature-evidence-schema-warn">
+        <span class="nature-evidence-schema-warn-icon" aria-hidden="true">⚠️</span>
+        <div class="nature-evidence-schema-warn-body">
+          <strong>Evidence link columns not found in Excel</strong>
+          <span>Your file will still upload to OneDrive, but the cloud link can't be saved to your sightings table until you add these columns to <code>birds_sightings</code>:</span>
+          <code class="nature-evidence-schema-warn-cols">${escapeHtml(missing.join(', '))}</code>
+          <span>The filename will still be saved. Once the columns exist, the link will be stored on future sightings.</span>
+        </div>
+      </div>
+    `;
   }
 
   function renderBirdLogOfflineStatus() {
@@ -4278,7 +4439,7 @@
     `;
   }
 
-  function logSightingFromForm(mode = 'save') {
+  async function logSightingFromForm(mode = 'save') {
     const speciesSelect = document.getElementById('birdsLogSpeciesSelect');
     const dateInput = document.getElementById('birdsLogDateInput');
     const locationInput = document.getElementById('birdsLogLocationInput');
@@ -4310,6 +4471,31 @@
     const notes = notesInput ? notesInput.value.trim() : '';
 
     const hasCoords = isValidLatLng(lat, lng);
+    const photoFile = readAttachmentFile('birdsLogPhotoInput');
+    const audioFile = readAttachmentFile('birdsLogAudioInput');
+
+    const uploadErrors = [];
+    let uploadedPhoto = null;
+    let uploadedAudio = null;
+
+    if (window.accessToken) {
+      if (photoFile) {
+        try {
+          uploadedPhoto = await uploadEvidenceToOneDrive(photoFile, { subTabKey: state.activeSubTab, kind: 'photo' });
+        } catch (error) {
+          uploadErrors.push(`photo: ${error && error.message ? error.message : 'upload failed'}`);
+        }
+      }
+      if (audioFile) {
+        try {
+          uploadedAudio = await uploadEvidenceToOneDrive(audioFile, { subTabKey: state.activeSubTab, kind: 'audio' });
+        } catch (error) {
+          uploadErrors.push(`audio: ${error && error.message ? error.message : 'upload failed'}`);
+        }
+      }
+    } else if (photoFile || audioFile) {
+      uploadErrors.push('media upload skipped: sign in to OneDrive to upload evidence files');
+    }
 
     const entry = {
       id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -4327,11 +4513,16 @@
       longitude: hasCoords ? Number(lng) : null,
       confidence,
       notes,
-      photoName: readAttachmentName('birdsLogPhotoInput'),
-      audioName: readAttachmentName('birdsLogAudioInput'),
+      photoName: uploadedPhoto && uploadedPhoto.name ? uploadedPhoto.name : (photoFile && photoFile.name ? photoFile.name : ''),
+      audioName: uploadedAudio && uploadedAudio.name ? uploadedAudio.name : (audioFile && audioFile.name ? audioFile.name : ''),
+      photoUrl: uploadedPhoto && uploadedPhoto.webUrl ? uploadedPhoto.webUrl : '',
+      audioUrl: uploadedAudio && uploadedAudio.webUrl ? uploadedAudio.webUrl : '',
       createdAt: new Date().toISOString(),
       synced: false
     };
+    if (uploadErrors.length) {
+      entry.evidenceUploadError = uploadErrors.join(' | ').slice(0, 500);
+    }
 
     addSightingLogEntry(entry);
     setUndoAction({ type: 'log-sighting', entryId: entry.id, label: 'Logged sighting' });
@@ -4339,6 +4530,9 @@
     state.logSuccessMessage = `Saved ${selectedBird.speciesName} for ${dateObserved}${locationName ? ` at ${locationName}` : ''}.`;
     if (typeof window.showToast === 'function') {
       window.showToast(`Logged sighting: ${selectedBird.speciesName}. Use Undo pill or press z.`, 'success', 2800);
+      if (uploadErrors.length) {
+        window.showToast('Saved sighting, but one or more media uploads did not complete.', 'info', 3200);
+      }
     }
 
     const resetForNew = mode === 'save-new';
@@ -7518,7 +7712,9 @@
     const logSightingBtn = document.getElementById('birdsLogSightingBtn');
     if (logSightingBtn && logSightingBtn.dataset.natureLogBound !== '1') {
       logSightingBtn.dataset.natureLogBound = '1';
-      logSightingBtn.addEventListener('click', () => logSightingFromForm());
+      logSightingBtn.addEventListener('click', () => {
+        withBirdsActionGuard(logSightingBtn, () => logSightingFromForm());
+      });
     }
 
     const logSpeciesSelect = document.getElementById('birdsLogSpeciesSelect');
@@ -7591,6 +7787,14 @@
         if (!el || el.dataset.natureLogDraftBound === '1') return;
         el.dataset.natureLogDraftBound = '1';
         el.addEventListener('input', saveBirdLogDraft);
+      });
+
+    ['birdsLogPhotoInput', 'birdsLogAudioInput']
+      .forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.natureLogEvidenceBound === '1') return;
+        el.dataset.natureLogEvidenceBound = '1';
+        el.addEventListener('change', () => renderBirdLogValidationBadges());
       });
 
     const locationSelect = document.getElementById('birdsLogLocationInput');

@@ -388,6 +388,7 @@
                 <input id="birdsLogAudioInput" class="filter-input" type="file" accept="audio/*" aria-label="Add an audio recording" title="Add an audio recording for this bird sighting" data-tooltip="Add an audio recording for this bird sighting" aria-describedby="birdsLogAudioHelp" />
                 <div id="birdsLogAudioHelp" class="nature-log-field-help">Add a song or call recording if you want to keep an audio record of this sighting.</div>
               </div>
+              <div id="birdsLogEvidenceSchemaWarn" hidden aria-live="polite"></div>
               <textarea id="birdsLogNotesInput" data-log-field="evidence" class="filter-input" rows="3" placeholder="Notes" aria-label="Sighting notes" title="Add notes about this bird sighting" data-tooltip="Add notes about this bird sighting"></textarea>
             </div>
             <div class="nature-log-form-actions nature-log-form-actions--sticky">
@@ -2556,6 +2557,69 @@
     padding: 3px 9px;
     font-size: 11px;
     font-weight: 700;
+  }
+
+  #natureChallengeRoot .nature-log-status-chip--warn {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  #natureChallengeRoot .nature-log-status-chip--ok {
+    border-color: #34d399;
+    background: #ecfdf5;
+    color: #065f46;
+  }
+
+  /* ── Evidence schema preflight warning banner ── */
+  #natureChallengeRoot .nature-evidence-schema-warn {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: #fffbeb;
+    border: 1px solid #f59e0b;
+    border-radius: 10px;
+    font-size: 12px;
+    color: #78350f;
+  }
+
+  #natureChallengeRoot .nature-evidence-schema-warn-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    line-height: 1.3;
+  }
+
+  #natureChallengeRoot .nature-evidence-schema-warn-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    line-height: 1.5;
+  }
+
+  #natureChallengeRoot .nature-evidence-schema-warn-body strong {
+    font-size: 12.5px;
+    color: #451a03;
+  }
+
+  #natureChallengeRoot .nature-evidence-schema-warn-cols {
+    display: inline-block;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #92400e;
+    word-break: break-all;
+  }
+
+  /* Sync status warn pill */
+  #natureChallengeRoot .nature-explorer-status-pill.is-warn {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #f59e0b;
   }
 
   #natureChallengeRoot .nature-log-command-row {
