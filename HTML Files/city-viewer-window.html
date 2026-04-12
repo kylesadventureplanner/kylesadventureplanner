@@ -1210,8 +1210,20 @@
       resolvePrefilterFromUrl();
       // Load data from sessionStorage or parent window
       if (!loadCityViewerData()) {
-        console.error('❌ Failed to load adventure data');
         const grid = document.getElementById('cityGrid');
+        const isCuratedOnly = String(cityViewerDataMeta && cityViewerDataMeta.dataMode ? cityViewerDataMeta.dataMode : '').toLowerCase() === 'curated-only';
+        if (isCuratedOnly) {
+          console.info('ℹ️ Curated-only City Viewer opened with no cached curated rows.');
+          grid.innerHTML = `
+            <div class="empty-state u-grid-full-span">
+              <div class="empty-state-icon">🗂️</div>
+              <div class="empty-state-text">No curated rows available yet</div>
+              <div class="u-note-muted">Sign in and refresh data in the main app, then open City Explorer again.</div>
+            </div>
+          `;
+          return;
+        }
+        console.error('❌ Failed to load adventure data');
         grid.innerHTML = `
           <div class="empty-state u-grid-full-span">
             <div class="empty-state-icon">❌</div>

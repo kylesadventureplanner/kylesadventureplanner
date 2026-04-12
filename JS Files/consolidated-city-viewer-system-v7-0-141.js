@@ -55,6 +55,7 @@ const CITY_VIEWER_TABLE_SOURCES = [
   { workbook: 'Entertainment_Locations.xlsx', table: 'Festivals', sourceType: 'festivals' },
   { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment', sourceType: 'entertainment' }
 ];
+const CITY_VIEWER_MISSING_TOKEN_NOTICE_KEY = '__cityViewerMissingTokenNoticeShown';
 
 function encodeCityViewerGraphPath(filePath) {
   return String(filePath || '')
@@ -162,6 +163,14 @@ function normalizeCityViewerRow(row, headerMap, sourceLabel) {
 }
 
 async function buildCityViewerCuratedData() {
+  if (!window.accessToken || typeof fetch !== 'function') {
+    if (!window[CITY_VIEWER_MISSING_TOKEN_NOTICE_KEY]) {
+      window[CITY_VIEWER_MISSING_TOKEN_NOTICE_KEY] = true;
+      console.info('ℹ️ City Viewer curated sources skipped: sign in is required to load workbook tables.');
+    }
+    return [];
+  }
+
   const results = [];
   for (const source of CITY_VIEWER_TABLE_SOURCES) {
     try {
