@@ -331,6 +331,22 @@
             <div id="birdsLogValidationBadges" class="nature-log-validation-badges" aria-live="polite"></div>
             <div id="birdsLogOfflineStatus" class="nature-offline-status-line" aria-live="polite">Recent logs saved locally.</div>
             <div id="birdsLogHistoryCard" class="nature-log-history-card" aria-live="polite"></div>
+            <div class="card" style="margin-top:8px;">
+              <div class="card-title">Import from iNaturalist</div>
+              <div class="card-subtitle">Paste CSV/TSV/JSON or choose an export file, then preview before import.</div>
+              <textarea id="birdsImportPasteInput" class="filter-input" rows="5" placeholder="Paste iNaturalist export rows here..."></textarea>
+              <div style="margin-top:8px; display:grid; gap:8px; grid-template-columns:1fr;">
+                <input id="birdsImportFileInput" class="filter-input" type="file" accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,application/json" aria-label="Upload iNaturalist export file" />
+              </div>
+              <div class="nature-log-form-actions" style="margin-top:8px;">
+                <button id="birdsImportParseBtn" type="button" class="pill-button" title="Parse and preview import rows" data-tooltip="Parse and preview import rows">Preview Import</button>
+                <button id="birdsImportDryRunBtn" type="button" class="pill-button" title="Run validation and dedupe without writing logs" data-tooltip="Run validation and dedupe without writing logs">Dry Run</button>
+                <button id="birdsImportMappingBtn" type="button" class="pill-button" title="Open strict mapping report" data-tooltip="Open strict mapping report">Strict Mapping Report</button>
+                <button id="birdsImportApplyBtn" type="button" class="pill-button" title="Import valid rows into your sightings log" data-tooltip="Import valid rows into your sightings log">Import Rows</button>
+              </div>
+              <div id="birdsImportStatus" class="nature-log-history-card" aria-live="polite" style="margin-top:8px;">No import parsed yet.</div>
+              <div id="birdsImportPreview" class="nature-log-history-card" aria-live="polite" style="margin-top:8px; max-height:240px; overflow:auto;">Preview rows will appear here.</div>
+            </div>
             <div class="nature-log-form-grid">
               <input id="birdsLogSpeciesSearchInput" data-log-field="core" class="filter-input" type="text" list="birdsLogSpeciesSearchList" placeholder="Select species..." aria-label="Bird species" title="Type to narrow species" data-tooltip="Type to narrow species" autocomplete="off" />
               <datalist id="birdsLogSpeciesSearchList"></datalist>
@@ -594,6 +610,16 @@
       <div id="birdsCollectionControls" class="nature-collection-controls" hidden></div>
       <div id="birdsCollectionGrid" class="nature-challenge-grid"></div>
     </div>
+  </div>
+
+  <div id="birdsImportMappingBackdrop" class="nature-import-mapping-backdrop" hidden></div>
+  <div id="birdsImportMappingModal" class="nature-import-mapping-modal" role="dialog" aria-modal="true" aria-labelledby="birdsImportMappingTitle" hidden>
+    <div class="nature-import-mapping-head">
+      <div id="birdsImportMappingTitle" class="card-title">Strict Mapping Report</div>
+      <button id="birdsImportMappingCloseBtn" type="button" class="pill-button" aria-label="Close strict mapping report">Close</button>
+    </div>
+    <div class="card-subtitle">Review unmatched rows and click a suggested species to map before import.</div>
+    <div id="birdsImportMappingBody" class="nature-import-mapping-body" aria-live="polite"></div>
   </div>
 
   <!-- MAMMALS SUB-TAB -->
@@ -885,6 +911,58 @@
     --birds-space-32: var(--birds-space-32, 32px);
     --birds-motion-duration: 160ms;
     --birds-motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  #natureChallengeRoot .nature-import-mapping-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 4600;
+  }
+
+  #natureChallengeRoot .nature-import-mapping-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(820px, calc(100vw - 24px));
+    max-height: calc(100vh - 28px);
+    overflow: auto;
+    background: #fff;
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    box-shadow: 0 22px 54px rgba(15, 23, 42, 0.24);
+    padding: 14px;
+    z-index: 4601;
+  }
+
+  #natureChallengeRoot .nature-import-mapping-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  #natureChallengeRoot .nature-import-mapping-body {
+    margin-top: 10px;
+    display: grid;
+    gap: 10px;
+  }
+
+  #natureChallengeRoot .nature-import-map-row {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-import-map-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   #natureChallengeRoot .nature-jump-links {

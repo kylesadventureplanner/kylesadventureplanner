@@ -384,6 +384,12 @@
       loaded: false,
       values: []
     },
+    birdImport: {
+      sourceLabel: '',
+      candidates: [],
+      lastAnalysis: null,
+      busy: false
+    },
     lastSyncAttemptAt: '',
     lastSyncSuccessAt: '',
     lastLoadedAt: null,
@@ -4232,6 +4238,447 @@
     return contains ? contains.id : '';
   }
 
+  function normalizeImportHeaderKey(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
+  function parseDelimitedLine(line, delimiter) {
+    const cells = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (char === delimiter && !inQuotes) {
+        cells.push(current);
+        current = '';
+        continue;
+      }
+      current += char;
+    }
+    cells.push(current);
+    return cells.map((cell) => String(cell || '').trim());
+  }
+
+  function parseDelimitedImportRows(rawText) {
+    const text = String(rawText || '').replace(/\r\n?/g, '\n').trim();
+    if (!text) return [];
+    const lines = text.split('\n').filter((line) => String(line || '').trim());
+    if (!lines.length) return [];
+    const delimiter = lines[0].includes('\t') ? '\t' : ',';
+    const headers = parseDelimitedLine(lines[0], delimiter).map((header, idx) => normalizeImportHeaderKey(header || `col_${idx + 1}`));
+    return lines.slice(1).map((line) => {
+      const cells = parseDelimitedLine(line, delimiter);
+      const row = {};
+      headers.forEach((key, idx) => {
+        row[key] = String(cells[idx] || '').trim();
+      });
+      return row;
+    }).filter((row) => Object.values(row).some((value) => String(value || '').trim()));
+  }
+
+  function parseJsonImportRows(rawText) {
+    const payload = safeJsonParse(rawText, null);
+    if (!payload) return [];
+    const list = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload.results)
+        ? payload.results
+        : Array.isArray(payload.observations)
+          ? payload.observations
+          : [];
+    return list.map((entry) => {
+      const row = { ...(entry || {}) };
+      if (row.taxon && typeof row.taxon === 'object') {
+        if (!row.scientific_name && row.taxon.name) row.scientific_name = String(row.taxon.name || '').trim();
+        if (!row.species_guess && row.taxon.preferred_common_name) row.species_guess = String(row.taxon.preferred_common_name || '').trim();
+      }
+      if ((!row.latitude || !row.longitude) && row.geojson && Array.isArray(row.geojson.coordinates)) {
+        row.longitude = row.geojson.coordinates[0];
+        row.latitude = row.geojson.coordinates[1];
+      }
+      if (!row.observed_on && row.observed_on_string) row.observed_on = row.observed_on_string;
+      return row;
+    });
+  }
+
+  function pickImportField(record, keys) {
+    const row = record || {};
+    const entries = Object.entries(row);
+    for (let i = 0; i < keys.length; i += 1) {
+      const target = normalizeImportHeaderKey(keys[i]);
+      const exact = entries.find(([k]) => normalizeImportHeaderKey(k) === target);
+      if (exact && String(exact[1] || '').trim()) return String(exact[1] || '').trim();
+      const fuzzy = entries.find(([k]) => normalizeImportHeaderKey(k).includes(target));
+      if (fuzzy && String(fuzzy[1] || '').trim()) return String(fuzzy[1] || '').trim();
+    }
+    return '';
+  }
+
+  function inferRegionHabitatFromLocation(locationText) {
+    const text = norm(locationText);
+    if (!text) return { region: '', habitat: '' };
+    if (text.includes('coast') || text.includes('beach') || text.includes('shore')) return { region: 'coast', habitat: 'coast' };
+    if (text.includes('marsh') || text.includes('wetland') || text.includes('swamp')) return { region: 'marsh', habitat: 'marsh' };
+    if (text.includes('forest') || text.includes('wood') || text.includes('trail')) return { region: 'forest', habitat: 'forest' };
+    if (text.includes('city') || text.includes('urban') || text.includes('park')) return { region: 'urban', habitat: 'urban' };
+    return { region: '', habitat: '' };
+  }
+
+  function mapImportConfidence(rawQuality) {
+    const quality = norm(rawQuality);
+    if (!quality) return 'certain';
+    if (quality.includes('needs_id') || quality.includes('casual') || quality.includes('review')) return 'needs-review';
+    if (quality.includes('probable')) return 'probable';
+    return 'certain';
+  }
+
+  function resolveBirdFromImportSpecies(rawSpecies, scientificSpecies) {
+    const candidates = [rawSpecies, scientificSpecies].map((value) => String(value || '').trim()).filter(Boolean);
+    for (let i = 0; i < candidates.length; i += 1) {
+      const fromInput = resolveBirdIdFromLogSpeciesInput(candidates[i]);
+      if (fromInput) return findBirdById(fromInput);
+      const scientificMatch = state.birds.find((bird) => {
+        const scientific = String(pickImportField(bird.details || {}, ['species_scientific', 'scientific_name']) || '').trim();
+        return scientific && norm(scientific) === norm(candidates[i]);
+      });
+      if (scientificMatch) return scientificMatch;
+    }
+    return null;
+  }
+
+  function buildBirdImportEntryFromFields(fields, bird, indexSeed) {
+    if (!bird) return null;
+    const contextGuess = inferRegionHabitatFromLocation(fields.locationName);
+    return normalizeSightingEntry({
+      eventId: `imp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${indexSeed}`,
+      speciesId: bird.id,
+      speciesStatusKey: getBirdStatusKey(bird),
+      canonicalId: bird.canonicalId || bird.id,
+      speciesName: bird.speciesName,
+      familyLabel: bird.familyLabel,
+      dateObserved: fields.observedOn || toIsoNow(),
+      locationName: fields.locationName,
+      count: Math.max(1, Number(fields.countRaw || 1) || 1),
+      region: (fields.region || contextGuess.region || '').trim().toLowerCase(),
+      habitat: (fields.habitat || contextGuess.habitat || '').trim().toLowerCase(),
+      latitude: fields.latRaw === '' ? null : Number(fields.latRaw),
+      longitude: fields.lngRaw === '' ? null : Number(fields.lngRaw),
+      confidence: mapImportConfidence(fields.quality),
+      notes: [
+        fields.notes,
+        fields.observationUrl ? `Source: ${fields.observationUrl}` : '',
+        fields.observationId ? `Obs ID: ${fields.observationId}` : ''
+      ].filter(Boolean).join(' | '),
+      createdAt: toIsoNow(),
+      synced: false
+    });
+  }
+
+  function scoreBirdImportSuggestion(label, bird) {
+    const input = norm(label);
+    if (!input || !bird) return 0;
+    const speciesName = norm(bird.speciesName);
+    const family = norm(bird.familyLabel);
+    const genus = norm(bird.genusLabel);
+    const inputTokens = input.split(/\s+/).filter(Boolean);
+    const speciesTokens = speciesName.split(/\s+/).filter(Boolean);
+
+    let score = 0;
+    if (speciesName === input) score += 300;
+    if (speciesName.includes(input) || input.includes(speciesName)) score += 180;
+    if (family && input.includes(family)) score += 40;
+    if (genus && input.includes(genus)) score += 60;
+
+    const overlaps = inputTokens.filter((token) => speciesTokens.includes(token)).length;
+    score += overlaps * 35;
+
+    return score;
+  }
+
+  function getBirdImportSuggestions(candidate, maxCount = 5) {
+    const label = String((candidate && candidate.speciesInput) || '').trim();
+    if (!label) return [];
+    return (state.birds || [])
+      .map((bird) => ({ bird, score: scoreBirdImportSuggestion(label, bird) }))
+      .filter((row) => row.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, maxCount)
+      .map((row) => row.bird);
+  }
+
+  function buildBirdImportCandidates(rawRows, sourceLabel) {
+    const rows = Array.isArray(rawRows) ? rawRows : [];
+    return rows.map((record, index) => {
+      const fields = {
+        species: pickImportField(record, ['species_guess', 'common_name', 'species', 'taxon_name', 'name']),
+        scientific: pickImportField(record, ['scientific_name', 'taxon_scientific_name', 'taxon_name']),
+        observedOn: pickImportField(record, ['observed_on', 'date_observed', 'observed_at', 'date']),
+        locationName: pickImportField(record, ['place_guess', 'location_name', 'location', 'place', 'site']),
+        region: pickImportField(record, ['region']),
+        habitat: pickImportField(record, ['habitat']),
+        countRaw: pickImportField(record, ['count', 'individual_count', 'individuals']),
+        latRaw: pickImportField(record, ['latitude', 'lat']),
+        lngRaw: pickImportField(record, ['longitude', 'lng', 'lon']),
+        quality: pickImportField(record, ['quality_grade', 'confidence']),
+        notes: pickImportField(record, ['description', 'notes', 'note']),
+        observationUrl: pickImportField(record, ['uri', 'url', 'observation_url']),
+        observationId: pickImportField(record, ['id', 'observation_id'])
+      };
+
+      const bird = resolveBirdFromImportSpecies(fields.species, fields.scientific);
+      const entry = buildBirdImportEntryFromFields(fields, bird, index);
+
+      return {
+        sourceLabel,
+        sourceRowIndex: index,
+        rowIndex: index + 1,
+        speciesInput: fields.species || fields.scientific,
+        fields,
+        matchedBirdId: bird ? bird.id : '',
+        matchedSpeciesName: bird ? bird.speciesName : '',
+        suggestions: [],
+        entry,
+        raw: record
+      };
+    });
+  }
+
+  function toImportDedupKey(entry) {
+    const normalized = normalizeSightingEntry(entry || {});
+    return [
+      norm(normalized.speciesStatusKey),
+      norm(normalized.dateObserved),
+      norm(normalized.locationName)
+    ].join('|');
+  }
+
+  function analyzeBirdImportCandidates(candidates) {
+    const rows = Array.isArray(candidates) ? candidates : [];
+    const existingKeys = new Set((state.sightingLog || []).map((entry) => toImportDedupKey(entry)));
+    const seenImportKeys = new Set();
+    const result = {
+      total: rows.length,
+      matched: 0,
+      unmatched: 0,
+      duplicates: 0,
+      ready: 0,
+      readyCandidates: []
+    };
+
+    rows.forEach((row) => {
+      if (!row || !row.entry || !row.matchedBirdId) {
+        row.importStatus = 'unmatched';
+        result.unmatched += 1;
+        return;
+      }
+      result.matched += 1;
+      const key = toImportDedupKey(row.entry);
+      if (!key || existingKeys.has(key) || seenImportKeys.has(key)) {
+        row.importStatus = 'duplicate';
+        result.duplicates += 1;
+        return;
+      }
+      seenImportKeys.add(key);
+      row.importStatus = 'ready';
+      result.ready += 1;
+      result.readyCandidates.push(row);
+    });
+
+    return result;
+  }
+
+  function refreshBirdImportAnalysis() {
+    const rows = Array.isArray(state.birdImport.candidates) ? state.birdImport.candidates : [];
+    rows.forEach((row) => {
+      if (!row) return;
+      if (row.matchedBirdId) {
+        row.suggestions = [];
+        return;
+      }
+      row.suggestions = getBirdImportSuggestions(row, 5).map((bird) => ({
+        id: bird.id,
+        name: bird.speciesName,
+        family: bird.familyLabel
+      }));
+    });
+    state.birdImport.lastAnalysis = analyzeBirdImportCandidates(rows);
+    return state.birdImport.lastAnalysis;
+  }
+
+  function applyBirdImportManualMatch(sourceRowIndex, birdId) {
+    const rowIndex = Number(sourceRowIndex);
+    if (!Number.isInteger(rowIndex)) return false;
+    const bird = findBirdById(birdId);
+    if (!bird) return false;
+    const candidate = (state.birdImport.candidates || []).find((row) => Number(row && row.sourceRowIndex) === rowIndex);
+    if (!candidate) return false;
+
+    candidate.matchedBirdId = bird.id;
+    candidate.matchedSpeciesName = bird.speciesName;
+    candidate.entry = buildBirdImportEntryFromFields(candidate.fields || {}, bird, rowIndex);
+    candidate.suggestions = [];
+    refreshBirdImportAnalysis();
+    return true;
+  }
+
+  function renderBirdImportMappingModal() {
+    const body = document.getElementById('birdsImportMappingBody');
+    if (!body) return;
+    const rows = Array.isArray(state.birdImport.candidates) ? state.birdImport.candidates : [];
+    const unmatched = rows.filter((row) => row && row.importStatus === 'unmatched');
+    if (!unmatched.length) {
+      body.innerHTML = '<div class="nature-empty-state">No unmatched rows. You are ready to import.</div>';
+      return;
+    }
+    body.innerHTML = unmatched.map((row) => {
+      const suggestions = Array.isArray(row.suggestions) ? row.suggestions : [];
+      const suggestionHtml = suggestions.length
+        ? suggestions.map((item) => `<button type="button" class="pill-button" data-birds-import-map-row="${row.sourceRowIndex}" data-birds-import-map-id="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${escapeHtml(getFamilyChipLabel(item.family))})</button>`).join('')
+        : '<div class="card-subtitle">No high-confidence suggestions for this row.</div>';
+      return `
+        <div class="nature-import-map-row">
+          <div><strong>Row ${row.rowIndex}</strong> - ${escapeHtml(row.speciesInput || '(no species)')}</div>
+          <div class="card-subtitle">Observed: ${escapeHtml(row.fields && row.fields.observedOn ? row.fields.observedOn : '--')} | Location: ${escapeHtml(row.fields && row.fields.locationName ? row.fields.locationName : '--')}</div>
+          <div class="nature-import-map-suggestions">${suggestionHtml}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function openBirdImportMappingModal() {
+    if (!state.birdImport.lastAnalysis || !Array.isArray(state.birdImport.candidates) || !state.birdImport.candidates.length) {
+      if (typeof window.showToast === 'function') window.showToast('Preview import first to open strict mapping report.', 'info', 2200);
+      return;
+    }
+    const modal = document.getElementById('birdsImportMappingModal');
+    const backdrop = document.getElementById('birdsImportMappingBackdrop');
+    if (!modal || !backdrop) return;
+    renderBirdImportMappingModal();
+    modal.hidden = false;
+    backdrop.hidden = false;
+  }
+
+  function closeBirdImportMappingModal() {
+    const modal = document.getElementById('birdsImportMappingModal');
+    const backdrop = document.getElementById('birdsImportMappingBackdrop');
+    if (modal) modal.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+  }
+
+  function renderBirdImportPanel() {
+    const status = document.getElementById('birdsImportStatus');
+    const preview = document.getElementById('birdsImportPreview');
+    const mappingBtn = document.getElementById('birdsImportMappingBtn');
+    if (!status || !preview) return;
+
+    const analysis = state.birdImport.lastAnalysis;
+    const rows = Array.isArray(state.birdImport.candidates) ? state.birdImport.candidates : [];
+    if (!analysis || !rows.length) {
+      status.textContent = 'No import parsed yet.';
+      preview.textContent = 'Preview rows will appear here.';
+      if (mappingBtn) mappingBtn.disabled = true;
+      return;
+    }
+
+    status.textContent = `Parsed ${analysis.total} rows from ${state.birdImport.sourceLabel || 'input'} | Matched: ${analysis.matched} | Ready: ${analysis.ready} | Duplicates: ${analysis.duplicates} | Unmatched: ${analysis.unmatched}`;
+    const topRows = rows.slice(0, 18);
+    preview.innerHTML = topRows.map((row) => {
+      const badge = row.importStatus === 'ready' ? 'READY' : row.importStatus === 'duplicate' ? 'DUPLICATE' : 'UNMATCHED';
+      const badgeColor = row.importStatus === 'ready' ? '#166534' : row.importStatus === 'duplicate' ? '#92400e' : '#991b1b';
+      return `<div style="padding:6px 0; border-bottom:1px solid #e2e8f0;"><strong>${escapeHtml(row.speciesInput || '(no species)')}</strong> → ${escapeHtml(row.matchedSpeciesName || 'No match')} <span style="font-size:11px; font-weight:800; color:${badgeColor};">${badge}</span></div>`;
+    }).join('');
+    if (rows.length > topRows.length) {
+      preview.innerHTML += `<div style="padding-top:6px; font-size:12px; color:#64748b;">Showing ${topRows.length} of ${rows.length} parsed rows.</div>`;
+    }
+    if (mappingBtn) mappingBtn.disabled = analysis.unmatched === 0;
+  }
+
+  async function readBirdImportRawInput() {
+    const pasteInput = document.getElementById('birdsImportPasteInput');
+    const fileInput = document.getElementById('birdsImportFileInput');
+    const pasted = String(pasteInput && pasteInput.value ? pasteInput.value : '').trim();
+    if (pasted) {
+      return { raw: pasted, sourceLabel: 'pasted text' };
+    }
+    const file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+    if (!file) return { raw: '', sourceLabel: '' };
+    const text = await file.text();
+    return { raw: String(text || ''), sourceLabel: `file: ${file.name}` };
+  }
+
+  async function parseBirdImportInput() {
+    if (state.birdImport.busy) return;
+    state.birdImport.busy = true;
+    try {
+      const { raw, sourceLabel } = await readBirdImportRawInput();
+      if (!raw.trim()) {
+        state.birdImport.sourceLabel = '';
+        state.birdImport.candidates = [];
+        state.birdImport.lastAnalysis = null;
+        renderBirdImportPanel();
+        if (typeof window.showToast === 'function') window.showToast('Paste rows or choose a file first.', 'info', 2200);
+        return;
+      }
+
+      const jsonRows = /^[\[{]/.test(raw.trim()) ? parseJsonImportRows(raw) : [];
+      const rows = jsonRows.length ? jsonRows : parseDelimitedImportRows(raw);
+      state.birdImport.sourceLabel = sourceLabel || 'import input';
+      state.birdImport.candidates = buildBirdImportCandidates(rows, state.birdImport.sourceLabel);
+      state.birdImport.lastAnalysis = refreshBirdImportAnalysis();
+      renderBirdImportPanel();
+      if (typeof window.showToast === 'function') {
+        window.showToast(`Import preview ready: ${state.birdImport.lastAnalysis.ready} rows can be imported.`, 'success', 2400);
+      }
+    } finally {
+      state.birdImport.busy = false;
+    }
+  }
+
+  async function executeBirdImport(dryRun) {
+    if (state.birdImport.busy) return;
+    if (!state.birdImport.lastAnalysis || !Array.isArray(state.birdImport.candidates) || !state.birdImport.candidates.length) {
+      await parseBirdImportInput();
+    }
+    const analysis = state.birdImport.lastAnalysis;
+    if (!analysis) return;
+
+    refreshBirdImportAnalysis();
+
+    if (dryRun) {
+      renderBirdImportPanel();
+      if (typeof window.showToast === 'function') {
+        window.showToast(`Dry run: ${analysis.ready} ready, ${analysis.duplicates} duplicates, ${analysis.unmatched} unmatched.`, 'info', 3200);
+      }
+      return;
+    }
+
+    if (!analysis.readyCandidates.length) {
+      if (typeof window.showToast === 'function') window.showToast('No ready rows to import.', 'info', 2200);
+      return;
+    }
+
+    analysis.readyCandidates.forEach((candidate) => {
+      if (!candidate || !candidate.entry) return;
+      addSightingLogEntry(candidate.entry);
+    });
+    state.logSuccessMessage = `Imported ${analysis.readyCandidates.length} sightings from ${state.birdImport.sourceLabel || 'import'}.`;
+    if (typeof window.showToast === 'function') {
+      window.showToast(`Imported ${analysis.readyCandidates.length} sightings.`, 'success', 2800);
+    }
+    const fileInput = document.getElementById('birdsImportFileInput');
+    if (fileInput) fileInput.value = '';
+    renderBirds();
+  }
+
   function toLocationOptionFromRecord(record) {
     const entries = Object.entries(record || {});
     if (!entries.length) return '';
@@ -5176,6 +5623,7 @@
     renderBirdLogValidationBadges();
     renderBirdLogOfflineStatus();
     renderBirdLogHistoryCard();
+    renderBirdImportPanel();
     renderBirdLogPostSaveNudges(stats, familyLookup);
     applyBirdLogPresetUi();
 
@@ -7879,6 +8327,75 @@
       logSightingBtn.dataset.natureLogBound = '1';
       logSightingBtn.addEventListener('click', () => {
         withBirdsActionGuard(logSightingBtn, () => logSightingFromForm());
+      });
+    }
+
+    const importParseBtn = document.getElementById('birdsImportParseBtn');
+    if (importParseBtn && importParseBtn.dataset.natureImportParseBound !== '1') {
+      importParseBtn.dataset.natureImportParseBound = '1';
+      importParseBtn.addEventListener('click', () => {
+        withBirdsActionGuard(importParseBtn, () => parseBirdImportInput());
+      });
+    }
+
+    const importDryRunBtn = document.getElementById('birdsImportDryRunBtn');
+    if (importDryRunBtn && importDryRunBtn.dataset.natureImportDryRunBound !== '1') {
+      importDryRunBtn.dataset.natureImportDryRunBound = '1';
+      importDryRunBtn.addEventListener('click', () => {
+        withBirdsActionGuard(importDryRunBtn, () => executeBirdImport(true));
+      });
+    }
+
+    const importApplyBtn = document.getElementById('birdsImportApplyBtn');
+    if (importApplyBtn && importApplyBtn.dataset.natureImportApplyBound !== '1') {
+      importApplyBtn.dataset.natureImportApplyBound = '1';
+      importApplyBtn.addEventListener('click', () => {
+        withBirdsActionGuard(importApplyBtn, () => executeBirdImport(false));
+      });
+    }
+
+    const importMappingBtn = document.getElementById('birdsImportMappingBtn');
+    if (importMappingBtn && importMappingBtn.dataset.natureImportMappingBound !== '1') {
+      importMappingBtn.dataset.natureImportMappingBound = '1';
+      importMappingBtn.addEventListener('click', () => {
+        openBirdImportMappingModal();
+      });
+    }
+
+    const importMappingCloseBtn = document.getElementById('birdsImportMappingCloseBtn');
+    if (importMappingCloseBtn && importMappingCloseBtn.dataset.natureImportMappingCloseBound !== '1') {
+      importMappingCloseBtn.dataset.natureImportMappingCloseBound = '1';
+      importMappingCloseBtn.addEventListener('click', () => closeBirdImportMappingModal());
+    }
+
+    const importMappingBackdrop = document.getElementById('birdsImportMappingBackdrop');
+    if (importMappingBackdrop && importMappingBackdrop.dataset.natureImportMappingBackdropBound !== '1') {
+      importMappingBackdrop.dataset.natureImportMappingBackdropBound = '1';
+      importMappingBackdrop.addEventListener('click', () => closeBirdImportMappingModal());
+    }
+
+    const importMappingBody = document.getElementById('birdsImportMappingBody');
+    if (importMappingBody && importMappingBody.dataset.natureImportMappingBodyBound !== '1') {
+      importMappingBody.dataset.natureImportMappingBodyBound = '1';
+      importMappingBody.addEventListener('click', (event) => {
+        const mapBtn = event.target.closest('[data-birds-import-map-row][data-birds-import-map-id]');
+        if (!mapBtn) return;
+        const rowIndex = mapBtn.getAttribute('data-birds-import-map-row');
+        const birdId = mapBtn.getAttribute('data-birds-import-map-id');
+        if (!applyBirdImportManualMatch(rowIndex, birdId)) return;
+        renderBirdImportPanel();
+        renderBirdImportMappingModal();
+      });
+    }
+
+    const importFileInput = document.getElementById('birdsImportFileInput');
+    if (importFileInput && importFileInput.dataset.natureImportFileBound !== '1') {
+      importFileInput.dataset.natureImportFileBound = '1';
+      importFileInput.addEventListener('change', () => {
+        const pasteInput = document.getElementById('birdsImportPasteInput');
+        if (pasteInput && importFileInput.files && importFileInput.files.length > 0 && String(pasteInput.value || '').trim()) {
+          pasteInput.value = '';
+        }
       });
     }
 
