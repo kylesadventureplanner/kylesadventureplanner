@@ -56,8 +56,16 @@ test.describe('Adventure achievements dashboard smoke', () => {
 
     const diagnosticsModeSelect = page.locator('#visitedDiagnosticsSyncModeHost [data-achv-sync-mode][data-achv-subtab="outdoors"]:visible').first();
     const legacyModeSelect = page.locator('#achv-root-outdoors [data-achv-sync-mode]:visible').first();
-    const modeSelect = (await diagnosticsModeSelect.count()) > 0 ? diagnosticsModeSelect : legacyModeSelect;
-    const syncScope = (await diagnosticsModeSelect.count()) > 0
+
+    await page.waitForFunction(() => {
+      const diagnostics = document.querySelector('#visitedDiagnosticsSyncModeHost [data-achv-sync-mode][data-achv-subtab="outdoors"]');
+      const legacy = document.querySelector('#achv-root-outdoors [data-achv-sync-mode]');
+      return Boolean(diagnostics || legacy);
+    }, undefined, { timeout: 12000 });
+
+    const useDiagnosticsSelect = (await diagnosticsModeSelect.count()) > 0;
+    const modeSelect = useDiagnosticsSelect ? diagnosticsModeSelect : legacyModeSelect;
+    const syncScope = useDiagnosticsSelect
       ? page.locator('#visitedDiagnosticsSyncModeHost')
       : page.locator('#achv-root-outdoors');
     await expect(modeSelect).toBeVisible({ timeout: 12000 });

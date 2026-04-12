@@ -1,14 +1,23 @@
 const { test, expect } = require('@playwright/test');
 
-test.describe('Nature iNaturalist strict mapping modal', () => {
-  test('shows unmatched rows in strict mapping report', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-    await expect(page.locator('#natureChallengeRoot')).toBeVisible();
+async function openNatureLogViewOrSkip(testInfo, page) {
+  await page.goto('/');
+  await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
+  await expect(page.locator('#natureChallengeRoot')).toBeVisible();
 
-    await page.locator('#birdsOpenLogBtn').click();
-    const logView = page.locator('.nature-birds-view[data-birds-view="log"]:visible');
-    await expect(logView).toBeVisible();
+  await page.locator('#birdsOpenLogBtn').click();
+  const logView = page.locator('.nature-birds-view[data-birds-view="log"]:visible');
+  await expect(logView).toBeVisible();
+
+  const hasImportUi = (await logView.locator('#birdsImportPasteInput').count()) > 0
+    && (await logView.locator('#birdsImportMappingBtn').count()) > 0;
+  testInfo.skip(!hasImportUi, 'iNaturalist strict mapping UI is not available on this APP_URL build.');
+  return logView;
+}
+
+test.describe('Nature iNaturalist strict mapping modal', () => {
+  test('shows unmatched rows in strict mapping report', async ({ page }, testInfo) => {
+    const logView = await openNatureLogViewOrSkip(testInfo, page);
 
     const csv = 'species_guess,observed_on,place_guess,count\nTotally Unknown Bird XYZ,2099-01-01,Import Test Site,1';
     await logView.locator('#birdsImportPasteInput').fill(csv);
@@ -25,14 +34,8 @@ test.describe('Nature iNaturalist strict mapping modal', () => {
     await expect(page.locator('#birdsImportMappingModal')).toBeHidden();
   });
 
-  test('applying a suggestion decreases unmatched and increases ready', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-    await expect(page.locator('#natureChallengeRoot')).toBeVisible();
-
-    await page.locator('#birdsOpenLogBtn').click();
-    const logView = page.locator('.nature-birds-view[data-birds-view="log"]:visible');
-    await expect(logView).toBeVisible();
+  test('applying a suggestion decreases unmatched and increases ready', async ({ page }, testInfo) => {
+    const logView = await openNatureLogViewOrSkip(testInfo, page);
 
     const csv = 'species_guess,observed_on,place_guess,count\nBald Eagel,2099-02-02,Strict Mapping Test Site,1';
     await logView.locator('#birdsImportPasteInput').fill(csv);

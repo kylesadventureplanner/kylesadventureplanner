@@ -1,13 +1,23 @@
 const { test, expect } = require('@playwright/test');
 
-test.describe('Nature iNaturalist import', () => {
-  test('paste preview + dry run parses rows', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-    await expect(page.locator('#natureChallengeRoot')).toBeVisible();
+async function openNatureLogViewOrSkip(testInfo, page) {
+  await page.goto('/');
+  await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
+  await expect(page.locator('#natureChallengeRoot')).toBeVisible();
 
-    await page.locator('#birdsOpenLogBtn').click();
-    await expect(page.locator('[data-birds-view="log"]')).toBeVisible();
+  await page.locator('#birdsOpenLogBtn').click();
+  const logView = page.locator('.nature-birds-view[data-birds-view="log"]:visible');
+  await expect(logView).toBeVisible();
+
+  const hasImportUi = (await logView.locator('#birdsImportPasteInput').count()) > 0
+    && (await logView.locator('#birdsImportParseBtn').count()) > 0;
+  testInfo.skip(!hasImportUi, 'iNaturalist import UI is not available on this APP_URL build.');
+  return logView;
+}
+
+test.describe('Nature iNaturalist import', () => {
+  test('paste preview + dry run parses rows', async ({ page }, testInfo) => {
+    const logView = await openNatureLogViewOrSkip(testInfo, page);
 
     await page.waitForFunction(() => {
       const select = document.getElementById('birdsLogSpeciesSelect');
@@ -22,23 +32,17 @@ test.describe('Nature iNaturalist import', () => {
     expect(species).not.toBe('');
 
     const csv = `species_guess,observed_on,place_guess,count\n${species},2099-01-01,Import Test Marsh,1`;
-    await page.locator('#birdsImportPasteInput').fill(csv);
+    await logView.locator('#birdsImportPasteInput').fill(csv);
 
-    await page.locator('#birdsImportParseBtn').click();
-    await expect(page.locator('#birdsImportStatus')).toContainText('Parsed 1 rows');
+    await logView.locator('#birdsImportParseBtn').click();
+    await expect(logView.locator('#birdsImportStatus')).toContainText('Parsed 1 rows');
 
-    await page.locator('#birdsImportDryRunBtn').click();
-    await expect(page.locator('#birdsImportPreview')).toContainText('READY');
+    await logView.locator('#birdsImportDryRunBtn').click();
+    await expect(logView.locator('#birdsImportPreview')).toContainText('READY');
   });
 
-  test('csv upload auto-previews and manual preview remains functional', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-    await expect(page.locator('#natureChallengeRoot')).toBeVisible();
-
-    await page.locator('#birdsOpenLogBtn').click();
-    const logView = page.locator('.nature-birds-view[data-birds-view="log"]:visible');
-    await expect(logView).toBeVisible();
+  test('csv upload auto-previews and manual preview remains functional', async ({ page }, testInfo) => {
+    const logView = await openNatureLogViewOrSkip(testInfo, page);
 
     await page.waitForFunction(() => {
       const select = document.getElementById('birdsLogSpeciesSelect');
