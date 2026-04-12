@@ -1229,6 +1229,12 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
           modal.style.pointerEvents = 'none';
           // Do NOT force display:none/visibility:hidden here — the element is already hidden
           // by computed style. Setting these inline would conflict with animation/transition logic.
+          return;
+        }
+
+        // Restore interactivity when dialogs/overlays become visible.
+        if (modal.style.pointerEvents === 'none') {
+          modal.style.pointerEvents = 'auto';
         }
       });
     };

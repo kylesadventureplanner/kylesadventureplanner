@@ -212,8 +212,7 @@ async function cacheCityViewerDataForTab(correlationId) {
  * Open City Viewer in a new browser tab
  * Similar to openAdventureDetailsTab but for city viewing
  */
-window.openCityViewerInNewTab = async function(options) {
-  console.log('🌆 Opening City Explorer in new browser tab');
+window.prepareCityViewerInlineUrl = async function(options) {
   const prefilterTag = String(options && options.prefilterTag ? options.prefilterTag : '').trim();
   const prefilterLabel = String(options && options.prefilterLabel ? options.prefilterLabel : '').trim();
   const sourceSubtab = String(options && options.sourceSubtab ? options.sourceSubtab : '').trim();
@@ -225,10 +224,7 @@ window.openCityViewerInNewTab = async function(options) {
     // Cache the adventure data for the new tab to access
     const dataKey = await cacheCityViewerDataForTab(correlationId);
     if (!dataKey) {
-      if (typeof window.showToast === 'function') {
-        window.showToast('⚠️ City Explorer could not load curated source tables. Sign in and try again.', 'warning', 4200);
-      }
-      return false;
+      return '';
     }
 
     // Resolve the URL to the city viewer window
@@ -246,8 +242,26 @@ window.openCityViewerInNewTab = async function(options) {
     if (sourceSubtab) url.searchParams.set('sourceSubtab', sourceSubtab);
     url.searchParams.set('ts', String(Date.now()));
 
+    return url.toString();
+  } catch (error) {
+    console.error('❌ Error preparing City Explorer URL:', error);
+    return '';
+  }
+};
+
+window.openCityViewerInNewTab = async function(options) {
+  console.log('🌆 Opening City Explorer in new browser tab');
+  try {
+    const preparedUrl = await window.prepareCityViewerInlineUrl(options);
+    if (!preparedUrl) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('⚠️ City Explorer could not load curated source tables. Sign in and try again.', 'warning', 4200);
+      }
+      return false;
+    }
+
     // Open in new tab
-    const cityViewerTab = window.open(url.toString(), '_blank');
+    const cityViewerTab = window.open(preparedUrl, '_blank');
 
     if (!cityViewerTab) {
       if (typeof window.showToast === 'function') {

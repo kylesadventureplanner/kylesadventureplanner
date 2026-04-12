@@ -259,8 +259,103 @@
 <script>
   // Initialize Adventure Planner tab
   window.initAdventurePlanner = function() {
+    const root = document.querySelector('[data-tab="adventure-planner"]') || document;
+    const stickyStyleId = 'adventurePlannerFloatingHeadersStyle';
+
+    if (!document.getElementById(stickyStyleId)) {
+      const style = document.createElement('style');
+      style.id = stickyStyleId;
+      style.textContent = `
+        .adventure-floating-header {
+          position: sticky;
+          top: 6px;
+          z-index: 15;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(4px);
+          border-radius: 10px;
+          padding: 6px 8px;
+          margin: -6px -8px 8px;
+        }
+        .adventure-floating-header-actions {
+          display: inline-flex;
+          gap: 6px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .adventure-floating-header-actions .pill-button {
+          min-height: 32px;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const sectionCards = [
+      { id: 'adventureBulkActionsCard', label: 'Bulk Actions' },
+      { id: 'controlPanelCard', label: 'Control Panel' },
+      { id: 'quickFiltersCard', label: 'Common Filters' },
+      { id: 'breadcrumbFilterMenu', label: 'Breadcrumb Filters' },
+      { selector: '.table-card', label: 'Adventure List' }
+    ];
+
+    const resolvedCards = sectionCards
+      .map((section) => ({
+        ...section,
+        el: section.id ? document.getElementById(section.id) : document.querySelector(section.selector)
+      }))
+      .filter((section) => section.el);
+
+    resolvedCards.forEach((section, index) => {
+      const header = section.el.querySelector('.card-header') || section.el;
+      if (!header) return;
+      header.classList.add('adventure-floating-header');
+
+      if (header.querySelector(`[data-adventure-section-actions="${section.label}"]`)) return;
+      const actions = document.createElement('div');
+      actions.className = 'adventure-floating-header-actions';
+      actions.setAttribute('data-adventure-section-actions', section.label);
+
+      const topBtn = document.createElement('button');
+      topBtn.type = 'button';
+      topBtn.className = 'pill-button';
+      topBtn.textContent = '↑ Top';
+      topBtn.title = `Go to top from ${section.label}`;
+      topBtn.dataset.adventureSectionAction = 'top';
+
+      const moreBtn = document.createElement('button');
+      moreBtn.type = 'button';
+      moreBtn.className = 'pill-button';
+      moreBtn.textContent = 'More';
+      moreBtn.title = `Go to next section after ${section.label}`;
+      moreBtn.dataset.adventureSectionAction = 'more';
+      moreBtn.dataset.adventureSectionIndex = String(index);
+
+      actions.appendChild(topBtn);
+      actions.appendChild(moreBtn);
+      header.appendChild(actions);
+    });
+
+    if (!root.__adventureFloatingActionsBound) {
+      root.__adventureFloatingActionsBound = true;
+      root.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-adventure-section-action]');
+        if (!btn) return;
+        event.preventDefault();
+
+        const action = btn.getAttribute('data-adventure-section-action');
+        if (action === 'top') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        const idx = Number(btn.getAttribute('data-adventure-section-index') || '-1');
+        const next = Number.isInteger(idx) ? resolvedCards[idx + 1] : null;
+        if (action === 'more' && next && next.el) {
+          next.el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
+
     console.log('✅ Adventure Planner tab initialized');
-    // All JS functions are available from main index
   };
 </script>
 

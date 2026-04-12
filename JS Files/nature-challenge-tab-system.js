@@ -2225,6 +2225,62 @@
     return true;
   }
 
+  function ensureNatureSubtabJumpLinks(root) {
+    if (!root) return;
+    const jumpDefs = [
+      { key: 'categories', label: '📊 Category Progression' },
+      { key: 'families', label: '🏷️ Sightings by Family' },
+      { key: 'challenges', label: '🏅 Challenges & Badges' }
+    ];
+
+    SUBTAB_KEYS.filter((subtabKey) => subtabKey !== 'birds').forEach((subtabKey) => {
+      const pane = root.querySelector(`#natureChallengePane-${subtabKey}`);
+      if (!pane) return;
+
+      const sectionCards = pane.querySelectorAll(':scope > .card');
+      const first = sectionCards[0];
+      const second = sectionCards[1];
+      const third = sectionCards[2];
+      if (first) first.dataset.natureSection = 'categories';
+      if (second) second.dataset.natureSection = 'families';
+      if (third) third.dataset.natureSection = 'challenges';
+
+      if (pane.querySelector(`[data-nature-jump-links="${subtabKey}"]`)) return;
+
+      const jumpRow = document.createElement('div');
+      jumpRow.className = 'nature-jump-links';
+      jumpRow.setAttribute('data-nature-jump-links', subtabKey);
+      jumpRow.setAttribute('role', 'navigation');
+      jumpRow.setAttribute('aria-label', `Jump to section links for ${subtabKey}`);
+      jumpRow.innerHTML = `<span class="nature-jump-links-label">Jump to section:</span>${jumpDefs
+        .map((item) => `<button type="button" class="pill-button" data-nature-overview-jump="${item.key}" data-nature-overview-subtab="${subtabKey}">${item.label}</button>`)
+        .join('')}`;
+
+      const firstCard = pane.querySelector(':scope > .card');
+      if (firstCard) {
+        pane.insertBefore(jumpRow, firstCard);
+      } else {
+        pane.appendChild(jumpRow);
+      }
+    });
+  }
+
+  function scrollToNatureOverviewSection(subtabKey, sectionKey) {
+    const pane = document.getElementById(`natureChallengePane-${subtabKey}`);
+    if (!pane) return false;
+    const target = pane.querySelector(`[data-nature-section="${sectionKey}"]`);
+    if (!target) return false;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const header = target.querySelector('.card-header');
+    if (header) {
+      header.setAttribute('tabindex', '-1');
+      window.setTimeout(() => {
+        try { header.focus({ preventScroll: true }); } catch (_) { header.focus(); }
+      }, 160);
+    }
+    return true;
+  }
+
   function runBirdOverviewCommand(root, raw) {
     const query = String(raw || '').trim();
     if (!query) return;
@@ -7105,6 +7161,7 @@
     '#birdsOverviewClearFiltersBtn',
     '[data-birds-density]',
     '[data-birds-overview-jump]',
+    '[data-nature-overview-jump]',
     '#birdsOverviewCommandClearBtn',
     '#birdsOverviewCommandRunBtn',
     '#birdsResetUiBtn',
@@ -7143,6 +7200,7 @@
     if (!root || root.dataset.natureControlsBound === '1') return;
     root.dataset.natureControlsBound = '1';
     ensureNatureButtonsResponsive(root);
+    ensureNatureSubtabJumpLinks(root);
     installNatureButtonReliabilityObserver(root);
     ensureBirdClickDiagnosticsPanel(root);
 
@@ -7363,6 +7421,17 @@
         }
         setBirdView(root, 'overview');
         scrollToBirdOverviewSection(jumpButton.getAttribute('data-birds-overview-jump') || 'daily');
+        return;
+      }
+
+      const natureJumpButton = event.target.closest('[data-nature-overview-jump]');
+      if (natureJumpButton) {
+        const targetSubtab = String(natureJumpButton.getAttribute('data-nature-overview-subtab') || state.activeSubTab || 'birds').trim();
+        const targetSection = String(natureJumpButton.getAttribute('data-nature-overview-jump') || 'categories').trim();
+        if (targetSubtab && targetSubtab !== state.activeSubTab) {
+          setActiveNatureSubTab(root, targetSubtab);
+        }
+        scrollToNatureOverviewSection(targetSubtab || state.activeSubTab, targetSection);
         return;
       }
 
