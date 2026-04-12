@@ -330,6 +330,11 @@
       border-radius: 12px;
       padding: 16px 20px;
       margin-bottom: 16px;
+      position: sticky;
+      top: 10px;
+      z-index: 20;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+      backdrop-filter: blur(2px);
     }
 
     .locations-controls-grid {
@@ -374,6 +379,48 @@
       flex-wrap: wrap;
       gap: 6px;
       align-items: center;
+    }
+
+    .loc-active-filters {
+      display: none;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #e5e7eb;
+    }
+    .loc-active-filters.visible { display: flex; }
+    .loc-active-filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      color: #3730a3;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .loc-active-filter-chip button {
+      border: none;
+      background: transparent;
+      color: #4338ca;
+      font-size: 12px;
+      cursor: pointer;
+      line-height: 1;
+      font-weight: 700;
+      padding: 0;
+    }
+    .loc-active-filter-clear {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1d4ed8;
+      border: none;
+      background: transparent;
+      cursor: pointer;
     }
     .loc-tag-btn {
       padding: 6px 14px;
@@ -533,6 +580,78 @@
       line-height: 1.5;
     }
 
+    .loc-card-insights {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #e5e7eb;
+    }
+    .loc-rank-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .loc-rank-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      line-height: 1.2;
+    }
+    .loc-rank-badge.best-value {
+      background: #ecfdf5;
+      border-color: #86efac;
+      color: #166534;
+    }
+    .loc-rank-badge.most-unique {
+      background: #f5f3ff;
+      border-color: #c4b5fd;
+      color: #6d28d9;
+    }
+    .loc-rank-badge.quick-stop {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+    .loc-rank-badge.balanced {
+      background: #f3f4f6;
+      border-color: #d1d5db;
+      color: #374151;
+    }
+    .loc-confidence-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .loc-confidence-indicator.high {
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #166534;
+    }
+    .loc-confidence-indicator.medium {
+      background: #fef3c7;
+      border-color: #fcd34d;
+      color: #92400e;
+    }
+    .loc-confidence-indicator.low {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+
     .loc-card-footer {
       display: flex;
       gap: 8px;
@@ -587,9 +706,19 @@
       text-align: center;
       padding: 60px 20px;
       color: #9ca3af;
+      background: #ffffff;
+      border: 1px dashed #d1d5db;
+      border-radius: 12px;
     }
     .loc-empty-icon { font-size: 56px; margin-bottom: 12px; }
     .loc-empty-text { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #6b7280; }
+    .loc-empty-actions {
+      margin-top: 12px;
+      display: inline-flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
 
     /* Presets, shortlist, map split */
     .loc-presets-row {
@@ -624,6 +753,35 @@
     }
     .loc-mini-btn:hover { border-color: #667eea; color: #667eea; }
     .loc-mini-btn.success { border-color: #86efac; color: #166534; }
+    .loc-smart-presets {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      width: 100%;
+      margin-top: 2px;
+    }
+    .loc-smart-preset-btn {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #c7d2fe;
+      background: #eef2ff;
+      color: #3730a3;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .loc-smart-preset-btn:hover {
+      border-color: #818cf8;
+      background: #e0e7ff;
+      transform: translateY(-1px);
+    }
+    .loc-smart-preset-btn.is-active {
+      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+      border-color: transparent;
+      color: #ffffff;
+      box-shadow: 0 8px 18px rgba(79, 70, 229, 0.24);
+    }
 
     .loc-check-row {
       display: flex;
@@ -798,6 +956,108 @@
       font-size: 11px;
       cursor: pointer;
     }
+    .loc-compare-tray {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.18);
+    }
+    .loc-compare-tray.visible { display: block; }
+    .loc-compare-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-bottom: 8px;
+    }
+    .loc-compare-note {
+      font-size: 11px;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+    }
+    .loc-compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .loc-compare-card {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .loc-compare-card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .loc-compare-card-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .loc-compare-card-meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .loc-compare-badge {
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      color: #e5e7eb;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .loc-compare-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 10px;
+      font-size: 11px;
+      color: #dbeafe;
+    }
+    .loc-compare-metric {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .loc-compare-metric-label {
+      color: #93c5fd;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .loc-compare-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .loc-compare-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: #111827;
+      background: #bfdbfe;
+      border-radius: 999px;
+      padding: 3px 7px;
+    }
+    .loc-compare-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: auto;
+    }
+    .loc-compare-actions .loc-mini-btn {
+      background: rgba(255,255,255,0.08);
+      color: #f9fafb;
+      border-color: rgba(255,255,255,0.18);
+    }
+    .loc-compare-actions .loc-mini-btn:hover {
+      border-color: #93c5fd;
+      color: #dbeafe;
+    }
     .loc-day-plan {
       margin-top: 10px;
       border-top: 1px solid rgba(255,255,255,0.2);
@@ -810,6 +1070,46 @@
       font-size: 12px;
       line-height: 1.45;
       color: #e5e7eb;
+    }
+    .loc-day-plan-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .loc-plan-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .loc-plan-chip.score-high,
+    .loc-plan-chip.confidence-high {
+      background: rgba(34, 197, 94, 0.18);
+      border-color: rgba(134, 239, 172, 0.45);
+      color: #dcfce7;
+    }
+    .loc-plan-chip.score-medium,
+    .loc-plan-chip.confidence-medium {
+      background: rgba(251, 191, 36, 0.18);
+      border-color: rgba(252, 211, 77, 0.45);
+      color: #fef3c7;
+    }
+    .loc-plan-chip.score-low,
+    .loc-plan-chip.confidence-low {
+      background: rgba(248, 113, 113, 0.18);
+      border-color: rgba(252, 165, 165, 0.45);
+      color: #fee2e2;
+    }
+    .loc-plan-stat {
+      font-size: 11px;
+      color: #cbd5e1;
+      font-weight: 600;
     }
     .loc-time-window {
       margin-top: 14px;
@@ -908,6 +1208,11 @@
           <button class="loc-mini-btn" onclick="loadSelectedLocPreset()">Load</button>
           <button class="loc-mini-btn" onclick="deleteSelectedLocPreset()">Delete</button>
           <button id="copyShareBtn" class="loc-mini-btn" onclick="copyShareLink()">Copy Share Link</button>
+          <div class="loc-smart-presets" aria-label="Smart preset suggestions">
+            <button id="locPresetClosestNowBtn" type="button" class="loc-smart-preset-btn" data-smart-preset="closest-now" onclick="applySmartLocPreset('closest-now')">🕒 Closest now</button>
+            <button id="locPresetBestValueBtn" type="button" class="loc-smart-preset-btn" data-smart-preset="best-value" onclick="applySmartLocPreset('best-value')">💎 Best value</button>
+            <button id="locPresetMostUniqueBtn" type="button" class="loc-smart-preset-btn" data-smart-preset="most-unique" onclick="applySmartLocPreset('most-unique')">✨ Most unique</button>
+          </div>
         </div>
         <div class="loc-check-row">
           <label class="loc-check"><input id="locFilterOpenNow" type="checkbox" onchange="applyLocFilters()"> Open now</label>
@@ -946,6 +1251,7 @@
 
         <!-- Quick Tag Buttons (populated dynamically) -->
         <div id="locQuickTags" class="loc-quick-tags"></div>
+        <div id="locActiveFilters" class="loc-active-filters" aria-live="polite"></div>
 
         <!-- Sort Row -->
         <div class="loc-sort-row">
@@ -953,10 +1259,13 @@
           <label class="sr-only" for="locSortBy">Sort locations</label>
           <select id="locSortBy" class="loc-sort-select" onchange="applyLocFilters()">
             <option value="name">Name</option>
+            <option value="driveTime">Drive time</option>
             <option value="difficulty">Difficulty</option>
             <option value="cost">Cost</option>
             <option value="rating">Rating</option>
             <option value="tags">Tags</option>
+            <option value="bestValue">Best value</option>
+            <option value="mostUnique">Most unique</option>
           </select>
           <button id="locSortOrderBtn" class="loc-sort-order-btn" title="Toggle sort order" onclick="toggleLocSortOrder()">↑</button>
           <button class="loc-mini-btn" id="locSplitToggleBtn" onclick="toggleSplitView()">Show Map</button>
@@ -1008,6 +1317,7 @@
           <button class="loc-mini-btn" onclick="clearShortlist()">Clear</button>
         </div>
         <div id="locShortlistChips" class="loc-shortlist-chip-wrap"></div>
+        <div id="locCompareTray" class="loc-compare-tray"></div>
 
         <!-- Time-Window Itinerary Builder -->
         <div id="locTimeWindow" class="loc-time-window">
@@ -1651,6 +1961,420 @@
       }
     }
 
+    function parseDriveMinutes(value) {
+      const text = String(value || '').toLowerCase().trim();
+      if (!text) return Number.POSITIVE_INFINITY;
+      const hoursMatch = text.match(/(\d+(?:\.\d+)?)\s*h/);
+      const minsMatch = text.match(/(\d+(?:\.\d+)?)\s*m/);
+      const minuteWordMatch = text.match(/~?\s*(\d+(?:\.\d+)?)\s*minutes?/);
+      let total = 0;
+      let matched = false;
+      if (hoursMatch) {
+        total += Number(hoursMatch[1]) * 60;
+        matched = true;
+      }
+      if (minsMatch) {
+        total += Number(minsMatch[1]);
+        matched = true;
+      }
+      if (!matched && minuteWordMatch) {
+        total = Number(minuteWordMatch[1]);
+        matched = true;
+      }
+      return matched && Number.isFinite(total) ? total : Number.POSITIVE_INFINITY;
+    }
+
+    function getLocationTags(loc) {
+      return String(locVal(loc, 3, 'tags') || '')
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(Boolean);
+    }
+
+    function getLocationCostRank(loc) {
+      const raw = String(locVal(loc, 14, 'cost') || '').toLowerCase().trim();
+      const costOrder = { free: 0, '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
+      return costOrder[raw] ?? 2;
+    }
+
+    function getLocationBestValueScore(loc) {
+      const rating = parseFloat(locVal(loc, 13, 'rating')) || 0;
+      const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
+      const driveMins = parseDriveMinutes(locVal(loc, 4, 'driveTime'));
+      const tagCount = getLocationTags(loc).length;
+      const costRank = getLocationCostRank(loc);
+      const driveBonus = Number.isFinite(driveMins) ? Math.max(0, 35 - Math.min(driveMins, 35)) : 0;
+      return (rating * 30) - (costRank * 12) + driveBonus + (openInfo.isOpen ? 8 : 0) + (tagCount * 2);
+    }
+
+    function buildCityTagFrequency(locations) {
+      return locations.reduce((acc, loc) => {
+        getLocationTags(loc).forEach(tag => {
+          const norm = tag.toLowerCase();
+          acc[norm] = (acc[norm] || 0) + 1;
+        });
+        return acc;
+      }, {});
+    }
+
+    function getLocationMostUniqueScore(loc, cityEntry) {
+      const tagFreq = buildCityTagFrequency((cityEntry && cityEntry.locations) || []);
+      const tags = getLocationTags(loc);
+      const rarityScore = tags.reduce((sum, tag) => {
+        const count = tagFreq[String(tag || '').toLowerCase()] || 1;
+        return sum + (12 / count);
+      }, 0);
+      const descriptionLength = String(locVal(loc, 16, 'description') || '').trim().length;
+      const rating = parseFloat(locVal(loc, 13, 'rating')) || 0;
+      return rarityScore + Math.min(18, descriptionLength / 18) + rating;
+    }
+
+    function parseDurationMinutes(value) {
+      const text = String(value || '').toLowerCase().trim();
+      if (!text) return 60;
+      const hoursMatch = text.match(/(\d+(?:\.\d+)?)\s*h/);
+      const minsMatch = text.match(/(\d+(?:\.\d+)?)\s*m(in(ute)?s?)?/);
+      const hourWordMatch = text.match(/(\d+(?:\.\d+)?)\s*hours?/);
+      const minuteWordMatch = text.match(/(\d+(?:\.\d+)?)\s*minutes?/);
+      let total = 0;
+      let matched = false;
+      if (hoursMatch) {
+        total += Number(hoursMatch[1]) * 60;
+        matched = true;
+      }
+      if (hourWordMatch && !hoursMatch) {
+        total += Number(hourWordMatch[1]) * 60;
+        matched = true;
+      }
+      if (minsMatch) {
+        total += Number(minsMatch[1]);
+        matched = true;
+      }
+      if (minuteWordMatch && !minsMatch) {
+        total += Number(minuteWordMatch[1]);
+        matched = true;
+      }
+      if (!matched) {
+        const rawNumber = Number.parseInt(text, 10);
+        if (Number.isFinite(rawNumber)) return rawNumber;
+      }
+      return matched && total > 0 ? total : 60;
+    }
+
+    function formatMinutesCompact(minutes) {
+      const value = Math.max(0, Math.round(Number(minutes) || 0));
+      const hours = Math.floor(value / 60);
+      const mins = value % 60;
+      if (hours && mins) return `${hours}h ${mins}m`;
+      if (hours) return `${hours}h`;
+      return `${mins}m`;
+    }
+
+    function estimateTravelMinutesBetweenStops(fromLoc, toLoc) {
+      if (!fromLoc || !toLoc) return 0;
+      const fromLat = parseFloat(locVal(fromLoc, 25, 'latitude') || locVal(fromLoc, 26, 'lat') || fromLoc.latitude || fromLoc.lat);
+      const fromLng = parseFloat(locVal(fromLoc, 26, 'longitude') || locVal(fromLoc, 27, 'lng') || fromLoc.longitude || fromLoc.lng);
+      const toLat = parseFloat(locVal(toLoc, 25, 'latitude') || locVal(toLoc, 26, 'lat') || toLoc.latitude || toLoc.lat);
+      const toLng = parseFloat(locVal(toLoc, 26, 'longitude') || locVal(toLoc, 27, 'lng') || toLoc.longitude || toLoc.lng);
+
+      if (Number.isFinite(fromLat) && Number.isFinite(fromLng) && Number.isFinite(toLat) && Number.isFinite(toLng)) {
+        const toRad = (deg) => (deg * Math.PI) / 180;
+        const earthMiles = 3959;
+        const dLat = toRad(toLat - fromLat);
+        const dLng = toRad(toLng - fromLng);
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const miles = earthMiles * c;
+        return Math.max(6, Math.min(55, Math.round((miles * 2.6) + 4)));
+      }
+
+      const fromPoint = getLocPoint(fromLoc, getLocId(fromLoc));
+      const toPoint = getLocPoint(toLoc, getLocId(toLoc));
+      const dx = fromPoint.x - toPoint.x;
+      const dy = fromPoint.y - toPoint.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return Math.max(8, Math.min(40, Math.round(distance * 6)));
+    }
+
+    function getPlannerConfidenceClass(level) {
+      if (level === 'high') return 'high';
+      if (level === 'medium') return 'medium';
+      return 'low';
+    }
+
+    function analyzeRoutePlan(route, options) {
+      const safeRoute = Array.isArray(route) ? route.filter(Boolean) : [];
+      const normalizedOptions = options || {};
+      const startStr = String(normalizedOptions.startTime || document.getElementById('locTimeStart')?.value || '09:00');
+      const endStr = String(normalizedOptions.endTime || document.getElementById('locTimeEnd')?.value || '17:00');
+      const perStopOverride = Math.max(15, parseInt(normalizedOptions.perStopMinutes || document.getElementById('locTimePerStop')?.value, 10) || 60);
+
+      const stops = safeRoute.map(loc => ({
+        loc,
+        locId: getLocId(loc),
+        name: String(locVal(loc, 0, 'name') || 'Location'),
+        rating: parseFloat(locVal(loc, 13, 'rating')) || 0,
+        costRank: getLocationCostRank(loc),
+        uniqueScore: getLocationMostUniqueScore(loc, currentCityKey ? citiesData[currentCityKey] : null),
+        bestValueScore: getLocationBestValueScore(loc),
+        durationMinutes: perStopOverride || parseDurationMinutes(locVal(loc, 6, 'duration')),
+        tags: getLocationTags(loc)
+      }));
+
+      let travelMinutes = 0;
+      for (let i = 0; i < safeRoute.length - 1; i++) {
+        travelMinutes += estimateTravelMinutesBetweenStops(safeRoute[i], safeRoute[i + 1]);
+      }
+
+      const stopMinutes = stops.reduce((sum, stop) => sum + stop.durationMinutes, 0);
+      const availableMinutes = Math.max(0, timeToMinutes(endStr) - timeToMinutes(startStr));
+      const totalRequiredMinutes = travelMinutes + stopMinutes;
+      const slackMinutes = availableMinutes - totalRequiredMinutes;
+      const uniqueTagCount = new Set(stops.flatMap(stop => stop.tags.map(tag => tag.toLowerCase()))).size;
+      const averageRating = stops.length ? (stops.reduce((sum, stop) => sum + stop.rating, 0) / stops.length) : 0;
+      const averageCostRank = stops.length ? (stops.reduce((sum, stop) => sum + stop.costRank, 0) / stops.length) : 0;
+      const averageUniqueScore = stops.length ? (stops.reduce((sum, stop) => sum + stop.uniqueScore, 0) / stops.length) : 0;
+      const averageBestValue = stops.length ? (stops.reduce((sum, stop) => sum + stop.bestValueScore, 0) / stops.length) : 0;
+      const efficiencyScore = Math.max(0, 100 - Math.min(70, travelMinutes * 1.4));
+      const affordabilityScore = Math.max(0, 100 - (averageCostRank * 18));
+      const varietyScore = Math.min(100, uniqueTagCount * 10 + averageUniqueScore * 1.3);
+      const qualityScore = Math.min(100, averageRating * 20.5);
+      const valueScore = Math.min(100, averageBestValue * 0.9);
+      const rawScore = (qualityScore * 0.32) + (efficiencyScore * 0.24) + (affordabilityScore * 0.14) + (varietyScore * 0.15) + (valueScore * 0.15);
+      const itineraryScore = Math.max(1, Math.min(100, Math.round(rawScore)));
+
+      let confidenceLabel = 'Risky';
+      let confidenceLevel = 'low';
+      let confidenceReason = 'Current time window is likely too tight for the selected stops.';
+      if (slackMinutes >= 45) {
+        confidenceLabel = 'Comfortable';
+        confidenceLevel = 'high';
+        confidenceReason = 'Strong buffer remains after travel and stop-time estimates.';
+      } else if (slackMinutes >= 0) {
+        confidenceLabel = 'Tight';
+        confidenceLevel = 'medium';
+        confidenceReason = 'This plan works, but there is limited slack for delays.';
+      }
+
+      return {
+        stops,
+        startStr,
+        endStr,
+        perStopMinutes: perStopOverride,
+        availableMinutes,
+        travelMinutes,
+        stopMinutes,
+        totalRequiredMinutes,
+        slackMinutes,
+        uniqueTagCount,
+        averageRating,
+        itineraryScore,
+        efficiencyScore,
+        confidenceLabel,
+        confidenceLevel,
+        confidenceReason
+      };
+    }
+
+    function renderRoutePlanSummary(analysis) {
+      const summary = document.getElementById('locDayPlanSummary');
+      if (!summary || !analysis) return;
+      const scoreClass = analysis.itineraryScore >= 80 ? 'score-high' : (analysis.itineraryScore >= 60 ? 'score-medium' : 'score-low');
+      const confidenceClass = `confidence-${getPlannerConfidenceClass(analysis.confidenceLevel)}`;
+      summary.className = 'u-text-12-light loc-day-plan-summary';
+      summary.innerHTML = `
+        <span class="loc-plan-chip ${scoreClass}" data-itinerary-score>🧮 Itinerary score ${analysis.itineraryScore}/100</span>
+        <span class="loc-plan-chip ${confidenceClass}" data-route-confidence>🛣️ Route confidence: ${escHtml(analysis.confidenceLabel)}</span>
+        <span class="loc-plan-stat">Travel ${escHtml(formatMinutesCompact(analysis.travelMinutes))}</span>
+        <span class="loc-plan-stat">Stops ${escHtml(formatMinutesCompact(analysis.stopMinutes))}</span>
+        <span class="loc-plan-stat">Buffer ${analysis.slackMinutes >= 0 ? '+' : '-'}${escHtml(formatMinutesCompact(Math.abs(analysis.slackMinutes)))}</span>`;
+    }
+
+    function renderRouteQualityPanel(analysis) {
+      const panel = document.getElementById('locRouteQuality');
+      if (!panel || !analysis) return;
+      const color = analysis.confidenceLevel === 'high' ? '#86efac' : (analysis.confidenceLevel === 'medium' ? '#fbbf24' : '#f87171');
+      panel.innerHTML = `
+        <strong data-route-feasibility-status>${escHtml(analysis.confidenceLabel)}</strong><br>
+        Itinerary score: ${analysis.itineraryScore}/100 · Travel: ${escHtml(formatMinutesCompact(analysis.travelMinutes))} · Stops: ${escHtml(formatMinutesCompact(analysis.stopMinutes))}<br>
+        Available: ${analysis.availableMinutes} min · Needed: ${analysis.totalRequiredMinutes} min · Buffer: ${analysis.slackMinutes >= 0 ? '+' : '-'}${Math.abs(analysis.slackMinutes)} min<br>
+        <span>${escHtml(analysis.confidenceReason)}</span>
+      `;
+      panel.style.display = 'block';
+      panel.style.borderLeft = `4px solid ${color}`;
+      panel.style.color = color;
+    }
+
+    function getLocationConfidenceModel(loc) {
+      const rating = parseFloat(locVal(loc, 13, 'rating'));
+      const hours = String(locVal(loc, 5, 'hours') || '').trim();
+      const address = String(locVal(loc, 11, 'address') || '').trim();
+      const description = String(locVal(loc, 16, 'description') || '').trim();
+      const driveMins = parseDriveMinutes(locVal(loc, 4, 'driveTime'));
+      const website = String(locVal(loc, 2, 'website') || '').trim();
+      const googleUrl = String(locVal(loc, 23, 'googleUrl') || '').trim();
+      const lat = parseFloat(locVal(loc, 25, 'latitude') || locVal(loc, 26, 'lat') || loc.latitude || loc.lat);
+      const lng = parseFloat(locVal(loc, 26, 'longitude') || locVal(loc, 27, 'lng') || loc.longitude || loc.lng);
+
+      let score = 0;
+      if (Number.isFinite(rating) && rating > 0) score += 2;
+      if (hours) score += 1;
+      if (address) score += 1;
+      if (description.length >= 40) score += 1;
+      if (website || googleUrl) score += 1;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) score += 1;
+      if (Number.isFinite(driveMins)) score += 1;
+
+      if (score >= 7) {
+        return {
+          level: 'high',
+          label: 'High confidence',
+          reason: 'Strong coverage across ratings, hours, address, links, and map data.'
+        };
+      }
+      if (score >= 4) {
+        return {
+          level: 'medium',
+          label: 'Medium confidence',
+          reason: 'Useful listing, but some planning details are still limited.'
+        };
+      }
+      return {
+        level: 'low',
+        label: 'Low confidence',
+        reason: 'Only partial planning data is available for this location.'
+      };
+    }
+
+    function getLocationRankBadgeModels(loc, cityEntry) {
+      const locations = (cityEntry && Array.isArray(cityEntry.locations))
+        ? cityEntry.locations.filter(locationMatchesPrefilter)
+        : [];
+      const locId = getLocId(loc);
+      const badges = [];
+      const rankingDefinitions = [
+        {
+          key: 'best-value',
+          label: 'Best value',
+          icon: '💎',
+          className: 'best-value',
+          scoreFor: item => getLocationBestValueScore(item),
+          order: 'desc'
+        },
+        {
+          key: 'most-unique',
+          label: 'Unique pick',
+          icon: '✨',
+          className: 'most-unique',
+          scoreFor: item => getLocationMostUniqueScore(item, cityEntry),
+          order: 'desc'
+        },
+        {
+          key: 'quick-stop',
+          label: 'Quick stop',
+          icon: '⚡',
+          className: 'quick-stop',
+          scoreFor: item => parseDriveMinutes(locVal(item, 4, 'driveTime')),
+          order: 'asc'
+        }
+      ];
+
+      rankingDefinitions.forEach(definition => {
+        const ranked = locations
+          .map(item => ({ id: getLocId(item), score: definition.scoreFor(item) }))
+          .filter(item => Number.isFinite(item.score))
+          .sort((a, b) => definition.order === 'asc' ? a.score - b.score : b.score - a.score)
+          .slice(0, 2);
+        const rankIndex = ranked.findIndex(item => item.id === locId);
+        if (rankIndex >= 0) {
+          badges.push({
+            key: definition.key,
+            label: `${definition.icon} ${definition.label} #${rankIndex + 1}`,
+            className: definition.className
+          });
+        }
+      });
+
+      if (!badges.length) {
+        badges.push({
+          key: 'balanced',
+          label: '⚖️ Balanced pick',
+          className: 'balanced'
+        });
+      }
+
+      return badges.slice(0, 2);
+    }
+
+    function renderLocationInsightsMarkup(loc, cityEntry) {
+      const badges = getLocationRankBadgeModels(loc, cityEntry);
+      const confidence = getLocationConfidenceModel(loc);
+      return `
+        <div class="loc-card-insights" data-location-insights="${escAttr(getLocId(loc))}">
+          <div class="loc-rank-badges">
+            ${badges.map(badge => `<span class="loc-rank-badge ${escAttr(badge.className)}" data-rank-badge="${escAttr(badge.key)}">${escHtml(badge.label)}</span>`).join('')}
+          </div>
+          <div class="loc-confidence-indicator ${escAttr(confidence.level)}" data-confidence-indicator="${escAttr(confidence.level)}" title="${escAttr(confidence.reason)}">🧭 ${escHtml(confidence.label)}</div>
+        </div>`;
+    }
+
+    function detectActiveSmartPreset() {
+      const state = getLocFilterState();
+      const tagText = String(state.tagText || '').trim();
+      const difficulty = String(state.difficulty || '').trim();
+      const cost = String(state.cost || '').trim();
+      const searchName = String(state.searchName || '').trim();
+      const quickTag = String(state.quickTag || '').trim();
+
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && state.openNow && !state.closingSoon && state.sortBy === 'driveTime' && state.sortOrder === 'asc') {
+        return 'closest-now';
+      }
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !state.openNow && !state.closingSoon && state.sortBy === 'bestValue' && state.sortOrder === 'desc') {
+        return 'best-value';
+      }
+      if (!searchName && !difficulty && !cost && !tagText && !quickTag && !state.openNow && !state.closingSoon && state.sortBy === 'mostUnique' && state.sortOrder === 'desc') {
+        return 'most-unique';
+      }
+      return '';
+    }
+
+    function renderSmartPresetState() {
+      const active = detectActiveSmartPreset();
+      document.querySelectorAll('[data-smart-preset]').forEach(btn => {
+        btn.classList.toggle('is-active', btn.dataset.smartPreset === active);
+      });
+    }
+
+    function applySmartLocPreset(kind) {
+      document.getElementById('locSearchName').value = '';
+      document.getElementById('locFilterDifficulty').value = '';
+      document.getElementById('locFilterCost').value = '';
+      document.getElementById('locFilterTag').value = '';
+      document.getElementById('locFilterClosingSoon').checked = false;
+      document.getElementById('locFilterOpenNow').checked = false;
+      activeLocQuickTag = null;
+      document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
+
+      if (kind === 'closest-now') {
+        document.getElementById('locFilterOpenNow').checked = true;
+        document.getElementById('locSortBy').value = 'driveTime';
+        locSortOrder = 'asc';
+      } else if (kind === 'best-value') {
+        document.getElementById('locSortBy').value = 'bestValue';
+        locSortOrder = 'desc';
+      } else if (kind === 'most-unique') {
+        document.getElementById('locSortBy').value = 'mostUnique';
+        locSortOrder = 'desc';
+      }
+
+      const sortBtn = document.getElementById('locSortOrderBtn');
+      if (sortBtn) sortBtn.textContent = locSortOrder === 'asc' ? '↑' : '↓';
+      applyLocFilters();
+    }
+
     function getShortlistSet() {
       if (!currentCityKey) return new Set();
       try {
@@ -1685,6 +2409,13 @@
     function clearShortlist() {
       setShortlistSet(new Set());
       document.getElementById('locDayPlan').classList.remove('visible');
+      document.getElementById('locTimeWindow').style.display = 'none';
+      document.getElementById('locDayPlanSummary').innerHTML = '';
+      document.getElementById('locDayPlanList').innerHTML = '';
+      document.getElementById('locRouteQuality').innerHTML = '';
+      document.getElementById('locRouteQuality').style.display = 'none';
+      const compareTray = document.getElementById('locCompareTray');
+      if (compareTray) compareTray.innerHTML = '';
       updateRouteButtonsState();
     }
 
@@ -1749,6 +2480,7 @@
     function renderLocationDetail(loc) {
       if (!loc) return;
       const locId = getLocId(loc);
+      const cityEntry = currentCityKey ? citiesData[currentCityKey] : null;
       const name = locVal(loc, 0, 'name') || 'Unnamed Location';
       const website = locVal(loc, 2, 'website');
       const tagsRaw = locVal(loc, 3, 'tags');
@@ -1785,6 +2517,7 @@
             </div>
           </div>
           ${tags.length ? `<div class="loc-card-tags">${tags.map(t => `<span class="loc-tag-pill">${escHtml(t)}</span>`).join('')}</div>` : ''}
+          ${renderLocationInsightsMarkup(loc, cityEntry)}
           <div class="loc-card-details">
             ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
             ${hours ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : ''}
@@ -2076,6 +2809,7 @@
       const tray = document.getElementById('locShortlistTray');
       const chips = document.getElementById('locShortlistChips');
       const count = document.getElementById('locShortlistCount');
+      const compareTray = document.getElementById('locCompareTray');
       const setObj = getShortlistSet();
       const ids = Array.from(setObj);
       tray.style.display = ids.length ? 'block' : 'none';
@@ -2086,6 +2820,57 @@
         const locId = getLocId(loc);
         return `<button class="loc-shortlist-chip" onclick="setActiveLocation('${escAttr(locId)}', true)">${escHtml(locVal(loc, 0, 'name') || 'Location')}</button>`;
       }).join('');
+
+      if (!compareTray) return;
+      if (items.length < 2) {
+        compareTray.classList.remove('visible');
+        compareTray.innerHTML = '';
+        return;
+      }
+      if (items.length > 5) {
+        compareTray.classList.add('visible');
+        compareTray.innerHTML = `
+          <div class="loc-compare-title">Compare selected stops</div>
+          <div class="loc-compare-note">Compare supports up to 5 items at a time. Remove a few selections to unlock side-by-side comparison.</div>`;
+        return;
+      }
+
+      compareTray.classList.add('visible');
+      compareTray.innerHTML = `
+        <div class="loc-compare-title">Compare selected stops</div>
+        <div class="loc-compare-note">Side-by-side scan of rating, cost, difficulty, drive time, and tags for your current shortlist.</div>
+        <div class="loc-compare-grid">${items.map(loc => {
+          const locId = getLocId(loc);
+          const encodedLocId = encodeURIComponent(locId);
+          const name = String(locVal(loc, 0, 'name') || 'Location');
+          const difficulty = String(locVal(loc, 7, 'difficulty') || 'N/A');
+          const cost = String(locVal(loc, 14, 'cost') || 'N/A');
+          const rating = String(locVal(loc, 13, 'rating') || 'N/A');
+          const driveTime = String(locVal(loc, 4, 'driveTime') || 'Unknown');
+          const hours = String(locVal(loc, 5, 'hours') || 'Hours unavailable');
+          const tags = getLocationTags(loc).slice(0, 4);
+          return `
+            <div class="loc-compare-card" data-compare-loc-id="${escAttr(locId)}">
+              <div class="loc-compare-card-header">
+                <div class="loc-compare-card-name">${escHtml(name)}</div>
+                <div class="loc-compare-card-meta">
+                  <span class="loc-compare-badge">⭐ ${escHtml(rating)}</span>
+                  <span class="loc-compare-badge">💰 ${escHtml(cost)}</span>
+                </div>
+              </div>
+              <div class="loc-compare-metrics">
+                <div class="loc-compare-metric"><span class="loc-compare-metric-label">Difficulty</span><span>${escHtml(difficulty)}</span></div>
+                <div class="loc-compare-metric"><span class="loc-compare-metric-label">Drive</span><span>${escHtml(driveTime)}</span></div>
+                <div class="loc-compare-metric"><span class="loc-compare-metric-label">Hours</span><span>${escHtml(hours)}</span></div>
+                <div class="loc-compare-metric"><span class="loc-compare-metric-label">Value score</span><span>${Math.round(getLocationBestValueScore(loc))}</span></div>
+              </div>
+              <div class="loc-compare-tags">${tags.length ? tags.map(tag => `<span class="loc-compare-tag">${escHtml(tag)}</span>`).join('') : '<span class="loc-compare-tag">No tags</span>'}</div>
+              <div class="loc-compare-actions">
+                <button type="button" class="loc-mini-btn" onclick="setActiveLocation('${escAttr(locId)}', true)">Focus</button>
+                <button type="button" class="loc-mini-btn" onclick="openLocationDetailByEncodedId('${encodedLocId}')">Details</button>
+              </div>
+            </div>`;
+        }).join('')}</div>`;
     }
 
     function buildDayPlan() {
@@ -2122,19 +2907,19 @@
         lng: parseFloat(locVal(loc, 26, 'longitude') || locVal(loc, 27, 'lng') || loc.longitude || loc.lng)
       }));
 
-      let total = 0;
-      for (let i = 0; i < route.length - 1; i++) {
-        const a = getLocPoint(route[i], getLocId(route[i]));
-        const b = getLocPoint(route[i + 1], getLocId(route[i + 1]));
-        total += Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
-      }
+      const analysis = analyzeRoutePlan(route);
 
       document.getElementById('locDayPlan').classList.add('visible');
-      document.getElementById('locDayPlanSummary').textContent = `Stops: ${route.length} · Approx route score: ${total.toFixed(1)}`;
+      renderRoutePlanSummary(analysis);
       document.getElementById('locDayPlanList').innerHTML = route
-        .map(loc => `<li>${escHtml(locVal(loc, 0, 'name') || 'Location')}</li>`)
+        .map((loc, index) => {
+          const stopDuration = parseDurationMinutes(locVal(loc, 6, 'duration'));
+          const nextLeg = index < route.length - 1 ? estimateTravelMinutesBetweenStops(loc, route[index + 1]) : 0;
+          return `<li>${escHtml(locVal(loc, 0, 'name') || 'Location')} <span class="u-note-muted">· stop ${escHtml(formatMinutesCompact(stopDuration))}${nextLeg ? ` · next leg ${escHtml(formatMinutesCompact(nextLeg))}` : ''}</span></li>`;
+        })
         .join('');
       document.getElementById('locTimeWindow').style.display = 'block';
+      renderRouteQualityPanel(analysis);
       updateRouteButtonsState();
     }
 
@@ -2325,6 +3110,67 @@
       applyLocFilters();
     }
 
+    function getActiveFilterChipModel() {
+      const chips = [];
+      const searchName = String(document.getElementById('locSearchName')?.value || '').trim();
+      const difficulty = String(document.getElementById('locFilterDifficulty')?.value || '').trim();
+      const cost = String(document.getElementById('locFilterCost')?.value || '').trim();
+      const tagText = String(document.getElementById('locFilterTag')?.value || '').trim();
+      const openNow = Boolean(document.getElementById('locFilterOpenNow')?.checked);
+      const closingSoon = Boolean(document.getElementById('locFilterClosingSoon')?.checked);
+      const sortBy = String(document.getElementById('locSortBy')?.value || 'name').trim();
+
+      if (searchName) chips.push({ key: 'searchName', label: `Name: ${searchName}` });
+      if (difficulty) chips.push({ key: 'difficulty', label: `Difficulty: ${difficulty}` });
+      if (cost) chips.push({ key: 'cost', label: `Cost: ${cost}` });
+      if (activeLocQuickTag) chips.push({ key: 'quickTag', label: `Quick tag: ${activeLocQuickTag}` });
+      else if (tagText) chips.push({ key: 'tagText', label: `Tag: ${tagText}` });
+      if (openNow) chips.push({ key: 'openNow', label: 'Open now' });
+      if (closingSoon) chips.push({ key: 'closingSoon', label: 'Closing within 2h' });
+      if (sortBy !== 'name' || locSortOrder !== 'asc') chips.push({ key: 'sort', label: `Sort: ${sortBy} (${locSortOrder})` });
+
+      return chips;
+    }
+
+    function clearSingleFilterChip(key) {
+      if (key === 'searchName') document.getElementById('locSearchName').value = '';
+      if (key === 'difficulty') document.getElementById('locFilterDifficulty').value = '';
+      if (key === 'cost') document.getElementById('locFilterCost').value = '';
+      if (key === 'tagText') document.getElementById('locFilterTag').value = '';
+      if (key === 'quickTag') {
+        activeLocQuickTag = null;
+        document.getElementById('locFilterTag').value = '';
+        document.querySelectorAll('#locQuickTags .loc-tag-btn').forEach(btn => btn.classList.remove('active'));
+      }
+      if (key === 'openNow') document.getElementById('locFilterOpenNow').checked = false;
+      if (key === 'closingSoon') document.getElementById('locFilterClosingSoon').checked = false;
+      if (key === 'sort') {
+        document.getElementById('locSortBy').value = 'name';
+        locSortOrder = 'asc';
+        const sortBtn = document.getElementById('locSortOrderBtn');
+        if (sortBtn) sortBtn.textContent = '↑';
+      }
+      applyLocFilters();
+    }
+
+    function renderActiveFilterChips() {
+      const wrap = document.getElementById('locActiveFilters');
+      if (!wrap) return;
+      const chips = getActiveFilterChipModel();
+      wrap.classList.toggle('visible', chips.length > 0);
+      if (!chips.length) {
+        wrap.innerHTML = '';
+        return;
+      }
+      wrap.innerHTML = `${chips.map(chip => `
+        <span class="loc-active-filter-chip">
+          ${escHtml(chip.label)}
+          <button type="button" onclick="clearSingleFilterChip('${escAttr(chip.key)}')" aria-label="Remove ${escAttr(chip.label)} filter">x</button>
+        </span>
+      `).join('')}
+      <button type="button" class="loc-active-filter-clear" onclick="resetLocFilters()">Clear all</button>`;
+    }
+
     function getOpenInfoForToday(hoursText) {
       const text = String(hoursText || '').toLowerCase();
       if (!text) return { isOpen: true, minutesUntilClose: null };
@@ -2368,7 +3214,10 @@
       results.sort((a, b) => {
         let av;
         let bv;
-        if (sortBy === 'difficulty') {
+        if (sortBy === 'driveTime') {
+          av = parseDriveMinutes(locVal(a, 4, 'driveTime'));
+          bv = parseDriveMinutes(locVal(b, 4, 'driveTime'));
+        } else if (sortBy === 'difficulty') {
           av = diffOrder[String(locVal(a, 7, 'difficulty')).toLowerCase()] ?? 99;
           bv = diffOrder[String(locVal(b, 7, 'difficulty')).toLowerCase()] ?? 99;
         } else if (sortBy === 'cost') {
@@ -2377,6 +3226,12 @@
         } else if (sortBy === 'rating') {
           av = parseFloat(locVal(a, 13, 'rating')) || 0;
           bv = parseFloat(locVal(b, 13, 'rating')) || 0;
+        } else if (sortBy === 'bestValue') {
+          av = getLocationBestValueScore(a);
+          bv = getLocationBestValueScore(b);
+        } else if (sortBy === 'mostUnique') {
+          av = getLocationMostUniqueScore(a, cityEntry);
+          bv = getLocationMostUniqueScore(b, cityEntry);
         } else if (sortBy === 'tags') {
           av = String(locVal(a, 3, 'tags')).toLowerCase();
           bv = String(locVal(b, 3, 'tags')).toLowerCase();
@@ -2392,6 +3247,8 @@
       lastFilteredLocations = results;
       document.getElementById('locResultsCount').textContent = `${results.length} location${results.length !== 1 ? 's' : ''}`;
       saveLastLocState();
+      renderActiveFilterChips();
+      renderSmartPresetState();
       renderLocationCards(results);
       renderLocMap(results);
       renderShortlistTray();
@@ -2400,14 +3257,21 @@
 
     function renderLocationCards(locations) {
       const grid = document.getElementById('locationsGrid');
+      const cityEntry = currentCityKey ? citiesData[currentCityKey] : null;
       const shortlist = getShortlistSet();
       if (!grid) return;
       if (!locations.length) {
+        const activeChips = getActiveFilterChipModel();
+        const hasFilters = activeChips.length > 0;
         grid.innerHTML = `
           <div class="loc-empty">
             <div class="loc-empty-icon">🔍</div>
-            <div class="loc-empty-text">No locations match your filters</div>
-            <div class="u-note-sm">Try adjusting or resetting the filters above.</div>
+            <div class="loc-empty-text">${hasFilters ? 'No locations match your current filters' : 'No locations available right now'}</div>
+            <div class="u-note-sm">${hasFilters ? 'Try removing one filter chip at a time or reset everything.' : 'Try another city or sync additional sources.'}</div>
+            <div class="loc-empty-actions">
+              ${hasFilters ? '<button class="loc-mini-btn" onclick="resetLocFilters()">Reset Filters</button>' : ''}
+              <button class="loc-mini-btn" onclick="document.getElementById(\'locFilterOpenNow\').checked = true; applyLocFilters();">Show Open Now</button>
+            </div>
           </div>`;
         return;
       }
@@ -2442,6 +3306,7 @@
               </div>
             </div>
             ${tags.length ? `<div class="loc-card-tags">${tags.map(t => `<span class="loc-tag-pill">${escHtml(t)}</span>`).join('')}</div>` : ''}
+            ${renderLocationInsightsMarkup(loc, cityEntry)}
             <div class="loc-card-details">
               ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
               ${hours ? `<div class="loc-detail-row"><span class="loc-detail-icon">🕐</span><span class="loc-detail-value">${escHtml(hours)}</span></div>` : ''}
@@ -2538,35 +3403,15 @@
         showRouteToast('Build a day plan first', true);
         return;
       }
-      const startStr = document.getElementById('locTimeStart')?.value || '09:00';
-      const endStr = document.getElementById('locTimeEnd')?.value || '17:00';
-      const perStopMins = parseInt(document.getElementById('locTimePerStop')?.value) || 60;
-
-      const startMins = timeToMinutes(startStr);
-      const endMins = timeToMinutes(endStr);
-      const availableMins = endMins - startMins;
-      const travelEstimate = (lastBuiltDayPlanRoute.length - 1) * 15; // 15 min avg per stop
-      const stopTimeTotalMins = lastBuiltDayPlanRoute.length * perStopMins;
-      const totalRequired = travelEstimate + stopTimeTotalMins;
-
-      const feasible = totalRequired <= availableMins;
-      const slack = availableMins - totalRequired;
-      const color = feasible ? (slack > 60 ? '#86efac' : '#fbbf24') : '#f87171';
-      const status = feasible ? (slack > 60 ? '✅ Comfortable' : '⚠️ Tight but doable') : '❌ Too tight';
-
-      const html = `
-        <strong>${status}</strong><br>
-        Available: ${availableMins} min | Needed: ${totalRequired} min (${lastBuiltDayPlanRoute.length} stops × ${perStopMins}m + ${travelEstimate}m transit)<br>
-        Slack time: ${slack > 0 ? slack : Math.abs(slack)} min ${slack > 0 ? '✓' : '✗'}
-      `;
-      const panel = document.getElementById('locRouteQuality');
-      if (panel) {
-        panel.innerHTML = html;
-        panel.style.display = 'block';
-        panel.style.borderLeft = `4px solid ${color}`;
-        panel.style.color = color;
-      }
-      showRouteToast(feasible ? 'Route is feasible!' : 'Route exceeds time window', !feasible);
+      const route = lastBuiltDayPlanRoute.map(stop => findLocationById(stop.locId)).filter(Boolean);
+      const analysis = analyzeRoutePlan(route, {
+        startTime: document.getElementById('locTimeStart')?.value || '09:00',
+        endTime: document.getElementById('locTimeEnd')?.value || '17:00',
+        perStopMinutes: parseInt(document.getElementById('locTimePerStop')?.value, 10) || 60
+      });
+      renderRoutePlanSummary(analysis);
+      renderRouteQualityPanel(analysis);
+      showRouteToast(analysis.confidenceLevel === 'low' ? 'Route exceeds or strains the time window' : 'Route feasibility updated', analysis.confidenceLevel === 'low');
     }
 
     function bulkAddTopRated(count) {
@@ -2591,10 +3436,12 @@
     window.toggleLocQuickTag = toggleLocQuickTag;
     window.toggleLocSortOrder = toggleLocSortOrder;
     window.resetLocFilters = resetLocFilters;
+    window.clearSingleFilterChip = clearSingleFilterChip;
     window.applyLocFilters = applyLocFilters;
     window.saveLocPreset = saveLocPreset;
     window.loadSelectedLocPreset = loadSelectedLocPreset;
     window.deleteSelectedLocPreset = deleteSelectedLocPreset;
+    window.applySmartLocPreset = applySmartLocPreset;
     window.toggleSplitView = toggleSplitView;
     window.toggleShortlistByEncodedId = toggleShortlistByEncodedId;
     window.setActiveLocation = setActiveLocation;
