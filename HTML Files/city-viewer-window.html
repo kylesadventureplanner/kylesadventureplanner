@@ -328,11 +328,8 @@
       background: white;
       border: 1px solid #e5e7eb;
       border-radius: 12px;
-      padding: 16px 20px;
-      margin-bottom: 16px;
-      position: sticky;
-      top: 10px;
-      z-index: 20;
+      padding: 12px 14px;
+      margin-bottom: 12px;
       box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
       backdrop-filter: blur(2px);
     }
@@ -340,14 +337,14 @@
     .locations-controls-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 12px;
-      margin-bottom: 14px;
+      gap: 10px;
+      margin-bottom: 10px;
     }
 
     .loc-filter-item {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
     .loc-filter-item label {
       font-size: 11px;
@@ -358,7 +355,7 @@
     }
     .loc-filter-input,
     .loc-filter-select {
-      padding: 9px 12px;
+      padding: 8px 10px;
       border: 1px solid #e5e7eb;
       border-radius: 8px;
       font-size: 13px;
@@ -386,8 +383,8 @@
       flex-wrap: wrap;
       align-items: center;
       gap: 6px;
-      margin-top: 10px;
-      padding-top: 10px;
+      margin-top: 8px;
+      padding-top: 8px;
       border-top: 1px dashed #e5e7eb;
     }
     .loc-active-filters.visible { display: flex; }
@@ -447,11 +444,11 @@
     .loc-sort-row {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
-      padding: 10px 0 0 0;
+      padding: 8px 0 0 0;
       border-top: 1px solid #f3f4f6;
-      margin-top: 14px;
+      margin-top: 10px;
     }
     .loc-sort-label { font-size: 12px; color: #6b7280; font-weight: 600; }
     .loc-sort-select {
@@ -723,11 +720,11 @@
     /* Presets, shortlist, map split */
     .loc-presets-row {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
       flex-wrap: wrap;
-      margin-bottom: 10px;
-      padding-bottom: 10px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
       border-bottom: 1px solid #f3f4f6;
     }
     .loc-preset-input,
@@ -743,10 +740,10 @@
       min-width: 120px;
     }
     .loc-mini-btn {
-      padding: 7px 10px;
+      padding: 6px 9px;
       border: 1px solid #e5e7eb;
       border-radius: 8px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       background: white;
       cursor: pointer;
@@ -761,7 +758,7 @@
       margin-top: 2px;
     }
     .loc-smart-preset-btn {
-      padding: 8px 12px;
+      padding: 7px 10px;
       border-radius: 999px;
       border: 1px solid #c7d2fe;
       background: #eef2ff;
@@ -786,9 +783,98 @@
     .loc-check-row {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
       flex-wrap: wrap;
-      margin-top: 8px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 900px) {
+      .locations-controls {
+        padding: 10px 12px;
+        margin-bottom: 10px;
+      }
+
+      .locations-controls-grid {
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .loc-presets-row {
+        margin-bottom: 6px;
+        padding-bottom: 6px;
+      }
+
+      .loc-sort-row {
+        margin-top: 8px;
+        padding-top: 6px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .locations-controls {
+        padding: 8px 10px;
+        margin-bottom: 8px;
+      }
+
+      .loc-presets-row {
+        gap: 5px;
+        margin-bottom: 5px;
+        padding-bottom: 5px;
+      }
+
+      .loc-smart-presets {
+        gap: 5px;
+        margin-top: 1px;
+      }
+
+      .loc-check-row {
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .locations-controls-grid {
+        grid-template-columns: 1fr;
+        gap: 7px;
+        margin-bottom: 7px;
+      }
+
+      .loc-filter-item label {
+        font-size: 10px;
+      }
+
+      .loc-filter-input,
+      .loc-filter-select {
+        padding: 7px 9px;
+        font-size: 12px;
+      }
+
+      .loc-mini-btn,
+      .loc-smart-preset-btn {
+        font-size: 11px;
+        padding: 6px 8px;
+      }
+
+      .loc-active-filters {
+        margin-top: 6px;
+        padding-top: 6px;
+      }
+
+      .loc-sort-row {
+        gap: 6px;
+        margin-top: 6px;
+        padding-top: 5px;
+      }
+
+      .loc-sort-select {
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+
+      .loc-sort-order-btn {
+        width: 30px;
+        height: 30px;
+      }
     }
     .loc-check {
       display: inline-flex;

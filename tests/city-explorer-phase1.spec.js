@@ -126,6 +126,13 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await seedCityViewer(page);
   });
 
+  test('location filter controls are not sticky', async ({ page }) => {
+    await openTestCity(page);
+
+    const computedPosition = await page.locator('.locations-controls').evaluate((node) => window.getComputedStyle(node).position);
+    expect(computedPosition).not.toBe('sticky');
+  });
+
   test('active filter chips appear and individual chip removal updates filters', async ({ page }) => {
     await openTestCity(page);
 
