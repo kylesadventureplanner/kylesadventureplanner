@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>City Explorer - Kyle's Adventure Finder</title>
   <script src="../JS Files/mobile-view-persistence-bootstrap.js"></script>
+  <!-- Google Maps API – same key used by parent shell; safe to load in iframe context -->
+  <script>
+    (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+      key: "AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc",
+      v: "weekly",
+      libraries: "maps,marker"
+    });
+  </script>
   <link rel="stylesheet" href="../CSS/utilities.css">
   <style>
     * {
@@ -1826,7 +1834,13 @@
     function toggleSplitView() {
       setSplitView(!locSplitView);
       saveLastLocState();
-      renderLocMap(lastFilteredLocations);
+      // Wait two animation frames so the browser finishes the CSS layout change
+      // before we measure the map container or initialise Google Maps.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          renderLocMap(lastFilteredLocations);
+        });
+      });
       updateUrlFromState();
     }
 
@@ -1859,7 +1873,11 @@
       const count = document.getElementById('locMapCount');
       if (!canvas || !count) return;
       count.textContent = `${locations.length} pins`;
-      canvas.innerHTML = '';
+      // Only clear canvas when Google Maps is NOT mounted – clearing the Google Maps
+      // container destroys its tile DOM and makes the map go blank.
+      if (!locGoogleMap) {
+        canvas.innerHTML = '';
+      }
        if (!locSplitView || locations.length === 0) return;
 
        const points = locations.map(loc => {
@@ -1878,10 +1896,23 @@
       if (!geoPoints.length) return false;
 
       const canvas = document.getElementById('locMapCanvas');
-      canvas.innerHTML = '';
       const center = { lat: geoPoints[0].point.y, lng: geoPoints[0].point.x };
-      locGoogleMap = locGoogleMap || new window.google.maps.Map(canvas, { zoom: 10, center });
-      locGoogleMap.setCenter(center);
+
+      if (!locGoogleMap) {
+        // First render: clear any placeholder content then create the map
+        canvas.innerHTML = '';
+        locGoogleMap = new window.google.maps.Map(canvas, {
+          zoom: 10,
+          center,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false
+        });
+      } else {
+        // Map already initialised – trigger resize so tiles fill the now-visible container
+        window.google.maps.event.trigger(locGoogleMap, 'resize');
+        locGoogleMap.setCenter(center);
+      }
 
       locGoogleMarkers.forEach(m => m.setMap(null));
       locGoogleMarkers = [];
