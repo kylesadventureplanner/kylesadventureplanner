@@ -203,6 +203,7 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
 
     await page.locator('.loc-select-btn').nth(0).evaluate((node) => node.click());
     await page.locator('.loc-select-btn').nth(1).evaluate((node) => node.click());
+    await page.locator('.loc-select-btn').nth(2).evaluate((node) => node.click());
 
     await page.getByRole('button', { name: 'Build Day Plan' }).click();
 
@@ -210,9 +211,25 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await expect(page.locator('#locDayPlanSummary [data-itinerary-score]')).toContainText(/Itinerary score \d+\/100/);
     await expect(page.locator('#locDayPlanSummary [data-route-confidence]')).toContainText('Route confidence: Comfortable');
     await expect(page.locator('#locRouteQuality [data-route-feasibility-status]')).toContainText('Comfortable');
+    await expect(page.locator('#locRouteTradeoffPanel [data-route-tradeoff]')).toContainText(/min travel for [+-]\d+\.\d rating/i);
+    await expect(page.locator('#locRouteTradeoffPanel [data-budget-alt-route]')).toContainText(/Budget-friendly alternate/i);
+    await expect(page.locator('#locRouteTradeoffPanel [data-route-variant]')).toHaveCount(3);
+    await expect(page.locator('#locRouteTradeoffPanel [data-optimizer-weights]')).toContainText('Weights: rating 4 · cost 3 · travel 4');
+
+    await page.locator('#locWeightRating').selectOption('5');
+    await page.locator('#locWeightCost').selectOption('5');
+    await page.locator('#locWeightTravel').selectOption('2');
+    await page.getByRole('button', { name: 'Apply weights' }).click();
+    await expect(page.locator('#locRouteTradeoffPanel [data-optimizer-weights]')).toContainText('Weights: rating 5 · cost 5 · travel 2');
+
+    await page.locator('#locRouteTradeoffPanel [data-route-variant="budget-friendly"] .loc-route-variant-btn').click();
+    await expect(page.locator('#locRouteTradeoffPanel [data-route-variant="budget-friendly"]')).toHaveClass(/active/);
+
+    await page.locator('#locExportVariantBtn').click();
+    await expect.poll(async () => page.evaluate(() => window.__lastExportedRouteJson || '')).toContain('"variantId": "budget-friendly"');
 
     await page.locator('#locTimeStart').fill('09:00');
-    await page.locator('#locTimeEnd').fill('11:00');
+    await page.locator('#locTimeEnd').fill('11:45');
     await page.locator('#locTimePerStop').fill('40');
     await page.getByRole('button', { name: /Calculate Feasibility/i }).click();
 

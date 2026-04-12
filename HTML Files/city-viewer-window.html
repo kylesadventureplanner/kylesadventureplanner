@@ -1111,6 +1111,126 @@
       color: #cbd5e1;
       font-weight: 600;
     }
+    .loc-route-tradeoff-panel {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(255,255,255,0.22);
+      display: none;
+    }
+    .loc-route-tradeoff-panel.visible { display: block; }
+    .loc-route-tradeoff-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #c7d2fe;
+      margin-bottom: 8px;
+    }
+    .loc-route-tradeoff-note {
+      font-size: 11px;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+    }
+    .loc-optimizer-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+    .loc-optimizer-control {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 110px;
+    }
+    .loc-optimizer-control label {
+      font-size: 10px;
+      color: #bfdbfe;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+    }
+    .loc-optimizer-select {
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      color: #f8fafc;
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+    .loc-optimizer-select option {
+      color: #111827;
+    }
+    .loc-optimizer-apply {
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.3);
+      background: rgba(99,102,241,0.22);
+      color: #e0e7ff;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .loc-optimizer-apply:hover {
+      border-color: #93c5fd;
+      color: #dbeafe;
+    }
+    .loc-optimizer-weight-summary {
+      width: 100%;
+      font-size: 11px;
+      color: #c7d2fe;
+      font-weight: 600;
+      margin-top: -2px;
+      margin-bottom: 2px;
+    }
+    .loc-route-variant-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px;
+    }
+    .loc-route-variant-card {
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .loc-route-variant-card.active {
+      border-color: #93c5fd;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+    }
+    .loc-route-variant-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #e0e7ff;
+    }
+    .loc-route-variant-stats {
+      font-size: 11px;
+      color: #dbeafe;
+      line-height: 1.35;
+    }
+    .loc-route-variant-tradeoff {
+      font-size: 11px;
+      color: #fde68a;
+      line-height: 1.35;
+    }
+    .loc-route-variant-btn {
+      margin-top: auto;
+      align-self: flex-start;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.1);
+      color: #f8fafc;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .loc-route-variant-btn:hover {
+      border-color: #93c5fd;
+      color: #dbeafe;
+    }
     .loc-time-window {
       margin-top: 14px;
       padding-top: 14px;
@@ -1314,6 +1434,7 @@
           <button class="loc-mini-btn" onclick="buildDayPlan()">Build Day Plan</button>
           <button id="openGoogleRouteBtn" class="loc-mini-btn" onclick="openDayPlanRoute('google')" disabled>Open Google Route</button>
           <button id="openMapboxRouteBtn" class="loc-mini-btn" onclick="openDayPlanRoute('mapbox')" disabled>Open Mapbox Route</button>
+          <button id="locExportVariantBtn" class="loc-mini-btn" onclick="exportSelectedOptimizedRoute()" disabled>Export Active Route</button>
           <button class="loc-mini-btn" onclick="clearShortlist()">Clear</button>
         </div>
         <div id="locShortlistChips" class="loc-shortlist-chip-wrap"></div>
@@ -1343,6 +1464,7 @@
         <div id="locDayPlan" class="loc-day-plan">
           <div class="u-text-12-strong u-mb-4">Suggested Route</div>
           <div id="locDayPlanSummary" class="u-text-12-light"></div>
+          <div id="locRouteTradeoffPanel" class="loc-route-tradeoff-panel"></div>
           <ol id="locDayPlanList" class="loc-day-plan-list"></ol>
         </div>
       </div>
@@ -1783,6 +1905,9 @@
     const locPointCache = {};
     let pendingShareState = null;
     let lastBuiltDayPlanRoute = [];
+    let lastOptimizedRouteVariants = [];
+    let activeOptimizedVariantId = '';
+    let optimizerWeights = { rating: 4, cost: 3, travel: 4 };
     let activeLocationDetailId = null;
     let locationResultsScrollY = 0;
     let locGoogleMap = null;
@@ -2149,7 +2274,7 @@
       let confidenceLabel = 'Risky';
       let confidenceLevel = 'low';
       let confidenceReason = 'Current time window is likely too tight for the selected stops.';
-      if (slackMinutes >= 45) {
+      if (slackMinutes >= 60) {
         confidenceLabel = 'Comfortable';
         confidenceLevel = 'high';
         confidenceReason = 'Strong buffer remains after travel and stop-time estimates.';
@@ -2177,6 +2302,343 @@
         confidenceLevel,
         confidenceReason
       };
+    }
+
+    function toRouteStopDescriptor(loc) {
+      return {
+        locId: getLocId(loc),
+        name: String(locVal(loc, 0, 'name') || ''),
+        placeId: String(locVal(loc, 1, 'googlePlaceId') || ''),
+        address: String(locVal(loc, 11, 'address') || ''),
+        lat: parseFloat(locVal(loc, 25, 'latitude') || locVal(loc, 26, 'lat') || loc.latitude || loc.lat),
+        lng: parseFloat(locVal(loc, 26, 'longitude') || locVal(loc, 27, 'lng') || loc.longitude || loc.lng)
+      };
+    }
+
+    function routeSignature(route) {
+      return route.map(loc => getLocId(loc)).join('|');
+    }
+
+    function buildNearestNeighborRoute(selected) {
+      const remaining = selected.slice().sort((a, b) => String(locVal(a, 0, 'name')).localeCompare(String(locVal(b, 0, 'name'))));
+      const route = [remaining.shift()];
+      while (remaining.length) {
+        const last = route[route.length - 1];
+        const lastPt = getLocPoint(last, getLocId(last));
+        let bestIdx = 0;
+        let bestDist = Infinity;
+        remaining.forEach((candidate, idx) => {
+          const pt = getLocPoint(candidate, getLocId(candidate));
+          const dx = lastPt.x - pt.x;
+          const dy = lastPt.y - pt.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < bestDist) { bestDist = d; bestIdx = idx; }
+        });
+        route.push(remaining.splice(bestIdx, 1)[0]);
+      }
+      return route;
+    }
+
+    function buildRouteVariantCandidates(selected) {
+      const candidates = [
+        {
+          id: 'balanced-core',
+          label: 'Balanced optimizer',
+          role: 'primary-candidate',
+          route: buildNearestNeighborRoute(selected)
+        },
+        {
+          id: 'quality-first',
+          label: 'Quality-first alternate',
+          role: 'quality-alt',
+          route: selected.slice().sort((a, b) => {
+            const ratingCmp = (parseFloat(locVal(b, 13, 'rating')) || 0) - (parseFloat(locVal(a, 13, 'rating')) || 0);
+            if (ratingCmp !== 0) return ratingCmp;
+            return getLocationBestValueScore(b) - getLocationBestValueScore(a);
+          })
+        },
+        {
+          id: 'budget-friendly',
+          label: 'Budget-friendly alternate',
+          role: 'budget-alt',
+          route: selected.slice().sort((a, b) => {
+            const costCmp = getLocationCostRank(a) - getLocationCostRank(b);
+            if (costCmp !== 0) return costCmp;
+            const driveCmp = parseDriveMinutes(locVal(a, 4, 'driveTime')) - parseDriveMinutes(locVal(b, 4, 'driveTime'));
+            if (Number.isFinite(driveCmp) && driveCmp !== 0) return driveCmp;
+            return (parseFloat(locVal(b, 13, 'rating')) || 0) - (parseFloat(locVal(a, 13, 'rating')) || 0);
+          })
+        }
+      ];
+
+      const seen = new Set();
+      return candidates.filter(candidate => {
+        const sig = routeSignature(candidate.route);
+        if (!sig || seen.has(sig)) return false;
+        seen.add(sig);
+        return true;
+      });
+    }
+
+    function scoreRouteVariant(analysis) {
+      const weights = optimizerWeights || { rating: 4, cost: 3, travel: 4 };
+      const ratingWeight = Math.max(1, Math.min(5, Number(weights.rating) || 4));
+      const costWeight = Math.max(1, Math.min(5, Number(weights.cost) || 3));
+      const travelWeight = Math.max(1, Math.min(5, Number(weights.travel) || 4));
+      if (!analysis) return 0;
+      const confidenceBonus = analysis.confidenceLevel === 'high' ? 12 : (analysis.confidenceLevel === 'medium' ? 6 : 0);
+      return analysis.itineraryScore
+        + confidenceBonus
+        + (analysis.averageRating * ratingWeight * 2)
+        - (analysis.averageCostRank * costWeight * 2.8)
+        + ((analysis.efficiencyScore / 100) * travelWeight * 10);
+    }
+
+    function clampOptimizerWeight(value, fallback) {
+      const numeric = Number.parseInt(String(value || ''), 10);
+      if (!Number.isFinite(numeric)) return fallback;
+      return Math.max(1, Math.min(5, numeric));
+    }
+
+    function getOptimizerWeightsFromControls() {
+      const rating = clampOptimizerWeight(document.getElementById('locWeightRating')?.value, optimizerWeights.rating || 4);
+      const cost = clampOptimizerWeight(document.getElementById('locWeightCost')?.value, optimizerWeights.cost || 3);
+      const travel = clampOptimizerWeight(document.getElementById('locWeightTravel')?.value, optimizerWeights.travel || 4);
+      return { rating, cost, travel };
+    }
+
+    function syncOptimizerWeightControls() {
+      const ratingSel = document.getElementById('locWeightRating');
+      const costSel = document.getElementById('locWeightCost');
+      const travelSel = document.getElementById('locWeightTravel');
+      if (ratingSel) ratingSel.value = String(optimizerWeights.rating || 4);
+      if (costSel) costSel.value = String(optimizerWeights.cost || 3);
+      if (travelSel) travelSel.value = String(optimizerWeights.travel || 4);
+      const summary = document.querySelector('[data-optimizer-weights]');
+      if (summary) {
+        summary.textContent = `Weights: rating ${optimizerWeights.rating} · cost ${optimizerWeights.cost} · travel ${optimizerWeights.travel}`;
+      }
+    }
+
+    function buildRouteTradeoffSentence(baseAnalysis, altAnalysis) {
+      if (!baseAnalysis || !altAnalysis) return 'Tradeoff data unavailable.';
+      const deltaTravel = Math.round(altAnalysis.travelMinutes - baseAnalysis.travelMinutes);
+      const deltaRating = altAnalysis.averageRating - baseAnalysis.averageRating;
+      const deltaCost = altAnalysis.averageCostRank - baseAnalysis.averageCostRank;
+      const travelText = `${deltaTravel >= 0 ? '+' : ''}${deltaTravel} min travel`;
+      const ratingText = `${deltaRating >= 0 ? '+' : ''}${deltaRating.toFixed(1)} rating`;
+      const costText = deltaCost < 0
+        ? `${Math.abs(deltaCost).toFixed(1)} cost-rank cheaper`
+        : (deltaCost > 0 ? `${deltaCost.toFixed(1)} cost-rank pricier` : 'same cost profile');
+      return `${travelText} for ${ratingText}; ${costText}.`;
+    }
+
+    function buildOptimizedRoutePlan(selected, options) {
+      const variants = buildRouteVariantCandidates(selected).map(variant => {
+        const analysis = analyzeRoutePlan(variant.route, options);
+        return {
+          ...variant,
+          analysis,
+          utilityScore: scoreRouteVariant(analysis)
+        };
+      });
+      variants.sort((a, b) => b.utilityScore - a.utilityScore);
+
+      const primary = variants[0] || null;
+      if (!primary) return { primary: null, variants: [] };
+
+      const budgetAlt = variants.find(v => v.role === 'budget-alt' && v.id !== primary.id) || null;
+      const qualityAlt = variants.find(v => v.role === 'quality-alt' && v.id !== primary.id) || null;
+
+      const annotated = variants.map(variant => {
+        const tradeoff = variant.id === primary.id
+          ? 'Baseline route optimized for score and feasibility.'
+          : buildRouteTradeoffSentence(primary.analysis, variant.analysis);
+        return {
+          ...variant,
+          tradeoff,
+          isBudgetAlt: Boolean(budgetAlt && budgetAlt.id === variant.id),
+          isQualityAlt: Boolean(qualityAlt && qualityAlt.id === variant.id)
+        };
+      });
+
+      return {
+        primary,
+        variants: annotated,
+        budgetAlt,
+        qualityAlt
+      };
+    }
+
+    function buildOptimizedPlanFromCurrentSelection(options) {
+      const shortlistIds = Array.from(getShortlistSet());
+      const selected = shortlistIds.map(id => findLocationById(id)).filter(Boolean);
+      if (selected.length < 2) return null;
+      return buildOptimizedRoutePlan(selected, options);
+    }
+
+    function updateVariantExportButton() {
+      const btn = document.getElementById('locExportVariantBtn');
+      if (!btn) return;
+      const hasVariants = Array.isArray(lastOptimizedRouteVariants) && lastOptimizedRouteVariants.length > 0;
+      btn.disabled = !hasVariants;
+      if (!hasVariants) {
+        btn.textContent = 'Export Active Route';
+        return;
+      }
+      const active = lastOptimizedRouteVariants.find(variant => variant.id === activeOptimizedVariantId) || lastOptimizedRouteVariants[0];
+      btn.textContent = active ? `Export: ${active.label}` : 'Export Active Route';
+    }
+
+    function renderRouteTradeoffPanel(plan, activeVariantId) {
+      const panel = document.getElementById('locRouteTradeoffPanel');
+      if (!panel) return;
+      if (!plan || !Array.isArray(plan.variants) || plan.variants.length < 2) {
+        panel.classList.remove('visible');
+        panel.innerHTML = '';
+        return;
+      }
+
+      panel.classList.add('visible');
+      const primary = plan.primary;
+      panel.innerHTML = `
+        <div class="loc-route-tradeoff-title">Route optimizer tradeoffs</div>
+        <div class="loc-optimizer-controls">
+          <div class="loc-optimizer-control">
+            <label for="locWeightRating">Rating priority</label>
+            <select id="locWeightRating" class="loc-optimizer-select">
+              <option value="1">1 - Low</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5 - High</option>
+            </select>
+          </div>
+          <div class="loc-optimizer-control">
+            <label for="locWeightCost">Cost priority</label>
+            <select id="locWeightCost" class="loc-optimizer-select">
+              <option value="1">1 - Low</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5 - High</option>
+            </select>
+          </div>
+          <div class="loc-optimizer-control">
+            <label for="locWeightTravel">Travel priority</label>
+            <select id="locWeightTravel" class="loc-optimizer-select">
+              <option value="1">1 - Low</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5 - High</option>
+            </select>
+          </div>
+          <button type="button" class="loc-optimizer-apply" onclick="applyOptimizerWeightsFromControls()">Apply weights</button>
+          <div class="loc-optimizer-weight-summary" data-optimizer-weights></div>
+        </div>
+        <div class="loc-route-tradeoff-note" data-route-tradeoff>${escHtml(plan.variants.find(v => v.id !== primary.id)?.tradeoff || 'Tradeoff data unavailable.')}</div>
+        <div class="loc-route-tradeoff-note" data-budget-alt-route>${plan.budgetAlt ? `Budget-friendly alternate: ${escHtml(plan.budgetAlt.tradeoff)}` : 'Budget-friendly alternate route not available for this selection.'}</div>
+        <div class="loc-route-variant-grid">
+          ${plan.variants.map(variant => `
+            <div class="loc-route-variant-card ${variant.id === activeVariantId ? 'active' : ''}" data-route-variant="${escAttr(variant.id)}">
+              <div class="loc-route-variant-name">${escHtml(variant.label)}${variant.id === primary.id ? ' • selected baseline' : ''}</div>
+              <div class="loc-route-variant-stats">Score ${variant.analysis.itineraryScore}/100 · Utility ${Math.round(variant.utilityScore)} · ${escHtml(variant.analysis.confidenceLabel)} · Travel ${escHtml(formatMinutesCompact(variant.analysis.travelMinutes))}</div>
+              <div class="loc-route-variant-tradeoff">${escHtml(variant.tradeoff)}</div>
+              <button type="button" class="loc-route-variant-btn" onclick="applyOptimizedRouteVariant('${escAttr(variant.id)}')">Use this route</button>
+            </div>
+          `).join('')}
+        </div>`;
+      syncOptimizerWeightControls();
+    }
+
+    function renderPlannedRoute(route, analysis, optimizedPlan, activeVariantId) {
+      if (!Array.isArray(route) || !route.length) return;
+      lastBuiltDayPlanRoute = route.map(toRouteStopDescriptor);
+      document.getElementById('locDayPlan').classList.add('visible');
+      document.getElementById('locTimeWindow').style.display = 'block';
+      renderRoutePlanSummary(analysis);
+      document.getElementById('locDayPlanList').innerHTML = route
+        .map((loc, index) => {
+          const stopDuration = parseDurationMinutes(locVal(loc, 6, 'duration'));
+          const nextLeg = index < route.length - 1 ? estimateTravelMinutesBetweenStops(loc, route[index + 1]) : 0;
+          return `<li>${escHtml(locVal(loc, 0, 'name') || 'Location')} <span class="u-note-muted">· stop ${escHtml(formatMinutesCompact(stopDuration))}${nextLeg ? ` · next leg ${escHtml(formatMinutesCompact(nextLeg))}` : ''}</span></li>`;
+        })
+        .join('');
+      renderRouteQualityPanel(analysis);
+      renderRouteTradeoffPanel(optimizedPlan, activeVariantId);
+      updateVariantExportButton();
+      updateRouteButtonsState();
+    }
+
+    function applyOptimizedRouteVariant(variantId) {
+      const selectedId = String(variantId || '').trim();
+      if (!selectedId || !Array.isArray(lastOptimizedRouteVariants) || !lastOptimizedRouteVariants.length) return;
+      const selectedVariant = lastOptimizedRouteVariants.find(variant => variant.id === selectedId);
+      if (!selectedVariant) return;
+
+      activeOptimizedVariantId = selectedVariant.id;
+      const optimizedPlan = {
+        primary: lastOptimizedRouteVariants[0],
+        variants: lastOptimizedRouteVariants,
+        budgetAlt: lastOptimizedRouteVariants.find(v => v.isBudgetAlt) || null,
+        qualityAlt: lastOptimizedRouteVariants.find(v => v.isQualityAlt) || null
+      };
+      renderPlannedRoute(selectedVariant.route, selectedVariant.analysis, optimizedPlan, activeOptimizedVariantId);
+      showRouteToast(`Applied route: ${selectedVariant.label}`, false);
+    }
+
+    function applyOptimizerWeightsFromControls() {
+      const weights = getOptimizerWeightsFromControls();
+      optimizerWeights = { ...weights };
+      const options = {
+        startTime: document.getElementById('locTimeStart')?.value || '09:00',
+        endTime: document.getElementById('locTimeEnd')?.value || '17:00',
+        perStopMinutes: parseInt(document.getElementById('locTimePerStop')?.value, 10) || 60
+      };
+      const plan = buildOptimizedPlanFromCurrentSelection(options);
+      if (!plan || !plan.primary) {
+        showRouteToast('Select at least 2 locations to tune optimizer weights.', true);
+        return;
+      }
+      const prevActive = activeOptimizedVariantId;
+      lastOptimizedRouteVariants = plan.variants;
+      activeOptimizedVariantId = plan.variants.some(variant => variant.id === prevActive) ? prevActive : plan.primary.id;
+      const activeVariant = plan.variants.find(variant => variant.id === activeOptimizedVariantId) || plan.primary;
+      renderPlannedRoute(activeVariant.route, activeVariant.analysis, plan, activeOptimizedVariantId);
+      showRouteToast(`Optimizer weights updated (R${weights.rating}/C${weights.cost}/T${weights.travel}).`, false);
+    }
+
+    async function exportSelectedOptimizedRoute() {
+      const variants = Array.isArray(lastOptimizedRouteVariants) ? lastOptimizedRouteVariants : [];
+      const active = variants.find(variant => variant.id === activeOptimizedVariantId) || variants[0];
+      if (!active) {
+        showRouteToast('Build a route first to export a variant.', true);
+        return;
+      }
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        cityKey: currentCityKey || '',
+        variantId: active.id,
+        variantLabel: active.label,
+        optimizerWeights,
+        analysis: {
+          itineraryScore: active.analysis.itineraryScore,
+          confidence: active.analysis.confidenceLabel,
+          travelMinutes: active.analysis.travelMinutes,
+          stopMinutes: active.analysis.stopMinutes,
+          totalRequiredMinutes: active.analysis.totalRequiredMinutes
+        },
+        route: active.route.map(toRouteStopDescriptor)
+      };
+      const text = JSON.stringify(payload, null, 2);
+      window.__lastExportedRouteJson = text;
+      try {
+        await navigator.clipboard.writeText(text);
+        showRouteToast(`Exported ${active.label} route JSON to clipboard.`, false);
+      } catch (_error) {
+        window.prompt('Copy route JSON:', text);
+      }
     }
 
     function renderRoutePlanSummary(analysis) {
@@ -2389,8 +2851,11 @@
       if (!currentCityKey) return;
       window.localStorage.setItem(cityShortlistKey(currentCityKey), JSON.stringify(Array.from(setObj)));
       lastBuiltDayPlanRoute = [];
+      lastOptimizedRouteVariants = [];
+      activeOptimizedVariantId = '';
       renderShortlistTray();
       updateShortlistButtons();
+      updateVariantExportButton();
       updateRouteButtonsState();
     }
 
@@ -2411,9 +2876,12 @@
       document.getElementById('locDayPlan').classList.remove('visible');
       document.getElementById('locTimeWindow').style.display = 'none';
       document.getElementById('locDayPlanSummary').innerHTML = '';
+      document.getElementById('locRouteTradeoffPanel').innerHTML = '';
+      document.getElementById('locRouteTradeoffPanel').classList.remove('visible');
       document.getElementById('locDayPlanList').innerHTML = '';
       document.getElementById('locRouteQuality').innerHTML = '';
       document.getElementById('locRouteQuality').style.display = 'none';
+      updateVariantExportButton();
       const compareTray = document.getElementById('locCompareTray');
       if (compareTray) compareTray.innerHTML = '';
       updateRouteButtonsState();
@@ -2881,46 +3349,14 @@
         return;
       }
 
-      const remaining = selected.slice().sort((a, b) => String(locVal(a, 0, 'name')).localeCompare(String(locVal(b, 0, 'name'))));
-      const route = [remaining.shift()];
-      while (remaining.length) {
-        const last = route[route.length - 1];
-        const lastPt = getLocPoint(last, getLocId(last));
-        let bestIdx = 0;
-        let bestDist = Infinity;
-        remaining.forEach((candidate, idx) => {
-          const pt = getLocPoint(candidate, getLocId(candidate));
-          const dx = lastPt.x - pt.x;
-          const dy = lastPt.y - pt.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < bestDist) { bestDist = d; bestIdx = idx; }
-        });
-        route.push(remaining.splice(bestIdx, 1)[0]);
+      const optimized = buildOptimizedRoutePlan(selected);
+      if (!optimized.primary) {
+        showRouteToast('Unable to build an optimized route from current selections.', true);
+        return;
       }
-
-      lastBuiltDayPlanRoute = route.map(loc => ({
-        locId: getLocId(loc),
-        name: String(locVal(loc, 0, 'name') || ''),
-        placeId: String(locVal(loc, 1, 'googlePlaceId') || ''),
-        address: String(locVal(loc, 11, 'address') || ''),
-        lat: parseFloat(locVal(loc, 25, 'latitude') || locVal(loc, 26, 'lat') || loc.latitude || loc.lat),
-        lng: parseFloat(locVal(loc, 26, 'longitude') || locVal(loc, 27, 'lng') || loc.longitude || loc.lng)
-      }));
-
-      const analysis = analyzeRoutePlan(route);
-
-      document.getElementById('locDayPlan').classList.add('visible');
-      renderRoutePlanSummary(analysis);
-      document.getElementById('locDayPlanList').innerHTML = route
-        .map((loc, index) => {
-          const stopDuration = parseDurationMinutes(locVal(loc, 6, 'duration'));
-          const nextLeg = index < route.length - 1 ? estimateTravelMinutesBetweenStops(loc, route[index + 1]) : 0;
-          return `<li>${escHtml(locVal(loc, 0, 'name') || 'Location')} <span class="u-note-muted">· stop ${escHtml(formatMinutesCompact(stopDuration))}${nextLeg ? ` · next leg ${escHtml(formatMinutesCompact(nextLeg))}` : ''}</span></li>`;
-        })
-        .join('');
-      document.getElementById('locTimeWindow').style.display = 'block';
-      renderRouteQualityPanel(analysis);
-      updateRouteButtonsState();
+      lastOptimizedRouteVariants = optimized.variants;
+      activeOptimizedVariantId = optimized.primary.id;
+      renderPlannedRoute(optimized.primary.route, optimized.primary.analysis, optimized, activeOptimizedVariantId);
     }
 
     function stopHasCoords(stop) {
@@ -3403,15 +3839,32 @@
         showRouteToast('Build a day plan first', true);
         return;
       }
-      const route = lastBuiltDayPlanRoute.map(stop => findLocationById(stop.locId)).filter(Boolean);
-      const analysis = analyzeRoutePlan(route, {
+      const options = {
         startTime: document.getElementById('locTimeStart')?.value || '09:00',
         endTime: document.getElementById('locTimeEnd')?.value || '17:00',
         perStopMinutes: parseInt(document.getElementById('locTimePerStop')?.value, 10) || 60
-      });
-      renderRoutePlanSummary(analysis);
-      renderRouteQualityPanel(analysis);
-      showRouteToast(analysis.confidenceLevel === 'low' ? 'Route exceeds or strains the time window' : 'Route feasibility updated', analysis.confidenceLevel === 'low');
+      };
+
+      if (Array.isArray(lastOptimizedRouteVariants) && lastOptimizedRouteVariants.length) {
+        const refreshedPlan = buildOptimizedPlanFromCurrentSelection(options);
+        if (!refreshedPlan || !refreshedPlan.primary) {
+          showRouteToast('Unable to refresh optimizer plan.', true);
+          return;
+        }
+        lastOptimizedRouteVariants = refreshedPlan.variants;
+        if (!activeOptimizedVariantId) activeOptimizedVariantId = refreshedPlan.primary.id;
+        const activeVariant = refreshedPlan.variants.find(variant => variant.id === activeOptimizedVariantId) || refreshedPlan.primary;
+        activeOptimizedVariantId = activeVariant.id;
+        renderPlannedRoute(activeVariant.route, activeVariant.analysis, refreshedPlan, activeOptimizedVariantId);
+        showRouteToast(activeVariant.analysis.confidenceLevel === 'low' ? 'Route exceeds or strains the time window' : 'Route feasibility updated', activeVariant.analysis.confidenceLevel === 'low');
+        return;
+      }
+
+      const route = lastBuiltDayPlanRoute.map(stop => findLocationById(stop.locId)).filter(Boolean);
+      const fallbackAnalysis = analyzeRoutePlan(route, options);
+      renderRoutePlanSummary(fallbackAnalysis);
+      renderRouteQualityPanel(fallbackAnalysis);
+      showRouteToast(fallbackAnalysis.confidenceLevel === 'low' ? 'Route exceeds or strains the time window' : 'Route feasibility updated', fallbackAnalysis.confidenceLevel === 'low');
     }
 
     function bulkAddTopRated(count) {
@@ -3449,6 +3902,9 @@
     window.clearShortlist = clearShortlist;
     window.copyShareLink = copyShareLink;
     window.openDayPlanRoute = openDayPlanRoute;
+    window.applyOptimizedRouteVariant = applyOptimizedRouteVariant;
+    window.applyOptimizerWeightsFromControls = applyOptimizerWeightsFromControls;
+    window.exportSelectedOptimizedRoute = exportSelectedOptimizedRoute;
     window.calculateRouteQuality = calculateRouteQuality;
     window.bulkAddTopRated = bulkAddTopRated;
     window.bulkFilterOpenNow = bulkFilterOpenNow;

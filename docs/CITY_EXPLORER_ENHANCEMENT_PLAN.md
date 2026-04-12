@@ -79,5 +79,11 @@ Connect City Explorer to the rest of the app workflow.
 - [x] Phase 3 follow-up implemented in `HTML Files/city-viewer-window.html`:
   - Itinerary scoring summary in the shortlist/day-plan area
   - Visible route-feasibility confidence with time-window analysis
-- [ ] Phase 3 next follow-up: richer multi-stop optimizer and route tradeoff explanations.
+- [x] Phase 3 next follow-up implemented in `HTML Files/city-viewer-window.html`:
+  - Multi-stop optimizer with route variant selection
+  - Tradeoff explanations (`min travel` vs `rating`) and budget-friendly alternate route copy
+- [x] Phase 3 next follow-up implemented in `HTML Files/city-viewer-window.html`:
+  - User-tunable optimizer weights (rating/cost/travel priorities)
+  - One-click export of the currently selected route variant
+- [ ] Phase 3 next follow-up: per-variant map preview and saved optimizer profiles.
 
