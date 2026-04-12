@@ -6,22 +6,19 @@
   <title>City Explorer - Kyle's Adventure Finder</title>
   <script src="../JS Files/mobile-view-persistence-bootstrap.js"></script>
   <!--
-    Google Maps – traditional (legacy) load so google.maps.Map / Marker / LatLngBounds
-    are all available as soon as the script executes (no importLibrary() needed).
-    The callback sets a flag and drains a queue of pending render requests so the
-    map still loads correctly if the user opens the panel before the script arrives.
+    Google Maps is lazy-loaded only when split map view is enabled.
+    This prevents third-party script cost from delaying initial page load.
   -->
   <script>
     window.__cvMapsReady = false;
     window.__cvMapsQueue = [];
+    window.__cvMapsScriptRequested = false;
+    window.__cvMapsLoadPromise = null;
     window.__cvMapsInit  = function () {
       window.__cvMapsReady = true;
       (window.__cvMapsQueue || []).forEach(function (fn) { try { fn(); } catch (_) {} });
       window.__cvMapsQueue = [];
     };
-  </script>
-  <script async
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc&libraries=places,geometry&callback=__cvMapsInit">
   </script>
   <link rel="stylesheet" href="../CSS/utilities.css">
   <style>
@@ -1799,7 +1796,7 @@
       }
 
       console.log('🌆 City Viewer initializing with', adventuresData.length, 'adventures');
-      renderActiveSources();
+      runDeferredCityViewerWork(renderActiveSources);
 
       // Group by city
       adventuresData.forEach(adventure => {
@@ -1987,6 +1984,7 @@
     let activeLocQuickTag = null;    // quick-tag pill value or null
     let locSplitView = false;
     let lastFilteredLocations = [];
+    let lastRankBadgeIndex = {};
     let activeLocId = null;
     const locPointCache = {};
     let pendingShareState = null;
@@ -2002,6 +2000,15 @@
     let locMapboxMarkers = [];
     let prefilterTag = '';
     let prefilterLabel = '';
+
+    function runDeferredCityViewerWork(task) {
+      if (typeof task !== 'function') return;
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(() => task(), { timeout: 600 });
+        return;
+      }
+      window.setTimeout(task, 0);
+    }
 
     function cityStateKey(cityKey) { return `cityViewer:lastState:${cityKey}`; }
     function cityPresetKey(cityKey) { return `cityViewer:presets:${cityKey}`; }
@@ -2797,12 +2804,11 @@
       };
     }
 
-    function getLocationRankBadgeModels(loc, cityEntry) {
+    function buildRankBadgeIndexForCity(cityEntry) {
+      const index = {};
       const locations = (cityEntry && Array.isArray(cityEntry.locations))
         ? cityEntry.locations.filter(locationMatchesPrefilter)
         : [];
-      const locId = getLocId(loc);
-      const badges = [];
       const rankingDefinitions = [
         {
           key: 'best-value',
@@ -2830,35 +2836,35 @@
         }
       ];
 
-      rankingDefinitions.forEach(definition => {
+      rankingDefinitions.forEach((definition) => {
         const ranked = locations
           .map(item => ({ id: getLocId(item), score: definition.scoreFor(item) }))
           .filter(item => Number.isFinite(item.score))
           .sort((a, b) => definition.order === 'asc' ? a.score - b.score : b.score - a.score)
           .slice(0, 2);
-        const rankIndex = ranked.findIndex(item => item.id === locId);
-        if (rankIndex >= 0) {
-          badges.push({
+
+        ranked.forEach((row, rankIdx) => {
+          index[row.id] = index[row.id] || [];
+          index[row.id].push({
             key: definition.key,
-            label: `${definition.icon} ${definition.label} #${rankIndex + 1}`,
+            label: `${definition.icon} ${definition.label} #${rankIdx + 1}`,
             className: definition.className
           });
-        }
+        });
       });
 
-      if (!badges.length) {
-        badges.push({
-          key: 'balanced',
-          label: '⚖️ Balanced pick',
-          className: 'balanced'
-        });
-      }
+      return index;
+    }
 
-      return badges.slice(0, 2);
+    function getLocationRankBadgeModels(loc) {
+      const locId = getLocId(loc);
+      const badges = Array.isArray(lastRankBadgeIndex[locId]) ? lastRankBadgeIndex[locId].slice(0, 2) : [];
+      if (badges.length) return badges;
+      return [{ key: 'balanced', label: '⚖️ Balanced pick', className: 'balanced' }];
     }
 
     function renderLocationInsightsMarkup(loc, cityEntry) {
-      const badges = getLocationRankBadgeModels(loc, cityEntry);
+      const badges = getLocationRankBadgeModels(loc);
       const confidence = getLocationConfidenceModel(loc);
       return `
         <div class="loc-card-insights" data-location-insights="${escAttr(getLocId(loc))}">
@@ -3128,9 +3134,43 @@
       btn.textContent = locSplitView ? 'Hide Map' : 'Show Map';
     }
 
+    function ensureCityMapsApiLoaded() {
+      if (window.__cvMapsReady) return Promise.resolve(true);
+      if (window.__cvMapsLoadPromise) return window.__cvMapsLoadPromise;
+
+      window.__cvMapsLoadPromise = new Promise((resolve, reject) => {
+        window.__cvMapsQueue = window.__cvMapsQueue || [];
+        window.__cvMapsQueue.push(() => resolve(true));
+
+        if (window.__cvMapsScriptRequested) return;
+        window.__cvMapsScriptRequested = true;
+
+        const apiKey = 'AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc';
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=__cvMapsInit`;
+        script.onerror = () => {
+          window.__cvMapsLoadPromise = null;
+          reject(new Error('Google Maps failed to load.'));
+        };
+        document.head.appendChild(script);
+      });
+
+      return window.__cvMapsLoadPromise;
+    }
+
     function toggleSplitView() {
       setSplitView(!locSplitView);
       saveLastLocState();
+
+      if (locSplitView) {
+        ensureCityMapsApiLoaded().then(() => {
+          if (locSplitView) renderLocMap(lastFilteredLocations);
+        }).catch((error) => {
+          console.warn('⚠️ Maps API load failed; using fallback map renderer.', error && error.message ? error.message : error);
+        });
+      }
+
       // Wait two animation frames so the browser finishes the CSS layout change
       // before we measure the map container or initialise Google Maps.
       requestAnimationFrame(() => {
@@ -3767,6 +3807,7 @@
       });
 
       lastFilteredLocations = results;
+      lastRankBadgeIndex = buildRankBadgeIndexForCity(cityEntry);
       document.getElementById('locResultsCount').textContent = `${results.length} location${results.length !== 1 ? 's' : ''}`;
       saveLastLocState();
       renderActiveFilterChips();
@@ -3862,6 +3903,7 @@
       activeLocId = null;
       activeLocQuickTag = null;
       activeLocationDetailId = null;
+      lastRankBadgeIndex = {};
 
       document.getElementById('locationsPageTitle').textContent = `📍 ${city}`;
       document.getElementById('locationsPageSubtitle').textContent = `${state} · ${cityEntry.locations.length} location${cityEntry.locations.length !== 1 ? 's' : ''}`;

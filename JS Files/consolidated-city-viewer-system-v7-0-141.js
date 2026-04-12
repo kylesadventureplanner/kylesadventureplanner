@@ -56,6 +56,7 @@ const CITY_VIEWER_TABLE_SOURCES = [
   { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment', sourceType: 'entertainment' }
 ];
 const CITY_VIEWER_MISSING_TOKEN_NOTICE_KEY = '__cityViewerMissingTokenNoticeShown';
+const CITY_VIEWER_CACHE_MAX_AGE_MS = 10 * 60 * 1000;
 
 function encodeCityViewerGraphPath(filePath) {
   return String(filePath || '')
@@ -171,22 +172,23 @@ async function buildCityViewerCuratedData() {
     return [];
   }
 
-  const results = [];
-  for (const source of CITY_VIEWER_TABLE_SOURCES) {
+  const sourceResults = await Promise.all(CITY_VIEWER_TABLE_SOURCES.map(async (source) => {
     try {
       const matrix = await fetchCityViewerTableValues(source.workbook, source.table);
-      if (!Array.isArray(matrix) || matrix.length < 2) continue;
+      if (!Array.isArray(matrix) || matrix.length < 2) return [];
       const headers = Array.isArray(matrix[0]) ? matrix[0] : [];
       const headerMap = cityViewerHeaderIndexMap(headers);
-      matrix.slice(1).forEach((row) => {
-        const normalized = normalizeCityViewerRow(Array.isArray(row) ? row : [], headerMap, `${source.workbook} / ${source.table}`);
-        if (normalized) results.push(normalized);
-      });
+      return matrix
+        .slice(1)
+        .map((row) => normalizeCityViewerRow(Array.isArray(row) ? row : [], headerMap, `${source.workbook} / ${source.table}`))
+        .filter(Boolean);
     } catch (error) {
       console.warn(`⚠️ City Viewer source load failed for ${source.workbook}/${source.table}:`, error.message || error);
+      return [];
     }
-  }
-  return results;
+  }));
+
+  return sourceResults.flat();
 }
 
 async function cacheCityViewerDataForTab(correlationId) {
@@ -217,6 +219,55 @@ async function cacheCityViewerDataForTab(correlationId) {
   }
 }
 
+function readCityViewerCachedPayload(cacheKey) {
+  const key = String(cacheKey || '').trim();
+  if (!key) return null;
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const payload = JSON.parse(raw);
+    if (!payload || !Array.isArray(payload.adventuresData) || !payload.adventuresData.length) return null;
+    return payload;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function getLatestCityViewerCacheKey() {
+  try {
+    const latestKey = window.sessionStorage.getItem('city_viewer_data_latest');
+    if (!latestKey) return '';
+    const payload = readCityViewerCachedPayload(latestKey);
+    return payload ? latestKey : '';
+  } catch (_error) {
+    return '';
+  }
+}
+
+function getRecentCityViewerCacheKey(maxAgeMs) {
+  const ageLimit = Number(maxAgeMs) || CITY_VIEWER_CACHE_MAX_AGE_MS;
+  const latestKey = getLatestCityViewerCacheKey();
+  if (!latestKey) return '';
+
+  const payload = readCityViewerCachedPayload(latestKey);
+  if (!payload) return '';
+  const exportedAt = Date.parse(String(payload.exportedAt || ''));
+  if (!Number.isFinite(exportedAt)) return latestKey;
+  return (Date.now() - exportedAt <= ageLimit) ? latestKey : '';
+}
+
+function refreshCityViewerCacheInBackground(correlationId) {
+  cacheCityViewerDataForTab(correlationId)
+    .then((cacheKey) => {
+      if (cacheKey) {
+        console.log(`♻️ City Explorer curated cache refreshed in background (${cacheKey})`);
+      }
+    })
+    .catch((error) => {
+      console.warn('⚠️ City Explorer background cache refresh failed:', (error && error.message) || error);
+    });
+}
+
 /**
  * Open City Viewer in a new browser tab
  * Similar to openAdventureDetailsTab but for city viewing
@@ -230,8 +281,20 @@ window.prepareCityViewerInlineUrl = async function(options) {
     // Create correlation ID for tracking
     const correlationId = `corr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    // Cache the adventure data for the new tab to access
-    const dataKey = await cacheCityViewerDataForTab(correlationId);
+    // Prefer recent cached curated data for fast open, then refresh in background.
+    let dataKey = getRecentCityViewerCacheKey(CITY_VIEWER_CACHE_MAX_AGE_MS);
+    if (!dataKey) {
+      const fallbackKey = getLatestCityViewerCacheKey();
+      if (fallbackKey) {
+        dataKey = fallbackKey;
+        refreshCityViewerCacheInBackground(correlationId);
+      }
+    }
+
+    // No valid cache available; block once to build a curated cache key.
+    if (!dataKey) {
+      dataKey = await cacheCityViewerDataForTab(correlationId);
+    }
     if (!dataKey) {
       return '';
     }
