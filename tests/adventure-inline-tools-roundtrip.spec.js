@@ -1,5 +1,16 @@
 const { test, expect } = require('@playwright/test');
 
+const CITY_INLINE_TEST_KEY = 'city_inline_payload';
+const CITY_INLINE_TEST_DATA = [
+  {
+    city: 'Inlineville',
+    state: 'SC',
+    name: 'Inline Waterfall',
+    sourceLabel: 'Nature_Locations.xlsx / Nature_Locations',
+    tags: 'waterfall, scenic'
+  }
+];
+
 test.describe('Adventure inline tools roundtrip', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -23,11 +34,24 @@ test.describe('Adventure inline tools roundtrip', () => {
       }, { capture: true });
     });
 
-    await page.evaluate(() => {
+    await page.evaluate(({ key, payload }) => {
+      window.sessionStorage.setItem(key, JSON.stringify({
+        adventuresData: payload,
+        configuredSources: ['Nature_Locations.xlsx / Nature_Locations'],
+        dataMode: 'curated-only'
+      }));
+      window.sessionStorage.setItem('city_viewer_data_latest', key);
+
       window.prepareCityViewerInlineUrl = async function() {
-        return 'about:blank#city-inline-test';
+        const inlineUrl = new URL('HTML Files/city-viewer-window.html', window.location.href);
+        inlineUrl.searchParams.set('embedded', '1');
+        inlineUrl.searchParams.set('dataMode', 'curated-only');
+        inlineUrl.searchParams.set('dataKey', key);
+        inlineUrl.searchParams.set('sourceSubtab', 'outdoors');
+        inlineUrl.searchParams.set('ts', String(Date.now()));
+        return inlineUrl.toString();
       };
-    });
+    }, { key: CITY_INLINE_TEST_KEY, payload: CITY_INLINE_TEST_DATA });
 
     const openCityBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-city-explorer-outdoors"]').first();
     await expect(openCityBtn).toBeVisible();
@@ -40,7 +64,7 @@ test.describe('Adventure inline tools roundtrip', () => {
     await expect(cityView).toBeVisible();
     await expect(overviewView).toBeHidden();
     await expect(cityFrame).toBeVisible();
-    await expect(cityFrame).toHaveAttribute('src', /city-viewer-window\.html|about:blank/i);
+    await expect(cityFrame).toHaveAttribute('src', /city-viewer-window\.html/i);
     const cityBox = await cityFrame.boundingBox();
     expect(cityBox && cityBox.width ? cityBox.width : 0).toBeGreaterThan(500);
     expect(cityBox && cityBox.height ? cityBox.height : 0).toBeGreaterThan(400);
@@ -48,6 +72,8 @@ test.describe('Adventure inline tools roundtrip', () => {
     const cityFrameHandle = await cityFrame.elementHandle();
     const cityInlineFrame = cityFrameHandle ? await cityFrameHandle.contentFrame() : null;
     expect(cityInlineFrame).not.toBeNull();
+    await expect(cityInlineFrame.locator('body.embedded-viewer')).toBeVisible();
+    await expect(cityInlineFrame.locator('.header')).toBeHidden();
     await cityInlineFrame.evaluate(() => {
       window.parent.postMessage({
         type: 'planner-inline-tool-close',

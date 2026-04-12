@@ -77,6 +77,11 @@
       background: rgba(255, 255, 255, 0.3);
     }
 
+    /* Embedded mode already has a parent header in Adventure Challenge. */
+    body.embedded-viewer .header {
+      display: none;
+    }
+
     .controls {
       display: flex;
       gap: 12px;
@@ -1768,6 +1773,9 @@
 
     // Initialize city viewer
     function init() {
+      if (isEmbeddedViewer()) {
+        document.body.classList.add('embedded-viewer');
+      }
       resolvePrefilterFromUrl();
       // Load data from sessionStorage or parent window
       if (!loadCityViewerData()) {

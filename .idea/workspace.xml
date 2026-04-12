@@ -5,22 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/scripts/mobile-achv-breakdown.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/mobile-layout-metrics.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/mobile-row-diff-heatmap.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CSS/components.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/components.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CSS/design-tokens.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/design-tokens.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/.package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/tests/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/mobile-ux-snapshots.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/mobile-ux-snapshots.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/mobile-ux-snapshots.spec.js-snapshots/index-mobile-darwin.png" beforeDir="false" afterPath="$PROJECT_DIR$/tests/mobile-ux-snapshots.spec.js-snapshots/index-mobile-darwin.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-adventure-details-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-bike-details-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-city-viewer-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-edit-mode-new.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-find-near-me-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-trail-explorer-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/index-mobile.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/adventure-inline-tools-roundtrip.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-inline-tools-roundtrip.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -104,7 +97,7 @@
       <workItem from="1775308318086" duration="90230000" />
       <workItem from="1775520086833" duration="195926000" />
       <workItem from="1775961963296" duration="82000" />
-      <workItem from="1775962146733" duration="19013000" />
+      <workItem from="1775962146733" duration="19838000" />
     </task>
     <servers />
   </component>
