@@ -8393,9 +8393,13 @@
       importFileInput.dataset.natureImportFileBound = '1';
       importFileInput.addEventListener('change', () => {
         const pasteInput = document.getElementById('birdsImportPasteInput');
-        if (pasteInput && importFileInput.files && importFileInput.files.length > 0 && String(pasteInput.value || '').trim()) {
+        const hasFile = Boolean(importFileInput.files && importFileInput.files.length > 0);
+        if (pasteInput && hasFile && String(pasteInput.value || '').trim()) {
           pasteInput.value = '';
         }
+        if (!hasFile) return;
+        // File uploads should preview immediately so users do not need an extra click.
+        withBirdsActionGuard(importFileInput, () => parseBirdImportInput());
       });
     }
 
