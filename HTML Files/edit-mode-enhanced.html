@@ -57,6 +57,11 @@
       background: rgba(255,255,255,0.3);
     }
 
+    /* Embedded mode already has a parent header in Adventure Challenge. */
+    body.embedded-edit-mode .header {
+      display: none;
+    }
+
     .tabs {
       display: flex;
       gap: 8px;
@@ -1424,6 +1429,9 @@
 
     // Initialize tabs
     document.addEventListener('DOMContentLoaded', () => {
+      if (isEmbeddedEditMode()) {
+        document.body.classList.add('embedded-edit-mode');
+      }
       initializeTabs();
       initTargetSelectors();
     });
@@ -1433,6 +1441,9 @@
       console.log('📄 Page still loading, waiting for DOMContentLoaded...');
     } else {
       console.log('📄 Page already loaded, initializing tabs now...');
+      if (isEmbeddedEditMode()) {
+        document.body.classList.add('embedded-edit-mode');
+      }
       initializeTabs();
       initTargetSelectors();
     }

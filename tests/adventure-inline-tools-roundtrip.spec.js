@@ -125,6 +125,8 @@ test.describe('Adventure inline tools roundtrip', () => {
     const editFrameHandle = await editFrame.elementHandle();
     const editInlineFrame = editFrameHandle ? await editFrameHandle.contentFrame() : null;
     expect(editInlineFrame).not.toBeNull();
+    await expect(editInlineFrame.locator('body.embedded-edit-mode')).toBeVisible();
+    await expect(editInlineFrame.locator('.header')).toBeHidden();
     await editInlineFrame.evaluate(() => {
       window.parent.postMessage({
         type: 'planner-inline-tool-close',
