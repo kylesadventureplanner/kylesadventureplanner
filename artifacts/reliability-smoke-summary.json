@@ -1,12 +1,17 @@
 {
-  "generatedAt": "2026-04-12T02:54:32.029Z",
+  "generatedAt": "2026-04-12T04:49:43.055Z",
   "pass": true,
   "startupSamplesMs": [
-    114
+    94,
+    95,
+    86,
+    88,
+    87,
+    88
   ],
-  "startupMsP95": 114,
-  "firstClickChecks": 1,
-  "firstClickSuccesses": 1,
+  "startupMsP95": 95,
+  "firstClickChecks": 3,
+  "firstClickSuccesses": 3,
   "firstClickSuccessRate": 1,
   "checks": [
     {
@@ -15,7 +20,74 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-04-12T02:54:52.791Z"
+      "at": "2026-04-12T04:49:44.990Z"
+    },
+    {
+      "name": "first-click:nature-run",
+      "passed": true,
+      "detail": {
+        "runActive": true
+      },
+      "at": "2026-04-12T04:49:48.586Z"
+    },
+    {
+      "name": "first-click:bike-refresh",
+      "passed": true,
+      "detail": {
+        "scopeState": {
+          "scope": "bike-trails",
+          "inFlightCount": 0,
+          "trackedActionCount": 1
+        }
+      },
+      "at": "2026-04-12T04:49:50.359Z"
+    },
+    {
+      "name": "probe:hidden-overlay-detected",
+      "passed": true,
+      "detail": {
+        "blockedPoints": 5,
+        "reason": ""
+      },
+      "at": "2026-04-12T04:49:52.119Z"
+    },
+    {
+      "name": "overlay:stale-row-detail-cleared",
+      "passed": true,
+      "detail": {
+        "explorerActive": true,
+        "modalHidden": true
+      },
+      "at": "2026-04-12T04:49:53.871Z"
+    },
+    {
+      "name": "repeat:nature-explore-tab-switches",
+      "passed": true,
+      "detail": {
+        "iterations": [
+          {
+            "iteration": 1,
+            "explorerActive": true
+          },
+          {
+            "iteration": 2,
+            "explorerActive": true
+          },
+          {
+            "iteration": 3,
+            "explorerActive": true
+          },
+          {
+            "iteration": 4,
+            "explorerActive": true
+          },
+          {
+            "iteration": 5,
+            "explorerActive": true
+          }
+        ]
+      },
+      "at": "2026-04-12T04:49:59.154Z"
     }
   ]
 }

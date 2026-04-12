@@ -11,6 +11,19 @@ test.describe('Adventure inline tools roundtrip', () => {
 
   test('City Explorer inline opens and back returns to overview', async ({ page }) => {
     await page.evaluate(() => {
+      window.__inlineToolClosePayload = null;
+      window.addEventListener('message', (event) => {
+        const data = event && event.data ? event.data : {};
+        if (data.type !== 'planner-inline-tool-close') return;
+        window.__inlineToolClosePayload = {
+          type: String(data.type || ''),
+          tool: String(data.tool || ''),
+          sourceSubtab: String(data.sourceSubtab || '')
+        };
+      }, { capture: true });
+    });
+
+    await page.evaluate(() => {
       window.prepareCityViewerInlineUrl = async function() {
         return 'about:blank#city-inline-test';
       };
@@ -32,15 +45,41 @@ test.describe('Adventure inline tools roundtrip', () => {
     expect(cityBox && cityBox.width ? cityBox.width : 0).toBeGreaterThan(500);
     expect(cityBox && cityBox.height ? cityBox.height : 0).toBeGreaterThan(400);
 
-    const backBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="city-explorer"] [data-visited-subtab-action="close-city-explorer-outdoors"]').first();
-    await expect(backBtn).toBeVisible();
-    await backBtn.click();
+    const cityFrameHandle = await cityFrame.elementHandle();
+    const cityInlineFrame = cityFrameHandle ? await cityFrameHandle.contentFrame() : null;
+    expect(cityInlineFrame).not.toBeNull();
+    await cityInlineFrame.evaluate(() => {
+      window.parent.postMessage({
+        type: 'planner-inline-tool-close',
+        tool: 'city-viewer',
+        sourceSubtab: 'outdoors'
+      }, window.parent.location.origin);
+    });
+
+    await expect.poll(async () => page.evaluate(() => window.__inlineToolClosePayload)).toEqual({
+      type: 'planner-inline-tool-close',
+      tool: 'city-viewer',
+      sourceSubtab: 'outdoors'
+    });
 
     await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="overview"]').first()).toBeVisible();
     await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="city-explorer"]').first()).toBeHidden();
   });
 
   test('Edit Mode inline opens and back returns to overview', async ({ page }) => {
+    await page.evaluate(() => {
+      window.__inlineToolClosePayload = null;
+      window.addEventListener('message', (event) => {
+        const data = event && event.data ? event.data : {};
+        if (data.type !== 'planner-inline-tool-close') return;
+        window.__inlineToolClosePayload = {
+          type: String(data.type || ''),
+          tool: String(data.tool || ''),
+          sourceSubtab: String(data.sourceSubtab || '')
+        };
+      }, { capture: true });
+    });
+
     const openEditBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-edit-mode-outdoors"]').first();
     await expect(openEditBtn).toBeVisible();
     await openEditBtn.click();
@@ -57,9 +96,22 @@ test.describe('Adventure inline tools roundtrip', () => {
     expect(editBox && editBox.width ? editBox.width : 0).toBeGreaterThan(500);
     expect(editBox && editBox.height ? editBox.height : 0).toBeGreaterThan(400);
 
-    const backBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="edit-mode"] [data-visited-subtab-action="close-edit-mode-outdoors"]').first();
-    await expect(backBtn).toBeVisible();
-    await backBtn.click();
+    const editFrameHandle = await editFrame.elementHandle();
+    const editInlineFrame = editFrameHandle ? await editFrameHandle.contentFrame() : null;
+    expect(editInlineFrame).not.toBeNull();
+    await editInlineFrame.evaluate(() => {
+      window.parent.postMessage({
+        type: 'planner-inline-tool-close',
+        tool: 'edit-mode',
+        sourceSubtab: 'outdoors'
+      }, window.parent.location.origin);
+    });
+
+    await expect.poll(async () => page.evaluate(() => window.__inlineToolClosePayload)).toEqual({
+      type: 'planner-inline-tool-close',
+      tool: 'edit-mode',
+      sourceSubtab: 'outdoors'
+    });
 
     await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="overview"]').first()).toBeVisible();
     await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="edit-mode"]').first()).toBeHidden();
