@@ -843,7 +843,7 @@
         <h1>🌆 City Explorer</h1>
         <div class="header-subtitle">Explore adventures grouped by city</div>
       </div>
-      <button class="close-btn" onclick="window.close()" title="Close this window">✕</button>
+      <button class="close-btn" onclick="closeViewerWindow()" title="Close this window">✕</button>
     </div>
 
     <div class="controls">
@@ -1127,6 +1127,34 @@
     }
 
     // Helper function to load data from sessionStorage
+    function isEmbeddedViewer() {
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        return params.get('embedded') === '1' || (window.parent && window.parent !== window);
+      } catch (_error) {
+        return window.parent && window.parent !== window;
+      }
+    }
+
+    function getHostWindow() {
+      if (window.parent && window.parent !== window) return window.parent;
+      if (window.opener && !window.opener.closed) return window.opener;
+      return window;
+    }
+
+    function closeViewerWindow() {
+      if (isEmbeddedViewer() && window.parent && window.parent !== window) {
+        const params = new URLSearchParams(window.location.search || '');
+        window.parent.postMessage({
+          type: 'planner-inline-tool-close',
+          tool: 'city-viewer',
+          sourceSubtab: String(params.get('sourceSubtab') || '')
+        }, window.location.origin);
+        return;
+      }
+      window.close();
+    }
+
     function loadCityViewerData() {
       try {
         // First, try to get data from the cached key passed in the URL
@@ -1190,9 +1218,9 @@
         }
 
         // Fallback: Try to get from parent window (for popup windows)
-        const parentWindow = window.opener || window;
-        if (parentWindow && Array.isArray(parentWindow.adventuresData)) {
-          adventuresData = parentWindow.adventuresData;
+        const hostWindow = getHostWindow();
+        if (hostWindow && Array.isArray(hostWindow.adventuresData)) {
+          adventuresData = hostWindow.adventuresData;
           cityViewerDataMeta.loadedFrom = 'parentWindow';
           console.log(`✅ Loaded ${adventuresData.length} adventures from parent window`);
           return true;

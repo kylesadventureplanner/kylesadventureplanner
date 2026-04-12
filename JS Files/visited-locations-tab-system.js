@@ -546,12 +546,22 @@
     }
     if (!preparedUrl) {
       const fallbackUrl = new URL(resolveInlinePageUrl('HTML Files/city-viewer-window.html'));
+      fallbackUrl.searchParams.set('embedded', '1');
       fallbackUrl.searchParams.set('dataMode', 'curated-only');
       if (filter.tag) fallbackUrl.searchParams.set('prefilterTag', filter.tag);
       if (filter.label) fallbackUrl.searchParams.set('prefilterLabel', filter.label);
       fallbackUrl.searchParams.set('sourceSubtab', key);
       fallbackUrl.searchParams.set('ts', String(Date.now()));
       preparedUrl = fallbackUrl.toString();
+    }
+
+    try {
+      const prepared = new URL(preparedUrl, window.location.href);
+      prepared.searchParams.set('embedded', '1');
+      prepared.searchParams.set('sourceSubtab', key);
+      preparedUrl = prepared.toString();
+    } catch (_error) {
+      // Keep prepared URL as-is if it cannot be normalized.
     }
 
     frame.src = preparedUrl;
@@ -3527,6 +3537,18 @@
 
       // Store bound flag and handler reference for cleanup/dedup
       root.dataset.bound = '1';
+
+      if (root.dataset.inlineToolMessageBound !== '1') {
+        root.dataset.inlineToolMessageBound = '1';
+        window.addEventListener('message', (event) => {
+          if (!event || event.origin !== window.location.origin) return;
+          const data = event.data || {};
+          if (data.type !== 'planner-inline-tool-close') return;
+          const subtabKey = String(data.sourceSubtab || state.activeProgressSubTab || 'outdoors').trim();
+          if (data.tool === 'city-viewer') closeCityExplorerForSubtab(root, subtabKey);
+          if (data.tool === 'edit-mode') closeEditModeForSubtab(root, subtabKey);
+        });
+      }
 
       const subtabBar = getVisitedSubTabsElement(root);
       if (subtabBar) {

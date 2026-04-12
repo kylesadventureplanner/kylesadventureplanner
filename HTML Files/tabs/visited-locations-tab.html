@@ -701,6 +701,13 @@
     border-radius: 12px;
     background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
     color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
+    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 
   #visitedLocationsRoot .visited-explorer-card {
     display: grid;
@@ -826,18 +833,13 @@
   }
 
   #visitedLocationsRoot .visited-inline-tool-frame {
+    display: block;
     width: 100%;
-    min-height: 72vh;
+    min-height: 420px;
+    height: clamp(420px, 72vh, 960px);
     border: 1px solid #dbeafe;
     border-radius: 12px;
     background: #ffffff;
-  }
-    font-size: 14px;
-    font-weight: 700;
-    white-space: nowrap;
-    cursor: pointer;
-    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
-    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   #visitedLocationsRoot .visited-subtab-action-btn:hover {

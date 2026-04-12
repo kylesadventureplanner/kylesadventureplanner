@@ -28,6 +28,9 @@ test.describe('Adventure inline tools roundtrip', () => {
     await expect(overviewView).toBeHidden();
     await expect(cityFrame).toBeVisible();
     await expect(cityFrame).toHaveAttribute('src', /city-viewer-window\.html|about:blank/i);
+    const cityBox = await cityFrame.boundingBox();
+    expect(cityBox && cityBox.width ? cityBox.width : 0).toBeGreaterThan(500);
+    expect(cityBox && cityBox.height ? cityBox.height : 0).toBeGreaterThan(400);
 
     const backBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="city-explorer"] [data-visited-subtab-action="close-city-explorer-outdoors"]').first();
     await expect(backBtn).toBeVisible();
@@ -50,6 +53,9 @@ test.describe('Adventure inline tools roundtrip', () => {
     await expect(overviewView).toBeHidden();
     await expect(editFrame).toBeVisible();
     await expect(editFrame).toHaveAttribute('src', /edit-mode-enhanced\.html|edit-mode-enhanced\.html\?/i);
+    const editBox = await editFrame.boundingBox();
+    expect(editBox && editBox.width ? editBox.width : 0).toBeGreaterThan(500);
+    expect(editBox && editBox.height ? editBox.height : 0).toBeGreaterThan(400);
 
     const backBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="edit-mode"] [data-visited-subtab-action="close-edit-mode-outdoors"]').first();
     await expect(backBtn).toBeVisible();
