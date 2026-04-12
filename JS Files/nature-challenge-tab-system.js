@@ -1669,9 +1669,24 @@
       if (!path) continue;
       let allFound = true;
       for (let j = 0; j < needed.length; j += 1) {
+        const tableName = needed[j];
         try {
-          await fetchTableColumnsAndRows(path, needed[j], 1);
-        } catch (_) {
+          await fetchTableColumnsAndRows(path, tableName, 1);
+        } catch (error) {
+          const expectedMiss = isExpectedProbeMissError(error);
+          debugNatureProbe(
+            expectedMiss
+              ? 'Suppressed expected workbook scan miss.'
+              : 'Workbook scan probe failed with non-expected error.',
+            {
+              flow: 'workbook-table-scan',
+              workbookPath: path,
+              tableName,
+              status: parseGraphStatusFromError(error),
+              expectedMiss,
+              message: String(error && error.message ? error.message : error || '').slice(0, 220)
+            }
+          );
           allFound = false;
           break;
         }
@@ -2882,12 +2897,22 @@
           loaded = true;
           break;
         } catch (error) {
-          errors.push(`${filePath}: ${error && error.message ? error.message : 'table read failed'}`);
+          if (!isExpectedProbeMissError(error)) {
+            errors.push(`${filePath}: ${error && error.message ? error.message : 'table read failed'}`);
+          } else {
+            debugNatureProbe('Suppressed expected species table probe miss.', {
+              subTabKey,
+              tableName,
+              filePath,
+              status: parseGraphStatusFromError(error),
+              message: String(error && error.message ? error.message : error || '').slice(0, 220)
+            });
+          }
         }
       }
 
       if (!loaded) {
-        throw new Error(errors.join(' | ') || `Unable to load ${cfg.label} species data.`);
+        throw new Error(errors.join(' | ') || `Unable to load ${cfg.label} species data (table not found in configured workbook candidates).`);
       }
     } catch (error) {
       subState.loaded = false;
@@ -3118,10 +3143,45 @@
     return prioritizeWorkbookCandidates(configured.concat(remembered, EXCEL_SYNC_FILE_CANDIDATES, dataWorkbookFallback));
   }
 
+  function isNatureProbeDebugEnabled() {
+    if (typeof window === 'undefined') return false;
+    return window.__NATURE_PROBE_DEBUG__ === true;
+  }
+
+  function debugNatureProbe(message, details) {
+    if (!isNatureProbeDebugEnabled()) return;
+    try {
+      if (details && typeof details === 'object') console.debug(`[NatureProbe] ${message}`, details);
+      else console.debug(`[NatureProbe] ${message}`);
+    } catch (_error) {
+      // Ignore console sink errors.
+    }
+  }
+
   function parseGraphStatusFromError(error) {
+    const directStatus = Number(error && error.status);
+    if (Number.isFinite(directStatus) && directStatus > 0) return directStatus;
     const message = String(error && error.message ? error.message : error || '');
     const match = message.match(/\((\d{3})\)/);
-    return match ? Number(match[1]) : null;
+    const parsedStatus = match ? Number(match[1]) : null;
+    if (parsedStatus == null && message) {
+      debugNatureProbe('Unable to parse Graph status from error message.', {
+        preview: message.slice(0, 200)
+      });
+    }
+    return parsedStatus;
+  }
+
+  function isExpectedProbeMissError(error) {
+    const status = parseGraphStatusFromError(error);
+    if (status === 404) return true;
+    const message = String(error && error.message ? error.message : error || '').toLowerCase();
+    return (
+      message.includes('itemnotfound')
+      || message.includes('resource not found')
+      || message.includes('table not found')
+      || message.includes('object not found')
+    );
   }
 
   function classifyBirdSyncError(error) {
@@ -3159,13 +3219,24 @@
             error: ''
           });
         } catch (error) {
+          const status = parseGraphStatusFromError(error);
+          const expectedMiss = isExpectedProbeMissError(error);
+          if (expectedMiss) {
+            debugNatureProbe('Expected workbook/table probe miss.', {
+              filePath,
+              tableName,
+              status,
+              message: String(error && error.message ? error.message : error || '').slice(0, 220)
+            });
+          }
           tableChecks.push({
             tableName,
             ok: false,
-            status: parseGraphStatusFromError(error),
+            status,
+            expectedMiss,
             columnCount: 0,
             rowSampleCount: 0,
-            error: String(error && error.message ? error.message : error || 'Unknown probe error')
+            error: expectedMiss ? '' : String(error && error.message ? error.message : error || 'Unknown probe error')
           });
         }
       }
@@ -3304,7 +3375,16 @@
           filePath
         };
       } catch (error) {
-        errors.push(`${filePath}: ${error && error.message ? error.message : 'Failed to read birds table.'}`);
+        if (!isExpectedProbeMissError(error)) {
+          errors.push(`${filePath}: ${error && error.message ? error.message : 'Failed to read birds table.'}`);
+        } else {
+          debugNatureProbe('Suppressed expected birds table probe miss.', {
+            tableName,
+            filePath,
+            status: parseGraphStatusFromError(error),
+            message: String(error && error.message ? error.message : error || '').slice(0, 220)
+          });
+        }
       }
     }
 
@@ -3340,7 +3420,20 @@
         await fetchTableColumnsAndRows(remembered, BIRD_SIGHTINGS_TABLE_NAME, 1);
         await fetchTableColumnsAndRows(remembered, BIRD_USER_STATE_TABLE_NAME, 1);
         return remembered;
-      } catch (_error) {
+      } catch (error) {
+        const expectedMiss = isExpectedProbeMissError(error);
+        debugNatureProbe(
+          expectedMiss
+            ? 'Remembered sync workbook probe miss; clearing cached path.'
+            : 'Remembered sync workbook probe failed; clearing cached path.',
+          {
+            flow: 'sync-workbook-remembered',
+            workbookPath: remembered,
+            status: parseGraphStatusFromError(error),
+            expectedMiss,
+            message: String(error && error.message ? error.message : error || '').slice(0, 220)
+          }
+        );
         state.birdSyncWorkbookPath = '';
       }
     }
@@ -4720,6 +4813,7 @@
 
       for (const tableName of Object.keys(tableCandidates)) {
         const workbooks = prioritizeWorkbookCandidates(tableCandidates[tableName]);
+        let tableLoaded = false;
         for (let i = 0; i < workbooks.length; i += 1) {
           const workbook = workbooks[i];
           try {
@@ -4729,10 +4823,31 @@
               const label = toLocationOptionFromRecord(row);
               if (label) values.add(label);
             });
+            tableLoaded = true;
             break;
-          } catch (_error) {
-            // Try next workbook candidate for this specific table.
+          } catch (error) {
+            const expectedMiss = isExpectedProbeMissError(error);
+            debugNatureProbe(
+              expectedMiss
+                ? 'Suppressed expected location workbook/table probe miss.'
+                : 'Location workbook/table probe failed with non-expected error.',
+              {
+                flow: 'location-options-probe',
+                workbookPath: workbook,
+                tableName,
+                status: parseGraphStatusFromError(error),
+                expectedMiss,
+                message: String(error && error.message ? error.message : error || '').slice(0, 220)
+              }
+            );
           }
+        }
+        if (!tableLoaded) {
+          debugNatureProbe('No workbook candidate resolved for location table.', {
+            flow: 'location-options-probe',
+            tableName,
+            candidateCount: workbooks.length
+          });
         }
       }
       state.locationOptions.values = Array.from(values).sort((a, b) => a.localeCompare(b));

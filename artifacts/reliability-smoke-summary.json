@@ -1,17 +1,12 @@
 {
-  "generatedAt": "2026-04-12T02:08:26.464Z",
+  "generatedAt": "2026-04-12T02:54:32.029Z",
   "pass": true,
   "startupSamplesMs": [
-    116,
-    93,
-    100,
-    97,
-    91,
-    96
+    114
   ],
-  "startupMsP95": 116,
-  "firstClickChecks": 3,
-  "firstClickSuccesses": 3,
+  "startupMsP95": 114,
+  "firstClickChecks": 1,
+  "firstClickSuccesses": 1,
   "firstClickSuccessRate": 1,
   "checks": [
     {
@@ -20,74 +15,7 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-04-12T02:08:27.791Z"
-    },
-    {
-      "name": "first-click:nature-run",
-      "passed": true,
-      "detail": {
-        "runActive": true
-      },
-      "at": "2026-04-12T02:08:30.006Z"
-    },
-    {
-      "name": "first-click:bike-refresh",
-      "passed": true,
-      "detail": {
-        "scopeState": {
-          "scope": "bike-trails",
-          "inFlightCount": 0,
-          "trackedActionCount": 1
-        }
-      },
-      "at": "2026-04-12T02:08:31.386Z"
-    },
-    {
-      "name": "probe:hidden-overlay-detected",
-      "passed": true,
-      "detail": {
-        "blockedPoints": 5,
-        "reason": ""
-      },
-      "at": "2026-04-12T02:08:32.535Z"
-    },
-    {
-      "name": "overlay:stale-row-detail-cleared",
-      "passed": true,
-      "detail": {
-        "explorerActive": true,
-        "modalHidden": true
-      },
-      "at": "2026-04-12T02:08:33.766Z"
-    },
-    {
-      "name": "repeat:nature-explore-tab-switches",
-      "passed": true,
-      "detail": {
-        "iterations": [
-          {
-            "iteration": 1,
-            "explorerActive": true
-          },
-          {
-            "iteration": 2,
-            "explorerActive": true
-          },
-          {
-            "iteration": 3,
-            "explorerActive": true
-          },
-          {
-            "iteration": 4,
-            "explorerActive": true
-          },
-          {
-            "iteration": 5,
-            "explorerActive": true
-          }
-        ]
-      },
-      "at": "2026-04-12T02:08:38.659Z"
+      "at": "2026-04-12T02:54:52.791Z"
     }
   ]
 }

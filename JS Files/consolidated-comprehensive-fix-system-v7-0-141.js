@@ -1618,12 +1618,21 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     try {
       const dataLoadIndicator = document.getElementById('dataLoadIndicator');
       const dataLoadText = document.getElementById('dataLoadText');
+      const signInRequiredBanner = document.getElementById('signInRequiredBanner');
+      const signedOutModeLine = document.getElementById('signedOutModeLine');
 
       if (!dataLoadIndicator || !dataLoadText) {
         console.warn('⚠️ dataLoadIndicator or dataLoadText element not found in DOM');
         console.warn('  - dataLoadIndicator:', !!dataLoadIndicator);
         console.warn('  - dataLoadText:', !!dataLoadText);
         return;
+      }
+
+      if (signInRequiredBanner) {
+        signInRequiredBanner.hidden = Boolean(isConnected);
+      }
+      if (signedOutModeLine) {
+        signedOutModeLine.hidden = Boolean(isConnected);
       }
 
       if (isConnected) {
@@ -1652,12 +1661,37 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     }
   };
 
+  function bindSignInRequiredBannerButton() {
+    const btn = document.getElementById('signInRequiredBannerBtn');
+    const compactBtn = document.getElementById('signedOutModeLineBtn');
+    const bindSignInCta = (targetBtn) => {
+      if (!targetBtn || targetBtn.dataset.signInRequiredBound === '1') return;
+      targetBtn.dataset.signInRequiredBound = '1';
+      targetBtn.addEventListener('click', async (event) => {
+        if (event) event.preventDefault();
+        try {
+          if (typeof window.signIn === 'function') {
+            await window.signIn();
+            return;
+          }
+        } catch (error) {
+          console.error('❌ Sign-in required banner action failed:', error);
+        }
+        const fallbackBtn = document.getElementById('signInBtn');
+        if (fallbackBtn) fallbackBtn.click();
+      });
+    };
+    bindSignInCta(btn);
+    bindSignInCta(compactBtn);
+  }
+
   /**
    * Initialize connection status on page load
    * Checks if user is already signed in
    */
   function initializeConnectionStatus() {
     console.log('🔗 Initializing connection status...');
+    bindSignInRequiredBannerButton();
 
     // Check if there's an existing access token or active account
     const hasAuth = window.accessToken || window.activeAccount;

@@ -1,4 +1,5 @@
 (function runtimeHotfixes() {
+    
   var HOTFIX_VERSION = '2026-04-03.runtime.2';
   var FILTER_CONTROL_SELECTOR = '.control-panel-card input, .control-panel-card select';
   var AUTOCOMPLETE_BINDINGS = [
