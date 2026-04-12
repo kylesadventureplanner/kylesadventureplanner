@@ -3500,6 +3500,209 @@
       border-color: #cbd5e1;
     }
   }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SPECIES-CARD STYLE MATCH – Explorer bird cards
+     Makes .nature-bird-card in the explorer view closely match the
+     .species-card visual treatment from the Species Explorer feature.
+     All rules are scoped tightly so they only affect bird cards
+     inside the nature-challenge explorer view.
+     ═══════════════════════════════════════════════════════════════ */
+
+  /* ── Grid: 220 px min-width (matches .species-grid) ── */
+  #natureChallengeRoot .nature-birds-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    padding: 8px 0;
+  }
+
+  /* ── Card container ── */
+  #natureChallengeRoot .adventure-card.nature-bird-card {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    min-height: unset; /* let content drive height */
+  }
+
+  #natureChallengeRoot .adventure-card.nature-bird-card:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.14);
+    transform: translateY(-4px);
+  }
+
+  /* Hide the default ::before gradient accent bar (from .adventure-card) */
+  #natureChallengeRoot .adventure-card.nature-bird-card::before {
+    display: none;
+  }
+
+  /* ── Rarity colour band (sits at top like the species-card image area) ── */
+  #natureChallengeRoot .adventure-card.nature-bird-card .adventure-card-header {
+    position: relative;
+    padding: 68px 12px 12px; /* top = band height + breathing room */
+    border-bottom: none;
+    background: none;
+  }
+
+  #natureChallengeRoot .adventure-card.nature-bird-card .adventure-card-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); /* default */
+    pointer-events: none;
+  }
+
+  /* Rarity-keyed colour bands – map to rarity-badge palette in species-card CSS */
+  #natureChallengeRoot .adventure-card.nature-bird-card.rarity-common     .adventure-card-header::before { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); } /* blue   – common    */
+  #natureChallengeRoot .adventure-card.nature-bird-card.rarity-regular    .adventure-card-header::before { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); } /* green  – regular   */
+  #natureChallengeRoot .adventure-card.nature-bird-card.rarity-uncommon   .adventure-card-header::before { background: linear-gradient(135deg, #d1fae5 0%, #6ee7b7 100%); } /* teal   – uncommon  */
+  #natureChallengeRoot .adventure-card.nature-bird-card.rarity-rare       .adventure-card-header::before { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); } /* amber  – rare      */
+  #natureChallengeRoot .adventure-card.nature-bird-card.rarity-very-rare  .adventure-card-header::before { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); } /* red    – very rare */
+  #natureChallengeRoot .adventure-card.nature-bird-card.rarity-extremely-rare .adventure-card-header::before { background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%); } /* purple – legendary */
+
+  /* ── Card title → matches .species-card-name ── */
+  #natureChallengeRoot .adventure-card.nature-bird-card .adventure-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.3;
+    margin-bottom: 4px;
+    letter-spacing: 0;
+  }
+
+  /* ── Family / Genus → matches .species-card-subname ── */
+  #natureChallengeRoot .adventure-card.nature-bird-card .adventure-card-location,
+  #natureChallengeRoot .adventure-card.nature-bird-card .adventure-card-time {
+    font-size: 11px;
+    font-style: italic;
+    color: #6b7280;
+    font-weight: 400;
+    line-height: 1.4;
+    margin-bottom: 2px;
+  }
+
+  /* Priority badge sits above the title – keep its spacing tight */
+  #natureChallengeRoot .adventure-card.nature-bird-card .nature-priority-badge {
+    margin-bottom: 6px;
+  }
+
+  /* ── Card body ── */
+  #natureChallengeRoot .adventure-card.nature-bird-card .adventure-card-body {
+    padding: 8px 12px;
+    flex: 1;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* ── Card footer / action buttons → matches .species-card-actions ── */
+  #natureChallengeRoot .adventure-card.nature-bird-card .adventure-card-footer {
+    padding: 0 12px 12px;
+    border-top: none;
+  }
+
+  #natureChallengeRoot .adventure-card.nature-bird-card .card-action-buttons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  /* Buttons → match .species-card-action-btn */
+  #natureChallengeRoot .adventure-card.nature-bird-card .card-btn,
+  #natureChallengeRoot .adventure-card.nature-bird-card .nature-bird-fav-btn {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    min-height: 34px;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  #natureChallengeRoot .adventure-card.nature-bird-card .card-btn:hover {
+    border-color: #3b82f6;
+    color: #1d4ed8;
+    background: #eff6ff;
+  }
+
+  /* Primary button → matches .species-card-action-btn.compare */
+  #natureChallengeRoot .adventure-card.nature-bird-card .card-btn.card-btn-primary {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+  }
+
+  #natureChallengeRoot .adventure-card.nature-bird-card .card-btn.card-btn-primary:hover {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+  }
+
+  /* Favorite button */
+  #natureChallengeRoot .adventure-card.nature-bird-card .nature-bird-fav-btn {
+    flex: 0 0 auto;
+    border-color: #fde68a;
+    color: #92400e;
+    background: #fffbeb;
+  }
+
+  #natureChallengeRoot .adventure-card.nature-bird-card .nature-bird-fav-btn.is-favorited {
+    border-color: #f59e0b;
+    background: #fef3c7;
+    color: #78350f;
+  }
+
+  #natureChallengeRoot .adventure-card.nature-bird-card .nature-bird-fav-btn:hover {
+    border-color: #f59e0b;
+    background: #fef3c7;
+    color: #78350f;
+  }
+
+  /* ── Density overrides: keep compatible with compact / field modes ── */
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-compact .nature-bird-card {
+    min-height: unset;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-compact .nature-bird-card .adventure-card-header {
+    padding-top: 48px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-compact .nature-bird-card .adventure-card-header::before {
+    height: 40px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .nature-bird-card .adventure-card-header {
+    padding-top: 84px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .nature-bird-card .adventure-card-header::before {
+    height: 72px;
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .nature-bird-card .adventure-card-title {
+    font-size: 18px; /* field mode keeps the larger title */
+  }
+
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .adventure-card.nature-bird-card .card-btn,
+  #natureChallengeRoot .nature-birds-view[data-birds-view="explorer"].is-density-field .adventure-card.nature-bird-card .nature-bird-fav-btn {
+    min-height: 44px;
+    font-size: 14px;
+    padding: 10px 14px;
+    font-weight: 800;
+  }
 </style>
 
 <script>
