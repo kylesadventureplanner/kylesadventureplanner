@@ -30,17 +30,20 @@
 
   <div id="visitedProgressPane-outdoors" class="visited-progress-pane is-active" data-progress-pane="outdoors" role="tabpanel" aria-labelledby="visitedProgressTab-outdoors">
     <!-- Simple intro card matching other Adventure Challenge sub-tabs -->
-    <div class="card" data-visited-subtab-view="overview">
+    <div class="card ui-intro-card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🌲 Outdoors</div>
         <div class="card-subtitle">Browse and plan outdoor locations you want to visit.</div>
       </div>
       <div class="visited-empty">
-        <div id="visitedSubtabStatus-outdoors" class="visited-subtab-status" aria-live="polite">Outdoors data: waiting...</div>
-        <div class="visited-subtab-action-row">
+        <div id="visitedSubtabStatus-outdoors" class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">Outdoors data: waiting...</span>
+          <span class="visited-subtab-status-meta">Status updates will appear here while Outdoors loads.</span>
+        </div>
+        <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-outdoors" title="Refresh Outdoors data" data-tooltip="Refresh Outdoors data">Refresh Data</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-outdoors" title="No Outdoors action to undo yet" data-tooltip="No Outdoors action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
-          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-outdoors" title="Explore the Outdoors" data-tooltip="Explore the Outdoors">Explore Outdoors</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-outdoors" title="Explore the Outdoors" data-tooltip="Explore the Outdoors">Explore Outdoors</button>
         </div>
       </div>
     </div>
@@ -94,7 +97,7 @@
             <div class="card-subtitle">Directory sourced from <code>Nature_Locations.xlsx</code> / <code>Nature_Locations</code>.</div>
           </div>
         </div>
-        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+        <div class="visited-explorer-filter-grid ui-filter-grid">
           <input id="visitedExplorerSearch-outdoors" class="filter-input" type="text" placeholder="Search outdoor locations..." />
           <select id="visitedExplorerSort-outdoors" class="filter-select" aria-label="Sort outdoor locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
           <select id="visitedExplorerState-outdoors" class="filter-select" aria-label="Filter outdoor locations by state"><option value="all">State: All</option></select>
@@ -107,17 +110,20 @@
   </div>
 
   <div id="visitedProgressPane-entertainment" class="visited-progress-pane" data-progress-pane="entertainment" role="tabpanel" aria-labelledby="visitedProgressTab-entertainment" hidden>
-    <div class="card" data-visited-subtab-view="overview">
+    <div class="card ui-intro-card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🎬 Entertainment</div>
         <div class="card-subtitle">Browse and plan entertainment locations you want to visit.</div>
       </div>
       <div class="visited-empty">
-        <div id="visitedSubtabStatus-entertainment" class="visited-subtab-status" aria-live="polite">Entertainment data: waiting...</div>
-        <div class="visited-subtab-action-row">
+        <div id="visitedSubtabStatus-entertainment" class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">Entertainment data: waiting...</span>
+          <span class="visited-subtab-status-meta">Status updates will appear here while Entertainment loads.</span>
+        </div>
+        <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-entertainment" title="Refresh Entertainment data" data-tooltip="Refresh Entertainment data">Refresh Data</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-entertainment" title="No Entertainment action to undo yet" data-tooltip="No Entertainment action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
-          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-entertainment" title="Explore Entertainment" data-tooltip="Explore Entertainment">Explore Entertainment</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-entertainment" title="Explore Entertainment" data-tooltip="Explore Entertainment">Explore Entertainment</button>
         </div>
       </div>
     </div>
@@ -131,7 +137,7 @@
             <div class="card-subtitle">Directory of entertainment locations from <code>Entertainment_Locations.xlsx</code> / <code>General_Entertainment</code>.</div>
           </div>
         </div>
-        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+        <div class="visited-explorer-filter-grid ui-filter-grid">
           <input id="visitedExplorerSearch-entertainment" class="filter-input" type="text" placeholder="Search entertainment locations..." />
           <select id="visitedExplorerSort-entertainment" class="filter-select" aria-label="Sort entertainment locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
           <select id="visitedExplorerState-entertainment" class="filter-select" aria-label="Filter entertainment by state"><option value="all">State: All</option></select>
@@ -144,17 +150,20 @@
   </div>
 
   <div id="visitedProgressPane-food-drink" class="visited-progress-pane" data-progress-pane="food-drink" role="tabpanel" aria-labelledby="visitedProgressTab-food-drink" hidden>
-    <div class="card" data-visited-subtab-view="overview">
+    <div class="card ui-intro-card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🍽️ Food &amp; Drink</div>
         <div class="card-subtitle">Browse and plan restaurants and coffee spots you want to try.</div>
       </div>
       <div class="visited-empty">
-        <div id="visitedSubtabStatus-food-drink" class="visited-subtab-status" aria-live="polite">Food &amp; Drink data: waiting...</div>
-        <div class="visited-subtab-action-row">
+        <div id="visitedSubtabStatus-food-drink" class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">Food &amp; Drink data: waiting...</span>
+          <span class="visited-subtab-status-meta">Status updates will appear here while Food &amp; Drink loads.</span>
+        </div>
+        <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-food-drink" title="Refresh Food and Drink data" data-tooltip="Refresh Food and Drink data">Refresh Data</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-food-drink" title="No Food and Drink action to undo yet" data-tooltip="No Food and Drink action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
-          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-food-drink" title="Explore Food and Drink" data-tooltip="Explore Food and Drink">Explore Food &amp; Drink</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-food-drink" title="Explore Food and Drink" data-tooltip="Explore Food and Drink">Explore Food &amp; Drink</button>
         </div>
       </div>
     </div>
@@ -168,7 +177,7 @@
             <div class="card-subtitle">Directory sourced from <code>Retail_Food_and_Drink.xlsx</code> tables <code>Restaurants</code> and <code>Coffee</code>.</div>
           </div>
         </div>
-        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+        <div class="visited-explorer-filter-grid ui-filter-grid">
           <input id="visitedExplorerSearch-food-drink" class="filter-input" type="text" placeholder="Search food and drink locations..." />
           <select id="visitedExplorerSort-food-drink" class="filter-select" aria-label="Sort food and drink locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
           <select id="visitedExplorerState-food-drink" class="filter-select" aria-label="Filter food and drink by state"><option value="all">State: All</option></select>
@@ -181,17 +190,20 @@
   </div>
 
   <div id="visitedProgressPane-retail" class="visited-progress-pane" data-progress-pane="retail" role="tabpanel" aria-labelledby="visitedProgressTab-retail" hidden>
-    <div class="card" data-visited-subtab-view="overview">
+    <div class="card ui-intro-card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🛍️ Retail</div>
         <div class="card-subtitle">Browse and plan retail locations you want to visit.</div>
       </div>
       <div class="visited-empty">
-        <div id="visitedSubtabStatus-retail" class="visited-subtab-status" aria-live="polite">Retail data: waiting...</div>
-        <div class="visited-subtab-action-row">
+        <div id="visitedSubtabStatus-retail" class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">Retail data: waiting...</span>
+          <span class="visited-subtab-status-meta">Status updates will appear here while Retail loads.</span>
+        </div>
+        <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-retail" title="Refresh Retail data" data-tooltip="Refresh Retail data">Refresh Data</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-retail" title="No Retail action to undo yet" data-tooltip="No Retail action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
-          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-retail" title="Explore Retail" data-tooltip="Explore Retail">Explore Retail</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-retail" title="Explore Retail" data-tooltip="Explore Retail">Explore Retail</button>
         </div>
       </div>
     </div>
@@ -205,7 +217,7 @@
             <div class="card-subtitle">Directory sourced from <code>Retail_Food_and_Drink.xlsx</code> / <code>Retail</code>.</div>
           </div>
         </div>
-        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+        <div class="visited-explorer-filter-grid ui-filter-grid">
           <input id="visitedExplorerSearch-retail" class="filter-input" type="text" placeholder="Search retail locations..." />
           <select id="visitedExplorerSort-retail" class="filter-select" aria-label="Sort retail locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
           <select id="visitedExplorerState-retail" class="filter-select" aria-label="Filter retail by state"><option value="all">State: All</option></select>
@@ -218,17 +230,20 @@
   </div>
 
   <div id="visitedProgressPane-wildlife-animals" class="visited-progress-pane" data-progress-pane="wildlife-animals" role="tabpanel" aria-labelledby="visitedProgressTab-wildlife-animals" hidden>
-    <div class="card" data-visited-subtab-view="overview">
+    <div class="card ui-intro-card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🦌 Wildlife &amp; Animals</div>
         <div class="card-subtitle">Browse and plan wildlife and animal locations you want to visit.</div>
       </div>
       <div class="visited-empty">
-        <div id="visitedSubtabStatus-wildlife-animals" class="visited-subtab-status" aria-live="polite">Wildlife &amp; Animals data: waiting...</div>
-        <div class="visited-subtab-action-row">
+        <div id="visitedSubtabStatus-wildlife-animals" class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">Wildlife &amp; Animals data: waiting...</span>
+          <span class="visited-subtab-status-meta">Status updates will appear here while Wildlife &amp; Animals loads.</span>
+        </div>
+        <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-wildlife-animals" title="Refresh Wildlife and Animals data" data-tooltip="Refresh Wildlife and Animals data">Refresh Data</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-wildlife-animals" title="No Wildlife and Animals action to undo yet" data-tooltip="No Wildlife and Animals action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
-          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-wildlife-animals" title="Explore Wildlife and Animal Locations" data-tooltip="Explore Wildlife and Animal Locations">Explore Wildlife &amp; Animal Locations</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-wildlife-animals" title="Explore Wildlife and Animal Locations" data-tooltip="Explore Wildlife and Animal Locations">Explore Wildlife &amp; Animal Locations</button>
         </div>
       </div>
     </div>
@@ -242,7 +257,7 @@
             <div class="card-subtitle">Directory sourced from <code>Entertainment_Locations.xlsx</code> / <code>Wildlife_Animals</code>.</div>
           </div>
         </div>
-        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+        <div class="visited-explorer-filter-grid ui-filter-grid">
           <input id="visitedExplorerSearch-wildlife-animals" class="filter-input" type="text" placeholder="Search wildlife and animal locations..." />
           <select id="visitedExplorerSort-wildlife-animals" class="filter-select" aria-label="Sort wildlife and animal locations"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
           <select id="visitedExplorerState-wildlife-animals" class="filter-select" aria-label="Filter wildlife and animal locations by state"><option value="all">State: All</option></select>
@@ -255,17 +270,20 @@
   </div>
 
   <div id="visitedProgressPane-regional-festivals" class="visited-progress-pane" data-progress-pane="regional-festivals" role="tabpanel" aria-labelledby="visitedProgressTab-regional-festivals" hidden>
-    <div class="card" data-visited-subtab-view="overview">
+    <div class="card ui-intro-card" data-visited-subtab-view="overview">
       <div class="card-header">
         <div class="card-title">🎉 Regional Festivals</div>
         <div class="card-subtitle">Browse and plan regional festivals you want to visit.</div>
       </div>
       <div class="visited-empty">
-        <div id="visitedSubtabStatus-regional-festivals" class="visited-subtab-status" aria-live="polite">Regional Festivals data: waiting...</div>
-        <div class="visited-subtab-action-row">
+        <div id="visitedSubtabStatus-regional-festivals" class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">Regional Festivals data: waiting...</span>
+          <span class="visited-subtab-status-meta">Status updates will appear here while Regional Festivals loads.</span>
+        </div>
+        <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-regional-festivals" title="Refresh Regional Festivals data" data-tooltip="Refresh Regional Festivals data">Refresh Data</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-regional-festivals" title="No Regional Festivals action to undo yet" data-tooltip="No Regional Festivals action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
-          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="open-explorer-regional-festivals" title="Explore Regional Festivals" data-tooltip="Explore Regional Festivals">Explore Regional Festivals</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="open-explorer-regional-festivals" title="Explore Regional Festivals" data-tooltip="Explore Regional Festivals">Explore Regional Festivals</button>
         </div>
       </div>
     </div>
@@ -278,7 +296,7 @@
             <div class="card-subtitle">Directory sourced from <code>Entertainment_Locations.xlsx</code> / <code>Festivals</code>.</div>
           </div>
         </div>
-        <div style="display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr; margin-top:12px;">
+        <div class="visited-explorer-filter-grid ui-filter-grid">
           <input id="visitedExplorerSearch-regional-festivals" class="filter-input" type="text" placeholder="Search regional festivals..." />
           <select id="visitedExplorerSort-regional-festivals" class="filter-select" aria-label="Sort regional festivals"><option value="name-asc">Sort: Name A-Z</option><option value="name-desc">Sort: Name Z-A</option><option value="city-asc">Sort: City A-Z</option><option value="state-asc">Sort: State A-Z</option></select>
           <select id="visitedExplorerState-regional-festivals" class="filter-select" aria-label="Filter regional festivals by state"><option value="all">State: All</option></select>
@@ -291,22 +309,25 @@
   </div>
 
   <div id="visitedProgressPane-bike-trails" class="visited-progress-pane" data-progress-pane="bike-trails" role="tabpanel" aria-labelledby="visitedProgressTab-bike-trails" hidden>
-    <div class="card">
+    <div class="card ui-intro-card">
       <div class="card-header">
         <div class="card-title">🚴 Bike Trails</div>
         <div class="card-subtitle">Bike trails is now grouped under Adventure Challenge.</div>
       </div>
       <div class="visited-empty">
-        <div id="visitedSubtabStatus-bike-trails" class="visited-subtab-status" aria-live="polite">Bike Trails data: waiting...</div>
-        <div class="visited-subtab-action-row">
+        <div id="visitedSubtabStatus-bike-trails" class="visited-subtab-status" aria-live="polite">
+          <span class="visited-subtab-status-health">Bike Trails data: waiting...</span>
+          <span class="visited-subtab-status-meta">Status updates will appear here while Bike Trails loads.</span>
+        </div>
+        <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack">
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-visited-subtab-action="refresh-subtab-bike-trails" title="Refresh Bike Trails data" data-tooltip="Refresh Bike Trails data">Refresh Data</button>
           <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" data-visited-subtab-action="undo-subtab-bike-trails" title="No Bike Trails action to undo yet" data-tooltip="No Bike Trails action to undo yet" aria-disabled="true" disabled>↶ Undo</button>
-          <button type="button" class="visited-subtab-action-btn" data-visited-subtab-action="explore-bike-trails" title="Explore Bike Trails" data-tooltip="Explore Bike Trails">Explore Bike Trails</button>
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--explore" data-visited-subtab-action="explore-bike-trails" title="Explore Bike Trails" data-tooltip="Explore Bike Trails">Explore Bike Trails</button>
         </div>
       </div>
     </div>
   </div>
-  <details id="visitedDiagnosticsDetails" class="card visited-collapsible-card visited-diagnostics-details" aria-labelledby="visitedDiagnosticsHeading" aria-describedby="visitedDiagnosticsSummaryHelp" style="margin-top: 14px;">
+  <details id="visitedDiagnosticsDetails" class="card visited-collapsible-card visited-diagnostics-details ui-diagnostics" aria-labelledby="visitedDiagnosticsHeading" aria-describedby="visitedDiagnosticsSummaryHelp" style="margin-top: 14px;">
     <summary class="visited-diagnostics-summary visited-collapsible-summary" title="Open Adventure Challenge diagnostics, sync, and clean up" data-tooltip="Open Adventure Challenge diagnostics, sync, and clean up">
       <div>
         <div id="visitedDiagnosticsHeading" class="card-title">🧰 Diagnostics, Sync and Clean Up</div>
@@ -314,19 +335,19 @@
       </div>
     </summary>
 
-    <div class="card visited-diagnostics-subcard">
+    <div class="card visited-diagnostics-subcard ui-diagnostics-subcard">
       <div class="card-header">
         <div class="card-title">🔄 Sync Health</div>
         <div class="card-subtitle">Adventure/Bike visited-column status plus recent sync metadata.</div>
       </div>
-      <div class="visited-diagnostics-sync-row">
-        <span id="visitedSyncHealthBadge" class="visited-sync-health" aria-live="polite">Sync: checking...</span>
-        <span id="visitedSyncMeta" class="visited-sync-meta" aria-live="polite">Last synced: --</span>
+      <div class="visited-diagnostics-sync-row ui-status-stack">
+        <span id="visitedSyncHealthBadge" class="visited-sync-health ui-status-pill" aria-live="polite">Sync: checking...</span>
+        <span id="visitedSyncMeta" class="visited-sync-meta ui-status-meta" aria-live="polite">Last synced: --</span>
       </div>
       <div id="visitedDiagnosticsSyncModeHost" class="visited-diagnostics-sync-mode-host" aria-live="polite"></div>
     </div>
 
-    <div class="card visited-diagnostics-subcard">
+    <div class="card visited-diagnostics-subcard ui-diagnostics-subcard">
       <div class="card-header">
         <div class="card-title">🖱️ Tracker Diagnostics</div>
         <div class="card-subtitle">Runtime status for local queue and visited tracker diagnostics.</div>
@@ -362,7 +383,7 @@
       <label class="visited-visit-log-label" for="visitedVisitLogNotes">Notes (optional)</label>
       <textarea id="visitedVisitLogNotes" class="filter-input" rows="4" placeholder="Add notes about this visit..."></textarea>
       <div id="visitedVisitLogHelp" class="card-subtitle" aria-live="polite"></div>
-      <div class="visited-subtab-action-row" style="margin-top: 4px;">
+      <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top: 4px;">
         <button type="submit" id="visitedVisitLogSubmitBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Save Visit</button>
         <button type="button" id="visitedVisitLogCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
       </div>
@@ -1193,8 +1214,8 @@
     font-size: 11px;
     font-weight: 700;
     color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    text-transform: none;
+    letter-spacing: 0.01em;
   }
 
   #visitedLocationsRoot .visited-badge-title {
@@ -1447,66 +1468,51 @@
   #visitedLocationsRoot .visited-subtab-status {
     display: flex;
     align-items: center;
-    gap: 10px;
     flex-wrap: wrap;
+    gap: 8px;
     margin-bottom: 10px;
-    padding: 7px 9px;
-    border-radius: 8px;
-    border: 1px solid #dbeafe;
-    background: #eff6ff;
-    color: #1e3a8a;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.35;
     text-align: left;
   }
 
-  #visitedLocationsRoot .visited-subtab-status-prefix {
+  #visitedLocationsRoot .visited-subtab-status-health {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    line-height: 1.1;
-  }
-
-  #visitedLocationsRoot .visited-subtab-status-dot {
-    width: 7px;
-    height: 7px;
+    gap: 6px;
     border-radius: 999px;
-    background: #2563eb;
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.14);
-    flex-shrink: 0;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 12px;
+    white-space: nowrap;
+    line-height: 1.35;
   }
 
-  #visitedLocationsRoot .visited-subtab-status.is-warn .visited-subtab-status-dot {
-    background: #f97316;
-    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.16);
-  }
-
-  #visitedLocationsRoot .visited-subtab-status.is-ok .visited-subtab-status-dot {
-    background: #22c55e;
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.16);
-  }
-
-  #visitedLocationsRoot .visited-subtab-status-message {
-    flex: 1 1 380px;
-    min-width: 240px;
-  }
-
-  #visitedLocationsRoot .visited-subtab-status.is-warn {
-    border-color: #fed7aa;
-    background: #fff7ed;
-    color: #9a3412;
-  }
-
-  #visitedLocationsRoot .visited-subtab-status.is-ok {
+  #visitedLocationsRoot .visited-subtab-status.is-ok .visited-subtab-status-health {
     border-color: #86efac;
     background: #ecfdf5;
     color: #166534;
+  }
+
+  #visitedLocationsRoot .visited-subtab-status.is-warn .visited-subtab-status-health {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #991b1b;
+  }
+
+  #visitedLocationsRoot .visited-subtab-status-meta {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    color: #475569;
+    font-weight: 600;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: 8px 12px;
+    white-space: pre-line;
+    line-height: 1.35;
   }
 
   #visitedLocationsRoot .visited-empty .visited-subtab-action-row {
@@ -1521,25 +1527,13 @@
 
     #visitedLocationsRoot .visited-subtab-status {
       margin-bottom: 8px;
-      padding: 6px 8px;
+      gap: 6px;
+    }
+
+    #visitedLocationsRoot .visited-subtab-status-health,
+    #visitedLocationsRoot .visited-subtab-status-meta {
       font-size: 11px;
-      gap: 8px;
-    }
-
-    #visitedLocationsRoot .visited-subtab-status-message {
-      min-width: 0;
-      flex-basis: 100%;
-    }
-
-    #visitedLocationsRoot .visited-subtab-status-prefix {
-      font-size: 9px;
-      gap: 3px;
-      letter-spacing: 0.06em;
-    }
-
-    #visitedLocationsRoot .visited-subtab-status-dot {
-      width: 6px;
-      height: 6px;
+      padding: 7px 10px;
     }
 
     #visitedLocationsRoot .visited-empty .visited-subtab-action-row {
@@ -1820,8 +1814,8 @@
     margin-top: 4px;
     font-size: 11px;
     font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    text-transform: none;
+    letter-spacing: 0.01em;
   }
 
   #visitedLocationsRoot .adventure-achv-quest-card.is-current-season {

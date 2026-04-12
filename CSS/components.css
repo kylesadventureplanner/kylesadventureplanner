@@ -239,7 +239,8 @@ header h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  gap: var(--ui-space-12);
+  margin-bottom: var(--ui-space-12);
 }
 
 .card-title {
@@ -2475,3 +2476,213 @@ th:hover .sort-indicator {
     min-height: auto;
   }
 }
+
+/* ============================================================
+   UI CONSISTENCY PRIMITIVES
+============================================================ */
+
+.ui-status-stack,
+#natureChallengeRoot .nature-inline-load-status,
+#visitedLocationsRoot .visited-subtab-status,
+#visitedLocationsRoot .visited-diagnostics-sync-row,
+#natureChallengeRoot .nature-diagnostics-sync-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-8);
+}
+
+.ui-status-pill,
+#natureChallengeRoot .nature-sync-health,
+#visitedLocationsRoot .visited-sync-health,
+#visitedLocationsRoot .visited-subtab-status-health {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--ui-pill-radius);
+  border: 1px solid var(--ui-status-pill-border);
+  background: var(--ui-status-pill-bg);
+  color: var(--ui-status-pill-text);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.ui-status-meta,
+#natureChallengeRoot .nature-sync-meta,
+#visitedLocationsRoot .visited-sync-meta,
+#visitedLocationsRoot .visited-subtab-status-meta {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--ui-pill-radius);
+  border: 1px solid var(--ui-status-meta-border);
+  background: var(--ui-status-meta-bg);
+  color: var(--ui-status-meta-text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  line-height: 1.35;
+}
+
+.ui-action-rail,
+#natureChallengeRoot .nature-explore-cta-actions,
+#visitedLocationsRoot .visited-subtab-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-12);
+}
+
+.ui-action-btn,
+#natureChallengeRoot .nature-explore-birds-btn,
+#visitedLocationsRoot .visited-subtab-action-btn {
+  min-height: var(--ui-action-height);
+  border-radius: var(--ui-action-radius);
+  box-shadow: var(--ui-action-shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ui-action-btn:hover,
+#natureChallengeRoot .nature-explore-birds-btn:hover,
+#visitedLocationsRoot .visited-subtab-action-btn:hover {
+  box-shadow: var(--ui-action-shadow-hover);
+}
+
+.ui-action-btn:disabled,
+.ui-action-btn[aria-disabled="true"],
+#natureChallengeRoot .nature-explore-birds-btn:disabled,
+#natureChallengeRoot .nature-explore-birds-btn[aria-disabled="true"],
+#visitedLocationsRoot .visited-subtab-action-btn:disabled,
+#visitedLocationsRoot .visited-subtab-action-btn[aria-disabled="true"] {
+  border-color: #cbd5e1;
+  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  color: #f8fafc;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.ui-intro-card,
+#natureChallengeRoot .nature-explore-cta-card,
+#visitedLocationsRoot [data-visited-subtab-view="overview"] > .card:first-child {
+  margin-top: var(--ui-space-16);
+}
+
+.ui-intro-card .card-title,
+#natureChallengeRoot .nature-explore-cta-card .card-title,
+#visitedLocationsRoot [data-visited-subtab-view="overview"] > .card:first-child .card-title {
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 800;
+}
+
+.ui-intro-card .card-subtitle,
+#natureChallengeRoot .nature-explore-cta-card .card-subtitle,
+#visitedLocationsRoot [data-visited-subtab-view="overview"] > .card:first-child .card-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ui-filter-grid,
+#visitedLocationsRoot .visited-explorer-filter-grid {
+  display: grid;
+  gap: var(--ui-space-8);
+  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(150px, 1fr));
+  margin-top: var(--ui-space-12);
+}
+
+@media (max-width: 980px) {
+  .ui-filter-grid,
+  #visitedLocationsRoot .visited-explorer-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ui-filter-grid,
+  #visitedLocationsRoot .visited-explorer-filter-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ui-empty-state,
+.ui-loading-state,
+.ui-waiting-state,
+#visitedLocationsRoot .visited-empty,
+.species-empty-state,
+.birds-map-empty {
+  border-radius: var(--ui-card-radius);
+  border: 1px solid var(--ui-status-meta-border);
+  background: #f8fafc;
+}
+
+.ui-chip,
+.ui-badge,
+#visitedLocationsRoot .adventure-achv-tier-badge,
+#visitedLocationsRoot .adventure-achv-count-badge,
+#natureChallengeRoot .nature-section-count-badge,
+.birds-map-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--ui-pill-radius);
+  border: 1px solid var(--ui-chip-border);
+  background: var(--ui-chip-bg);
+  color: var(--ui-chip-text);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.ui-diagnostics,
+#visitedLocationsRoot .visited-diagnostics-details,
+#natureChallengeRoot .nature-diagnostics-details {
+  border: 1px solid var(--ui-diagnostics-border);
+  border-radius: var(--ui-card-radius);
+}
+
+.ui-diagnostics-subcard,
+#visitedLocationsRoot .visited-diagnostics-subcard,
+#natureChallengeRoot .nature-diagnostics-subcard {
+  border: 1px solid var(--ui-diagnostics-subcard-border);
+  border-radius: 12px;
+  margin: 0 12px 12px;
+}
+
+.ui-card-header,
+.card-header,
+#visitedLocationsRoot .visited-explorer-card-head {
+  padding: 0;
+  gap: var(--ui-space-12);
+}
+
+.ui-card-header .card-title,
+.card-header .card-title {
+  line-height: 1.3;
+}
+
+@media (max-width: 760px) {
+  .ui-mobile-primary-stack,
+  #natureChallengeRoot .nature-explore-cta-actions,
+  #visitedLocationsRoot .visited-subtab-action-row {
+    gap: var(--ui-space-8);
+  }
+
+  .ui-mobile-primary-stack .ui-action-btn--primary,
+  #natureChallengeRoot .nature-explore-cta-actions .ui-action-btn--primary,
+  #visitedLocationsRoot .visited-subtab-action-row .visited-subtab-action-btn--explore {
+    order: -1;
+    width: 100%;
+    min-height: 44px;
+  }
+}
+

@@ -1,0 +1,380 @@
+{
+  "checkpoints": [
+    {
+      "checkpoint": "t+250ms",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "page": {
+        "documentScrollHeight": 1434,
+        "bodyScrollHeight": 1434
+      },
+      "topChildren": [
+        {
+          "tag": "div",
+          "id": null,
+          "className": "app-tabs-content",
+          "top": 609,
+          "height": 820,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "div",
+          "id": "appSubTabsRow",
+          "className": "app-subtabs-row",
+          "top": 433,
+          "height": 160,
+          "marginTop": "-2px",
+          "marginBottom": "16px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": "appTabsNav",
+          "className": "app-tabs-nav",
+          "top": 374,
+          "height": 45,
+          "marginTop": "0px",
+          "marginBottom": "16px",
+          "display": "flex"
+        }
+      ],
+      "visitedChildren": [
+        {
+          "tag": "div",
+          "id": "visitedProgressPane-outdoors",
+          "className": "visited-progress-pane is-active",
+          "top": 923,
+          "height": 325,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": null,
+          "className": "visited-progress-header",
+          "top": 628,
+          "height": 281,
+          "marginTop": "0px",
+          "marginBottom": "14px",
+          "display": "block"
+        },
+        {
+          "tag": "details",
+          "id": "visitedDiagnosticsDetails",
+          "className": "card visited-collapsible-card visited-diagnostics-details ui-diagnostics",
+          "top": 1262,
+          "height": 80,
+          "marginTop": "14px",
+          "marginBottom": "88px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": "visitedSubTabAnnouncer",
+          "className": "visited-sr-only",
+          "top": 922,
+          "height": 1,
+          "marginTop": "-1px",
+          "marginBottom": "-1px",
+          "display": "block"
+        }
+      ],
+      "achvSections": [],
+      "detailsState": [
+        {
+          "id": "visitedDiagnosticsDetails",
+          "open": false,
+          "height": 80
+        },
+        {
+          "id": "appBackupManifestPreview",
+          "open": false,
+          "height": 0
+        }
+      ]
+    },
+    {
+      "checkpoint": "t+1250ms",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "page": {
+        "documentScrollHeight": 7816,
+        "bodyScrollHeight": 7816
+      },
+      "topChildren": [
+        {
+          "tag": "div",
+          "id": null,
+          "className": "app-tabs-content",
+          "top": 609,
+          "height": 7202,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "div",
+          "id": "appSubTabsRow",
+          "className": "app-subtabs-row",
+          "top": 433,
+          "height": 160,
+          "marginTop": "-2px",
+          "marginBottom": "16px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": "appTabsNav",
+          "className": "app-tabs-nav",
+          "top": 374,
+          "height": 45,
+          "marginTop": "0px",
+          "marginBottom": "16px",
+          "display": "flex"
+        }
+      ],
+      "visitedChildren": [
+        {
+          "tag": "div",
+          "id": "visitedProgressPane-outdoors",
+          "className": "visited-progress-pane is-active",
+          "top": 923,
+          "height": 6707,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": null,
+          "className": "visited-progress-header",
+          "top": 628,
+          "height": 281,
+          "marginTop": "0px",
+          "marginBottom": "14px",
+          "display": "block"
+        },
+        {
+          "tag": "details",
+          "id": "visitedDiagnosticsDetails",
+          "className": "card visited-collapsible-card visited-diagnostics-details ui-diagnostics",
+          "top": 7644,
+          "height": 80,
+          "marginTop": "14px",
+          "marginBottom": "88px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": "visitedSubTabAnnouncer",
+          "className": "visited-sr-only",
+          "top": 922,
+          "height": 1,
+          "marginTop": "-1px",
+          "marginBottom": "-1px",
+          "display": "block"
+        }
+      ],
+      "achvSections": [
+        {
+          "id": "achv-section-outdoors-challenges-badges",
+          "tag": "div",
+          "className": "card adventure-achv-section",
+          "top": 2165,
+          "height": 4376,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "display": "block"
+        },
+        {
+          "id": "achv-section-outdoors-category-progression",
+          "tag": "div",
+          "className": "card adventure-achv-section",
+          "top": 1248,
+          "height": 897,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "display": "block"
+        },
+        {
+          "id": "achv-section-outdoors-seasonal-quests",
+          "tag": "div",
+          "className": "card adventure-achv-section",
+          "top": 6561,
+          "height": 647,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "display": "block"
+        },
+        {
+          "id": "achv-section-outdoors-bingo",
+          "tag": "div",
+          "className": "card adventure-achv-section",
+          "top": 7228,
+          "height": 394,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "display": "block"
+        }
+      ],
+      "detailsState": [
+        {
+          "id": "visitedDiagnosticsDetails",
+          "open": false,
+          "height": 80
+        },
+        {
+          "id": "appBackupManifestPreview",
+          "open": false,
+          "height": 0
+        }
+      ]
+    },
+    {
+      "checkpoint": "t+3250ms",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "page": {
+        "documentScrollHeight": 7816,
+        "bodyScrollHeight": 7816
+      },
+      "topChildren": [
+        {
+          "tag": "div",
+          "id": null,
+          "className": "app-tabs-content",
+          "top": 609,
+          "height": 7202,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "div",
+          "id": "appSubTabsRow",
+          "className": "app-subtabs-row",
+          "top": 433,
+          "height": 160,
+          "marginTop": "-2px",
+          "marginBottom": "16px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": "appTabsNav",
+          "className": "app-tabs-nav",
+          "top": 374,
+          "height": 45,
+          "marginTop": "0px",
+          "marginBottom": "16px",
+          "display": "flex"
+        }
+      ],
+      "visitedChildren": [
+        {
+          "tag": "div",
+          "id": "visitedProgressPane-outdoors",
+          "className": "visited-progress-pane is-active",
+          "top": 923,
+          "height": 6707,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": null,
+          "className": "visited-progress-header",
+          "top": 628,
+          "height": 281,
+          "marginTop": "0px",
+          "marginBottom": "14px",
+          "display": "block"
+        },
+        {
+          "tag": "details",
+          "id": "visitedDiagnosticsDetails",
+          "className": "card visited-collapsible-card visited-diagnostics-details ui-diagnostics",
+          "top": 7644,
+          "height": 80,
+          "marginTop": "14px",
+          "marginBottom": "88px",
+          "display": "block"
+        },
+        {
+          "tag": "div",
+          "id": "visitedSubTabAnnouncer",
+          "className": "visited-sr-only",
+          "top": 922,
+          "height": 1,
+          "marginTop": "-1px",
+          "marginBottom": "-1px",
+          "display": "block"
+        }
+      ],
+      "achvSections": [
+        {
+          "id": "achv-section-outdoors-challenges-badges",
+          "tag": "div",
+          "className": "card adventure-achv-section",
+          "top": 2165,
+          "height": 4376,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "display": "block"
+        },
+        {
+          "id": "achv-section-outdoors-category-progression",
+          "tag": "div",
+          "className": "card adventure-achv-section",
+          "top": 1248,
+          "height": 897,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "display": "block"
+        },
+        {
+          "id": "achv-section-outdoors-seasonal-quests",
+          "tag": "div",
+          "className": "card adventure-achv-section",
+          "top": 6561,
+          "height": 647,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "display": "block"
+        },
+        {
+          "id": "achv-section-outdoors-bingo",
+          "tag": "div",
+          "className": "card adventure-achv-section",
+          "top": 7228,
+          "height": 394,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "display": "block"
+        }
+      ],
+      "detailsState": [
+        {
+          "id": "visitedDiagnosticsDetails",
+          "open": false,
+          "height": 80
+        },
+        {
+          "id": "appBackupManifestPreview",
+          "open": false,
+          "height": 0
+        }
+      ]
+    }
+  ]
+}

@@ -165,6 +165,29 @@
   --birds-icon-section: 18px;
   --birds-icon-chip: 12px;
   --birds-icon-badge: 14px;
+
+  /* UI CONSISTENCY TOKENS */
+  --ui-space-8: 8px;
+  --ui-space-12: 12px;
+  --ui-space-16: 16px;
+  --ui-space-24: 24px;
+  --ui-pill-radius: 999px;
+  --ui-card-radius: 14px;
+  --ui-action-height: 42px;
+  --ui-action-radius: 12px;
+  --ui-action-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+  --ui-action-shadow-hover: 0 12px 24px rgba(15, 23, 42, 0.24);
+  --ui-status-pill-border: #d1d5db;
+  --ui-status-pill-bg: #ffffff;
+  --ui-status-pill-text: #374151;
+  --ui-status-meta-border: #e2e8f0;
+  --ui-status-meta-bg: #f8fafc;
+  --ui-status-meta-text: #475569;
+  --ui-chip-border: #cbd5e1;
+  --ui-chip-bg: #f8fafc;
+  --ui-chip-text: #334155;
+  --ui-diagnostics-border: #e5e7eb;
+  --ui-diagnostics-subcard-border: #dbeafe;
 }
 
 /* ============================================================

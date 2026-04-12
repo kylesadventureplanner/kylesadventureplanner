@@ -1,0 +1,202 @@
+{
+  "files": {
+    "expected": "tests/mobile-ux-snapshots.spec.js-snapshots/index-mobile-darwin.png",
+    "actual": "test-results/mobile-ux-snapshots-Mobile-1f63a--snapshots-across-key-pages/index-mobile-actual.png"
+  },
+  "dimensions": {
+    "expected": {
+      "width": 390,
+      "height": 8589
+    },
+    "actual": {
+      "width": 390,
+      "height": 7816
+    },
+    "overlap": {
+      "width": 390,
+      "height": 7816
+    },
+    "missingTailRows": 773
+  },
+  "totals": {
+    "overlapDiffPixels": 2138859,
+    "overlapDiffRatio": 0.70167,
+    "missingTailPixels": 301470,
+    "missingTailRatioVsExpected": 0.089999
+  },
+  "bands": [
+    {
+      "startRow": 25,
+      "endRow": 799,
+      "height": 775,
+      "peakRatio": 1
+    },
+    {
+      "startRow": 844,
+      "endRow": 1257,
+      "height": 414,
+      "peakRatio": 1
+    },
+    {
+      "startRow": 1260,
+      "endRow": 1650,
+      "height": 391,
+      "peakRatio": 0.9051
+    },
+    {
+      "startRow": 1657,
+      "endRow": 2161,
+      "height": 505,
+      "peakRatio": 0.9846
+    },
+    {
+      "startRow": 2165,
+      "endRow": 2229,
+      "height": 65,
+      "peakRatio": 0.9692
+    },
+    {
+      "startRow": 2234,
+      "endRow": 4387,
+      "height": 2154,
+      "peakRatio": 0.9846
+    },
+    {
+      "startRow": 4392,
+      "endRow": 5805,
+      "height": 1414,
+      "peakRatio": 0.9846
+    },
+    {
+      "startRow": 5811,
+      "endRow": 6590,
+      "height": 780,
+      "peakRatio": 0.9846
+    },
+    {
+      "startRow": 6595,
+      "endRow": 7275,
+      "height": 681,
+      "peakRatio": 0.9846
+    },
+    {
+      "startRow": 7277,
+      "endRow": 7815,
+      "height": 539,
+      "peakRatio": 0.9846
+    }
+  ],
+  "topRows": [
+    {
+      "y": 26,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 27,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 31,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 32,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 33,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 34,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 35,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 36,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 37,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 60,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 61,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 62,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 63,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 64,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 65,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 66,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 79,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 80,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 81,
+      "diffPixels": 390,
+      "diffRatio": 1
+    },
+    {
+      "y": 82,
+      "diffPixels": 390,
+      "diffRatio": 1
+    }
+  ],
+  "heatmapLegend": {
+    " ": "no diff",
+    ".": "<2% row diff",
+    ":": "2-5% row diff",
+    "*": "5-10% row diff",
+    "o": "10-20% row diff",
+    "O": "20-35% row diff",
+    "#": ">35% row diff"
+  },
+  "heatmapRowsPerSymbol": 24,
+  "heatmapSymbolLine": "*################################* ####OO###########oO#Oooo#OooOOoOOOooo##OoOOoO#Ooo#oOOO#O#O############O############O###############################################################O#########################O############O*o##OooOO#ooOOOoO#O#################O#o#O###########OO############OOO############ooo################o##O"
+}

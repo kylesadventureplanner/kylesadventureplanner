@@ -913,30 +913,77 @@
 
   function renderVisitedSubtabStatusBar(el, options) {
     if (!el) return;
-    const label = options && options.label ? String(options.label) : 'Adventure';
-    const message = options && options.message ? String(options.message) : '';
+    const badgeText = options && options.badgeText ? String(options.badgeText) : 'Adventure data: waiting';
+    const metaText = options && options.metaText ? String(options.metaText) : '';
     const tone = options && options.tone ? String(options.tone) : '';
+    let health = el.querySelector('.visited-subtab-status-health');
+    let meta = el.querySelector('.visited-subtab-status-meta');
+
+    if (!health || !meta) {
+      el.innerHTML = '<span class="visited-subtab-status-health"></span><span class="visited-subtab-status-meta"></span>';
+      health = el.querySelector('.visited-subtab-status-health');
+      meta = el.querySelector('.visited-subtab-status-meta');
+    }
+
     el.classList.remove('is-ok', 'is-warn');
     if (tone === 'ok') el.classList.add('is-ok');
     if (tone === 'warn') el.classList.add('is-warn');
-    el.innerHTML = `
-      <span class="visited-subtab-status-prefix"><span class="visited-subtab-status-dot" aria-hidden="true"></span><span class="visited-subtab-status-label">${escapeHtml(label)}</span></span>
-      <span class="visited-subtab-status-message">${escapeHtml(message)}</span>
-    `;
+
+    const formattedMetaText = String(metaText || '').includes(' | Updated ')
+      ? String(metaText).replace(' | Updated ', '\nUpdated ')
+      : String(metaText || '').includes(' | Source: ')
+        ? String(metaText).replace(' | Source: ', '\nSource: ')
+        : String(metaText || '');
+
+    if (health) health.textContent = badgeText;
+    if (meta) meta.textContent = formattedMetaText;
+  }
+
+  function ensureVisitedSubtabStatusHost(subtabKey, label) {
+    const pane = document.getElementById(`visitedProgressPane-${subtabKey}`);
+    if (!pane) return null;
+
+    let host = document.getElementById(`visitedSubtabStatus-${subtabKey}`);
+    if (!host) {
+      const empty = pane.querySelector('.visited-empty') || pane.querySelector('.card');
+      if (!empty) return null;
+      host = document.createElement('div');
+      host.id = `visitedSubtabStatus-${subtabKey}`;
+      host.className = 'visited-subtab-status ui-status-stack';
+      host.setAttribute('aria-live', 'polite');
+      empty.insertBefore(host, empty.firstChild || null);
+    }
+
+    let health = host.querySelector('.visited-subtab-status-health');
+    let meta = host.querySelector('.visited-subtab-status-meta');
+    if (!health || !meta) {
+      host.innerHTML = '<span class="visited-subtab-status-health ui-status-pill"></span><span class="visited-subtab-status-meta ui-status-meta"></span>';
+      health = host.querySelector('.visited-subtab-status-health');
+      meta = host.querySelector('.visited-subtab-status-meta');
+    }
+
+    if (health && !health.textContent.trim()) {
+      health.textContent = `${label} data: waiting...`;
+    }
+    if (meta && !meta.textContent.trim()) {
+      meta.textContent = `Status updates will appear here while ${label} loads.`;
+    }
+
+    return host;
   }
 
   function renderSubtabStatusBars() {
     const signedIn = Boolean(window.accessToken);
     PROGRESS_SUBTAB_KEYS.forEach((subtabKey) => {
-      const el = document.getElementById(`visitedSubtabStatus-${subtabKey}`);
-      if (!el) return;
       const label = PROGRESS_SUBTAB_STATUS_LABELS[subtabKey] || 'Adventure';
+      const el = ensureVisitedSubtabStatusHost(subtabKey, label);
+      if (!el) return;
 
       if (subtabKey === 'bike-trails') {
         const updatedText = state.lastRenderAt ? new Date(state.lastRenderAt).toLocaleString() : '--';
         renderVisitedSubtabStatusBar(el, {
-          label: `${label} data`,
-          message: `linked workspace | Source: Bike Trails workspace | Updated ${updatedText} | Use Explore Bike Trails to open the full bike workspace.`,
+          badgeText: `${label} data: ready`,
+          metaText: `Linked workspace | Source: Bike Trails workspace | Updated ${updatedText} | Use Explore Bike Trails to open the full bike workspace.`,
           tone: 'ok'
         });
         return;
@@ -947,28 +994,30 @@
       const sourceSummary = getSubtabStatusSourceSummary(subtabKey, explorerState);
       const updatedAt = explorerState.updatedAt || state.lastRenderAt || '';
       const updatedText = updatedAt ? new Date(updatedAt).toLocaleString() : '--';
-      let mode = 'waiting';
-      let tail = '';
+      let badgeText = `${label} data: waiting`;
+      let metaText = `Status updates will appear here while ${label} loads.`;
       let tone = '';
 
       if (!signedIn) {
-        mode = 'sign-in required';
-        tail = 'Use Sign In, then refresh this tab.';
+        badgeText = `${label} data: sign-in required`;
+        metaText = 'Use Sign In, then refresh this tab.';
         tone = 'warn';
       } else if (explorerState.loading) {
-        mode = 'refreshing';
+        badgeText = `${label} data: loading...`;
+        metaText = `Refreshing ${label.toLowerCase()} locations...`;
       } else if (explorerState.error) {
-        mode = 'fallback in use';
-        tail = explorerState.error;
+        badgeText = `${label} data: fallback in use`;
+        metaText = `${total} locations | Source: ${sourceSummary} | Updated ${updatedText} | ${explorerState.error}`;
         tone = 'warn';
       } else if (explorerState.loaded) {
-        mode = 'ready';
+        badgeText = `${label} data: ready`;
+        metaText = `${total} locations | Source: ${sourceSummary} | Updated ${updatedText}`;
         tone = 'ok';
       }
 
       renderVisitedSubtabStatusBar(el, {
-        label: `${label} data`,
-        message: `${mode} ${total} locations | Source: ${sourceSummary} | Updated ${updatedText}${tail ? ` | ${tail}` : ''}`,
+        badgeText,
+        metaText,
         tone
       });
     });
@@ -3388,7 +3437,7 @@
         let row = pane.querySelector('.visited-subtab-action-row');
         if (row) return row;
         row = document.createElement('div');
-        row.className = 'visited-subtab-action-row';
+        row.className = 'visited-subtab-action-row ui-action-rail ui-mobile-primary-stack';
         row.style.marginTop = '12px';
         row.style.display = 'flex';
         row.style.gap = '8px';

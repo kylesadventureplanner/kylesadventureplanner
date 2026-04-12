@@ -2,6 +2,44 @@ const { test, expect } = require('./reliability-test');
 
 const ASSERT_VISUAL_BASELINE = process.env.MOBILE_QA_ASSERT === '1';
 const MAX_DIFF_PIXEL_RATIO = Number(process.env.MOBILE_QA_MAX_DIFF_RATIO || 0.015);
+const EXPECTED_MOBILE_SCROLL_HEIGHT = Number(process.env.MOBILE_QA_EXPECTED_HEIGHT || 7816);
+
+async function waitForStableMobileSnapshotState(page) {
+  const timeoutMs = Number(process.env.MOBILE_QA_READY_TIMEOUT_MS || 12000);
+  const stableSamplesRequired = Number(process.env.MOBILE_QA_STABLE_SAMPLES || 3);
+  const intervalMs = Number(process.env.MOBILE_QA_STABLE_INTERVAL_MS || 250);
+  const start = Date.now();
+  let lastHeight = -1;
+  let stableSamples = 0;
+
+  while (Date.now() - start <= timeoutMs) {
+	const state = await page.evaluate(() => ({
+	  scrollHeight: document.documentElement.scrollHeight,
+	  hasVisitedRoot: Boolean(document.getElementById('visitedLocationsRoot')),
+	  hasChallengeSection: Boolean(document.getElementById('achv-section-outdoors-challenges-badges'))
+	}));
+
+	if (state.scrollHeight === lastHeight) {
+	  stableSamples += 1;
+	} else {
+	  stableSamples = 1;
+	  lastHeight = state.scrollHeight;
+	}
+
+	const ready = stableSamples >= stableSamplesRequired
+	  && state.hasVisitedRoot
+	  && state.hasChallengeSection
+	  && state.scrollHeight === EXPECTED_MOBILE_SCROLL_HEIGHT;
+
+	if (ready) return state;
+	await page.waitForTimeout(intervalMs);
+  }
+
+  const finalHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+  throw new Error(
+	`Mobile snapshot readiness timeout. Final height=${finalHeight}, expected=${EXPECTED_MOBILE_SCROLL_HEIGHT}`
+  );
+}
 
 test.describe('Mobile UX snapshots', () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -29,7 +67,7 @@ test.describe('Mobile UX snapshots', () => {
 	});
 
 	await expect(mainPage.locator('body')).toBeVisible();
-	await mainPage.waitForTimeout(250);
+	await waitForStableMobileSnapshotState(mainPage);
 	await mainPage.screenshot({ path: 'test-results/mobile-ux/index-mobile.png', fullPage: true });
 	if (ASSERT_VISUAL_BASELINE) {
 	  await expect(mainPage).toHaveScreenshot('index-mobile.png', {

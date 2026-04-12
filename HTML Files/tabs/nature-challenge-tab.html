@@ -23,27 +23,27 @@
   <div id="natureChallengePane-birds" class="nature-challenge-pane is-active" data-nature-pane="birds" role="tabpanel" aria-labelledby="natureChallengeTab-birds">
     <div class="nature-birds-view is-active" data-birds-view="overview">
 
-      <div class="card nature-explore-cta-card" style="margin-top: 18px;">
+      <div class="card nature-explore-cta-card ui-intro-card" style="margin-top: 18px;">
         <div class="nature-explore-cta-row">
           <div>
             <div class="card-title" role="heading" aria-level="3">🔎 Explore Species / Log a Sighting</div>
             <div class="card-subtitle">Browse your full bird list or open the dedicated sighting log page.</div>
-            <div class="nature-inline-load-status" aria-live="polite">
-              <span id="natureSyncHealthBadgeInline" class="nature-sync-health">Bird data: checking...</span>
-              <span id="natureSyncMetaInline" class="nature-sync-meta">Status updates will appear here while Birds loads.</span>
+            <div class="nature-inline-load-status ui-status-stack" aria-live="polite">
+              <span id="natureSyncHealthBadgeInline" class="nature-sync-health ui-status-pill">Bird data: checking...</span>
+              <span id="natureSyncMetaInline" class="nature-sync-meta ui-status-meta">Status updates will appear here while Birds loads.</span>
             </div>
           </div>
-          <div class="nature-explore-cta-actions nature-sticky-action-rail">
-            <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--refresh" title="Refresh Birds data" data-tooltip="Refresh Birds data">
+          <div class="nature-explore-cta-actions nature-sticky-action-rail ui-action-rail ui-mobile-primary-stack">
+            <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--refresh" title="Refresh Birds data" data-tooltip="Refresh Birds data">
               Refresh Data
             </button>
-            <button id="birdsUndoActionBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--undo" title="No Birds action to undo yet" data-tooltip="No Birds action to undo yet" aria-disabled="true" disabled>
+            <button id="birdsUndoActionBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--undo" title="No Birds action to undo yet" data-tooltip="No Birds action to undo yet" aria-disabled="true" disabled>
               ↶ Undo
             </button>
-            <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn" title="Open the species explorer" data-tooltip="Open the species explorer" aria-current="false">
+            <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn ui-action-btn ui-action-btn--primary" title="Open the species explorer" data-tooltip="Open the species explorer" aria-current="false">
               Explore Species
             </button>
-            <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--secondary" title="Open the sighting log" data-tooltip="Open the sighting log" aria-current="false">
+            <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--secondary" title="Open the sighting log" data-tooltip="Open the sighting log" aria-current="false">
               Log a Sighting
             </button>
           </div>
@@ -249,7 +249,7 @@
         </div>
       </div>
 
-      <details id="birdsDiagnosticsDetails" class="card nature-collapsible-card nature-diagnostics-details" data-birds-collapsible aria-labelledby="birdsDiagnosticsHeading" aria-describedby="birdsDiagnosticsSummaryHelp">
+      <details id="birdsDiagnosticsDetails" class="card nature-collapsible-card nature-diagnostics-details ui-diagnostics" data-birds-collapsible aria-labelledby="birdsDiagnosticsHeading" aria-describedby="birdsDiagnosticsSummaryHelp">
         <summary class="nature-collapsible-summary" title="Open Birds diagnostics, sync, and clean up tools" data-tooltip="Open Birds diagnostics, sync, and clean up tools">
           <div>
             <div id="birdsDiagnosticsHeading" class="card-title" role="heading" aria-level="3">🧰 Diagnostics, Sync and Clean Up</div>
@@ -257,12 +257,12 @@
           </div>
         </summary>
 
-        <div class="nature-diagnostics-sync-row">
-          <span id="natureSyncHealthBadge" class="nature-sync-health" aria-live="polite">Bird data: checking...</span>
-          <span id="natureSyncMeta" class="nature-sync-meta" aria-live="polite">Source details will appear after load.</span>
+        <div class="nature-diagnostics-sync-row ui-status-stack">
+          <span id="natureSyncHealthBadge" class="nature-sync-health ui-status-pill" aria-live="polite">Bird data: checking...</span>
+          <span id="natureSyncMeta" class="nature-sync-meta ui-status-meta" aria-live="polite">Source details will appear after load.</span>
         </div>
 
-        <div class="card nature-diagnostics-subcard">
+        <div class="card nature-diagnostics-subcard ui-diagnostics-subcard">
           <div class="card-header">
             <div class="card-title">🔄 Excel + Local Sync</div>
             <div class="card-subtitle">Visibility into queue state, last write, and conflict resolution.</div>
@@ -275,7 +275,7 @@
           <div id="birdsSyncConflictsPanel"></div>
         </div>
 
-        <div class="card nature-diagnostics-subcard">
+        <div class="card nature-diagnostics-subcard ui-diagnostics-subcard">
           <div class="card-header">
             <div class="card-title">🛠️ Data Quality & Dedupe</div>
             <div class="card-subtitle">Check duplicates, synonym clashes, rarity inconsistencies, and canonical ID stability.</div>
@@ -286,7 +286,7 @@
           <div id="birdsDataQualityPanel"></div>
         </div>
 
-        <div class="card nature-diagnostics-subcard">
+        <div class="card nature-diagnostics-subcard ui-diagnostics-subcard">
           <div class="card-header">
             <div class="card-title">🖱️ Button Click Diagnostics</div>
             <div class="card-subtitle">Track button interactions and click events for debugging.</div>

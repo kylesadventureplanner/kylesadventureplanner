@@ -1,0 +1,200 @@
+{
+  "scrollHeight": 7816,
+  "sections": [
+    {
+      "id": "achv-section-outdoors-category-progression",
+      "found": true,
+      "section": {
+        "id": "achv-section-outdoors-category-progression",
+        "className": "card adventure-achv-section",
+        "height": 897,
+        "marginTop": "0px",
+        "marginBottom": "8px",
+        "paddingTop": "8px",
+        "paddingBottom": "8px",
+        "display": "block"
+      },
+      "counts": {
+        "categoryCards": 10,
+        "challengeCards": 0,
+        "badgeCards": 0,
+        "questCards": 0,
+        "bingoTiles": 0,
+        "tierChips": 0
+      },
+      "childBlocks": [
+        {
+          "tag": "div",
+          "id": null,
+          "className": "adventure-achv-cat-grid",
+          "height": 805,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "grid"
+        },
+        {
+          "tag": "div",
+          "id": null,
+          "className": "card-header",
+          "height": 66,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "flex"
+        }
+      ]
+    },
+    {
+      "id": "achv-section-outdoors-challenges-badges",
+      "found": true,
+      "section": {
+        "id": "achv-section-outdoors-challenges-badges",
+        "className": "card adventure-achv-section",
+        "height": 4376,
+        "marginTop": "0px",
+        "marginBottom": "8px",
+        "paddingTop": "8px",
+        "paddingBottom": "8px",
+        "display": "block"
+      },
+      "counts": {
+        "categoryCards": 0,
+        "challengeCards": 0,
+        "badgeCards": 20,
+        "questCards": 0,
+        "bingoTiles": 0,
+        "tierChips": 100
+      },
+      "childBlocks": [
+        {
+          "tag": "div",
+          "id": null,
+          "className": "adventure-achv-badge-grid",
+          "height": 4297,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "grid"
+        },
+        {
+          "tag": "div",
+          "id": null,
+          "className": "card-header",
+          "height": 53,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "flex"
+        }
+      ]
+    },
+    {
+      "id": "achv-section-outdoors-seasonal-quests",
+      "found": true,
+      "section": {
+        "id": "achv-section-outdoors-seasonal-quests",
+        "className": "card adventure-achv-section",
+        "height": 647,
+        "marginTop": "0px",
+        "marginBottom": "8px",
+        "paddingTop": "8px",
+        "paddingBottom": "8px",
+        "display": "block"
+      },
+      "counts": {
+        "categoryCards": 0,
+        "challengeCards": 0,
+        "badgeCards": 0,
+        "questCards": 4,
+        "bingoTiles": 0,
+        "tierChips": 0
+      },
+      "childBlocks": [
+        {
+          "tag": "div",
+          "id": null,
+          "className": "adventure-achv-quest-grid",
+          "height": 583,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "grid"
+        },
+        {
+          "tag": "div",
+          "id": null,
+          "className": "card-header",
+          "height": 38,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "flex"
+        }
+      ]
+    },
+    {
+      "id": "achv-section-outdoors-bingo",
+      "found": true,
+      "section": {
+        "id": "achv-section-outdoors-bingo",
+        "className": "card adventure-achv-section",
+        "height": 394,
+        "marginTop": "0px",
+        "marginBottom": "8px",
+        "paddingTop": "8px",
+        "paddingBottom": "8px",
+        "display": "block"
+      },
+      "counts": {
+        "categoryCards": 0,
+        "challengeCards": 0,
+        "badgeCards": 0,
+        "questCards": 0,
+        "bingoTiles": 9,
+        "tierChips": 0
+      },
+      "childBlocks": [
+        {
+          "tag": "div",
+          "id": null,
+          "className": "adventure-achv-bingo-board",
+          "height": 296,
+          "marginTop": "0px",
+          "marginBottom": "0px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "grid"
+        },
+        {
+          "tag": "div",
+          "id": null,
+          "className": "card-header",
+          "height": 53,
+          "marginTop": "0px",
+          "marginBottom": "8px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "div",
+          "id": null,
+          "className": "adventure-achv-bingo-meta",
+          "height": 15,
+          "marginTop": "4px",
+          "marginBottom": "0px",
+          "paddingTop": "0px",
+          "paddingBottom": "0px",
+          "display": "block"
+        }
+      ]
+    }
+  ]
+}

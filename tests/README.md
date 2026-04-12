@@ -1,0 +1,32 @@
+# Test Notes
+
+## Mobile Snapshot Baselines
+
+`tests/mobile-ux-snapshots.spec.js` only runs `toHaveScreenshot(...)` assertions when `MOBILE_QA_ASSERT=1`.
+
+- Baseline updates must include both `MOBILE_QA_ASSERT=1` and `--update-snapshots`.
+- If `MOBILE_QA_ASSERT` is not set, Playwright will not execute screenshot expectations, so baseline files are not refreshed.
+
+Recommended local workflow:
+
+```bash
+cd "/Users/kylechavez/WebstormProjects/kylesadventureplanner"
+python3 -m http.server 4173
+```
+
+In a second terminal:
+
+```bash
+cd "/Users/kylechavez/WebstormProjects/kylesadventureplanner"
+APP_URL="http://127.0.0.1:4173" MOBILE_QA_ASSERT=1 npx playwright test tests/mobile-ux-snapshots.spec.js --update-snapshots
+APP_URL="http://127.0.0.1:4173" MOBILE_QA_ASSERT=1 npx playwright test tests/mobile-ux-snapshots.spec.js
+```
+
+Optional readiness tuning for mobile snapshot capture:
+
+- `MOBILE_QA_EXPECTED_HEIGHT` (default `7816`)
+- `MOBILE_QA_READY_TIMEOUT_MS` (default `12000`)
+- `MOBILE_QA_STABLE_SAMPLES` (default `3`)
+- `MOBILE_QA_STABLE_INTERVAL_MS` (default `250`)
+
+
