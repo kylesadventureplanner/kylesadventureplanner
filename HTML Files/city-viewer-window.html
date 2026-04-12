@@ -5,13 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>City Explorer - Kyle's Adventure Finder</title>
   <script src="../JS Files/mobile-view-persistence-bootstrap.js"></script>
-  <!-- Google Maps API – same key used by parent shell; safe to load in iframe context -->
+  <!--
+    Google Maps – traditional (legacy) load so google.maps.Map / Marker / LatLngBounds
+    are all available as soon as the script executes (no importLibrary() needed).
+    The callback sets a flag and drains a queue of pending render requests so the
+    map still loads correctly if the user opens the panel before the script arrives.
+  -->
   <script>
-    (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
-      key: "AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc",
-      v: "weekly",
-      libraries: "maps,marker"
-    });
+    window.__cvMapsReady = false;
+    window.__cvMapsQueue = [];
+    window.__cvMapsInit  = function () {
+      window.__cvMapsReady = true;
+      (window.__cvMapsQueue || []).forEach(function (fn) { try { fn(); } catch (_) {} });
+      window.__cvMapsQueue = [];
+    };
+  </script>
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCwkOvyiQyJkiaCWkZUEP2PJGaWhk-HYXc&libraries=places,geometry&callback=__cvMapsInit">
   </script>
   <link rel="stylesheet" href="../CSS/utilities.css">
   <style>
@@ -1838,6 +1848,14 @@
       // before we measure the map container or initialise Google Maps.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          if (locSplitView && !window.__cvMapsReady) {
+            // Maps API still loading – queue a retry for when it arrives
+            window.__cvMapsQueue = window.__cvMapsQueue || [];
+            window.__cvMapsQueue.push(() => {
+              if (locSplitView) renderLocMap(lastFilteredLocations);
+            });
+            // Still render now so the canvas fallback shows something immediately
+          }
           renderLocMap(lastFilteredLocations);
         });
       });
@@ -1877,6 +1895,11 @@
       // container destroys its tile DOM and makes the map go blank.
       if (!locGoogleMap) {
         canvas.innerHTML = '';
+      } else if (!canvas.querySelector('.gm-style')) {
+        // Google Maps DOM was removed externally – reset so next call re-initialises
+        locGoogleMap = null;
+        locGoogleMarkers = [];
+        canvas.innerHTML = '';
       }
        if (!locSplitView || locations.length === 0) return;
 
@@ -1891,7 +1914,11 @@
     }
 
     function renderGoogleMap(points) {
-      if (!(window.google && window.google.maps)) return false;
+      // Need the full Google Maps library, not just the namespace stub.
+      // The bootstrap loader creates window.google.maps but NOT Map/Marker/etc.
+      // Those are only available after __cvMapsInit fires (traditional load callback).
+      if (!window.__cvMapsReady) return false;
+      if (!(window.google && window.google.maps && window.google.maps.Map)) return false;
       const geoPoints = points.filter(p => p.point.geo);
       if (!geoPoints.length) return false;
 
