@@ -1473,7 +1473,9 @@
     explorerState.view = nextView || 'overview';
     const jumpLinks = root ? root.querySelector('.visited-jump-links') : null;
     if (jumpLinks) {
-      const hideJumpLinks = explorerState.view === 'city-explorer';
+      const hideJumpLinks = explorerState.view === 'city-explorer'
+        || explorerState.view === 'explorer'
+        || explorerState.view === 'explorer-details';
       jumpLinks.hidden = hideJumpLinks;
       jumpLinks.setAttribute('aria-hidden', hideJumpLinks ? 'true' : 'false');
       jumpLinks.style.display = hideJumpLinks ? 'none' : '';

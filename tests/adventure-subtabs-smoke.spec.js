@@ -46,6 +46,27 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     await expect(page.locator('#visitedSubtabStatus-outdoors .visited-subtab-status-health')).toContainText(/Outdoors data:/i);
   });
 
+  test('jump links hide while Outdoors explorer view is open', async ({ page }) => {
+    const jumpLinks = page.locator('#visitedLocationsRoot .visited-jump-links');
+    await expect(jumpLinks).toHaveAttribute('aria-hidden', 'false');
+
+    const openExplorerBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-explorer-outdoors"]').first();
+    await expect(openExplorerBtn).toBeVisible();
+    await openExplorerBtn.click();
+
+    await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="explorer"]').first()).toBeVisible();
+    await expect(jumpLinks).toHaveAttribute('hidden', '');
+    await expect(jumpLinks).toHaveAttribute('aria-hidden', 'true');
+
+    const closeExplorerBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="close-explorer-outdoors"]').first();
+    await expect(closeExplorerBtn).toBeVisible();
+    await closeExplorerBtn.click();
+
+    await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="overview"]').first()).toBeVisible();
+    await expect(jumpLinks).not.toHaveAttribute('hidden', '');
+    await expect(jumpLinks).toHaveAttribute('aria-hidden', 'false');
+  });
+
   ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, legacyFindAction }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
       const dockButton = page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"]`).first();
