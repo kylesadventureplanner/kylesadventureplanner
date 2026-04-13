@@ -5935,47 +5935,7 @@
       padding-bottom: 8px;
     }
 
-    .signed-out-mode-line {
-      margin: 0 0 10px;
-      padding: 8px 10px;
-      border: 1px solid #fca5a5;
-      border-radius: 8px;
-      background: #fff7ed;
-      color: #9a3412;
-      font-size: 12px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-      transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .signed-out-mode-line[hidden] {
-      display: none;
-    }
-
-    #signedOutModeLine:not([hidden]) + .app-tabs-nav {
-      margin-top: 6px;
-    }
-
     @media (max-width: 760px) {
-      .signed-out-mode-line {
-        position: sticky;
-        top: var(--signed-out-mode-line-top, calc(var(--planner-top-sticky-offset, 8px) + env(safe-area-inset-top, 0px)));
-        z-index: 260;
-        border-color: transparent;
-        background: transparent;
-        box-shadow: none;
-      }
-
-      .signed-out-mode-line.is-sticky-mobile {
-        border-color: #fed7aa;
-        background: rgba(255, 247, 237, 0.95);
-        box-shadow: 0 8px 14px rgba(154, 52, 18, 0.1);
-        backdrop-filter: blur(6px);
-      }
     }
 
     .app-tab-btn {
@@ -6889,9 +6849,11 @@
              const authStatus = document.getElementById('authStatus');
              const signInBtn  = document.getElementById('signInBtn');
              const signOutBtn = document.getElementById('signOutBtn');
+             const signInRequiredBanner = document.getElementById('signInRequiredBanner');
              if (authStatus) authStatus.textContent = account ? `Signed in as ${account.username}` : 'Not signed in';
              if (signInBtn)  signInBtn.style.display  = account ? 'none' : '';
              if (signOutBtn) signOutBtn.style.display = account ? '' : 'none';
+             if (signInRequiredBanner) signInRequiredBanner.hidden = Boolean(account);
              if (typeof window.updateConnectionStatus === 'function') window.updateConnectionStatus(!!account);
            }
 
@@ -8188,10 +8150,6 @@
 </div>
 <div class="app-container">
   <!-- Tab Navigation -->
-  <div id="signedOutModeLine" class="signed-out-mode-line" role="status" aria-live="polite" hidden>
-    <span>Limited mode while signed out. Sign in to load Excel-backed data and full Explorer tools.</span>
-    <button id="signedOutModeLineBtn" type="button" class="offline-action-btn">Sign In</button>
-  </div>
   <div class="app-tabs-nav" id="appTabsNav">
     <button class="app-tab-btn active" data-tab="visited-locations" title="Open Adventure Challenge" data-tooltip="Open Adventure Challenge">🎮 Adventure Challenge</button>
     <button class="app-tab-btn" data-tab="nature-challenge" title="Track nature species sightings and challenges" data-tooltip="Track nature species sightings and challenges">🌿 Nature Challenge</button>
@@ -23905,102 +23863,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     }, true);
   }
 
-  function wireSignedOutModeLineButton() {
-    const btn = getCleanButton('signedOutModeLineBtn');
-    if (!btn || btn._authWired) return;
-    btn._authWired = true;
-
-    btn.addEventListener('click', async function handleSignedOutLineSignIn(e) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      if (isUsableAuthFn(window.realSignIn)) {
-        try { await window.realSignIn(); } catch (err) { showAuthError(err); }
-        return;
-      }
-      if (isUsableAuthFn(window.signIn)) {
-        try { await window.signIn(); } catch (err) { showAuthError(err); }
-        return;
-      }
-      showAuthError(new Error('Authentication is still initializing. Please wait a moment and try again.'));
-    }, true);
-  }
-
-  function updateSignedOutModeLineTopOffset() {
-    const modeLine = document.getElementById('signedOutModeLine');
-    if (!modeLine) return;
-
-    if (!window.matchMedia('(max-width: 760px)').matches) {
-      modeLine.style.removeProperty('--signed-out-mode-line-top');
-      return;
-    }
-
-    const topGap = 6;
-    const safeTop = Number.parseFloat(String(window.visualViewport?.offsetTop || 0)) || 0;
-
-    function getPinnedBottom(selector) {
-      const el = document.querySelector(selector);
-      if (!el) return 0;
-      const styles = window.getComputedStyle(el);
-      const pos = styles.position;
-      if (pos !== 'fixed' && pos !== 'sticky') return 0;
-
-      const rect = el.getBoundingClientRect();
-      if (!Number.isFinite(rect.top) || !Number.isFinite(rect.bottom)) return 0;
-      if (rect.bottom <= 0) return 0;
-
-      if (pos === 'fixed') {
-        return Math.max(0, rect.bottom);
-      }
-
-      const stickyTop = Number.parseFloat(styles.top || '0') || 0;
-      const isPinned = rect.top <= stickyTop + 1;
-      return isPinned ? Math.max(0, rect.bottom) : 0;
-    }
-
-    const pinnedBottom = Math.max(getPinnedBottom('.app-header'), getPinnedBottom('.app-tabs-nav'));
-    const offset = Math.max(safeTop, pinnedBottom + topGap);
-    modeLine.style.setProperty('--signed-out-mode-line-top', `${offset || topGap}px`);
-  }
-
-  function updateSignedOutModeLineStickyState() {
-    const modeLine = document.getElementById('signedOutModeLine');
-    if (!modeLine || modeLine.hidden || !window.matchMedia('(max-width: 760px)').matches) {
-      if (modeLine) modeLine.classList.remove('is-sticky-mobile');
-      return;
-    }
-
-    const styles = window.getComputedStyle(modeLine);
-    const stickyTop = Number.parseFloat(styles.top || '0') || 0;
-    const rect = modeLine.getBoundingClientRect();
-    const scrollY = Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0);
-    const isPinned = rect.top <= stickyTop + 1 && scrollY > 2;
-    modeLine.classList.toggle('is-sticky-mobile', isPinned);
-  }
-
-  let signedOutModeLineStickyRaf = 0;
-  function requestSignedOutModeLineStickyUpdate() {
-    if (signedOutModeLineStickyRaf) return;
-    signedOutModeLineStickyRaf = window.requestAnimationFrame(() => {
-      signedOutModeLineStickyRaf = 0;
-      updateSignedOutModeLineTopOffset();
-      updateSignedOutModeLineStickyState();
-    });
-  }
-
-  function syncSignedOutModeLineAuthState(account) {
-    const modeLine = document.getElementById('signedOutModeLine');
+  function syncSignInRequiredBannerAuthState(account) {
     const signInRequiredBanner = document.getElementById('signInRequiredBanner');
-    const isSignedIn = Boolean(account);
-    if (signInRequiredBanner) {
-      signInRequiredBanner.hidden = isSignedIn;
-    }
-    if (!modeLine) return;
-    modeLine.hidden = isSignedIn;
-    if (modeLine.hidden) {
-      modeLine.classList.remove('is-sticky-mobile');
-      return;
-    }
-    requestSignedOutModeLineStickyUpdate();
+    if (signInRequiredBanner) signInRequiredBanner.hidden = Boolean(account);
   }
 
   function updateAuthUI(account) {
@@ -24011,7 +23876,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     if (signIn)  signIn.style.display  = account ? 'none' : '';
     if (signIn)  signIn.classList.toggle('is-needs-signin', !account);
     if (signOut) signOut.style.display = account ? ''     : 'none';
-    syncSignedOutModeLineAuthState(account);
+    syncSignInRequiredBannerAuthState(account);
     if (typeof window.updateConnectionStatus === 'function') window.updateConnectionStatus(!!account);
   }
 
@@ -24043,19 +23908,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   // Wire once; getCleanButton handles late rendering safely.
   wireSignInButton();
   wireSignOutButton();
-  wireSignedOutModeLineButton();
 
   const initialAccount = window.activeAccount || window.msalInstance?.getActiveAccount?.() || null;
   updateAuthUI(initialAccount);
-
-  if (!window.__signedOutModeLineStickyListenersBound) {
-    window.addEventListener('scroll', requestSignedOutModeLineStickyUpdate, { passive: true });
-    window.addEventListener('resize', requestSignedOutModeLineStickyUpdate);
-    window.addEventListener('orientationchange', requestSignedOutModeLineStickyUpdate);
-    window.__signedOutModeLineStickyListenersBound = true;
-  }
-
-  requestSignedOutModeLineStickyUpdate();
 })();
 </script>
 </body>
