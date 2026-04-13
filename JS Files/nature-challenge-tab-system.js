@@ -7478,26 +7478,27 @@
     const activePaneKey = isConfigDrivenSubTab(state.activeSubTab) ? 'birds' : state.activeSubTab;
 
     getNatureSubTabButtons(root).forEach((button) => {
-      const key = button.getAttribute('data-nature-subtab');
-      const isActive = key === state.activeSubTab;
-      const isLoading = isNatureSubTabLoading(key);
-      button.classList.toggle('active', isActive);
-      button.classList.toggle('is-loading', isLoading);
-      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
-      button.setAttribute('tabindex', isActive ? '0' : '-1');
-      button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    const key = button.getAttribute('data-nature-subtab');
+    const isActive = key === state.activeSubTab;
+    const isLoading = isNatureSubTabLoading(key);
+    button.classList.toggle('active', isActive);
+    button.classList.toggle('is-loading', isLoading);
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    button.setAttribute('tabindex', isActive ? '0' : '-1');
+    button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
     });
 
     root.querySelectorAll('[data-nature-pane]').forEach((pane) => {
-      const key = pane.getAttribute('data-nature-pane');
-      const isActive = key === activePaneKey;
-      pane.classList.toggle('is-active', isActive);
-      pane.hidden = !isActive;
-      pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    const key = pane.getAttribute('data-nature-pane');
+    const isActive = key === activePaneKey;
+    pane.classList.toggle('is-active', isActive);
+    pane.hidden = !isActive;
+    pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
     });
 
     updateNatureChallengeTitle(root);
     applyActiveCategoryUiLabels(root);
+    syncBirdOverviewJumpLinksVisibility(root);
 
     syncNatureSubTabDock(root);
   }
@@ -7516,12 +7517,22 @@
     if (!root) return;
 
     root.querySelectorAll('[data-birds-view]').forEach((viewPane) => {
-      const viewKey = viewPane.getAttribute('data-birds-view');
-      const isActive = viewKey === state.activeBirdView;
-      viewPane.classList.toggle('is-active', isActive);
-      viewPane.hidden = !isActive;
-      viewPane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    const viewKey = viewPane.getAttribute('data-birds-view');
+    const isActive = viewKey === state.activeBirdView;
+    viewPane.classList.toggle('is-active', isActive);
+    viewPane.hidden = !isActive;
+    viewPane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
     });
+  }
+
+  function syncBirdOverviewJumpLinksVisibility(root) {
+    if (!root) return;
+    const jumpLinks = root.querySelector('[data-birds-jump-links]');
+    if (!jumpLinks) return;
+    const show = state.activeSubTab === 'birds' && state.activeBirdView === 'overview';
+    jumpLinks.hidden = !show;
+    jumpLinks.setAttribute('aria-hidden', show ? 'false' : 'true');
+    jumpLinks.style.display = show ? '' : 'none';
   }
 
   function ensureNatureButtonsResponsive(root) {
@@ -7610,6 +7621,7 @@
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     saveBirdUiPrefs();
     syncBirdViews(root);
+    syncBirdOverviewJumpLinksVisibility(root);
     const exploreButton = document.getElementById('birdsExploreBtn');
     const logButton = document.getElementById('birdsOpenLogBtn');
     if (exploreButton) exploreButton.setAttribute('aria-current', state.activeBirdView === 'explorer' ? 'page' : 'false');
@@ -7617,8 +7629,8 @@
     if (state.activeBirdView === 'overview') applyOverviewDensity(root);
     if (state.activeBirdView === 'explorer') renderBirdExplorerList();
     if (state.activeBirdView === 'log') {
-      const stats = state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats();
-      renderBirdLogView(stats);
+    const stats = state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats();
+    renderBirdLogView(stats);
     }
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();

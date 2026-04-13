@@ -26,6 +26,63 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(birdsDiagnosticsRow).toContainText('Sightings/User State');
   });
 
+  test('birds jump bar renders with expected section buttons', async ({ page }) => {
+    const jumpBar = page.locator('#natureChallengeRoot [data-birds-jump-links]');
+    if (await jumpBar.count()) {
+      await expect(jumpBar).toBeVisible();
+      await expect(jumpBar.locator('[data-birds-overview-jump="categories"]')).toHaveCount(1);
+      await expect(jumpBar.locator('[data-birds-overview-jump="challenges-badges"]')).toHaveCount(1);
+      await expect(jumpBar.locator('[data-birds-overview-jump="quests"]')).toHaveCount(1);
+      await expect(jumpBar.locator('[data-birds-overview-jump="bingo"]')).toHaveCount(1);
+      await expect(jumpBar.locator('[data-birds-overview-jump="diagnostics"]')).toHaveCount(1);
+      return;
+    }
+
+    await expect(jumpBar).toHaveCount(0);
+    const commandBar = page.locator('#birdsOverviewCommandInput').locator('xpath=ancestor::div[contains(@class, "nature-overview-command-row")]');
+    await expect(commandBar.locator('[data-birds-overview-jump="challenges-badges"]')).toHaveCount(1);
+    await expect(commandBar.locator('[data-birds-overview-jump="quests"]')).toHaveCount(1);
+    await expect(commandBar.locator('[data-birds-overview-jump="bingo"]')).toHaveCount(1);
+  });
+
+  test('birds jump bar hides outside overview and returns on overview', async ({ page }) => {
+    const jumpBar = page.locator('#natureChallengeRoot [data-birds-jump-links]');
+    const hasJumpBar = (await jumpBar.count()) > 0;
+    if (hasJumpBar) {
+      await expect(jumpBar).toHaveAttribute('aria-hidden', 'false');
+    } else {
+      await expect(jumpBar).toHaveCount(0);
+    }
+
+    await page.locator('#birdsOpenLogBtn').click();
+    await expect(page.locator('.nature-birds-view[data-birds-view="log"]')).toBeVisible();
+    if (hasJumpBar) {
+      await expect(jumpBar).toHaveAttribute('hidden', '');
+      await expect(jumpBar).toHaveAttribute('aria-hidden', 'true');
+    }
+
+    await page.locator('#birdsLogBackBtn').click();
+    await expect(page.locator('.nature-birds-view[data-birds-view="overview"]')).toBeVisible();
+    if (hasJumpBar) {
+      await expect(jumpBar).not.toHaveAttribute('hidden', '');
+      await expect(jumpBar).toHaveAttribute('aria-hidden', 'false');
+    }
+
+    await page.locator('#birdsExploreBtn').click();
+    await expect(page.locator('.nature-birds-view[data-birds-view="explorer"]')).toBeVisible();
+    if (hasJumpBar) {
+      await expect(jumpBar).toHaveAttribute('hidden', '');
+      await expect(jumpBar).toHaveAttribute('aria-hidden', 'true');
+    }
+
+    await page.locator('#birdsExplorerBackBtn').click();
+    await expect(page.locator('.nature-birds-view[data-birds-view="overview"]')).toBeVisible();
+    if (hasJumpBar) {
+      await expect(jumpBar).not.toHaveAttribute('hidden', '');
+      await expect(jumpBar).toHaveAttribute('aria-hidden', 'false');
+    }
+  });
+
 
   test('mammals diagnostics row contains stable labels', async ({ page }) => {
     await page.locator('#appSubTabsSlot [data-nature-subtab="mammals"]').click();
@@ -60,4 +117,3 @@ test.describe('Nature config-driven subtabs smoke', () => {
     });
   });
 });
-

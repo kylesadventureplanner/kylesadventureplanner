@@ -46,6 +46,18 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     await expect(page.locator('#visitedSubtabStatus-outdoors .visited-subtab-status-health')).toContainText(/Outdoors data:/i);
   });
 
+  test('adventure achievement sections keep sticky section-header style hook', async ({ page }) => {
+    const stickyRulePresent = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('style')).some((style) => {
+        const text = String(style.textContent || '');
+        return text.includes('#visitedLocationsRoot .adventure-achv-section > .card-header')
+          && text.includes('position: sticky')
+          && text.includes('top: 82px');
+      });
+    });
+    expect(stickyRulePresent).toBe(true);
+  });
+
   test('jump links hide while Outdoors explorer view is open', async ({ page }) => {
     const jumpLinks = page.locator('#visitedLocationsRoot .visited-jump-links');
     await expect(jumpLinks).toHaveAttribute('aria-hidden', 'false');
@@ -95,4 +107,3 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     });
   });
 });
-
