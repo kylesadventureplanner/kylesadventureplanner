@@ -2,6 +2,7 @@ const { test, expect } = require('./reliability-test');
 
 const CITY_VIEWER_TEST_KEY = 'city_test_payload';
 const CITY_VIEWER_PATH = `/HTML%20Files/city-viewer-window.html?dataKey=${CITY_VIEWER_TEST_KEY}&dataMode=curated-only`;
+const CITY_VIEWER_PREFILTER_PATH = `${CITY_VIEWER_PATH}&prefilterTag=nature&prefilterLabel=Outdoors&sourceSubtab=outdoors`;
 
 const TEST_LOCATIONS = [
   {
@@ -152,6 +153,23 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await expect(chips).toContainText('Name: falls');
   });
 
+  test('Adventure prefilter is visible and can be cleared to show everything', async ({ page }) => {
+    await page.goto(CITY_VIEWER_PREFILTER_PATH, { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#cityPrefilterNotice')).toContainText('Filtered from Adventure subtab: Outdoors');
+
+    await page.locator('.city-card').first().click();
+    await expect(page.locator('#locationsPage')).toBeVisible();
+    await expect(page.locator('#locActiveFilters')).toContainText('Adventure subtab: Outdoors');
+    await expect(page.locator('#locResultsCount')).toContainText('2 locations');
+
+    await page.locator('#locActiveFilters .loc-active-filter-chip.is-prefilter button').evaluate((node) => node.click());
+    await expect(page.locator('#locActiveFilters .loc-active-filter-chip.is-prefilter')).toHaveCount(0);
+    await expect(page.locator('#locResultsCount')).toContainText('4 locations');
+
+    await page.getByRole('button', { name: '← Back to Cities' }).click();
+    await expect(page.locator('#cityPrefilterNotice')).toBeHidden();
+  });
+
   test('empty state reset action restores results after a no-match filter', async ({ page }) => {
     await openTestCity(page);
 
@@ -250,6 +268,50 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
 
     await expect(page.locator('#locDayPlanSummary [data-route-confidence]')).toContainText('Route confidence: Risky');
     await expect(page.locator('#locRouteQuality [data-route-feasibility-status]')).toContainText('Risky');
+  });
+
+  test('bulk actions can apply tags, notes, and visited state to selected locations', async ({ page }) => {
+    await openTestCity(page);
+
+    await page.getByRole('button', { name: 'Select Visible' }).click();
+    await expect(page.locator('#locShortlistCount')).toContainText('4 selected');
+
+    await page.locator('#locBulkActionSelect').selectOption('add-tags');
+    await page.locator('#locBulkActionValue').fill('featured, weekend');
+    await page.getByRole('button', { name: 'Apply to Selected' }).click();
+    await expect(page.locator('.loc-card').first().locator('.loc-tag-pill.is-user-large').filter({ hasText: 'featured' })).toBeVisible();
+
+    await page.locator('#locBulkActionSelect').selectOption('add-note');
+    await page.locator('#locBulkActionValue').fill('Bring water and snacks.');
+    await page.getByRole('button', { name: 'Apply to Selected' }).click();
+    await expect(page.locator('.loc-card').first().locator('.loc-note-block')).toContainText('Bring water and snacks.');
+
+    await page.locator('#locBulkActionSelect').selectOption('mark-visited');
+    await page.getByRole('button', { name: 'Apply to Selected' }).click();
+    await expect(page.locator('.loc-card').first().locator('.loc-visited-chip')).toContainText('Visited');
+  });
+
+  test('per-card quick actions support copy address utility', async ({ page }) => {
+    await seedCityViewer(page);
+    await openTestCity(page);
+
+    await page.evaluate(() => {
+      window.__copiedText = '';
+      const original = window.copyTextToClipboard;
+      window.copyTextToClipboard = async (text, successMessage) => {
+        window.__copiedText = String(text || '');
+        if (typeof original === 'function') return original(text, successMessage);
+      };
+    });
+
+    const firstCard = page.locator('.loc-card').first();
+    await firstCard.locator('.loc-quick-actions summary').click();
+    await expect(firstCard.locator('.loc-quick-actions-menu button', { hasText: 'Copy address' })).toBeVisible();
+    const locId = await firstCard.getAttribute('data-loc-id');
+    await page.evaluate((id) => {
+      window.runQuickActionByEncodedId(encodeURIComponent(String(id || '')), 'copy-address');
+    }, locId);
+    await expect.poll(async () => page.evaluate(() => window.__copiedText)).toContain('Testville');
   });
 });
 

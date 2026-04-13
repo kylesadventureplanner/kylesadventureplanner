@@ -147,7 +147,12 @@
     description: ['description', 'notes', 'summary', 'details'],
     address: ['address', 'street', 'location address'],
     hours: ['hours', 'open hours', 'business hours'],
-    drive: ['drive time', 'distance', 'travel time']
+    drive: ['drive time', 'distance', 'travel time'],
+    website: ['website', 'url', 'site', 'homepage'],
+    phone: ['phone', 'phone number', 'telephone'],
+    rating: ['google rating', 'rating'],
+    cost: ['cost', 'price'],
+    googleUrl: ['google url', 'maps url', 'google maps', 'google maps url']
   };
   const ADVENTURE_SUBTAB_EXPLORER_CONFIG = {
     outdoors: {
@@ -1466,6 +1471,13 @@
     const explorerState = getExplorerState(subtabKey);
     const nextView = String(view || 'overview').trim();
     explorerState.view = nextView || 'overview';
+    const jumpLinks = root ? root.querySelector('.visited-jump-links') : null;
+    if (jumpLinks) {
+      const hideJumpLinks = explorerState.view === 'city-explorer';
+      jumpLinks.hidden = hideJumpLinks;
+      jumpLinks.setAttribute('aria-hidden', hideJumpLinks ? 'true' : 'false');
+      jumpLinks.style.display = hideJumpLinks ? 'none' : '';
+    }
     pane.querySelectorAll('[data-visited-subtab-view]').forEach((node) => {
       const nodeView = node.getAttribute('data-visited-subtab-view');
       const show = nodeView === explorerState.view;
@@ -1549,6 +1561,11 @@
       const address = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.address);
       const hours = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.hours);
       const drive = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.drive);
+      const website = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.website);
+      const phone = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.phone);
+      const rating = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.rating);
+      const cost = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.cost);
+      const googleUrl = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.googleUrl);
       const tags = String(tagsRaw || '')
         .split(/[;,]/)
         .map((tag) => tag.trim())
@@ -1566,6 +1583,11 @@
         address,
         hours,
         driveTime: drive,
+        website,
+        phone,
+        rating,
+        cost,
+        googleUrl,
         sourceLabel: `${source.workbook} / ${source.table}`
       };
     }).filter((item) => norm(item.title));
@@ -1825,26 +1847,55 @@
     return [
       `<div class="visited-explorer-details-row"><strong>Location Name:</strong> ${escapeHtml(item.title || 'Unknown')}</div>`,
       `<div class="visited-explorer-details-row"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Google Rating:</strong> ${escapeHtml(item.rating || 'Unknown')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Cost:</strong> ${escapeHtml(item.cost || 'Unknown')}</div>`,
       `<div class="visited-explorer-details-row"><strong>Tags:</strong> ${escapeHtml((item.tags || []).join(', ') || 'No tags')}</div>`,
       `<div class="visited-explorer-details-row"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>`,
       `<div class="visited-explorer-details-row"><strong>Description:</strong> ${escapeHtml(item.description || 'No description yet.')}</div>`,
       `<div class="visited-explorer-details-row"><strong>Hours:</strong> ${escapeHtml(item.hours || 'Unknown')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Phone:</strong> ${escapeHtml(item.phone || 'Unknown')}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Website:</strong> ${item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" rel="noopener">${escapeHtml(item.website)}</a>` : 'Unknown'}</div>`,
+      `<div class="visited-explorer-details-row"><strong>Google URL:</strong> ${item.googleUrl ? `<a href="${escapeHtml(item.googleUrl)}" target="_blank" rel="noopener">Open in Google Maps</a>` : 'Unknown'}</div>`,
       `<div class="visited-explorer-details-row"><strong>Source:</strong> ${escapeHtml(item.sourceLabel || 'Unknown')}</div>`
     ].join('');
   }
 
-  function openExplorerDetailsModal(subtabKey, itemId) {
-    const modal = document.getElementById('visitedExplorerDetailsModal');
-    const backdrop = document.getElementById('visitedExplorerDetailsBackdrop');
-    const body = document.getElementById('visitedExplorerDetailsBody');
-    const title = document.getElementById('visitedExplorerDetailsTitle');
-    if (!modal || !backdrop || !body || !title) return;
+  function ensureExplorerDetailsView(root, subtabKey) {
+    const pane = root ? root.querySelector(`#visitedProgressPane-${subtabKey}`) : null;
+    if (!pane) return null;
+    let view = pane.querySelector('[data-visited-subtab-view="explorer-details"]');
+    if (!view) {
+      view = document.createElement('div');
+      view.className = 'visited-overview-view';
+      view.setAttribute('data-visited-subtab-view', 'explorer-details');
+      view.hidden = true;
+      view.setAttribute('aria-hidden', 'true');
+      view.innerHTML = `
+        <div class="card" style="margin-top: 10px;">
+          <div class="visited-view-header-row">
+            <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-details-${escapeHtml(subtabKey)}" title="Back to Explore" data-tooltip="Back to Explore">← Back to Explore</button>
+            <div class="visited-view-header-copy">
+              <div class="card-title" id="visitedExplorerDetailsPageTitle-${escapeHtml(subtabKey)}">Location Details</div>
+              <div class="card-subtitle">Full location details inside Adventure Challenge Explore.</div>
+            </div>
+          </div>
+          <div id="visitedExplorerDetailsPageBody-${escapeHtml(subtabKey)}" class="visited-explorer-details-body"></div>
+        </div>
+      `;
+      pane.appendChild(view);
+    }
+    return view;
+  }
 
+  function openExplorerDetailsPage(root, subtabKey, itemId) {
     const item = getExplorerItemById(subtabKey, itemId);
-    title.textContent = item && item.title ? item.title : 'Location Details';
-    body.innerHTML = buildExplorerDetailsHtml(item);
-    modal.hidden = false;
-    backdrop.hidden = false;
+    const view = ensureExplorerDetailsView(root, subtabKey);
+    if (!view) return;
+    const title = document.getElementById(`visitedExplorerDetailsPageTitle-${subtabKey}`) || view.querySelector('.card-title');
+    const body = document.getElementById(`visitedExplorerDetailsPageBody-${subtabKey}`) || view.querySelector('.visited-explorer-details-body');
+    if (title) title.textContent = item && item.title ? item.title : 'Location Details';
+    if (body) body.innerHTML = buildExplorerDetailsHtml(item);
+    setExplorerView(root, subtabKey, 'explorer-details');
   }
 
   function closeExplorerDetailsModal() {
@@ -3730,6 +3781,12 @@
               return;
             }
 
+            if (action.startsWith('close-explorer-details-')) {
+              const subtabKey = action.replace('close-explorer-details-', '');
+              setExplorerView(root, subtabKey, 'explorer');
+              return;
+            }
+
           }
 
           const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
@@ -3751,7 +3808,7 @@
             const subtabKey = String(explorerDetailsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerDetailsBtn.getAttribute('data-visited-explorer-details') || '').trim();
             if (subtabKey && itemId) {
-              openExplorerDetailsModal(subtabKey, itemId);
+              openExplorerDetailsPage(root, subtabKey, itemId);
             }
             return;
           }

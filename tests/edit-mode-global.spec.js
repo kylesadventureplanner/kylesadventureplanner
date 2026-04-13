@@ -2,10 +2,9 @@
  * edit-mode-global.spec.js
  * Tests:
  *  1. Global header "Edit Mode" button is present and wired to openEditModeWindow.
- *  2. edit-mode-enhanced.html loads with all 7 target-table options populated in
- *     the action, automation-default, and automation-multi selectors.
- *  3. "Select All Tables" helper selects all multi options.
- *  4. "Clear Multi-Selection" helper deselects all.
+ *  2. edit-mode-enhanced.html loads with all 7 target-table options populated for
+ *     action target (places tab) and automation-default target (automation tab).
+ *  3. target controls are scoped to their relevant tab.
  */
 const { test, expect } = require('./reliability-test');
 
@@ -56,35 +55,22 @@ test.describe('Edit Mode – target-table selectors', () => {
   });
 
   test('automation default select has all 7 tables', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
     const select = page.locator('#automationTargetSelect');
     await expect(select).toBeVisible();
     const count = await select.locator('option').count();
     expect(count).toBe(7);
   });
 
-  test('automation multi select has all 7 tables', async ({ page }) => {
-    const select = page.locator('#automationTargetMulti');
-    await expect(select).toBeVisible();
-    const count = await select.locator('option').count();
-    expect(count).toBe(7);
-  });
+  test('tab-specific target controls show only relevant section', async ({ page }) => {
+    await expect(page.locator('#actionTargetSelect')).toBeVisible();
+    await expect(page.locator('#automationTargetSelect')).toBeHidden();
+    await expect(page.locator('#targetSelectionStatus')).toBeVisible();
 
-  test('Select All Tables selects every option in multi select', async ({ page }) => {
-    // Clear first
-    await page.click('button:has-text("Clear Multi-Selection")');
-    const noneSelected = await page.evaluate(() => {
-      const sel = document.getElementById('automationTargetMulti');
-      return Array.from(sel.selectedOptions).length;
-    });
-    expect(noneSelected).toBe(0);
-
-    // Select all
-    await page.click('button:has-text("Select All Tables")');
-    const allSelected = await page.evaluate(() => {
-      const sel = document.getElementById('automationTargetMulti');
-      return Array.from(sel.selectedOptions).length;
-    });
-    expect(allSelected).toBe(7);
+    await page.click('.tab-btn[data-tab="automation"]');
+    await expect(page.locator('#automationTargetSelect')).toBeVisible();
+    await expect(page.locator('#actionTargetSelect')).toBeHidden();
+    await expect(page.locator('#targetSelectionStatus')).toHaveAttribute('hidden', '');
   });
 
   test('status chips update when target changes', async ({ page }) => {

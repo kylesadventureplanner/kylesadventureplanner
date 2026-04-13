@@ -5,12 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/adventure-achievements-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/adventure-achievements-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/city-viewer-window.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/edit-mode-enhanced.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-achievements-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-achievements-smoke.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/adventure-inline-tools-roundtrip.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-inline-tools-roundtrip.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/city-explorer-phase1.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/city-explorer-phase1.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/edit-mode-global.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/edit-mode-global.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -94,7 +100,7 @@
       <workItem from="1775308318086" duration="90230000" />
       <workItem from="1775520086833" duration="195926000" />
       <workItem from="1775961963296" duration="82000" />
-      <workItem from="1775962146733" duration="27436000" />
+      <workItem from="1775962146733" duration="31741000" />
     </task>
     <servers />
   </component>

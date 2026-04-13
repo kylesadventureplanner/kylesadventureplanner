@@ -383,27 +383,27 @@
       <button class="tab-btn" data-tab="history">📅 History</button>
     </div>
 
-    <div class="card">
-      <div class="card-title">🎯 Edit Mode Target Tables</div>
-      <div class="input-group">
+    <div class="card" id="editModeTargetCard">
+      <div class="card-title" id="editModeTargetCardTitle">🎯 Edit Mode Target Tables</div>
+      <div class="input-group" data-target-visible-tab="places">
         <label for="actionTargetSelect">Add / Bulk Add target table</label>
         <select id="actionTargetSelect"></select>
         <div class="help-text">Used by: Add Single Place, Bulk Add Places, Bulk Add Chain Locations.</div>
       </div>
-      <div class="input-group">
+      <div class="input-group" data-target-visible-tab="automation">
         <label for="automationTargetSelect">Automation default target table</label>
         <select id="automationTargetSelect"></select>
       </div>
-      <div class="input-group">
+      <div class="input-group" data-target-visible-tab="legacy-hidden" hidden>
         <label for="automationTargetMulti">Automation multi-target selection (Ctrl/Cmd + click for multiple)</label>
         <select id="automationTargetMulti" multiple size="8"></select>
         <div class="help-text">Used by: Refresh Place IDs, Auto-Tag All, Populate Missing Fields Only, Update Hours Only.</div>
       </div>
-      <div class="button-group">
+      <div class="button-group" data-target-visible-tab="legacy-hidden" hidden>
         <button class="button button-secondary" type="button" onclick="selectAllAutomationTargets()">Select All Tables</button>
         <button class="button button-secondary" type="button" onclick="clearAutomationTargets()">Clear Multi-Selection</button>
       </div>
-      <div id="targetSelectionStatus" class="target-chip-grid"></div>
+      <div id="targetSelectionStatus" class="target-chip-grid" data-target-visible-tab="places"></div>
     </div>
 
     <!-- Add Places Tab -->
@@ -662,6 +662,21 @@
     /**
      * Tab switching - SIMPLIFIED VERSION
      */
+    function syncTargetCardForTab(tabName) {
+      const activeTab = String(tabName || 'places');
+      const titleEl = document.getElementById('editModeTargetCardTitle');
+      if (titleEl) {
+        titleEl.textContent = activeTab === 'automation'
+          ? '⚙️ Automation default target table'
+          : '🎯 Edit Mode Target Tables';
+      }
+      document.querySelectorAll('[data-target-visible-tab]').forEach((node) => {
+        const visibleTab = String(node.getAttribute('data-target-visible-tab') || '').trim();
+        const show = visibleTab === activeTab;
+        node.hidden = !show;
+      });
+    }
+
     function switchTab(tabName) {
       console.log(`🔄 SWITCHING TAB TO: ${tabName}`);
 
@@ -691,6 +706,8 @@
         button.classList.add('active');
         console.log(`✅ Highlighted button for: ${tabName}`);
       }
+
+      syncTargetCardForTab(tabName);
     }
 
     // Setup tab click listeners when page loads
@@ -711,6 +728,8 @@
           switchTab(tabName);
         });
       });
+
+      syncTargetCardForTab('places');
 
       console.log('✅ Tab listeners initialized successfully');
     }

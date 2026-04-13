@@ -98,6 +98,42 @@
       margin-top: 2px;
     }
 
+    .city-prefilter-notice {
+      display: none;
+      flex-basis: 100%;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .city-prefilter-notice.visible {
+      display: flex;
+    }
+
+    .city-prefilter-clear-btn {
+      border: 1px solid #93c5fd;
+      background: #ffffff;
+      color: #1d4ed8;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .city-prefilter-clear-btn:hover {
+      border-color: #60a5fa;
+      color: #1e40af;
+    }
+
     .active-sources-label {
       font-size: 12px;
       font-weight: 700;
@@ -402,6 +438,11 @@
       font-size: 11px;
       font-weight: 700;
     }
+    .loc-active-filter-chip.is-prefilter {
+      background: #fef3c7;
+      border-color: #fcd34d;
+      color: #92400e;
+    }
     .loc-active-filter-chip button {
       border: none;
       background: transparent;
@@ -411,6 +452,9 @@
       line-height: 1;
       font-weight: 700;
       padding: 0;
+    }
+    .loc-active-filter-chip.is-prefilter button {
+      color: #92400e;
     }
     .loc-active-filter-clear {
       margin-left: auto;
@@ -558,6 +602,37 @@
       font-size: 11px;
       font-weight: 600;
     }
+    .loc-tag-pill.is-user-large {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 11px;
+    }
+    .loc-visited-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      border: 1px solid #86efac;
+      color: #166534;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .loc-note-block {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      color: #78350f;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
 
     .loc-card-details {
       display: grid;
@@ -657,6 +732,7 @@
       margin-top: 14px;
       padding-top: 12px;
       border-top: 1px solid #f3f4f6;
+      flex-wrap: wrap;
     }
     .loc-action-btn {
       padding: 8px 16px;
@@ -671,6 +747,60 @@
       text-decoration: none;
     }
     .loc-action-btn:hover { border-color: #667eea; color: #667eea; background: #f0f4ff; }
+    .loc-quick-actions {
+      margin-left: auto;
+      position: relative;
+    }
+    .loc-quick-actions > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      background: #f8fafc;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      user-select: none;
+    }
+    .loc-quick-actions > summary::-webkit-details-marker {
+      display: none;
+    }
+    .loc-quick-actions[open] > summary {
+      border-color: #93c5fd;
+      color: #1e40af;
+      background: #eff6ff;
+    }
+    .loc-quick-actions-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 5;
+      width: 220px;
+      display: grid;
+      gap: 6px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #dbeafe;
+      background: #ffffff;
+      box-shadow: 0 10px 20px rgba(15, 23, 42, 0.15);
+    }
+    .loc-quick-actions-menu button {
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      color: #1f2937;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 9px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .loc-quick-actions-menu button:hover {
+      border-color: #93c5fd;
+      background: #eff6ff;
+      color: #1e40af;
+    }
 
     #locationDetailPage {
       display: none;
@@ -1009,6 +1139,23 @@
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
+    }
+    .loc-bulk-action-select,
+    .loc-bulk-action-input {
+      min-height: 34px;
+      border-radius: 8px;
+      border: 1px solid #bbf7d0;
+      background: #ffffff;
+      color: #14532d;
+      font-size: 12px;
+      padding: 6px 10px;
+    }
+    .loc-bulk-action-select {
+      min-width: 210px;
+    }
+    .loc-bulk-action-input {
+      min-width: 220px;
+      flex: 1;
     }
 
     .loc-shortlist-tray {
@@ -1380,6 +1527,7 @@
       <button class="sort-btn" id="sortByDistanceBtn" onclick="sortBy('distance')" title="Sort by drive time (requires location permission)">🚗 Sort by Drive Time</button>
       <button class="sort-btn" id="getLocationBtn" onclick="enableDriveTimes()" title="Get your location to show drive times">📍 Show My Drive Times</button>
       <div class="active-sources-row" id="activeSourcesRow" aria-live="polite"></div>
+      <div id="cityPrefilterNotice" class="city-prefilter-notice" aria-live="polite"></div>
     </div>
 
     <div id="cityGrid" class="city-grid">
@@ -1500,6 +1648,17 @@
           <button class="loc-mini-btn" onclick="bulkAddTopRated(5)" title="Add top 5 rated">Top 5 ⭐</button>
           <button class="loc-mini-btn" onclick="bulkAddTopRated(10)" title="Add top 10 rated">Top 10 ⭐</button>
           <button class="loc-mini-btn" onclick="bulkFilterOpenNow()" title="Show only open now">🟢 Open Now</button>
+          <button class="loc-mini-btn" onclick="selectAllVisibleLocations()" title="Select all currently visible cards">Select Visible</button>
+          <select id="locBulkActionSelect" class="loc-bulk-action-select" onchange="syncBulkActionInputHint()" aria-label="Bulk action for selected locations">
+            <option value="add-tags">Add tags to selected</option>
+            <option value="remove-tags">Remove tags from selected</option>
+            <option value="add-note">Add note to selected</option>
+            <option value="remove-notes">Remove notes from selected</option>
+            <option value="mark-visited">Mark selected as visited</option>
+            <option value="add-visit">Add a visit to selected</option>
+          </select>
+          <input id="locBulkActionValue" class="loc-bulk-action-input" type="text" placeholder="Tags or note text..." aria-label="Bulk action value">
+          <button class="loc-mini-btn" onclick="applyBulkSelectionAction()" title="Apply selected bulk action">Apply to Selected</button>
           <button class="loc-mini-btn" onclick="resetLocFilters()" title="Clear all filters">Reset Filters</button>
           <button class="loc-mini-btn" onclick="clearShortlist()" title="Clear shortlist">Clear Selected</button>
         </div>
@@ -1600,6 +1759,15 @@
       'entertainment':         ['Entertainment_Locations.xlsx / Festivals',
                                 'Entertainment_Locations.xlsx / General_Entertainment'],
       'general_entertainment': ['Entertainment_Locations.xlsx / General_Entertainment'],
+    };
+    const SOURCE_SUBTAB_LABELS = {
+      outdoors: 'Outdoors',
+      entertainment: 'Entertainment',
+      'food-drink': 'Food & Drink',
+      retail: 'Retail',
+      'wildlife-animals': 'Wildlife & Animals',
+      'regional-festivals': 'Regional Festivals',
+      'bike-trails': 'Bike Trails'
     };
     let cityViewerDataMeta = {
       configuredSources: [],
@@ -1777,6 +1945,8 @@
         document.body.classList.add('embedded-viewer');
       }
       resolvePrefilterFromUrl();
+      syncBulkActionInputHint();
+      renderPrefilterNotice();
       // Load data from sessionStorage or parent window
       if (!loadCityViewerData()) {
         const grid = document.getElementById('cityGrid');
@@ -1842,6 +2012,7 @@
 
     function renderCities() {
       const grid = document.getElementById('cityGrid');
+      renderPrefilterNotice();
 
       if (Object.keys(citiesData).length === 0) {
         grid.innerHTML = `
@@ -2008,6 +2179,7 @@
     let locMapboxMarkers = [];
     let prefilterTag = '';
     let prefilterLabel = '';
+    let prefilterSourceSubtab = '';
 
     function runDeferredCityViewerWork(task) {
       if (typeof task !== 'function') return;
@@ -2022,6 +2194,295 @@
     function cityPresetKey(cityKey) { return `cityViewer:presets:${cityKey}`; }
     function globalPresetKey() { return 'cityViewer:presets:global:v1'; }
     function cityShortlistKey(cityKey) { return `cityViewer:shortlist:${cityKey}`; }
+    function cityEditsKey(cityKey) { return `cityViewer:edits:${cityKey}`; }
+
+    function normalizeTagToken(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function parseTagTokens(text) {
+      return Array.from(new Set(String(text || '')
+        .split(/[,\n]/)
+        .map(normalizeTagToken)
+        .filter(Boolean)));
+    }
+
+    function getCityLocationEdits() {
+      if (!currentCityKey) return {};
+      try {
+        const parsed = JSON.parse(window.localStorage.getItem(cityEditsKey(currentCityKey)) || '{}');
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function setCityLocationEdits(edits) {
+      if (!currentCityKey) return;
+      const next = edits && typeof edits === 'object' ? edits : {};
+      window.localStorage.setItem(cityEditsKey(currentCityKey), JSON.stringify(next));
+    }
+
+    function getLocationEditState(locId) {
+      const edits = getCityLocationEdits();
+      const raw = edits[String(locId || '')] || {};
+      return {
+        addedTags: Array.isArray(raw.addedTags) ? raw.addedTags.map(normalizeTagToken).filter(Boolean) : [],
+        removedTags: Array.isArray(raw.removedTags) ? raw.removedTags.map(normalizeTagToken).filter(Boolean) : [],
+        note: String(raw.note || '').trim(),
+        visited: Boolean(raw.visited),
+        visitCount: Math.max(0, parseInt(raw.visitCount, 10) || 0)
+      };
+    }
+
+    function updateLocationEditState(locId, updater) {
+      if (!currentCityKey || typeof updater !== 'function') return;
+      const key = String(locId || '').trim();
+      if (!key) return;
+      const edits = getCityLocationEdits();
+      const draft = getLocationEditState(key);
+      updater(draft);
+      draft.addedTags = Array.from(new Set((draft.addedTags || []).map(normalizeTagToken).filter(Boolean)));
+      draft.removedTags = Array.from(new Set((draft.removedTags || []).map(normalizeTagToken).filter(Boolean)));
+      draft.note = String(draft.note || '').trim();
+      draft.visited = Boolean(draft.visited);
+      draft.visitCount = Math.max(0, parseInt(draft.visitCount, 10) || 0);
+      const isEmpty = !draft.addedTags.length && !draft.removedTags.length && !draft.note && !draft.visited && !draft.visitCount;
+      if (isEmpty) delete edits[key];
+      else edits[key] = draft;
+      setCityLocationEdits(edits);
+    }
+
+    function getLocationBaseTags(loc) {
+      return String(locVal(loc, 3, 'tags') || '')
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(Boolean);
+    }
+
+    function getLocationDerivedTags(loc) {
+      const locId = getLocId(loc);
+      const edit = getLocationEditState(locId);
+      const base = getLocationBaseTags(loc);
+      const map = new Map();
+      base.forEach((tag) => {
+        const key = normalizeTagToken(tag);
+        if (!key) return;
+        map.set(key, { text: tag, isAdded: false });
+      });
+      edit.removedTags.forEach((token) => {
+        if (map.has(token)) map.delete(token);
+      });
+      edit.addedTags.forEach((token) => {
+        if (!token) return;
+        if (!map.has(token)) map.set(token, { text: token, isAdded: true });
+      });
+      return Array.from(map.values());
+    }
+
+    function getLocationGeoText(loc) {
+      const latRaw = locVal(loc, 25, 'latitude') || locVal(loc, 26, 'lat') || loc.latitude || loc.lat;
+      const lngRaw = locVal(loc, 26, 'longitude') || locVal(loc, 27, 'lng') || loc.longitude || loc.lng;
+      const lat = parseFloat(latRaw);
+      const lng = parseFloat(lngRaw);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+      return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    }
+
+    async function copyTextToClipboard(text, successMessage) {
+      const value = String(text || '').trim();
+      if (!value) {
+        showRouteToast('Nothing to copy for this location.', true);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(value);
+        showRouteToast(successMessage || 'Copied to clipboard.', false);
+      } catch (_) {
+        window.prompt('Copy this value:', value);
+      }
+    }
+
+    const CITY_SYNC_WORKBOOK_PREFIXES = [
+      'Copilot_Apps/Kyles_Adventure_Finder/',
+      'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/',
+      ''
+    ];
+
+    const CITY_SYNC_COLUMNS = {
+      placeId: ['google place id', 'googleplaceid', 'place id', 'placeid'],
+      name: ['name', 'location', 'place', 'venue'],
+      address: ['address', 'street', 'location address'],
+      tags: ['tags', 'keywords', 'category', 'categories', 'type'],
+      notes: ['notes', 'note'],
+      visited: ['visited', 'is visited'],
+      visitCount: ['visit count', 'visits', 'times visited']
+    };
+
+    function encodeGraphPath(path) {
+      return String(path || '')
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/');
+    }
+
+    function workbookPathCandidates(workbook) {
+      const clean = String(workbook || '').trim();
+      if (!clean) return [];
+      if (clean.includes('/')) return [clean];
+      const unique = new Set();
+      CITY_SYNC_WORKBOOK_PREFIXES.forEach((prefix) => unique.add(`${prefix}${clean}`));
+      return Array.from(unique);
+    }
+
+    function normalizeHeader(text) {
+      return String(text || '').trim().toLowerCase();
+    }
+
+    function resolveColumnIndexByAliases(headers, aliases) {
+      const headerList = Array.isArray(headers) ? headers : [];
+      for (const alias of (aliases || [])) {
+        const target = normalizeHeader(alias);
+        const exact = headerList.findIndex((header) => normalizeHeader(header) === target);
+        if (exact >= 0) return exact;
+        const partial = headerList.findIndex((header) => normalizeHeader(header).includes(target));
+        if (partial >= 0) return partial;
+      }
+      return -1;
+    }
+
+    function parseSourceTarget(loc) {
+      const sourceLabel = String((loc && loc.sourceLabel) || '').trim();
+      if (!sourceLabel) return null;
+      const match = sourceLabel.match(/^(.*?)\s*\/\s*(.*?)$/);
+      if (!match) return null;
+      const workbook = String(match[1] || '').trim();
+      const tableName = String(match[2] || '').trim();
+      if (!workbook || !tableName) return null;
+      return { workbook, tableName };
+    }
+
+    function getGraphAccessToken() {
+      const host = getHostWindow();
+      return String((host && host.accessToken) || window.accessToken || '').trim();
+    }
+
+    async function fetchTableHeaderRow(filePath, tableName, token) {
+      const encodedPath = encodeGraphPath(filePath);
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/headerRowRange?$select=values`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error(`Header load failed (${response.status})`);
+      const payload = await response.json().catch(() => ({}));
+      const values = Array.isArray(payload.values) && Array.isArray(payload.values[0]) ? payload.values[0] : [];
+      return values.map((value) => String(value || '').trim());
+    }
+
+    async function fetchTableRows(filePath, tableName, token) {
+      const encodedPath = encodeGraphPath(filePath);
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows?$top=5000`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) throw new Error(`Row load failed (${response.status})`);
+      const payload = await response.json().catch(() => ({}));
+      return Array.isArray(payload.value) ? payload.value : [];
+    }
+
+    function findRowIndexForLocation(rows, headers, loc) {
+      const placeIdIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.placeId);
+      const nameIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.name);
+      const addressIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.address);
+      const placeId = String(locVal(loc, 1, 'googlePlaceId') || loc.placeId || '').trim().toLowerCase();
+      const name = String(locVal(loc, 0, 'name') || loc.name || '').trim().toLowerCase();
+      const address = String(locVal(loc, 11, 'address') || loc.address || '').trim().toLowerCase();
+
+      if (placeId && placeIdIdx >= 0) {
+        const rowByPlaceId = rows.find((row) => {
+          const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
+          return String(values[placeIdIdx] || '').trim().toLowerCase() === placeId;
+        });
+        if (rowByPlaceId) return rows.indexOf(rowByPlaceId);
+      }
+
+      if (name && nameIdx >= 0) {
+        const rowByNameAddress = rows.find((row) => {
+          const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
+          const rowName = String(values[nameIdx] || '').trim().toLowerCase();
+          if (rowName !== name) return false;
+          if (!address || addressIdx < 0) return true;
+          const rowAddress = String(values[addressIdx] || '').trim().toLowerCase();
+          return rowAddress === address;
+        });
+        if (rowByNameAddress) return rows.indexOf(rowByNameAddress);
+      }
+
+      return -1;
+    }
+
+    async function patchTableRow(filePath, tableName, rowIndex, rowValues, token) {
+      const encodedPath = encodeGraphPath(filePath);
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/itemAt(index=${rowIndex})`;
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: [rowValues] })
+      });
+      if (!response.ok) throw new Error(`Row update failed (${response.status})`);
+      return true;
+    }
+
+    async function syncLocationEditsToGraph(locId) {
+      if (!currentCityKey) return false;
+      const token = getGraphAccessToken();
+      if (!token) return false;
+      const loc = findLocationById(locId);
+      if (!loc) return false;
+      const target = parseSourceTarget(loc);
+      if (!target) return false;
+      const edit = getLocationEditState(locId);
+
+      const candidates = workbookPathCandidates(target.workbook);
+      for (const filePath of candidates) {
+        try {
+          const headers = await fetchTableHeaderRow(filePath, target.tableName, token);
+          const rows = await fetchTableRows(filePath, target.tableName, token);
+          const rowIndex = findRowIndexForLocation(rows, headers, loc);
+          if (rowIndex < 0) continue;
+
+          const values = Array.isArray(rows[rowIndex]?.values?.[0]) ? rows[rowIndex].values[0].slice() : [];
+          while (values.length < headers.length) values.push('');
+
+          const tagsIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.tags);
+          const notesIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.notes);
+          const visitedIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.visited);
+          const visitCountIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.visitCount);
+
+          if (tagsIdx >= 0) values[tagsIdx] = getLocationDerivedTags(loc).map((entry) => entry.text).join(', ');
+          if (notesIdx >= 0) values[notesIdx] = edit.note || '';
+          if (visitedIdx >= 0) values[visitedIdx] = edit.visited ? 'TRUE' : 'FALSE';
+          if (visitCountIdx >= 0) values[visitCountIdx] = edit.visitCount > 0 ? String(edit.visitCount) : '';
+
+          await patchTableRow(filePath, target.tableName, rowIndex, values, token);
+          return true;
+        } catch (error) {
+          console.warn('⚠️ City Explorer Excel sync attempt failed:', error && error.message ? error.message : error);
+        }
+      }
+      return false;
+    }
 
     function getLocId(loc) {
       const placeId = String(locVal(loc, 1, 'googlePlaceId') || '').trim();
@@ -2036,10 +2497,45 @@
         const p = new URLSearchParams(window.location.search);
         prefilterTag = String(p.get('prefilterTag') || '').trim().toLowerCase();
         prefilterLabel = String(p.get('prefilterLabel') || '').trim();
+        prefilterSourceSubtab = String(p.get('sourceSubtab') || '').trim().toLowerCase();
       } catch (_) {
         prefilterTag = '';
         prefilterLabel = '';
+        prefilterSourceSubtab = '';
       }
+    }
+
+    function getPrefilterLabel() {
+      if (prefilterLabel) return prefilterLabel;
+      if (prefilterSourceSubtab && SOURCE_SUBTAB_LABELS[prefilterSourceSubtab]) return SOURCE_SUBTAB_LABELS[prefilterSourceSubtab];
+      if (prefilterTag) return prefilterTag;
+      return 'Adventure';
+    }
+
+    function renderPrefilterNotice() {
+      const notice = document.getElementById('cityPrefilterNotice');
+      if (!notice) return;
+      if (!prefilterTag) {
+        notice.classList.remove('visible');
+        notice.innerHTML = '';
+        return;
+      }
+      const label = getPrefilterLabel();
+      notice.classList.add('visible');
+      notice.innerHTML = `
+        <span>Filtered from Adventure subtab: <strong>${escHtml(label)}</strong></span>
+        <button type="button" class="city-prefilter-clear-btn" onclick="clearAdventurePrefilter()">Show all places</button>
+      `;
+    }
+
+    function clearAdventurePrefilter() {
+      prefilterTag = '';
+      prefilterLabel = '';
+      prefilterSourceSubtab = '';
+      renderPrefilterNotice();
+      renderCities();
+      if (currentCityKey) applyLocFilters();
+      else updateUrlFromState();
     }
 
     function locationMatchesPrefilter(loc) {
@@ -2211,10 +2707,7 @@
     }
 
     function getLocationTags(loc) {
-      return String(locVal(loc, 3, 'tags') || '')
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(Boolean);
+      return getLocationDerivedTags(loc).map((entry) => entry.text);
     }
 
     function getLocationCostRank(loc) {
@@ -2987,6 +3480,167 @@
       updateRouteButtonsState();
     }
 
+    function syncBulkActionInputHint() {
+      const select = document.getElementById('locBulkActionSelect');
+      const input = document.getElementById('locBulkActionValue');
+      if (!select || !input) return;
+      const action = String(select.value || '');
+      if (action === 'add-note') {
+        input.placeholder = 'Note to add to selected locations...';
+        input.disabled = false;
+      } else if (action === 'remove-notes' || action === 'mark-visited' || action === 'add-visit') {
+        input.placeholder = 'No additional text required for this action';
+        input.value = '';
+        input.disabled = true;
+      } else {
+        input.placeholder = 'Comma-separated tags (example: featured, weekend)';
+        input.disabled = false;
+      }
+    }
+
+    function applyBulkActionToIds(action, ids, valueText) {
+      const normalizedAction = String(action || '').trim();
+      const targets = Array.from(new Set((ids || []).map((id) => String(id || '').trim()).filter(Boolean)));
+      if (!targets.length) {
+        showRouteToast('Select at least one location first.', true);
+        return;
+      }
+      const tagTokens = parseTagTokens(valueText);
+      const noteText = String(valueText || '').trim();
+      if ((normalizedAction === 'add-tags' || normalizedAction === 'remove-tags') && !tagTokens.length) {
+        showRouteToast('Enter one or more tags first.', true);
+        return;
+      }
+      if (normalizedAction === 'add-note' && !noteText) {
+        showRouteToast('Enter a note first.', true);
+        return;
+      }
+
+      targets.forEach((locId) => {
+        updateLocationEditState(locId, (draft) => {
+          if (normalizedAction === 'add-tags') {
+            tagTokens.forEach((token) => {
+              if (!draft.addedTags.includes(token)) draft.addedTags.push(token);
+              draft.removedTags = draft.removedTags.filter((tag) => tag !== token);
+            });
+          } else if (normalizedAction === 'remove-tags') {
+            tagTokens.forEach((token) => {
+              if (!draft.removedTags.includes(token)) draft.removedTags.push(token);
+              draft.addedTags = draft.addedTags.filter((tag) => tag !== token);
+            });
+          } else if (normalizedAction === 'add-note') {
+            draft.note = noteText;
+          } else if (normalizedAction === 'remove-notes') {
+            draft.note = '';
+          } else if (normalizedAction === 'mark-visited') {
+            draft.visited = true;
+            if (draft.visitCount < 1) draft.visitCount = 1;
+          } else if (normalizedAction === 'add-visit') {
+            draft.visited = true;
+            draft.visitCount = Math.max(1, draft.visitCount + 1);
+          }
+        });
+      });
+
+      const label = normalizedAction.replace('-', ' ');
+      showRouteToast(`Applied ${label} to ${targets.length} location${targets.length === 1 ? '' : 's'}.`, false);
+      buildQuickTagPills(citiesData[currentCityKey]?.locations || []);
+      populateTagDatalist(citiesData[currentCityKey]?.locations || []);
+      applyLocFilters();
+      if (activeLocationDetailId) {
+        const detailLoc = findLocationById(activeLocationDetailId);
+        if (detailLoc) renderLocationDetail(detailLoc);
+      }
+      Promise.all(targets.map((locId) => syncLocationEditsToGraph(locId))).then((results) => {
+        if (results.some(Boolean)) {
+          showRouteToast('Changes synced to Excel.', false);
+        } else {
+          console.info('City Explorer edits saved locally; Excel sync unavailable for current session/rows.');
+        }
+      }).catch((error) => {
+        console.warn('⚠️ City Explorer post-edit sync failed:', error && error.message ? error.message : error);
+      });
+    }
+
+    function applyBulkSelectionAction() {
+      const select = document.getElementById('locBulkActionSelect');
+      const input = document.getElementById('locBulkActionValue');
+      const action = String(select && select.value ? select.value : 'add-tags');
+      const valueText = String(input && !input.disabled ? input.value : '');
+      const ids = Array.from(getShortlistSet());
+      applyBulkActionToIds(action, ids, valueText);
+      if (input && !input.disabled) input.value = '';
+    }
+
+    function selectAllVisibleLocations() {
+      const setObj = getShortlistSet();
+      (lastFilteredLocations || []).forEach((loc) => {
+        setObj.add(getLocId(loc));
+      });
+      setShortlistSet(setObj);
+      showRouteToast(`Selected ${lastFilteredLocations.length} visible location${lastFilteredLocations.length === 1 ? '' : 's'}.`, false);
+      updateUrlFromState();
+    }
+
+    function renderQuickActionsMenu(locId, encodedLocId) {
+      return `
+        <details class="loc-quick-actions" onclick="event.stopPropagation()">
+          <summary>⚡ Quick Actions</summary>
+          <div class="loc-quick-actions-menu" role="menu" aria-label="Quick actions">
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'add-tags')">Add tags</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'remove-tags')">Remove tags</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'add-note')">Add note</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'remove-notes')">Remove note</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'mark-visited')">Mark visited</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'add-visit')">Add visit</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'copy-address')">Copy address</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'copy-gps')">Copy GPS coordinates</button>
+            <button type="button" onclick="runQuickActionByEncodedId('${encodedLocId}', 'open-google')">Open Google URL</button>
+          </div>
+        </details>`;
+    }
+
+    function runQuickActionByEncodedId(encoded, action) {
+      const locId = decodeURIComponent(String(encoded || ''));
+      const loc = findLocationById(locId);
+      if (!loc) return;
+      const actionKey = String(action || '').trim();
+      if (actionKey === 'copy-address') {
+        copyTextToClipboard(locVal(loc, 11, 'address'), 'Address copied.');
+        return;
+      }
+      if (actionKey === 'copy-gps') {
+        copyTextToClipboard(getLocationGeoText(loc), 'GPS coordinates copied.');
+        return;
+      }
+      if (actionKey === 'open-google') {
+        const googleUrl = String(locVal(loc, 23, 'googleUrl') || '').trim();
+        if (!googleUrl) {
+          showRouteToast('No Google URL available for this location.', true);
+          return;
+        }
+        window.open(googleUrl, '_blank', 'noopener');
+        return;
+      }
+
+      let payload = '';
+      if (actionKey === 'add-tags') {
+        const response = window.prompt('Add tags (comma-separated):', '');
+        if (response === null) return;
+        payload = response;
+      } else if (actionKey === 'remove-tags') {
+        const response = window.prompt('Remove tags (comma-separated):', '');
+        if (response === null) return;
+        payload = response;
+      } else if (actionKey === 'add-note') {
+        const current = getLocationEditState(locId).note || '';
+        const response = window.prompt('Add or update note:', current);
+        if (response === null) return;
+        payload = response;
+      }
+      applyBulkActionToIds(actionKey, [locId], payload);
+    }
+
     function updateRouteButtonsState() {
       const enabled = Array.isArray(lastBuiltDayPlanRoute) && lastBuiltDayPlanRoute.length >= 2;
       const googleBtn = document.getElementById('openGoogleRouteBtn');
@@ -3063,9 +3717,12 @@
       const cost = locVal(loc, 14, 'cost');
       const description = locVal(loc, 16, 'description');
       const googleUrl = locVal(loc, 23, 'googleUrl');
-      const tags = String(tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
-      const shortlist = getShortlistSet();
+      const tagEntries = getLocationDerivedTags(loc);
+      const editState = getLocationEditState(locId);
+      const noteText = editState.note;
+      const visitCount = Math.max(0, editState.visitCount || 0);
       const encodedLocId = encodeURIComponent(locId);
+      const shortlist = getShortlistSet();
 
       const detailTitle = document.getElementById('locationDetailTitle');
       const detailSubtitle = document.getElementById('locationDetailSubtitle');
@@ -3084,7 +3741,9 @@
               ${rating ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : ''}
             </div>
           </div>
-          ${tags.length ? `<div class="loc-card-tags">${tags.map(t => `<span class="loc-tag-pill">${escHtml(t)}</span>`).join('')}</div>` : ''}
+          ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => `<span class="loc-tag-pill ${entry.isAdded ? 'is-user-large' : ''}">${escHtml(entry.text)}</span>`).join('')}</div>` : ''}
+          ${editState.visited ? `<div class="loc-visited-chip">✅ Visited${visitCount > 0 ? ` · Visits: ${visitCount}` : ''}</div>` : ''}
+          ${noteText ? `<div class="loc-note-block">📝 ${escHtml(noteText)}</div>` : ''}
           ${renderLocationInsightsMarkup(loc, cityEntry)}
           <div class="loc-card-details">
             ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
@@ -3099,6 +3758,7 @@
             ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener">🌐 Website</a>` : ''}
             ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : ''}
             <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
+            ${renderQuickActionsMenu(locId, encodedLocId)}
           </div>
         </div>`;
     }
@@ -3587,14 +4247,28 @@
     }
 
     function updateUrlFromState() {
-      if (!currentCityKey) return;
-      const payload = {
-        cityKey: currentCityKey,
-        filters: getLocFilterState(),
-        shortlist: Array.from(getShortlistSet())
-      };
       const url = new URL(window.location.href);
-      url.searchParams.set('sv', encodeShareState(payload));
+      if (currentCityKey) {
+        const payload = {
+          cityKey: currentCityKey,
+          filters: getLocFilterState(),
+          shortlist: Array.from(getShortlistSet())
+        };
+        url.searchParams.set('sv', encodeShareState(payload));
+      } else {
+        url.searchParams.delete('sv');
+      }
+      if (prefilterTag) {
+        url.searchParams.set('prefilterTag', prefilterTag);
+        if (prefilterLabel) url.searchParams.set('prefilterLabel', prefilterLabel);
+        else url.searchParams.delete('prefilterLabel');
+        if (prefilterSourceSubtab) url.searchParams.set('sourceSubtab', prefilterSourceSubtab);
+        else url.searchParams.delete('sourceSubtab');
+      } else {
+        url.searchParams.delete('prefilterTag');
+        url.searchParams.delete('prefilterLabel');
+        url.searchParams.delete('sourceSubtab');
+      }
       window.history.replaceState({}, '', url.toString());
     }
 
@@ -3619,8 +4293,8 @@
     function buildQuickTagPills(locations) {
       const counts = {};
       locations.forEach(loc => {
-        String(locVal(loc, 3, 'tags') || '').split(',').forEach(raw => {
-          const tag = raw.trim().toLowerCase();
+        getLocationTags(loc).forEach(raw => {
+          const tag = String(raw || '').trim().toLowerCase();
           if (tag) counts[tag] = (counts[tag] || 0) + 1;
         });
       });
@@ -3635,8 +4309,8 @@
     function populateTagDatalist(locations) {
       const tags = new Set();
       locations.forEach(loc => {
-        String(locVal(loc, 3, 'tags') || '').split(',').forEach(raw => {
-          const tag = raw.trim();
+        getLocationTags(loc).forEach(raw => {
+          const tag = String(raw || '').trim();
           if (tag) tags.add(tag);
         });
       });
@@ -3690,6 +4364,10 @@
       const closingSoon = Boolean(document.getElementById('locFilterClosingSoon')?.checked);
       const sortBy = String(document.getElementById('locSortBy')?.value || 'name').trim();
 
+      if (prefilterTag) {
+        chips.push({ key: 'prefilter', label: `Adventure subtab: ${getPrefilterLabel()}`, className: 'is-prefilter', buttonLabel: 'Show all' });
+      }
+
       if (searchName) chips.push({ key: 'searchName', label: `Name: ${searchName}` });
       if (difficulty) chips.push({ key: 'difficulty', label: `Difficulty: ${difficulty}` });
       if (cost) chips.push({ key: 'cost', label: `Cost: ${cost}` });
@@ -3703,6 +4381,10 @@
     }
 
     function clearSingleFilterChip(key) {
+      if (key === 'prefilter') {
+        clearAdventurePrefilter();
+        return;
+      }
       if (key === 'searchName') document.getElementById('locSearchName').value = '';
       if (key === 'difficulty') document.getElementById('locFilterDifficulty').value = '';
       if (key === 'cost') document.getElementById('locFilterCost').value = '';
@@ -3733,9 +4415,9 @@
         return;
       }
       wrap.innerHTML = `${chips.map(chip => `
-        <span class="loc-active-filter-chip">
+        <span class="loc-active-filter-chip ${escAttr(chip.className || '')}">
           ${escHtml(chip.label)}
-          <button type="button" onclick="clearSingleFilterChip('${escAttr(chip.key)}')" aria-label="Remove ${escAttr(chip.label)} filter">x</button>
+          <button type="button" onclick="clearSingleFilterChip('${escAttr(chip.key)}')" aria-label="Remove ${escAttr(chip.label)} filter">${escHtml(chip.buttonLabel || 'x')}</button>
         </span>
       `).join('')}
       <button type="button" class="loc-active-filter-clear" onclick="resetLocFilters()">Clear all</button>`;
@@ -3766,7 +4448,7 @@
         if (!locationMatchesPrefilter(loc)) return false;
 
         const name = String(locVal(loc, 0, 'name')).toLowerCase();
-        const tags = String(locVal(loc, 3, 'tags')).toLowerCase();
+        const tags = getLocationTags(loc).join(',').toLowerCase();
         const difficulty = String(locVal(loc, 7, 'difficulty')).toLowerCase();
         const cost = String(locVal(loc, 14, 'cost')).toLowerCase();
         const openInfo = getOpenInfoForToday(locVal(loc, 5, 'hours'));
@@ -3864,7 +4546,10 @@
         const cost = locVal(loc, 14, 'cost');
         const description = locVal(loc, 16, 'description');
         const googleUrl = locVal(loc, 23, 'googleUrl');
-        const tags = String(tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
+        const tagEntries = getLocationDerivedTags(loc);
+        const editState = getLocationEditState(locId);
+        const noteText = editState.note;
+        const visitCount = Math.max(0, editState.visitCount || 0);
 
         return `
           <div class="loc-card" data-loc-id="${escAttr(locId)}" role="button" tabindex="0" onclick="openLocationDetailByEncodedId('${encodedLocId}')" onkeydown="handleLocCardKeydown(event, '${encodedLocId}')" onmouseenter="setActiveLocation('${escAttr(locId)}', false)">
@@ -3876,7 +4561,9 @@
                 ${rating ? `<span class="loc-meta-badge rating">⭐ ${escHtml(rating)}</span>` : ''}
               </div>
             </div>
-            ${tags.length ? `<div class="loc-card-tags">${tags.map(t => `<span class="loc-tag-pill">${escHtml(t)}</span>`).join('')}</div>` : ''}
+            ${tagEntries.length ? `<div class="loc-card-tags">${tagEntries.map((entry) => `<span class="loc-tag-pill ${entry.isAdded ? 'is-user-large' : ''}">${escHtml(entry.text)}</span>`).join('')}</div>` : ''}
+            ${editState.visited ? `<div class="loc-visited-chip">✅ Visited${visitCount > 0 ? ` · Visits: ${visitCount}` : ''}</div>` : ''}
+            ${noteText ? `<div class="loc-note-block">📝 ${escHtml(noteText)}</div>` : ''}
             ${renderLocationInsightsMarkup(loc, cityEntry)}
             <div class="loc-card-details">
               ${driveTime ? `<div class="loc-detail-row"><span class="loc-detail-icon">🚗</span><span class="loc-detail-value">${escHtml(driveTime)}</span></div>` : ''}
@@ -3891,6 +4578,7 @@
               ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🌐 Website</a>` : ''}
               ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Google Maps</a>` : ''}
               <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="event.stopPropagation();toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
+              ${renderQuickActionsMenu(locId, encodedLocId)}
             </div>
           </div>`;
       }).join('');
@@ -3937,19 +4625,13 @@
         if (pendingShareState.filters) applyLocFilterState(pendingShareState.filters);
         if (Array.isArray(pendingShareState.shortlist)) setShortlistSet(new Set(pendingShareState.shortlist));
         pendingShareState = null;
-      } else if (prefilterTag) {
-        // Only inject into the tag text-filter when there is no dedicated
-        // source mapping — exact-mapped prefilters are applied transparently
-        // by locationMatchesPrefilter / applyLocFilters.
-        if (!SUBTAB_SOURCE_MAP[prefilterTag]) {
-          document.getElementById('locFilterTag').value = prefilterTag;
-        }
       }
 
       document.querySelector('.controls').style.display = 'none';
       document.getElementById('cityGrid').style.display = 'none';
       document.getElementById('locationsPage').style.display = 'block';
       setLocationResultsMode();
+      syncBulkActionInputHint();
 
       applyLocFilters();
     }
@@ -4044,6 +4726,10 @@
     window.calculateRouteQuality = calculateRouteQuality;
     window.bulkAddTopRated = bulkAddTopRated;
     window.bulkFilterOpenNow = bulkFilterOpenNow;
+    window.selectAllVisibleLocations = selectAllVisibleLocations;
+    window.applyBulkSelectionAction = applyBulkSelectionAction;
+    window.syncBulkActionInputHint = syncBulkActionInputHint;
+    window.runQuickActionByEncodedId = runQuickActionByEncodedId;
     window.openLocationDetailByEncodedId = openLocationDetailByEncodedId;
     window.handleLocCardKeydown = handleLocCardKeydown;
     window.goBackToLocationResults = goBackToLocationResults;

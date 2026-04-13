@@ -7,7 +7,14 @@ const CITY_INLINE_TEST_DATA = [
     state: 'SC',
     name: 'Inline Waterfall',
     sourceLabel: 'Nature_Locations.xlsx / Nature_Locations',
-    tags: 'waterfall, scenic'
+    tags: 'waterfall, hiking, scenic'
+  },
+  {
+    city: 'Inlineville',
+    state: 'SC',
+    name: 'Inline Art House',
+    sourceLabel: 'Entertainment_Locations.xlsx / General_Entertainment',
+    tags: 'art, indoor'
   }
 ];
 
@@ -42,12 +49,14 @@ test.describe('Adventure inline tools roundtrip', () => {
       }));
       window.sessionStorage.setItem('city_viewer_data_latest', key);
 
-      window.prepareCityViewerInlineUrl = async function() {
+      window.prepareCityViewerInlineUrl = async function(opts = {}) {
         const inlineUrl = new URL('HTML Files/city-viewer-window.html', window.location.href);
         inlineUrl.searchParams.set('embedded', '1');
         inlineUrl.searchParams.set('dataMode', 'curated-only');
         inlineUrl.searchParams.set('dataKey', key);
-        inlineUrl.searchParams.set('sourceSubtab', 'outdoors');
+        if (opts.prefilterTag) inlineUrl.searchParams.set('prefilterTag', String(opts.prefilterTag));
+        if (opts.prefilterLabel) inlineUrl.searchParams.set('prefilterLabel', String(opts.prefilterLabel));
+        inlineUrl.searchParams.set('sourceSubtab', String(opts.sourceSubtab || 'outdoors'));
         inlineUrl.searchParams.set('ts', String(Date.now()));
         return inlineUrl.toString();
       };
@@ -63,6 +72,8 @@ test.describe('Adventure inline tools roundtrip', () => {
 
     await expect(cityView).toBeVisible();
     await expect(overviewView).toBeHidden();
+    await expect(page.locator('#visitedLocationsRoot .visited-jump-links')).toHaveAttribute('hidden', '');
+    await expect(page.locator('#visitedLocationsRoot .visited-jump-links')).toHaveAttribute('aria-hidden', 'true');
     await expect(cityFrame).toBeVisible();
     await expect(cityFrame).toHaveAttribute('src', /city-viewer-window\.html/i);
     const cityBox = await cityFrame.boundingBox();
@@ -74,6 +85,18 @@ test.describe('Adventure inline tools roundtrip', () => {
     expect(cityInlineFrame).not.toBeNull();
     await expect(cityInlineFrame.locator('body.embedded-viewer')).toBeVisible();
     await expect(cityInlineFrame.locator('.header')).toBeHidden();
+    await expect(cityInlineFrame.locator('#cityPrefilterNotice')).toContainText('Filtered from Adventure subtab: Outdoors');
+    await cityInlineFrame.locator('.city-card').first().click();
+    await expect(cityInlineFrame.locator('#locationsPage')).toBeVisible();
+    await expect(cityInlineFrame.locator('#locActiveFilters')).toContainText('Adventure subtab: Outdoors');
+    await expect(cityInlineFrame.locator('#locResultsCount')).toContainText('1 location');
+    await cityInlineFrame.locator('#locActiveFilters .loc-active-filter-chip.is-prefilter button').evaluate((node) => node.click());
+    await expect(cityInlineFrame.locator('#locActiveFilters .loc-active-filter-chip.is-prefilter')).toHaveCount(0);
+    await expect(cityInlineFrame.locator('#locResultsCount')).toContainText('2 locations');
+
+    await cityInlineFrame.getByRole('button', { name: '← Back to Cities' }).click();
+    await expect(cityInlineFrame.locator('#cityGrid')).toBeVisible();
+    await expect(cityInlineFrame.locator('#cityPrefilterNotice')).toBeHidden();
     await cityInlineFrame.evaluate(() => {
       window.parent.postMessage({
         type: 'planner-inline-tool-close',
@@ -90,6 +113,8 @@ test.describe('Adventure inline tools roundtrip', () => {
 
     await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="overview"]').first()).toBeVisible();
     await expect(page.locator('#visitedProgressPane-outdoors [data-visited-subtab-view="city-explorer"]').first()).toBeHidden();
+    await expect(page.locator('#visitedLocationsRoot .visited-jump-links')).not.toHaveAttribute('hidden', '');
+    await expect(page.locator('#visitedLocationsRoot .visited-jump-links')).toHaveAttribute('aria-hidden', 'false');
   });
 
   test('Edit Mode inline opens and back returns to overview', async ({ page }) => {
