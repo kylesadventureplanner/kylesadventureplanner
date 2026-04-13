@@ -5956,6 +5956,10 @@
       display: none;
     }
 
+    #signedOutModeLine:not([hidden]) + .app-tabs-nav {
+      margin-top: 6px;
+    }
+
     @media (max-width: 760px) {
       .signed-out-mode-line {
         position: sticky;
@@ -8184,6 +8188,10 @@
 </div>
 <div class="app-container">
   <!-- Tab Navigation -->
+  <div id="signedOutModeLine" class="signed-out-mode-line" role="status" aria-live="polite" hidden>
+    <span>Limited mode while signed out. Sign in to load Excel-backed data and full Explorer tools.</span>
+    <button id="signedOutModeLineBtn" type="button" class="offline-action-btn">Sign In</button>
+  </div>
   <div class="app-tabs-nav" id="appTabsNav">
     <button class="app-tab-btn active" data-tab="visited-locations" title="Open Adventure Challenge" data-tooltip="Open Adventure Challenge">🎮 Adventure Challenge</button>
     <button class="app-tab-btn" data-tab="nature-challenge" title="Track nature species sightings and challenges" data-tooltip="Track nature species sightings and challenges">🌿 Nature Challenge</button>
@@ -8196,10 +8204,6 @@
     <button class="app-tab-btn tab-utility-hidden" data-tab="budget" aria-hidden="true" tabindex="-1">Budget Planner</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="offline-mode" aria-hidden="true" tabindex="-1">Offline Mode</button>
     <button class="app-tab-btn tab-utility-hidden" data-tab="app-backup" aria-hidden="true" tabindex="-1">App Backup</button>
-  </div>
-  <div id="signedOutModeLine" class="signed-out-mode-line" role="status" aria-live="polite" hidden>
-    <span>Limited mode while signed out. Sign in to load Excel-backed data and full Explorer tools.</span>
-    <button id="signedOutModeLineBtn" type="button" class="offline-action-btn">Sign In</button>
   </div>
   <div id="appSubTabsRow" class="app-subtabs-row" hidden>
     <div id="appSubTabsCutout" class="app-subtabs-cutout">
