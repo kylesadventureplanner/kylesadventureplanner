@@ -347,7 +347,8 @@ window.AdventureAchievements = (function () {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch {}
   }
   function getSubState(state, key) {
-    if (!state[key]) state[key] = { categories: {}, challenges: {}, badges: {}, bingo: {}, quest: {} };
+    if (!state[key]) state[key] = { categories: {}, challenges: {}, badges: {}, bingo: {}, quest: {}, syncPromptAcknowledged: false };
+    if (typeof state[key].syncPromptAcknowledged !== 'boolean') state[key].syncPromptAcknowledged = false;
     return state[key];
   }
   function getSubSettings(state, key) {
@@ -740,19 +741,47 @@ window.AdventureAchievements = (function () {
     }).join('');
     const totalVisited = progress.totalVisited;
     const visitLogCtaHtml = ` <button type="button" class="adventure-achv-adj-btn" data-achv-log-visit data-achv-subtab="${key}" title="Log a dated visit with notes">Log Visit</button>`;
-    const totalsHintHtml = progress.explorerLoaded
-      ? ''
-      : ` <button type="button" class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-sync-totals data-achv-subtab="${key}" title="Load category totals now">Sync category totals now</button>`;
     return `
       <div id="${getAchvSectionId(key, 'category-progression')}" class="card adventure-achv-section">
         <div class="card-header">
           <div>
             <div class="card-title">📊 Category Progression</div>
-            <div class="card-subtitle">Track your ${esc(config.label)} visits by category. Total logged: <strong>${totalVisited}</strong>.${visitLogCtaHtml}${totalsHintHtml}</div>
+            <div class="card-subtitle">Track your ${esc(config.label)} visits by category. Total logged: <strong>${totalVisited}</strong>.${visitLogCtaHtml}</div>
           </div>
         </div>
         <div class="adventure-achv-cat-grid">${catHtml}</div>
       </div>`;
+  }
+
+  function renderStatusSyncButton(key, progress, state) {
+    const host = document.getElementById(`visitedSubtabStatus-${key}`);
+    if (!host) return;
+    const sub = getSubState(state, key);
+    let button = host.querySelector(`[data-achv-sync-totals][data-achv-subtab="${key}"]`);
+    const meta = host.querySelector('.visited-subtab-status-meta');
+
+    if (progress.explorerLoaded) {
+      if (button) button.remove();
+      return;
+    }
+
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'visited-subtab-status-sync-btn';
+      button.setAttribute('data-achv-sync-totals', '');
+      button.setAttribute('data-achv-subtab', key);
+      if (meta && meta.parentNode === host) {
+        host.insertBefore(button, meta);
+      } else {
+        host.appendChild(button);
+      }
+    }
+
+    button.textContent = 'Sync category totals';
+    button.setAttribute('title', 'Sync category totals now');
+    button.setAttribute('data-tooltip', 'Sync category totals now');
+    button.classList.toggle('is-needs-sync', !sub.syncPromptAcknowledged);
   }
 
   function renderChallengesSection(key, config, sub, progress) {
@@ -1166,6 +1195,7 @@ window.AdventureAchievements = (function () {
       renderBingoSection(key, config, progress);
 
     renderSyncModeInDiagnostics(key, progress);
+    renderStatusSyncButton(key, progress, state);
 
     bindEvents(container, key, config, state);
   }
@@ -1182,10 +1212,14 @@ window.AdventureAchievements = (function () {
       });
     }
 
-    const syncTotalsBtn = container.querySelector('[data-achv-sync-totals]');
+    const syncTotalsBtn = document.querySelector(`#visitedSubtabStatus-${key} [data-achv-sync-totals][data-achv-subtab="${key}"]`) || container.querySelector('[data-achv-sync-totals]');
     if (syncTotalsBtn) {
-      syncTotalsBtn.addEventListener('click', async () => {
+      syncTotalsBtn.onclick = async () => {
+        const sub = getSubState(state, key);
+        sub.syncPromptAcknowledged = true;
+        saveState(state);
         const prevLabel = syncTotalsBtn.textContent;
+        syncTotalsBtn.classList.remove('is-needs-sync');
         syncTotalsBtn.disabled = true;
         syncTotalsBtn.textContent = 'Syncing...';
         try {
@@ -1197,7 +1231,7 @@ window.AdventureAchievements = (function () {
           syncTotalsBtn.textContent = prevLabel;
           renderAll(key);
         }
-      });
+      };
     }
 
     const logVisitBtn = container.querySelector('[data-achv-log-visit]');

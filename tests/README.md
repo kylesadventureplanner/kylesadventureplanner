@@ -7,19 +7,26 @@
 - Baseline updates must include both `MOBILE_QA_ASSERT=1` and `--update-snapshots`.
 - If `MOBILE_QA_ASSERT` is not set, Playwright will not execute screenshot expectations, so baseline files are not refreshed.
 
-Recommended local workflow:
+Preferred local server for reliability runs (less flaky than `python3 -m http.server` under parallel Playwright load):
 
 ```bash
 cd "/Users/kylechavez/WebstormProjects/kylesadventureplanner"
-python3 -m http.server 4173
+npx --yes http-server . -p 4173 -a 127.0.0.1 -c-1
 ```
 
 In a second terminal:
 
 ```bash
 cd "/Users/kylechavez/WebstormProjects/kylesadventureplanner"
+APP_URL="http://127.0.0.1:4173" npm run reliability:smoke
 APP_URL="http://127.0.0.1:4173" MOBILE_QA_ASSERT=1 npx playwright test tests/mobile-ux-snapshots.spec.js --update-snapshots
 APP_URL="http://127.0.0.1:4173" MOBILE_QA_ASSERT=1 npx playwright test tests/mobile-ux-snapshots.spec.js
+```
+
+Fallback if `http-server` is unavailable:
+
+```bash
+python3 -m http.server 4173
 ```
 
 Optional readiness tuning for mobile snapshot capture:

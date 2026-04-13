@@ -84,5 +84,21 @@ test.describe('Adventure achievements dashboard smoke', () => {
     await expect(page.locator('#achv-root-outdoors').getByText(/Category Progression/i).first()).toBeVisible();
     await expect(page.locator('#achv-root-outdoors').getByText(/Challenges/i).first()).toBeVisible();
   });
+
+  test('category totals sync CTA lives in the status row instead of Category Progression', async ({ page }) => {
+    const dockButton = page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first();
+    await expect(dockButton).toBeVisible();
+    await dockButton.click();
+    await expect(dockButton).toHaveAttribute('aria-selected', 'true', { timeout: 8000 });
+
+    const statusSyncBtn = page.locator('#visitedSubtabStatus-outdoors [data-achv-sync-totals][data-achv-subtab="outdoors"]').first();
+    await expect(statusSyncBtn).toBeVisible({ timeout: 12000 });
+    await expect(statusSyncBtn).toHaveClass(/visited-subtab-status-sync-btn/);
+    await expect(statusSyncBtn).toHaveClass(/is-needs-sync/);
+    await expect(page.locator('#achv-root-outdoors [data-achv-sync-totals]')).toHaveCount(0);
+
+    await statusSyncBtn.evaluate((node) => node.click());
+    await expect(statusSyncBtn).not.toHaveClass(/is-needs-sync/);
+  });
 });
 
