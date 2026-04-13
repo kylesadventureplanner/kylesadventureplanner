@@ -159,27 +159,6 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await firstCard.locator('[data-visited-explorer-rate][data-visited-explorer-rating-value="4"]').first().click();
     await expect(firstCard.locator('.visited-explorer-star.is-active')).toHaveCount(4);
 
-    await page.evaluate(() => {
-      window.__pwPromptValues = ['lake, scenic', 'Bring water and trail shoes'];
-      window.__pwPromptOriginal = window.prompt;
-      window.prompt = function promptMock(_message, defaultValue) {
-        const queue = Array.isArray(window.__pwPromptValues) ? window.__pwPromptValues : [];
-        if (!queue.length) return defaultValue || '';
-        return queue.shift();
-      };
-    });
-
-    await tagBtn.click();
-    await notesBtn.click();
-    await expect(firstCard.locator('.visited-explorer-tag-row')).toContainText('lake');
-    await expect(firstCard.locator('.visited-explorer-note-preview')).toContainText('Bring water and trail shoes');
-
-    await page.evaluate(() => {
-      if (window.__pwPromptOriginal) window.prompt = window.__pwPromptOriginal;
-      delete window.__pwPromptOriginal;
-      delete window.__pwPromptValues;
-    });
-
     const detailsBtn = list.locator('[data-visited-explorer-details]').first();
     await expect(detailsBtn).toBeVisible();
     await detailsBtn.click();
@@ -194,11 +173,20 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(title).toBeVisible();
     await expect(title).not.toHaveText(/^\s*Location Details\s*$/);
 
-    const detailsBody = page.locator(`#visitedExplorerDetailsPageBody-${key}`);
-    await expect(detailsBody).toBeVisible();
-    for (const label of ['Google Rating:', 'Cost:', 'Hours:', 'Phone:', 'Website:', 'Google URL:', 'Source:']) {
-      await expect(detailsBody).toContainText(label);
-    }
+    const detailsFrame = page.locator(`#visitedExplorerDetailsFrame-${key}`);
+    await expect(detailsFrame).toBeVisible();
+    await expect(detailsFrame).toHaveAttribute('src', /adventure-details-window\.html/i);
+    const frameHandle = await detailsFrame.elementHandle();
+    const plannerDetailsFrame = frameHandle ? await frameHandle.contentFrame() : null;
+    expect(plannerDetailsFrame).not.toBeNull();
+    await expect(plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="overview"].active')).toBeVisible();
+    await expect(plannerDetailsFrame.locator('#actionBar')).toBeVisible();
+
+    await plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="tag-management"]').click();
+    await expect(plannerDetailsFrame.locator('#pane-tag-management.tab-pane.active')).toBeVisible();
+
+    await plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="notes"]').click();
+    await expect(plannerDetailsFrame.locator('#pane-notes.tab-pane.active')).toBeVisible();
 
     await expect(page.locator('#visitedExplorerDetailsModal')).toBeHidden();
 
@@ -211,5 +199,14 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(detailsView).toBeHidden();
     await expect(explorerView).toBeVisible();
     await expect(page.locator(`#visitedExplorerList-${key}`)).toBeVisible();
+
+    await tagBtn.click();
+    await expect(detailsView).toBeVisible();
+    await expect(page.locator(`#visitedExplorerDetailsFrame-${key}`)).toHaveAttribute('src', /initialTab=tag-management/i);
+    await backBtn.click();
+
+    await notesBtn.click();
+    await expect(detailsView).toBeVisible();
+    await expect(page.locator(`#visitedExplorerDetailsFrame-${key}`)).toHaveAttribute('src', /initialTab=notes/i);
   });
 });

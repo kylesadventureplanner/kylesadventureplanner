@@ -1926,6 +1926,61 @@
     ].join('');
   }
 
+  function cacheExplorerDetailsPayload(subtabKey, item) {
+    if (!item) return null;
+    const detailKey = `adventure_details_visited_${subtabKey}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const payload = {
+      sourceIndex: -1,
+      correlationId: `visited_${subtabKey}_${Date.now()}`,
+      exportedAt: new Date().toISOString(),
+      data: {
+        name: item.title || '',
+        googlePlaceId: item.placeId || '',
+        website: item.website || '',
+        tags: Array.isArray(item.tags) ? item.tags.join(', ') : '',
+        driveTime: item.driveTime || '',
+        hoursOfOperation: item.hours || '',
+        activityDuration: '',
+        difficulty: '',
+        trailLength: '',
+        state: item.state || '',
+        city: item.city || '',
+        address: item.address || '',
+        phoneNumber: item.phone || '',
+        googleRating: item.rating || '',
+        cost: item.cost || '',
+        directions: item.directionsUrl || buildExplorerDirectionsUrl(item),
+        description: item.description || '',
+        nearby: '',
+        links: item.sourceLabel || '',
+        links2: '',
+        notes: item.notes || '',
+        myRating: item.myRating ? String(item.myRating) : '',
+        favoriteStatus: item.favorite ? 'Yes' : '',
+        googleUrl: item.googleUrl || ''
+      }
+    };
+
+    try {
+      window.localStorage.setItem(detailKey, JSON.stringify(payload));
+      window.localStorage.setItem('adventure_details_latest', detailKey);
+      return detailKey;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function buildExplorerDetailsUrl(subtabKey, item, initialTab) {
+    const baseUrl = resolveInlinePageUrl('HTML Files/adventure-details-window.html');
+    const url = new URL(baseUrl, window.location.href);
+    const detailKey = cacheExplorerDetailsPayload(subtabKey, item);
+    if (detailKey) url.searchParams.set('detailKey', detailKey);
+    url.searchParams.set('sourceIndex', '-1');
+    if (initialTab) url.searchParams.set('initialTab', String(initialTab));
+    url.searchParams.set('ts', String(Date.now()));
+    return url.toString();
+  }
+
   function ensureExplorerDetailsView(root, subtabKey) {
     const pane = root ? root.querySelector(`#visitedProgressPane-${subtabKey}`) : null;
     if (!pane) return null;
@@ -1942,10 +1997,10 @@
             <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-details-${escapeHtml(subtabKey)}" title="Back to Explore" data-tooltip="Back to Explore">← Back to Explore</button>
             <div class="visited-view-header-copy">
               <div class="card-title" id="visitedExplorerDetailsPageTitle-${escapeHtml(subtabKey)}">Location Details</div>
-              <div class="card-subtitle">Full location details inside Adventure Challenge Explore.</div>
+              <div class="card-subtitle">Planner-style details and actions for this location.</div>
             </div>
           </div>
-          <div id="visitedExplorerDetailsPageBody-${escapeHtml(subtabKey)}" class="visited-explorer-details-body"></div>
+          <iframe id="visitedExplorerDetailsFrame-${escapeHtml(subtabKey)}" class="visited-inline-tool-frame" title="Location details" loading="lazy"></iframe>
         </div>
       `;
       pane.appendChild(view);
@@ -1956,11 +2011,11 @@
   function openExplorerDetailsPage(root, subtabKey, itemId) {
     const item = getExplorerItemById(subtabKey, itemId);
     const view = ensureExplorerDetailsView(root, subtabKey);
-    if (!view) return;
+    if (!view || !item) return;
     const title = document.getElementById(`visitedExplorerDetailsPageTitle-${subtabKey}`) || view.querySelector('.card-title');
-    const body = document.getElementById(`visitedExplorerDetailsPageBody-${subtabKey}`) || view.querySelector('.visited-explorer-details-body');
+    const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`) || view.querySelector('iframe');
     if (title) title.textContent = item && item.title ? item.title : 'Location Details';
-    if (body) body.innerHTML = buildExplorerDetailsHtml(item);
+    if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item));
     setExplorerView(root, subtabKey, 'explorer-details');
   }
 
@@ -3960,16 +4015,11 @@
             const subtabKey = String(explorerTagsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerTagsBtn.getAttribute('data-visited-explorer-tags') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);
-            const seed = (item && Array.isArray(item.tags) ? item.tags : []).join(', ');
-            const next = window.prompt('Tag Manager\nEnter tags separated by commas:', seed);
-            if (next === null) return;
-            const tags = String(next || '')
-              .split(/[;,]/)
-              .map((tag) => tag.trim())
-              .filter(Boolean)
-              .slice(0, 8);
-            updateExplorerCardDraft(itemId, (draft) => ({ ...draft, tags }));
-            renderExplorerList(root, subtabKey);
+            if (item) {
+              openExplorerDetailsPage(root, subtabKey, itemId);
+              const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`);
+              if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, 'tag-management'));
+            }
             return;
           }
 
@@ -3979,10 +4029,11 @@
             const subtabKey = String(explorerNotesBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerNotesBtn.getAttribute('data-visited-explorer-notes') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);
-            const next = window.prompt('Notes\nAdd your notes for this location:', String(item && item.notes ? item.notes : ''));
-            if (next === null) return;
-            updateExplorerCardDraft(itemId, (draft) => ({ ...draft, notes: String(next || '').trim() }));
-            renderExplorerList(root, subtabKey);
+            if (item) {
+              openExplorerDetailsPage(root, subtabKey, itemId);
+              const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`);
+              if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, 'notes'));
+            }
             return;
           }
 

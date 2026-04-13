@@ -1423,16 +1423,29 @@
     }
   }
 
+  function activateTab(target) {
+    var tabs = document.querySelectorAll('.tab-btn');
+    var normalized = String(target || '').trim();
+    if (!normalized) normalized = 'overview';
+    var selectedTab = null;
+    tabs.forEach(function (tab) {
+      if (tab.getAttribute('data-tab') === normalized) selectedTab = tab;
+    });
+    if (!selectedTab && tabs.length) selectedTab = tabs[0];
+
+    tabs.forEach(function (t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-pane').forEach(function (pane) { pane.classList.remove('active'); });
+    if (!selectedTab) return;
+    selectedTab.classList.add('active');
+    var pane = document.getElementById('pane-' + selectedTab.getAttribute('data-tab'));
+    if (pane) pane.classList.add('active');
+  }
+
   function bindTabs() {
     var tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(function (tab) {
       tab.addEventListener('click', function () {
-        var target = tab.getAttribute('data-tab');
-        tabs.forEach(function (t) { t.classList.remove('active'); });
-        document.querySelectorAll('.tab-pane').forEach(function (pane) { pane.classList.remove('active'); });
-        tab.classList.add('active');
-        var pane = document.getElementById('pane-' + target);
-        if (pane) pane.classList.add('active');
+        activateTab(tab.getAttribute('data-tab'));
       });
     });
   }
@@ -1547,6 +1560,7 @@
     }
 
     render(payload);
+    activateTab(getParams().get('initialTab') || 'overview');
   })();
 </script>
 <script src="../JS Files/button-reliability-system.js"></script>
