@@ -7,6 +7,7 @@ const ADVENTURE_SUBTABS = [
     refreshAction: 'refresh-subtab-wildlife-animals',
     undoAction: 'undo-subtab-wildlife-animals',
     exploreAction: 'open-explorer-wildlife-animals',
+    logAction: 'open-visit-log-wildlife-animals',
     legacyFindAction: 'find-wildlife-animals'
   },
   {
@@ -15,6 +16,7 @@ const ADVENTURE_SUBTABS = [
     refreshAction: 'refresh-subtab-regional-festivals',
     undoAction: 'undo-subtab-regional-festivals',
     exploreAction: 'open-explorer-regional-festivals',
+    logAction: 'open-visit-log-regional-festivals',
     legacyFindAction: 'find-regional-festivals'
   },
   {
@@ -23,6 +25,7 @@ const ADVENTURE_SUBTABS = [
     refreshAction: 'refresh-subtab-retail',
     undoAction: 'undo-subtab-retail',
     exploreAction: 'open-explorer-retail',
+    logAction: 'open-visit-log-retail',
     legacyFindAction: 'find-retail-location'
   }
 ];
@@ -79,7 +82,7 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     await expect(jumpLinks).toHaveAttribute('aria-hidden', 'false');
   });
 
-  ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, legacyFindAction }) => {
+  ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, logAction, legacyFindAction }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
       const dockButton = page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"]`).first();
       await expect(dockButton).toBeVisible();
@@ -92,6 +95,7 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${refreshAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${undoAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${exploreAction}"]`)).toHaveCount(1);
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${logAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${legacyFindAction}"]`)).toHaveCount(0);
 
       await dockButton.focus();

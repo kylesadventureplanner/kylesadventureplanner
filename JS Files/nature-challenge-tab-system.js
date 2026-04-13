@@ -5664,8 +5664,9 @@
     }
 
     container.innerHTML = challenges.map((challenge) => `
-      <div class="nature-challenge-card ${challenge.completed ? 'completed' : ''} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
+      <div class="nature-challenge-card nature-challenge-card--daily ${challenge.completed ? 'completed' : ''} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         <div class="nature-challenge-card-header">${escapeHtml(formatProgressionHeading(challenge.icon, challenge.title))}</div>
+        ${renderProgressionChipRow(challenge)}
         <div class="nature-challenge-card-description">${escapeHtml(challenge.description)}</div>
         <div class="nature-challenge-progress"><div class="nature-challenge-progress-fill" style="width:${challenge.pct}%;"></div></div>
         <div class="nature-challenge-meta"><span>${escapeHtml(formatProgressSummary(challenge).fraction)}</span><span>${escapeHtml(formatProgressSummary(challenge).status)}</span></div>
@@ -5808,9 +5809,12 @@
     }
     meta.textContent = `${completedCount}/${totalTileCount} tiles complete${bingo.bingoAchieved ? ' | Bingo unlocked!' : ''}`;
     grid.innerHTML = bingo.tiles.map((tile) => `
-      <div class="nature-badge-card ${tile.completed ? 'unlocked' : 'locked'} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
+      <div class="nature-badge-card nature-badge-card--bingo ${tile.completed ? 'unlocked' : 'locked'} ${isRecentUpdateActive() ? 'is-recently-updated' : ''}">
         ${renderWhyShownBadge(tile)}
+        <div class="nature-badge-kind-pill nature-badge-kind-pill--challenge">Bingo</div>
+        <div class="nature-badge-icon">${escapeHtml(tile.icon || '🟩')}</div>
         <div class="nature-badge-card-title">${escapeHtml(tile.label)}</div>
+        <div class="nature-badge-card-description">${escapeHtml(tile.description || 'Complete this bingo objective during the current season.')}</div>
         <div class="nature-badge-progress">${escapeHtml(formatProgressSummary(tile).summary)}</div>
         <div class="nature-progress-track"><div class="nature-progress-fill" style="width:${tile.pct}%;"></div></div>
       </div>

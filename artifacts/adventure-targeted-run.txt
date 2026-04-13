@@ -1,0 +1,15 @@
+
+Running 9 tests using 3 workers
+
+  ✓  1 tests/adventure-subtabs-smoke.spec.js:40:3 › Adventure Challenge new subtabs smoke › legacy top header controls are removed from Adventure Challenge (1.1s)
+  ✓  3 tests/adventure-log-visit-modal.spec.js:4:3 › Adventure log visit modal › Log Visit fields are interactive and editable (1.4s)
+  ✓  4 tests/adventure-subtabs-smoke.spec.js:46:3 › Adventure Challenge new subtabs smoke › default Outdoors pane uses Nature-style status pills (1.6s)
+  ✓  5 tests/adventure-subtabs-smoke.spec.js:52:3 › Adventure Challenge new subtabs smoke › adventure achievement sections keep sticky section-header style hook (1.6s)
+  ✓  6 tests/adventure-subtabs-smoke.spec.js:64:3 › Adventure Challenge new subtabs smoke › jump links hide while Outdoors explorer view is open (3.8s)
+  ✓  2 tests/adventure-explorer-inpane-details.spec.js:136:3 › Adventure explorer in-pane details flow › opens details in-pane, shows richer fields, and returns to list (9.0s)
+  ✓  7 tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Wildlife & Animals (2.0s)
+  ✓  8 tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Regional Festivals (2.0s)
+  ✓  9 tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Retail (1.9s)
+
+  9 passed (14.5s)
+EXIT_CODE:0

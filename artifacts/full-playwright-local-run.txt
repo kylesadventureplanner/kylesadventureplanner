@@ -1,0 +1,217 @@
+
+Running 72 tests using 5 workers
+
+  ✘   5 tests/adventure-header-sync-smoke.spec.js:4:3 › Adventure header sync indicator smoke › shows pending unsynced count and flashing retry button (1.5s)
+  ✓   2 tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for outdoors (1.9s)
+  ✓   4 tests/adventure-inline-tools-roundtrip.spec.js:30:3 › Adventure inline tools roundtrip › City Explorer inline opens and back returns to overview (2.8s)
+  ✘   1 tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Outdoors (3.1s)
+  ✓   7 tests/adventure-header-sync-smoke.spec.js:32:3 › Adventure header sync indicator smoke › shows synced state and disabled retry button when no pending rows (1.1s)
+  ✓   6 tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for entertainment (1.7s)
+  ✓   9 tests/adventure-log-visit-modal.spec.js:4:3 › Adventure log visit modal › Log Visit fields are interactive and editable (1.6s)
+  ✓  10 tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for food-drink (1.7s)
+  ✓  11 tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Entertainment (1.8s)
+  ✓   8 tests/adventure-inline-tools-roundtrip.spec.js:120:3 › Adventure inline tools roundtrip › Edit Mode inline opens and back returns to overview (3.0s)
+  ✓  12 tests/adventure-subtabs-smoke.spec.js:40:3 › Adventure Challenge new subtabs smoke › legacy top header controls are removed from Adventure Challenge (1.9s)
+  ✓  14 tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Food & Drink (1.7s)
+  ✓  13 tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for retail (2.0s)
+  ✓  15 tests/app-backup-flow.spec.js:9:3 › App backup flow › opens dedicated backup page from header button (2.0s)
+  ✘   3 tests/adventure-explorer-inpane-details.spec.js:136:3 › Adventure explorer in-pane details flow › opens details in-pane, shows richer fields, and returns to list (8.0s)
+  ✓  16 tests/adventure-subtabs-smoke.spec.js:46:3 › Adventure Challenge new subtabs smoke › default Outdoors pane uses Nature-style status pills (982ms)
+  ✓  18 tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for wildlife-animals (1.3s)
+  ✓  20 tests/adventure-subtabs-smoke.spec.js:52:3 › Adventure Challenge new subtabs smoke › adventure achievement sections keep sticky section-header style hook (916ms)
+  ✓  22 tests/bulk-tag-undo-edge-cases.spec.js:9:1 › bulk tag undo preserves snapshot-cap behavior for large selections (363ms)
+  ✓  24 tests/city-explorer-phase1.spec.js:130:3 › City Explorer Phase 1 and 2 enhancements › location filter controls are not sticky (216ms)
+  ✓  17 tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Retail (2.3s)
+  ✓  25 tests/city-explorer-phase1.spec.js:137:3 › City Explorer Phase 1 and 2 enhancements › active filter chips appear and individual chip removal updates filters (402ms)
+  ✓  19 tests/app-backup-flow.spec.js:23:3 › App backup flow › back button returns to previously active tab (2.0s)
+  ✓  27 tests/city-explorer-phase1.spec.js:156:3 › City Explorer Phase 1 and 2 enhancements › Adventure prefilter is visible and can be cleared to show everything (211ms)
+  ✓  29 tests/city-explorer-phase1.spec.js:173:3 › City Explorer Phase 1 and 2 enhancements › empty state reset action restores results after a no-match filter (255ms)
+  ✓  21 tests/adventure-achievements-smoke.spec.js:45:3 › Adventure achievements dashboard smoke › sync mode selector keeps automated matching modes only (2.1s)
+  ✓  30 tests/city-explorer-phase1.spec.js:189:3 › City Explorer Phase 1 and 2 enhancements › smart presets and shortlist compare tray power the planning workflow (538ms)
+  ✓  32 tests/city-explorer-phase1.spec.js:211:3 › City Explorer Phase 1 and 2 enhancements › ranking badges and confidence indicators render on cards and detail view (256ms)
+  ✓  23 tests/adventure-subtabs-smoke.spec.js:64:3 › Adventure Challenge new subtabs smoke › jump links hide while Outdoors explorer view is open (2.3s)
+  ✓  26 tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Wildlife & Animals (1.9s)
+  ✓  33 tests/city-explorer-phase1.spec.js:226:3 › City Explorer Phase 1 and 2 enhancements › day plan shows itinerary score and route-feasibility confidence (721ms)
+  ✓  28 tests/app-backup-flow.spec.js:35:3 › App backup flow › creates a dated zip backup download (2.0s)
+  ✓  31 tests/adventure-achievements-smoke.spec.js:89:3 › Adventure achievements dashboard smoke › category totals sync CTA lives in the status row instead of Category Progression (1.6s)
+  ✓  36 tests/city-explorer-phase1.spec.js:273:3 › City Explorer Phase 1 and 2 enhancements › bulk actions can apply tags, notes, and visited state to selected locations (646ms)
+  ✘  37 tests/edit-mode-global.spec.js:32:3 › Edit Mode – global header button › header contains #globalEditModeBtn with correct label and handler (657ms)
+  ✓  39 tests/city-explorer-phase1.spec.js:294:3 › City Explorer Phase 1 and 2 enhancements › per-card quick actions support copy address utility (251ms)
+  ✓  35 tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Regional Festivals (1.7s)
+  ✓  34 tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Wildlife & Animals (2.1s)
+  ✘  41 tests/edit-mode-global.spec.js:47:3 › Edit Mode – target-table selectors › action target select has all 7 tables (348ms)
+  ✓  43 tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Regional Festivals (1.3s)
+  ✓  44 tests/edit-mode-global.spec.js:57:3 › Edit Mode – target-table selectors › automation default select has all 7 tables (407ms)
+  ✓  40 tests/nature-inat-import.spec.js:19:3 › Nature iNaturalist import › paste preview + dry run parses rows (2.7s)
+  ✓  46 tests/edit-mode-global.spec.js:65:3 › Edit Mode – target-table selectors › tab-specific target controls show only relevant section (474ms)
+  ✓  48 tests/edit-mode-global.spec.js:76:3 › Edit Mode – target-table selectors › status chips update when target changes (206ms)
+  ✓  49 tests/edit-mode-global.spec.js:86:3 › Edit Mode – target-table selectors › tabs switch between Places and Automation panels (509ms)
+  ✓  45 tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Retail (1.5s)
+  ✓  38 tests/mobile-ux-snapshots.spec.js:75:3 › Mobile UX snapshots › captures iPhone-view snapshots across key pages (4.5s)
+  ✓  52 tests/nature-subtabs-smoke.spec.js:20:3 › Nature config-driven subtabs smoke › birds diagnostics row is visible (1.2s)
+  ✓  42 tests/nature-inat-mapping-modal.spec.js:19:3 › Nature iNaturalist strict mapping modal › shows unmatched rows in strict mapping report (5.1s)
+  ✓  51 tests/nature-map-context.spec.js:4:3 › Nature map context labels › map header/back reflects active nature subtab context (2.1s)
+  ✓  50 tests/nature-log-ux.spec.js:4:3 › Nature log UX › log form supports typeahead species, location other, and contextual fast-command hints (2.9s)
+  ✓  47 tests/nature-inat-import.spec.js:44:3 › Nature iNaturalist import › csv upload auto-previews and manual preview remains functional (4.0s)
+  ✓  53 tests/nature-subtabs-smoke.spec.js:29:3 › Nature config-driven subtabs smoke › birds jump bar renders with expected section buttons (1.5s)
+  ✓  54 tests/nature-inat-mapping-modal.spec.js:37:3 › Nature iNaturalist strict mapping modal › applying a suggestion decreases unmatched and increases ready (2.0s)
+  ✓  55 tests/offline-airplane-mode.spec.js:4:3 › Offline airplane mode regression › keeps planner usable and queues writes when offline (2.0s)
+  ✓  56 tests/reliability-smoke.spec.js:55:1 › first-click success: nature explore (2.7s)
+  ✓  57 tests/nature-subtabs-smoke.spec.js:61:3 › Nature config-driven subtabs smoke › birds jump bar hides outside overview and returns on overview (5.1s)
+  ✓  58 tests/reliability-smoke.spec.js:70:1 › first-click success: nature run command (3.5s)
+  ✓  59 tests/nature-subtabs-smoke.spec.js:100:3 › Nature config-driven subtabs smoke › mammals diagnostics row contains stable labels (1.7s)
+  ✓  60 tests/reliability-smoke.spec.js:83:1 › first-click success: bike refresh (1.8s)
+  ✓  61 tests/nature-subtabs-smoke.spec.js:109:3 › Nature config-driven subtabs smoke › shrubs subtab is removed from the dock (1.0s)
+  ✓  62 tests/reliability-smoke.spec.js:102:1 › hidden overlay probe catches interception (1.6s)
+  ✓  63 tests/nature-subtabs-smoke.spec.js:113:3 › Nature config-driven subtabs smoke › nature subtabs expose loading state attributes (1.7s)
+  ✓  65 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Mammals (1.1s)
+  ✓  66 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Reptiles (1.7s)
+  ✓  64 tests/reliability-smoke.spec.js:139:1 › stale row-detail blocker is cleared before nature interactions (3.7s)
+  ✓  67 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Amphibians (1.7s)
+  ✓  69 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Insects (1.8s)
+  ✓  70 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Arachnids (1.7s)
+  ✓  71 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Wildflowers (1.7s)
+  ✓  72 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Trees & Shrubs (1.7s)
+  ✓  68 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (15.7s)
+
+
+  1) tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Outdoors 
+
+    Error: Unexpected browser errors detected:
+    1. [console] Failed to load resource: net::ERR_CONNECTION_RESET (http://127.0.0.1:4173/JS%20Files/backup-manager.js)
+
+       at reliability-test.js:62
+
+      60 |       });
+      61 |
+    > 62 |       throw new Error(`Unexpected browser errors detected:\n${preview}`);
+         |             ^
+      63 |     }
+      64 |   }
+      65 | });
+        at Object.page (/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/reliability-test.js:62:13)
+
+    attachment #1: unexpected-browser-errors.txt (text/plain) ──────────────────────────────────────
+    1. [console] Failed to load resource: net::ERR_CONNECTION_RESET (http://127.0.0.1:4173/JS%20Files/backup-manager.js)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/adventure-explorer-flows-A-0ef7b-lows-explorer-flow-Outdoors/error-context.md
+
+  2) tests/adventure-explorer-inpane-details.spec.js:136:3 › Adventure explorer in-pane details flow › opens details in-pane, shows richer fields, and returns to list 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: locator('#visitedLocationsRoot')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for locator('#visitedLocationsRoot')[22m
+
+
+       97 |   await page.goto('/');
+       98 |   await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
+    >  99 |   await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
+          |                                                       ^
+      100 | }
+      101 |
+      102 | async function openExplorerAndFindDetails(page) {
+        at gotoAdventureChallenge (/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/adventure-explorer-inpane-details.spec.js:99:55)
+        at /Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/adventure-explorer-inpane-details.spec.js:138:5
+
+    Error: Unexpected browser errors detected:
+    1. [console] Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED (http://127.0.0.1:4173/JS%20Files/tab-content-loader.js)
+
+       at reliability-test.js:62
+
+      60 |       });
+      61 |
+    > 62 |       throw new Error(`Unexpected browser errors detected:\n${preview}`);
+         |             ^
+      63 |     }
+      64 |   }
+      65 | });
+        at Object.page (/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/reliability-test.js:62:13)
+
+    attachment #1: unexpected-browser-errors.txt (text/plain) ──────────────────────────────────────
+    1. [console] Failed to load resource: net::ERR_SOCKET_NOT_CONNECTED (http://127.0.0.1:4173/JS%20Files/tab-content-loader.js)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/adventure-explorer-inpane--aedf4--fields-and-returns-to-list/error-context.md
+
+  3) tests/adventure-header-sync-smoke.spec.js:4:3 › Adventure header sync indicator smoke › shows pending unsynced count and flashing retry button 
+
+    Error: Unexpected browser errors detected:
+    1. [console] Failed to load resource: net::ERR_CONNECTION_RESET (http://127.0.0.1:4173/HTML%20Files/tabs/visited-locations-tab.html)
+
+       at reliability-test.js:62
+
+      60 |       });
+      61 |
+    > 62 |       throw new Error(`Unexpected browser errors detected:\n${preview}`);
+         |             ^
+      63 |     }
+      64 |   }
+      65 | });
+        at Object.page (/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/reliability-test.js:62:13)
+
+    attachment #1: unexpected-browser-errors.txt (text/plain) ──────────────────────────────────────
+    1. [console] Failed to load resource: net::ERR_CONNECTION_RESET (http://127.0.0.1:4173/HTML%20Files/tabs/visited-locations-tab.html)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/adventure-header-sync-smok-803af-t-and-flashing-retry-button/error-context.md
+
+  4) tests/edit-mode-global.spec.js:32:3 › Edit Mode – global header button › header contains #globalEditModeBtn with correct label and handler 
+
+    Error: Unexpected browser errors detected:
+    1. [console] Failed to load resource: net::ERR_CONNECTION_RESET (http://127.0.0.1:4173/JS%20Files/pwa-offline-system.js)
+
+       at reliability-test.js:62
+
+      60 |       });
+      61 |
+    > 62 |       throw new Error(`Unexpected browser errors detected:\n${preview}`);
+         |             ^
+      63 |     }
+      64 |   }
+      65 | });
+        at Object.page (/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/reliability-test.js:62:13)
+
+    attachment #1: unexpected-browser-errors.txt (text/plain) ──────────────────────────────────────
+    1. [console] Failed to load resource: net::ERR_CONNECTION_RESET (http://127.0.0.1:4173/JS%20Files/pwa-offline-system.js)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/edit-mode-global-Edit-Mode-657aa-h-correct-label-and-handler/error-context.md
+
+  5) tests/edit-mode-global.spec.js:47:3 › Edit Mode – target-table selectors › action target select has all 7 tables 
+
+    Error: Unexpected browser errors detected:
+    1. [console] Failed to load resource: net::ERR_CONNECTION_RESET (http://127.0.0.1:4173/JS%20Files/mobile-view-persistence-bootstrap.js)
+
+       at reliability-test.js:62
+
+      60 |       });
+      61 |
+    > 62 |       throw new Error(`Unexpected browser errors detected:\n${preview}`);
+         |             ^
+      63 |     }
+      64 |   }
+      65 | });
+        at Object.page (/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/reliability-test.js:62:13)
+
+    attachment #1: unexpected-browser-errors.txt (text/plain) ──────────────────────────────────────
+    1. [console] Failed to load resource: net::ERR_CONNECTION_RESET (http://127.0.0.1:4173/JS%20Files/mobile-view-persistence-bootstrap.js)
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/edit-mode-global-Edit-Mode-e6959-get-select-has-all-7-tables/error-context.md
+
+  5 failed
+    tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Outdoors 
+    tests/adventure-explorer-inpane-details.spec.js:136:3 › Adventure explorer in-pane details flow › opens details in-pane, shows richer fields, and returns to list 
+    tests/adventure-header-sync-smoke.spec.js:4:3 › Adventure header sync indicator smoke › shows pending unsynced count and flashing retry button 
+    tests/edit-mode-global.spec.js:32:3 › Edit Mode – global header button › header contains #globalEditModeBtn with correct label and handler 
+    tests/edit-mode-global.spec.js:47:3 › Edit Mode – target-table selectors › action target select has all 7 tables 
+  67 passed (49.1s)
+EXIT_CODE:1

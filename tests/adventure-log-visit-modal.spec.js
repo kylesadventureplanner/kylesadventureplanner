@@ -8,15 +8,9 @@ test.describe('Adventure log visit modal', () => {
 
     await page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first().click();
 
-    const exploreBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-explorer-outdoors"]').first();
-    await expect(exploreBtn).toBeVisible();
-    await exploreBtn.click();
-
-    await page.evaluate(async () => {
-      if (typeof window.openVisitedVisitLogFromAchievements === 'function') {
-        await window.openVisitedVisitLogFromAchievements({ subtabKey: 'outdoors' });
-      }
-    });
+    const logBtn = page.locator('#visitedProgressPane-outdoors [data-visited-subtab-action="open-visit-log-outdoors"]').first();
+    await expect(logBtn).toBeVisible();
+    await logBtn.click();
 
     const modal = page.locator('#visitedVisitLogModal');
     await expect(modal).toBeVisible();
@@ -24,10 +18,15 @@ test.describe('Adventure log visit modal', () => {
     const locationSelect = page.locator('#visitedVisitLogLocationSelect');
     const dateInput = page.locator('#visitedVisitLogDate');
     const notesInput = page.locator('#visitedVisitLogNotes');
+    const photoInput = page.locator('#visitedVisitLogPhotoInput');
+    const photoStatus = page.locator('#visitedVisitLogPhotoStatus');
 
     await expect(locationSelect).toBeEditable();
     await expect(dateInput).toBeEditable();
     await expect(notesInput).toBeEditable();
+    await expect(photoInput).toBeVisible();
+    await expect(photoInput).toHaveAttribute('multiple', '');
+    await expect(photoStatus).toContainText(/OneDrive/i);
 
     await locationSelect.focus();
     await expect(locationSelect).toBeFocused();

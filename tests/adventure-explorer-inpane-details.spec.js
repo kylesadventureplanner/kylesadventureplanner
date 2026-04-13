@@ -144,10 +144,20 @@ test.describe('Adventure explorer in-pane details flow', () => {
 
     const detailsBtn = firstCard.locator('[data-visited-explorer-details]').first();
     const quickActionsBtn = firstCard.locator('[data-visited-explorer-quick-actions-toggle]').first();
+    const quickActionsMenu = firstCard.locator('[data-visited-explorer-quick-actions-menu]').first();
     const favoriteBtn = firstCard.locator('[data-visited-explorer-favorite]').first();
     await expect(detailsBtn).toBeVisible();
     await expect(quickActionsBtn).toBeVisible();
+    await expect(quickActionsMenu).toBeHidden();
+    await expect(quickActionsBtn).toHaveAttribute('aria-expanded', 'false');
     await expect(favoriteBtn).toBeVisible();
+
+    await quickActionsBtn.click();
+    await expect(quickActionsMenu).toBeVisible();
+    await expect(quickActionsBtn).toHaveAttribute('aria-expanded', 'true');
+    await quickActionsBtn.click();
+    await expect(quickActionsMenu).toBeHidden();
+    await expect(quickActionsBtn).toHaveAttribute('aria-expanded', 'false');
 
     const headActions = firstCard.locator('.visited-explorer-card-head-actions > button');
     await expect(headActions.first()).toHaveAttribute('data-visited-explorer-details');

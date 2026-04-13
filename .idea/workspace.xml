@@ -5,10 +5,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux-snapshots-Mobile-1f63a--snapshots-across-key-pages/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/tests/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/mobile-ux-snapshots.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/mobile-ux-snapshots.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-adventure-details-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-bike-details-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-city-viewer-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-edit-mode-new.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-find-near-me-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/HTML-Files-trail-explorer-window.html.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/mobile-ux/index-mobile.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/adventure-log-visit-modal.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-log-visit-modal.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -92,7 +104,7 @@
       <workItem from="1775308318086" duration="90230000" />
       <workItem from="1775520086833" duration="195926000" />
       <workItem from="1775961963296" duration="82000" />
-      <workItem from="1775962146733" duration="53902000" />
+      <workItem from="1775962146733" duration="57491000" />
     </task>
     <servers />
   </component>

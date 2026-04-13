@@ -139,6 +139,16 @@
   };
   // Prefer known Copilot workbook folders first to avoid predictable root-level 404 probe noise.
   const EXPLORER_WORKBOOK_PREFIXES = ['Copilot_Apps/Kyles_Adventure_Finder/', 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/', ''];
+  const VISIT_LOG_MEDIA_ROOT_DEFAULT = 'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/Visit_Photos';
+  const VISIT_LOG_MEDIA_SUBTAB_FOLDERS = {
+    outdoors: 'Outdoors',
+    entertainment: 'Entertainment',
+    'food-drink': 'Food_and_Drink',
+    retail: 'Retail',
+    'wildlife-animals': 'Wildlife_and_Animals',
+    'regional-festivals': 'Regional_Festivals',
+    'bike-trails': 'Bike_Trails'
+  };
   const EXPLORER_COLUMN_CANDIDATES = {
     title: ['name', 'location', 'place', 'venue', 'destination', 'business', 'shop', 'restaurant', 'coffee', 'festival', 'event', 'site'],
     placeId: ['google place id', 'googleplaceid', 'place id', 'placeid'],
@@ -1438,6 +1448,90 @@
       .join('/');
   }
 
+  function sanitizeVisitPhotoFileName(fileName) {
+    return String(fileName || '')
+      .replace(/[\\/:*?"<>|]/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function getVisitPhotoUploadRootPath() {
+    const configured = window.visitedSyncConfig && window.visitedSyncConfig.mediaFolderPath
+      ? String(window.visitedSyncConfig.mediaFolderPath)
+      : (window.adventureSyncConfig && window.adventureSyncConfig.mediaFolderPath
+        ? String(window.adventureSyncConfig.mediaFolderPath)
+        : VISIT_LOG_MEDIA_ROOT_DEFAULT);
+    return configured.replace(/^\/+|\/+$/g, '');
+  }
+
+  function getVisitPhotoSubtabFolderName(subtabKey) {
+    const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim().toLowerCase();
+    return VISIT_LOG_MEDIA_SUBTAB_FOLDERS[key] || VISIT_LOG_MEDIA_SUBTAB_FOLDERS.outdoors;
+  }
+
+  function getVisitLogPhotoFiles() {
+    const input = document.getElementById('visitedVisitLogPhotoInput');
+    if (!input || !input.files) return [];
+    return Array.from(input.files).filter((file) => file && Number(file.size || 0) >= 0);
+  }
+
+  function setVisitLogPhotoStatus(message, tone) {
+    const statusEl = document.getElementById('visitedVisitLogPhotoStatus');
+    if (!statusEl) return;
+    statusEl.textContent = String(message || '').trim() || 'Attach one or more photos to upload them to OneDrive when you save.';
+    statusEl.style.color = tone === 'error'
+      ? '#991b1b'
+      : tone === 'success'
+        ? '#166534'
+        : tone === 'warn'
+          ? '#92400e'
+          : '#1e3a8a';
+  }
+
+  async function uploadVisitPhotoToOneDrive(file, options = {}) {
+    if (!file) return null;
+    if (!window.accessToken) {
+      throw new Error('Sign in required before uploading photos to OneDrive.');
+    }
+
+    const subtabFolder = getVisitPhotoSubtabFolderName(options.subtabKey);
+    const safeName = sanitizeVisitPhotoFileName(file.name || `visit-photo-${Date.now()}`) || `visit-photo-${Date.now()}`;
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${safeName}`;
+    const relativePath = `${getVisitPhotoUploadRootPath()}/${subtabFolder}/${uniqueName}`;
+    const encodedPath = encodeGraphPath(relativePath);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/content?@microsoft.graph.conflictBehavior=rename`;
+
+    const run = async () => {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': file.type || 'application/octet-stream'
+        },
+        body: file
+      });
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        throw new Error(`Photo upload failed (${response.status})${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+      }
+      return response.json().catch(() => ({}));
+    };
+
+    const payload = window.ReliabilityAsync && typeof window.ReliabilityAsync.retryIdempotentWrite === 'function'
+      ? await window.ReliabilityAsync.retryIdempotentWrite('Adventure visit photo upload', run, { retries: 1, backoffMs: 450 })
+      : await run();
+
+    return {
+      id: String(payload.id || ''),
+      name: String(payload.name || safeName),
+      webUrl: String(payload.webUrl || ''),
+      downloadUrl: String(payload['@microsoft.graph.downloadUrl'] || ''),
+      path: relativePath,
+      mimeType: String(file.type || ''),
+      size: Number(file.size || 0)
+    };
+  }
+
   function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
@@ -1970,6 +2064,7 @@
     const dateInput = document.getElementById('visitedVisitLogDate');
     const notesInput = document.getElementById('visitedVisitLogNotes');
     const activityGrid = document.getElementById('visitedVisitLogActivityGrid');
+    const photoInput = document.getElementById('visitedVisitLogPhotoInput');
     const help = document.getElementById('visitedVisitLogHelp');
     const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
     if (!modal || !backdrop || !subtabKeyInput || !itemIdInput || !modeInput || !locationSelect || !dateInput || !notesInput || !activityGrid) return;
@@ -1997,6 +2092,10 @@
     const dd = String(today.getDate()).padStart(2, '0');
     dateInput.value = `${yyyy}-${mm}-${dd}`;
     notesInput.value = '';
+    if (photoInput) {
+      photoInput.value = '';
+    }
+    setVisitLogPhotoStatus('Attach one or more photos to upload them to OneDrive when you save.');
     subtabKeyInput.value = subtabKey;
     itemIdInput.value = locationSelect.value || '';
     renderVisitLogActivityGrid(subtabKey, locationSelect.value || '');
@@ -2020,50 +2119,81 @@
     const dateValue = String(document.getElementById('visitedVisitLogDate')?.value || '').trim();
     const notes = String(document.getElementById('visitedVisitLogNotes')?.value || '').trim();
     const mode = String(document.getElementById('visitedVisitLogMode')?.value || 'add').trim() === 'remove' ? 'remove' : 'add';
+    const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
     if (!subtabKey || !itemId || !dateValue) return;
 
+    setButtonBusy(submitBtn, true, mode === 'remove' ? 'Removing...' : 'Saving...');
+
     const item = getExplorerItemById(subtabKey, itemId);
-    if (!item) return;
+    if (!item) {
+      setButtonBusy(submitBtn, false);
+      return;
+    }
     const selectedActivityKeys = getSelectedVisitActivityKeys();
     const categoryKeys = selectedActivityKeys.length ? selectedActivityKeys : inferVisitCategoryKeys(subtabKey, item);
-    if (mode === 'remove') {
-      const dayPrefix = `${dateValue}T`;
-      const records = Array.isArray(state.visitRecords) ? state.visitRecords.slice() : [];
-      const idx = records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId && String(record.visitedAt || '').startsWith(dayPrefix));
-      const fallbackIdx = idx >= 0 ? idx : records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId);
-      if (fallbackIdx >= 0) {
-        const removed = records.splice(fallbackIdx, 1)[0];
-        state.visitRecords = records;
-        saveVisitRecords();
-        if (typeof window.showToast === 'function') {
-          window.showToast(`Visit removed: ${removed.locationTitle || item.title}`, 'info', 2200);
+    try {
+      if (mode === 'remove') {
+        const dayPrefix = `${dateValue}T`;
+        const records = Array.isArray(state.visitRecords) ? state.visitRecords.slice() : [];
+        const idx = records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId && String(record.visitedAt || '').startsWith(dayPrefix));
+        const fallbackIdx = idx >= 0 ? idx : records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId);
+        if (fallbackIdx >= 0) {
+          const removed = records.splice(fallbackIdx, 1)[0];
+          state.visitRecords = records;
+          saveVisitRecords();
+          if (typeof window.showToast === 'function') {
+            window.showToast(`Visit removed: ${removed.locationTitle || item.title}`, 'info', 2200);
+          }
+        } else if (typeof window.showToast === 'function') {
+          window.showToast('No matching visit record found to remove.', 'warning', 2600);
         }
-      } else if (typeof window.showToast === 'function') {
-        window.showToast('No matching visit record found to remove.', 'warning', 2600);
-      }
-    } else {
-      const record = {
-        id: `visit:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
-        subtabKey,
-        locationId: itemId,
-        locationTitle: String(item.title || 'Unknown').trim(),
-        sourceLabel: String(item.sourceLabel || '').trim(),
-        activityKeys: selectedActivityKeys,
-        categoryKeys,
-        visitedAt: new Date(`${dateValue}T12:00:00`).toISOString(),
-        notes,
-        createdAt: new Date().toISOString()
-      };
-      state.visitRecords = [record].concat(state.visitRecords || []).slice(0, 1200);
-      saveVisitRecords();
+      } else {
+        const photoFiles = getVisitLogPhotoFiles();
+        let uploadedPhotos = [];
+        if (photoFiles.length) {
+          setVisitLogPhotoStatus(`Uploading ${photoFiles.length} photo${photoFiles.length === 1 ? '' : 's'} to OneDrive...`, 'warn');
+          uploadedPhotos = [];
+          for (let i = 0; i < photoFiles.length; i += 1) {
+            const uploaded = await uploadVisitPhotoToOneDrive(photoFiles[i], { subtabKey });
+            if (uploaded) uploadedPhotos.push(uploaded);
+            setVisitLogPhotoStatus(`Uploaded ${i + 1}/${photoFiles.length} photo${photoFiles.length === 1 ? '' : 's'} to OneDrive.`, 'success');
+          }
+        } else {
+          setVisitLogPhotoStatus('No photos selected. Visit details will be saved without attachments.');
+        }
 
+        const record = {
+          id: `visit:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+          subtabKey,
+          locationId: itemId,
+          locationTitle: String(item.title || 'Unknown').trim(),
+          sourceLabel: String(item.sourceLabel || '').trim(),
+          activityKeys: selectedActivityKeys,
+          categoryKeys,
+          visitedAt: new Date(`${dateValue}T12:00:00`).toISOString(),
+          notes,
+          photos: uploadedPhotos,
+          createdAt: new Date().toISOString()
+        };
+        state.visitRecords = [record].concat(state.visitRecords || []).slice(0, 1200);
+        saveVisitRecords();
+
+        if (typeof window.showToast === 'function') {
+          const withPhotos = uploadedPhotos.length ? ` (+${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? '' : 's'})` : '';
+          window.showToast(`Visit logged: ${record.locationTitle}${withPhotos}`, 'success', 2400);
+        }
+      }
+
+      closeVisitLogModal();
+      await refreshTab();
+    } catch (error) {
+      setVisitLogPhotoStatus(error && error.message ? error.message : 'Photo upload failed. Please try again.', 'error');
       if (typeof window.showToast === 'function') {
-        window.showToast(`Visit logged: ${record.locationTitle}`, 'success', 2200);
+        window.showToast('Visit save failed while uploading photos to OneDrive.', 'warning', 2800);
       }
+    } finally {
+      setButtonBusy(submitBtn, false);
     }
-
-    closeVisitLogModal();
-    await refreshTab();
   }
 
   async function retryPendingLocalWrites(triggerBtn) {
@@ -3933,12 +4063,12 @@
     function ensureVisitedSubtabCtaButtons(root) {
       if (!root) return { total: 0, present: 0, added: 0, missing: [] };
       const requiredActions = [
-        'refresh-subtab-outdoors', 'undo-subtab-outdoors', 'open-explorer-outdoors', 'open-city-explorer-outdoors', 'open-edit-mode-outdoors',
-        'refresh-subtab-entertainment', 'undo-subtab-entertainment', 'open-explorer-entertainment', 'open-city-explorer-entertainment', 'open-edit-mode-entertainment',
-        'refresh-subtab-food-drink', 'undo-subtab-food-drink', 'open-explorer-food-drink', 'open-city-explorer-food-drink', 'open-edit-mode-food-drink',
-        'refresh-subtab-retail', 'undo-subtab-retail', 'open-explorer-retail', 'open-city-explorer-retail', 'open-edit-mode-retail',
-        'refresh-subtab-wildlife-animals', 'undo-subtab-wildlife-animals', 'open-explorer-wildlife-animals', 'open-city-explorer-wildlife-animals', 'open-edit-mode-wildlife-animals',
-        'refresh-subtab-regional-festivals', 'undo-subtab-regional-festivals', 'open-explorer-regional-festivals', 'open-city-explorer-regional-festivals', 'open-edit-mode-regional-festivals',
+        'refresh-subtab-outdoors', 'undo-subtab-outdoors', 'open-explorer-outdoors', 'open-visit-log-outdoors', 'open-city-explorer-outdoors', 'open-edit-mode-outdoors',
+        'refresh-subtab-entertainment', 'undo-subtab-entertainment', 'open-explorer-entertainment', 'open-visit-log-entertainment', 'open-city-explorer-entertainment', 'open-edit-mode-entertainment',
+        'refresh-subtab-food-drink', 'undo-subtab-food-drink', 'open-explorer-food-drink', 'open-visit-log-food-drink', 'open-city-explorer-food-drink', 'open-edit-mode-food-drink',
+        'refresh-subtab-retail', 'undo-subtab-retail', 'open-explorer-retail', 'open-visit-log-retail', 'open-city-explorer-retail', 'open-edit-mode-retail',
+        'refresh-subtab-wildlife-animals', 'undo-subtab-wildlife-animals', 'open-explorer-wildlife-animals', 'open-visit-log-wildlife-animals', 'open-city-explorer-wildlife-animals', 'open-edit-mode-wildlife-animals',
+        'refresh-subtab-regional-festivals', 'undo-subtab-regional-festivals', 'open-explorer-regional-festivals', 'open-visit-log-regional-festivals', 'open-city-explorer-regional-festivals', 'open-edit-mode-regional-festivals',
         'refresh-subtab-bike-trails', 'undo-subtab-bike-trails', 'explore-bike-trails', 'open-city-explorer-bike-trails', 'open-edit-mode-bike-trails'
       ];
       const legacyActions = [
@@ -3982,6 +4112,8 @@
           ? 'visited-subtab-action-btn visited-subtab-action-btn--refresh'
           : action.startsWith('undo-subtab-')
             ? 'visited-subtab-action-btn visited-subtab-action-btn--undo'
+            : action.startsWith('open-visit-log-')
+              ? 'visited-subtab-action-btn visited-subtab-action-btn--log'
             : 'visited-subtab-action-btn';
         btn.className = className;
         btn.setAttribute('data-visited-subtab-action', action);
@@ -4012,6 +4144,7 @@
       ensureButton(outdoorsRow, 'refresh-subtab-outdoors', 'Refresh Data', 'Refresh Outdoors data');
       ensureButton(outdoorsRow, 'undo-subtab-outdoors', '↶ Undo', 'No Outdoors action to undo yet');
       ensureButton(outdoorsRow, 'open-explorer-outdoors', 'Explore Outdoors', 'Explore the Outdoors');
+      ensureButton(outdoorsRow, 'open-visit-log-outdoors', 'Log a Visit', 'Log an Outdoors visit');
       ensureButton(outdoorsRow, 'open-city-explorer-outdoors', 'City Explorer', 'Open City Explorer filtered for Outdoors');
       ensureButton(outdoorsRow, 'open-edit-mode-outdoors', 'Edit Mode', 'Open Edit Mode for Outdoors');
 
@@ -4019,6 +4152,7 @@
       ensureButton(entertainmentRow, 'refresh-subtab-entertainment', 'Refresh Data', 'Refresh Entertainment data');
       ensureButton(entertainmentRow, 'undo-subtab-entertainment', '↶ Undo', 'No Entertainment action to undo yet');
       ensureButton(entertainmentRow, 'open-explorer-entertainment', 'Explore Entertainment', 'Explore Entertainment');
+      ensureButton(entertainmentRow, 'open-visit-log-entertainment', 'Log a Visit', 'Log an Entertainment visit');
       ensureButton(entertainmentRow, 'open-city-explorer-entertainment', 'City Explorer', 'Open City Explorer filtered for Entertainment');
       ensureButton(entertainmentRow, 'open-edit-mode-entertainment', 'Edit Mode', 'Open Edit Mode for Entertainment');
 
@@ -4026,6 +4160,7 @@
       ensureButton(foodDrinkRow, 'refresh-subtab-food-drink', 'Refresh Data', 'Refresh Food and Drink data');
       ensureButton(foodDrinkRow, 'undo-subtab-food-drink', '↶ Undo', 'No Food and Drink action to undo yet');
       ensureButton(foodDrinkRow, 'open-explorer-food-drink', 'Explore Food & Drink', 'Explore Food and Drink');
+      ensureButton(foodDrinkRow, 'open-visit-log-food-drink', 'Log a Visit', 'Log a Food and Drink visit');
       ensureButton(foodDrinkRow, 'open-city-explorer-food-drink', 'City Explorer', 'Open City Explorer filtered for Food & Drink');
       ensureButton(foodDrinkRow, 'open-edit-mode-food-drink', 'Edit Mode', 'Open Edit Mode for Food & Drink');
 
@@ -4033,6 +4168,7 @@
       ensureButton(retailRow, 'refresh-subtab-retail', 'Refresh Data', 'Refresh Retail data');
       ensureButton(retailRow, 'undo-subtab-retail', '↶ Undo', 'No Retail action to undo yet');
       ensureButton(retailRow, 'open-explorer-retail', 'Explore Retail', 'Explore Retail');
+      ensureButton(retailRow, 'open-visit-log-retail', 'Log a Visit', 'Log a Retail visit');
       ensureButton(retailRow, 'open-city-explorer-retail', 'City Explorer', 'Open City Explorer filtered for Retail');
       ensureButton(retailRow, 'open-edit-mode-retail', 'Edit Mode', 'Open Edit Mode for Retail');
 
@@ -4040,6 +4176,7 @@
       ensureButton(wildlifeAnimalsRow, 'refresh-subtab-wildlife-animals', 'Refresh Data', 'Refresh Wildlife and Animals data');
       ensureButton(wildlifeAnimalsRow, 'undo-subtab-wildlife-animals', '↶ Undo', 'No Wildlife and Animals action to undo yet');
       ensureButton(wildlifeAnimalsRow, 'open-explorer-wildlife-animals', 'Explore Wildlife & Animal Locations', 'Explore Wildlife and Animal Locations');
+      ensureButton(wildlifeAnimalsRow, 'open-visit-log-wildlife-animals', 'Log a Visit', 'Log a Wildlife and Animals visit');
       ensureButton(wildlifeAnimalsRow, 'open-city-explorer-wildlife-animals', 'City Explorer', 'Open City Explorer filtered for Wildlife & Animals');
       ensureButton(wildlifeAnimalsRow, 'open-edit-mode-wildlife-animals', 'Edit Mode', 'Open Edit Mode for Wildlife & Animals');
 
@@ -4047,6 +4184,7 @@
       ensureButton(regionalFestivalsRow, 'refresh-subtab-regional-festivals', 'Refresh Data', 'Refresh Regional Festivals data');
       ensureButton(regionalFestivalsRow, 'undo-subtab-regional-festivals', '↶ Undo', 'No Regional Festivals action to undo yet');
       ensureButton(regionalFestivalsRow, 'open-explorer-regional-festivals', 'Explore Regional Festivals', 'Explore Regional Festivals');
+      ensureButton(regionalFestivalsRow, 'open-visit-log-regional-festivals', 'Log a Visit', 'Log a Regional Festivals visit');
       ensureButton(regionalFestivalsRow, 'open-city-explorer-regional-festivals', 'City Explorer', 'Open City Explorer filtered for Regional Festivals');
       ensureButton(regionalFestivalsRow, 'open-edit-mode-regional-festivals', 'Edit Mode', 'Open Edit Mode for Regional Festivals');
 
@@ -4223,6 +4361,14 @@
             if (action.startsWith('undo-subtab-')) {
               if (typeof window.showToast === 'function') {
                 window.showToast('No Adventure action to undo yet.', 'info', 2200);
+              }
+              return;
+            }
+
+            if (action.startsWith('open-visit-log-')) {
+              const subtabKey = action.replace('open-visit-log-', '');
+              if (subtabKey) {
+                openVisitLogModal({ subtabKey });
               }
               return;
             }
@@ -4589,6 +4735,19 @@
         const itemIdInput = document.getElementById('visitedVisitLogItemId');
         if (itemIdInput) itemIdInput.value = itemId;
         renderVisitLogActivityGrid(subtabKey, itemId);
+      });
+    }
+
+    const visitLogPhotoInput = document.getElementById('visitedVisitLogPhotoInput');
+    if (visitLogPhotoInput && visitLogPhotoInput.dataset.bound !== '1') {
+      visitLogPhotoInput.dataset.bound = '1';
+      visitLogPhotoInput.addEventListener('change', () => {
+        const files = getVisitLogPhotoFiles();
+        if (!files.length) {
+          setVisitLogPhotoStatus('Attach one or more photos to upload them to OneDrive when you save.');
+          return;
+        }
+        setVisitLogPhotoStatus(`${files.length} photo${files.length === 1 ? '' : 's'} selected for upload.`, 'warn');
       });
     }
 

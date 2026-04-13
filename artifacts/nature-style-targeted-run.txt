@@ -1,0 +1,19 @@
+
+Running 13 tests using 1 worker
+
+  ✓   1 tests/nature-subtabs-smoke.spec.js:20:3 › Nature config-driven subtabs smoke › birds diagnostics row is visible (2.0s)
+  ✓   2 tests/nature-subtabs-smoke.spec.js:29:3 › Nature config-driven subtabs smoke › birds jump bar renders with expected section buttons (1.6s)
+  ✓   3 tests/nature-subtabs-smoke.spec.js:61:3 › Nature config-driven subtabs smoke › birds jump bar hides outside overview and returns on overview (5.1s)
+  ✓   4 tests/nature-subtabs-smoke.spec.js:100:3 › Nature config-driven subtabs smoke › mammals diagnostics row contains stable labels (1.6s)
+  ✓   5 tests/nature-subtabs-smoke.spec.js:109:3 › Nature config-driven subtabs smoke › shrubs subtab is removed from the dock (1.0s)
+  ✓   6 tests/nature-subtabs-smoke.spec.js:113:3 › Nature config-driven subtabs smoke › nature subtabs expose loading state attributes (1.6s)
+  ✓   7 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Mammals (1.6s)
+  ✓   8 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Reptiles (1.7s)
+  ✓   9 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Amphibians (1.7s)
+  ✓  10 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Insects (1.6s)
+  ✓  11 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Arachnids (1.7s)
+  ✓  12 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Wildflowers (1.7s)
+  ✓  13 tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Trees & Shrubs (1.7s)
+
+  13 passed (25.1s)
+EXIT_CODE:0
