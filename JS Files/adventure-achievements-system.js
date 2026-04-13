@@ -2,7 +2,7 @@
  * Adventure Achievements System
  * Per-subtab achievement dashboards: Category Progression, Challenges, Badges,
  * Seasonal Quests, and Bingo – driven by per-subtab category tags.
- * Progress is persisted in localStorage; +/- buttons allow manual tracking.
+ * Progress is auto-tracked from visited records and explorer matching.
  */
 window.AdventureAchievements = (function () {
   'use strict';
@@ -30,10 +30,6 @@ window.AdventureAchievements = (function () {
     'name-only': {
       label: 'Name Only (exact + fuzzy)',
       help: 'Ignores Place IDs. Useful when source rows are missing Place IDs.'
-    },
-    manual: {
-      label: 'Manual fallback',
-      help: 'Turns off auto-sync and uses your manual +/- counters.'
     }
   };
   const CHALLENGE_TIER_TARGETS = [1, 3, 5, 10, 15];
@@ -354,7 +350,7 @@ window.AdventureAchievements = (function () {
   function getSubSettings(state, key) {
     if (!state.__settings) state.__settings = {};
     if (!state.__settings[key]) state.__settings[key] = { mode: 'balanced' };
-    if (!MATCH_MODES[state.__settings[key].mode]) state.__settings[key].mode = 'balanced';
+    if (!MATCH_MODES[state.__settings[key].mode] || state.__settings[key].mode === 'manual') state.__settings[key].mode = 'balanced';
     return state.__settings[key];
   }
   function getVal(obj, id) { return Number(obj?.[id] ?? 0); }
@@ -595,7 +591,6 @@ window.AdventureAchievements = (function () {
 
   function buildProgressModel(subtabKey, config, sub, settings) {
     const mode = settings?.mode || 'balanced';
-    const isManual = mode === 'manual';
     const categoryTotals = {};
     const categoryVisited = {};
     config.categories.forEach((cat) => {
@@ -608,11 +603,7 @@ window.AdventureAchievements = (function () {
     const matchStats = { placeId: 0, exact: 0, fuzzy: 0 };
     let categorizedRows = 0;
 
-    if (isManual) {
-      config.categories.forEach((cat) => {
-        categoryVisited[cat.key] = getVal(sub.categories, cat.key);
-      });
-    } else if (explorer.loaded && explorer.items.length) {
+    if (explorer.loaded && explorer.items.length) {
       explorer.items.forEach((item) => {
         const matched = classifyCategoryKeys(subtabKey, item);
         if (!matched.length) return;
@@ -636,21 +627,17 @@ window.AdventureAchievements = (function () {
       });
     }
 
-    if (!isManual) {
-      const recordCounts = collectVisitRecordCategoryCounts(subtabKey, config);
-      if (recordCounts.total > 0) {
-        config.categories.forEach((cat) => {
-          categoryVisited[cat.key] = Number(recordCounts.counts[cat.key] || 0);
-        });
-      }
+    const recordCounts = collectVisitRecordCategoryCounts(subtabKey, config);
+    if (recordCounts.total > 0) {
+      config.categories.forEach((cat) => {
+        categoryVisited[cat.key] = Number(recordCounts.counts[cat.key] || 0);
+      });
     }
 
     const challengesById = {};
     config.challenges.forEach((challenge) => {
       let progress = 0;
-      if (isManual) {
-        progress = getVal(sub.challenges, challenge.id);
-      } else if (challenge.cat) {
+      if (challenge.cat) {
         progress = categoryVisited[challenge.cat] || 0;
       } else {
         progress = Object.values(categoryVisited).filter((count) => count > 0).length;
@@ -662,12 +649,10 @@ window.AdventureAchievements = (function () {
       mode,
       modeLabel: MATCH_MODES[mode]?.label || MATCH_MODES.balanced.label,
       modeHelp: MATCH_MODES[mode]?.help || MATCH_MODES.balanced.help,
-      autoMode: !isManual && explorer.loaded && explorer.items.length > 0,
+      autoMode: explorer.loaded && explorer.items.length > 0,
       explorerLoaded: explorer.loaded,
       matchStats,
-      matchBreakdownText: isManual
-        ? 'Manual mode active - auto-match breakdown is disabled.'
-        : `Matched by place ID: ${matchStats.placeId} | exact name: ${matchStats.exact} | fuzzy: ${matchStats.fuzzy} | catalog rows scanned: ${explorer.items.length} | categorized rows: ${categorizedRows}${explorer.loaded && explorer.items.length > 0 ? '' : ' (open explorer to sync counts)'}`,
+      matchBreakdownText: `Matched by place ID: ${matchStats.placeId} | exact name: ${matchStats.exact} | fuzzy: ${matchStats.fuzzy} | catalog rows scanned: ${explorer.items.length} | categorized rows: ${categorizedRows}${explorer.loaded && explorer.items.length > 0 ? '' : ' (open explorer to sync counts)'}`,
       categoryTotals,
       categoryVisited,
       challengesById,
@@ -698,7 +683,7 @@ window.AdventureAchievements = (function () {
         <div class="card-header">
           <div>
             <div class="card-title">⚙️ Sync Mode</div>
-            <div class="card-subtitle">Choose how matching works. You can switch to manual fallback anytime.</div>
+            <div class="card-subtitle">Choose how matching works for automated progress tracking.</div>
           </div>
           <div class="adventure-achv-count-badge">${esc(progress.modeLabel)}</div>
         </div>
@@ -733,10 +718,7 @@ window.AdventureAchievements = (function () {
           <div class="adventure-achv-cat-count">${visited}<span class="adventure-achv-cat-total"> / ${total}</span></div>
           <div class="adventure-achv-cat-pct">${p}% complete</div>
           <div class="adventure-achv-cat-bar"><div class="adventure-achv-cat-fill" style="width:${p}%"></div></div>
-          ${progress.autoMode ? '<div class="adventure-achv-cat-actions"><span class="adventure-achv-cat-total">Auto-synced from visited data</span></div>' : `<div class="adventure-achv-cat-actions">
-            <button class="adventure-achv-adj-btn" data-achv-btn data-achv-type="categories" data-achv-id="${cat.key}" data-achv-delta="-1" data-achv-goal="999" title="Remove one visit">−</button>
-            <button class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-btn data-achv-type="categories" data-achv-id="${cat.key}" data-achv-delta="1" data-achv-goal="999" title="Log a visit">+</button>
-          </div>`}
+          <div class="adventure-achv-cat-actions"><span class="adventure-achv-cat-total">Auto-tracked from visit logs</span></div>
         </div>`;
     }).join('');
     const totalVisited = progress.totalVisited;

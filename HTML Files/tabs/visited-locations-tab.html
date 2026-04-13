@@ -380,6 +380,8 @@
       </select>
       <label class="visited-visit-log-label" for="visitedVisitLogDate">Date visited</label>
       <input id="visitedVisitLogDate" class="filter-input" type="date" required />
+      <label class="visited-visit-log-label" for="visitedVisitLogActivityGrid">Activities completed (select all that apply)</label>
+      <div id="visitedVisitLogActivityGrid" class="visited-visit-log-activity-grid" role="group" aria-label="Activities completed"></div>
       <label class="visited-visit-log-label" for="visitedVisitLogNotes">Notes (optional)</label>
       <textarea id="visitedVisitLogNotes" class="filter-input" rows="4" placeholder="Add notes about this visit..."></textarea>
       <div id="visitedVisitLogHelp" class="card-subtitle" aria-live="polite"></div>
@@ -483,6 +485,26 @@
     border-radius: 999px;
     padding: 8px 12px;
     white-space: nowrap;
+  }
+
+  #visitedLocationsRoot .visited-visit-log-activity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+
+  #visitedLocationsRoot .visited-visit-log-activity-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+    color: #1e3a8a;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 700;
   }
 
   #visitedLocationsRoot .visited-cta-injector-chip {

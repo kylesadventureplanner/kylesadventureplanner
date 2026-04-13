@@ -5,12 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/tests/adventure-header-sync-smoke.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/adventure-achievements-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/adventure-achievements-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/adventure-achievements-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-achievements-smoke.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -95,7 +97,7 @@
       <workItem from="1775308318086" duration="90230000" />
       <workItem from="1775520086833" duration="195926000" />
       <workItem from="1775961963296" duration="82000" />
-      <workItem from="1775962146733" duration="49662000" />
+      <workItem from="1775962146733" duration="52540000" />
     </task>
     <servers />
   </component>

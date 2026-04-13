@@ -895,11 +895,78 @@
     return `${days}d ago`;
   }
 
+  function getPendingUnsyncedCount(visitMap) {
+    const map = visitMap || state.latestVisitMap || {};
+    return Object.values(map).filter((entry) => entry && entry.synced === false).length;
+  }
+
+  function ensureVisitedHeaderSyncIndicatorStyles() {
+    if (document.getElementById('visitedHeaderSyncIndicatorStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'visitedHeaderSyncIndicatorStyles';
+    style.textContent = `
+      #visitedHeaderSyncIndicator { display:inline-flex; align-items:center; gap:8px; }
+      #visitedHeaderSyncStatus { font-size:12px; font-weight:800; border-radius:999px; padding:6px 10px; border:1px solid #d1d5db; background:#f8fafc; color:#334155; }
+      #visitedHeaderSyncStatus.is-pending { border-color:#fca5a5; background:#fef2f2; color:#991b1b; }
+      #visitedHeaderSyncStatus.is-ok { border-color:#86efac; background:#ecfdf5; color:#166534; }
+      #visitedHeaderSyncRetryBtn.is-flashing { animation: visitedSyncPulse 1.1s ease-in-out infinite; }
+      @keyframes visitedSyncPulse { 0% { box-shadow:0 0 0 0 rgba(239,68,68,0.35); } 70% { box-shadow:0 0 0 10px rgba(239,68,68,0); } 100% { box-shadow:0 0 0 0 rgba(239,68,68,0); } }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function ensureVisitedHeaderSyncIndicator() {
+    ensureVisitedHeaderSyncIndicatorStyles();
+    const row = document.querySelector('.app-header .header-actions-row');
+    if (!row) return null;
+    let host = document.getElementById('visitedHeaderSyncIndicator');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'visitedHeaderSyncIndicator';
+      host.innerHTML = `
+        <span id="visitedHeaderSyncStatus" class="is-ok" aria-live="polite">All Changes Synced</span>
+        <button id="visitedHeaderSyncRetryBtn" type="button" class="auth-btn" title="Retry publishing pending local changes">Retry Sync</button>
+      `;
+      const signInBtn = row.querySelector('#signInBtn');
+      if (signInBtn) row.insertBefore(host, signInBtn);
+      else row.appendChild(host);
+    }
+    const retryBtn = host.querySelector('#visitedHeaderSyncRetryBtn');
+    if (retryBtn && retryBtn.dataset.bound !== '1') {
+      retryBtn.dataset.bound = '1';
+      retryBtn.addEventListener('click', async () => {
+        await retryPendingLocalWrites(retryBtn);
+      });
+    }
+    return host;
+  }
+
+  function renderVisitedHeaderSyncIndicator(visitMap) {
+    const host = ensureVisitedHeaderSyncIndicator();
+    if (!host) return;
+    const statusChip = host.querySelector('#visitedHeaderSyncStatus');
+    const retryBtn = host.querySelector('#visitedHeaderSyncRetryBtn');
+    if (!statusChip || !retryBtn) return;
+    const pending = getPendingUnsyncedCount(visitMap);
+    statusChip.classList.remove('is-pending', 'is-ok');
+    if (pending > 0) {
+      statusChip.classList.add('is-pending');
+      statusChip.textContent = `Unsynced: ${pending}`;
+      retryBtn.disabled = false;
+      retryBtn.classList.add('is-flashing');
+    } else {
+      statusChip.classList.add('is-ok');
+      statusChip.textContent = 'All Changes Synced';
+      retryBtn.disabled = true;
+      retryBtn.classList.remove('is-flashing');
+    }
+  }
+
   function renderSyncMeta(visitMap) {
     const el = document.getElementById('visitedSyncMeta');
     if (!el) return;
     const map = visitMap || state.latestVisitMap || {};
-    const pending = Object.values(map).filter((entry) => entry && entry.synced === false).length;
+    const pending = getPendingUnsyncedCount(map);
     const sourceCounts = (state.latestLocations || []).reduce((acc, item) => {
       const key = item && item.sourceType === 'bike' ? 'bike' : 'adventure';
       acc[key] += 1;
@@ -907,6 +974,7 @@
     }, { adventure: 0, bike: 0 });
     const since = formatRelativeTime(state.lastRenderAt);
     el.textContent = `Last synced: ${since} • Pending local-only: ${pending} • Sources: ${sourceCounts.adventure} adv / ${sourceCounts.bike} bike`;
+    renderVisitedHeaderSyncIndicator(map);
   }
 
   function getSubtabStatusSourceSummary(subtabKey, explorerState) {
@@ -1804,6 +1872,87 @@
       .filter((item) => item.id && item.title);
   }
 
+  function getVisitLogActivityOptions(subtabKey) {
+    const config = window.AdventureAchievements && window.AdventureAchievements.CONFIGS
+      ? window.AdventureAchievements.CONFIGS[subtabKey]
+      : null;
+    const configured = Array.isArray(config && config.categories)
+      ? config.categories.map((cat) => ({ key: String(cat.key || '').trim(), label: String(cat.label || '').trim(), icon: String(cat.icon || '').trim() }))
+      : [];
+    const defaults = CATEGORY_DEFS.map((cat) => ({ key: cat.key, label: cat.label, icon: cat.icon }));
+
+    const merged = [];
+    const seen = new Set();
+    const pushUnique = (list) => {
+      (list || []).forEach((opt) => {
+        const key = String(opt && opt.key ? opt.key : '').trim();
+        const label = String(opt && opt.label ? opt.label : '').trim();
+        if (!key || !label || seen.has(key)) return;
+        seen.add(key);
+        merged.push({ key, label, icon: String(opt && opt.icon ? opt.icon : '').trim() });
+      });
+    };
+
+    // Outdoors-first activity set mirrors the common field activities users log most often.
+    if (subtabKey === 'outdoors') {
+      pushUnique([
+        { key: 'hiking', label: 'Hiking', icon: '🥾' },
+        { key: 'bike', label: 'Biking', icon: '🚴' },
+        { key: 'dog-walk', label: 'Dog Walk', icon: '🐕' },
+        { key: 'waterfall', label: 'Waterfall Visit', icon: '💧' },
+        { key: 'park', label: 'Park Visit', icon: '🌳' }
+      ]);
+    }
+
+    pushUnique(configured);
+    pushUnique(defaults);
+    return merged;
+  }
+
+  function inferVisitCategoryKeys(subtabKey, item) {
+    const haystack = [
+      item && item.title,
+      item && item.name,
+      item && item.description,
+      item && item.sourceLabel,
+      Array.isArray(item && item.tags) ? item.tags.join(' ') : (item && item.tags)
+    ].map((value) => norm(value)).join(' ');
+    const inferred = [];
+    getVisitLogActivityOptions(subtabKey).forEach((option) => {
+      const labelWords = norm(option.label).split(/\s+/).filter((word) => word.length > 2);
+      const keyWords = norm(option.key).split(/[-_\s]+/).filter((word) => word.length > 2);
+      const words = Array.from(new Set(labelWords.concat(keyWords)));
+      if (words.some((word) => haystack.includes(word))) inferred.push(option.key);
+    });
+    if (subtabKey === 'outdoors' && /(dog|dog walk|canine|pet walk)/.test(haystack)) {
+      inferred.push('dog-walk');
+    }
+    return Array.from(new Set(inferred));
+  }
+
+  function renderVisitLogActivityGrid(subtabKey, itemId) {
+    const grid = document.getElementById('visitedVisitLogActivityGrid');
+    if (!grid) return;
+    const options = getVisitLogActivityOptions(subtabKey);
+    if (!options.length) {
+      grid.innerHTML = '<div class="card-subtitle">No activity options are configured for this section.</div>';
+      return;
+    }
+    const selectedItem = itemId ? getExplorerItemById(subtabKey, itemId) : null;
+    const inferredKeys = selectedItem ? inferVisitCategoryKeys(subtabKey, selectedItem) : [];
+    grid.innerHTML = options.map((option, idx) => {
+      const checked = inferredKeys.includes(option.key) ? 'checked' : '';
+      const inputId = `visitedVisitActivity-${subtabKey}-${idx}`;
+      return `<label class="visited-visit-log-activity-option" for="${escapeHtml(inputId)}"><input id="${escapeHtml(inputId)}" type="checkbox" data-visited-visit-activity="${escapeHtml(option.key)}" ${checked} /> <span>${escapeHtml(option.icon ? `${option.icon} ${option.label}` : option.label)}</span></label>`;
+    }).join('');
+  }
+
+  function getSelectedVisitActivityKeys() {
+    return Array.from(document.querySelectorAll('#visitedVisitLogActivityGrid input[data-visited-visit-activity]:checked'))
+      .map((node) => String(node.getAttribute('data-visited-visit-activity') || '').trim())
+      .filter(Boolean);
+  }
+
   function closeVisitLogModal() {
     const modal = document.getElementById('visitedVisitLogModal');
     const backdrop = document.getElementById('visitedVisitLogBackdrop');
@@ -1820,9 +1969,10 @@
     const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
     const dateInput = document.getElementById('visitedVisitLogDate');
     const notesInput = document.getElementById('visitedVisitLogNotes');
+    const activityGrid = document.getElementById('visitedVisitLogActivityGrid');
     const help = document.getElementById('visitedVisitLogHelp');
     const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
-    if (!modal || !backdrop || !subtabKeyInput || !itemIdInput || !modeInput || !locationSelect || !dateInput || !notesInput) return;
+    if (!modal || !backdrop || !subtabKeyInput || !itemIdInput || !modeInput || !locationSelect || !dateInput || !notesInput || !activityGrid) return;
 
     const subtabKey = String(options && options.subtabKey ? options.subtabKey : state.activeProgressSubTab || 'outdoors').trim();
     if (typeof forceVisitedExplorerSync === 'function' && getExplorerConfig(subtabKey)) {
@@ -1849,6 +1999,7 @@
     notesInput.value = '';
     subtabKeyInput.value = subtabKey;
     itemIdInput.value = locationSelect.value || '';
+    renderVisitLogActivityGrid(subtabKey, locationSelect.value || '');
     const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
     modeInput.value = mode;
     if (submitBtn) submitBtn.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
@@ -1873,7 +2024,8 @@
 
     const item = getExplorerItemById(subtabKey, itemId);
     if (!item) return;
-    const categoryKeys = classifyCategoryKeys(subtabKey, item);
+    const selectedActivityKeys = getSelectedVisitActivityKeys();
+    const categoryKeys = selectedActivityKeys.length ? selectedActivityKeys : inferVisitCategoryKeys(subtabKey, item);
     if (mode === 'remove') {
       const dayPrefix = `${dateValue}T`;
       const records = Array.isArray(state.visitRecords) ? state.visitRecords.slice() : [];
@@ -1896,6 +2048,7 @@
         locationId: itemId,
         locationTitle: String(item.title || 'Unknown').trim(),
         sourceLabel: String(item.sourceLabel || '').trim(),
+        activityKeys: selectedActivityKeys,
         categoryKeys,
         visitedAt: new Date(`${dateValue}T12:00:00`).toISOString(),
         notes,
@@ -1911,6 +2064,63 @@
 
     closeVisitLogModal();
     await refreshTab();
+  }
+
+  async function retryPendingLocalWrites(triggerBtn) {
+    const visitMap = getVisitMap();
+    const pendingIds = Object.keys(visitMap).filter((locationId) => visitMap[locationId] && visitMap[locationId].synced === false);
+    if (!pendingIds.length) {
+      renderVisitedHeaderSyncIndicator(visitMap);
+      return;
+    }
+
+    const originalText = triggerBtn ? triggerBtn.textContent : '';
+    if (triggerBtn) {
+      triggerBtn.disabled = true;
+      triggerBtn.textContent = 'Retrying...';
+      triggerBtn.classList.remove('is-flashing');
+    }
+
+    let successCount = 0;
+    let failedCount = 0;
+    try {
+      for (const locationId of pendingIds) {
+        const location = findAdventureById(locationId);
+        if (!location) {
+          failedCount += 1;
+          continue;
+        }
+        try {
+          await persistVisitedToExcel(location, true);
+          visitMap[locationId] = {
+            ...visitMap[locationId],
+            name: location.name || visitMap[locationId].name || locationId,
+            sourceType: location.sourceType || visitMap[locationId].sourceType || 'unknown',
+            synced: true
+          };
+          successCount += 1;
+        } catch (_error) {
+          failedCount += 1;
+        }
+      }
+      saveVisitMap(visitMap);
+      state.latestVisitMap = visitMap;
+      renderSyncMeta(visitMap);
+      renderVisitedDiagnosticsPanel(visitMap);
+      renderVisitedHeaderSyncIndicator(visitMap);
+      if (typeof window.showToast === 'function') {
+        if (failedCount > 0) {
+          window.showToast(`Synced ${successCount}/${pendingIds.length}. ${failedCount} still pending.`, 'warning', 2800);
+        } else {
+          window.showToast(`Synced ${successCount} pending local change${successCount === 1 ? '' : 's'}.`, 'success', 2200);
+        }
+      }
+    } finally {
+      if (triggerBtn) {
+        triggerBtn.textContent = originalText || 'Retry Sync';
+      }
+      await refreshTab();
+    }
   }
 
   function buildExplorerDetailsHtml(item) {
@@ -4370,6 +4580,18 @@
       });
     }
 
+    const visitLogLocationSelect = document.getElementById('visitedVisitLogLocationSelect');
+    if (visitLogLocationSelect && visitLogLocationSelect.dataset.bound !== '1') {
+      visitLogLocationSelect.dataset.bound = '1';
+      visitLogLocationSelect.addEventListener('change', () => {
+        const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || state.activeProgressSubTab || 'outdoors').trim();
+        const itemId = String(visitLogLocationSelect.value || '').trim();
+        const itemIdInput = document.getElementById('visitedVisitLogItemId');
+        if (itemIdInput) itemIdInput.value = itemId;
+        renderVisitLogActivityGrid(subtabKey, itemId);
+      });
+    }
+
     root.addEventListener('pointerdown', (event) => {
       if (!event.target.closest || !event.target.closest('[data-progress-subtab]')) return;
       scheduleVisitedSubTabInterceptionCheck(root, 0);
@@ -4398,6 +4620,8 @@
       }
 
       bindVisitedPrimaryTabFallbackSync(root);
+      ensureVisitedHeaderSyncIndicator();
+      renderVisitedHeaderSyncIndicator(state.latestVisitMap || getVisitMap());
 
     scheduleVisitedSubTabInterceptionCheck(root, 80);
   }

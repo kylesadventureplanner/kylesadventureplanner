@@ -40,9 +40,22 @@ test.describe('Nature config-driven subtabs smoke', () => {
 
     await expect(jumpBar).toHaveCount(0);
     const commandBar = page.locator('#birdsOverviewCommandInput').locator('xpath=ancestor::div[contains(@class, "nature-overview-command-row")]');
-    await expect(commandBar.locator('[data-birds-overview-jump="challenges-badges"]')).toHaveCount(1);
-    await expect(commandBar.locator('[data-birds-overview-jump="quests"]')).toHaveCount(1);
-    await expect(commandBar.locator('[data-birds-overview-jump="bingo"]')).toHaveCount(1);
+    const challengesBtn = commandBar.locator('[data-birds-overview-jump="challenges-badges"]');
+    const questsBtn = commandBar.locator('[data-birds-overview-jump="quests"]');
+    const bingoBtn = commandBar.locator('[data-birds-overview-jump="bingo"]');
+
+    await expect(challengesBtn).toHaveCount(1);
+    await expect(questsBtn).toHaveCount(1);
+    await expect(bingoBtn).toHaveCount(1);
+
+    await challengesBtn.click();
+    await expect(page.locator('#birdsOverviewSectionChallengesBadges')).toBeInViewport();
+
+    await questsBtn.click();
+    await expect(page.locator('#birdsOverviewSectionQuests')).toBeInViewport();
+
+    await bingoBtn.click();
+    await expect(page.locator('#birdsOverviewSectionBingo')).toBeInViewport();
   });
 
   test('birds jump bar hides outside overview and returns on overview', async ({ page }) => {

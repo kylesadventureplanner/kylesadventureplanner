@@ -42,7 +42,7 @@ test.describe('Adventure achievements dashboard smoke', () => {
     });
   });
 
-  test('sync mode selector allows manual fallback', async ({ page }) => {
+  test('sync mode selector keeps automated matching modes only', async ({ page }) => {
     const dockButton = page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first();
     await expect(dockButton).toBeVisible();
     await dockButton.click();
@@ -75,12 +75,13 @@ test.describe('Adventure achievements dashboard smoke', () => {
     await expect(page.locator('#achv-root-outdoors .adventure-achv-tier-chip:visible .adventure-achv-tier-chip-name').filter({ hasText: /Rookie/i }).first()).toBeVisible({ timeout: 12000 });
     await expect(page.locator('#achv-root-outdoors .adventure-achv-tier-chip:visible .adventure-achv-tier-chip-name').filter({ hasText: /MVP/i }).first()).toBeVisible({ timeout: 12000 });
 
-    await modeSelect.selectOption('manual');
-    await expect(modeSelect).toHaveValue('manual');
+    // Manual fallback is intentionally removed; only automated matching modes remain.
+    await expect(modeSelect.locator('option[value="manual"]')).toHaveCount(0);
+    await modeSelect.selectOption('name-only');
+    await expect(modeSelect).toHaveValue('name-only');
+    await expect(syncScope.getByText(/Ignores Place IDs/i).first()).toBeVisible();
 
-    await expect(syncScope.getByText(/Manual mode active/i).first()).toBeVisible();
-
-    // Ensure dashboard content still renders in fallback mode.
+    // Ensure dashboard content still renders after switching matching mode.
     await expect(page.locator('#achv-root-outdoors').getByText(/Category Progression/i).first()).toBeVisible();
     await expect(page.locator('#achv-root-outdoors').getByText(/Challenges/i).first()).toBeVisible();
   });
