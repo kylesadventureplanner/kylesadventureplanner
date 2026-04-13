@@ -1,0 +1,2825 @@
+{
+  "config": {
+    "configFile": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/playwright.config.js",
+    "rootDir": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.59.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "adventure-achievements-smoke.spec.js",
+      "file": "adventure-achievements-smoke.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Adventure achievements dashboard smoke",
+          "file": "adventure-achievements-smoke.spec.js",
+          "line": 19,
+          "column": 6,
+          "specs": [
+            {
+              "title": "renders achievement sections for outdoors",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1665,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:05.069Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "822932e2c025e5d345fb-76d6e163113752fccbf2",
+              "file": "adventure-achievements-smoke.spec.js",
+              "line": 27,
+              "column": 5
+            },
+            {
+              "title": "renders achievement sections for entertainment",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1940,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:18.844Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "822932e2c025e5d345fb-289fa53fd356c006b320",
+              "file": "adventure-achievements-smoke.spec.js",
+              "line": 27,
+              "column": 5
+            },
+            {
+              "title": "renders achievement sections for food-drink",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1887,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:20.791Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "822932e2c025e5d345fb-6b852d825b50eafe82a3",
+              "file": "adventure-achievements-smoke.spec.js",
+              "line": 27,
+              "column": 5
+            },
+            {
+              "title": "renders achievement sections for retail",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1909,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:22.686Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "822932e2c025e5d345fb-30026db0bcf2208e3c87",
+              "file": "adventure-achievements-smoke.spec.js",
+              "line": 27,
+              "column": 5
+            },
+            {
+              "title": "renders achievement sections for wildlife-animals",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1958,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:24.603Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "822932e2c025e5d345fb-73e6279b9d68953899c9",
+              "file": "adventure-achievements-smoke.spec.js",
+              "line": 27,
+              "column": 5
+            },
+            {
+              "title": "sync mode selector keeps automated matching modes only",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1950,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:26.568Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "822932e2c025e5d345fb-7cfeb7ae10a7ad45a89c",
+              "file": "adventure-achievements-smoke.spec.js",
+              "line": 45,
+              "column": 3
+            },
+            {
+              "title": "category totals sync CTA lives in the status row instead of Category Progression",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1356,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:28.525Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "822932e2c025e5d345fb-8d612a924ddb2e3641c7",
+              "file": "adventure-achievements-smoke.spec.js",
+              "line": 89,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "adventure-explorer-flows.spec.js",
+      "file": "adventure-explorer-flows.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Adventure explorer open/close flows",
+          "file": "adventure-explorer-flows.spec.js",
+          "line": 12,
+          "column": 6,
+          "specs": [
+            {
+              "title": "explorer flow: Outdoors",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3059,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:29.893Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e31de0b1b74de20514d0-29a4083e774f3eb95377",
+              "file": "adventure-explorer-flows.spec.js",
+              "line": 20,
+              "column": 5
+            },
+            {
+              "title": "explorer flow: Entertainment",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3076,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:32.958Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e31de0b1b74de20514d0-f46de19a63b19d320e74",
+              "file": "adventure-explorer-flows.spec.js",
+              "line": 20,
+              "column": 5
+            },
+            {
+              "title": "explorer flow: Food & Drink",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3095,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:36.040Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e31de0b1b74de20514d0-2f5a2777c9464992457e",
+              "file": "adventure-explorer-flows.spec.js",
+              "line": 20,
+              "column": 5
+            },
+            {
+              "title": "explorer flow: Retail",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3093,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:39.141Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e31de0b1b74de20514d0-ea1898e56d29f773ea65",
+              "file": "adventure-explorer-flows.spec.js",
+              "line": 20,
+              "column": 5
+            },
+            {
+              "title": "explorer flow: Wildlife & Animals",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3002,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:42.240Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e31de0b1b74de20514d0-accc256cbd1b153db464",
+              "file": "adventure-explorer-flows.spec.js",
+              "line": 20,
+              "column": 5
+            },
+            {
+              "title": "explorer flow: Regional Festivals",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3020,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:45.247Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e31de0b1b74de20514d0-a689e7757a4d43f3aabc",
+              "file": "adventure-explorer-flows.spec.js",
+              "line": 20,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "adventure-explorer-inpane-details.spec.js",
+      "file": "adventure-explorer-inpane-details.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Adventure explorer in-pane details flow",
+          "file": "adventure-explorer-inpane-details.spec.js",
+          "line": 135,
+          "column": 6,
+          "specs": [
+            {
+              "title": "opens details in-pane, shows richer fields, and returns to list",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 7849,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:48.275Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "1d5ed4efdbc4475b5f39-8e894a8590d2561915c2",
+              "file": "adventure-explorer-inpane-details.spec.js",
+              "line": 136,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "adventure-header-sync-smoke.spec.js",
+      "file": "adventure-header-sync-smoke.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Adventure header sync indicator smoke",
+          "file": "adventure-header-sync-smoke.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "shows pending unsynced count and flashing retry button",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1536,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:56.130Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "dfc75467b16cd2bf6ed7-97c3ba4c2744a1b14817",
+              "file": "adventure-header-sync-smoke.spec.js",
+              "line": 4,
+              "column": 3
+            },
+            {
+              "title": "shows synced state and disabled retry button when no pending rows",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 926,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:57.671Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "dfc75467b16cd2bf6ed7-e2028f07f9a5d1350688",
+              "file": "adventure-header-sync-smoke.spec.js",
+              "line": 32,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "adventure-inline-tools-roundtrip.spec.js",
+      "file": "adventure-inline-tools-roundtrip.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Adventure inline tools roundtrip",
+          "file": "adventure-inline-tools-roundtrip.spec.js",
+          "line": 21,
+          "column": 6,
+          "specs": [
+            {
+              "title": "City Explorer inline opens and back returns to overview",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2816,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:46:58.605Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "45472fe54be9ea248f40-1d5a925ae9eb6b0aa2e8",
+              "file": "adventure-inline-tools-roundtrip.spec.js",
+              "line": 30,
+              "column": 3
+            },
+            {
+              "title": "Edit Mode inline opens and back returns to overview",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1914,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:01.426Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "45472fe54be9ea248f40-db96be21418a82888771",
+              "file": "adventure-inline-tools-roundtrip.spec.js",
+              "line": 120,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "adventure-log-visit-modal.spec.js",
+      "file": "adventure-log-visit-modal.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Adventure log visit modal",
+          "file": "adventure-log-visit-modal.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Log Visit fields are interactive and editable",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2843,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:03.347Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "af2653daa26ed9902b8b-c3bb2ae0fd51308124ac",
+              "file": "adventure-log-visit-modal.spec.js",
+              "line": 4,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "adventure-subtabs-smoke.spec.js",
+      "file": "adventure-subtabs-smoke.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Adventure Challenge new subtabs smoke",
+          "file": "adventure-subtabs-smoke.spec.js",
+          "line": 30,
+          "column": 6,
+          "specs": [
+            {
+              "title": "legacy top header controls are removed from Adventure Challenge",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1524,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:06.196Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e3c6984fe9142d572d1c-f76c2942a7d2adbea75e",
+              "file": "adventure-subtabs-smoke.spec.js",
+              "line": 37,
+              "column": 3
+            },
+            {
+              "title": "default Outdoors pane uses Nature-style status pills",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1585,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:07.726Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e3c6984fe9142d572d1c-32d6bdbe8b4bf4afb553",
+              "file": "adventure-subtabs-smoke.spec.js",
+              "line": 43,
+              "column": 3
+            },
+            {
+              "title": "adventure achievement sections keep sticky section-header style hook",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1518,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:09.317Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e3c6984fe9142d572d1c-5398cfee7c7a9f9b21f9",
+              "file": "adventure-subtabs-smoke.spec.js",
+              "line": 49,
+              "column": 3
+            },
+            {
+              "title": "jump links hide while Outdoors explorer view is open",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3741,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:10.840Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e3c6984fe9142d572d1c-17b02e264b76ba1d45ff",
+              "file": "adventure-subtabs-smoke.spec.js",
+              "line": 61,
+              "column": 3
+            },
+            {
+              "title": "subtab smoke: Wildlife & Animals",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1909,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:14.586Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e3c6984fe9142d572d1c-88b226b6535654d28f07",
+              "file": "adventure-subtabs-smoke.spec.js",
+              "line": 83,
+              "column": 5
+            },
+            {
+              "title": "subtab smoke: Regional Festivals",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1309,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:16.501Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e3c6984fe9142d572d1c-10257e3568c5958565df",
+              "file": "adventure-subtabs-smoke.spec.js",
+              "line": 83,
+              "column": 5
+            },
+            {
+              "title": "subtab smoke: Retail",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1885,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:17.816Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e3c6984fe9142d572d1c-210e737b67585b85ed72",
+              "file": "adventure-subtabs-smoke.spec.js",
+              "line": 83,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "app-backup-flow.spec.js",
+      "file": "app-backup-flow.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "App backup flow",
+          "file": "app-backup-flow.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "opens dedicated backup page from header button",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1731,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:19.709Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0e26e4b02d04a79920d3-c325a269f0a5cbeb90e9",
+              "file": "app-backup-flow.spec.js",
+              "line": 9,
+              "column": 3
+            },
+            {
+              "title": "back button returns to previously active tab",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1833,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:21.446Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0e26e4b02d04a79920d3-551c74ec3a50139de908",
+              "file": "app-backup-flow.spec.js",
+              "line": 23,
+              "column": 3
+            },
+            {
+              "title": "creates a dated zip backup download",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2141,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:23.287Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0e26e4b02d04a79920d3-5a11fc4aecfa57fe413d",
+              "file": "app-backup-flow.spec.js",
+              "line": 35,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "bulk-tag-undo-edge-cases.spec.js",
+      "file": "bulk-tag-undo-edge-cases.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "bulk tag undo preserves snapshot-cap behavior for large selections",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 261,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-13T18:47:25.435Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ad6a77dacd207fdc6063-90c40d5320bb80ca10b3",
+          "file": "bulk-tag-undo-edge-cases.spec.js",
+          "line": 9,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "city-explorer-phase1.spec.js",
+      "file": "city-explorer-phase1.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "City Explorer Phase 1 and 2 enhancements",
+          "file": "city-explorer-phase1.spec.js",
+          "line": 125,
+          "column": 6,
+          "specs": [
+            {
+              "title": "location filter controls are not sticky",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 151,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:25.704Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-9254ad6087ce02f9dc3a",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 130,
+              "column": 3
+            },
+            {
+              "title": "active filter chips appear and individual chip removal updates filters",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 166,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:25.863Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-8ab7c872cb50e8fb6b10",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 137,
+              "column": 3
+            },
+            {
+              "title": "Adventure prefilter is visible and can be cleared to show everything",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 183,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:26.034Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-6b20aa17fcf7ddd13aa8",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 156,
+              "column": 3
+            },
+            {
+              "title": "empty state reset action restores results after a no-match filter",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 174,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:26.223Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-20d040b1c0b9efa14bfd",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 173,
+              "column": 3
+            },
+            {
+              "title": "smart presets and shortlist compare tray power the planning workflow",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 499,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:26.402Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-fb244b627aeecb2c77fb",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 189,
+              "column": 3
+            },
+            {
+              "title": "ranking badges and confidence indicators render on cards and detail view",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 173,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:26.907Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-6157978355cdbd6f37dc",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 211,
+              "column": 3
+            },
+            {
+              "title": "day plan shows itinerary score and route-feasibility confidence",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 350,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:27.085Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-9d284668bbcc031eec8c",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 226,
+              "column": 3
+            },
+            {
+              "title": "bulk actions can apply tags, notes, and visited state to selected locations",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 416,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:27.441Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-a6b6b7a0e083fcbf2303",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 273,
+              "column": 3
+            },
+            {
+              "title": "per-card quick actions support copy address utility",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 162,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:27.862Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c16fbbf02623824310c4-f95383926176ccb73c0d",
+              "file": "city-explorer-phase1.spec.js",
+              "line": 294,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "edit-mode-global.spec.js",
+      "file": "edit-mode-global.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Edit Mode – global header button",
+          "file": "edit-mode-global.spec.js",
+          "line": 31,
+          "column": 6,
+          "specs": [
+            {
+              "title": "header contains #globalEditModeBtn with correct label and handler",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 592,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:28.030Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7b6209e620730f2624d4-e6ca9367e47baaf2cdec",
+              "file": "edit-mode-global.spec.js",
+              "line": 32,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Edit Mode – target-table selectors",
+          "file": "edit-mode-global.spec.js",
+          "line": 42,
+          "column": 6,
+          "specs": [
+            {
+              "title": "action target select has all 7 tables",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 103,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:28.627Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7b6209e620730f2624d4-66301734c4226bd1e5be",
+              "file": "edit-mode-global.spec.js",
+              "line": 47,
+              "column": 3
+            },
+            {
+              "title": "automation default select has all 7 tables",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 116,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:28.736Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7b6209e620730f2624d4-70e3a3ce0abcab0935f2",
+              "file": "edit-mode-global.spec.js",
+              "line": 57,
+              "column": 3
+            },
+            {
+              "title": "tab-specific target controls show only relevant section",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 121,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:28.858Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7b6209e620730f2624d4-8e13c30f68dcbf6bc785",
+              "file": "edit-mode-global.spec.js",
+              "line": 65,
+              "column": 3
+            },
+            {
+              "title": "status chips update when target changes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 99,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:28.984Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7b6209e620730f2624d4-a668d637eb9102ae420f",
+              "file": "edit-mode-global.spec.js",
+              "line": 76,
+              "column": 3
+            },
+            {
+              "title": "tabs switch between Places and Automation panels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 114,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:29.088Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7b6209e620730f2624d4-c321ff2be7084db8e94a",
+              "file": "edit-mode-global.spec.js",
+              "line": 86,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "mobile-ux-snapshots.spec.js",
+      "file": "mobile-ux-snapshots.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Mobile UX snapshots",
+          "file": "mobile-ux-snapshots.spec.js",
+          "line": 72,
+          "column": 6,
+          "specs": [
+            {
+              "title": "captures iPhone-view snapshots across key pages",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4110,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:29.209Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "95f257a9c8d2cb3d3744-5d942489347b01516f02",
+              "file": "mobile-ux-snapshots.spec.js",
+              "line": 75,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "nature-inat-import.spec.js",
+      "file": "nature-inat-import.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Nature iNaturalist import",
+          "file": "nature-inat-import.spec.js",
+          "line": 18,
+          "column": 6,
+          "specs": [
+            {
+              "title": "paste preview + dry run parses rows",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4661,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:33.324Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "55b94d2e0631ed837303-7799a7b3e04edb3b3fa1",
+              "file": "nature-inat-import.spec.js",
+              "line": 19,
+              "column": 3
+            },
+            {
+              "title": "csv upload auto-previews and manual preview remains functional",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4668,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:37.990Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "55b94d2e0631ed837303-eb0ea402fe89c35261a0",
+              "file": "nature-inat-import.spec.js",
+              "line": 44,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "nature-inat-mapping-modal.spec.js",
+      "file": "nature-inat-mapping-modal.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Nature iNaturalist strict mapping modal",
+          "file": "nature-inat-mapping-modal.spec.js",
+          "line": 18,
+          "column": 6,
+          "specs": [
+            {
+              "title": "shows unmatched rows in strict mapping report",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4709,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:42.664Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e2366240db05b4b918e0-d2f55484f8c88eb2295b",
+              "file": "nature-inat-mapping-modal.spec.js",
+              "line": 19,
+              "column": 3
+            },
+            {
+              "title": "applying a suggestion decreases unmatched and increases ready",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2359,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:47.377Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "e2366240db05b4b918e0-d1b3f6cbd6a178a46b26",
+              "file": "nature-inat-mapping-modal.spec.js",
+              "line": 37,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "nature-log-ux.spec.js",
+      "file": "nature-log-ux.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Nature log UX",
+          "file": "nature-log-ux.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "log form supports typeahead species, location other, and contextual fast-command hints",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2848,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:49.742Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ec95035f6e090e605b9c-634ac0c161f1a27a8f80",
+              "file": "nature-log-ux.spec.js",
+              "line": 4,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "nature-map-context.spec.js",
+      "file": "nature-map-context.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Nature map context labels",
+          "file": "nature-map-context.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "map header/back reflects active nature subtab context",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2333,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:52.596Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ec94d689983e0980b55f-8e20fe63531ce1b74ca3",
+              "file": "nature-map-context.spec.js",
+              "line": 4,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "nature-subtabs-smoke.spec.js",
+      "file": "nature-subtabs-smoke.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Nature config-driven subtabs smoke",
+          "file": "nature-subtabs-smoke.spec.js",
+          "line": 13,
+          "column": 6,
+          "specs": [
+            {
+              "title": "birds diagnostics row is visible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1077,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:54.936Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-2e332482222e571a8ea5",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 20,
+              "column": 3
+            },
+            {
+              "title": "birds jump bar renders with expected section buttons",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1648,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:56.019Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-2125164e7061b371586a",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 29,
+              "column": 3
+            },
+            {
+              "title": "birds jump bar hides outside overview and returns on overview",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5088,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:47:57.673Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-ee608211498dfc76f7a2",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 61,
+              "column": 3
+            },
+            {
+              "title": "mammals diagnostics row contains stable labels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1761,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:02.767Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-2df3e9b91096f38a3f16",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 100,
+              "column": 3
+            },
+            {
+              "title": "shrubs subtab is removed from the dock",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1625,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:04.534Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-12ad06bda96e97c97334",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 109,
+              "column": 3
+            },
+            {
+              "title": "nature subtabs expose loading state attributes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1554,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:06.165Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-af6127dbf7c3279a74ca",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 113,
+              "column": 3
+            },
+            {
+              "title": "subtab smoke: Mammals",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1670,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:07.725Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-f05f986402a324e9755f",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 119,
+              "column": 5
+            },
+            {
+              "title": "subtab smoke: Reptiles",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1734,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:09.400Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-c069096b4f84a18bfa79",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 119,
+              "column": 5
+            },
+            {
+              "title": "subtab smoke: Amphibians",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1086,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:11.140Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-4bf5332744b6da7a74e2",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 119,
+              "column": 5
+            },
+            {
+              "title": "subtab smoke: Insects",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1701,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:12.231Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-468446130f5aa4451614",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 119,
+              "column": 5
+            },
+            {
+              "title": "subtab smoke: Arachnids",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1739,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:13.937Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-59546bee31eac7fb4cd6",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 119,
+              "column": 5
+            },
+            {
+              "title": "subtab smoke: Wildflowers",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1699,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:15.682Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-a9d07beeff4e7bfc64aa",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 119,
+              "column": 5
+            },
+            {
+              "title": "subtab smoke: Trees & Shrubs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1666,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:17.387Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f480327ce1efcdc22223-e7b67b548ed0ebb21399",
+              "file": "nature-subtabs-smoke.spec.js",
+              "line": 119,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "offline-airplane-mode.spec.js",
+      "file": "offline-airplane-mode.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Offline airplane mode regression",
+          "file": "offline-airplane-mode.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "keeps planner usable and queues writes when offline",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2731,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-13T18:48:19.060Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "b04bb240dd53542ebddf-28315740b27c428f2fb1",
+              "file": "offline-airplane-mode.spec.js",
+              "line": 4,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "reliability-smoke.spec.js",
+      "file": "reliability-smoke.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "first-click success: nature explore",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2521,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-13T18:48:21.798Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ce524d055dae787b56f7-130f97af54f18715888f",
+          "file": "reliability-smoke.spec.js",
+          "line": 55,
+          "column": 1
+        },
+        {
+          "title": "first-click success: nature run command",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3562,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-13T18:48:24.325Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ce524d055dae787b56f7-4fc043d9af3c8ec1b6d8",
+          "file": "reliability-smoke.spec.js",
+          "line": 70,
+          "column": 1
+        },
+        {
+          "title": "first-click success: bike refresh",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1722,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-13T18:48:27.892Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ce524d055dae787b56f7-aef0a474187027e07fa1",
+          "file": "reliability-smoke.spec.js",
+          "line": 83,
+          "column": 1
+        },
+        {
+          "title": "hidden overlay probe catches interception",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1622,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-13T18:48:29.619Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ce524d055dae787b56f7-3df5043077ad397c754e",
+          "file": "reliability-smoke.spec.js",
+          "line": 102,
+          "column": 1
+        },
+        {
+          "title": "stale row-detail blocker is cleared before nature interactions",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2577,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-13T18:48:31.247Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ce524d055dae787b56f7-db9b54b31506b3013241",
+          "file": "reliability-smoke.spec.js",
+          "line": 139,
+          "column": 1
+        },
+        {
+          "title": "nature explore remains responsive across repeated tab switches",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15690,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-13T18:48:33.830Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ce524d055dae787b56f7-e00c965dee1ad2717369",
+          "file": "reliability-smoke.spec.js",
+          "line": 182,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-04-13T18:46:04.733Z",
+    "duration": 164823.31100000002,
+    "expected": 72,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

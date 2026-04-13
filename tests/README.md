@@ -31,7 +31,10 @@ python3 -m http.server 4173
 
 Optional readiness tuning for mobile snapshot capture:
 
-- `MOBILE_QA_EXPECTED_HEIGHT` (default `7816`)
+- `MOBILE_QA_MIN_HEIGHT` (default `7600`)
+- `MOBILE_QA_MAX_HEIGHT` (default `8600`)
+- `MOBILE_QA_STRICT_HEIGHT=1` to require exact height matching
+- `MOBILE_QA_EXPECTED_HEIGHT` (default `7816`; used when strict mode is enabled, or directly when explicitly set)
 - `MOBILE_QA_READY_TIMEOUT_MS` (default `12000`)
 - `MOBILE_QA_STABLE_SAMPLES` (default `3`)
 - `MOBILE_QA_STABLE_INTERVAL_MS` (default `250`)
