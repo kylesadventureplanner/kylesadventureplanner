@@ -120,7 +120,7 @@ async function openExplorerAndFindDetails(page) {
 
     const detailsBtn = list.locator('[data-visited-explorer-details]').first();
     if ((await detailsBtn.count()) > 0) {
-      return { key, closeAction, detailsBtn };
+      return { key, closeAction };
     }
 
     const closeBtn = paneRoot.locator(`[data-visited-subtab-action="${closeAction}"]`).first();
@@ -137,7 +137,50 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await mockExplorerWorkbookRequests(page);
     await gotoAdventureChallenge(page);
 
-    const { key, detailsBtn } = await openExplorerAndFindDetails(page);
+    const { key } = await openExplorerAndFindDetails(page);
+    const list = page.locator(`#visitedExplorerList-${key}`);
+    const firstCard = list.locator('.visited-explorer-card').first();
+    await expect(firstCard).toBeVisible();
+
+    const googleBtn = firstCard.locator('[data-visited-explorer-open-google]').first();
+    const directionsBtn = firstCard.locator('[data-visited-explorer-open-directions]').first();
+    const favoriteBtn = firstCard.locator('[data-visited-explorer-favorite]').first();
+    const tagBtn = firstCard.locator('[data-visited-explorer-tags]').first();
+    const notesBtn = firstCard.locator('[data-visited-explorer-notes]').first();
+    await expect(googleBtn).toBeVisible();
+    await expect(directionsBtn).toBeVisible();
+    await expect(favoriteBtn).toBeVisible();
+    await expect(tagBtn).toBeVisible();
+    await expect(notesBtn).toBeVisible();
+
+    await favoriteBtn.click();
+    await expect(firstCard.locator('[data-visited-explorer-favorite]').first()).toContainText('Favorited');
+
+    await firstCard.locator('[data-visited-explorer-rate][data-visited-explorer-rating-value="4"]').first().click();
+    await expect(firstCard.locator('.visited-explorer-star.is-active')).toHaveCount(4);
+
+    await page.evaluate(() => {
+      window.__pwPromptValues = ['lake, scenic', 'Bring water and trail shoes'];
+      window.__pwPromptOriginal = window.prompt;
+      window.prompt = function promptMock(_message, defaultValue) {
+        const queue = Array.isArray(window.__pwPromptValues) ? window.__pwPromptValues : [];
+        if (!queue.length) return defaultValue || '';
+        return queue.shift();
+      };
+    });
+
+    await tagBtn.click();
+    await notesBtn.click();
+    await expect(firstCard.locator('.visited-explorer-tag-row')).toContainText('lake');
+    await expect(firstCard.locator('.visited-explorer-note-preview')).toContainText('Bring water and trail shoes');
+
+    await page.evaluate(() => {
+      if (window.__pwPromptOriginal) window.prompt = window.__pwPromptOriginal;
+      delete window.__pwPromptOriginal;
+      delete window.__pwPromptValues;
+    });
+
+    const detailsBtn = list.locator('[data-visited-explorer-details]').first();
     await expect(detailsBtn).toBeVisible();
     await detailsBtn.click();
 

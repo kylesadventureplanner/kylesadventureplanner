@@ -8,6 +8,7 @@
   const CHALLENGE_STATE_KEY = 'visitedLocationsChallengeStateV1';
   const VISITED_META_KEY = 'visitedLocationsMetaV1';
   const VISIT_RECORDS_KEY = 'visitedLocationRecordsV1';
+  const EXPLORER_CARD_STATE_KEY = 'visitedExplorerCardStateV1';
 
   const CATEGORY_DEFS = [
     { key: 'hiking', label: 'Hiking Trails', icon: '🥾', keywords: ['hiking', 'trail', 'mountain', 'summit'] },
@@ -254,7 +255,8 @@
      categoryFilterDebounceMs: 100
       ,
       subtabExplorer: {},
-      visitRecords: []
+       visitRecords: [],
+       explorerCardState: {}
    };
 
   function shouldLogVisitedDiagnostics() {
@@ -1415,6 +1417,43 @@
     localStorage.setItem(VISIT_RECORDS_KEY, JSON.stringify(state.visitRecords || []));
   }
 
+  function loadExplorerCardState() {
+    const parsed = safeJsonParse(localStorage.getItem(EXPLORER_CARD_STATE_KEY), {}) || {};
+    state.explorerCardState = parsed && typeof parsed === 'object' ? parsed : {};
+  }
+
+  function saveExplorerCardState() {
+    localStorage.setItem(EXPLORER_CARD_STATE_KEY, JSON.stringify(state.explorerCardState || {}));
+  }
+
+  function getExplorerCardDraft(itemId) {
+    const key = String(itemId || '').trim();
+    if (!key) return { favorite: false, rating: 0, tags: [], notes: '' };
+    const existing = state.explorerCardState && state.explorerCardState[key] ? state.explorerCardState[key] : {};
+    const ratingNum = Number(existing.rating);
+    return {
+      favorite: Boolean(existing.favorite),
+      rating: Number.isFinite(ratingNum) ? Math.max(0, Math.min(5, Math.round(ratingNum))) : 0,
+      tags: Array.isArray(existing.tags) ? existing.tags.map((tag) => String(tag || '').trim()).filter(Boolean).slice(0, 8) : [],
+      notes: String(existing.notes || '').trim()
+    };
+  }
+
+  function updateExplorerCardDraft(itemId, updater) {
+    const key = String(itemId || '').trim();
+    if (!key || typeof updater !== 'function') return;
+    const current = getExplorerCardDraft(key);
+    const next = updater({ ...current }) || current;
+    const ratingNum = Number(next.rating);
+    state.explorerCardState[key] = {
+      favorite: Boolean(next.favorite),
+      rating: Number.isFinite(ratingNum) ? Math.max(0, Math.min(5, Math.round(ratingNum))) : 0,
+      tags: Array.isArray(next.tags) ? next.tags.map((tag) => String(tag || '').trim()).filter(Boolean).slice(0, 8) : [],
+      notes: String(next.notes || '').trim()
+    };
+    saveExplorerCardState();
+  }
+
   function getVisitRecordsForSubtab(subtabKey) {
     const key = String(subtabKey || '').trim();
     return (state.visitRecords || []).filter((record) => record && record.subtabKey === key);
@@ -1671,11 +1710,11 @@
 
   function filterAndSortExplorerItems(items, explorerState) {
     const filters = buildExplorerFilters(explorerState);
-    const filtered = (items || []).filter((item) => {
+    const filtered = (items || []).map((item) => getExplorerItemView(item)).filter((item) => {
       if (filters.stateFilter && filters.stateFilter !== 'all' && norm(item.state) !== filters.stateFilter) return false;
       if (filters.cityFilter && filters.cityFilter !== 'all' && norm(item.city) !== filters.cityFilter) return false;
       if (!filters.query) return true;
-      const haystack = [item.title, item.city, item.state, item.description, item.address, (item.tags || []).join(' ')].map(norm).join(' ');
+      const haystack = [item.title, item.city, item.state, item.description, item.address, item.notes, (item.tags || []).join(' ')].map(norm).join(' ');
       return haystack.includes(filters.query);
     });
 
@@ -1716,11 +1755,36 @@
       .join(' - ') || 'Address not specified';
   }
 
+  function buildExplorerDirectionsUrl(item) {
+    const destination = [item && item.address, item && item.city, item && item.state]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+      .join(', ')
+      || String(item && item.title ? item.title : '').trim();
+    if (!destination) return '';
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+  }
+
+  function getExplorerItemView(item) {
+    if (!item || !item.id) return item;
+    const draft = getExplorerCardDraft(item.id);
+    const tags = draft.tags.length ? draft.tags : (Array.isArray(item.tags) ? item.tags : []);
+    return {
+      ...item,
+      tags,
+      notes: draft.notes,
+      myRating: draft.rating,
+      favorite: draft.favorite,
+      directionsUrl: buildExplorerDirectionsUrl(item)
+    };
+  }
+
   function getExplorerItemById(subtabKey, itemId) {
     const explorerState = getExplorerState(subtabKey);
     const target = String(itemId || '').trim();
     if (!target) return null;
-    return (explorerState.items || []).find((item) => String(item && item.id ? item.id : '').trim() === target) || null;
+    const item = (explorerState.items || []).find((row) => String(row && row.id ? row.id : '').trim() === target) || null;
+    return item ? getExplorerItemView(item) : null;
   }
 
   function getVisitLogQualifyingOptions(subtabKey) {
@@ -1942,18 +2006,39 @@
 
     listEl.innerHTML = filtered.map((item) => {
       const chips = (item.tags || []).slice(0, 6).map((tag) => `<span class="visited-explorer-tag">${escapeHtml(tag)}</span>`).join('');
+      const notesPreview = String(item.notes || '').trim();
+      const starButtons = [1, 2, 3, 4, 5].map((value) => `
+        <button
+          type="button"
+          class="visited-explorer-star${value <= Number(item.myRating || 0) ? ' is-active' : ''}"
+          data-visited-explorer-rate="${escapeHtml(item.id)}"
+          data-visited-explorer-rating-value="${value}"
+          data-visited-explorer-subtab="${escapeHtml(subtabKey)}"
+          aria-label="Set rating to ${value} stars"
+          title="Set rating to ${value} stars"
+        >★</button>
+      `).join('');
       return `
         <div class="visited-explorer-card">
           <div class="visited-explorer-card-head">
             <div class="visited-explorer-card-title">${escapeHtml(item.title || 'Unknown')}</div>
             <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+              <button type="button" class="visited-explorer-detail-btn visited-explorer-link-btn" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Google URL</button>
+              <button type="button" class="visited-explorer-detail-btn visited-explorer-link-btn" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Directions</button>
               <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Log Visit</button>
               <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
             </div>
           </div>
+          <div class="visited-explorer-card-controls">
+            <button type="button" class="visited-explorer-favorite-btn${item.favorite ? ' is-active' : ''}" data-visited-explorer-favorite="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${item.favorite ? '★ Favorited' : '☆ Add to Favorites'}</button>
+            <div class="visited-explorer-stars" role="group" aria-label="My star rating">${starButtons}</div>
+            <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Tag Manager</button>
+            <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
+          </div>
           <div class="visited-explorer-field"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>
           <div class="visited-explorer-field"><strong>Tags:</strong></div>
           ${chips ? `<div class="visited-explorer-tag-row">${chips}</div>` : '<div class="visited-explorer-field">No tags</div>'}
+          ${notesPreview ? `<div class="visited-explorer-note-preview"><strong>Notes:</strong> ${escapeHtml(notesPreview)}</div>` : ''}
           <div class="visited-explorer-field"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>
           <div class="visited-explorer-field"><strong>Description:</strong> ${escapeHtml(item.description || 'No description yet.')}</div>
         </div>
@@ -3815,6 +3900,92 @@
             return;
           }
 
+          const explorerGoogleBtn = event.target.closest('[data-visited-explorer-open-google]');
+          if (explorerGoogleBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerGoogleBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerGoogleBtn.getAttribute('data-visited-explorer-open-google') || '').trim();
+            const item = getExplorerItemById(subtabKey, itemId);
+            if (item && item.googleUrl) {
+              window.open(item.googleUrl, '_blank', 'noopener');
+            } else if (typeof window.showToast === 'function') {
+              window.showToast('Google URL is unavailable for this location.', 'info', 2200);
+            }
+            return;
+          }
+
+          const explorerDirectionsBtn = event.target.closest('[data-visited-explorer-open-directions]');
+          if (explorerDirectionsBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerDirectionsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerDirectionsBtn.getAttribute('data-visited-explorer-open-directions') || '').trim();
+            const item = getExplorerItemById(subtabKey, itemId);
+            const directionsUrl = item ? buildExplorerDirectionsUrl(item) : '';
+            if (directionsUrl) {
+              window.open(directionsUrl, '_blank', 'noopener');
+            } else if (typeof window.showToast === 'function') {
+              window.showToast('Directions are unavailable for this location.', 'info', 2200);
+            }
+            return;
+          }
+
+          const explorerFavoriteBtn = event.target.closest('[data-visited-explorer-favorite]');
+          if (explorerFavoriteBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerFavoriteBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerFavoriteBtn.getAttribute('data-visited-explorer-favorite') || '').trim();
+            const before = getExplorerCardDraft(itemId);
+            updateExplorerCardDraft(itemId, (draft) => ({ ...draft, favorite: !draft.favorite }));
+            renderExplorerList(root, subtabKey);
+            if (typeof window.showToast === 'function') {
+              window.showToast(before.favorite ? 'Removed from favorites.' : 'Added to favorites.', 'success', 1800);
+            }
+            return;
+          }
+
+          const explorerRateBtn = event.target.closest('[data-visited-explorer-rate]');
+          if (explorerRateBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerRateBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerRateBtn.getAttribute('data-visited-explorer-rate') || '').trim();
+            const value = Math.max(0, Math.min(5, Number(explorerRateBtn.getAttribute('data-visited-explorer-rating-value') || '0')));
+            updateExplorerCardDraft(itemId, (draft) => ({ ...draft, rating: value }));
+            renderExplorerList(root, subtabKey);
+            return;
+          }
+
+          const explorerTagsBtn = event.target.closest('[data-visited-explorer-tags]');
+          if (explorerTagsBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerTagsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerTagsBtn.getAttribute('data-visited-explorer-tags') || '').trim();
+            const item = getExplorerItemById(subtabKey, itemId);
+            const seed = (item && Array.isArray(item.tags) ? item.tags : []).join(', ');
+            const next = window.prompt('Tag Manager\nEnter tags separated by commas:', seed);
+            if (next === null) return;
+            const tags = String(next || '')
+              .split(/[;,]/)
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+              .slice(0, 8);
+            updateExplorerCardDraft(itemId, (draft) => ({ ...draft, tags }));
+            renderExplorerList(root, subtabKey);
+            return;
+          }
+
+          const explorerNotesBtn = event.target.closest('[data-visited-explorer-notes]');
+          if (explorerNotesBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerNotesBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerNotesBtn.getAttribute('data-visited-explorer-notes') || '').trim();
+            const item = getExplorerItemById(subtabKey, itemId);
+            const next = window.prompt('Notes\nAdd your notes for this location:', String(item && item.notes ? item.notes : ''));
+            if (next === null) return;
+            updateExplorerCardDraft(itemId, (draft) => ({ ...draft, notes: String(next || '').trim() }));
+            renderExplorerList(root, subtabKey);
+            return;
+          }
+
           const explorerLogBtn = event.target.closest('[data-visited-explorer-log]');
           if (explorerLogBtn) {
             event.preventDefault();
@@ -4069,6 +4240,7 @@
     loadChallengeState();
     loadMetaState();
     loadVisitRecords();
+    loadExplorerCardState();
     bindControls();
     ensureBikeDataLoadedForTracker().finally(() => refreshTab());
     scheduleDataRefreshCheck();

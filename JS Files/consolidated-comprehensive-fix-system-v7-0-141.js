@@ -1628,11 +1628,17 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         return;
       }
 
+      const activeAccount = window.activeAccount
+        || (window.msalInstance && typeof window.msalInstance.getActiveAccount === 'function'
+          ? window.msalInstance.getActiveAccount()
+          : null);
+      const hideSignedOutCtas = Boolean(isConnected) || Boolean(activeAccount);
       if (signInRequiredBanner) {
-        signInRequiredBanner.hidden = Boolean(isConnected);
+        signInRequiredBanner.hidden = hideSignedOutCtas;
       }
       if (signedOutModeLine) {
-        signedOutModeLine.hidden = Boolean(isConnected);
+        signedOutModeLine.hidden = hideSignedOutCtas;
+        if (hideSignedOutCtas) signedOutModeLine.classList.remove('is-sticky-mobile');
       }
 
       if (isConnected) {

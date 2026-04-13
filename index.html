@@ -23989,8 +23989,13 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
   function syncSignedOutModeLineAuthState(account) {
     const modeLine = document.getElementById('signedOutModeLine');
+    const signInRequiredBanner = document.getElementById('signInRequiredBanner');
+    const isSignedIn = Boolean(account);
+    if (signInRequiredBanner) {
+      signInRequiredBanner.hidden = isSignedIn;
+    }
     if (!modeLine) return;
-    modeLine.hidden = Boolean(account);
+    modeLine.hidden = isSignedIn;
     if (modeLine.hidden) {
       modeLine.classList.remove('is-sticky-mobile');
       return;

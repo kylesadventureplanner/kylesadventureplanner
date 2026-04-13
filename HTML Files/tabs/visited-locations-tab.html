@@ -766,6 +766,65 @@
     white-space: nowrap;
   }
 
+  #visitedLocationsRoot .visited-explorer-card-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #visitedLocationsRoot .visited-explorer-favorite-btn {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  #visitedLocationsRoot .visited-explorer-favorite-btn.is-active {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #b45309;
+  }
+
+  #visitedLocationsRoot .visited-explorer-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-star {
+    border: none;
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 1px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-star.is-active {
+    color: #f59e0b;
+  }
+
+  #visitedLocationsRoot .visited-explorer-link-btn {
+    border-color: #bfdbfe;
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  #visitedLocationsRoot .visited-explorer-note-preview {
+    font-size: 12px;
+    color: #475569;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+
   #visitedLocationsRoot .visited-explorer-field {
     font-size: 13px;
     color: #334155;
