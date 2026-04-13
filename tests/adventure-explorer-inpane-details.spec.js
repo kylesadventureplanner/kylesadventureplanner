@@ -142,16 +142,15 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const firstCard = list.locator('.visited-explorer-card').first();
     await expect(firstCard).toBeVisible();
 
-    const googleBtn = firstCard.locator('[data-visited-explorer-open-google]').first();
-    const directionsBtn = firstCard.locator('[data-visited-explorer-open-directions]').first();
+    const detailsBtn = firstCard.locator('[data-visited-explorer-details]').first();
+    const quickActionsBtn = firstCard.locator('[data-visited-explorer-quick-actions-toggle]').first();
     const favoriteBtn = firstCard.locator('[data-visited-explorer-favorite]').first();
-    const tagBtn = firstCard.locator('[data-visited-explorer-tags]').first();
-    const notesBtn = firstCard.locator('[data-visited-explorer-notes]').first();
-    await expect(googleBtn).toBeVisible();
-    await expect(directionsBtn).toBeVisible();
+    await expect(detailsBtn).toBeVisible();
+    await expect(quickActionsBtn).toBeVisible();
     await expect(favoriteBtn).toBeVisible();
-    await expect(tagBtn).toBeVisible();
-    await expect(notesBtn).toBeVisible();
+
+    const headActions = firstCard.locator('.visited-explorer-card-head-actions > button');
+    await expect(headActions.first()).toHaveAttribute('data-visited-explorer-details');
 
     await favoriteBtn.click();
     await expect(firstCard.locator('[data-visited-explorer-favorite]').first()).toContainText('Favorited');
@@ -159,7 +158,6 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await firstCard.locator('[data-visited-explorer-rate][data-visited-explorer-rating-value="4"]').first().click();
     await expect(firstCard.locator('.visited-explorer-star.is-active')).toHaveCount(4);
 
-    const detailsBtn = list.locator('[data-visited-explorer-details]').first();
     await expect(detailsBtn).toBeVisible();
     await detailsBtn.click();
 
@@ -179,11 +177,18 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const frameHandle = await detailsFrame.elementHandle();
     const plannerDetailsFrame = frameHandle ? await frameHandle.contentFrame() : null;
     expect(plannerDetailsFrame).not.toBeNull();
+    await expect(plannerDetailsFrame.locator('#closeTabBtn')).toHaveCount(0);
     await expect(plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="overview"].active')).toBeVisible();
     await expect(plannerDetailsFrame.locator('#actionBar')).toBeVisible();
 
     await plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="tag-management"]').click();
     await expect(plannerDetailsFrame.locator('#pane-tag-management.tab-pane.active')).toBeVisible();
+    await plannerDetailsFrame.locator('#tmSaveBtn').click();
+    await expect.poll(async () => plannerDetailsFrame.evaluate(() => {
+      const steps = Array.isArray(window.__lastTagSaveDebug?.steps) ? window.__lastTagSaveDebug.steps : [];
+      const hostStep = steps.find((entry) => entry && entry.step === 'host_context');
+      return hostStep && hostStep.detail ? String(hostStep.detail.context || '') : '';
+    })).toMatch(/^(parent|opener)$/);
 
     await plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="notes"]').click();
     await expect(plannerDetailsFrame.locator('#pane-notes.tab-pane.active')).toBeVisible();
@@ -200,12 +205,18 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(explorerView).toBeVisible();
     await expect(page.locator(`#visitedExplorerList-${key}`)).toBeVisible();
 
-    await tagBtn.click();
+    await quickActionsBtn.click();
+    const tagMenuBtn = firstCard.locator('[data-visited-explorer-quick-actions-menu] [data-visited-explorer-tags]').first();
+    await expect(tagMenuBtn).toBeVisible();
+    await tagMenuBtn.click();
     await expect(detailsView).toBeVisible();
     await expect(page.locator(`#visitedExplorerDetailsFrame-${key}`)).toHaveAttribute('src', /initialTab=tag-management/i);
     await backBtn.click();
 
-    await notesBtn.click();
+    await quickActionsBtn.click();
+    const notesMenuBtn = firstCard.locator('[data-visited-explorer-quick-actions-menu] [data-visited-explorer-notes]').first();
+    await expect(notesMenuBtn).toBeVisible();
+    await notesMenuBtn.click();
     await expect(detailsView).toBeVisible();
     await expect(page.locator(`#visitedExplorerDetailsFrame-${key}`)).toHaveAttribute('src', /initialTab=notes/i);
   });

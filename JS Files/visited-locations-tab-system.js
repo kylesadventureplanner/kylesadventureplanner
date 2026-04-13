@@ -250,6 +250,7 @@
        adventure: null,
        bike: null
      },
+      explorerColumnIndexCache: {},
      lastRenderAt: null,
      lastCategoryFilterClick: 0,
      categoryFilterDebounceMs: 100
@@ -1629,7 +1630,11 @@
         rating,
         cost,
         googleUrl,
-        sourceLabel: `${source.workbook} / ${source.table}`
+        sourceLabel: `${source.workbook} / ${source.table}`,
+        sourceWorkbook: String(source.workbook || '').trim(),
+        sourceWorkbookPath: String(source.resolvedWorkbookPath || source.workbook || '').trim(),
+        sourceTable: String(source.table || '').trim(),
+        sourceRowIndex: index
       };
     }).filter((item) => norm(item.title));
   }
@@ -1640,7 +1645,7 @@
     for (const candidate of candidates) {
       try {
         const matrix = await fetchTableRangeValues(candidate, source.table);
-        return toExplorerItems(matrix, { ...source, key: source.key || source.table });
+        return toExplorerItems(matrix, { ...source, key: source.key || source.table, resolvedWorkbookPath: candidate });
       } catch (error) {
         lastError = error;
       }
@@ -1933,6 +1938,12 @@
       sourceIndex: -1,
       correlationId: `visited_${subtabKey}_${Date.now()}`,
       exportedAt: new Date().toISOString(),
+      explorerSource: {
+        workbook: item.sourceWorkbook || '',
+        workbookPath: item.sourceWorkbookPath || '',
+        table: item.sourceTable || '',
+        rowIndex: Number.isInteger(item.sourceRowIndex) ? item.sourceRowIndex : -1
+      },
       data: {
         name: item.title || '',
         googlePlaceId: item.placeId || '',
@@ -1975,6 +1986,7 @@
     const url = new URL(baseUrl, window.location.href);
     const detailKey = cacheExplorerDetailsPayload(subtabKey, item);
     if (detailKey) url.searchParams.set('detailKey', detailKey);
+    url.searchParams.set('embedded', '1');
     url.searchParams.set('sourceIndex', '-1');
     if (initialTab) url.searchParams.set('initialTab', String(initialTab));
     url.searchParams.set('ts', String(Date.now()));
@@ -2077,18 +2089,21 @@
         <div class="visited-explorer-card">
           <div class="visited-explorer-card-head">
             <div class="visited-explorer-card-title">${escapeHtml(item.title || 'Unknown')}</div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
-              <button type="button" class="visited-explorer-detail-btn visited-explorer-link-btn" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Google URL</button>
-              <button type="button" class="visited-explorer-detail-btn visited-explorer-link-btn" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Directions</button>
-              <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Log Visit</button>
-              <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
+            <div class="visited-explorer-card-head-actions">
+              <button type="button" class="visited-explorer-detail-btn visited-explorer-detail-btn--primary" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
+              <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-quick-actions-toggle="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" aria-expanded="false">Quick Actions ▾</button>
             </div>
+          </div>
+          <div class="visited-explorer-quick-actions-menu" data-visited-explorer-quick-actions-menu="${escapeHtml(item.id)}" hidden>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Directions</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Google URL</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Log Visit</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Tag Manager</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
           </div>
           <div class="visited-explorer-card-controls">
             <button type="button" class="visited-explorer-favorite-btn${item.favorite ? ' is-active' : ''}" data-visited-explorer-favorite="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${item.favorite ? '★ Favorited' : '☆ Add to Favorites'}</button>
             <div class="visited-explorer-stars" role="group" aria-label="My star rating">${starButtons}</div>
-            <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Tag Manager</button>
-            <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
           </div>
           <div class="visited-explorer-field"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>
           <div class="visited-explorer-field"><strong>Tags:</strong></div>
@@ -2212,6 +2227,109 @@
     } catch (error) {
       return -1;
     }
+  }
+
+  async function resolveExplorerColumnIndex(filePath, tableName, cacheKey, candidateKeys) {
+    const cacheId = `${cacheKey}:${String(filePath || '').toLowerCase()}:${String(tableName || '').toLowerCase()}`;
+    if (Number.isInteger(state.explorerColumnIndexCache[cacheId])) {
+      return state.explorerColumnIndexCache[cacheId];
+    }
+    if (!window.accessToken || !filePath || !tableName) return -1;
+
+    try {
+      const encodedPath = encodeGraphPath(filePath);
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/columns?$select=name,index`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) return -1;
+
+      const payload = await response.json().catch(() => ({}));
+      const columns = Array.isArray(payload.value) ? payload.value : [];
+      let index = -1;
+      for (const key of (candidateKeys || [])) {
+        const keyNorm = norm(key);
+        const match = columns.find((col) => norm(col?.name) === keyNorm || norm(col?.name).includes(keyNorm));
+        if (match && Number.isInteger(match.index)) {
+          index = match.index;
+          break;
+        }
+      }
+
+      state.explorerColumnIndexCache[cacheId] = Number.isInteger(index) ? index : -1;
+      return state.explorerColumnIndexCache[cacheId];
+    } catch (_error) {
+      return -1;
+    }
+  }
+
+  async function fetchExplorerRowValues(filePath, tableName, rowIndex) {
+    const encodedPath = encodeGraphPath(filePath);
+    const rowPath = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/itemAt(index=${rowIndex})`;
+    const readResponse = await fetch(`${rowPath}?$select=values`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!readResponse.ok) throw new Error(`Unable to read source row (HTTP ${readResponse.status})`);
+    const payload = await readResponse.json().catch(() => ({}));
+    const rowValues = Array.isArray(payload.values) && Array.isArray(payload.values[0]) ? payload.values[0].slice() : [];
+    return { rowPath, rowValues };
+  }
+
+  async function syncVisitedExplorerDetailFields(sourceMeta, updates) {
+    const source = sourceMeta && typeof sourceMeta === 'object' ? sourceMeta : {};
+    const filePath = String(source.workbookPath || source.workbook || '').trim();
+    const tableName = String(source.table || '').trim();
+    const rowIndex = Number(source.rowIndex);
+    if (!window.accessToken) throw new Error('Sign in required to sync explorer details.');
+    if (!filePath || !tableName || !Number.isInteger(rowIndex) || rowIndex < 0) {
+      throw new Error('Explorer source metadata is incomplete.');
+    }
+
+    const updateMap = updates && typeof updates === 'object' ? updates : {};
+    const hasTagUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'tagsCsv');
+    const hasNotesUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'notes');
+    if (!hasTagUpdate && !hasNotesUpdate) return { synced: false, reason: 'no-fields' };
+
+    const tagColIdx = hasTagUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'tags', ['tags', 'tag', 'keywords', 'category', 'categories'])
+      : -1;
+    const notesColIdx = hasNotesUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'notes', ['notes', 'note', 'personal notes', 'my notes'])
+      : -1;
+
+    if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0)) {
+      throw new Error('Target column could not be resolved in source table.');
+    }
+
+    const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
+    if (hasTagUpdate) {
+      while (rowValues.length <= tagColIdx) rowValues.push('');
+      rowValues[tagColIdx] = String(updateMap.tagsCsv || '').trim();
+    }
+    if (hasNotesUpdate) {
+      while (rowValues.length <= notesColIdx) rowValues.push('');
+      rowValues[notesColIdx] = String(updateMap.notes || '').trim();
+    }
+
+    const patchResponse = await fetch(rowPath, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${window.accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ values: [rowValues] })
+    });
+    if (!patchResponse.ok) throw new Error(`Unable to sync row changes (HTTP ${patchResponse.status})`);
+
+    return { synced: true, excelSaved: true };
   }
 
   async function resolveAdventureVisitedColumnIndex() {
@@ -3847,6 +3965,15 @@
       // CREATE THE MAIN CLICK HANDLER FUNCTION (stored to prevent duplicate attachment)
       if (!root.__visitedClickHandler) {
         root.__visitedClickHandler = function handleVisitedClick(event) {
+          if (!event.target.closest('[data-visited-explorer-quick-actions-toggle]') && !event.target.closest('[data-visited-explorer-quick-actions-menu]')) {
+            root.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach((menu) => {
+              menu.hidden = true;
+            });
+            root.querySelectorAll('[data-visited-explorer-quick-actions-toggle]').forEach((btn) => {
+              btn.setAttribute('aria-expanded', 'false');
+            });
+          }
+
           const openSuggestionsBtn = event.target.closest('#visitedOpenSuggestionsBtn');
           if (openSuggestionsBtn) {
             event.preventDefault();
@@ -3951,6 +4078,26 @@
             const itemId = String(explorerDetailsBtn.getAttribute('data-visited-explorer-details') || '').trim();
             if (subtabKey && itemId) {
               openExplorerDetailsPage(root, subtabKey, itemId);
+            }
+            return;
+          }
+
+          const explorerQuickActionsBtn = event.target.closest('[data-visited-explorer-quick-actions-toggle]');
+          if (explorerQuickActionsBtn) {
+            event.preventDefault();
+            const itemId = String(explorerQuickActionsBtn.getAttribute('data-visited-explorer-quick-actions-toggle') || '').trim();
+            const card = explorerQuickActionsBtn.closest('.visited-explorer-card');
+            const targetMenu = card ? card.querySelector(`[data-visited-explorer-quick-actions-menu="${itemId}"]`) : null;
+            const willOpen = Boolean(targetMenu && targetMenu.hidden);
+            root.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach((menu) => {
+              menu.hidden = true;
+            });
+            root.querySelectorAll('[data-visited-explorer-quick-actions-toggle]').forEach((btn) => {
+              btn.setAttribute('aria-expanded', 'false');
+            });
+            if (targetMenu) {
+              targetMenu.hidden = !willOpen;
+              explorerQuickActionsBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
             }
             return;
           }
@@ -4307,6 +4454,7 @@
   window.forceVisitedExplorerSync = forceVisitedExplorerSync;
   window.openVisitedVisitLogFromAchievements = openVisitedVisitLogFromAchievements;
   window.getVisitedTrackerSyncHealth = getSyncHealthStatus;
+  window.syncVisitedExplorerDetailFields = syncVisitedExplorerDetailFields;
   window.__visitedState = state;
   window.enableVisitedClickTrace = function() {
     state.tracerEnabled = true;

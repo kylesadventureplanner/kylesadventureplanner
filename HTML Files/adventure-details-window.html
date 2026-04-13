@@ -136,6 +136,7 @@
   }
 
   function getCloseButtonHtml() {
+    if (getParams().get('embedded') === '1') return '';
     return '<button type="button" class="auth-btn" id="closeTabBtn">✕ Close Tab</button>';
   }
 
@@ -725,11 +726,52 @@
   }
 
   function getOpenerWindow() {
+    window.__detailHostContext = 'none';
     try {
-      if (!window.opener || window.opener.closed) return null;
-      return window.opener;
-    } catch (_err) {
-      return null;
+      // Standard new-tab flow.
+      if (window.opener && !window.opener.closed) {
+        window.__detailHostContext = 'opener';
+        return window.opener;
+      }
+    } catch (_errA) {}
+
+    try {
+      // Embedded Adventure Challenge flow (details loaded in iframe).
+      if (window.parent && window.parent !== window) {
+        window.__detailHostContext = 'parent';
+        return window.parent;
+      }
+    } catch (_errB) {}
+
+    return null;
+  }
+
+  async function syncViaExplorerHost(state, updates) {
+    var openerWin = getOpenerWindow();
+    if (!openerWin || typeof openerWin.syncVisitedExplorerDetailFields !== 'function') {
+      return { attempted: false, synced: false, reason: 'host-sync-unavailable', context: window.__detailHostContext || 'none' };
+    }
+    if (!state || !state.explorerSource) {
+      return { attempted: false, synced: false, reason: 'missing-explorer-source', context: window.__detailHostContext || 'none' };
+    }
+
+    try {
+      var result = await openerWin.syncVisitedExplorerDetailFields(state.explorerSource, updates || {});
+      return {
+        attempted: true,
+        synced: !!(result && result.synced),
+        excelSaved: !!(result && result.excelSaved),
+        reason: result && result.reason ? result.reason : (result && result.synced ? 'saved' : 'unknown'),
+        context: window.__detailHostContext || 'none'
+      };
+    } catch (error) {
+      return {
+        attempted: true,
+        synced: false,
+        excelSaved: false,
+        reason: String(error && error.message ? error.message : error),
+        context: window.__detailHostContext || 'none'
+      };
     }
   }
 
@@ -770,11 +812,22 @@
 
   async function syncTagsToOpenerAndSpreadsheet(state, debug) {
     var openerWin = getOpenerWindow();
+    pushTagSaveDebug(debug, 'host_context', { context: window.__detailHostContext || 'none' });
+
+    var hostSync = await syncViaExplorerHost(state, {
+      tagsCsv: uniqueTags(state && state.tags || []).join(', ')
+    });
+    pushTagSaveDebug(debug, 'host_sync_attempt', hostSync);
+    if (hostSync.attempted && hostSync.synced) {
+      return { syncedRow: true, excelSaved: !!hostSync.excelSaved, reason: hostSync.excelSaved ? 'saved' : 'sync-only' };
+    }
+
     pushTagSaveDebug(debug, 'opener_check', {
       hasOpener: !!openerWin,
       hasAdventuresData: !!(openerWin && Array.isArray(openerWin.adventuresData)),
       adventuresDataLength: openerWin && Array.isArray(openerWin.adventuresData) ? openerWin.adventuresData.length : 0,
-      hasSaveToExcel: !!(openerWin && typeof openerWin.saveToExcel === 'function')
+      hasSaveToExcel: !!(openerWin && typeof openerWin.saveToExcel === 'function'),
+      context: window.__detailHostContext || 'none'
     });
 
     if (!openerWin) return { syncedRow: false, excelSaved: false, reason: 'no-opener' };
@@ -920,7 +973,8 @@
       sourceTags: uniqueTags(sourceTags || []),
       tags: uniqueTags([].concat(sourceTags || [], storedTags || [])),
       data: data || {},
-      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null
+      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
+      explorerSource: payload && payload.explorerSource ? payload.explorerSource : null
     };
 
     pane.innerHTML =
@@ -1060,6 +1114,13 @@
     var state = window.__detailNotesState;
     var serialized = serializeDetailNotesBlob(state.notes || []);
 
+    var hostSync = await syncViaExplorerHost(state, { notes: serialized });
+    if (hostSync.attempted && hostSync.synced) {
+      setDetailNotesStatus('Notes saved to source Excel table.', false);
+      showDetailToast('✅ Notes saved and synced to Excel.', 'success', 4000);
+      return;
+    }
+
     // Mirror back into the live data object so tag-recommendations etc. see the latest value
     if (state.data) state.data.notes = serialized;
 
@@ -1181,7 +1242,8 @@
       placeKey: getTagPlaceKey(data),
       notes: parseDetailNotesBlob(data.notes),
       data: data,
-      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null
+      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
+      explorerSource: payload && payload.explorerSource ? payload.explorerSource : null
     };
     renderDetailNotesPane();
 

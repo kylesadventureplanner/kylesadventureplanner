@@ -747,6 +747,14 @@
     gap: 10px;
   }
 
+  #visitedLocationsRoot .visited-explorer-card-head-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
   #visitedLocationsRoot .visited-explorer-card-title {
     font-size: 16px;
     font-weight: 800;
@@ -755,6 +763,35 @@
   }
 
   #visitedLocationsRoot .visited-explorer-detail-btn {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  #visitedLocationsRoot .visited-explorer-detail-btn--primary {
+    border-color: #1d4ed8;
+    background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.26);
+  }
+
+  #visitedLocationsRoot .visited-explorer-quick-actions-menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #f8fbff;
+  }
+
+  #visitedLocationsRoot .visited-explorer-quick-action-item {
     border: 1px solid #bfdbfe;
     background: #eff6ff;
     color: #1d4ed8;
