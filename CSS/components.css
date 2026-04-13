@@ -44,6 +44,95 @@
   font-size: 14px;
 }
 
+.tab-shell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--ui-space-12);
+  margin-bottom: var(--ui-space-12);
+  position: sticky;
+  top: var(--ui-section-header-top);
+  z-index: var(--ui-tab-shell-header-z);
+  min-height: var(--ui-section-header-min-height);
+  padding: var(--ui-tab-shell-header-padding-y) var(--ui-tab-shell-header-padding-x);
+  border: 1px solid var(--ui-section-header-border);
+  border-radius: var(--ui-tab-shell-header-radius);
+  background: var(--ui-section-header-bg);
+  backdrop-filter: blur(6px);
+}
+
+.tab-shell-header--with-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tab-shell-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tab-shell-subtitle {
+  margin: 4px 0 0;
+  font-size: var(--ui-section-header-subtitle-size);
+  line-height: 1.45;
+  color: var(--neutral-500);
+}
+
+.tab-shell-status-row {
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.tab-shell-status-row .filters-active-badge {
+  border-radius: var(--ui-pill-radius);
+  border: 1px solid var(--ui-status-info-border);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-status-info-text);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.bulk-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.bulk-selection-count {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.bulk-inline-hint {
+  margin-bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.bulk-inline-icon {
+  font-size: 12px;
+  line-height: 1;
+  color: #475569;
+}
+
+.bulk-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.bulk-grid .filter-item > .pill-button {
+  margin-top: 8px;
+}
+
 .auth-btn {
    background: white;
    color: #1e3a8a;
@@ -72,6 +161,45 @@ header h1 {
   margin: 0;
   font-size: 24px;
   font-weight: 700;
+}
+
+.ui-section-header {
+  position: sticky;
+  top: var(--ui-section-header-top);
+  z-index: 8;
+  min-height: var(--ui-section-header-min-height);
+  padding: 10px 12px;
+  margin: -2px -2px 12px;
+  border-bottom: 1px solid var(--ui-section-header-border);
+  border-top-left-radius: var(--ui-card-radius);
+  border-top-right-radius: var(--ui-card-radius);
+  background: var(--ui-section-header-bg);
+  backdrop-filter: blur(6px);
+}
+
+.adventure-floating-header,
+#visitedLocationsRoot .adventure-achv-section > .card-header,
+#natureChallengeRoot .nature-overview-section-card > .card-header {
+  top: var(--ui-section-header-top);
+  min-height: var(--ui-section-header-min-height);
+  background: var(--ui-section-header-bg);
+  border-bottom: 1px solid var(--ui-section-header-border);
+  padding: 10px 12px;
+  margin: -2px -2px 12px;
+  border-top-left-radius: var(--ui-card-radius);
+  border-top-right-radius: var(--ui-card-radius);
+  backdrop-filter: blur(6px);
+}
+
+.ui-section-header .card-title {
+  font-size: var(--ui-section-header-title-size);
+  font-weight: 800;
+}
+
+.ui-section-header .card-subtitle {
+  margin-top: 4px;
+  font-size: var(--ui-section-header-subtitle-size);
+  line-height: 1.45;
 }
 
 /* ============================================================
@@ -222,17 +350,18 @@ header h1 {
 ============================================================ */
 
 .card {
-   background: white;
-   border-radius: 10px;
-   border: 1px solid var(--gray-border);
-   padding: 12px 14px;
+   background: var(--ui-card-bg);
+   border-radius: var(--ui-card-radius);
+   border: 1px solid var(--ui-card-border);
+   padding: var(--ui-card-padding-y) var(--ui-card-padding-x);
    margin-bottom: 12px;
    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+   box-shadow: var(--ui-card-shadow);
 }
 
 .card:hover {
-   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+   box-shadow: var(--ui-card-shadow-hover);
+   transform: translateY(var(--ui-card-hover-lift));
 }
 
 .card-header {
@@ -802,7 +931,7 @@ header h1 {
 }
 
 .loading-content {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.88));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), var(--ui-loading-bg));
   padding: 32px;
   border-radius: 12px;
   display: flex;
@@ -856,6 +985,9 @@ header h1 {
   padding: 60px 20px;
   text-align: center;
   min-height: 300px;
+  border-radius: var(--ui-card-radius);
+  border: 1px solid var(--ui-empty-border);
+  background: var(--ui-empty-bg);
 }
 
 .empty-state-icon {
@@ -889,9 +1021,23 @@ header h1 {
 
 .empty-state-description {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--ui-empty-text);
   margin-bottom: 24px;
   max-width: 400px;
+}
+
+.ui-skeleton,
+.skeleton-card {
+  border-radius: var(--ui-card-radius);
+  border: 1px solid var(--ui-empty-border);
+  background: linear-gradient(90deg, #f8fafc 0%, #eef2f7 50%, #f8fafc 100%);
+  background-size: 220% 100%;
+  animation: uiSkeletonPulse 1.35s ease infinite;
+}
+
+@keyframes uiSkeletonPulse {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
 
 .empty-state-action {
@@ -2510,6 +2656,45 @@ th:hover .sort-indicator {
   line-height: 1.35;
 }
 
+.ui-status-pill--success,
+#natureChallengeRoot .nature-sync-health.ok,
+#visitedLocationsRoot .visited-sync-health.ok,
+#visitedLocationsRoot .visited-subtab-status-health.ok {
+  border-color: var(--ui-status-success-border);
+  background: var(--ui-status-success-bg);
+  color: var(--ui-status-success-text);
+}
+
+.ui-status-pill--warning,
+#natureChallengeRoot .nature-sync-health.warn,
+#visitedLocationsRoot .visited-sync-health.warn,
+#visitedLocationsRoot .visited-subtab-status-health.warn,
+#natureChallengeRoot .nature-subtab-diagnostics-pill.warn,
+#visitedLocationsRoot .visited-subtab-diagnostics-pill.warn {
+  border-color: var(--ui-status-warning-border);
+  background: var(--ui-status-warning-bg);
+  color: var(--ui-status-warning-text);
+}
+
+.ui-status-pill--error,
+#natureChallengeRoot .nature-sync-health.error,
+#visitedLocationsRoot .visited-sync-health.error,
+#visitedLocationsRoot .visited-subtab-status-health.error {
+  border-color: var(--ui-status-error-border);
+  background: var(--ui-status-error-bg);
+  color: var(--ui-status-error-text);
+}
+
+.ui-status-pill--info,
+#natureChallengeRoot .nature-sync-health.info,
+#visitedLocationsRoot .visited-sync-health.info,
+#visitedLocationsRoot .visited-subtab-status-health.info,
+.offline-badge[data-state="syncing"] {
+  border-color: var(--ui-status-info-border);
+  background: var(--ui-status-info-bg);
+  color: var(--ui-status-info-text);
+}
+
 .ui-status-meta,
 #natureChallengeRoot .nature-sync-meta,
 #visitedLocationsRoot .visited-sync-meta,
@@ -2532,7 +2717,21 @@ th:hover .sort-indicator {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ui-space-12);
+  gap: var(--ui-action-rail-gap);
+  row-gap: var(--ui-action-rail-row-gap);
+}
+
+.planner-top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-action-rail-gap);
+  row-gap: var(--ui-action-rail-row-gap);
+}
+
+.planner-top-btn {
+  min-height: var(--ui-action-height);
+  border-radius: var(--ui-action-radius);
 }
 
 .ui-action-btn,
@@ -2620,9 +2819,17 @@ th:hover .sort-indicator {
 #visitedLocationsRoot .visited-empty,
 .species-empty-state,
 .birds-map-empty {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  align-content: center;
+  text-align: center;
+  min-height: var(--ui-empty-min-height);
+  padding: var(--ui-empty-padding);
   border-radius: var(--ui-card-radius);
-  border: 1px solid var(--ui-status-meta-border);
-  background: #f8fafc;
+  border: 1px solid var(--ui-empty-border);
+  background: var(--ui-empty-bg);
+  color: var(--ui-empty-text);
 }
 
 .ui-chip,
@@ -2663,6 +2870,24 @@ th:hover .sort-indicator {
 #visitedLocationsRoot .visited-explorer-card-head {
   padding: 0;
   gap: var(--ui-space-12);
+}
+
+@media (max-width: 760px) {
+  .tab-shell-header {
+    position: static;
+    top: auto;
+    border-radius: var(--ui-card-radius);
+    margin-bottom: var(--ui-space-8);
+  }
+
+  .ui-section-header {
+    position: static;
+    margin: 0 0 10px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    backdrop-filter: none;
+  }
 }
 
 .ui-card-header .card-title,

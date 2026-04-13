@@ -2,9 +2,12 @@
 <!-- This file is loaded dynamically by tab-content-loader.js -->
 <!-- All CSS, JS, and functions are available from the main index -->
 
-<header>
-  <h1>Bike Trails</h1>
-  <div class="planner-top-actions">
+<header class="tab-shell-header tab-shell-header--with-actions">
+  <div>
+    <h1 class="tab-shell-title">Bike Trails</h1>
+    <p class="tab-shell-subtitle">Filter and explore rides with the same section/header and action spacing used across tabs.</p>
+  </div>
+  <div class="planner-top-actions ui-action-rail">
     <button id="bikeIphoneToggleBtn" class="planner-top-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">
       📱 iPhone View
     </button>
@@ -21,32 +24,32 @@
 </header>
 
 <!-- Filters Active Badge -->
-<div style="padding: 8px 0; margin-bottom: 8px;">
+<div class="tab-shell-status-row">
   <span id="bikeFiltersActiveBadge" class="filters-active-badge">Filters Active</span>
 </div>
 
 <!-- Bulk Actions -->
-<div id="bikeBulkActionsCard" class="card control-panel-card" style="margin-bottom: 12px;">
-  <div class="card-header" style="align-items: center;">
+<div id="bikeBulkActionsCard" class="card control-panel-card">
+  <div class="card-header ui-section-header">
     <div class="card-title">✅ Bulk Actions</div>
-    <div id="bikeBulkSelectionCount" style="font-size:12px; font-weight:700; color:#475569;">0 selected</div>
+    <div id="bikeBulkSelectionCount" class="bulk-selection-count">0 selected</div>
   </div>
-  <div class="control-panel-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+  <div class="control-panel-grid bulk-grid">
     <div class="filter-item">
       <label>Selection</label>
-      <select id="bikeBulkSelectionScope" class="filter-select" style="margin-bottom:8px;">
+      <select id="bikeBulkSelectionScope" class="filter-select">
         <option value="filtered">Filtered results</option>
         <option value="page">Current page only</option>
       </select>
-      <div id="bikeBulkSelectionScopeHint" style="font-size:11px;color:#64748b;margin-bottom:8px;display:inline-flex;align-items:center;gap:6px;">
-        <span aria-hidden="true" style="font-size:12px;line-height:1;color:#475569;">ℹ</span>
+      <div id="bikeBulkSelectionScopeHint" class="bulk-inline-hint">
+        <span aria-hidden="true" class="bulk-inline-icon">ℹ</span>
         <span class="bulk-scope-hint-text">Selection applies to all filtered results.</span>
       </div>
-      <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#475569;margin-bottom:8px;">
+      <label class="bulk-toggle-label">
         <input id="bikeBulkAutoClearToggle" type="checkbox" />
         Auto-clear selection after successful apply
       </label>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="ui-action-rail">
         <button id="bikeBulkSelectVisibleBtn" type="button" class="pill-button">Select</button>
         <button id="bikeBulkInvertSelectionBtn" type="button" class="pill-button">Invert</button>
         <button id="bikeBulkClearSelectionBtn" type="button" class="pill-button reset">Clear</button>
@@ -55,7 +58,7 @@
     <div class="filter-item">
       <label for="bikeBulkTagsInput">Add Tags (comma separated)</label>
       <input id="bikeBulkTagsInput" class="filter-input" type="text" placeholder="scenic, family, sunset" />
-      <button id="bikeBulkApplyTagsBtn" type="button" class="pill-button" style="margin-top:8px;">Apply Tags</button>
+      <button id="bikeBulkApplyTagsBtn" type="button" class="pill-button">Apply Tags</button>
     </div>
     <div class="filter-item">
       <label for="bikeBulkRatingSelect">Set Rating</label>
@@ -67,11 +70,11 @@
         <option value="4">4 stars</option>
         <option value="5">5 stars</option>
       </select>
-      <button id="bikeBulkApplyRatingBtn" type="button" class="pill-button" style="margin-top:8px;">Apply Rating</button>
+      <button id="bikeBulkApplyRatingBtn" type="button" class="pill-button">Apply Rating</button>
     </div>
     <div class="filter-item">
       <label>Status</label>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="ui-action-rail">
         <button id="bikeBulkMarkFavoriteBtn" type="button" class="pill-button">Mark Favorite</button>
         <button id="bikeBulkUnmarkFavoriteBtn" type="button" class="pill-button">Unmark Favorite</button>
         <button id="bikeBulkMarkVisitedBtn" type="button" class="pill-button">Mark Visited</button>
@@ -83,9 +86,9 @@
 
 <!-- Control Panel Card -->
 <div id="bikeControlPanelCard" class="card control-panel-card">
-  <div class="card-header">
+  <div class="card-header ui-section-header">
     <div class="card-title">🎛️ Ride Filters</div>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="ui-action-rail">
       <button id="bikeResetAllFiltersTop" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
     </div>
   </div>
@@ -163,7 +166,7 @@
 
 <!-- Common Filters -->
 <div id="bikeQuickFiltersCard" class="card quick-filters-card">
-  <div class="card-header">
+  <div class="card-header ui-section-header">
     <div class="card-title">⚡ Quick Ride Filters</div>
     <button id="bikeResetAllFiltersBottom" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
   </div>
@@ -179,8 +182,8 @@
     <button type="button" class="quick-filter-btn" aria-pressed="false" data-bike-filter="family" title="Family-friendly rides" data-tooltip="Family-friendly rides">👨‍👩‍👧‍👦 Family Friendly</button>
     <button type="button" class="quick-filter-btn" aria-pressed="false" data-bike-filter="coffee" title="Coffee nearby" data-tooltip="Coffee nearby">☕ Coffee Nearby</button>
   </div>
-    <div style="margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 10px;">
-    <div style="font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 8px;">🏷️ Most-used trail tags (surface, difficulty &amp; more)</div>
+    <div class="quick-filter-subsection quick-filter-subsection--managed-tags">
+    <div class="quick-filter-subsection-title">🏷️ Most-used trail tags (surface, difficulty &amp; more)</div>
     <div id="bikeManagedTagQuickFilters" class="quick-filters-container"></div>
   </div>
 </div>
@@ -205,7 +208,7 @@
 
 <!-- Bike Trail List -->
 <div class="card table-card">
-  <div class="card-header">
+  <div class="card-header ui-section-header">
     <div>
       <div class="card-title">Bike Trail List</div>
       <div class="card-subtitle">Data source: Bike_Trail_Planner.xlsx (Table: BikeTrails)</div>

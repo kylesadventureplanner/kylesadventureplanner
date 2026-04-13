@@ -85,13 +85,13 @@
 ============================================================ */
 
 .filters-active-badge {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--mint-bg);
-  border: 1px solid var(--mint-border);
-  color: var(--mint-strong);
-  font-size: 11px;
-  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: var(--ui-pill-radius);
+  background: var(--ui-status-info-bg);
+  border: 1px solid var(--ui-status-info-border);
+  color: var(--ui-status-info-text);
+  font-size: 12px;
+  font-weight: 700;
   display: none;
 }
 
@@ -344,22 +344,22 @@ tr.row-selected {
 
 /* Individual Adventure Card */
 .adventure-card {
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  background: var(--ui-card-bg);
+  border-radius: var(--ui-card-radius);
+  box-shadow: var(--ui-card-shadow);
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   position: relative;
-  border: 1px solid var(--neutral-200);
+  border: 1px solid var(--ui-card-border);
   animation: cardEntrance 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 .adventure-card:hover {
-  box-shadow: var(--shadow-xl);
-  transform: translateY(-6px);
+  box-shadow: var(--ui-card-shadow-hover);
+  transform: translateY(var(--ui-card-hover-lift));
   border-color: var(--neutral-300);
 }
 
@@ -631,6 +631,31 @@ tr.row-selected {
   flex-direction: column;
   gap: 12px;
   background: #fafafa;
+}
+
+.adventure-floating-header {
+  position: sticky;
+  top: var(--ui-section-header-top);
+  z-index: 15;
+  min-height: var(--ui-section-header-min-height);
+  border-bottom: 1px solid var(--ui-section-header-border);
+  background: var(--ui-section-header-bg);
+  backdrop-filter: blur(6px);
+  border-top-left-radius: var(--ui-card-radius);
+  border-top-right-radius: var(--ui-card-radius);
+  padding: 10px 12px;
+  margin: -6px -8px 8px;
+}
+
+.adventure-floating-header-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ui-action-rail-gap);
+}
+
+.adventure-floating-header-actions .pill-button {
+  min-height: var(--ui-action-height);
 }
 
 .card-action-btns {

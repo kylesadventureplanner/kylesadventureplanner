@@ -2,37 +2,54 @@
 <!-- This file is loaded dynamically by tab-content-loader.js -->
 <!-- All CSS, JS, and functions are available from the main index -->
 
-<header>
-  <h1>Adventure Planner</h1>
+<header class="tab-shell-header tab-shell-header--with-actions">
+  <div>
+    <h1 class="tab-shell-title">Adventure Planner</h1>
+    <p class="tab-shell-subtitle">Browse, filter, and organize adventures with the same visual rhythm used across feature tabs.</p>
+  </div>
+  <div class="planner-top-actions ui-action-rail">
+    <button id="findNearMeBtn" class="planner-top-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location" onclick="(window.startFindNearMe || function(){})()">
+      📍 Find Near Me
+    </button>
+    <button id="cityViewerBtn" class="planner-top-btn" title="View and explore locations by city" data-tooltip="View and explore locations by city" onclick="(window.openCityViewerWindow || function(){})()">
+      🌆 City Explorer
+    </button>
+    <button id="adventureRefreshBtn" class="planner-top-btn planner-top-btn--success" title="Refresh adventure data from Excel" data-tooltip="Refresh adventure data from Excel" onclick="(window.refreshAdventureData || function(){})()">
+      🔄 Refresh Data
+    </button>
+    <button id="downloadSessionJsonBtn" class="planner-top-btn planner-top-btn--accent" title="Download your current session as JSON" data-tooltip="Download your current session as JSON" onclick="(window.downloadSessionJson || function(){})()">
+      📥 Download JSON
+    </button>
+  </div>
 </header>
 
 <!-- Filters Active Badge -->
-<div style="padding: 8px 0; margin-bottom: 8px;">
+<div class="tab-shell-status-row">
   <span id="filtersActiveBadge" class="filters-active-badge">Filters Active</span>
 </div>
 
 <!-- Bulk Actions -->
-<div id="adventureBulkActionsCard" class="card control-panel-card" style="margin-bottom: 12px;">
-  <div class="card-header" style="align-items: center;">
+<div id="adventureBulkActionsCard" class="card control-panel-card">
+  <div class="card-header ui-section-header">
     <div class="card-title">✅ Bulk Actions</div>
-    <div id="adventureBulkSelectionCount" style="font-size:12px; font-weight:700; color:#475569;">0 selected</div>
+    <div id="adventureBulkSelectionCount" class="bulk-selection-count">0 selected</div>
   </div>
-  <div class="control-panel-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+  <div class="control-panel-grid bulk-grid">
     <div class="filter-item">
       <label>Selection</label>
-      <select id="adventureBulkSelectionScope" class="filter-select" style="margin-bottom:8px;">
+      <select id="adventureBulkSelectionScope" class="filter-select">
         <option value="filtered">Filtered results</option>
         <option value="page">Current page only</option>
       </select>
-      <div id="adventureBulkSelectionScopeHint" style="font-size:11px;color:#64748b;margin-bottom:8px;display:inline-flex;align-items:center;gap:6px;">
-        <span aria-hidden="true" style="font-size:12px;line-height:1;color:#475569;">ℹ</span>
+      <div id="adventureBulkSelectionScopeHint" class="bulk-inline-hint">
+        <span aria-hidden="true" class="bulk-inline-icon">ℹ</span>
         <span class="bulk-scope-hint-text">Selection applies to all filtered results.</span>
       </div>
-      <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#475569;margin-bottom:8px;">
+      <label class="bulk-toggle-label">
         <input id="adventureBulkAutoClearToggle" type="checkbox" />
         Auto-clear selection after successful apply
       </label>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="ui-action-rail">
         <button id="adventureBulkSelectVisibleBtn" type="button" class="pill-button">Select</button>
         <button id="adventureBulkInvertSelectionBtn" type="button" class="pill-button">Invert</button>
         <button id="adventureBulkClearSelectionBtn" type="button" class="pill-button reset">Clear</button>
@@ -41,7 +58,7 @@
     <div class="filter-item">
       <label for="adventureBulkTagsInput">Add Tags (comma separated)</label>
       <input id="adventureBulkTagsInput" class="filter-input" type="text" placeholder="outdoor, brunch, scenic" />
-      <button id="adventureBulkApplyTagsBtn" type="button" class="pill-button" style="margin-top:8px;">Apply Tags</button>
+      <button id="adventureBulkApplyTagsBtn" type="button" class="pill-button">Apply Tags</button>
     </div>
     <div class="filter-item">
       <label for="adventureBulkRatingSelect">Set Rating</label>
@@ -53,11 +70,11 @@
         <option value="4">4 stars</option>
         <option value="5">5 stars</option>
       </select>
-      <button id="adventureBulkApplyRatingBtn" type="button" class="pill-button" style="margin-top:8px;">Apply Rating</button>
+      <button id="adventureBulkApplyRatingBtn" type="button" class="pill-button">Apply Rating</button>
     </div>
     <div class="filter-item">
       <label>Status</label>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="ui-action-rail">
         <button id="adventureBulkMarkFavoriteBtn" type="button" class="pill-button">Mark Favorite</button>
         <button id="adventureBulkUnmarkFavoriteBtn" type="button" class="pill-button">Unmark Favorite</button>
         <button id="adventureBulkMarkVisitedBtn" type="button" class="pill-button">Mark Visited</button>
@@ -69,14 +86,11 @@
 
 <!-- Control Panel Card -->
 <div id="controlPanelCard" class="card control-panel-card">
-  <div class="card-header">
+  <div class="card-header ui-section-header">
     <div class="card-title">
       🎛️ Control Panel
     </div>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-      <button id="findNearMeBtn" class="find-near-me-btn" title="Find adventures near your current location" data-tooltip="Find adventures near your current location">
-        📍 Find Near Me
-      </button>
+    <div class="ui-action-rail">
       <button id="resetAllFiltersTop" class="pill-button reset" title="Clear all applied filters" data-tooltip="Clear all applied filters">Reset All Filters</button>
     </div>
   </div>
@@ -135,7 +149,7 @@
 
 <!-- Common Filters -->
 <div id="quickFiltersCard" class="card quick-filters-card">
-  <div class="card-header">
+  <div class="card-header ui-section-header">
     <div class="card-title">
       🎛️ Common Filters
     </div>
@@ -193,7 +207,7 @@
 
 <!-- Adventure List -->
 <div class="card table-card">
-  <div class="card-header">
+  <div class="card-header ui-section-header">
     <div>
       <div class="card-title">
         Adventure List
@@ -260,34 +274,6 @@
   // Initialize Adventure Planner tab
   window.initAdventurePlanner = function() {
     const root = document.querySelector('[data-tab="adventure-planner"]') || document;
-    const stickyStyleId = 'adventurePlannerFloatingHeadersStyle';
-
-    if (!document.getElementById(stickyStyleId)) {
-      const style = document.createElement('style');
-      style.id = stickyStyleId;
-      style.textContent = `
-        .adventure-floating-header {
-          position: sticky;
-          top: 6px;
-          z-index: 15;
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(4px);
-          border-radius: 10px;
-          padding: 6px 8px;
-          margin: -6px -8px 8px;
-        }
-        .adventure-floating-header-actions {
-          display: inline-flex;
-          gap: 6px;
-          flex-wrap: wrap;
-          align-items: center;
-        }
-        .adventure-floating-header-actions .pill-button {
-          min-height: 32px;
-        }
-      `;
-      document.head.appendChild(style);
-    }
 
     const sectionCards = [
       { id: 'adventureBulkActionsCard', label: 'Bulk Actions' },

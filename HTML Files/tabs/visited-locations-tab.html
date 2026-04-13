@@ -2,7 +2,7 @@
 <!-- Gamified tracker + smart recommendations -->
 
 <div id="visitedLocationsRoot">
-  <div class="visited-progress-header">
+  <div class="visited-progress-header tab-shell-header">
     <h1 id="visitedChallengeTitle">Adventure Challenge - Outdoors</h1>
     <div class="visited-jump-links" role="navigation" aria-label="Jump to section links">
       <span class="visited-jump-links-label">Jump to section:</span>
@@ -380,6 +380,8 @@
       <input type="hidden" id="visitedVisitLogSubtabKey" value="" />
       <input type="hidden" id="visitedVisitLogItemId" value="" />
       <input type="hidden" id="visitedVisitLogMode" value="add" />
+      <label class="visited-visit-log-label" for="visitedVisitLogLocationSearch">Type to narrow locations</label>
+      <input id="visitedVisitLogLocationSearch" class="filter-input" type="text" placeholder="Start typing the location name..." autocomplete="off" />
       <label class="visited-visit-log-label" for="visitedVisitLogLocationSelect">Qualifying location</label>
       <select id="visitedVisitLogLocationSelect" class="filter-select" required>
         <option value="">Select a location...</option>
@@ -736,9 +738,7 @@
 
   #visitedLocationsRoot .visited-subtab-action-row {
     margin-top: 12px;
-    display: flex;
     gap: 8px;
-    flex-wrap: wrap;
   }
 
   #visitedLocationsRoot .visited-subtab-action-btn {
@@ -1243,31 +1243,6 @@
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   }
 
-  #visitedLocationsRoot .visited-sync-health {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 999px;
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    color: #374151;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 8px 12px;
-    white-space: nowrap;
-  }
-
-  #visitedLocationsRoot .visited-sync-health.ok {
-    border-color: #86efac;
-    background: #ecfdf5;
-    color: #166534;
-  }
-
-  #visitedLocationsRoot .visited-sync-health.warn {
-    border-color: #fca5a5;
-    background: #fef2f2;
-    color: #991b1b;
-  }
 
   #visitedLocationsRoot .visited-stat-card {
     border: 1px solid #e5e7eb;
@@ -1625,28 +1600,11 @@
   }
 
   #visitedLocationsRoot .visited-subtab-status {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 10px;
     text-align: left;
   }
 
-  #visitedLocationsRoot .visited-subtab-status-health {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 999px;
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    color: #374151;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 8px 12px;
-    white-space: nowrap;
-    line-height: 1.35;
-  }
 
   #visitedLocationsRoot .visited-subtab-status.is-ok .visited-subtab-status-health {
     border-color: #86efac;
@@ -1660,19 +1618,6 @@
     color: #991b1b;
   }
 
-  #visitedLocationsRoot .visited-subtab-status-meta {
-    display: inline-flex;
-    align-items: center;
-    font-size: 12px;
-    color: #475569;
-    font-weight: 600;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 999px;
-    padding: 8px 12px;
-    white-space: pre-line;
-    line-height: 1.35;
-  }
 
   #visitedLocationsRoot .visited-subtab-status-sync-btn {
     display: inline-flex;

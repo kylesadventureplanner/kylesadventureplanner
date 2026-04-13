@@ -1861,7 +1861,7 @@
     if (resultsEl) resultsEl.textContent = `${all.length} trail${all.length === 1 ? '' : 's'}`;
 
     if (!all.length) {
-      grid.innerHTML = '<div class="trail-empty" style="grid-column:1/-1;">No bike trails match your current filters.</div>';
+      grid.innerHTML = '<div class="trail-empty ui-empty-state" style="grid-column:1/-1;">No bike trails match your current filters.</div>';
       return;
     }
 

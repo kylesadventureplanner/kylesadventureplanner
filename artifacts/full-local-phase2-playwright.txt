@@ -1,0 +1,76 @@
+
+Running 72 tests using 5 workers
+
+[1A[2K[1/72] tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for outdoors
+[1A[2K[2/72] tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Outdoors
+[1A[2K[3/72] tests/adventure-explorer-inpane-details.spec.js:136:3 › Adventure explorer in-pane details flow › opens details in-pane, shows richer fields, and returns to list
+[1A[2K[4/72] tests/adventure-inline-tools-roundtrip.spec.js:30:3 › Adventure inline tools roundtrip › City Explorer inline opens and back returns to overview
+[1A[2K[5/72] tests/adventure-header-sync-smoke.spec.js:4:3 › Adventure header sync indicator smoke › shows pending unsynced count and flashing retry button
+[1A[2K[6/72] tests/adventure-header-sync-smoke.spec.js:32:3 › Adventure header sync indicator smoke › shows synced state and disabled retry button when no pending rows
+[1A[2K[7/72] tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for entertainment
+[1A[2K[8/72] tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Entertainment
+[1A[2K[9/72] tests/adventure-log-visit-modal.spec.js:4:3 › Adventure log visit modal › Log Visit fields are interactive and editable
+[1A[2K[10/72] tests/adventure-inline-tools-roundtrip.spec.js:120:3 › Adventure inline tools roundtrip › Edit Mode inline opens and back returns to overview
+[1A[2K[11/72] tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for food-drink
+[1A[2K[12/72] tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Food & Drink
+[1A[2K[13/72] tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for retail
+[1A[2K[14/72] tests/adventure-subtabs-smoke.spec.js:40:3 › Adventure Challenge new subtabs smoke › legacy top header controls are removed from Adventure Challenge
+[1A[2K[15/72] tests/app-backup-flow.spec.js:9:3 › App backup flow › opens dedicated backup page from header button
+[1A[2K[16/72] tests/adventure-achievements-smoke.spec.js:27:5 › Adventure achievements dashboard smoke › renders achievement sections for wildlife-animals
+[1A[2K[17/72] tests/adventure-subtabs-smoke.spec.js:46:3 › Adventure Challenge new subtabs smoke › default Outdoors pane uses Nature-style status pills
+[1A[2K[18/72] tests/bulk-tag-undo-edge-cases.spec.js:9:1 › bulk tag undo preserves snapshot-cap behavior for large selections
+[1A[2K[19/72] tests/app-backup-flow.spec.js:23:3 › App backup flow › back button returns to previously active tab
+[1A[2K[20/72] tests/city-explorer-phase1.spec.js:130:3 › City Explorer Phase 1 and 2 enhancements › location filter controls are not sticky
+[1A[2K[21/72] tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Retail
+[1A[2K[22/72] tests/city-explorer-phase1.spec.js:137:3 › City Explorer Phase 1 and 2 enhancements › active filter chips appear and individual chip removal updates filters
+[1A[2K[23/72] tests/adventure-subtabs-smoke.spec.js:52:3 › Adventure Challenge new subtabs smoke › adventure achievement sections keep sticky section-header style hook
+[1A[2K[24/72] tests/adventure-achievements-smoke.spec.js:45:3 › Adventure achievements dashboard smoke › sync mode selector keeps automated matching modes only
+[1A[2K[25/72] tests/city-explorer-phase1.spec.js:156:3 › City Explorer Phase 1 and 2 enhancements › Adventure prefilter is visible and can be cleared to show everything
+[1A[2K[26/72] tests/app-backup-flow.spec.js:35:3 › App backup flow › creates a dated zip backup download
+[1A[2K[27/72] tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Wildlife & Animals
+[1A[2K[28/72] tests/city-explorer-phase1.spec.js:173:3 › City Explorer Phase 1 and 2 enhancements › empty state reset action restores results after a no-match filter
+[1A[2K[29/72] tests/city-explorer-phase1.spec.js:189:3 › City Explorer Phase 1 and 2 enhancements › smart presets and shortlist compare tray power the planning workflow
+[1A[2K[30/72] tests/adventure-subtabs-smoke.spec.js:64:3 › Adventure Challenge new subtabs smoke › jump links hide while Outdoors explorer view is open
+[1A[2K[31/72] tests/adventure-achievements-smoke.spec.js:89:3 › Adventure achievements dashboard smoke › category totals sync CTA lives in the status row instead of Category Progression
+[1A[2K[32/72] tests/city-explorer-phase1.spec.js:211:3 › City Explorer Phase 1 and 2 enhancements › ranking badges and confidence indicators render on cards and detail view
+[1A[2K[33/72] tests/city-explorer-phase1.spec.js:226:3 › City Explorer Phase 1 and 2 enhancements › day plan shows itinerary score and route-feasibility confidence
+[1A[2K[34/72] tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Wildlife & Animals
+[1A[2K[35/72] tests/adventure-explorer-flows.spec.js:20:5 › Adventure explorer open/close flows › explorer flow: Regional Festivals
+[1A[2K[36/72] tests/city-explorer-phase1.spec.js:273:3 › City Explorer Phase 1 and 2 enhancements › bulk actions can apply tags, notes, and visited state to selected locations
+[1A[2K[37/72] tests/edit-mode-global.spec.js:32:3 › Edit Mode – global header button › header contains #globalEditModeBtn with correct label and handler
+[1A[2K[38/72] tests/city-explorer-phase1.spec.js:294:3 › City Explorer Phase 1 and 2 enhancements › per-card quick actions support copy address utility
+[1A[2K[39/72] tests/edit-mode-global.spec.js:47:3 › Edit Mode – target-table selectors › action target select has all 7 tables
+[1A[2K[40/72] tests/mobile-ux-snapshots.spec.js:75:3 › Mobile UX snapshots › captures iPhone-view snapshots across key pages
+[1A[2K[41/72] tests/edit-mode-global.spec.js:57:3 › Edit Mode – target-table selectors › automation default select has all 7 tables
+[1A[2K[42/72] tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Regional Festivals
+[1A[2K[43/72] tests/nature-inat-import.spec.js:19:3 › Nature iNaturalist import › paste preview + dry run parses rows
+[1A[2K[44/72] tests/edit-mode-global.spec.js:65:3 › Edit Mode – target-table selectors › tab-specific target controls show only relevant section
+[1A[2K[45/72] tests/edit-mode-global.spec.js:76:3 › Edit Mode – target-table selectors › status chips update when target changes
+[1A[2K[46/72] tests/edit-mode-global.spec.js:86:3 › Edit Mode – target-table selectors › tabs switch between Places and Automation panels
+[1A[2K[47/72] tests/nature-inat-mapping-modal.spec.js:19:3 › Nature iNaturalist strict mapping modal › shows unmatched rows in strict mapping report
+[1A[2K[48/72] tests/adventure-subtabs-smoke.spec.js:86:5 › Adventure Challenge new subtabs smoke › subtab smoke: Retail
+[1A[2K[49/72] tests/nature-inat-import.spec.js:44:3 › Nature iNaturalist import › csv upload auto-previews and manual preview remains functional
+[1A[2K[50/72] tests/nature-log-ux.spec.js:4:3 › Nature log UX › log form supports typeahead species, location other, and contextual fast-command hints
+[1A[2K[51/72] tests/nature-map-context.spec.js:4:3 › Nature map context labels › map header/back reflects active nature subtab context
+[1A[2K[52/72] tests/nature-inat-mapping-modal.spec.js:37:3 › Nature iNaturalist strict mapping modal › applying a suggestion decreases unmatched and increases ready
+[1A[2K[53/72] tests/nature-subtabs-smoke.spec.js:20:3 › Nature config-driven subtabs smoke › birds diagnostics row is visible
+[1A[2K[54/72] tests/offline-airplane-mode.spec.js:4:3 › Offline airplane mode regression › keeps planner usable and queues writes when offline
+[1A[2K[55/72] tests/reliability-smoke.spec.js:55:1 › first-click success: nature explore
+[1A[2K[56/72] tests/nature-subtabs-smoke.spec.js:29:3 › Nature config-driven subtabs smoke › birds jump bar renders with expected section buttons
+[1A[2K[57/72] tests/reliability-smoke.spec.js:70:1 › first-click success: nature run command
+[1A[2K[58/72] tests/nature-subtabs-smoke.spec.js:61:3 › Nature config-driven subtabs smoke › birds jump bar hides outside overview and returns on overview
+[1A[2K[59/72] tests/reliability-smoke.spec.js:83:1 › first-click success: bike refresh
+[1A[2K[60/72] tests/nature-subtabs-smoke.spec.js:100:3 › Nature config-driven subtabs smoke › mammals diagnostics row contains stable labels
+[1A[2K[61/72] tests/reliability-smoke.spec.js:102:1 › hidden overlay probe catches interception
+[1A[2K[62/72] tests/nature-subtabs-smoke.spec.js:109:3 › Nature config-driven subtabs smoke › shrubs subtab is removed from the dock
+[1A[2K[63/72] tests/reliability-smoke.spec.js:139:1 › stale row-detail blocker is cleared before nature interactions
+[1A[2K[64/72] tests/nature-subtabs-smoke.spec.js:113:3 › Nature config-driven subtabs smoke › nature subtabs expose loading state attributes
+[1A[2K[65/72] tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches
+[1A[2K[66/72] tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Mammals
+[1A[2K[67/72] tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Reptiles
+[1A[2K[68/72] tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Amphibians
+[1A[2K[69/72] tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Insects
+[1A[2K[70/72] tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Arachnids
+[1A[2K[71/72] tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Wildflowers
+[1A[2K[72/72] tests/nature-subtabs-smoke.spec.js:119:5 › Nature config-driven subtabs smoke › subtab smoke: Trees & Shrubs
+[1A[2K  72 passed (54.4s)

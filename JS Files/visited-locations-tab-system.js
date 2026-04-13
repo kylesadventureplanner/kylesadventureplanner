@@ -267,7 +267,9 @@
       ,
       subtabExplorer: {},
        visitRecords: [],
-       explorerCardState: {}
+       explorerCardState: {},
+       visitLogLocationOptions: [],
+       visitLogLocationQuery: ''
    };
 
   function shouldLogVisitedDiagnostics() {
@@ -1966,6 +1968,71 @@
       .filter((item) => item.id && item.title);
   }
 
+  function buildVisitLogLocationOptionLabel(item) {
+    const title = String(item && item.title ? item.title : '').trim();
+    const sourceLabel = String(item && item.sourceLabel ? item.sourceLabel : '').trim();
+    return sourceLabel ? `${title} - ${sourceLabel}` : title;
+  }
+
+  function renderVisitLogLocationOptions() {
+    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
+    const itemIdInput = document.getElementById('visitedVisitLogItemId');
+    const help = document.getElementById('visitedVisitLogHelp');
+    if (!locationSelect) return '';
+
+    const allOptions = Array.isArray(state.visitLogLocationOptions) ? state.visitLogLocationOptions : [];
+    const query = norm(state.visitLogLocationQuery);
+    const filteredOptions = !query
+      ? allOptions.slice()
+      : allOptions.filter((item) => {
+        const title = norm(item && item.title);
+        const sourceLabel = norm(item && item.sourceLabel);
+        // Strict prefix matching keeps narrowing predictable for keyboard selection.
+        return title.startsWith(query) || sourceLabel.startsWith(query);
+      });
+
+    const preferredId = String(itemIdInput && itemIdInput.value ? itemIdInput.value : '').trim();
+    locationSelect.innerHTML = '<option value="">Select a location...</option>' + filteredOptions
+      .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(buildVisitLogLocationOptionLabel(item))}</option>`)
+      .join('');
+
+    let selectedId = '';
+    if (preferredId && filteredOptions.some((item) => item.id === preferredId)) {
+      selectedId = preferredId;
+    } else if (query && filteredOptions.length === 1) {
+      selectedId = filteredOptions[0].id;
+    }
+    locationSelect.value = selectedId;
+    if (itemIdInput) itemIdInput.value = selectedId;
+
+    if (help) {
+      const baseText = String(help.dataset.baseText || help.textContent || '').trim();
+      if (baseText) {
+        help.textContent = `${baseText} Showing ${filteredOptions.length} of ${allOptions.length} locations.`;
+      }
+    }
+
+    return selectedId;
+  }
+
+  function syncVisitLogLocationSelection(itemId, subtabKeyOverride) {
+    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
+    const itemIdInput = document.getElementById('visitedVisitLogItemId');
+    const nextItemId = String(itemId || '').trim();
+    if (locationSelect && String(locationSelect.value || '').trim() !== nextItemId) {
+      locationSelect.value = nextItemId;
+    }
+    if (itemIdInput) itemIdInput.value = nextItemId;
+    const subtabKey = String(
+      subtabKeyOverride
+      || document.getElementById('visitedVisitLogSubtabKey')?.value
+      || state.activeProgressSubTab
+      || 'outdoors'
+    ).trim();
+    renderVisitLogActivityGrid(subtabKey, nextItemId);
+    return nextItemId;
+  }
+
   function getVisitLogActivityOptions(subtabKey) {
     const config = window.AdventureAchievements && window.AdventureAchievements.CONFIGS
       ? window.AdventureAchievements.CONFIGS[subtabKey]
@@ -2061,6 +2128,7 @@
     const itemIdInput = document.getElementById('visitedVisitLogItemId');
     const modeInput = document.getElementById('visitedVisitLogMode');
     const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
+    const locationSearchInput = document.getElementById('visitedVisitLogLocationSearch');
     const dateInput = document.getElementById('visitedVisitLogDate');
     const notesInput = document.getElementById('visitedVisitLogNotes');
     const activityGrid = document.getElementById('visitedVisitLogActivityGrid');
@@ -2075,15 +2143,15 @@
     }
 
     const items = getVisitLogQualifyingOptions(subtabKey);
-    locationSelect.innerHTML = '<option value="">Select a location...</option>' + items
-      .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.title)}${item.sourceLabel ? ` - ${escapeHtml(item.sourceLabel)}` : ''}</option>`)
-      .join('');
+    state.visitLogLocationOptions = items;
+    state.visitLogLocationQuery = '';
+    if (locationSearchInput) locationSearchInput.value = '';
 
     const preselectedItemId = String(options && options.itemId ? options.itemId : '').trim();
     if (preselectedItemId && items.some((item) => item.id === preselectedItemId)) {
-      locationSelect.value = preselectedItemId;
+      itemIdInput.value = preselectedItemId;
     } else {
-      locationSelect.value = '';
+      itemIdInput.value = '';
     }
 
     const today = new Date();
@@ -2097,20 +2165,27 @@
     }
     setVisitLogPhotoStatus('Attach one or more photos to upload them to OneDrive when you save.');
     subtabKeyInput.value = subtabKey;
-    itemIdInput.value = locationSelect.value || '';
-    renderVisitLogActivityGrid(subtabKey, locationSelect.value || '');
+    const selectedId = renderVisitLogLocationOptions();
+    renderVisitLogActivityGrid(subtabKey, selectedId || '');
     const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
     modeInput.value = mode;
     if (submitBtn) submitBtn.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
     if (help) {
       const hint = String(options && options.hint ? options.hint : '').trim();
       const base = `${items.length} qualifying locations loaded for ${subtabKey.replace('-', ' ')}.`;
-      help.textContent = hint ? `${base} ${hint}` : base;
+      help.dataset.baseText = hint ? `${base} ${hint}` : base;
+      help.textContent = help.dataset.baseText;
     }
+
+    renderVisitLogLocationOptions();
 
     modal.hidden = false;
     backdrop.hidden = false;
-    locationSelect.focus();
+    if (locationSearchInput) {
+      locationSearchInput.focus();
+    } else {
+      locationSelect.focus();
+    }
   }
 
   async function submitVisitLogForm() {
@@ -2393,7 +2468,7 @@
 
     if (explorerState.loading) {
       metaEl.textContent = 'Loading location directory...';
-      listEl.innerHTML = '<div class="visited-empty">Loading explorer cards...</div>';
+      listEl.innerHTML = '<div class="visited-empty ui-empty-state">Loading explorer cards...</div>';
       return;
     }
     if (explorerState.error) {
@@ -2407,7 +2482,7 @@
     metaEl.textContent = `${filtered.length} of ${(explorerState.items || []).length} ${config.emptyLabel} shown.`;
 
     if (!filtered.length) {
-      listEl.innerHTML = '<div class="visited-empty">No locations matched your filters.</div>';
+      listEl.innerHTML = '<div class="visited-empty ui-empty-state">No locations matched your filters.</div>';
       return;
     }
 
@@ -3552,7 +3627,7 @@
     const buckets = buildHeatmapBuckets(stats);
     overlay.innerHTML = '';
     if (buckets.length === 0) {
-      hotspots.innerHTML = '<div class="visited-empty">No visited locations yet to build heatmap.</div>';
+      hotspots.innerHTML = '<div class="visited-empty ui-empty-state">No visited locations yet to build heatmap.</div>';
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -3691,7 +3766,7 @@
      if (!container) return;
 
      if (suggestions.length === 0) {
-       container.innerHTML = '<div class="visited-empty">No recommendation candidates yet. Load adventure data first.</div>';
+       container.innerHTML = '<div class="visited-empty ui-empty-state">No recommendation candidates yet. Load adventure data first.</div>';
        return;
      }
 
@@ -3757,7 +3832,7 @@
       });
 
     if (recent.length === 0) {
-      container.innerHTML = '<div class="visited-empty">No visits tracked yet. Mark your first adventure!</div>';
+      container.innerHTML = '<div class="visited-empty ui-empty-state">No visits tracked yet. Mark your first adventure!</div>';
       return;
     }
 
@@ -3882,7 +3957,7 @@
      renderCatalogQuickFilters(adventures, visitMap);
      const filtered = filterCatalog(adventures, visitMap);
      if (filtered.length === 0) {
-       container.innerHTML = '<div class="visited-empty">No locations match your search right now.</div>';
+       container.innerHTML = '<div class="visited-empty ui-empty-state">No locations match your search right now.</div>';
        return;
      }
 
@@ -4730,11 +4805,33 @@
     if (visitLogLocationSelect && visitLogLocationSelect.dataset.bound !== '1') {
       visitLogLocationSelect.dataset.bound = '1';
       visitLogLocationSelect.addEventListener('change', () => {
-        const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || state.activeProgressSubTab || 'outdoors').trim();
-        const itemId = String(visitLogLocationSelect.value || '').trim();
-        const itemIdInput = document.getElementById('visitedVisitLogItemId');
-        if (itemIdInput) itemIdInput.value = itemId;
-        renderVisitLogActivityGrid(subtabKey, itemId);
+        syncVisitLogLocationSelection(visitLogLocationSelect.value);
+      });
+    }
+
+    const visitLogLocationSearch = document.getElementById('visitedVisitLogLocationSearch');
+    if (visitLogLocationSearch && visitLogLocationSearch.dataset.bound !== '1') {
+      visitLogLocationSearch.dataset.bound = '1';
+      visitLogLocationSearch.addEventListener('input', () => {
+        state.visitLogLocationQuery = String(visitLogLocationSearch.value || '').trim();
+        const selectedId = renderVisitLogLocationOptions();
+        syncVisitLogLocationSelection(selectedId || '');
+      });
+      visitLogLocationSearch.addEventListener('keydown', (event) => {
+        if (!visitLogLocationSelect) return;
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        const selectable = Array.from(visitLogLocationSelect.options || [])
+          .filter((option) => String(option.value || '').trim());
+        if (!selectable.length) return;
+
+        event.preventDefault();
+        const currentValue = String(visitLogLocationSelect.value || '').trim();
+        const currentIndex = selectable.findIndex((option) => String(option.value || '').trim() === currentValue);
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        const seedIndex = currentIndex >= 0 ? currentIndex : (direction > 0 ? -1 : selectable.length);
+        const nextIndex = Math.max(0, Math.min(selectable.length - 1, seedIndex + direction));
+        const nextValue = String(selectable[nextIndex].value || '').trim();
+        syncVisitLogLocationSelection(nextValue);
       });
     }
 

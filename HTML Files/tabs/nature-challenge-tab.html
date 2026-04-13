@@ -2,7 +2,7 @@
 <!-- Track nature species sightings with categories, challenges, and badges -->
 
 <div id="natureChallengeRoot">
-  <div class="nature-challenge-header">
+  <div class="nature-challenge-header tab-shell-header">
     <h1 id="natureChallengeTitle">Nature Challenge - Birds</h1>
     <div class="nature-jump-links" data-birds-jump-links role="navigation" aria-label="Jump to section links">
       <span class="nature-jump-links-label">Jump to section:</span>
@@ -1122,45 +1122,6 @@
     border: 0;
   }
 
-  #natureChallengeRoot .nature-sync-health {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 999px;
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    color: #374151;
-    font-size: 12px;
-    font-weight: 700;
-    padding: 8px 12px;
-    white-space: nowrap;
-  }
-
-  #natureChallengeRoot .nature-sync-health.ok {
-    border-color: #86efac;
-    background: #ecfdf5;
-    color: #166534;
-  }
-
-  #natureChallengeRoot .nature-sync-health.warn {
-    border-color: #fca5a5;
-    background: #fef2f2;
-    color: #991b1b;
-  }
-
-  #natureChallengeRoot .nature-sync-meta {
-    display: inline-flex;
-    align-items: center;
-    font-size: 12px;
-    color: #475569;
-    font-weight: 600;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 999px;
-    padding: 8px 12px;
-    white-space: pre-line;
-    line-height: 1.35;
-  }
 
   #natureChallengeRoot .nature-subtab-diagnostics-row {
     display: flex;
@@ -1189,15 +1150,15 @@
   }
 
   #natureChallengeRoot .nature-subtab-diagnostics-pill.ok {
-    border-color: #86efac;
-    background: #ecfdf5;
-    color: #166534;
+    border-color: var(--ui-status-success-border);
+    background: var(--ui-status-success-bg);
+    color: var(--ui-status-success-text);
   }
 
   #natureChallengeRoot .nature-subtab-diagnostics-pill.warn {
-    border-color: #fca5a5;
-    background: #fef2f2;
-    color: #991b1b;
+    border-color: var(--ui-status-warning-border);
+    background: var(--ui-status-warning-bg);
+    color: var(--ui-status-warning-text);
   }
 
   /* Category Progression Stats */
@@ -1320,12 +1281,7 @@
   }
 
   #natureChallengeRoot .nature-explore-cta-actions {
-    display: flex;
-    gap: 12px;
-    row-gap: 12px;
-    align-items: center;
     justify-content: flex-start;
-    flex-wrap: wrap;
     position: relative;
     z-index: 24;
     isolation: isolate;
@@ -1364,7 +1320,6 @@
     pointer-events: auto;
     box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
     transition: transform var(--birds-motion-duration) var(--birds-motion-ease), box-shadow var(--birds-motion-duration) var(--birds-motion-ease);
-    margin: 0;
     min-width: 148px;
   }
 
@@ -1742,15 +1697,15 @@
 
   #natureChallengeRoot .nature-overview-section-card > .card-header {
     position: sticky;
-    top: 82px;
+    top: var(--ui-section-header-top);
     z-index: 8;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
-    border-bottom: 1px solid var(--birds-border-subtle);
-    min-height: 64px;
+    background: var(--ui-section-header-bg);
+    border-bottom: 1px solid var(--ui-section-header-border);
+    min-height: var(--ui-section-header-min-height);
     padding: 10px 12px;
     margin: -2px -2px 12px;
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
+    border-top-left-radius: var(--ui-card-radius);
+    border-top-right-radius: var(--ui-card-radius);
     backdrop-filter: blur(6px);
   }
 
@@ -1993,7 +1948,7 @@
 
   #natureChallengeRoot .nature-sticky-action-rail {
     position: sticky;
-    top: 78px;
+    top: var(--ui-section-header-top);
     z-index: 25;
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(6px);
