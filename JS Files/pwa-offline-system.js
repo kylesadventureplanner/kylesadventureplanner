@@ -46,6 +46,12 @@
     syncing: false,
     failedCount: 0,
     replayState: 'idle',
+    replayTelemetry: {
+      processed: 0,
+      failed: 0,
+      missing: 0,
+      lastUpdatedAt: ''
+    },
     lastSyncAt: '',
     lastPackAt: localStorage.getItem(LAST_PACK_KEY) || '',
     lastHardRefreshAt: '',
@@ -74,7 +80,15 @@
   var swRegistrationPromise = null;
   var offlineModeDelegatedBound = false;
   var APP_VERSION = '2026.04.09.1';
+  var OFFLINE_PACK_CACHE_NAME = 'kaf-offline-pack-v5';
   var lastVersionBannerKey = '';
+  var flushInFlightPromise = null;
+  var queueConflictCache = {
+    items: [],
+    signature: '',
+    renderedSignature: '',
+    loaded: false
+  };
 
   function requestServiceWorkerVersion(timeoutMs) {
     if (!('serviceWorker' in navigator)) return Promise.resolve(null);
@@ -150,6 +164,38 @@
     });
     renderStatusBadges();
     renderQueueConflictPanels();
+  }
+
+  function getReplayTelemetrySnapshot() {
+    var telemetry = status && status.replayTelemetry ? status.replayTelemetry : {};
+    return {
+      processed: Number(telemetry.processed || 0),
+      failed: Number(telemetry.failed || 0),
+      missing: Number(telemetry.missing || 0),
+      lastUpdatedAt: String(telemetry.lastUpdatedAt || '')
+    };
+  }
+
+  function applyReplayTelemetryDelta(delta) {
+    var telemetry = getReplayTelemetrySnapshot();
+    var processed = Number(delta && delta.processed || 0);
+    var failed = Number(delta && delta.failed || 0);
+    var missing = Number(delta && delta.missing || 0);
+    if (!processed && !failed && !missing) return;
+    telemetry.processed += processed;
+    telemetry.failed += failed;
+    telemetry.missing += missing;
+    telemetry.lastUpdatedAt = new Date().toISOString();
+    status.replayTelemetry = telemetry;
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function shouldShowInstallPrompt() {
@@ -511,6 +557,32 @@
     };
   }
 
+  function buildQueueConflictItems(items) {
+    return (Array.isArray(items) ? items : [])
+      .map(summarizeQueueItem)
+      .filter(function (item) { return item.hasConflict; });
+  }
+
+  function buildQueueConflictSignature(conflictItems) {
+    return (Array.isArray(conflictItems) ? conflictItems : []).map(function (item) {
+      return [
+        String(item && item.id || ''),
+        String(item && item.attempts || 0),
+        String(item && item.conflictCode || ''),
+        String(item && item.lastError || ''),
+        String(item && item.queuedAt || '')
+      ].join('|');
+    }).join('::');
+  }
+
+  function cacheQueueConflictItemsFromQueue(items) {
+    var conflictItems = buildQueueConflictItems(items);
+    queueConflictCache.items = conflictItems;
+    queueConflictCache.signature = buildQueueConflictSignature(conflictItems);
+    queueConflictCache.loaded = true;
+    return conflictItems;
+  }
+
   function getConflictActionHint(code) {
     var normalized = String(code || '').trim().toUpperCase();
     if (normalized === 'AUTH') return 'Sign in again, then retry sync.';
@@ -559,6 +631,7 @@
   function refreshPendingCount() {
     return listQueueItems()
       .then(function (items) {
+        cacheQueueConflictItemsFromQueue(items);
         status.pendingCount = items.length;
         status.failedCount = items
           .map(summarizeQueueItem)
@@ -629,28 +702,45 @@
       return Promise.resolve({ processed: 0, remaining: status.pendingCount });
     }
 
+    if (flushInFlightPromise) {
+      return flushInFlightPromise;
+    }
+
     status.syncing = true;
     status.replayState = 'syncing';
     emitStatus();
 
-    return listQueueItems()
+    flushInFlightPromise = listQueueItems()
       .then(function (items) {
         var processed = 0;
+        var replayDelta = { processed: 0, failed: 0, missing: 0 };
         var chain = Promise.resolve();
 
         items.forEach(function (item) {
           chain = chain.then(function () {
             var processor = processorMap[item.type];
-            if (typeof processor !== 'function') return null;
+            if (typeof processor !== 'function') {
+              replayDelta.missing += 1;
+              return annotateQueuedWrites({ id: item.id }, function (row) {
+                var queueType = String((row && row.type) || item.type || 'unknown');
+                return {
+                  attempts: Number(row && row.attempts || 0) + 1,
+                  conflictCode: 'PROCESSOR_MISSING',
+                  lastError: 'No sync processor registered for queue type "' + queueType + '".'
+                };
+              });
+            }
             return Promise.resolve(processor(item.payload, item))
               .then(function (result) {
                 if (result === false) return null;
                 return removeQueuedWrites({ id: item.id }).then(function () {
                   processed += 1;
+                  replayDelta.processed += 1;
                   return null;
                 });
               })
               .catch(function () {
+                replayDelta.failed += 1;
                 return annotateQueuedWrites({ id: item.id }, function (row) {
                   return {
                     attempts: Number(row.attempts || 0) + 1,
@@ -665,20 +755,30 @@
         return chain.then(function () {
           return refreshPendingCount().then(function () {
             status.lastSyncAt = new Date().toISOString();
+            applyReplayTelemetryDelta(replayDelta);
             return { processed: processed, remaining: status.pendingCount };
           });
         });
       })
+      .catch(function (error) {
+        console.warn('[OfflinePwa] queue flush failed', error);
+        throw error;
+      })
       .finally(function () {
         status.syncing = false;
+        flushInFlightPromise = null;
         emitStatus();
       });
+
+    return flushInFlightPromise;
   }
 
   function scheduleFlush() {
     if (flushTimer) clearTimeout(flushTimer);
     flushTimer = setTimeout(function () {
-      flushQueue();
+      flushQueue().catch(function (error) {
+        console.warn('[OfflinePwa] scheduled flush failed', error);
+      });
     }, 450);
   }
 
@@ -828,6 +928,15 @@
             ? ('Queued changes waiting to sync: ' + String(status.pendingCount))
             : 'All queued changes are synced.';
       if (status.lastSyncAt) replayText += ' Last sync: ' + new Date(status.lastSyncAt).toLocaleTimeString();
+      var replayTelemetry = getReplayTelemetrySnapshot();
+      if (replayTelemetry.processed || replayTelemetry.failed || replayTelemetry.missing) {
+        replayText += ' Replay totals: processed ' + String(replayTelemetry.processed)
+          + ', failed ' + String(replayTelemetry.failed)
+          + ', missing processor ' + String(replayTelemetry.missing) + '.';
+        if (replayTelemetry.lastUpdatedAt) {
+          replayText += ' Updated: ' + new Date(replayTelemetry.lastUpdatedAt).toLocaleTimeString();
+        }
+      }
       replayStatusEl.textContent = replayText;
     }
 
@@ -851,11 +960,21 @@
     }
   }
 
-  function renderQueueConflictPanels() {
-    listQueueItems().then(function (items) {
-      var conflictItems = items
-        .map(summarizeQueueItem)
-        .filter(function (item) { return item.hasConflict; });
+  function renderQueueConflictPanels(forceRefresh) {
+    var shouldRefresh = forceRefresh === true || !queueConflictCache.loaded;
+    var source = shouldRefresh
+      ? listQueueItems().then(function (items) { return cacheQueueConflictItemsFromQueue(items); })
+      : Promise.resolve(queueConflictCache.items);
+
+    return source.then(function (conflictItems) {
+      var signature = buildQueueConflictSignature(conflictItems);
+      if (!shouldRefresh && signature === queueConflictCache.renderedSignature) {
+        return conflictItems;
+      }
+      queueConflictCache.items = conflictItems;
+      queueConflictCache.signature = signature;
+      queueConflictCache.loaded = true;
+      queueConflictCache.renderedSignature = signature;
 
       ['offlineModeQueueConflictPanel'].forEach(function (panelId) {
         var panel = document.getElementById(panelId);
@@ -872,17 +991,23 @@
           '<div class="offline-checklist-title">Queued write conflicts</div>',
           '<div class="card-subtitle">Resolve queued writes with repeated failures.</div>'
         ].join('') + conflictItems.map(function (item) {
+          var safeQueueId = escapeHtml(item.id);
+          var safeType = escapeHtml(item.type);
+          var safeCode = escapeHtml(item.conflictCode || 'n/a');
+          var safeHint = escapeHtml(getConflictActionHint(item.conflictCode));
+          var safeQueuedAt = escapeHtml(item.queuedAt || 'unknown');
+          var safeError = escapeHtml(item.lastError || 'Unknown failure');
           return [
             '<div class="offline-conflict-item">',
-            '<div><strong>' + item.type + '</strong> • attempts ' + item.attempts + '</div>',
-            '<div>Code: ' + (item.conflictCode || 'n/a') + '</div>',
-            '<div>Suggested action: <span class="offline-hint--' + getConflictHintSeverity(item.conflictCode) + '">' + getConflictActionHint(item.conflictCode) + '</span></div>',
-            '<div>Queued: ' + (item.queuedAt || 'unknown') + '</div>',
-            '<div>Error: ' + (item.lastError || 'Unknown failure') + '</div>',
+            '<div><strong>' + safeType + '</strong> • attempts ' + item.attempts + '</div>',
+            '<div>Code: ' + safeCode + '</div>',
+            '<div>Suggested action: <span class="offline-hint--' + getConflictHintSeverity(item.conflictCode) + '">' + safeHint + '</span></div>',
+            '<div>Queued: ' + safeQueuedAt + '</div>',
+            '<div>Error: ' + safeError + '</div>',
             '<div class="offline-conflict-actions">',
-            '<button type="button" class="offline-action-btn" data-offline-conflict-action="retry" data-offline-queue-id="' + item.id + '">Retry now</button>',
-            '<button type="button" class="offline-action-btn" data-offline-conflict-action="keep-local" data-offline-queue-id="' + item.id + '">Keep local only</button>',
-            '<button type="button" class="offline-action-btn offline-action-btn--danger" data-offline-conflict-action="discard" data-offline-queue-id="' + item.id + '">Discard</button>',
+            '<button type="button" class="offline-action-btn" data-offline-conflict-action="retry" data-offline-queue-id="' + safeQueueId + '">Retry now</button>',
+            '<button type="button" class="offline-action-btn" data-offline-conflict-action="keep-local" data-offline-queue-id="' + safeQueueId + '">Keep local only</button>',
+            '<button type="button" class="offline-action-btn offline-action-btn--danger" data-offline-conflict-action="discard" data-offline-queue-id="' + safeQueueId + '">Discard</button>',
             '</div>',
             '</div>'
           ].join('');
@@ -912,15 +1037,25 @@
     if (action === 'retry') {
       return listQueueItems().then(function (items) {
         var target = items.find(function (item) { return item.id === queueId; });
-        if (!target) return false;
+        if (!target) {
+          applyReplayTelemetryDelta({ missing: 1 });
+          return false;
+        }
         var processor = processorMap[target.type];
-        if (typeof processor !== 'function') return false;
+        if (typeof processor !== 'function') {
+          applyReplayTelemetryDelta({ missing: 1 });
+          return false;
+        }
         return Promise.resolve(processor(target.payload, target))
           .then(function (result) {
             if (result === false) return false;
-            return removeQueuedWrites({ id: queueId }).then(function () { return true; });
+            return removeQueuedWrites({ id: queueId }).then(function () {
+              applyReplayTelemetryDelta({ processed: 1 });
+              return true;
+            });
           })
           .catch(function (error) {
+            applyReplayTelemetryDelta({ failed: 1 });
             return annotateQueuedWrites({ id: target.id }, function (row) {
               return {
                 attempts: Number(row.attempts || 0) + 1,
@@ -940,7 +1075,11 @@
   async function warmOfflinePack() {
     await ensureServiceWorkerReady(6000);
 
-    var cacheName = 'kaf-offline-pack-v1';
+    var cacheName = OFFLINE_PACK_CACHE_NAME;
+    var swInfo = await requestServiceWorkerVersion(1200);
+    if (swInfo && swInfo.offlineCache) {
+      cacheName = String(swInfo.offlineCache);
+    }
     var cache = await caches.open(cacheName);
     for (var i = 0; i < OFFLINE_PACK_ASSETS.length; i += 1) {
       var asset = OFFLINE_PACK_ASSETS[i];
@@ -1292,7 +1431,13 @@
     },
     openOfflineModePage: openOfflineModePage,
     closeOfflineModePage: closeOfflineModePage,
-    getStatus: function () { return { ...status }; },
+    getStatus: function () {
+      return {
+        ...status,
+        replayTelemetry: getReplayTelemetrySnapshot()
+      };
+    },
+    getReplayTelemetry: getReplayTelemetrySnapshot,
     getPendingCount: function () { return status.pendingCount; }
   };
 
