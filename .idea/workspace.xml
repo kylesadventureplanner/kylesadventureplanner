@@ -6,24 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/automation-control-panel.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/automation-control-panel.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/bike-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/bike-details-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/adventure-planner-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/adventure-planner-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/household-tools-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/household-tools-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/trail-explorer-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/trail-explorer-window.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/adventure-achievements-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/adventure-achievements-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/button-handlers.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/button-handlers.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/pwa-offline-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/pwa-offline-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/tab-content-loader.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/tab-content-loader.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/bulk-tag-undo-edge-cases.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/bulk-tag-undo-edge-cases.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/nature-map-context.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-map-context.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,7 +89,8 @@
       <workItem from="1775308318086" duration="90230000" />
       <workItem from="1775520086833" duration="195926000" />
       <workItem from="1775961963296" duration="82000" />
-      <workItem from="1775962146733" duration="73315000" />
+      <workItem from="1775962146733" duration="74876000" />
+      <workItem from="1776172027526" duration="1231000" />
     </task>
     <servers />
   </component>
