@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-14T17:57:38.518Z",
+  "generatedAt": "2026-04-14T18:21:39.728Z",
   "pass": true,
   "startupSamplesMs": [
     94
@@ -15,7 +15,7 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-04-14T17:57:53.829Z"
+      "at": "2026-04-14T18:21:54.438Z"
     }
   ]
 }

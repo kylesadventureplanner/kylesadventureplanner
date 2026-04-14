@@ -3796,6 +3796,40 @@
       margin-bottom: 10px;
     }
 
+    #offlineModeHardRefreshStatus {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #475569;
+      font-weight: 600;
+    }
+
+    #offlineModeHardRefreshStatus::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+    }
+
+    #offlineModeHardRefreshStatus[data-state="success"] {
+      color: #166534;
+    }
+
+    #offlineModeHardRefreshStatus[data-state="cancelled"] {
+      color: #9a3412;
+    }
+
+    #offlineModeHardRefreshStatus[data-state="error"] {
+      color: #b91c1c;
+    }
+
+    #offlineModeHardRefreshStatus[data-state="completed"] {
+      color: #1d4ed8;
+    }
+
     .offline-mode-debug-indicator {
       border: 1px solid #dbeafe;
       background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
@@ -6189,6 +6223,11 @@
     }
 
     @media (max-width: 640px) {
+      #offlineModeHardRefreshStatus::before {
+        width: 10px;
+        height: 10px;
+      }
+
       .offline-mode-debug-tools {
         flex-direction: column;
       }
@@ -6218,6 +6257,13 @@
         min-width: 92px;
         font-size: 11px;
         padding: 7px 10px;
+      }
+    }
+
+    @media (max-width: 390px) {
+      #offlineModeHardRefreshStatus::before {
+        width: 11px;
+        height: 11px;
       }
     }
 
@@ -8737,8 +8783,10 @@
             <button id="offlineModePackBtn" type="button" class="planner-top-btn planner-top-btn--accent" title="Cache the app shell for offline use" data-tooltip="Cache the app shell for offline use">📦 Prepare Offline Pack</button>
             <button id="offlineModeSyncBtn" type="button" class="planner-top-btn planner-top-btn--success" title="Flush the offline sync queue now" data-tooltip="Flush the offline sync queue now">🔄 Sync Pending Queue</button>
             <button id="offlineModeHealthBtn" type="button" class="planner-top-btn" title="Open Offline Pack diagnostics" data-tooltip="Open Offline Pack diagnostics">🩺 Offline Health</button>
+            <button id="offlineModeHardRefreshBtn" type="button" class="planner-top-btn" title="Reset service worker/cache state and reload the app" data-tooltip="Reset service worker/cache state and reload the app">🧹 Hard Refresh Diagnostics</button>
           </div>
           <div id="offlineModeInstallStatus" class="card-subtitle offline-mode-install-status">Install prompt availability will appear here.</div>
+          <div id="offlineModeHardRefreshStatus" class="card-subtitle offline-mode-install-status" data-state="idle" aria-live="polite">Hard refresh diagnostics: never run.</div>
           <div class="offline-mode-badges">
             <span id="offlineModeConnectionBadge" class="offline-badge" data-state="syncing" aria-live="polite">Offline: checking...</span>
             <span id="offlineModeQueueBadge" class="offline-badge" data-state="syncing" aria-live="polite">Pending sync: 0</span>

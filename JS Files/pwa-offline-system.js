@@ -5,6 +5,7 @@
   var DB_VERSION = 1;
   var STORE_QUEUE = 'writeQueue';
   var LAST_PACK_KEY = 'kafOfflinePackLastPreparedAt';
+  var LAST_HARD_REFRESH_KEY = 'kafHardRefreshDiagnosticsLastResult';
   var SERVICE_WORKER_PATH = new URL('sw.js', window.location.href).pathname;
   var OFFLINE_PACK_ASSETS = [
     '/',
@@ -46,8 +47,23 @@
     failedCount: 0,
     replayState: 'idle',
     lastSyncAt: '',
-    lastPackAt: localStorage.getItem(LAST_PACK_KEY) || ''
+    lastPackAt: localStorage.getItem(LAST_PACK_KEY) || '',
+    lastHardRefreshAt: '',
+    lastHardRefreshResult: ''
   };
+
+  (function restoreHardRefreshStatus() {
+    try {
+      var raw = localStorage.getItem(LAST_HARD_REFRESH_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      status.lastHardRefreshAt = String(parsed && parsed.at || '').trim();
+      status.lastHardRefreshResult = String(parsed && parsed.result || '').trim();
+    } catch (_error) {
+      status.lastHardRefreshAt = '';
+      status.lastHardRefreshResult = '';
+    }
+  })();
 
   var listeners = [];
   var flushTimer = null;
@@ -730,6 +746,44 @@
     return date.toLocaleString();
   }
 
+  function persistHardRefreshStatus(result, at) {
+    var payload = {
+      at: String(at || new Date().toISOString()).trim(),
+      result: String(result || '').trim()
+    };
+    status.lastHardRefreshAt = payload.at;
+    status.lastHardRefreshResult = payload.result;
+    try {
+      localStorage.setItem(LAST_HARD_REFRESH_KEY, JSON.stringify(payload));
+    } catch (_error) {
+      // Best effort persistence only.
+    }
+  }
+
+  function formatHardRefreshStatusText() {
+    var at = String(status.lastHardRefreshAt || '').trim();
+    var result = String(status.lastHardRefreshResult || '').trim().toLowerCase();
+    if (!at) return 'Hard refresh diagnostics: never run.';
+    var date = new Date(at);
+    var when = Number.isNaN(date.getTime()) ? at : date.toLocaleString();
+    var prefix = result === 'success'
+      ? 'Hard refresh diagnostics: success'
+      : result === 'cancelled'
+        ? 'Hard refresh diagnostics: cancelled'
+        : result === 'error'
+          ? 'Hard refresh diagnostics: failed'
+          : 'Hard refresh diagnostics: completed';
+    return prefix + ' at ' + when + '.';
+  }
+
+  function getHardRefreshStatusState() {
+    var at = String(status.lastHardRefreshAt || '').trim();
+    var result = String(status.lastHardRefreshResult || '').trim().toLowerCase();
+    if (!at) return 'idle';
+    if (result === 'success' || result === 'cancelled' || result === 'error') return result;
+    return 'completed';
+  }
+
   function renderStatusBadges() {
     var onlineState = status.online ? 'online' : 'offline';
     var connectionText = status.online ? 'Online' : 'Offline mode';
@@ -789,6 +843,12 @@
     document.querySelectorAll('.offline-pending-count').forEach(function (el) {
       el.textContent = String(status.pendingCount);
     });
+
+    var hardRefreshStatusEl = document.getElementById('offlineModeHardRefreshStatus');
+    if (hardRefreshStatusEl) {
+      hardRefreshStatusEl.textContent = formatHardRefreshStatusText();
+      hardRefreshStatusEl.dataset.state = getHardRefreshStatusState();
+    }
   }
 
   function renderQueueConflictPanels() {
@@ -909,6 +969,59 @@
     return { cachedCount: OFFLINE_PACK_ASSETS.length, lastPackAt: status.lastPackAt };
   }
 
+  async function runHardRefreshDiagnostics() {
+    var warning = 'Hard Refresh Diagnostics will clear this app\'s cached files and service worker, then reload. Continue?';
+    if (typeof window.confirm === 'function' && !window.confirm(warning)) {
+      persistHardRefreshStatus('cancelled', new Date().toISOString());
+      emitStatus();
+      return { cancelled: true };
+    }
+
+    renderOfflineDebugIndicator('hard-refresh:begin', 'Resetting service workers and cache storage');
+
+    try {
+      var unregisteredCount = 0;
+      if ('serviceWorker' in navigator && typeof navigator.serviceWorker.getRegistrations === 'function') {
+        var registrations = await navigator.serviceWorker.getRegistrations();
+        for (var i = 0; i < registrations.length; i += 1) {
+          if (await registrations[i].unregister()) unregisteredCount += 1;
+        }
+      }
+
+      var deletedCacheCount = 0;
+      if (window.caches && typeof caches.keys === 'function') {
+        var cacheKeys = await caches.keys();
+        for (var j = 0; j < cacheKeys.length; j += 1) {
+          if (await caches.delete(cacheKeys[j])) deletedCacheCount += 1;
+        }
+      }
+
+      swRegistrationPromise = null;
+      status.swReady = false;
+      persistHardRefreshStatus('success', new Date().toISOString());
+      emitStatus();
+
+      renderOfflineDebugIndicator(
+        'hard-refresh:complete',
+        'unregistered=' + String(unregisteredCount) + ' | cachesDeleted=' + String(deletedCacheCount) + ' | reloading'
+      );
+
+      if (typeof window.showToast === 'function') {
+        window.showToast('Hard refresh complete. Reloading app with clean cache state...', 'success', 1800);
+      }
+
+      window.setTimeout(function () {
+        window.location.reload();
+      }, 250);
+
+      return { unregistered: unregisteredCount, cachesDeleted: deletedCacheCount, reloading: true };
+    } catch (error) {
+      persistHardRefreshStatus('error', new Date().toISOString());
+      emitStatus();
+      throw error;
+    }
+  }
+
   function bindOfflineButtons() {
     function runGuardedButtonAction(button, key, busyLabel, action) {
       if (!button || typeof action !== 'function') return Promise.resolve(false);
@@ -951,6 +1064,21 @@
         var diagnosticsUrl = new URL('HTML Files/offline-pack-health.html', window.location.href).toString();
         var tab = window.open(diagnosticsUrl, '_blank');
         if (tab) tab.focus();
+      });
+    });
+
+    ['offlineModeHardRefreshBtn'].forEach(function (id) {
+      var hardRefreshBtn = document.getElementById(id);
+      if (!hardRefreshBtn || hardRefreshBtn.dataset.offlineHardRefreshBound === '1') return;
+      hardRefreshBtn.dataset.offlineHardRefreshBound = '1';
+      hardRefreshBtn.addEventListener('click', async function () {
+        await runGuardedButtonAction(hardRefreshBtn, 'offline-hard-refresh', 'Resetting...', function () {
+          return runHardRefreshDiagnostics();
+        }).catch(function (error) {
+          if (typeof window.showToast === 'function') {
+            window.showToast('Hard refresh diagnostics failed: ' + String(error && error.message ? error.message : error), 'error', 3400);
+          }
+        });
       });
     });
 
@@ -1155,6 +1283,7 @@
     getConflictHintSeverity: getConflictHintSeverity,
     getQueueItems: listQueueItems,
     resolveConflict: resolveConflictAction,
+    hardRefreshDiagnostics: runHardRefreshDiagnostics,
     openOfflineHealthPage: function () {
       var diagnosticsUrl = new URL('HTML Files/offline-pack-health.html', window.location.href).toString();
       var tab = window.open(diagnosticsUrl, '_blank');
