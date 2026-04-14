@@ -2611,7 +2611,7 @@
         <div class="visited-explorer-card">
           <div class="visited-explorer-card-head">
             <div class="visited-explorer-card-title">
-              <span class="visited-explorer-visit-indicator${isVisited ? ' is-visited' : ' is-unvisited'}" aria-label="${isVisited ? 'Visited location' : 'Not visited yet'}" title="${isVisited ? 'Visited location' : 'Not visited yet'}">${isVisited ? '✅' : '⭕'}</span>
+              <span class="visited-explorer-visit-indicator${isVisited ? ' is-visited' : ' is-unvisited'}" data-visited-explorer-visit-state="${isVisited ? 'visited' : 'unvisited'}" aria-label="${isVisited ? 'Visited location' : 'Not visited yet'}" title="${isVisited ? 'Visited location' : 'Not visited yet'}">${isVisited ? '✅' : '⭕'}</span>
               ${escapeHtml(item.title || 'Unknown')}
             </div>
             <div class="visited-explorer-card-head-actions">

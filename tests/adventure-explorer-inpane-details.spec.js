@@ -142,12 +142,10 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const firstCard = list.locator('.visited-explorer-card').first();
     await expect(firstCard).toBeVisible();
 
-    const visitIndicator = firstCard.locator('.visited-explorer-visit-indicator').first();
-    if (await visitIndicator.count()) {
-      await expect(visitIndicator).toBeVisible();
-      await expect(visitIndicator).toHaveAttribute('class', /is-(visited|unvisited)/);
-      await expect(visitIndicator).toHaveAttribute('aria-label', /(Visited location|Not visited yet)/);
-    }
+    await expect(firstCard.locator('[data-visited-explorer-visit-state]').first()).toHaveAttribute(
+      'data-visited-explorer-visit-state',
+      /^(visited|unvisited)$/
+    );
 
     const detailsBtn = firstCard.locator('[data-visited-explorer-details]').first();
     const quickActionsBtn = firstCard.locator('[data-visited-explorer-quick-actions-toggle]').first();
@@ -201,11 +199,26 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="tag-management"]').click();
     await expect(plannerDetailsFrame.locator('#pane-tag-management.tab-pane.active')).toBeVisible();
     await plannerDetailsFrame.locator('#tmSaveBtn').click();
-    await expect.poll(async () => plannerDetailsFrame.evaluate(() => {
-      const steps = Array.isArray(window.__lastTagSaveDebug?.steps) ? window.__lastTagSaveDebug.steps : [];
+    const readTagSaveDebug = async () => plannerDetailsFrame.evaluate(() => {
+      const debug = window.__lastTagSaveDebug || {};
+      const steps = Array.isArray(debug.steps) ? debug.steps : [];
       const hostStep = steps.find((entry) => entry && entry.step === 'host_context');
-      return hostStep && hostStep.detail ? String(hostStep.detail.context || '') : '';
-    })).toMatch(/^(parent|opener)$/);
+      return {
+        finalStatus: String(debug.finalStatus || ''),
+        hostContext: hostStep && hostStep.detail ? String(hostStep.detail.context || '') : '',
+        stepCount: steps.length
+      };
+    });
+
+    await expect.poll(async () => {
+      const snapshot = await readTagSaveDebug();
+      return snapshot.finalStatus;
+    }, { timeout: 10000 }).toMatch(/^(success_excel|success_planner_only|success_local_only|failed)$/);
+
+    await expect.poll(async () => {
+      const snapshot = await readTagSaveDebug();
+      return snapshot.hostContext;
+    }, { timeout: 10000 }).toMatch(/^(parent|opener)$/);
 
     await plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="notes"]').click();
     await expect(plannerDetailsFrame.locator('#pane-notes.tab-pane.active')).toBeVisible();

@@ -6,15 +6,17 @@
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/nature-challenge-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/sighting-map-phase5.js" beforeDir="false" afterPath="$PROJECT_DIR$/sighting-map-phase5.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/adventure-subtabs-smoke-Ad-62dc9-rves-canonical-action-order/error-context.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/adventure-subtabs-smoke-Ad-6f6d7-s-smoke-subtab-smoke-Retail/error-context.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/adventure-subtabs-smoke-Ad-7ad17-ab-smoke-Regional-Festivals/error-context.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/adventure-subtabs-smoke-Ad-a3cb5-btab-smoke-Wildlife-Animals/error-context.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/nature-map-context-Nature--1ac29-Map-between-Log-and-Refresh/error-context.md" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-subtabs-smoke.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/nature-map-context.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-map-context.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/adventure-inline-tools-roundtrip.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-inline-tools-roundtrip.spec.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/city-explorer-phase1.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/city-explorer-phase1.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -98,7 +100,7 @@
       <workItem from="1775308318086" duration="90230000" />
       <workItem from="1775520086833" duration="195926000" />
       <workItem from="1775961963296" duration="82000" />
-      <workItem from="1775962146733" duration="68564000" />
+      <workItem from="1775962146733" duration="70181000" />
     </task>
     <servers />
   </component>

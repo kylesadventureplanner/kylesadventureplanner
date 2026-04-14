@@ -19,6 +19,17 @@ const CITY_INLINE_TEST_DATA = [
 ];
 
 test.describe('Adventure inline tools roundtrip', () => {
+  async function readInlineClosePayload(page) {
+    return page.evaluate(() => {
+      const payload = window.__inlineToolClosePayload || {};
+      return {
+        type: String(payload.type || ''),
+        tool: String(payload.tool || ''),
+        sourceSubtab: String(payload.sourceSubtab || '')
+      };
+    });
+  }
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
@@ -105,8 +116,14 @@ test.describe('Adventure inline tools roundtrip', () => {
       }, window.parent.location.origin);
     });
 
-    await expect.poll(async () => page.evaluate(() => window.__inlineToolClosePayload)).toEqual({
-      type: 'planner-inline-tool-close',
+    await expect.poll(async () => {
+      const payload = await readInlineClosePayload(page);
+      return payload.type;
+    }, { timeout: 10000 }).toBe('planner-inline-tool-close');
+    await expect.poll(async () => {
+      const payload = await readInlineClosePayload(page);
+      return { tool: payload.tool, sourceSubtab: payload.sourceSubtab };
+    }, { timeout: 10000 }).toEqual({
       tool: 'city-viewer',
       sourceSubtab: 'outdoors'
     });
@@ -160,8 +177,14 @@ test.describe('Adventure inline tools roundtrip', () => {
       }, window.parent.location.origin);
     });
 
-    await expect.poll(async () => page.evaluate(() => window.__inlineToolClosePayload)).toEqual({
-      type: 'planner-inline-tool-close',
+    await expect.poll(async () => {
+      const payload = await readInlineClosePayload(page);
+      return payload.type;
+    }, { timeout: 10000 }).toBe('planner-inline-tool-close');
+    await expect.poll(async () => {
+      const payload = await readInlineClosePayload(page);
+      return { tool: payload.tool, sourceSubtab: payload.sourceSubtab };
+    }, { timeout: 10000 }).toEqual({
       tool: 'edit-mode',
       sourceSubtab: 'outdoors'
     });

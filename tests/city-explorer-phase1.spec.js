@@ -123,6 +123,14 @@ async function openTestCity(page) {
 }
 
 test.describe('City Explorer Phase 1 and 2 enhancements', () => {
+  async function readLastExportedRouteJson(page) {
+    return page.evaluate(() => String(window.__lastExportedRouteJson || ''));
+  }
+
+  async function readCopiedText(page) {
+    return page.evaluate(() => String(window.__copiedText || ''));
+  }
+
   test.beforeEach(async ({ page }) => {
     await seedCityViewer(page);
   });
@@ -251,7 +259,14 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await expect(page.locator('#locRouteTradeoffPanel [data-route-variant="budget-friendly"]')).toHaveClass(/active/);
 
     await page.locator('#locExportVariantBtn').click();
-    await expect.poll(async () => page.evaluate(() => window.__lastExportedRouteJson || '')).toContain('"variantId": "budget-friendly"');
+    await expect.poll(async () => {
+      const exported = await readLastExportedRouteJson(page);
+      return exported.length;
+    }, { timeout: 10000 }).toBeGreaterThan(0);
+    await expect.poll(async () => {
+      const exported = await readLastExportedRouteJson(page);
+      return exported;
+    }, { timeout: 10000 }).toContain('"variantId": "budget-friendly"');
 
     await page.locator('#locTimeStart').fill('09:00');
     await page.locator('#locTimeEnd').fill('11:45');
@@ -311,7 +326,14 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
     await page.evaluate((id) => {
       window.runQuickActionByEncodedId(encodeURIComponent(String(id || '')), 'copy-address');
     }, locId);
-    await expect.poll(async () => page.evaluate(() => window.__copiedText)).toContain('Testville');
+    await expect.poll(async () => {
+      const copied = await readCopiedText(page);
+      return copied.length;
+    }, { timeout: 10000 }).toBeGreaterThan(0);
+    await expect.poll(async () => {
+      const copied = await readCopiedText(page);
+      return copied;
+    }, { timeout: 10000 }).toContain('Testville');
   });
 });
 

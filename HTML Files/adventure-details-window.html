@@ -914,6 +914,9 @@
     var debug = createTagSaveDebugSeed(state);
     refreshTagSaveDebugUi(debug);
     pushTagSaveDebug(debug, 'save_start', { tagCount: state && state.tags ? state.tags.length : 0 });
+    // Prime host context up-front so diagnostics are present even on early abort paths.
+    getOpenerWindow();
+    pushTagSaveDebug(debug, 'host_context', { context: window.__detailHostContext || 'none' });
 
     if (!state || !state.placeKey) {
       setTagStatus('Cannot save tags: missing Place ID/name key.', true);
