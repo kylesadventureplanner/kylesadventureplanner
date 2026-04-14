@@ -7613,6 +7613,30 @@
       btn.style.setProperty('z-index', '30', 'important');
       btn.style.setProperty('cursor', 'pointer', 'important');
     });
+
+    enforceNatureCoreButtonActivatability(root);
+  }
+
+  function enforceNatureCoreButtonActivatability(root) {
+    if (!root) return;
+    // Keep core navigation/refresh controls fail-open; Undo keeps its own disabled state.
+    const coreIds = [
+      'birdsExploreBtn',
+      'birdsOpenLogBtn',
+      'natureChallengeRefreshBtn',
+      'birdsOverviewCommandRunBtn'
+    ];
+    coreIds.forEach((id) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+      if (button.disabled === true) button.disabled = false;
+      if (button.getAttribute('aria-disabled') === 'true') button.setAttribute('aria-disabled', 'false');
+      if (button.dataset) {
+        delete button.dataset.busy;
+        delete button.dataset.busySince;
+      }
+      button.removeAttribute('aria-busy');
+    });
   }
 
   function forceUnblockNaturePane(root, reason) {
