@@ -18,6 +18,7 @@
   const MAX_LOG = 200;
   const BUSY_STALE_MS = 15000;
   const LOADER_STALE_MS = 15000;
+  const STARTUP_LOCK_STALE_MS = 12000;
 
   function nowIso() {
     return new Date().toISOString();
@@ -105,7 +106,28 @@
       const cs = window.getComputedStyle(loadingOverlay);
       const visible = cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity || '1') > 0.05;
       const startupLocked = loadingOverlay.dataset && loadingOverlay.dataset.startupLock === '1';
-      if (visible && !startupLocked) {
+      const readiness = getReadinessState();
+      const staleStartupLock = startupLocked
+        && readiness.available
+        && Number(readiness.msSinceInit || 0) >= STARTUP_LOCK_STALE_MS;
+      const interactiveButLocked = startupLocked
+        && readiness.available
+        && (readiness.interactiveReady || readiness.dismissed);
+
+      if (visible && (staleStartupLock || interactiveButLocked)) {
+        if (loadingOverlay.dataset) loadingOverlay.dataset.startupLock = '0';
+        if (typeof window.hideLoading === 'function') {
+          window.hideLoading(true);
+        }
+        loadingOverlay.style.pointerEvents = 'none';
+        logRecovery('overlay-force-cleared', {
+          id: 'loadingOverlay',
+          startupLocked: true,
+          staleStartupLock,
+          interactiveButLocked,
+          msSinceInit: Number(readiness.msSinceInit || 0)
+        });
+      } else if (visible && !startupLocked) {
         loadingOverlay.style.display = 'none';
         loadingOverlay.style.pointerEvents = 'none';
         logRecovery('overlay-cleared', { id: 'loadingOverlay' });
