@@ -27,6 +27,10 @@
   const DEFAULT_CENTER     = [39.5, -98.35];
   const DEFAULT_ZOOM       = 4;
 
+  function isCtaNormalizationDebugEnabled() {
+    return Boolean(window.navigator && window.navigator.webdriver);
+  }
+
   const RARITY_COLOR = {
     common:          '#3b82f6',
     regular:         '#10b981',
@@ -398,19 +402,101 @@
   }
 
   /* ─── Inject Map button ──────────────────────────────────── */
+  function getBirdsOverviewActionRow() {
+    const activeRow = document.querySelector('#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="overview"] .nature-explore-cta-actions');
+    if (activeRow) return activeRow;
+    return document.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+  }
+
+  function setCtaNormalizedMarker(row) {
+    if (!row || !row.setAttribute) return;
+    if (isCtaNormalizationDebugEnabled()) {
+      row.setAttribute('data-cta-normalized', '1');
+      return;
+    }
+    row.removeAttribute('data-cta-normalized');
+  }
+
+  function normalizeBirdsActionRailOrder(row) {
+    if (!row) return;
+    ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn', 'birdsUndoActionBtn'].forEach((id, idx) => {
+      const node = row.querySelector(`#${id}`);
+      if (!node) return;
+      row.appendChild(node);
+      if (node.style && typeof node.style.setProperty === 'function') {
+        node.style.setProperty('order', String(idx), 'important');
+      } else if (node.style) {
+        node.style.order = String(idx);
+      }
+    });
+    setCtaNormalizedMarker(row);
+  }
+
+  function mutationTouchesBirdsActionRail(mutation) {
+    if (!mutation || mutation.type !== 'childList') return false;
+    const target = mutation.target;
+    if (target && target.closest && !target.closest('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"]')) {
+      return false;
+    }
+    const touchesRail = (node) => {
+      if (!node || node.nodeType !== 1) return false;
+      if (node.matches && node.matches('.nature-explore-cta-actions')) return true;
+      if (node.id && /^(birdsExploreBtn|birdsOpenLogBtn|birdsOpenMapBtn|natureChallengeRefreshBtn|birdsUndoActionBtn)$/.test(node.id)) return true;
+      return Boolean(node.querySelector && node.querySelector('.nature-explore-cta-actions'));
+    };
+    const addedNodes = Array.from(mutation.addedNodes || []);
+    const removedNodes = Array.from(mutation.removedNodes || []);
+    return addedNodes.some(touchesRail) || removedNodes.some(touchesRail);
+  }
+
+  function installBirdsActionRailObserver() {
+    const pane = document.getElementById('natureChallengePane-birds');
+    if (!pane || pane.dataset.mapCtaObserverBound === '1') return;
+    pane.dataset.mapCtaObserverBound = '1';
+
+    let pending = false;
+    const schedule = () => {
+      if (pending) return;
+      pending = true;
+      const liveRow = getBirdsOverviewActionRow();
+      if (liveRow) liveRow.removeAttribute('data-cta-normalized');
+      requestAnimationFrame(() => {
+        pending = false;
+        injectButton();
+      });
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      if (!Array.isArray(mutations) || !mutations.some(mutationTouchesBirdsActionRail)) return;
+      schedule();
+    });
+    observer.observe(pane, { childList: true, subtree: true });
+  }
+
   function injectButton() {
-    if (document.getElementById('birdsOpenMapBtn')) return;
-    const logBtn = document.getElementById('birdsOpenLogBtn');
+    const actionRow = getBirdsOverviewActionRow();
+    const logBtn = (actionRow && actionRow.querySelector('#birdsOpenLogBtn')) || document.getElementById('birdsOpenLogBtn');
     if (!logBtn) return;
-    const btn = document.createElement('button');
-    btn.id        = 'birdsOpenMapBtn';
-    btn.type      = 'button';
-    btn.className = 'nature-explore-birds-btn nature-explore-birds-btn--map';
-    btn.title     = 'View your sighting locations on a map';
-    btn.setAttribute('data-tooltip', 'View your sighting locations on a map');
-    btn.textContent = '🗺️ Map';
+    let btn = document.getElementById('birdsOpenMapBtn');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'birdsOpenMapBtn';
+      btn.type = 'button';
+      btn.className = 'nature-explore-birds-btn nature-explore-birds-btn--map';
+      btn.title = 'View your sighting locations on a map';
+      btn.setAttribute('data-tooltip', 'View your sighting locations on a map');
+      btn.textContent = '🗺️ Map';
+      btn.addEventListener('click', openMap);
+    }
+
+    const row = actionRow || logBtn.closest('.nature-explore-cta-actions');
+    const refreshBtn = row ? row.querySelector('#natureChallengeRefreshBtn') : document.getElementById('natureChallengeRefreshBtn');
+    if (row && refreshBtn) {
+      row.insertBefore(btn, refreshBtn);
+      normalizeBirdsActionRailOrder(row);
+      return;
+    }
     logBtn.insertAdjacentElement('afterend', btn);
-    btn.addEventListener('click', openMap);
   }
 
   /* ─── Boot ───────────────────────────────────────────────── */
@@ -422,6 +508,7 @@
       document.body.appendChild(overlayEl);
       bindEvents();
     }
+    installBirdsActionRailObserver();
     return true;
   }
 

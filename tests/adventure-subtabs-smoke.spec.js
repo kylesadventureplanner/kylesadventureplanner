@@ -7,7 +7,9 @@ const ADVENTURE_SUBTABS = [
     refreshAction: 'refresh-subtab-wildlife-animals',
     undoAction: 'undo-subtab-wildlife-animals',
     exploreAction: 'open-explorer-wildlife-animals',
+    cityAction: 'open-city-explorer-wildlife-animals',
     logAction: 'open-visit-log-wildlife-animals',
+    editAction: 'open-edit-mode-wildlife-animals',
     legacyFindAction: 'find-wildlife-animals'
   },
   {
@@ -16,7 +18,9 @@ const ADVENTURE_SUBTABS = [
     refreshAction: 'refresh-subtab-regional-festivals',
     undoAction: 'undo-subtab-regional-festivals',
     exploreAction: 'open-explorer-regional-festivals',
+    cityAction: 'open-city-explorer-regional-festivals',
     logAction: 'open-visit-log-regional-festivals',
+    editAction: 'open-edit-mode-regional-festivals',
     legacyFindAction: 'find-regional-festivals'
   },
   {
@@ -25,10 +29,37 @@ const ADVENTURE_SUBTABS = [
     refreshAction: 'refresh-subtab-retail',
     undoAction: 'undo-subtab-retail',
     exploreAction: 'open-explorer-retail',
+    cityAction: 'open-city-explorer-retail',
     logAction: 'open-visit-log-retail',
+    editAction: 'open-edit-mode-retail',
     legacyFindAction: 'find-retail-location'
   }
 ];
+
+function getVisualActionOrder(selector) {
+  return async (page) => page.locator(selector).evaluateAll((nodes) => {
+    return nodes
+      .map((node, index) => {
+        const orderRaw = window.getComputedStyle(node).order;
+        const order = Number.isFinite(Number(orderRaw)) ? Number(orderRaw) : 0;
+        return {
+          action: String(node.getAttribute('data-visited-subtab-action') || '').trim(),
+          order,
+          index
+        };
+      })
+      .filter((entry) => entry.action)
+      .sort((a, b) => (a.order - b.order) || (a.index - b.index))
+      .map((entry) => entry.action);
+  });
+}
+
+async function waitForAdventureCtaNormalized(page, subtabKey) {
+  await page.waitForFunction((key) => {
+    const row = document.querySelector(`#visitedProgressPane-${key} .visited-subtab-action-row`);
+    return Boolean(row && row.getAttribute('data-cta-normalized') === '1');
+  }, subtabKey);
+}
 
 test.describe('Adventure Challenge new subtabs smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -82,21 +113,51 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
     await expect(jumpLinks).toHaveAttribute('aria-hidden', 'false');
   });
 
-  ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, logAction, legacyFindAction }) => {
+  test('Outdoors CTA row preserves canonical action order', async ({ page }) => {
+    await waitForAdventureCtaNormalized(page, 'outdoors');
+    const readOrder = getVisualActionOrder('#visitedProgressPane-outdoors .ui-intro-card .visited-subtab-action-row button[data-visited-subtab-action]');
+    await expect.poll(async () => {
+      return readOrder(page);
+    }, { timeout: 15000 }).toEqual([
+      'open-explorer-outdoors',
+      'open-city-explorer-outdoors',
+      'open-visit-log-outdoors',
+      'open-edit-mode-outdoors',
+      'refresh-subtab-outdoors',
+      'undo-subtab-outdoors'
+    ]);
+  });
+
+  ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, cityAction, logAction, editAction, legacyFindAction }) => {
     test(`subtab smoke: ${label}`, async ({ page }) => {
       const dockButton = page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"]`).first();
       await expect(dockButton).toBeVisible();
       await dockButton.click();
 
       await expect(page.locator(`#visitedProgressPane-${key}`)).toBeVisible();
+      await waitForAdventureCtaNormalized(page, key);
       await expect(page.locator(`#appSubTabsSlot [data-progress-subtab="${key}"][aria-selected="true"]`)).toBeVisible();
       await expect(page.locator(`#visitedSubtabStatus-${key} .visited-subtab-status-health`)).toBeVisible();
       await expect(page.locator(`#visitedSubtabStatus-${key} .visited-subtab-status-meta`)).toBeVisible();
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${refreshAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${undoAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${exploreAction}"]`)).toHaveCount(1);
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${cityAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${logAction}"]`)).toHaveCount(1);
+      await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${editAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${legacyFindAction}"]`)).toHaveCount(0);
+
+      const readOrder = getVisualActionOrder(`#visitedProgressPane-${key} .ui-intro-card .visited-subtab-action-row button[data-visited-subtab-action]`);
+      await expect.poll(async () => {
+        return readOrder(page);
+      }, { timeout: 15000 }).toEqual([
+        exploreAction,
+        cityAction,
+        logAction,
+        editAction,
+        refreshAction,
+        undoAction
+      ]);
 
       await dockButton.focus();
       await expect(dockButton).toBeFocused();

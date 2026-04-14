@@ -442,6 +442,9 @@
       updateVisitedChallengeTitle(root);
 
       syncVisitedSubTabDock(root);
+
+      // Run the canonical CTA order pass after pane/view sync updates.
+      scheduleVisitedSubtabCtaOrderFinalization(root);
    }
 
   function announceProgressSubTab(root, tabKey) {
@@ -460,6 +463,7 @@
     }
     state.activeProgressSubTab = PROGRESS_SUBTAB_KEYS.includes(tabKey) ? tabKey : 'outdoors';
     syncProgressSubTabs(root);
+    scheduleVisitedSubtabCtaOrderFinalization(root);
     announceProgressSubTab(root, state.activeProgressSubTab);
     scheduleVisitedSubTabInterceptionCheck(root, 0);
   }
@@ -653,6 +657,84 @@
         editBtn.setAttribute('title', `Open Edit Mode for ${label}`);
         editBtn.setAttribute('data-tooltip', `Open Edit Mode for ${label}`);
       }
+    });
+
+    const root = document.getElementById('visitedLocationsRoot');
+    if (root) {
+      scheduleVisitedSubtabCtaOrderFinalization(root);
+    }
+  }
+
+  function isCtaNormalizationDebugEnabled() {
+    return Boolean(window.navigator && window.navigator.webdriver);
+  }
+
+  function setVisitedCtaNormalizedMarker(row) {
+    if (!row || !row.setAttribute) return;
+    if (isCtaNormalizationDebugEnabled()) {
+      row.setAttribute('data-cta-normalized', '1');
+      return;
+    }
+    row.removeAttribute('data-cta-normalized');
+  }
+
+  function finalizeVisitedSubtabCtaOrder(root) {
+    if (!root) return;
+    normalizeVisitedSubtabActionRows(root);
+    root.querySelectorAll('.visited-subtab-action-row').forEach((row) => {
+      setVisitedCtaNormalizedMarker(row);
+    });
+  }
+
+  function scheduleVisitedSubtabCtaOrderFinalization(root) {
+    if (!root) return;
+    root.querySelectorAll('.visited-subtab-action-row').forEach((row) => row.removeAttribute('data-cta-normalized'));
+    if (root.__visitedCtaFinalizeRaf) {
+      window.cancelAnimationFrame(root.__visitedCtaFinalizeRaf);
+    }
+    root.__visitedCtaFinalizeRaf = window.requestAnimationFrame(() => {
+      root.__visitedCtaFinalizeRaf = 0;
+      finalizeVisitedSubtabCtaOrder(root);
+    });
+  }
+
+  function normalizeVisitedSubtabActionRows(root) {
+    if (!root) return;
+    const buildOrder = (subtabKey) => {
+      if (subtabKey === 'bike-trails') {
+        return [
+          'explore-bike-trails',
+          'open-city-explorer-bike-trails',
+          'open-edit-mode-bike-trails',
+          'refresh-subtab-bike-trails',
+          'undo-subtab-bike-trails'
+        ];
+      }
+      return [
+        `open-explorer-${subtabKey}`,
+        `open-city-explorer-${subtabKey}`,
+        `open-visit-log-${subtabKey}`,
+        `open-edit-mode-${subtabKey}`,
+        `refresh-subtab-${subtabKey}`,
+        `undo-subtab-${subtabKey}`
+      ];
+    };
+
+    PROGRESS_SUBTAB_KEYS.forEach((subtabKey) => {
+      const pane = root.querySelector(`#visitedProgressPane-${subtabKey}`);
+      if (!pane) return;
+      const row = pane.querySelector('.visited-subtab-action-row');
+      if (!row) return;
+      buildOrder(subtabKey).forEach((action, idx) => {
+        const button = pane.querySelector(`[data-visited-subtab-action="${action}"]`);
+        if (!button) return;
+        row.appendChild(button);
+        if (button.style && typeof button.style.setProperty === 'function') {
+          button.style.setProperty('order', String(idx), 'important');
+        } else if (button.style) {
+          button.style.order = String(idx);
+        }
+      });
     });
   }
 
@@ -1965,7 +2047,19 @@
         title: String(item && item.title ? item.title : '').trim(),
         sourceLabel: String(item && item.sourceLabel ? item.sourceLabel : '').trim()
       }))
-      .filter((item) => item.id && item.title);
+      .filter((item) => item.id && item.title)
+      .map((item) => ({
+        ...item,
+        titleNorm: norm(item.title),
+        sourceLabelNorm: norm(item.sourceLabel)
+      }))
+      .sort((a, b) => {
+        const byTitle = a.titleNorm.localeCompare(b.titleNorm);
+        if (byTitle !== 0) return byTitle;
+        const bySource = a.sourceLabelNorm.localeCompare(b.sourceLabelNorm);
+        if (bySource !== 0) return bySource;
+        return a.id.localeCompare(b.id);
+      });
   }
 
   function buildVisitLogLocationOptionLabel(item) {
@@ -1985,8 +2079,8 @@
     const filteredOptions = !query
       ? allOptions.slice()
       : allOptions.filter((item) => {
-        const title = norm(item && item.title);
-        const sourceLabel = norm(item && item.sourceLabel);
+        const title = String(item && item.titleNorm ? item.titleNorm : norm(item && item.title));
+        const sourceLabel = String(item && item.sourceLabelNorm ? item.sourceLabelNorm : norm(item && item.sourceLabel));
         // Strict prefix matching keeps narrowing predictable for keyboard selection.
         return title.startsWith(query) || sourceLabel.startsWith(query);
       });
@@ -2002,13 +2096,25 @@
     } else if (query && filteredOptions.length === 1) {
       selectedId = filteredOptions[0].id;
     }
-    locationSelect.value = selectedId;
-    if (itemIdInput) itemIdInput.value = selectedId;
+
+    locationSelect.disabled = filteredOptions.length === 0;
+    locationSelect.classList.toggle('is-no-matches', Boolean(query) && filteredOptions.length === 0);
+    if (locationSelect.disabled) {
+      locationSelect.value = '';
+      selectedId = '';
+    } else {
+      locationSelect.value = selectedId;
+    }
 
     if (help) {
       const baseText = String(help.dataset.baseText || help.textContent || '').trim();
       if (baseText) {
-        help.textContent = `${baseText} Showing ${filteredOptions.length} of ${allOptions.length} locations.`;
+        const countText = `Showing ${filteredOptions.length} of ${allOptions.length} locations.`;
+        if (query && filteredOptions.length === 0) {
+          help.textContent = `${baseText} ${countText} No matching locations for "${state.visitLogLocationQuery}".`;
+        } else {
+          help.textContent = `${baseText} ${countText}`;
+        }
       }
     }
 
@@ -2165,8 +2271,6 @@
     }
     setVisitLogPhotoStatus('Attach one or more photos to upload them to OneDrive when you save.');
     subtabKeyInput.value = subtabKey;
-    const selectedId = renderVisitLogLocationOptions();
-    renderVisitLogActivityGrid(subtabKey, selectedId || '');
     const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
     modeInput.value = mode;
     if (submitBtn) submitBtn.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
@@ -2177,7 +2281,8 @@
       help.textContent = help.dataset.baseText;
     }
 
-    renderVisitLogLocationOptions();
+    const selectedId = renderVisitLogLocationOptions();
+    syncVisitLogLocationSelection(selectedId || '', subtabKey);
 
     modal.hidden = false;
     backdrop.hidden = false;
@@ -2479,6 +2584,7 @@
 
     syncExplorerFilterOptions(subtabKey, explorerState);
     const filtered = filterAndSortExplorerItems(explorerState.items || [], explorerState);
+    const visitMap = state.latestVisitMap || getVisitMap();
     metaEl.textContent = `${filtered.length} of ${(explorerState.items || []).length} ${config.emptyLabel} shown.`;
 
     if (!filtered.length) {
@@ -2487,6 +2593,7 @@
     }
 
     listEl.innerHTML = filtered.map((item) => {
+      const isVisited = Boolean(visitMap[item.id]);
       const chips = (item.tags || []).slice(0, 6).map((tag) => `<span class="visited-explorer-tag">${escapeHtml(tag)}</span>`).join('');
       const notesPreview = String(item.notes || '').trim();
       const starButtons = [1, 2, 3, 4, 5].map((value) => `
@@ -2503,7 +2610,10 @@
       return `
         <div class="visited-explorer-card">
           <div class="visited-explorer-card-head">
-            <div class="visited-explorer-card-title">${escapeHtml(item.title || 'Unknown')}</div>
+            <div class="visited-explorer-card-title">
+              <span class="visited-explorer-visit-indicator${isVisited ? ' is-visited' : ' is-unvisited'}" aria-label="${isVisited ? 'Visited location' : 'Not visited yet'}" title="${isVisited ? 'Visited location' : 'Not visited yet'}">${isVisited ? '✅' : '⭕'}</span>
+              ${escapeHtml(item.title || 'Unknown')}
+            </div>
             <div class="visited-explorer-card-head-actions">
               <button type="button" class="visited-explorer-detail-btn visited-explorer-detail-btn--primary" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
               <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-quick-actions-toggle="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" aria-expanded="false">Quick Actions ▾</button>
@@ -4215,60 +4325,90 @@
         return row;
       };
 
+      const reorderActionRow = (row, orderedActions) => {
+        if (!row) return;
+        orderedActions.forEach((action) => {
+          const button = row.querySelector(`[data-visited-subtab-action="${action}"]`);
+          if (button) row.appendChild(button);
+        });
+      };
+
+      const canonicalAdventureOrder = (subtabKey) => [
+        `open-explorer-${subtabKey}`,
+        `open-city-explorer-${subtabKey}`,
+        `open-visit-log-${subtabKey}`,
+        `open-edit-mode-${subtabKey}`,
+        `refresh-subtab-${subtabKey}`,
+        `undo-subtab-${subtabKey}`
+      ];
+
       const outdoorsRow = ensureCanonicalActionRow('outdoors');
+      ensureButton(outdoorsRow, 'open-explorer-outdoors', 'Explore Outdoors', 'Explore the Outdoors');
+      ensureButton(outdoorsRow, 'open-city-explorer-outdoors', 'City Explorer', 'Open City Explorer filtered for Outdoors');
+      ensureButton(outdoorsRow, 'open-visit-log-outdoors', 'Log a Visit', 'Log an Outdoors visit');
+      ensureButton(outdoorsRow, 'open-edit-mode-outdoors', 'Edit Mode', 'Open Edit Mode for Outdoors');
       ensureButton(outdoorsRow, 'refresh-subtab-outdoors', 'Refresh Data', 'Refresh Outdoors data');
       ensureButton(outdoorsRow, 'undo-subtab-outdoors', '↶ Undo', 'No Outdoors action to undo yet');
-      ensureButton(outdoorsRow, 'open-explorer-outdoors', 'Explore Outdoors', 'Explore the Outdoors');
-      ensureButton(outdoorsRow, 'open-visit-log-outdoors', 'Log a Visit', 'Log an Outdoors visit');
-      ensureButton(outdoorsRow, 'open-city-explorer-outdoors', 'City Explorer', 'Open City Explorer filtered for Outdoors');
-      ensureButton(outdoorsRow, 'open-edit-mode-outdoors', 'Edit Mode', 'Open Edit Mode for Outdoors');
+      reorderActionRow(outdoorsRow, canonicalAdventureOrder('outdoors'));
 
       const entertainmentRow = ensureCanonicalActionRow('entertainment');
+      ensureButton(entertainmentRow, 'open-explorer-entertainment', 'Explore Entertainment', 'Explore Entertainment');
+      ensureButton(entertainmentRow, 'open-city-explorer-entertainment', 'City Explorer', 'Open City Explorer filtered for Entertainment');
+      ensureButton(entertainmentRow, 'open-visit-log-entertainment', 'Log a Visit', 'Log an Entertainment visit');
+      ensureButton(entertainmentRow, 'open-edit-mode-entertainment', 'Edit Mode', 'Open Edit Mode for Entertainment');
       ensureButton(entertainmentRow, 'refresh-subtab-entertainment', 'Refresh Data', 'Refresh Entertainment data');
       ensureButton(entertainmentRow, 'undo-subtab-entertainment', '↶ Undo', 'No Entertainment action to undo yet');
-      ensureButton(entertainmentRow, 'open-explorer-entertainment', 'Explore Entertainment', 'Explore Entertainment');
-      ensureButton(entertainmentRow, 'open-visit-log-entertainment', 'Log a Visit', 'Log an Entertainment visit');
-      ensureButton(entertainmentRow, 'open-city-explorer-entertainment', 'City Explorer', 'Open City Explorer filtered for Entertainment');
-      ensureButton(entertainmentRow, 'open-edit-mode-entertainment', 'Edit Mode', 'Open Edit Mode for Entertainment');
+      reorderActionRow(entertainmentRow, canonicalAdventureOrder('entertainment'));
 
       const foodDrinkRow = ensureCanonicalActionRow('food-drink');
+      ensureButton(foodDrinkRow, 'open-explorer-food-drink', 'Explore Food & Drink', 'Explore Food and Drink');
+      ensureButton(foodDrinkRow, 'open-city-explorer-food-drink', 'City Explorer', 'Open City Explorer filtered for Food & Drink');
+      ensureButton(foodDrinkRow, 'open-visit-log-food-drink', 'Log a Visit', 'Log a Food and Drink visit');
+      ensureButton(foodDrinkRow, 'open-edit-mode-food-drink', 'Edit Mode', 'Open Edit Mode for Food & Drink');
       ensureButton(foodDrinkRow, 'refresh-subtab-food-drink', 'Refresh Data', 'Refresh Food and Drink data');
       ensureButton(foodDrinkRow, 'undo-subtab-food-drink', '↶ Undo', 'No Food and Drink action to undo yet');
-      ensureButton(foodDrinkRow, 'open-explorer-food-drink', 'Explore Food & Drink', 'Explore Food and Drink');
-      ensureButton(foodDrinkRow, 'open-visit-log-food-drink', 'Log a Visit', 'Log a Food and Drink visit');
-      ensureButton(foodDrinkRow, 'open-city-explorer-food-drink', 'City Explorer', 'Open City Explorer filtered for Food & Drink');
-      ensureButton(foodDrinkRow, 'open-edit-mode-food-drink', 'Edit Mode', 'Open Edit Mode for Food & Drink');
+      reorderActionRow(foodDrinkRow, canonicalAdventureOrder('food-drink'));
 
       const retailRow = ensureCanonicalActionRow('retail');
+      ensureButton(retailRow, 'open-explorer-retail', 'Explore Retail', 'Explore Retail');
+      ensureButton(retailRow, 'open-city-explorer-retail', 'City Explorer', 'Open City Explorer filtered for Retail');
+      ensureButton(retailRow, 'open-visit-log-retail', 'Log a Visit', 'Log a Retail visit');
+      ensureButton(retailRow, 'open-edit-mode-retail', 'Edit Mode', 'Open Edit Mode for Retail');
       ensureButton(retailRow, 'refresh-subtab-retail', 'Refresh Data', 'Refresh Retail data');
       ensureButton(retailRow, 'undo-subtab-retail', '↶ Undo', 'No Retail action to undo yet');
-      ensureButton(retailRow, 'open-explorer-retail', 'Explore Retail', 'Explore Retail');
-      ensureButton(retailRow, 'open-visit-log-retail', 'Log a Visit', 'Log a Retail visit');
-      ensureButton(retailRow, 'open-city-explorer-retail', 'City Explorer', 'Open City Explorer filtered for Retail');
-      ensureButton(retailRow, 'open-edit-mode-retail', 'Edit Mode', 'Open Edit Mode for Retail');
+      reorderActionRow(retailRow, canonicalAdventureOrder('retail'));
 
       const wildlifeAnimalsRow = ensureCanonicalActionRow('wildlife-animals');
+      ensureButton(wildlifeAnimalsRow, 'open-explorer-wildlife-animals', 'Explore Wildlife & Animal Locations', 'Explore Wildlife and Animal Locations');
+      ensureButton(wildlifeAnimalsRow, 'open-city-explorer-wildlife-animals', 'City Explorer', 'Open City Explorer filtered for Wildlife & Animals');
+      ensureButton(wildlifeAnimalsRow, 'open-visit-log-wildlife-animals', 'Log a Visit', 'Log a Wildlife and Animals visit');
+      ensureButton(wildlifeAnimalsRow, 'open-edit-mode-wildlife-animals', 'Edit Mode', 'Open Edit Mode for Wildlife & Animals');
       ensureButton(wildlifeAnimalsRow, 'refresh-subtab-wildlife-animals', 'Refresh Data', 'Refresh Wildlife and Animals data');
       ensureButton(wildlifeAnimalsRow, 'undo-subtab-wildlife-animals', '↶ Undo', 'No Wildlife and Animals action to undo yet');
-      ensureButton(wildlifeAnimalsRow, 'open-explorer-wildlife-animals', 'Explore Wildlife & Animal Locations', 'Explore Wildlife and Animal Locations');
-      ensureButton(wildlifeAnimalsRow, 'open-visit-log-wildlife-animals', 'Log a Visit', 'Log a Wildlife and Animals visit');
-      ensureButton(wildlifeAnimalsRow, 'open-city-explorer-wildlife-animals', 'City Explorer', 'Open City Explorer filtered for Wildlife & Animals');
-      ensureButton(wildlifeAnimalsRow, 'open-edit-mode-wildlife-animals', 'Edit Mode', 'Open Edit Mode for Wildlife & Animals');
+      reorderActionRow(wildlifeAnimalsRow, canonicalAdventureOrder('wildlife-animals'));
 
       const regionalFestivalsRow = ensureCanonicalActionRow('regional-festivals');
+      ensureButton(regionalFestivalsRow, 'open-explorer-regional-festivals', 'Explore Regional Festivals', 'Explore Regional Festivals');
+      ensureButton(regionalFestivalsRow, 'open-city-explorer-regional-festivals', 'City Explorer', 'Open City Explorer filtered for Regional Festivals');
+      ensureButton(regionalFestivalsRow, 'open-visit-log-regional-festivals', 'Log a Visit', 'Log a Regional Festivals visit');
+      ensureButton(regionalFestivalsRow, 'open-edit-mode-regional-festivals', 'Edit Mode', 'Open Edit Mode for Regional Festivals');
       ensureButton(regionalFestivalsRow, 'refresh-subtab-regional-festivals', 'Refresh Data', 'Refresh Regional Festivals data');
       ensureButton(regionalFestivalsRow, 'undo-subtab-regional-festivals', '↶ Undo', 'No Regional Festivals action to undo yet');
-      ensureButton(regionalFestivalsRow, 'open-explorer-regional-festivals', 'Explore Regional Festivals', 'Explore Regional Festivals');
-      ensureButton(regionalFestivalsRow, 'open-visit-log-regional-festivals', 'Log a Visit', 'Log a Regional Festivals visit');
-      ensureButton(regionalFestivalsRow, 'open-city-explorer-regional-festivals', 'City Explorer', 'Open City Explorer filtered for Regional Festivals');
-      ensureButton(regionalFestivalsRow, 'open-edit-mode-regional-festivals', 'Edit Mode', 'Open Edit Mode for Regional Festivals');
+      reorderActionRow(regionalFestivalsRow, canonicalAdventureOrder('regional-festivals'));
 
       const bikeRow = ensureCanonicalActionRow('bike-trails');
-      ensureButton(bikeRow, 'refresh-subtab-bike-trails', 'Refresh Data', 'Refresh Bike Trails data');
-      ensureButton(bikeRow, 'undo-subtab-bike-trails', '↶ Undo', 'No Bike Trails action to undo yet');
       ensureButton(bikeRow, 'explore-bike-trails', 'Explore Bike Trails', 'Explore Bike Trails');
       ensureButton(bikeRow, 'open-city-explorer-bike-trails', 'City Explorer', 'Open City Explorer filtered for Bike Trails');
       ensureButton(bikeRow, 'open-edit-mode-bike-trails', 'Edit Mode', 'Open Edit Mode for Bike Trails');
+      ensureButton(bikeRow, 'refresh-subtab-bike-trails', 'Refresh Data', 'Refresh Bike Trails data');
+      ensureButton(bikeRow, 'undo-subtab-bike-trails', '↶ Undo', 'No Bike Trails action to undo yet');
+      reorderActionRow(bikeRow, [
+        'explore-bike-trails',
+        'open-city-explorer-bike-trails',
+        'open-edit-mode-bike-trails',
+        'refresh-subtab-bike-trails',
+        'undo-subtab-bike-trails'
+      ]);
 
       const present = requiredActions.reduce((count, action) => {
         return count + (root.querySelector(`[data-visited-subtab-action="${action}"]`) ? 1 : 0);
@@ -4308,6 +4448,7 @@
 
       // Fail-safe for stale cached tab markup: ensure requested CTA buttons always exist.
       const ctaSyncReport = ensureVisitedSubtabCtaButtons(root);
+      scheduleVisitedSubtabCtaOrderFinalization(root);
       renderVisitedCtaInjectorStatus(root, ctaSyncReport);
 
       // PREVENT DUPLICATE EVENT LISTENERS: Use a stronger check
@@ -4373,6 +4514,7 @@
           // Use requestAnimationFrame to batch multiple mutations
           requestAnimationFrame(() => {
             const mutationCtaSyncReport = ensureVisitedSubtabCtaButtons(root);
+            scheduleVisitedSubtabCtaOrderFinalization(root);
             renderVisitedCtaInjectorStatus(root, mutationCtaSyncReport);
             ensureButtonsResponsive();
           });
@@ -4819,6 +4961,30 @@
       });
       visitLogLocationSearch.addEventListener('keydown', (event) => {
         if (!visitLogLocationSelect) return;
+        if (event.key === 'Enter') {
+          const selectable = Array.from(visitLogLocationSelect.options || [])
+            .filter((option) => String(option.value || '').trim());
+          if (!selectable.length) return;
+          event.preventDefault();
+          const currentValue = String(visitLogLocationSelect.value || '').trim();
+          const nextValue = selectable.some((option) => String(option.value || '').trim() === currentValue)
+            ? currentValue
+            : String(selectable[0].value || '').trim();
+          syncVisitLogLocationSelection(nextValue);
+          return;
+        }
+
+        if (event.key === 'Escape') {
+          const currentQuery = String(visitLogLocationSearch.value || '').trim();
+          if (!currentQuery) return;
+          event.preventDefault();
+          visitLogLocationSearch.value = '';
+          state.visitLogLocationQuery = '';
+          const selectedId = renderVisitLogLocationOptions();
+          syncVisitLogLocationSelection(selectedId || '');
+          return;
+        }
+
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
         const selectable = Array.from(visitLogLocationSelect.options || [])
           .filter((option) => String(option.value || '').trim());

@@ -7153,6 +7153,9 @@
     renderBirdCollectionView();
     renderBirdExplorerList();
     renderBirdDetail();
+
+    const root = document.getElementById('natureChallengeRoot');
+    if (root) scheduleNatureCtaOrderFinalization(root);
   }
 
   function renderPlaceholderSubTabs() {
@@ -7242,6 +7245,49 @@
     return toCategorySingularLabel(getActiveCategoryLabel());
   }
 
+  function isCtaNormalizationDebugEnabled() {
+    return Boolean(window.navigator && window.navigator.webdriver);
+  }
+
+  function setNatureCtaNormalizedMarker(row) {
+    if (!row || !row.setAttribute) return;
+    if (isCtaNormalizationDebugEnabled()) {
+      row.setAttribute('data-cta-normalized', '1');
+      return;
+    }
+    row.removeAttribute('data-cta-normalized');
+  }
+
+  function finalizeNatureCtaOrder(root) {
+    if (!root) return;
+    const row = root.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+    if (!row) return;
+    ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn', 'birdsUndoActionBtn'].forEach((id, idx) => {
+      const button = row.querySelector(`#${id}`);
+      if (!button) return;
+      row.appendChild(button);
+      if (button.style && typeof button.style.setProperty === 'function') {
+        button.style.setProperty('order', String(idx), 'important');
+      } else if (button.style) {
+        button.style.order = String(idx);
+      }
+    });
+    setNatureCtaNormalizedMarker(row);
+  }
+
+  function scheduleNatureCtaOrderFinalization(root) {
+    if (!root) return;
+    const row = root.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+    if (row) row.removeAttribute('data-cta-normalized');
+    if (root.__natureCtaFinalizeRaf) {
+      window.cancelAnimationFrame(root.__natureCtaFinalizeRaf);
+    }
+    root.__natureCtaFinalizeRaf = window.requestAnimationFrame(() => {
+      root.__natureCtaFinalizeRaf = 0;
+      finalizeNatureCtaOrder(root);
+    });
+  }
+
   function applyActiveCategoryUiLabels(root) {
     if (!root) return;
     const labelPlural = getActiveCategoryLabel();
@@ -7304,6 +7350,9 @@
 
     const syncBadgeInline = document.getElementById('natureSyncHealthBadgeInline');
     if (syncBadgeInline) syncBadgeInline.textContent = `${labelPlural} data: checking...`;
+
+    // Keep CTA ordering deterministic after label/text refreshes.
+    scheduleNatureCtaOrderFinalization(root);
   }
 
   function persistConfigDrivenWorkspaceState(subTabKey) {
@@ -7613,7 +7662,10 @@
         }
       }
       if (!shouldRecheck) return;
-      requestAnimationFrame(() => ensureNatureButtonsResponsive(root));
+      requestAnimationFrame(() => {
+        ensureNatureButtonsResponsive(root);
+        scheduleNatureCtaOrderFinalization(root);
+      });
     });
 
     observer.observe(root, { childList: true, subtree: true });
@@ -7640,6 +7692,7 @@
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
     const restoreY = Number(state.birdViewScrollPositions[state.activeBirdView]) || 0;
     window.scrollTo({ top: restoreY, behavior: 'auto' });
+    scheduleNatureCtaOrderFinalization(root);
   }
 
   async function setActiveNatureSubTab(root, key) {
@@ -7779,6 +7832,7 @@
     if (!root || root.dataset.natureControlsBound === '1') return;
     root.dataset.natureControlsBound = '1';
     ensureNatureButtonsResponsive(root);
+    scheduleNatureCtaOrderFinalization(root);
     ensureNatureSubtabJumpLinks(root);
     installNatureButtonReliabilityObserver(root);
     ensureBirdClickDiagnosticsPanel(root);

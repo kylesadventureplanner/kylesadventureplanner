@@ -1,6 +1,43 @@
 const { test, expect } = require('./reliability-test');
 
 test.describe('Nature map context labels', () => {
+  test('birds CTA order keeps injected Map between Log and Refresh', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
+    await expect(page.locator('#natureChallengeRoot')).toBeVisible();
+
+    await page.waitForFunction(() => {
+      const row = document.querySelector('#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="overview"] .nature-explore-cta-actions');
+      if (!row) return false;
+      if (!row.querySelector('#birdsOpenMapBtn')) return false;
+      return row.getAttribute('data-cta-normalized') === '1';
+    });
+
+    await expect.poll(async () => {
+      return page.locator('#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="overview"] .nature-explore-cta-actions > button').evaluateAll((nodes) => {
+        return nodes
+          .map((node, index) => {
+            const orderRaw = window.getComputedStyle(node).order;
+            const order = Number.isFinite(Number(orderRaw)) ? Number(orderRaw) : 0;
+            return {
+              id: String(node.id || '').trim(),
+              order,
+              index
+            };
+          })
+          .filter((entry) => entry.id)
+          .sort((a, b) => (a.order - b.order) || (a.index - b.index))
+          .map((entry) => entry.id);
+      });
+    }, { timeout: 12000 }).toEqual([
+      'birdsExploreBtn',
+      'birdsOpenLogBtn',
+      'birdsOpenMapBtn',
+      'natureChallengeRefreshBtn',
+      'birdsUndoActionBtn'
+    ]);
+  });
+
   test('map header/back reflects active nature subtab context', async ({ page }) => {
     await page.goto('/');
     await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();

@@ -142,6 +142,13 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const firstCard = list.locator('.visited-explorer-card').first();
     await expect(firstCard).toBeVisible();
 
+    const visitIndicator = firstCard.locator('.visited-explorer-visit-indicator').first();
+    if (await visitIndicator.count()) {
+      await expect(visitIndicator).toBeVisible();
+      await expect(visitIndicator).toHaveAttribute('class', /is-(visited|unvisited)/);
+      await expect(visitIndicator).toHaveAttribute('aria-label', /(Visited location|Not visited yet)/);
+    }
+
     const detailsBtn = firstCard.locator('[data-visited-explorer-details]').first();
     const quickActionsBtn = firstCard.locator('[data-visited-explorer-quick-actions-toggle]').first();
     const quickActionsMenu = firstCard.locator('[data-visited-explorer-quick-actions-menu]').first();
