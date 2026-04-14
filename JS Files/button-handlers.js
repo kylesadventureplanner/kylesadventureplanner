@@ -23,8 +23,30 @@
     }
   }
 
+  function getEventElement(event) {
+    if (!event) return null;
+
+    let target = null;
+    if (typeof event.composedPath === 'function') {
+      const path = event.composedPath();
+      if (Array.isArray(path) && path.length) {
+        target = path[0];
+      }
+    }
+
+    if (!target) target = event.target || null;
+    if (!target) return null;
+    if (target.nodeType === 1) return target;
+    return target.parentElement || null;
+  }
+
+  function closestFromEvent(event, selector) {
+    const element = getEventElement(event);
+    return element && typeof element.closest === 'function' ? element.closest(selector) : null;
+  }
+
   function touchButtonFromEvent(event) {
-    const button = event.target && event.target.closest ? event.target.closest('button') : null;
+    const button = closestFromEvent(event, 'button');
     if (!button) return;
     normalizeButton(button);
   }
@@ -651,9 +673,10 @@
     globalDetailDelegatesBound = true;
 
     document.addEventListener('click', (event) => {
-      if (!isInAdventureCardsGrid(event.target)) return;
-      if (!isAdventureDomainTarget(event.target)) return;
-      const detailsButton = event.target && event.target.closest ? event.target.closest('.card-details-btn') : null;
+      const eventElement = getEventElement(event);
+      if (!isInAdventureCardsGrid(eventElement)) return;
+      if (!isAdventureDomainTarget(eventElement)) return;
+      const detailsButton = closestFromEvent(event, '.card-details-btn');
       if (!detailsButton) return;
       event.preventDefault();
       event.stopPropagation();
@@ -662,13 +685,14 @@
     }, true);
 
     document.addEventListener('click', (event) => {
-      if (!isInAdventureCardsGrid(event.target)) return;
-      if (!isAdventureDomainTarget(event.target)) return;
+      const eventElement = getEventElement(event);
+      if (!isInAdventureCardsGrid(eventElement)) return;
+      if (!isAdventureDomainTarget(eventElement)) return;
       const grid = document.getElementById('adventureCardsGrid');
       if (grid && grid.dataset.canonicalCardClickBound === '1') return;
-      const card = event.target && event.target.closest ? event.target.closest('.adventure-card') : null;
+      const card = closestFromEvent(event, '.adventure-card');
       if (!card) return;
-      if (isInteractiveCardTarget(event.target)) return;
+      if (isInteractiveCardTarget(eventElement)) return;
 
       const index = resolveCardIndexFromElement(card);
       if (!Number.isInteger(index) || index < 0) return;
@@ -690,9 +714,10 @@
     }, true);
 
     document.addEventListener('click', (event) => {
-      const item = event.target && event.target.closest ? event.target.closest('#similarAdventuresModal .similar-adventure-item') : null;
+      const eventElement = getEventElement(event);
+      const item = closestFromEvent(event, '#similarAdventuresModal .similar-adventure-item');
       if (!item) return;
-      if (isInteractiveCardTarget(event.target)) return;
+      if (isInteractiveCardTarget(eventElement)) return;
 
       const index = extractDetailIndexFromSimilarItem(item);
       if (!Number.isInteger(index) || index < 0) return;
@@ -706,10 +731,11 @@
     }, true);
 
     document.addEventListener('click', (event) => {
+      const eventElement = getEventElement(event);
       // Never touch clicks inside the bike trail modal — it manages its own tabs
-      if (event.target && event.target.closest && event.target.closest('#bikeTrailDetailModal')) return;
+      if (eventElement && eventElement.closest && eventElement.closest('#bikeTrailDetailModal')) return;
       // Scoped strictly to adventure planner modal tab buttons
-      const tabButton = event.target && event.target.closest ? event.target.closest('#rowDetailModal .row-detail-tab-btn') : null;
+      const tabButton = closestFromEvent(event, '#rowDetailModal .row-detail-tab-btn');
       if (!tabButton) return;
       ensureEditingRowFromModalDataset();
       syncRowDetailContextFromGlobals();
@@ -725,7 +751,7 @@
     }, true);
 
     document.addEventListener('click', async (event) => {
-      const retryBtn = event.target && event.target.closest ? event.target.closest('#rowDetailRetrySaveBtn') : null;
+      const retryBtn = closestFromEvent(event, '#rowDetailRetrySaveBtn');
       if (!retryBtn) return;
       event.preventDefault();
       event.stopPropagation();
@@ -737,7 +763,7 @@
     }, true);
 
     document.addEventListener('click', (event) => {
-      const dismissBtn = event.target && event.target.closest ? event.target.closest('#rowDetailDismissSaveErrorBtn') : null;
+      const dismissBtn = closestFromEvent(event, '#rowDetailDismissSaveErrorBtn');
       if (!dismissBtn) return;
       event.preventDefault();
       event.stopPropagation();
@@ -958,7 +984,7 @@
     });
 
     document.addEventListener('click', (event) => {
-      const button = event.target && event.target.closest ? event.target.closest('button') : null;
+      const button = closestFromEvent(event, 'button');
       if (!button) return;
       normalizeButton(button);
       if (button.id) {
@@ -1031,7 +1057,7 @@
       const quickFiltersCard = document.getElementById('quickFiltersCard');
       if (quickFiltersCard && quickFiltersCard.dataset.filterReliabilityBound !== '1') {
         quickFiltersCard.addEventListener('click', (event) => {
-          const button = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
+          const button = closestFromEvent(event, '.quick-filter-btn');
           if (!button) return;
           setTimeout(callAdventureApply, 0);
         }, false);
@@ -1061,7 +1087,7 @@
       const bikeQuickFiltersCard = document.getElementById('bikeQuickFiltersCard');
       if (bikeQuickFiltersCard && bikeQuickFiltersCard.dataset.bikeFilterReliabilityBound !== '1') {
         bikeQuickFiltersCard.addEventListener('click', (event) => {
-          const button = event.target && event.target.closest ? event.target.closest('.quick-filter-btn') : null;
+          const button = closestFromEvent(event, '.quick-filter-btn');
           if (!button) return;
           setTimeout(callBikeApply, 0);
         }, false);

@@ -891,6 +891,15 @@
     return Boolean(target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]'));
   }
 
+  function getClosestEventTarget(event, selector) {
+    const rawTarget = event && event.target ? event.target : null;
+    const elementTarget = rawTarget && rawTarget.nodeType === Node.ELEMENT_NODE
+      ? rawTarget
+      : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
+    if (!elementTarget || typeof elementTarget.closest !== 'function') return null;
+    return elementTarget.closest(selector);
+  }
+
   function installVisitedClickTracer(root) {
     if (!root || root.dataset.visitedClickTracerBound === '1') return;
     root.dataset.visitedClickTracerBound = '1';
@@ -907,7 +916,7 @@
         ts: Date.now()
       };
 
-      const targetBtn = event.target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
+      const targetBtn = getClosestEventTarget(event, 'button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
       const topBtn = topAtPoint && topAtPoint.closest
         ? topAtPoint.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]')
         : null;
@@ -924,7 +933,7 @@
       if (!state.tracerEnabled) return;
       if (!isTraceCandidateTarget(event.target)) return;
 
-      const targetBtn = event.target.closest('button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
+      const targetBtn = getClosestEventTarget(event, 'button, [role="button"], .quick-filter-btn, .card-btn, [data-visit-action], [data-progress-subtab]');
       if (!targetBtn) return;
 
       const topAtPoint = document.elementFromPoint(event.clientX, event.clientY);
@@ -1445,7 +1454,7 @@
     }, true);
 
     subTabs.addEventListener('click', (event) => {
-      const progressTabBtn = event.target.closest('[data-progress-subtab]');
+      const progressTabBtn = getClosestEventTarget(event, '[data-progress-subtab]');
       if (!progressTabBtn || !subTabs.contains(progressTabBtn)) return;
       event.preventDefault();
       state.mobileTooltip.longPressActive = false;
@@ -1459,7 +1468,7 @@
     });
 
     subTabs.addEventListener('keydown', (event) => {
-      const currentTabBtn = event.target.closest('[data-progress-subtab]');
+      const currentTabBtn = getClosestEventTarget(event, '[data-progress-subtab]');
       if (!currentTabBtn || !subTabs.contains(currentTabBtn)) return;
 
       const buttons = getProgressSubTabButtons(root);
@@ -1947,1457 +1956,6 @@
       mode: raw.mode,
       hint: raw.hint
     });
-  }
-
-  function buildExplorerFilters(explorerState) {
-    const values = {
-      query: norm(explorerState.query),
-      stateFilter: norm(explorerState.stateFilter),
-      cityFilter: norm(explorerState.cityFilter),
-      sort: explorerState.sort || 'name-asc'
-    };
-    return values;
-  }
-
-  function filterAndSortExplorerItems(items, explorerState) {
-    const filters = buildExplorerFilters(explorerState);
-    const filtered = (items || []).map((item) => getExplorerItemView(item)).filter((item) => {
-      if (filters.stateFilter && filters.stateFilter !== 'all' && norm(item.state) !== filters.stateFilter) return false;
-      if (filters.cityFilter && filters.cityFilter !== 'all' && norm(item.city) !== filters.cityFilter) return false;
-      if (!filters.query) return true;
-      const haystack = [item.title, item.city, item.state, item.description, item.address, item.notes, (item.tags || []).join(' ')].map(norm).join(' ');
-      return haystack.includes(filters.query);
-    });
-
-    filtered.sort((a, b) => {
-      if (filters.sort === 'name-desc') return b.title.localeCompare(a.title);
-      if (filters.sort === 'city-asc') return (a.city || '').localeCompare(b.city || '') || a.title.localeCompare(b.title);
-      if (filters.sort === 'state-asc') return (a.state || '').localeCompare(b.state || '') || a.title.localeCompare(b.title);
-      return a.title.localeCompare(b.title);
-    });
-
-    return filtered;
-  }
-
-  function syncExplorerFilterOptions(subtabKey, explorerState) {
-    const stateSelect = document.getElementById(`visitedExplorerState-${subtabKey}`);
-    const citySelect = document.getElementById(`visitedExplorerCity-${subtabKey}`);
-    if (!stateSelect || !citySelect) return;
-
-    const states = Array.from(new Set((explorerState.items || []).map((item) => item.state).filter(Boolean))).sort();
-    const cities = Array.from(new Set((explorerState.items || []).map((item) => item.city).filter(Boolean))).sort();
-    const currentState = explorerState.stateFilter || 'all';
-    const currentCity = explorerState.cityFilter || 'all';
-
-    stateSelect.innerHTML = ['<option value="all">State: All</option>']
-      .concat(states.map((value) => `<option value="${escapeHtml(norm(value))}">${escapeHtml(value)}</option>`))
-      .join('');
-    citySelect.innerHTML = ['<option value="all">City: All</option>']
-      .concat(cities.map((value) => `<option value="${escapeHtml(norm(value))}">${escapeHtml(value)}</option>`))
-      .join('');
-    stateSelect.value = states.some((value) => norm(value) === norm(currentState)) ? norm(currentState) : 'all';
-    citySelect.value = cities.some((value) => norm(value) === norm(currentCity)) ? norm(currentCity) : 'all';
-  }
-
-  function formatExplorerAddressLine(item) {
-    return [item && item.address, item && item.city, item && item.state]
-      .map((part) => String(part || '').trim())
-      .filter(Boolean)
-      .join(' - ') || 'Address not specified';
-  }
-
-  function buildExplorerDirectionsUrl(item) {
-    const destination = [item && item.address, item && item.city, item && item.state]
-      .map((value) => String(value || '').trim())
-      .filter(Boolean)
-      .join(', ')
-      || String(item && item.title ? item.title : '').trim();
-    if (!destination) return '';
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-  }
-
-  function getExplorerItemView(item) {
-    if (!item || !item.id) return item;
-    const draft = getExplorerCardDraft(item.id);
-    const tags = draft.tags.length ? draft.tags : (Array.isArray(item.tags) ? item.tags : []);
-    return {
-      ...item,
-      tags,
-      notes: draft.notes,
-      myRating: draft.rating,
-      favorite: draft.favorite,
-      directionsUrl: buildExplorerDirectionsUrl(item)
-    };
-  }
-
-  function getExplorerItemById(subtabKey, itemId) {
-    const explorerState = getExplorerState(subtabKey);
-    const target = String(itemId || '').trim();
-    if (!target) return null;
-    const item = (explorerState.items || []).find((row) => String(row && row.id ? row.id : '').trim() === target) || null;
-    return item ? getExplorerItemView(item) : null;
-  }
-
-  function getVisitLogQualifyingOptions(subtabKey) {
-    const explorerState = getExplorerState(subtabKey);
-    const items = Array.isArray(explorerState.items) ? explorerState.items : [];
-    return items
-      .map((item) => ({
-        id: String(item && item.id ? item.id : '').trim(),
-        title: String(item && item.title ? item.title : '').trim(),
-        sourceLabel: String(item && item.sourceLabel ? item.sourceLabel : '').trim()
-      }))
-      .filter((item) => item.id && item.title)
-      .map((item) => ({
-        ...item,
-        titleNorm: norm(item.title),
-        sourceLabelNorm: norm(item.sourceLabel)
-      }))
-      .sort((a, b) => {
-        const byTitle = a.titleNorm.localeCompare(b.titleNorm);
-        if (byTitle !== 0) return byTitle;
-        const bySource = a.sourceLabelNorm.localeCompare(b.sourceLabelNorm);
-        if (bySource !== 0) return bySource;
-        return a.id.localeCompare(b.id);
-      });
-  }
-
-  function buildVisitLogLocationOptionLabel(item) {
-    const title = String(item && item.title ? item.title : '').trim();
-    const sourceLabel = String(item && item.sourceLabel ? item.sourceLabel : '').trim();
-    return sourceLabel ? `${title} - ${sourceLabel}` : title;
-  }
-
-  function renderVisitLogLocationOptions() {
-    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
-    const itemIdInput = document.getElementById('visitedVisitLogItemId');
-    const help = document.getElementById('visitedVisitLogHelp');
-    if (!locationSelect) return '';
-
-    const allOptions = Array.isArray(state.visitLogLocationOptions) ? state.visitLogLocationOptions : [];
-    const query = norm(state.visitLogLocationQuery);
-    const filteredOptions = !query
-      ? allOptions.slice()
-      : allOptions.filter((item) => {
-        const title = String(item && item.titleNorm ? item.titleNorm : norm(item && item.title));
-        const sourceLabel = String(item && item.sourceLabelNorm ? item.sourceLabelNorm : norm(item && item.sourceLabel));
-        // Strict prefix matching keeps narrowing predictable for keyboard selection.
-        return title.startsWith(query) || sourceLabel.startsWith(query);
-      });
-
-    const preferredId = String(itemIdInput && itemIdInput.value ? itemIdInput.value : '').trim();
-    locationSelect.innerHTML = '<option value="">Select a location...</option>' + filteredOptions
-      .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(buildVisitLogLocationOptionLabel(item))}</option>`)
-      .join('');
-
-    let selectedId = '';
-    if (preferredId && filteredOptions.some((item) => item.id === preferredId)) {
-      selectedId = preferredId;
-    } else if (query && filteredOptions.length === 1) {
-      selectedId = filteredOptions[0].id;
-    }
-
-    locationSelect.disabled = filteredOptions.length === 0;
-    locationSelect.classList.toggle('is-no-matches', Boolean(query) && filteredOptions.length === 0);
-    if (locationSelect.disabled) {
-      locationSelect.value = '';
-      selectedId = '';
-    } else {
-      locationSelect.value = selectedId;
-    }
-
-    if (help) {
-      const baseText = String(help.dataset.baseText || help.textContent || '').trim();
-      if (baseText) {
-        const countText = `Showing ${filteredOptions.length} of ${allOptions.length} locations.`;
-        if (query && filteredOptions.length === 0) {
-          help.textContent = `${baseText} ${countText} No matching locations for "${state.visitLogLocationQuery}".`;
-        } else {
-          help.textContent = `${baseText} ${countText}`;
-        }
-      }
-    }
-
-    return selectedId;
-  }
-
-  function syncVisitLogLocationSelection(itemId, subtabKeyOverride) {
-    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
-    const itemIdInput = document.getElementById('visitedVisitLogItemId');
-    const nextItemId = String(itemId || '').trim();
-    if (locationSelect && String(locationSelect.value || '').trim() !== nextItemId) {
-      locationSelect.value = nextItemId;
-    }
-    if (itemIdInput) itemIdInput.value = nextItemId;
-    const subtabKey = String(
-      subtabKeyOverride
-      || document.getElementById('visitedVisitLogSubtabKey')?.value
-      || state.activeProgressSubTab
-      || 'outdoors'
-    ).trim();
-    renderVisitLogActivityGrid(subtabKey, nextItemId);
-    return nextItemId;
-  }
-
-  function getVisitLogActivityOptions(subtabKey) {
-    const config = window.AdventureAchievements && window.AdventureAchievements.CONFIGS
-      ? window.AdventureAchievements.CONFIGS[subtabKey]
-      : null;
-    const configured = Array.isArray(config && config.categories)
-      ? config.categories.map((cat) => ({ key: String(cat.key || '').trim(), label: String(cat.label || '').trim(), icon: String(cat.icon || '').trim() }))
-      : [];
-    const defaults = CATEGORY_DEFS.map((cat) => ({ key: cat.key, label: cat.label, icon: cat.icon }));
-
-    const merged = [];
-    const seen = new Set();
-    const pushUnique = (list) => {
-      (list || []).forEach((opt) => {
-        const key = String(opt && opt.key ? opt.key : '').trim();
-        const label = String(opt && opt.label ? opt.label : '').trim();
-        if (!key || !label || seen.has(key)) return;
-        seen.add(key);
-        merged.push({ key, label, icon: String(opt && opt.icon ? opt.icon : '').trim() });
-      });
-    };
-
-    // Outdoors-first activity set mirrors the common field activities users log most often.
-    if (subtabKey === 'outdoors') {
-      pushUnique([
-        { key: 'hiking', label: 'Hiking', icon: '🥾' },
-        { key: 'bike', label: 'Biking', icon: '🚴' },
-        { key: 'dog-walk', label: 'Dog Walk', icon: '🐕' },
-        { key: 'waterfall', label: 'Waterfall Visit', icon: '💧' },
-        { key: 'park', label: 'Park Visit', icon: '🌳' }
-      ]);
-    }
-
-    pushUnique(configured);
-    pushUnique(defaults);
-    return merged;
-  }
-
-  function inferVisitCategoryKeys(subtabKey, item) {
-    const haystack = [
-      item && item.title,
-      item && item.name,
-      item && item.description,
-      item && item.sourceLabel,
-      Array.isArray(item && item.tags) ? item.tags.join(' ') : (item && item.tags)
-    ].map((value) => norm(value)).join(' ');
-    const inferred = [];
-    getVisitLogActivityOptions(subtabKey).forEach((option) => {
-      const labelWords = norm(option.label).split(/\s+/).filter((word) => word.length > 2);
-      const keyWords = norm(option.key).split(/[-_\s]+/).filter((word) => word.length > 2);
-      const words = Array.from(new Set(labelWords.concat(keyWords)));
-      if (words.some((word) => haystack.includes(word))) inferred.push(option.key);
-    });
-    if (subtabKey === 'outdoors' && /(dog|dog walk|canine|pet walk)/.test(haystack)) {
-      inferred.push('dog-walk');
-    }
-    return Array.from(new Set(inferred));
-  }
-
-  function renderVisitLogActivityGrid(subtabKey, itemId) {
-    const grid = document.getElementById('visitedVisitLogActivityGrid');
-    if (!grid) return;
-    const options = getVisitLogActivityOptions(subtabKey);
-    if (!options.length) {
-      grid.innerHTML = '<div class="card-subtitle">No activity options are configured for this section.</div>';
-      return;
-    }
-    const selectedItem = itemId ? getExplorerItemById(subtabKey, itemId) : null;
-    const inferredKeys = selectedItem ? inferVisitCategoryKeys(subtabKey, selectedItem) : [];
-    grid.innerHTML = options.map((option, idx) => {
-      const checked = inferredKeys.includes(option.key) ? 'checked' : '';
-      const inputId = `visitedVisitActivity-${subtabKey}-${idx}`;
-      return `<label class="visited-visit-log-activity-option" for="${escapeHtml(inputId)}"><input id="${escapeHtml(inputId)}" type="checkbox" data-visited-visit-activity="${escapeHtml(option.key)}" ${checked} /> <span>${escapeHtml(option.icon ? `${option.icon} ${option.label}` : option.label)}</span></label>`;
-    }).join('');
-  }
-
-  function getSelectedVisitActivityKeys() {
-    return Array.from(document.querySelectorAll('#visitedVisitLogActivityGrid input[data-visited-visit-activity]:checked'))
-      .map((node) => String(node.getAttribute('data-visited-visit-activity') || '').trim())
-      .filter(Boolean);
-  }
-
-  function closeVisitLogModal() {
-    const modal = document.getElementById('visitedVisitLogModal');
-    const backdrop = document.getElementById('visitedVisitLogBackdrop');
-    if (modal) modal.hidden = true;
-    if (backdrop) backdrop.hidden = true;
-  }
-
-  async function openVisitLogModal(options) {
-    const modal = document.getElementById('visitedVisitLogModal');
-    const backdrop = document.getElementById('visitedVisitLogBackdrop');
-    const subtabKeyInput = document.getElementById('visitedVisitLogSubtabKey');
-    const itemIdInput = document.getElementById('visitedVisitLogItemId');
-    const modeInput = document.getElementById('visitedVisitLogMode');
-    const locationSelect = document.getElementById('visitedVisitLogLocationSelect');
-    const locationSearchInput = document.getElementById('visitedVisitLogLocationSearch');
-    const dateInput = document.getElementById('visitedVisitLogDate');
-    const notesInput = document.getElementById('visitedVisitLogNotes');
-    const activityGrid = document.getElementById('visitedVisitLogActivityGrid');
-    const photoInput = document.getElementById('visitedVisitLogPhotoInput');
-    const help = document.getElementById('visitedVisitLogHelp');
-    const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
-    if (!modal || !backdrop || !subtabKeyInput || !itemIdInput || !modeInput || !locationSelect || !dateInput || !notesInput || !activityGrid) return;
-
-    const subtabKey = String(options && options.subtabKey ? options.subtabKey : state.activeProgressSubTab || 'outdoors').trim();
-    if (typeof forceVisitedExplorerSync === 'function' && getExplorerConfig(subtabKey)) {
-      await forceVisitedExplorerSync(subtabKey);
-    }
-
-    const items = getVisitLogQualifyingOptions(subtabKey);
-    state.visitLogLocationOptions = items;
-    state.visitLogLocationQuery = '';
-    if (locationSearchInput) locationSearchInput.value = '';
-
-    const preselectedItemId = String(options && options.itemId ? options.itemId : '').trim();
-    if (preselectedItemId && items.some((item) => item.id === preselectedItemId)) {
-      itemIdInput.value = preselectedItemId;
-    } else {
-      itemIdInput.value = '';
-    }
-
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-    notesInput.value = '';
-    if (photoInput) {
-      photoInput.value = '';
-    }
-    setVisitLogPhotoStatus('Attach one or more photos to upload them to OneDrive when you save.');
-    subtabKeyInput.value = subtabKey;
-    const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
-    modeInput.value = mode;
-    if (submitBtn) submitBtn.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
-    if (help) {
-      const hint = String(options && options.hint ? options.hint : '').trim();
-      const base = `${items.length} qualifying locations loaded for ${subtabKey.replace('-', ' ')}.`;
-      help.dataset.baseText = hint ? `${base} ${hint}` : base;
-      help.textContent = help.dataset.baseText;
-    }
-
-    const selectedId = renderVisitLogLocationOptions();
-    syncVisitLogLocationSelection(selectedId || '', subtabKey);
-
-    modal.hidden = false;
-    backdrop.hidden = false;
-    if (locationSearchInput) {
-      locationSearchInput.focus();
-    } else {
-      locationSelect.focus();
-    }
-  }
-
-  async function submitVisitLogForm() {
-    const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || '').trim();
-    const itemId = String(document.getElementById('visitedVisitLogLocationSelect')?.value || '').trim();
-    const dateValue = String(document.getElementById('visitedVisitLogDate')?.value || '').trim();
-    const notes = String(document.getElementById('visitedVisitLogNotes')?.value || '').trim();
-    const mode = String(document.getElementById('visitedVisitLogMode')?.value || 'add').trim() === 'remove' ? 'remove' : 'add';
-    const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
-    if (!subtabKey || !itemId || !dateValue) return;
-
-    setButtonBusy(submitBtn, true, mode === 'remove' ? 'Removing...' : 'Saving...');
-
-    const item = getExplorerItemById(subtabKey, itemId);
-    if (!item) {
-      setButtonBusy(submitBtn, false);
-      return;
-    }
-    const selectedActivityKeys = getSelectedVisitActivityKeys();
-    const categoryKeys = selectedActivityKeys.length ? selectedActivityKeys : inferVisitCategoryKeys(subtabKey, item);
-    try {
-      if (mode === 'remove') {
-        const dayPrefix = `${dateValue}T`;
-        const records = Array.isArray(state.visitRecords) ? state.visitRecords.slice() : [];
-        const idx = records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId && String(record.visitedAt || '').startsWith(dayPrefix));
-        const fallbackIdx = idx >= 0 ? idx : records.findIndex((record) => record && record.subtabKey === subtabKey && record.locationId === itemId);
-        if (fallbackIdx >= 0) {
-          const removed = records.splice(fallbackIdx, 1)[0];
-          state.visitRecords = records;
-          saveVisitRecords();
-          if (typeof window.showToast === 'function') {
-            window.showToast(`Visit removed: ${removed.locationTitle || item.title}`, 'info', 2200);
-          }
-        } else if (typeof window.showToast === 'function') {
-          window.showToast('No matching visit record found to remove.', 'warning', 2600);
-        }
-      } else {
-        const photoFiles = getVisitLogPhotoFiles();
-        let uploadedPhotos = [];
-        if (photoFiles.length) {
-          setVisitLogPhotoStatus(`Uploading ${photoFiles.length} photo${photoFiles.length === 1 ? '' : 's'} to OneDrive...`, 'warn');
-          uploadedPhotos = [];
-          for (let i = 0; i < photoFiles.length; i += 1) {
-            const uploaded = await uploadVisitPhotoToOneDrive(photoFiles[i], { subtabKey });
-            if (uploaded) uploadedPhotos.push(uploaded);
-            setVisitLogPhotoStatus(`Uploaded ${i + 1}/${photoFiles.length} photo${photoFiles.length === 1 ? '' : 's'} to OneDrive.`, 'success');
-          }
-        } else {
-          setVisitLogPhotoStatus('No photos selected. Visit details will be saved without attachments.');
-        }
-
-        const record = {
-          id: `visit:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
-          subtabKey,
-          locationId: itemId,
-          locationTitle: String(item.title || 'Unknown').trim(),
-          sourceLabel: String(item.sourceLabel || '').trim(),
-          activityKeys: selectedActivityKeys,
-          categoryKeys,
-          visitedAt: new Date(`${dateValue}T12:00:00`).toISOString(),
-          notes,
-          photos: uploadedPhotos,
-          createdAt: new Date().toISOString()
-        };
-        state.visitRecords = [record].concat(state.visitRecords || []).slice(0, 1200);
-        saveVisitRecords();
-
-        if (typeof window.showToast === 'function') {
-          const withPhotos = uploadedPhotos.length ? ` (+${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? '' : 's'})` : '';
-          window.showToast(`Visit logged: ${record.locationTitle}${withPhotos}`, 'success', 2400);
-        }
-      }
-
-      closeVisitLogModal();
-      await refreshTab();
-    } catch (error) {
-      setVisitLogPhotoStatus(error && error.message ? error.message : 'Photo upload failed. Please try again.', 'error');
-      if (typeof window.showToast === 'function') {
-        window.showToast('Visit save failed while uploading photos to OneDrive.', 'warning', 2800);
-      }
-    } finally {
-      setButtonBusy(submitBtn, false);
-    }
-  }
-
-  async function retryPendingLocalWrites(triggerBtn) {
-    const visitMap = getVisitMap();
-    const pendingIds = Object.keys(visitMap).filter((locationId) => visitMap[locationId] && visitMap[locationId].synced === false);
-    if (!pendingIds.length) {
-      renderVisitedHeaderSyncIndicator(visitMap);
-      return;
-    }
-
-    const originalText = triggerBtn ? triggerBtn.textContent : '';
-    if (triggerBtn) {
-      triggerBtn.disabled = true;
-      triggerBtn.textContent = 'Retrying...';
-      triggerBtn.classList.remove('is-flashing');
-    }
-
-    let successCount = 0;
-    let failedCount = 0;
-    try {
-      for (const locationId of pendingIds) {
-        const location = findAdventureById(locationId);
-        if (!location) {
-          failedCount += 1;
-          continue;
-        }
-        try {
-          await persistVisitedToExcel(location, true);
-          visitMap[locationId] = {
-            ...visitMap[locationId],
-            name: location.name || visitMap[locationId].name || locationId,
-            sourceType: location.sourceType || visitMap[locationId].sourceType || 'unknown',
-            synced: true
-          };
-          successCount += 1;
-        } catch (_error) {
-          failedCount += 1;
-        }
-      }
-      saveVisitMap(visitMap);
-      state.latestVisitMap = visitMap;
-      renderSyncMeta(visitMap);
-      renderVisitedDiagnosticsPanel(visitMap);
-      renderVisitedHeaderSyncIndicator(visitMap);
-      if (typeof window.showToast === 'function') {
-        if (failedCount > 0) {
-          window.showToast(`Synced ${successCount}/${pendingIds.length}. ${failedCount} still pending.`, 'warning', 2800);
-        } else {
-          window.showToast(`Synced ${successCount} pending local change${successCount === 1 ? '' : 's'}.`, 'success', 2200);
-        }
-      }
-    } finally {
-      if (triggerBtn) {
-        triggerBtn.textContent = originalText || 'Retry Sync';
-      }
-      await refreshTab();
-    }
-  }
-
-  function buildExplorerDetailsHtml(item) {
-    if (!item) return '<div class="visited-explorer-details-row">No details available.</div>';
-    return [
-      `<div class="visited-explorer-details-row"><strong>Location Name:</strong> ${escapeHtml(item.title || 'Unknown')}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Google Rating:</strong> ${escapeHtml(item.rating || 'Unknown')}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Cost:</strong> ${escapeHtml(item.cost || 'Unknown')}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Tags:</strong> ${escapeHtml((item.tags || []).join(', ') || 'No tags')}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Description:</strong> ${escapeHtml(item.description || 'No description yet.')}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Hours:</strong> ${escapeHtml(item.hours || 'Unknown')}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Phone:</strong> ${escapeHtml(item.phone || 'Unknown')}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Website:</strong> ${item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" rel="noopener">${escapeHtml(item.website)}</a>` : 'Unknown'}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Google URL:</strong> ${item.googleUrl ? `<a href="${escapeHtml(item.googleUrl)}" target="_blank" rel="noopener">Open in Google Maps</a>` : 'Unknown'}</div>`,
-      `<div class="visited-explorer-details-row"><strong>Source:</strong> ${escapeHtml(item.sourceLabel || 'Unknown')}</div>`
-    ].join('');
-  }
-
-  function cacheExplorerDetailsPayload(subtabKey, item) {
-    if (!item) return null;
-    const detailKey = `adventure_details_visited_${subtabKey}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const payload = {
-      sourceIndex: -1,
-      correlationId: `visited_${subtabKey}_${Date.now()}`,
-      exportedAt: new Date().toISOString(),
-      explorerSource: {
-        workbook: item.sourceWorkbook || '',
-        workbookPath: item.sourceWorkbookPath || '',
-        table: item.sourceTable || '',
-        rowIndex: Number.isInteger(item.sourceRowIndex) ? item.sourceRowIndex : -1
-      },
-      data: {
-        name: item.title || '',
-        googlePlaceId: item.placeId || '',
-        website: item.website || '',
-        tags: Array.isArray(item.tags) ? item.tags.join(', ') : '',
-        driveTime: item.driveTime || '',
-        hoursOfOperation: item.hours || '',
-        activityDuration: '',
-        difficulty: '',
-        trailLength: '',
-        state: item.state || '',
-        city: item.city || '',
-        address: item.address || '',
-        phoneNumber: item.phone || '',
-        googleRating: item.rating || '',
-        cost: item.cost || '',
-        directions: item.directionsUrl || buildExplorerDirectionsUrl(item),
-        description: item.description || '',
-        nearby: '',
-        links: item.sourceLabel || '',
-        links2: '',
-        notes: item.notes || '',
-        myRating: item.myRating ? String(item.myRating) : '',
-        favoriteStatus: item.favorite ? 'Yes' : '',
-        googleUrl: item.googleUrl || ''
-      }
-    };
-
-    try {
-      window.localStorage.setItem(detailKey, JSON.stringify(payload));
-      window.localStorage.setItem('adventure_details_latest', detailKey);
-      return detailKey;
-    } catch (_error) {
-      return null;
-    }
-  }
-
-  function buildExplorerDetailsUrl(subtabKey, item, initialTab) {
-    const baseUrl = resolveInlinePageUrl('HTML Files/adventure-details-window.html');
-    const url = new URL(baseUrl, window.location.href);
-    const detailKey = cacheExplorerDetailsPayload(subtabKey, item);
-    if (detailKey) url.searchParams.set('detailKey', detailKey);
-    url.searchParams.set('embedded', '1');
-    url.searchParams.set('sourceIndex', '-1');
-    if (initialTab) url.searchParams.set('initialTab', String(initialTab));
-    url.searchParams.set('ts', String(Date.now()));
-    return url.toString();
-  }
-
-  function ensureExplorerDetailsView(root, subtabKey) {
-    const pane = root ? root.querySelector(`#visitedProgressPane-${subtabKey}`) : null;
-    if (!pane) return null;
-    let view = pane.querySelector('[data-visited-subtab-view="explorer-details"]');
-    if (!view) {
-      view = document.createElement('div');
-      view.className = 'visited-overview-view';
-      view.setAttribute('data-visited-subtab-view', 'explorer-details');
-      view.hidden = true;
-      view.setAttribute('aria-hidden', 'true');
-      view.innerHTML = `
-        <div class="card" style="margin-top: 10px;">
-          <div class="visited-view-header-row">
-            <button type="button" class="pill-button app-back-btn" data-visited-subtab-action="close-explorer-details-${escapeHtml(subtabKey)}" title="Back to Explore" data-tooltip="Back to Explore">← Back to Explore</button>
-            <div class="visited-view-header-copy">
-              <div class="card-title" id="visitedExplorerDetailsPageTitle-${escapeHtml(subtabKey)}">Location Details</div>
-              <div class="card-subtitle">Planner-style details and actions for this location.</div>
-            </div>
-          </div>
-          <iframe id="visitedExplorerDetailsFrame-${escapeHtml(subtabKey)}" class="visited-inline-tool-frame" title="Location details" loading="lazy"></iframe>
-        </div>
-      `;
-      pane.appendChild(view);
-    }
-    return view;
-  }
-
-  function openExplorerDetailsPage(root, subtabKey, itemId) {
-    const item = getExplorerItemById(subtabKey, itemId);
-    const view = ensureExplorerDetailsView(root, subtabKey);
-    if (!view || !item) return;
-    const title = document.getElementById(`visitedExplorerDetailsPageTitle-${subtabKey}`) || view.querySelector('.card-title');
-    const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`) || view.querySelector('iframe');
-    if (title) title.textContent = item && item.title ? item.title : 'Location Details';
-    if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item));
-    setExplorerView(root, subtabKey, 'explorer-details');
-  }
-
-  function closeExplorerDetailsModal() {
-    const modal = document.getElementById('visitedExplorerDetailsModal');
-    const backdrop = document.getElementById('visitedExplorerDetailsBackdrop');
-    if (modal) modal.hidden = true;
-    if (backdrop) backdrop.hidden = true;
-  }
-
-  function renderExplorerList(root, subtabKey) {
-    const config = getExplorerConfig(subtabKey);
-    if (!config) return;
-    const explorerState = getExplorerState(subtabKey);
-    const listEl = document.getElementById(`visitedExplorerList-${subtabKey}`);
-    const metaEl = document.getElementById(`visitedExplorerMeta-${subtabKey}`);
-    if (!listEl || !metaEl) return;
-
-    const searchEl = document.getElementById(`visitedExplorerSearch-${subtabKey}`);
-    const sortEl = document.getElementById(`visitedExplorerSort-${subtabKey}`);
-    if (searchEl && searchEl.value !== explorerState.query) searchEl.value = explorerState.query;
-    if (sortEl && sortEl.value !== explorerState.sort) sortEl.value = explorerState.sort;
-
-    if (explorerState.loading) {
-      metaEl.textContent = 'Loading location directory...';
-      listEl.innerHTML = '<div class="visited-empty ui-empty-state">Loading explorer cards...</div>';
-      return;
-    }
-    if (explorerState.error) {
-      metaEl.textContent = 'Explorer data unavailable.';
-      listEl.innerHTML = `<div class="visited-empty">${escapeHtml(explorerState.error)}</div>`;
-      return;
-    }
-
-    syncExplorerFilterOptions(subtabKey, explorerState);
-    const filtered = filterAndSortExplorerItems(explorerState.items || [], explorerState);
-    const visitMap = state.latestVisitMap || getVisitMap();
-    metaEl.textContent = `${filtered.length} of ${(explorerState.items || []).length} ${config.emptyLabel} shown.`;
-
-    if (!filtered.length) {
-      listEl.innerHTML = '<div class="visited-empty ui-empty-state">No locations matched your filters.</div>';
-      return;
-    }
-
-    listEl.innerHTML = filtered.map((item) => {
-      const isVisited = Boolean(visitMap[item.id]);
-      const chips = (item.tags || []).slice(0, 6).map((tag) => `<span class="visited-explorer-tag">${escapeHtml(tag)}</span>`).join('');
-      const notesPreview = String(item.notes || '').trim();
-      const starButtons = [1, 2, 3, 4, 5].map((value) => `
-        <button
-          type="button"
-          class="visited-explorer-star${value <= Number(item.myRating || 0) ? ' is-active' : ''}"
-          data-visited-explorer-rate="${escapeHtml(item.id)}"
-          data-visited-explorer-rating-value="${value}"
-          data-visited-explorer-subtab="${escapeHtml(subtabKey)}"
-          aria-label="Set rating to ${value} stars"
-          title="Set rating to ${value} stars"
-        >★</button>
-      `).join('');
-      return `
-        <div class="visited-explorer-card">
-          <div class="visited-explorer-card-head">
-            <div class="visited-explorer-card-title">
-              <span class="visited-explorer-visit-indicator${isVisited ? ' is-visited' : ' is-unvisited'}" data-visited-explorer-visit-state="${isVisited ? 'visited' : 'unvisited'}" aria-label="${isVisited ? 'Visited location' : 'Not visited yet'}" title="${isVisited ? 'Visited location' : 'Not visited yet'}">${isVisited ? '✅' : '⭕'}</span>
-              ${escapeHtml(item.title || 'Unknown')}
-            </div>
-            <div class="visited-explorer-card-head-actions">
-              <button type="button" class="visited-explorer-detail-btn visited-explorer-detail-btn--primary" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
-              <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-quick-actions-toggle="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" aria-expanded="false">Quick Actions ▾</button>
-            </div>
-          </div>
-          <div class="visited-explorer-quick-actions-menu" data-visited-explorer-quick-actions-menu="${escapeHtml(item.id)}" hidden>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-open-directions="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Directions</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-open-google="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Google URL</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Log Visit</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Tag Manager</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
-          </div>
-          <div class="visited-explorer-card-controls">
-            <button type="button" class="visited-explorer-favorite-btn${item.favorite ? ' is-active' : ''}" data-visited-explorer-favorite="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${item.favorite ? '★ Favorited' : '☆ Add to Favorites'}</button>
-            <div class="visited-explorer-stars" role="group" aria-label="My star rating">${starButtons}</div>
-          </div>
-          <div class="visited-explorer-field"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>
-          <div class="visited-explorer-field"><strong>Tags:</strong></div>
-          ${chips ? `<div class="visited-explorer-tag-row">${chips}</div>` : '<div class="visited-explorer-field">No tags</div>'}
-          ${notesPreview ? `<div class="visited-explorer-note-preview"><strong>Notes:</strong> ${escapeHtml(notesPreview)}</div>` : ''}
-          <div class="visited-explorer-field"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>
-          <div class="visited-explorer-field"><strong>Description:</strong> ${escapeHtml(item.description || 'No description yet.')}</div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function installExplorerDetailsKeyboardClose() {
-    if (window.__visitedExplorerDetailsEscBound) return;
-    window.__visitedExplorerDetailsEscBound = true;
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        const modal = document.getElementById('visitedExplorerDetailsModal');
-        if (modal && !modal.hidden) {
-          closeExplorerDetailsModal();
-        }
-      }
-    });
-  }
-
-  function bindExplorerFilterInputs(root, subtabKey) {
-    const explorerState = getExplorerState(subtabKey);
-    const searchEl = root.querySelector(`#visitedExplorerSearch-${subtabKey}`);
-    const sortEl = root.querySelector(`#visitedExplorerSort-${subtabKey}`);
-    const stateEl = root.querySelector(`#visitedExplorerState-${subtabKey}`);
-    const cityEl = root.querySelector(`#visitedExplorerCity-${subtabKey}`);
-
-    if (searchEl && !searchEl.dataset.bound) {
-      searchEl.dataset.bound = '1';
-      searchEl.addEventListener('input', () => {
-        explorerState.query = searchEl.value || '';
-        renderExplorerList(root, subtabKey);
-      });
-    }
-    if (sortEl && !sortEl.dataset.bound) {
-      sortEl.dataset.bound = '1';
-      sortEl.addEventListener('change', () => {
-        explorerState.sort = sortEl.value || 'name-asc';
-        renderExplorerList(root, subtabKey);
-      });
-    }
-    if (stateEl && !stateEl.dataset.bound) {
-      stateEl.dataset.bound = '1';
-      stateEl.addEventListener('change', () => {
-        explorerState.stateFilter = stateEl.value || 'all';
-        renderExplorerList(root, subtabKey);
-      });
-    }
-    if (cityEl && !cityEl.dataset.bound) {
-      cityEl.dataset.bound = '1';
-      cityEl.addEventListener('change', () => {
-        explorerState.cityFilter = cityEl.value || 'all';
-        renderExplorerList(root, subtabKey);
-      });
-    }
-  }
-
-  function bindAllExplorerFilterInputs(root) {
-    Object.keys(ADVENTURE_SUBTAB_EXPLORER_CONFIG).forEach((subtabKey) => bindExplorerFilterInputs(root, subtabKey));
-  }
-
-  async function openSubtabExplorer(root, subtabKey) {
-    if (!getExplorerConfig(subtabKey)) return;
-    if (state.activeOverviewView !== 'main') {
-      state.activeOverviewView = 'main';
-      syncVisitedOverviewView(root);
-    }
-    if (state.activeProgressSubTab !== subtabKey) {
-      setActiveProgressSubTab(root, subtabKey);
-    }
-    setExplorerView(root, subtabKey, 'explorer');
-    await ensureExplorerDataLoaded(root, subtabKey, false);
-  }
-
-  function closeSubtabExplorer(root, subtabKey) {
-    if (!getExplorerConfig(subtabKey)) return;
-    setExplorerView(root, subtabKey, 'overview');
-  }
-
-  async function resolveTableVisitedColumnIndex(filePath, tableName, cacheKey) {
-    if (Number.isInteger(state.visitedColumnIndexCache[cacheKey])) {
-      return state.visitedColumnIndexCache[cacheKey];
-    }
-
-    if (!window.accessToken || !filePath || !tableName) {
-      return -1;
-    }
-
-    try {
-      const encodedPath = encodeGraphPath(filePath);
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/columns?$select=name,index`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${window.accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) return -1;
-
-      const payload = await response.json().catch(() => ({}));
-      const columns = Array.isArray(payload.value) ? payload.value : [];
-      const match = columns.find((col, idx) => norm(col?.name) === 'visited');
-
-      if (!match) {
-        state.visitedColumnIndexCache[cacheKey] = -1;
-        return -1;
-      }
-
-      const index = Number.isInteger(match.index)
-        ? match.index
-        : columns.findIndex(col => norm(col?.name) === 'visited');
-
-      state.visitedColumnIndexCache[cacheKey] = Number.isInteger(index) ? index : -1;
-      return state.visitedColumnIndexCache[cacheKey];
-    } catch (error) {
-      return -1;
-    }
-  }
-
-  async function resolveExplorerColumnIndex(filePath, tableName, cacheKey, candidateKeys) {
-    const cacheId = `${cacheKey}:${String(filePath || '').toLowerCase()}:${String(tableName || '').toLowerCase()}`;
-    if (Number.isInteger(state.explorerColumnIndexCache[cacheId])) {
-      return state.explorerColumnIndexCache[cacheId];
-    }
-    if (!window.accessToken || !filePath || !tableName) return -1;
-
-    try {
-      const encodedPath = encodeGraphPath(filePath);
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/columns?$select=name,index`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${window.accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) return -1;
-
-      const payload = await response.json().catch(() => ({}));
-      const columns = Array.isArray(payload.value) ? payload.value : [];
-      let index = -1;
-      for (const key of (candidateKeys || [])) {
-        const keyNorm = norm(key);
-        const match = columns.find((col) => norm(col?.name) === keyNorm || norm(col?.name).includes(keyNorm));
-        if (match && Number.isInteger(match.index)) {
-          index = match.index;
-          break;
-        }
-      }
-
-      state.explorerColumnIndexCache[cacheId] = Number.isInteger(index) ? index : -1;
-      return state.explorerColumnIndexCache[cacheId];
-    } catch (_error) {
-      return -1;
-    }
-  }
-
-  async function fetchExplorerRowValues(filePath, tableName, rowIndex) {
-    const encodedPath = encodeGraphPath(filePath);
-    const rowPath = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/itemAt(index=${rowIndex})`;
-    const readResponse = await fetch(`${rowPath}?$select=values`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${window.accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!readResponse.ok) throw new Error(`Unable to read source row (HTTP ${readResponse.status})`);
-    const payload = await readResponse.json().catch(() => ({}));
-    const rowValues = Array.isArray(payload.values) && Array.isArray(payload.values[0]) ? payload.values[0].slice() : [];
-    return { rowPath, rowValues };
-  }
-
-  async function syncVisitedExplorerDetailFields(sourceMeta, updates) {
-    const source = sourceMeta && typeof sourceMeta === 'object' ? sourceMeta : {};
-    const filePath = String(source.workbookPath || source.workbook || '').trim();
-    const tableName = String(source.table || '').trim();
-    const rowIndex = Number(source.rowIndex);
-    if (!window.accessToken) throw new Error('Sign in required to sync explorer details.');
-    if (!filePath || !tableName || !Number.isInteger(rowIndex) || rowIndex < 0) {
-      throw new Error('Explorer source metadata is incomplete.');
-    }
-
-    const updateMap = updates && typeof updates === 'object' ? updates : {};
-    const hasTagUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'tagsCsv');
-    const hasNotesUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'notes');
-    if (!hasTagUpdate && !hasNotesUpdate) return { synced: false, reason: 'no-fields' };
-
-    const tagColIdx = hasTagUpdate
-      ? await resolveExplorerColumnIndex(filePath, tableName, 'tags', ['tags', 'tag', 'keywords', 'category', 'categories'])
-      : -1;
-    const notesColIdx = hasNotesUpdate
-      ? await resolveExplorerColumnIndex(filePath, tableName, 'notes', ['notes', 'note', 'personal notes', 'my notes'])
-      : -1;
-
-    if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0)) {
-      throw new Error('Target column could not be resolved in source table.');
-    }
-
-    const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
-    if (hasTagUpdate) {
-      while (rowValues.length <= tagColIdx) rowValues.push('');
-      rowValues[tagColIdx] = String(updateMap.tagsCsv || '').trim();
-    }
-    if (hasNotesUpdate) {
-      while (rowValues.length <= notesColIdx) rowValues.push('');
-      rowValues[notesColIdx] = String(updateMap.notes || '').trim();
-    }
-
-    const patchResponse = await fetch(rowPath, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${window.accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ values: [rowValues] })
-    });
-    if (!patchResponse.ok) throw new Error(`Unable to sync row changes (HTTP ${patchResponse.status})`);
-
-    return { synced: true, excelSaved: true };
-  }
-
-  async function resolveAdventureVisitedColumnIndex() {
-    if (Number.isInteger(state.visitedColumnIndexCache.adventure)) {
-      return state.visitedColumnIndexCache.adventure;
-    }
-
-    const filePath = window.filePath || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
-    const tableName = window.tableName || 'MyList';
-    return await resolveTableVisitedColumnIndex(filePath, tableName, 'adventure');
-  }
-
-  async function resolveBikeVisitedColumnIndex() {
-    const direct = typeof window.getBikeColumnIndexByName === 'function'
-      ? Number(window.getBikeColumnIndexByName('Visited'))
-      : -1;
-
-    if (Number.isInteger(direct) && direct >= 0) {
-      state.visitedColumnIndexCache.bike = direct;
-      return direct;
-    }
-
-    if (Number.isInteger(state.visitedColumnIndexCache.bike)) {
-      return state.visitedColumnIndexCache.bike;
-    }
-
-    const filePath = window.bikeTableConfig?.filePath || 'Copilot_Apps/Kyles_Adventure_Finder/Bike_Trail_Planner.xlsx';
-    const tableName = window.bikeTableConfig?.tableRef || window.bikeTableConfig?.tableName || 'BikeTrails';
-    return await resolveTableVisitedColumnIndex(filePath, tableName, 'bike');
-  }
-
-  function getSyncHealthStatus() {
-    const adventureCol = getKnownAdventureVisitedColumnIndex();
-    const bikeCol = getKnownBikeVisitedColumnIndex();
-
-    const adventureSynced = adventureCol >= 0;
-    const bikeSynced = bikeCol >= 0;
-
-    return {
-      adventureSynced,
-      bikeSynced,
-      adventureText: adventureSynced ? 'synced' : 'missing',
-      bikeText: bikeSynced ? 'synced' : 'missing',
-      allSynced: adventureSynced && bikeSynced
-    };
-  }
-
-  function renderSyncHealthBadge() {
-    const badge = document.getElementById('visitedSyncHealthBadge');
-    if (!badge) return;
-
-    const status = getSyncHealthStatus();
-    badge.classList.remove('ok', 'warn');
-    badge.classList.add(status.allSynced ? 'ok' : 'warn');
-    badge.textContent = `Sync - Adventure Visited: ${status.adventureText} | Bike Visited: ${status.bikeText}`;
-  }
-
-  function getKnownAdventureVisitedColumnIndex() {
-    return Number.isInteger(state.visitedColumnIndexCache.adventure) ? state.visitedColumnIndexCache.adventure : -1;
-  }
-
-  function getKnownBikeVisitedColumnIndex() {
-    return Number.isInteger(state.visitedColumnIndexCache.bike) ? state.visitedColumnIndexCache.bike : -1;
-  }
-
-  function parseAdventure(adventure, index) {
-    const values = adventure?.values?.[0] || adventure?.row?.values?.[0] || null;
-    if (!Array.isArray(values)) return null;
-
-    const rawTags = String(values[3] || '').split(',').map(tag => norm(tag)).filter(Boolean);
-    const name = String(values[0] || 'Unknown').trim();
-    const placeId = String(values[1] || '').trim();
-
-    const visitedIdx = getKnownAdventureVisitedColumnIndex();
-    const visitedCell = visitedIdx >= 0 ? values[visitedIdx] : undefined;
-
-    return {
-      index,
-      id: `adv:${placeId || name || adventure?.rowId || index}`,
-      placeId,
-      name,
-      tags: rawTags,
-      driveTime: String(values[4] || '').trim(),
-      hours: String(values[5] || '').trim(),
-      difficulty: String(values[7] || '').trim(),
-      state: String(values[9] || '').trim(),
-      city: String(values[10] || '').trim(),
-      cost: String(values[14] || '').trim(),
-      description: String(values[16] || '').trim(),
-      sourceType: 'adventure',
-      sourceIndex: index,
-      rowId: adventure?.rowId || null,
-      rowValues: values,
-      excelVisitedKnown: visitedIdx >= 0,
-      excelVisited: parseVisitedFlag(visitedCell)
-    };
-  }
-
-  function readAdventures() {
-    const rows = Array.isArray(window.adventuresData) ? window.adventuresData : [];
-    return rows.map(parseAdventure).filter(Boolean);
-  }
-
-  function parseBikeTrailToLocation(trail, fallbackIndex) {
-    const sourceIndex = Number.isInteger(trail?.sourceIndex) ? trail.sourceIndex : fallbackIndex;
-    const tags = [
-      trail?.surface,
-      trail?.difficulty,
-      trail?.rideTypeClassification,
-      trail?.vibes,
-      ...(String(trail?.moodTags || '').split(',').map(item => item.trim()))
-    ]
-      .map(item => norm(item))
-      .filter(Boolean);
-
-    const bikeVisitedIdx = getKnownBikeVisitedColumnIndex();
-    const bikeValues = trail?.row?.values?.[0];
-    const bikeVisitedCell = (bikeVisitedIdx >= 0 && Array.isArray(bikeValues)) ? bikeValues[bikeVisitedIdx] : undefined;
-
-    return {
-      index: sourceIndex,
-      id: `bike:${trail?.id || trail?.googlePlaceId || trail?.name || sourceIndex}`,
-      placeId: String(trail?.googlePlaceId || '').trim(),
-      name: String(trail?.name || 'Unknown Bike Trail').trim(),
-      tags,
-      driveTime: String(trail?.driveTime || '').trim(),
-      hours: String(trail?.hours || '').trim(),
-      difficulty: String(trail?.difficulty || '').trim(),
-      state: String(trail?.state || '').trim(),
-      city: String(trail?.city || '').trim(),
-      cost: String(trail?.cost || '').trim(),
-      description: String(trail?.notes || trail?.highlights || trail?.vibes || '').trim(),
-      sourceType: 'bike',
-      sourceIndex,
-      rowId: null,
-      rowValues: Array.isArray(bikeValues) ? bikeValues : null,
-      excelVisitedKnown: bikeVisitedIdx >= 0,
-      excelVisited: parseVisitedFlag(bikeVisitedCell)
-    };
-  }
-
-  function readBikeTrails() {
-    const models = typeof window.getAllBikeTrailModels === 'function'
-      ? window.getAllBikeTrailModels()
-      : (Array.isArray(window.bikeTrailsData) ? window.bikeTrailsData : []);
-
-    if (!Array.isArray(models)) return [];
-
-    return models.map((trail, idx) => {
-      if (trail && trail.sourceIndex !== undefined && trail.row) {
-        return parseBikeTrailToLocation(trail, idx);
-      }
-
-      // Fallback shape from raw rows.
-      const sourceIndex = idx;
-      const values = trail?.values?.[0] || [];
-      const pseudo = {
-        sourceIndex,
-        id: `fallback-${sourceIndex}`,
-        googlePlaceId: values[108] || '',
-        name: values[0] || '',
-        driveTime: values[2] || '',
-        hours: values[109] || '',
-        difficulty: values[6] || '',
-        state: values[110] || '',
-        city: values[111] || '',
-        cost: values[112] || '',
-        notes: values[103] || '',
-        moodTags: values[13] || '',
-        surface: values[4] || '',
-        vibes: values[12] || '',
-        row: trail
-      };
-      return parseBikeTrailToLocation(pseudo, idx);
-    }).filter(Boolean);
-  }
-
-  function readAllLocations() {
-    return readAdventures().concat(readBikeTrails());
-  }
-
-  function hydrateVisitMapFromExcel(locations, visitMap) {
-    const nextMap = { ...(visitMap || {}) };
-
-    locations.forEach((location) => {
-      if (!location.excelVisitedKnown) return;
-
-      if (location.excelVisited) {
-        const existing = nextMap[location.id] || {};
-        nextMap[location.id] = {
-          ...existing,
-          name: location.name,
-          visitedAt: existing.visitedAt || new Date().toISOString(),
-          sourceType: location.sourceType,
-          synced: true
-        };
-      } else {
-        delete nextMap[location.id];
-      }
-    });
-
-    return nextMap;
-  }
-
-  function categoriesForAdventure(adventure) {
-    const tagsText = adventure.tags.join(' ');
-    const nameText = norm(adventure.name);
-    const descText = norm(adventure.description);
-    const haystack = `${tagsText} ${nameText} ${descText}`;
-
-    return CATEGORY_DEFS
-      .filter(def => def.keywords.some(keyword => haystack.includes(norm(keyword))))
-      .map(def => def.key);
-  }
-
-  function getCategoryMeta(key) {
-    return CATEGORY_DEFS.find(category => category.key === key);
-  }
-
-  function getCurrentSeason() {
-    const month = new Date().getMonth() + 1;
-    if (month === 12 || month <= 2) return 'winter';
-    if (month >= 3 && month <= 5) return 'spring';
-    if (month >= 6 && month <= 8) return 'summer';
-    return 'fall';
-  }
-
-  function getSeasonalCategoryBoosts() {
-    const season = getCurrentSeason();
-    if (season === 'winter') return ['coffee', 'scenic', 'park'];
-    if (season === 'spring') return ['hiking', 'waterfall', 'park'];
-    if (season === 'summer') return ['waterfall', 'bike', 'scenic'];
-    return ['hiking', 'scenic', 'coffee'];
-  }
-
-  function parseDriveMinutes(driveTime) {
-    const text = norm(driveTime);
-    if (!text) return 999;
-
-    const hourMatch = text.match(/(\d+(?:\.\d+)?)\s*h/);
-    const minMatch = text.match(/(\d+(?:\.\d+)?)\s*m/);
-
-    if (hourMatch || minMatch) {
-      return Math.round((hourMatch ? Number(hourMatch[1]) * 60 : 0) + (minMatch ? Number(minMatch[1]) : 0));
-    }
-
-    const numeric = Number(String(text).replace(/[^0-9.]/g, ''));
-    return Number.isFinite(numeric) && numeric > 0 ? Math.round(numeric) : 999;
-  }
-
-  function isOpenNow(hoursText) {
-    if (!hoursText) return null;
-    if (window.cityViewerEnhancements && typeof window.cityViewerEnhancements.isOpenToday === 'function') {
-      return window.cityViewerEnhancements.isOpenToday(hoursText);
-    }
-    return null;
-  }
-
-  function getVisitedLocations(adventures, visitMap) {
-    return adventures.filter(adventure => Boolean(visitMap[adventure.id]));
-  }
-
-  function getDayStreak(visitMap) {
-    const dayList = Object.values(visitMap)
-      .map(entry => new Date(entry.visitedAt))
-      .filter(date => !Number.isNaN(date.getTime()))
-      .map(date => date.toISOString().slice(0, 10));
-
-    const uniqueDays = Array.from(new Set(dayList)).sort();
-    if (uniqueDays.length === 0) return 0;
-
-    let streak = 1;
-    for (let i = uniqueDays.length - 1; i > 0; i -= 1) {
-      const current = new Date(uniqueDays[i]);
-      const previous = new Date(uniqueDays[i - 1]);
-      const diffDays = Math.round((current - previous) / 86400000);
-      if (diffDays === 1) {
-        streak += 1;
-      } else {
-        break;
-      }
-    }
-    return streak;
-  }
-
-  function getVisitDate(entry) {
-    const date = new Date(entry && entry.visitedAt);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-
-  function getWeekKey(date) {
-    const utc = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    utc.setUTCDate(utc.getUTCDate() + 4 - (utc.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
-    return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-  }
-
-  function getMonthKey(date) {
-    return `${date.getFullYear()}-M${String(date.getMonth() + 1).padStart(2, '0')}`;
-  }
-
-  function getQuarterKey(date) {
-    const quarter = Math.floor(date.getMonth() / 3) + 1;
-    return `${date.getFullYear()}-Q${quarter}`;
-  }
-
-  function getYearKey(date) {
-    return `${date.getFullYear()}-Y`;
-  }
-
-  function computeVisitInsights(stats, visitMap) {
-    const stateSet = new Set();
-    const citySet = new Set();
-    const weekendVisits = [];
-    const weekEntries = [];
-    const monthEntries = [];
-    const quarterEntries = [];
-    const yearEntries = [];
-    const lifetimeEntries = [];
-
-    const now = new Date();
-    const nowWeek = getWeekKey(now);
-    const nowMonth = getMonthKey(now);
-    const nowQuarter = getQuarterKey(now);
-    const nowYear = getYearKey(now);
-
-    stats.visited.forEach((adventure) => {
-      const stateText = norm(adventure.state);
-      const cityText = norm(adventure.city);
-      if (stateText) stateSet.add(stateText);
-      if (cityText) citySet.add(`${cityText}|${stateText}`);
-    });
-
-    Object.entries(visitMap).forEach(([locationId, entry]) => {
-      const date = getVisitDate(entry);
-      if (!date) return;
-
-      const adventure = stats.adventures.find(item => item.id === locationId);
-      const categories = adventure ? categoriesForAdventure(adventure) : [];
-
-      const payload = {
-        locationId,
-        date,
-        adventure,
-        categories,
-        weekKey: getWeekKey(date),
-        monthKey: getMonthKey(date),
-        quarterKey: getQuarterKey(date),
-        yearKey: getYearKey(date)
-      };
-
-      if (date.getDay() === 0 || date.getDay() === 6) weekendVisits.push(payload);
-      if (payload.weekKey === nowWeek) weekEntries.push(payload);
-      if (payload.monthKey === nowMonth) monthEntries.push(payload);
-      if (payload.quarterKey === nowQuarter) quarterEntries.push(payload);
-      if (payload.yearKey === nowYear) yearEntries.push(payload);
-      lifetimeEntries.push(payload);
-    });
-
-    return {
-      uniqueStates: stateSet.size,
-      uniqueCities: citySet.size,
-      weekendVisitCount: weekendVisits.length,
-      weekEntries,
-      monthEntries,
-      quarterEntries,
-      yearEntries,
-      lifetimeEntries,
-      weekKey: nowWeek,
-      monthKey: nowMonth,
-      quarterKey: nowQuarter,
-      yearKey: nowYear
-    };
-  }
-
-  function buildStats(adventures, visitMap) {
-    const visited = getVisitedLocations(adventures, visitMap);
-    const visitedIds = new Set(visited.map(item => item.id));
-
-    const totalByCategory = {};
-    const visitedByCategory = {};
-
-    CATEGORY_DEFS.forEach(category => {
-      totalByCategory[category.key] = 0;
-      visitedByCategory[category.key] = 0;
-    });
-
-    adventures.forEach(adventure => {
-      const cats = categoriesForAdventure(adventure);
-      cats.forEach(categoryKey => {
-        if (totalByCategory[categoryKey] !== undefined) {
-          totalByCategory[categoryKey] += 1;
-        }
-      });
-    });
-
-    visited.forEach(adventure => {
-      const cats = categoriesForAdventure(adventure);
-      cats.forEach(categoryKey => {
-        if (visitedByCategory[categoryKey] !== undefined) {
-          visitedByCategory[categoryKey] += 1;
-        }
-      });
-    });
-
-    const completedCategories = CATEGORY_DEFS.filter(category => (visitedByCategory[category.key] || 0) > 0).length;
-    const streakDays = getDayStreak(visitMap);
-    const xpFromVisits = visited.length * 30;
-
-    return {
-      adventures,
-      visited,
-      visitedIds,
-      totalByCategory,
-      visitedByCategory,
-      completionPct: adventures.length ? Math.round((visited.length / adventures.length) * 100) : 0,
-      completedCategories,
-      streakDays,
-      xpFromVisits
-    };
-  }
-
-  function buildChallengeProgress(stats) {
-    return CHALLENGES.map(challenge => {
-      let progress = 0;
-      if (challenge.category) {
-        progress = stats.visitedByCategory[challenge.category] || 0;
-      } else if (challenge.id === 'well-rounded') {
-        progress = stats.completedCategories;
-      } else if (challenge.id === 'triple-streak') {
-        progress = stats.streakDays;
-      }
-
-      const completed = progress >= challenge.goal;
-      return {
-        ...challenge,
-        progress,
-        completed,
-        pct: Math.min(100, Math.round((progress / challenge.goal) * 100))
-      };
-    });
-  }
-
-  function seededPick(pool, seedText, count) {
-    let seed = 0;
-    for (let i = 0; i < seedText.length; i += 1) {
-      seed = (seed * 31 + seedText.charCodeAt(i)) >>> 0;
-    }
-
-    const scored = pool.map((item, idx) => {
-      const value = (seed ^ ((idx + 1) * 2654435761)) >>> 0;
-      return { item, value };
-    });
-
-    return scored
-      .sort((a, b) => a.value - b.value)
-      .slice(0, count)
-      .map(entry => entry.item);
-  }
-
-  function calcQuestProgress(quest, entries) {
-    if (quest.metric === 'visitsInPeriod') return entries.length;
-
-    if (quest.metric === 'categoriesInPeriod') {
-      const set = new Set();
-      entries.forEach(entry => entry.categories.forEach(category => set.add(category)));
-      return set.size;
-    }
-
-    if (quest.metric === 'citiesInPeriod') {
-      const set = new Set();
-      entries.forEach(entry => {
-        const city = norm(entry.adventure && entry.adventure.city);
-        const state = norm(entry.adventure && entry.adventure.state);
-        if (city || state) set.add(`${city}|${state}`);
-      });
-      return set.size;
-    }
-
-    if (quest.metric === 'statesInPeriod') {
-      const set = new Set();
-      entries.forEach(entry => {
-        const stateText = norm(entry.adventure && entry.adventure.state);
-        if (stateText) set.add(stateText);
-      });
-      return set.size;
-    }
-
-    if (quest.metric === 'categoryInPeriod') {
-      return entries.filter(entry => entry.categories.includes(quest.category)).length;
-    }
-
-    return 0;
-  }
-
-  function buildQuestSet(type, periodKey, pool, entries) {
-    const selected = seededPick(pool, `${type}:${periodKey}`, 3);
-    const justCompleted = [];
-
-    const quests = selected.map((quest) => {
-      const progress = calcQuestProgress(quest, entries);
-      const completed = progress >= quest.goal;
-      const completionKey = `${type}:${periodKey}:${quest.id}`;
-
-      if (completed && !state.metaState.quests.completions[completionKey]) {
-        state.metaState.quests.completions[completionKey] = new Date().toISOString();
-        justCompleted.push(quest);
-      }
-
-      return {
-        ...quest,
-        progress,
-        completed,
-        completionKey,
-        pct: Math.min(100, Math.round((progress / quest.goal) * 100))
-      };
-    });
-
-    return { type, periodKey, quests, justCompleted };
-  }
-
-  function buildRotatingQuests(insights) {
-    const weekly = buildQuestSet('weekly', insights.weekKey, WEEKLY_QUEST_POOL, insights.weekEntries);
-    const monthly = buildQuestSet('monthly', insights.monthKey, MONTHLY_QUEST_POOL, insights.monthEntries);
-    const quarterly = buildQuestSet('quarterly', insights.quarterKey, QUARTERLY_QUEST_POOL, insights.quarterEntries);
-    const yearly = buildQuestSet('yearly', insights.yearKey, YEARLY_QUEST_POOL, insights.yearEntries);
-    const lifetime = buildQuestSet('lifetime', 'all-time', LIFETIME_QUEST_POOL, insights.lifetimeEntries);
-
-    const allNew = weekly.justCompleted
-      .concat(monthly.justCompleted)
-      .concat(quarterly.justCompleted)
-      .concat(yearly.justCompleted)
-      .concat(lifetime.justCompleted);
-    if (allNew.length > 0) {
-      saveMetaState();
-      if (typeof window.showToast === 'function') {
-        const labels = allNew.map(item => `${item.icon} ${item.title}`).join(', ');
-        window.showToast(`Quest complete: ${labels}`, 'success', 4200);
-      }
-    }
-
-    return { weekly, monthly, quarterly, yearly, lifetime };
   }
 
   function getBadgeMetricProgress(badge, stats, insights) {
@@ -4530,7 +3088,14 @@
       // CREATE THE MAIN CLICK HANDLER FUNCTION (stored to prevent duplicate attachment)
       if (!root.__visitedClickHandler) {
         root.__visitedClickHandler = function handleVisitedClick(event) {
-          if (!event.target.closest('[data-visited-explorer-quick-actions-toggle]') && !event.target.closest('[data-visited-explorer-quick-actions-menu]')) {
+          // Normalize event target: text nodes don't have .closest(), so resolve to parentElement.
+          const rawTgt = event && event.target ? event.target : null;
+          const ct = rawTgt && rawTgt.nodeType === Node.ELEMENT_NODE
+            ? rawTgt
+            : (rawTgt && rawTgt.parentElement ? rawTgt.parentElement : null);
+          if (!ct || typeof ct.closest !== 'function') return;
+
+          if (!ct.closest('[data-visited-explorer-quick-actions-toggle]') && !ct.closest('[data-visited-explorer-quick-actions-menu]')) {
             root.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach((menu) => {
               menu.hidden = true;
             });
@@ -4539,21 +3104,21 @@
             });
           }
 
-          const openSuggestionsBtn = event.target.closest('#visitedOpenSuggestionsBtn');
+          const openSuggestionsBtn = ct.closest('#visitedOpenSuggestionsBtn');
           if (openSuggestionsBtn) {
             event.preventDefault();
             setVisitedOverviewView(root, 'suggestions');
             return;
           }
 
-          const backSuggestionsBtn = event.target.closest('#visitedSuggestionsBackBtn');
+          const backSuggestionsBtn = ct.closest('#visitedSuggestionsBackBtn');
           if (backSuggestionsBtn) {
             event.preventDefault();
             setVisitedOverviewView(root, 'main');
             return;
           }
 
-          const subtabActionBtn = event.target.closest('[data-visited-subtab-action]');
+          const subtabActionBtn = ct.closest('[data-visited-subtab-action]');
           if (subtabActionBtn) {
             event.preventDefault();
             const action = String(subtabActionBtn.getAttribute('data-visited-subtab-action') || '').trim();
@@ -4631,7 +3196,7 @@
 
           }
 
-          const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
+          const explainBtn = ct.closest('[data-suggestion-explain-toggle]');
           if (explainBtn) {
             event.preventDefault();
             const targetId = explainBtn.getAttribute('data-suggestion-explain-toggle');
@@ -4644,7 +3209,7 @@
             return;
           }
 
-          const explorerDetailsBtn = event.target.closest('[data-visited-explorer-details]');
+          const explorerDetailsBtn = ct.closest('[data-visited-explorer-details]');
           if (explorerDetailsBtn) {
             event.preventDefault();
             const subtabKey = String(explorerDetailsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4655,7 +3220,7 @@
             return;
           }
 
-          const explorerQuickActionsBtn = event.target.closest('[data-visited-explorer-quick-actions-toggle]');
+          const explorerQuickActionsBtn = ct.closest('[data-visited-explorer-quick-actions-toggle]');
           if (explorerQuickActionsBtn) {
             event.preventDefault();
             const itemId = String(explorerQuickActionsBtn.getAttribute('data-visited-explorer-quick-actions-toggle') || '').trim();
@@ -4675,7 +3240,7 @@
             return;
           }
 
-          const explorerGoogleBtn = event.target.closest('[data-visited-explorer-open-google]');
+          const explorerGoogleBtn = ct.closest('[data-visited-explorer-open-google]');
           if (explorerGoogleBtn) {
             event.preventDefault();
             const subtabKey = String(explorerGoogleBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4689,7 +3254,7 @@
             return;
           }
 
-          const explorerDirectionsBtn = event.target.closest('[data-visited-explorer-open-directions]');
+          const explorerDirectionsBtn = ct.closest('[data-visited-explorer-open-directions]');
           if (explorerDirectionsBtn) {
             event.preventDefault();
             const subtabKey = String(explorerDirectionsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4704,7 +3269,7 @@
             return;
           }
 
-          const explorerFavoriteBtn = event.target.closest('[data-visited-explorer-favorite]');
+          const explorerFavoriteBtn = ct.closest('[data-visited-explorer-favorite]');
           if (explorerFavoriteBtn) {
             event.preventDefault();
             const subtabKey = String(explorerFavoriteBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4718,7 +3283,7 @@
             return;
           }
 
-          const explorerRateBtn = event.target.closest('[data-visited-explorer-rate]');
+          const explorerRateBtn = ct.closest('[data-visited-explorer-rate]');
           if (explorerRateBtn) {
             event.preventDefault();
             const subtabKey = String(explorerRateBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4729,7 +3294,7 @@
             return;
           }
 
-          const explorerTagsBtn = event.target.closest('[data-visited-explorer-tags]');
+          const explorerTagsBtn = ct.closest('[data-visited-explorer-tags]');
           if (explorerTagsBtn) {
             event.preventDefault();
             const subtabKey = String(explorerTagsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4743,7 +3308,7 @@
             return;
           }
 
-          const explorerNotesBtn = event.target.closest('[data-visited-explorer-notes]');
+          const explorerNotesBtn = ct.closest('[data-visited-explorer-notes]');
           if (explorerNotesBtn) {
             event.preventDefault();
             const subtabKey = String(explorerNotesBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4757,7 +3322,7 @@
             return;
           }
 
-          const explorerLogBtn = event.target.closest('[data-visited-explorer-log]');
+          const explorerLogBtn = ct.closest('[data-visited-explorer-log]');
           if (explorerLogBtn) {
             event.preventDefault();
             const subtabKey = String(explorerLogBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4768,21 +3333,21 @@
             return;
           }
 
-          const closeExplorerModalBtn = event.target.closest('#visitedExplorerDetailsCloseBtn, #visitedExplorerDetailsBackdrop');
+          const closeExplorerModalBtn = ct.closest('#visitedExplorerDetailsCloseBtn, #visitedExplorerDetailsBackdrop');
           if (closeExplorerModalBtn) {
             event.preventDefault();
             closeExplorerDetailsModal();
             return;
           }
 
-          const closeVisitLogBtn = event.target.closest('#visitedVisitLogCloseBtn, #visitedVisitLogCancelBtn, #visitedVisitLogBackdrop');
+          const closeVisitLogBtn = ct.closest('#visitedVisitLogCloseBtn, #visitedVisitLogCancelBtn, #visitedVisitLogBackdrop');
           if (closeVisitLogBtn) {
             event.preventDefault();
             closeVisitLogModal();
             return;
           }
 
-          const loadMoreBtn = event.target.closest('[data-catalog-action="load-more"]');
+          const loadMoreBtn = ct.closest('[data-catalog-action="load-more"]');
           if (loadMoreBtn) {
             event.preventDefault();
             state.catalogRenderLimit += CATALOG_LOAD_STEP;
@@ -4790,7 +3355,7 @@
             return;
           }
 
-          const progressTabBtn = event.target.closest('[data-progress-subtab]');
+          const progressTabBtn = ct.closest('[data-progress-subtab]');
           if (progressTabBtn) {
             event.preventDefault();
             // Defensive reset: ensure tooltip long-press suppression never bleeds into normal subtab navigation.
@@ -4805,7 +3370,7 @@
             return;
           }
 
-          const categoryFilterBtn = event.target.closest('[data-category-filter]');
+          const categoryFilterBtn = ct.closest('[data-category-filter]');
           if (categoryFilterBtn) {
             event.preventDefault();
             event.stopPropagation();
@@ -4846,14 +3411,14 @@
             return;
           }
 
-          const jumpBtn = event.target.closest('[data-visited-jump]');
+          const jumpBtn = ct.closest('[data-visited-jump]');
           if (jumpBtn) {
             event.preventDefault();
             jumpToVisitedSection(jumpBtn.getAttribute('data-visited-jump') || '');
             return;
           }
 
-          const toggleBtn = event.target.closest('[data-visit-action="toggle"]');
+          const toggleBtn = ct.closest('[data-visit-action="toggle"]');
           if (toggleBtn) {
             event.preventDefault();
             const locationId = toggleBtn.getAttribute('data-location-id');
@@ -4872,7 +3437,7 @@
             return;
           }
 
-          const catalogFilterBtn = event.target.closest('[data-catalog-filter]');
+          const catalogFilterBtn = ct.closest('[data-catalog-filter]');
           if (catalogFilterBtn) {
             event.preventDefault();
             const group = catalogFilterBtn.getAttribute('data-catalog-filter') || '';
@@ -4892,7 +3457,11 @@
       }
 
       root.addEventListener('mousemove', (event) => {
-      const hotspot = event.target.closest('[data-hotspot-tooltip]');
+      const _mmTgt = event && event.target ? event.target : null;
+      const _mmEl = _mmTgt && _mmTgt.nodeType === Node.ELEMENT_NODE
+        ? _mmTgt
+        : (_mmTgt && _mmTgt.parentElement ? _mmTgt.parentElement : null);
+      const hotspot = _mmEl && typeof _mmEl.closest === 'function' ? _mmEl.closest('[data-hotspot-tooltip]') : null;
       if (!hotspot) {
         hideHeatmapTooltip();
         return;

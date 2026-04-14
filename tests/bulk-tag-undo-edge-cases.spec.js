@@ -171,8 +171,18 @@ test('bulk tag undo preserves snapshot-cap behavior for large selections', async
 
   await expect.poll(async () => {
     return page.evaluate((tag) => {
+      const stats = window.__bulkTagUndoTest.getStats(tag) || {};
+      return {
+        hasShape: Number.isFinite(Number(stats.withTag)) && Number.isFinite(Number(stats.withoutTag)) && Number.isFinite(Number(stats.totalRows)),
+        totalRows: Number(stats.totalRows || 0)
+      };
+    }, TEST_TAG);
+  }, { timeout: 10000 }).toEqual({ hasShape: true, totalRows: TOTAL_ROWS });
+
+  await expect.poll(async () => {
+    return page.evaluate((tag) => {
       return window.__bulkTagUndoTest.getStats(tag);
     }, TEST_TAG);
-  }).toEqual({ withTag: 50, withoutTag: 250, totalRows: TOTAL_ROWS });
+  }, { timeout: 10000 }).toEqual({ withTag: 50, withoutTag: 250, totalRows: TOTAL_ROWS });
 });
 

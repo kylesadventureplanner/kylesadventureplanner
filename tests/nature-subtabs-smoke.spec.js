@@ -96,6 +96,32 @@ test.describe('Nature config-driven subtabs smoke', () => {
     }
   });
 
+  test('docked subtab text-node clicks still activate mammals', async ({ page }) => {
+    await page.waitForFunction(() => {
+      const dock = document.querySelector('#appSubTabsSlot .nature-challenge-subtabs');
+      return Boolean(dock && dock.dataset.natureDockBound === '1');
+    });
+
+    await page.evaluate(() => {
+      const button = document.querySelector('#appSubTabsSlot [data-nature-subtab="mammals"]');
+      if (!button) throw new Error('Mammals subtab button not found');
+
+      const textNode = Array.from(button.childNodes || []).find((node) => {
+        return node && node.nodeType === Node.TEXT_NODE && String(node.textContent || '').trim().length > 0;
+      });
+      if (!textNode) throw new Error('No clickable text node found inside mammals subtab button');
+
+      textNode.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      }));
+    });
+
+    await expect(page.locator('#appSubTabsSlot [data-nature-subtab="mammals"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#natureChallengeTitle')).toHaveText('Nature Challenge - Mammals');
+  });
+
 
   test('mammals diagnostics row contains stable labels', async ({ page }) => {
     await page.locator('#appSubTabsSlot [data-nature-subtab="mammals"]').click();

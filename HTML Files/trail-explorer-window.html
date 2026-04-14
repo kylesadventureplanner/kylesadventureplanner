@@ -1541,6 +1541,26 @@
         document.title = BASE_TITLE;
       }
 
+      function getEventElement(event) {
+        if (!event) return null;
+
+        var target = null;
+        if (typeof event.composedPath === 'function') {
+          var path = event.composedPath();
+          if (Array.isArray(path) && path.length) target = path[0];
+        }
+
+        if (!target) target = event.target || null;
+        if (!target) return null;
+        if (target.nodeType === 1) return target;
+        return target.parentElement || null;
+      }
+
+      function closestFromEvent(event, selector) {
+        var element = getEventElement(event);
+        return element && typeof element.closest === 'function' ? element.closest(selector) : null;
+      }
+
       function bindCityExplorerEvents() {
         var search = document.getElementById('trailCitySearchInput');
         if (search && search.dataset.bound !== '1') {
@@ -1587,7 +1607,7 @@
         var grid = document.getElementById('trailCityGrid');
         if (grid && grid.dataset.bound !== '1') {
           grid.addEventListener('click', function (event) {
-            var card = event.target && event.target.closest ? event.target.closest('.trail-city-card') : null;
+            var card = closestFromEvent(event, '.trail-city-card');
             if (!card) return;
             showCityResults(card.getAttribute('data-region') || '');
           });
@@ -1627,7 +1647,7 @@
         var quickTags = document.getElementById('trailResultQuickTags');
         if (quickTags && quickTags.dataset.bound !== '1') {
           quickTags.addEventListener('click', function (event) {
-            var btn = event.target && event.target.closest ? event.target.closest('.trail-tag-btn') : null;
+            var btn = closestFromEvent(event, '.trail-tag-btn');
             if (!btn) return;
             toggleTrailQuickTag(btn.getAttribute('data-tag') || '');
           });

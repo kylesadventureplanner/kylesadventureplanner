@@ -1515,11 +1515,31 @@
     });
   }
 
+  function getEventElement(event) {
+    if (!event) return null;
+
+    var target = null;
+    if (typeof event.composedPath === 'function') {
+      var path = event.composedPath();
+      if (Array.isArray(path) && path.length) target = path[0];
+    }
+
+    if (!target) target = event.target || null;
+    if (!target) return null;
+    if (target.nodeType === 1) return target;
+    return target.parentElement || null;
+  }
+
+  function closestFromEvent(event, selector) {
+    var element = getEventElement(event);
+    return element && typeof element.closest === 'function' ? element.closest(selector) : null;
+  }
+
   (function init() {
     bindTabs();
 
     document.addEventListener('click', function (e) {
-      var addrBtn = e.target && e.target.closest ? e.target.closest('.addr-copy-btn') : null;
+      var addrBtn = closestFromEvent(e, '.addr-copy-btn');
       if (addrBtn) {
         var text = addrBtn.getAttribute('data-copy') || '';
         if (!text) return;
@@ -1534,31 +1554,31 @@
         return;
       }
 
-      var removeBtn = e.target && e.target.closest ? e.target.closest('.tm-remove-btn') : null;
+      var removeBtn = closestFromEvent(e, '.tm-remove-btn');
       if (removeBtn) {
         removeTagFromDetailState(removeBtn.getAttribute('data-tag') || '');
         return;
       }
 
-      var suggestBtn = e.target && e.target.closest ? e.target.closest('.tm-suggest-btn') : null;
+      var suggestBtn = closestFromEvent(e, '.tm-suggest-btn');
       if (suggestBtn) {
         addTagToDetailState(suggestBtn.getAttribute('data-tag') || '');
         return;
       }
 
-      if (e.target && e.target.id === 'tmAddBtn') {
+      if (closestFromEvent(e, '#tmAddBtn')) {
         var input = document.getElementById('tmInput');
         addTagToDetailState(input ? input.value : '');
         if (input) input.value = '';
         return;
       }
 
-      if (e.target && e.target.id === 'tmSaveBtn') {
+      if (closestFromEvent(e, '#tmSaveBtn')) {
         saveDetailTags();
         return;
       }
 
-      if (e.target && e.target.id === 'tmCopyDebugBtn') {
+      if (closestFromEvent(e, '#tmCopyDebugBtn')) {
         copyLastTagSaveDebug().then(function () {
           showDetailToast('📋 Tag save debug copied to clipboard.', 'info', 2200);
         }).catch(function () {
@@ -1567,7 +1587,7 @@
         return;
       }
 
-      if (e.target && e.target.id === 'tmClearBtn') {
+      if (closestFromEvent(e, '#tmClearBtn')) {
         if (window.__detailTagState) {
           window.__detailTagState.tags = [];
           syncTagManagementUi();
@@ -1577,27 +1597,27 @@
         return;
       }
 
-      if (e.target && e.target.id === 'tmResetBtn' && window.__detailTagState) {
+      if (closestFromEvent(e, '#tmResetBtn') && window.__detailTagState) {
         window.__detailTagState.tags = uniqueTags(window.__detailTagState.sourceTags || []);
         syncTagManagementUi();
         setTagStatus('Reset to source tags. Click Save Tags to persist.', false);
         refreshTagSaveDebugUi(window.__lastTagSaveDebug);
       }
 
-      var removeNoteBtn = e.target && e.target.closest ? e.target.closest('.dnm-remove') : null;
+      var removeNoteBtn = closestFromEvent(e, '.dnm-remove');
       if (removeNoteBtn) {
         removeNoteFromDetailState(Number(removeNoteBtn.getAttribute('data-note-index')));
         return;
       }
 
-      if (e.target && e.target.id === 'dnmAddBtn') {
+      if (closestFromEvent(e, '#dnmAddBtn')) {
         var noteInput = document.getElementById('dnmInput');
         addNoteToDetailState(noteInput ? noteInput.value : '');
         if (noteInput) noteInput.value = '';
         return;
       }
 
-      if (e.target && e.target.id === 'dnmSaveBtn') {
+      if (closestFromEvent(e, '#dnmSaveBtn')) {
         saveDetailNotes();
       }
     });

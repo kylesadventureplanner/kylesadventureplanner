@@ -991,8 +991,12 @@
     if (!offlineModeDelegatedBound) {
       offlineModeDelegatedBound = true;
       document.addEventListener('click', function (event) {
-        var target = event && event.target && event.target.closest
-          ? event.target.closest('#offlineModeBtn, #offlineInstallOpenModeBtn')
+        var rawTarget = event && event.target ? event.target : null;
+        var elementTarget = rawTarget && rawTarget.nodeType === Node.ELEMENT_NODE
+          ? rawTarget
+          : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
+        var target = elementTarget && elementTarget.closest
+          ? elementTarget.closest('#offlineModeBtn, #offlineInstallOpenModeBtn')
           : null;
         if (!target) return;
         var delegatedSource = 'delegated:' + String(target.id || 'unknown');

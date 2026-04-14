@@ -373,7 +373,10 @@ class TabContentLoader {
   setupTabSwitching() {
     // Use event delegation on document for better reliability
     document.addEventListener('click', (e) => {
-      const btn = e.target.closest('.app-tab-btn');
+      const clickTarget = e && e.target && e.target.nodeType === Node.ELEMENT_NODE
+        ? e.target
+        : (e && e.target && e.target.parentElement ? e.target.parentElement : null);
+      const btn = clickTarget && clickTarget.closest ? clickTarget.closest('.app-tab-btn') : null;
       if (!btn) return;
 
       e.preventDefault();

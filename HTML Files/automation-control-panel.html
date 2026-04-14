@@ -736,10 +736,10 @@
       <div id="addPlacePanel" class="add-place-panel" aria-live="polite">
         <!-- Mode Tabs -->
         <div class="mode-tabs">
-          <button class="mode-tab active" onclick="switchAddMode('single')">
+          <button class="mode-tab active" onclick="switchAddMode('single', event)">
             <span style="margin-right: 4px;">➕</span>Single Place
           </button>
-          <button class="mode-tab" onclick="switchAddMode('batch')">
+          <button class="mode-tab" onclick="switchAddMode('batch', event)">
             <span style="margin-right: 4px;">📦</span>Batch Add
           </button>
         </div>
@@ -1074,11 +1074,16 @@
       statusEl.textContent = message || '';
     }
 
-    function switchAddMode(mode) {
+    function switchAddMode(mode, triggerEvent) {
       // Update tab active state
       const tabs = document.querySelectorAll('.mode-tab');
       tabs.forEach(tab => tab.classList.remove('active'));
-      event.target.closest('.mode-tab').classList.add('active');
+      const rawTarget = triggerEvent && triggerEvent.target ? triggerEvent.target : null;
+      const elementTarget = rawTarget && rawTarget.nodeType === Node.ELEMENT_NODE
+        ? rawTarget
+        : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
+      const activeTab = elementTarget && elementTarget.closest ? elementTarget.closest('.mode-tab') : null;
+      if (activeTab) activeTab.classList.add('active');
 
       // Show/hide content
       const singleMode = document.getElementById('singleMode');

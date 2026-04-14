@@ -1277,20 +1277,23 @@ window.AdventureAchievements = (function () {
 
     // Re-render when subtab is activated
     document.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-progress-subtab]');
+      const clickTarget = e && e.target && e.target.nodeType === Node.ELEMENT_NODE
+        ? e.target
+        : (e && e.target && e.target.parentElement ? e.target.parentElement : null);
+      const btn = clickTarget && clickTarget.closest ? clickTarget.closest('[data-progress-subtab]') : null;
       if (btn) {
         const k = btn.getAttribute('data-progress-subtab');
         if (CONFIGS[k]) setTimeout(() => renderAll(k), 120);
         return;
       }
 
-      const visitToggle = e.target.closest('[data-visit-action="toggle"]');
+      const visitToggle = clickTarget && clickTarget.closest ? clickTarget.closest('[data-visit-action="toggle"]') : null;
       if (visitToggle) {
         Object.keys(CONFIGS).forEach((k) => setTimeout(() => renderAll(k), 1200));
         return;
       }
 
-      const refreshAction = e.target.closest('[data-visited-subtab-action]');
+      const refreshAction = clickTarget && clickTarget.closest ? clickTarget.closest('[data-visited-subtab-action]') : null;
       if (refreshAction && /^(refresh-subtab-|open-explorer-|close-explorer-)/.test(String(refreshAction.getAttribute('data-visited-subtab-action') || ''))) {
         Object.keys(CONFIGS).forEach((k) => setTimeout(() => renderAll(k), 800));
       }

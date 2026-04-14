@@ -7384,16 +7384,27 @@
     if (!root || !subTabs || subTabs.dataset.natureDockBound === '1') return;
     subTabs.dataset.natureDockBound = '1';
 
+    const resolveDockButtonTarget = (event) => {
+      const rawTarget = event && event.target ? event.target : null;
+      const elementTarget = rawTarget && rawTarget.nodeType === 1
+        ? rawTarget
+        : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
+      if (!elementTarget || typeof elementTarget.closest !== 'function') return null;
+      const button = elementTarget.closest('[data-nature-subtab]');
+      if (!button || !subTabs.contains(button)) return null;
+      return button;
+    };
+
     subTabs.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-nature-subtab]');
-      if (!button || !subTabs.contains(button)) return;
+      const button = resolveDockButtonTarget(event);
+      if (!button) return;
       event.preventDefault();
       setActiveNatureSubTab(root, button.getAttribute('data-nature-subtab'));
     });
 
     subTabs.addEventListener('keydown', (event) => {
-      const button = event.target.closest('[data-nature-subtab]');
-      if (!button || !subTabs.contains(button)) return;
+      const button = resolveDockButtonTarget(event);
+      if (!button) return;
       const buttons = getNatureSubTabButtons(root);
       if (!buttons.length) return;
 

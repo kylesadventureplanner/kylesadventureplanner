@@ -135,7 +135,10 @@
 
         // Also listen for direct tab clicks (fallback)
         document.addEventListener('click', (e) => {
-          const btn = e.target.closest('.app-tab-btn');
+          const clickTarget = e && e.target && e.target.nodeType === Node.ELEMENT_NODE
+            ? e.target
+            : (e && e.target && e.target.parentElement ? e.target.parentElement : null);
+          const btn = clickTarget && clickTarget.closest ? clickTarget.closest('.app-tab-btn') : null;
           if (btn) {
             const tabId = btn.getAttribute('data-tab');
             if (tabId) {
@@ -23164,7 +23167,10 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     // Ensures all button clicks are captured reliably
     // ============================================================
     document.addEventListener('click', function(e) {
-      const ratingStarElement = e.target.closest('.rating-star');
+      const clickTarget = e && e.target && e.target.nodeType === Node.ELEMENT_NODE
+        ? e.target
+        : (e && e.target && e.target.parentElement ? e.target.parentElement : null);
+      const ratingStarElement = clickTarget && clickTarget.closest ? clickTarget.closest('.rating-star') : null;
       if (ratingStarElement && window.setAdventureRating) {
         const cardElement = ratingStarElement.closest('.adventure-card');
         if (cardElement) {
@@ -23182,7 +23188,10 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     }, true); // Use capture phase for more reliable capturing
 
     document.addEventListener('click', function(e) {
-      const favoriteButton = e.target.closest('.card-favorite-btn');
+      const clickTarget = e && e.target && e.target.nodeType === Node.ELEMENT_NODE
+        ? e.target
+        : (e && e.target && e.target.parentElement ? e.target.parentElement : null);
+      const favoriteButton = clickTarget && clickTarget.closest ? clickTarget.closest('.card-favorite-btn') : null;
       if (favoriteButton && window.toggleCardFavorite) {
         const cardElement = favoriteButton.closest('.adventure-card');
         if (cardElement) {
@@ -23711,7 +23720,10 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
       // Event delegation: attach listener once, works for all present/future buttons
       document.addEventListener('click', (event) => {
-        const btn = event.target.closest(BTN_SELECTOR);
+        const clickTarget = event && event.target && event.target.nodeType === Node.ELEMENT_NODE
+          ? event.target
+          : (event && event.target && event.target.parentElement ? event.target.parentElement : null);
+        const btn = clickTarget && clickTarget.closest ? clickTarget.closest(BTN_SELECTOR) : null;
         if (!btn) return;
 
         event.preventDefault();

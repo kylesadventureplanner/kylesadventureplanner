@@ -1,41 +1,70 @@
 const { test, expect } = require('./reliability-test');
 
+async function readBirdsOverviewCtaDiagnostics(page) {
+  return page.evaluate(() => {
+    const row = document.querySelector('#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="overview"] .nature-explore-cta-actions');
+    if (!row) {
+      return { normalized: false, hasMap: false, present: [], visual: [] };
+    }
+    const nodes = Array.from(row.querySelectorAll('button'));
+    const present = nodes.map((node) => String(node.id || '').trim()).filter(Boolean);
+    const visual = nodes
+      .map((node, index) => {
+        const orderRaw = window.getComputedStyle(node).order;
+        const order = Number.isFinite(Number(orderRaw)) ? Number(orderRaw) : 0;
+        return {
+          id: String(node.id || '').trim(),
+          order,
+          index
+        };
+      })
+      .filter((entry) => entry.id)
+      .sort((a, b) => (a.order - b.order) || (a.index - b.index))
+      .map((entry) => entry.id);
+
+    return {
+      normalized: row.getAttribute('data-cta-normalized') === '1',
+      hasMap: !!row.querySelector('#birdsOpenMapBtn'),
+      present,
+      visual
+    };
+  });
+}
+
 test.describe('Nature map context labels', () => {
   test('birds CTA order keeps injected Map between Log and Refresh', async ({ page }) => {
     await page.goto('/');
     await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
     await expect(page.locator('#natureChallengeRoot')).toBeVisible();
 
-    await page.waitForFunction(() => {
-      const row = document.querySelector('#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="overview"] .nature-explore-cta-actions');
-      if (!row) return false;
-      if (!row.querySelector('#birdsOpenMapBtn')) return false;
-      return row.getAttribute('data-cta-normalized') === '1';
-    });
 
-    await expect.poll(async () => {
-      return page.locator('#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="overview"] .nature-explore-cta-actions > button').evaluateAll((nodes) => {
-        return nodes
-          .map((node, index) => {
-            const orderRaw = window.getComputedStyle(node).order;
-            const order = Number.isFinite(Number(orderRaw)) ? Number(orderRaw) : 0;
-            return {
-              id: String(node.id || '').trim(),
-              order,
-              index
-            };
-          })
-          .filter((entry) => entry.id)
-          .sort((a, b) => (a.order - b.order) || (a.index - b.index))
-          .map((entry) => entry.id);
-      });
-    }, { timeout: 12000 }).toEqual([
+    const expectedOrder = [
       'birdsExploreBtn',
       'birdsOpenLogBtn',
       'birdsOpenMapBtn',
       'natureChallengeRefreshBtn',
       'birdsUndoActionBtn'
-    ]);
+    ];
+
+    await expect.poll(async () => {
+      const snapshot = await readBirdsOverviewCtaDiagnostics(page);
+      return {
+        hasButtons: snapshot.present.length > 0,
+        hasMap: snapshot.hasMap,
+        presentCount: snapshot.present.length,
+        hasAllExpected: expectedOrder.every((id) => snapshot.present.includes(id))
+      };
+    }, { timeout: 12000 }).toEqual({
+      hasButtons: true,
+      hasMap: true,
+      presentCount: expectedOrder.length,
+      hasAllExpected: true
+    });
+
+    await expect.poll(async () => {
+      const snapshot = await readBirdsOverviewCtaDiagnostics(page);
+      return snapshot.visual;
+    }, { timeout: 12000 }).toEqual(expectedOrder);
   });
 
   test('map header/back reflects active nature subtab context', async ({ page }) => {

@@ -158,16 +158,27 @@
       if (!root || !subTabs || subTabs.dataset.householdDockBound === '1') return;
       subTabs.dataset.householdDockBound = '1';
 
+      function resolveDockButtonTarget(event) {
+        var rawTarget = event && event.target ? event.target : null;
+        var elementTarget = rawTarget && rawTarget.nodeType === Node.ELEMENT_NODE
+          ? rawTarget
+          : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
+        if (!elementTarget || typeof elementTarget.closest !== 'function') return null;
+        var button = elementTarget.closest('[data-household-subtab]');
+        if (!button || !subTabs.contains(button)) return null;
+        return button;
+      }
+
       subTabs.addEventListener('click', function (event) {
-        const button = event.target.closest('[data-household-subtab]');
-        if (!button || !subTabs.contains(button)) return;
+        const button = resolveDockButtonTarget(event);
+        if (!button) return;
         event.preventDefault();
         setActiveHouseholdSubTab(root, button.getAttribute('data-household-subtab'));
       });
 
       subTabs.addEventListener('keydown', function (event) {
-        const button = event.target.closest('[data-household-subtab]');
-        if (!button || !subTabs.contains(button)) return;
+        const button = resolveDockButtonTarget(event);
+        if (!button) return;
         const buttons = getHouseholdSubTabButtons(root);
         if (!buttons.length) return;
 
@@ -251,7 +262,11 @@
       };
 
       document.addEventListener('click', function (event) {
-        const button = event.target && event.target.closest ? event.target.closest('.app-tab-btn[data-tab]') : null;
+        var rawTarget = event && event.target ? event.target : null;
+        var elementTarget = rawTarget && rawTarget.nodeType === Node.ELEMENT_NODE
+          ? rawTarget
+          : (rawTarget && rawTarget.parentElement ? rawTarget.parentElement : null);
+        const button = elementTarget && elementTarget.closest ? elementTarget.closest('.app-tab-btn[data-tab]') : null;
         if (!button) return;
         requestAnimationFrame(resync);
         window.setTimeout(resync, 40);

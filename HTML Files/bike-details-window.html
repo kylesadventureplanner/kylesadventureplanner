@@ -507,39 +507,40 @@
     if (!pane || pane.dataset.boundBikeTagEvents === '1') return;
 
     pane.addEventListener('click', function (event) {
-      var removeBtn = event.target && event.target.closest ? event.target.closest('[data-remove-bike-tag]') : null;
+      var removeBtn = closestFromEvent(event, '[data-remove-bike-tag]');
       if (removeBtn) {
         removeBikeTag(removeBtn.getAttribute('data-remove-bike-tag') || '');
         return;
       }
 
-      var suggestBtn = event.target && event.target.closest ? event.target.closest('[data-suggest-bike-tag]') : null;
+      var suggestBtn = closestFromEvent(event, '[data-suggest-bike-tag]');
       if (suggestBtn) {
         addBikeTag(suggestBtn.getAttribute('data-suggest-bike-tag') || '');
         return;
       }
 
-      if (event.target && event.target.id === 'bikeAddTagBtn') {
+      if (closestFromEvent(event, '#bikeAddTagBtn')) {
         var input = document.getElementById('bikeTagInput');
         addBikeTag(input ? input.value : '');
         return;
       }
 
-      if (event.target && event.target.id === 'bikeSaveTagsBtn') {
+      if (closestFromEvent(event, '#bikeSaveTagsBtn')) {
         saveBikeTags();
         return;
       }
 
-      if (event.target && event.target.id === 'bikeClearTagsBtn') {
+      if (closestFromEvent(event, '#bikeClearTagsBtn')) {
         bikeTagState.currentTags = [];
         refreshTagManagementUi();
       }
     });
 
     pane.addEventListener('keydown', function (event) {
-      if (event.target && event.target.id === 'bikeTagInput' && event.key === 'Enter') {
+      var eventElement = getEventElement(event);
+      if (eventElement && eventElement.id === 'bikeTagInput' && event.key === 'Enter') {
         event.preventDefault();
-        addBikeTag(event.target.value || '');
+        addBikeTag(eventElement.value || '');
       }
     });
 
@@ -995,12 +996,32 @@
     });
   }
 
+  function getEventElement(event) {
+    if (!event) return null;
+
+    var target = null;
+    if (typeof event.composedPath === 'function') {
+      var path = event.composedPath();
+      if (Array.isArray(path) && path.length) target = path[0];
+    }
+
+    if (!target) target = event.target || null;
+    if (!target) return null;
+    if (target.nodeType === 1) return target;
+    return target.parentElement || null;
+  }
+
+  function closestFromEvent(event, selector) {
+    var element = getEventElement(event);
+    return element && typeof element.closest === 'function' ? element.closest(selector) : null;
+  }
+
   (function init() {
     bindTabs();
 
     // Delegated handler for address/GPS copy buttons
     document.addEventListener('click', function (e) {
-      var btn = e.target && e.target.closest ? e.target.closest('.addr-copy-btn') : null;
+      var btn = closestFromEvent(e, '.addr-copy-btn');
       if (!btn) return;
       var text = btn.getAttribute('data-copy') || '';
       if (!text) return;
@@ -1015,20 +1036,20 @@
     });
 
     document.addEventListener('click', function (e) {
-      var removeBtn = e.target && e.target.closest ? e.target.closest('[data-bike-note-index]') : null;
+      var removeBtn = closestFromEvent(e, '[data-bike-note-index]');
       if (removeBtn) {
         removeBikeNote(Number(removeBtn.getAttribute('data-bike-note-index')));
         return;
       }
 
-      if (e.target && e.target.id === 'bnmAddBtn') {
+      if (closestFromEvent(e, '#bnmAddBtn')) {
         var input = document.getElementById('bnmInput');
         addBikeNote(input ? input.value : '');
         if (input) input.value = '';
         return;
       }
 
-      if (e.target && e.target.id === 'bnmSaveBtn') {
+      if (closestFromEvent(e, '#bnmSaveBtn')) {
         saveBikeNotes();
       }
     });

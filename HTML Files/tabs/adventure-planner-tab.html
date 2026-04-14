@@ -323,7 +323,10 @@
     if (!root.__adventureFloatingActionsBound) {
       root.__adventureFloatingActionsBound = true;
       root.addEventListener('click', (event) => {
-        const btn = event.target.closest('[data-adventure-section-action]');
+        const clickTarget = event && event.target && event.target.nodeType === Node.ELEMENT_NODE
+          ? event.target
+          : (event && event.target && event.target.parentElement ? event.target.parentElement : null);
+        const btn = clickTarget && clickTarget.closest ? clickTarget.closest('[data-adventure-section-action]') : null;
         if (!btn) return;
         event.preventDefault();
 

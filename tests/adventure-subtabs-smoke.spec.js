@@ -54,6 +54,40 @@ function getVisualActionOrder(selector) {
   });
 }
 
+async function readAdventureCtaDiagnostics(page, subtabKey) {
+  return page.evaluate((key) => {
+    const row = document.querySelector(`#visitedProgressPane-${key} .ui-intro-card .visited-subtab-action-row`)
+      || document.querySelector(`#visitedProgressPane-${key} .visited-subtab-action-row`);
+    if (!row) {
+      return { normalized: false, present: [], visual: [] };
+    }
+
+    const buttons = Array.from(row.querySelectorAll('button[data-visited-subtab-action]'));
+    const present = buttons
+      .map((node) => String(node.getAttribute('data-visited-subtab-action') || '').trim())
+      .filter(Boolean);
+    const visual = buttons
+      .map((node, index) => {
+        const orderRaw = window.getComputedStyle(node).order;
+        const order = Number.isFinite(Number(orderRaw)) ? Number(orderRaw) : 0;
+        return {
+          action: String(node.getAttribute('data-visited-subtab-action') || '').trim(),
+          order,
+          index
+        };
+      })
+      .filter((entry) => entry.action)
+      .sort((a, b) => (a.order - b.order) || (a.index - b.index))
+      .map((entry) => entry.action);
+
+    return {
+      normalized: row.getAttribute('data-cta-normalized') === '1',
+      present,
+      visual
+    };
+  }, subtabKey);
+}
+
 async function waitForAdventureCtaNormalized(page, subtabKey) {
   await page.waitForFunction((key) => {
     const row = document.querySelector(`#visitedProgressPane-${key} .visited-subtab-action-row`);
@@ -114,18 +148,31 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
   });
 
   test('Outdoors CTA row preserves canonical action order', async ({ page }) => {
-    await waitForAdventureCtaNormalized(page, 'outdoors');
-    const readOrder = getVisualActionOrder('#visitedProgressPane-outdoors .ui-intro-card .visited-subtab-action-row button[data-visited-subtab-action]');
-    await expect.poll(async () => {
-      return readOrder(page);
-    }, { timeout: 15000 }).toEqual([
+    const expectedActions = [
       'open-explorer-outdoors',
       'open-city-explorer-outdoors',
       'open-visit-log-outdoors',
       'open-edit-mode-outdoors',
       'refresh-subtab-outdoors',
       'undo-subtab-outdoors'
-    ]);
+    ];
+    await waitForAdventureCtaNormalized(page, 'outdoors');
+    await expect.poll(async () => {
+      const snapshot = await readAdventureCtaDiagnostics(page, 'outdoors');
+      return {
+        normalized: snapshot.normalized,
+        presentCount: snapshot.present.length,
+        hasAllExpected: expectedActions.every((action) => snapshot.present.includes(action))
+      };
+    }, { timeout: 15000 }).toEqual({
+      normalized: true,
+      presentCount: expectedActions.length,
+      hasAllExpected: true
+    });
+    await expect.poll(async () => {
+      const snapshot = await readAdventureCtaDiagnostics(page, 'outdoors');
+      return snapshot.visual;
+    }, { timeout: 15000 }).toEqual(expectedActions);
   });
 
   ADVENTURE_SUBTABS.forEach(({ key, label, refreshAction, undoAction, exploreAction, cityAction, logAction, editAction, legacyFindAction }) => {
@@ -147,17 +194,30 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${editAction}"]`)).toHaveCount(1);
       await expect(page.locator(`#visitedProgressPane-${key} [data-visited-subtab-action="${legacyFindAction}"]`)).toHaveCount(0);
 
-      const readOrder = getVisualActionOrder(`#visitedProgressPane-${key} .ui-intro-card .visited-subtab-action-row button[data-visited-subtab-action]`);
-      await expect.poll(async () => {
-        return readOrder(page);
-      }, { timeout: 15000 }).toEqual([
+      const expectedActions = [
         exploreAction,
         cityAction,
         logAction,
         editAction,
         refreshAction,
         undoAction
-      ]);
+      ];
+      await expect.poll(async () => {
+        const snapshot = await readAdventureCtaDiagnostics(page, key);
+        return {
+          normalized: snapshot.normalized,
+          presentCount: snapshot.present.length,
+          hasAllExpected: expectedActions.every((action) => snapshot.present.includes(action))
+        };
+      }, { timeout: 15000 }).toEqual({
+        normalized: true,
+        presentCount: expectedActions.length,
+        hasAllExpected: true
+      });
+      await expect.poll(async () => {
+        const snapshot = await readAdventureCtaDiagnostics(page, key);
+        return snapshot.visual;
+      }, { timeout: 15000 }).toEqual(expectedActions);
 
       await dockButton.focus();
       await expect(dockButton).toBeFocused();
