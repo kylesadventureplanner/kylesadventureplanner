@@ -430,6 +430,14 @@
     maxRecentTraces: 40
   };
 
+  const birdsManualDiagnostics = {
+    outputEl: null,
+    statusEl: null,
+    lastText: '',
+    lastPayload: null,
+    lastReportMeta: null
+  };
+
   // Per-action-key reliability guard state.
   const birdsActivationGuard = {
     inFlight: new Map(),  // actionKey -> true while async action is running
@@ -678,6 +686,387 @@
       lastEvent: birdsClickDiagnostics.lastEvent,
       lastTarget: birdsClickDiagnostics.lastTarget,
       recentTraceCount: birdsClickDiagnostics.recentTraces.length
+    };
+  }
+
+  function ensureBirdManualDiagnosticsOutput(root) {
+    if (!root) return;
+    if (!birdsManualDiagnostics.outputEl) {
+      birdsManualDiagnostics.outputEl = document.getElementById('birdsManualDiagnosticsOutput');
+    }
+    if (!birdsManualDiagnostics.statusEl) {
+      birdsManualDiagnostics.statusEl = document.getElementById('birdsManualDiagnosticsLastReportStatus');
+    }
+    syncManualDiagnosticsStatusLine();
+    syncManualDiagnosticsLastReportActionButtons();
+  }
+
+  function syncManualDiagnosticsStatusLine() {
+    const statusEl = birdsManualDiagnostics.statusEl || document.getElementById('birdsManualDiagnosticsLastReportStatus');
+    if (!statusEl) return;
+    const meta = birdsManualDiagnostics.lastReportMeta;
+    if (!meta || !meta.kind) {
+      statusEl.textContent = 'Last report: none yet.';
+      return;
+    }
+    const rawAt = String(meta.capturedAt || '').trim();
+    const parsed = rawAt ? new Date(rawAt) : null;
+    const when = parsed && !Number.isNaN(parsed.getTime()) ? parsed.toLocaleString() : (rawAt || 'unknown time');
+    statusEl.textContent = `Last report: ${String(meta.kind)} at ${when}.`;
+  }
+
+  function syncManualDiagnosticsLastReportActionButtons() {
+    const exportBtn = document.getElementById('birdsExportManualDiagnosticsJsonBtn');
+    const copyBtn = document.getElementById('birdsCopyLastManualDiagnosticsJsonBtn');
+    if (!exportBtn && !copyBtn) return;
+    const hasPayload = Boolean(birdsManualDiagnostics.lastPayload);
+    if (exportBtn) {
+      exportBtn.disabled = !hasPayload;
+      exportBtn.setAttribute('aria-disabled', hasPayload ? 'false' : 'true');
+      const exportTip = hasPayload
+        ? 'Download only the last manual diagnostics report as JSON'
+        : 'Run a manual diagnostic first, then export the last report as JSON';
+      exportBtn.setAttribute('title', exportTip);
+      exportBtn.setAttribute('data-tooltip', exportTip);
+    }
+    if (copyBtn) {
+      copyBtn.disabled = !hasPayload;
+      copyBtn.setAttribute('aria-disabled', hasPayload ? 'false' : 'true');
+      const copyTip = hasPayload
+        ? 'Copy only the last manual diagnostics report as JSON'
+        : 'Run a manual diagnostic first, then copy the last report JSON';
+      copyBtn.setAttribute('title', copyTip);
+      copyBtn.setAttribute('data-tooltip', copyTip);
+    }
+  }
+
+  function stringifyManualDiagnosticsPayload(payload) {
+    try {
+      return JSON.stringify(payload || {}, null, 2);
+    } catch (_error) {
+      return String(payload || '');
+    }
+  }
+
+  function writeManualDiagnosticsOutput(title, payload, options = {}) {
+    const append = options && options.append === true;
+    const outputEl = birdsManualDiagnostics.outputEl;
+    const stamp = new Date().toLocaleString();
+    const body = stringifyManualDiagnosticsPayload(payload);
+    const block = [
+      `[${stamp}] ${String(title || 'Manual diagnostics')}`,
+      body
+    ].join('\n');
+    birdsManualDiagnostics.lastPayload = payload || null;
+    birdsManualDiagnostics.lastReportMeta = {
+      kind: String(payload && payload.kind || title || 'manual-diagnostics').trim(),
+      capturedAt: String(payload && payload.capturedAt || new Date().toISOString()).trim()
+    };
+    birdsManualDiagnostics.lastText = append && outputEl && outputEl.value
+      ? `${outputEl.value}\n\n${block}`
+      : block;
+    if (outputEl) {
+      outputEl.value = birdsManualDiagnostics.lastText;
+      outputEl.scrollTop = outputEl.scrollHeight;
+    }
+    syncManualDiagnosticsStatusLine();
+    syncManualDiagnosticsLastReportActionButtons();
+    return birdsManualDiagnostics.lastText;
+  }
+
+  async function copyManualDiagnosticsOutput() {
+    const text = String(birdsManualDiagnostics.lastText || '').trim();
+    if (!text) {
+      if (typeof window.showToast === 'function') window.showToast('No diagnostics output to copy yet.', 'info', 1800);
+      return false;
+    }
+    try {
+      if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+    } catch (_error) {
+      const probe = document.createElement('textarea');
+      probe.value = text;
+      probe.setAttribute('readonly', 'readonly');
+      probe.style.position = 'fixed';
+      probe.style.top = '-9999px';
+      document.body.appendChild(probe);
+      probe.select();
+      document.execCommand('copy');
+      document.body.removeChild(probe);
+    }
+    if (typeof window.showToast === 'function') window.showToast('Diagnostics output copied.', 'success', 1800);
+    return true;
+  }
+
+  function exportLastManualDiagnosticsPayloadJson() {
+    const payload = birdsManualDiagnostics.lastPayload;
+    if (!payload) {
+      if (typeof window.showToast === 'function') window.showToast('No manual diagnostics report available to export yet.', 'info', 1800);
+      return false;
+    }
+
+    const report = {
+      exportedAt: new Date().toISOString(),
+      payload: payload
+    };
+    const text = JSON.stringify(report, null, 2);
+    const blob = new Blob([text], { type: 'application/json' });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `birds-manual-diagnostics-last-${stamp}.json`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    if (typeof window.showToast === 'function') window.showToast('Last manual diagnostics report downloaded.', 'success', 2000);
+    return true;
+  }
+
+  async function copyLastManualDiagnosticsPayloadJson() {
+    const payload = birdsManualDiagnostics.lastPayload;
+    if (!payload) {
+      if (typeof window.showToast === 'function') window.showToast('No manual diagnostics report available to copy yet.', 'info', 1800);
+      return false;
+    }
+
+    const text = JSON.stringify(payload, null, 2);
+    try {
+      if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+    } catch (_error) {
+      const probe = document.createElement('textarea');
+      probe.value = text;
+      probe.setAttribute('readonly', 'readonly');
+      probe.style.position = 'fixed';
+      probe.style.top = '-9999px';
+      document.body.appendChild(probe);
+      probe.select();
+      document.execCommand('copy');
+      document.body.removeChild(probe);
+    }
+    const kind = String(
+      (birdsManualDiagnostics.lastReportMeta && birdsManualDiagnostics.lastReportMeta.kind)
+      || (payload && payload.kind)
+      || 'manual-diagnostics'
+    ).trim() || 'manual-diagnostics';
+    if (typeof window.showToast === 'function') {
+      window.showToast(`Last manual diagnostics report copied (${kind}).`, 'success', 2000);
+    }
+    return true;
+  }
+
+  function clearManualDiagnosticsOutput() {
+    birdsManualDiagnostics.lastText = '';
+    birdsManualDiagnostics.lastPayload = null;
+    birdsManualDiagnostics.lastReportMeta = null;
+    if (birdsManualDiagnostics.outputEl) birdsManualDiagnostics.outputEl.value = '';
+    syncManualDiagnosticsStatusLine();
+    syncManualDiagnosticsLastReportActionButtons();
+  }
+
+  function getCoreBirdDiagnosticButtonsSnapshot() {
+    const ids = [
+      'birdsExploreBtn',
+      'birdsOpenLogBtn',
+      'birdsOpenMapBtn',
+      'natureChallengeRefreshBtn',
+      'birdsOverviewCommandRunBtn',
+      'birdsUndoActionBtn'
+    ];
+    return ids.map((id) => {
+      const button = document.getElementById(id);
+      if (!button) return { id, exists: false };
+      return {
+        id,
+        exists: true,
+        disabled: Boolean(button.disabled),
+        ariaDisabled: String(button.getAttribute('aria-disabled') || ''),
+        ariaBusy: String(button.getAttribute('aria-busy') || ''),
+        busy: Boolean(button.dataset && button.dataset.busy === '1'),
+        visible: Boolean(button.offsetParent || button.getClientRects().length)
+      };
+    });
+  }
+
+  function runBirdClickabilityDiagnosticsReport() {
+    const probeIds = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn', 'birdsOverviewCommandRunBtn'];
+    const clickPath = {};
+    probeIds.forEach((id) => {
+      if (window.ButtonReliability && typeof window.ButtonReliability.probeClickPath === 'function') {
+        clickPath[id] = window.ButtonReliability.probeClickPath(id);
+      } else {
+        clickPath[id] = { ok: false, reason: 'probe-unavailable' };
+      }
+    });
+    const blockers = (window.ButtonReliability && typeof window.ButtonReliability.detectBlockingOverlays === 'function')
+      ? window.ButtonReliability.detectBlockingOverlays().map((entry) => ({ id: entry.id, classes: entry.classes, area: entry.area }))
+      : [];
+    const reliability = (typeof window.__reliabilityStatus === 'function')
+      ? window.__reliabilityStatus()
+      : null;
+
+    return {
+      kind: 'birds-clickability-probe',
+      capturedAt: new Date().toISOString(),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      buttonState: getCoreBirdDiagnosticButtonsSnapshot(),
+      clickPath,
+      blockingOverlays: blockers,
+      reliability
+    };
+  }
+
+  function runBirdReliabilitySnapshotReport() {
+    const snapshot = (typeof window.__reliabilityStatus === 'function')
+      ? window.__reliabilityStatus()
+      : { available: false };
+    const clickTrace = (typeof window.getRecentBirdClickTraceSnapshot === 'function')
+      ? window.getRecentBirdClickTraceSnapshot()
+      : null;
+    return {
+      kind: 'birds-reliability-snapshot',
+      capturedAt: new Date().toISOString(),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      reliabilitySnapshot: snapshot,
+      recentClickTrace: clickTrace,
+      guardScopeState: window.ButtonActionGuard && typeof window.ButtonActionGuard.getScopeState === 'function'
+        ? {
+            natureBirds: window.ButtonActionGuard.getScopeState('nature-birds'),
+            offlineMode: window.ButtonActionGuard.getScopeState('offline-mode')
+          }
+        : null
+    };
+  }
+
+  function runBirdDiagnosticsBundleReport() {
+    if (typeof window.exportReliabilityDiagnosticsBundle !== 'function') {
+      return {
+        kind: 'birds-full-diagnostics-bundle',
+        capturedAt: new Date().toISOString(),
+        available: false,
+        reason: 'exportReliabilityDiagnosticsBundle unavailable'
+      };
+    }
+    return {
+      kind: 'birds-full-diagnostics-bundle',
+      capturedAt: new Date().toISOString(),
+      bundle: window.exportReliabilityDiagnosticsBundle({ download: false })
+    };
+  }
+
+  function runBirdCoreCtaAutoFixReport() {
+    const root = document.getElementById('natureChallengeRoot');
+    const repair = enforceNatureCoreButtonActivatability(root) || {
+      before: [],
+      after: [],
+      changed: [],
+      changedCount: 0
+    };
+    return {
+      kind: 'birds-core-cta-autofix',
+      capturedAt: new Date().toISOString(),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      changedCount: Number(repair.changedCount || 0),
+      changedIds: (repair.changed || []).map((entry) => entry.id),
+      before: repair.before || [],
+      after: repair.after || []
+    };
+  }
+
+  function runBirdOverlayAutoFixReport() {
+    const root = document.getElementById('natureChallengeRoot');
+    const probeIds = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn', 'birdsOverviewCommandRunBtn'];
+    const beforeOverlays = window.ButtonReliability && typeof window.ButtonReliability.detectBlockingOverlays === 'function'
+      ? window.ButtonReliability.detectBlockingOverlays().map((entry) => ({ id: entry.id, classes: entry.classes, area: entry.area }))
+      : [];
+    const beforeProbes = {};
+    probeIds.forEach((id) => {
+      if (window.ButtonReliability && typeof window.ButtonReliability.probeClickPath === 'function') {
+        beforeProbes[id] = window.ButtonReliability.probeClickPath(id);
+      }
+    });
+
+    const forceFixedCount = window.ButtonReliability && typeof window.ButtonReliability.forceFixBlockingOverlays === 'function'
+      ? Number(window.ButtonReliability.forceFixBlockingOverlays() || 0)
+      : 0;
+    if (root) {
+      forceUnblockNaturePane(root, 'manual-overlay-autofix');
+      ensureNatureButtonsResponsive(root);
+      enforceNatureCoreButtonActivatability(root);
+    }
+
+    const afterOverlays = window.ButtonReliability && typeof window.ButtonReliability.detectBlockingOverlays === 'function'
+      ? window.ButtonReliability.detectBlockingOverlays().map((entry) => ({ id: entry.id, classes: entry.classes, area: entry.area }))
+      : [];
+    const afterProbes = {};
+    probeIds.forEach((id) => {
+      if (window.ButtonReliability && typeof window.ButtonReliability.probeClickPath === 'function') {
+        afterProbes[id] = window.ButtonReliability.probeClickPath(id);
+      }
+    });
+
+    return {
+      kind: 'birds-overlay-autofix',
+      capturedAt: new Date().toISOString(),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      forceFixedCount,
+      overlaysBefore: beforeOverlays,
+      overlaysAfter: afterOverlays,
+      probesBefore: beforeProbes,
+      probesAfter: afterProbes
+    };
+  }
+
+  function runBirdFullAutoRepairSequenceReport() {
+    const core = runBirdCoreCtaAutoFixReport();
+    const overlay = runBirdOverlayAutoFixReport();
+    const clickability = runBirdClickabilityDiagnosticsReport();
+    return {
+      kind: 'birds-full-auto-repair-sequence',
+      capturedAt: new Date().toISOString(),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      summary: {
+        coreChangedCount: Number(core && core.changedCount || 0),
+        overlayFixedCount: Number(overlay && overlay.forceFixedCount || 0),
+        unresolvedClickabilityTargets: Object.values((clickability && clickability.clickPath) || {}).filter((probe) => probe && probe.ok === false).length
+      },
+      reports: {
+        core,
+        overlay,
+        clickability
+      }
+    };
+  }
+
+  async function runBirdWorkbookDiagnosticsReport() {
+    if (typeof runBirdWorkbookDiagnostics !== 'function') {
+      return {
+        kind: 'birds-workbook-diagnostics',
+        capturedAt: new Date().toISOString(),
+        available: false,
+        reason: 'runBirdWorkbookDiagnostics unavailable'
+      };
+    }
+    const result = await runBirdWorkbookDiagnostics();
+    return {
+      kind: 'birds-workbook-diagnostics',
+      capturedAt: new Date().toISOString(),
+      result
     };
   }
 
@@ -7617,18 +8006,42 @@
     enforceNatureCoreButtonActivatability(root);
   }
 
-  function enforceNatureCoreButtonActivatability(root) {
-    if (!root) return;
-    // Keep core navigation/refresh controls fail-open; Undo keeps its own disabled state.
-    const coreIds = [
+  function getCoreBirdCtaIds() {
+    return [
       'birdsExploreBtn',
       'birdsOpenLogBtn',
+      'birdsOpenMapBtn',
       'natureChallengeRefreshBtn',
       'birdsOverviewCommandRunBtn'
     ];
+  }
+
+  function getButtonActivatabilitySnapshot(id, root) {
+    const scope = root && typeof root.querySelector === 'function' ? root : document;
+    const button = scope.querySelector(`#${id}`) || document.getElementById(id);
+    if (!button) return { id, exists: false };
+    return {
+      id,
+      exists: true,
+      disabled: Boolean(button.disabled),
+      ariaDisabled: String(button.getAttribute('aria-disabled') || ''),
+      ariaBusy: String(button.getAttribute('aria-busy') || ''),
+      busy: Boolean(button.dataset && button.dataset.busy === '1'),
+      busySince: String((button.dataset && button.dataset.busySince) || ''),
+      visible: Boolean(button.offsetParent || button.getClientRects().length)
+    };
+  }
+
+  function enforceNatureCoreButtonActivatability(root) {
+    if (!root) return;
+    // Keep core navigation/refresh controls fail-open; Undo keeps its own disabled state.
+    const coreIds = getCoreBirdCtaIds();
+    const before = coreIds.map((id) => getButtonActivatabilitySnapshot(id, root));
+    const changed = [];
     coreIds.forEach((id) => {
-      const button = document.getElementById(id);
+      const button = (root.querySelector && root.querySelector(`#${id}`)) || document.getElementById(id);
       if (!button) return;
+      const beforeState = getButtonActivatabilitySnapshot(id, root);
       if (button.disabled === true) button.disabled = false;
       if (button.getAttribute('aria-disabled') === 'true') button.setAttribute('aria-disabled', 'false');
       if (button.dataset) {
@@ -7636,7 +8049,25 @@
         delete button.dataset.busySince;
       }
       button.removeAttribute('aria-busy');
+      const afterState = getButtonActivatabilitySnapshot(id, root);
+      if (
+        beforeState && afterState && beforeState.exists && afterState.exists && (
+          beforeState.disabled !== afterState.disabled
+          || beforeState.ariaDisabled !== afterState.ariaDisabled
+          || beforeState.ariaBusy !== afterState.ariaBusy
+          || beforeState.busy !== afterState.busy
+          || beforeState.busySince !== afterState.busySince
+        )
+      ) {
+        changed.push({ id, before: beforeState, after: afterState });
+      }
     });
+    return {
+      before,
+      after: coreIds.map((id) => getButtonActivatabilitySnapshot(id, root)),
+      changed,
+      changedCount: changed.length
+    };
   }
 
   function forceUnblockNaturePane(root, reason) {
@@ -7835,6 +8266,17 @@
     '#birdsClearClickDiagnosticsBtn',
     '#birdsCopyRecentClickTraceBtn',
     '#birdsDownloadRecentClickTraceBtn',
+    '#birdsRunClickabilityDiagBtn',
+    '#birdsRunCoreCtaAutofixBtn',
+    '#birdsRunOverlayAutofixBtn',
+    '#birdsRunFullAutorepairSequenceBtn',
+    '#birdsRunReliabilityDiagBtn',
+    '#birdsRunDiagnosticsBundleBtn',
+    '#birdsRunWorkbookDiagReportBtn',
+    '#birdsExportManualDiagnosticsJsonBtn',
+    '#birdsCopyLastManualDiagnosticsJsonBtn',
+    '#birdsCopyManualDiagnosticsBtn',
+    '#birdsClearManualDiagnosticsBtn',
     '[data-birds-back-to-top]',
     '#birdsExplorerClearFiltersBtn',
     '#birdsExplorerClearChipFiltersBtn',
@@ -7871,6 +8313,7 @@
     ensureNatureSubtabJumpLinks(root);
     installNatureButtonReliabilityObserver(root);
     ensureBirdClickDiagnosticsPanel(root);
+    ensureBirdManualDiagnosticsOutput(root);
 
     const handleDelegatedActivation = (event) => {
       const delegatedTarget = getDelegatedNatureActionTarget(root, event);
@@ -8143,6 +8586,123 @@
       const downloadDiagnosticsButton = event.target.closest('#birdsDownloadRecentClickTraceBtn');
       if (downloadDiagnosticsButton) {
         withBirdsActionGuard(downloadDiagnosticsButton, () => downloadRecentBirdClickTraceJson());
+        return;
+      }
+
+      const runClickabilityDiagButton = event.target.closest('#birdsRunClickabilityDiagBtn');
+      if (runClickabilityDiagButton) {
+        withBirdsActionGuard(runClickabilityDiagButton, () => {
+          const report = runBirdClickabilityDiagnosticsReport();
+          writeManualDiagnosticsOutput('Clickability Probe', report, { append: true });
+          if (typeof window.showToast === 'function') window.showToast('Clickability probe captured.', 'success', 1800);
+        });
+        return;
+      }
+
+      const runCoreCtaAutofixButton = event.target.closest('#birdsRunCoreCtaAutofixBtn');
+      if (runCoreCtaAutofixButton) {
+        withBirdsActionGuard(runCoreCtaAutofixButton, () => {
+          const report = runBirdCoreCtaAutoFixReport();
+          writeManualDiagnosticsOutput('Core CTA Auto-fix', report, { append: true });
+          if (typeof window.showToast === 'function') {
+            const changedCount = Number(report.changedCount || 0);
+            window.showToast(
+              changedCount > 0
+                ? `Core CTA auto-fix repaired ${changedCount} button(s).`
+                : 'Core CTA auto-fix found no stale button locks.',
+              changedCount > 0 ? 'success' : 'info',
+              2200
+            );
+          }
+        });
+        return;
+      }
+
+      const runOverlayAutofixButton = event.target.closest('#birdsRunOverlayAutofixBtn');
+      if (runOverlayAutofixButton) {
+        withBirdsActionGuard(runOverlayAutofixButton, () => {
+          const report = runBirdOverlayAutoFixReport();
+          writeManualDiagnosticsOutput('Overlay/Z-Index Auto-fix', report, { append: true });
+          if (typeof window.showToast === 'function') {
+            const changedCount = Number(report.forceFixedCount || 0);
+            window.showToast(
+              changedCount > 0
+                ? `Overlay auto-fix neutralized ${changedCount} blocker(s).`
+                : 'Overlay auto-fix found no blocker overlays.',
+              changedCount > 0 ? 'success' : 'info',
+              2200
+            );
+          }
+        });
+        return;
+      }
+
+      const runFullAutorepairSequenceButton = event.target.closest('#birdsRunFullAutorepairSequenceBtn');
+      if (runFullAutorepairSequenceButton) {
+        withBirdsActionGuard(runFullAutorepairSequenceButton, () => {
+          const report = runBirdFullAutoRepairSequenceReport();
+          writeManualDiagnosticsOutput('Full Auto-Repair Sequence', report, { append: true });
+          if (typeof window.showToast === 'function') {
+            const coreChanged = Number(report && report.summary && report.summary.coreChangedCount || 0);
+            const overlayFixed = Number(report && report.summary && report.summary.overlayFixedCount || 0);
+            window.showToast(`Full auto-repair complete. Core fixes: ${coreChanged}, overlay fixes: ${overlayFixed}.`, 'success', 2400);
+          }
+        });
+        return;
+      }
+
+      const runReliabilityDiagButton = event.target.closest('#birdsRunReliabilityDiagBtn');
+      if (runReliabilityDiagButton) {
+        withBirdsActionGuard(runReliabilityDiagButton, () => {
+          const report = runBirdReliabilitySnapshotReport();
+          writeManualDiagnosticsOutput('Reliability Snapshot', report, { append: true });
+          if (typeof window.showToast === 'function') window.showToast('Reliability snapshot captured.', 'success', 1800);
+        });
+        return;
+      }
+
+      const runBundleDiagButton = event.target.closest('#birdsRunDiagnosticsBundleBtn');
+      if (runBundleDiagButton) {
+        withBirdsActionGuard(runBundleDiagButton, () => {
+          const report = runBirdDiagnosticsBundleReport();
+          writeManualDiagnosticsOutput('Full Diagnostics Bundle', report, { append: true });
+          if (typeof window.showToast === 'function') window.showToast('Full diagnostics bundle captured.', 'success', 1800);
+        });
+        return;
+      }
+
+      const runWorkbookDiagReportButton = event.target.closest('#birdsRunWorkbookDiagReportBtn');
+      if (runWorkbookDiagReportButton) {
+        withBirdsActionGuard(runWorkbookDiagReportButton, async () => {
+          const report = await runBirdWorkbookDiagnosticsReport();
+          writeManualDiagnosticsOutput('Workbook Diagnostic Report', report, { append: true });
+          if (typeof window.showToast === 'function') window.showToast('Workbook diagnostics report captured.', 'success', 2200);
+        });
+        return;
+      }
+
+      const exportManualDiagnosticsButton = event.target.closest('#birdsExportManualDiagnosticsJsonBtn');
+      if (exportManualDiagnosticsButton) {
+        withBirdsActionGuard(exportManualDiagnosticsButton, () => exportLastManualDiagnosticsPayloadJson());
+        return;
+      }
+
+      const copyLastManualDiagnosticsButton = event.target.closest('#birdsCopyLastManualDiagnosticsJsonBtn');
+      if (copyLastManualDiagnosticsButton) {
+        withBirdsActionGuard(copyLastManualDiagnosticsButton, () => copyLastManualDiagnosticsPayloadJson());
+        return;
+      }
+
+      const copyManualDiagnosticsButton = event.target.closest('#birdsCopyManualDiagnosticsBtn');
+      if (copyManualDiagnosticsButton) {
+        withBirdsActionGuard(copyManualDiagnosticsButton, () => copyManualDiagnosticsOutput());
+        return;
+      }
+
+      const clearManualDiagnosticsButton = event.target.closest('#birdsClearManualDiagnosticsBtn');
+      if (clearManualDiagnosticsButton) {
+        clearManualDiagnosticsOutput();
+        if (typeof window.showToast === 'function') window.showToast('Manual diagnostics output cleared.', 'info', 1800);
         return;
       }
 
@@ -8880,6 +9440,14 @@
   window.getRecentBirdClickTraceSnapshot = getRecentBirdClickTraceSnapshot;
   window.runBirdWorkbookDiagnostics = runBirdWorkbookDiagnostics;
   window.runNatureWorkbookDiagnostics = runNatureWorkbookDiagnostics;
+  window.runBirdClickabilityDiagnosticsReport = runBirdClickabilityDiagnosticsReport;
+  window.runBirdReliabilitySnapshotReport = runBirdReliabilitySnapshotReport;
+  window.runBirdDiagnosticsBundleReport = runBirdDiagnosticsBundleReport;
+  window.runBirdCoreCtaAutoFixReport = runBirdCoreCtaAutoFixReport;
+  window.runBirdOverlayAutoFixReport = runBirdOverlayAutoFixReport;
+  window.runBirdFullAutoRepairSequenceReport = runBirdFullAutoRepairSequenceReport;
+  window.exportLastBirdManualDiagnosticsPayloadJson = exportLastManualDiagnosticsPayloadJson;
+  window.copyLastBirdManualDiagnosticsPayloadJson = copyLastManualDiagnosticsPayloadJson;
   window.getNatureMapContext = function() {
     const selectedDockButtons = Array.from(document.querySelectorAll('#appSubTabsSlot .nature-challenge-subtabs [data-nature-subtab][aria-selected="true"]'));
     const selectedDockButton = selectedDockButtons.find((button) => {

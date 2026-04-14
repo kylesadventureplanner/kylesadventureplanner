@@ -304,6 +304,30 @@
           </div>
           <div id="birdsButtonClickDiagnosticsPanel" class="nature-click-diagnostics-panel" aria-live="polite">Loading diagnostics...</div>
         </div>
+
+        <div class="card nature-diagnostics-subcard ui-diagnostics-subcard">
+          <div class="card-header">
+            <div class="card-title">🧪 Manual Diagnostics Console</div>
+            <div class="card-subtitle">Run targeted diagnostics on demand for unclickable buttons, sync health, and runtime blockers. Use when hover/click behaviors are inconsistent or dead.</div>
+          </div>
+          <div class="nature-log-form-actions">
+            <button id="birdsRunClickabilityDiagBtn" type="button" class="pill-button" title="Probe CTA click surfaces, disabled state, and guard blockers" data-tooltip="Probe CTA click surfaces, disabled state, and guard blockers">Run Clickability Probe</button>
+            <button id="birdsRunCoreCtaAutofixBtn" type="button" class="pill-button" title="Clear stale disabled/busy/aria locks on core Birds CTA buttons" data-tooltip="Clear stale disabled/busy/aria locks on core Birds CTA buttons">Auto-fix Core CTA State</button>
+            <button id="birdsRunOverlayAutofixBtn" type="button" class="pill-button" title="Detect and clear overlay or z-index blockers over Birds controls" data-tooltip="Detect and clear overlay or z-index blockers over Birds controls">Auto-fix Overlay/Z-Index Blockers</button>
+            <button id="birdsRunFullAutorepairSequenceBtn" type="button" class="pill-button" title="Run core CTA autofix, overlay autofix, and clickability probe in one sequence" data-tooltip="Run core CTA autofix, overlay autofix, and clickability probe in one sequence">Run Full Auto-Repair Sequence</button>
+            <button id="birdsRunReliabilityDiagBtn" type="button" class="pill-button" title="Capture reliability status, blocked actions, and overlay interception counters" data-tooltip="Capture reliability status, blocked actions, and overlay interception counters">Run Reliability Snapshot</button>
+            <button id="birdsRunDiagnosticsBundleBtn" type="button" class="pill-button" title="Capture full diagnostics bundle without downloading a file" data-tooltip="Capture full diagnostics bundle without downloading a file">Run Full Diagnostics Bundle</button>
+            <button id="birdsRunWorkbookDiagReportBtn" type="button" class="pill-button" title="Run workbook path and table diagnostics and print a summarized report" data-tooltip="Run workbook path and table diagnostics and print a summarized report">Run Workbook Diagnostic Report</button>
+          </div>
+          <textarea id="birdsManualDiagnosticsOutput" class="filter-input" rows="12" readonly aria-label="Manual diagnostics output" placeholder="Manual diagnostic results appear here..."></textarea>
+          <div id="birdsManualDiagnosticsLastReportStatus" class="card-subtitle" aria-live="polite">Last report: none yet.</div>
+          <div class="nature-log-form-actions" style="margin-top: 8px;">
+            <button id="birdsExportManualDiagnosticsJsonBtn" type="button" class="pill-button" title="Run a manual diagnostic first, then export the last report as JSON" data-tooltip="Run a manual diagnostic first, then export the last report as JSON" aria-disabled="true" disabled>Export Last Report JSON</button>
+            <button id="birdsCopyLastManualDiagnosticsJsonBtn" type="button" class="pill-button" title="Run a manual diagnostic first, then copy the last report JSON" data-tooltip="Run a manual diagnostic first, then copy the last report JSON" aria-disabled="true" disabled>Copy Last Report JSON</button>
+            <button id="birdsCopyManualDiagnosticsBtn" type="button" class="pill-button" title="Copy manual diagnostics output to clipboard" data-tooltip="Copy manual diagnostics output to clipboard">Copy Output</button>
+            <button id="birdsClearManualDiagnosticsBtn" type="button" class="pill-button" title="Clear manual diagnostics output" data-tooltip="Clear manual diagnostics output">Clear Output</button>
+          </div>
+        </div>
       </details>
 
     </div>

@@ -26,6 +26,41 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(birdsDiagnosticsRow).toContainText('Sightings/User State');
   });
 
+  test('manual diagnostics console runs probe and writes output', async ({ page }) => {
+    await page.locator('#birdsDiagnosticsDetails > summary').click();
+    const output = page.locator('#birdsManualDiagnosticsOutput');
+    if (await output.count() === 0) {
+      // Deployed environments may still be on an older Nature diagnostics layout.
+      await expect(page.locator('#birdsButtonClickDiagnosticsPanel')).toBeVisible();
+      return;
+    }
+    await expect(output).toBeVisible();
+    const exportBtn = page.locator('#birdsExportManualDiagnosticsJsonBtn');
+    const copyLastBtn = page.locator('#birdsCopyLastManualDiagnosticsJsonBtn');
+    const lastReportStatus = page.locator('#birdsManualDiagnosticsLastReportStatus');
+    await expect(exportBtn).toBeDisabled();
+    await expect(copyLastBtn).toBeDisabled();
+    await expect(lastReportStatus).toContainText('Last report: none yet.');
+    await page.locator('#birdsRunClickabilityDiagBtn').click();
+    await expect(output).toContainText('Clickability Probe');
+    await expect(exportBtn).toBeEnabled();
+    await expect(copyLastBtn).toBeEnabled();
+    await expect(lastReportStatus).toContainText('Last report: birds-clickability-probe at ');
+    await page.locator('#birdsRunCoreCtaAutofixBtn').click();
+    await expect(output).toContainText('Core CTA Auto-fix');
+    await page.locator('#birdsRunOverlayAutofixBtn').click();
+    await expect(output).toContainText('Overlay/Z-Index Auto-fix');
+    await page.locator('#birdsRunFullAutorepairSequenceBtn').click();
+    await expect(output).toContainText('Full Auto-Repair Sequence');
+    await exportBtn.click();
+    await copyLastBtn.click();
+    await page.locator('#birdsClearManualDiagnosticsBtn').click();
+    await expect(output).toHaveValue('');
+    await expect(exportBtn).toBeDisabled();
+    await expect(copyLastBtn).toBeDisabled();
+    await expect(lastReportStatus).toContainText('Last report: none yet.');
+  });
+
   test('birds jump bar renders with expected section buttons', async ({ page }) => {
     const jumpBar = page.locator('#natureChallengeRoot [data-birds-jump-links]');
     if (await jumpBar.count()) {
