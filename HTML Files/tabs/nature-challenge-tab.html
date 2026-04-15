@@ -1306,13 +1306,17 @@
     margin-top: 8px;
   }
 
-  #natureChallengeRoot .nature-explore-cta-actions {
-    justify-content: flex-start;
-    position: relative;
-    z-index: 24;
-    isolation: isolate;
-    width: 100%;
-  }
+   #natureChallengeRoot .nature-explore-cta-actions {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 8px;
+     align-items: center;
+     justify-content: flex-start;
+     position: relative;
+     z-index: 24;
+     isolation: isolate;
+     width: 100%;
+   }
 
   #natureChallengeRoot .nature-explore-cta-actions.nature-sticky-action-rail {
     position: static;
@@ -3505,11 +3509,13 @@
       align-items: stretch;
     }
 
-    #natureChallengeRoot .nature-explore-cta-actions {
-      width: 100%;
-      justify-content: stretch;
-      flex-direction: column;
-    }
+     #natureChallengeRoot .nature-explore-cta-actions {
+       display: flex;
+       flex-wrap: wrap;
+       width: 100%;
+       justify-content: stretch;
+       flex-direction: column;
+     }
 
     #natureChallengeRoot .nature-explore-birds-btn {
       width: 100%;
