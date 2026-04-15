@@ -5,7 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/JS Files/pwa-offline-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/pwa-offline-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sw.js" beforeDir="false" afterPath="$PROJECT_DIR$/sw.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -91,7 +93,7 @@
       <workItem from="1775961963296" duration="82000" />
       <workItem from="1775962146733" duration="74876000" />
       <workItem from="1776172027526" duration="1231000" />
-      <workItem from="1776186047188" duration="20708000" />
+      <workItem from="1776186047188" duration="21509000" />
     </task>
     <servers />
   </component>
