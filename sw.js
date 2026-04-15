@@ -1,7 +1,7 @@
-const SW_VERSION = '2026.04.14.3';
-const CACHE_VERSION = 'kaf-shell-v6';
-const RUNTIME_CACHE = 'kaf-runtime-v6';
-const OFFLINE_CACHE = 'kaf-offline-pack-v6';
+const SW_VERSION = '2026.04.15.4';
+const CACHE_VERSION = 'kaf-shell-v7';
+const RUNTIME_CACHE = 'kaf-runtime-v7';
+const OFFLINE_CACHE = 'kaf-offline-pack-v7';
 
 const PRECACHE_ASSETS = [
   '/',

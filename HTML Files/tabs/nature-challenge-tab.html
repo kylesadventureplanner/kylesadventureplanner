@@ -312,6 +312,8 @@
           </div>
           <div class="nature-log-form-actions">
             <button id="birdsBackToCtaRowBtn" type="button" class="pill-button nature-diagnostics-quick-jump" title="Jump back to Explore/Log/Map controls" data-tooltip="Jump back to Explore/Log/Map controls">↑ Back to CTA row</button>
+            <button id="birdsRunCtaHealthDiagBtn" type="button" class="pill-button" title="Run a practical pass/fail health check for Explore, Log, Map, and Refresh" data-tooltip="Run a practical pass/fail health check for Explore, Log, Map, and Refresh">Run CTA Health Check</button>
+            <button id="birdsCopyCtaHealthSummaryBtn" type="button" class="pill-button" title="Copy a short pass/fail CTA health summary" data-tooltip="Copy a short pass/fail CTA health summary">Copy CTA Health Summary</button>
             <button id="birdsRunClickabilityDiagBtn" type="button" class="pill-button" title="Probe CTA click surfaces, disabled state, and guard blockers" data-tooltip="Probe CTA click surfaces, disabled state, and guard blockers">Run Clickability Probe</button>
             <button id="birdsResetViewportDiagBtn" type="button" class="pill-button" title="Reset Nature viewport/state, then run clickability + duplicate-ID checks" data-tooltip="Reset Nature viewport/state, then run clickability + duplicate-ID checks">Reset Nature Viewport + Probe</button>
             <button id="birdsRunCoreCtaAutofixBtn" type="button" class="pill-button" title="Clear stale disabled/busy/aria locks on core Birds CTA buttons" data-tooltip="Clear stale disabled/busy/aria locks on core Birds CTA buttons">Auto-fix Core CTA State</button>
@@ -321,6 +323,8 @@
             <button id="birdsRunDiagnosticsBundleBtn" type="button" class="pill-button" title="Capture full diagnostics bundle without downloading a file" data-tooltip="Capture full diagnostics bundle without downloading a file">Run Full Diagnostics Bundle</button>
             <button id="birdsRunWorkbookDiagReportBtn" type="button" class="pill-button" title="Run workbook path and table diagnostics and print a summarized report" data-tooltip="Run workbook path and table diagnostics and print a summarized report">Run Workbook Diagnostic Report</button>
           </div>
+          <div id="birdsCtaHealthPanel" class="nature-cta-health-panel" aria-live="polite">CTA health check has not been run yet.</div>
+          <div id="birdsCtaHealthCopyPreview" class="nature-cta-health-copy-preview" aria-live="polite" tabindex="0" title="Copied summary preview will appear here after you click Copy CTA Health Summary.">Copied summary preview will appear here after you click "Copy CTA Health Summary".</div>
           <textarea id="birdsManualDiagnosticsOutput" class="filter-input" rows="12" readonly aria-label="Manual diagnostics output" placeholder="Manual diagnostic results appear here..."></textarea>
           <div id="birdsManualDiagnosticsLastReportStatus" class="card-subtitle" aria-live="polite">Last report: none yet.</div>
           <div class="nature-log-form-actions" style="margin-top: 8px;">
@@ -2187,6 +2191,118 @@
   #natureChallengeRoot .nature-click-diagnostics-empty {
     color: #64748b;
     font-weight: 700;
+  }
+
+  #natureChallengeRoot .nature-cta-health-panel {
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+    color: #1e3a8a;
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 8px;
+  }
+
+  #natureChallengeRoot .nature-cta-health-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-weight: 800;
+  }
+
+  #natureChallengeRoot .nature-cta-health-stamp {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  #natureChallengeRoot .nature-cta-health-grid {
+    display: grid;
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-cta-health-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 160px) auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 8px 10px;
+  }
+
+  #natureChallengeRoot .nature-cta-health-label {
+    color: #0f172a;
+    font-weight: 800;
+  }
+
+  #natureChallengeRoot .nature-cta-health-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    border-radius: 999px;
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 900;
+    padding: 2px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  #natureChallengeRoot .nature-cta-health-chip.is-pass {
+    border-color: #86efac;
+    background: #ecfdf5;
+    color: #166534;
+  }
+
+  #natureChallengeRoot .nature-cta-health-chip.is-fail {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+  }
+
+  #natureChallengeRoot .nature-cta-health-meta {
+    color: #475569;
+    font-size: 11px;
+    word-break: break-word;
+  }
+
+  #natureChallengeRoot .nature-cta-health-copy-preview {
+    margin-top: 6px;
+    padding: 6px 8px;
+    border: 1px dashed #bfdbfe;
+    border-radius: 10px;
+    background: #f8fbff;
+    color: #475569;
+    font-size: 11px;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 28px;
+    transition: max-height 140ms ease, border-color 140ms ease, background 140ms ease;
+    cursor: default;
+  }
+
+  #natureChallengeRoot .nature-cta-health-copy-preview:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+  }
+
+  #natureChallengeRoot .nature-cta-health-copy-preview.is-expanded {
+    white-space: pre-wrap;
+    overflow: auto;
+    text-overflow: clip;
+    max-height: 180px;
+    border-color: #93c5fd;
+    background: #eef6ff;
   }
 
   #natureChallengeRoot .nature-view-header-row {

@@ -438,6 +438,18 @@
     lastReportMeta: null
   };
 
+  const birdsCtaHealth = {
+    panel: null,
+    copyPreviewEl: null,
+    lastReport: null,
+    lastCopiedSummary: '',
+    lastCopiedAt: '',
+    interactionBound: false,
+    collapseTimerId: 0,
+    pointerInside: false,
+    focused: false
+  };
+
   // Per-action-key reliability guard state.
   const birdsActivationGuard = {
     inFlight: new Map(),  // actionKey -> true while async action is running
@@ -445,6 +457,7 @@
   };
   const BIRDS_ACTIVATION_DEDUPE_MS = 300;      // ignore re-activation within this window
   const BIRDS_ACTIVATION_LOCK_TIMEOUT_MS = 8000; // safety-release stuck lock after this long
+  const BIRD_CTA_COPY_PREVIEW_COLLAPSE_MS = 2400;
 
   function isBirdClickDiagnosticsEnabled() {
     if (typeof window === 'undefined') return false;
@@ -699,6 +712,246 @@
     }
     syncManualDiagnosticsStatusLine();
     syncManualDiagnosticsLastReportActionButtons();
+  }
+
+  function getBirdCtaHealthMeta(actionKey, actionResult, rectResult) {
+    const rect = rectResult && rectResult.rect ? rectResult.rect : null;
+    const rectText = rect
+      ? `${Number(rect.width || 0)}x${Number(rect.height || 0)} @ (${Number(rect.left || 0)}, ${Number(rect.top || 0)})`
+      : 'rect unavailable';
+    if (!actionResult) return `No action result. ${rectText}`;
+    if (actionKey === 'explore' || actionKey === 'log') {
+      return `${actionResult.activeBirdView ? `view=${actionResult.activeBirdView}` : 'view not reported'} | ${rectText}`;
+    }
+    if (actionKey === 'map') {
+      return `${actionResult.mapVisible ? 'map overlay visible' : 'map overlay not visible'} | ${rectText}`;
+    }
+    if (actionKey === 'refresh') {
+      const badge = String(actionResult.syncBadge || '').trim();
+      return `${badge ? `badge="${badge}"` : 'badge not reported'} | ${rectText}`;
+    }
+    return rectText;
+  }
+
+  function renderBirdCtaHealthPanel(report) {
+    const panel = birdsCtaHealth.panel || document.getElementById('birdsCtaHealthPanel');
+    if (!panel) return;
+    birdsCtaHealth.panel = panel;
+
+    const payload = report || birdsCtaHealth.lastReport;
+    if (!payload || !Array.isArray(payload.actions)) {
+      panel.innerHTML = 'CTA health check has not been run yet.';
+      return;
+    }
+
+    const actionMap = payload.actions.reduce((acc, item) => {
+      const key = String(item && item.action || '').trim();
+      if (key) acc[key] = item;
+      return acc;
+    }, {});
+
+    const rectMap = (Array.isArray(payload.buttonRects) ? payload.buttonRects : []).reduce((acc, item) => {
+      const key = String(item && item.id || '').trim();
+      if (key) acc[key] = item;
+      return acc;
+    }, {});
+
+    const rows = [
+      { id: 'birdsExploreBtn', action: 'explore', label: 'Explore Species' },
+      { id: 'birdsOpenLogBtn', action: 'log', label: 'Log a Sighting' },
+      { id: 'birdsOpenMapBtn', action: 'map', label: 'Map' },
+      { id: 'natureChallengeRefreshBtn', action: 'refresh', label: 'Refresh Data' }
+    ];
+
+    const passCount = rows.reduce((count, row) => {
+      const outcome = actionMap[row.action];
+      return count + (outcome && outcome.ok ? 1 : 0);
+    }, 0);
+
+    panel.innerHTML = `
+      <div class="nature-cta-health-head">
+        <span>CTA Health: ${passCount}/${rows.length} passing</span>
+        <span class="nature-cta-health-stamp">${escapeHtml(new Date(payload.capturedAt || Date.now()).toLocaleString())}</span>
+      </div>
+      <div class="nature-cta-health-grid">
+        ${rows.map((row) => {
+          const outcome = actionMap[row.action] || null;
+          const rect = rectMap[row.id] || null;
+          const ok = Boolean(outcome && outcome.ok);
+          const meta = getBirdCtaHealthMeta(row.action, outcome, rect);
+          return `
+            <div class="nature-cta-health-row">
+              <span class="nature-cta-health-label">${escapeHtml(row.label)}</span>
+              <span class="nature-cta-health-chip ${ok ? 'is-pass' : 'is-fail'}">${ok ? 'PASS' : 'FAIL'}</span>
+              <span class="nature-cta-health-meta">${escapeHtml(meta)}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function ensureBirdCtaHealthPanel(root) {
+    if (!root) return;
+    if (!birdsCtaHealth.panel) {
+      birdsCtaHealth.panel = document.getElementById('birdsCtaHealthPanel');
+    }
+    if (!birdsCtaHealth.copyPreviewEl) {
+      birdsCtaHealth.copyPreviewEl = document.getElementById('birdsCtaHealthCopyPreview');
+    }
+    bindBirdCtaHealthCopyPreviewInteractions();
+    renderBirdCtaHealthPanel(birdsCtaHealth.lastReport);
+    renderBirdCtaHealthCopyPreview();
+  }
+
+  function setBirdCtaHealthCopyPreviewExpanded(expanded) {
+    const previewEl = birdsCtaHealth.copyPreviewEl || document.getElementById('birdsCtaHealthCopyPreview');
+    if (!previewEl) return;
+    birdsCtaHealth.copyPreviewEl = previewEl;
+    previewEl.classList.toggle('is-expanded', Boolean(expanded));
+  }
+
+  function clearBirdCtaHealthCopyPreviewCollapseTimer() {
+    if (!birdsCtaHealth.collapseTimerId) return;
+    clearTimeout(birdsCtaHealth.collapseTimerId);
+    birdsCtaHealth.collapseTimerId = 0;
+  }
+
+  function scheduleBirdCtaHealthCopyPreviewCollapse() {
+    clearBirdCtaHealthCopyPreviewCollapseTimer();
+    if (birdsCtaHealth.pointerInside || birdsCtaHealth.focused) return;
+    birdsCtaHealth.collapseTimerId = window.setTimeout(() => {
+      birdsCtaHealth.collapseTimerId = 0;
+      if (birdsCtaHealth.pointerInside || birdsCtaHealth.focused) return;
+      setBirdCtaHealthCopyPreviewExpanded(false);
+    }, BIRD_CTA_COPY_PREVIEW_COLLAPSE_MS);
+  }
+
+  function bindBirdCtaHealthCopyPreviewInteractions() {
+    const previewEl = birdsCtaHealth.copyPreviewEl || document.getElementById('birdsCtaHealthCopyPreview');
+    if (!previewEl) return;
+    birdsCtaHealth.copyPreviewEl = previewEl;
+    if (birdsCtaHealth.interactionBound) return;
+    birdsCtaHealth.interactionBound = true;
+
+    previewEl.addEventListener('mouseenter', () => {
+      birdsCtaHealth.pointerInside = true;
+      clearBirdCtaHealthCopyPreviewCollapseTimer();
+      setBirdCtaHealthCopyPreviewExpanded(true);
+    });
+
+    previewEl.addEventListener('mouseleave', () => {
+      birdsCtaHealth.pointerInside = false;
+      scheduleBirdCtaHealthCopyPreviewCollapse();
+    });
+
+    previewEl.addEventListener('focusin', () => {
+      birdsCtaHealth.focused = true;
+      clearBirdCtaHealthCopyPreviewCollapseTimer();
+      setBirdCtaHealthCopyPreviewExpanded(true);
+    });
+
+    previewEl.addEventListener('focusout', () => {
+      birdsCtaHealth.focused = false;
+      scheduleBirdCtaHealthCopyPreviewCollapse();
+    });
+  }
+
+  function renderBirdCtaHealthCopyPreview() {
+    const previewEl = birdsCtaHealth.copyPreviewEl || document.getElementById('birdsCtaHealthCopyPreview');
+    if (!previewEl) return;
+    birdsCtaHealth.copyPreviewEl = previewEl;
+
+    const text = String(birdsCtaHealth.lastCopiedSummary || '').trim();
+    if (!text) {
+      const emptyText = 'Copied summary preview will appear here after you click "Copy CTA Health Summary".';
+      previewEl.textContent = emptyText;
+      previewEl.setAttribute('title', emptyText);
+      return;
+    }
+
+    const compact = text.replace(/\s*\n+\s*/g, ' | ').trim();
+    const when = birdsCtaHealth.lastCopiedAt
+      ? (() => {
+          const parsed = new Date(birdsCtaHealth.lastCopiedAt);
+          return Number.isNaN(parsed.getTime()) ? '' : parsed.toLocaleTimeString();
+        })()
+      : '';
+    previewEl.textContent = when
+      ? `Copied ${when}: ${compact}`
+      : `Copied: ${compact}`;
+    previewEl.setAttribute('title', text);
+  }
+
+  function formatBirdCtaHealthSummaryText(report) {
+    const payload = report || birdsCtaHealth.lastReport;
+    if (!payload || !Array.isArray(payload.actions)) return '';
+
+    const actionMap = payload.actions.reduce((acc, item) => {
+      const key = String(item && item.action || '').trim();
+      if (key) acc[key] = item;
+      return acc;
+    }, {});
+
+    const rows = [
+      { action: 'explore', label: 'Explore Species' },
+      { action: 'log', label: 'Log a Sighting' },
+      { action: 'map', label: 'Map' },
+      { action: 'refresh', label: 'Refresh Data' }
+    ];
+
+    const passCount = rows.reduce((count, row) => count + (actionMap[row.action] && actionMap[row.action].ok ? 1 : 0), 0);
+    const capturedAt = payload.capturedAt ? new Date(payload.capturedAt).toLocaleString() : new Date().toLocaleString();
+    const lines = [
+      `CTA Health Summary (${capturedAt})`,
+      `Context: subtab=${String(payload.activeSubTab || '') || 'unknown'}, view=${String(payload.activeBirdView || '') || 'unknown'}`,
+      `Passing: ${passCount}/${rows.length}`
+    ];
+
+    rows.forEach((row) => {
+      const outcome = actionMap[row.action];
+      const ok = Boolean(outcome && outcome.ok);
+      let detail = '';
+      if (row.action === 'explore' || row.action === 'log') detail = String(outcome && outcome.activeBirdView || 'view not reported');
+      if (row.action === 'map') detail = outcome && outcome.mapVisible ? 'map visible' : 'map not visible';
+      if (row.action === 'refresh') detail = String(outcome && outcome.syncBadge || '').trim() || 'badge not reported';
+      if (outcome && outcome.reason) detail = `${detail ? `${detail}; ` : ''}${outcome.reason}`;
+      lines.push(`- ${ok ? 'PASS' : 'FAIL'}: ${row.label}${detail ? ` (${detail})` : ''}`);
+    });
+
+    return lines.join('\n');
+  }
+
+  async function copyBirdCtaHealthSummary(report) {
+    const text = formatBirdCtaHealthSummaryText(report);
+    if (!text) {
+      if (typeof window.showToast === 'function') window.showToast('Run CTA Health Check first.', 'info', 1800);
+      return false;
+    }
+    try {
+      if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+    } catch (_error) {
+      const probe = document.createElement('textarea');
+      probe.value = text;
+      probe.setAttribute('readonly', 'readonly');
+      probe.style.position = 'fixed';
+      probe.style.top = '-9999px';
+      document.body.appendChild(probe);
+      probe.select();
+      document.execCommand('copy');
+      document.body.removeChild(probe);
+    }
+    birdsCtaHealth.lastCopiedSummary = text;
+    birdsCtaHealth.lastCopiedAt = new Date().toISOString();
+    renderBirdCtaHealthCopyPreview();
+    setBirdCtaHealthCopyPreviewExpanded(true);
+    scheduleBirdCtaHealthCopyPreviewCollapse();
+    if (typeof window.showToast === 'function') window.showToast('CTA health summary copied.', 'success', 1800);
+    return true;
   }
 
   function syncManualDiagnosticsStatusLine() {
@@ -1094,6 +1347,7 @@
     const skippedTargets = [];
     probeIds.forEach((id) => {
       const classification = classifyNatureProbeTarget(root, id);
+      const canAttemptProbe = Boolean(classification && Number(classification.matchCount || 0) > 0);
       if (classification.state !== 'probe') {
         skippedTargets.push({
           id,
@@ -1103,12 +1357,18 @@
           contextMatchCount: Number(classification.contextMatchCount || 0),
           visibleCount: Number(classification.visibleCount || 0)
         });
-        return;
       }
-      if (window.ButtonReliability && typeof window.ButtonReliability.probeClickPath === 'function') {
+
+      // Still run a click-path probe when possible, even if classification says
+      // offscreen/inactive. This keeps diagnostics actionable instead of all-skipped.
+      if (canAttemptProbe && window.ButtonReliability && typeof window.ButtonReliability.probeClickPath === 'function') {
         clickPath[id] = window.ButtonReliability.probeClickPath(id);
       } else {
-        clickPath[id] = { ok: false, reason: 'probe-unavailable' };
+        clickPath[id] = {
+          ok: false,
+          reason: canAttemptProbe ? 'probe-unavailable' : (classification.state || 'not-found'),
+          classification
+        };
       }
     });
     const blockers = (window.ButtonReliability && typeof window.ButtonReliability.detectBlockingOverlays === 'function')
@@ -1293,6 +1553,101 @@
       clickability,
       duplicateIds
     };
+  }
+
+  async function runBirdCtaSmokeTestReport() {
+    const root = document.getElementById('natureChallengeRoot');
+    const ids = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn'];
+    const buttonRects = ids.map((id) => {
+      const el = document.getElementById(id);
+      if (!el) return { id, exists: false };
+      const rect = el.getBoundingClientRect();
+      return {
+        id,
+        exists: true,
+        disabled: Boolean(el.disabled),
+        rect: {
+          top: Math.round(rect.top || 0),
+          left: Math.round(rect.left || 0),
+          width: Math.round(rect.width || 0),
+          height: Math.round(rect.height || 0)
+        }
+      };
+    });
+
+    const report = {
+      kind: 'birds-cta-smoke-test',
+      capturedAt: new Date().toISOString(),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      buttonRects,
+      actions: []
+    };
+
+    const exploreBtn = document.getElementById('birdsExploreBtn');
+    if (exploreBtn && !exploreBtn.disabled) {
+      exploreBtn.click();
+      await nextAnimationFrame();
+      report.actions.push({
+        action: 'explore',
+        ok: state.activeBirdView === 'explorer' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]')),
+        activeBirdView: state.activeBirdView
+      });
+    } else {
+      report.actions.push({ action: 'explore', ok: false, reason: 'missing-or-disabled' });
+    }
+
+    setBirdView(root, 'overview');
+    await nextAnimationFrame();
+
+    const logBtn = document.getElementById('birdsOpenLogBtn');
+    if (logBtn && !logBtn.disabled) {
+      logBtn.click();
+      await nextAnimationFrame();
+      report.actions.push({
+        action: 'log',
+        ok: state.activeBirdView === 'log' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="log"]')),
+        activeBirdView: state.activeBirdView
+      });
+    } else {
+      report.actions.push({ action: 'log', ok: false, reason: 'missing-or-disabled' });
+    }
+
+    setBirdView(root, 'overview');
+    await nextAnimationFrame();
+
+    const mapBtn = document.getElementById('birdsOpenMapBtn');
+    if (mapBtn && !mapBtn.disabled) {
+      mapBtn.click();
+      await nextAnimationFrame();
+      const mapVisible = Boolean(document.querySelector('#birdsMapOverlay:not([hidden])'));
+      report.actions.push({ action: 'map', ok: mapVisible, mapVisible });
+    } else {
+      report.actions.push({ action: 'map', ok: false, reason: 'missing-or-disabled' });
+    }
+
+    if (window.SightingMap && typeof window.SightingMap.close === 'function') {
+      try {
+        window.SightingMap.close();
+      } catch (_error) {
+        // Ignore map close failures in smoke diagnostics.
+      }
+    }
+
+    const refreshBtn = document.getElementById('natureChallengeRefreshBtn');
+    if (refreshBtn && !refreshBtn.disabled) {
+      refreshBtn.click();
+      await nextAnimationFrame();
+      report.actions.push({
+        action: 'refresh',
+        ok: true,
+        syncBadge: String((document.getElementById('natureSyncHealthBadgeInline') || {}).textContent || '').trim()
+      });
+    } else {
+      report.actions.push({ action: 'refresh', ok: false, reason: 'missing-or-disabled' });
+    }
+
+    return report;
   }
 
   async function runBirdWorkbookDiagnosticsReport() {
@@ -8585,17 +8940,32 @@
     }
   };
 
+  function resolveNatureCtaActionFromButton(btn) {
+    if (!btn) return '';
+    const explicit = String(btn.getAttribute('data-birds-cta-action') || '').trim();
+    if (explicit) return explicit;
+    const id = String(btn.id || '').trim();
+    if (id === 'birdsExploreBtn') return 'explore';
+    if (id === 'birdsOpenLogBtn') return 'log';
+    if (id === 'birdsOpenMapBtn') return 'map';
+    if (id === 'natureChallengeRefreshBtn') return 'refresh';
+    return '';
+  }
+
   function installNatureCtaActionBus() {
     if (window.__natCtaActionBusInstalled) return;
     window.__natCtaActionBusInstalled = true;
     document.addEventListener('click', (event) => {
-      const btn = event.target && event.target.closest ? event.target.closest('[data-birds-cta-action]') : null;
+      const btn = event.target && event.target.closest
+        ? event.target.closest('[data-birds-cta-action], #birdsExploreBtn, #birdsOpenLogBtn, #birdsOpenMapBtn, #natureChallengeRefreshBtn')
+        : null;
       if (!btn) return;
-      const action = String(btn.getAttribute('data-birds-cta-action') || '').trim();
+      const action = resolveNatureCtaActionFromButton(btn);
       if (!action) return;
       if (!isButtonActivatable(btn)) return;
       const handler = NATURE_CTA_ACTION_HANDLERS[action];
       if (!handler) return;
+      event.preventDefault();
       event.stopPropagation();
       const root = document.getElementById('natureChallengeRoot');
       emitBirdClickTrace('cta-action-bus', event, btn, { action });
@@ -8635,6 +9005,8 @@
     '#birdsClearClickDiagnosticsBtn',
     '#birdsCopyRecentClickTraceBtn',
     '#birdsDownloadRecentClickTraceBtn',
+    '#birdsRunCtaHealthDiagBtn',
+    '#birdsCopyCtaHealthSummaryBtn',
     '#birdsRunClickabilityDiagBtn',
     '#birdsResetViewportDiagBtn',
     '#birdsRunCoreCtaAutofixBtn',
@@ -8686,6 +9058,7 @@
     installNatureButtonReliabilityObserver(root);
     ensureBirdClickDiagnosticsPanel(root);
     ensureBirdManualDiagnosticsOutput(root);
+    ensureBirdCtaHealthPanel(root);
 
     const handleDelegatedActivation = (event) => {
       const delegatedTarget = getDelegatedNatureActionTarget(root, event);
@@ -8980,6 +9353,34 @@
       const downloadDiagnosticsButton = event.target.closest('#birdsDownloadRecentClickTraceBtn');
       if (downloadDiagnosticsButton) {
         withBirdsActionGuard(downloadDiagnosticsButton, () => downloadRecentBirdClickTraceJson());
+        return;
+      }
+
+      const runCtaHealthDiagButton = event.target.closest('#birdsRunCtaHealthDiagBtn');
+      if (runCtaHealthDiagButton) {
+        withBirdsActionGuard(runCtaHealthDiagButton, async () => {
+          const report = await runBirdCtaSmokeTestReport();
+          birdsCtaHealth.lastReport = report;
+          renderBirdCtaHealthPanel(report);
+          if (typeof window.showToast === 'function') {
+            const failed = Array.isArray(report && report.actions)
+              ? report.actions.filter((item) => !item || item.ok !== true).length
+              : 0;
+            window.showToast(
+              failed > 0
+                ? `CTA health check complete: ${failed} action(s) failing.`
+                : 'CTA health check complete: all core CTA actions passing.',
+              failed > 0 ? 'warning' : 'success',
+              2400
+            );
+          }
+        });
+        return;
+      }
+
+      const copyCtaHealthSummaryButton = event.target.closest('#birdsCopyCtaHealthSummaryBtn');
+      if (copyCtaHealthSummaryButton) {
+        withBirdsActionGuard(copyCtaHealthSummaryButton, () => copyBirdCtaHealthSummary());
         return;
       }
 
@@ -9880,6 +10281,7 @@
   window.runBirdCoreCtaAutoFixReport = runBirdCoreCtaAutoFixReport;
   window.runBirdOverlayAutoFixReport = runBirdOverlayAutoFixReport;
   window.runBirdFullAutoRepairSequenceReport = runBirdFullAutoRepairSequenceReport;
+  window.runBirdCtaSmokeTestReport = runBirdCtaSmokeTestReport;
   window.exportLastBirdManualDiagnosticsPayloadJson = exportLastManualDiagnosticsPayloadJson;
   window.copyLastBirdManualDiagnosticsPayloadJson = copyLastManualDiagnosticsPayloadJson;
   window.getNatureMapContext = function() {
