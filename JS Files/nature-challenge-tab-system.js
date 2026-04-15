@@ -4132,7 +4132,15 @@
       ? [String(window.natureBirdTableConfig.filePath)]
       : [];
 
-    return prioritizeWorkbookCandidates(configured.concat(EXCEL_FILE_CANDIDATES));
+    const remembered = state && state.birdDataWorkbookPath ? [String(state.birdDataWorkbookPath)] : [];
+    const birdPreferredDefaults = [
+      'Copilot_Apps/Kyles_Adventure_Finder/Nature_records.xlsx',
+      'Nature_records.xlsx',
+      'Copilot_Apps/Kyles_Adventure_Finder/Nature_by_County.xlsx',
+      'Nature_by_County.xlsx'
+    ];
+
+    return prioritizeWorkbookCandidates(configured.concat(remembered, birdPreferredDefaults));
   }
 
   function getBirdSyncFileCandidates() {
