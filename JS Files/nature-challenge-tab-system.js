@@ -9014,6 +9014,7 @@
     '#birdsCopyRecentClickTraceBtn',
     '#birdsDownloadRecentClickTraceBtn',
     '#birdsRunCtaHealthDiagBtn',
+    '#birdsRunCtaSmokeTestBtn',
     '#birdsCopyCtaHealthSummaryBtn',
     '#birdsRunClickabilityDiagBtn',
     '#birdsResetViewportDiagBtn',
@@ -9023,6 +9024,7 @@
     '#birdsRunReliabilityDiagBtn',
     '#birdsRunDiagnosticsBundleBtn',
     '#birdsRunWorkbookDiagReportBtn',
+    '#birdsHardRefreshPageBtn',
     '#birdsExportManualDiagnosticsJsonBtn',
     '#birdsCopyLastManualDiagnosticsJsonBtn',
     '#birdsCopyManualDiagnosticsBtn',
@@ -9386,6 +9388,29 @@
         return;
       }
 
+      const runCtaSmokeTestButton = event.target.closest('#birdsRunCtaSmokeTestBtn');
+      if (runCtaSmokeTestButton) {
+        withBirdsActionGuard(runCtaSmokeTestButton, async () => {
+          const report = await runBirdCtaSmokeTestReport();
+          birdsCtaHealth.lastReport = report;
+          renderBirdCtaHealthPanel(report);
+          writeManualDiagnosticsOutput('CTA Smoke Test', report, { append: true });
+          if (typeof window.showToast === 'function') {
+            const failed = Array.isArray(report && report.actions)
+              ? report.actions.filter((item) => !item || item.ok !== true).length
+              : 0;
+            window.showToast(
+              failed > 0
+                ? `CTA smoke test complete: ${failed} action(s) failing.`
+                : 'CTA smoke test complete: all core CTA actions passing.',
+              failed > 0 ? 'warning' : 'success',
+              2400
+            );
+          }
+        });
+        return;
+      }
+
       const copyCtaHealthSummaryButton = event.target.closest('#birdsCopyCtaHealthSummaryBtn');
       if (copyCtaHealthSummaryButton) {
         withBirdsActionGuard(copyCtaHealthSummaryButton, () => copyBirdCtaHealthSummary());
@@ -9515,6 +9540,17 @@
           writeManualDiagnosticsOutput('Workbook Diagnostic Report', report, { append: true });
           if (typeof window.showToast === 'function') window.showToast('Workbook diagnostics report captured.', 'success', 2200);
         });
+        return;
+      }
+
+      const hardRefreshPageButton = event.target.closest('#birdsHardRefreshPageBtn');
+      if (hardRefreshPageButton) {
+        if (typeof window.showToast === 'function') {
+          window.showToast('Reloading page...', 'info', 900);
+        }
+        window.setTimeout(() => {
+          window.location.reload();
+        }, 120);
         return;
       }
 

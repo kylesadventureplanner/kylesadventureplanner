@@ -1255,11 +1255,12 @@
       el.textContent = String(status.pendingCount);
     });
 
-    var hardRefreshStatusEl = document.getElementById('offlineModeHardRefreshStatus');
-    if (hardRefreshStatusEl) {
+    ['offlineModeHardRefreshStatus', 'birdsClearCacheReloadStatus'].forEach(function (id) {
+      var hardRefreshStatusEl = document.getElementById(id);
+      if (!hardRefreshStatusEl) return;
       hardRefreshStatusEl.textContent = formatHardRefreshStatusText();
       hardRefreshStatusEl.dataset.state = getHardRefreshStatusState();
-    }
+    });
   }
 
   function renderQueueConflictPanels(forceRefresh) {
@@ -1410,8 +1411,10 @@
     return { cachedCount: OFFLINE_PACK_ASSETS.length, lastPackAt: status.lastPackAt };
   }
 
-  async function runHardRefreshDiagnostics() {
-    var warning = 'Hard Refresh Diagnostics will clear this app\'s cached files and service worker, then reload. Continue?';
+  async function runHardRefreshDiagnostics(options) {
+    var warning = options && options.confirmMessage
+      ? String(options.confirmMessage)
+      : 'Hard Refresh Diagnostics will clear this app\'s cached files and service worker, then reload. Continue?';
     if (typeof window.confirm === 'function' && !window.confirm(warning)) {
       persistHardRefreshStatus('cancelled', new Date().toISOString());
       emitStatus();
@@ -1508,13 +1511,14 @@
       });
     });
 
-    ['offlineModeHardRefreshBtn'].forEach(function (id) {
+    ['offlineModeHardRefreshBtn', 'birdsClearCacheReloadBtn'].forEach(function (id) {
       var hardRefreshBtn = document.getElementById(id);
       if (!hardRefreshBtn || hardRefreshBtn.dataset.offlineHardRefreshBound === '1') return;
       hardRefreshBtn.dataset.offlineHardRefreshBound = '1';
       hardRefreshBtn.addEventListener('click', async function () {
+        var confirmMessage = String(hardRefreshBtn.getAttribute('data-hard-refresh-confirm') || '').trim();
         await runGuardedButtonAction(hardRefreshBtn, 'offline-hard-refresh', 'Resetting...', function () {
-          return runHardRefreshDiagnostics();
+          return runHardRefreshDiagnostics({ confirmMessage: confirmMessage });
         }).catch(function (error) {
           if (typeof window.showToast === 'function') {
             window.showToast('Hard refresh diagnostics failed: ' + String(error && error.message ? error.message : error), 'error', 3400);
