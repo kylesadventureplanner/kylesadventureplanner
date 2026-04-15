@@ -750,7 +750,14 @@
 
   function writeManualDiagnosticsOutput(title, payload, options = {}) {
     const append = options && options.append === true;
-    const outputEl = birdsManualDiagnostics.outputEl;
+    let outputEl = birdsManualDiagnostics.outputEl;
+    // Ensure we have a reference to the element, querying if needed
+    if (!outputEl) {
+      outputEl = document.getElementById('birdsManualDiagnosticsOutput');
+      if (outputEl) {
+        birdsManualDiagnostics.outputEl = outputEl;
+      }
+    }
     const stamp = new Date().toLocaleString();
     const body = stringifyManualDiagnosticsPayload(payload);
     const block = [
