@@ -79,8 +79,8 @@
   var DISMISS_INSTALL_KEY = 'kafInstallPromptDismissed';
   var swRegistrationPromise = null;
   var offlineModeDelegatedBound = false;
-  var APP_VERSION = '2026.04.09.1';
-  var OFFLINE_PACK_CACHE_NAME = 'kaf-offline-pack-v5';
+  var APP_VERSION = '2026.04.14.3';
+  var OFFLINE_PACK_CACHE_NAME = 'kaf-offline-pack-v6';
   var lastVersionBannerKey = '';
   var flushInFlightPromise = null;
   var queueConflictCache = {
@@ -272,7 +272,14 @@
         throw error;
       });
     }
-    return swRegistrationPromise;
+    return swRegistrationPromise.then(function (registration) {
+      if (registration && typeof registration.update === 'function') {
+        registration.update().catch(function () {
+          // Best-effort: keep startup resilient if the update check fails.
+        });
+      }
+      return registration;
+    });
   }
 
   function ensureServiceWorkerReady(timeoutMs) {

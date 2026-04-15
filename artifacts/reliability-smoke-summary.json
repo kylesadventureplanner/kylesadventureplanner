@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-04-15T02:07:30.609Z",
+  "generatedAt": "2026-04-15T02:21:14.324Z",
   "pass": true,
   "startupSamplesMs": [
-    107,
+    103,
+    110,
+    105,
     102,
-    94,
-    92,
-    94,
-    96
+    102,
+    100
   ],
-  "startupMsP95": 107,
+  "startupMsP95": 110,
   "firstClickChecks": 3,
   "firstClickSuccesses": 3,
   "firstClickSuccessRate": 1,
@@ -20,7 +20,7 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-04-15T02:07:32.730Z"
+      "at": "2026-04-15T02:21:16.647Z"
     },
     {
       "name": "first-click:nature-run",
@@ -28,7 +28,7 @@
       "detail": {
         "runActive": true
       },
-      "at": "2026-04-15T02:07:36.221Z"
+      "at": "2026-04-15T02:21:19.692Z"
     },
     {
       "name": "first-click:bike-refresh",
@@ -40,7 +40,7 @@
           "trackedActionCount": 1
         }
       },
-      "at": "2026-04-15T02:07:37.342Z"
+      "at": "2026-04-15T02:21:21.365Z"
     },
     {
       "name": "probe:hidden-overlay-detected",
@@ -49,7 +49,7 @@
         "blockedPoints": 5,
         "reason": ""
       },
-      "at": "2026-04-15T02:07:38.865Z"
+      "at": "2026-04-15T02:21:22.878Z"
     },
     {
       "name": "overlay:stale-row-detail-cleared",
@@ -58,7 +58,7 @@
         "explorerActive": true,
         "modalHidden": true
       },
-      "at": "2026-04-15T02:07:41.215Z"
+      "at": "2026-04-15T02:21:25.296Z"
     },
     {
       "name": "repeat:nature-explore-tab-switches",
@@ -87,7 +87,7 @@
           }
         ]
       },
-      "at": "2026-04-15T02:07:57.095Z"
+      "at": "2026-04-15T02:21:40.910Z"
     }
   ]
 }

@@ -1,7 +1,7 @@
-const SW_VERSION = '2026.04.14.2';
-const CACHE_VERSION = 'kaf-shell-v5';
-const RUNTIME_CACHE = 'kaf-runtime-v5';
-const OFFLINE_CACHE = 'kaf-offline-pack-v5';
+const SW_VERSION = '2026.04.14.3';
+const CACHE_VERSION = 'kaf-shell-v6';
+const RUNTIME_CACHE = 'kaf-runtime-v6';
+const OFFLINE_CACHE = 'kaf-offline-pack-v6';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -83,19 +83,38 @@ self.addEventListener('fetch', (event) => {
   if (!sameOrigin) return;
 
   const isNavigation = req.mode === 'navigate';
+  const pathname = url.pathname || '/';
+  const isCriticalAppAsset = (
+    pathname === '/' ||
+    pathname === '/index.html' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/sw.js' ||
+    pathname.startsWith('/JS%20Files/') ||
+    pathname.startsWith('/CSS/') ||
+    pathname.startsWith('/HTML%20Files/') ||
+    pathname.startsWith('/data/')
+  );
+
+  async function fetchNetworkFirstWithCacheFallback() {
+    try {
+      const network = await fetch(req);
+      const runtime = await caches.open(RUNTIME_CACHE);
+      runtime.put(req, network.clone());
+      return network;
+    } catch (_error) {
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      return caches.match('/index.html');
+    }
+  }
+
   if (isNavigation) {
-    event.respondWith((async () => {
-      try {
-        const network = await fetch(req);
-        const runtime = await caches.open(RUNTIME_CACHE);
-        runtime.put(req, network.clone());
-        return network;
-      } catch (_error) {
-        const cached = await caches.match(req);
-        if (cached) return cached;
-        return caches.match('/index.html');
-      }
-    })());
+    event.respondWith(fetchNetworkFirstWithCacheFallback());
+    return;
+  }
+
+  if (isCriticalAppAsset) {
+    event.respondWith(fetchNetworkFirstWithCacheFallback());
     return;
   }
 
