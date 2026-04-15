@@ -1,4 +1,5 @@
 const { test, expect } = require('./reliability-test');
+const { collapseErrorNotificationBar, activateFooterAction } = require('./playwright-helpers');
 
 const CONFIG_DRIVEN_SUBTABS = [
   { key: 'mammals', label: 'Mammals' },
@@ -10,29 +11,6 @@ const CONFIG_DRIVEN_SUBTABS = [
   { key: 'trees', label: 'Trees & Shrubs' }
 ];
 
-async function collapseErrorNotificationBar(page) {
-  await page.evaluate(() => {
-    const errorBar = document.getElementById('errorNotificationBar');
-    if (!errorBar || errorBar.classList.contains('collapsed')) return;
-    if (typeof window.toggleErrorBar === 'function') {
-      window.toggleErrorBar();
-      return;
-    }
-    errorBar.classList.add('collapsed');
-    errorBar.style.maxHeight = '44px';
-  });
-}
-
-async function activateFooterAction(page, locator) {
-  await locator.scrollIntoViewIfNeeded();
-  await collapseErrorNotificationBar(page);
-  try {
-    await locator.click({ timeout: 5000 });
-  } catch (_error) {
-    await collapseErrorNotificationBar(page);
-    await locator.evaluate((node) => node.click());
-  }
-}
 
 test.describe('Nature config-driven subtabs smoke', () => {
   test.beforeEach(async ({ page }) => {
