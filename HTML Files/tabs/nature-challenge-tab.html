@@ -1306,17 +1306,18 @@
     margin-top: 8px;
   }
 
-   #natureChallengeRoot .nature-explore-cta-actions {
-     display: flex;
-     flex-wrap: wrap;
-     gap: 8px;
-     align-items: center;
-     justify-content: flex-start;
-     position: relative;
-     z-index: 24;
-     isolation: isolate;
-     width: 100%;
-   }
+    #natureChallengeRoot .nature-explore-cta-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-start;
+      position: relative;
+      z-index: 24;
+      isolation: isolate;
+      width: 100%;
+      min-height: 50px;
+    }
 
   #natureChallengeRoot .nature-explore-cta-actions.nature-sticky-action-rail {
     position: static;
@@ -1328,30 +1329,31 @@
     padding: 0;
   }
 
-  #natureChallengeRoot .nature-explore-birds-btn {
-    width: auto;
-    max-width: none;
-    margin: 0;
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 42px;
-    padding: 0 16px;
-    border: 2px solid #1d4ed8;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
-    color: #fff;
-    font-size: 14px;
-    font-weight: 700;
-    white-space: nowrap;
-    cursor: pointer;
-    position: relative;
-    z-index: 25;
-    pointer-events: auto;
-    box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
-    transition: transform var(--birds-motion-duration) var(--birds-motion-ease), box-shadow var(--birds-motion-duration) var(--birds-motion-ease);
-    min-width: 148px;
-  }
+   #natureChallengeRoot .nature-explore-birds-btn {
+     width: auto;
+     max-width: none;
+     margin: 0;
+     display: inline-flex;
+     justify-content: center;
+     align-items: center;
+     min-height: 42px;
+     min-width: 148px;
+     padding: 0 16px;
+     border: 2px solid #1d4ed8;
+     border-radius: 12px;
+     background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%);
+     color: #fff;
+     font-size: 14px;
+     font-weight: 700;
+     white-space: nowrap;
+     cursor: pointer;
+     position: relative;
+     z-index: 25;
+     pointer-events: auto;
+     box-shadow: 0 8px 18px rgba(29, 78, 216, 0.25);
+     transition: transform var(--birds-motion-duration) var(--birds-motion-ease), box-shadow var(--birds-motion-duration) var(--birds-motion-ease);
+     flex-shrink: 0;
+   }
 
   #natureChallengeRoot .nature-log-timeline-meta {
     margin-top: 8px;
