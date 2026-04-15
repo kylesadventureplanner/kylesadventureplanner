@@ -1,0 +1,6 @@
+
+Running 1 test using 1 worker
+
+  ✓  1 tests/nature-subtabs-smoke.spec.js:55:3 › Nature config-driven subtabs smoke › manual diagnostics console runs probe and writes output (14.6s)
+
+  1 passed (35.4s)

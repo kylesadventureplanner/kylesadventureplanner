@@ -1,0 +1,62 @@
+{
+  "initial": [
+    {
+      "id": "birdsExploreBtn",
+      "exists": true,
+      "rect": {
+        "top": 718.375,
+        "left": 70,
+        "width": 159.28125,
+        "height": 44
+      }
+    },
+    {
+      "id": "birdsOpenLogBtn",
+      "exists": true,
+      "rect": {
+        "top": 719.875,
+        "left": 229.28125,
+        "width": 148,
+        "height": 42
+      }
+    },
+    {
+      "id": "birdsOpenMapBtn",
+      "exists": true,
+      "rect": {
+        "top": 718.375,
+        "left": 377.28125,
+        "width": 148,
+        "height": 42
+      }
+    },
+    {
+      "id": "natureChallengeRefreshBtn",
+      "exists": true,
+      "rect": {
+        "top": 719.875,
+        "left": 525.28125,
+        "width": 148,
+        "height": 42
+      }
+    }
+  ],
+  "results": [
+    {
+      "action": "explore",
+      "explorerActive": true
+    },
+    {
+      "action": "log",
+      "logActive": true
+    },
+    {
+      "action": "map",
+      "mapVisible": true
+    },
+    {
+      "action": "refresh",
+      "badge": "Bird data: ready"
+    }
+  ]
+}

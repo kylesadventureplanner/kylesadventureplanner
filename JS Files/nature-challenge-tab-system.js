@@ -994,7 +994,13 @@
     };
   }
 
-  function resetNatureViewportForDiagnostics(root) {
+  function nextAnimationFrame() {
+    return new Promise((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  }
+
+  async function resetNatureViewportForDiagnostics(root) {
     const liveRoot = root || document.getElementById('natureChallengeRoot');
     if (!liveRoot) {
       return {
@@ -1014,12 +1020,20 @@
       state.birdViewScrollPositions.overview = 0;
     }
 
+    // Prevent browser focus management from snapping the viewport back to the
+    // clicked diagnostics control after we scroll to the CTA row.
+    const activeEl = document.activeElement;
+    if (activeEl && typeof activeEl.blur === 'function') activeEl.blur();
+
     syncNatureSubTabs(liveRoot);
     syncBirdViews(liveRoot);
     syncBirdOverviewJumpLinksVisibility(liveRoot);
     ensureNatureButtonsResponsive(liveRoot);
     scheduleNatureCtaOrderFinalization(liveRoot);
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    const pane = liveRoot.closest('.app-tab-pane');
+    if (pane && Number.isFinite(pane.scrollTop)) pane.scrollTop = 0;
+    if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 
     if (window.SightingMap && typeof window.SightingMap.close === 'function') {
       try {
@@ -1028,6 +1042,21 @@
         // Keep diagnostics reset resilient if map overlay close fails.
       }
     }
+
+    // Wait for DOM/layout to settle, then hard-anchor the CTA row into view.
+    await nextAnimationFrame();
+    await nextAnimationFrame();
+
+    const ctaRow = liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+    if (ctaRow) {
+      ctaRow.scrollIntoView({ behavior: 'auto', block: 'start' });
+      const focusTarget = ctaRow.querySelector('#birdsExploreBtn');
+      if (focusTarget) {
+        try { focusTarget.focus({ preventScroll: true }); } catch (_error) { focusTarget.focus(); }
+      }
+    }
+
+    await nextAnimationFrame();
 
     const after = {
       activeSubTab: state.activeSubTab,
@@ -1207,8 +1236,8 @@
     };
   }
 
-  function runBirdFullAutoRepairSequenceReport() {
-    const reset = resetNatureViewportForDiagnostics(document.getElementById('natureChallengeRoot'));
+  async function runBirdFullAutoRepairSequenceReport() {
+    const reset = await resetNatureViewportForDiagnostics(document.getElementById('natureChallengeRoot'));
     const core = runBirdCoreCtaAutoFixReport();
     const overlay = runBirdOverlayAutoFixReport();
     const clickability = runBirdClickabilityDiagnosticsReport();
@@ -1235,8 +1264,8 @@
     };
   }
 
-  function runBirdViewportResetAndProbeReport(root) {
-    const reset = resetNatureViewportForDiagnostics(root);
+  async function runBirdViewportResetAndProbeReport(root) {
+    const reset = await resetNatureViewportForDiagnostics(root);
     const clickability = runBirdClickabilityDiagnosticsReport();
     const duplicateIds = runNatureCtaDuplicateIdReport(root || document.getElementById('natureChallengeRoot'));
     return {
@@ -8815,7 +8844,7 @@
 
       const runClickabilityDiagButton = event.target.closest('#birdsRunClickabilityDiagBtn');
       if (runClickabilityDiagButton) {
-        withBirdsActionGuard(runClickabilityDiagButton, () => {
+        withBirdsActionGuard(runClickabilityDiagButton, async () => {
           const initial = runBirdClickabilityDiagnosticsReport();
           const summary = initial && initial.clickPathSummary ? initial.clickPathSummary : {};
           const allSkipped = Number(summary.probedTargets || 0) === 0
@@ -8824,7 +8853,7 @@
             && initial.skippedTargets.every((item) => item && item.reason === 'offscreen-or-hidden');
 
           if (allSkipped) {
-            const resetReport = runBirdViewportResetAndProbeReport(root);
+            const resetReport = await runBirdViewportResetAndProbeReport(root);
             writeManualDiagnosticsOutput('Clickability Probe (Auto-reset applied)', resetReport, { append: true });
             if (typeof window.showToast === 'function') {
               window.showToast('All probe targets were offscreen. Applied viewport reset and re-ran probe.', 'warning', 2800);
@@ -8840,8 +8869,8 @@
 
       const resetViewportDiagButton = event.target.closest('#birdsResetViewportDiagBtn');
       if (resetViewportDiagButton) {
-        withBirdsActionGuard(resetViewportDiagButton, () => {
-          const report = runBirdViewportResetAndProbeReport(root);
+        withBirdsActionGuard(resetViewportDiagButton, async () => {
+          const report = await runBirdViewportResetAndProbeReport(root);
           writeManualDiagnosticsOutput('Reset Nature Viewport + Probe', report, { append: true });
           if (typeof window.showToast === 'function') {
             const unresolved = Number(report && report.clickability && report.clickability.clickPathSummary && report.clickability.clickPathSummary.unresolvedTargets || 0);
@@ -8897,8 +8926,8 @@
 
       const runFullAutorepairSequenceButton = event.target.closest('#birdsRunFullAutorepairSequenceBtn');
       if (runFullAutorepairSequenceButton) {
-        withBirdsActionGuard(runFullAutorepairSequenceButton, () => {
-          const report = runBirdFullAutoRepairSequenceReport();
+        withBirdsActionGuard(runFullAutorepairSequenceButton, async () => {
+          const report = await runBirdFullAutoRepairSequenceReport();
           writeManualDiagnosticsOutput('Full Auto-Repair Sequence', report, { append: true });
           if (typeof window.showToast === 'function') {
             const coreChanged = Number(report && report.summary && report.summary.coreChangedCount || 0);
