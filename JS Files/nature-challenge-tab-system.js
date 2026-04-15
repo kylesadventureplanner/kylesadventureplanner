@@ -1208,20 +1208,26 @@
   }
 
   function runBirdFullAutoRepairSequenceReport() {
+    const reset = resetNatureViewportForDiagnostics(document.getElementById('natureChallengeRoot'));
     const core = runBirdCoreCtaAutoFixReport();
     const overlay = runBirdOverlayAutoFixReport();
     const clickability = runBirdClickabilityDiagnosticsReport();
+    const clickabilitySummary = clickability && clickability.clickPathSummary ? clickability.clickPathSummary : {};
     return {
       kind: 'birds-full-auto-repair-sequence',
       capturedAt: new Date().toISOString(),
       activeSubTab: state.activeSubTab,
       activeBirdView: state.activeBirdView,
       summary: {
+        resetApplied: Boolean(reset && reset.ok),
         coreChangedCount: Number(core && core.changedCount || 0),
         overlayFixedCount: Number(overlay && overlay.forceFixedCount || 0),
-        unresolvedClickabilityTargets: Object.values((clickability && clickability.clickPath) || {}).filter((probe) => probe && probe.ok === false).length
+        probedClickabilityTargets: Number(clickabilitySummary.probedTargets || 0),
+        unresolvedClickabilityTargets: Number(clickabilitySummary.unresolvedTargets || 0),
+        skippedClickabilityTargets: Number(clickabilitySummary.skippedTargets || 0)
       },
       reports: {
+        reset,
         core,
         overlay,
         clickability
@@ -2878,6 +2884,21 @@
       window.setTimeout(() => {
         try { header.focus({ preventScroll: true }); } catch (_) { header.focus(); }
       }, 160);
+    }
+    return true;
+  }
+
+  function scrollToBirdCtaRow(root) {
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    if (!liveRoot) return false;
+    const row = liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+    if (!row) return false;
+    row.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const focusTarget = row.querySelector('#birdsExploreBtn');
+    if (focusTarget) {
+      window.setTimeout(() => {
+        try { focusTarget.focus({ preventScroll: true }); } catch (_error) { focusTarget.focus(); }
+      }, 180);
     }
     return true;
   }
@@ -8454,6 +8475,7 @@
     '#birdsOverviewCommandClearBtn',
     '#birdsOverviewCommandRunBtn',
     '#birdsResetUiBtn',
+    '#birdsBackToCtaRowBtn',
     '#birdsClearClickDiagnosticsBtn',
     '#birdsCopyRecentClickTraceBtn',
     '#birdsDownloadRecentClickTraceBtn',
@@ -8762,6 +8784,16 @@
         return;
       }
 
+      const backToCtaRowButton = event.target.closest('#birdsBackToCtaRowBtn');
+      if (backToCtaRowButton) {
+        setBirdView(root, 'overview');
+        const jumped = scrollToBirdCtaRow(root);
+        if (typeof window.showToast === 'function') {
+          window.showToast(jumped ? 'Jumped to the Birds CTA row.' : 'CTA row is unavailable right now.', jumped ? 'success' : 'warning', 1800);
+        }
+        return;
+      }
+
       const clearDiagnosticsButton = event.target.closest('#birdsClearClickDiagnosticsBtn');
       if (clearDiagnosticsButton) {
         resetBirdClickDiagnosticsState();
@@ -8784,8 +8816,23 @@
       const runClickabilityDiagButton = event.target.closest('#birdsRunClickabilityDiagBtn');
       if (runClickabilityDiagButton) {
         withBirdsActionGuard(runClickabilityDiagButton, () => {
-          const report = runBirdClickabilityDiagnosticsReport();
-          writeManualDiagnosticsOutput('Clickability Probe', report, { append: true });
+          const initial = runBirdClickabilityDiagnosticsReport();
+          const summary = initial && initial.clickPathSummary ? initial.clickPathSummary : {};
+          const allSkipped = Number(summary.probedTargets || 0) === 0
+            && Number(summary.skippedTargets || 0) === Number(summary.totalTargets || 0)
+            && Array.isArray(initial && initial.skippedTargets)
+            && initial.skippedTargets.every((item) => item && item.reason === 'offscreen-or-hidden');
+
+          if (allSkipped) {
+            const resetReport = runBirdViewportResetAndProbeReport(root);
+            writeManualDiagnosticsOutput('Clickability Probe (Auto-reset applied)', resetReport, { append: true });
+            if (typeof window.showToast === 'function') {
+              window.showToast('All probe targets were offscreen. Applied viewport reset and re-ran probe.', 'warning', 2800);
+            }
+            return;
+          }
+
+          writeManualDiagnosticsOutput('Clickability Probe', initial, { append: true });
           if (typeof window.showToast === 'function') window.showToast('Clickability probe captured.', 'success', 1800);
         });
         return;

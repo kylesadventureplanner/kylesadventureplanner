@@ -311,6 +311,7 @@
             <div class="card-subtitle">Run targeted diagnostics on demand for unclickable buttons, sync health, and runtime blockers. Use when hover/click behaviors are inconsistent or dead.</div>
           </div>
           <div class="nature-log-form-actions">
+            <button id="birdsBackToCtaRowBtn" type="button" class="pill-button nature-diagnostics-quick-jump" title="Jump back to Explore/Log/Map controls" data-tooltip="Jump back to Explore/Log/Map controls">↑ Back to CTA row</button>
             <button id="birdsRunClickabilityDiagBtn" type="button" class="pill-button" title="Probe CTA click surfaces, disabled state, and guard blockers" data-tooltip="Probe CTA click surfaces, disabled state, and guard blockers">Run Clickability Probe</button>
             <button id="birdsResetViewportDiagBtn" type="button" class="pill-button" title="Reset Nature viewport/state, then run clickability + duplicate-ID checks" data-tooltip="Reset Nature viewport/state, then run clickability + duplicate-ID checks">Reset Nature Viewport + Probe</button>
             <button id="birdsRunCoreCtaAutofixBtn" type="button" class="pill-button" title="Clear stale disabled/busy/aria locks on core Birds CTA buttons" data-tooltip="Clear stale disabled/busy/aria locks on core Birds CTA buttons">Auto-fix Core CTA State</button>
@@ -2759,6 +2760,17 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-quick-jump {
+    position: sticky;
+    top: 8px;
+    z-index: 26;
+    margin-right: auto;
+    border-color: #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 700;
   }
 
   #natureChallengeRoot .nature-log-timeline {

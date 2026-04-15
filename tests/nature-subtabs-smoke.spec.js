@@ -61,6 +61,11 @@ test.describe('Nature config-driven subtabs smoke', () => {
       return;
     }
     await expect(output).toBeVisible();
+    const jumpToCtaBtn = page.locator('#birdsBackToCtaRowBtn');
+    await expect(jumpToCtaBtn).toBeVisible();
+    await jumpToCtaBtn.click();
+    await expect(page.locator('#birdsExploreBtn')).toBeInViewport();
+
     const exportBtn = page.locator('#birdsExportManualDiagnosticsJsonBtn');
     const copyLastBtn = page.locator('#birdsCopyLastManualDiagnosticsJsonBtn');
     const lastReportStatus = page.locator('#birdsManualDiagnosticsLastReportStatus');
@@ -71,7 +76,7 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(output).toHaveValue(/Clickability Probe/);
     await expect(exportBtn).toBeEnabled();
     await expect(copyLastBtn).toBeEnabled();
-    await expect(lastReportStatus).toContainText('Last report: birds-clickability-probe at ');
+    await expect(lastReportStatus).toContainText(/Last report: birds-(clickability-probe|viewport-reset-and-probe) at /);
     await page.locator('#birdsResetViewportDiagBtn').click();
     await expect(output).toHaveValue(/Reset Nature Viewport \+ Probe/);
     await expect(output).toHaveValue(/birds-viewport-reset-and-probe/);
