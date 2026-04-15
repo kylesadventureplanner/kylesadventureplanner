@@ -1,0 +1,19 @@
+ M .idea/workspace.xml
+ M "HTML Files/tabs/nature-challenge-tab.html"
+ M "JS Files/button-reliability-system.js"
+ M "JS Files/nature-challenge-tab-system.js"
+ M "JS Files/reliability-ops.js"
+ M artifacts/reliability-smoke-summary.json
+A  artifacts/repro-nature-buttons.js
+A  artifacts/repro-nature-click.js
+ M tests/nature-subtabs-smoke.spec.js
+?? artifacts/git-status-latest.out
+?? artifacts/git-status.out
+?? artifacts/nature-subtabs-smoke-latest.exit
+?? artifacts/nature-subtabs-smoke-latest.out
+?? artifacts/reliability-smoke-latest.exit
+?? artifacts/reliability-smoke-latest.out
+?? artifacts/reliability-smoke-latest2.exit
+?? artifacts/reliability-smoke-latest2.out
+?? artifacts/repro-nature-buttons.out
+?? artifacts/repro-nature-click.out

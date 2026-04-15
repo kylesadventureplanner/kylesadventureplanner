@@ -438,8 +438,23 @@
       return blockers.length;
     },
 
-    probeClickPath(buttonId) {
-      const target = document.getElementById(buttonId);
+    probeClickPath(buttonId, options) {
+      const safeId = String(buttonId || '').trim();
+      const allMatches = safeId ? Array.from(document.querySelectorAll(`#${safeId}`)) : [];
+      const target = allMatches
+        .slice()
+        .sort((a, b) => {
+          const ar = a.getBoundingClientRect ? a.getBoundingClientRect() : { width: 0, height: 0, top: 0 };
+          const br = b.getBoundingClientRect ? b.getBoundingClientRect() : { width: 0, height: 0, top: 0 };
+          const aVisible = (a.offsetParent || a.getClientRects().length) ? 1 : 0;
+          const bVisible = (b.offsetParent || b.getClientRects().length) ? 1 : 0;
+          const aInViewport = ar.bottom > 0 && ar.top < window.innerHeight ? 1 : 0;
+          const bInViewport = br.bottom > 0 && br.top < window.innerHeight ? 1 : 0;
+          if (bInViewport !== aInViewport) return bInViewport - aInViewport;
+          if (bVisible !== aVisible) return bVisible - aVisible;
+          return Math.abs(ar.top) - Math.abs(br.top);
+        })[0] || document.getElementById(safeId);
+
       if (!target) {
         const missing = { ok: false, reason: 'not-found', buttonId: String(buttonId || '') };
         console.warn('⚠️ ButtonReliability.probeClickPath: button not found', missing);
@@ -467,6 +482,23 @@
       };
 
       const points = Object.entries(sample).map(([label, point]) => {
+        const inViewport = point.x >= 0
+          && point.y >= 0
+          && point.x <= (window.innerWidth - 1)
+          && point.y <= (window.innerHeight - 1);
+        if (!inViewport) {
+          return {
+            label,
+            x: Math.round(point.x),
+            y: Math.round(point.y),
+            reachable: false,
+            offscreen: true,
+            topTag: '',
+            topId: '',
+            topClass: ''
+          };
+        }
+
         const topEl = document.elementFromPoint(point.x, point.y);
         const reachable = Boolean(topEl && (topEl === target || target.contains(topEl)));
         return {
@@ -474,6 +506,7 @@
           x: Math.round(point.x),
           y: Math.round(point.y),
           reachable,
+          offscreen: false,
           topTag: topEl && topEl.tagName ? String(topEl.tagName).toLowerCase() : '',
           topId: topEl && topEl.id ? topEl.id : '',
           topClass: topEl && topEl.className ? String(topEl.className).slice(0, 120) : ''
@@ -481,14 +514,23 @@
       });
 
       const blockedPoints = points.filter((entry) => !entry.reachable);
+      const offscreenCount = blockedPoints.filter((entry) => entry.offscreen).length;
+      const allBlockedOffscreen = blockedPoints.length > 0 && offscreenCount === blockedPoints.length;
       const result = {
         ok: blockedPoints.length === 0,
+        reason: allBlockedOffscreen ? 'offscreen' : '',
         buttonId: target.id || '',
+        candidateCount: allMatches.length,
         rect: {
           left: Math.round(rect.left),
           top: Math.round(rect.top),
           width: Math.round(rect.width),
           height: Math.round(rect.height)
+        },
+        viewport: {
+          width: Math.round(window.innerWidth || 0),
+          height: Math.round(window.innerHeight || 0),
+          scrollY: Math.round(window.scrollY || 0)
         },
         points,
         blockedPoints
@@ -497,17 +539,22 @@
       if (result.ok) {
         console.log('✅ ButtonReliability.probeClickPath: target surface reachable', result);
       } else {
-        try {
-          window.dispatchEvent(new CustomEvent('reliability:overlay-interception', {
-            detail: {
-              buttonId: result.buttonId,
-              blockedPointCount: result.blockedPoints.length
-            }
-          }));
-        } catch (_error) {
-          // Ignore telemetry event issues.
+        if (!allBlockedOffscreen) {
+          try {
+            window.dispatchEvent(new CustomEvent('reliability:overlay-interception', {
+              detail: {
+                buttonId: result.buttonId,
+                blockedPointCount: result.blockedPoints.length
+              }
+            }));
+          } catch (_error) {
+            // Ignore telemetry event issues.
+          }
         }
-        console.warn('⚠️ ButtonReliability.probeClickPath: surface blocked', result);
+        const label = allBlockedOffscreen
+          ? '⚠️ ButtonReliability.probeClickPath: target is offscreen (not overlay-blocked)'
+          : '⚠️ ButtonReliability.probeClickPath: surface blocked';
+        console.warn(label, result);
       }
       return result;
     },

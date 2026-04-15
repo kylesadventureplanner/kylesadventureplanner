@@ -353,7 +353,7 @@
   window.exportReliabilityDiagnosticsBundle = function(options = {}) {
     const probeIds = Array.isArray(options.probeIds) && options.probeIds.length
       ? options.probeIds
-      : ['natureChallengeRefreshBtn', 'birdsExploreBtn', 'birdsOverviewCommandRunBtn', 'bikeRefreshBtn', 'bikeTrailExplorerBtn'];
+      : ['natureChallengeRefreshBtn', 'birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'birdsOverviewCommandRunBtn', 'bikeRefreshBtn', 'bikeTrailExplorerBtn'];
 
     const blockerProbes = {};
     if (window.ButtonReliability && typeof window.ButtonReliability.probeClickPath === 'function') {

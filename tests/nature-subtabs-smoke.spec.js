@@ -72,6 +72,10 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(exportBtn).toBeEnabled();
     await expect(copyLastBtn).toBeEnabled();
     await expect(lastReportStatus).toContainText('Last report: birds-clickability-probe at ');
+    await page.locator('#birdsResetViewportDiagBtn').click();
+    await expect(output).toHaveValue(/Reset Nature Viewport \+ Probe/);
+    await expect(output).toHaveValue(/birds-viewport-reset-and-probe/);
+    await expect(output).toHaveValue(/nature-cta-duplicate-id-report/);
     await page.locator('#birdsRunCoreCtaAutofixBtn').click();
     await expect(output).toHaveValue(/Core CTA Auto-fix/);
     await page.locator('#birdsRunOverlayAutofixBtn').click();

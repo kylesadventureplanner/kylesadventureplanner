@@ -1,0 +1,12 @@
+
+Running 7 tests using 1 worker
+
+  ✓  1 tests/reliability-smoke.spec.js:55:1 › first-click success: nature explore (2.5s)
+  ✓  2 tests/reliability-smoke.spec.js:70:1 › first-click success: nature run command (3.5s)
+  ✓  3 tests/reliability-smoke.spec.js:83:1 › first-click success: bike refresh (1.2s)
+  ✓  4 tests/reliability-smoke.spec.js:102:1 › hidden overlay probe catches interception (1.0s)
+  ✓  5 tests/reliability-smoke.spec.js:139:1 › stale row-detail blocker is cleared before nature interactions (2.6s)
+  ✓  6 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (15.9s)
+  ✓  7 tests/reliability-smoke.spec.js:213:1 › update banner exposes version diff and records telemetry counters (800ms)
+
+  7 passed (52.0s)

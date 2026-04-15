@@ -905,10 +905,161 @@
     });
   }
 
+  function getNatureClickabilityProbeIds() {
+    return ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn', 'birdsOverviewCommandRunBtn'];
+  }
+
+  function getNatureDuplicateReportIds() {
+    return getNatureClickabilityProbeIds().concat(['birdsUndoActionBtn']);
+  }
+
+  function isElementViewportVisible(element) {
+    if (!element || typeof element.getBoundingClientRect !== 'function') return false;
+    const cs = window.getComputedStyle ? window.getComputedStyle(element) : null;
+    if (cs && (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity || '1') <= 0.01)) return false;
+    const rect = element.getBoundingClientRect();
+    if (!rect || rect.width < 2 || rect.height < 2) return false;
+    return rect.bottom > 0 && rect.right > 0 && rect.top < window.innerHeight && rect.left < window.innerWidth;
+  }
+
+  function getActiveNaturePaneKey() {
+    return isConfigDrivenSubTab(state.activeSubTab) ? 'birds' : state.activeSubTab;
+  }
+
+  function getActiveNatureContext(root) {
+    const paneKey = getActiveNaturePaneKey();
+    const pane = root && typeof root.querySelector === 'function'
+      ? root.querySelector(`[data-nature-pane="${paneKey}"]`)
+      : null;
+    const view = pane && paneKey === 'birds'
+      ? (pane.querySelector(`.nature-birds-view.is-active[data-birds-view="${state.activeBirdView}"]`) || pane.querySelector('.nature-birds-view.is-active'))
+      : null;
+    return { paneKey, pane, view };
+  }
+
+  function classifyNatureProbeTarget(root, id) {
+    const targetId = String(id || '').trim();
+    if (!targetId) return { id: targetId, state: 'invalid-id' };
+
+    const matches = Array.from(document.querySelectorAll(`#${targetId}`));
+    if (!matches.length) return { id: targetId, state: 'not-found', matchCount: 0 };
+
+    const context = getActiveNatureContext(root);
+    const inPane = matches.filter((node) => !context.pane || context.pane.contains(node));
+    const contextMatches = context.view
+      ? inPane.filter((node) => context.view.contains(node))
+      : inPane;
+    const visible = contextMatches.filter((node) => isElementViewportVisible(node));
+    const probeTarget = visible[0] || null;
+
+    return {
+      id: targetId,
+      state: probeTarget ? 'probe' : (contextMatches.length ? 'offscreen-or-hidden' : (inPane.length ? 'inactive-view' : 'inactive-pane')),
+      matchCount: matches.length,
+      paneMatchCount: inPane.length,
+      contextMatchCount: contextMatches.length,
+      visibleCount: visible.length,
+      probeTargetId: probeTarget && probeTarget.id ? String(probeTarget.id) : '',
+      probeTarget
+    };
+  }
+
+  function runNatureCtaDuplicateIdReport(root) {
+    const ids = getNatureDuplicateReportIds();
+    const context = getActiveNatureContext(root || document.getElementById('natureChallengeRoot'));
+    const entries = ids.map((id) => {
+      const matches = Array.from(document.querySelectorAll(`#${id}`));
+      const inPane = matches.filter((node) => !context.pane || context.pane.contains(node));
+      const inView = context.view
+        ? inPane.filter((node) => context.view.contains(node))
+        : inPane;
+      const visible = inView.filter((node) => isElementViewportVisible(node));
+      return {
+        id,
+        count: matches.length,
+        inActivePane: inPane.length,
+        inActiveView: inView.length,
+        visibleInViewport: visible.length
+      };
+    });
+
+    return {
+      kind: 'nature-cta-duplicate-id-report',
+      capturedAt: new Date().toISOString(),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      hasDuplicates: entries.some((entry) => Number(entry.count || 0) > 1),
+      duplicates: entries.filter((entry) => Number(entry.count || 0) > 1),
+      entries
+    };
+  }
+
+  function resetNatureViewportForDiagnostics(root) {
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    if (!liveRoot) {
+      return {
+        ok: false,
+        reason: 'missing-root'
+      };
+    }
+
+    const before = {
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      scrollY: Math.round(window.scrollY || 0)
+    };
+
+    if (getActiveNaturePaneKey() === 'birds') {
+      state.activeBirdView = 'overview';
+      state.birdViewScrollPositions.overview = 0;
+    }
+
+    syncNatureSubTabs(liveRoot);
+    syncBirdViews(liveRoot);
+    syncBirdOverviewJumpLinksVisibility(liveRoot);
+    ensureNatureButtonsResponsive(liveRoot);
+    scheduleNatureCtaOrderFinalization(liveRoot);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+
+    if (window.SightingMap && typeof window.SightingMap.close === 'function') {
+      try {
+        window.SightingMap.close();
+      } catch (_error) {
+        // Keep diagnostics reset resilient if map overlay close fails.
+      }
+    }
+
+    const after = {
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      scrollY: Math.round(window.scrollY || 0)
+    };
+
+    return {
+      ok: true,
+      before,
+      after
+    };
+  }
+
   function runBirdClickabilityDiagnosticsReport() {
-    const probeIds = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn', 'birdsOverviewCommandRunBtn'];
+    const root = document.getElementById('natureChallengeRoot');
+    const probeIds = getNatureClickabilityProbeIds();
     const clickPath = {};
+    const skippedTargets = [];
     probeIds.forEach((id) => {
+      const classification = classifyNatureProbeTarget(root, id);
+      if (classification.state !== 'probe') {
+        skippedTargets.push({
+          id,
+          reason: classification.state,
+          matchCount: Number(classification.matchCount || 0),
+          paneMatchCount: Number(classification.paneMatchCount || 0),
+          contextMatchCount: Number(classification.contextMatchCount || 0),
+          visibleCount: Number(classification.visibleCount || 0)
+        });
+        return;
+      }
       if (window.ButtonReliability && typeof window.ButtonReliability.probeClickPath === 'function') {
         clickPath[id] = window.ButtonReliability.probeClickPath(id);
       } else {
@@ -921,14 +1072,32 @@
     const reliability = (typeof window.__reliabilityStatus === 'function')
       ? window.__reliabilityStatus()
       : null;
+    const duplicateIdReport = runNatureCtaDuplicateIdReport(root);
+    const probeList = Object.values(clickPath || {});
+    const unresolved = probeList.filter((probe) => probe && probe.ok === false);
+    const offscreenOnly = unresolved.filter((probe) => String(probe.reason || '') === 'offscreen');
 
     return {
       kind: 'birds-clickability-probe',
       capturedAt: new Date().toISOString(),
       activeSubTab: state.activeSubTab,
       activeBirdView: state.activeBirdView,
+      viewport: {
+        width: Math.round(window.innerWidth || 0),
+        height: Math.round(window.innerHeight || 0),
+        scrollY: Math.round(window.scrollY || 0)
+      },
       buttonState: getCoreBirdDiagnosticButtonsSnapshot(),
       clickPath,
+      skippedTargets,
+      clickPathSummary: {
+        totalTargets: probeIds.length,
+        probedTargets: Object.keys(clickPath).length,
+        skippedTargets: skippedTargets.length,
+        unresolvedTargets: unresolved.length,
+        unresolvedOffscreenOnly: offscreenOnly.length
+      },
+      duplicateIdReport,
       blockingOverlays: blockers,
       reliability
     };
@@ -1057,6 +1226,21 @@
         overlay,
         clickability
       }
+    };
+  }
+
+  function runBirdViewportResetAndProbeReport(root) {
+    const reset = resetNatureViewportForDiagnostics(root);
+    const clickability = runBirdClickabilityDiagnosticsReport();
+    const duplicateIds = runNatureCtaDuplicateIdReport(root || document.getElementById('natureChallengeRoot'));
+    return {
+      kind: 'birds-viewport-reset-and-probe',
+      capturedAt: new Date().toISOString(),
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView,
+      reset,
+      clickability,
+      duplicateIds
     };
   }
 
@@ -8274,6 +8458,7 @@
     '#birdsCopyRecentClickTraceBtn',
     '#birdsDownloadRecentClickTraceBtn',
     '#birdsRunClickabilityDiagBtn',
+    '#birdsResetViewportDiagBtn',
     '#birdsRunCoreCtaAutofixBtn',
     '#birdsRunOverlayAutofixBtn',
     '#birdsRunFullAutorepairSequenceBtn',
@@ -8602,6 +8787,25 @@
           const report = runBirdClickabilityDiagnosticsReport();
           writeManualDiagnosticsOutput('Clickability Probe', report, { append: true });
           if (typeof window.showToast === 'function') window.showToast('Clickability probe captured.', 'success', 1800);
+        });
+        return;
+      }
+
+      const resetViewportDiagButton = event.target.closest('#birdsResetViewportDiagBtn');
+      if (resetViewportDiagButton) {
+        withBirdsActionGuard(resetViewportDiagButton, () => {
+          const report = runBirdViewportResetAndProbeReport(root);
+          writeManualDiagnosticsOutput('Reset Nature Viewport + Probe', report, { append: true });
+          if (typeof window.showToast === 'function') {
+            const unresolved = Number(report && report.clickability && report.clickability.clickPathSummary && report.clickability.clickPathSummary.unresolvedTargets || 0);
+            window.showToast(
+              unresolved > 0
+                ? `Viewport reset complete. ${unresolved} probe target(s) still unresolved.`
+                : 'Viewport reset complete and clickability probe passed.',
+              unresolved > 0 ? 'warning' : 'success',
+              2400
+            );
+          }
         });
         return;
       }

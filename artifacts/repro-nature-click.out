@@ -1,0 +1,19 @@
+{
+  "before": {
+    "subTab": "",
+    "view": "",
+    "scrollY": 0,
+    "rect": {
+      "top": 690.375,
+      "left": 70,
+      "width": 159.28125,
+      "height": 44
+    }
+  },
+  "after": {
+    "subTab": "",
+    "view": "",
+    "scrollY": 0,
+    "explorerActive": true
+  }
+}
