@@ -1030,8 +1030,13 @@
     syncBirdOverviewJumpLinksVisibility(liveRoot);
     ensureNatureButtonsResponsive(liveRoot);
     scheduleNatureCtaOrderFinalization(liveRoot);
-    const pane = liveRoot.closest('.app-tab-pane');
-    if (pane && Number.isFinite(pane.scrollTop)) pane.scrollTop = 0;
+
+    // Reset all known scroll containers — window, .app-tab-pane, and any
+    // intermediate overflow containers — so the CTA row is reliably on-screen.
+    const tabPane = liveRoot.closest('.app-tab-pane');
+    if (tabPane && Number.isFinite(tabPane.scrollTop)) tabPane.scrollTop = 0;
+    const appScrollEl = document.querySelector('.app-content, .app-main, main, #appContent');
+    if (appScrollEl && Number.isFinite(appScrollEl.scrollTop)) appScrollEl.scrollTop = 0;
     if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 
@@ -1049,6 +1054,17 @@
 
     const ctaRow = liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
     if (ctaRow) {
+      // Force every scroll container in the ancestor chain to the top first so
+      // scrollIntoView does not fight a partially-scrolled container.
+      let ancestor = ctaRow.parentElement;
+      while (ancestor && ancestor !== document.documentElement) {
+        const cs = window.getComputedStyle ? window.getComputedStyle(ancestor) : null;
+        const overflowY = cs ? cs.overflowY : '';
+        if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
+          ancestor.scrollTop = 0;
+        }
+        ancestor = ancestor.parentElement;
+      }
       ctaRow.scrollIntoView({ behavior: 'auto', block: 'start' });
       const focusTarget = ctaRow.querySelector('#birdsExploreBtn');
       if (focusTarget) {
@@ -8311,6 +8327,71 @@
     };
   }
 
+  /**
+   * Nature CTA self-heal pass — analogous to Adventure's ensureVisitedSubtabCtaButtons.
+   *
+   * After every subtab render or tab-switch the CTA buttons can end up in a
+   * stale disabled/busy/hidden state if a previous async load left flags set.
+   * This pass:
+   *   1. Clears stale disabled/busy/aria-disabled flags on all core CTA buttons.
+   *   2. Stamps data-birds-cta-action on each button so the context-agnostic
+   *      action bus can route clicks even from sticky/mirrored surfaces.
+   *   3. Re-applies pointer-events:auto on the CTA row container.
+   *   4. Emits a trace entry so diagnostics can confirm the pass ran.
+   */
+  function ensureNatureCtaButtonsSelfHeal(root) {
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    if (!liveRoot) return;
+
+    const ctaActionMap = {
+      birdsExploreBtn:          'explore',
+      birdsOpenLogBtn:          'log',
+      birdsOpenMapBtn:          'map',
+      natureChallengeRefreshBtn: 'refresh'
+    };
+
+    Object.entries(ctaActionMap).forEach(([id, action]) => {
+      // Prefer the element inside the active overview pane; fall back to document.
+      const overviewPane = liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"]');
+      const btn = (overviewPane && overviewPane.querySelector(`#${id}`)) || document.getElementById(id);
+      if (!btn) return;
+
+      // Clear stale lock flags.
+      if (btn.disabled === true) btn.disabled = false;
+      if (btn.getAttribute('aria-disabled') === 'true') btn.setAttribute('aria-disabled', 'false');
+      if (btn.dataset && btn.dataset.busy === '1') delete btn.dataset.busy;
+      btn.removeAttribute('aria-busy');
+
+      // Stamp semantic action key for the context-agnostic action bus.
+      if (!btn.getAttribute('data-birds-cta-action')) {
+        btn.setAttribute('data-birds-cta-action', action);
+      }
+
+      // Ensure pointer-events are not suppressed.
+      if (btn.style) {
+        btn.style.setProperty('pointer-events', 'auto', 'important');
+        btn.style.setProperty('touch-action', 'manipulation', 'important');
+        btn.style.setProperty('position', 'relative', 'important');
+        btn.style.setProperty('z-index', '30', 'important');
+      }
+    });
+
+    // Also unblock the CTA row container itself.
+    const ctaRows = liveRoot.querySelectorAll('.nature-explore-cta-actions');
+    ctaRows.forEach((row) => {
+      if (row.style) {
+        row.style.setProperty('pointer-events', 'auto', 'important');
+        row.style.setProperty('position', 'relative', 'important');
+        row.style.setProperty('z-index', '20', 'important');
+      }
+    });
+
+    emitBirdClickTrace('cta-self-heal', null, liveRoot, {
+      activeSubTab: state.activeSubTab,
+      activeBirdView: state.activeBirdView
+    });
+  }
+
   function forceUnblockNaturePane(root, reason) {
     if (!root) return;
     const pane = root.closest('.app-tab-pane[data-tab="nature-challenge"]');
@@ -8371,6 +8452,7 @@
       if (!shouldRecheck) return;
       requestAnimationFrame(() => {
         ensureNatureButtonsResponsive(root);
+        ensureNatureCtaButtonsSelfHeal(root);
         scheduleNatureCtaOrderFinalization(root);
       });
     });
@@ -8450,6 +8532,9 @@
     }
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
+
+    // Self-heal CTA after every subtab switch so flags left by async loads are cleared.
+    requestAnimationFrame(() => ensureNatureCtaButtonsSelfHeal(root));
   }
 
   function toggleBirdSighting(birdId) {
@@ -8478,12 +8563,54 @@
     renderBirds();
   }
 
+  // ── data-birds-cta-action semantic action bus ───────────────────────────────
+  // Any element with data-birds-cta-action="<action>" will route to the
+  // canonical handler even when rendered in a sticky/mirrored surface that
+  // sits outside the root's normal delegated containment.
+  const NATURE_CTA_ACTION_HANDLERS = {
+    explore:  (root) => setBirdView(root, 'explorer'),
+    log:      (root) => setBirdView(root, 'log'),
+    map:      () => {
+      if (window.SightingMap && typeof window.SightingMap.open === 'function') {
+        window.SightingMap.open();
+      } else if (typeof window.showToast === 'function') {
+        window.showToast('Map is not available yet. Reload and try again.', 'info', 2600);
+      }
+    },
+    refresh:  (root, btn) => {
+      const liveRoot = root || document.getElementById('natureChallengeRoot');
+      if (btn) withBirdsActionGuard(btn, () => loadBirdDataset(true));
+      else loadBirdDataset(true);
+      if (liveRoot) ensureNatureButtonsResponsive(liveRoot);
+    }
+  };
+
+  function installNatureCtaActionBus() {
+    if (window.__natCtaActionBusInstalled) return;
+    window.__natCtaActionBusInstalled = true;
+    document.addEventListener('click', (event) => {
+      const btn = event.target && event.target.closest ? event.target.closest('[data-birds-cta-action]') : null;
+      if (!btn) return;
+      const action = String(btn.getAttribute('data-birds-cta-action') || '').trim();
+      if (!action) return;
+      if (!isButtonActivatable(btn)) return;
+      const handler = NATURE_CTA_ACTION_HANDLERS[action];
+      if (!handler) return;
+      event.stopPropagation();
+      const root = document.getElementById('natureChallengeRoot');
+      emitBirdClickTrace('cta-action-bus', event, btn, { action });
+      handler(root, btn);
+    }, true);
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const NATURE_DELEGATED_ACTION_SELECTOR = [
     '[data-nature-subtab]',
     '#natureChallengeRefreshBtn',
     '#birdsUndoActionBtn',
     '#birdsExploreBtn',
     '#birdsOpenLogBtn',
+    '#birdsOpenMapBtn',
     '[data-bird-toggle]',
     '[data-bird-favorite]',
     '[data-bird-open]',
@@ -8552,6 +8679,8 @@
     if (!root || root.dataset.natureControlsBound === '1') return;
     root.dataset.natureControlsBound = '1';
     ensureNatureButtonsResponsive(root);
+    ensureNatureCtaButtonsSelfHeal(root);
+    installNatureCtaActionBus();
     scheduleNatureCtaOrderFinalization(root);
     ensureNatureSubtabJumpLinks(root);
     installNatureButtonReliabilityObserver(root);
@@ -8625,6 +8754,18 @@
       const openLogButton = event.target.closest('#birdsOpenLogBtn');
       if (openLogButton) {
         setBirdView(root, 'log');
+        return;
+      }
+
+      const openMapButton = event.target.closest('#birdsOpenMapBtn');
+      if (openMapButton) {
+        withBirdsActionGuard(openMapButton, () => {
+          if (window.SightingMap && typeof window.SightingMap.open === 'function') {
+            window.SightingMap.open();
+          } else if (typeof window.showToast === 'function') {
+            window.showToast('Map is not available yet. Reload and try again.', 'info', 2600);
+          }
+        });
         return;
       }
 
@@ -9630,6 +9771,8 @@
 
     forceUnblockNaturePane(root, 'init');
     ensureNatureButtonsResponsive(root);
+    ensureNatureCtaButtonsSelfHeal(root);
+    installNatureCtaActionBus();
     ensureBirdClickDiagnosticsPanel(root);
     bindNatureControls(root);
     applyExplorerDensity(root);
@@ -9652,11 +9795,13 @@
 
         // 2. Re-run button responsiveness immediately and after the next paint.
         ensureNatureButtonsResponsive(liveRoot);
+        ensureNatureCtaButtonsSelfHeal(liveRoot);
         ensureBirdClickDiagnosticsPanel(liveRoot);
         diagnoseNatureButtonSurface(liveRoot);
         requestAnimationFrame(() => {
           forceUnblockNaturePane(liveRoot, 'tab-switch-raf');
           ensureNatureButtonsResponsive(liveRoot);
+          ensureNatureCtaButtonsSelfHeal(liveRoot);
           diagnoseNatureButtonSurface(liveRoot);
         });
       });
@@ -9681,6 +9826,7 @@
         if (!liveRoot) return;
         forceUnblockNaturePane(liveRoot, 'watchdog');
         ensureNatureButtonsResponsive(liveRoot);
+        ensureNatureCtaButtonsSelfHeal(liveRoot);
       }, 1800);
     }
 
@@ -9715,6 +9861,7 @@
 
   window.initializeNatureChallengeTab = initializeNatureChallengeTab;
   window.initNatureChallengeTab = window.initNatureChallengeTab || initializeNatureChallengeTab;
+  window.ensureNatureCtaButtonsSelfHeal = ensureNatureCtaButtonsSelfHeal;
   window.runBirdSyncNow = async function() {
     await processSyncQueue();
     return {
