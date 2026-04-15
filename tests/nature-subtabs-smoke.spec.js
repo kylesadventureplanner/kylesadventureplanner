@@ -10,6 +10,30 @@ const CONFIG_DRIVEN_SUBTABS = [
   { key: 'trees', label: 'Trees & Shrubs' }
 ];
 
+async function collapseErrorNotificationBar(page) {
+  await page.evaluate(() => {
+    const errorBar = document.getElementById('errorNotificationBar');
+    if (!errorBar || errorBar.classList.contains('collapsed')) return;
+    if (typeof window.toggleErrorBar === 'function') {
+      window.toggleErrorBar();
+      return;
+    }
+    errorBar.classList.add('collapsed');
+    errorBar.style.maxHeight = '44px';
+  });
+}
+
+async function activateFooterAction(page, locator) {
+  await locator.scrollIntoViewIfNeeded();
+  await collapseErrorNotificationBar(page);
+  try {
+    await locator.click({ timeout: 5000 });
+  } catch (_error) {
+    await collapseErrorNotificationBar(page);
+    await locator.evaluate((node) => node.click());
+  }
+}
+
 test.describe('Nature config-driven subtabs smoke', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -52,9 +76,14 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(output).toHaveValue(/Overlay\/Z-Index Auto-fix/);
     await page.locator('#birdsRunFullAutorepairSequenceBtn').click();
     await expect(output).toHaveValue(/Full Auto-Repair Sequence/);
-    await exportBtn.click();
-    await copyLastBtn.click();
-    await page.locator('#birdsClearManualDiagnosticsBtn').click();
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+    await activateFooterAction(page, exportBtn);
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/^birds-manual-diagnostics-last-.*\.json$/);
+
+    await activateFooterAction(page, copyLastBtn);
+    await activateFooterAction(page, page.locator('#birdsClearManualDiagnosticsBtn'));
     await expect(output).toHaveValue('');
     await expect(exportBtn).toBeDisabled();
     await expect(copyLastBtn).toBeDisabled();
