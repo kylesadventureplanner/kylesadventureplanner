@@ -210,6 +210,49 @@ test('nature explore remains responsive across repeated tab switches', async ({ 
   expect(passed).toBeTruthy();
 });
 
+test('update banner exposes version diff and records telemetry counters', async ({ page }) => {
+  await page.evaluate(() => {
+    const banner = document.getElementById('appUpdateBanner');
+    if (banner) banner.hidden = false;
+  });
+
+  await expect(page.locator('#appUpdateBannerVersionDiff')).toContainText('Version: app');
+  await expect(page.locator('#appUpdateRemindBtn')).toBeVisible();
+
+  await page.locator('#appUpdateRemindBtn').click();
+  await expect(page.locator('#appUpdateBanner')).toBeHidden();
+
+  const telemetry = await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('reliability:update-banner-event', { detail: { eventName: 'update-banner-shown' } }));
+    window.dispatchEvent(new CustomEvent('reliability:update-banner-event', { detail: { eventName: 'reload-clicked' } }));
+    window.dispatchEvent(new CustomEvent('reliability:update-banner-event', { detail: { eventName: 'dismiss-clicked' } }));
+
+    return {
+      reliabilityStatus: (typeof window.__reliabilityStatus === 'function') ? window.__reliabilityStatus() : null,
+      buttonTelemetry: (window.ButtonReliability && typeof window.ButtonReliability.getUpdateBannerTelemetry === 'function')
+        ? window.ButtonReliability.getUpdateBannerTelemetry()
+        : null
+    };
+  });
+
+  expect(telemetry.reliabilityStatus).not.toBeNull();
+  expect(telemetry.reliabilityStatus.updateBannerTelemetry.shown).toBeGreaterThanOrEqual(1);
+  expect(telemetry.reliabilityStatus.updateBannerTelemetry.reloadClicked).toBeGreaterThanOrEqual(1);
+  expect(telemetry.reliabilityStatus.updateBannerTelemetry.dismissClicked).toBeGreaterThanOrEqual(1);
+
+  expect(telemetry.buttonTelemetry).not.toBeNull();
+  expect(telemetry.buttonTelemetry.updateBannerShown).toBeGreaterThanOrEqual(1);
+  expect(telemetry.buttonTelemetry.updateBannerReloadClicked).toBeGreaterThanOrEqual(1);
+  expect(telemetry.buttonTelemetry.updateBannerDismissClicked).toBeGreaterThanOrEqual(1);
+
+  recordCheck('update-banner:version-and-telemetry', true, {
+    reliabilityTelemetry: telemetry.reliabilityStatus && telemetry.reliabilityStatus.updateBannerTelemetry
+      ? telemetry.reliabilityStatus.updateBannerTelemetry
+      : null,
+    buttonTelemetry: telemetry.buttonTelemetry
+  });
+});
+
 test.afterAll(async () => {
   const sorted = summary.startupSamplesMs.slice().sort((a, b) => a - b);
   if (sorted.length) {

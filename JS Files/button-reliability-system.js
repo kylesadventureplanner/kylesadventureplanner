@@ -31,7 +31,10 @@
       blockedInteractionsDetected: 0,
       repairsAttempted: 0,
       repairsSuccessful: 0,
-      buttonsWithIssues: 0
+      buttonsWithIssues: 0,
+      updateBannerShown: 0,
+      updateBannerReloadClicked: 0,
+      updateBannerDismissClicked: 0
     }
   };
 
@@ -147,6 +150,24 @@
     if (!blocksPointer || !visible) return;
 
     recordBlockedInteraction('overlay-intercepted', event, intendedTarget, blocker, stack);
+  }
+
+  function recordUpdateBannerTelemetry(event) {
+    const detail = event && event.detail ? event.detail : {};
+    const eventName = String(detail.eventName || '').trim();
+    if (!eventName) return;
+
+    if (eventName === 'update-banner-shown') SYSTEM.stats.updateBannerShown += 1;
+    if (eventName === 'reload-clicked') SYSTEM.stats.updateBannerReloadClicked += 1;
+    if (eventName === 'dismiss-clicked') SYSTEM.stats.updateBannerDismissClicked += 1;
+
+    log('info', `Update banner telemetry: ${eventName}`, {
+      eventName,
+      appVersion: detail.appVersion || '',
+      swVersion: detail.swVersion || '',
+      versionKey: detail.versionKey || '',
+      activeTab: detail.activeTab || ''
+    });
   }
 
   // ============================================================
@@ -374,6 +395,8 @@
       document.addEventListener(type, inspectInteractionPath, true);
     });
 
+    window.addEventListener('reliability:update-banner-event', recordUpdateBannerTelemetry);
+
     log('info', '✅ Button Reliability System v1.0.2 initialized', { buttonsFound: SYSTEM.stats.totalButtonsTracked });
   }
 
@@ -524,6 +547,14 @@
         lastClickedButton: SYSTEM.lastClickedButton
           ? (SYSTEM.lastClickedButton.id || SYSTEM.lastClickedButton.textContent.trim().substring(0, 30))
           : null
+      };
+    },
+
+    getUpdateBannerTelemetry() {
+      return {
+        updateBannerShown: Number(SYSTEM.stats.updateBannerShown || 0),
+        updateBannerReloadClicked: Number(SYSTEM.stats.updateBannerReloadClicked || 0),
+        updateBannerDismissClicked: Number(SYSTEM.stats.updateBannerDismissClicked || 0)
       };
     },
 

@@ -77,11 +77,25 @@
   var plannerSaveWrapperInstalled = false;
   var deferredInstallPrompt = null;
   var DISMISS_INSTALL_KEY = 'kafInstallPromptDismissed';
+  var DISMISS_UPDATE_BANNER_KEY_PREFIX = 'kafUpdateBannerDismissed:';
+  var REMIND_UPDATE_BANNER_KEY_PREFIX = 'kafUpdateBannerRemindUntil:';
+  var UPDATE_BANNER_DEFAULT_REMIND_MINUTES = 20;
   var swRegistrationPromise = null;
   var offlineModeDelegatedBound = false;
   var APP_VERSION = '2026.04.14.3';
   var OFFLINE_PACK_CACHE_NAME = 'kaf-offline-pack-v6';
   var lastVersionBannerKey = '';
+  var hasSeenServiceWorkerController = Boolean(('serviceWorker' in navigator) && navigator.serviceWorker.controller);
+  var monitoredSwRegistrations = typeof WeakSet === 'function' ? new WeakSet() : null;
+  var monitoredSwWorkers = typeof WeakSet === 'function' ? new WeakSet() : null;
+  var updateBannerState = {
+    visible: false,
+    message: '',
+    versionKey: '',
+    remindTimerId: null,
+    pendingMeta: null,
+    swVersion: 'unknown'
+  };
   var flushInFlightPromise = null;
   var queueConflictCache = {
     items: [],
@@ -238,6 +252,234 @@
     statusEl.textContent = 'Install will appear here automatically when this browser exposes a supported app-install prompt.';
   }
 
+  function getUpdateBannerElements() {
+    return {
+      banner: document.getElementById('appUpdateBanner'),
+      text: document.getElementById('appUpdateBannerText'),
+      versionDiff: document.getElementById('appUpdateBannerVersionDiff')
+    };
+  }
+
+  function getUpdateBannerVersionKey(meta) {
+    var swVersion = meta && meta.swVersion ? String(meta.swVersion) : 'unknown';
+    var controllerUrl = meta && meta.controllerUrl ? String(meta.controllerUrl) : 'none';
+    var waitingUrl = meta && meta.waitingUrl ? String(meta.waitingUrl) : 'none';
+    return [APP_VERSION, swVersion, controllerUrl, waitingUrl].join('|');
+  }
+
+  function isUpdateBannerDismissed(versionKey) {
+    if (!versionKey) return false;
+    try {
+      return localStorage.getItem(DISMISS_UPDATE_BANNER_KEY_PREFIX + versionKey) === '1';
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function setUpdateBannerDismissed(versionKey) {
+    if (!versionKey) return;
+    try {
+      localStorage.setItem(DISMISS_UPDATE_BANNER_KEY_PREFIX + versionKey, '1');
+    } catch (_error) {
+      // Ignore storage quota/privacy mode failures.
+    }
+  }
+
+  function clearUpdateBannerReminderTimer() {
+    if (!updateBannerState.remindTimerId) return;
+    window.clearTimeout(updateBannerState.remindTimerId);
+    updateBannerState.remindTimerId = null;
+  }
+
+  function getUpdateBannerRemindMinutes() {
+    var configured = Number(window.APP_UI_LABELS && window.APP_UI_LABELS.pwa && window.APP_UI_LABELS.pwa.updateBannerRemindMinutes);
+    if (Number.isFinite(configured) && configured > 0) {
+      return Math.min(180, Math.max(1, Math.round(configured)));
+    }
+    return UPDATE_BANNER_DEFAULT_REMIND_MINUTES;
+  }
+
+  function getUpdateBannerRemindUntil(versionKey) {
+    if (!versionKey) return 0;
+    try {
+      var raw = localStorage.getItem(REMIND_UPDATE_BANNER_KEY_PREFIX + versionKey);
+      var parsed = Number(raw || 0);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    } catch (_error) {
+      return 0;
+    }
+  }
+
+  function setUpdateBannerRemindUntil(versionKey, remindAtMs) {
+    if (!versionKey) return;
+    try {
+      localStorage.setItem(REMIND_UPDATE_BANNER_KEY_PREFIX + versionKey, String(Math.max(0, Number(remindAtMs) || 0)));
+    } catch (_error) {
+      // Ignore storage quota/privacy mode failures.
+    }
+  }
+
+  function clearUpdateBannerRemindUntil(versionKey) {
+    if (!versionKey) return;
+    try {
+      localStorage.removeItem(REMIND_UPDATE_BANNER_KEY_PREFIX + versionKey);
+    } catch (_error) {
+      // Ignore storage quota/privacy mode failures.
+    }
+  }
+
+  function emitUpdateBannerTelemetry(eventName, detail) {
+    var normalized = String(eventName || '').trim();
+    if (!normalized) return;
+    try {
+      window.dispatchEvent(new CustomEvent('reliability:update-banner-event', {
+        detail: {
+          eventName: normalized,
+          appVersion: APP_VERSION,
+          swVersion: String(updateBannerState.swVersion || 'unknown'),
+          versionKey: String(updateBannerState.versionKey || ''),
+          activeTab: getActiveTabId(),
+          detail: detail || {}
+        }
+      }));
+    } catch (_error) {
+      // Keep update UX resilient if telemetry dispatch fails.
+    }
+  }
+
+  function renderUpdateBannerVersionDiff(swVersion) {
+    var elements = getUpdateBannerElements();
+    if (!elements.versionDiff) return;
+    elements.versionDiff.textContent = 'Version: app ' + APP_VERSION + ' -> sw ' + String(swVersion || 'unknown');
+  }
+
+  function scheduleUpdateBannerReminder(delayMs, reason, meta) {
+    var safeDelayMs = Math.max(0, Number(delayMs) || 0);
+    clearUpdateBannerReminderTimer();
+    updateBannerState.pendingMeta = meta || null;
+    updateBannerState.remindTimerId = window.setTimeout(function () {
+      updateBannerState.remindTimerId = null;
+      showAppUpdateBanner(String(reason || 'remind-later-expired'), updateBannerState.pendingMeta || {});
+    }, safeDelayMs);
+  }
+
+  function hideAppUpdateBanner(options) {
+    var shouldPersistDismiss = Boolean(options && options.persistDismiss);
+    var remindLater = Boolean(options && options.remindLater);
+    if (shouldPersistDismiss && updateBannerState.versionKey) {
+      setUpdateBannerDismissed(updateBannerState.versionKey);
+      clearUpdateBannerRemindUntil(updateBannerState.versionKey);
+    }
+
+    if (remindLater && updateBannerState.versionKey) {
+      var remindAtMs = Date.now() + (getUpdateBannerRemindMinutes() * 60 * 1000);
+      setUpdateBannerRemindUntil(updateBannerState.versionKey, remindAtMs);
+      scheduleUpdateBannerReminder(remindAtMs - Date.now(), 'remind-later-expired', updateBannerState.pendingMeta || {});
+    } else {
+      clearUpdateBannerReminderTimer();
+    }
+
+    updateBannerState.visible = false;
+
+    var elements = getUpdateBannerElements();
+    if (elements.banner) elements.banner.hidden = true;
+  }
+
+  function showAppUpdateBanner(reason, meta) {
+    if (!('serviceWorker' in navigator)) return Promise.resolve(false);
+
+    var controller = navigator.serviceWorker.controller;
+    var controllerUrl = meta && meta.controllerUrl
+      ? String(meta.controllerUrl)
+      : (controller && controller.scriptURL ? String(controller.scriptURL) : 'none');
+    var waitingUrl = meta && meta.waitingUrl ? String(meta.waitingUrl) : 'none';
+    var baseMessage = reason === 'controllerchange'
+      ? 'A new app version is now active. Reload required to use the latest fixes.'
+      : 'A new app version is ready. Reload required to use the latest fixes.';
+
+    return requestServiceWorkerVersion(1200)
+      .then(function (swInfo) {
+        var swVersion = swInfo && swInfo.swVersion ? String(swInfo.swVersion) : 'unknown';
+        var versionKey = getUpdateBannerVersionKey({
+          swVersion: swVersion,
+          controllerUrl: controllerUrl,
+          waitingUrl: waitingUrl
+        });
+
+        if (isUpdateBannerDismissed(versionKey)) return false;
+        var remindUntil = getUpdateBannerRemindUntil(versionKey);
+        if (remindUntil > Date.now()) {
+          scheduleUpdateBannerReminder(remindUntil - Date.now(), 'remind-later-expired', {
+            waitingUrl: waitingUrl,
+            controllerUrl: controllerUrl
+          });
+          return false;
+        }
+        clearUpdateBannerRemindUntil(versionKey);
+        if (updateBannerState.visible && updateBannerState.versionKey === versionKey) return true;
+
+        clearUpdateBannerReminderTimer();
+        updateBannerState.visible = true;
+        updateBannerState.versionKey = versionKey;
+        updateBannerState.message = baseMessage;
+        updateBannerState.pendingMeta = {
+          waitingUrl: waitingUrl,
+          controllerUrl: controllerUrl
+        };
+        updateBannerState.swVersion = swVersion;
+
+        var elements = getUpdateBannerElements();
+        if (!elements.banner) return false;
+        if (elements.text) elements.text.textContent = baseMessage;
+        renderUpdateBannerVersionDiff(swVersion);
+        elements.banner.hidden = false;
+        emitUpdateBannerTelemetry('update-banner-shown', {
+          reason: String(reason || ''),
+          versionKey: versionKey
+        });
+        return true;
+      })
+      .catch(function () {
+        var fallbackKey = getUpdateBannerVersionKey({
+          swVersion: 'unknown',
+          controllerUrl: controllerUrl,
+          waitingUrl: waitingUrl
+        });
+
+        if (isUpdateBannerDismissed(fallbackKey)) return false;
+        var remindUntil = getUpdateBannerRemindUntil(fallbackKey);
+        if (remindUntil > Date.now()) {
+          scheduleUpdateBannerReminder(remindUntil - Date.now(), 'remind-later-expired', {
+            waitingUrl: waitingUrl,
+            controllerUrl: controllerUrl
+          });
+          return false;
+        }
+        clearUpdateBannerRemindUntil(fallbackKey);
+
+        clearUpdateBannerReminderTimer();
+        updateBannerState.visible = true;
+        updateBannerState.versionKey = fallbackKey;
+        updateBannerState.message = baseMessage;
+        updateBannerState.pendingMeta = {
+          waitingUrl: waitingUrl,
+          controllerUrl: controllerUrl
+        };
+        updateBannerState.swVersion = 'unknown';
+
+        var elements = getUpdateBannerElements();
+        if (!elements.banner) return false;
+        if (elements.text) elements.text.textContent = baseMessage;
+        renderUpdateBannerVersionDiff('unknown');
+        elements.banner.hidden = false;
+        emitUpdateBannerTelemetry('update-banner-shown', {
+          reason: String(reason || ''),
+          versionKey: fallbackKey
+        });
+        return true;
+      });
+  }
+
   function waitForServiceWorkerControl(timeoutMs) {
     if (!('serviceWorker' in navigator)) return Promise.resolve(false);
     if (navigator.serviceWorker.controller) return Promise.resolve(true);
@@ -310,6 +552,59 @@
         emitStatus();
         return false;
       });
+  }
+
+  function monitorServiceWorkerInstallingWorker(worker, registration) {
+    if (!worker) return;
+    if (monitoredSwWorkers) {
+      if (monitoredSwWorkers.has(worker)) return;
+      monitoredSwWorkers.add(worker);
+    } else if (worker.__kafSwUpdateStateBound === true) {
+      return;
+    } else {
+      worker.__kafSwUpdateStateBound = true;
+    }
+
+    worker.addEventListener('statechange', function () {
+      if (worker.state !== 'installed') return;
+      if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+      showAppUpdateBanner('updatefound-installed', {
+        waitingUrl: worker && worker.scriptURL ? String(worker.scriptURL) : '',
+        controllerUrl: navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL
+          ? String(navigator.serviceWorker.controller.scriptURL)
+          : '',
+        registration: registration
+      });
+    });
+  }
+
+  function monitorServiceWorkerUpdates(registration) {
+    if (!registration) return;
+    if (monitoredSwRegistrations) {
+      if (monitoredSwRegistrations.has(registration)) return;
+      monitoredSwRegistrations.add(registration);
+    } else if (registration.__kafSwUpdateBound === true) {
+      return;
+    } else {
+      registration.__kafSwUpdateBound = true;
+    }
+
+    if (registration.waiting && navigator.serviceWorker && navigator.serviceWorker.controller) {
+      showAppUpdateBanner('waiting-worker-detected', {
+        waitingUrl: registration.waiting && registration.waiting.scriptURL ? String(registration.waiting.scriptURL) : '',
+        controllerUrl: navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL
+          ? String(navigator.serviceWorker.controller.scriptURL)
+          : ''
+      });
+    }
+
+    if (registration.installing) {
+      monitorServiceWorkerInstallingWorker(registration.installing, registration);
+    }
+
+    registration.addEventListener('updatefound', function () {
+      monitorServiceWorkerInstallingWorker(registration.installing, registration);
+    });
   }
 
   function getActiveTabId() {
@@ -1325,6 +1620,37 @@
       });
     }
 
+    var appUpdateReloadBtn = document.getElementById('appUpdateReloadBtn');
+    if (appUpdateReloadBtn && appUpdateReloadBtn.dataset.offlineUpdateBound !== '1') {
+      appUpdateReloadBtn.dataset.offlineUpdateBound = '1';
+      appUpdateReloadBtn.addEventListener('click', function () {
+        emitUpdateBannerTelemetry('reload-clicked', {
+          source: 'app-update-banner'
+        });
+        hideAppUpdateBanner();
+        window.location.reload();
+      });
+    }
+
+    var appUpdateRemindBtn = document.getElementById('appUpdateRemindBtn');
+    if (appUpdateRemindBtn && appUpdateRemindBtn.dataset.offlineUpdateBound !== '1') {
+      appUpdateRemindBtn.dataset.offlineUpdateBound = '1';
+      appUpdateRemindBtn.addEventListener('click', function () {
+        hideAppUpdateBanner({ remindLater: true });
+      });
+    }
+
+    var appUpdateDismissBtn = document.getElementById('appUpdateDismissBtn');
+    if (appUpdateDismissBtn && appUpdateDismissBtn.dataset.offlineUpdateBound !== '1') {
+      appUpdateDismissBtn.dataset.offlineUpdateBound = '1';
+      appUpdateDismissBtn.addEventListener('click', function () {
+        emitUpdateBannerTelemetry('dismiss-clicked', {
+          source: 'app-update-banner'
+        });
+        hideAppUpdateBanner({ persistDismiss: true });
+      });
+    }
+
     document.querySelectorAll('[data-offline-conflict-action]').forEach(function (button) {
       if (!button || button.dataset.offlineConflictBound === '1') return;
       button.dataset.offlineConflictBound = '1';
@@ -1345,7 +1671,11 @@
 
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return Promise.resolve(false);
-    return ensureServiceWorkerReady(6000)
+    return ensureServiceWorkerRegistration()
+      .then(function (registration) {
+        monitorServiceWorkerUpdates(registration);
+        return ensureServiceWorkerReady(6000);
+      })
       .then(function (ready) {
         status.swReady = Boolean(ready);
         emitStatus();
@@ -1397,6 +1727,16 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', function () {
         logVersionBanner('controllerchange');
+        if (!navigator.serviceWorker.controller) return;
+        if (!hasSeenServiceWorkerController) {
+          hasSeenServiceWorkerController = true;
+          return;
+        }
+        showAppUpdateBanner('controllerchange', {
+          controllerUrl: navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL
+            ? String(navigator.serviceWorker.controller.scriptURL)
+            : ''
+        });
       });
     }
 

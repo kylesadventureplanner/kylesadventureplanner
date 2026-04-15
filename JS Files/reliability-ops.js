@@ -11,6 +11,11 @@
     lastActionKey: '',
     blockedActions: { disabled: 0, 'in-flight': 0, dedupe: 0 },
     overlayInterceptions: 0,
+    updateBannerTelemetry: {
+      shown: 0,
+      reloadClicked: 0,
+      dismissClicked: 0
+    },
     errors: [],
     recoveryEvents: []
   };
@@ -279,6 +284,15 @@
       STATE.overlayInterceptions += 1;
     });
 
+    window.addEventListener('reliability:update-banner-event', (event) => {
+      const eventName = event && event.detail && event.detail.eventName
+        ? String(event.detail.eventName)
+        : '';
+      if (eventName === 'update-banner-shown') STATE.updateBannerTelemetry.shown += 1;
+      if (eventName === 'reload-clicked') STATE.updateBannerTelemetry.reloadClicked += 1;
+      if (eventName === 'dismiss-clicked') STATE.updateBannerTelemetry.dismissClicked += 1;
+    });
+
     window.addEventListener('app:tab-switched', (event) => {
       const tabId = event && event.detail && event.detail.tabId ? String(event.detail.tabId) : '';
       if (tabId) STATE.activeTab = tabId;
@@ -293,6 +307,11 @@
       lastActionKey: STATE.lastActionKey || String(window.__lastActionKey || ''),
       blockedActions: { ...STATE.blockedActions },
       overlayInterceptions: STATE.overlayInterceptions,
+      updateBannerTelemetry: {
+        shown: Number(STATE.updateBannerTelemetry.shown || 0),
+        reloadClicked: Number(STATE.updateBannerTelemetry.reloadClicked || 0),
+        dismissClicked: Number(STATE.updateBannerTelemetry.dismissClicked || 0)
+      },
       startupTiming: readiness,
       errorCount: STATE.errors.length,
       recoveryEventCount: STATE.recoveryEvents.length,

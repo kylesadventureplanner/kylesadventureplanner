@@ -518,6 +518,39 @@
       font-weight: 700;
     }
 
+    .app-update-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 10px 16px;
+      padding: 10px 12px;
+      border: 1px solid #fdba74;
+      border-radius: 10px;
+      background: #fff7ed;
+      color: #9a3412;
+      font-size: 12px;
+      font-weight: 800;
+      box-shadow: 0 4px 10px rgba(194, 65, 12, 0.12);
+    }
+
+    .app-update-banner-content {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .app-update-banner-version {
+      font-size: 11px;
+      font-weight: 700;
+      color: #7c2d12;
+      opacity: 0.9;
+    }
+
+    .app-update-banner[hidden] {
+      display: none;
+    }
+
     .offline-install-banner[hidden] {
       display: none;
     }
@@ -8192,6 +8225,17 @@
 <div id="signInRequiredBanner" class="sign-in-required-banner" role="status" aria-live="polite" hidden>
   <span>🔐 Sign in required: connect your Microsoft account to load Excel data and use core app features.</span>
   <button id="signInRequiredBannerBtn" type="button" class="offline-action-btn">Sign In Now</button>
+</div>
+<div id="appUpdateBanner" class="app-update-banner" role="status" aria-live="polite" hidden>
+  <div class="app-update-banner-content">
+    <span id="appUpdateBannerText">A new app version is available. Reload required to use the latest fixes.</span>
+    <span id="appUpdateBannerVersionDiff" class="app-update-banner-version">Version: app unknown -> sw unknown</span>
+  </div>
+  <div class="offline-install-actions">
+    <button id="appUpdateReloadBtn" type="button" class="offline-action-btn">Reload now</button>
+    <button id="appUpdateRemindBtn" type="button" class="offline-action-btn">Remind me later</button>
+    <button id="appUpdateDismissBtn" type="button" class="offline-action-btn">Dismiss</button>
+  </div>
 </div>
 <div id="offlineInstallBanner" class="offline-install-banner" hidden>
   <span>Open Offline Mode to install this app and prepare it for field use.</span>
