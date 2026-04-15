@@ -28,6 +28,30 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(birdsDiagnosticsRow).toContainText('Sightings/User State');
   });
 
+  test('global context menu stays hidden and non-interactive by default', async ({ page }) => {
+    const state = await page.evaluate(() => {
+      const menu = document.getElementById('contextMenu');
+      if (!menu) return null;
+      const cs = window.getComputedStyle(menu);
+      return {
+        display: cs.display,
+        visibility: cs.visibility,
+        pointerEvents: cs.pointerEvents,
+        opacity: cs.opacity,
+        left: cs.left,
+        top: cs.top,
+        hasVisibleClass: menu.classList.contains('visible')
+      };
+    });
+
+    expect(state).not.toBeNull();
+    expect(state.hasVisibleClass).toBe(false);
+    expect(state.display).toBe('none');
+    expect(state.visibility).toBe('hidden');
+    expect(state.pointerEvents).toBe('none');
+    expect(Number(state.opacity)).toBe(0);
+  });
+
   test('manual diagnostics console runs probe and writes output', async ({ page }) => {
     await page.locator('#birdsDiagnosticsDetails > summary').click();
     const output = page.locator('#birdsManualDiagnosticsOutput');

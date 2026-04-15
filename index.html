@@ -3160,14 +3160,24 @@
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(29, 78, 216, 0.3) !important;
       z-index: 99999 !important;
       min-width: 320px !important;
-      display: flex !important;
+      display: none !important;
       flex-direction: column !important;
       overflow: visible !important;
-      pointer-events: auto !important;
-      opacity: 1 !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      left: -9999px !important;
+      top: -9999px !important;
       margin: 0 !important;
       padding: 0 !important;
       animation: slideIn 0.15s ease-out !important;
+    }
+
+    #contextMenu.visible {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
     }
 
     @keyframes slideIn {
@@ -15635,9 +15645,12 @@
     const contextMenu = document.getElementById("contextMenu");
     if (contextMenu) {
       contextMenu.classList.remove("visible");
+      contextMenu.style.display = "none";
       contextMenu.style.visibility = "hidden";
       contextMenu.style.opacity = "0";
       contextMenu.style.pointerEvents = "none";
+      contextMenu.style.left = "-9999px";
+      contextMenu.style.top = "-9999px";
     }
   }
 

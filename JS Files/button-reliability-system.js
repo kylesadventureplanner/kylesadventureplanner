@@ -138,7 +138,7 @@
     if (topElement === intendedTarget || intendedTarget.contains(topElement)) return;
 
     const blocker = topElement.closest
-      ? (topElement.closest('#loadingOverlay, .modal-backdrop, [id$="Backdrop"], #rowDetailModal, #contextMenu, #cardContextMenu, .tab-loading-indicator') || topElement)
+      ? (topElement.closest('#loadingOverlay, .modal-backdrop, [id$="Backdrop"], #rowDetailModal, #contextMenu, #tagContextMenu, #cardContextMenu, .tab-loading-indicator') || topElement)
       : topElement;
 
     const blockerStyle = window.getComputedStyle ? window.getComputedStyle(blocker) : null;
@@ -253,6 +253,7 @@
       '.modal-backdrop',
       '[id$="Backdrop"]',
       '#contextMenu',
+      '#tagContextMenu',
       '#cardContextMenu'
     ].join(', ');
 
@@ -260,10 +261,13 @@
       const cs = window.getComputedStyle(el);
       const isHiddenByStyle = cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity || '1') === 0;
       const startupComplete = el.classList.contains('startup-complete') || el.dataset.startupLock === '0';
-      const isInactiveContextMenu = (el.id === 'contextMenu' || el.id === 'cardContextMenu') && !el.classList.contains('visible');
+      const isInactiveContextMenu = (el.id === 'contextMenu' || el.id === 'tagContextMenu' || el.id === 'cardContextMenu') && !el.classList.contains('visible');
 
       if (isHiddenByStyle || startupComplete || isInactiveContextMenu) {
         if (el.style.pointerEvents !== 'none') el.style.pointerEvents = 'none';
+        if ((el.id === 'contextMenu' || el.id === 'tagContextMenu' || el.id === 'cardContextMenu') && el.style.display !== 'none') {
+          el.style.display = 'none';
+        }
       }
     });
   }
@@ -286,7 +290,7 @@
     checkPoints.forEach((point) => {
       const el = document.elementFromPoint(point.x, point.y);
       if (!el) return;
-      const suspect = (el.closest ? el.closest('#loadingOverlay, .modal-backdrop, [id$="Backdrop"], #contextMenu, #cardContextMenu') : null) || el;
+      const suspect = (el.closest ? el.closest('#loadingOverlay, .modal-backdrop, [id$="Backdrop"], #contextMenu, #tagContextMenu, #cardContextMenu') : null) || el;
       if (seen.has(suspect)) return;
 
       const cs = window.getComputedStyle(suspect);
@@ -297,6 +301,7 @@
         suspect.classList.contains('modal-backdrop') ||
         (suspect.id && suspect.id.endsWith('Backdrop')) ||
         suspect.id === 'contextMenu' ||
+        suspect.id === 'tagContextMenu' ||
         suspect.id === 'cardContextMenu';
 
       if (isVisible && blocksPointer && isOverlayLike) {
