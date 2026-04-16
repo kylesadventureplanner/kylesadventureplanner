@@ -1906,6 +1906,8 @@
     saveBirdUiPrefs();
     syncBirdCommandInputFromState();
     setBirdView(root, 'overview');
+    // setBirdView now scrolls the real container; belt-and-suspenders also
+    // reset window in case the page itself is scrollable.
     window.scrollTo({ top: 0, behavior: 'smooth' });
     renderBirds();
   }
@@ -8823,9 +8825,31 @@
     observer.observe(root, { childList: true, subtree: true });
   }
 
+  /**
+   * Returns the real scroll container for the nature tab pane.
+   * The app uses an internal overflow-y scroll div (.app-tab-pane), not
+   * the window, so window.scrollY is always 0 and window.scrollTo() is a
+   * no-op.  We must save/restore on the actual scrolling element.
+   */
+  function getNatureScrollContainer(root) {
+    if (root) {
+      const pane = root.closest('.app-tab-pane');
+      if (pane) return pane;
+    }
+    return document.querySelector('.app-content, .app-main, main, #appContent') ||
+           document.scrollingElement ||
+           document.documentElement;
+  }
+
   function setBirdView(root, viewKey) {
     const previousView = state.activeBirdView;
-    state.birdViewScrollPositions[previousView || 'overview'] = window.scrollY || 0;
+
+    // Save using the actual scroll container, not window.scrollY which is
+    // always 0 when the app scrolls via an internal overflow div.
+    const scroller = getNatureScrollContainer(root);
+    state.birdViewScrollPositions[previousView || 'overview'] =
+      scroller ? (scroller.scrollTop || 0) : (window.scrollY || 0);
+
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     saveBirdUiPrefs();
     syncBirdViews(root);
@@ -8837,13 +8861,21 @@
     if (state.activeBirdView === 'overview') applyOverviewDensity(root);
     if (state.activeBirdView === 'explorer') renderBirdExplorerList();
     if (state.activeBirdView === 'log') {
-    const stats = state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats();
-    renderBirdLogView(stats);
+      const stats = state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats();
+      renderBirdLogView(stats);
     }
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
+
+    // Restore scroll position on the real container.  When switching to
+    // overview/explorer/log the saved position will be 0 (top), keeping the
+    // CTA buttons in the visible viewport.
     const restoreY = Number(state.birdViewScrollPositions[state.activeBirdView]) || 0;
-    window.scrollTo({ top: restoreY, behavior: 'auto' });
+    if (scroller && scroller !== window && scroller !== document.documentElement) {
+      scroller.scrollTop = restoreY;
+    } else {
+      window.scrollTo({ top: restoreY, behavior: 'auto' });
+    }
     scheduleNatureCtaOrderFinalization(root);
   }
 
@@ -9581,6 +9613,10 @@
 
       const backToTopButton = event.target.closest('[data-birds-back-to-top]');
       if (backToTopButton) {
+        const _topScroller = getNatureScrollContainer(root);
+        if (_topScroller && _topScroller !== window && _topScroller !== document.documentElement) {
+          _topScroller.scrollTop = 0;
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
