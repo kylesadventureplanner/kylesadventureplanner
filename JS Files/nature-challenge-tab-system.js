@@ -450,6 +450,11 @@
     focused: false
   };
 
+  const birdsCtaScrollRuntimeDiag = {
+    lastKey: '',
+    lastAt: 0
+  };
+
   // Per-action-key reliability guard state.
   const birdsActivationGuard = {
     inFlight: new Map(),  // actionKey -> true while async action is running
@@ -457,6 +462,7 @@
   };
   const BIRDS_ACTIVATION_DEDUPE_MS = 300;      // ignore re-activation within this window
   const BIRDS_ACTIVATION_LOCK_TIMEOUT_MS = 8000; // safety-release stuck lock after this long
+  const BIRDS_CTA_SCROLL_DIAG_DEDUPE_MS = 650;
   const BIRD_CTA_COPY_PREVIEW_COLLAPSE_MS = 2400;
 
   function isBirdClickDiagnosticsEnabled() {
@@ -8841,6 +8847,66 @@
            document.documentElement;
   }
 
+  function getNatureScrollContainerLabel(scroller) {
+    if (!scroller) return 'window';
+    if (scroller === window) return 'window';
+    if (scroller === document.scrollingElement) return 'document.scrollingElement';
+    if (scroller === document.documentElement) return 'document.documentElement';
+    if (scroller === document.body) return 'document.body';
+    const tag = String(scroller.tagName || 'element').toLowerCase();
+    const id = scroller.id ? `#${scroller.id}` : '';
+    const className = String(scroller.className || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
+    const classSuffix = className ? `.${className}` : '';
+    return `${tag}${id}${classSuffix}`;
+  }
+
+  function emitNatureCtaScrollRuntimeDiagnostic(root, actionKey, sourceKey) {
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    const scroller = getNatureScrollContainer(liveRoot);
+    const scrollTop = scroller && Number.isFinite(scroller.scrollTop)
+      ? Math.round(scroller.scrollTop)
+      : Math.round(window.scrollY || 0);
+    const scrollerLabel = getNatureScrollContainerLabel(scroller);
+    const action = String(actionKey || 'unknown').trim() || 'unknown';
+    const source = String(sourceKey || 'cta').trim() || 'cta';
+    const key = `${source}|${action}|${scrollerLabel}|${scrollTop}|${state.activeSubTab}|${state.activeBirdView}`;
+    const now = Date.now();
+    if (birdsCtaScrollRuntimeDiag.lastKey === key && (now - birdsCtaScrollRuntimeDiag.lastAt) < BIRDS_CTA_SCROLL_DIAG_DEDUPE_MS) {
+      return;
+    }
+    birdsCtaScrollRuntimeDiag.lastKey = key;
+    birdsCtaScrollRuntimeDiag.lastAt = now;
+
+    const line = `CTA ${action}: scroller=${scrollerLabel} scrollTop=${scrollTop} subtab=${state.activeSubTab} view=${state.activeBirdView}`;
+    window.__lastNatureCtaScrollDiag = line;
+    if (typeof window.showToast === 'function') {
+      window.showToast(line, 'info', 1800);
+    }
+    try {
+      console.info('[NatureCtaScrollDiag]', line);
+    } catch (_error) {
+      // Ignore console sink errors.
+    }
+  }
+
+  function getBirdViewRestoreScrollTop(viewKey) {
+    const normalizedView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
+    if (normalizedView === 'overview' || normalizedView === 'explorer' || normalizedView === 'log') {
+      return 0;
+    }
+    return Number(state.birdViewScrollPositions[normalizedView]) || 0;
+  }
+
+  function restoreNatureScrollerForActiveBirdView(root) {
+    const scroller = getNatureScrollContainer(root);
+    const restoreY = getBirdViewRestoreScrollTop(state.activeBirdView);
+    if (scroller && scroller !== window && scroller !== document.documentElement) {
+      scroller.scrollTop = restoreY;
+    } else {
+      window.scrollTo({ top: restoreY, behavior: 'auto' });
+    }
+  }
+
   function setBirdView(root, viewKey) {
     const previousView = state.activeBirdView;
 
@@ -8867,15 +8933,8 @@
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
 
-    // Restore scroll position on the real container.  When switching to
-    // overview/explorer/log the saved position will be 0 (top), keeping the
-    // CTA buttons in the visible viewport.
-    const restoreY = Number(state.birdViewScrollPositions[state.activeBirdView]) || 0;
-    if (scroller && scroller !== window && scroller !== document.documentElement) {
-      scroller.scrollTop = restoreY;
-    } else {
-      window.scrollTo({ top: restoreY, behavior: 'auto' });
-    }
+    // Keep CTA-first views anchored to top so action rails stay physically clickable.
+    restoreNatureScrollerForActiveBirdView(root);
     scheduleNatureCtaOrderFinalization(root);
   }
 
@@ -8927,6 +8986,10 @@
     }
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
+
+    // Subtab switches do not always call setBirdView, so re-apply active-view
+    // scroll policy here to prevent stale deep scroll offsets from trapping CTAs.
+    restoreNatureScrollerForActiveBirdView(root);
 
     // Self-heal CTA after every subtab switch so flags left by async loads are cleared.
     requestAnimationFrame(() => ensureNatureCtaButtonsSelfHeal(root));
@@ -9002,6 +9065,7 @@
       if (!btn) return;
       const action = resolveNatureCtaActionFromButton(btn);
       if (!action) return;
+      emitNatureCtaScrollRuntimeDiagnostic(document.getElementById('natureChallengeRoot'), action, 'action-bus');
       if (!isButtonActivatable(btn)) return;
       const handler = NATURE_CTA_ACTION_HANDLERS[action];
       if (!handler) return;
@@ -9150,30 +9214,35 @@
 
       const refreshButton = event.target.closest('#natureChallengeRefreshBtn');
       if (refreshButton) {
+        emitNatureCtaScrollRuntimeDiagnostic(root, 'refresh', 'delegated');
         withBirdsActionGuard(refreshButton, () => loadBirdDataset(true));
         return;
       }
 
       const undoActionButton = event.target.closest('#birdsUndoActionBtn');
       if (undoActionButton) {
+        emitNatureCtaScrollRuntimeDiagnostic(root, 'undo', 'delegated');
         handleBirdUndoAction();
         return;
       }
 
       const exploreButton = event.target.closest('#birdsExploreBtn');
       if (exploreButton) {
+        emitNatureCtaScrollRuntimeDiagnostic(root, 'explore', 'delegated');
         setBirdView(root, 'explorer');
         return;
       }
 
       const openLogButton = event.target.closest('#birdsOpenLogBtn');
       if (openLogButton) {
+        emitNatureCtaScrollRuntimeDiagnostic(root, 'log', 'delegated');
         setBirdView(root, 'log');
         return;
       }
 
       const openMapButton = event.target.closest('#birdsOpenMapBtn');
       if (openMapButton) {
+        emitNatureCtaScrollRuntimeDiagnostic(root, 'map', 'delegated');
         withBirdsActionGuard(openMapButton, () => {
           if (window.SightingMap && typeof window.SightingMap.open === 'function') {
             window.SightingMap.open();
