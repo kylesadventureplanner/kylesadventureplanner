@@ -8860,7 +8860,15 @@
     return `${tag}${id}${classSuffix}`;
   }
 
+  function shouldEmitNatureCtaScrollRuntimeDiagnostic() {
+    if (typeof window === 'undefined') return false;
+    if (window.__NATURE_CTA_SCROLL_DIAG__ === true) return true;
+    if (window.__NATURE_CTA_SCROLL_DIAG__ === false) return false;
+    return !(window.navigator && window.navigator.webdriver);
+  }
+
   function emitNatureCtaScrollRuntimeDiagnostic(root, actionKey, sourceKey) {
+    if (!shouldEmitNatureCtaScrollRuntimeDiagnostic()) return;
     const liveRoot = root || document.getElementById('natureChallengeRoot');
     const scroller = getNatureScrollContainer(liveRoot);
     const scrollTop = scroller && Number.isFinite(scroller.scrollTop)
