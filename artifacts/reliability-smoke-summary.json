@@ -1,14 +1,66 @@
 {
-  "generatedAt": "2026-04-17T15:47:31.620Z",
-  "pass": false,
+  "generatedAt": "2026-04-17T18:07:42.844Z",
+  "pass": true,
   "startupSamplesMs": [
-    97
+    103,
+    94,
+    93,
+    96,
+    93,
+    96,
+    126
   ],
-  "startupMsP95": 97,
-  "firstClickChecks": 0,
-  "firstClickSuccesses": 0,
-  "firstClickSuccessRate": 0,
+  "startupMsP95": 126,
+  "firstClickChecks": 3,
+  "firstClickSuccesses": 3,
+  "firstClickSuccessRate": 1,
   "checks": [
+    {
+      "name": "first-click:nature-explore",
+      "passed": true,
+      "detail": {
+        "explorerActive": true
+      },
+      "at": "2026-04-17T18:07:44.988Z"
+    },
+    {
+      "name": "first-click:nature-run",
+      "passed": true,
+      "detail": {
+        "runActive": true
+      },
+      "at": "2026-04-17T18:07:48.692Z"
+    },
+    {
+      "name": "first-click:bike-refresh",
+      "passed": true,
+      "detail": {
+        "scopeState": {
+          "scope": "bike-trails",
+          "inFlightCount": 0,
+          "trackedActionCount": 1
+        }
+      },
+      "at": "2026-04-17T18:07:50.606Z"
+    },
+    {
+      "name": "probe:hidden-overlay-detected",
+      "passed": true,
+      "detail": {
+        "blockedPoints": 5,
+        "reason": "offscreen"
+      },
+      "at": "2026-04-17T18:07:52.341Z"
+    },
+    {
+      "name": "overlay:stale-row-detail-cleared",
+      "passed": true,
+      "detail": {
+        "explorerActive": true,
+        "modalHidden": true
+      },
+      "at": "2026-04-17T18:07:55.427Z"
+    },
     {
       "name": "repeat:nature-explore-tab-switches",
       "passed": true,
@@ -36,7 +88,24 @@
           }
         ]
       },
-      "at": "2026-04-17T15:47:46.062Z"
+      "at": "2026-04-17T18:08:09.439Z"
+    },
+    {
+      "name": "update-banner:version-and-telemetry",
+      "passed": true,
+      "detail": {
+        "reliabilityTelemetry": {
+          "shown": 1,
+          "reloadClicked": 1,
+          "dismissClicked": 1
+        },
+        "buttonTelemetry": {
+          "updateBannerShown": 1,
+          "updateBannerReloadClicked": 1,
+          "updateBannerDismissClicked": 1
+        }
+      },
+      "at": "2026-04-17T18:08:11.250Z"
     }
   ]
 }

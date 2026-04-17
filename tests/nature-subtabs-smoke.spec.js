@@ -11,6 +11,25 @@ const CONFIG_DRIVEN_SUBTABS = [
   { key: 'trees', label: 'Trees & Shrubs' }
 ];
 
+async function readLastDiagnosticsJsonBlock(page, title) {
+  return page.evaluate((diagTitle) => {
+    const textarea = document.getElementById('birdsManualDiagnosticsOutput');
+    const value = textarea ? String(textarea.value || '') : '';
+    const headerRe = new RegExp(`\\[[^\\]]+\\] ${diagTitle.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}`, 'g');
+    const headers = [...value.matchAll(headerRe)];
+    if (!headers.length) return null;
+    const start = headers[headers.length - 1].index + headers[headers.length - 1][0].length;
+    const tail = value.slice(start).trimStart();
+    const nextHeader = tail.search(/\n\[[^\]]+\] /);
+    const block = (nextHeader >= 0 ? tail.slice(0, nextHeader) : tail).trim();
+    try {
+      return JSON.parse(block);
+    } catch (_error) {
+      return null;
+    }
+  }, title);
+}
+
 
 test.describe('Nature config-driven subtabs smoke', () => {
   test.beforeEach(async ({ page }) => {
@@ -87,6 +106,29 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(output).toHaveValue(/Overlay\/Z-Index Auto-fix/);
     await page.locator('#birdsRunFullAutorepairSequenceBtn').click();
     await expect(output).toHaveValue(/Full Auto-Repair Sequence/);
+
+    await page.locator('#birdsRunCtaSmokeTestBtn').click();
+    await expect(output).toHaveValue(/CTA Smoke Test/);
+    await expect(output).toHaveValue(/"kind": "birds-cta-smoke-test"/);
+
+    const ctaSmoke = await readLastDiagnosticsJsonBlock(page, 'CTA Smoke Test');
+    expect(ctaSmoke).not.toBeNull();
+    expect(ctaSmoke.kind).toBe('birds-cta-smoke-test');
+    if (ctaSmoke.viewport) {
+      expect(ctaSmoke.viewport).toEqual(expect.objectContaining({
+        width: expect.any(Number),
+        height: expect.any(Number),
+        scrollY: expect.any(Number)
+      }));
+    }
+    expect(Array.isArray(ctaSmoke.buttonRects)).toBe(true);
+    if (Object.prototype.hasOwnProperty.call(ctaSmoke, 'ctaRowRect')) {
+      expect(ctaSmoke.ctaRowRect === null || typeof ctaSmoke.ctaRowRect === 'object').toBe(true);
+    }
+    const buttonIds = new Set((ctaSmoke.buttonRects || []).map((entry) => entry && entry.id).filter(Boolean));
+    for (const id of (ctaSmoke.offscreenButtonIds || [])) {
+      expect(buttonIds.has(id)).toBe(true);
+    }
 
     const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
     await activateFooterAction(page, exportBtn);
