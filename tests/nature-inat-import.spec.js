@@ -1,23 +1,12 @@
 const { test, expect } = require('@playwright/test');
-
-async function openNatureLogViewOrSkip(testInfo, page) {
-  await page.goto('/');
-  await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-  await expect(page.locator('#natureChallengeRoot')).toBeVisible();
-
-  await page.locator('#birdsOpenLogBtn').click();
-  const logView = page.locator('.nature-birds-view[data-birds-view="log"]:visible');
-  await expect(logView).toBeVisible();
-
-  const hasImportUi = (await logView.locator('#birdsImportPasteInput').count()) > 0
-    && (await logView.locator('#birdsImportParseBtn').count()) > 0;
-  testInfo.skip(!hasImportUi, 'iNaturalist import UI is not available on this APP_URL build.');
-  return logView;
-}
+const { openNatureLogViewOrSkip } = require('./playwright-helpers');
 
 test.describe('Nature iNaturalist import', () => {
   test('paste preview + dry run parses rows', async ({ page }, testInfo) => {
-    const logView = await openNatureLogViewOrSkip(testInfo, page);
+    const logView = await openNatureLogViewOrSkip(testInfo, page, {
+      requiredSelectors: ['#birdsImportPasteInput', '#birdsImportParseBtn'],
+      skipMessage: 'iNaturalist import UI is not available on this APP_URL build.'
+    });
 
     await page.waitForFunction(() => {
       const select = document.getElementById('birdsLogSpeciesSelect');
@@ -42,7 +31,10 @@ test.describe('Nature iNaturalist import', () => {
   });
 
   test('csv upload auto-previews and manual preview remains functional', async ({ page }, testInfo) => {
-    const logView = await openNatureLogViewOrSkip(testInfo, page);
+    const logView = await openNatureLogViewOrSkip(testInfo, page, {
+      requiredSelectors: ['#birdsImportPasteInput', '#birdsImportParseBtn'],
+      skipMessage: 'iNaturalist import UI is not available on this APP_URL build.'
+    });
 
     await page.waitForFunction(() => {
       const select = document.getElementById('birdsLogSpeciesSelect');

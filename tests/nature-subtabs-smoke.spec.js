@@ -1,5 +1,5 @@
 const { test, expect } = require('./reliability-test');
-const { collapseErrorNotificationBar, activateFooterAction } = require('./playwright-helpers');
+const { collapseErrorNotificationBar, activateFooterAction, openNatureLogView } = require('./playwright-helpers');
 
 const CONFIG_DRIVEN_SUBTABS = [
   { key: 'mammals', label: 'Mammals' },
@@ -142,8 +142,7 @@ test.describe('Nature config-driven subtabs smoke', () => {
       await expect(jumpBar).toHaveCount(0);
     }
 
-    await page.locator('#birdsOpenLogBtn').click();
-    await expect(page.locator('.nature-birds-view[data-birds-view="log"]')).toBeVisible();
+    await openNatureLogView(page);
     if (hasJumpBar) {
       await expect(jumpBar).toHaveAttribute('hidden', '');
       await expect(jumpBar).toHaveAttribute('aria-hidden', 'true');

@@ -1,4 +1,5 @@
 const { test, expect } = require('./reliability-test');
+const { openNatureLogView } = require('./playwright-helpers');
 
 test.describe('Nature log UX', () => {
   test('log form supports typeahead species, location other, and contextual fast-command hints', async ({ page }) => {
@@ -16,8 +17,7 @@ test.describe('Nature log UX', () => {
     await page.locator('#appSubTabsSlot [data-nature-subtab="insects"]').click();
     await expect(page.locator('#natureChallengeTitle')).toContainText('Insects');
 
-    await page.locator('#birdsOpenLogBtn').click();
-    await expect(page.locator('.nature-birds-view[data-birds-view="log"]')).toBeVisible();
+    await openNatureLogView(page);
 
     await expect(page.locator('#birdsLogCommandInput')).toHaveAttribute('placeholder', /dragonfly marsh certain/i);
 
