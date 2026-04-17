@@ -1560,6 +1560,8 @@
 
   async function runBirdCtaSmokeTestReport() {
     const root = document.getElementById('natureChallengeRoot');
+    const reset = await resetNatureViewportForDiagnostics(root);
+    await nextAnimationFrame();
     const ids = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn'];
     const buttonRects = ids.map((id) => {
       const el = document.getElementById(id);
@@ -1569,6 +1571,7 @@
         id,
         exists: true,
         disabled: Boolean(el.disabled),
+        inViewport: isElementViewportVisible(el),
         rect: {
           top: Math.round(rect.top || 0),
           left: Math.round(rect.left || 0),
@@ -1583,9 +1586,16 @@
       capturedAt: new Date().toISOString(),
       activeSubTab: state.activeSubTab,
       activeBirdView: state.activeBirdView,
+      reset,
       buttonRects,
+      offscreenButtonIds: buttonRects.filter((entry) => entry && entry.exists && entry.inViewport === false).map((entry) => entry.id),
       actions: []
     };
+
+    const rectById = buttonRects.reduce((acc, entry) => {
+      if (entry && entry.id) acc[entry.id] = entry;
+      return acc;
+    }, {});
 
     const exploreBtn = document.getElementById('birdsExploreBtn');
     if (exploreBtn && !exploreBtn.disabled) {
@@ -1593,7 +1603,8 @@
       await nextAnimationFrame();
       report.actions.push({
         action: 'explore',
-        ok: state.activeBirdView === 'explorer' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]')),
+        ok: Boolean(rectById.birdsExploreBtn && rectById.birdsExploreBtn.inViewport)
+          && (state.activeBirdView === 'explorer' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]'))),
         activeBirdView: state.activeBirdView
       });
     } else {
@@ -1609,7 +1620,8 @@
       await nextAnimationFrame();
       report.actions.push({
         action: 'log',
-        ok: state.activeBirdView === 'log' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="log"]')),
+        ok: Boolean(rectById.birdsOpenLogBtn && rectById.birdsOpenLogBtn.inViewport)
+          && (state.activeBirdView === 'log' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="log"]'))),
         activeBirdView: state.activeBirdView
       });
     } else {
@@ -1624,7 +1636,11 @@
       mapBtn.click();
       await nextAnimationFrame();
       const mapVisible = Boolean(document.querySelector('#birdsMapOverlay:not([hidden])'));
-      report.actions.push({ action: 'map', ok: mapVisible, mapVisible });
+      report.actions.push({
+        action: 'map',
+        ok: Boolean(rectById.birdsOpenMapBtn && rectById.birdsOpenMapBtn.inViewport) && mapVisible,
+        mapVisible
+      });
     } else {
       report.actions.push({ action: 'map', ok: false, reason: 'missing-or-disabled' });
     }
@@ -1643,7 +1659,7 @@
       await nextAnimationFrame();
       report.actions.push({
         action: 'refresh',
-        ok: true,
+        ok: Boolean(rectById.natureChallengeRefreshBtn && rectById.natureChallengeRefreshBtn.inViewport),
         syncBadge: String((document.getElementById('natureSyncHealthBadgeInline') || {}).textContent || '').trim()
       });
     } else {
@@ -9016,8 +9032,17 @@
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
 
-    // Keep CTA-first views anchored to top so action rails stay physically clickable.
+    // Keep CTA-first views anchored to top across all possible scroll containers.
+    const birdsCtaRow = root && typeof root.querySelector === 'function'
+      ? root.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions')
+      : null;
     restoreNatureScrollerForActiveBirdView(root);
+    if (state.activeBirdView === 'overview' || state.activeBirdView === 'explorer' || state.activeBirdView === 'log') {
+      scrollNatureContainersToTop(root, birdsCtaRow);
+      if (state.activeBirdView === 'overview' && birdsCtaRow) {
+        birdsCtaRow.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+    }
     scheduleNatureCtaOrderFinalization(root);
   }
 
