@@ -1,66 +1,14 @@
 {
-  "generatedAt": "2026-04-17T13:58:02.130Z",
-  "pass": true,
+  "generatedAt": "2026-04-17T15:09:46.837Z",
+  "pass": false,
   "startupSamplesMs": [
-    97,
-    97,
-    93,
-    93,
-    93,
-    95,
-    94
+    90
   ],
-  "startupMsP95": 97,
-  "firstClickChecks": 3,
-  "firstClickSuccesses": 3,
-  "firstClickSuccessRate": 1,
+  "startupMsP95": 90,
+  "firstClickChecks": 0,
+  "firstClickSuccesses": 0,
+  "firstClickSuccessRate": 0,
   "checks": [
-    {
-      "name": "first-click:nature-explore",
-      "passed": true,
-      "detail": {
-        "explorerActive": true
-      },
-      "at": "2026-04-17T13:58:04.886Z"
-    },
-    {
-      "name": "first-click:nature-run",
-      "passed": true,
-      "detail": {
-        "runActive": true
-      },
-      "at": "2026-04-17T13:58:08.144Z"
-    },
-    {
-      "name": "first-click:bike-refresh",
-      "passed": true,
-      "detail": {
-        "scopeState": {
-          "scope": "bike-trails",
-          "inFlightCount": 0,
-          "trackedActionCount": 1
-        }
-      },
-      "at": "2026-04-17T13:58:09.583Z"
-    },
-    {
-      "name": "probe:hidden-overlay-detected",
-      "passed": true,
-      "detail": {
-        "blockedPoints": 5,
-        "reason": "offscreen"
-      },
-      "at": "2026-04-17T13:58:11.454Z"
-    },
-    {
-      "name": "overlay:stale-row-detail-cleared",
-      "passed": true,
-      "detail": {
-        "explorerActive": true,
-        "modalHidden": true
-      },
-      "at": "2026-04-17T13:58:14.278Z"
-    },
     {
       "name": "repeat:nature-explore-tab-switches",
       "passed": true,
@@ -88,24 +36,7 @@
           }
         ]
       },
-      "at": "2026-04-17T13:58:30.670Z"
-    },
-    {
-      "name": "update-banner:version-and-telemetry",
-      "passed": true,
-      "detail": {
-        "reliabilityTelemetry": {
-          "shown": 1,
-          "reloadClicked": 1,
-          "dismissClicked": 1
-        },
-        "buttonTelemetry": {
-          "updateBannerShown": 1,
-          "updateBannerReloadClicked": 1,
-          "updateBannerDismissClicked": 1
-        }
-      },
-      "at": "2026-04-17T13:58:33.059Z"
+      "at": "2026-04-17T15:10:13.850Z"
     }
   ]
 }

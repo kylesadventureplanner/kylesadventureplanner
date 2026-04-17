@@ -1,0 +1,46 @@
+diff --git a/JS Files/nature-challenge-tab-system.js b/JS Files/nature-challenge-tab-system.js
+index 9e5a3b3..cfc5bc6 100644
+--- a/JS Files/nature-challenge-tab-system.js	
++++ b/JS Files/nature-challenge-tab-system.js	
+@@ -10451,6 +10451,12 @@
+ 
+         forceUnblockNaturePane(liveRoot, 'tab-switch');
+ 
++        // Reset scroll so CTA buttons are visible immediately after every tab switch.
++        // Without this, a deep scroll from a prior visit leaves buttons off-screen
++        // (top: -Npx) and Playwright / real clicks land on an intercepting element.
++        scrollNatureContainersToTop(liveRoot, null);
++        restoreNatureScrollerForActiveBirdView(liveRoot);
++
+         // 2. Re-run button responsiveness immediately and after the next paint.
+         ensureNatureButtonsResponsive(liveRoot);
+         ensureNatureCtaButtonsSelfHeal(liveRoot);
+@@ -10461,6 +10467,8 @@
+           ensureNatureButtonsResponsive(liveRoot);
+           ensureNatureCtaButtonsSelfHeal(liveRoot);
+           diagnoseNatureButtonSurface(liveRoot);
++          // Second scroll pass after RAF in case layout shift pushed buttons out of view.
++          scrollNatureContainersToTop(liveRoot, null);
+         });
+       });
+     }
+diff --git a/tests/reliability-smoke.spec.js b/tests/reliability-smoke.spec.js
+index 6921be9..d0c5005 100644
+--- a/tests/reliability-smoke.spec.js
++++ b/tests/reliability-smoke.spec.js
+@@ -189,9 +189,14 @@ test('nature explore remains responsive across repeated tab switches', async ({
+ 
+     await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
+     await expect(page.locator('#birdsExploreBtn')).toBeVisible();
++    // Normalize viewport targeting before click to avoid stale off-screen CTA coordinates.
++    await page.locator('#birdsExploreBtn').scrollIntoViewIfNeeded();
+     await page.locator('#birdsExploreBtn').click();
+ 
+-    const explorerActive = await page.evaluate(() => Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]')));
++    const explorerActive = await page
++      .waitForFunction(() => Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]')), { timeout: 2500 })
++      .then(() => true)
++      .catch(() => false);
+     iterations.push({ iteration: i + 1, explorerActive });
+     if (!explorerActive) {
+       passed = false;

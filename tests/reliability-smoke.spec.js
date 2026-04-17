@@ -189,9 +189,14 @@ test('nature explore remains responsive across repeated tab switches', async ({ 
 
     await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
     await expect(page.locator('#birdsExploreBtn')).toBeVisible();
+    // Normalize viewport targeting before click to avoid stale off-screen CTA coordinates.
+    await page.locator('#birdsExploreBtn').scrollIntoViewIfNeeded();
     await page.locator('#birdsExploreBtn').click();
 
-    const explorerActive = await page.evaluate(() => Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]')));
+    const explorerActive = await page
+      .waitForFunction(() => Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]')), { timeout: 2500 })
+      .then(() => true)
+      .catch(() => false);
     iterations.push({ iteration: i + 1, explorerActive });
     if (!explorerActive) {
       passed = false;

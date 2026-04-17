@@ -10451,6 +10451,12 @@
 
         forceUnblockNaturePane(liveRoot, 'tab-switch');
 
+        // Reset scroll so CTA buttons are visible immediately after every tab switch.
+        // Without this, a deep scroll from a prior visit leaves buttons off-screen
+        // (top: -Npx) and Playwright / real clicks land on an intercepting element.
+        scrollNatureContainersToTop(liveRoot, null);
+        restoreNatureScrollerForActiveBirdView(liveRoot);
+
         // 2. Re-run button responsiveness immediately and after the next paint.
         ensureNatureButtonsResponsive(liveRoot);
         ensureNatureCtaButtonsSelfHeal(liveRoot);
@@ -10461,6 +10467,8 @@
           ensureNatureButtonsResponsive(liveRoot);
           ensureNatureCtaButtonsSelfHeal(liveRoot);
           diagnoseNatureButtonSurface(liveRoot);
+          // Second scroll pass after RAF in case layout shift pushed buttons out of view.
+          scrollNatureContainersToTop(liveRoot, null);
         });
       });
     }

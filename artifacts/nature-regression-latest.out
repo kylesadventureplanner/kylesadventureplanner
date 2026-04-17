@@ -1,0 +1,8 @@
+
+Running 3 tests using 1 worker
+
+  ✓  1 tests/nature-log-ux.spec.js:5:3 › Nature log UX › log form supports typeahead species, location other, and contextual fast-command hints (2.7s)
+  ✓  2 tests/nature-map-context.spec.js:35:3 › Nature map context labels › birds CTA order keeps injected Map between Log and Refresh (1.2s)
+  ✓  3 tests/nature-map-context.spec.js:70:3 › Nature map context labels › map header/back reflects active nature subtab context (2.7s)
+
+  3 passed (28.3s)
