@@ -7,11 +7,7 @@
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/nature-inat-import.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-inat-import.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/nature-inat-mapping-modal.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-inat-mapping-modal.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/nature-log-ux.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-log-ux.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/nature-subtabs-smoke.spec.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/playwright-helpers.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/playwright-helpers.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -97,7 +93,7 @@
       <workItem from="1775961963296" duration="82000" />
       <workItem from="1775962146733" duration="74876000" />
       <workItem from="1776172027526" duration="1231000" />
-      <workItem from="1776186047188" duration="60367000" />
+      <workItem from="1776186047188" duration="61593000" />
     </task>
     <servers />
   </component>
