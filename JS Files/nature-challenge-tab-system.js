@@ -1268,10 +1268,13 @@
       };
     }
 
+    const beforeScroll = getNatureScrollDiagnosticsSnapshot(liveRoot);
     const before = {
       activeSubTab: state.activeSubTab,
       activeBirdView: state.activeBirdView,
-      scrollY: Math.round(window.scrollY || 0)
+      scrollY: beforeScroll.windowScrollY,
+      scrollerTop: beforeScroll.scrollerTop,
+      scroller: beforeScroll.scrollerLabel
     };
 
     if (getActiveNaturePaneKey() === 'birds') {
@@ -1290,14 +1293,8 @@
     ensureNatureButtonsResponsive(liveRoot);
     scheduleNatureCtaOrderFinalization(liveRoot);
 
-    // Reset all known scroll containers — window, .app-tab-pane, and any
-    // intermediate overflow containers — so the CTA row is reliably on-screen.
-    const tabPane = liveRoot.closest('.app-tab-pane');
-    if (tabPane && Number.isFinite(tabPane.scrollTop)) tabPane.scrollTop = 0;
-    const appScrollEl = document.querySelector('.app-content, .app-main, main, #appContent');
-    if (appScrollEl && Number.isFinite(appScrollEl.scrollTop)) appScrollEl.scrollTop = 0;
-    if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    const ctaRow = liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+    scrollNatureContainersToTop(liveRoot, ctaRow);
 
     if (window.SightingMap && typeof window.SightingMap.close === 'function') {
       try {
@@ -1311,19 +1308,8 @@
     await nextAnimationFrame();
     await nextAnimationFrame();
 
-    const ctaRow = liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
     if (ctaRow) {
-      // Force every scroll container in the ancestor chain to the top first so
-      // scrollIntoView does not fight a partially-scrolled container.
-      let ancestor = ctaRow.parentElement;
-      while (ancestor && ancestor !== document.documentElement) {
-        const cs = window.getComputedStyle ? window.getComputedStyle(ancestor) : null;
-        const overflowY = cs ? cs.overflowY : '';
-        if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
-          ancestor.scrollTop = 0;
-        }
-        ancestor = ancestor.parentElement;
-      }
+      scrollNatureContainersToTop(liveRoot, ctaRow);
       ctaRow.scrollIntoView({ behavior: 'auto', block: 'start' });
       const focusTarget = ctaRow.querySelector('#birdsExploreBtn');
       if (focusTarget) {
@@ -1333,10 +1319,17 @@
 
     await nextAnimationFrame();
 
+    // Re-assert top anchor in case browser focus tries to snap back to diagnostics controls.
+    restoreNatureScrollerForActiveBirdView(liveRoot);
+    scrollNatureContainersToTop(liveRoot, ctaRow);
+
+    const afterScroll = getNatureScrollDiagnosticsSnapshot(liveRoot);
     const after = {
       activeSubTab: state.activeSubTab,
       activeBirdView: state.activeBirdView,
-      scrollY: Math.round(window.scrollY || 0)
+      scrollY: afterScroll.windowScrollY,
+      scrollerTop: afterScroll.scrollerTop,
+      scroller: afterScroll.scrollerLabel
     };
 
     return {
@@ -1388,6 +1381,8 @@
     const unresolved = probeList.filter((probe) => probe && probe.ok === false);
     const offscreenOnly = unresolved.filter((probe) => String(probe.reason || '') === 'offscreen');
 
+    const scrollDiag = getNatureScrollDiagnosticsSnapshot(root);
+
     return {
       kind: 'birds-clickability-probe',
       capturedAt: new Date().toISOString(),
@@ -1396,7 +1391,9 @@
       viewport: {
         width: Math.round(window.innerWidth || 0),
         height: Math.round(window.innerHeight || 0),
-        scrollY: Math.round(window.scrollY || 0)
+        scrollY: Math.round(window.scrollY || 0),
+        activeScrollerTop: scrollDiag.scrollerTop,
+        activeScroller: scrollDiag.scrollerLabel
       },
       buttonState: getCoreBirdDiagnosticButtonsSnapshot(),
       clickPath,
@@ -8837,14 +8834,83 @@
    * the window, so window.scrollY is always 0 and window.scrollTo() is a
    * no-op.  We must save/restore on the actual scrolling element.
    */
+  function isScrollableYElement(el) {
+    if (!el || el === window) return false;
+    if (!Number.isFinite(el.scrollTop) || !Number.isFinite(el.scrollHeight) || !Number.isFinite(el.clientHeight)) {
+      return false;
+    }
+    if (el.scrollHeight > (el.clientHeight + 1)) return true;
+    return Number(el.scrollTop || 0) > 0;
+  }
+
   function getNatureScrollContainer(root) {
     if (root) {
       const pane = root.closest('.app-tab-pane');
-      if (pane) return pane;
+      if (isScrollableYElement(pane)) return pane;
+
+      // In some layouts, the app pane exists but window/ancestor is the real scroller.
+      let ancestor = root.parentElement;
+      while (ancestor && ancestor !== document.documentElement) {
+        if (isScrollableYElement(ancestor)) return ancestor;
+        ancestor = ancestor.parentElement;
+      }
     }
-    return document.querySelector('.app-content, .app-main, main, #appContent') ||
-           document.scrollingElement ||
-           document.documentElement;
+    const appShell = document.querySelector('.app-content, .app-main, main, #appContent');
+    if (isScrollableYElement(appShell)) return appShell;
+    return document.scrollingElement || document.documentElement || document.body || window;
+  }
+
+  function getNatureScrollDiagnosticsSnapshot(root) {
+    const scroller = getNatureScrollContainer(root);
+    const scrollerTop = scroller && Number.isFinite(scroller.scrollTop)
+      ? Math.round(scroller.scrollTop || 0)
+      : Math.round(window.scrollY || 0);
+    return {
+      windowScrollY: Math.round(window.scrollY || 0),
+      scrollerTop,
+      scrollerLabel: getNatureScrollContainerLabel(scroller)
+    };
+  }
+
+  function collectNatureScrollContainers(root, ctaRow) {
+    const seen = new Set();
+    const list = [];
+    const push = (node) => {
+      if (!node || seen.has(node)) return;
+      seen.add(node);
+      list.push(node);
+    };
+
+    push(getNatureScrollContainer(root));
+    if (root && isScrollableYElement(root.closest('.app-tab-pane'))) push(root.closest('.app-tab-pane'));
+    const appShell = document.querySelector('.app-content, .app-main, main, #appContent');
+    if (isScrollableYElement(appShell)) push(appShell);
+
+    const scanScrollableAncestors = (startNode) => {
+      let ancestor = startNode && startNode.parentElement ? startNode.parentElement : null;
+      while (ancestor && ancestor !== document.documentElement) {
+        if (isScrollableYElement(ancestor)) push(ancestor);
+        ancestor = ancestor.parentElement;
+      }
+    };
+
+    scanScrollableAncestors(root);
+    scanScrollableAncestors(ctaRow);
+
+    if (document.scrollingElement) push(document.scrollingElement);
+    if (document.documentElement) push(document.documentElement);
+    if (document.body) push(document.body);
+
+    return list;
+  }
+
+  function scrollNatureContainersToTop(root, ctaRow) {
+    const containers = collectNatureScrollContainers(root, ctaRow);
+    containers.forEach((container) => {
+      if (!container || !Number.isFinite(container.scrollTop)) return;
+      container.scrollTop = 0;
+    });
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }
 
   function getNatureScrollContainerLabel(scroller) {
@@ -8908,9 +8974,18 @@
   function restoreNatureScrollerForActiveBirdView(root) {
     const scroller = getNatureScrollContainer(root);
     const restoreY = getBirdViewRestoreScrollTop(state.activeBirdView);
-    if (scroller && scroller !== window && scroller !== document.documentElement) {
+    if (
+      scroller
+      && scroller !== window
+      && scroller !== document.documentElement
+      && scroller !== document.scrollingElement
+      && scroller !== document.body
+    ) {
       scroller.scrollTop = restoreY;
     } else {
+      if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
+        document.scrollingElement.scrollTop = restoreY;
+      }
       window.scrollTo({ top: restoreY, behavior: 'auto' });
     }
   }
