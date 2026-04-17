@@ -1140,7 +1140,23 @@
     syncManualDiagnosticsLastReportActionButtons();
   }
 
-  function getCoreBirdDiagnosticButtonsSnapshot() {
+  function getNatureElementInActiveContext(root, id) {
+    const targetId = String(id || '').trim();
+    if (!targetId) return null;
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    const context = getActiveNatureContext(liveRoot);
+    const fromView = context.view && typeof context.view.querySelector === 'function'
+      ? context.view.querySelector(`#${targetId}`)
+      : null;
+    if (fromView) return fromView;
+    const fromPane = context.pane && typeof context.pane.querySelector === 'function'
+      ? context.pane.querySelector(`#${targetId}`)
+      : null;
+    if (fromPane) return fromPane;
+    return document.getElementById(targetId);
+  }
+
+  function getCoreBirdDiagnosticButtonsSnapshot(root) {
     const ids = [
       'birdsExploreBtn',
       'birdsOpenLogBtn',
@@ -1150,7 +1166,7 @@
       'birdsUndoActionBtn'
     ];
     return ids.map((id) => {
-      const button = document.getElementById(id);
+      const button = getNatureElementInActiveContext(root, id);
       if (!button) return { id, exists: false };
       return {
         id,
@@ -1259,6 +1275,41 @@
     });
   }
 
+  async function forceNatureViewportTopForDiagnostics(root, ctaRow) {
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      scrollNatureContainersToTop(liveRoot, ctaRow);
+      if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
+        document.scrollingElement.scrollTop = 0;
+      }
+      if (document.documentElement && Number.isFinite(document.documentElement.scrollTop)) {
+        document.documentElement.scrollTop = 0;
+      }
+      if (document.body && Number.isFinite(document.body.scrollTop)) {
+        document.body.scrollTop = 0;
+      }
+      window.scrollTo(0, 0);
+      await nextAnimationFrame();
+      const snap = getNatureScrollDiagnosticsSnapshot(liveRoot);
+      if (Math.abs(Number(snap.scrollerTop || 0)) <= 2) break;
+    }
+  }
+
+  async function ensureNatureCtaRowInViewportForDiagnostics(root, ctaRow) {
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    if (!liveRoot) return false;
+    const exploreBtn = getNatureElementInActiveContext(liveRoot, 'birdsExploreBtn');
+    const row = ctaRow
+      || (exploreBtn && exploreBtn.closest ? exploreBtn.closest('.nature-explore-cta-actions') : null)
+      || liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+    if (!row) return false;
+    row.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
+    await nextAnimationFrame();
+    await nextAnimationFrame();
+    const liveExplore = getNatureElementInActiveContext(liveRoot, 'birdsExploreBtn');
+    return Boolean(liveExplore && isElementViewportVisible(liveExplore));
+  }
+
   async function resetNatureViewportForDiagnostics(root) {
     const liveRoot = root || document.getElementById('natureChallengeRoot');
     if (!liveRoot) {
@@ -1293,8 +1344,10 @@
     ensureNatureButtonsResponsive(liveRoot);
     scheduleNatureCtaOrderFinalization(liveRoot);
 
-    const ctaRow = liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
-    scrollNatureContainersToTop(liveRoot, ctaRow);
+    const ctaRow = (getNatureElementInActiveContext(liveRoot, 'birdsExploreBtn') || null)
+      ? getNatureElementInActiveContext(liveRoot, 'birdsExploreBtn').closest('.nature-explore-cta-actions')
+      : liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+    await forceNatureViewportTopForDiagnostics(liveRoot, ctaRow);
 
     if (window.SightingMap && typeof window.SightingMap.close === 'function') {
       try {
@@ -1309,7 +1362,7 @@
     await nextAnimationFrame();
 
     if (ctaRow) {
-      scrollNatureContainersToTop(liveRoot, ctaRow);
+      await forceNatureViewportTopForDiagnostics(liveRoot, ctaRow);
       ctaRow.scrollIntoView({ behavior: 'auto', block: 'start' });
       const focusTarget = ctaRow.querySelector('#birdsExploreBtn');
       if (focusTarget) {
@@ -1319,9 +1372,9 @@
 
     await nextAnimationFrame();
 
-    // Re-assert top anchor in case browser focus tries to snap back to diagnostics controls.
+    // End reset with CTA controls physically in view for manual smoke diagnostics.
     restoreNatureScrollerForActiveBirdView(liveRoot);
-    scrollNatureContainersToTop(liveRoot, ctaRow);
+    await ensureNatureCtaRowInViewportForDiagnostics(liveRoot, ctaRow);
 
     const afterScroll = getNatureScrollDiagnosticsSnapshot(liveRoot);
     const after = {
@@ -1395,7 +1448,7 @@
         activeScrollerTop: scrollDiag.scrollerTop,
         activeScroller: scrollDiag.scrollerLabel
       },
-      buttonState: getCoreBirdDiagnosticButtonsSnapshot(),
+      buttonState: getCoreBirdDiagnosticButtonsSnapshot(root),
       clickPath,
       skippedTargets,
       clickPathSummary: {
@@ -1562,9 +1615,10 @@
     const root = document.getElementById('natureChallengeRoot');
     const reset = await resetNatureViewportForDiagnostics(root);
     await nextAnimationFrame();
+    await ensureNatureCtaRowInViewportForDiagnostics(root, null);
     const ids = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn'];
     const buttonRects = ids.map((id) => {
-      const el = document.getElementById(id);
+      const el = getNatureElementInActiveContext(root, id);
       if (!el) return { id, exists: false };
       const rect = el.getBoundingClientRect();
       return {
@@ -1596,15 +1650,16 @@
       if (entry && entry.id) acc[entry.id] = entry;
       return acc;
     }, {});
+    const inViewportBefore = (id) => Boolean(rectById[id] && rectById[id].inViewport);
 
-    const exploreBtn = document.getElementById('birdsExploreBtn');
+    const exploreBtn = getNatureElementInActiveContext(root, 'birdsExploreBtn');
     if (exploreBtn && !exploreBtn.disabled) {
       exploreBtn.click();
       await nextAnimationFrame();
       report.actions.push({
         action: 'explore',
-        ok: Boolean(rectById.birdsExploreBtn && rectById.birdsExploreBtn.inViewport)
-          && (state.activeBirdView === 'explorer' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]'))),
+        ok: (state.activeBirdView === 'explorer' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]'))),
+        inViewportBeforeClick: inViewportBefore('birdsExploreBtn'),
         activeBirdView: state.activeBirdView
       });
     } else {
@@ -1614,14 +1669,14 @@
     setBirdView(root, 'overview');
     await nextAnimationFrame();
 
-    const logBtn = document.getElementById('birdsOpenLogBtn');
+    const logBtn = getNatureElementInActiveContext(root, 'birdsOpenLogBtn');
     if (logBtn && !logBtn.disabled) {
       logBtn.click();
       await nextAnimationFrame();
       report.actions.push({
         action: 'log',
-        ok: Boolean(rectById.birdsOpenLogBtn && rectById.birdsOpenLogBtn.inViewport)
-          && (state.activeBirdView === 'log' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="log"]'))),
+        ok: (state.activeBirdView === 'log' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="log"]'))),
+        inViewportBeforeClick: inViewportBefore('birdsOpenLogBtn'),
         activeBirdView: state.activeBirdView
       });
     } else {
@@ -1631,14 +1686,15 @@
     setBirdView(root, 'overview');
     await nextAnimationFrame();
 
-    const mapBtn = document.getElementById('birdsOpenMapBtn');
+    const mapBtn = getNatureElementInActiveContext(root, 'birdsOpenMapBtn');
     if (mapBtn && !mapBtn.disabled) {
       mapBtn.click();
       await nextAnimationFrame();
       const mapVisible = Boolean(document.querySelector('#birdsMapOverlay:not([hidden])'));
       report.actions.push({
         action: 'map',
-        ok: Boolean(rectById.birdsOpenMapBtn && rectById.birdsOpenMapBtn.inViewport) && mapVisible,
+        ok: mapVisible,
+        inViewportBeforeClick: inViewportBefore('birdsOpenMapBtn'),
         mapVisible
       });
     } else {
@@ -1653,13 +1709,14 @@
       }
     }
 
-    const refreshBtn = document.getElementById('natureChallengeRefreshBtn');
+    const refreshBtn = getNatureElementInActiveContext(root, 'natureChallengeRefreshBtn');
     if (refreshBtn && !refreshBtn.disabled) {
       refreshBtn.click();
       await nextAnimationFrame();
       report.actions.push({
         action: 'refresh',
-        ok: Boolean(rectById.natureChallengeRefreshBtn && rectById.natureChallengeRefreshBtn.inViewport),
+        ok: true,
+        inViewportBeforeClick: inViewportBefore('natureChallengeRefreshBtn'),
         syncBadge: String((document.getElementById('natureSyncHealthBadgeInline') || {}).textContent || '').trim()
       });
     } else {

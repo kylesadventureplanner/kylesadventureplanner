@@ -9,8 +9,6 @@
       <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/nature-subtabs-smoke-Natur-02374-iew-and-returns-on-overview/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/reliability-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/reliability-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -96,7 +94,7 @@
       <workItem from="1775961963296" duration="82000" />
       <workItem from="1775962146733" duration="74876000" />
       <workItem from="1776172027526" duration="1231000" />
-      <workItem from="1776186047188" duration="63915000" />
+      <workItem from="1776186047188" duration="65868000" />
     </task>
     <servers />
   </component>

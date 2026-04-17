@@ -1,0 +1,25 @@
+
+Running 20 tests using 1 worker
+
+  ✓   1 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.1s)
+  ✓   2 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.7s)
+  ✓   3 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (15.3s)
+  ✓   4 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (13.6s)
+  ✓   5 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.7s)
+  ✓   6 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.1s)
+  ✓   7 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.6s)
+  ✓   8 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (15.0s)
+  ✓   9 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (15.2s)
+  ✓  10 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.8s)
+  ✓  11 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.1s)
+  ✓  12 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.3s)
+  ✓  13 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (15.4s)
+  ✓  14 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.1s)
+  ✓  15 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.5s)
+  ✓  16 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.7s)
+  ✓  17 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.9s)
+  ✓  18 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.2s)
+  ✓  19 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.0s)
+  ✓  20 tests/reliability-smoke.spec.js:182:1 › nature explore remains responsive across repeated tab switches (14.9s)
+
+  20 passed (5.0m)
