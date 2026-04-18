@@ -1451,10 +1451,16 @@
       || (exploreBtn && exploreBtn.closest ? exploreBtn.closest('.nature-explore-cta-actions') : null)
       || liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
     if (!row) return false;
-    row.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' });
+    const scroller = getNatureScrollContainer(liveRoot);
+    alignNatureElementInViewport(row, scroller, 'center');
     await nextAnimationFrame();
     await nextAnimationFrame();
     const liveExplore = getNatureElementInActiveContext(liveRoot, 'birdsExploreBtn');
+    if (liveExplore && !isElementViewportVisible(liveExplore)) {
+      scrollNatureContainersToTop(liveRoot, row);
+      alignNatureElementInViewport(row, getNatureScrollContainer(liveRoot), 'start');
+      await nextAnimationFrame();
+    }
     return Boolean(liveExplore && isElementViewportVisible(liveExplore));
   }
 
@@ -1511,11 +1517,7 @@
 
     if (ctaRow) {
       await forceNatureViewportTopForDiagnostics(liveRoot, ctaRow);
-      ctaRow.scrollIntoView({ behavior: 'auto', block: 'start' });
-      const focusTarget = ctaRow.querySelector('#birdsExploreBtn');
-      if (focusTarget) {
-        try { focusTarget.focus({ preventScroll: true }); } catch (_error) { focusTarget.focus(); }
-      }
+      alignNatureElementInViewport(ctaRow, getNatureScrollContainer(liveRoot), 'start');
     }
 
     await nextAnimationFrame();
@@ -9109,6 +9111,71 @@
     };
   }
 
+  function isDocumentLikeNatureScroller(scroller) {
+    return (
+      !scroller
+      || scroller === window
+      || scroller === document.scrollingElement
+      || scroller === document.documentElement
+      || scroller === document.body
+    );
+  }
+
+  function setNatureScrollerTop(scroller, top) {
+    const nextTop = Math.max(0, Math.round(Number(top) || 0));
+    if (!isDocumentLikeNatureScroller(scroller) && Number.isFinite(scroller.scrollTop)) {
+      scroller.scrollTop = nextTop;
+      return;
+    }
+    if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
+      document.scrollingElement.scrollTop = nextTop;
+    }
+    if (document.documentElement && Number.isFinite(document.documentElement.scrollTop)) {
+      document.documentElement.scrollTop = nextTop;
+    }
+    if (document.body && Number.isFinite(document.body.scrollTop)) {
+      document.body.scrollTop = nextTop;
+    }
+    window.scrollTo({ top: nextTop, left: 0, behavior: 'auto' });
+  }
+
+  function alignNatureElementInViewport(element, scroller, block) {
+    if (!element) return false;
+    const align = block === 'center' ? 'center' : 'start';
+    try {
+      element.scrollIntoView({ behavior: 'auto', block: align, inline: 'nearest' });
+    } catch (_error) {
+      // Fall through to manual alignment.
+    }
+    if (isElementViewportVisible(element)) return true;
+
+    if (isDocumentLikeNatureScroller(scroller)) {
+      const rect = element.getBoundingClientRect();
+      const absoluteTop = (window.scrollY || 0) + (rect.top || 0);
+      const targetTop = align === 'center'
+        ? absoluteTop - Math.max(0, ((window.innerHeight || 0) - (rect.height || 0)) / 2)
+        : absoluteTop - 24;
+      setNatureScrollerTop(scroller, targetTop);
+      return isElementViewportVisible(element);
+    }
+
+    if (
+      Number.isFinite(scroller.scrollTop)
+      && Number.isFinite(scroller.clientHeight)
+      && typeof scroller.getBoundingClientRect === 'function'
+    ) {
+      const rect = element.getBoundingClientRect();
+      const scrollerRect = scroller.getBoundingClientRect();
+      const relativeTop = (rect.top - scrollerRect.top) + (scroller.scrollTop || 0);
+      const targetTop = align === 'center'
+        ? relativeTop - Math.max(0, (scroller.clientHeight - rect.height) / 2)
+        : relativeTop - 16;
+      setNatureScrollerTop(scroller, targetTop);
+    }
+
+    return isElementViewportVisible(element);
+  }
+
   function collectNatureScrollContainers(root, ctaRow) {
     const seen = new Set();
     const list = [];
@@ -9253,6 +9320,10 @@
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
 
+    const activeView = root && typeof root.querySelector === 'function'
+      ? root.querySelector(`#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="${state.activeBirdView}"]`)
+      : null;
+
     // Keep CTA-first views anchored to top across all possible scroll containers.
     const birdsCtaRow = root && typeof root.querySelector === 'function'
       ? root.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions')
@@ -9260,8 +9331,11 @@
     restoreNatureScrollerForActiveBirdView(root);
     if (state.activeBirdView === 'overview' || state.activeBirdView === 'explorer' || state.activeBirdView === 'log') {
       scrollNatureContainersToTop(root, birdsCtaRow);
+      const activeScroller = getNatureScrollContainer(root);
       if (state.activeBirdView === 'overview' && birdsCtaRow) {
-        birdsCtaRow.scrollIntoView({ behavior: 'auto', block: 'start' });
+        alignNatureElementInViewport(birdsCtaRow, activeScroller, 'start');
+      } else if (activeView) {
+        alignNatureElementInViewport(activeView, activeScroller, 'start');
       }
     }
     scheduleNatureCtaOrderFinalization(root);
