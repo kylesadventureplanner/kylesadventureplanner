@@ -192,14 +192,21 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const frameHandle = await detailsFrame.elementHandle();
     const plannerDetailsFrame = frameHandle ? await frameHandle.contentFrame() : null;
     expect(plannerDetailsFrame).not.toBeNull();
-    await expect(plannerDetailsFrame.locator('#closeTabBtn')).toHaveCount(0);
-    await expect(plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="overview"].active')).toBeVisible();
-    await expect(plannerDetailsFrame.locator('#actionBar')).toBeVisible();
+    const plannerDetailsFrameLocator = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
 
-    await plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="tag-management"]').click();
-    await expect(plannerDetailsFrame.locator('#pane-tag-management.tab-pane.active')).toBeVisible();
-    await plannerDetailsFrame.locator('#tmSaveBtn').click();
-    const readTagSaveDebug = async () => plannerDetailsFrame.evaluate(() => {
+    await expect(plannerDetailsFrameLocator.locator('#closeTabBtn')).toHaveCount(0);
+    await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="overview"]')).toHaveClass(/active/);
+    await expect(plannerDetailsFrameLocator.locator('#actionBar')).toBeVisible();
+
+    await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="tag-management"]').click();
+    await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="tag-management"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(plannerDetailsFrameLocator.locator('#pane-tag-management')).toBeVisible();
+    await plannerDetailsFrameLocator.locator('#tmSaveBtn').click();
+    const readTagSaveDebug = async () => {
+      const liveFrameHandle = await detailsFrame.elementHandle();
+      const liveFrame = liveFrameHandle ? await liveFrameHandle.contentFrame() : null;
+      if (!liveFrame) return { finalStatus: '', hostContext: '', stepCount: 0 };
+      return liveFrame.evaluate(() => {
       const debug = window.__lastTagSaveDebug || {};
       const steps = Array.isArray(debug.steps) ? debug.steps : [];
       const hostStep = steps.find((entry) => entry && entry.step === 'host_context');
@@ -209,6 +216,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
         stepCount: steps.length
       };
     });
+    };
 
     await expect.poll(async () => {
       const snapshot = await readTagSaveDebug();
@@ -220,8 +228,10 @@ test.describe('Adventure explorer in-pane details flow', () => {
       return snapshot.hostContext;
     }, { timeout: 10000 }).toMatch(/^(parent|opener)$/);
 
-    await plannerDetailsFrame.locator('#tabs .tab-btn[data-tab="notes"]').click();
-    await expect(plannerDetailsFrame.locator('#pane-notes.tab-pane.active')).toBeVisible();
+    await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]').click();
+    await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(plannerDetailsFrameLocator.locator('#pane-notes[aria-hidden="false"]')).toBeVisible();
+    await expect(plannerDetailsFrameLocator.locator('#detailNotesWrap')).toBeVisible();
 
     await expect(page.locator('#visitedExplorerDetailsModal')).toBeHidden();
 
