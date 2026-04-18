@@ -45,6 +45,12 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(birdsDiagnosticsRow).toContainText('Workbook');
     await expect(birdsDiagnosticsRow).toContainText('Species');
     await expect(birdsDiagnosticsRow).toContainText('Sightings/User State');
+    await expect(birdsDiagnosticsRow).toContainText('Deployment');
+
+    await page.locator('#birdsDiagnosticsDetails > summary').click();
+    await expect(page.locator('#birdsDeploymentBadge')).toBeVisible();
+    await expect(page.locator('#birdsDeploymentBadge')).toContainText('Deployment:');
+    await expect(page.locator('#birdsDeploymentMeta')).toContainText(/App asset|App and service worker version details|service worker/i);
   });
 
   test('global context menu stays hidden and non-interactive by default', async ({ page }) => {

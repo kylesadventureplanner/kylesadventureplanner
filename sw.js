@@ -1,7 +1,7 @@
-const SW_VERSION = '2026.04.15.4';
-const CACHE_VERSION = 'kaf-shell-v7';
-const RUNTIME_CACHE = 'kaf-runtime-v7';
-const OFFLINE_CACHE = 'kaf-offline-pack-v7';
+const SW_VERSION = '2026.04.17.1';
+const CACHE_VERSION = `kaf-shell-${SW_VERSION}`;
+const RUNTIME_CACHE = `kaf-runtime-${SW_VERSION}`;
+const OFFLINE_CACHE = `kaf-offline-pack-${SW_VERSION}`;
 
 const PRECACHE_ASSETS = [
   '/',
@@ -95,11 +95,23 @@ self.addEventListener('fetch', (event) => {
     pathname.startsWith('/data/')
   );
 
-  async function fetchNetworkFirstWithCacheFallback() {
+  function buildFreshRequest(originalRequest) {
+    if (!isCriticalAppAsset) return originalRequest;
     try {
-      const network = await fetch(req);
+      return new Request(originalRequest, { cache: 'no-store' });
+    } catch (_error) {
+      return originalRequest;
+    }
+  }
+
+  async function fetchNetworkFirstWithCacheFallback() {
+    const networkRequest = buildFreshRequest(req);
+    try {
+      const network = await fetch(networkRequest);
       const runtime = await caches.open(RUNTIME_CACHE);
-      runtime.put(req, network.clone());
+      if (network && network.ok) {
+        runtime.put(req, network.clone());
+      }
       return network;
     } catch (_error) {
       const cached = await caches.match(req);

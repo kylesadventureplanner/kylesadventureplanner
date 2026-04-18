@@ -393,6 +393,16 @@
     lastSyncAttemptAt: '',
     lastSyncSuccessAt: '',
     lastLoadedAt: null,
+    birdDeploymentStatus: {
+      statusKey: 'checking',
+      label: 'checking',
+      className: '',
+      summaryText: 'app unknown • sw unknown',
+      detail: 'Detecting app and service worker version…',
+      assetVersion: 'unknown',
+      swVersion: 'unknown',
+      waitingVersion: ''
+    },
     subTabSwitchToken: 0,
     subTabData: CONFIG_DRIVEN_SUBTABS.reduce((acc, key) => {
       acc[key] = {
@@ -429,6 +439,144 @@
     recentTraces: [],
     maxRecentTraces: 40
   };
+
+  let birdsDeploymentStatusRefreshPromise = null;
+  let birdsDeploymentStatusBound = false;
+
+  function getDefaultBirdDeploymentStatus() {
+    const assetVersion = String(window.__APP_ASSET_VERSION || 'unknown').trim() || 'unknown';
+    return {
+      statusKey: 'checking',
+      label: 'checking',
+      className: '',
+      summaryText: `app ${assetVersion} • sw checking`,
+      detail: `App ${assetVersion} is loaded. Service worker version is still being checked.`,
+      assetVersion,
+      swVersion: 'unknown',
+      waitingVersion: ''
+    };
+  }
+
+  function getBirdDeploymentStatus() {
+    if (!state.birdDeploymentStatus || typeof state.birdDeploymentStatus !== 'object') {
+      state.birdDeploymentStatus = getDefaultBirdDeploymentStatus();
+    }
+    return state.birdDeploymentStatus;
+  }
+
+  function getBirdDeploymentPillClass(statusKey) {
+    if (statusKey === 'current') return 'ok';
+    if (statusKey === 'update-available' || statusKey === 'mismatch' || statusKey === 'no-service-worker' || statusKey === 'unverified') {
+      return 'warn';
+    }
+    return '';
+  }
+
+  function getBirdDeploymentBadgeClass(statusKey) {
+    if (statusKey === 'current') return 'nature-explorer-status-pill is-good';
+    if (statusKey === 'update-available' || statusKey === 'mismatch' || statusKey === 'no-service-worker' || statusKey === 'unverified') {
+      return 'nature-explorer-status-pill is-warn';
+    }
+    return 'nature-explorer-status-pill';
+  }
+
+  function renderBirdDeploymentDiagnostics() {
+    const deployment = getBirdDeploymentStatus();
+    const badge = document.getElementById('birdsDeploymentBadge');
+    const meta = document.getElementById('birdsDeploymentMeta');
+    if (badge) {
+      badge.className = getBirdDeploymentBadgeClass(deployment.statusKey);
+      badge.textContent = `Deployment: ${deployment.label}`;
+      badge.title = deployment.detail || '';
+    }
+    if (meta) {
+      meta.textContent = deployment.detail || 'App and service worker version details will appear here.';
+      meta.title = deployment.detail || '';
+    }
+  }
+
+  function refreshBirdDeploymentStatus() {
+    if (birdsDeploymentStatusRefreshPromise) return birdsDeploymentStatusRefreshPromise;
+
+    const currentDefault = getDefaultBirdDeploymentStatus();
+    state.birdDeploymentStatus = currentDefault;
+    renderBirdSubtabDiagnostics();
+    renderBirdDeploymentDiagnostics();
+
+    birdsDeploymentStatusRefreshPromise = Promise.resolve()
+      .then(async () => {
+        const fallbackAssetVersion = String(window.__APP_ASSET_VERSION || 'unknown').trim() || 'unknown';
+        let snapshot = null;
+        if (window.OfflinePwa && typeof window.OfflinePwa.getVersionSnapshot === 'function') {
+          snapshot = await window.OfflinePwa.getVersionSnapshot(1200);
+        }
+
+        const assetVersion = String((snapshot && snapshot.assetVersion) || fallbackAssetVersion || 'unknown').trim() || 'unknown';
+        const swVersion = String((snapshot && snapshot.swVersion) || 'unknown').trim() || 'unknown';
+        const waitingVersion = String((snapshot && snapshot.waitingVersion) || '').trim();
+        const statusKey = String((snapshot && snapshot.statusKey) || (snapshot ? 'checking' : 'unverified')).trim() || 'checking';
+        const label = String((snapshot && snapshot.statusLabel) || (snapshot ? 'checking' : 'app only')).trim() || 'checking';
+
+        const summaryParts = [`app ${assetVersion}`];
+        if (swVersion && swVersion !== 'unknown') summaryParts.push(`sw ${swVersion}`);
+        else if (snapshot && snapshot.hasController) summaryParts.push('sw unknown');
+        else summaryParts.push('no sw');
+        if (waitingVersion) summaryParts.push(`waiting ${waitingVersion}`);
+
+        const detailParts = [`App asset ${assetVersion}`];
+        if (swVersion && swVersion !== 'unknown') detailParts.push(`active service worker ${swVersion}`);
+        else if (snapshot && snapshot.hasController) detailParts.push('active service worker version unavailable');
+        else detailParts.push('no active service worker controller');
+        if (waitingVersion) detailParts.push(`waiting update ${waitingVersion}`);
+
+        state.birdDeploymentStatus = {
+          statusKey,
+          label,
+          className: getBirdDeploymentPillClass(statusKey),
+          summaryText: summaryParts.join(' • '),
+          detail: detailParts.join(' • '),
+          assetVersion,
+          swVersion,
+          waitingVersion
+        };
+      })
+      .catch(() => {
+        const fallback = getDefaultBirdDeploymentStatus();
+        fallback.statusKey = 'unverified';
+        fallback.label = 'app only';
+        fallback.className = getBirdDeploymentPillClass(fallback.statusKey);
+        fallback.summaryText = `app ${fallback.assetVersion} • sw unavailable`;
+        fallback.detail = `App asset ${fallback.assetVersion} is loaded, but service worker version could not be verified in this browser session.`;
+        state.birdDeploymentStatus = fallback;
+      })
+      .finally(() => {
+        birdsDeploymentStatusRefreshPromise = null;
+        renderBirdSubtabDiagnostics();
+        renderBirdDeploymentDiagnostics();
+      });
+
+    return birdsDeploymentStatusRefreshPromise;
+  }
+
+  function ensureBirdDeploymentStatusBinding() {
+    if (birdsDeploymentStatusBound) return;
+    birdsDeploymentStatusBound = true;
+
+    if (window.OfflinePwa && typeof window.OfflinePwa.subscribe === 'function') {
+      window.OfflinePwa.subscribe(() => {
+        refreshBirdDeploymentStatus();
+      });
+    }
+
+    window.addEventListener('focus', () => {
+      refreshBirdDeploymentStatus();
+    });
+
+    window.addEventListener('app:tab-switched', (event) => {
+      if (!event || !event.detail || event.detail.tabId !== 'nature-challenge') return;
+      refreshBirdDeploymentStatus();
+    });
+  }
 
   const birdsManualDiagnostics = {
     outputEl: null,
@@ -4190,11 +4338,14 @@
       syncClass = 'ok';
     }
 
+    const deployment = getBirdDeploymentStatus();
+
     row.innerHTML = `
       <span class="nature-subtab-diagnostics-pill ${authClass}"><strong>Auth</strong> ${escapeHtml(authText)}</span>
       <span class="nature-subtab-diagnostics-pill"><strong>Workbook</strong> ${escapeHtml(workbookText)}</span>
       <span class="nature-subtab-diagnostics-pill ${speciesClass}"><strong>${escapeHtml(categoryLabel)} Species</strong> ${escapeHtml(speciesText)}</span>
       <span class="nature-subtab-diagnostics-pill ${syncClass}"><strong>${escapeHtml(categoryLabel)} Sightings/User State</strong> ${escapeHtml(syncText)}</span>
+      <span class="nature-subtab-diagnostics-pill ${escapeHtml(deployment.className)}" title="${escapeHtml(deployment.detail || '')}" data-tooltip="${escapeHtml(deployment.detail || '')}"><strong>Deployment</strong> ${escapeHtml(deployment.summaryText || deployment.label || 'checking')}</span>
     `;
   }
 
@@ -5330,6 +5481,7 @@
 
     const conflicts = Array.isArray(state.syncConflicts) ? state.syncConflicts : [];
     renderBirdSubtabDiagnostics();
+    renderBirdDeploymentDiagnostics();
     if (!conflicts.length) {
       conflictsPanel.innerHTML = '<div class="nature-sync-conflict-empty">No sync conflicts detected.</div>';
       return;
@@ -10601,7 +10753,9 @@
     setActiveNatureSubTab(root, state.activeSubTab || 'birds');
     setBirdView(root, state.activeBirdView || 'overview');
     renderBirdHeaderStatus();
+    ensureBirdDeploymentStatusBinding();
     renderSyncStatusPanel();
+    refreshBirdDeploymentStatus();
     loadBirdDataset(false);
     pullBirdSyncStateFromRemote()
       .then(() => {

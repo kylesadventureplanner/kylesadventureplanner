@@ -6,7 +6,11 @@
   var STORE_QUEUE = 'writeQueue';
   var LAST_PACK_KEY = 'kafOfflinePackLastPreparedAt';
   var LAST_HARD_REFRESH_KEY = 'kafHardRefreshDiagnosticsLastResult';
-  var SERVICE_WORKER_PATH = new URL('sw.js', window.location.href).pathname;
+  var SERVICE_WORKER_VERSION = '2026.04.17.1';
+  var serviceWorkerUrl = new URL('sw.js', window.location.href);
+  serviceWorkerUrl.searchParams.set('v', SERVICE_WORKER_VERSION);
+  var SERVICE_WORKER_PATH = serviceWorkerUrl.toString();
+  window.__APP_ASSET_VERSION = SERVICE_WORKER_VERSION;
   var OFFLINE_PACK_ASSETS = [
     '/',
     '/index.html',
@@ -82,7 +86,7 @@
   var UPDATE_BANNER_DEFAULT_REMIND_MINUTES = 20;
   var swRegistrationPromise = null;
   var offlineModeDelegatedBound = false;
-  var APP_VERSION = '2026.04.14.3';
+  var APP_VERSION = String(window.__APP_ASSET_VERSION || SERVICE_WORKER_VERSION || 'unknown');
   var OFFLINE_PACK_CACHE_NAME = 'kaf-offline-pack-v6';
   var lastVersionBannerKey = '';
   var hasSeenServiceWorkerController = Boolean(('serviceWorker' in navigator) && navigator.serviceWorker.controller);
@@ -133,6 +137,90 @@
         window.clearTimeout(timerId);
         resolve(null);
       }
+    });
+  }
+
+  function parseVersionFromScriptUrl(scriptUrl) {
+    if (!scriptUrl) return '';
+    try {
+      var url = new URL(scriptUrl, window.location.href);
+      return String(url.searchParams.get('v') || '').trim();
+    } catch (_error) {
+      return '';
+    }
+  }
+
+  function getCurrentServiceWorkerRegistration() {
+    if (!('serviceWorker' in navigator) || typeof navigator.serviceWorker.getRegistration !== 'function') {
+      return Promise.resolve(null);
+    }
+    return navigator.serviceWorker.getRegistration().catch(function () {
+      return null;
+    });
+  }
+
+  function getVersionSnapshot(timeoutMs) {
+    return Promise.all([
+      requestServiceWorkerVersion(timeoutMs),
+      getCurrentServiceWorkerRegistration()
+    ]).then(function (results) {
+      var swInfo = results[0] || null;
+      var registration = results[1] || null;
+      var controller = ('serviceWorker' in navigator) ? navigator.serviceWorker.controller : null;
+      var controllerUrl = controller && controller.scriptURL ? String(controller.scriptURL) : '';
+      var waitingWorker = registration && registration.waiting ? registration.waiting : null;
+      var installingWorker = registration && registration.installing ? registration.installing : null;
+      var waitingUrl = waitingWorker && waitingWorker.scriptURL ? String(waitingWorker.scriptURL) : '';
+      var installingUrl = installingWorker && installingWorker.scriptURL ? String(installingWorker.scriptURL) : '';
+      var assetVersion = String(window.__APP_ASSET_VERSION || APP_VERSION || 'unknown').trim() || 'unknown';
+      var swVersion = String(
+        (swInfo && swInfo.swVersion) ||
+        parseVersionFromScriptUrl(controllerUrl) ||
+        ''
+      ).trim() || 'unknown';
+      var waitingVersion = String(
+        parseVersionFromScriptUrl(waitingUrl) ||
+        parseVersionFromScriptUrl(installingUrl) ||
+        ''
+      ).trim();
+      var updateAvailable = Boolean(waitingVersion && waitingVersion !== swVersion);
+      var matchesAssetVersion = assetVersion !== 'unknown' && swVersion !== 'unknown' && assetVersion === swVersion;
+      var statusKey = 'checking';
+      var statusLabel = 'checking';
+
+      if (!controllerUrl) {
+        statusKey = 'no-service-worker';
+        statusLabel = 'no service worker';
+      } else if (updateAvailable) {
+        statusKey = 'update-available';
+        statusLabel = 'update available';
+      } else if (swVersion === 'unknown') {
+        statusKey = 'unverified';
+        statusLabel = 'sw unverified';
+      } else if (matchesAssetVersion) {
+        statusKey = 'current';
+        statusLabel = 'current';
+      } else {
+        statusKey = 'mismatch';
+        statusLabel = 'version mismatch';
+      }
+
+      return {
+        appVersion: APP_VERSION,
+        assetVersion: assetVersion,
+        swVersion: swVersion,
+        cacheVersion: swInfo && swInfo.cacheVersion ? String(swInfo.cacheVersion) : '',
+        runtimeCache: swInfo && swInfo.runtimeCache ? String(swInfo.runtimeCache) : '',
+        offlineCache: swInfo && swInfo.offlineCache ? String(swInfo.offlineCache) : '',
+        controllerUrl: controllerUrl,
+        waitingUrl: waitingUrl,
+        waitingVersion: waitingVersion,
+        hasController: Boolean(controllerUrl),
+        updateAvailable: updateAvailable,
+        matchesAssetVersion: matchesAssetVersion,
+        statusKey: statusKey,
+        statusLabel: statusLabel
+      };
     });
   }
 
@@ -1788,6 +1876,7 @@
         replayTelemetry: getReplayTelemetrySnapshot()
       };
     },
+    getVersionSnapshot: getVersionSnapshot,
     getReplayTelemetry: getReplayTelemetrySnapshot,
     getPendingCount: function () { return status.pendingCount; }
   };
