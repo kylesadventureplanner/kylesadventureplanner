@@ -441,6 +441,13 @@ class TabContentLoader {
 
     tabPane.classList.add('active');
 
+    // Scroll to top when switching tabs so content is always visible at the top.
+    try {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    } catch (_e) {
+      window.scrollTo(0, 0);
+    }
+
     if (syncUrl) {
       this.syncUrlToTab(tabId, { historyMode });
     }

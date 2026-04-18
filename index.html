@@ -5231,56 +5231,37 @@
     }
 
     /* ============================================================
-       TOOLTIP SYSTEM - Professional hover tooltips
+       TOOLTIP SYSTEM - Professional hover tooltips (JS-driven, body-level)
        ============================================================ */
-    [data-tooltip] {
-      position: relative;
-    }
 
-    [data-tooltip]:hover::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: calc(100% + 12px);
-      left: 50%;
-      transform: translateX(-50%);
+    /* JS tooltip rendered at body level to bypass overflow:hidden clipping */
+    #js-tooltip-bubble {
+      position: fixed;
       background: #1f2937;
       color: white;
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 13px;
       white-space: nowrap;
-      z-index: 10000;
+      z-index: 99999;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       font-weight: 500;
       letter-spacing: 0.3px;
-      animation: tooltipFadeIn 0.2s ease-out;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
     }
-
-    [data-tooltip]:hover::before {
+    #js-tooltip-bubble.visible {
+      opacity: 1;
+    }
+    #js-tooltip-bubble::after {
       content: '';
       position: absolute;
-      bottom: calc(100% + 6px);
+      top: 100%;
       left: 50%;
       transform: translateX(-50%);
       border: 6px solid transparent;
       border-top-color: #1f2937;
-      z-index: 10000;
-    }
-
-    @keyframes tooltipFadeIn {
-      from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(4px);
-      }
-      to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-      }
-    }
-
-    /* Tooltip positioning fixes for edge cases */
-    [data-tooltip]:hover {
-      z-index: 9999;
     }
 
     /* Ensure tooltips don't interfere with buttons */
@@ -24028,6 +24009,86 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
   const initialAccount = window.activeAccount || window.msalInstance?.getActiveAccount?.() || null;
   updateAuthUI(initialAccount);
+})();
+</script>
+
+<script>
+/* ============================================================
+   JS TOOLTIP SYSTEM — body-level, fixed-positioned
+   Replaces CSS ::after tooltips to avoid overflow:hidden clipping.
+   ============================================================ */
+(function initJsTooltips() {
+  'use strict';
+  let bubble = null;
+  let hideTimer = null;
+
+  function ensureBubble() {
+    if (bubble) return bubble;
+    bubble = document.createElement('div');
+    bubble.id = 'js-tooltip-bubble';
+    document.body.appendChild(bubble);
+    return bubble;
+  }
+
+  function showTooltip(target) {
+    const text = target.getAttribute('data-tooltip');
+    if (!text) return;
+    clearTimeout(hideTimer);
+    const el = ensureBubble();
+    el.textContent = text;
+    el.classList.remove('visible');
+
+    // Position above the target element
+    const rect = target.getBoundingClientRect();
+    // Temporarily make visible off-screen to measure width
+    el.style.left = '-9999px';
+    el.style.top = '-9999px';
+    el.classList.add('visible');
+
+    const bw = el.offsetWidth;
+    const bh = el.offsetHeight;
+
+    let left = rect.left + rect.width / 2 - bw / 2;
+    let top = rect.top - bh - 14; // 14px = 6px arrow + 8px gap
+
+    // Clamp horizontally
+    const margin = 8;
+    if (left < margin) left = margin;
+    if (left + bw > window.innerWidth - margin) left = window.innerWidth - bw - margin;
+
+    // If above viewport, flip below
+    if (top < 0) {
+      top = rect.bottom + 14;
+      el.style.setProperty('--arrow-dir', 'top');
+    } else {
+      el.style.removeProperty('--arrow-dir');
+    }
+
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+  }
+
+  function hideTooltip() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function() {
+      if (bubble) bubble.classList.remove('visible');
+    }, 80);
+  }
+
+  document.addEventListener('mouseover', function(e) {
+    const target = e.target && e.target.closest ? e.target.closest('[data-tooltip]') : null;
+    if (target) showTooltip(target);
+  }, true);
+
+  document.addEventListener('mouseout', function(e) {
+    const target = e.target && e.target.closest ? e.target.closest('[data-tooltip]') : null;
+    if (target) hideTooltip();
+  }, true);
+
+  document.addEventListener('click', hideTooltip, true);
+  document.addEventListener('scroll', hideTooltip, true);
+
+  console.log('✅ JS Tooltip System initialized');
 })();
 </script>
 </body>
