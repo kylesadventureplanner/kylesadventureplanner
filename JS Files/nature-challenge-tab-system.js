@@ -1524,7 +1524,32 @@
 
     // End reset in the same normalized overview action context used by Adventure.
     restoreNatureScrollerForActiveBirdView(liveRoot);
-    await ensureNatureCtaRowInViewportForDiagnostics(liveRoot, ctaRow);
+    let ctaVisible = await ensureNatureCtaRowInViewportForDiagnostics(liveRoot, ctaRow);
+
+    // Hard fallback: compute absolute target from live CTA button and force
+    // active scroller directly to that Y so diagnostics are not trapped offscreen.
+    if (!ctaVisible) {
+      const fallbackBtn = getNatureElementInActiveContext(liveRoot, 'birdsExploreBtn');
+      if (fallbackBtn && typeof fallbackBtn.getBoundingClientRect === 'function') {
+        const rect = fallbackBtn.getBoundingClientRect();
+        const scroller = getNatureScrollContainer(liveRoot);
+        if (isDocumentLikeNatureScroller(scroller)) {
+          const absoluteTop = (window.scrollY || 0) + (rect.top || 0);
+          setNatureScrollerTop(scroller, absoluteTop - 56);
+        } else if (
+          Number.isFinite(scroller.scrollTop)
+          && Number.isFinite(scroller.clientHeight)
+          && typeof scroller.getBoundingClientRect === 'function'
+        ) {
+          const scrollerRect = scroller.getBoundingClientRect();
+          const relativeTop = (rect.top - scrollerRect.top) + (scroller.scrollTop || 0);
+          setNatureScrollerTop(scroller, relativeTop - 24);
+        }
+        await nextAnimationFrame();
+        await nextAnimationFrame();
+        ctaVisible = Boolean(fallbackBtn && isElementViewportVisible(fallbackBtn));
+      }
+    }
 
     const afterScroll = getNatureScrollDiagnosticsSnapshot(liveRoot);
     const after = {
@@ -1538,7 +1563,8 @@
     return {
       ok: true,
       before,
-      after
+      after,
+      ctaVisibleAfterReset: ctaVisible
     };
   }
 
@@ -1765,7 +1791,12 @@
     const root = document.getElementById('natureChallengeRoot');
     const reset = await resetNatureViewportForDiagnostics(root);
     await nextAnimationFrame();
-    const ctaRowVisibleAfterReset = await ensureNatureCtaRowInViewportForDiagnostics(root, null);
+    let ctaRowVisibleAfterReset = await ensureNatureCtaRowInViewportForDiagnostics(root, null);
+    if (!ctaRowVisibleAfterReset) {
+      await forceNatureViewportTopForDiagnostics(root, null);
+      await nextAnimationFrame();
+      ctaRowVisibleAfterReset = await ensureNatureCtaRowInViewportForDiagnostics(root, null);
+    }
     const ids = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn'];
     const buttonRects = ids.map((id) => {
       const el = getNatureElementInActiveContext(root, id);
