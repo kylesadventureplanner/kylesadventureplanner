@@ -3926,13 +3926,7 @@
   }
 </style>
 
-<script>
-  window.initNatureChallengeTab = function() {
-    if (typeof window.initializeNatureChallengeTab === 'function') {
-      window.initializeNatureChallengeTab();
-      return;
-    }
-    console.log('✅ Nature Challenge tab initialized (UI only)');
-  };
-</script>
+<!-- initNatureChallengeTab is set by nature-challenge-tab-system.js at page load.
+     Do NOT override it here — the inline script previously overwrote the real
+     initializer with a no-op, causing all CTA click handlers to never be bound. -->
 

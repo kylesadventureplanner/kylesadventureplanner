@@ -8787,6 +8787,7 @@
   function ensureNatureCtaButtonsSelfHeal(root) {
     const liveRoot = root || document.getElementById('natureChallengeRoot');
     if (!liveRoot) return;
+    bindNatureCtaDirectFallback(liveRoot);
 
     const ctaActionMap = {
       birdsExploreBtn:          'explore',
@@ -8810,6 +8811,13 @@
       // Stamp semantic action key for the context-agnostic action bus.
       if (!btn.getAttribute('data-birds-cta-action')) {
         btn.setAttribute('data-birds-cta-action', action);
+      }
+
+      // Keep tooltip/title fallback in sync for environments where one path is suppressed.
+      const tooltipText = String(btn.getAttribute('data-tooltip') || btn.getAttribute('title') || '').trim();
+      if (tooltipText) {
+        if (!btn.getAttribute('data-tooltip')) btn.setAttribute('data-tooltip', tooltipText);
+        if (!btn.getAttribute('title')) btn.setAttribute('title', tooltipText);
       }
 
       // Ensure pointer-events are not suppressed.
@@ -9245,6 +9253,30 @@
       handler(root, btn);
     }, true);
   }
+
+  function bindNatureCtaDirectFallback(root) {
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    if (!liveRoot) return;
+    const ids = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn'];
+    ids.forEach((id) => {
+      const button = getNatureElementInActiveContext(liveRoot, id) || document.getElementById(id);
+      if (!button || button.dataset.natureCtaFallbackBound === '1') return;
+      button.dataset.natureCtaFallbackBound = '1';
+      button.addEventListener('click', (event) => {
+        if (!event || event.defaultPrevented) return;
+        const action = resolveNatureCtaActionFromButton(button);
+        if (!action) return;
+        const handler = NATURE_CTA_ACTION_HANDLERS[action];
+        if (typeof handler !== 'function') return;
+        ensureNatureCtaButtonsSelfHeal(liveRoot);
+        if (!isButtonActivatable(button)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        emitBirdClickTrace('cta-direct-fallback', event, button, { action });
+        handler(liveRoot, button);
+      });
+    });
+  }
   // ─────────────────────────────────────────────────────────────────────────────
 
   const NATURE_DELEGATED_ACTION_SELECTOR = [
@@ -9328,6 +9360,7 @@
     ensureNatureButtonsResponsive(root);
     ensureNatureCtaButtonsSelfHeal(root);
     installNatureCtaActionBus();
+    bindNatureCtaDirectFallback(root);
     scheduleNatureCtaOrderFinalization(root);
     ensureNatureSubtabJumpLinks(root);
     installNatureButtonReliabilityObserver(root);
