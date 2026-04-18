@@ -1372,7 +1372,7 @@
 
     await nextAnimationFrame();
 
-    // End reset with CTA controls physically in view for manual smoke diagnostics.
+    // End reset in the same normalized overview action context used by Adventure.
     restoreNatureScrollerForActiveBirdView(liveRoot);
     await ensureNatureCtaRowInViewportForDiagnostics(liveRoot, ctaRow);
 
@@ -1615,7 +1615,7 @@
     const root = document.getElementById('natureChallengeRoot');
     const reset = await resetNatureViewportForDiagnostics(root);
     await nextAnimationFrame();
-    await ensureNatureCtaRowInViewportForDiagnostics(root, null);
+    const ctaRowVisibleAfterReset = await ensureNatureCtaRowInViewportForDiagnostics(root, null);
     const ids = ['birdsExploreBtn', 'birdsOpenLogBtn', 'birdsOpenMapBtn', 'natureChallengeRefreshBtn'];
     const buttonRects = ids.map((id) => {
       const el = getNatureElementInActiveContext(root, id);
@@ -1641,6 +1641,10 @@
       activeSubTab: state.activeSubTab,
       activeBirdView: state.activeBirdView,
       reset,
+      actionContext: {
+        mode: 'overview-normalized',
+        ctaRowVisibleAfterReset
+      },
       buttonRects,
       offscreenButtonIds: buttonRects.filter((entry) => entry && entry.exists && entry.inViewport === false).map((entry) => entry.id),
       actions: []
@@ -9644,8 +9648,8 @@
               : 0;
             window.showToast(
               failed > 0
-                ? `CTA health check complete: ${failed} action(s) failing.`
-                : 'CTA health check complete: all core CTA actions passing.',
+                ? `CTA health check (Adventure-like overview context) complete: ${failed} action(s) failing.`
+                : 'CTA health check (Adventure-like overview context) complete: all core CTA actions passing.',
               failed > 0 ? 'warning' : 'success',
               2400
             );
@@ -9667,8 +9671,8 @@
               : 0;
             window.showToast(
               failed > 0
-                ? `CTA smoke test complete: ${failed} action(s) failing.`
-                : 'CTA smoke test complete: all core CTA actions passing.',
+                ? `CTA smoke test (Adventure-like overview context) complete: ${failed} action(s) failing.`
+                : 'CTA smoke test (Adventure-like overview context) complete: all core CTA actions passing.',
               failed > 0 ? 'warning' : 'success',
               2400
             );
@@ -9695,9 +9699,9 @@
 
           if (allSkipped) {
             const resetReport = await runBirdViewportResetAndProbeReport(root);
-            writeManualDiagnosticsOutput('Clickability Probe (Auto-reset applied)', resetReport, { append: true });
+            writeManualDiagnosticsOutput('Clickability Probe (Adventure-like reset applied)', resetReport, { append: true });
             if (typeof window.showToast === 'function') {
-              window.showToast('All probe targets were offscreen. Applied viewport reset and re-ran probe.', 'warning', 2800);
+              window.showToast('All probe targets were out of action context. Applied Adventure-like overview reset and re-ran probe.', 'warning', 2800);
             }
             return;
           }
@@ -9712,13 +9716,13 @@
       if (resetViewportDiagButton) {
         withBirdsActionGuard(resetViewportDiagButton, async () => {
           const report = await runBirdViewportResetAndProbeReport(root);
-          writeManualDiagnosticsOutput('Reset Nature Viewport + Probe', report, { append: true });
+          writeManualDiagnosticsOutput('Normalize CTA Action Context + Probe', report, { append: true });
           if (typeof window.showToast === 'function') {
             const unresolved = Number(report && report.clickability && report.clickability.clickPathSummary && report.clickability.clickPathSummary.unresolvedTargets || 0);
             window.showToast(
               unresolved > 0
-                ? `Viewport reset complete. ${unresolved} probe target(s) still unresolved.`
-                : 'Viewport reset complete and clickability probe passed.',
+                ? `Adventure-like action-context reset complete. ${unresolved} probe target(s) still unresolved.`
+                : 'Adventure-like action-context reset complete and clickability probe passed.',
               unresolved > 0 ? 'warning' : 'success',
               2400
             );

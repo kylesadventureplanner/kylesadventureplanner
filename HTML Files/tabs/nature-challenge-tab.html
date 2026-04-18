@@ -41,20 +41,23 @@
               <span id="natureSyncMetaInline" class="nature-sync-meta ui-status-meta">Status updates will appear here while Birds loads.</span>
             </div>
           </div>
-          <div class="nature-explore-cta-actions nature-sticky-action-rail ui-action-rail ui-mobile-primary-stack">
-            <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--explore ui-action-btn ui-action-btn--primary" title="Open the species explorer" data-tooltip="Open the species explorer" aria-current="false">
-              Explore Species
-            </button>
-            <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--secondary" title="Open the sighting log" data-tooltip="Open the sighting log" aria-current="false">
-              Log a Sighting
-            </button>
-            <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--refresh" title="Refresh Birds data" data-tooltip="Refresh Birds data">
-              Refresh Data
-            </button>
-            <button id="birdsUndoActionBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--undo" title="No Birds action to undo yet" data-tooltip="No Birds action to undo yet" aria-disabled="true" disabled>
-              ↶ Undo
-            </button>
-          </div>
+           <div class="nature-explore-cta-actions nature-sticky-action-rail ui-action-rail ui-mobile-primary-stack">
+             <button id="birdsExploreBtn" type="button" class="nature-explore-birds-btn nature-explore-birds-btn--explore ui-action-btn ui-action-btn--primary" title="Open the species explorer" data-tooltip="Open the species explorer" aria-current="false">
+               Explore Species
+             </button>
+             <button id="birdsOpenLogBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--secondary" title="Open the sighting log" data-tooltip="Open the sighting log" aria-current="false">
+               Log a Sighting
+             </button>
+             <button id="birdsOpenMapBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--map" title="View your sighting locations on a map" data-tooltip="View your sighting locations on a map" aria-current="false">
+               Map
+             </button>
+             <button id="natureChallengeRefreshBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--refresh" title="Refresh Birds data" data-tooltip="Refresh Birds data">
+               Refresh Data
+             </button>
+             <button id="birdsUndoActionBtn" type="button" class="nature-explore-birds-btn ui-action-btn nature-explore-birds-btn--undo" title="No Birds action to undo yet" data-tooltip="No Birds action to undo yet" aria-disabled="true" disabled>
+               ↶ Undo
+             </button>
+           </div>
         </div>
       </div>
 
@@ -311,12 +314,12 @@
             <div class="card-subtitle">Run targeted diagnostics on demand for unclickable buttons, sync health, and runtime blockers. Use when hover/click behaviors are inconsistent or dead.</div>
           </div>
           <div class="nature-log-form-actions">
-            <button id="birdsBackToCtaRowBtn" type="button" class="pill-button nature-diagnostics-quick-jump" title="Jump back to Explore/Log/Map controls" data-tooltip="Jump back to Explore/Log/Map controls">↑ Back to CTA row</button>
+            <button id="birdsBackToCtaRowBtn" type="button" class="pill-button nature-diagnostics-quick-jump" title="Jump to the Adventure-like Explore/Log/Map action controls" data-tooltip="Jump to the Adventure-like Explore/Log/Map action controls">↑ Back to CTA controls</button>
             <button id="birdsRunCtaHealthDiagBtn" type="button" class="pill-button" title="Run a practical pass/fail health check for Explore, Log, Map, and Refresh" data-tooltip="Run a practical pass/fail health check for Explore, Log, Map, and Refresh">Run CTA Health Check</button>
             <button id="birdsRunCtaSmokeTestBtn" type="button" class="pill-button" title="Run the raw CTA smoke test report and print it to the diagnostics console" data-tooltip="Run the raw CTA smoke test report and print it to the diagnostics console">Run CTA Smoke Test</button>
             <button id="birdsCopyCtaHealthSummaryBtn" type="button" class="pill-button" title="Copy a short pass/fail CTA health summary" data-tooltip="Copy a short pass/fail CTA health summary">Copy CTA Health Summary</button>
-            <button id="birdsRunClickabilityDiagBtn" type="button" class="pill-button" title="Probe CTA click surfaces, disabled state, and guard blockers" data-tooltip="Probe CTA click surfaces, disabled state, and guard blockers">Run Clickability Probe</button>
-            <button id="birdsResetViewportDiagBtn" type="button" class="pill-button" title="Reset Nature viewport/state, then run clickability + duplicate-ID checks" data-tooltip="Reset Nature viewport/state, then run clickability + duplicate-ID checks">Reset Nature Viewport + Probe</button>
+            <button id="birdsRunClickabilityDiagBtn" type="button" class="pill-button" title="Probe Adventure-like CTA action-context click surfaces, disabled state, and guard blockers" data-tooltip="Probe Adventure-like CTA action-context click surfaces, disabled state, and guard blockers">Run Clickability Probe</button>
+            <button id="birdsResetViewportDiagBtn" type="button" class="pill-button" title="Normalize Adventure-like CTA action context, then run clickability + duplicate-ID checks" data-tooltip="Normalize Adventure-like CTA action context, then run clickability + duplicate-ID checks">Normalize CTA Action Context + Probe</button>
             <button id="birdsRunCoreCtaAutofixBtn" type="button" class="pill-button" title="Clear stale disabled/busy/aria locks on core Birds CTA buttons" data-tooltip="Clear stale disabled/busy/aria locks on core Birds CTA buttons">Auto-fix Core CTA State</button>
             <button id="birdsRunOverlayAutofixBtn" type="button" class="pill-button" title="Detect and clear overlay or z-index blockers over Birds controls" data-tooltip="Detect and clear overlay or z-index blockers over Birds controls">Auto-fix Overlay/Z-Index Blockers</button>
             <button id="birdsRunFullAutorepairSequenceBtn" type="button" class="pill-button" title="Run core CTA autofix, overlay autofix, and clickability probe in one sequence" data-tooltip="Run core CTA autofix, overlay autofix, and clickability probe in one sequence">Run Full Auto-Repair Sequence</button>

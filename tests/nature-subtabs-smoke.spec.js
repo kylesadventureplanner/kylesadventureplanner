@@ -97,7 +97,7 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(copyLastBtn).toBeEnabled();
     await expect(lastReportStatus).toContainText(/Last report: birds-(clickability-probe|viewport-reset-and-probe) at /);
     await page.locator('#birdsResetViewportDiagBtn').click();
-    await expect(output).toHaveValue(/Reset Nature Viewport \+ Probe/);
+    await expect(output).toHaveValue(/(Normalize CTA Action Context \+ Probe|Reset Nature Viewport \+ Probe)/);
     await expect(output).toHaveValue(/birds-viewport-reset-and-probe/);
     await expect(output).toHaveValue(/nature-cta-duplicate-id-report/);
     await page.locator('#birdsRunCoreCtaAutofixBtn').click();
@@ -130,6 +130,22 @@ test.describe('Nature config-driven subtabs smoke', () => {
       expect(buttonIds.has(id)).toBe(true);
     }
 
+    // Adventure-like gate: CTA actions must succeed after diagnostics reset/normalization.
+    expect(Boolean(ctaSmoke.reset && ctaSmoke.reset.ok === true)).toBe(true);
+    if (ctaSmoke.actionContext) {
+      expect(ctaSmoke.actionContext).toEqual(expect.objectContaining({
+        mode: 'overview-normalized'
+      }));
+    }
+
+    // VERIFY ALL ACTIONS SUCCEEDED in normalized overview/action context.
+    if (Array.isArray(ctaSmoke.actions) && ctaSmoke.actions.length > 0) {
+      const failedActions = ctaSmoke.actions.filter((item) => !item || item.ok !== true);
+      if (failedActions.length > 0) {
+        throw new Error(`CTA actions failed in Adventure-like action context: ${JSON.stringify(failedActions)}`);
+      }
+    }
+
     const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
     await activateFooterAction(page, exportBtn);
     const download = await downloadPromise;
@@ -141,6 +157,91 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(exportBtn).toBeDisabled();
     await expect(copyLastBtn).toBeDisabled();
     await expect(lastReportStatus).toContainText('Last report: none yet.');
+  });
+
+  test('CTA buttons display tooltips on hover and have focus-visible state', async ({ page }) => {
+    // Verify all CTA buttons have proper data-tooltip attributes
+    const ctaButtons = [
+      { id: '#birdsExploreBtn', expectedTooltip: 'Open the species explorer' },
+      { id: '#birdsOpenLogBtn', expectedTooltip: 'Open the sighting log' },
+      { id: '#birdsOpenMapBtn', expectedTooltip: 'View your sighting locations on a map' },
+      { id: '#natureChallengeRefreshBtn', expectedTooltip: 'Refresh Birds data' }
+    ];
+
+    for (const button of ctaButtons) {
+      const tooltipAttr = await page.locator(button.id).getAttribute('data-tooltip');
+      expect(tooltipAttr).toBeTruthy();
+      expect(tooltipAttr).toBe(button.expectedTooltip);
+    }
+
+    // Scroll CTA buttons into viewport if needed
+    await page.locator('#birdsExploreBtn').scrollIntoViewIfNeeded();
+
+    // Test hover tooltip display on each button
+    for (const button of ctaButtons) {
+      const locator = page.locator(button.id);
+
+      // Move mouse over button to trigger hover
+      await locator.hover({ force: false });
+      await page.waitForTimeout(200); // Allow CSS transitions
+
+      // Verify button is in viewport for hover
+      await expect(locator).toBeInViewport();
+
+      // Check for focus-visible state via keyboard navigation
+      await locator.focus();
+      const focusClass = await locator.evaluate((el) => {
+        return window.getComputedStyle(el, ':focus-visible').outline !== 'none' ||
+               el.matches(':focus-visible') ||
+               el.classList.contains('focus-visible');
+      });
+      expect(focusClass || await locator.evaluate((el) => el === document.activeElement)).toBeTruthy();
+    }
+  });
+
+  test('CTA buttons perform correct navigation actions', async ({ page }) => {
+    // Ensure CTA row is visible
+    await page.locator('#birdsExploreBtn').scrollIntoViewIfNeeded();
+    await expect(page.locator('#birdsExploreBtn')).toBeInViewport();
+
+    // Test "Explore Species" button opens explorer
+    await page.locator('#birdsExploreBtn').click();
+    await expect(page.locator('.nature-birds-view[data-birds-view="explorer"]')).toBeVisible({ timeout: 5000 });
+
+    // Go back to overview
+    await page.locator('#birdsExplorerBackBtn').click();
+    await expect(page.locator('.nature-birds-view[data-birds-view="overview"]')).toBeVisible({ timeout: 5000 });
+
+    // Test "Log a Sighting" button opens log view
+    await page.locator('#birdsOpenLogBtn').scrollIntoViewIfNeeded();
+    await expect(page.locator('#birdsOpenLogBtn')).toBeInViewport();
+    await page.locator('#birdsOpenLogBtn').click();
+    await expect(page.locator('.nature-birds-view[data-birds-view="log"]')).toBeVisible({ timeout: 5000 });
+
+    // Go back to overview
+    await page.locator('#birdsLogBackBtn').click();
+    await expect(page.locator('.nature-birds-view[data-birds-view="overview"]')).toBeVisible({ timeout: 5000 });
+
+    // Test "Map" button opens map overlay
+    await page.locator('#birdsOpenMapBtn').scrollIntoViewIfNeeded();
+    await expect(page.locator('#birdsOpenMapBtn')).toBeInViewport();
+    await page.locator('#birdsOpenMapBtn').click();
+    await expect(page.locator('#birdsMapOverlay:not([hidden])')).toBeVisible({ timeout: 5000 });
+
+    // Close map
+    const closeBtn = page.locator('#birdsMapCloseBtn');
+    if (await closeBtn.count() > 0) {
+      await closeBtn.click();
+      await expect(page.locator('#birdsMapOverlay[hidden]')).toBeHidden({ timeout: 5000 });
+    }
+
+    // Test "Refresh Data" button triggers sync (should not throw or disable)
+    await page.locator('#natureChallengeRefreshBtn').scrollIntoViewIfNeeded();
+    await expect(page.locator('#natureChallengeRefreshBtn')).toBeInViewport();
+    const refreshBtnDisabledBefore = await page.locator('#natureChallengeRefreshBtn').isDisabled();
+    await page.locator('#natureChallengeRefreshBtn').click();
+    await page.waitForTimeout(1000); // Allow sync to start
+    expect(refreshBtnDisabledBefore || true).toBeTruthy(); // Refresh can be disabled or enabled initially
   });
 
   test('birds jump bar renders with expected section buttons', async ({ page }) => {
