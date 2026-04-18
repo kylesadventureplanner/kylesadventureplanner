@@ -194,24 +194,40 @@ test.describe('Adventure explorer in-pane details flow', () => {
     expect(plannerDetailsFrame).not.toBeNull();
     const plannerDetailsFrameLocator = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
 
+    async function withLiveDetailsFrame(run) {
+      const liveFrameHandle = await detailsFrame.elementHandle();
+      const liveFrame = liveFrameHandle ? await liveFrameHandle.contentFrame() : null;
+      if (!liveFrame) throw new Error('Adventure details iframe was not available.');
+      return run(liveFrame);
+    }
+
     async function activateDetailsTab(tabId) {
       const tabButton = plannerDetailsFrameLocator.locator(`#tabs .tab-btn[data-tab="${tabId}"]`);
+      await expect(plannerDetailsFrameLocator.locator('#tabs')).toBeVisible();
       await expect(tabButton).toBeVisible();
-      await tabButton.click();
 
-      const selected = await tabButton.getAttribute('aria-selected');
-      if (selected !== 'true') {
-        await plannerDetailsFrame.evaluate((targetTabId) => {
+      await tabButton.click();
+      const becameSelectedViaClick = await expect
+        .poll(async () => tabButton.getAttribute('aria-selected'), { timeout: 3000 })
+        .toBe('true')
+        .then(() => true)
+        .catch(() => false);
+
+      if (!becameSelectedViaClick) {
+        await withLiveDetailsFrame((liveFrame) => liveFrame.evaluate((targetTabId) => {
+          const normalizedTabId = String(targetTabId || 'overview');
           if (typeof window.activateTab === 'function') {
-            window.activateTab(String(targetTabId || 'overview'));
+            window.activateTab(normalizedTabId);
             return;
           }
-          const btn = document.querySelector(`#tabs .tab-btn[data-tab="${String(targetTabId || '').replace(/"/g, '')}"]`);
+
+          const safeTabId = normalizedTabId.replace(/"/g, '');
+          const btn = document.querySelector(`#tabs .tab-btn[data-tab="${safeTabId}"]`);
           if (btn && typeof btn.click === 'function') btn.click();
-        }, tabId);
+        }, tabId));
       }
 
-      await expect(tabButton).toHaveAttribute('aria-selected', 'true');
+      await expect.poll(async () => tabButton.getAttribute('aria-selected'), { timeout: 10000 }).toBe('true');
       await expect(plannerDetailsFrameLocator.locator(`#pane-${tabId}[aria-hidden="false"]`)).toBeVisible();
     }
 

@@ -5,7 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -93,7 +92,7 @@
       <workItem from="1775962146733" duration="74876000" />
       <workItem from="1776172027526" duration="1231000" />
       <workItem from="1776186047188" duration="65868000" />
-      <workItem from="1776447145602" duration="11774000" />
+      <workItem from="1776447145602" duration="12579000" />
     </task>
     <servers />
   </component>
