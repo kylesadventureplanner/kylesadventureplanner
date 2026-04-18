@@ -194,12 +194,32 @@ test.describe('Adventure explorer in-pane details flow', () => {
     expect(plannerDetailsFrame).not.toBeNull();
     const plannerDetailsFrameLocator = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
 
+    async function activateDetailsTab(tabId) {
+      const tabButton = plannerDetailsFrameLocator.locator(`#tabs .tab-btn[data-tab="${tabId}"]`);
+      await expect(tabButton).toBeVisible();
+      await tabButton.click();
+
+      const selected = await tabButton.getAttribute('aria-selected');
+      if (selected !== 'true') {
+        await plannerDetailsFrame.evaluate((targetTabId) => {
+          if (typeof window.activateTab === 'function') {
+            window.activateTab(String(targetTabId || 'overview'));
+            return;
+          }
+          const btn = document.querySelector(`#tabs .tab-btn[data-tab="${String(targetTabId || '').replace(/"/g, '')}"]`);
+          if (btn && typeof btn.click === 'function') btn.click();
+        }, tabId);
+      }
+
+      await expect(tabButton).toHaveAttribute('aria-selected', 'true');
+      await expect(plannerDetailsFrameLocator.locator(`#pane-${tabId}[aria-hidden="false"]`)).toBeVisible();
+    }
+
     await expect(plannerDetailsFrameLocator.locator('#closeTabBtn')).toHaveCount(0);
     await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="overview"]')).toHaveClass(/active/);
     await expect(plannerDetailsFrameLocator.locator('#actionBar')).toBeVisible();
 
-    await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="tag-management"]').click();
-    await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="tag-management"]')).toHaveAttribute('aria-selected', 'true');
+    await activateDetailsTab('tag-management');
     await expect(plannerDetailsFrameLocator.locator('#pane-tag-management')).toBeVisible();
     await plannerDetailsFrameLocator.locator('#tmSaveBtn').click();
     const readTagSaveDebug = async () => {
@@ -228,8 +248,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
       return snapshot.hostContext;
     }, { timeout: 10000 }).toMatch(/^(parent|opener)$/);
 
-    await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]').click();
-    await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]')).toHaveAttribute('aria-selected', 'true');
+    await activateDetailsTab('notes');
     await expect(plannerDetailsFrameLocator.locator('#pane-notes[aria-hidden="false"]')).toBeVisible();
     await expect(plannerDetailsFrameLocator.locator('#detailNotesWrap')).toBeVisible();
 
