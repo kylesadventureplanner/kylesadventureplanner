@@ -296,3 +296,4 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(page.locator(`#visitedExplorerDetailsFrame-${key}`)).toHaveAttribute('src', /initialTab=notes/i);
   });
 });
+

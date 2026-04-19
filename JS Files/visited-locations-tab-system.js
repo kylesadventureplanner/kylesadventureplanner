@@ -256,6 +256,7 @@
      tracerEnabled: Boolean(window.__visitedClickTrace),
      diagnosticsEnabled: Boolean(window.__visitedDiagnostics),
      tracerLastPointer: null,
+     explorerActionLockUntil: {},
      visitedColumnIndexCache: {
        adventure: null,
        bike: null
@@ -884,6 +885,26 @@
     const id = el.id ? `#${el.id}` : '';
     const cls = el.classList && el.classList.length ? `.${Array.from(el.classList).slice(0, 2).join('.')}` : '';
     return `${tag}${id}${cls}`;
+  }
+
+  function getEventTargetElement(event) {
+    if (!event) return null;
+    if (event.target && event.target.nodeType === Node.ELEMENT_NODE) return event.target;
+    const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+    const firstElement = Array.isArray(path)
+      ? path.find((entry) => entry && entry.nodeType === Node.ELEMENT_NODE)
+      : null;
+    return firstElement || null;
+  }
+
+  function acquireExplorerActionLock(lockKey, holdMs) {
+    const key = String(lockKey || '').trim();
+    if (!key) return true;
+    const now = Date.now();
+    const lockUntil = Number((state.explorerActionLockUntil || {})[key] || 0);
+    if (lockUntil > now) return false;
+    state.explorerActionLockUntil[key] = now + Math.max(90, Number(holdMs) || 180);
+    return true;
   }
 
   function isTraceCandidateTarget(target) {
@@ -4530,7 +4551,16 @@
       // CREATE THE MAIN CLICK HANDLER FUNCTION (stored to prevent duplicate attachment)
       if (!root.__visitedClickHandler) {
         root.__visitedClickHandler = function handleVisitedClick(event) {
-          if (!event.target.closest('[data-visited-explorer-quick-actions-toggle]') && !event.target.closest('[data-visited-explorer-quick-actions-menu]')) {
+          const eventTarget = getEventTargetElement(event);
+          if (!eventTarget || !root.contains(eventTarget)) return;
+
+          const closest = (selector) => {
+            if (typeof eventTarget.closest !== 'function') return null;
+            const match = eventTarget.closest(selector);
+            return match && root.contains(match) ? match : null;
+          };
+
+          if (!closest('[data-visited-explorer-quick-actions-toggle]') && !closest('[data-visited-explorer-quick-actions-menu]')) {
             root.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach((menu) => {
               menu.hidden = true;
             });
@@ -4539,21 +4569,21 @@
             });
           }
 
-          const openSuggestionsBtn = event.target.closest('#visitedOpenSuggestionsBtn');
+          const openSuggestionsBtn = closest('#visitedOpenSuggestionsBtn');
           if (openSuggestionsBtn) {
             event.preventDefault();
             setVisitedOverviewView(root, 'suggestions');
             return;
           }
 
-          const backSuggestionsBtn = event.target.closest('#visitedSuggestionsBackBtn');
+          const backSuggestionsBtn = closest('#visitedSuggestionsBackBtn');
           if (backSuggestionsBtn) {
             event.preventDefault();
             setVisitedOverviewView(root, 'main');
             return;
           }
 
-          const subtabActionBtn = event.target.closest('[data-visited-subtab-action]');
+          const subtabActionBtn = closest('[data-visited-subtab-action]');
           if (subtabActionBtn) {
             event.preventDefault();
             const action = String(subtabActionBtn.getAttribute('data-visited-subtab-action') || '').trim();
@@ -4631,7 +4661,7 @@
 
           }
 
-          const explainBtn = event.target.closest('[data-suggestion-explain-toggle]');
+          const explainBtn = closest('[data-suggestion-explain-toggle]');
           if (explainBtn) {
             event.preventDefault();
             const targetId = explainBtn.getAttribute('data-suggestion-explain-toggle');
@@ -4644,21 +4674,23 @@
             return;
           }
 
-          const explorerDetailsBtn = event.target.closest('[data-visited-explorer-details]');
+          const explorerDetailsBtn = closest('[data-visited-explorer-details]');
           if (explorerDetailsBtn) {
             event.preventDefault();
             const subtabKey = String(explorerDetailsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerDetailsBtn.getAttribute('data-visited-explorer-details') || '').trim();
-            if (subtabKey && itemId) {
+            if (subtabKey && itemId && acquireExplorerActionLock(`details:${subtabKey}:${itemId}`, 260)) {
               openExplorerDetailsPage(root, subtabKey, itemId);
             }
             return;
           }
 
-          const explorerQuickActionsBtn = event.target.closest('[data-visited-explorer-quick-actions-toggle]');
+          const explorerQuickActionsBtn = closest('[data-visited-explorer-quick-actions-toggle]');
           if (explorerQuickActionsBtn) {
             event.preventDefault();
             const itemId = String(explorerQuickActionsBtn.getAttribute('data-visited-explorer-quick-actions-toggle') || '').trim();
+            const subtabKey = String(explorerQuickActionsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            if (!acquireExplorerActionLock(`quick-actions:${subtabKey}:${itemId}`, 120)) return;
             const card = explorerQuickActionsBtn.closest('.visited-explorer-card');
             const targetMenu = card ? card.querySelector(`[data-visited-explorer-quick-actions-menu="${itemId}"]`) : null;
             const willOpen = Boolean(targetMenu && targetMenu.hidden);
@@ -4675,7 +4707,7 @@
             return;
           }
 
-          const explorerGoogleBtn = event.target.closest('[data-visited-explorer-open-google]');
+          const explorerGoogleBtn = closest('[data-visited-explorer-open-google]');
           if (explorerGoogleBtn) {
             event.preventDefault();
             const subtabKey = String(explorerGoogleBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4689,7 +4721,7 @@
             return;
           }
 
-          const explorerDirectionsBtn = event.target.closest('[data-visited-explorer-open-directions]');
+          const explorerDirectionsBtn = closest('[data-visited-explorer-open-directions]');
           if (explorerDirectionsBtn) {
             event.preventDefault();
             const subtabKey = String(explorerDirectionsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4704,11 +4736,12 @@
             return;
           }
 
-          const explorerFavoriteBtn = event.target.closest('[data-visited-explorer-favorite]');
+          const explorerFavoriteBtn = closest('[data-visited-explorer-favorite]');
           if (explorerFavoriteBtn) {
             event.preventDefault();
             const subtabKey = String(explorerFavoriteBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerFavoriteBtn.getAttribute('data-visited-explorer-favorite') || '').trim();
+            if (!acquireExplorerActionLock(`favorite:${subtabKey}:${itemId}`, 160)) return;
             const before = getExplorerCardDraft(itemId);
             updateExplorerCardDraft(itemId, (draft) => ({ ...draft, favorite: !draft.favorite }));
             renderExplorerList(root, subtabKey);
@@ -4718,24 +4751,25 @@
             return;
           }
 
-          const explorerRateBtn = event.target.closest('[data-visited-explorer-rate]');
+          const explorerRateBtn = closest('[data-visited-explorer-rate]');
           if (explorerRateBtn) {
             event.preventDefault();
             const subtabKey = String(explorerRateBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerRateBtn.getAttribute('data-visited-explorer-rate') || '').trim();
+            if (!acquireExplorerActionLock(`rate:${subtabKey}:${itemId}`, 90)) return;
             const value = Math.max(0, Math.min(5, Number(explorerRateBtn.getAttribute('data-visited-explorer-rating-value') || '0')));
             updateExplorerCardDraft(itemId, (draft) => ({ ...draft, rating: value }));
             renderExplorerList(root, subtabKey);
             return;
           }
 
-          const explorerTagsBtn = event.target.closest('[data-visited-explorer-tags]');
+          const explorerTagsBtn = closest('[data-visited-explorer-tags]');
           if (explorerTagsBtn) {
             event.preventDefault();
             const subtabKey = String(explorerTagsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerTagsBtn.getAttribute('data-visited-explorer-tags') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);
-            if (item) {
+            if (item && acquireExplorerActionLock(`tags:${subtabKey}:${itemId}`, 260)) {
               openExplorerDetailsPage(root, subtabKey, itemId);
               const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`);
               if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, 'tag-management'));
@@ -4743,13 +4777,13 @@
             return;
           }
 
-          const explorerNotesBtn = event.target.closest('[data-visited-explorer-notes]');
+          const explorerNotesBtn = closest('[data-visited-explorer-notes]');
           if (explorerNotesBtn) {
             event.preventDefault();
             const subtabKey = String(explorerNotesBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
             const itemId = String(explorerNotesBtn.getAttribute('data-visited-explorer-notes') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);
-            if (item) {
+            if (item && acquireExplorerActionLock(`notes:${subtabKey}:${itemId}`, 260)) {
               openExplorerDetailsPage(root, subtabKey, itemId);
               const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`);
               if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, 'notes'));
@@ -4757,7 +4791,7 @@
             return;
           }
 
-          const explorerLogBtn = event.target.closest('[data-visited-explorer-log]');
+          const explorerLogBtn = closest('[data-visited-explorer-log]');
           if (explorerLogBtn) {
             event.preventDefault();
             const subtabKey = String(explorerLogBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
@@ -4768,21 +4802,21 @@
             return;
           }
 
-          const closeExplorerModalBtn = event.target.closest('#visitedExplorerDetailsCloseBtn, #visitedExplorerDetailsBackdrop');
+          const closeExplorerModalBtn = closest('#visitedExplorerDetailsCloseBtn, #visitedExplorerDetailsBackdrop');
           if (closeExplorerModalBtn) {
             event.preventDefault();
             closeExplorerDetailsModal();
             return;
           }
 
-          const closeVisitLogBtn = event.target.closest('#visitedVisitLogCloseBtn, #visitedVisitLogCancelBtn, #visitedVisitLogBackdrop');
+          const closeVisitLogBtn = closest('#visitedVisitLogCloseBtn, #visitedVisitLogCancelBtn, #visitedVisitLogBackdrop');
           if (closeVisitLogBtn) {
             event.preventDefault();
             closeVisitLogModal();
             return;
           }
 
-          const loadMoreBtn = event.target.closest('[data-catalog-action="load-more"]');
+          const loadMoreBtn = closest('[data-catalog-action="load-more"]');
           if (loadMoreBtn) {
             event.preventDefault();
             state.catalogRenderLimit += CATALOG_LOAD_STEP;
@@ -4790,7 +4824,7 @@
             return;
           }
 
-          const progressTabBtn = event.target.closest('[data-progress-subtab]');
+          const progressTabBtn = closest('[data-progress-subtab]');
           if (progressTabBtn) {
             event.preventDefault();
             // Defensive reset: ensure tooltip long-press suppression never bleeds into normal subtab navigation.
@@ -4805,7 +4839,7 @@
             return;
           }
 
-          const categoryFilterBtn = event.target.closest('[data-category-filter]');
+          const categoryFilterBtn = closest('[data-category-filter]');
           if (categoryFilterBtn) {
             event.preventDefault();
             event.stopPropagation();
@@ -4846,14 +4880,14 @@
             return;
           }
 
-          const jumpBtn = event.target.closest('[data-visited-jump]');
+          const jumpBtn = closest('[data-visited-jump]');
           if (jumpBtn) {
             event.preventDefault();
             jumpToVisitedSection(jumpBtn.getAttribute('data-visited-jump') || '');
             return;
           }
 
-          const toggleBtn = event.target.closest('[data-visit-action="toggle"]');
+          const toggleBtn = closest('[data-visit-action="toggle"]');
           if (toggleBtn) {
             event.preventDefault();
             const locationId = toggleBtn.getAttribute('data-location-id');
@@ -4872,7 +4906,7 @@
             return;
           }
 
-          const catalogFilterBtn = event.target.closest('[data-catalog-filter]');
+          const catalogFilterBtn = closest('[data-catalog-filter]');
           if (catalogFilterBtn) {
             event.preventDefault();
             const group = catalogFilterBtn.getAttribute('data-catalog-filter') || '';

@@ -769,6 +769,8 @@
     background: #ffffff;
     padding: 12px;
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+    position: relative;
+    isolation: isolate;
   }
 
   #visitedLocationsRoot .visited-explorer-card-head {
@@ -784,6 +786,9 @@
     gap: 6px;
     flex-wrap: wrap;
     justify-content: flex-end;
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
   }
 
   #visitedLocationsRoot .visited-explorer-card-title {
@@ -853,6 +858,9 @@
     border: 1px solid #dbeafe;
     border-radius: 10px;
     background: #f8fbff;
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
   }
 
   #visitedLocationsRoot .visited-explorer-quick-actions-menu[hidden] {
@@ -876,6 +884,9 @@
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
   }
 
   #visitedLocationsRoot .visited-explorer-favorite-btn {

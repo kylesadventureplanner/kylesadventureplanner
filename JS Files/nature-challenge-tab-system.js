@@ -1425,21 +1425,33 @@
 
   async function forceNatureViewportTopForDiagnostics(root, ctaRow) {
     const liveRoot = root || document.getElementById('natureChallengeRoot');
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      scrollNatureContainersToTop(liveRoot, ctaRow);
-      if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
-        document.scrollingElement.scrollTop = 0;
+    // Temporarily disable CSS scroll-behavior: smooth so that programmatic
+    // scrollTop assignments and window.scrollTo() take effect instantly.
+    // Without this, html { scroll-behavior: smooth } causes the scroll to
+    // animate over ~300 ms while nextAnimationFrame() only waits one frame,
+    // making every attempt think the scroll never reached 0.
+    const htmlEl = document.documentElement;
+    const savedScrollBehavior = htmlEl ? (htmlEl.style.scrollBehavior || '') : '';
+    if (htmlEl) htmlEl.style.scrollBehavior = 'auto';
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        scrollNatureContainersToTop(liveRoot, ctaRow);
+        if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
+          document.scrollingElement.scrollTop = 0;
+        }
+        if (document.documentElement && Number.isFinite(document.documentElement.scrollTop)) {
+          document.documentElement.scrollTop = 0;
+        }
+        if (document.body && Number.isFinite(document.body.scrollTop)) {
+          document.body.scrollTop = 0;
+        }
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        await nextAnimationFrame();
+        const snap = getNatureScrollDiagnosticsSnapshot(liveRoot);
+        if (Math.abs(Number(snap.scrollerTop || 0)) <= 2) break;
       }
-      if (document.documentElement && Number.isFinite(document.documentElement.scrollTop)) {
-        document.documentElement.scrollTop = 0;
-      }
-      if (document.body && Number.isFinite(document.body.scrollTop)) {
-        document.body.scrollTop = 0;
-      }
-      window.scrollTo(0, 0);
-      await nextAnimationFrame();
-      const snap = getNatureScrollDiagnosticsSnapshot(liveRoot);
-      if (Math.abs(Number(snap.scrollerTop || 0)) <= 2) break;
+    } finally {
+      if (htmlEl) htmlEl.style.scrollBehavior = savedScrollBehavior;
     }
   }
 
@@ -9154,20 +9166,29 @@
 
   function setNatureScrollerTop(scroller, top) {
     const nextTop = Math.max(0, Math.round(Number(top) || 0));
-    if (!isDocumentLikeNatureScroller(scroller) && Number.isFinite(scroller.scrollTop)) {
-      scroller.scrollTop = nextTop;
-      return;
+    // Suppress CSS scroll-behavior: smooth so this instant repositioning
+    // takes effect on the same frame (matches forceNatureViewportTopForDiagnostics).
+    const htmlEl = document.documentElement;
+    const savedBehavior = htmlEl ? (htmlEl.style.scrollBehavior || '') : '';
+    if (htmlEl) htmlEl.style.scrollBehavior = 'auto';
+    try {
+      if (!isDocumentLikeNatureScroller(scroller) && Number.isFinite(scroller.scrollTop)) {
+        scroller.scrollTop = nextTop;
+        return;
+      }
+      if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
+        document.scrollingElement.scrollTop = nextTop;
+      }
+      if (document.documentElement && Number.isFinite(document.documentElement.scrollTop)) {
+        document.documentElement.scrollTop = nextTop;
+      }
+      if (document.body && Number.isFinite(document.body.scrollTop)) {
+        document.body.scrollTop = nextTop;
+      }
+      window.scrollTo({ top: nextTop, left: 0, behavior: 'instant' });
+    } finally {
+      if (htmlEl) htmlEl.style.scrollBehavior = savedBehavior;
     }
-    if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
-      document.scrollingElement.scrollTop = nextTop;
-    }
-    if (document.documentElement && Number.isFinite(document.documentElement.scrollTop)) {
-      document.documentElement.scrollTop = nextTop;
-    }
-    if (document.body && Number.isFinite(document.body.scrollTop)) {
-      document.body.scrollTop = nextTop;
-    }
-    window.scrollTo({ top: nextTop, left: 0, behavior: 'auto' });
   }
 
   function alignNatureElementInViewport(element, scroller, block) {
@@ -9240,12 +9261,18 @@
   }
 
   function scrollNatureContainersToTop(root, ctaRow) {
+    // Temporarily disable CSS scroll-behavior: smooth so all scrollTop
+    // assignments and window.scrollTo take effect on the same frame.
+    const htmlEl = document.documentElement;
+    const savedBehavior = htmlEl ? (htmlEl.style.scrollBehavior || '') : '';
+    if (htmlEl) htmlEl.style.scrollBehavior = 'auto';
     const containers = collectNatureScrollContainers(root, ctaRow);
     containers.forEach((container) => {
       if (!container || !Number.isFinite(container.scrollTop)) return;
       container.scrollTop = 0;
     });
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (htmlEl) htmlEl.style.scrollBehavior = savedBehavior;
   }
 
   function getNatureScrollContainerLabel(scroller) {
@@ -9309,19 +9336,27 @@
   function restoreNatureScrollerForActiveBirdView(root) {
     const scroller = getNatureScrollContainer(root);
     const restoreY = getBirdViewRestoreScrollTop(state.activeBirdView);
-    if (
-      scroller
-      && scroller !== window
-      && scroller !== document.documentElement
-      && scroller !== document.scrollingElement
-      && scroller !== document.body
-    ) {
-      scroller.scrollTop = restoreY;
-    } else {
-      if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
-        document.scrollingElement.scrollTop = restoreY;
+    // Suppress CSS scroll-behavior: smooth for instant repositioning.
+    const htmlEl = document.documentElement;
+    const savedBehavior = htmlEl ? (htmlEl.style.scrollBehavior || '') : '';
+    if (htmlEl) htmlEl.style.scrollBehavior = 'auto';
+    try {
+      if (
+        scroller
+        && scroller !== window
+        && scroller !== document.documentElement
+        && scroller !== document.scrollingElement
+        && scroller !== document.body
+      ) {
+        scroller.scrollTop = restoreY;
+      } else {
+        if (document.scrollingElement && Number.isFinite(document.scrollingElement.scrollTop)) {
+          document.scrollingElement.scrollTop = restoreY;
+        }
+        window.scrollTo({ top: restoreY, behavior: 'instant' });
       }
-      window.scrollTo({ top: restoreY, behavior: 'auto' });
+    } finally {
+      if (htmlEl) htmlEl.style.scrollBehavior = savedBehavior;
     }
   }
 

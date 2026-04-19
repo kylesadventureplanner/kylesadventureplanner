@@ -5,8 +5,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/tests/adventure-explorer-click-stress.spec.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/tabs/visited-locations-tab.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/nature-challenge-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/visited-locations-tab-system.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/adventure-explorer-inpane-details.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,7 +97,7 @@
       <workItem from="1775962146733" duration="74876000" />
       <workItem from="1776172027526" duration="1231000" />
       <workItem from="1776186047188" duration="65868000" />
-      <workItem from="1776447145602" duration="19685000" />
+      <workItem from="1776447145602" duration="26580000" />
     </task>
     <servers />
   </component>
