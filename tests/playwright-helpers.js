@@ -67,14 +67,44 @@ async function openNatureLogView(page) {
     return Boolean(root && root.dataset && root.dataset.natureControlsBound === '1');
   });
 
+  const logView = page.locator('.nature-birds-view[data-birds-view="log"]');
+  if (await logView.isVisible().catch(() => false)) {
+    return logView;
+  }
+
   const openLogBtn = page.locator('#birdsOpenLogBtn');
   await openLogBtn.waitFor({ state: 'visible' });
-  await openLogBtn.click();
-
   const activeLogView = page.locator('.nature-birds-view.is-active[data-birds-view="log"]');
-  await activeLogView.waitFor({ state: 'visible' });
 
-  const logView = page.locator('.nature-birds-view[data-birds-view="log"]');
+  const waitForLogActivation = async () => {
+    await page.waitForFunction(() => {
+      const logViewEl = document.querySelector('.nature-birds-view[data-birds-view="log"]');
+      if (!logViewEl) return false;
+      const isVisible = !logViewEl.hidden && logViewEl.getAttribute('aria-hidden') !== 'true';
+      const isActive = logViewEl.classList.contains('is-active');
+      const logBtn = document.getElementById('birdsOpenLogBtn');
+      const buttonCurrent = logBtn ? String(logBtn.getAttribute('aria-current') || '') : '';
+      return isVisible && (isActive || buttonCurrent === 'page');
+    }, { timeout: 8000 });
+  };
+
+  let activated = false;
+  for (let attempt = 0; attempt < 2 && !activated; attempt += 1) {
+    await activateFooterAction(page, openLogBtn);
+    activated = await waitForLogActivation()
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  if (!activated) {
+    await collapseErrorNotificationBar(page);
+    await openLogBtn.evaluate((node) => {
+      if (node && typeof node.click === 'function') node.click();
+    });
+    await waitForLogActivation();
+  }
+
+  await activeLogView.waitFor({ state: 'visible', timeout: 5000 }).catch(() => null);
   await logView.waitFor({ state: 'visible' });
   return logView;
 }
