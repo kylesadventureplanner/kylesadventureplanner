@@ -213,8 +213,20 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await page.locator('#birdsRunReliabilityDiagBtn').click();
     await expect(output).toHaveValue(/Reliability Snapshot/);
     await expect(output).toHaveValue(/"lastBlockedCoreCta"\s*:/);
+    await expect(output).toHaveValue(/"dataLoadIndicatorDiagnostics"\s*:/);
     await expect(output).toHaveValue(/"id"\s*:\s*"natureChallengeRefreshBtn"/);
     await expect(output).toHaveValue(/"reason"\s*:\s*"(not-activatable|dedupe|in-flight|disabled|aria-disabled|busy)"/);
+
+    const reliabilitySnapshot = await readLastDiagnosticsJsonBlock(page, 'Reliability Snapshot');
+    expect(reliabilitySnapshot).not.toBeNull();
+    expect(reliabilitySnapshot).toEqual(expect.objectContaining({
+      dataLoadIndicatorDiagnostics: expect.any(Object)
+    }));
+    if (reliabilitySnapshot.dataLoadIndicatorDiagnostics && reliabilitySnapshot.dataLoadIndicatorDiagnostics.exists === true) {
+      expect(reliabilitySnapshot.dataLoadIndicatorDiagnostics.computedPointerEvents).toBe('none');
+      expect(typeof reliabilitySnapshot.dataLoadIndicatorDiagnostics.computedVisibility).toBe('string');
+      expect(reliabilitySnapshot.dataLoadIndicatorDiagnostics.computedVisibility.length).toBeGreaterThan(0);
+    }
 
     const status = page.locator('#birdsManualDiagnosticsLastReportStatus');
     await expect(status).toContainText('Last blocked CTA:');

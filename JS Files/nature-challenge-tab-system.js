@@ -1180,6 +1180,38 @@
     return [action || 'unknown', reason || 'blocked', source ? `via ${source}` : ''].filter(Boolean).join(' ');
   }
 
+  function getDataLoadIndicatorDiagnosticsSnapshot() {
+    const indicator = document.getElementById('dataLoadIndicator');
+    if (!indicator) {
+      return {
+        exists: false
+      };
+    }
+    const text = document.getElementById('dataLoadText');
+    const computed = window.getComputedStyle ? window.getComputedStyle(indicator) : null;
+    const textComputed = text && window.getComputedStyle ? window.getComputedStyle(text) : null;
+    const rect = typeof indicator.getBoundingClientRect === 'function' ? indicator.getBoundingClientRect() : null;
+    return {
+      exists: true,
+      className: String(indicator.className || '').trim(),
+      ariaHidden: String(indicator.getAttribute('aria-hidden') || '').trim(),
+      computedDisplay: computed ? String(computed.display || '') : '',
+      computedVisibility: computed ? String(computed.visibility || '') : '',
+      computedOpacity: computed ? String(computed.opacity || '') : '',
+      computedPointerEvents: computed ? String(computed.pointerEvents || '') : '',
+      computedZIndex: computed ? String(computed.zIndex || '') : '',
+      textPointerEvents: textComputed ? String(textComputed.pointerEvents || '') : '',
+      rect: rect
+        ? {
+            top: Math.round(rect.top || 0),
+            left: Math.round(rect.left || 0),
+            width: Math.round(rect.width || 0),
+            height: Math.round(rect.height || 0)
+          }
+        : null
+    };
+  }
+
   function getLastBlockedCoreCtaSnapshot() {
     const snapshot = birdsCoreCtaBlockDiagnostics.lastBlocked;
     return snapshot ? { ...snapshot } : null;
@@ -1189,7 +1221,8 @@
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
     return {
       ...payload,
-      lastBlockedCoreCta: getLastBlockedCoreCtaSnapshot()
+      lastBlockedCoreCta: getLastBlockedCoreCtaSnapshot(),
+      dataLoadIndicatorDiagnostics: getDataLoadIndicatorDiagnosticsSnapshot()
     };
   }
 
@@ -1725,9 +1758,11 @@
         reason: 'exportReliabilityDiagnosticsBundle unavailable'
       };
     }
+    const dataLoadIndicatorDiagnostics = getDataLoadIndicatorDiagnosticsSnapshot();
     return {
       kind: 'birds-full-diagnostics-bundle',
       capturedAt: new Date().toISOString(),
+      dataLoadIndicatorDiagnostics,
       bundle: window.exportReliabilityDiagnosticsBundle({ download: false })
     };
   }

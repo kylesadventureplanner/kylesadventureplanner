@@ -740,6 +740,68 @@
       font-weight: 500;
     }
 
+    /* Data load indicator is informational only and must never block UI interactions. */
+    .data-load-indicator {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      min-height: 20px;
+      padding: 2px 10px;
+      background: rgba(15, 23, 42, 0.88);
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 700;
+      z-index: 1200;
+      pointer-events: none !important;
+      user-select: none;
+    }
+
+    .data-load-indicator.show {
+      display: flex;
+    }
+
+    .data-load-indicator.loading {
+      background: rgba(30, 64, 175, 0.9);
+      color: #eff6ff;
+    }
+
+    .data-load-indicator.error {
+      background: rgba(127, 29, 29, 0.92);
+      color: #fee2e2;
+    }
+
+    .data-load-indicator .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #93c5fd;
+      flex-shrink: 0;
+    }
+
+    .data-load-indicator.loading .status-dot {
+      background: #bfdbfe;
+      animation: dataLoadPulse 1s ease-in-out infinite;
+    }
+
+    .data-load-indicator.error .status-dot {
+      background: #fca5a5;
+      animation: none;
+    }
+
+    #dataLoadText {
+      pointer-events: none !important;
+    }
+
+    @keyframes dataLoadPulse {
+      0%,
+      100% { opacity: 0.55; }
+      50% { opacity: 1; }
+    }
+
     /* ============================================================
        FILTER STATUS INDICATOR
        ============================================================
@@ -9956,27 +10018,40 @@
    * @param {string} state - 'loading', 'success', 'error', 'hidden'
    * @param {string} message - Message to display
    */
+  let dataLoadIndicatorHideTimer = 0;
+
   function updateDataLoadIndicator(state, message = '') {
     const indicator = document.getElementById('dataLoadIndicator');
     const text = document.getElementById('dataLoadText');
 
     if (!indicator) return;
 
+    if (dataLoadIndicatorHideTimer) {
+      clearTimeout(dataLoadIndicatorHideTimer);
+      dataLoadIndicatorHideTimer = 0;
+    }
+
+    indicator.style.pointerEvents = 'none';
+    if (text) text.style.pointerEvents = 'none';
+
     indicator.classList.remove('loading', 'show', 'error');
 
     switch (state) {
       case 'loading':
         indicator.classList.add('loading', 'show');
-        text.textContent = message || 'Loading Excel data...';
+        if (text) text.textContent = message || 'Loading Excel data...';
         break;
       case 'success':
         indicator.classList.add('show');
-        text.textContent = message || 'Data loaded successfully';
-        setTimeout(() => indicator.classList.remove('show'), 3000);
+        if (text) text.textContent = message || 'Data loaded successfully';
+        dataLoadIndicatorHideTimer = setTimeout(() => {
+          indicator.classList.remove('show', 'loading', 'error');
+          dataLoadIndicatorHideTimer = 0;
+        }, 1500);
         break;
       case 'error':
         indicator.classList.add('error', 'show');
-        text.textContent = message || 'Failed to load data';
+        if (text) text.textContent = message || 'Failed to load data';
         break;
       case 'hidden':
         indicator.classList.remove('show');
