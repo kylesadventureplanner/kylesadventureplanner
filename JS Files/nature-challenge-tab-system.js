@@ -1212,6 +1212,33 @@
     };
   }
 
+  function getNatureRootDiagnosticsSnapshot() {
+    const roots = getNatureRootCandidates();
+    return {
+      count: roots.length,
+      roots: roots.map((rootNode, index) => {
+        const activePane = rootNode.querySelector('[data-nature-pane].is-active');
+        const activeView = rootNode.querySelector('.nature-birds-view.is-active[data-birds-view]');
+        const rect = typeof rootNode.getBoundingClientRect === 'function' ? rootNode.getBoundingClientRect() : null;
+        return {
+          index,
+          isConnected: Boolean(rootNode.isConnected),
+          inViewport: isElementViewportVisible(rootNode),
+          activePane: activePane ? String(activePane.getAttribute('data-nature-pane') || '') : '',
+          activeView: activeView ? String(activeView.getAttribute('data-birds-view') || '') : '',
+          rect: rect
+            ? {
+                top: Math.round(rect.top || 0),
+                left: Math.round(rect.left || 0),
+                width: Math.round(rect.width || 0),
+                height: Math.round(rect.height || 0)
+              }
+            : null
+        };
+      })
+    };
+  }
+
   function getLastBlockedCoreCtaSnapshot() {
     const snapshot = birdsCoreCtaBlockDiagnostics.lastBlocked;
     return snapshot ? { ...snapshot } : null;
@@ -1222,7 +1249,8 @@
     return {
       ...payload,
       lastBlockedCoreCta: getLastBlockedCoreCtaSnapshot(),
-      dataLoadIndicatorDiagnostics: getDataLoadIndicatorDiagnosticsSnapshot()
+      dataLoadIndicatorDiagnostics: getDataLoadIndicatorDiagnosticsSnapshot(),
+      natureRootDiagnostics: getNatureRootDiagnosticsSnapshot()
     };
   }
 
@@ -9613,6 +9641,10 @@
 
   function setBirdView(root, viewKey) {
     const liveRoot = resolveLiveNatureRoot(root || null);
+    const rootTargets = getNatureRootCandidates();
+    const rootsToSync = rootTargets.length
+      ? rootTargets
+      : (liveRoot ? [liveRoot] : []);
     const previousView = state.activeBirdView;
 
     // Save using the actual scroll container, not window.scrollY which is
@@ -9623,13 +9655,17 @@
 
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     saveBirdUiPrefs();
-    syncBirdViews(liveRoot);
-    syncBirdOverviewJumpLinksVisibility(liveRoot);
+    rootsToSync.forEach((targetRoot) => {
+      syncBirdViews(targetRoot);
+      syncBirdOverviewJumpLinksVisibility(targetRoot);
+    });
     const exploreButton = document.getElementById('birdsExploreBtn');
     const logButton = document.getElementById('birdsOpenLogBtn');
     if (exploreButton) exploreButton.setAttribute('aria-current', state.activeBirdView === 'explorer' ? 'page' : 'false');
     if (logButton) logButton.setAttribute('aria-current', state.activeBirdView === 'log' ? 'page' : 'false');
-    if (state.activeBirdView === 'overview') applyOverviewDensity(liveRoot);
+    if (state.activeBirdView === 'overview') {
+      rootsToSync.forEach((targetRoot) => applyOverviewDensity(targetRoot));
+    }
     if (state.activeBirdView === 'explorer') renderBirdExplorerList();
     if (state.activeBirdView === 'log') {
       const stats = state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats();
@@ -9639,12 +9675,14 @@
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
 
     if (state.activeBirdView === 'overview' || state.activeBirdView === 'explorer' || state.activeBirdView === 'log') {
-      normalizeActiveBirdViewport(liveRoot, state.activeBirdView);
-      scheduleBirdViewportNormalization(liveRoot, state.activeBirdView);
+      rootsToSync.forEach((targetRoot) => {
+        normalizeActiveBirdViewport(targetRoot, state.activeBirdView);
+        scheduleBirdViewportNormalization(targetRoot, state.activeBirdView);
+      });
     } else {
-      restoreNatureScrollerForActiveBirdView(liveRoot);
+      rootsToSync.forEach((targetRoot) => restoreNatureScrollerForActiveBirdView(targetRoot));
     }
-    scheduleNatureCtaOrderFinalization(liveRoot);
+    rootsToSync.forEach((targetRoot) => scheduleNatureCtaOrderFinalization(targetRoot));
   }
 
   async function setActiveNatureSubTab(root, key) {

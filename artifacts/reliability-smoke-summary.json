@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-04-20T23:12:01.487Z",
+  "generatedAt": "2026-04-20T23:43:47.587Z",
   "pass": true,
   "startupSamplesMs": [
-    97,
-    101
+    96,
+    102
   ],
-  "startupMsP95": 101,
+  "startupMsP95": 102,
   "firstClickChecks": 1,
   "firstClickSuccesses": 1,
   "firstClickSuccessRate": 1,
@@ -16,7 +16,7 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-04-20T23:12:16.576Z"
+      "at": "2026-04-20T23:44:01.619Z"
     },
     {
       "name": "repeat:nature-explore-tab-switches",
@@ -45,7 +45,7 @@
           }
         ]
       },
-      "at": "2026-04-20T23:12:24.169Z"
+      "at": "2026-04-20T23:44:08.750Z"
     }
   ]
 }
