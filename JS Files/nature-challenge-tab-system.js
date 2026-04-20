@@ -603,6 +603,8 @@
     lastAt: 0
   };
 
+  let birdsViewportSyncToken = 0;
+
   // Per-action-key reliability guard state.
   const birdsActivationGuard = {
     inFlight: new Map(),  // actionKey -> true while async action is running
@@ -1458,8 +1460,10 @@
   async function ensureNatureCtaRowInViewportForDiagnostics(root, ctaRow) {
     const liveRoot = root || document.getElementById('natureChallengeRoot');
     if (!liveRoot) return false;
+    const isAttached = (node) => Boolean(node && typeof node.isConnected === 'boolean' ? node.isConnected : (node && document.contains(node)));
+    const liveRow = isAttached(ctaRow) ? ctaRow : null;
     const exploreBtn = getNatureElementInActiveContext(liveRoot, 'birdsExploreBtn');
-    const row = ctaRow
+    const row = liveRow
       || (exploreBtn && exploreBtn.closest ? exploreBtn.closest('.nature-explore-cta-actions') : null)
       || liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
     if (!row) return false;
@@ -1840,6 +1844,7 @@
       },
       buttonRects,
       offscreenButtonIds: buttonRects.filter((entry) => entry && entry.exists && entry.inViewport === false).map((entry) => entry.id),
+      finalTargetOffscreenActions: [],
       actions: []
     };
 
@@ -1849,6 +1854,40 @@
     }, {});
     const inViewportBefore = (id) => Boolean(rectById[id] && rectById[id].inViewport);
 
+    const getRoundedRect = (element) => {
+      if (!element || typeof element.getBoundingClientRect !== 'function') return null;
+      const rect = element.getBoundingClientRect();
+      return {
+        top: Math.round(rect.top || 0),
+        left: Math.round(rect.left || 0),
+        width: Math.round(rect.width || 0),
+        height: Math.round(rect.height || 0)
+      };
+    };
+
+    const getFinalActiveTargetRect = (selectors) => {
+      const selectorList = Array.isArray(selectors) ? selectors.filter(Boolean) : [];
+      for (let i = 0; i < selectorList.length; i += 1) {
+        const selector = selectorList[i];
+        const matches = Array.from(document.querySelectorAll(selector));
+        if (!matches.length) continue;
+        const visible = matches.find((node) => isElementViewportVisible(node));
+        const target = visible || matches[0];
+        return {
+          selector,
+          matchCount: matches.length,
+          inViewport: isElementViewportVisible(target),
+          rect: getRoundedRect(target)
+        };
+      }
+      return {
+        selector: '',
+        matchCount: 0,
+        inViewport: false,
+        rect: null
+      };
+    };
+
     const exploreBtn = getNatureElementInActiveContext(root, 'birdsExploreBtn');
     if (exploreBtn && !exploreBtn.disabled) {
       exploreBtn.click();
@@ -1857,7 +1896,11 @@
         action: 'explore',
         ok: (state.activeBirdView === 'explorer' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]'))),
         inViewportBeforeClick: inViewportBefore('birdsExploreBtn'),
-        activeBirdView: state.activeBirdView
+        activeBirdView: state.activeBirdView,
+        finalActiveTargetRect: getFinalActiveTargetRect([
+          '.nature-birds-view.is-active[data-birds-view="explorer"]',
+          '.nature-birds-view[data-birds-view="explorer"]'
+        ])
       });
     } else {
       report.actions.push({ action: 'explore', ok: false, reason: 'missing-or-disabled' });
@@ -1874,7 +1917,11 @@
         action: 'log',
         ok: (state.activeBirdView === 'log' || Boolean(document.querySelector('.nature-birds-view.is-active[data-birds-view="log"]'))),
         inViewportBeforeClick: inViewportBefore('birdsOpenLogBtn'),
-        activeBirdView: state.activeBirdView
+        activeBirdView: state.activeBirdView,
+        finalActiveTargetRect: getFinalActiveTargetRect([
+          '.nature-birds-view.is-active[data-birds-view="log"]',
+          '.nature-birds-view[data-birds-view="log"]'
+        ])
       });
     } else {
       report.actions.push({ action: 'log', ok: false, reason: 'missing-or-disabled' });
@@ -1892,7 +1939,11 @@
         action: 'map',
         ok: mapVisible,
         inViewportBeforeClick: inViewportBefore('birdsOpenMapBtn'),
-        mapVisible
+        mapVisible,
+        finalActiveTargetRect: getFinalActiveTargetRect([
+          '#birdsMapOverlay:not([hidden])',
+          '#birdsMapOverlay'
+        ])
       });
     } else {
       report.actions.push({ action: 'map', ok: false, reason: 'missing-or-disabled' });
@@ -1914,11 +1965,20 @@
         action: 'refresh',
         ok: true,
         inViewportBeforeClick: inViewportBefore('natureChallengeRefreshBtn'),
-        syncBadge: String((document.getElementById('natureSyncHealthBadgeInline') || {}).textContent || '').trim()
+        syncBadge: String((document.getElementById('natureSyncHealthBadgeInline') || {}).textContent || '').trim(),
+        finalActiveTargetRect: getFinalActiveTargetRect([
+          '#natureSyncHealthBadgeInline',
+          '#natureChallengeRefreshBtn'
+        ])
       });
     } else {
       report.actions.push({ action: 'refresh', ok: false, reason: 'missing-or-disabled' });
     }
+
+    report.finalTargetOffscreenActions = report.actions
+      .filter((entry) => entry && entry.finalActiveTargetRect && entry.finalActiveTargetRect.inViewport === false)
+      .map((entry) => String(entry.action || '').trim())
+      .filter(Boolean);
 
     return report;
   }
@@ -9360,6 +9420,47 @@
     }
   }
 
+  function normalizeActiveBirdViewport(root, viewKey) {
+    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    if (!liveRoot) return false;
+    const normalizedView = BIRD_VIEWS.includes(viewKey) ? viewKey : state.activeBirdView;
+    const overviewRow = liveRoot.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions');
+    const activeView = liveRoot.querySelector(`#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="${normalizedView}"]`);
+    const target = normalizedView === 'overview' ? (overviewRow || activeView) : activeView;
+    if (!target) return false;
+
+    scrollNatureContainersToTop(liveRoot, overviewRow || target);
+    const scroller = getNatureScrollContainer(liveRoot);
+    alignNatureElementInViewport(target, scroller, 'start');
+    if (isElementViewportVisible(target)) return true;
+
+    const rect = target.getBoundingClientRect();
+    if (!rect || !Number.isFinite(rect.top)) return false;
+    if (isDocumentLikeNatureScroller(scroller)) {
+      const absoluteTop = (window.scrollY || 0) + (rect.top || 0);
+      setNatureScrollerTop(scroller, absoluteTop - 16);
+    } else if (
+      Number.isFinite(scroller.scrollTop)
+      && Number.isFinite(scroller.clientHeight)
+      && typeof scroller.getBoundingClientRect === 'function'
+    ) {
+      const scrollerRect = scroller.getBoundingClientRect();
+      const relativeTop = (rect.top - scrollerRect.top) + (scroller.scrollTop || 0);
+      setNatureScrollerTop(scroller, relativeTop - 12);
+    }
+    return isElementViewportVisible(target);
+  }
+
+  function scheduleBirdViewportNormalization(root, viewKey) {
+    const token = ++birdsViewportSyncToken;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (token !== birdsViewportSyncToken) return;
+        normalizeActiveBirdViewport(root, viewKey);
+      });
+    });
+  }
+
   function setBirdView(root, viewKey) {
     const previousView = state.activeBirdView;
 
@@ -9386,23 +9487,11 @@
     if (state.activeBirdView === 'detail') renderBirdDetail();
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
 
-    const activeView = root && typeof root.querySelector === 'function'
-      ? root.querySelector(`#natureChallengePane-birds .nature-birds-view.is-active[data-birds-view="${state.activeBirdView}"]`)
-      : null;
-
-    // Keep CTA-first views anchored to top across all possible scroll containers.
-    const birdsCtaRow = root && typeof root.querySelector === 'function'
-      ? root.querySelector('#natureChallengePane-birds .nature-birds-view[data-birds-view="overview"] .nature-explore-cta-actions')
-      : null;
-    restoreNatureScrollerForActiveBirdView(root);
     if (state.activeBirdView === 'overview' || state.activeBirdView === 'explorer' || state.activeBirdView === 'log') {
-      scrollNatureContainersToTop(root, birdsCtaRow);
-      const activeScroller = getNatureScrollContainer(root);
-      if (state.activeBirdView === 'overview' && birdsCtaRow) {
-        alignNatureElementInViewport(birdsCtaRow, activeScroller, 'start');
-      } else if (activeView) {
-        alignNatureElementInViewport(activeView, activeScroller, 'start');
-      }
+      normalizeActiveBirdViewport(root, state.activeBirdView);
+      scheduleBirdViewportNormalization(root, state.activeBirdView);
+    } else {
+      restoreNatureScrollerForActiveBirdView(root);
     }
     scheduleNatureCtaOrderFinalization(root);
   }

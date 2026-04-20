@@ -152,6 +152,27 @@ test.describe('Nature config-driven subtabs smoke', () => {
       }
     }
 
+    // Schema guard: when finalTargetOffscreenActions is present it must be a well-formed array.
+    // Guarded the same way as other optional fields so older deployed builds skip silently;
+    // any build that ships the field will have its schema enforced hard.
+    if (Object.prototype.hasOwnProperty.call(ctaSmoke, 'finalTargetOffscreenActions')) {
+      expect(Array.isArray(ctaSmoke.finalTargetOffscreenActions)).toBe(true);
+      // Every entry must be a non-empty string action key.
+      for (const key of ctaSmoke.finalTargetOffscreenActions) {
+        expect(typeof key).toBe('string');
+        expect(key.length).toBeGreaterThan(0);
+      }
+      // Cross-validate: every action whose post-click target is offscreen must appear in the list.
+      if (Array.isArray(ctaSmoke.actions)) {
+        const expectedOffscreen = ctaSmoke.actions
+          .filter((item) => item && item.finalActiveTargetRect && item.finalActiveTargetRect.inViewport === false)
+          .map((item) => item.action);
+        for (const actionKey of expectedOffscreen) {
+          expect(ctaSmoke.finalTargetOffscreenActions).toContain(actionKey);
+        }
+      }
+    }
+
     const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
     await activateFooterAction(page, exportBtn);
     const download = await downloadPromise;
