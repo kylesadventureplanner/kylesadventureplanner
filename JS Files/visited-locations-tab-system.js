@@ -4690,10 +4690,12 @@
             event.preventDefault();
             const itemId = String(explorerQuickActionsBtn.getAttribute('data-visited-explorer-quick-actions-toggle') || '').trim();
             const subtabKey = String(explorerQuickActionsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
-            if (!acquireExplorerActionLock(`quick-actions:${subtabKey}:${itemId}`, 120)) return;
             const card = explorerQuickActionsBtn.closest('.visited-explorer-card');
             const targetMenu = card ? card.querySelector(`[data-visited-explorer-quick-actions-menu="${itemId}"]`) : null;
             const willOpen = Boolean(targetMenu && targetMenu.hidden);
+            // Only debounce open clicks; close clicks must always go through so a
+            // second tap on the toggle reliably dismisses the already-open menu.
+            if (willOpen && !acquireExplorerActionLock(`quick-actions:${subtabKey}:${itemId}`, 120)) return;
             root.querySelectorAll('[data-visited-explorer-quick-actions-menu]').forEach((menu) => {
               menu.hidden = true;
             });
