@@ -6,6 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CSS/sighting-map.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/sighting-map.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/sighting-map-phase5.js" beforeDir="false" afterPath="$PROJECT_DIR$/sighting-map-phase5.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -94,7 +96,7 @@
       <workItem from="1776186047188" duration="65868000" />
       <workItem from="1776447145602" duration="31796000" />
       <workItem from="1776648840860" duration="3715000" />
-      <workItem from="1776695340610" duration="1965000" />
+      <workItem from="1776695340610" duration="5303000" />
     </task>
     <servers />
   </component>

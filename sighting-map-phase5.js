@@ -357,7 +357,17 @@
     if (closeBtn) closeBtn.textContent = `← Back to ${ctx.labelPlural}`;
     if (titleEl) titleEl.textContent = `🗺️ ${ctx.labelPlural} Map`;
     overlayEl.removeAttribute('hidden');
+    // Reliability-first open: force the overlay into an immediately interactive
+    // top layer so CTA activation is visually obvious even if animations/styles
+    // are delayed by the runtime.
+    overlayEl.style.setProperty('pointer-events', 'auto', 'important');
+    overlayEl.style.setProperty('z-index', '2147483000', 'important');
+    overlayEl.style.setProperty('transform', 'translateY(0)', 'important');
+    overlayEl.style.setProperty('opacity', '1', 'important');
     document.body.style.overflow = 'hidden';
+    if (closeBtn && typeof closeBtn.focus === 'function') {
+      window.requestAnimationFrame(() => closeBtn.focus({ preventScroll: true }));
+    }
     loadLeaflet(() => { populateFilters(); initMap(); });
   }
 

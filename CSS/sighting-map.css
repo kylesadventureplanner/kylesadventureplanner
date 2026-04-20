@@ -16,7 +16,6 @@
   background: #f8fafc;
   display: flex;
   flex-direction: column;
-  animation: mapSlideIn 0.25s ease-out;
 }
 
 .birds-map-overlay[hidden] {
