@@ -483,21 +483,22 @@
     observer.observe(pane, { childList: true, subtree: true });
   }
 
-  function injectButton() {
-    const actionRow = getBirdsOverviewActionRow();
-    const logBtn = (actionRow && actionRow.querySelector('#birdsOpenLogBtn')) || document.getElementById('birdsOpenLogBtn');
-    if (!logBtn) return;
-    let btn = document.getElementById('birdsOpenMapBtn');
-    if (!btn) {
-      btn = document.createElement('button');
-      btn.id = 'birdsOpenMapBtn';
-      btn.type = 'button';
-      btn.className = 'nature-explore-birds-btn nature-explore-birds-btn--map';
-      btn.title = 'View your sighting locations on a map';
-      btn.setAttribute('data-tooltip', 'View your sighting locations on a map');
-      btn.textContent = '🗺️ Map';
-      btn.addEventListener('click', openMap);
-    }
+   function injectButton() {
+     const actionRow = getBirdsOverviewActionRow();
+     const logBtn = (actionRow && actionRow.querySelector('#birdsOpenLogBtn')) || document.getElementById('birdsOpenLogBtn');
+     if (!logBtn) return;
+     let btn = document.getElementById('birdsOpenMapBtn');
+     if (!btn) {
+       btn = document.createElement('button');
+       btn.id = 'birdsOpenMapBtn';
+       btn.type = 'button';
+       btn.className = 'nature-explore-birds-btn nature-explore-birds-btn--map';
+       btn.title = 'View your sighting locations on a map';
+       btn.setAttribute('data-tooltip', 'View your sighting locations on a map');
+       btn.setAttribute('data-birds-cta-action', 'map');
+       btn.textContent = '🗺️ Map';
+       // Don't add direct listener - rely on delegated event handler from nature-challenge-tab-system.js
+     }
 
     const row = actionRow || logBtn.closest('.nature-explore-cta-actions');
     const refreshBtn = row ? row.querySelector('#natureChallengeRefreshBtn') : document.getElementById('natureChallengeRefreshBtn');

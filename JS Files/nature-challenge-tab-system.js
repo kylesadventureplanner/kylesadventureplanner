@@ -586,6 +586,10 @@
     lastReportMeta: null
   };
 
+  const birdsCoreCtaBlockDiagnostics = {
+    lastBlocked: null
+  };
+
   const birdsCtaHealth = {
     panel: null,
     copyPreviewEl: null,
@@ -923,12 +927,16 @@
       const outcome = actionMap[row.action];
       return count + (outcome && outcome.ok ? 1 : 0);
     }, 0);
+    const blockedSummary = formatBlockedCoreCtaSummary(getLastBlockedCoreCtaSnapshot());
 
     panel.innerHTML = `
       <div class="nature-cta-health-head">
         <span>CTA Health: ${passCount}/${rows.length} passing</span>
         <span class="nature-cta-health-stamp">${escapeHtml(new Date(payload.capturedAt || Date.now()).toLocaleString())}</span>
       </div>
+      ${blockedSummary
+        ? `<div class="nature-cta-health-meta nature-cta-health-meta--blocked">Last blocked CTA: ${escapeHtml(blockedSummary)}</div>`
+        : ''}
       <div class="nature-cta-health-grid">
         ${rows.map((row) => {
           const outcome = actionMap[row.action] || null;
@@ -1121,7 +1129,13 @@
     const rawAt = String(meta.capturedAt || '').trim();
     const parsed = rawAt ? new Date(rawAt) : null;
     const when = parsed && !Number.isNaN(parsed.getTime()) ? parsed.toLocaleString() : (rawAt || 'unknown time');
-    statusEl.textContent = `Last report: ${String(meta.kind)} at ${when}.`;
+    const lastBlocked = birdsManualDiagnostics.lastPayload && birdsManualDiagnostics.lastPayload.lastBlockedCoreCta
+      ? birdsManualDiagnostics.lastPayload.lastBlockedCoreCta
+      : null;
+    const blockedSummary = formatBlockedCoreCtaSummary(lastBlocked);
+    statusEl.textContent = blockedSummary
+      ? `Last report: ${String(meta.kind)} at ${when}. Last blocked CTA: ${blockedSummary}.`
+      : `Last report: ${String(meta.kind)} at ${when}.`;
   }
 
   function syncManualDiagnosticsLastReportActionButtons() {
@@ -1157,8 +1171,31 @@
     }
   }
 
+  function formatBlockedCoreCtaSummary(entry) {
+    if (!entry || typeof entry !== 'object') return '';
+    const action = String(entry.action || entry.id || 'unknown').trim();
+    const reason = String(entry.reason || '').trim();
+    const source = String(entry.source || '').trim();
+    if (!action && !reason && !source) return '';
+    return [action || 'unknown', reason || 'blocked', source ? `via ${source}` : ''].filter(Boolean).join(' ');
+  }
+
+  function getLastBlockedCoreCtaSnapshot() {
+    const snapshot = birdsCoreCtaBlockDiagnostics.lastBlocked;
+    return snapshot ? { ...snapshot } : null;
+  }
+
+  function augmentManualDiagnosticsPayload(payload) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+    return {
+      ...payload,
+      lastBlockedCoreCta: getLastBlockedCoreCtaSnapshot()
+    };
+  }
+
   function writeManualDiagnosticsOutput(title, payload, options = {}) {
     const append = options && options.append === true;
+    const normalizedPayload = augmentManualDiagnosticsPayload(payload);
     let outputEl = birdsManualDiagnostics.outputEl;
     // Ensure we have a reference to the element, querying if needed
     if (!outputEl) {
@@ -1168,15 +1205,15 @@
       }
     }
     const stamp = new Date().toLocaleString();
-    const body = stringifyManualDiagnosticsPayload(payload);
+    const body = stringifyManualDiagnosticsPayload(normalizedPayload);
     const block = [
       `[${stamp}] ${String(title || 'Manual diagnostics')}`,
       body
     ].join('\n');
-    birdsManualDiagnostics.lastPayload = payload || null;
+    birdsManualDiagnostics.lastPayload = normalizedPayload || null;
     birdsManualDiagnostics.lastReportMeta = {
-      kind: String(payload && payload.kind || title || 'manual-diagnostics').trim(),
-      capturedAt: String(payload && payload.capturedAt || new Date().toISOString()).trim()
+      kind: String(normalizedPayload && normalizedPayload.kind || title || 'manual-diagnostics').trim(),
+      capturedAt: String(normalizedPayload && normalizedPayload.capturedAt || new Date().toISOString()).trim()
     };
     birdsManualDiagnostics.lastText = append && outputEl && outputEl.value
       ? `${outputEl.value}\n\n${block}`
@@ -2017,6 +2054,35 @@
     return true;
   }
 
+  function getButtonBlockReason(target) {
+    if (!target) return 'missing-target';
+    if (target.disabled === true) return 'disabled';
+    if (target.getAttribute && target.getAttribute('aria-disabled') === 'true') return 'aria-disabled';
+    if (target.dataset && target.dataset.busy === '1') return 'busy';
+    return '';
+  }
+
+  function recordBlockedCoreCta(target, source, extra = {}) {
+    if (!isCoreBirdCtaButton(target)) return null;
+    const action = resolveNatureCtaActionFromButton(target) || target.id || '';
+    const snapshot = {
+      capturedAt: new Date().toISOString(),
+      id: String(target && target.id || '').trim(),
+      action: String(action || '').trim(),
+      source: String(source || '').trim(),
+      reason: String(extra.reason || getButtonBlockReason(target) || 'blocked').trim(),
+      disabled: Boolean(target && target.disabled === true),
+      ariaDisabled: String(target && target.getAttribute ? target.getAttribute('aria-disabled') || '' : ''),
+      ariaBusy: String(target && target.getAttribute ? target.getAttribute('aria-busy') || '' : ''),
+      busy: Boolean(target && target.dataset && target.dataset.busy === '1'),
+      busySince: String(target && target.dataset ? target.dataset.busySince || '' : ''),
+      key: String(extra.key || '').trim(),
+      ageMs: Number(extra.ageMs) || 0
+    };
+    birdsCoreCtaBlockDiagnostics.lastBlocked = snapshot;
+    return snapshot;
+  }
+
   /**
    * Derives a stable, unique activation key from a target element.
    * Prefers the element id; falls back to the most specific data-attribute.
@@ -2057,28 +2123,34 @@
         lockTimeoutMs: BIRDS_ACTIVATION_LOCK_TIMEOUT_MS,
         getActionKey: getBirdsActivationKey,
         onBlocked(reason, meta = {}) {
-          if (reason === 'disabled') emitBirdClickTrace('guard-blocked-disabled', null, target);
-          else if (reason === 'in-flight') emitBirdClickTrace('guard-blocked-in-flight', null, target, { key: meta.key || '' });
-          else if (reason === 'dedupe') emitBirdClickTrace('guard-blocked-dedupe', null, target, { key: meta.key || '', ageMs: Number(meta.ageMs) || 0 });
+          const normalizedReason = reason === 'disabled' ? (getButtonBlockReason(target) || 'disabled') : String(reason || 'blocked');
+          recordBlockedCoreCta(target, 'button-action-guard', { reason: normalizedReason, key: meta.key || '', ageMs: Number(meta.ageMs) || 0 });
+          if (reason === 'disabled') emitBirdClickTrace('guard-blocked-disabled', null, target, { reason: normalizedReason });
+          else if (reason === 'in-flight') emitBirdClickTrace('guard-blocked-in-flight', null, target, { key: meta.key || '', reason: normalizedReason });
+          else if (reason === 'dedupe') emitBirdClickTrace('guard-blocked-dedupe', null, target, { key: meta.key || '', ageMs: Number(meta.ageMs) || 0, reason: normalizedReason });
         }
       });
     }
 
     if (!isButtonActivatable(target)) {
-      emitBirdClickTrace('guard-blocked-disabled', null, target);
+      const reason = getButtonBlockReason(target) || 'disabled';
+      recordBlockedCoreCta(target, 'withBirdsActionGuard', { reason });
+      emitBirdClickTrace('guard-blocked-disabled', null, target, { reason });
       return;
     }
     const key = getBirdsActivationKey(target);
     const now = Date.now();
 
     if (birdsActivationGuard.inFlight.get(key)) {
-      emitBirdClickTrace('guard-blocked-in-flight', null, target, { key });
+      recordBlockedCoreCta(target, 'withBirdsActionGuard', { reason: 'in-flight', key });
+      emitBirdClickTrace('guard-blocked-in-flight', null, target, { key, reason: 'in-flight' });
       return;
     }
 
     const lastAt = birdsActivationGuard.lastAt.get(key) || 0;
     if (now - lastAt < BIRDS_ACTIVATION_DEDUPE_MS) {
-      emitBirdClickTrace('guard-blocked-dedupe', null, target, { key, ageMs: now - lastAt });
+      recordBlockedCoreCta(target, 'withBirdsActionGuard', { reason: 'dedupe', key, ageMs: now - lastAt });
+      emitBirdClickTrace('guard-blocked-dedupe', null, target, { key, ageMs: now - lastAt, reason: 'dedupe' });
       return;
     }
 
@@ -8975,6 +9047,11 @@
     ];
   }
 
+  function isCoreBirdCtaButton(target) {
+    if (!target || typeof target.id !== 'string') return false;
+    return getCoreBirdCtaIds().includes(target.id);
+  }
+
   function getButtonActivatabilitySnapshot(id, root) {
     const scope = root && typeof root.querySelector === 'function' ? root : document;
     const button = scope.querySelector(`#${id}`) || document.getElementById(id);
@@ -9624,7 +9701,14 @@
       const action = resolveNatureCtaActionFromButton(btn);
       if (!action) return;
       emitNatureCtaScrollRuntimeDiagnostic(document.getElementById('natureChallengeRoot'), action, 'action-bus');
-      if (!isButtonActivatable(btn)) return;
+      // Keep core CTA fail-open at activation time in case another async path left stale flags.
+      if (isCoreBirdCtaButton(btn)) {
+        enforceNatureCoreButtonActivatability(document.getElementById('natureChallengeRoot'));
+      }
+      if (!isButtonActivatable(btn)) {
+        recordBlockedCoreCta(btn, 'action-bus-precheck', { reason: getButtonBlockReason(btn) || 'not-activatable' });
+        return;
+      }
       const handler = NATURE_CTA_ACTION_HANDLERS[action];
       if (!handler) return;
       event.preventDefault();
@@ -9650,7 +9734,10 @@
         const handler = NATURE_CTA_ACTION_HANDLERS[action];
         if (typeof handler !== 'function') return;
         ensureNatureCtaButtonsSelfHeal(liveRoot);
-        if (!isButtonActivatable(button)) return;
+        if (!isButtonActivatable(button)) {
+          recordBlockedCoreCta(button, 'cta-direct-fallback-precheck', { reason: getButtonBlockReason(button) || 'not-activatable' });
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         emitBirdClickTrace('cta-direct-fallback', event, button, { action });
@@ -9782,7 +9869,11 @@
 
       // ── Fail-closed disabled/aria-disabled/busy guard ───────────────────────
       // Applied once here so every branch below inherits the same contract.
+      if (isCoreBirdCtaButton(delegatedTarget)) {
+        enforceNatureCoreButtonActivatability(root);
+      }
       if (!isButtonActivatable(delegatedTarget)) {
+        recordBlockedCoreCta(delegatedTarget, 'delegated-precheck', { reason: getButtonBlockReason(delegatedTarget) || 'not-activatable' });
         emitBirdClickTrace('guard-disabled', event, delegatedTarget);
         return;
       }

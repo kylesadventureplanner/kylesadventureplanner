@@ -186,6 +186,48 @@ test.describe('Nature config-driven subtabs smoke', () => {
     await expect(lastReportStatus).toContainText('Last report: none yet.');
   });
 
+  test('manual diagnostics output includes the last blocked core CTA reason', async ({ page }) => {
+    await page.locator('#birdsDiagnosticsDetails > summary').click();
+    const output = page.locator('#birdsManualDiagnosticsOutput');
+    if (await output.count() === 0) {
+      await expect(page.locator('#birdsButtonClickDiagnosticsPanel')).toBeVisible();
+      return;
+    }
+
+    await expect(output).toBeVisible();
+    await page.locator('#birdsExploreBtn').scrollIntoViewIfNeeded();
+    await expect(page.locator('#natureChallengeRefreshBtn')).toBeVisible();
+
+    await page.evaluate(() => {
+      const btn = document.getElementById('natureChallengeRefreshBtn');
+      if (!btn || !window.ButtonActionGuard) return;
+      const originalIsActivatable = window.ButtonActionGuard.isActivatable;
+      window.ButtonActionGuard.isActivatable = (target) => {
+        if (target && target.id === 'natureChallengeRefreshBtn') return false;
+        return originalIsActivatable(target);
+      };
+      btn.click();
+      window.ButtonActionGuard.isActivatable = originalIsActivatable;
+    });
+
+    await page.locator('#birdsRunReliabilityDiagBtn').click();
+    await expect(output).toHaveValue(/Reliability Snapshot/);
+    await expect(output).toHaveValue(/"lastBlockedCoreCta"\s*:/);
+    await expect(output).toHaveValue(/"id"\s*:\s*"natureChallengeRefreshBtn"/);
+    await expect(output).toHaveValue(/"reason"\s*:\s*"(not-activatable|dedupe|in-flight|disabled|aria-disabled|busy)"/);
+
+    const status = page.locator('#birdsManualDiagnosticsLastReportStatus');
+    await expect(status).toContainText('Last blocked CTA:');
+    await expect(status).toContainText('refresh');
+
+    await page.locator('#birdsRunCtaHealthDiagBtn').click();
+    const ctaHealthPanel = page.locator('#birdsCtaHealthPanel');
+    await expect(ctaHealthPanel).toBeVisible();
+    await expect(ctaHealthPanel).toContainText('Last blocked CTA:');
+    await expect(ctaHealthPanel).toContainText('refresh');
+    await expect(ctaHealthPanel.locator('.nature-cta-health-meta--blocked')).toBeVisible();
+  });
+
   test('CTA buttons display tooltips on hover and have focus-visible state', async ({ page }) => {
     // Verify all CTA buttons have proper data-tooltip attributes
     const ctaButtons = [
