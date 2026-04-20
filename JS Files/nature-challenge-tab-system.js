@@ -1360,10 +1360,30 @@
     syncManualDiagnosticsLastReportActionButtons();
   }
 
+  function getNatureRootCandidates() {
+    return Array.from(document.querySelectorAll('#natureChallengeRoot'));
+  }
+
+  function resolveLiveNatureRoot(preferredRoot) {
+    if (preferredRoot && typeof preferredRoot.querySelector === 'function') return preferredRoot;
+    const roots = getNatureRootCandidates();
+    if (!roots.length) return document.getElementById('natureChallengeRoot');
+    if (roots.length === 1) return roots[0];
+
+    const activeVisible = roots.find((rootNode) => {
+      const activePane = rootNode.querySelector('[data-nature-pane].is-active');
+      return Boolean(activePane && !activePane.hidden && isElementViewportVisible(activePane));
+    });
+    if (activeVisible) return activeVisible;
+
+    const activeAny = roots.find((rootNode) => Boolean(rootNode.querySelector('[data-nature-pane].is-active')));
+    return activeAny || roots[0];
+  }
+
   function getNatureElementInActiveContext(root, id) {
     const targetId = String(id || '').trim();
     if (!targetId) return null;
-    const liveRoot = root || document.getElementById('natureChallengeRoot');
+    const liveRoot = resolveLiveNatureRoot(root || null);
     const context = getActiveNatureContext(liveRoot);
     const fromView = context.view && typeof context.view.querySelector === 'function'
       ? context.view.querySelector(`#${targetId}`)
@@ -9013,6 +9033,15 @@
     pane.classList.toggle('is-active', isActive);
     pane.hidden = !isActive;
     pane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    if (pane && pane.style) {
+      if (isActive) {
+        pane.style.removeProperty('display');
+        pane.style.removeProperty('pointer-events');
+      } else {
+        pane.style.setProperty('display', 'none', 'important');
+        pane.style.setProperty('pointer-events', 'none', 'important');
+      }
+    }
     });
 
     updateNatureChallengeTitle(root);
@@ -9041,6 +9070,15 @@
     viewPane.classList.toggle('is-active', isActive);
     viewPane.hidden = !isActive;
     viewPane.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    if (viewPane && viewPane.style) {
+      if (isActive) {
+        viewPane.style.removeProperty('display');
+        viewPane.style.removeProperty('pointer-events');
+      } else {
+        viewPane.style.setProperty('display', 'none', 'important');
+        viewPane.style.setProperty('pointer-events', 'none', 'important');
+      }
+    }
     });
   }
 
@@ -9574,23 +9612,24 @@
   }
 
   function setBirdView(root, viewKey) {
+    const liveRoot = resolveLiveNatureRoot(root || null);
     const previousView = state.activeBirdView;
 
     // Save using the actual scroll container, not window.scrollY which is
     // always 0 when the app scrolls via an internal overflow div.
-    const scroller = getNatureScrollContainer(root);
+    const scroller = getNatureScrollContainer(liveRoot);
     state.birdViewScrollPositions[previousView || 'overview'] =
       scroller ? (scroller.scrollTop || 0) : (window.scrollY || 0);
 
     state.activeBirdView = BIRD_VIEWS.includes(viewKey) ? viewKey : 'overview';
     saveBirdUiPrefs();
-    syncBirdViews(root);
-    syncBirdOverviewJumpLinksVisibility(root);
+    syncBirdViews(liveRoot);
+    syncBirdOverviewJumpLinksVisibility(liveRoot);
     const exploreButton = document.getElementById('birdsExploreBtn');
     const logButton = document.getElementById('birdsOpenLogBtn');
     if (exploreButton) exploreButton.setAttribute('aria-current', state.activeBirdView === 'explorer' ? 'page' : 'false');
     if (logButton) logButton.setAttribute('aria-current', state.activeBirdView === 'log' ? 'page' : 'false');
-    if (state.activeBirdView === 'overview') applyOverviewDensity(root);
+    if (state.activeBirdView === 'overview') applyOverviewDensity(liveRoot);
     if (state.activeBirdView === 'explorer') renderBirdExplorerList();
     if (state.activeBirdView === 'log') {
       const stats = state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats();
@@ -9600,12 +9639,12 @@
     if (state.activeBirdView === 'collection') renderBirdCollectionView();
 
     if (state.activeBirdView === 'overview' || state.activeBirdView === 'explorer' || state.activeBirdView === 'log') {
-      normalizeActiveBirdViewport(root, state.activeBirdView);
-      scheduleBirdViewportNormalization(root, state.activeBirdView);
+      normalizeActiveBirdViewport(liveRoot, state.activeBirdView);
+      scheduleBirdViewportNormalization(liveRoot, state.activeBirdView);
     } else {
-      restoreNatureScrollerForActiveBirdView(root);
+      restoreNatureScrollerForActiveBirdView(liveRoot);
     }
-    scheduleNatureCtaOrderFinalization(root);
+    scheduleNatureCtaOrderFinalization(liveRoot);
   }
 
   async function setActiveNatureSubTab(root, key) {
@@ -9748,7 +9787,8 @@
       if (!handler) return;
       event.preventDefault();
       event.stopPropagation();
-      const root = document.getElementById('natureChallengeRoot');
+      const closestRoot = btn && btn.closest ? btn.closest('#natureChallengeRoot') : null;
+      const root = resolveLiveNatureRoot(closestRoot);
       emitBirdClickTrace('cta-action-bus', event, btn, { action });
       handler(root, btn);
     }, true);

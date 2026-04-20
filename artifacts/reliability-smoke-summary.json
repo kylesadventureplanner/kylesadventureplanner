@@ -1,10 +1,11 @@
 {
-  "generatedAt": "2026-04-20T23:01:46.495Z",
+  "generatedAt": "2026-04-20T23:12:01.487Z",
   "pass": true,
   "startupSamplesMs": [
-    93
+    97,
+    101
   ],
-  "startupMsP95": 93,
+  "startupMsP95": 101,
   "firstClickChecks": 1,
   "firstClickSuccesses": 1,
   "firstClickSuccessRate": 1,
@@ -15,7 +16,36 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-04-20T23:02:01.096Z"
+      "at": "2026-04-20T23:12:16.576Z"
+    },
+    {
+      "name": "repeat:nature-explore-tab-switches",
+      "passed": true,
+      "detail": {
+        "iterations": [
+          {
+            "iteration": 1,
+            "explorerActive": true
+          },
+          {
+            "iteration": 2,
+            "explorerActive": true
+          },
+          {
+            "iteration": 3,
+            "explorerActive": true
+          },
+          {
+            "iteration": 4,
+            "explorerActive": true
+          },
+          {
+            "iteration": 5,
+            "explorerActive": true
+          }
+        ]
+      },
+      "at": "2026-04-20T23:12:24.169Z"
     }
   ]
 }
