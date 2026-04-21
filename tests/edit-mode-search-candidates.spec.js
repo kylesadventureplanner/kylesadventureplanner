@@ -159,6 +159,104 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(String(row[10] || '')).toContain(resolved.placeId);
   });
 
+  test('single candidate search supports distance/state filters and shows Google-place link', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => {
+        return [
+          {
+            placeId: 'pid-nearby-nc-festival',
+            name: 'Nearby NC Festival',
+            address: '12 Main St, Hendersonville, NC 28791',
+            rating: 4.9,
+            reviewCount: 310,
+            businessStatus: 'OPERATIONAL',
+            coordinates: { lat: 35.348, lng: -82.46 }
+          },
+          {
+            placeId: 'pid-mid-nc-festival',
+            name: 'Mid NC Festival',
+            address: '300 Brevard Rd, Asheville, NC 28806',
+            rating: 4.5,
+            reviewCount: 210,
+            businessStatus: 'OPERATIONAL',
+            coordinates: { lat: 35.5313, lng: -82.5854 }
+          },
+          {
+            placeId: 'pid-far-sc-festival',
+            name: 'Far SC Festival',
+            address: '500 River Rd, Columbia, SC 29201',
+            rating: 4.4,
+            reviewCount: 120,
+            businessStatus: 'OPERATIONAL',
+            coordinates: { lat: 34.0007, lng: -81.0348 }
+          }
+        ];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        const slug = placeId.replace(/^pid-/, '') || 'item';
+        const titleCase = slug.replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+        return {
+          placeId,
+          name: `Name ${titleCase}`,
+          address: `${titleCase} Address, Hendersonville, NC 28791`,
+          website: `https://${slug}.example.com`,
+          businessType: `tag-${slug}`,
+          hours: `9-5 ${titleCase}`,
+          phone: '555-1000',
+          rating: '4.8',
+          userRatingsTotal: 88,
+          directions: `https://maps.example.com/${slug}`
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#candidateDistanceLimitMiles', '25');
+    await popup.selectOption('#candidateStateFilter', 'NC');
+    await popup.selectOption('#singleInputType', 'placeName');
+    await popup.fill('#singleInput', 'festival');
+    await popup.click('button:has-text("Search Candidates")');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
+    await expect(popup.locator('#single-candidates .candidate-results-head .candidate-count-chip')).toHaveText('Sorted by nearest');
+    const candidateItem = popup.locator('#single-candidates .candidate-item').first();
+    await expect(candidateItem.locator('.candidate-title')).toHaveText('Nearby NC Festival');
+    await expect(candidateItem).toContainText('Distance:');
+    await expect(candidateItem).toContainText('State: NC');
+
+    const placeLink = popup.locator('#single-candidates .candidate-open-link').first();
+    await expect(placeLink).toHaveAttribute('href', /google\.com\/maps\/place\/\?q=place_id:/i);
+
+    await popup.click('#singleAddSelectedCandidateBtn');
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
+    const row = graphCalls[0].body.values[0];
+    expect(row[9]).toBe('pid-nearby-nc-festival');
+  });
+
   test('bulk candidate review lets user choose matches, then add selected candidates', async ({ page }) => {
     const graphCalls = [];
     await installMocks(page.context(), graphCalls);

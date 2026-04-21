@@ -433,6 +433,37 @@
       padding: 2px 8px;
       white-space: nowrap;
     }
+
+    .candidate-results-head {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .candidate-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .candidate-open-link {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1d4ed8;
+      text-decoration: none;
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      border-radius: 8px;
+      padding: 4px 8px;
+    }
+
+    .candidate-open-link:hover {
+      background: #dbeafe;
+    }
   </style>
 </head>
 <body>
@@ -478,6 +509,39 @@
 
     <!-- Add Places Tab -->
     <div id="places-tab" class="tab-content active">
+      <div class="card">
+        <div class="card-title">🎯 Candidate Search Filters</div>
+        <div class="input-group">
+          <label for="candidateDistanceLimitMiles">Distance from 100 Long John Dr, Hendersonville, NC 28791</label>
+          <select id="candidateDistanceLimitMiles">
+            <option value="no-limit">No distance limit</option>
+            <option value="5">5 miles</option>
+            <option value="10">10 miles</option>
+            <option value="25">25 miles</option>
+            <option value="50">50 miles</option>
+            <option value="75">75 miles</option>
+            <option value="100">100 miles</option>
+            <option value="150">150 miles</option>
+            <option value="250">250 miles</option>
+            <option value="500">500 miles</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="candidateStateFilter">Restrict to state (optional)</label>
+          <select id="candidateStateFilter">
+            <option value="">Any state</option>
+            <option value="NC">NC</option>
+            <option value="SC">SC</option>
+            <option value="TN">TN</option>
+            <option value="GA">GA</option>
+            <option value="VA">VA</option>
+            <option value="WV">WV</option>
+            <option value="KY">KY</option>
+          </select>
+        </div>
+        <div id="candidateFilterStatus" class="help-text">Applies to Search Candidates, Search Bulk Candidates, and Search Chain Candidates.</div>
+      </div>
+
       <!-- Add Single Place -->
       <div class="card">
         <div class="card-title">➕ Add Single Place</div>
@@ -863,6 +927,13 @@
       groups: [],
       brandTokens: [],
       maxPerQuery: 6
+    };
+    const CANDIDATE_ANCHOR_ADDRESS = '100 Long John Dr, Hendersonville, NC 28791';
+    const CANDIDATE_ANCHOR_FALLBACK = { lat: 35.3476, lng: -82.4590 };
+    const candidateGeoState = {
+      anchorCoords: null,
+      anchorResolved: false,
+      anchorAttempted: false
     };
 
     function isEmbeddedEditMode() {
@@ -1267,6 +1338,149 @@
       statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
     }
 
+    function normalizeCoordinates(raw) {
+      const source = raw && typeof raw === 'object' ? raw : {};
+      const lat = Number(source.lat);
+      const lng = Number(source.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat, lng };
+    }
+
+    function deriveStateFromAddress(address) {
+      const text = String(address || '').toUpperCase();
+      const match = text.match(/,\s*([A-Z]{2})\s*\d{0,5}(?:-\d{0,4})?\s*$/);
+      return match ? String(match[1] || '').trim() : '';
+    }
+
+    function toRad(value) {
+      return Number(value) * (Math.PI / 180);
+    }
+
+    function calculateDistanceMiles(a, b) {
+      if (!a || !b) return null;
+      const lat1 = Number(a.lat);
+      const lon1 = Number(a.lng);
+      const lat2 = Number(b.lat);
+      const lon2 = Number(b.lng);
+      if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) return null;
+
+      const earthRadiusMiles = 3958.8;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const aa = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+      return earthRadiusMiles * c;
+    }
+
+    function getCandidateDistanceLimitMiles() {
+      const el = document.getElementById('candidateDistanceLimitMiles');
+      const raw = String(el && el.value ? el.value : 'no-limit');
+      if (raw === 'no-limit') return null;
+      const value = Number(raw);
+      return Number.isFinite(value) && value > 0 ? value : null;
+    }
+
+    function getCandidateStateFilter() {
+      const el = document.getElementById('candidateStateFilter');
+      return String(el && el.value ? el.value : '').trim().toUpperCase();
+    }
+
+    function describeCandidateFilters() {
+      const limit = getCandidateDistanceLimitMiles();
+      const state = getCandidateStateFilter();
+      const distanceLabel = limit == null ? 'no distance limit' : `${limit} mi max`;
+      const stateLabel = state || 'any state';
+      return `${distanceLabel}; ${stateLabel}`;
+    }
+
+    async function ensureCandidateAnchorCoords(mainWindow) {
+      if (candidateGeoState.anchorResolved && candidateGeoState.anchorCoords) return candidateGeoState.anchorCoords;
+      if (candidateGeoState.anchorAttempted) return candidateGeoState.anchorCoords;
+      candidateGeoState.anchorAttempted = true;
+      // Use a stable anchor coordinate for deterministic filtering without requiring live geocoding.
+      candidateGeoState.anchorCoords = { ...CANDIDATE_ANCHOR_FALLBACK };
+      candidateGeoState.anchorResolved = false;
+      return candidateGeoState.anchorCoords;
+    }
+
+    async function applyCandidateGeoFilters(candidates, mainWindow) {
+      const rows = Array.isArray(candidates) ? candidates : [];
+      const stateFilter = getCandidateStateFilter();
+      const distanceLimit = getCandidateDistanceLimitMiles();
+      const anchor = await ensureCandidateAnchorCoords(mainWindow);
+
+      let droppedByState = 0;
+      let droppedByDistance = 0;
+
+      const result = rows.filter((candidate) => {
+        const row = candidate && typeof candidate === 'object' ? candidate : {};
+
+        const candidateState = String(row.state || deriveStateFromAddress(row.address)).toUpperCase();
+        row.state = candidateState;
+        if (stateFilter && candidateState !== stateFilter) {
+          droppedByState += 1;
+          return false;
+        }
+
+        const distanceMiles = calculateDistanceMiles(anchor, row.coordinates || null);
+        row.distanceMiles = Number.isFinite(distanceMiles) ? Number(distanceMiles.toFixed(1)) : null;
+
+        if (distanceLimit != null) {
+          if (!Number.isFinite(row.distanceMiles) || row.distanceMiles > distanceLimit) {
+            droppedByDistance += 1;
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      return {
+        rows: result,
+        droppedByState,
+        droppedByDistance,
+        totalBefore: rows.length
+      };
+    }
+
+    function sortCandidatesForDisplay(candidates, options = {}) {
+      const list = Array.isArray(candidates) ? candidates.slice() : [];
+      const preserveRanking = Boolean(options && options.preserveRanking);
+      const distanceLimit = getCandidateDistanceLimitMiles();
+      if (preserveRanking || distanceLimit == null || list.length < 2) return list;
+
+      return list
+        .map((candidate, index) => ({ candidate, index }))
+        .sort((a, b) => {
+          const ad = Number(a.candidate && a.candidate.distanceMiles);
+          const bd = Number(b.candidate && b.candidate.distanceMiles);
+          const aOk = Number.isFinite(ad);
+          const bOk = Number.isFinite(bd);
+          if (aOk && bOk && ad !== bd) return ad - bd;
+          if (aOk && !bOk) return -1;
+          if (!aOk && bOk) return 1;
+          return a.index - b.index;
+        })
+        .map((entry) => entry.candidate);
+    }
+
+    function isDistanceSortActive() {
+      return getCandidateDistanceLimitMiles() != null;
+    }
+
+    function buildCandidateGoogleUrl(placeId) {
+      const safe = String(placeId || '').trim();
+      if (!safe) return '';
+      return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(safe)}`;
+    }
+
+    function formatCandidateDistance(candidate) {
+      const value = candidate && Number.isFinite(Number(candidate.distanceMiles)) ? Number(candidate.distanceMiles) : null;
+      if (value == null) return 'Distance: unavailable';
+      return `Distance: ${value.toFixed(1)} mi from Long John Dr`;
+    }
+
     function setBulkCandidateStatus(message, kind) {
       const statusDiv = document.getElementById('bulk-search-status');
       if (!statusDiv) return;
@@ -1360,7 +1574,11 @@
         address: String(raw.address || '').trim(),
         rating: raw.rating == null ? '' : String(raw.rating),
         reviewCount: Number.isFinite(Number(raw.reviewCount)) ? Number(raw.reviewCount) : 0,
-        businessStatus: String(raw.businessStatus || '').trim()
+        businessStatus: String(raw.businessStatus || '').trim(),
+        coordinates: normalizeCoordinates(raw.coordinates),
+        state: String(raw.state || deriveStateFromAddress(raw.address)).trim().toUpperCase(),
+        distanceMiles: null,
+        googlePlaceUrl: String(raw.googlePlaceUrl || raw.googleUrl || buildCandidateGoogleUrl(raw.placeId)).trim()
       };
     }
 
@@ -1383,20 +1601,31 @@
         return;
       }
 
+      const sortChip = isDistanceSortActive()
+        ? '<div class="candidate-results-head"><div class="candidate-count-chip">Sorted by nearest</div></div>'
+        : '';
+
       const rows = singleCandidateState.results.map((candidate, index) => {
         const selectedClass = index === singleCandidateState.selectedIndex ? 'selected' : '';
         const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
         const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
         const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
+        const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
+        const distancePart = formatCandidateDistance(candidate);
+        const openLink = candidate.googlePlaceUrl
+          ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
+          : '';
         return `
           <div class="candidate-item ${selectedClass}" role="button" tabindex="0" onclick="selectSingleCandidate(${index})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectSingleCandidate(${index});}">
             <div class="candidate-title">${candidate.name}</div>
             <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
             <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+            <div class="candidate-meta">${statePart} | ${distancePart}</div>
+            <div class="candidate-actions">${openLink}</div>
           </div>
         `;
       }).join('');
-      container.innerHTML = rows;
+      container.innerHTML = `${sortChip}${rows}`;
     }
 
     function resetSingleCandidateResults() {
@@ -1446,18 +1675,24 @@
         const normalized = Array.isArray(rawResults)
           ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId)
           : [];
+        const filtered = await applyCandidateGeoFilters(normalized, mainWindow);
         singleCandidateState.query = query;
         singleCandidateState.inputType = inputType;
-        singleCandidateState.results = normalized.slice(0, 8);
+        singleCandidateState.results = sortCandidatesForDisplay(filtered.rows).slice(0, 8);
         singleCandidateState.selectedIndex = singleCandidateState.results.length ? 0 : -1;
         renderSingleCandidateResults();
 
         if (!singleCandidateState.results.length) {
-          setSingleCandidateStatus('⚠️ No results found. Try adding a city/state to your search.', 'error');
+          setSingleCandidateStatus(`⚠️ No results match your filters (${describeCandidateFilters()}).`, 'error');
           return;
         }
 
-        setSingleCandidateStatus(`✅ Found ${singleCandidateState.results.length} match(es). Select one, then click "Add Selected Candidate".`, 'success');
+        setSingleCandidateStatus(
+          `✅ Found ${singleCandidateState.results.length} match(es) after filters (${describeCandidateFilters()}). `
+          + `Filtered out: ${filtered.droppedByState} by state, ${filtered.droppedByDistance} by distance. `
+          + `Select one, then click "Add Selected Candidate".`,
+          'success'
+        );
       } catch (error) {
         console.error('❌ Candidate search failed:', error);
         setSingleCandidateStatus(`❌ Search failed: ${error && error.message ? error.message : 'Unknown error'}`, 'error');
@@ -1520,7 +1755,11 @@
         return;
       }
 
-      container.innerHTML = bulkCandidateState.groups.map((group, groupIndex) => {
+      const sortChip = isDistanceSortActive()
+        ? '<div class="candidate-results-head"><div class="candidate-count-chip">Sorted by nearest</div></div>'
+        : '';
+
+      const groupsHtml = bulkCandidateState.groups.map((group, groupIndex) => {
         const candidates = Array.isArray(group.candidates) ? group.candidates : [];
         const title = `${groupIndex + 1}. ${group.source}`;
         if (!candidates.length) {
@@ -1536,11 +1775,18 @@
           const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
           const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
           const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
+          const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
+          const distancePart = formatCandidateDistance(candidate);
+          const openLink = candidate.googlePlaceUrl
+            ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
+            : '';
           return `
             <div class="candidate-item ${selectedClass}" data-bulk-group-index="${groupIndex}" data-bulk-candidate-index="${candidateIndex}" role="button" tabindex="0" onclick="selectBulkCandidate(${groupIndex}, ${candidateIndex})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectBulkCandidate(${groupIndex}, ${candidateIndex});}">
               <div class="candidate-title">${candidate.name}</div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
               <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+              <div class="candidate-meta">${statePart} | ${distancePart}</div>
+              <div class="candidate-actions">${openLink}</div>
             </div>
           `;
         }).join('');
@@ -1551,6 +1797,7 @@
           </div>
         `;
       }).join('');
+      container.innerHTML = `${sortChip}${groupsHtml}`;
     }
 
     function resetBulkCandidateResults() {
@@ -1608,9 +1855,10 @@
           const normalized = Array.isArray(rawResults)
             ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId).slice(0, 5)
             : [];
-          group.candidates = normalized;
-          group.selectedIndex = normalized.length ? 0 : -1;
-          foundTotal += normalized.length ? 1 : 0;
+          const filtered = await applyCandidateGeoFilters(normalized, mainWindow);
+          group.candidates = sortCandidatesForDisplay(filtered.rows);
+          group.selectedIndex = group.candidates.length ? 0 : -1;
+          foundTotal += group.candidates.length ? 1 : 0;
         } catch (error) {
           console.error('❌ Bulk candidate search failed for query:', group.source, error);
           group.candidates = [];
@@ -1624,7 +1872,7 @@
         setBulkCandidateStatus('⚠️ No selectable matches were found. Try adding city/state context.', 'error');
         return;
       }
-      setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Review and click "Add Selected Candidates".`, 'success');
+      setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Filters: ${describeCandidateFilters()}. Review and click "Add Selected Candidates".`, 'success');
     }
 
     async function addSelectedBulkCandidates() {
@@ -1796,11 +2044,18 @@
           const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
           const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
           const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
+          const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
+          const distancePart = formatCandidateDistance(candidate);
+          const openLink = candidate.googlePlaceUrl
+            ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
+            : '';
           return `
             <div class="candidate-item ${selectedClass}" data-chain-group-index="${groupIndex}" data-chain-candidate-index="${candidateIndex}" role="button" tabindex="0" onclick="toggleChainCandidateSelection(${groupIndex}, ${candidateIndex})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleChainCandidateSelection(${groupIndex}, ${candidateIndex});}">
               <div class="candidate-title">${candidate.name}</div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
               <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+              <div class="candidate-meta">${statePart} | ${distancePart}</div>
+              <div class="candidate-actions">${openLink}</div>
             </div>
           `;
         }).join('');
@@ -1895,7 +2150,8 @@
           const normalized = Array.isArray(rawResults)
             ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId).slice(0, chainCandidateState.maxPerQuery)
             : [];
-          group.candidates = rankChainCandidates(normalized, group.source, chainCandidateState.brandTokens);
+          const filtered = await applyCandidateGeoFilters(normalized, mainWindow);
+          group.candidates = rankChainCandidates(filtered.rows, group.source, chainCandidateState.brandTokens);
           group.selectedIndexes = group.candidates.length ? [0] : [];
         } catch (error) {
           console.error('❌ Chain candidate search failed for query:', group.source, error);
@@ -1911,7 +2167,7 @@
         setChainCandidateStatus('⚠️ No selectable chain candidates were found. Try adding city/state context.', 'error');
         return;
       }
-      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected out of ${foundCount} found. Use the cap selector to add 3/5/10/15/25, all selected, or all found.`, 'success');
+      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected out of ${foundCount} found. Filters: ${describeCandidateFilters()}. Use the cap selector to add 3/5/10/15/25, all selected, or all found.`, 'success');
     }
 
     async function addSelectedChainCandidates() {
@@ -1992,6 +2248,29 @@
         });
       }
       renderChainCandidateResults();
+    }
+
+    function initCandidateGeoFilters() {
+      const distanceEl = document.getElementById('candidateDistanceLimitMiles');
+      const stateEl = document.getElementById('candidateStateFilter');
+      const statusEl = document.getElementById('candidateFilterStatus');
+
+      const applyFilterStatus = () => {
+        if (statusEl) {
+          statusEl.textContent = `Active filters: ${describeCandidateFilters()} (anchor: ${CANDIDATE_ANCHOR_ADDRESS}).`;
+        }
+      };
+
+      const handleFilterChange = () => {
+        resetSingleCandidateResults();
+        resetBulkCandidateResults();
+        resetChainCandidateResults();
+        applyFilterStatus();
+      };
+
+      if (distanceEl) distanceEl.addEventListener('change', handleFilterChange);
+      if (stateEl) stateEl.addEventListener('change', handleFilterChange);
+      applyFilterStatus();
     }
 
 
@@ -2320,6 +2599,7 @@
       initSingleCandidateSearch();
       initBulkCandidateSearch();
       initChainCandidateSearch();
+      initCandidateGeoFilters();
     });
 
     // Also try immediately in case DOM is already ready
@@ -2335,6 +2615,7 @@
       initSingleCandidateSearch();
       initBulkCandidateSearch();
       initChainCandidateSearch();
+      initCandidateGeoFilters();
     }
 
     console.log('📋 Available functions:', {
