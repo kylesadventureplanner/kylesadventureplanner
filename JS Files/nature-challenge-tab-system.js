@@ -9806,6 +9806,7 @@
     if (window.__natCtaActionBusInstalled) return;
     window.__natCtaActionBusInstalled = true;
     document.addEventListener('click', (event) => {
+      if (event && event.__natureCtaHandled === true) return;
       const btn = event.target && event.target.closest
         ? event.target.closest('[data-birds-cta-action], #birdsExploreBtn, #birdsOpenLogBtn, #birdsOpenMapBtn, #natureChallengeRefreshBtn')
         : null;
@@ -9824,11 +9825,18 @@
       const handler = NATURE_CTA_ACTION_HANDLERS[action];
       if (!handler) return;
       event.preventDefault();
-      event.stopPropagation();
       const closestRoot = btn && btn.closest ? btn.closest('#natureChallengeRoot') : null;
       const root = resolveLiveNatureRoot(closestRoot);
       emitBirdClickTrace('cta-action-bus', event, btn, { action });
-      handler(root, btn);
+      try {
+        handler(root, btn);
+        event.__natureCtaHandled = true;
+      } catch (error) {
+        emitBirdClickTrace('cta-action-bus-error', event, btn, {
+          action,
+          message: error && error.message ? String(error.message) : 'unknown-error'
+        });
+      }
     }, true);
   }
 
@@ -9841,7 +9849,7 @@
       if (!button || button.dataset.natureCtaFallbackBound === '1') return;
       button.dataset.natureCtaFallbackBound = '1';
       button.addEventListener('click', (event) => {
-        if (!event || event.defaultPrevented) return;
+        if (!event || event.__natureCtaHandled === true) return;
         const action = resolveNatureCtaActionFromButton(button);
         if (!action) return;
         const handler = NATURE_CTA_ACTION_HANDLERS[action];
@@ -9852,9 +9860,16 @@
           return;
         }
         event.preventDefault();
-        event.stopPropagation();
         emitBirdClickTrace('cta-direct-fallback', event, button, { action });
-        handler(liveRoot, button);
+        try {
+          handler(liveRoot, button);
+          event.__natureCtaHandled = true;
+        } catch (error) {
+          emitBirdClickTrace('cta-direct-fallback-error', event, button, {
+            action,
+            message: error && error.message ? String(error.message) : 'unknown-error'
+          });
+        }
       });
     });
   }
@@ -9950,6 +9965,7 @@
     ensureBirdCtaHealthPanel(root);
 
     const handleDelegatedActivation = (event) => {
+      if (event && event.__natureCtaHandled === true) return;
       const delegatedTarget = getDelegatedNatureActionTarget(root, event);
       if (!delegatedTarget) {
         emitBirdClickTrace('no-delegated-target', event, event && event.target ? event.target : null);

@@ -1,11 +1,12 @@
 {
-  "generatedAt": "2026-04-20T23:43:47.587Z",
+  "generatedAt": "2026-04-20T23:55:14.257Z",
   "pass": true,
   "startupSamplesMs": [
-    96,
-    102
+    103,
+    100,
+    97
   ],
-  "startupMsP95": 102,
+  "startupMsP95": 103,
   "firstClickChecks": 1,
   "firstClickSuccesses": 1,
   "firstClickSuccessRate": 1,
@@ -16,7 +17,16 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-04-20T23:44:01.619Z"
+      "at": "2026-04-20T23:55:29.329Z"
+    },
+    {
+      "name": "probe:hidden-overlay-detected",
+      "passed": true,
+      "detail": {
+        "blockedPoints": 5,
+        "reason": ""
+      },
+      "at": "2026-04-20T23:55:30.832Z"
     },
     {
       "name": "repeat:nature-explore-tab-switches",
@@ -45,7 +55,7 @@
           }
         ]
       },
-      "at": "2026-04-20T23:44:08.750Z"
+      "at": "2026-04-20T23:55:38.427Z"
     }
   ]
 }
