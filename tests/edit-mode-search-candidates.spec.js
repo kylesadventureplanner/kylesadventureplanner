@@ -1,0 +1,162 @@
+const { test, expect } = require('./reliability-test');
+
+const FESTIVALS_SCHEMA = ['Description', 'Name', 'Address', 'City', 'State', 'Official Website', 'Phone Number', 'Rating', 'Directions', 'Google Place ID', 'Google URL'];
+
+function buildResolvedByPlaceId(placeId) {
+  const safeId = String(placeId || '').trim();
+  const slug = safeId.replace(/^pid-/, '') || 'item';
+  const label = slug.replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+  return {
+    placeId: safeId,
+    name: `Name ${label}`,
+    address: `${label} Address, Denver, CO`,
+    website: `https://${slug}.example.com`,
+    businessType: `tag-${slug}`,
+    hours: `9-5 ${label}`,
+    phone: '555-1000',
+    rating: '4.8',
+    userRatingsTotal: 88,
+    directions: `https://maps.example.com/${slug}`
+  };
+}
+
+async function installMocks(context, graphCalls) {
+  await context.route('https://graph.microsoft.com/**', async (route) => {
+    const request = route.request();
+    const method = request.method();
+    const url = request.url();
+
+    if (url.includes('/columns')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          value: FESTIVALS_SCHEMA.map((name, index) => ({ name, index }))
+        })
+      });
+      return;
+    }
+
+    if (method === 'GET' && url.includes('/rows')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ value: [{ values: [new Array(FESTIVALS_SCHEMA.length).fill('')] }] })
+      });
+      return;
+    }
+
+    if (method === 'POST' && url.includes('/rows')) {
+      graphCalls.push({
+        url,
+        body: JSON.parse(request.postData() || '{}')
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true })
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ value: [] })
+    });
+  });
+}
+
+test.describe('Edit Mode single-add candidate search', () => {
+  test('searches candidates and adds the selected candidate using existing single-add flow', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async (query) => {
+        const q = String(query || '').trim().toLowerCase();
+        if (!q) return [];
+        return [
+          {
+            placeId: 'pid-apple-festival-main',
+            name: 'Apple Festival Main Grounds',
+            address: '101 Orchard Ave, Denver, CO',
+            rating: 4.8,
+            reviewCount: 420,
+            businessStatus: 'OPERATIONAL'
+          },
+          {
+            placeId: 'pid-apple-festival-river',
+            name: 'Apple Festival Riverfront',
+            address: '9 River St, Denver, CO',
+            rating: 4.6,
+            reviewCount: 131,
+            businessStatus: 'OPERATIONAL'
+          }
+        ];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        const slug = placeId.replace(/^pid-/, '') || 'item';
+        const titleCase = slug.replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+        return {
+          placeId,
+          ...({
+            name: `Name ${titleCase}`,
+            address: `${titleCase} Address, Denver, CO`,
+            website: `https://${slug}.example.com`,
+            businessType: `tag-${slug}`,
+            hours: `9-5 ${titleCase}`,
+            phone: '555-1000',
+            rating: '4.8',
+            userRatingsTotal: 88,
+            directions: `https://maps.example.com/${slug}`
+          })
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#singleInputType', 'placeName');
+    await popup.fill('#singleInput', 'apple festival');
+    await popup.click('button:has-text("Search Candidates")');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
+    await expect(popup.locator('#single-search-status')).toContainText('Found 2 match');
+
+    await popup.locator('#single-candidates .candidate-item').nth(1).click();
+    await popup.click('#singleAddSelectedCandidateBtn');
+
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
+
+    const row = graphCalls[0].body.values[0];
+    const resolved = buildResolvedByPlaceId('pid-apple-festival-river');
+    expect(row).toHaveLength(FESTIVALS_SCHEMA.length);
+    expect(row[1]).toBe(resolved.name);
+    expect(row[2]).toBe(resolved.address);
+    expect(row[5]).toBe(resolved.website);
+    expect(row[9]).toBe(resolved.placeId);
+    expect(String(row[10] || '')).toContain(resolved.placeId);
+  });
+});
+

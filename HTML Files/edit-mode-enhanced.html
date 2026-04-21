@@ -363,6 +363,44 @@
       font-size: 12px;
       color: #1e3a8a;
     }
+
+    .candidate-results {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .candidate-item {
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 10px;
+      background: #ffffff;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .candidate-item:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+    }
+
+    .candidate-item.selected {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .candidate-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+
+    .candidate-meta {
+      font-size: 12px;
+      color: #4b5563;
+      line-height: 1.35;
+    }
   </style>
 </head>
 <body>
@@ -441,9 +479,13 @@
 
         <div class="button-group">
           <button class="button button-secondary" onclick="clearSingleForm()">Clear</button>
+          <button class="button button-secondary" type="button" onclick="searchSinglePlaceCandidates()">🔎 Search Candidates</button>
+          <button id="singleAddSelectedCandidateBtn" class="button button-secondary" type="button" onclick="addSelectedSingleCandidate()" disabled>✅ Add Selected Candidate</button>
           <button class="button button-primary" onclick="submitAddSinglePlace()">➕ Add Place</button>
         </div>
 
+        <div id="single-search-status"></div>
+        <div id="single-candidates" class="candidate-results" aria-live="polite"></div>
         <div id="single-status"></div>
       </div>
 
@@ -744,6 +786,12 @@
       { id: 'ent_general', label: 'Entertainment_Locations.xlsx / General_Entertainment', filePath: 'Entertainment_Locations.xlsx', tableName: 'General_Entertainment' }
     ];
     const targetSchemaCache = {};
+    const singleCandidateState = {
+      query: '',
+      inputType: 'placeName',
+      selectedIndex: -1,
+      results: []
+    };
 
     function isEmbeddedEditMode() {
       try {
@@ -1136,6 +1184,163 @@
       }
     }
 
+    function setSingleCandidateStatus(message, kind) {
+      const statusDiv = document.getElementById('single-search-status');
+      if (!statusDiv) return;
+      if (!message) {
+        statusDiv.innerHTML = '';
+        return;
+      }
+      const safeKind = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : '');
+      statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
+    }
+
+    function normalizeSingleSearchCandidate(item) {
+      const raw = item && typeof item === 'object' ? item : {};
+      return {
+        placeId: String(raw.placeId || '').trim(),
+        name: String(raw.name || 'Unnamed result').trim(),
+        address: String(raw.address || '').trim(),
+        rating: raw.rating == null ? '' : String(raw.rating),
+        reviewCount: Number.isFinite(Number(raw.reviewCount)) ? Number(raw.reviewCount) : 0,
+        businessStatus: String(raw.businessStatus || '').trim()
+      };
+    }
+
+    function getSelectedSingleCandidate() {
+      const idx = Number(singleCandidateState.selectedIndex);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= singleCandidateState.results.length) return null;
+      return singleCandidateState.results[idx] || null;
+    }
+
+    function renderSingleCandidateResults() {
+      const container = document.getElementById('single-candidates');
+      const addBtn = document.getElementById('singleAddSelectedCandidateBtn');
+      if (!container) return;
+
+      const selected = getSelectedSingleCandidate();
+      if (addBtn) addBtn.disabled = !selected;
+
+      if (!singleCandidateState.results.length) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const rows = singleCandidateState.results.map((candidate, index) => {
+        const selectedClass = index === singleCandidateState.selectedIndex ? 'selected' : '';
+        const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
+        const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
+        const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
+        return `
+          <div class="candidate-item ${selectedClass}" role="button" tabindex="0" onclick="selectSingleCandidate(${index})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectSingleCandidate(${index});}">
+            <div class="candidate-title">${candidate.name}</div>
+            <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
+            <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+          </div>
+        `;
+      }).join('');
+      container.innerHTML = rows;
+    }
+
+    function resetSingleCandidateResults() {
+      singleCandidateState.query = '';
+      singleCandidateState.inputType = String(document.getElementById('singleInputType')?.value || 'placeName');
+      singleCandidateState.selectedIndex = -1;
+      singleCandidateState.results = [];
+      renderSingleCandidateResults();
+      setSingleCandidateStatus('', 'info');
+    }
+
+    function selectSingleCandidate(index) {
+      if (!Number.isInteger(Number(index))) return;
+      const idx = Number(index);
+      if (idx < 0 || idx >= singleCandidateState.results.length) return;
+      singleCandidateState.selectedIndex = idx;
+      renderSingleCandidateResults();
+    }
+
+    async function searchSinglePlaceCandidates() {
+      const inputEl = document.getElementById('singleInput');
+      const inputTypeEl = document.getElementById('singleInputType');
+      const query = String(inputEl && inputEl.value ? inputEl.value : '').trim();
+      const inputType = String(inputTypeEl && inputTypeEl.value ? inputTypeEl.value : 'placeName');
+
+      if (!query) {
+        setSingleCandidateStatus('❌ Enter a query first (for example: "apple festival").', 'error');
+        return;
+      }
+      if (inputType === 'placeId' || inputType === 'placeUrl') {
+        setSingleCandidateStatus('⚠️ Candidate search works best with Place Name, Place Name + City, or Address.', 'error');
+        return;
+      }
+
+      const mainWindow = getMainWindowSafe();
+      if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
+        setSingleCandidateStatus('❌ Search is not available. Ensure Google Places is loaded in the main window.', 'error');
+        return;
+      }
+
+      setSingleCandidateStatus('<span class="spinner"></span> Searching for nearby matches...', 'info');
+      singleCandidateState.selectedIndex = -1;
+      renderSingleCandidateResults();
+
+      try {
+        const rawResults = await mainWindow.searchPlaces(query);
+        const normalized = Array.isArray(rawResults)
+          ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId)
+          : [];
+        singleCandidateState.query = query;
+        singleCandidateState.inputType = inputType;
+        singleCandidateState.results = normalized.slice(0, 8);
+        singleCandidateState.selectedIndex = singleCandidateState.results.length ? 0 : -1;
+        renderSingleCandidateResults();
+
+        if (!singleCandidateState.results.length) {
+          setSingleCandidateStatus('⚠️ No results found. Try adding a city/state to your search.', 'error');
+          return;
+        }
+
+        setSingleCandidateStatus(`✅ Found ${singleCandidateState.results.length} match(es). Select one, then click "Add Selected Candidate".`, 'success');
+      } catch (error) {
+        console.error('❌ Candidate search failed:', error);
+        setSingleCandidateStatus(`❌ Search failed: ${error && error.message ? error.message : 'Unknown error'}`, 'error');
+      }
+    }
+
+    async function addSelectedSingleCandidate() {
+      const selected = getSelectedSingleCandidate();
+      if (!selected || !selected.placeId) {
+        setSingleCandidateStatus('❌ Select a candidate first.', 'error');
+        return;
+      }
+
+      const inputTypeEl = document.getElementById('singleInputType');
+      const inputEl = document.getElementById('singleInput');
+      if (inputTypeEl) inputTypeEl.value = 'placeId';
+      if (inputEl) inputEl.value = selected.placeId;
+
+      setSingleCandidateStatus(`✅ Selected ${selected.name}. Adding now...`, 'success');
+      await submitAddSinglePlace();
+    }
+
+    function initSingleCandidateSearch() {
+      const inputEl = document.getElementById('singleInput');
+      const inputTypeEl = document.getElementById('singleInputType');
+      if (inputEl) {
+        inputEl.addEventListener('input', () => {
+          if (!singleCandidateState.query) return;
+          const current = String(inputEl.value || '').trim();
+          if (current !== singleCandidateState.query) resetSingleCandidateResults();
+        });
+      }
+      if (inputTypeEl) {
+        inputTypeEl.addEventListener('change', () => {
+          if (singleCandidateState.results.length) resetSingleCandidateResults();
+        });
+      }
+      renderSingleCandidateResults();
+    }
+
 
     /**
      * Update feature dry run state
@@ -1431,6 +1636,7 @@
     function clearSingleForm() {
       document.getElementById('singleInput').value = '';
       document.getElementById('single-status').innerHTML = '';
+      resetSingleCandidateResults();
     }
 
     function clearBulkForm() {
@@ -1453,6 +1659,7 @@
       }
       initializeTabs();
       initTargetSelectors();
+      initSingleCandidateSearch();
     });
 
     // Also try immediately in case DOM is already ready
@@ -1465,6 +1672,7 @@
       }
       initializeTabs();
       initTargetSelectors();
+      initSingleCandidateSearch();
     }
 
     console.log('📋 Available functions:', {
