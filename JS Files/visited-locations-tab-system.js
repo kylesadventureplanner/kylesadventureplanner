@@ -2119,7 +2119,7 @@
       selectedId = filteredOptions[0].id;
     }
 
-    locationSelect.disabled = filteredOptions.length === 0;
+    locationSelect.disabled = false;
     locationSelect.classList.toggle('is-no-matches', Boolean(query) && filteredOptions.length === 0);
     if (locationSelect.disabled) {
       locationSelect.value = '';

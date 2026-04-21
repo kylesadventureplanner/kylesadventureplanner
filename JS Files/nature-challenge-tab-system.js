@@ -4842,7 +4842,107 @@
       `;
     }
 
+    renderConfiguredSubTabQuickLog(subTabKey);
+
     renderConfiguredSubTabDiagnostics(subTabKey);
+  }
+
+  function getConfiguredQuickLogElementId(subTabKey, suffix) {
+    return `${String(subTabKey || '').trim()}QuickLog${String(suffix || '').trim()}`;
+  }
+
+  function ensureConfiguredSubTabQuickLogCard(subTabKey) {
+    const pane = document.getElementById(`natureChallengePane-${subTabKey}`);
+    if (!pane) return null;
+    const existing = pane.querySelector(`[data-config-subtab-quick-log="${subTabKey}"]`);
+    if (existing) return existing;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.setAttribute('data-config-subtab-quick-log', String(subTabKey || '').trim());
+    pane.appendChild(card);
+    return card;
+  }
+
+  function renderConfiguredSubTabQuickLog(subTabKey) {
+    const cfg = getSubTabConfig(subTabKey);
+    const subState = state.subTabData[subTabKey];
+    const card = ensureConfiguredSubTabQuickLogCard(subTabKey);
+    if (!cfg || !subState || !card) return;
+    const singular = toCategorySingularLabel(cfg.label || 'Species').toLowerCase();
+    const speciesOptions = (Array.isArray(subState.birds) ? subState.birds : [])
+      .slice()
+      .sort((a, b) => String(a.speciesName || '').localeCompare(String(b.speciesName || '')))
+      .map((species) => `<option value="${escapeHtml(species.id)}">${escapeHtml(species.speciesName || species.id)}</option>`)
+      .join('');
+
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-title">📝 Quick Log ${escapeHtml(cfg.label)}</div>
+        <div class="card-subtitle">Shared log component with photo/audio evidence upload.</div>
+      </div>
+      <div class="nature-log-field-grid">
+        <div class="nature-log-field">
+          <label class="nature-log-field-label" for="${getConfiguredQuickLogElementId(subTabKey, 'SpeciesSelect')}">${escapeHtml(toCategorySingularLabel(cfg.label || 'Species'))}</label>
+          <select id="${getConfiguredQuickLogElementId(subTabKey, 'SpeciesSelect')}" class="filter-select">
+            <option value="">Select ${escapeHtml(singular)}...</option>
+            ${speciesOptions}
+          </select>
+        </div>
+        <div class="nature-log-field">
+          <label class="nature-log-field-label" for="${getConfiguredQuickLogElementId(subTabKey, 'DateInput')}">Observation date</label>
+          <input id="${getConfiguredQuickLogElementId(subTabKey, 'DateInput')}" class="filter-input" type="date" value="${escapeHtml(new Date().toISOString().slice(0, 10))}" />
+        </div>
+        <div class="nature-log-field">
+          <label class="nature-log-field-label" for="${getConfiguredQuickLogElementId(subTabKey, 'LocationInput')}">Location (optional)</label>
+          <input id="${getConfiguredQuickLogElementId(subTabKey, 'LocationInput')}" class="filter-input" type="text" placeholder="Trail, park, preserve..." />
+        </div>
+        <div class="nature-log-field">
+          <label class="nature-log-field-label" for="${getConfiguredQuickLogElementId(subTabKey, 'CountInput')}">Count</label>
+          <input id="${getConfiguredQuickLogElementId(subTabKey, 'CountInput')}" class="filter-input" type="number" min="1" value="1" />
+        </div>
+        <div class="nature-log-field">
+          <label class="nature-log-field-label" for="${getConfiguredQuickLogElementId(subTabKey, 'PhotoInput')}">Photo evidence <span class="nature-log-field-optional">optional</span></label>
+          <input id="${getConfiguredQuickLogElementId(subTabKey, 'PhotoInput')}" class="filter-input" type="file" accept="image/*" />
+        </div>
+        <div class="nature-log-field">
+          <label class="nature-log-field-label" for="${getConfiguredQuickLogElementId(subTabKey, 'AudioInput')}">Audio evidence <span class="nature-log-field-optional">optional</span></label>
+          <input id="${getConfiguredQuickLogElementId(subTabKey, 'AudioInput')}" class="filter-input" type="file" accept="audio/*" />
+        </div>
+      </div>
+      <div class="nature-log-form-actions" style="margin-top:10px;">
+        <button id="${getConfiguredQuickLogElementId(subTabKey, 'SaveBtn')}" type="button" class="pill-button">Log ${escapeHtml(toCategorySingularLabel(cfg.label || 'Species'))} Sighting</button>
+        <button id="${getConfiguredQuickLogElementId(subTabKey, 'ClearBtn')}" type="button" class="pill-button">Clear</button>
+      </div>
+      <div id="${getConfiguredQuickLogElementId(subTabKey, 'Status')}" class="nature-log-inline-status"></div>
+    `;
+
+    const saveBtn = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'SaveBtn'));
+    const clearBtn = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'ClearBtn'));
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        withBirdsActionGuard(saveBtn, () => logConfiguredSubTabQuickSighting(subTabKey));
+      });
+    }
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => clearConfiguredSubTabQuickLog(subTabKey));
+    }
+  }
+
+  function clearConfiguredSubTabQuickLog(subTabKey) {
+    const speciesSelect = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'SpeciesSelect'));
+    const dateInput = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'DateInput'));
+    const locationInput = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'LocationInput'));
+    const countInput = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'CountInput'));
+    const photoInput = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'PhotoInput'));
+    const audioInput = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'AudioInput'));
+    const statusEl = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'Status'));
+    if (speciesSelect) speciesSelect.value = '';
+    if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+    if (locationInput) locationInput.value = '';
+    if (countInput) countInput.value = '1';
+    if (photoInput) photoInput.value = '';
+    if (audioInput) audioInput.value = '';
+    if (statusEl) statusEl.textContent = '';
   }
 
   function renderConfiguredSubTabDiagnostics(subTabKey) {
@@ -5263,6 +5363,70 @@
     return workbookPath;
   }
 
+  function resolveQueueSubTabKey(item) {
+    const payload = item && item.payload && typeof item.payload === 'object' ? item.payload : {};
+    const raw = String(payload.subTabKey || '').trim().toLowerCase();
+    if (!raw) return 'birds';
+    if (raw === 'birds') return 'birds';
+    return isConfigDrivenSubTab(raw) ? raw : 'birds';
+  }
+
+  function getSyncCandidatesForSubTab(subTabKey) {
+    if (subTabKey === 'birds') return getBirdSyncFileCandidates();
+    const cfg = getSubTabConfig(subTabKey);
+    if (!cfg) return EXCEL_SYNC_FILE_CANDIDATES.slice();
+    return prioritizeWorkbookCandidates((cfg.syncFileCandidates || []).concat(EXCEL_SYNC_FILE_CANDIDATES));
+  }
+
+  async function resolveSyncTargetForSubTab(subTabKey, cache) {
+    const key = String(subTabKey || 'birds').trim().toLowerCase() || 'birds';
+    if (cache[key]) return cache[key];
+    if (key === 'birds') {
+      const workbookPath = await resolveBirdSyncWorkbookPath();
+      if (!workbookPath) {
+        throw new Error(`workbook with tables '${BIRD_SIGHTINGS_TABLE_NAME}' and '${BIRD_USER_STATE_TABLE_NAME}' was not found`);
+      }
+      const schemaSightings = await fetchTableColumnsAndRows(workbookPath, BIRD_SIGHTINGS_TABLE_NAME, 1);
+      const schemaUserState = await fetchTableColumnsAndRows(workbookPath, BIRD_USER_STATE_TABLE_NAME, 1);
+      const target = {
+        subTabKey: key,
+        workbookPath,
+        sightingsTableName: BIRD_SIGHTINGS_TABLE_NAME,
+        userStateTableName: BIRD_USER_STATE_TABLE_NAME,
+        sightingsRequiredColumns: BIRD_SIGHTINGS_REQUIRED_COLUMNS,
+        userStateRequiredColumns: BIRD_USER_STATE_REQUIRED_COLUMNS,
+        schemaSightings,
+        schemaUserState
+      };
+      cache[key] = target;
+      return target;
+    }
+
+    const cfg = getSubTabConfig(key);
+    if (!cfg) throw new Error(`unsupported sync subtab: ${key}`);
+    const workbookPath = await findWorkbookPathWithTables(
+      [cfg.sightingsTableName, cfg.userStateTableName],
+      getSyncCandidatesForSubTab(key)
+    );
+    if (!workbookPath) {
+      throw new Error(`workbook with tables '${cfg.sightingsTableName}' and '${cfg.userStateTableName}' was not found`);
+    }
+    const schemaSightings = await fetchTableColumnsAndRows(workbookPath, cfg.sightingsTableName, 1);
+    const schemaUserState = await fetchTableColumnsAndRows(workbookPath, cfg.userStateTableName, 1);
+    const target = {
+      subTabKey: key,
+      workbookPath,
+      sightingsTableName: cfg.sightingsTableName,
+      userStateTableName: cfg.userStateTableName,
+      sightingsRequiredColumns: BIRD_SIGHTINGS_REQUIRED_COLUMNS,
+      userStateRequiredColumns: BIRD_USER_STATE_REQUIRED_COLUMNS,
+      schemaSightings,
+      schemaUserState
+    };
+    cache[key] = target;
+    return target;
+  }
+
   async function loadBirdDataset(forceRefresh) {
     if (state.birdsLoading) return;
     if (state.birdsLoaded && !forceRefresh) return;
@@ -5343,6 +5507,7 @@
       birdId,
       speciesStatusKey: bird ? getBirdStatusKey(bird) : '',
       canonicalId: bird ? (bird.canonicalId || bird.id) : '',
+      subTabKey: getPersistenceSubTabKey(state.activeSubTab),
       favorited: !has,
       updatedAt: timestamp
     });
@@ -5513,14 +5678,17 @@
     saveSyncConflicts();
   }
 
-  function addSightingLogEntry(entry) {
+  function addSightingLogEntry(entry, options = {}) {
     const normalized = normalizeSightingEntry(entry);
+    const queueSync = options && Object.prototype.hasOwnProperty.call(options, 'queueSync')
+      ? Boolean(options.queueSync)
+      : true;
     state.sightingLog.unshift(normalized);
     state.sightingLog = state.sightingLog.slice(0, 600);
     saveSightingLog();
     addConflictIfNeeded(normalized);
     updateBirdingStatusFromLog();
-    enqueueSyncAction('log-sighting', normalized);
+    if (queueSync) enqueueSyncAction('log-sighting', normalized);
   }
 
   function toBirdSightingRecord(entry, userId, deviceId) {
@@ -5920,28 +6088,6 @@
     }
 
     const deviceId = getBirdSyncDeviceId();
-    const workbookPath = await resolveBirdSyncWorkbookPath();
-    if (!workbookPath) {
-      state.syncLastError = `Sync skipped: workbook with tables '${BIRD_SIGHTINGS_TABLE_NAME}' and '${BIRD_USER_STATE_TABLE_NAME}' was not found.`;
-      state.syncLastErrorCode = 'NOT_FOUND';
-      renderSyncStatusPanel();
-      return;
-    }
-
-    let schemaSightings = null;
-    let schemaUserState = null;
-    try {
-      schemaSightings = await fetchTableColumnsAndRows(workbookPath, BIRD_SIGHTINGS_TABLE_NAME, 1);
-      schemaUserState = await fetchTableColumnsAndRows(workbookPath, BIRD_USER_STATE_TABLE_NAME, 1);
-      setSyncSchemaDiagnosticsFromColumns(schemaSightings.columns, schemaUserState.columns);
-    } catch (error) {
-      const reason = error && error.message ? error.message : 'failed to fetch table schema';
-      setSyncSchemaDiagnosticsUnknown(reason);
-      state.syncLastError = `Sync skipped: could not validate table schemas (${reason}).`;
-      state.syncLastErrorCode = classifyBirdSyncError(error);
-      renderSyncStatusPanel();
-      return;
-    }
 
     const pending = Array.isArray(state.syncQueue) ? state.syncQueue.slice() : [];
     if (!pending.length) {
@@ -5952,30 +6098,43 @@
 
     const nextQueue = [];
     const failedNotes = [];
+    const syncTargetCache = {};
 
     for (let i = 0; i < pending.length; i += 1) {
       const item = pending[i];
       try {
+        const routeSubTabKey = resolveQueueSubTabKey(item);
+        const syncTarget = await resolveSyncTargetForSubTab(routeSubTabKey, syncTargetCache);
+        if (routeSubTabKey === 'birds') {
+          setSyncSchemaDiagnosticsFromColumns(
+            syncTarget.schemaSightings && Array.isArray(syncTarget.schemaSightings.columns) ? syncTarget.schemaSightings.columns : [],
+            syncTarget.schemaUserState && Array.isArray(syncTarget.schemaUserState.columns) ? syncTarget.schemaUserState.columns : []
+          );
+        }
+
         if (item.type === 'log-sighting') {
           await appendRecordsToTable(
-            workbookPath,
-            BIRD_SIGHTINGS_TABLE_NAME,
+            syncTarget.workbookPath,
+            syncTarget.sightingsTableName,
             [toBirdSightingRecord(item.payload || {}, userId, deviceId)],
-            BIRD_SIGHTINGS_REQUIRED_COLUMNS
+            syncTarget.sightingsRequiredColumns
           );
           markQueueItemSucceeded(item);
         } else if (item.type === 'favorite-toggle') {
           await appendRecordsToTable(
-            workbookPath,
-            BIRD_USER_STATE_TABLE_NAME,
+            syncTarget.workbookPath,
+            syncTarget.userStateTableName,
             [toBirdUserStateRecord(item.payload || {}, userId, deviceId)],
-            BIRD_USER_STATE_REQUIRED_COLUMNS
+            syncTarget.userStateRequiredColumns
           );
         } else {
           // Unknown queue item type: keep for future processors.
           nextQueue.push(item);
         }
       } catch (error) {
+        if (resolveQueueSubTabKey(item) === 'birds') {
+          setSyncSchemaDiagnosticsUnknown(error && error.message ? error.message : 'failed to fetch table schema');
+        }
         const attempts = Math.max(0, Number(item.attempts || 0)) + 1;
         const classifiedCode = classifyBirdSyncError(error);
         nextQueue.push({
@@ -6928,6 +7087,100 @@
       ${next ? `<button type="button" class="nature-log-nudge-chip" data-birds-log-next-action="open-next" data-bird-open="${escapeHtml(next.bird.id)}">Open recommended next species</button>` : ''}
       <button type="button" class="nature-log-nudge-chip" data-birds-log-next-action="view-progress">View updated progress</button>
     `;
+  }
+
+  async function logConfiguredSubTabQuickSighting(subTabKey) {
+    const cfg = getSubTabConfig(subTabKey);
+    const subState = state.subTabData[subTabKey];
+    if (!cfg || !subState) return;
+
+    const speciesSelect = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'SpeciesSelect'));
+    const dateInput = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'DateInput'));
+    const locationInput = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'LocationInput'));
+    const countInput = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'CountInput'));
+    const statusEl = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'Status'));
+
+    const speciesId = String(speciesSelect && speciesSelect.value ? speciesSelect.value : '').trim();
+    const selectedSpecies = (Array.isArray(subState.birds) ? subState.birds : []).find((row) => String(row.id || '') === speciesId);
+    if (!selectedSpecies) {
+      if (statusEl) statusEl.innerHTML = '<div class="status-message status-error">Select a species before logging.</div>';
+      return;
+    }
+
+    const dateObserved = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().slice(0, 10);
+    const locationName = String(locationInput && locationInput.value ? locationInput.value : '').trim();
+    const count = Math.max(1, Number(countInput && countInput.value ? countInput.value : 1) || 1);
+    const photoFile = readAttachmentFile(getConfiguredQuickLogElementId(subTabKey, 'PhotoInput'));
+    const audioFile = readAttachmentFile(getConfiguredQuickLogElementId(subTabKey, 'AudioInput'));
+
+    const uploadErrors = [];
+    let uploadedPhoto = null;
+    let uploadedAudio = null;
+
+    if (window.accessToken) {
+      if (photoFile) {
+        try {
+          uploadedPhoto = await uploadEvidenceToOneDrive(photoFile, { subTabKey, kind: 'photo' });
+        } catch (error) {
+          uploadErrors.push(`photo: ${error && error.message ? error.message : 'upload failed'}`);
+        }
+      }
+      if (audioFile) {
+        try {
+          uploadedAudio = await uploadEvidenceToOneDrive(audioFile, { subTabKey, kind: 'audio' });
+        } catch (error) {
+          uploadErrors.push(`audio: ${error && error.message ? error.message : 'upload failed'}`);
+        }
+      }
+    } else if (photoFile || audioFile) {
+      uploadErrors.push('media upload skipped: sign in to OneDrive to upload evidence files');
+    }
+
+    const entry = {
+      id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      speciesId: selectedSpecies.id,
+      speciesStatusKey: getBirdStatusKey(selectedSpecies),
+      canonicalId: selectedSpecies.canonicalId || selectedSpecies.id,
+      speciesName: selectedSpecies.speciesName,
+      familyLabel: selectedSpecies.familyLabel,
+      dateObserved,
+      locationName,
+      count,
+      region: '',
+      habitat: '',
+      latitude: null,
+      longitude: null,
+      confidence: 'certain',
+      notes: '',
+      photoName: uploadedPhoto && uploadedPhoto.name ? uploadedPhoto.name : (photoFile && photoFile.name ? photoFile.name : ''),
+      audioName: uploadedAudio && uploadedAudio.name ? uploadedAudio.name : (audioFile && audioFile.name ? audioFile.name : ''),
+      photoUrl: uploadedPhoto && uploadedPhoto.webUrl ? uploadedPhoto.webUrl : '',
+      audioUrl: uploadedAudio && uploadedAudio.webUrl ? uploadedAudio.webUrl : '',
+      createdAt: new Date().toISOString(),
+      synced: false,
+      subTabKey: String(subTabKey || '').trim()
+    };
+    if (uploadErrors.length) {
+      entry.evidenceUploadError = uploadErrors.join(' | ').slice(0, 500);
+    }
+
+    // Queue configured subtab logs so sync routing can write to category-specific Excel tables.
+    addSightingLogEntry(entry, { queueSync: true });
+    persistConfigDrivenWorkspaceState(subTabKey);
+    renderConfiguredSubTab(subTabKey);
+    clearConfiguredSubTabQuickLog(subTabKey);
+
+    const refreshedStatusEl = document.getElementById(getConfiguredQuickLogElementId(subTabKey, 'Status'));
+    if (refreshedStatusEl) {
+      const locationSuffix = locationName ? ` at ${escapeHtml(locationName)}` : '';
+      refreshedStatusEl.innerHTML = `<div class="status-message status-success">Saved ${escapeHtml(selectedSpecies.speciesName)} for ${escapeHtml(dateObserved)}${locationSuffix}.</div>`;
+    }
+    if (typeof window.showToast === 'function') {
+      window.showToast(`Logged ${selectedSpecies.speciesName} in ${cfg.label}.`, 'success', 2600);
+      if (uploadErrors.length) {
+        window.showToast('Saved sighting, but one or more media uploads did not complete.', 'info', 3200);
+      }
+    }
   }
 
   async function logSightingFromForm(mode = 'save') {
@@ -8216,26 +8469,22 @@
       sorted.sort((a, b) => {
         const at = getSightingDate(a);
         const bt = getSightingDate(b);
-        const av = at ? at.getTime() : -1;
-        const bv = bt ? bt.getTime() : -1;
-        if (bv !== av) return bv - av;
+        if (at && bt) return bt.getTime() - at.getTime();
+        if (at && !bt) return -1;
+        if (!at && bt) return 1;
         return bySpecies(a, b);
       });
       return sorted;
     }
 
-    sorted.sort((a, b) => a.familyLabel.localeCompare(b.familyLabel) || bySpecies(a, b));
-    return sorted;
+    return sorted.sort((a, b) => a.familyLabel.localeCompare(b.familyLabel) || bySpecies(a, b));
   }
 
-  function renderBirdExplorerRecommendationStrip(stats, familyLookup) {
-    const container = document.getElementById('birdsExplorerRecommendationStrip');
+  function renderBirdExplorerRecommendations() {
+    const container = document.getElementById('birdsExplorerRecommendations');
     if (!container) return;
-    if (!state.birdsLoaded) {
-      container.textContent = 'Loading recommendations...';
-      return;
-    }
-
+    const stats = state.birdCollectionsCache && state.birdCollectionsCache.stats ? state.birdCollectionsCache.stats : getBirdStats();
+    const familyLookup = buildFamilyProgressLookup(stats);
     const candidates = sortExplorerBirds(state.birds)
       .map((bird) => ({ bird, insight: getBirdExplorerInsight(bird, stats, familyLookup) }))
       .filter((entry) => !entry.insight.seen)
@@ -8256,7 +8505,7 @@
         <div class="nature-explorer-reco-subtitle">${escapeHtml(subtitle)}</div>
         <div class="nature-explorer-reco-list">
           ${(list || []).map((entry) => `
-            <button type="button" class="nature-explorer-reco-btn" data-bird-open="${escapeHtml(entry.bird.id)}" ${tooltipAttrs(`Open bird details for ${entry.bird.speciesName}`)}>
+            <button type="button" class="nature-explorer-reco-item" data-bird-open="${escapeHtml(entry.bird.id)}">
               ${escapeHtml(entry.bird.speciesName)} - ${escapeHtml(entry.insight.primaryReason)}
             </button>
           `).join('') || '<span class="card-subtitle">No recommendations in this bucket right now.</span>'}
@@ -8265,10 +8514,14 @@
     `;
 
     container.innerHTML = [
-      renderBucket('Look for these today', 'Best birds for right now', topNow),
+      renderBucket('Top next targets', 'Strong matches for your current progress and season', topNow),
       renderBucket('Rare opportunities', 'High rarity birds worth prioritizing', rareNow),
       renderBucket('Progress opportunities', 'Strong progress and completion targets', progressNow)
     ].join('');
+  }
+
+  function renderBirdExplorerRecommendationStrip() {
+    renderBirdExplorerRecommendations();
   }
 
   function filterBirdsForExplorer() {
