@@ -15,6 +15,20 @@ This project now supports festival-event providers in Edit Mode.
 - Official Tourism/County feeds (RSS/Atom/iCal/JSON/HTML JSON-LD)
 - FestivalNet / Chamber feeds (RSS/Atom/iCal/JSON/HTML JSON-LD)
 
+## New controls in Festival Sources panel
+
+- Per-source test buttons:
+  - `Test Ticketmaster Only`
+  - `Test Eventbrite Only`
+  - `Test Feeds Only`
+- Source priority controls (`1` runs earlier than `4`)
+- Source weight controls (higher weight boosts ranking score)
+- `Show API credentials` toggle (reveals/hides key/token fields)
+- `Export Source Config JSON` and `Import Source Config JSON`
+- Drag/drop provider ordering list (top runs first)
+- Provider health indicators (last success/error, returned count, timing)
+- `Dry-Run Source Diagnostics` summary (per-provider counts and timings)
+
 ## Required credentials
 
 ### Ticketmaster
@@ -43,6 +57,9 @@ If a label is included, use `Label|URL`.
 - The config is mirrored to runtime object: `window.__festivalSourceConfig`.
 - For Festivals target, candidate search can import events without Google Place IDs.
 - If a source fails (timeout/CORS/HTTP), the app logs a warning and continues with other sources.
+- Provider filters are supported during source test runs via `providerFilter` in `searchFestivalEvents` options.
+- Ranking uses query relevance plus configured provider weight and priority.
+- Provider order is persisted via `providerOrder` in source config JSON.
 
 ## Quick validation
 

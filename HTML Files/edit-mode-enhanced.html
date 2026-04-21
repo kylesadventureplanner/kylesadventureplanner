@@ -778,6 +778,13 @@
         </div>
 
         <div class="input-group">
+          <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0;">
+            <input id="festivalKeysVisibleToggle" type="checkbox">
+            Show API credentials
+          </label>
+        </div>
+
+        <div class="input-group">
           <label for="festivalTicketmasterApiKey">Ticketmaster API Key</label>
           <input id="festivalTicketmasterApiKey" type="password" placeholder="Enter Ticketmaster Discovery API key">
         </div>
@@ -808,10 +815,60 @@
           </select>
         </div>
 
+        <div class="input-group">
+          <label style="text-transform:none; letter-spacing:0;">Source Ordering (drag to reorder) + Weight</label>
+          <div class="help-text">Drag providers top-to-bottom to set priority. Top runs first.</div>
+          <ul id="festivalProviderOrderList" style="list-style:none; margin:10px 0 0; padding:0; display:grid; gap:8px;">
+            <li data-provider-key="official_calendars" draggable="true" style="display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; background:#f9fafb; cursor:grab;">
+              <div><strong>::</strong> Official Calendars</div>
+              <label style="display:flex; align-items:center; gap:6px; margin:0; text-transform:none; letter-spacing:0; font-size:12px;">Weight <input id="festivalWeightOfficial" type="number" min="0" max="5" step="0.1" value="1.5" style="width:72px;"></label>
+            </li>
+            <li data-provider-key="ticketmaster" draggable="true" style="display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; background:#f9fafb; cursor:grab;">
+              <div><strong>::</strong> Ticketmaster</div>
+              <label style="display:flex; align-items:center; gap:6px; margin:0; text-transform:none; letter-spacing:0; font-size:12px;">Weight <input id="festivalWeightTicketmaster" type="number" min="0" max="5" step="0.1" value="1.3" style="width:72px;"></label>
+            </li>
+            <li data-provider-key="chamber_feeds" draggable="true" style="display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; background:#f9fafb; cursor:grab;">
+              <div><strong>::</strong> FestivalNet / Chamber</div>
+              <label style="display:flex; align-items:center; gap:6px; margin:0; text-transform:none; letter-spacing:0; font-size:12px;">Weight <input id="festivalWeightChamber" type="number" min="0" max="5" step="0.1" value="1" style="width:72px;"></label>
+            </li>
+            <li data-provider-key="eventbrite" draggable="true" style="display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; background:#f9fafb; cursor:grab;">
+              <div><strong>::</strong> Eventbrite</div>
+              <label style="display:flex; align-items:center; gap:6px; margin:0; text-transform:none; letter-spacing:0; font-size:12px;">Weight <input id="festivalWeightEventbrite" type="number" min="0" max="5" step="0.1" value="1.1" style="width:72px;"></label>
+            </li>
+          </ul>
+        </div>
+
+        <div class="input-group">
+          <label for="festivalSourcesJsonPayload">Source Config JSON (export/import)</label>
+          <textarea id="festivalSourcesJsonPayload" placeholder="Use Export to generate JSON, then Import to apply it."></textarea>
+        </div>
+
         <div class="button-group">
           <button class="button button-secondary" type="button" onclick="saveFestivalSourcesConfig()">💾 Save Festival Sources</button>
           <button class="button button-secondary" type="button" onclick="resetFestivalSourcesConfig()">↺ Reset to Defaults</button>
           <button class="button button-secondary" type="button" onclick="testFestivalSourcesConfig()">🧪 Test Festival Source Search</button>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-secondary" type="button" onclick="testFestivalSourcesByType('ticketmaster')">🧪 Test Ticketmaster Only</button>
+          <button class="button button-secondary" type="button" onclick="testFestivalSourcesByType('eventbrite')">🧪 Test Eventbrite Only</button>
+          <button class="button button-secondary" type="button" onclick="testFestivalSourcesByType('feeds')">🧪 Test Feeds Only</button>
+          <button class="button button-secondary" type="button" onclick="runFestivalSourceDiagnostics()">📊 Dry-Run Source Diagnostics</button>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-secondary" type="button" onclick="exportFestivalSourcesConfigJson()">📤 Export Source Config JSON</button>
+          <button class="button button-secondary" type="button" onclick="importFestivalSourcesConfigJson()">📥 Import Source Config JSON</button>
+        </div>
+
+        <div class="input-group">
+          <label style="text-transform:none; letter-spacing:0;">Provider Health</label>
+          <div id="festivalSourceHealthRows" class="help-text">Run a test to populate provider health.</div>
+        </div>
+
+        <div class="input-group">
+          <label style="text-transform:none; letter-spacing:0;">Latest Dry-Run Diagnostics</label>
+          <div id="festivalSourceDiagnosticsRows" class="help-text">No diagnostics yet.</div>
         </div>
 
         <div id="festival-sources-status"></div>
@@ -1066,7 +1123,15 @@
         eventbriteApiToken: '',
         officialCalendarsFeeds: '',
         chamberFeeds: '',
-        maxResultsPerSource: 8
+        maxResultsPerSource: 8,
+        showCredentials: false,
+        providerOrder: ['official_calendars', 'ticketmaster', 'chamber_feeds', 'eventbrite'],
+        providerWeight: {
+          ticketmaster: 1.3,
+          eventbrite: 1.1,
+          officialCalendars: 1.5,
+          chamberFeeds: 1
+        }
       };
     }
 
@@ -1076,6 +1141,29 @@
         if (!raw) return getDefaultFestivalSourcesConfig();
         const parsed = JSON.parse(raw);
         const defaults = getDefaultFestivalSourcesConfig();
+        const parsedProviderOrder = Array.isArray(parsed?.providerOrder)
+          ? parsed.providerOrder.map((item) => String(item || '').trim()).filter(Boolean)
+          : [];
+        const legacyProviderPriority = parsed?.providerPriority && typeof parsed.providerPriority === 'object'
+          ? parsed.providerPriority
+          : {};
+        const legacyProviderOrder = Object.keys({
+          official_calendars: Number(legacyProviderPriority.officialCalendars || 1),
+          ticketmaster: Number(legacyProviderPriority.ticketmaster || 2),
+          chamber_feeds: Number(legacyProviderPriority.chamberFeeds || 3),
+          eventbrite: Number(legacyProviderPriority.eventbrite || 4)
+        }).sort((a, b) => {
+          const rankMap = {
+            official_calendars: Number(legacyProviderPriority.officialCalendars || 1),
+            ticketmaster: Number(legacyProviderPriority.ticketmaster || 2),
+            chamber_feeds: Number(legacyProviderPriority.chamberFeeds || 3),
+            eventbrite: Number(legacyProviderPriority.eventbrite || 4)
+          };
+          return Number(rankMap[a] || 99) - Number(rankMap[b] || 99);
+        });
+        const providerOrder = parsedProviderOrder.length
+          ? parsedProviderOrder
+          : legacyProviderOrder;
         return {
           providers: {
             ticketmaster: parsed?.providers?.ticketmaster !== false,
@@ -1089,7 +1177,15 @@
           chamberFeeds: String(parsed?.chamberFeeds || defaults.chamberFeeds),
           maxResultsPerSource: [5, 8, 12, 20].includes(Number(parsed?.maxResultsPerSource))
             ? Number(parsed.maxResultsPerSource)
-            : defaults.maxResultsPerSource
+            : defaults.maxResultsPerSource,
+          showCredentials: Boolean(parsed?.showCredentials),
+          providerOrder,
+          providerWeight: {
+            ticketmaster: Number.isFinite(Number(parsed?.providerWeight?.ticketmaster)) ? Number(parsed.providerWeight.ticketmaster) : defaults.providerWeight.ticketmaster,
+            eventbrite: Number.isFinite(Number(parsed?.providerWeight?.eventbrite)) ? Number(parsed.providerWeight.eventbrite) : defaults.providerWeight.eventbrite,
+            officialCalendars: Number.isFinite(Number(parsed?.providerWeight?.officialCalendars)) ? Number(parsed.providerWeight.officialCalendars) : defaults.providerWeight.officialCalendars,
+            chamberFeeds: Number.isFinite(Number(parsed?.providerWeight?.chamberFeeds)) ? Number(parsed.providerWeight.chamberFeeds) : defaults.providerWeight.chamberFeeds
+          }
         };
       } catch (_error) {
         return getDefaultFestivalSourcesConfig();
@@ -1097,6 +1193,9 @@
     }
 
     function buildFestivalSourcesConfigFromDom() {
+      const providerOrder = Array.from(document.querySelectorAll('#festivalProviderOrderList [data-provider-key]'))
+        .map((el) => String(el.getAttribute('data-provider-key') || '').trim())
+        .filter(Boolean);
       return {
         providers: {
           ticketmaster: Boolean(document.getElementById('festivalProviderTicketmasterEnabled')?.checked),
@@ -1108,8 +1207,44 @@
         eventbriteApiToken: String(document.getElementById('festivalEventbriteApiToken')?.value || '').trim(),
         officialCalendarsFeeds: String(document.getElementById('festivalOfficialCalendarsFeeds')?.value || ''),
         chamberFeeds: String(document.getElementById('festivalChamberFeeds')?.value || ''),
-        maxResultsPerSource: Number(document.getElementById('festivalSourceMaxResults')?.value || 8)
+        maxResultsPerSource: Number(document.getElementById('festivalSourceMaxResults')?.value || 8),
+        showCredentials: Boolean(document.getElementById('festivalKeysVisibleToggle')?.checked),
+        providerOrder,
+        providerWeight: {
+          ticketmaster: Number(document.getElementById('festivalWeightTicketmaster')?.value || 1.3),
+          eventbrite: Number(document.getElementById('festivalWeightEventbrite')?.value || 1.1),
+          officialCalendars: Number(document.getElementById('festivalWeightOfficial')?.value || 1.5),
+          chamberFeeds: Number(document.getElementById('festivalWeightChamber')?.value || 1)
+        }
       };
+    }
+
+    function reorderFestivalProviderList(providerOrder) {
+      const listEl = document.getElementById('festivalProviderOrderList');
+      if (!listEl) return;
+      const desired = Array.isArray(providerOrder) ? providerOrder.map((item) => String(item || '').trim()).filter(Boolean) : [];
+      if (!desired.length) return;
+      const nodes = Array.from(listEl.querySelectorAll('[data-provider-key]'));
+      const map = new Map(nodes.map((node) => [String(node.getAttribute('data-provider-key') || '').trim(), node]));
+      const fragment = document.createDocumentFragment();
+      desired.forEach((key) => {
+        const node = map.get(key);
+        if (node) {
+          fragment.appendChild(node);
+          map.delete(key);
+        }
+      });
+      map.forEach((node) => fragment.appendChild(node));
+      listEl.appendChild(fragment);
+    }
+
+    function updateFestivalCredentialVisibility() {
+      const show = Boolean(document.getElementById('festivalKeysVisibleToggle')?.checked);
+      ['festivalTicketmasterApiKey', 'festivalEventbriteApiToken'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.type = show ? 'text' : 'password';
+      });
     }
 
     function applyFestivalSourcesConfigToDom(config) {
@@ -1131,6 +1266,13 @@
       setValue('festivalOfficialCalendarsFeeds', cfg.officialCalendarsFeeds || '');
       setValue('festivalChamberFeeds', cfg.chamberFeeds || '');
       setValue('festivalSourceMaxResults', [5, 8, 12, 20].includes(Number(cfg.maxResultsPerSource)) ? cfg.maxResultsPerSource : 8);
+      setChecked('festivalKeysVisibleToggle', Boolean(cfg.showCredentials));
+      reorderFestivalProviderList(cfg.providerOrder || ['official_calendars', 'ticketmaster', 'chamber_feeds', 'eventbrite']);
+      setValue('festivalWeightTicketmaster', cfg.providerWeight?.ticketmaster ?? 1.3);
+      setValue('festivalWeightEventbrite', cfg.providerWeight?.eventbrite ?? 1.1);
+      setValue('festivalWeightOfficial', cfg.providerWeight?.officialCalendars ?? 1.5);
+      setValue('festivalWeightChamber', cfg.providerWeight?.chamberFeeds ?? 1);
+      updateFestivalCredentialVisibility();
     }
 
     function setFestivalSourcesStatus(message, kind = 'info') {
@@ -1151,6 +1293,65 @@
       window.__festivalSourceConfig = { ...safeConfig };
     }
 
+    function formatFestivalHealthTimestamp(value) {
+      const text = String(value || '').trim();
+      if (!text) return 'never';
+      const parsed = new Date(text);
+      if (Number.isNaN(parsed.getTime())) return text;
+      return parsed.toLocaleString();
+    }
+
+    function renderFestivalSourceHealth() {
+      const el = document.getElementById('festivalSourceHealthRows');
+      if (!el) return;
+      const mainWindow = getMainWindowSafe();
+      const health = mainWindow.__festivalProviderHealth && typeof mainWindow.__festivalProviderHealth === 'object'
+        ? mainWindow.__festivalProviderHealth
+        : (window.__festivalProviderHealth && typeof window.__festivalProviderHealth === 'object' ? window.__festivalProviderHealth : {});
+      const rows = Object.keys(health || {});
+      if (!rows.length) {
+        el.innerHTML = 'Run a test to populate provider health.';
+        return;
+      }
+      const html = rows.map((key) => {
+        const row = health[key] || {};
+        const status = row.lastStatus === 'ok' ? 'OK' : (row.lastStatus === 'error' ? 'ERROR' : 'unknown');
+        const errorText = String(row.lastErrorMessage || '').trim();
+        const lastError = errorText ? `<div style="color:#b91c1c;">${errorText}</div>` : '';
+        return `<div style="border:1px solid #e5e7eb; border-radius:8px; padding:8px; margin-top:8px;">
+          <div><strong>${key}</strong> (${status})</div>
+          <div style="font-size:12px; color:#6b7280;">Last success: ${formatFestivalHealthTimestamp(row.lastSuccessAt)} | Last error: ${formatFestivalHealthTimestamp(row.lastErrorAt)} | Last count: ${Number(row.lastReturnedCount || 0)} | Last timing: ${Number(row.lastDurationMs || 0)} ms</div>
+          ${lastError}
+        </div>`;
+      }).join('');
+      el.innerHTML = html;
+    }
+
+    function renderFestivalSourceDiagnostics(details) {
+      const el = document.getElementById('festivalSourceDiagnosticsRows');
+      if (!el) return;
+      const payload = details && typeof details === 'object' ? details : null;
+      const providers = Array.isArray(payload && payload.providers) ? payload.providers : [];
+      if (!providers.length) {
+        el.innerHTML = 'No diagnostics yet.';
+        return;
+      }
+      const html = providers.map((provider) => {
+        const label = String(provider.label || provider.key || 'provider');
+        const count = Number(provider.returnedCount || 0);
+        const timing = Number(provider.durationMs || 0);
+        const error = String(provider.error || '').trim();
+        const status = error ? 'ERROR' : 'OK';
+        return `<div style="border:1px solid #e5e7eb; border-radius:8px; padding:8px; margin-top:8px;">
+          <div><strong>${label}</strong> (${status})</div>
+          <div style="font-size:12px; color:#6b7280;">Returned: ${count} | Timing: ${timing} ms</div>
+          ${error ? `<div style="color:#b91c1c;">${error}</div>` : ''}
+        </div>`;
+      }).join('');
+      const total = Number(payload.totalResults || 0);
+      el.innerHTML = `<div style="font-size:12px; color:#6b7280;">Total merged results: ${total}</div>${html}`;
+    }
+
     function saveFestivalSourcesConfig() {
       const config = buildFestivalSourcesConfigFromDom();
       try {
@@ -1169,6 +1370,10 @@
     }
 
     async function testFestivalSourcesConfig() {
+      return testFestivalSourcesByType('all');
+    }
+
+    async function testFestivalSourcesByType(type = 'all') {
       const mainWindow = getMainWindowSafe();
       const searchFn = typeof mainWindow.searchFestivalEvents === 'function'
         ? mainWindow.searchFestivalEvents.bind(mainWindow)
@@ -1178,20 +1383,87 @@
         return;
       }
       saveFestivalSourcesConfig();
-      setFestivalSourcesStatus('<span class="spinner"></span> Testing festival sources with query "apple festival"...', 'info');
+      const filterMap = {
+        all: [],
+        ticketmaster: ['ticketmaster'],
+        eventbrite: ['eventbrite'],
+        feeds: ['official_calendars', 'chamber_feeds']
+      };
+      const providerFilter = Array.isArray(filterMap[type]) ? filterMap[type] : [];
+      const label = type === 'all'
+        ? 'all sources'
+        : (type === 'ticketmaster' ? 'Ticketmaster only' : (type === 'eventbrite' ? 'Eventbrite only' : 'feeds only'));
+      setFestivalSourcesStatus(`<span class="spinner"></span> Testing ${label} with query "apple festival"...`, 'info');
       try {
         const results = await searchFn('apple festival', {
           target: getSelectedTarget('actionTargetSelect'),
           mode: 'config-test',
+          providerFilter,
+          diagnostics: true,
+          dryRun: true,
           state: getCandidateStateFilter(),
           radiusMiles: getCandidateDistanceLimitMiles(),
           anchorAddress: CANDIDATE_ANCHOR_ADDRESS,
           anchorCoords: await ensureCandidateAnchorCoords(mainWindow)
         });
-        const count = Array.isArray(results) ? results.length : 0;
-        setFestivalSourcesStatus(`✅ Festival source test complete. ${count} result${count === 1 ? '' : 's'} returned.`, 'success');
+        const diag = mainWindow.__festivalSourceLastDiagnostics || window.__festivalSourceLastDiagnostics || null;
+        renderFestivalSourceDiagnostics(diag);
+        renderFestivalSourceHealth();
+        const count = Array.isArray(results)
+          ? results.length
+          : Number((diag && diag.totalResults) || 0);
+        setFestivalSourcesStatus(`✅ Festival source test complete (${label}). ${count} result${count === 1 ? '' : 's'} returned.`, 'success');
       } catch (error) {
+        renderFestivalSourceHealth();
         setFestivalSourcesStatus(`❌ Festival source test failed: ${error?.message || 'Unknown error'}`, 'error');
+      }
+    }
+
+    async function runFestivalSourceDiagnostics() {
+      await testFestivalSourcesByType('all');
+    }
+
+    function exportFestivalSourcesConfigJson() {
+      const config = buildFestivalSourcesConfigFromDom();
+      const payload = JSON.stringify(config, null, 2);
+      const out = document.getElementById('festivalSourcesJsonPayload');
+      if (out) out.value = payload;
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(payload).catch(() => {});
+      }
+      setFestivalSourcesStatus('✅ Festival source config exported to JSON (and copied when clipboard is available).', 'success');
+    }
+
+    function importFestivalSourcesConfigJson() {
+      const input = document.getElementById('festivalSourcesJsonPayload');
+      const raw = String(input && input.value ? input.value : '').trim();
+      if (!raw) {
+        setFestivalSourcesStatus('❌ Paste a Festival Sources JSON payload first.', 'error');
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        const merged = {
+          ...getDefaultFestivalSourcesConfig(),
+          ...parsed,
+          providers: {
+            ...getDefaultFestivalSourcesConfig().providers,
+            ...(parsed && parsed.providers ? parsed.providers : {})
+          },
+          providerPriority: {
+            ...getDefaultFestivalSourcesConfig().providerPriority,
+            ...(parsed && parsed.providerPriority ? parsed.providerPriority : {})
+          },
+          providerWeight: {
+            ...getDefaultFestivalSourcesConfig().providerWeight,
+            ...(parsed && parsed.providerWeight ? parsed.providerWeight : {})
+          }
+        };
+        applyFestivalSourcesConfigToDom(merged);
+        saveFestivalSourcesConfig();
+        setFestivalSourcesStatus('✅ Festival source config imported and applied.', 'success');
+      } catch (error) {
+        setFestivalSourcesStatus(`❌ Invalid JSON: ${error?.message || 'Parse failed'}`, 'error');
       }
     }
 
@@ -1208,16 +1480,64 @@
         'festivalEventbriteApiToken',
         'festivalOfficialCalendarsFeeds',
         'festivalChamberFeeds',
-        'festivalSourceMaxResults'
+        'festivalSourceMaxResults',
+        'festivalKeysVisibleToggle',
+        'festivalWeightTicketmaster',
+        'festivalWeightEventbrite',
+        'festivalWeightOfficial',
+        'festivalWeightChamber'
       ];
       ids.forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
         const eventName = el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio') ? 'change' : 'input';
         el.addEventListener(eventName, () => {
+          if (id === 'festivalKeysVisibleToggle') updateFestivalCredentialVisibility();
           publishFestivalSourcesConfig(buildFestivalSourcesConfigFromDom());
         });
       });
+      const listEl = document.getElementById('festivalProviderOrderList');
+      if (listEl) {
+        let dragKey = '';
+        listEl.querySelectorAll('[data-provider-key]').forEach((item) => {
+          item.addEventListener('dragstart', (event) => {
+            dragKey = String(item.getAttribute('data-provider-key') || '').trim();
+            item.style.opacity = '0.55';
+            if (event && event.dataTransfer) {
+              event.dataTransfer.effectAllowed = 'move';
+              event.dataTransfer.setData('text/plain', dragKey);
+            }
+          });
+          item.addEventListener('dragend', () => {
+            item.style.opacity = '1';
+            dragKey = '';
+            publishFestivalSourcesConfig(buildFestivalSourcesConfigFromDom());
+          });
+          item.addEventListener('dragover', (event) => {
+            event.preventDefault();
+          });
+          item.addEventListener('drop', (event) => {
+            event.preventDefault();
+            const dropKey = String(item.getAttribute('data-provider-key') || '').trim();
+            if (!dragKey || !dropKey || dragKey === dropKey) return;
+            const dragged = listEl.querySelector(`[data-provider-key="${dragKey}"]`);
+            const target = listEl.querySelector(`[data-provider-key="${dropKey}"]`);
+            if (!dragged || !target) return;
+            const children = Array.from(listEl.children);
+            const draggedIdx = children.indexOf(dragged);
+            const targetIdx = children.indexOf(target);
+            if (draggedIdx < 0 || targetIdx < 0) return;
+            if (draggedIdx < targetIdx) {
+              listEl.insertBefore(dragged, target.nextSibling);
+            } else {
+              listEl.insertBefore(dragged, target);
+            }
+            publishFestivalSourcesConfig(buildFestivalSourcesConfigFromDom());
+          });
+        });
+      }
+      renderFestivalSourceHealth();
+      renderFestivalSourceDiagnostics(getMainWindowSafe().__festivalSourceLastDiagnostics || window.__festivalSourceLastDiagnostics || null);
     }
 
     function isEmbeddedEditMode() {

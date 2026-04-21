@@ -186,6 +186,29 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       ? host.__festivalSourceConfig
       : (window.__festivalSourceConfig && typeof window.__festivalSourceConfig === 'object' ? window.__festivalSourceConfig : {});
     const providers = raw.providers && typeof raw.providers === 'object' ? raw.providers : {};
+    const providerPriority = raw.providerPriority && typeof raw.providerPriority === 'object' ? raw.providerPriority : {};
+    const providerWeight = raw.providerWeight && typeof raw.providerWeight === 'object' ? raw.providerWeight : {};
+    const rawOrder = Array.isArray(raw.providerOrder) ? raw.providerOrder : [];
+    const mappedOrder = rawOrder
+      .map((item) => normalizeFestivalProviderKey(item))
+      .filter(Boolean);
+    const legacyOrder = Object.keys({
+      ticketmaster: Number(providerPriority.ticketmaster || 2),
+      eventbrite: Number(providerPriority.eventbrite || 4),
+      official_calendars: Number(providerPriority.officialCalendars || 1),
+      chamber_feeds: Number(providerPriority.chamberFeeds || 3)
+    }).sort((a, b) => {
+      const rankMap = {
+        ticketmaster: Number(providerPriority.ticketmaster || 2),
+        eventbrite: Number(providerPriority.eventbrite || 4),
+        official_calendars: Number(providerPriority.officialCalendars || 1),
+        chamber_feeds: Number(providerPriority.chamberFeeds || 3)
+      };
+      return Number(rankMap[a] || 99) - Number(rankMap[b] || 99);
+    });
+    const providerOrder = mappedOrder.length
+      ? Array.from(new Set(mappedOrder.concat(['official_calendars', 'ticketmaster', 'chamber_feeds', 'eventbrite'])))
+      : legacyOrder;
     const maxResultsPerSource = Number(raw.maxResultsPerSource);
     return {
       providers: {
@@ -198,9 +221,85 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       eventbriteApiToken: safeString(raw.eventbriteApiToken),
       officialCalendars: parseFeedSourceEntries(raw.officialCalendarsFeeds),
       chamberFeeds: parseFeedSourceEntries(raw.chamberFeeds),
+      providerOrder,
+      providerWeight: {
+        ticketmaster: Number.isFinite(Number(providerWeight.ticketmaster)) ? Number(providerWeight.ticketmaster) : 1.3,
+        eventbrite: Number.isFinite(Number(providerWeight.eventbrite)) ? Number(providerWeight.eventbrite) : 1.1,
+        officialCalendars: Number.isFinite(Number(providerWeight.officialCalendars)) ? Number(providerWeight.officialCalendars) : 1.5,
+        chamberFeeds: Number.isFinite(Number(providerWeight.chamberFeeds)) ? Number(providerWeight.chamberFeeds) : 1
+      },
       maxResultsPerSource: Number.isFinite(maxResultsPerSource) && maxResultsPerSource > 0 ? maxResultsPerSource : 8,
       requestTimeoutMs: 7000
     };
+  }
+
+  function normalizeFestivalProviderKey(key) {
+    const raw = safeString(key).toLowerCase();
+    const map = {
+      ticketmaster: 'ticketmaster',
+      eventbrite: 'eventbrite',
+      official: 'official_calendars',
+      officialcalendars: 'official_calendars',
+      official_calendars: 'official_calendars',
+      feeds: 'official_calendars',
+      chamber: 'chamber_feeds',
+      chamberfeeds: 'chamber_feeds',
+      chamber_feeds: 'chamber_feeds',
+      festivalnet: 'chamber_feeds'
+    };
+    return map[raw] || raw;
+  }
+
+  function getFestivalProviderPriority(providerKey, config) {
+    const safeConfig = config && typeof config === 'object' ? config : getFestivalSourceConfig();
+    const order = Array.isArray(safeConfig.providerOrder) ? safeConfig.providerOrder.map((item) => normalizeFestivalProviderKey(item)) : [];
+    const idx = order.indexOf(normalizeFestivalProviderKey(providerKey));
+    return idx >= 0 ? idx + 1 : 99;
+  }
+
+  function getFestivalProviderWeight(providerKey, config) {
+    const safeConfig = config && typeof config === 'object' ? config : getFestivalSourceConfig();
+    const weights = safeConfig.providerWeight || {};
+    if (providerKey === 'ticketmaster') return Number(weights.ticketmaster || 1.3);
+    if (providerKey === 'eventbrite') return Number(weights.eventbrite || 1.1);
+    if (providerKey === 'official_calendars') return Number(weights.officialCalendars || 1.5);
+    if (providerKey === 'chamber_feeds') return Number(weights.chamberFeeds || 1);
+    return 1;
+  }
+
+  function updateFestivalProviderHealth(sourceWindow, providerKey, update) {
+    const host = getFestivalProviderHost(sourceWindow);
+    if (!host.__festivalProviderHealth || typeof host.__festivalProviderHealth !== 'object') {
+      host.__festivalProviderHealth = {};
+    }
+    if (!window.__festivalProviderHealth || typeof window.__festivalProviderHealth !== 'object') {
+      window.__festivalProviderHealth = host.__festivalProviderHealth;
+    }
+    const key = normalizeFestivalProviderKey(providerKey);
+    const nowIso = new Date().toISOString();
+    const prev = host.__festivalProviderHealth[key] && typeof host.__festivalProviderHealth[key] === 'object'
+      ? host.__festivalProviderHealth[key]
+      : { key, firstSeenAt: nowIso, consecutiveFailures: 0 };
+    const next = {
+      ...prev,
+      key,
+      lastRunAt: nowIso,
+      lastDurationMs: Number(update && update.durationMs ? update.durationMs : 0),
+      lastReturnedCount: Number(update && update.returnedCount ? update.returnedCount : 0),
+      lastStatus: update && update.status ? String(update.status) : 'unknown',
+      lastErrorMessage: update && update.error ? String(update.error) : ''
+    };
+    if (next.lastStatus === 'ok') {
+      next.lastSuccessAt = nowIso;
+      next.consecutiveFailures = 0;
+    }
+    if (next.lastStatus === 'error') {
+      next.lastErrorAt = nowIso;
+      next.consecutiveFailures = Number(prev.consecutiveFailures || 0) + 1;
+    }
+    host.__festivalProviderHealth[key] = next;
+    window.__festivalProviderHealth = host.__festivalProviderHealth;
+    return next;
   }
 
   function encodeQuery(params) {
@@ -591,6 +690,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const host = getFestivalProviderHost(sourceWindow);
     const registry = getFestivalProviderRegistry(host);
     const builtins = getBuiltinFestivalProviderDefinitions(host);
+    const config = getFestivalSourceConfig(host);
+    const providerFilter = new Set((Array.isArray(options && options.providerFilter) ? options.providerFilter : []).map((key) => normalizeFestivalProviderKey(key)));
     const providerEntries = [];
 
     Object.keys(builtins).forEach((key) => providerEntries.push([key, builtins[key]]));
@@ -599,26 +700,82 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       providerEntries.push([key, registry[key]]);
     });
 
+    providerEntries.sort((a, b) => {
+      const pa = getFestivalProviderPriority(normalizeFestivalProviderKey(a[0]), config);
+      const pb = getFestivalProviderPriority(normalizeFestivalProviderKey(b[0]), config);
+      if (pa !== pb) return pa - pb;
+      return String(a[0]).localeCompare(String(b[0]));
+    });
+
     const unique = new Map();
+    const diagnostics = {
+      query: String(query || ''),
+      ranAt: new Date().toISOString(),
+      providers: []
+    };
     for (const [providerKey, provider] of providerEntries) {
+      const normalizedProviderKey = normalizeFestivalProviderKey(providerKey);
+      if (providerFilter.size > 0 && !providerFilter.has(normalizedProviderKey)) continue;
       const runner = typeof provider === 'function'
         ? provider
         : (provider && typeof provider.search === 'function' ? provider.search.bind(provider) : null);
       if (typeof runner !== 'function') continue;
+      const startedAt = Date.now();
       try {
         const rawResults = await runner(query, options);
         const rows = Array.isArray(rawResults) ? rawResults : [];
+        const durationMs = Date.now() - startedAt;
+        const providerWeight = Math.max(0, Number(getFestivalProviderWeight(normalizedProviderKey, config) || 1));
+        const providerPriority = getFestivalProviderPriority(normalizedProviderKey, config);
         rows.forEach((item) => {
           const normalized = normalizeFestivalEventResult(item, provider && provider.label ? provider.label : providerKey);
           const dedupeKey = [normalized.name.toLowerCase(), normalized.address.toLowerCase(), normalized.eventDate.toLowerCase(), normalized.website.toLowerCase()].join('|');
-          if (!normalized.name || unique.has(dedupeKey)) return;
-          unique.set(dedupeKey, normalized);
+          if (!normalized.name) return;
+          const relevance = scoreFestivalResult(normalized, query);
+          const score = (relevance + 1) * providerWeight + Math.max(0, (10 - providerPriority)) * 0.01;
+          const current = unique.get(dedupeKey);
+          if (!current || score > current.score) {
+            unique.set(dedupeKey, { row: normalized, score, providerKey: normalizedProviderKey });
+          }
+        });
+        diagnostics.providers.push({
+          key: normalizedProviderKey,
+          label: provider && provider.label ? provider.label : normalizedProviderKey,
+          returnedCount: rows.length,
+          durationMs,
+          error: ''
+        });
+        updateFestivalProviderHealth(host, normalizedProviderKey, {
+          status: 'ok',
+          returnedCount: rows.length,
+          durationMs,
+          error: ''
         });
       } catch (error) {
+        const durationMs = Date.now() - startedAt;
         console.warn(`⚠️ Festival provider "${providerKey}" search failed:`, error.message);
+        diagnostics.providers.push({
+          key: normalizedProviderKey,
+          label: provider && provider.label ? provider.label : normalizedProviderKey,
+          returnedCount: 0,
+          durationMs,
+          error: String(error && error.message ? error.message : error)
+        });
+        updateFestivalProviderHealth(host, normalizedProviderKey, {
+          status: 'error',
+          returnedCount: 0,
+          durationMs,
+          error: String(error && error.message ? error.message : error)
+        });
       }
     }
-    return Array.from(unique.values());
+    const mergedRows = Array.from(unique.values())
+      .sort((a, b) => b.score - a.score)
+      .map((entry) => entry.row);
+    diagnostics.totalResults = mergedRows.length;
+    host.__festivalSourceLastDiagnostics = diagnostics;
+    window.__festivalSourceLastDiagnostics = diagnostics;
+    return mergedRows;
   }
 
   window.registerFestivalEventProvider = window.registerFestivalEventProvider || function(name, provider) {
