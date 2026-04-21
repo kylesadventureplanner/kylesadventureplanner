@@ -25,6 +25,7 @@ This project now supports festival-event providers in Edit Mode.
 - Source weight controls (higher weight boosts ranking score)
 - `Show API credentials` toggle (reveals/hides key/token fields)
 - `Export Source Config JSON` and `Import Source Config JSON`
+- `Load Southeast Starter Feeds` (adds curated regional tourism/chamber-style feeds on demand)
 - Drag/drop provider ordering list (top runs first)
 - Provider health indicators (last success/error, returned count, timing)
 - `Dry-Run Source Diagnostics` summary (per-provider counts and timings)
@@ -65,4 +66,23 @@ If a label is included, use `Label|URL`.
 
 Use the button `Test Festival Source Search` in the panel.
 It runs a test query (`apple festival`) and reports the result count.
+
+## Southeast starter feeds (on demand)
+
+Use `Load Southeast Starter Feeds` to append starter sources into the feed textareas.
+
+Official calendars starter set:
+- `Blue Ridge Parkway Events|https://www.blueridgeparkway.org/events/feed/`
+- `Visit Hendersonville NC Events|https://visithendersonvillenc.org/events/feed/`
+- `Blowing Rock NC Events|https://www.blowingrock.com/events/feed/`
+- `NC Apple Festival|https://www.ncapplefestival.org/feed/`
+
+Chamber/supplemental starter set:
+- `Southern Highland Craft Guild Events|https://www.southernhighlandguild.org/events/feed/`
+- `Carolina Farm Stewardship Events|https://www.carolinafarmstewards.org/events/feed/`
+- `Festival Guides and Reviews Feed|https://festivalguidesandreviews.com/feed/`
+
+Notes:
+- Starter feeds are not auto-enabled until you click the button and save.
+- Some external sources may block browser-origin fetches (CORS); the app skips failed sources and continues.
 

@@ -101,6 +101,11 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#festivalProviderTicketmasterEnabled')).toBeChecked();
     await expect(page.locator('#festivalProviderOfficialEnabled')).toBeChecked();
     await expect(page.locator('#festivalProviderChamberEnabled')).toBeChecked();
+    await expect(page.locator('#festivalLoadStarterFeedsBtn')).toBeVisible();
+
+    await page.click('#festivalLoadStarterFeedsBtn');
+    await expect(page.locator('#festivalOfficialCalendarsFeeds')).toHaveValue(/ncapplefestival\.org\/feed/i);
+    await expect(page.locator('#festivalChamberFeeds')).toHaveValue(/southernhighlandguild\.org\/events\/feed/i);
 
     await page.fill('#festivalOfficialCalendarsFeeds', 'Visit NC|https://example.com/nc-events.rss');
     await page.fill('#festivalChamberFeeds', 'Hendo Chamber|https://example.com/chamber.ics');

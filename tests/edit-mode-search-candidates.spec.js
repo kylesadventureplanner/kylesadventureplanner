@@ -270,6 +270,185 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(row[9]).toBe('pid-nearby-nc-festival');
   });
 
+  test('non-festival website URL candidate search enriches via place resolver fallback', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+      window.resolvePlaceIdFromInput = async (inputType, value) => {
+        if (String(inputType) === 'website' && /starbucks/i.test(String(value || ''))) {
+          return 'pid-starbucks-hendo';
+        }
+        return '';
+      };
+      window.getPlaceDetails = async (placeId) => {
+        if (String(placeId) !== 'pid-starbucks-hendo') return null;
+        return {
+          placeId: 'pid-starbucks-hendo',
+          name: 'Starbucks Hendersonville',
+          address: '100 Main St, Hendersonville, NC 28792',
+          website: 'https://www.starbucks.com/',
+          rating: 4.5,
+          userRatingsTotal: 234,
+          businessStatus: 'OPERATIONAL',
+          coordinates: { lat: 35.314, lng: -82.46 }
+        };
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        if (placeId !== 'pid-starbucks-hendo') {
+          return {
+            placeId,
+            name: 'Fallback Name',
+            address: 'Fallback Address, NC',
+            website: '',
+            businessType: 'cafe',
+            hours: '9-5',
+            phone: '555-0000',
+            rating: '4.0',
+            userRatingsTotal: 10,
+            directions: `https://maps.example.com/${placeId}`
+          };
+        }
+        return {
+          placeId,
+          name: 'Starbucks Hendersonville',
+          address: '100 Main St, Hendersonville, NC 28792',
+          website: 'https://www.starbucks.com/',
+          businessType: 'cafe',
+          hours: '5-9',
+          phone: '555-1212',
+          rating: '4.5',
+          userRatingsTotal: 234,
+          directions: 'https://maps.example.com/starbucks-hendo'
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
+    await popup.selectOption('#singleInputType', 'website');
+    await popup.fill('#singleInput', 'https://www.starbucks.com/store-locator');
+    await popup.click('#singleSearchCandidatesBtn');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(1);
+    const card = popup.locator('#single-candidates .candidate-item').first();
+    await expect(card.locator('.candidate-title')).toHaveText('Starbucks Hendersonville');
+    await expect(card).toContainText('pid-starbucks-hendo');
+
+    await popup.click('#singleAddSelectedCandidateBtn');
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
+    const row = graphCalls[0].body.values[0];
+    expect(row[1]).toBe('Starbucks Hendersonville');
+    expect(row[9]).toBe('pid-starbucks-hendo');
+  });
+
+  test('non-festival bulk place URL candidate search enriches via resolver fallback', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+      window.resolvePlaceIdFromInput = async (_inputType, value) => {
+        const text = String(value || '');
+        if (text.includes('store-1')) return 'pid-chain-store-1';
+        if (text.includes('store-2')) return 'pid-chain-store-2';
+        return '';
+      };
+      window.getPlaceDetails = async (placeId) => {
+        if (String(placeId) === 'pid-chain-store-1') {
+          return {
+            placeId,
+            name: 'Coffee Spot 1',
+            address: '10 Main St, Denver, CO',
+            website: 'https://coffee.example.com/store-1',
+            businessStatus: 'OPERATIONAL'
+          };
+        }
+        if (String(placeId) === 'pid-chain-store-2') {
+          return {
+            placeId,
+            name: 'Coffee Spot 2',
+            address: '20 Main St, Denver, CO',
+            website: 'https://coffee.example.com/store-2',
+            businessStatus: 'OPERATIONAL'
+          };
+        }
+        return null;
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        return {
+          placeId,
+          name: placeId === 'pid-chain-store-1' ? 'Coffee Spot 1' : 'Coffee Spot 2',
+          address: placeId === 'pid-chain-store-1' ? '10 Main St, Denver, CO' : '20 Main St, Denver, CO',
+          website: placeId === 'pid-chain-store-1' ? 'https://coffee.example.com/store-1' : 'https://coffee.example.com/store-2',
+          businessType: 'cafe',
+          hours: '6-8',
+          phone: '555-1010',
+          rating: '4.6',
+          userRatingsTotal: 120,
+          directions: `https://maps.example.com/${placeId}`
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
+    await popup.selectOption('#bulkInputType', 'placeUrl');
+    await popup.fill('#bulkInput', 'https://coffee.example.com/store-1\nhttps://coffee.example.com/store-2');
+    await popup.click('#bulkSearchCandidatesBtn');
+
+    await expect(popup.locator('#bulk-candidates .candidate-group')).toHaveCount(2);
+    await expect(popup.locator('#bulk-candidates .candidate-item')).toHaveCount(2);
+    await expect(popup.locator('#bulk-search-status')).toContainText('Ready: 2 selection');
+
+    await popup.click('#bulkAddSelectedCandidatesBtn');
+    await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(2);
+    const placeIds = graphCalls.map((call) => String(call.body?.values?.[0]?.[9] || ''));
+    expect(placeIds).toContain('pid-chain-store-1');
+    expect(placeIds).toContain('pid-chain-store-2');
+  });
+
   test('candidate filters persist, support alternate sort modes, and can be reset', async ({ page }) => {
     const graphCalls = [];
     await installMocks(page.context(), graphCalls);
@@ -750,6 +929,149 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(firstRow[10]).toBe('');
     expect(secondRow[9]).toBe('');
     expect(secondRow[10]).toBe('');
+  });
+
+  test('festival website URL input can enrich details via provider adapters before fallback', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+      window.__ticketmasterFestivalEventSearch = async (query) => {
+        if (!/nc apple festival/i.test(String(query || ''))) return [];
+        return [{
+          name: 'NC Apple Festival 2026',
+          address: '111 Main St, Hendersonville, NC 28792',
+          city: 'Hendersonville',
+          state: 'NC',
+          website: 'https://ncapplefestival.org/',
+          sourceProvider: 'Ticketmaster',
+          eventDate: '2026-09-20',
+          description: 'Source: Ticketmaster • Date: 2026-09-20 • Regional harvest event',
+          businessStatus: 'SCHEDULED'
+        }];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#singleInputType', 'website');
+    await popup.fill('#singleInput', 'https://ncapplefestival.org/');
+    await popup.click('#singleSearchCandidatesBtn');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(1);
+    const card = popup.locator('#single-candidates .candidate-item').first();
+    await expect(card.locator('.candidate-title')).toHaveText('NC Apple Festival 2026');
+    await expect(card).toContainText('Source: Ticketmaster');
+    await expect(card).toContainText('2026-09-20');
+
+    await popup.click('#singleAddSelectedCandidateBtn');
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
+    const row = graphCalls[0].body.values[0];
+    expect(row[1]).toBe('NC Apple Festival 2026');
+    expect(row[2]).toBe('111 Main St, Hendersonville, NC 28792');
+    expect(row[5]).toBe('https://ncapplefestival.org/');
+  });
+
+  test('non-festival chain place URL candidate search enriches via resolver fallback', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+      window.resolvePlaceIdFromInput = async (_inputType, value) => {
+        const text = String(value || '');
+        if (text.includes('branch-a')) return 'pid-branch-a';
+        if (text.includes('branch-b')) return 'pid-branch-b';
+        return '';
+      };
+      window.getPlaceDetails = async (placeId) => {
+        if (String(placeId) === 'pid-branch-a') {
+          return {
+            placeId,
+            name: 'Craft Market Branch A',
+            address: '5 Oak St, Denver, CO',
+            website: 'https://craft.example.com/branch-a',
+            businessStatus: 'OPERATIONAL'
+          };
+        }
+        if (String(placeId) === 'pid-branch-b') {
+          return {
+            placeId,
+            name: 'Craft Market Branch B',
+            address: '7 Oak St, Denver, CO',
+            website: 'https://craft.example.com/branch-b',
+            businessStatus: 'OPERATIONAL'
+          };
+        }
+        return null;
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        return {
+          placeId,
+          name: placeId === 'pid-branch-a' ? 'Craft Market Branch A' : 'Craft Market Branch B',
+          address: placeId === 'pid-branch-a' ? '5 Oak St, Denver, CO' : '7 Oak St, Denver, CO',
+          website: placeId === 'pid-branch-a' ? 'https://craft.example.com/branch-a' : 'https://craft.example.com/branch-b',
+          businessType: 'store',
+          hours: '9-5',
+          phone: '555-1313',
+          rating: '4.4',
+          userRatingsTotal: 89,
+          directions: `https://maps.example.com/${placeId}`
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
+    await popup.selectOption('#chainInputType', 'placeUrl');
+    await popup.fill('#chainInput', 'https://craft.example.com/branch-a\nhttps://craft.example.com/branch-b');
+    await popup.click('#chainSearchCandidatesBtn');
+
+    await expect(popup.locator('#chain-candidates .candidate-group')).toHaveCount(2);
+    await expect(popup.locator('#chain-candidates .candidate-item')).toHaveCount(2);
+    await expect(popup.locator('#chain-search-status')).toContainText('Ready: 2 selected');
+
+    await popup.click('#chainAddSelectedCandidatesBtn');
+    await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(2);
+    const placeIds = graphCalls.map((call) => String(call.body?.values?.[0]?.[9] || ''));
+    expect(placeIds).toContain('pid-branch-a');
+    expect(placeIds).toContain('pid-branch-b');
   });
 
   test('chain candidate review applies chain-biased ranking and multi-select before add', async ({ page }) => {

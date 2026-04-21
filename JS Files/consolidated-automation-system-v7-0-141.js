@@ -86,6 +86,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const preferredPath = pathPieces.find((part) => !/^(events?|festival|festivals|home|index)$/i.test(part)) || '';
     const seed = preferredPath || hostBase;
     const normalized = seed
+      .replace(/^([a-z]{2})([a-z]{4,})$/i, '$1 $2')
       .replace(/%20/gi, ' ')
       .replace(/[._+\-]+/g, ' ')
       .replace(/([a-z])([A-Z])/g, '$1 $2')
@@ -1169,6 +1170,11 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     if (inputType === 'website') {
       try {
         const normalized = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+        const derived = buildFestivalNameFromUrl(normalized);
+        if (derived) {
+          diagnostics?.log('query recovery', 'Recovered festival query from website URL', { query: derived, sourceUrl: normalized });
+          return derived;
+        }
         return new URL(normalized).hostname.replace(/^www\./i, '');
       } catch (_error) {
         return value;

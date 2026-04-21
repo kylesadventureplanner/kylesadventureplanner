@@ -846,6 +846,7 @@
         <div class="button-group">
           <button id="festivalSaveSourcesBtn" class="button button-secondary" type="button" onclick="saveFestivalSourcesConfig()">💾 Save Festival Sources</button>
           <button id="festivalResetSourcesBtn" class="button button-secondary" type="button" onclick="resetFestivalSourcesConfig()">↺ Reset to Defaults</button>
+          <button id="festivalLoadStarterFeedsBtn" class="button button-secondary" type="button" onclick="loadFestivalStarterFeeds()">🌾 Load Southeast Starter Feeds</button>
           <button id="festivalTestSourcesBtn" class="button button-secondary" type="button" onclick="testFestivalSourcesConfig()">🧪 Test Festival Source Search</button>
         </div>
 
@@ -1105,6 +1106,17 @@
     const CANDIDATE_FILTER_STORAGE_KEY = 'editModeCandidateFiltersV1';
     const FESTIVAL_SOURCES_CONFIG_STORAGE_KEY = 'editModeFestivalSourcesConfigV1';
     const GOOGLE_TAB_OPEN_CONFIRM_THRESHOLD = 10;
+    const FESTIVAL_OFFICIAL_STARTER_FEEDS = [
+      'Blue Ridge Parkway Events|https://www.blueridgeparkway.org/events/feed/',
+      'Visit Hendersonville NC Events|https://visithendersonvillenc.org/events/feed/',
+      'Blowing Rock NC Events|https://www.blowingrock.com/events/feed/',
+      'NC Apple Festival|https://www.ncapplefestival.org/feed/'
+    ].join('\n');
+    const FESTIVAL_CHAMBER_STARTER_FEEDS = [
+      'Southern Highland Craft Guild Events|https://www.southernhighlandguild.org/events/feed/',
+      'Carolina Farm Stewardship Events|https://www.carolinafarmstewards.org/events/feed/',
+      'Festival Guides and Reviews Feed|https://festivalguidesandreviews.com/feed/'
+    ].join('\n');
     const candidateGeoState = {
       anchorCoords: null,
       anchorResolved: false,
@@ -1367,6 +1379,37 @@
       const defaults = getDefaultFestivalSourcesConfig();
       applyFestivalSourcesConfigToDom(defaults);
       saveFestivalSourcesConfig();
+    }
+
+    function mergeFeedLines(existingText, starterText) {
+      const existing = String(existingText || '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const starters = String(starterText || '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
+      const merged = [];
+      const seen = new Set();
+      [...existing, ...starters].forEach((line) => {
+        const key = line.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        merged.push(line);
+      });
+      return merged.join('\n');
+    }
+
+    function loadFestivalStarterFeeds() {
+      const officialEl = document.getElementById('festivalOfficialCalendarsFeeds');
+      const chamberEl = document.getElementById('festivalChamberFeeds');
+      if (!officialEl || !chamberEl) return;
+
+      officialEl.value = mergeFeedLines(officialEl.value, FESTIVAL_OFFICIAL_STARTER_FEEDS);
+      chamberEl.value = mergeFeedLines(chamberEl.value, FESTIVAL_CHAMBER_STARTER_FEEDS);
+      publishFestivalSourcesConfig(buildFestivalSourcesConfigFromDom());
+      setFestivalSourcesStatus('✅ Added Southeast starter feeds. Save to keep them.', 'success');
     }
 
     async function testFestivalSourcesConfig() {
@@ -2423,6 +2466,29 @@
       };
     }
 
+    function deriveSearchQueryFromWebsiteInput(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      try {
+        const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+        const parsed = new URL(normalized);
+        const host = String(parsed.hostname || '').replace(/^www\./i, '');
+        const hostSeed = host.split('.').slice(0, -1).join(' ') || host.split('.')[0] || '';
+        const pathSeed = String(parsed.pathname || '')
+          .split('/')
+          .map((part) => decodeURIComponent(part || '').trim())
+          .find((part) => /[a-z]/i.test(part) && !/^(events?|calendar|home|index|festival|festivals)$/i.test(part)) || '';
+        const seed = `${hostSeed} ${pathSeed}`.trim() || raw;
+        return seed
+          .replace(/([a-z])([A-Z])/g, '$1 $2')
+          .replace(/[._+\-]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      } catch (_error) {
+        return raw;
+      }
+    }
+
     async function searchCandidateSource(query, inputType, mode) {
       const mainWindow = getMainWindowSafe();
       const festivalMode = isFestivalActionTarget();
@@ -2451,7 +2517,36 @@
       if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
         throw new Error('Search is not available. Ensure Google Places is loaded in the main window.');
       }
-      const rows = await mainWindow.searchPlaces(query);
+
+      const isUrlInput = inputType === 'website' || inputType === 'placeUrl';
+      const searchQuery = isUrlInput
+        ? deriveSearchQueryFromWebsiteInput(query)
+        : query;
+
+      let rows = await mainWindow.searchPlaces(searchQuery);
+      if ((!Array.isArray(rows) || rows.length === 0) && isUrlInput && typeof mainWindow.resolvePlaceIdFromInput === 'function') {
+        try {
+          const placeId = String(await mainWindow.resolvePlaceIdFromInput(inputType, query) || '').trim();
+          if (placeId && typeof mainWindow.getPlaceDetails === 'function') {
+            const details = await mainWindow.getPlaceDetails(placeId);
+            if (details && (details.name || details.address)) {
+              rows = [{
+                placeId,
+                name: String(details.name || '').trim(),
+                address: String(details.address || '').trim(),
+                rating: details.rating,
+                reviewCount: Number(details.userRatingsTotal || 0),
+                businessStatus: String(details.businessStatus || 'OPERATIONAL').trim(),
+                coordinates: details.coordinates || null,
+                googlePlaceUrl: buildCandidateGoogleUrl(placeId)
+              }];
+            }
+          }
+        } catch (_error) {
+          // Keep graceful behavior if resolver fallback fails.
+        }
+      }
+
       return {
         festivalMode: false,
         rows: Array.isArray(rows) ? rows.map(normalizeSingleSearchCandidate).filter((row) => row.placeId) : []
@@ -2790,8 +2885,8 @@
         setBulkCandidateStatus('❌ Enter at least one search query in Bulk Add first.', 'error');
         return;
       }
-      if (inputType === 'placeId' || inputType === 'placeUrl') {
-        setBulkCandidateStatus('⚠️ Candidate search works best with Place Name, Place Name + City, or Address.', 'error');
+      if (inputType === 'placeId') {
+        setBulkCandidateStatus('⚠️ Candidate search works best with Place Name, Place Name + City, Address, or URL.', 'error');
         return;
       }
 
@@ -3151,8 +3246,8 @@
         setChainCandidateStatus('❌ Enter one or more chain queries first.', 'error');
         return;
       }
-      if (inputType === 'placeId' || inputType === 'placeUrl') {
-        setChainCandidateStatus('⚠️ Chain candidate search works best with Place Name + City or Address.', 'error');
+      if (inputType === 'placeId') {
+        setChainCandidateStatus('⚠️ Chain candidate search works best with Place Name + City, Address, or URL.', 'error');
         return;
       }
 
