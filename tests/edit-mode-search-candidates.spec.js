@@ -651,6 +651,53 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(String(secondRow[10] || '')).toContain(secondResolved.placeId);
   });
 
+  test('festival candidate search can use an official festival website URL as a direct fallback candidate', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    const officialUrl = 'https://ncapplefestival.org/';
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#singleInputType', 'website');
+    await popup.fill('#singleInput', officialUrl);
+    await popup.click('#singleSearchCandidatesBtn');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(1);
+    await expect(popup.locator('#single-search-status')).toContainText('Found 1 festival event');
+    const openLink = popup.locator('#single-candidates .candidate-open-link').first();
+    await expect(openLink).toHaveAttribute('href', officialUrl);
+    await expect(openLink).toContainText('Open Festival Website');
+
+    await popup.click('#singleAddSelectedCandidateBtn');
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
+
+    const row = graphCalls[0].body.values[0];
+    expect(String(row[1] || '')).toMatch(/festival/i);
+    expect(row[5]).toBe(officialUrl);
+    expect(row[9]).toBe('');
+    expect(row[10]).toBe('');
+  });
+
   test('chain candidate review applies chain-biased ranking and multi-select before add', async ({ page }) => {
     const graphCalls = [];
     await installMocks(page.context(), graphCalls);
