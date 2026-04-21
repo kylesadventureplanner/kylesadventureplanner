@@ -5,8 +5,9 @@ This project now supports festival-event providers in Edit Mode.
 ## Where to configure
 
 1. Open Edit Mode.
-2. Go to the `Automation` tab.
-3. Use the `Festival Sources` card.
+2. Stay on the `Add Places` tab.
+3. Click `Open Festival Sources Config`.
+4. Use `Back to Add Places` when finished.
 
 ## Providers
 
@@ -29,6 +30,7 @@ This project now supports festival-event providers in Edit Mode.
 - Drag/drop provider ordering list (top runs first)
 - Provider health indicators (last success/error, returned count, timing)
 - `Dry-Run Source Diagnostics` summary (per-provider counts and timings)
+- `View Applied Config` button on Add Places for quick at-a-glance visibility of the currently active settings
 
 ## Required credentials
 
