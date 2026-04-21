@@ -73,9 +73,38 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       .trim();
   }
 
-  function buildFestivalNameFromUrl(rawUrl) {
+  const FESTIVAL_STATE_HINTS = {
+    nc: 'NC',
+    sc: 'SC',
+    ga: 'GA',
+    tn: 'TN',
+    ky: 'KY',
+    va: 'VA',
+    al: 'AL',
+    ms: 'MS',
+    fl: 'FL'
+  };
+
+  const FESTIVAL_CITY_HINTS = {
+    hendersonville: 'Hendersonville',
+    asheville: 'Asheville',
+    boone: 'Boone',
+    gatlinburg: 'Gatlinburg',
+    knoxville: 'Knoxville',
+    charlotte: 'Charlotte',
+    atlanta: 'Atlanta'
+  };
+
+  function normalizeFestivalConfidence(value) {
+    const text = safeString(value).toLowerCase();
+    if (text === 'high') return 'High';
+    if (text === 'manual') return 'Manual';
+    return 'Medium';
+  }
+
+  function inferFestivalIdentityFromUrl(rawUrl) {
     const parsed = parseUrlSafely(rawUrl);
-    if (!parsed) return '';
+    if (!parsed) return { name: '', city: '', state: '' };
     const host = safeString(parsed.hostname).replace(/^www\./i, '');
     const hostBase = host.split('.')[0] || host;
     const pathPieces = parsed.pathname
@@ -83,7 +112,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       .map((part) => safeDecode(part))
       .map((part) => safeString(part))
       .filter((part) => /[a-z]/i.test(part));
-    const preferredPath = pathPieces.find((part) => !/^(events?|festival|festivals|home|index)$/i.test(part)) || '';
+    const preferredPath = pathPieces.find((part) => !/^(events?|festival|festivals|home|index|calendar)$/i.test(part)) || '';
     const seed = preferredPath || hostBase;
     const normalized = seed
       .replace(/^([a-z]{2})([a-z]{4,})$/i, '$1 $2')
@@ -93,22 +122,48 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       .replace(/(festival|fest|fair|events?|celebration|carnival)/ig, ' $1 ')
       .replace(/\s+/g, ' ')
       .trim();
-    return toTitleCaseWords(normalized || 'Festival Event') || 'Festival Event';
+
+    const tokenPool = `${hostBase} ${pathPieces.join(' ')}`
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+    let city = '';
+    let state = '';
+    tokenPool.forEach((token) => {
+      if (!city && FESTIVAL_CITY_HINTS[token]) city = FESTIVAL_CITY_HINTS[token];
+      if (!state && FESTIVAL_STATE_HINTS[token]) state = FESTIVAL_STATE_HINTS[token];
+    });
+
+    return {
+      name: toTitleCaseWords(normalized || 'Festival Event') || 'Festival Event',
+      city,
+      state
+    };
+  }
+
+  function buildFestivalNameFromUrl(rawUrl) {
+    return inferFestivalIdentityFromUrl(rawUrl).name;
   }
 
   function buildDirectFestivalUrlCandidate(rawUrl) {
     const normalizedUrl = normalizeUrlCandidate(rawUrl);
     if (!normalizedUrl) return null;
+    const identity = inferFestivalIdentityFromUrl(normalizedUrl);
     return normalizeFestivalEventResult({
       placeId: '',
-      name: buildFestivalNameFromUrl(normalizedUrl),
+      name: identity.name,
+      city: identity.city,
+      state: identity.state,
       website: normalizedUrl,
       openLinkUrl: normalizedUrl,
       openLinkLabel: 'Open Festival Website',
       sourceProvider: 'Official Festival URL',
       description: 'Source: Official Festival URL',
       businessStatus: 'SCHEDULED',
-      businessType: 'Festival Event'
+      businessType: 'Festival Event',
+      sourceConfidence: 'Manual',
+      sourceConfidenceReason: 'URL-only fallback candidate'
     }, 'Official Festival URL');
   }
 
@@ -191,8 +246,34 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       openLinkUrl,
       openLinkLabel,
       directions: safeString(raw.directions),
-      types: Array.isArray(raw.types) ? raw.types : []
+      types: Array.isArray(raw.types) ? raw.types : [],
+      sourceConfidence: normalizeFestivalConfidence(raw.sourceConfidence),
+      sourceConfidenceReason: safeString(raw.sourceConfidenceReason)
     };
+  }
+
+  function buildOfficialFestivalUrlProbeList(rawUrl) {
+    const normalized = normalizeUrlCandidate(rawUrl);
+    if (!normalized) return [];
+    const parsed = parseUrlSafely(normalized);
+    if (!parsed) return [normalized];
+    const origin = `${parsed.protocol}//${parsed.host}`;
+    const paths = [
+      '/',
+      '/events',
+      '/event',
+      '/calendar',
+      '/feed',
+      '/events/feed',
+      '/calendar.ics',
+      '/events.ics',
+      '/wp-json/wp/v2/posts?search=festival&per_page=20',
+      '/wp-json/wp/v2/events?per_page=20',
+      '/wp-json/tribe/events/v1/events?per_page=20'
+    ];
+    const unique = new Set([normalized]);
+    paths.forEach((path) => unique.add(`${origin}${path}`));
+    return Array.from(unique);
   }
 
   function getFestivalProviderHost(sourceWindow = getMainWindow()) {
@@ -582,26 +663,59 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return entries.filter((row) => row.name);
   }
 
+  function hasSchemaType(typeValue, expectedSet) {
+    const list = Array.isArray(typeValue) ? typeValue : [typeValue];
+    return list.some((entry) => expectedSet.has(String(entry || '').toLowerCase()));
+  }
+
+  function collectJsonEventLikeNodes(node, output) {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      node.forEach((entry) => collectJsonEventLikeNodes(entry, output));
+      return;
+    }
+    if (typeof node !== 'object') return;
+
+    const eventTypeSet = new Set(['event', 'festival', 'eventseries']);
+    const typeValue = node['@type'] || node.type;
+    const hasEventType = hasSchemaType(typeValue, eventTypeSet);
+    const hasEventShape = Boolean(
+      safeString(node.name || node.title || node.eventName || node?.title?.rendered)
+      && safeString(node.startDate || node.date || node?.date_gmt || node.eventDate)
+    );
+    if (hasEventType || hasEventShape) {
+      output.push(node);
+    }
+
+    ['@graph', 'events', 'items', 'data', 'results', 'itemListElement'].forEach((key) => {
+      if (node[key]) collectJsonEventLikeNodes(node[key], output);
+    });
+  }
+
   function parseJsonEvents(payload, sourceLabel, sourceUrl) {
     const rows = [];
-    const list = Array.isArray(payload)
-      ? payload
-      : (Array.isArray(payload?.events) ? payload.events : (Array.isArray(payload?.items) ? payload.items : []));
-    list.forEach((item) => {
+    const nodes = [];
+    collectJsonEventLikeNodes(payload, nodes);
+    nodes.forEach((item) => {
+      const location = item?.location && typeof item.location === 'object' ? item.location : {};
+      const addressObj = location?.address && typeof location.address === 'object' ? location.address : {};
+      const titleRendered = item?.title && typeof item.title === 'object' ? safeString(item.title.rendered) : '';
       rows.push(normalizeFestivalEventResult({
         placeId: '',
-        name: safeString(item?.name || item?.title || item?.eventName),
-        address: safeString(item?.address || item?.location),
-        city: safeString(item?.city),
-        state: safeString(item?.state),
+        name: safeString(item?.name || item?.title || titleRendered || item?.eventName),
+        address: safeString(item?.address || item?.location?.name || addressObj.streetAddress || item?.location),
+        city: safeString(item?.city || addressObj.addressLocality),
+        state: safeString(item?.state || addressObj.addressRegion),
         description: safeString(item?.description || item?.summary),
-        website: safeString(item?.url || item?.website || sourceUrl),
-        openLinkUrl: safeString(item?.url || item?.website || sourceUrl),
-        eventDate: safeString(item?.eventDate || item?.startDate || item?.date),
+        website: safeString(item?.url || item?.website || item?.link || sourceUrl),
+        openLinkUrl: safeString(item?.url || item?.website || item?.link || sourceUrl),
+        eventDate: safeString(item?.eventDate || item?.startDate || item?.date || item?.date_gmt),
         sourceProvider: sourceLabel,
         openLinkLabel: 'Open Event Source',
-        coordinates: normalizeCoordinates(item?.coordinates),
-        businessStatus: safeString(item?.status || 'SCHEDULED')
+        coordinates: normalizeCoordinates(item?.coordinates || item?.geo),
+        businessStatus: safeString(item?.status || 'SCHEDULED'),
+        sourceConfidence: 'Medium',
+        sourceConfidenceReason: 'Feed/JSON endpoint match'
       }, sourceLabel));
     });
     return rows.filter((row) => row.name);
@@ -612,28 +726,44 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const parser = new DOMParser();
     const doc = parser.parseFromString(String(text || ''), 'text/html');
     const rows = [];
+    const schemaTypes = new Set(['event', 'festival', 'eventseries']);
+    function collectSchemaNodes(node, output) {
+      if (!node) return;
+      if (Array.isArray(node)) {
+        node.forEach((entry) => collectSchemaNodes(entry, output));
+        return;
+      }
+      if (typeof node !== 'object') return;
+      if (hasSchemaType(node['@type'], schemaTypes)) output.push(node);
+      if (node['@graph']) collectSchemaNodes(node['@graph'], output);
+      if (node.mainEntity) collectSchemaNodes(node.mainEntity, output);
+      if (node.itemListElement) collectSchemaNodes(node.itemListElement, output);
+      if (node.subEvent) collectSchemaNodes(node.subEvent, output);
+    }
+
     doc.querySelectorAll('script[type="application/ld+json"]').forEach((scriptEl) => {
       try {
         const parsed = JSON.parse(scriptEl.textContent || 'null');
-        const list = Array.isArray(parsed) ? parsed : [parsed];
-        list.forEach((item) => {
-          const data = item && item['@type'] === 'Event'
-            ? item
-            : (item && Array.isArray(item['@graph']) ? item['@graph'].find((entry) => entry && entry['@type'] === 'Event') : null);
-          if (!data) return;
+        const nodes = [];
+        collectSchemaNodes(parsed, nodes);
+        nodes.forEach((data) => {
+          const location = data && typeof data.location === 'object' ? data.location : {};
+          const addressObj = location && typeof location.address === 'object' ? location.address : {};
           rows.push(normalizeFestivalEventResult({
             placeId: '',
             name: safeString(data.name),
-            address: safeString(data.location?.address?.streetAddress || data.location?.name),
-            city: safeString(data.location?.address?.addressLocality),
-            state: safeString(data.location?.address?.addressRegion),
+            address: safeString(addressObj.streetAddress || location.name),
+            city: safeString(addressObj.addressLocality),
+            state: safeString(addressObj.addressRegion),
             description: safeString(data.description),
             website: safeString(data.url || sourceUrl),
             openLinkUrl: safeString(data.url || sourceUrl),
             eventDate: safeString(data.startDate),
             sourceProvider: sourceLabel,
             openLinkLabel: 'Open Event Source',
-            businessStatus: 'SCHEDULED'
+            businessStatus: 'SCHEDULED',
+            sourceConfidence: 'High',
+            sourceConfidenceReason: 'Structured schema event data'
           }, sourceLabel));
         });
       } catch (_error) {
@@ -643,7 +773,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return rows.filter((row) => row.name);
   }
 
-  async function searchFeedSource(query, sourceEntry, sourceLabel, config) {
+  async function searchFeedSource(query, sourceEntry, sourceLabel, config, meta = {}) {
     const label = safeString(sourceEntry && sourceEntry.label) || sourceLabel;
     const url = safeString(sourceEntry && sourceEntry.url);
     if (!url) return [];
@@ -668,8 +798,57 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       .filter((entry) => entry.score > 0 || !safeString(query))
       .sort((a, b) => b.score - a.score)
       .slice(0, config.maxResultsPerSource)
-      .map((entry) => entry.row);
+      .map((entry) => {
+        const row = entry.row || {};
+        return {
+          ...row,
+          sourceConfidence: normalizeFestivalConfidence(row.sourceConfidence || meta.defaultConfidence),
+          sourceConfidenceReason: safeString(row.sourceConfidenceReason || meta.defaultConfidenceReason)
+        };
+      });
     return scored;
+  }
+
+  function mergeFestivalEventRows(rows, query) {
+    const unique = new Map();
+    (Array.isArray(rows) ? rows : []).forEach((item) => {
+      const normalized = normalizeFestivalEventResult(item, safeString(item && item.sourceProvider) || 'Festival Provider');
+      if (!normalized.name) return;
+      const key = [normalized.name.toLowerCase(), normalized.address.toLowerCase(), normalized.eventDate.toLowerCase(), normalized.website.toLowerCase()].join('|');
+      const score = scoreFestivalResult(normalized, query) + (normalized.sourceConfidence === 'High' ? 0.3 : (normalized.sourceConfidence === 'Manual' ? 0.1 : 0.2));
+      const current = unique.get(key);
+      if (!current || score > current.score) {
+        unique.set(key, { row: normalized, score });
+      }
+    });
+    return Array.from(unique.values()).sort((a, b) => b.score - a.score).map((entry) => entry.row);
+  }
+
+  async function searchOfficialUrlEndpoints(query, officialUrl, options = {}, sourceWindow = getFestivalProviderHost()) {
+    const host = getFestivalProviderHost(sourceWindow);
+    const config = getFestivalSourceConfig(host);
+    const urls = buildOfficialFestivalUrlProbeList(officialUrl);
+    if (!urls.length) return [];
+    const collected = [];
+    for (const probeUrl of urls) {
+      try {
+        const rows = await searchFeedSource(query, { label: 'Official Website Endpoint', url: probeUrl }, 'Official Website Endpoint', config, {
+          defaultConfidence: 'Medium',
+          defaultConfidenceReason: 'Feed/endpoint probe from official festival URL'
+        });
+        rows.forEach((row) => {
+          collected.push({
+            ...row,
+            website: safeString(row.website || normalizeUrlCandidate(officialUrl) || probeUrl),
+            openLinkUrl: safeString(row.openLinkUrl || row.website || normalizeUrlCandidate(officialUrl) || probeUrl),
+            openLinkLabel: safeString(row.openLinkLabel || 'Open Event Source')
+          });
+        });
+      } catch (_error) {
+        // CORS/network failures are expected in browser-only mode.
+      }
+    }
+    return mergeFestivalEventRows(collected, query).slice(0, Math.max(1, Number(config.maxResultsPerSource || 8)));
   }
 
   async function searchOfficialCalendarFeeds(query, options = {}, sourceWindow = getFestivalProviderHost()) {
@@ -852,7 +1031,11 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const providerRows = providerQuery
       ? await runFestivalProviderSearches(providerQuery, options, getFestivalProviderHost())
       : [];
-    if (providerRows.length > 0) return providerRows;
+    const endpointProbeRows = (officialUrl && options && options.allowOfficialUrlProbe === true)
+      ? await searchOfficialUrlEndpoints(providerQuery || searchQuery || buildFestivalNameFromUrl(officialUrl), officialUrl, options, getFestivalProviderHost())
+      : [];
+    const mergedRows = mergeFestivalEventRows([...providerRows, ...endpointProbeRows], providerQuery || searchQuery);
+    if (mergedRows.length > 0) return mergedRows;
 
     // Keep edit-mode flow usable for official festival websites even when providers return no matches.
     if (officialUrl) {

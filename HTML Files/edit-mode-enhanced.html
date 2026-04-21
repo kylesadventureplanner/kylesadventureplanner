@@ -491,6 +491,56 @@
       background: #dbeafe;
     }
 
+    .festival-confidence-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid #d1d5db;
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .festival-confidence-badge.is-high {
+      background: #ecfdf5;
+      border-color: #86efac;
+      color: #166534;
+    }
+
+    .festival-confidence-badge.is-medium {
+      background: #eff6ff;
+      border-color: #93c5fd;
+      color: #1e3a8a;
+    }
+
+    .festival-confidence-badge.is-manual {
+      background: #fff7ed;
+      border-color: #fdba74;
+      color: #9a3412;
+    }
+
+    .festival-manual-assist {
+      margin-top: 10px;
+      border: 1px solid #fed7aa;
+      border-radius: 10px;
+      background: #fff7ed;
+      padding: 10px;
+    }
+
+    .festival-manual-assist-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      margin-top: 8px;
+    }
+
+    .festival-manual-assist input {
+      width: 100%;
+    }
+
     .candidate-filter-card {
       border-color: #bfdbfe;
       background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
@@ -633,6 +683,31 @@
         </div>
 
         <div id="single-search-status"></div>
+        <div id="singleFestivalManualAssist" class="festival-manual-assist" style="display:none;">
+          <div style="font-size:12px; font-weight:700; color:#9a3412;">No provider details found. Add a quick manual festival candidate:</div>
+          <div id="singleFestivalManualAssistHint" class="help-text" style="color:#9a3412;">Prefilled from your URL/query. You can edit before adding.</div>
+          <div class="festival-manual-assist-grid">
+            <div class="input-group" style="margin:0;">
+              <label for="singleManualFestivalName" style="font-size:11px;">Festival Name</label>
+              <input id="singleManualFestivalName" type="text" placeholder="NC Apple Festival">
+            </div>
+            <div class="input-group" style="margin:0;">
+              <label for="singleManualFestivalDate" style="font-size:11px;">Event Date (optional)</label>
+              <input id="singleManualFestivalDate" type="date">
+            </div>
+            <div class="input-group" style="margin:0;">
+              <label for="singleManualFestivalCity" style="font-size:11px;">City (optional)</label>
+              <input id="singleManualFestivalCity" type="text" placeholder="Hendersonville">
+            </div>
+            <div class="input-group" style="margin:0;">
+              <label for="singleManualFestivalState" style="font-size:11px;">State (optional)</label>
+              <input id="singleManualFestivalState" type="text" maxlength="2" placeholder="NC">
+            </div>
+          </div>
+          <div class="button-group" style="margin-top: 8px;">
+            <button id="singleUseManualFestivalCandidateBtn" class="button button-secondary" type="button" onclick="useSingleManualFestivalCandidate()">📝 Use Manual Festival Candidate</button>
+          </div>
+        </div>
         <div id="single-candidates" class="candidate-results" aria-live="polite"></div>
         <div id="single-status"></div>
       </div>
@@ -813,6 +888,13 @@
             <option value="12">12</option>
             <option value="20">20</option>
           </select>
+        </div>
+
+        <div class="input-group">
+          <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0;">
+            <input id="festivalProbeOfficialUrlEndpoints" type="checkbox">
+            Try probing common endpoints on pasted official festival URLs (may trigger CORS blocks on some sites)
+          </label>
         </div>
 
         <div class="input-group">
@@ -1084,7 +1166,8 @@
       inputType: 'placeName',
       selectedIndex: -1,
        results: [],
-       summary: null
+       summary: null,
+       manualDraft: null
     };
     const bulkCandidateState = {
       rawInput: '',
@@ -1136,6 +1219,7 @@
         officialCalendarsFeeds: '',
         chamberFeeds: '',
         maxResultsPerSource: 8,
+        probeOfficialUrlEndpoints: false,
         showCredentials: false,
         providerOrder: ['official_calendars', 'ticketmaster', 'chamber_feeds', 'eventbrite'],
         providerWeight: {
@@ -1190,6 +1274,7 @@
           maxResultsPerSource: [5, 8, 12, 20].includes(Number(parsed?.maxResultsPerSource))
             ? Number(parsed.maxResultsPerSource)
             : defaults.maxResultsPerSource,
+          probeOfficialUrlEndpoints: Boolean(parsed?.probeOfficialUrlEndpoints),
           showCredentials: Boolean(parsed?.showCredentials),
           providerOrder,
           providerWeight: {
@@ -1220,6 +1305,7 @@
         officialCalendarsFeeds: String(document.getElementById('festivalOfficialCalendarsFeeds')?.value || ''),
         chamberFeeds: String(document.getElementById('festivalChamberFeeds')?.value || ''),
         maxResultsPerSource: Number(document.getElementById('festivalSourceMaxResults')?.value || 8),
+        probeOfficialUrlEndpoints: Boolean(document.getElementById('festivalProbeOfficialUrlEndpoints')?.checked),
         showCredentials: Boolean(document.getElementById('festivalKeysVisibleToggle')?.checked),
         providerOrder,
         providerWeight: {
@@ -1278,6 +1364,7 @@
       setValue('festivalOfficialCalendarsFeeds', cfg.officialCalendarsFeeds || '');
       setValue('festivalChamberFeeds', cfg.chamberFeeds || '');
       setValue('festivalSourceMaxResults', [5, 8, 12, 20].includes(Number(cfg.maxResultsPerSource)) ? cfg.maxResultsPerSource : 8);
+      setChecked('festivalProbeOfficialUrlEndpoints', Boolean(cfg.probeOfficialUrlEndpoints));
       setChecked('festivalKeysVisibleToggle', Boolean(cfg.showCredentials));
       reorderFestivalProviderList(cfg.providerOrder || ['official_calendars', 'ticketmaster', 'chamber_feeds', 'eventbrite']);
       setValue('festivalWeightTicketmaster', cfg.providerWeight?.ticketmaster ?? 1.3);
@@ -1524,6 +1611,7 @@
         'festivalOfficialCalendarsFeeds',
         'festivalChamberFeeds',
         'festivalSourceMaxResults',
+        'festivalProbeOfficialUrlEndpoints',
         'festivalKeysVisibleToggle',
         'festivalWeightTicketmaster',
         'festivalWeightEventbrite',
@@ -2059,6 +2147,98 @@
       statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
     }
 
+    function setSingleFestivalManualAssistVisible(visible, draft = null) {
+      const wrap = document.getElementById('singleFestivalManualAssist');
+      if (!wrap) return;
+      wrap.style.display = visible ? '' : 'none';
+      if (!visible) return;
+      const safeDraft = draft && typeof draft === 'object' ? draft : {};
+      const setVal = (id, value) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = String(value || '').trim();
+      };
+      setVal('singleManualFestivalName', safeDraft.name || '');
+      setVal('singleManualFestivalDate', safeDraft.eventDate || '');
+      setVal('singleManualFestivalCity', safeDraft.city || '');
+      setVal('singleManualFestivalState', safeDraft.state || '');
+      const hint = document.getElementById('singleFestivalManualAssistHint');
+      if (hint) {
+        const providerHint = safeDraft.website
+          ? `Website: ${safeDraft.website}`
+          : 'Prefilled from your URL/query. You can edit before adding.';
+        hint.textContent = providerHint;
+      }
+    }
+
+    function buildSingleFestivalManualDraft(query, inputType) {
+      const raw = String(query || '').trim();
+      const normalizedInputType = String(inputType || '').trim();
+      const isUrl = normalizedInputType === 'website' || /^https?:\/\//i.test(raw);
+      const website = isUrl
+        ? raw
+        : '';
+      const derivedName = deriveSearchQueryFromWebsiteInput(raw)
+        .replace(/\b(events?|calendar|tickets?)\b/ig, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const title = derivedName
+        ? derivedName.replace(/\b\w/g, (char) => char.toUpperCase())
+        : 'Festival Event';
+      return {
+        name: title,
+        city: '',
+        state: '',
+        eventDate: '',
+        website
+      };
+    }
+
+    function normalizeManualFestivalState(value) {
+      return String(value || '').trim().toUpperCase().slice(0, 2);
+    }
+
+    function useSingleManualFestivalCandidate() {
+      const draft = singleCandidateState && singleCandidateState.manualDraft ? singleCandidateState.manualDraft : {};
+      const name = String(document.getElementById('singleManualFestivalName')?.value || draft.name || '').trim();
+      if (!name) {
+        setSingleCandidateStatus('❌ Enter a festival name for manual candidate.', 'error');
+        return;
+      }
+      const eventDate = String(document.getElementById('singleManualFestivalDate')?.value || '').trim();
+      const city = String(document.getElementById('singleManualFestivalCity')?.value || '').trim();
+      const state = normalizeManualFestivalState(document.getElementById('singleManualFestivalState')?.value || draft.state || '');
+      const website = String(draft.website || '').trim();
+      const candidate = normalizeFestivalSearchCandidate({
+        placeId: '',
+        name,
+        city,
+        state,
+        address: [city, state].filter(Boolean).join(', '),
+        website,
+        openLinkUrl: website,
+        openLinkLabel: website ? 'Open Festival Website' : '',
+        eventDate,
+        sourceProvider: 'Manual Festival Entry',
+        description: 'Manual festival details supplied in Edit Mode',
+        sourceConfidence: 'Manual',
+        sourceConfidenceReason: 'Added manually after provider/source fetch limits'
+      });
+      singleCandidateState.results = [candidate];
+      singleCandidateState.selectedIndex = 0;
+      singleCandidateState.summary = {
+        filtersLabel: describeCandidateFilters(),
+        sortLabel: 'Manual',
+        shownCount: 1,
+        droppedByState: 0,
+        droppedByDistance: 0,
+        summaryText: '1 manual candidate ready to add'
+      };
+      renderSingleCandidateResults();
+      setSingleFestivalManualAssistVisible(false);
+      setSingleCandidateStatus('✅ Manual festival candidate prepared. Click "Add Selected Candidate" to import.', 'success');
+    }
+
     function normalizeCoordinates(raw) {
       const source = raw && typeof raw === 'object' ? raw : {};
       const lat = Number(source.lat);
@@ -2318,9 +2498,22 @@
       if (row.sourceType === 'festival-event') {
         const providerPart = row.sourceProvider ? `Source: ${row.sourceProvider}` : 'Source: Festival adapter';
         const datePart = row.eventDate ? ` | ${row.eventDate}` : '';
-        return `${providerPart}${datePart}${ratingPart}${reviewPart}${statusPart}`;
+        const confidencePart = row.sourceConfidence ? ` | Confidence: ${row.sourceConfidence}` : '';
+        return `${providerPart}${datePart}${confidencePart}${ratingPart}${reviewPart}${statusPart}`;
       }
       return `Place ID: ${row.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}`;
+    }
+
+    function renderFestivalConfidenceBadge(candidate) {
+      const row = candidate && typeof candidate === 'object' ? candidate : {};
+      if (row.sourceType !== 'festival-event') return '';
+      const confidence = String(row.sourceConfidence || 'Medium').trim();
+      const reason = String(row.sourceConfidenceReason || '').trim();
+      const tone = confidence.toLowerCase() === 'high'
+        ? 'is-high'
+        : (confidence.toLowerCase() === 'manual' ? 'is-manual' : 'is-medium');
+      const title = reason || `Festival confidence: ${confidence}`;
+      return `<span class="festival-confidence-badge ${tone}" title="${title}">${confidence}</span>`;
     }
 
     function formatCandidateDistance(candidate) {
@@ -2458,6 +2651,8 @@
         sourceProvider: String(raw.sourceProvider || raw.provider || 'Festival Provider').trim(),
         sourceType: 'festival-event',
         eventDate: String(raw.eventDate || raw.startDate || raw.date || '').trim(),
+        sourceConfidence: String(raw.sourceConfidence || 'Medium').trim(),
+        sourceConfidenceReason: String(raw.sourceConfidenceReason || '').trim(),
         googlePlaceUrl: String(raw.googlePlaceUrl || raw.googleUrl || '').trim(),
         openLinkUrl: String(raw.openLinkUrl || raw.googlePlaceUrl || raw.googleUrl || website).trim(),
         openLinkLabel: String(raw.openLinkLabel || (website || raw.openLinkUrl ? 'Open Event Source' : '')).trim(),
@@ -2503,6 +2698,7 @@
           target: getSelectedTarget('actionTargetSelect'),
           inputType,
           mode,
+          allowOfficialUrlProbe: Boolean(mainWindow.__festivalSourceConfig?.probeOfficialUrlEndpoints || window.__festivalSourceConfig?.probeOfficialUrlEndpoints),
           state: getCandidateStateFilter(),
           radiusMiles: getCandidateDistanceLimitMiles(),
           anchorAddress: CANDIDATE_ANCHOR_ADDRESS,
@@ -2580,6 +2776,7 @@
         const selectedClass = index === singleCandidateState.selectedIndex ? 'selected' : '';
         const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
         const distancePart = renderCandidateDistanceMarkup(candidate);
+        const confidenceBadge = renderFestivalConfidenceBadge(candidate);
         const openLinkUrl = buildCandidateOpenLinkUrl(candidate);
         const openLink = openLinkUrl
           ? `<a class="candidate-open-link" href="${openLinkUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">${buildCandidateOpenLinkLabel(candidate)}</a>`
@@ -2590,6 +2787,7 @@
             <div class="candidate-title">${candidate.name}</div>
             <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
             <div class="candidate-meta">${buildCandidateIdentityMeta(candidate)}</div>
+            ${confidenceBadge ? `<div class="candidate-meta">${confidenceBadge}</div>` : ''}
             <div class="candidate-meta">${statePart}</div>
             <div class="candidate-meta">${distancePart}</div>
             ${descriptionPart}
@@ -2606,8 +2804,10 @@
       singleCandidateState.selectedIndex = -1;
       singleCandidateState.results = [];
       singleCandidateState.summary = null;
+      singleCandidateState.manualDraft = null;
       renderSingleCandidateResults();
       setSingleCandidateStatus('', 'info');
+      setSingleFestivalManualAssistVisible(false);
     }
 
     function selectSingleCandidate(index) {
@@ -2637,6 +2837,8 @@
 
       setSingleCandidateStatus(`<span class="spinner"></span> Searching for ${festivalMode ? 'festival events' : 'nearby matches'}...`, 'info');
       singleCandidateState.selectedIndex = -1;
+      singleCandidateState.manualDraft = null;
+      setSingleFestivalManualAssistVisible(false);
       renderSingleCandidateResults();
 
       try {
@@ -2659,6 +2861,11 @@
         renderSingleCandidateResults();
 
         if (!singleCandidateState.results.length) {
+          if (festivalMode) {
+            const draft = buildSingleFestivalManualDraft(query, inputType);
+            singleCandidateState.manualDraft = draft;
+            setSingleFestivalManualAssistVisible(true, draft);
+          }
           setSingleCandidateStatus(`⚠️ No ${festivalMode ? 'festival events' : 'results'} match your filters (${describeCandidateFilters()}).`, 'error');
           return;
         }
@@ -2827,6 +3034,7 @@
           const selectedClass = candidateIndex === group.selectedIndex ? 'selected' : '';
           const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
           const distancePart = renderCandidateDistanceMarkup(candidate);
+          const confidenceBadge = renderFestivalConfidenceBadge(candidate);
           const openLinkUrl = buildCandidateOpenLinkUrl(candidate);
           const openLink = openLinkUrl
             ? `<a class="candidate-open-link" href="${openLinkUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">${buildCandidateOpenLinkLabel(candidate)}</a>`
@@ -2837,6 +3045,7 @@
               <div class="candidate-title">${candidate.name}</div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
               <div class="candidate-meta">${buildCandidateIdentityMeta(candidate)}</div>
+              ${confidenceBadge ? `<div class="candidate-meta">${confidenceBadge}</div>` : ''}
               <div class="candidate-meta">${statePart}</div>
               <div class="candidate-meta">${distancePart}</div>
               ${descriptionPart}
@@ -3161,6 +3370,7 @@
           const selectedClass = selectedIndexes.has(candidateIndex) ? 'selected' : '';
           const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
           const distancePart = renderCandidateDistanceMarkup(candidate);
+          const confidenceBadge = renderFestivalConfidenceBadge(candidate);
           const openLinkUrl = buildCandidateOpenLinkUrl(candidate);
           const openLink = openLinkUrl
             ? `<a class="candidate-open-link" href="${openLinkUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">${buildCandidateOpenLinkLabel(candidate)}</a>`
@@ -3171,6 +3381,7 @@
               <div class="candidate-title">${candidate.name}</div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
               <div class="candidate-meta">${buildCandidateIdentityMeta(candidate)}</div>
+              ${confidenceBadge ? `<div class="candidate-meta">${confidenceBadge}</div>` : ''}
               <div class="candidate-meta">${statePart}</div>
               <div class="candidate-meta">${distancePart}</div>
               ${descriptionPart}

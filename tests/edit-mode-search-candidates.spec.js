@@ -863,6 +863,7 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(1);
     await expect(popup.locator('#single-search-status')).toContainText('Found 1 festival event');
+    await expect(popup.locator('#single-candidates .festival-confidence-badge').first()).toContainText('Manual');
     const openLink = popup.locator('#single-candidates .candidate-open-link').first();
     await expect(openLink).toHaveAttribute('href', officialUrl);
     await expect(openLink).toContainText('Open Festival Website');
@@ -978,6 +979,7 @@ test.describe('Edit Mode single-add candidate search', () => {
     const card = popup.locator('#single-candidates .candidate-item').first();
     await expect(card.locator('.candidate-title')).toHaveText('NC Apple Festival 2026');
     await expect(card).toContainText('Source: Ticketmaster');
+    await expect(card.locator('.festival-confidence-badge')).toContainText('Medium');
     await expect(card).toContainText('2026-09-20');
 
     await popup.click('#singleAddSelectedCandidateBtn');
@@ -986,6 +988,57 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(row[1]).toBe('NC Apple Festival 2026');
     expect(row[2]).toBe('111 Main St, Hendersonville, NC 28792');
     expect(row[5]).toBe('https://ncapplefestival.org/');
+  });
+
+  test('festival manual assist can create a candidate when provider/source searches return no matches', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#singleInputType', 'placeName');
+    await popup.fill('#singleInput', 'zzzz impossible orchard festival query');
+    await popup.click('#singleSearchCandidatesBtn');
+
+    const manualAssist = popup.locator('#singleFestivalManualAssist');
+    await expect(manualAssist).toBeVisible();
+    await popup.fill('#singleManualFestivalName', 'NC Apple Festival Manual');
+    await popup.fill('#singleManualFestivalCity', 'Hendersonville');
+    await popup.fill('#singleManualFestivalState', 'nc');
+    await popup.click('#singleUseManualFestivalCandidateBtn');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(1);
+    const card = popup.locator('#single-candidates .candidate-item').first();
+    await expect(card.locator('.candidate-title')).toHaveText('NC Apple Festival Manual');
+    await expect(card.locator('.festival-confidence-badge')).toContainText('Manual');
+    await expect(card).toContainText('Source: Manual Festival Entry');
+
+    await popup.click('#singleAddSelectedCandidateBtn');
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
+    const row = graphCalls[0].body.values[0];
+    expect(row[1]).toBe('NC Apple Festival Manual');
+    expect(row[3]).toBe('Hendersonville');
+    expect(row[4]).toBe('NC');
+    expect(row[5]).toBe('');
   });
 
   test('non-festival chain place URL candidate search enriches via resolver fallback', async ({ page }) => {
