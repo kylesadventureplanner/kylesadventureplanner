@@ -316,6 +316,7 @@
             <div class="card-subtitle">Run targeted diagnostics on demand for unclickable buttons, sync health, and runtime blockers. Use when hover/click behaviors are inconsistent or dead.</div>
           </div>
           <div class="nature-log-form-actions">
+            <button id="birdsOpenDiagnosticsHelpBtn" type="button" class="pill-button nature-diagnostics-help-launch" title="Open diagnostics help and runbook guidance" data-tooltip="Open diagnostics help and runbook guidance" aria-controls="birdsDiagnosticsHelpPanel" aria-expanded="false">Help & Runbook</button>
             <button id="birdsBackToCtaRowBtn" type="button" class="pill-button nature-diagnostics-quick-jump" title="Jump to the Adventure-like Explore/Log/Map action controls" data-tooltip="Jump to the Adventure-like Explore/Log/Map action controls">↑ Back to CTA controls</button>
             <button id="birdsRunCtaHealthDiagBtn" type="button" class="pill-button" title="Run a practical pass/fail health check for Explore, Log, Map, and Refresh" data-tooltip="Run a practical pass/fail health check for Explore, Log, Map, and Refresh">Run CTA Health Check</button>
             <button id="birdsRunCtaSmokeTestBtn" type="button" class="pill-button" title="Run the raw CTA smoke test report and print it to the diagnostics console" data-tooltip="Run the raw CTA smoke test report and print it to the diagnostics console">Run CTA Smoke Test</button>
@@ -327,11 +328,25 @@
             <button id="birdsRunFullAutorepairSequenceBtn" type="button" class="pill-button" title="Run core CTA autofix, overlay autofix, and clickability probe in one sequence" data-tooltip="Run core CTA autofix, overlay autofix, and clickability probe in one sequence">Run Full Auto-Repair Sequence</button>
             <button id="birdsRunReliabilityDiagBtn" type="button" class="pill-button" title="Capture reliability status, blocked actions, and overlay interception counters" data-tooltip="Capture reliability status, blocked actions, and overlay interception counters">Run Reliability Snapshot</button>
             <button id="birdsRunDiagnosticsBundleBtn" type="button" class="pill-button" title="Capture full diagnostics bundle without downloading a file" data-tooltip="Capture full diagnostics bundle without downloading a file">Run Full Diagnostics Bundle</button>
+            <button id="birdsMarkKnownGoodBtn" type="button" class="pill-button" title="Save this current diagnostics state as a known-good GUI snapshot" data-tooltip="Save this current diagnostics state as a known-good GUI snapshot">Mark Known-Good Snapshot</button>
+            <button id="birdsCompareKnownGoodBtn" type="button" class="pill-button" title="Compare current diagnostics state against your latest known-good snapshot" data-tooltip="Compare current diagnostics state against your latest known-good snapshot">Compare to Known-Good</button>
+            <button id="birdsClearKnownGoodSnapshotsBtn" type="button" class="pill-button" title="Delete all saved known-good GUI snapshots for this browser" data-tooltip="Delete all saved known-good GUI snapshots for this browser">Clear Known-Good Snapshots</button>
             <button id="birdsRunWorkbookDiagReportBtn" type="button" class="pill-button" title="Run workbook path and table diagnostics and print a summarized report" data-tooltip="Run workbook path and table diagnostics and print a summarized report">Run Workbook Diagnostic Report</button>
             <button id="birdsHardRefreshPageBtn" type="button" class="pill-button" title="Reload the current page" data-tooltip="Reload the current page">Hard Refresh Page</button>
             <button id="birdsClearCacheReloadBtn" type="button" class="pill-button" title="Clear this app's cached files and service worker, then reload" data-tooltip="Clear this app's cached files and service worker, then reload" data-hard-refresh-confirm="Clear Cache + Reload will reset this app's cached files and reload Nature Challenge. Continue?">Clear Cache + Reload</button>
           </div>
           <div id="birdsClearCacheReloadStatus" class="card-subtitle" aria-live="polite">Hard refresh diagnostics: never run.</div>
+          <div id="birdsDiagnosticsHelpBackdrop" class="nature-diagnostics-help-backdrop" hidden></div>
+          <aside id="birdsDiagnosticsHelpPanel" class="nature-diagnostics-help-panel" hidden aria-hidden="true" role="dialog" aria-modal="false" aria-labelledby="birdsDiagnosticsHelpTitle">
+            <div class="nature-diagnostics-help-head">
+              <div>
+                <div id="birdsDiagnosticsHelpTitle" class="card-title">Diagnostics Help</div>
+                <div class="card-subtitle">How and when to use each Birds diagnostic tool.</div>
+              </div>
+              <button id="birdsCloseDiagnosticsHelpBtn" type="button" class="pill-button" title="Close diagnostics help" data-tooltip="Close diagnostics help">Close</button>
+            </div>
+            <div id="birdsDiagnosticsHelpBody" class="nature-diagnostics-help-body" aria-live="polite"></div>
+          </aside>
           <div id="birdsCtaHealthPanel" class="nature-cta-health-panel" aria-live="polite">CTA health check has not been run yet.</div>
           <div id="birdsCtaHealthCopyPreview" class="nature-cta-health-copy-preview" aria-live="polite" tabindex="0" title="Copied summary preview will appear here after you click Copy CTA Health Summary.">Copied summary preview will appear here after you click "Copy CTA Health Summary".</div>
           <textarea id="birdsManualDiagnosticsOutput" class="filter-input" rows="12" readonly aria-label="Manual diagnostics output" placeholder="Manual diagnostic results appear here..."></textarea>
@@ -2118,6 +2133,189 @@
     margin: 0 14px 14px;
   }
 
+  #natureChallengeRoot .nature-diagnostics-help-launch {
+    border-color: #2563eb;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    color: #1d4ed8;
+    font-weight: 800;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.22);
+    z-index: 4699;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-panel {
+    position: fixed;
+    top: 86px;
+    right: 16px;
+    width: min(440px, calc(100vw - 28px));
+    max-height: calc(100vh - 104px);
+    overflow: auto;
+    border: 1px solid #bfdbfe;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
+    z-index: 4700;
+    padding: 12px;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-body {
+    display: grid;
+    gap: 10px;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-legend-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #f8fafc;
+    color: #475569;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-legend-chip.is-available {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-legend-chip.is-disabled {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-legend-chip.is-missing {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-topic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 6px;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-topic-btn {
+    min-height: 34px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-topic-btn.is-active {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1d4ed8;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-card {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-card ul {
+    margin: 0;
+    padding-left: 18px;
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-card code {
+    font-size: 11px;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-run-btn {
+    margin-right: 6px;
+    margin-bottom: 6px;
+    min-height: 34px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-run-btn.is-available {
+    border-color: #16a34a;
+    background: linear-gradient(135deg, #ecfdf5 0%, #dcfce7 100%);
+    color: #166534;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-run-btn.is-disabled,
+  #natureChallengeRoot .nature-diagnostics-help-run-btn.is-missing {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #64748b;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-run-state {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    padding: 2px 8px;
+    margin-right: 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-run-state strong,
+  #natureChallengeRoot .nature-diagnostics-help-legend-chip strong {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-run-state.is-available {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #166534;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-run-state.is-disabled {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  #natureChallengeRoot .nature-diagnostics-help-run-state.is-missing {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+  }
+
   #natureChallengeRoot .nature-click-diagnostics-panel {
     max-height: 320px;
     overflow-y: auto;
@@ -3469,6 +3667,15 @@
   body.mobile-view #natureChallengeRoot .nature-overview-command-row,
   body.iphone-view #natureChallengeRoot .nature-overview-command-row {
     grid-template-columns: 1fr;
+  }
+
+  body.mobile-view #natureChallengeRoot .nature-diagnostics-help-panel,
+  body.iphone-view #natureChallengeRoot .nature-diagnostics-help-panel {
+    top: 12px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-height: calc(100vh - 24px);
   }
 
   /* On mobile the sticky CTA card would consume too much vertical space;

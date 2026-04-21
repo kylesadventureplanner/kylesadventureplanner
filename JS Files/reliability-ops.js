@@ -24,6 +24,8 @@
   const BUSY_STALE_MS = 15000;
   const LOADER_STALE_MS = 15000;
   const STARTUP_LOCK_STALE_MS = 12000;
+  const KNOWN_GOOD_STORAGE_KEY = 'reliabilityKnownGoodSnapshotsV1';
+  const MAX_KNOWN_GOOD_SNAPSHOTS = 12;
 
   function nowIso() {
     return new Date().toISOString();
@@ -407,6 +409,161 @@
     }
 
     return bundle;
+  };
+
+  function safeReadKnownGoodSnapshots() {
+    try {
+      const raw = localStorage.getItem(KNOWN_GOOD_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  function safeWriteKnownGoodSnapshots(items) {
+    try {
+      localStorage.setItem(KNOWN_GOOD_STORAGE_KEY, JSON.stringify(Array.isArray(items) ? items : []));
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function summarizeBundle(bundle) {
+    const reliabilityStatus = bundle && bundle.reliabilityStatus ? bundle.reliabilityStatus : {};
+    const blockedActions = reliabilityStatus && reliabilityStatus.blockedActions ? reliabilityStatus.blockedActions : {};
+    return {
+      activeTab: String(reliabilityStatus.activeTab || ''),
+      lastActionKey: String(reliabilityStatus.lastActionKey || ''),
+      overlayInterceptions: Number(reliabilityStatus.overlayInterceptions || 0),
+      blockedDisabled: Number(blockedActions.disabled || 0),
+      blockedInFlight: Number(blockedActions['in-flight'] || 0),
+      blockedDedupe: Number(blockedActions.dedupe || 0),
+      errorCount: Number(reliabilityStatus.errorCount || 0),
+      recoveryEventCount: Number(reliabilityStatus.recoveryEventCount || 0),
+      blockerProbeCount: Number(bundle && bundle.blockerProbes ? Object.keys(bundle.blockerProbes).length : 0),
+      blockedInteractionCount: Number(Array.isArray(bundle && bundle.blockedInteractionLog) ? bundle.blockedInteractionLog.length : 0),
+      blockingOverlayCount: Number(Array.isArray(bundle && bundle.blockingOverlays) ? bundle.blockingOverlays.length : 0)
+    };
+  }
+
+  function toCompactBundle(bundle) {
+    return {
+      exportedAt: String(bundle && bundle.exportedAt || ''),
+      reliabilityStatus: bundle && bundle.reliabilityStatus ? bundle.reliabilityStatus : null,
+      startupTimingSnapshot: bundle && bundle.startupTimingSnapshot ? bundle.startupTimingSnapshot : null,
+      blockerProbes: bundle && bundle.blockerProbes ? bundle.blockerProbes : {},
+      blockingOverlays: Array.isArray(bundle && bundle.blockingOverlays) ? bundle.blockingOverlays : [],
+      blockedInteractionSample: Array.isArray(bundle && bundle.blockedInteractionLog)
+        ? bundle.blockedInteractionLog.slice(-15)
+        : []
+    };
+  }
+
+  function buildKnownGoodDelta(currentSummary, baselineSummary) {
+    const c = currentSummary || {};
+    const b = baselineSummary || {};
+    return {
+      overlayInterceptionsDelta: Number(c.overlayInterceptions || 0) - Number(b.overlayInterceptions || 0),
+      blockedDisabledDelta: Number(c.blockedDisabled || 0) - Number(b.blockedDisabled || 0),
+      blockedInFlightDelta: Number(c.blockedInFlight || 0) - Number(b.blockedInFlight || 0),
+      blockedDedupeDelta: Number(c.blockedDedupe || 0) - Number(b.blockedDedupe || 0),
+      errorCountDelta: Number(c.errorCount || 0) - Number(b.errorCount || 0),
+      recoveryEventDelta: Number(c.recoveryEventCount || 0) - Number(b.recoveryEventCount || 0),
+      blockedInteractionDelta: Number(c.blockedInteractionCount || 0) - Number(b.blockedInteractionCount || 0),
+      blockingOverlayDelta: Number(c.blockingOverlayCount || 0) - Number(b.blockingOverlayCount || 0)
+    };
+  }
+
+  function markKnownGoodCurrent(options = {}) {
+    const label = String(options.label || 'known-good').trim() || 'known-good';
+    const note = String(options.note || '').trim();
+    const includeBundle = options.includeBundle !== false;
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const bundle = window.exportReliabilityDiagnosticsBundle({ download: false });
+    const snapshot = {
+      id,
+      createdAt: nowIso(),
+      label,
+      note,
+      summary: summarizeBundle(bundle),
+      location: String(window.location && window.location.href || ''),
+      bundle: includeBundle ? toCompactBundle(bundle) : null
+    };
+
+    const current = safeReadKnownGoodSnapshots();
+    const next = [snapshot].concat(current).slice(0, MAX_KNOWN_GOOD_SNAPSHOTS);
+    const persisted = safeWriteKnownGoodSnapshots(next);
+    return {
+      ok: persisted,
+      snapshot,
+      storedCount: next.length,
+      storageKey: KNOWN_GOOD_STORAGE_KEY
+    };
+  }
+
+  function compareKnownGoodLatest(options = {}) {
+    const snapshots = safeReadKnownGoodSnapshots();
+    if (!snapshots.length) {
+      return {
+        ok: false,
+        reason: 'no-known-good-snapshots',
+        storageKey: KNOWN_GOOD_STORAGE_KEY
+      };
+    }
+
+    const baseline = snapshots[0];
+    const currentBundle = window.exportReliabilityDiagnosticsBundle({ download: false });
+    const currentSummary = summarizeBundle(currentBundle);
+    const baselineSummary = baseline && baseline.summary ? baseline.summary : {};
+    return {
+      ok: true,
+      comparedAt: nowIso(),
+      baseline: {
+        id: String(baseline.id || ''),
+        createdAt: String(baseline.createdAt || ''),
+        label: String(baseline.label || ''),
+        note: String(baseline.note || ''),
+        summary: baselineSummary
+      },
+      current: {
+        summary: currentSummary
+      },
+      delta: buildKnownGoodDelta(currentSummary, baselineSummary),
+      availableSnapshots: snapshots.length,
+      currentBundle: options.includeBundle ? toCompactBundle(currentBundle) : null
+    };
+  }
+
+  function listKnownGoodSnapshots() {
+    return safeReadKnownGoodSnapshots().map((item) => ({
+      id: String(item && item.id || ''),
+      createdAt: String(item && item.createdAt || ''),
+      label: String(item && item.label || ''),
+      note: String(item && item.note || ''),
+      summary: item && item.summary ? item.summary : {}
+    }));
+  }
+
+  function clearKnownGoodSnapshots() {
+    const existing = safeReadKnownGoodSnapshots();
+    safeWriteKnownGoodSnapshots([]);
+    return {
+      ok: true,
+      removedCount: existing.length,
+      clearedAt: nowIso(),
+      storageKey: KNOWN_GOOD_STORAGE_KEY
+    };
+  }
+
+  window.ReliabilityKnownGood = {
+    markCurrent: markKnownGoodCurrent,
+    compareLatest: compareKnownGoodLatest,
+    list: listKnownGoodSnapshots,
+    clearAll: clearKnownGoodSnapshots,
+    storageKey: KNOWN_GOOD_STORAGE_KEY
   };
 
   installGlobalErrorPipeline();

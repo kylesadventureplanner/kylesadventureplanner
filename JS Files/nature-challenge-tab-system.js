@@ -586,6 +586,140 @@
     lastReportMeta: null
   };
 
+  const birdsDiagnosticsHelp = {
+    panelEl: null,
+    bodyEl: null,
+    backdropEl: null,
+    openBtnEl: null,
+    isOpen: false,
+    activeTopic: 'overview',
+    escapeBound: false,
+    refreshTimerId: 0,
+    runtimeEventsBound: false
+  };
+
+  const BIRDS_DIAGNOSTICS_HELP_REFRESH_MS = 2500;
+
+  const BIRDS_DIAGNOSTICS_HELP_TOPICS = [
+    {
+      key: 'overview',
+      label: 'Overview',
+      title: 'How to use this diagnostics console',
+      whenToUse: 'Start here when Birds buttons or data flows behave unexpectedly.',
+      steps: [
+        'Run CTA Health Check to get a quick pass/fail baseline.',
+        'If failures appear, run CTA Smoke Test for fuller action telemetry.',
+        'Use Clickability Probe to confirm clickable surface reachability.',
+        'Run an auto-fix option, then re-run the health/smoke check.'
+      ],
+      relatedActions: ['Run CTA Health Check', 'Run CTA Smoke Test', 'Run Clickability Probe']
+    },
+    {
+      key: 'cta-health',
+      label: 'CTA Health',
+      title: 'CTA Health and Smoke',
+      whenToUse: 'Use when Explore, Log, Map, or Refresh may be dead or inconsistent.',
+      steps: [
+        'Run CTA Health Check for quick PASS/FAIL status per core CTA.',
+        'Run CTA Smoke Test to append detailed output into manual diagnostics.',
+        'Copy CTA Health Summary to share short triage context.'
+      ],
+      relatedActions: ['Run CTA Health Check', 'Run CTA Smoke Test', 'Copy CTA Health Summary']
+    },
+    {
+      key: 'clickability',
+      label: 'Clickability',
+      title: 'Clickability and action-context probes',
+      whenToUse: 'Use when hover works but clicks do nothing, or actions only work after scrolling.',
+      steps: [
+        'Run Clickability Probe to evaluate reachable click points.',
+        'If targets are out of context, run Normalize CTA Action Context + Probe.',
+        'Review output for blocked/offscreen reasons and duplicate IDs.'
+      ],
+      relatedActions: ['Run Clickability Probe', 'Normalize CTA Action Context + Probe']
+    },
+    {
+      key: 'autofix',
+      label: 'Auto-Fix',
+      title: 'Core CTA and overlay auto-repair tools',
+      whenToUse: 'Use when stale disabled/busy states or overlays block interaction.',
+      steps: [
+        'Run Auto-fix Core CTA State to clear stale disabled/busy flags.',
+        'Run Auto-fix Overlay/Z-Index Blockers to neutralize blockers.',
+        'Run Full Auto-Repair Sequence for the complete repair pass.'
+      ],
+      relatedActions: ['Auto-fix Core CTA State', 'Auto-fix Overlay/Z-Index Blockers', 'Run Full Auto-Repair Sequence']
+    },
+    {
+      key: 'reliability',
+      label: 'Reliability',
+      title: 'Reliability snapshots and bundles',
+      whenToUse: 'Use when you need evidence across blocked actions, overlay interceptions, and startup timing.',
+      steps: [
+        'Run Reliability Snapshot for fast counters and status.',
+        'Run Full Diagnostics Bundle for broader state capture.',
+        'Use Copy Output / Export Last Report JSON to share details.'
+      ],
+      relatedActions: ['Run Reliability Snapshot', 'Run Full Diagnostics Bundle', 'Export Last Report JSON']
+    },
+    {
+      key: 'known-good',
+      label: 'Known-Good',
+      title: 'Known-good snapshot workflow',
+      whenToUse: 'Use when a build is stable and you want a baseline to compare against later.',
+      steps: [
+        'Mark Known-Good Snapshot after a clean pass or verified manual flow.',
+        'Compare to Known-Good when regressions appear.',
+        'Clear Known-Good Snapshots when you intentionally reset local baselines.'
+      ],
+      relatedActions: ['Mark Known-Good Snapshot', 'Compare to Known-Good', 'Clear Known-Good Snapshots']
+    },
+    {
+      key: 'workbook',
+      label: 'Workbook',
+      title: 'Workbook and sync diagnostics',
+      whenToUse: 'Use when data source, import, or workbook routing seems wrong.',
+      steps: [
+        'Run Workbook Diagnostic Report to capture workbook path/table status.',
+        'Review report output in the diagnostics textarea.',
+        'Pair with Run Reliability Snapshot if startup/sync timing is suspect.'
+      ],
+      relatedActions: ['Run Workbook Diagnostic Report', 'Run Reliability Snapshot']
+    },
+    {
+      key: 'recovery',
+      label: 'Recovery',
+      title: 'Page and cache recovery actions',
+      whenToUse: 'Use when UI state appears stale or code updates are not reflected.',
+      steps: [
+        'Use Hard Refresh Page for a normal reload.',
+        'Use Clear Cache + Reload for stronger cache/service-worker reset.',
+        'After reload, rerun CTA Health Check to confirm stability.'
+      ],
+      relatedActions: ['Hard Refresh Page', 'Clear Cache + Reload', 'Run CTA Health Check']
+    }
+  ];
+
+  const BIRDS_DIAGNOSTICS_HELP_ACTION_TARGETS = {
+    'Run CTA Health Check': 'birdsRunCtaHealthDiagBtn',
+    'Run CTA Smoke Test': 'birdsRunCtaSmokeTestBtn',
+    'Copy CTA Health Summary': 'birdsCopyCtaHealthSummaryBtn',
+    'Run Clickability Probe': 'birdsRunClickabilityDiagBtn',
+    'Normalize CTA Action Context + Probe': 'birdsResetViewportDiagBtn',
+    'Auto-fix Core CTA State': 'birdsRunCoreCtaAutofixBtn',
+    'Auto-fix Overlay/Z-Index Blockers': 'birdsRunOverlayAutofixBtn',
+    'Run Full Auto-Repair Sequence': 'birdsRunFullAutorepairSequenceBtn',
+    'Run Reliability Snapshot': 'birdsRunReliabilityDiagBtn',
+    'Run Full Diagnostics Bundle': 'birdsRunDiagnosticsBundleBtn',
+    'Export Last Report JSON': 'birdsExportManualDiagnosticsJsonBtn',
+    'Mark Known-Good Snapshot': 'birdsMarkKnownGoodBtn',
+    'Compare to Known-Good': 'birdsCompareKnownGoodBtn',
+    'Clear Known-Good Snapshots': 'birdsClearKnownGoodSnapshotsBtn',
+    'Run Workbook Diagnostic Report': 'birdsRunWorkbookDiagReportBtn',
+    'Hard Refresh Page': 'birdsHardRefreshPageBtn',
+    'Clear Cache + Reload': 'birdsClearCacheReloadBtn'
+  };
+
   const birdsCoreCtaBlockDiagnostics = {
     lastBlocked: null
   };
@@ -872,6 +1006,187 @@
     }
     syncManualDiagnosticsStatusLine();
     syncManualDiagnosticsLastReportActionButtons();
+  }
+
+  function getBirdDiagnosticsHelpTopic(topicKey) {
+    const key = String(topicKey || '').trim() || 'overview';
+    return BIRDS_DIAGNOSTICS_HELP_TOPICS.find((topic) => topic.key === key) || BIRDS_DIAGNOSTICS_HELP_TOPICS[0];
+  }
+
+  function mapBirdDiagnosticsButtonToHelpTopic(buttonId) {
+    const id = String(buttonId || '').trim();
+    if (!id) return '';
+    if (id === 'birdsRunCtaHealthDiagBtn' || id === 'birdsRunCtaSmokeTestBtn' || id === 'birdsCopyCtaHealthSummaryBtn') return 'cta-health';
+    if (id === 'birdsRunClickabilityDiagBtn' || id === 'birdsResetViewportDiagBtn') return 'clickability';
+    if (id === 'birdsRunCoreCtaAutofixBtn' || id === 'birdsRunOverlayAutofixBtn' || id === 'birdsRunFullAutorepairSequenceBtn') return 'autofix';
+    if (id === 'birdsRunReliabilityDiagBtn' || id === 'birdsRunDiagnosticsBundleBtn') return 'reliability';
+    if (id === 'birdsMarkKnownGoodBtn' || id === 'birdsCompareKnownGoodBtn' || id === 'birdsClearKnownGoodSnapshotsBtn') return 'known-good';
+    if (id === 'birdsRunWorkbookDiagReportBtn') return 'workbook';
+    if (id === 'birdsHardRefreshPageBtn' || id === 'birdsClearCacheReloadBtn') return 'recovery';
+    return '';
+  }
+
+  function renderBirdDiagnosticsHelpPanel(topicKey) {
+    const bodyEl = birdsDiagnosticsHelp.bodyEl || document.getElementById('birdsDiagnosticsHelpBody');
+    if (!bodyEl) return;
+    birdsDiagnosticsHelp.bodyEl = bodyEl;
+
+    const topic = getBirdDiagnosticsHelpTopic(topicKey || birdsDiagnosticsHelp.activeTopic);
+    birdsDiagnosticsHelp.activeTopic = topic.key;
+
+    const topicsHtml = BIRDS_DIAGNOSTICS_HELP_TOPICS.map((item) => {
+      const activeClass = item.key === topic.key ? ' is-active' : '';
+      return `<button type="button" class="nature-diagnostics-help-topic-btn${activeClass}" data-birds-help-topic="${escapeHtml(item.key)}">${escapeHtml(item.label)}</button>`;
+    }).join('');
+
+    const stepsHtml = (Array.isArray(topic.steps) ? topic.steps : []).map((step) => `<li>${escapeHtml(step)}</li>`).join('');
+    const resolveHelpActionState = (targetId) => {
+      const safeTargetId = String(targetId || '').trim();
+      if (!safeTargetId) {
+        return { state: 'missing', label: 'Unavailable', icon: 'X', canRun: false };
+      }
+      const targetButton = document.getElementById(safeTargetId);
+      if (!targetButton) {
+        return { state: 'missing', label: 'Unavailable', icon: 'X', canRun: false };
+      }
+      const isDisabled = Boolean(targetButton.disabled)
+        || String(targetButton.getAttribute('aria-disabled') || '').toLowerCase() === 'true';
+      if (isDisabled) {
+        return { state: 'disabled', label: 'Disabled', icon: '!', canRun: false };
+      }
+      return { state: 'available', label: 'Available', icon: 'OK', canRun: true };
+    };
+
+    const legendHtml = `
+      <div class="nature-diagnostics-help-legend" aria-label="Diagnostics action availability legend">
+        <span class="nature-diagnostics-help-legend-chip is-available"><strong>OK</strong> Available</span>
+        <span class="nature-diagnostics-help-legend-chip is-disabled"><strong>!</strong> Disabled</span>
+        <span class="nature-diagnostics-help-legend-chip is-missing"><strong>X</strong> Unavailable</span>
+      </div>
+    `;
+
+    const actionsHtml = (Array.isArray(topic.relatedActions) ? topic.relatedActions : [])
+      .map((action) => {
+        const safeAction = String(action || '').trim();
+        if (!safeAction) return '';
+        const targetId = BIRDS_DIAGNOSTICS_HELP_ACTION_TARGETS[safeAction] || '';
+        if (!targetId) return `<code>${escapeHtml(safeAction)}</code>`;
+        const actionState = resolveHelpActionState(targetId);
+        const disabledAttr = actionState.canRun ? '' : 'disabled aria-disabled="true"';
+        return `
+          <button
+            type="button"
+            class="pill-button nature-diagnostics-help-run-btn is-${escapeHtml(actionState.state)}"
+            data-birds-help-run-target="${escapeHtml(targetId)}"
+            title="Run ${escapeHtml(safeAction)} now"
+            data-tooltip="Run ${escapeHtml(safeAction)} now"
+            ${disabledAttr}
+          >Run: ${escapeHtml(safeAction)}</button>
+          <span class="nature-diagnostics-help-run-state is-${escapeHtml(actionState.state)}">
+            <strong>${escapeHtml(actionState.icon || '')}</strong> ${escapeHtml(actionState.label)}
+          </span>
+        `;
+      })
+      .join(' ');
+
+    bodyEl.innerHTML = `
+      ${legendHtml}
+      <div class="nature-diagnostics-help-topic-grid">${topicsHtml}</div>
+      <div class="nature-diagnostics-help-card">
+        <div class="card-title">${escapeHtml(topic.title || '')}</div>
+        <div class="card-subtitle">${escapeHtml(topic.whenToUse || '')}</div>
+        <ul>${stepsHtml}</ul>
+        <div>${actionsHtml}</div>
+      </div>
+    `;
+  }
+
+  function setBirdDiagnosticsHelpOpen(open, topicKey) {
+    const panelEl = birdsDiagnosticsHelp.panelEl || document.getElementById('birdsDiagnosticsHelpPanel');
+    const backdropEl = birdsDiagnosticsHelp.backdropEl || document.getElementById('birdsDiagnosticsHelpBackdrop');
+    const openBtnEl = birdsDiagnosticsHelp.openBtnEl || document.getElementById('birdsOpenDiagnosticsHelpBtn');
+    if (!panelEl || !backdropEl || !openBtnEl) return;
+
+    birdsDiagnosticsHelp.panelEl = panelEl;
+    birdsDiagnosticsHelp.backdropEl = backdropEl;
+    birdsDiagnosticsHelp.openBtnEl = openBtnEl;
+
+    birdsDiagnosticsHelp.isOpen = Boolean(open);
+    if (birdsDiagnosticsHelp.isOpen) {
+      renderBirdDiagnosticsHelpPanel(topicKey || birdsDiagnosticsHelp.activeTopic);
+      startBirdDiagnosticsHelpAutoRefresh();
+    } else {
+      stopBirdDiagnosticsHelpAutoRefresh();
+    }
+
+    panelEl.hidden = !birdsDiagnosticsHelp.isOpen;
+    panelEl.setAttribute('aria-hidden', birdsDiagnosticsHelp.isOpen ? 'false' : 'true');
+    backdropEl.hidden = !birdsDiagnosticsHelp.isOpen;
+    openBtnEl.setAttribute('aria-expanded', birdsDiagnosticsHelp.isOpen ? 'true' : 'false');
+  }
+
+  function stopBirdDiagnosticsHelpAutoRefresh() {
+    if (birdsDiagnosticsHelp.refreshTimerId) {
+      window.clearInterval(birdsDiagnosticsHelp.refreshTimerId);
+      birdsDiagnosticsHelp.refreshTimerId = 0;
+    }
+  }
+
+  function startBirdDiagnosticsHelpAutoRefresh() {
+    stopBirdDiagnosticsHelpAutoRefresh();
+    birdsDiagnosticsHelp.refreshTimerId = window.setInterval(() => {
+      if (!birdsDiagnosticsHelp.isOpen) {
+        stopBirdDiagnosticsHelpAutoRefresh();
+        return;
+      }
+      renderBirdDiagnosticsHelpPanel(birdsDiagnosticsHelp.activeTopic);
+    }, BIRDS_DIAGNOSTICS_HELP_REFRESH_MS);
+  }
+
+  function ensureBirdDiagnosticsHelpPanel(root) {
+    if (!root) return;
+    if (!birdsDiagnosticsHelp.panelEl) birdsDiagnosticsHelp.panelEl = document.getElementById('birdsDiagnosticsHelpPanel');
+    if (!birdsDiagnosticsHelp.bodyEl) birdsDiagnosticsHelp.bodyEl = document.getElementById('birdsDiagnosticsHelpBody');
+    if (!birdsDiagnosticsHelp.backdropEl) birdsDiagnosticsHelp.backdropEl = document.getElementById('birdsDiagnosticsHelpBackdrop');
+    if (!birdsDiagnosticsHelp.openBtnEl) birdsDiagnosticsHelp.openBtnEl = document.getElementById('birdsOpenDiagnosticsHelpBtn');
+
+    if (birdsDiagnosticsHelp.openBtnEl) {
+      birdsDiagnosticsHelp.openBtnEl.setAttribute('aria-expanded', birdsDiagnosticsHelp.isOpen ? 'true' : 'false');
+    }
+    if (birdsDiagnosticsHelp.panelEl) {
+      birdsDiagnosticsHelp.panelEl.hidden = !birdsDiagnosticsHelp.isOpen;
+      birdsDiagnosticsHelp.panelEl.setAttribute('aria-hidden', birdsDiagnosticsHelp.isOpen ? 'false' : 'true');
+    }
+    if (birdsDiagnosticsHelp.backdropEl) {
+      birdsDiagnosticsHelp.backdropEl.hidden = !birdsDiagnosticsHelp.isOpen;
+    }
+
+    renderBirdDiagnosticsHelpPanel(birdsDiagnosticsHelp.activeTopic);
+
+    if (!birdsDiagnosticsHelp.escapeBound) {
+      birdsDiagnosticsHelp.escapeBound = true;
+      document.addEventListener('keydown', (event) => {
+        if (!event || event.key !== 'Escape' || !birdsDiagnosticsHelp.isOpen) return;
+        setBirdDiagnosticsHelpOpen(false);
+      });
+    }
+
+    if (!birdsDiagnosticsHelp.runtimeEventsBound) {
+      birdsDiagnosticsHelp.runtimeEventsBound = true;
+
+      const refreshIfOpen = () => {
+        if (!birdsDiagnosticsHelp.isOpen) return;
+        renderBirdDiagnosticsHelpPanel(birdsDiagnosticsHelp.activeTopic);
+      };
+
+      window.addEventListener('app:tab-switched', refreshIfOpen);
+      window.addEventListener('reliability:action-start', refreshIfOpen);
+      window.addEventListener('reliability:action-blocked', refreshIfOpen);
+      window.addEventListener('reliability:overlay-interception', refreshIfOpen);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refreshIfOpen();
+      });
+    }
   }
 
   function getBirdCtaHealthMeta(actionKey, actionResult, rectResult) {
@@ -9938,6 +10253,14 @@
     '#birdsRunFullAutorepairSequenceBtn',
     '#birdsRunReliabilityDiagBtn',
     '#birdsRunDiagnosticsBundleBtn',
+    '#birdsOpenDiagnosticsHelpBtn',
+    '#birdsCloseDiagnosticsHelpBtn',
+    '#birdsDiagnosticsHelpBackdrop',
+    '[data-birds-help-topic]',
+    '[data-birds-help-run-target]',
+    '#birdsMarkKnownGoodBtn',
+    '#birdsCompareKnownGoodBtn',
+    '#birdsClearKnownGoodSnapshotsBtn',
     '#birdsRunWorkbookDiagReportBtn',
     '#birdsHardRefreshPageBtn',
     '#birdsExportManualDiagnosticsJsonBtn',
@@ -9984,6 +10307,7 @@
     installNatureButtonReliabilityObserver(root);
     ensureBirdClickDiagnosticsPanel(root);
     ensureBirdManualDiagnosticsOutput(root);
+    ensureBirdDiagnosticsHelpPanel(root);
     ensureBirdCtaHealthPanel(root);
 
     const handleDelegatedActivation = (event) => {
@@ -10017,6 +10341,13 @@
       recordBirdClickDiagnostic(event.type, delegatedTarget);
       emitBirdClickTrace('delegated-target-resolved', event, delegatedTarget);
       window.__lastActionKey = getBirdDiagnosticActionKey(delegatedTarget);
+
+      if (birdsDiagnosticsHelp.isOpen && delegatedTarget && delegatedTarget.id) {
+        const mappedTopic = mapBirdDiagnosticsButtonToHelpTopic(delegatedTarget.id);
+        if (mappedTopic) {
+          renderBirdDiagnosticsHelpPanel(mappedTopic);
+        }
+      }
 
       // ── Fail-closed disabled/aria-disabled/busy guard ───────────────────────
       // Applied once here so every branch below inherits the same contract.
@@ -10280,6 +10611,50 @@
         return;
       }
 
+      const openDiagnosticsHelpButton = event.target.closest('#birdsOpenDiagnosticsHelpBtn');
+      if (openDiagnosticsHelpButton) {
+        setBirdDiagnosticsHelpOpen(true, 'overview');
+        return;
+      }
+
+      const closeDiagnosticsHelpButton = event.target.closest('#birdsCloseDiagnosticsHelpBtn');
+      if (closeDiagnosticsHelpButton) {
+        setBirdDiagnosticsHelpOpen(false);
+        return;
+      }
+
+      const helpBackdrop = event.target.closest('#birdsDiagnosticsHelpBackdrop');
+      if (helpBackdrop) {
+        setBirdDiagnosticsHelpOpen(false);
+        return;
+      }
+
+      const helpTopicButton = event.target.closest('[data-birds-help-topic]');
+      if (helpTopicButton) {
+        const topicKey = String(helpTopicButton.getAttribute('data-birds-help-topic') || '').trim() || 'overview';
+        setBirdDiagnosticsHelpOpen(true, topicKey);
+        return;
+      }
+
+      const helpRunButton = event.target.closest('[data-birds-help-run-target]');
+      if (helpRunButton) {
+        const targetId = String(helpRunButton.getAttribute('data-birds-help-run-target') || '').trim();
+        if (!targetId) return;
+        const targetButton = document.getElementById(targetId);
+        if (!targetButton) {
+          if (typeof window.showToast === 'function') window.showToast('Mapped diagnostics action is unavailable in this view.', 'warning', 2200);
+          return;
+        }
+        const disabled = Boolean(targetButton.disabled)
+          || String(targetButton.getAttribute('aria-disabled') || '').toLowerCase() === 'true';
+        if (disabled) {
+          if (typeof window.showToast === 'function') window.showToast('That diagnostics action is currently disabled.', 'info', 2000);
+          return;
+        }
+        targetButton.click();
+        return;
+      }
+
       const copyDiagnosticsButton = event.target.closest('#birdsCopyRecentClickTraceBtn');
       if (copyDiagnosticsButton) {
         withBirdsActionGuard(copyDiagnosticsButton, () => copyRecentBirdClickTraceJson());
@@ -10455,6 +10830,77 @@
           const report = runBirdDiagnosticsBundleReport();
           writeManualDiagnosticsOutput('Full Diagnostics Bundle', report, { append: true });
           if (typeof window.showToast === 'function') window.showToast('Full diagnostics bundle captured.', 'success', 1800);
+        });
+        return;
+      }
+
+      const markKnownGoodButton = event.target.closest('#birdsMarkKnownGoodBtn');
+      if (markKnownGoodButton) {
+        withBirdsActionGuard(markKnownGoodButton, () => {
+          if (!window.ReliabilityKnownGood || typeof window.ReliabilityKnownGood.markCurrent !== 'function') {
+            const unavailable = { ok: false, reason: 'known-good-api-unavailable' };
+            writeManualDiagnosticsOutput('Known-Good Snapshot', unavailable, { append: true });
+            if (typeof window.showToast === 'function') window.showToast('Known-good snapshot API is unavailable.', 'warning', 2200);
+            return;
+          }
+
+          const labelInput = window.prompt('Known-good label (example: nature-buttons-fixed):', 'nature-known-good');
+          if (labelInput === null) return;
+          const noteInput = window.prompt('Optional note for this known-good snapshot:', '');
+          if (noteInput === null) return;
+
+          const report = window.ReliabilityKnownGood.markCurrent({
+            label: String(labelInput || '').trim() || 'nature-known-good',
+            note: String(noteInput || '').trim(),
+            includeBundle: true
+          });
+          writeManualDiagnosticsOutput('Known-Good Snapshot Marked', report, { append: true });
+          if (typeof window.showToast === 'function') {
+            window.showToast(`Known-good snapshot saved (${String(report && report.snapshot ? report.snapshot.label || '' : '').trim() || 'unnamed'}).`, 'success', 2200);
+          }
+        });
+        return;
+      }
+
+      const compareKnownGoodButton = event.target.closest('#birdsCompareKnownGoodBtn');
+      if (compareKnownGoodButton) {
+        withBirdsActionGuard(compareKnownGoodButton, () => {
+          if (!window.ReliabilityKnownGood || typeof window.ReliabilityKnownGood.compareLatest !== 'function') {
+            const unavailable = { ok: false, reason: 'known-good-api-unavailable' };
+            writeManualDiagnosticsOutput('Known-Good Comparison', unavailable, { append: true });
+            if (typeof window.showToast === 'function') window.showToast('Known-good comparison API is unavailable.', 'warning', 2200);
+            return;
+          }
+          const report = window.ReliabilityKnownGood.compareLatest({ includeBundle: false });
+          writeManualDiagnosticsOutput('Known-Good Comparison', report, { append: true });
+          if (typeof window.showToast === 'function') {
+            if (report && report.ok) {
+              const baselineLabel = String(report.baseline && report.baseline.label || '').trim() || 'latest baseline';
+              window.showToast(`Compared current state against ${baselineLabel}.`, 'success', 2200);
+            } else {
+              window.showToast('No known-good snapshot found yet. Mark one first.', 'info', 2200);
+            }
+          }
+        });
+        return;
+      }
+
+      const clearKnownGoodSnapshotsButton = event.target.closest('#birdsClearKnownGoodSnapshotsBtn');
+      if (clearKnownGoodSnapshotsButton) {
+        withBirdsActionGuard(clearKnownGoodSnapshotsButton, () => {
+          if (!window.ReliabilityKnownGood || typeof window.ReliabilityKnownGood.clearAll !== 'function') {
+            const unavailable = { ok: false, reason: 'known-good-api-unavailable' };
+            writeManualDiagnosticsOutput('Known-Good Snapshot Cleanup', unavailable, { append: true });
+            if (typeof window.showToast === 'function') window.showToast('Known-good cleanup API is unavailable.', 'warning', 2200);
+            return;
+          }
+          const confirmed = window.confirm('Clear all saved known-good GUI snapshots for this browser?');
+          if (!confirmed) return;
+          const report = window.ReliabilityKnownGood.clearAll();
+          writeManualDiagnosticsOutput('Known-Good Snapshot Cleanup', report, { append: true });
+          if (typeof window.showToast === 'function') {
+            window.showToast(`Cleared ${Number(report && report.removedCount || 0)} known-good snapshot(s).`, 'info', 2200);
+          }
         });
         return;
       }

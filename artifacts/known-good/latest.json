@@ -1,0 +1,26 @@
+{
+  "kind": "known-good-marker",
+  "schemaVersion": 1,
+  "markerId": "2026-04-21T00-56-22-617Z-nature-buttons-fixed",
+  "label": "nature-buttons-fixed",
+  "note": "Manual and smoke CTA interactions are stable after reliability fixes",
+  "createdAt": "2026-04-21T00:56:22.617Z",
+  "git": {
+    "commit": "31600da8f7e33648738e1bc3c6f44f92f99524a8",
+    "shortCommit": "31600da",
+    "branch": "main",
+    "dirty": true,
+    "changedFiles": [
+      "M .idea/workspace.xml",
+      "AM docs/KNOWN_GOOD_WORKFLOW.md",
+      "M package.json",
+      "A  scripts/known-good-compare.js",
+      "A  scripts/known-good-mark.js"
+    ]
+  },
+  "runtime": {
+    "node": "v24.14.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  }
+}

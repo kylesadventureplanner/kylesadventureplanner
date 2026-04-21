@@ -1,0 +1,26 @@
+{
+  "kind": "known-good-compare-report",
+  "schemaVersion": 1,
+  "generatedAt": "2026-04-21T00:56:27.338Z",
+  "markerFile": "artifacts/known-good/latest.json",
+  "marker": {
+    "markerId": "2026-04-21T00-56-22-617Z-nature-buttons-fixed",
+    "label": "nature-buttons-fixed",
+    "note": "Manual and smoke CTA interactions are stable after reliability fixes",
+    "createdAt": "2026-04-21T00:56:22.617Z",
+    "commit": "31600da8f7e33648738e1bc3c6f44f92f99524a8",
+    "branch": "main",
+    "dirtyAtMark": true
+  },
+  "current": {
+    "commit": "31600da8f7e33648738e1bc3c6f44f92f99524a8",
+    "branch": "main",
+    "dirtyNow": true
+  },
+  "gitRelation": {
+    "markerCommitExists": true,
+    "behindCount": 0,
+    "aheadCount": 0
+  },
+  "changedFilesSinceMarker": []
+}
