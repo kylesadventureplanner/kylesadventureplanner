@@ -274,5 +274,125 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(secondRow[9]).toBe(secondResolved.placeId);
     expect(String(secondRow[10] || '')).toContain(secondResolved.placeId);
   });
+
+  test('chain candidate review applies chain-biased ranking and multi-select before add', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async (query) => {
+        const q = String(query || '').trim().toLowerCase();
+        if (q === 'starbucks downtown denver') {
+          return [
+            {
+              placeId: 'pid-unknown-coffee-downtown',
+              name: 'Unknown Coffee Downtown',
+              address: '10 Center St, Denver, CO',
+              rating: 4.8,
+              reviewCount: 220,
+              businessStatus: 'OPERATIONAL'
+            },
+            {
+              placeId: 'pid-starbucks-downtown-denver',
+              name: 'Starbucks Downtown Denver',
+              address: '1 Main St, Denver, CO',
+              rating: 4.6,
+              reviewCount: 145,
+              businessStatus: 'OPERATIONAL'
+            },
+            {
+              placeId: 'pid-starbucks-17th-denver',
+              name: 'Starbucks 17th Street',
+              address: '1700 17th St, Denver, CO',
+              rating: 4.5,
+              reviewCount: 110,
+              businessStatus: 'OPERATIONAL'
+            }
+          ];
+        }
+        if (q === 'starbucks airport denver') {
+          return [
+            {
+              placeId: 'pid-airport-coffee-hub',
+              name: 'Airport Coffee Hub',
+              address: '8500 Pena Blvd, Denver, CO',
+              rating: 4.4,
+              reviewCount: 80,
+              businessStatus: 'OPERATIONAL'
+            },
+            {
+              placeId: 'pid-starbucks-airport-denver',
+              name: 'Starbucks Airport Denver',
+              address: '8500 Pena Blvd Unit B, Denver, CO',
+              rating: 4.5,
+              reviewCount: 120,
+              businessStatus: 'OPERATIONAL'
+            }
+          ];
+        }
+        return [];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        const slug = placeId.replace(/^pid-/, '') || 'item';
+        const titleCase = slug.replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+        return {
+          placeId,
+          name: `Name ${titleCase}`,
+          address: `${titleCase} Address, Denver, CO`,
+          website: `https://${slug}.example.com`,
+          businessType: `tag-${slug}`,
+          hours: `9-5 ${titleCase}`,
+          phone: '555-1000',
+          rating: '4.8',
+          userRatingsTotal: 88,
+          directions: `https://maps.example.com/${slug}`
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#chainInputType', 'placeNameCity');
+    await popup.fill('#chainInput', 'Starbucks downtown Denver\nStarbucks airport Denver');
+    await popup.click('button:has-text("Search Chain Candidates")');
+
+    await expect(popup.locator('#chain-candidates .candidate-group')).toHaveCount(2);
+    await expect(popup.locator('#chain-candidates .candidate-item')).toHaveCount(5);
+    await expect(popup.locator('#chain-search-status')).toContainText('Ready: 2 selected');
+
+    const firstTopName = await popup.locator('#chain-candidates .candidate-group').nth(0).locator('.candidate-item .candidate-title').first().innerText();
+    expect(firstTopName.toLowerCase()).toContain('starbucks');
+
+    await popup.check('#chainCandidateMultiSelect');
+    await popup.locator('[data-chain-group-index="0"][data-chain-candidate-index="2"]').click();
+    await popup.click('#chainAddSelectedCandidatesBtn');
+
+    await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(3);
+
+    const placeIds = graphCalls.map((call) => String(call.body?.values?.[0]?.[9] || ''));
+    expect(placeIds).toContain('pid-starbucks-downtown-denver');
+    expect(placeIds).toContain('pid-starbucks-17th-denver');
+    expect(placeIds).toContain('pid-starbucks-airport-denver');
+  });
 });
 

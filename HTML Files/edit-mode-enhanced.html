@@ -577,9 +577,20 @@
 
         <div class="button-group">
           <button class="button button-secondary" onclick="clearChainForm()">Clear</button>
+          <button class="button button-secondary" type="button" onclick="searchChainPlaceCandidates()">🔎 Search Chain Candidates</button>
+          <button id="chainAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedChainCandidates()" disabled>✅ Add Selected Chain Candidates</button>
           <button class="button button-primary" onclick="submitBulkChain()">⛓️ Add Locations</button>
         </div>
 
+        <div class="input-group" style="margin-top: 10px;">
+          <label style="text-transform: none; letter-spacing: 0; font-size: 12px; display: inline-flex; align-items: center; gap: 8px;">
+            <input id="chainCandidateMultiSelect" type="checkbox" style="width: auto;">
+            Allow multi-select per query
+          </label>
+        </div>
+
+        <div id="chain-search-status"></div>
+        <div id="chain-candidates" class="candidate-results" aria-live="polite"></div>
         <div id="chain-status"></div>
       </div>
     </div>
@@ -814,6 +825,13 @@
       rawInput: '',
       inputType: 'placeName',
       groups: []
+    };
+    const chainCandidateState = {
+      rawInput: '',
+      inputType: 'placeNameCity',
+      allowMultiSelect: false,
+      groups: [],
+      brandTokens: []
     };
 
     function isEmbeddedEditMode() {
@@ -1236,6 +1254,73 @@
         .filter(Boolean);
     }
 
+    function setChainCandidateStatus(message, kind) {
+      const statusDiv = document.getElementById('chain-search-status');
+      if (!statusDiv) return;
+      if (!message) {
+        statusDiv.innerHTML = '';
+        return;
+      }
+      const safeKind = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : '');
+      statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
+    }
+
+    function parseChainInputValues(rawInput) {
+      return String(rawInput || '')
+        .split('\n')
+        .map((item) => String(item || '').trim())
+        .filter(Boolean);
+    }
+
+    function tokenizeChainTerms(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 3);
+    }
+
+    function deriveChainBrandTokens(queries) {
+      const seen = new Set();
+      const tokens = [];
+      (Array.isArray(queries) ? queries : []).forEach((query) => {
+        const queryTokens = tokenizeChainTerms(query);
+        queryTokens.slice(0, 2).forEach((token) => {
+          if (seen.has(token)) return;
+          seen.add(token);
+          tokens.push(token);
+        });
+      });
+      return tokens;
+    }
+
+    function rankChainCandidates(candidates, sourceQuery, brandTokens) {
+      const sourceTokens = tokenizeChainTerms(sourceQuery);
+      const brandSet = new Set(Array.isArray(brandTokens) ? brandTokens : []);
+      const sourceSet = new Set(sourceTokens);
+      const ranked = (Array.isArray(candidates) ? candidates : []).map((candidate, index) => {
+        const nameTokens = tokenizeChainTerms(candidate && candidate.name ? candidate.name : '');
+        const tokenSet = new Set(nameTokens);
+        let score = 0;
+        sourceSet.forEach((token) => {
+          if (tokenSet.has(token)) score += 5;
+        });
+        brandSet.forEach((token) => {
+          if (tokenSet.has(token)) score += 3;
+        });
+        if (candidate && candidate.reviewCount > 0) score += Math.min(2, candidate.reviewCount / 200);
+        if (candidate && candidate.rating) score += Math.min(2, Number(candidate.rating) / 5);
+        score += Math.max(0, 1 - index * 0.05);
+        return { candidate, score, index };
+      });
+      ranked.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.index - b.index;
+      });
+      return ranked.map((entry) => entry.candidate);
+    }
+
     function normalizeSingleSearchCandidate(item) {
       const raw = item && typeof item === 'object' ? item : {};
       return {
@@ -1554,6 +1639,204 @@
       renderBulkCandidateResults();
     }
 
+    function getSelectedChainCandidateCount() {
+      return chainCandidateState.groups.reduce((count, group) => {
+        const picks = Array.isArray(group && group.selectedIndexes) ? group.selectedIndexes : [];
+        return count + picks.length;
+      }, 0);
+    }
+
+    function renderChainCandidateResults() {
+      const container = document.getElementById('chain-candidates');
+      const addBtn = document.getElementById('chainAddSelectedCandidatesBtn');
+      if (!container) return;
+
+      const selectedCount = getSelectedChainCandidateCount();
+      if (addBtn) addBtn.disabled = selectedCount === 0;
+
+      if (!chainCandidateState.groups.length) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = chainCandidateState.groups.map((group, groupIndex) => {
+        const candidates = Array.isArray(group.candidates) ? group.candidates : [];
+        const selectedIndexes = new Set(Array.isArray(group.selectedIndexes) ? group.selectedIndexes : []);
+        const title = `${groupIndex + 1}. ${group.source}`;
+        if (!candidates.length) {
+          return `
+            <div class="candidate-group" data-chain-group-index="${groupIndex}">
+              <div class="candidate-group-title">${title}</div>
+              <div class="candidate-meta">No chain matches found for this query.</div>
+            </div>
+          `;
+        }
+        const cards = candidates.map((candidate, candidateIndex) => {
+          const selectedClass = selectedIndexes.has(candidateIndex) ? 'selected' : '';
+          const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
+          const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
+          const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
+          return `
+            <div class="candidate-item ${selectedClass}" data-chain-group-index="${groupIndex}" data-chain-candidate-index="${candidateIndex}" role="button" tabindex="0" onclick="toggleChainCandidateSelection(${groupIndex}, ${candidateIndex})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleChainCandidateSelection(${groupIndex}, ${candidateIndex});}">
+              <div class="candidate-title">${candidate.name}</div>
+              <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
+              <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+            </div>
+          `;
+        }).join('');
+        return `
+          <div class="candidate-group" data-chain-group-index="${groupIndex}">
+            <div class="candidate-group-title">${title}</div>
+            ${cards}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function resetChainCandidateResults() {
+      chainCandidateState.rawInput = '';
+      chainCandidateState.inputType = String(document.getElementById('chainInputType')?.value || 'placeNameCity');
+      chainCandidateState.groups = [];
+      chainCandidateState.brandTokens = [];
+      renderChainCandidateResults();
+      setChainCandidateStatus('', 'info');
+    }
+
+    function toggleChainCandidateSelection(groupIndex, candidateIndex) {
+      const gIdx = Number(groupIndex);
+      const cIdx = Number(candidateIndex);
+      if (!Number.isInteger(gIdx) || !Number.isInteger(cIdx)) return;
+      const group = chainCandidateState.groups[gIdx];
+      if (!group || !Array.isArray(group.candidates)) return;
+      if (cIdx < 0 || cIdx >= group.candidates.length) return;
+
+      const selected = new Set(Array.isArray(group.selectedIndexes) ? group.selectedIndexes : []);
+      if (chainCandidateState.allowMultiSelect) {
+        if (selected.has(cIdx)) selected.delete(cIdx);
+        else selected.add(cIdx);
+      } else {
+        selected.clear();
+        selected.add(cIdx);
+      }
+      group.selectedIndexes = Array.from(selected).sort((a, b) => a - b);
+      renderChainCandidateResults();
+    }
+
+    async function searchChainPlaceCandidates() {
+      const inputEl = document.getElementById('chainInput');
+      const inputTypeEl = document.getElementById('chainInputType');
+      const rawInput = String(inputEl && inputEl.value ? inputEl.value : '');
+      const inputType = String(inputTypeEl && inputTypeEl.value ? inputTypeEl.value : 'placeNameCity');
+      const queries = parseChainInputValues(rawInput);
+
+      if (!queries.length) {
+        setChainCandidateStatus('❌ Enter one or more chain queries first.', 'error');
+        return;
+      }
+      if (inputType === 'placeId' || inputType === 'placeUrl') {
+        setChainCandidateStatus('⚠️ Chain candidate search works best with Place Name + City or Address.', 'error');
+        return;
+      }
+
+      const mainWindow = getMainWindowSafe();
+      if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
+        setChainCandidateStatus('❌ Search is not available. Ensure Google Places is loaded in the main window.', 'error');
+        return;
+      }
+
+      chainCandidateState.rawInput = rawInput;
+      chainCandidateState.inputType = inputType;
+      chainCandidateState.brandTokens = deriveChainBrandTokens(queries);
+      chainCandidateState.groups = queries.map((query) => ({ source: query, candidates: [], selectedIndexes: [] }));
+      renderChainCandidateResults();
+      setChainCandidateStatus(`<span class="spinner"></span> Searching chain candidates for ${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
+
+      for (let i = 0; i < chainCandidateState.groups.length; i += 1) {
+        const group = chainCandidateState.groups[i];
+        try {
+          const rawResults = await mainWindow.searchPlaces(group.source);
+          const normalized = Array.isArray(rawResults)
+            ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId).slice(0, 6)
+            : [];
+          group.candidates = rankChainCandidates(normalized, group.source, chainCandidateState.brandTokens);
+          group.selectedIndexes = group.candidates.length ? [0] : [];
+        } catch (error) {
+          console.error('❌ Chain candidate search failed for query:', group.source, error);
+          group.candidates = [];
+          group.selectedIndexes = [];
+        }
+      }
+
+      renderChainCandidateResults();
+      const selectedCount = getSelectedChainCandidateCount();
+      if (!selectedCount) {
+        setChainCandidateStatus('⚠️ No selectable chain candidates were found. Try adding city/state context.', 'error');
+        return;
+      }
+      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected chain candidate(s). Adjust selections, then click "Add Selected Chain Candidates".`, 'success');
+    }
+
+    async function addSelectedChainCandidates() {
+      const selectedPlaceIds = [];
+      chainCandidateState.groups.forEach((group) => {
+        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
+        const indexes = Array.isArray(group && group.selectedIndexes) ? group.selectedIndexes : [];
+        indexes.forEach((idx) => {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return;
+          const pick = candidates[idx];
+          const placeId = String(pick && pick.placeId ? pick.placeId : '').trim();
+          if (placeId) selectedPlaceIds.push(placeId);
+        });
+      });
+
+      if (!selectedPlaceIds.length) {
+        setChainCandidateStatus('❌ Select at least one chain candidate before adding.', 'error');
+        return;
+      }
+
+      const uniquePlaceIds = Array.from(new Set(selectedPlaceIds));
+      const inputEl = document.getElementById('chainInput');
+      const inputTypeEl = document.getElementById('chainInputType');
+      if (inputTypeEl) inputTypeEl.value = 'placeId';
+      if (inputEl) inputEl.value = uniquePlaceIds.join('\n');
+      setChainCandidateStatus(`✅ Adding ${uniquePlaceIds.length} selected chain candidate(s)...`, 'success');
+      await submitBulkChain();
+    }
+
+    function initChainCandidateSearch() {
+      const inputEl = document.getElementById('chainInput');
+      const inputTypeEl = document.getElementById('chainInputType');
+      const multiToggleEl = document.getElementById('chainCandidateMultiSelect');
+      if (inputEl) {
+        inputEl.addEventListener('input', () => {
+          if (!chainCandidateState.rawInput) return;
+          const current = String(inputEl.value || '');
+          if (current !== chainCandidateState.rawInput) resetChainCandidateResults();
+        });
+      }
+      if (inputTypeEl) {
+        inputTypeEl.addEventListener('change', () => {
+          if (chainCandidateState.groups.length) resetChainCandidateResults();
+        });
+      }
+      if (multiToggleEl) {
+        multiToggleEl.addEventListener('change', () => {
+          chainCandidateState.allowMultiSelect = Boolean(multiToggleEl.checked);
+          if (!chainCandidateState.allowMultiSelect) {
+            chainCandidateState.groups.forEach((group) => {
+              if (!Array.isArray(group.selectedIndexes) || !group.selectedIndexes.length) {
+                group.selectedIndexes = group.candidates.length ? [0] : [];
+              } else {
+                group.selectedIndexes = [group.selectedIndexes[0]];
+              }
+            });
+            renderChainCandidateResults();
+          }
+        });
+      }
+      renderChainCandidateResults();
+    }
+
 
     /**
      * Update feature dry run state
@@ -1861,6 +2144,10 @@
     function clearChainForm() {
       document.getElementById('chainInput').value = '';
       document.getElementById('chain-status').innerHTML = '';
+      const multiToggleEl = document.getElementById('chainCandidateMultiSelect');
+      if (multiToggleEl) multiToggleEl.checked = false;
+      chainCandidateState.allowMultiSelect = false;
+      resetChainCandidateResults();
     }
 
     // Initialize
@@ -1875,6 +2162,7 @@
       initTargetSelectors();
       initSingleCandidateSearch();
       initBulkCandidateSearch();
+      initChainCandidateSearch();
     });
 
     // Also try immediately in case DOM is already ready
@@ -1889,6 +2177,7 @@
       initTargetSelectors();
       initSingleCandidateSearch();
       initBulkCandidateSearch();
+      initChainCandidateSearch();
     }
 
     console.log('📋 Available functions:', {
