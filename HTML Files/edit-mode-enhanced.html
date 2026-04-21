@@ -464,6 +464,17 @@
     .candidate-open-link:hover {
       background: #dbeafe;
     }
+
+    .candidate-filter-card {
+      border-color: #bfdbfe;
+      background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.08);
+    }
+
+    .candidate-filter-card.is-highlighted {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18), 0 8px 22px rgba(59, 130, 246, 0.12);
+      transition: box-shadow 0.25s ease;
+    }
   </style>
 </head>
 <body>
@@ -509,7 +520,7 @@
 
     <!-- Add Places Tab -->
     <div id="places-tab" class="tab-content active">
-      <div class="card">
+      <div id="candidateSearchFiltersCard" class="card candidate-filter-card">
         <div class="card-title">🎯 Candidate Search Filters</div>
         <div class="input-group">
           <label for="candidateDistanceLimitMiles">Distance from 100 Long John Dr, Hendersonville, NC 28791</label>
@@ -575,6 +586,7 @@
 
         <div class="button-group">
           <button class="button button-secondary" onclick="clearSingleForm()">Clear</button>
+          <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button class="button button-secondary" type="button" onclick="searchSinglePlaceCandidates()">🔎 Search Candidates</button>
           <button id="singleAddSelectedCandidateBtn" class="button button-secondary" type="button" onclick="addSelectedSingleCandidate()" disabled>✅ Add Selected Candidate</button>
           <button class="button button-primary" onclick="submitAddSinglePlace()">➕ Add Place</button>
@@ -618,6 +630,7 @@
 
         <div class="button-group">
           <button class="button button-secondary" onclick="clearBulkForm()">Clear</button>
+          <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button class="button button-secondary" type="button" onclick="searchBulkPlaceCandidates()">🔎 Search Bulk Candidates</button>
           <button id="bulkAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedBulkCandidates()" disabled>✅ Add Selected Candidates</button>
           <button class="button button-primary" onclick="submitBulkAddPlaces()">📦 Add All</button>
@@ -659,6 +672,7 @@
 
         <div class="button-group">
           <button class="button button-secondary" onclick="clearChainForm()">Clear</button>
+          <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button class="button button-secondary" type="button" onclick="searchChainPlaceCandidates()">🔎 Search Chain Candidates</button>
           <button id="chainAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedChainCandidates()" disabled>✅ Add Selected Chain Candidates</button>
           <button class="button button-primary" onclick="submitBulkChain()">⛓️ Add Locations</button>
@@ -2271,6 +2285,18 @@
       if (distanceEl) distanceEl.addEventListener('change', handleFilterChange);
       if (stateEl) stateEl.addEventListener('change', handleFilterChange);
       applyFilterStatus();
+    }
+
+    function openCandidateSearchFilters() {
+      const cardEl = document.getElementById('candidateSearchFiltersCard');
+      const distanceEl = document.getElementById('candidateDistanceLimitMiles');
+      if (!cardEl) return;
+      cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      cardEl.classList.add('is-highlighted');
+      window.setTimeout(() => cardEl.classList.remove('is-highlighted'), 1800);
+      if (distanceEl && typeof distanceEl.focus === 'function') {
+        window.setTimeout(() => distanceEl.focus(), 220);
+      }
     }
 
 
