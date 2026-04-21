@@ -415,6 +415,24 @@
       color: #111827;
       margin-bottom: 8px;
     }
+
+    .candidate-group-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .candidate-count-chip {
+      font-size: 11px;
+      color: #1e3a8a;
+      background: #dbeafe;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -587,6 +605,18 @@
             <input id="chainCandidateMultiSelect" type="checkbox" style="width: auto;">
             Allow multi-select per query
           </label>
+        </div>
+
+        <div class="input-group" style="margin-top: 8px;">
+          <label for="chainSelectionCapSelect" style="text-transform: none; letter-spacing: 0; font-size: 12px;">How many selected matches should be added?</label>
+          <select id="chainSelectionCapSelect">
+            <option value="all-selected">All selected</option>
+          </select>
+          <div id="chain-cap-help" class="help-text">Search chain candidates to see found counts and cap options.</div>
+        </div>
+
+        <div class="button-group">
+          <button id="chainSelectTopMatchesBtn" class="button button-secondary" type="button" onclick="selectTopChainMatchesForAll()" disabled>⬆️ Select Top Match For All</button>
         </div>
 
         <div id="chain-search-status"></div>
@@ -831,7 +861,8 @@
       inputType: 'placeNameCity',
       allowMultiSelect: false,
       groups: [],
-      brandTokens: []
+      brandTokens: [],
+      maxPerQuery: 6
     };
 
     function isEmbeddedEditMode() {
@@ -1646,16 +1677,101 @@
       }, 0);
     }
 
+    function getFoundChainCandidateCount() {
+      return chainCandidateState.groups.reduce((count, group) => {
+        const items = Array.isArray(group && group.candidates) ? group.candidates : [];
+        return count + items.length;
+      }, 0);
+    }
+
+    function getSelectedChainPlaceIds() {
+      const selectedPlaceIds = [];
+      chainCandidateState.groups.forEach((group) => {
+        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
+        const indexes = Array.isArray(group && group.selectedIndexes) ? group.selectedIndexes : [];
+        indexes.forEach((idx) => {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return;
+          const pick = candidates[idx];
+          const placeId = String(pick && pick.placeId ? pick.placeId : '').trim();
+          if (placeId) selectedPlaceIds.push(placeId);
+        });
+      });
+      return selectedPlaceIds;
+    }
+
+    function getAllFoundChainPlaceIds() {
+      const placeIds = [];
+      chainCandidateState.groups.forEach((group) => {
+        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
+        candidates.forEach((candidate) => {
+          const placeId = String(candidate && candidate.placeId ? candidate.placeId : '').trim();
+          if (placeId) placeIds.push(placeId);
+        });
+      });
+      return placeIds;
+    }
+
+    function selectAllFoundChainMatches() {
+      chainCandidateState.groups.forEach((group) => {
+        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
+        group.selectedIndexes = candidates.map((_, index) => index);
+      });
+      renderChainCandidateResults();
+      const selectedCount = getSelectedChainCandidateCount();
+      const foundCount = getFoundChainCandidateCount();
+      if (selectedCount > 0) {
+        setChainCandidateStatus(`✅ All found candidates selected (${selectedCount}/${foundCount}).`, 'success');
+      }
+    }
+
+    function refreshChainSubmissionCapControl() {
+      const capSelectEl = document.getElementById('chainSelectionCapSelect');
+      const capHelpEl = document.getElementById('chain-cap-help');
+      if (!capSelectEl) return;
+
+      const foundCount = getFoundChainCandidateCount();
+      const selectedCount = getSelectedChainCandidateCount();
+      const preserved = String(capSelectEl.value || 'all-selected');
+      const options = [];
+      [3, 5, 10, 15, 25].forEach((value) => {
+        if (value <= foundCount) {
+          options.push({ value: String(value), label: `Top ${value}` });
+        }
+      });
+      if (foundCount > 0) {
+        options.push({ value: 'all-found', label: `All found (${foundCount})` });
+      }
+      options.push({ value: 'all-selected', label: `All selected (${selectedCount})` });
+
+      capSelectEl.innerHTML = options
+        .map((opt) => `<option value="${opt.value}">${opt.label}</option>`)
+        .join('');
+      const hasPreserved = options.some((opt) => opt.value === preserved);
+      capSelectEl.value = hasPreserved ? preserved : 'all-selected';
+      capSelectEl.disabled = foundCount === 0;
+
+      if (capHelpEl) {
+        if (!foundCount) {
+          capHelpEl.textContent = 'Search chain candidates to see found counts and cap options.';
+        } else {
+          capHelpEl.textContent = `${foundCount} found, ${selectedCount} currently selected. Choose 3/5/10/15/25, all selected, or all found.`;
+        }
+      }
+    }
+
     function renderChainCandidateResults() {
       const container = document.getElementById('chain-candidates');
       const addBtn = document.getElementById('chainAddSelectedCandidatesBtn');
+      const topAllBtn = document.getElementById('chainSelectTopMatchesBtn');
       if (!container) return;
 
       const selectedCount = getSelectedChainCandidateCount();
       if (addBtn) addBtn.disabled = selectedCount === 0;
+      if (topAllBtn) topAllBtn.disabled = chainCandidateState.groups.length === 0;
 
       if (!chainCandidateState.groups.length) {
         container.innerHTML = '';
+        refreshChainSubmissionCapControl();
         return;
       }
 
@@ -1663,10 +1779,14 @@
         const candidates = Array.isArray(group.candidates) ? group.candidates : [];
         const selectedIndexes = new Set(Array.isArray(group.selectedIndexes) ? group.selectedIndexes : []);
         const title = `${groupIndex + 1}. ${group.source}`;
+        const selectedInGroup = selectedIndexes.size;
         if (!candidates.length) {
           return `
             <div class="candidate-group" data-chain-group-index="${groupIndex}">
-              <div class="candidate-group-title">${title}</div>
+              <div class="candidate-group-head">
+                <div class="candidate-group-title">${title}</div>
+                <div class="candidate-count-chip">0/0 selected</div>
+              </div>
               <div class="candidate-meta">No chain matches found for this query.</div>
             </div>
           `;
@@ -1686,11 +1806,15 @@
         }).join('');
         return `
           <div class="candidate-group" data-chain-group-index="${groupIndex}">
-            <div class="candidate-group-title">${title}</div>
+            <div class="candidate-group-head">
+              <div class="candidate-group-title">${title}</div>
+              <div class="candidate-count-chip">${selectedInGroup}/${candidates.length} selected</div>
+            </div>
             ${cards}
           </div>
         `;
       }).join('');
+      refreshChainSubmissionCapControl();
     }
 
     function resetChainCandidateResults() {
@@ -1700,6 +1824,19 @@
       chainCandidateState.brandTokens = [];
       renderChainCandidateResults();
       setChainCandidateStatus('', 'info');
+    }
+
+    function selectTopChainMatchesForAll() {
+      chainCandidateState.groups.forEach((group) => {
+        const hasCandidates = Array.isArray(group.candidates) && group.candidates.length > 0;
+        group.selectedIndexes = hasCandidates ? [0] : [];
+      });
+      renderChainCandidateResults();
+      const selectedCount = getSelectedChainCandidateCount();
+      const foundCount = getFoundChainCandidateCount();
+      if (selectedCount > 0) {
+        setChainCandidateStatus(`✅ Top matches selected for all queries (${selectedCount} selected out of ${foundCount} found).`, 'success');
+      }
     }
 
     function toggleChainCandidateSelection(groupIndex, candidateIndex) {
@@ -1756,7 +1893,7 @@
         try {
           const rawResults = await mainWindow.searchPlaces(group.source);
           const normalized = Array.isArray(rawResults)
-            ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId).slice(0, 6)
+            ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId).slice(0, chainCandidateState.maxPerQuery)
             : [];
           group.candidates = rankChainCandidates(normalized, group.source, chainCandidateState.brandTokens);
           group.selectedIndexes = group.candidates.length ? [0] : [];
@@ -1769,25 +1906,18 @@
 
       renderChainCandidateResults();
       const selectedCount = getSelectedChainCandidateCount();
+      const foundCount = getFoundChainCandidateCount();
       if (!selectedCount) {
         setChainCandidateStatus('⚠️ No selectable chain candidates were found. Try adding city/state context.', 'error');
         return;
       }
-      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected chain candidate(s). Adjust selections, then click "Add Selected Chain Candidates".`, 'success');
+      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected out of ${foundCount} found. Use the cap selector to add 3/5/10/15/25, all selected, or all found.`, 'success');
     }
 
     async function addSelectedChainCandidates() {
-      const selectedPlaceIds = [];
-      chainCandidateState.groups.forEach((group) => {
-        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
-        const indexes = Array.isArray(group && group.selectedIndexes) ? group.selectedIndexes : [];
-        indexes.forEach((idx) => {
-          if (!Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return;
-          const pick = candidates[idx];
-          const placeId = String(pick && pick.placeId ? pick.placeId : '').trim();
-          if (placeId) selectedPlaceIds.push(placeId);
-        });
-      });
+      const capSelectEl = document.getElementById('chainSelectionCapSelect');
+      const capRaw = String(capSelectEl && capSelectEl.value ? capSelectEl.value : 'all-selected');
+      const selectedPlaceIds = capRaw === 'all-found' ? getAllFoundChainPlaceIds() : getSelectedChainPlaceIds();
 
       if (!selectedPlaceIds.length) {
         setChainCandidateStatus('❌ Select at least one chain candidate before adding.', 'error');
@@ -1795,11 +1925,22 @@
       }
 
       const uniquePlaceIds = Array.from(new Set(selectedPlaceIds));
+      const capNum = Number(capRaw);
+      const applyCap = Number.isInteger(capNum) && capNum > 0;
+      const finalPlaceIds = applyCap ? uniquePlaceIds.slice(0, capNum) : uniquePlaceIds;
+      if (!finalPlaceIds.length) {
+        setChainCandidateStatus('❌ No chain candidates remain after applying your selected cap.', 'error');
+        return;
+      }
+
       const inputEl = document.getElementById('chainInput');
       const inputTypeEl = document.getElementById('chainInputType');
       if (inputTypeEl) inputTypeEl.value = 'placeId';
-      if (inputEl) inputEl.value = uniquePlaceIds.join('\n');
-      setChainCandidateStatus(`✅ Adding ${uniquePlaceIds.length} selected chain candidate(s)...`, 'success');
+      if (inputEl) inputEl.value = finalPlaceIds.join('\n');
+      const capMessage = applyCap
+        ? ` (cap: ${capNum})`
+        : (capRaw === 'all-found' ? ' (all found)' : ' (all selected)');
+      setChainCandidateStatus(`✅ Adding ${finalPlaceIds.length} selected chain candidate(s)${capMessage}...`, 'success');
       await submitBulkChain();
     }
 
@@ -1832,6 +1973,22 @@
             });
             renderChainCandidateResults();
           }
+        });
+      }
+      const capSelectEl = document.getElementById('chainSelectionCapSelect');
+      if (capSelectEl) {
+        capSelectEl.addEventListener('change', () => {
+          const capRaw = String(capSelectEl.value || 'all-selected');
+          if (capRaw === 'all-found') {
+            selectAllFoundChainMatches();
+            return;
+          }
+
+          const selectedCount = getSelectedChainCandidateCount();
+          if (!selectedCount) return;
+          const capNum = Number(capRaw);
+          const previewCount = Number.isInteger(capNum) && capNum > 0 ? Math.min(capNum, selectedCount) : selectedCount;
+          setChainCandidateStatus(`ℹ️ Current plan: ${previewCount} to add from ${selectedCount} selected.`, 'success');
         });
       }
       renderChainCandidateResults();

@@ -379,12 +379,38 @@ test.describe('Edit Mode single-add candidate search', () => {
     await expect(popup.locator('#chain-candidates .candidate-group')).toHaveCount(2);
     await expect(popup.locator('#chain-candidates .candidate-item')).toHaveCount(5);
     await expect(popup.locator('#chain-search-status')).toContainText('Ready: 2 selected');
+    await expect(popup.locator('#chain-candidates .candidate-count-chip').first()).toContainText('1/3 selected');
+    await expect(popup.locator('#chain-cap-help')).toContainText('5 found, 2 currently selected');
+
+    const capOptions = await popup.locator('#chainSelectionCapSelect option').allTextContents();
+    expect(capOptions.join(' | ')).toContain('Top 3');
+    expect(capOptions.join(' | ')).toContain('Top 5');
+    expect(capOptions.join(' | ')).toContain('All found (5)');
+    expect(capOptions.join(' | ')).toContain('All selected (2)');
+
+    // All found auto-selects every ranked candidate.
+    await popup.selectOption('#chainSelectionCapSelect', 'all-found');
+    await expect(popup.locator('#chain-candidates .candidate-count-chip').first()).toContainText('3/3 selected');
+    await expect(popup.locator('#chain-candidates .candidate-count-chip').nth(1)).toContainText('2/2 selected');
 
     const firstTopName = await popup.locator('#chain-candidates .candidate-group').nth(0).locator('.candidate-item .candidate-title').first().innerText();
     expect(firstTopName.toLowerCase()).toContain('starbucks');
 
+    // Return to normal curated mode for the rest of this flow.
+    await popup.selectOption('#chainSelectionCapSelect', 'all-selected');
+    await popup.click('#chainSelectTopMatchesBtn');
     await popup.check('#chainCandidateMultiSelect');
     await popup.locator('[data-chain-group-index="0"][data-chain-candidate-index="2"]').click();
+    await expect(popup.locator('#chain-candidates .candidate-count-chip').first()).toContainText('2/3 selected');
+
+    // Verify quick action restores top-only selection for each query.
+    await popup.click('#chainSelectTopMatchesBtn');
+    await expect(popup.locator('#chain-candidates .candidate-count-chip').first()).toContainText('1/3 selected');
+    await popup.check('#chainCandidateMultiSelect');
+    await popup.locator('[data-chain-group-index="0"][data-chain-candidate-index="2"]').click();
+
+    // Apply cap before add.
+    await popup.selectOption('#chainSelectionCapSelect', '3');
     await popup.click('#chainAddSelectedCandidatesBtn');
 
     await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(3);
