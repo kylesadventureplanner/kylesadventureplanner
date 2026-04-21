@@ -115,6 +115,11 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     await popup.evaluate(() => {
       window.showToast = () => {};
+      window.__openedCandidateUrls = [];
+      window.open = (url) => {
+        window.__openedCandidateUrls.push(String(url || ''));
+        return null;
+      };
       window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
         const placeId = String(inputValue || '').trim();
         const slug = placeId.replace(/^pid-/, '') || 'item';
@@ -215,6 +220,11 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     await popup.evaluate(() => {
       window.showToast = () => {};
+      window.__openedCandidateUrls = [];
+      window.open = (url) => {
+        window.__openedCandidateUrls.push(String(url || ''));
+        return null;
+      };
       window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
         const placeId = String(inputValue || '').trim();
         const slug = placeId.replace(/^pid-/, '') || 'item';
@@ -242,10 +252,12 @@ test.describe('Edit Mode single-add candidate search', () => {
     await popup.click('button:has-text("Search Candidates")');
 
     await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
-    await expect(popup.locator('#single-candidates .candidate-results-head .candidate-count-chip')).toHaveText('Sorted by nearest');
+    await expect(popup.locator('#single-candidates .candidate-results-head')).toContainText('Filters:');
+    await expect(popup.locator('#single-candidates .candidate-results-summary')).toContainText('2 shown');
+    await expect(popup.locator('#single-candidates .candidate-results-head')).toContainText('Sorted by nearest');
     const candidateItem = popup.locator('#single-candidates .candidate-item').first();
     await expect(candidateItem.locator('.candidate-title')).toHaveText('Nearby NC Festival');
-    await expect(candidateItem).toContainText('Distance:');
+    await expect(candidateItem).toContainText('mi from Long John Dr');
     await expect(candidateItem).toContainText('State: NC');
 
     const placeLink = popup.locator('#single-candidates .candidate-open-link').first();
@@ -255,6 +267,79 @@ test.describe('Edit Mode single-add candidate search', () => {
     await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
     const row = graphCalls[0].body.values[0];
     expect(row[9]).toBe('pid-nearby-nc-festival');
+  });
+
+  test('candidate filters persist, support alternate sort modes, and can be reset', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => {
+        return [
+          {
+            placeId: 'pid-near-low-rated',
+            name: 'Near Low Rated',
+            address: '10 Main St, Hendersonville, NC 28791',
+            rating: 4.1,
+            reviewCount: 40,
+            businessStatus: 'OPERATIONAL',
+            coordinates: { lat: 35.3481, lng: -82.4599 }
+          },
+          {
+            placeId: 'pid-far-high-rated',
+            name: 'Far High Rated',
+            address: '20 College St, Asheville, NC 28801',
+            rating: 4.9,
+            reviewCount: 320,
+            businessStatus: 'OPERATIONAL',
+            coordinates: { lat: 35.5951, lng: -82.5515 }
+          }
+        ];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.selectOption('#candidateDistanceLimitMiles', '50');
+    await popup.selectOption('#candidateStateFilter', 'NC');
+    await popup.selectOption('#candidateSortMode', 'best-rated');
+    await popup.reload({ waitUntil: 'domcontentloaded' });
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await expect(popup.locator('#candidateDistanceLimitMiles')).toHaveValue('50');
+    await expect(popup.locator('#candidateStateFilter')).toHaveValue('NC');
+    await expect(popup.locator('#candidateSortMode')).toHaveValue('best-rated');
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#singleInputType', 'placeName');
+    await popup.fill('#singleInput', 'festival');
+    await popup.click('button:has-text("Search Candidates")');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
+    await expect(popup.locator('#single-candidates .candidate-item').first().locator('.candidate-title')).toHaveText('Far High Rated');
+    await expect(popup.locator('#single-candidates .candidate-results-head')).toContainText('Sort: Best rated');
+
+    await popup.click('button:has-text("Reset Filters")');
+    await expect(popup.locator('#candidateDistanceLimitMiles')).toHaveValue('no-limit');
+    await expect(popup.locator('#candidateStateFilter')).toHaveValue('');
+    await expect(popup.locator('#candidateSortMode')).toHaveValue('nearest');
   });
 
   test('bulk candidate review lets user choose matches, then add selected candidates', async ({ page }) => {
@@ -326,6 +411,11 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     await popup.evaluate(() => {
       window.showToast = () => {};
+      window.__openedCandidateUrls = [];
+      window.open = (url) => {
+        window.__openedCandidateUrls.push(String(url || ''));
+        return null;
+      };
       window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
         const placeId = String(inputValue || '').trim();
         const slug = placeId.replace(/^pid-/, '') || 'item';
@@ -353,8 +443,15 @@ test.describe('Edit Mode single-add candidate search', () => {
     await expect(popup.locator('#bulk-candidates .candidate-group')).toHaveCount(2);
     await expect(popup.locator('#bulk-candidates .candidate-item')).toHaveCount(4);
     await expect(popup.locator('#bulk-search-status')).toContainText('Ready: 2 selection');
+    await expect(popup.locator('#bulk-search-status')).toContainText('Filtered out: 0 by state, 0 by distance');
+    await expect(popup.locator('#bulk-candidates .candidate-results-head')).toContainText('Filters:');
 
     await popup.locator('[data-bulk-group-index="1"][data-bulk-candidate-index="1"]').click();
+    await popup.click('#bulkOpenSelectedInGoogleBtn');
+    await expect.poll(() => popup.evaluate(() => window.__openedCandidateUrls || [])).toEqual([
+      'https://www.google.com/maps/place/?q=place_id:pid-apple-festival-main',
+      'https://www.google.com/maps/place/?q=place_id:pid-pear-fair-lakeside'
+    ]);
     await popup.click('#bulkAddSelectedCandidatesBtn');
 
     await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(2);
@@ -450,6 +547,11 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     await popup.evaluate(() => {
       window.showToast = () => {};
+      window.__openedCandidateUrls = [];
+      window.open = (url) => {
+        window.__openedCandidateUrls.push(String(url || ''));
+        return null;
+      };
       window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
         const placeId = String(inputValue || '').trim();
         const slug = placeId.replace(/^pid-/, '') || 'item';
@@ -477,7 +579,9 @@ test.describe('Edit Mode single-add candidate search', () => {
     await expect(popup.locator('#chain-candidates .candidate-group')).toHaveCount(2);
     await expect(popup.locator('#chain-candidates .candidate-item')).toHaveCount(5);
     await expect(popup.locator('#chain-search-status')).toContainText('Ready: 2 selected');
-    await expect(popup.locator('#chain-candidates .candidate-count-chip').first()).toContainText('1/3 selected');
+    await expect(popup.locator('#chain-search-status')).toContainText('Filtered out: 0 by state, 0 by distance');
+    await expect(popup.locator('#chain-candidates .candidate-results-head')).toContainText('Chain relevance ranking');
+    await expect(popup.locator('#chain-candidates [data-chain-group-index="0"] .candidate-count-chip').first()).toContainText('1/3 selected');
     await expect(popup.locator('#chain-cap-help')).toContainText('5 found, 2 currently selected');
 
     const capOptions = await popup.locator('#chainSelectionCapSelect option').allTextContents();
@@ -488,8 +592,8 @@ test.describe('Edit Mode single-add candidate search', () => {
 
     // All found auto-selects every ranked candidate.
     await popup.selectOption('#chainSelectionCapSelect', 'all-found');
-    await expect(popup.locator('#chain-candidates .candidate-count-chip').first()).toContainText('3/3 selected');
-    await expect(popup.locator('#chain-candidates .candidate-count-chip').nth(1)).toContainText('2/2 selected');
+    await expect(popup.locator('#chain-candidates [data-chain-group-index="0"] .candidate-count-chip').first()).toContainText('3/3 selected');
+    await expect(popup.locator('#chain-candidates [data-chain-group-index="1"] .candidate-count-chip').first()).toContainText('2/2 selected');
 
     const firstTopName = await popup.locator('#chain-candidates .candidate-group').nth(0).locator('.candidate-item .candidate-title').first().innerText();
     expect(firstTopName.toLowerCase()).toContain('starbucks');
@@ -499,13 +603,20 @@ test.describe('Edit Mode single-add candidate search', () => {
     await popup.click('#chainSelectTopMatchesBtn');
     await popup.check('#chainCandidateMultiSelect');
     await popup.locator('[data-chain-group-index="0"][data-chain-candidate-index="2"]').click();
-    await expect(popup.locator('#chain-candidates .candidate-count-chip').first()).toContainText('2/3 selected');
+    await expect(popup.locator('#chain-candidates [data-chain-group-index="0"] .candidate-count-chip').first()).toContainText('2/3 selected');
 
     // Verify quick action restores top-only selection for each query.
     await popup.click('#chainSelectTopMatchesBtn');
-    await expect(popup.locator('#chain-candidates .candidate-count-chip').first()).toContainText('1/3 selected');
+    await expect(popup.locator('#chain-candidates [data-chain-group-index="0"] .candidate-count-chip').first()).toContainText('1/3 selected');
     await popup.check('#chainCandidateMultiSelect');
     await popup.locator('[data-chain-group-index="0"][data-chain-candidate-index="2"]').click();
+
+    await popup.click('#chainOpenSelectedInGoogleBtn');
+    await expect.poll(() => popup.evaluate(() => window.__openedCandidateUrls || [])).toEqual([
+      'https://www.google.com/maps/place/?q=place_id:pid-starbucks-downtown-denver',
+      'https://www.google.com/maps/place/?q=place_id:pid-starbucks-17th-denver',
+      'https://www.google.com/maps/place/?q=place_id:pid-starbucks-airport-denver'
+    ]);
 
     // Apply cap before add.
     await popup.selectOption('#chainSelectionCapSelect', '3');
@@ -518,5 +629,6 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(placeIds).toContain('pid-starbucks-17th-denver');
     expect(placeIds).toContain('pid-starbucks-airport-denver');
   });
+
 });
 

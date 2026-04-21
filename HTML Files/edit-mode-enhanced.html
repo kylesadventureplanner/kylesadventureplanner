@@ -440,6 +440,32 @@
       justify-content: flex-start;
       gap: 8px;
       margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+
+    .candidate-results-summary {
+      font-size: 12px;
+      color: #475569;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .candidate-distance-chip {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 2px 8px;
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      color: #1d4ed8;
+      white-space: nowrap;
+    }
+
+    .candidate-distance-chip.is-unavailable {
+      border-color: #d1d5db;
+      background: #f3f4f6;
+      color: #6b7280;
     }
 
     .candidate-actions {
@@ -550,6 +576,18 @@
             <option value="KY">KY</option>
           </select>
         </div>
+        <div class="input-group">
+          <label for="candidateSortMode">Sort candidate results (single + bulk)</label>
+          <select id="candidateSortMode">
+            <option value="nearest">Nearest</option>
+            <option value="best-rated">Best rated</option>
+            <option value="most-reviewed">Most reviewed</option>
+          </select>
+          <div class="help-text">Chain results continue to use chain relevance ranking.</div>
+        </div>
+        <div class="button-group">
+          <button class="button button-secondary" type="button" onclick="resetCandidateGeoFilters()">Reset Filters</button>
+        </div>
         <div id="candidateFilterStatus" class="help-text">Applies to Search Candidates, Search Bulk Candidates, and Search Chain Candidates.</div>
       </div>
 
@@ -632,6 +670,7 @@
           <button class="button button-secondary" onclick="clearBulkForm()">Clear</button>
           <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button class="button button-secondary" type="button" onclick="searchBulkPlaceCandidates()">🔎 Search Bulk Candidates</button>
+          <button id="bulkOpenSelectedInGoogleBtn" class="button button-secondary" type="button" onclick="openSelectedBulkCandidatesInGoogle()" disabled>🌐 Open Selected in Google</button>
           <button id="bulkAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedBulkCandidates()" disabled>✅ Add Selected Candidates</button>
           <button class="button button-primary" onclick="submitBulkAddPlaces()">📦 Add All</button>
         </div>
@@ -674,6 +713,7 @@
           <button class="button button-secondary" onclick="clearChainForm()">Clear</button>
           <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button class="button button-secondary" type="button" onclick="searchChainPlaceCandidates()">🔎 Search Chain Candidates</button>
+          <button id="chainOpenSelectedInGoogleBtn" class="button button-secondary" type="button" onclick="openSelectedChainCandidatesInGoogle()" disabled>🌐 Open Selected in Google</button>
           <button id="chainAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedChainCandidates()" disabled>✅ Add Selected Chain Candidates</button>
           <button class="button button-primary" onclick="submitBulkChain()">⛓️ Add Locations</button>
         </div>
@@ -927,12 +967,14 @@
       query: '',
       inputType: 'placeName',
       selectedIndex: -1,
-      results: []
+       results: [],
+       summary: null
     };
     const bulkCandidateState = {
       rawInput: '',
       inputType: 'placeName',
-      groups: []
+       groups: [],
+       summary: null
     };
     const chainCandidateState = {
       rawInput: '',
@@ -940,10 +982,13 @@
       allowMultiSelect: false,
       groups: [],
       brandTokens: [],
-      maxPerQuery: 6
+      maxPerQuery: 6,
+      summary: null
     };
     const CANDIDATE_ANCHOR_ADDRESS = '100 Long John Dr, Hendersonville, NC 28791';
     const CANDIDATE_ANCHOR_FALLBACK = { lat: 35.3476, lng: -82.4590 };
+    const CANDIDATE_FILTER_STORAGE_KEY = 'editModeCandidateFiltersV1';
+    const GOOGLE_TAB_OPEN_CONFIRM_THRESHOLD = 10;
     const candidateGeoState = {
       anchorCoords: null,
       anchorResolved: false,
@@ -1400,12 +1445,75 @@
       return String(el && el.value ? el.value : '').trim().toUpperCase();
     }
 
-    function describeCandidateFilters() {
+    function getCandidateSortMode() {
+      const el = document.getElementById('candidateSortMode');
+      const raw = String(el && el.value ? el.value : 'nearest').trim().toLowerCase();
+      if (raw === 'best-rated' || raw === 'most-reviewed') return raw;
+      return 'nearest';
+    }
+
+    function getDefaultCandidateFilterPrefs() {
+      return {
+        distance: 'no-limit',
+        state: '',
+        sortMode: 'nearest'
+      };
+    }
+
+    function readCandidateFilterPrefs() {
+      try {
+        const raw = window.localStorage.getItem(CANDIDATE_FILTER_STORAGE_KEY);
+        if (!raw) return getDefaultCandidateFilterPrefs();
+        const parsed = JSON.parse(raw);
+        return {
+          distance: String(parsed && parsed.distance ? parsed.distance : 'no-limit'),
+          state: String(parsed && parsed.state ? parsed.state : '').toUpperCase(),
+          sortMode: ['nearest', 'best-rated', 'most-reviewed'].includes(String(parsed && parsed.sortMode ? parsed.sortMode : 'nearest'))
+            ? String(parsed.sortMode)
+            : 'nearest'
+        };
+      } catch (_error) {
+        return getDefaultCandidateFilterPrefs();
+      }
+    }
+
+    function persistCandidateFilterPrefs() {
+      try {
+        window.localStorage.setItem(CANDIDATE_FILTER_STORAGE_KEY, JSON.stringify({
+          distance: String(document.getElementById('candidateDistanceLimitMiles')?.value || 'no-limit'),
+          state: getCandidateStateFilter(),
+          sortMode: getCandidateSortMode()
+        }));
+      } catch (_error) {
+        // Ignore storage failures.
+      }
+    }
+
+    function applyCandidateFilterPrefsToDom(prefs) {
+      const safePrefs = prefs && typeof prefs === 'object' ? prefs : getDefaultCandidateFilterPrefs();
+      const distanceEl = document.getElementById('candidateDistanceLimitMiles');
+      const stateEl = document.getElementById('candidateStateFilter');
+      const sortEl = document.getElementById('candidateSortMode');
+      if (distanceEl) distanceEl.value = String(safePrefs.distance || 'no-limit');
+      if (stateEl) stateEl.value = String(safePrefs.state || '').toUpperCase();
+      if (sortEl) sortEl.value = ['nearest', 'best-rated', 'most-reviewed'].includes(String(safePrefs.sortMode || 'nearest'))
+        ? String(safePrefs.sortMode)
+        : 'nearest';
+    }
+
+    function describeCandidateFilters(options = {}) {
       const limit = getCandidateDistanceLimitMiles();
       const state = getCandidateStateFilter();
+      const sortMode = getCandidateSortMode();
       const distanceLabel = limit == null ? 'no distance limit' : `${limit} mi max`;
       const stateLabel = state || 'any state';
-      return `${distanceLabel}; ${stateLabel}`;
+      if (options && options.includeSort === false) {
+        return `${distanceLabel}; ${stateLabel}`;
+      }
+      const sortLabel = sortMode === 'best-rated'
+        ? 'best rated'
+        : (sortMode === 'most-reviewed' ? 'most reviewed' : 'nearest');
+      return `${distanceLabel}; ${stateLabel}; sort: ${sortLabel}`;
     }
 
     async function ensureCandidateAnchorCoords(mainWindow) {
@@ -1462,15 +1570,39 @@
       const list = Array.isArray(candidates) ? candidates.slice() : [];
       const preserveRanking = Boolean(options && options.preserveRanking);
       const distanceLimit = getCandidateDistanceLimitMiles();
-      if (preserveRanking || distanceLimit == null || list.length < 2) return list;
+      const sortMode = getCandidateSortMode();
+      if (preserveRanking || list.length < 2) return list;
 
       return list
         .map((candidate, index) => ({ candidate, index }))
         .sort((a, b) => {
           const ad = Number(a.candidate && a.candidate.distanceMiles);
           const bd = Number(b.candidate && b.candidate.distanceMiles);
+          const ar = Number(a.candidate && a.candidate.rating);
+          const br = Number(b.candidate && b.candidate.rating);
+          const ac = Number(a.candidate && a.candidate.reviewCount);
+          const bc = Number(b.candidate && b.candidate.reviewCount);
           const aOk = Number.isFinite(ad);
           const bOk = Number.isFinite(bd);
+
+          if (sortMode === 'best-rated') {
+            if (Number.isFinite(ar) && Number.isFinite(br) && ar !== br) return br - ar;
+            if (Number.isFinite(ac) && Number.isFinite(bc) && ac !== bc) return bc - ac;
+            if (distanceLimit != null && aOk && bOk && ad !== bd) return ad - bd;
+            if (distanceLimit != null && aOk && !bOk) return -1;
+            if (distanceLimit != null && !aOk && bOk) return 1;
+            return a.index - b.index;
+          }
+
+          if (sortMode === 'most-reviewed') {
+            if (Number.isFinite(ac) && Number.isFinite(bc) && ac !== bc) return bc - ac;
+            if (Number.isFinite(ar) && Number.isFinite(br) && ar !== br) return br - ar;
+            if (distanceLimit != null && aOk && bOk && ad !== bd) return ad - bd;
+            if (distanceLimit != null && aOk && !bOk) return -1;
+            if (distanceLimit != null && !aOk && bOk) return 1;
+            return a.index - b.index;
+          }
+
           if (aOk && bOk && ad !== bd) return ad - bd;
           if (aOk && !bOk) return -1;
           if (!aOk && bOk) return 1;
@@ -1480,7 +1612,24 @@
     }
 
     function isDistanceSortActive() {
-      return getCandidateDistanceLimitMiles() != null;
+      return getCandidateSortMode() === 'nearest' && getCandidateDistanceLimitMiles() != null;
+    }
+
+    function buildCandidateResultsHeader(summary, options = {}) {
+      const safeSummary = summary && typeof summary === 'object' ? summary : null;
+      if (!safeSummary) return '';
+      const chips = [];
+      chips.push(`<div class="candidate-count-chip">Filters: ${safeSummary.filtersLabel || describeCandidateFilters()}</div>`);
+      if (safeSummary.sortLabel) chips.push(`<div class="candidate-count-chip">Sort: ${safeSummary.sortLabel}</div>`);
+      if (Number.isFinite(Number(safeSummary.shownCount))) chips.push(`<div class="candidate-count-chip">Showing ${safeSummary.shownCount}</div>`);
+      if (Number.isFinite(Number(safeSummary.droppedByState)) || Number.isFinite(Number(safeSummary.droppedByDistance))) {
+        chips.push(`<div class="candidate-count-chip">Filtered out ${Number(safeSummary.droppedByState || 0) + Number(safeSummary.droppedByDistance || 0)}</div>`);
+      }
+      const extraChip = options && options.extraChip ? `<div class="candidate-count-chip">${options.extraChip}</div>` : '';
+      const summaryText = safeSummary.summaryText
+        ? `<div class="candidate-results-summary">${safeSummary.summaryText}</div>`
+        : '';
+      return `<div class="candidate-results-head">${chips.join('')}${extraChip}</div>${summaryText}`;
     }
 
     function buildCandidateGoogleUrl(placeId) {
@@ -1493,6 +1642,14 @@
       const value = candidate && Number.isFinite(Number(candidate.distanceMiles)) ? Number(candidate.distanceMiles) : null;
       if (value == null) return 'Distance: unavailable';
       return `Distance: ${value.toFixed(1)} mi from Long John Dr`;
+    }
+
+    function renderCandidateDistanceMarkup(candidate) {
+      const value = candidate && Number.isFinite(Number(candidate.distanceMiles)) ? Number(candidate.distanceMiles) : null;
+      if (value == null) {
+        return '<span class="candidate-distance-chip is-unavailable">Distance unavailable</span>';
+      }
+      return `<span class="candidate-distance-chip">${value.toFixed(1)} mi from Long John Dr</span>`;
     }
 
     function setBulkCandidateStatus(message, kind) {
@@ -1615,9 +1772,9 @@
         return;
       }
 
-      const sortChip = isDistanceSortActive()
-        ? '<div class="candidate-results-head"><div class="candidate-count-chip">Sorted by nearest</div></div>'
-        : '';
+      const headerHtml = buildCandidateResultsHeader(singleCandidateState.summary, {
+        extraChip: isDistanceSortActive() ? 'Sorted by nearest' : ''
+      });
 
       const rows = singleCandidateState.results.map((candidate, index) => {
         const selectedClass = index === singleCandidateState.selectedIndex ? 'selected' : '';
@@ -1625,7 +1782,7 @@
         const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
         const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
         const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
-        const distancePart = formatCandidateDistance(candidate);
+        const distancePart = renderCandidateDistanceMarkup(candidate);
         const openLink = candidate.googlePlaceUrl
           ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
           : '';
@@ -1634,12 +1791,13 @@
             <div class="candidate-title">${candidate.name}</div>
             <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
             <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
-            <div class="candidate-meta">${statePart} | ${distancePart}</div>
+            <div class="candidate-meta">${statePart}</div>
+            <div class="candidate-meta">${distancePart}</div>
             <div class="candidate-actions">${openLink}</div>
           </div>
         `;
       }).join('');
-      container.innerHTML = `${sortChip}${rows}`;
+      container.innerHTML = `${headerHtml}${rows}`;
     }
 
     function resetSingleCandidateResults() {
@@ -1647,6 +1805,7 @@
       singleCandidateState.inputType = String(document.getElementById('singleInputType')?.value || 'placeName');
       singleCandidateState.selectedIndex = -1;
       singleCandidateState.results = [];
+      singleCandidateState.summary = null;
       renderSingleCandidateResults();
       setSingleCandidateStatus('', 'info');
     }
@@ -1693,6 +1852,14 @@
         singleCandidateState.query = query;
         singleCandidateState.inputType = inputType;
         singleCandidateState.results = sortCandidatesForDisplay(filtered.rows).slice(0, 8);
+        singleCandidateState.summary = {
+          filtersLabel: describeCandidateFilters(),
+          sortLabel: getCandidateSortMode() === 'best-rated' ? 'Best rated' : (getCandidateSortMode() === 'most-reviewed' ? 'Most reviewed' : 'Nearest'),
+          shownCount: singleCandidateState.results.length,
+          droppedByState: filtered.droppedByState,
+          droppedByDistance: filtered.droppedByDistance,
+          summaryText: `${singleCandidateState.results.length} shown • ${filtered.droppedByState} removed by state • ${filtered.droppedByDistance} removed by distance`
+        };
         singleCandidateState.selectedIndex = singleCandidateState.results.length ? 0 : -1;
         renderSingleCandidateResults();
 
@@ -1729,6 +1896,33 @@
       await submitAddSinglePlace();
     }
 
+    function openCandidateUrlsInGoogle(urls, statusSetter, emptyMessage, successPrefix) {
+      const uniqueUrls = Array.from(new Set((Array.isArray(urls) ? urls : []).map((url) => String(url || '').trim()).filter(Boolean)));
+      if (!uniqueUrls.length) {
+        if (typeof statusSetter === 'function') statusSetter(emptyMessage, 'error');
+        return;
+      }
+
+      const shouldConfirmOpen = uniqueUrls.length > GOOGLE_TAB_OPEN_CONFIRM_THRESHOLD;
+      if (shouldConfirmOpen && typeof window.confirm === 'function') {
+        const proceed = window.confirm(`Open ${uniqueUrls.length} selected Google tabs?`);
+        if (!proceed) {
+          if (typeof statusSetter === 'function') {
+            statusSetter(`⚠️ Cancelled opening ${uniqueUrls.length} Google result${uniqueUrls.length === 1 ? '' : 's'}.`, 'info');
+          }
+          return;
+        }
+      }
+
+      uniqueUrls.forEach((url) => {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      });
+
+      if (typeof statusSetter === 'function') {
+        statusSetter(`${successPrefix} ${uniqueUrls.length} Google result${uniqueUrls.length === 1 ? '' : 's'} in new tab${uniqueUrls.length === 1 ? '' : 's'}.`, 'success');
+      }
+    }
+
     function initSingleCandidateSearch() {
       const inputEl = document.getElementById('singleInput');
       const inputTypeEl = document.getElementById('singleInputType');
@@ -1756,22 +1950,45 @@
       }, 0);
     }
 
+    function getSelectedBulkCandidateGoogleUrls() {
+      return bulkCandidateState.groups
+        .map((group) => {
+          if (!group || !Array.isArray(group.candidates)) return '';
+          const idx = Number(group.selectedIndex);
+          if (!Number.isInteger(idx) || idx < 0 || idx >= group.candidates.length) return '';
+          const pick = group.candidates[idx];
+          return String((pick && pick.googlePlaceUrl) || buildCandidateGoogleUrl(pick && pick.placeId) || '').trim();
+        })
+        .filter(Boolean);
+    }
+
+    function openSelectedBulkCandidatesInGoogle() {
+      openCandidateUrlsInGoogle(
+        getSelectedBulkCandidateGoogleUrls(),
+        setBulkCandidateStatus,
+        '❌ Select at least one bulk candidate before opening Google pages.',
+        '✅ Opened'
+      );
+    }
+
     function renderBulkCandidateResults() {
       const container = document.getElementById('bulk-candidates');
       const addBtn = document.getElementById('bulkAddSelectedCandidatesBtn');
+      const openBtn = document.getElementById('bulkOpenSelectedInGoogleBtn');
       if (!container) return;
 
       const selectedCount = getSelectedBulkCandidateCount();
       if (addBtn) addBtn.disabled = selectedCount === 0;
+      if (openBtn) openBtn.disabled = selectedCount === 0;
 
       if (!bulkCandidateState.groups.length) {
         container.innerHTML = '';
         return;
       }
 
-      const sortChip = isDistanceSortActive()
-        ? '<div class="candidate-results-head"><div class="candidate-count-chip">Sorted by nearest</div></div>'
-        : '';
+      const headerHtml = buildCandidateResultsHeader(bulkCandidateState.summary, {
+        extraChip: isDistanceSortActive() ? 'Sorted by nearest' : ''
+      });
 
       const groupsHtml = bulkCandidateState.groups.map((group, groupIndex) => {
         const candidates = Array.isArray(group.candidates) ? group.candidates : [];
@@ -1790,7 +2007,7 @@
           const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
           const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
           const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
-          const distancePart = formatCandidateDistance(candidate);
+          const distancePart = renderCandidateDistanceMarkup(candidate);
           const openLink = candidate.googlePlaceUrl
             ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
             : '';
@@ -1799,7 +2016,8 @@
               <div class="candidate-title">${candidate.name}</div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
               <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
-              <div class="candidate-meta">${statePart} | ${distancePart}</div>
+              <div class="candidate-meta">${statePart}</div>
+              <div class="candidate-meta">${distancePart}</div>
               <div class="candidate-actions">${openLink}</div>
             </div>
           `;
@@ -1811,13 +2029,14 @@
           </div>
         `;
       }).join('');
-      container.innerHTML = `${sortChip}${groupsHtml}`;
+      container.innerHTML = `${headerHtml}${groupsHtml}`;
     }
 
     function resetBulkCandidateResults() {
       bulkCandidateState.rawInput = '';
       bulkCandidateState.inputType = String(document.getElementById('bulkInputType')?.value || 'placeName');
       bulkCandidateState.groups = [];
+      bulkCandidateState.summary = null;
       renderBulkCandidateResults();
       setBulkCandidateStatus('', 'info');
     }
@@ -1862,6 +2081,9 @@
       setBulkCandidateStatus(`<span class="spinner"></span> Searching ${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
 
       let foundTotal = 0;
+      let droppedByStateTotal = 0;
+      let droppedByDistanceTotal = 0;
+      let totalBefore = 0;
       for (let i = 0; i < bulkCandidateState.groups.length; i += 1) {
         const group = bulkCandidateState.groups[i];
         try {
@@ -1873,6 +2095,9 @@
           group.candidates = sortCandidatesForDisplay(filtered.rows);
           group.selectedIndex = group.candidates.length ? 0 : -1;
           foundTotal += group.candidates.length ? 1 : 0;
+          droppedByStateTotal += filtered.droppedByState;
+          droppedByDistanceTotal += filtered.droppedByDistance;
+          totalBefore += filtered.totalBefore;
         } catch (error) {
           console.error('❌ Bulk candidate search failed for query:', group.source, error);
           group.candidates = [];
@@ -1880,13 +2105,21 @@
         }
       }
 
+      bulkCandidateState.summary = {
+        filtersLabel: describeCandidateFilters(),
+        sortLabel: getCandidateSortMode() === 'best-rated' ? 'Best rated' : (getCandidateSortMode() === 'most-reviewed' ? 'Most reviewed' : 'Nearest'),
+        shownCount: bulkCandidateState.groups.reduce((count, group) => count + (Array.isArray(group.candidates) ? group.candidates.length : 0), 0),
+        droppedByState: droppedByStateTotal,
+        droppedByDistance: droppedByDistanceTotal,
+        summaryText: `${bulkCandidateState.groups.length} queries • ${bulkCandidateState.groups.reduce((count, group) => count + (Array.isArray(group.candidates) ? group.candidates.length : 0), 0)} shown • ${droppedByStateTotal} removed by state • ${droppedByDistanceTotal} removed by distance`
+      };
       renderBulkCandidateResults();
       const selectedCount = getSelectedBulkCandidateCount();
       if (!selectedCount) {
         setBulkCandidateStatus('⚠️ No selectable matches were found. Try adding city/state context.', 'error');
         return;
       }
-      setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Filters: ${describeCandidateFilters()}. Review and click "Add Selected Candidates".`, 'success');
+      setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Filters: ${describeCandidateFilters()}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. Review and click "Add Selected Candidates".`, 'success');
     }
 
     async function addSelectedBulkCandidates() {
@@ -1961,6 +2194,30 @@
       return selectedPlaceIds;
     }
 
+    function getSelectedChainCandidateGoogleUrls() {
+      const urls = [];
+      chainCandidateState.groups.forEach((group) => {
+        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
+        const indexes = Array.isArray(group && group.selectedIndexes) ? group.selectedIndexes : [];
+        indexes.forEach((idx) => {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return;
+          const pick = candidates[idx];
+          const url = String((pick && pick.googlePlaceUrl) || buildCandidateGoogleUrl(pick && pick.placeId) || '').trim();
+          if (url) urls.push(url);
+        });
+      });
+      return urls;
+    }
+
+    function openSelectedChainCandidatesInGoogle() {
+      openCandidateUrlsInGoogle(
+        getSelectedChainCandidateGoogleUrls(),
+        setChainCandidateStatus,
+        '❌ Select at least one chain candidate before opening Google pages.',
+        '✅ Opened'
+      );
+    }
+
     function getAllFoundChainPlaceIds() {
       const placeIds = [];
       chainCandidateState.groups.forEach((group) => {
@@ -2024,11 +2281,13 @@
     function renderChainCandidateResults() {
       const container = document.getElementById('chain-candidates');
       const addBtn = document.getElementById('chainAddSelectedCandidatesBtn');
+      const openBtn = document.getElementById('chainOpenSelectedInGoogleBtn');
       const topAllBtn = document.getElementById('chainSelectTopMatchesBtn');
       if (!container) return;
 
       const selectedCount = getSelectedChainCandidateCount();
       if (addBtn) addBtn.disabled = selectedCount === 0;
+      if (openBtn) openBtn.disabled = selectedCount === 0;
       if (topAllBtn) topAllBtn.disabled = chainCandidateState.groups.length === 0;
 
       if (!chainCandidateState.groups.length) {
@@ -2037,7 +2296,11 @@
         return;
       }
 
-      container.innerHTML = chainCandidateState.groups.map((group, groupIndex) => {
+      const headerHtml = buildCandidateResultsHeader(chainCandidateState.summary, {
+        extraChip: 'Chain relevance ranking'
+      });
+
+      const groupsHtml = chainCandidateState.groups.map((group, groupIndex) => {
         const candidates = Array.isArray(group.candidates) ? group.candidates : [];
         const selectedIndexes = new Set(Array.isArray(group.selectedIndexes) ? group.selectedIndexes : []);
         const title = `${groupIndex + 1}. ${group.source}`;
@@ -2059,7 +2322,7 @@
           const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
           const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
           const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
-          const distancePart = formatCandidateDistance(candidate);
+          const distancePart = renderCandidateDistanceMarkup(candidate);
           const openLink = candidate.googlePlaceUrl
             ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
             : '';
@@ -2068,7 +2331,8 @@
               <div class="candidate-title">${candidate.name}</div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
               <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
-              <div class="candidate-meta">${statePart} | ${distancePart}</div>
+              <div class="candidate-meta">${statePart}</div>
+              <div class="candidate-meta">${distancePart}</div>
               <div class="candidate-actions">${openLink}</div>
             </div>
           `;
@@ -2083,6 +2347,7 @@
           </div>
         `;
       }).join('');
+      container.innerHTML = `${headerHtml}${groupsHtml}`;
       refreshChainSubmissionCapControl();
     }
 
@@ -2091,6 +2356,7 @@
       chainCandidateState.inputType = String(document.getElementById('chainInputType')?.value || 'placeNameCity');
       chainCandidateState.groups = [];
       chainCandidateState.brandTokens = [];
+      chainCandidateState.summary = null;
       renderChainCandidateResults();
       setChainCandidateStatus('', 'info');
     }
@@ -2157,6 +2423,8 @@
       renderChainCandidateResults();
       setChainCandidateStatus(`<span class="spinner"></span> Searching chain candidates for ${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
 
+      let droppedByStateTotal = 0;
+      let droppedByDistanceTotal = 0;
       for (let i = 0; i < chainCandidateState.groups.length; i += 1) {
         const group = chainCandidateState.groups[i];
         try {
@@ -2167,6 +2435,8 @@
           const filtered = await applyCandidateGeoFilters(normalized, mainWindow);
           group.candidates = rankChainCandidates(filtered.rows, group.source, chainCandidateState.brandTokens);
           group.selectedIndexes = group.candidates.length ? [0] : [];
+          droppedByStateTotal += filtered.droppedByState;
+          droppedByDistanceTotal += filtered.droppedByDistance;
         } catch (error) {
           console.error('❌ Chain candidate search failed for query:', group.source, error);
           group.candidates = [];
@@ -2174,6 +2444,14 @@
         }
       }
 
+      chainCandidateState.summary = {
+        filtersLabel: describeCandidateFilters({ includeSort: false }),
+        sortLabel: 'Chain relevance',
+        shownCount: getFoundChainCandidateCount(),
+        droppedByState: droppedByStateTotal,
+        droppedByDistance: droppedByDistanceTotal,
+        summaryText: `${chainCandidateState.groups.length} queries • ${getFoundChainCandidateCount()} shown • ${droppedByStateTotal} removed by state • ${droppedByDistanceTotal} removed by distance`
+      };
       renderChainCandidateResults();
       const selectedCount = getSelectedChainCandidateCount();
       const foundCount = getFoundChainCandidateCount();
@@ -2181,7 +2459,7 @@
         setChainCandidateStatus('⚠️ No selectable chain candidates were found. Try adding city/state context.', 'error');
         return;
       }
-      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected out of ${foundCount} found. Filters: ${describeCandidateFilters()}. Use the cap selector to add 3/5/10/15/25, all selected, or all found.`, 'success');
+      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected out of ${foundCount} found. Filters: ${describeCandidateFilters({ includeSort: false })}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. Use the cap selector to add 3/5/10/15/25, all selected, or all found.`, 'success');
     }
 
     async function addSelectedChainCandidates() {
@@ -2267,6 +2545,7 @@
     function initCandidateGeoFilters() {
       const distanceEl = document.getElementById('candidateDistanceLimitMiles');
       const stateEl = document.getElementById('candidateStateFilter');
+      const sortEl = document.getElementById('candidateSortMode');
       const statusEl = document.getElementById('candidateFilterStatus');
 
       const applyFilterStatus = () => {
@@ -2276,15 +2555,31 @@
       };
 
       const handleFilterChange = () => {
+        persistCandidateFilterPrefs();
         resetSingleCandidateResults();
         resetBulkCandidateResults();
         resetChainCandidateResults();
         applyFilterStatus();
       };
 
+      applyCandidateFilterPrefsToDom(readCandidateFilterPrefs());
       if (distanceEl) distanceEl.addEventListener('change', handleFilterChange);
       if (stateEl) stateEl.addEventListener('change', handleFilterChange);
+      if (sortEl) sortEl.addEventListener('change', handleFilterChange);
       applyFilterStatus();
+    }
+
+    function resetCandidateGeoFilters() {
+      applyCandidateFilterPrefsToDom(getDefaultCandidateFilterPrefs());
+      persistCandidateFilterPrefs();
+      resetSingleCandidateResults();
+      resetBulkCandidateResults();
+      resetChainCandidateResults();
+      const statusEl = document.getElementById('candidateFilterStatus');
+      if (statusEl) {
+        statusEl.textContent = `Active filters: ${describeCandidateFilters()} (anchor: ${CANDIDATE_ANCHOR_ADDRESS}).`;
+      }
+      showToast('Candidate search filters reset.', 'info', 1800);
     }
 
     function openCandidateSearchFilters() {
