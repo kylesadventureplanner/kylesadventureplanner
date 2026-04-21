@@ -363,6 +363,110 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(row[9]).toBe('pid-starbucks-hendo');
   });
 
+  test('non-festival URL probing is opt-in and can surface probe-derived candidates for website inputs', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+      window.resolvePlaceIdFromInput = async () => '';
+      window.getPlaceDetails = async () => null;
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.evaluate(() => {
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const url = String(input || '');
+        if (/coffeeprobe\.example\.com\/stores/i.test(url)) {
+          return {
+            ok: true,
+            status: 200,
+            text: async () => '<script type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","name":"Probe Coffee House","url":"https://coffeeprobe.example.com/stores","address":{"streetAddress":"44 Bean St","addressLocality":"Asheville","addressRegion":"NC"}}</script>'
+          };
+        }
+        if (/coffeeprobe\.example\.com/i.test(url)) {
+          throw new Error('blocked');
+        }
+        return originalFetch(input, init);
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
+    await popup.check('#candidateUrlProbeEnabled');
+    await popup.selectOption('#singleInputType', 'website');
+    await popup.fill('#singleInput', 'https://coffeeprobe.example.com/');
+    await popup.click('#singleSearchCandidatesBtn');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(1);
+    const card = popup.locator('#single-candidates .candidate-item').first();
+    await expect(card.locator('.candidate-title')).toHaveText('Probe Coffee House');
+    await expect(popup.locator('#single-candidates .candidate-results-head')).toContainText('Probe: attempted');
+    await expect(popup.locator('#single-search-status')).toContainText('Probe: attempted');
+  });
+
+  test('non-festival probing does not run for plain place-name searches', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async (query) => {
+        if (/coffee/i.test(String(query || ''))) {
+          return [{
+            placeId: 'pid-plain-search-coffee',
+            name: 'Plain Search Coffee',
+            address: '12 Main St, Asheville, NC',
+            rating: 4.4,
+            reviewCount: 88,
+            businessStatus: 'OPERATIONAL'
+          }];
+        }
+        return [];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
+    await popup.check('#candidateUrlProbeEnabled');
+    await popup.selectOption('#singleInputType', 'placeName');
+    await popup.fill('#singleInput', 'coffee');
+    await popup.click('#singleSearchCandidatesBtn');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(1);
+    await expect(popup.locator('#single-candidates .candidate-results-head')).not.toContainText('Probe: attempted');
+    await expect(popup.locator('#single-search-status')).not.toContainText('Probe: attempted');
+  });
+
   test('non-festival bulk place URL candidate search enriches via resolver fallback', async ({ page }) => {
     const graphCalls = [];
     await installMocks(page.context(), graphCalls);

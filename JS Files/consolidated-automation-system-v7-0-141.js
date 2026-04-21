@@ -824,17 +824,45 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return Array.from(unique.values()).sort((a, b) => b.score - a.score).map((entry) => entry.row);
   }
 
+  function classifyOfficialProbeError(error) {
+    const message = safeString(error && error.message ? error.message : error).toLowerCase();
+    if (!message) return 'blocked';
+    if (message.includes('cors')) return 'blocked';
+    if (message.includes('failed to fetch')) return 'blocked';
+    if (message.includes('networkerror')) return 'blocked';
+    if (message.includes('err_failed')) return 'blocked';
+    if (message.includes('http ')) return 'blocked';
+    return 'blocked';
+  }
+
   async function searchOfficialUrlEndpoints(query, officialUrl, options = {}, sourceWindow = getFestivalProviderHost()) {
     const host = getFestivalProviderHost(sourceWindow);
     const config = getFestivalSourceConfig(host);
     const urls = buildOfficialFestivalUrlProbeList(officialUrl);
-    if (!urls.length) return [];
+    const probeSummary = {
+      enabled: true,
+      baseUrl: normalizeUrlCandidate(officialUrl),
+      attempted: urls.length,
+      succeeded: 0,
+      blocked: 0,
+      details: []
+    };
+    if (!urls.length) {
+      return { rows: [], probeSummary };
+    }
     const collected = [];
     for (const probeUrl of urls) {
       try {
         const rows = await searchFeedSource(query, { label: 'Official Website Endpoint', url: probeUrl }, 'Official Website Endpoint', config, {
           defaultConfidence: 'Medium',
           defaultConfidenceReason: 'Feed/endpoint probe from official festival URL'
+        });
+        probeSummary.succeeded += 1;
+        probeSummary.details.push({
+          url: probeUrl,
+          status: 'succeeded',
+          resultCount: Array.isArray(rows) ? rows.length : 0,
+          error: ''
         });
         rows.forEach((row) => {
           collected.push({
@@ -844,11 +872,21 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
             openLinkLabel: safeString(row.openLinkLabel || 'Open Event Source')
           });
         });
-      } catch (_error) {
+      } catch (error) {
         // CORS/network failures are expected in browser-only mode.
+        probeSummary.blocked += 1;
+        probeSummary.details.push({
+          url: probeUrl,
+          status: classifyOfficialProbeError(error),
+          resultCount: 0,
+          error: safeString(error && error.message ? error.message : error)
+        });
       }
     }
-    return mergeFestivalEventRows(collected, query).slice(0, Math.max(1, Number(config.maxResultsPerSource || 8)));
+    return {
+      rows: mergeFestivalEventRows(collected, query).slice(0, Math.max(1, Number(config.maxResultsPerSource || 8))),
+      probeSummary
+    };
   }
 
   async function searchOfficialCalendarFeeds(query, options = {}, sourceWindow = getFestivalProviderHost()) {
@@ -1031,10 +1069,29 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const providerRows = providerQuery
       ? await runFestivalProviderSearches(providerQuery, options, getFestivalProviderHost())
       : [];
-    const endpointProbeRows = (officialUrl && options && options.allowOfficialUrlProbe === true)
+    const endpointProbePayload = (officialUrl && options && options.allowOfficialUrlProbe === true)
       ? await searchOfficialUrlEndpoints(providerQuery || searchQuery || buildFestivalNameFromUrl(officialUrl), officialUrl, options, getFestivalProviderHost())
+      : { rows: [], probeSummary: null };
+    const endpointProbeRows = Array.isArray(endpointProbePayload && endpointProbePayload.rows)
+      ? endpointProbePayload.rows
       : [];
     const mergedRows = mergeFestivalEventRows([...providerRows, ...endpointProbeRows], providerQuery || searchQuery);
+    const host = getFestivalProviderHost();
+    const existingDiagnostics = host.__festivalSourceLastDiagnostics && typeof host.__festivalSourceLastDiagnostics === 'object'
+      ? host.__festivalSourceLastDiagnostics
+      : (window.__festivalSourceLastDiagnostics && typeof window.__festivalSourceLastDiagnostics === 'object'
+        ? window.__festivalSourceLastDiagnostics
+        : { query: providerQuery || searchQuery || rawQuery, ranAt: new Date().toISOString(), providers: [] });
+    const officialUrlProbe = endpointProbePayload && endpointProbePayload.probeSummary
+      ? endpointProbePayload.probeSummary
+      : null;
+    const nextDiagnostics = {
+      ...existingDiagnostics,
+      officialUrlProbe,
+      totalResults: mergedRows.length
+    };
+    host.__festivalSourceLastDiagnostics = nextDiagnostics;
+    window.__festivalSourceLastDiagnostics = nextDiagnostics;
     if (mergedRows.length > 0) return mergedRows;
 
     // Keep edit-mode flow usable for official festival websites even when providers return no matches.

@@ -635,6 +635,13 @@
           </select>
           <div class="help-text">Chain results continue to use chain relevance ranking.</div>
         </div>
+        <div class="input-group">
+          <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0;">
+            <input id="candidateUrlProbeEnabled" type="checkbox">
+            Probe URL endpoints for non-festival website/place URL search when direct lookup has no match (opt-in)
+            <span title="Browser-only mode may hit CORS blocks on many sites. Turn this on only when URL search needs extra enrichment." style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; font-size:12px; font-weight:700; cursor:help;">i</span>
+          </label>
+        </div>
         <div class="button-group">
           <button id="candidateResetFiltersBtn" class="button button-secondary" type="button" onclick="resetCandidateGeoFilters()">Reset Filters</button>
         </div>
@@ -1448,7 +1455,61 @@
         </div>`;
       }).join('');
       const total = Number(payload.totalResults || 0);
-      el.innerHTML = `<div style="font-size:12px; color:#6b7280;">Total merged results: ${total}</div>${html}`;
+      const probe = payload && payload.officialUrlProbe && typeof payload.officialUrlProbe === 'object'
+        ? payload.officialUrlProbe
+        : null;
+      const probeLine = probe && Number(probe.attempted || 0) > 0
+        ? `<div style="font-size:12px; color:#6b7280; margin-top:6px;">Official URL Probe: attempted ${Number(probe.attempted || 0)} • succeeded ${Number(probe.succeeded || 0)} • blocked ${Number(probe.blocked || 0)}</div>`
+        : '';
+      const blockedDetails = probe && Array.isArray(probe.details)
+        ? probe.details.filter((entry) => String(entry && entry.status || '').toLowerCase() === 'blocked').slice(0, 3)
+        : [];
+      const blockedDetailsHtml = blockedDetails.length
+        ? `<details style="margin-top:6px; border:1px solid #e5e7eb; border-radius:8px; padding:6px 8px; background:#fff;">
+            <summary style="cursor:pointer; font-size:12px; color:#374151; font-weight:600;">Blocked endpoints (first ${blockedDetails.length})</summary>
+            <div style="margin-top:6px; display:grid; gap:6px;">
+              ${blockedDetails.map((entry, idx) => {
+                const url = String(entry && entry.url ? entry.url : '').trim() || '(unknown endpoint)';
+                const error = String(entry && entry.error ? entry.error : '').trim() || 'Request blocked';
+                return `<div style="font-size:12px; color:#6b7280;">
+                  <div><strong>${idx + 1}.</strong> ${url}</div>
+                  <div style="color:#b91c1c;">${error}</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </details>`
+        : '';
+      el.innerHTML = `<div style="font-size:12px; color:#6b7280;">Total merged results: ${total}</div>${probeLine}${blockedDetailsHtml}${html}`;
+    }
+
+    function normalizeProbeSummary(raw) {
+      const source = raw && typeof raw === 'object' ? raw : {};
+      const attempted = Number(source.attempted || 0);
+      const succeeded = Number(source.succeeded || 0);
+      const blocked = Number(source.blocked || 0);
+      if (!Number.isFinite(attempted) || attempted <= 0) return null;
+      return {
+        attempted,
+        succeeded: Number.isFinite(succeeded) ? succeeded : 0,
+        blocked: Number.isFinite(blocked) ? blocked : 0
+      };
+    }
+
+    function mergeProbeSummaries(a, b) {
+      const left = normalizeProbeSummary(a);
+      const right = normalizeProbeSummary(b);
+      if (!left && !right) return null;
+      return {
+        attempted: Number((left && left.attempted) || 0) + Number((right && right.attempted) || 0),
+        succeeded: Number((left && left.succeeded) || 0) + Number((right && right.succeeded) || 0),
+        blocked: Number((left && left.blocked) || 0) + Number((right && right.blocked) || 0)
+      };
+    }
+
+    function formatProbeSummaryText(raw) {
+      const summary = normalizeProbeSummary(raw);
+      if (!summary) return '';
+      return `Probe: attempted ${summary.attempted}, succeeded ${summary.succeeded}, blocked ${summary.blocked}`;
     }
 
     function saveFestivalSourcesConfig() {
@@ -2298,7 +2359,8 @@
       return {
         distance: 'no-limit',
         state: '',
-        sortMode: 'nearest'
+        sortMode: 'nearest',
+        urlProbeEnabled: false
       };
     }
 
@@ -2312,7 +2374,8 @@
           state: String(parsed && parsed.state ? parsed.state : '').toUpperCase(),
           sortMode: ['nearest', 'best-rated', 'most-reviewed'].includes(String(parsed && parsed.sortMode ? parsed.sortMode : 'nearest'))
             ? String(parsed.sortMode)
-            : 'nearest'
+            : 'nearest',
+          urlProbeEnabled: Boolean(parsed && parsed.urlProbeEnabled)
         };
       } catch (_error) {
         return getDefaultCandidateFilterPrefs();
@@ -2324,7 +2387,8 @@
         window.localStorage.setItem(CANDIDATE_FILTER_STORAGE_KEY, JSON.stringify({
           distance: String(document.getElementById('candidateDistanceLimitMiles')?.value || 'no-limit'),
           state: getCandidateStateFilter(),
-          sortMode: getCandidateSortMode()
+          sortMode: getCandidateSortMode(),
+          urlProbeEnabled: Boolean(document.getElementById('candidateUrlProbeEnabled')?.checked)
         }));
       } catch (_error) {
         // Ignore storage failures.
@@ -2336,11 +2400,17 @@
       const distanceEl = document.getElementById('candidateDistanceLimitMiles');
       const stateEl = document.getElementById('candidateStateFilter');
       const sortEl = document.getElementById('candidateSortMode');
+      const probeEl = document.getElementById('candidateUrlProbeEnabled');
       if (distanceEl) distanceEl.value = String(safePrefs.distance || 'no-limit');
       if (stateEl) stateEl.value = String(safePrefs.state || '').toUpperCase();
       if (sortEl) sortEl.value = ['nearest', 'best-rated', 'most-reviewed'].includes(String(safePrefs.sortMode || 'nearest'))
         ? String(safePrefs.sortMode)
         : 'nearest';
+      if (probeEl) probeEl.checked = Boolean(safePrefs.urlProbeEnabled);
+    }
+
+    function isCandidateUrlProbeEnabled() {
+      return Boolean(document.getElementById('candidateUrlProbeEnabled')?.checked);
     }
 
     function describeCandidateFilters(options = {}) {
@@ -2467,6 +2537,8 @@
       if (Number.isFinite(Number(safeSummary.droppedByState)) || Number.isFinite(Number(safeSummary.droppedByDistance))) {
         chips.push(`<div class="candidate-count-chip">Filtered out ${Number(safeSummary.droppedByState || 0) + Number(safeSummary.droppedByDistance || 0)}</div>`);
       }
+      const probeSummaryText = formatProbeSummaryText(safeSummary.probeSummary);
+      if (probeSummaryText) chips.push(`<div class="candidate-count-chip">${probeSummaryText}</div>`);
       const extraChip = options && options.extraChip ? `<div class="candidate-count-chip">${options.extraChip}</div>` : '';
       const summaryText = safeSummary.summaryText
         ? `<div class="candidate-results-summary">${safeSummary.summaryText}</div>`
@@ -2627,6 +2699,12 @@
         coordinates: normalizeCoordinates(raw.coordinates),
         state: String(raw.state || deriveStateFromAddress(raw.address)).trim().toUpperCase(),
         distanceMiles: null,
+        website: String(raw.website || raw.url || '').trim(),
+        sourceProvider: String(raw.sourceProvider || '').trim(),
+        sourceConfidence: String(raw.sourceConfidence || '').trim(),
+        sourceConfidenceReason: String(raw.sourceConfidenceReason || '').trim(),
+        openLinkUrl: String(raw.openLinkUrl || raw.website || raw.url || raw.googlePlaceUrl || raw.googleUrl || buildCandidateGoogleUrl(raw.placeId)).trim(),
+        openLinkLabel: String(raw.openLinkLabel || (raw.website ? 'Open Website' : '')).trim(),
         googlePlaceUrl: String(raw.googlePlaceUrl || raw.googleUrl || buildCandidateGoogleUrl(raw.placeId)).trim()
       };
     }
@@ -2684,6 +2762,152 @@
       }
     }
 
+    function normalizeProbeUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      try {
+        return new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`).toString();
+      } catch (_error) {
+        return '';
+      }
+    }
+
+    function buildNonFestivalProbeUrls(value) {
+      const normalized = normalizeProbeUrl(value);
+      if (!normalized) return [];
+      try {
+        const parsed = new URL(normalized);
+        const origin = `${parsed.protocol}//${parsed.host}`;
+        const urls = [
+          normalized,
+          `${origin}/`,
+          `${origin}/locations`,
+          `${origin}/stores`,
+          `${origin}/about`,
+          `${origin}/contact`,
+          `${origin}/feed`,
+          `${origin}/wp-json/wp/v2/pages?per_page=10`,
+          `${origin}/wp-json/wp/v2/posts?per_page=10`
+        ];
+        return Array.from(new Set(urls));
+      } catch (_error) {
+        return [normalized];
+      }
+    }
+
+    function collectNonFestivalSchemaNodes(node, out) {
+      if (!node) return;
+      if (Array.isArray(node)) {
+        node.forEach((entry) => collectNonFestivalSchemaNodes(entry, out));
+        return;
+      }
+      if (typeof node !== 'object') return;
+      const rawType = node['@type'] || node.type;
+      const types = Array.isArray(rawType) ? rawType : [rawType];
+      const typeSet = new Set(types.map((item) => String(item || '').toLowerCase()));
+      const match = ['localbusiness', 'place', 'organization', 'restaurant', 'cafe', 'store', 'touristattraction']
+        .some((kind) => typeSet.has(kind));
+      if (match) out.push(node);
+      if (node['@graph']) collectNonFestivalSchemaNodes(node['@graph'], out);
+      if (node.mainEntity) collectNonFestivalSchemaNodes(node.mainEntity, out);
+      if (node.itemListElement) collectNonFestivalSchemaNodes(node.itemListElement, out);
+      if (node.data) collectNonFestivalSchemaNodes(node.data, out);
+      if (node.items) collectNonFestivalSchemaNodes(node.items, out);
+    }
+
+    function normalizeProbeCandidateFromSchema(node, fallbackUrl) {
+      const source = node && typeof node === 'object' ? node : {};
+      const addr = source.address && typeof source.address === 'object' ? source.address : {};
+      const website = String(source.url || source.sameAs || fallbackUrl || '').trim();
+      return normalizeSingleSearchCandidate({
+        placeId: '',
+        name: String(source.name || source.legalName || '').trim(),
+        address: String(source.address || addr.streetAddress || '').trim(),
+        city: String(source.city || addr.addressLocality || '').trim(),
+        state: String(source.state || addr.addressRegion || '').trim(),
+        website,
+        openLinkUrl: website,
+        openLinkLabel: website ? 'Open Website' : '',
+        sourceProvider: 'URL Endpoint Probe',
+        sourceConfidence: String(source.sourceConfidence || 'Medium').trim(),
+        sourceConfidenceReason: String(source.sourceConfidenceReason || 'Schema data from URL probe').trim()
+      });
+    }
+
+    function extractNonFestivalProbeCandidates(text, sourceUrl) {
+      const rows = [];
+      const trimmed = String(text || '').trim();
+      if (!trimmed) return rows;
+      if (/^\s*[\[{]/.test(trimmed)) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          const nodes = [];
+          collectNonFestivalSchemaNodes(parsed, nodes);
+          nodes.forEach((node) => {
+            const row = normalizeProbeCandidateFromSchema(node, sourceUrl);
+            if (row.name) rows.push(row);
+          });
+        } catch (_error) {
+          // Not valid JSON payload for probe parsing.
+        }
+      }
+      if (typeof DOMParser !== 'undefined') {
+        const doc = new DOMParser().parseFromString(trimmed, 'text/html');
+        doc.querySelectorAll('script[type="application/ld+json"]').forEach((scriptEl) => {
+          try {
+            const parsed = JSON.parse(String(scriptEl.textContent || 'null'));
+            const nodes = [];
+            collectNonFestivalSchemaNodes(parsed, nodes);
+            nodes.forEach((node) => {
+              const row = normalizeProbeCandidateFromSchema(node, sourceUrl);
+              if (row.name) rows.push(row);
+            });
+          } catch (_error) {
+            // Ignore malformed JSON-LD blocks.
+          }
+        });
+      }
+      const deduped = [];
+      const seen = new Set();
+      rows.forEach((row) => {
+        const key = `${String(row.name || '').toLowerCase()}|${String(row.address || '').toLowerCase()}|${String(row.website || '').toLowerCase()}`;
+        if (!row.name || seen.has(key)) return;
+        seen.add(key);
+        deduped.push(row);
+      });
+      return deduped.slice(0, 6);
+    }
+
+    async function probeNonFestivalUrlCandidates(query) {
+      const urls = buildNonFestivalProbeUrls(query);
+      const summary = { attempted: urls.length, succeeded: 0, blocked: 0 };
+      if (!urls.length) return { rows: [], probeSummary: null };
+      const rows = [];
+      for (const probeUrl of urls) {
+        try {
+          const response = await fetch(probeUrl, { method: 'GET', redirect: 'follow' });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const text = await response.text();
+          summary.succeeded += 1;
+          rows.push(...extractNonFestivalProbeCandidates(text, probeUrl));
+        } catch (_error) {
+          summary.blocked += 1;
+        }
+      }
+      const deduped = [];
+      const seen = new Set();
+      rows.forEach((row) => {
+        const key = `${String(row && row.name || '').toLowerCase()}|${String(row && row.address || '').toLowerCase()}|${String(row && row.website || '').toLowerCase()}`;
+        if (!row || !row.name || seen.has(key)) return;
+        seen.add(key);
+        deduped.push(row);
+      });
+      return {
+        rows: deduped.slice(0, 6),
+        probeSummary: summary.attempted > 0 ? summary : null
+      };
+    }
+
     async function searchCandidateSource(query, inputType, mode) {
       const mainWindow = getMainWindowSafe();
       const festivalMode = isFestivalActionTarget();
@@ -2704,9 +2928,11 @@
           anchorAddress: CANDIDATE_ANCHOR_ADDRESS,
           anchorCoords: await ensureCandidateAnchorCoords(mainWindow)
         });
+        const diagnostics = mainWindow.__festivalSourceLastDiagnostics || window.__festivalSourceLastDiagnostics || null;
         return {
           festivalMode: true,
-          rows: Array.isArray(rows) ? rows.map(normalizeFestivalSearchCandidate).filter((row) => row.name) : []
+          rows: Array.isArray(rows) ? rows.map(normalizeFestivalSearchCandidate).filter((row) => row.name) : [],
+          probeSummary: normalizeProbeSummary(diagnostics && diagnostics.officialUrlProbe)
         };
       }
 
@@ -2743,9 +2969,19 @@
         }
       }
 
+      let probeSummary = null;
+      if ((!Array.isArray(rows) || rows.length === 0) && isUrlInput && isCandidateUrlProbeEnabled()) {
+        const probePayload = await probeNonFestivalUrlCandidates(query);
+        if (Array.isArray(probePayload.rows) && probePayload.rows.length > 0) {
+          rows = probePayload.rows;
+        }
+        probeSummary = probePayload.probeSummary || null;
+      }
+
       return {
         festivalMode: false,
-        rows: Array.isArray(rows) ? rows.map(normalizeSingleSearchCandidate).filter((row) => row.placeId) : []
+        rows: Array.isArray(rows) ? rows.map(normalizeSingleSearchCandidate).filter((row) => row.placeId || row.name) : [],
+        probeSummary
       };
     }
 
@@ -2855,6 +3091,7 @@
           shownCount: singleCandidateState.results.length,
           droppedByState: filtered.droppedByState,
           droppedByDistance: filtered.droppedByDistance,
+          probeSummary: sourceResults.probeSummary || null,
           summaryText: `${singleCandidateState.results.length} shown • ${filtered.droppedByState} removed by state • ${filtered.droppedByDistance} removed by distance`
         };
         singleCandidateState.selectedIndex = singleCandidateState.results.length ? 0 : -1;
@@ -2873,6 +3110,7 @@
         setSingleCandidateStatus(
           `✅ Found ${singleCandidateState.results.length} ${festivalMode ? 'festival event' : 'match'}(es) after filters (${describeCandidateFilters()}). `
           + `Filtered out: ${filtered.droppedByState} by state, ${filtered.droppedByDistance} by distance. `
+          + `${formatProbeSummaryText(sourceResults.probeSummary) ? `${formatProbeSummaryText(sourceResults.probeSummary)}. ` : ''}`
           + `Select one, then click "Add Selected Candidate".`,
           'success'
         );
@@ -3111,6 +3349,7 @@
       let droppedByStateTotal = 0;
       let droppedByDistanceTotal = 0;
       let totalBefore = 0;
+      let probeSummaryTotal = null;
       for (let i = 0; i < bulkCandidateState.groups.length; i += 1) {
         const group = bulkCandidateState.groups[i];
         try {
@@ -3126,6 +3365,7 @@
           droppedByStateTotal += filtered.droppedByState;
           droppedByDistanceTotal += filtered.droppedByDistance;
           totalBefore += filtered.totalBefore;
+          probeSummaryTotal = mergeProbeSummaries(probeSummaryTotal, sourceResults.probeSummary);
         } catch (error) {
           console.error('❌ Bulk candidate search failed for query:', group.source, error);
           group.candidates = [];
@@ -3139,6 +3379,7 @@
         shownCount: bulkCandidateState.groups.reduce((count, group) => count + (Array.isArray(group.candidates) ? group.candidates.length : 0), 0),
         droppedByState: droppedByStateTotal,
         droppedByDistance: droppedByDistanceTotal,
+        probeSummary: probeSummaryTotal,
         summaryText: `${bulkCandidateState.groups.length} queries • ${bulkCandidateState.groups.reduce((count, group) => count + (Array.isArray(group.candidates) ? group.candidates.length : 0), 0)} shown • ${droppedByStateTotal} removed by state • ${droppedByDistanceTotal} removed by distance`
       };
       renderBulkCandidateResults();
@@ -3147,7 +3388,7 @@
         setBulkCandidateStatus(`⚠️ No selectable ${festivalMode ? 'festival events' : 'matches'} were found. Try adding city/state context.`, 'error');
         return;
       }
-      setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Filters: ${describeCandidateFilters()}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. Review and click "Add Selected Candidates".`, 'success');
+      setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Filters: ${describeCandidateFilters()}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. ${formatProbeSummaryText(probeSummaryTotal) ? `${formatProbeSummaryText(probeSummaryTotal)}. ` : ''}Review and click "Add Selected Candidates".`, 'success');
     }
 
     async function addSelectedBulkCandidates() {
@@ -3473,6 +3714,7 @@
 
       let droppedByStateTotal = 0;
       let droppedByDistanceTotal = 0;
+      let probeSummaryTotal = null;
       for (let i = 0; i < chainCandidateState.groups.length; i += 1) {
         const group = chainCandidateState.groups[i];
         try {
@@ -3486,6 +3728,7 @@
           group.selectedIndexes = group.candidates.length ? [0] : [];
           droppedByStateTotal += filtered.droppedByState;
           droppedByDistanceTotal += filtered.droppedByDistance;
+          probeSummaryTotal = mergeProbeSummaries(probeSummaryTotal, sourceResults.probeSummary);
         } catch (error) {
           console.error('❌ Chain candidate search failed for query:', group.source, error);
           group.candidates = [];
@@ -3499,6 +3742,7 @@
         shownCount: getFoundChainCandidateCount(),
         droppedByState: droppedByStateTotal,
         droppedByDistance: droppedByDistanceTotal,
+        probeSummary: probeSummaryTotal,
         summaryText: `${chainCandidateState.groups.length} queries • ${getFoundChainCandidateCount()} shown • ${droppedByStateTotal} removed by state • ${droppedByDistanceTotal} removed by distance`
       };
       renderChainCandidateResults();
@@ -3508,7 +3752,7 @@
         setChainCandidateStatus(`⚠️ No selectable ${festivalMode ? 'festival events' : 'chain candidates'} were found. Try adding city/state context.`, 'error');
         return;
       }
-      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected out of ${foundCount} found. Filters: ${describeCandidateFilters({ includeSort: false })}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. Use the cap selector to add 3/5/10/15/25, all selected, or all found.`, 'success');
+      setChainCandidateStatus(`✅ Ready: ${selectedCount} selected out of ${foundCount} found. Filters: ${describeCandidateFilters({ includeSort: false })}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. ${formatProbeSummaryText(probeSummaryTotal) ? `${formatProbeSummaryText(probeSummaryTotal)}. ` : ''}Use the cap selector to add 3/5/10/15/25, all selected, or all found.`, 'success');
     }
 
     async function addSelectedChainCandidates() {
@@ -3623,6 +3867,7 @@
       const distanceEl = document.getElementById('candidateDistanceLimitMiles');
       const stateEl = document.getElementById('candidateStateFilter');
       const sortEl = document.getElementById('candidateSortMode');
+      const probeEl = document.getElementById('candidateUrlProbeEnabled');
       const statusEl = document.getElementById('candidateFilterStatus');
 
       const applyFilterStatus = () => {
@@ -3643,6 +3888,7 @@
       if (distanceEl) distanceEl.addEventListener('change', handleFilterChange);
       if (stateEl) stateEl.addEventListener('change', handleFilterChange);
       if (sortEl) sortEl.addEventListener('change', handleFilterChange);
+      if (probeEl) probeEl.addEventListener('change', handleFilterChange);
       applyFilterStatus();
     }
 
