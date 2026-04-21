@@ -8,7 +8,16 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
 
 (function() {
   function getMainWindow() {
-    return window.opener && !window.opener.closed ? window.opener : window;
+    try {
+      if (window.opener && !window.opener.closed) return window.opener;
+    } catch (_openerErr) {}
+    try {
+      if (window.parent && window.parent !== window) return window.parent;
+    } catch (_parentErr) {}
+    try {
+      if (window.top && window.top !== window) return window.top;
+    } catch (_topErr) {}
+    return window;
   }
 
   function safeString(value) {
@@ -1742,11 +1751,15 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         const details = preResolved || await window.resolvePlaceInputWithGoogleData(inputType, input);
         const placeId = safeString(details && details.placeId);
 
-        if (typeof mainWindow.buildExcelRow !== 'function') {
-          throw new Error('Main window buildExcelRow helper is unavailable.');
-        }
+        const rowBuilder =
+          (mainWindow && typeof mainWindow.buildExcelRow === 'function' && mainWindow.buildExcelRow.bind(mainWindow))
+          || (typeof window.buildExcelRow === 'function' && window.buildExcelRow.bind(window))
+          || null;
 
-        const rowValues = window.normalizeExcelRowForSchema(mainWindow.buildExcelRow(placeId, details), mainWindow);
+        const rawRowValues = rowBuilder
+          ? rowBuilder(placeId, details)
+          : buildExcelRowFallback(placeId, details);
+        const rowValues = window.normalizeExcelRowForSchema(rawRowValues, mainWindow);
 
         if (typeof mainWindow.placeExistsInData === 'function' && mainWindow.placeExistsInData(rowValues)) {
           throw new Error('This location already exists in Excel.');
