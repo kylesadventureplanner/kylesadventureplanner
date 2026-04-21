@@ -18961,6 +18961,20 @@ COMMON ISSUES:
     return String(value == null ? "" : value).trim();
   }
 
+  function normalizeOperationHours(value) {
+    if (value == null) return '';
+    if (typeof value === 'string') return value.trim();
+    if (Array.isArray(value)) return value.join('; ');
+    if (typeof value === 'object') {
+      const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      return days
+        .filter(d => value[d] || value[d.toLowerCase()])
+        .map(d => d + ': ' + (value[d] || value[d.toLowerCase()]))
+        .join('; ') || JSON.stringify(value);
+    }
+    return String(value);
+  }
+
   function extractPlaceIdFromUrl(raw) {
     const text = strVal(raw);
     const match = text.match(/\bChI[A-Za-z0-9_-]{6,}\b/);
