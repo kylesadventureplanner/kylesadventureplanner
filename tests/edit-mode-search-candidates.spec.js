@@ -698,6 +698,60 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(row[10]).toBe('');
   });
 
+  test('festival bulk candidate search supports official festival website URLs as direct fallback candidates', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    const firstUrl = 'https://ncapplefestival.org/';
+    const secondUrl = 'https://hendersonvilleberryfest.com/';
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#bulkInputType', 'website');
+    await popup.fill('#bulkInput', `${firstUrl}\n${secondUrl}`);
+    await popup.click('#bulkSearchCandidatesBtn');
+
+    await expect(popup.locator('#bulk-candidates .candidate-group')).toHaveCount(2);
+    await expect(popup.locator('#bulk-candidates .candidate-item')).toHaveCount(2);
+    await expect(popup.locator('#bulk-search-status')).toContainText('Ready: 2 selection');
+    const bulkLinks = popup.locator('#bulk-candidates .candidate-open-link');
+    await expect(bulkLinks.nth(0)).toHaveAttribute('href', firstUrl);
+    await expect(bulkLinks.nth(1)).toHaveAttribute('href', secondUrl);
+
+    await popup.click('#bulkAddSelectedCandidatesBtn');
+    await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(2);
+
+    const firstRow = graphCalls[0].body.values[0];
+    const secondRow = graphCalls[1].body.values[0];
+    expect(String(firstRow[1] || '')).toMatch(/festival|fest/i);
+    expect(String(secondRow[1] || '')).toMatch(/festival|fest/i);
+    expect(firstRow[5]).toBe(firstUrl);
+    expect(secondRow[5]).toBe(secondUrl);
+    expect(firstRow[9]).toBe('');
+    expect(firstRow[10]).toBe('');
+    expect(secondRow[9]).toBe('');
+    expect(secondRow[10]).toBe('');
+  });
+
   test('chain candidate review applies chain-biased ranking and multi-select before add', async ({ page }) => {
     const graphCalls = [];
     await installMocks(page.context(), graphCalls);
