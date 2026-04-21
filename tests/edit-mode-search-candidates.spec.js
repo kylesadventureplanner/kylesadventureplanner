@@ -1,6 +1,7 @@
 const { test, expect } = require('./reliability-test');
 
 const FESTIVALS_SCHEMA = ['Description', 'Name', 'Address', 'City', 'State', 'Official Website', 'Phone Number', 'Rating', 'Directions', 'Google Place ID', 'Google URL'];
+const GENERIC_GOOGLE_CANDIDATE_TARGET = 'ent_general';
 
 function buildResolvedByPlaceId(placeId) {
   const safeId = String(placeId || '').trim();
@@ -141,10 +142,10 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
     await popup.selectOption('#singleInputType', 'placeName');
     await popup.fill('#singleInput', 'apple festival');
-    await popup.click('button:has-text("Search Candidates")');
+    await popup.click('#singleSearchCandidatesBtn');
 
     await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
     await expect(popup.locator('#single-search-status')).toContainText('Found 2 match');
@@ -244,12 +245,12 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
     await popup.selectOption('#candidateDistanceLimitMiles', '25');
     await popup.selectOption('#candidateStateFilter', 'NC');
     await popup.selectOption('#singleInputType', 'placeName');
     await popup.fill('#singleInput', 'festival');
-    await popup.click('button:has-text("Search Candidates")');
+    await popup.click('#singleSearchCandidatesBtn');
 
     await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
     await expect(popup.locator('#single-candidates .candidate-results-head')).toContainText('Filters:');
@@ -327,16 +328,16 @@ test.describe('Edit Mode single-add candidate search', () => {
     await expect(popup.locator('#candidateStateFilter')).toHaveValue('NC');
     await expect(popup.locator('#candidateSortMode')).toHaveValue('best-rated');
 
-    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
     await popup.selectOption('#singleInputType', 'placeName');
     await popup.fill('#singleInput', 'festival');
-    await popup.click('button:has-text("Search Candidates")');
+    await popup.click('#singleSearchCandidatesBtn');
 
     await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
     await expect(popup.locator('#single-candidates .candidate-item').first().locator('.candidate-title')).toHaveText('Far High Rated');
     await expect(popup.locator('#single-candidates .candidate-results-head')).toContainText('Sort: Best rated');
 
-    await popup.click('button:has-text("Reset Filters")');
+    await popup.click('#candidateResetFiltersBtn');
     await expect(popup.locator('#candidateDistanceLimitMiles')).toHaveValue('no-limit');
     await expect(popup.locator('#candidateStateFilter')).toHaveValue('');
     await expect(popup.locator('#candidateSortMode')).toHaveValue('nearest');
@@ -615,10 +616,10 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
     await popup.selectOption('#bulkInputType', 'placeName');
     await popup.fill('#bulkInput', 'apple festival\npear fair');
-    await popup.click('button:has-text("Search Bulk Candidates")');
+    await popup.click('#bulkSearchCandidatesBtn');
 
     await expect(popup.locator('#bulk-candidates .candidate-group')).toHaveCount(2);
     await expect(popup.locator('#bulk-candidates .candidate-item')).toHaveCount(4);
@@ -751,10 +752,10 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
     await popup.selectOption('#chainInputType', 'placeNameCity');
     await popup.fill('#chainInput', 'Starbucks downtown Denver\nStarbucks airport Denver');
-    await popup.click('button:has-text("Search Chain Candidates")');
+    await popup.click('#chainSearchCandidatesBtn');
 
     await expect(popup.locator('#chain-candidates .candidate-group')).toHaveCount(2);
     await expect(popup.locator('#chain-candidates .candidate-item')).toHaveCount(5);

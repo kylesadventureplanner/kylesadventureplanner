@@ -586,7 +586,7 @@
           <div class="help-text">Chain results continue to use chain relevance ranking.</div>
         </div>
         <div class="button-group">
-          <button class="button button-secondary" type="button" onclick="resetCandidateGeoFilters()">Reset Filters</button>
+          <button id="candidateResetFiltersBtn" class="button button-secondary" type="button" onclick="resetCandidateGeoFilters()">Reset Filters</button>
         </div>
         <div id="candidateFilterStatus" class="help-text">Applies to Search Candidates, Search Bulk Candidates, and Search Chain Candidates.</div>
       </div>
@@ -844,21 +844,21 @@
         </div>
 
         <div class="button-group">
-          <button class="button button-secondary" type="button" onclick="saveFestivalSourcesConfig()">💾 Save Festival Sources</button>
-          <button class="button button-secondary" type="button" onclick="resetFestivalSourcesConfig()">↺ Reset to Defaults</button>
-          <button class="button button-secondary" type="button" onclick="testFestivalSourcesConfig()">🧪 Test Festival Source Search</button>
+          <button id="festivalSaveSourcesBtn" class="button button-secondary" type="button" onclick="saveFestivalSourcesConfig()">💾 Save Festival Sources</button>
+          <button id="festivalResetSourcesBtn" class="button button-secondary" type="button" onclick="resetFestivalSourcesConfig()">↺ Reset to Defaults</button>
+          <button id="festivalTestSourcesBtn" class="button button-secondary" type="button" onclick="testFestivalSourcesConfig()">🧪 Test Festival Source Search</button>
         </div>
 
         <div class="button-group">
-          <button class="button button-secondary" type="button" onclick="testFestivalSourcesByType('ticketmaster')">🧪 Test Ticketmaster Only</button>
-          <button class="button button-secondary" type="button" onclick="testFestivalSourcesByType('eventbrite')">🧪 Test Eventbrite Only</button>
-          <button class="button button-secondary" type="button" onclick="testFestivalSourcesByType('feeds')">🧪 Test Feeds Only</button>
-          <button class="button button-secondary" type="button" onclick="runFestivalSourceDiagnostics()">📊 Dry-Run Source Diagnostics</button>
+          <button id="festivalTestTicketmasterBtn" class="button button-secondary" type="button" onclick="testFestivalSourcesByType('ticketmaster')">🧪 Test Ticketmaster Only</button>
+          <button id="festivalTestEventbriteBtn" class="button button-secondary" type="button" onclick="testFestivalSourcesByType('eventbrite')">🧪 Test Eventbrite Only</button>
+          <button id="festivalTestFeedsBtn" class="button button-secondary" type="button" onclick="testFestivalSourcesByType('feeds')">🧪 Test Feeds Only</button>
+          <button id="festivalRunDiagnosticsBtn" class="button button-secondary" type="button" onclick="runFestivalSourceDiagnostics()">📊 Dry-Run Source Diagnostics</button>
         </div>
 
         <div class="button-group">
-          <button class="button button-secondary" type="button" onclick="exportFestivalSourcesConfigJson()">📤 Export Source Config JSON</button>
-          <button class="button button-secondary" type="button" onclick="importFestivalSourcesConfigJson()">📥 Import Source Config JSON</button>
+          <button id="festivalExportSourcesBtn" class="button button-secondary" type="button" onclick="exportFestivalSourcesConfigJson()">📤 Export Source Config JSON</button>
+          <button id="festivalImportSourcesBtn" class="button button-secondary" type="button" onclick="importFestivalSourcesConfigJson()">📥 Import Source Config JSON</button>
         </div>
 
         <div class="input-group">

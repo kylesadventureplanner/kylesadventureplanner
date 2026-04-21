@@ -106,7 +106,7 @@ test.describe('Edit Mode – target-table selectors', () => {
     await page.fill('#festivalChamberFeeds', 'Hendo Chamber|https://example.com/chamber.ics');
     await page.uncheck('#festivalProviderTicketmasterEnabled');
     await page.check('#festivalProviderEventbriteEnabled');
-    await page.click('button:has-text("Save Festival Sources")');
+    await page.click('#festivalSaveSourcesBtn');
     await expect(page.locator('#festival-sources-status')).toContainText('saved and applied');
 
     await page.reload();
@@ -121,9 +121,9 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#festivalOfficialCalendarsFeeds')).toHaveValue(/nc-events\.rss/);
     await expect(page.locator('#festivalChamberFeeds')).toHaveValue(/chamber\.ics/);
 
-    await expect(page.locator('button:has-text("Test Ticketmaster Only")')).toBeVisible();
-    await expect(page.locator('button:has-text("Test Eventbrite Only")')).toBeVisible();
-    await expect(page.locator('button:has-text("Test Feeds Only")')).toBeVisible();
+    await expect(page.locator('#festivalTestTicketmasterBtn')).toBeVisible();
+    await expect(page.locator('#festivalTestEventbriteBtn')).toBeVisible();
+    await expect(page.locator('#festivalTestFeedsBtn')).toBeVisible();
     await expect(page.locator('#festivalProviderOrderList [data-provider-key]')).toHaveCount(4);
     await expect(page.locator('#festivalProviderOrderList [data-provider-key]').first()).toHaveAttribute('data-provider-key', 'official_calendars');
     await expect(page.locator('#festivalWeightOfficial')).toHaveValue('1.5');
@@ -131,7 +131,7 @@ test.describe('Edit Mode – target-table selectors', () => {
     await page.check('#festivalKeysVisibleToggle');
     await expect(page.locator('#festivalTicketmasterApiKey')).toHaveAttribute('type', 'text');
 
-    await page.click('button:has-text("Export Source Config JSON")');
+    await page.click('#festivalExportSourcesBtn');
     await expect(page.locator('#festivalSourcesJsonPayload')).toHaveValue(/"providers"/);
 
     await page.fill('#festivalSourcesJsonPayload', JSON.stringify({
@@ -139,7 +139,7 @@ test.describe('Edit Mode – target-table selectors', () => {
       providerOrder: ['ticketmaster', 'eventbrite', 'official_calendars', 'chamber_feeds'],
       providerWeight: { ticketmaster: 2.0, eventbrite: 1.2, officialCalendars: 0.9, chamberFeeds: 0.8 }
     }));
-    await page.click('button:has-text("Import Source Config JSON")');
+    await page.click('#festivalImportSourcesBtn');
     await expect(page.locator('#festivalProviderEventbriteEnabled')).toBeChecked();
     await expect(page.locator('#festivalProviderChamberEnabled')).not.toBeChecked();
     await expect(page.locator('#festivalProviderOrderList [data-provider-key]').first()).toHaveAttribute('data-provider-key', 'ticketmaster');
