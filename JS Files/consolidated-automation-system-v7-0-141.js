@@ -164,29 +164,424 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return registry[safeName];
   }
 
+  function parseFeedSourceEntries(raw) {
+    const text = String(raw == null ? '' : raw);
+    return text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split('|');
+        if (parts.length >= 2) {
+          return { label: safeString(parts[0]), url: safeString(parts.slice(1).join('|')) };
+        }
+        return { label: '', url: safeString(line) };
+      })
+      .filter((entry) => /^https?:\/\//i.test(entry.url));
+  }
+
+  function getFestivalSourceConfig(sourceWindow = getFestivalProviderHost()) {
+    const host = getFestivalProviderHost(sourceWindow);
+    const raw = host.__festivalSourceConfig && typeof host.__festivalSourceConfig === 'object'
+      ? host.__festivalSourceConfig
+      : (window.__festivalSourceConfig && typeof window.__festivalSourceConfig === 'object' ? window.__festivalSourceConfig : {});
+    const providers = raw.providers && typeof raw.providers === 'object' ? raw.providers : {};
+    const maxResultsPerSource = Number(raw.maxResultsPerSource);
+    return {
+      providers: {
+        ticketmaster: providers.ticketmaster !== false,
+        eventbrite: Boolean(providers.eventbrite),
+        officialCalendars: providers.officialCalendars !== false,
+        chamberFeeds: providers.chamberFeeds !== false
+      },
+      ticketmasterApiKey: safeString(raw.ticketmasterApiKey),
+      eventbriteApiToken: safeString(raw.eventbriteApiToken),
+      officialCalendars: parseFeedSourceEntries(raw.officialCalendarsFeeds),
+      chamberFeeds: parseFeedSourceEntries(raw.chamberFeeds),
+      maxResultsPerSource: Number.isFinite(maxResultsPerSource) && maxResultsPerSource > 0 ? maxResultsPerSource : 8,
+      requestTimeoutMs: 7000
+    };
+  }
+
+  function encodeQuery(params) {
+    return Object.keys(params)
+      .filter((key) => params[key] != null && String(params[key]).trim() !== '')
+      .map((key) => `${encodeURIComponent(key)}=${encodeURIComponent(String(params[key]))}`)
+      .join('&');
+  }
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 7000) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    try {
+      return await fetch(url, {
+        ...options,
+        signal: controller ? controller.signal : options.signal
+      });
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 7000) {
+    const response = await fetchWithTimeout(url, options, timeoutMs);
+    if (!response.ok) {
+      const details = await response.text().catch(() => '');
+      throw new Error(`HTTP ${response.status} for ${url}${details ? `: ${details.slice(0, 180)}` : ''}`);
+    }
+    return response.json();
+  }
+
+  async function fetchTextWithTimeout(url, options = {}, timeoutMs = 7000) {
+    const response = await fetchWithTimeout(url, options, timeoutMs);
+    if (!response.ok) {
+      const details = await response.text().catch(() => '');
+      throw new Error(`HTTP ${response.status} for ${url}${details ? `: ${details.slice(0, 180)}` : ''}`);
+    }
+    return response.text();
+  }
+
+  function parseIsoDate(value) {
+    const text = safeString(value);
+    if (!text) return '';
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString();
+  }
+
+  function normalizeVenueAddressFromParts(parts = {}) {
+    const lines = [];
+    if (safeString(parts.address1)) lines.push(safeString(parts.address1));
+    const cityStateZip = [safeString(parts.city && parts.city.name), safeString(parts.state && parts.state.stateCode), safeString(parts.postalCode)].filter(Boolean).join(' ');
+    if (cityStateZip) lines.push(cityStateZip);
+    return lines.join(', ');
+  }
+
+  function scoreFestivalResult(result, query) {
+    const text = `${safeString(result.name)} ${safeString(result.description)}`.toLowerCase();
+    const queryTokens = safeString(query).toLowerCase().split(/\s+/).filter((token) => token.length >= 3);
+    if (!queryTokens.length) return 0;
+    return queryTokens.reduce((score, token) => score + (text.includes(token) ? 1 : 0), 0);
+  }
+
+  async function searchTicketmasterEvents(query, options = {}, sourceWindow = getFestivalProviderHost()) {
+    const config = getFestivalSourceConfig(sourceWindow);
+    const injected = sourceWindow.__ticketmasterFestivalEventSearch || window.__ticketmasterFestivalEventSearch;
+    if (typeof injected === 'function') {
+      const rows = await injected(query, options);
+      return Array.isArray(rows) ? rows.map((item) => normalizeFestivalEventResult(item, 'Ticketmaster')) : [];
+    }
+    if (!config.providers.ticketmaster || !config.ticketmasterApiKey) return [];
+
+    const params = {
+      apikey: config.ticketmasterApiKey,
+      keyword: query,
+      size: Math.max(1, Math.min(50, config.maxResultsPerSource * 2)),
+      sort: 'date,asc',
+      classificationName: 'festival',
+      countryCode: 'US'
+    };
+    const state = safeString(options && options.state).toUpperCase();
+    if (state) params.stateCode = state;
+    const radius = Number(options && options.radiusMiles);
+    const anchor = options && options.anchorCoords && typeof options.anchorCoords === 'object' ? options.anchorCoords : null;
+    if (Number.isFinite(radius) && radius > 0 && anchor && Number.isFinite(Number(anchor.lat)) && Number.isFinite(Number(anchor.lng))) {
+      params.radius = Math.max(1, Math.min(300, Math.round(radius)));
+      params.unit = 'miles';
+      params.latlong = `${Number(anchor.lat)},${Number(anchor.lng)}`;
+    }
+
+    const url = `https://app.ticketmaster.com/discovery/v2/events.json?${encodeQuery(params)}`;
+    const payload = await fetchJsonWithTimeout(url, { method: 'GET' }, config.requestTimeoutMs);
+    const events = Array.isArray(payload?._embedded?.events) ? payload._embedded.events : [];
+    return events.map((event) => {
+      const venue = Array.isArray(event?._embedded?.venues) ? event._embedded.venues[0] : {};
+      const address = normalizeVenueAddressFromParts(venue?.address ? { ...venue, address1: venue.address.line1 } : {
+        address1: safeString(venue?.address?.line1),
+        city: venue?.city,
+        state: venue?.state,
+        postalCode: venue?.postalCode
+      });
+      return normalizeFestivalEventResult({
+        placeId: '',
+        name: safeString(event?.name),
+        address,
+        city: safeString(venue?.city?.name),
+        state: safeString(venue?.state?.stateCode),
+        website: safeString(event?.url),
+        eventDate: safeString(event?.dates?.start?.localDate || event?.dates?.start?.dateTime),
+        description: safeString(event?.info || event?.pleaseNote),
+        sourceProvider: 'Ticketmaster',
+        openLinkUrl: safeString(event?.url),
+        openLinkLabel: 'Open Event Source',
+        coordinates: {
+          lat: Number(venue?.location?.latitude),
+          lng: Number(venue?.location?.longitude)
+        },
+        businessStatus: safeString(event?.dates?.status?.code || 'SCHEDULED')
+      }, 'Ticketmaster');
+    });
+  }
+
+  async function searchEventbriteEvents(query, options = {}, sourceWindow = getFestivalProviderHost()) {
+    const config = getFestivalSourceConfig(sourceWindow);
+    const injected = sourceWindow.__eventbriteFestivalEventSearch || window.__eventbriteFestivalEventSearch;
+    if (typeof injected === 'function') {
+      const rows = await injected(query, options);
+      return Array.isArray(rows) ? rows.map((item) => normalizeFestivalEventResult(item, 'Eventbrite')) : [];
+    }
+    if (!config.providers.eventbrite || !config.eventbriteApiToken) return [];
+
+    const params = {
+      q: query,
+      expand: 'venue',
+      sort_by: 'date'
+    };
+    const state = safeString(options && options.state).toUpperCase();
+    if (state) params['location.address'] = state;
+    const radius = Number(options && options.radiusMiles);
+    if (Number.isFinite(radius) && radius > 0) {
+      params['location.within'] = `${Math.max(1, Math.min(300, Math.round(radius)))}mi`;
+    }
+
+    const url = `https://www.eventbriteapi.com/v3/events/search/?${encodeQuery(params)}`;
+    const payload = await fetchJsonWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${config.eventbriteApiToken}`,
+        'Content-Type': 'application/json'
+      }
+    }, config.requestTimeoutMs);
+
+    const events = Array.isArray(payload?.events) ? payload.events : [];
+    return events.map((event) => {
+      const venue = event?.venue && typeof event.venue === 'object' ? event.venue : {};
+      const address = venue?.address && typeof venue.address === 'object'
+        ? [safeString(venue.address.address_1), safeString(venue.address.city), safeString(venue.address.region), safeString(venue.address.postal_code)].filter(Boolean).join(', ')
+        : '';
+      return normalizeFestivalEventResult({
+        placeId: '',
+        name: safeString(event?.name?.text),
+        address,
+        city: safeString(venue?.address?.city),
+        state: safeString(venue?.address?.region),
+        website: safeString(event?.url),
+        eventDate: safeString(event?.start?.utc || event?.start?.local),
+        description: safeString(event?.summary || event?.description?.text),
+        sourceProvider: 'Eventbrite',
+        openLinkUrl: safeString(event?.url),
+        openLinkLabel: 'Open Event Source',
+        coordinates: {
+          lat: Number(venue?.latitude),
+          lng: Number(venue?.longitude)
+        },
+        businessStatus: safeString(event?.status || 'SCHEDULED')
+      }, 'Eventbrite');
+    });
+  }
+
+  function parseIcalEvents(text, sourceLabel, sourceUrl) {
+    const safeText = String(text || '');
+    const blocks = safeText.split('BEGIN:VEVENT').slice(1);
+    return blocks.map((block) => {
+      const summary = (block.match(/\nSUMMARY:?(.+)/i) || [])[1] || '';
+      const description = (block.match(/\nDESCRIPTION:?(.+)/i) || [])[1] || '';
+      const location = (block.match(/\nLOCATION:?(.+)/i) || [])[1] || '';
+      const dtStart = (block.match(/\nDTSTART(?:;[^:]+)?:([^\n]+)/i) || [])[1] || '';
+      const eventDate = dtStart ? parseIsoDate(dtStart.replace(/Z$/i, '')) : '';
+      return normalizeFestivalEventResult({
+        placeId: '',
+        name: safeDecode(summary),
+        address: safeDecode(location),
+        description: safeDecode(description),
+        website: sourceUrl,
+        eventDate,
+        sourceProvider: sourceLabel,
+        openLinkUrl: sourceUrl,
+        openLinkLabel: 'Open Event Source',
+        businessStatus: 'SCHEDULED'
+      }, sourceLabel);
+    }).filter((row) => row.name);
+  }
+
+  function parseXmlEvents(text, sourceLabel, sourceUrl) {
+    if (typeof DOMParser === 'undefined') return [];
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(String(text || ''), 'text/xml');
+    const entries = [];
+    xml.querySelectorAll('item, entry').forEach((node) => {
+      const title = safeString(node.querySelector('title')?.textContent);
+      const description = safeString(node.querySelector('description, summary, content')?.textContent);
+      const pubDate = safeString(node.querySelector('pubDate, updated, published, dc\\:date')?.textContent);
+      const linkNode = node.querySelector('link');
+      const link = safeString(linkNode?.getAttribute?.('href') || linkNode?.textContent || sourceUrl);
+      const location = safeString(node.querySelector('location, georss\\:featureName')?.textContent);
+      entries.push(normalizeFestivalEventResult({
+        placeId: '',
+        name: title,
+        address: location,
+        description,
+        website: link,
+        openLinkUrl: link,
+        eventDate: parseIsoDate(pubDate),
+        sourceProvider: sourceLabel,
+        openLinkLabel: 'Open Event Source',
+        businessStatus: 'SCHEDULED'
+      }, sourceLabel));
+    });
+    return entries.filter((row) => row.name);
+  }
+
+  function parseJsonEvents(payload, sourceLabel, sourceUrl) {
+    const rows = [];
+    const list = Array.isArray(payload)
+      ? payload
+      : (Array.isArray(payload?.events) ? payload.events : (Array.isArray(payload?.items) ? payload.items : []));
+    list.forEach((item) => {
+      rows.push(normalizeFestivalEventResult({
+        placeId: '',
+        name: safeString(item?.name || item?.title || item?.eventName),
+        address: safeString(item?.address || item?.location),
+        city: safeString(item?.city),
+        state: safeString(item?.state),
+        description: safeString(item?.description || item?.summary),
+        website: safeString(item?.url || item?.website || sourceUrl),
+        openLinkUrl: safeString(item?.url || item?.website || sourceUrl),
+        eventDate: safeString(item?.eventDate || item?.startDate || item?.date),
+        sourceProvider: sourceLabel,
+        openLinkLabel: 'Open Event Source',
+        coordinates: normalizeCoordinates(item?.coordinates),
+        businessStatus: safeString(item?.status || 'SCHEDULED')
+      }, sourceLabel));
+    });
+    return rows.filter((row) => row.name);
+  }
+
+  function parseHtmlEvents(text, sourceLabel, sourceUrl) {
+    if (typeof DOMParser === 'undefined') return [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(String(text || ''), 'text/html');
+    const rows = [];
+    doc.querySelectorAll('script[type="application/ld+json"]').forEach((scriptEl) => {
+      try {
+        const parsed = JSON.parse(scriptEl.textContent || 'null');
+        const list = Array.isArray(parsed) ? parsed : [parsed];
+        list.forEach((item) => {
+          const data = item && item['@type'] === 'Event'
+            ? item
+            : (item && Array.isArray(item['@graph']) ? item['@graph'].find((entry) => entry && entry['@type'] === 'Event') : null);
+          if (!data) return;
+          rows.push(normalizeFestivalEventResult({
+            placeId: '',
+            name: safeString(data.name),
+            address: safeString(data.location?.address?.streetAddress || data.location?.name),
+            city: safeString(data.location?.address?.addressLocality),
+            state: safeString(data.location?.address?.addressRegion),
+            description: safeString(data.description),
+            website: safeString(data.url || sourceUrl),
+            openLinkUrl: safeString(data.url || sourceUrl),
+            eventDate: safeString(data.startDate),
+            sourceProvider: sourceLabel,
+            openLinkLabel: 'Open Event Source',
+            businessStatus: 'SCHEDULED'
+          }, sourceLabel));
+        });
+      } catch (_error) {
+        // Ignore malformed JSON-LD blocks.
+      }
+    });
+    return rows.filter((row) => row.name);
+  }
+
+  async function searchFeedSource(query, sourceEntry, sourceLabel, config) {
+    const label = safeString(sourceEntry && sourceEntry.label) || sourceLabel;
+    const url = safeString(sourceEntry && sourceEntry.url);
+    if (!url) return [];
+    const text = await fetchTextWithTimeout(url, { method: 'GET' }, config.requestTimeoutMs);
+    const trimmed = text.trim();
+    let rows = [];
+    if (/^BEGIN:VCALENDAR/i.test(trimmed)) {
+      rows = parseIcalEvents(trimmed, label, url);
+    } else if (/^\s*[\[{]/.test(trimmed)) {
+      try {
+        rows = parseJsonEvents(JSON.parse(trimmed), label, url);
+      } catch (_error) {
+        rows = [];
+      }
+    } else if (/<rss|<feed|<item|<entry/i.test(trimmed)) {
+      rows = parseXmlEvents(trimmed, label, url);
+    } else {
+      rows = parseHtmlEvents(trimmed, label, url);
+    }
+    const scored = rows
+      .map((row) => ({ row, score: scoreFestivalResult(row, query) }))
+      .filter((entry) => entry.score > 0 || !safeString(query))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, config.maxResultsPerSource)
+      .map((entry) => entry.row);
+    return scored;
+  }
+
+  async function searchOfficialCalendarFeeds(query, options = {}, sourceWindow = getFestivalProviderHost()) {
+    const config = getFestivalSourceConfig(sourceWindow);
+    if (!config.providers.officialCalendars || !config.officialCalendars.length) return [];
+    const collected = [];
+    for (const source of config.officialCalendars) {
+      try {
+        const rows = await searchFeedSource(query, source, source.label || 'Official Calendar', config);
+        collected.push(...rows);
+      } catch (error) {
+        console.warn(`⚠️ Official calendar feed failed for ${source.url}:`, error.message);
+      }
+    }
+    return collected;
+  }
+
+  async function searchChamberFeeds(query, options = {}, sourceWindow = getFestivalProviderHost()) {
+    const config = getFestivalSourceConfig(sourceWindow);
+    if (!config.providers.chamberFeeds || !config.chamberFeeds.length) return [];
+    const collected = [];
+    for (const source of config.chamberFeeds) {
+      try {
+        const rows = await searchFeedSource(query, source, source.label || 'Chamber Feed', config);
+        collected.push(...rows);
+      } catch (error) {
+        console.warn(`⚠️ Chamber/Festival feed failed for ${source.url}:`, error.message);
+      }
+    }
+    return collected;
+  }
+
   function getBuiltinFestivalProviderDefinitions(host) {
     const source = getFestivalProviderHost(host);
+    const config = getFestivalSourceConfig(source);
     return {
       ticketmaster: {
         label: 'Ticketmaster',
         async search(query, options = {}) {
-          const injected = source.__ticketmasterFestivalEventSearch || window.__ticketmasterFestivalEventSearch;
-          if (typeof injected === 'function') {
-            const results = await injected(query, options);
-            return Array.isArray(results) ? results.map((item) => normalizeFestivalEventResult(item, 'Ticketmaster')) : [];
-          }
-          return [];
+          if (!config.providers.ticketmaster && typeof source.__ticketmasterFestivalEventSearch !== 'function') return [];
+          return searchTicketmasterEvents(query, options, source);
         }
       },
       eventbrite: {
         label: 'Eventbrite',
         async search(query, options = {}) {
-          const injected = source.__eventbriteFestivalEventSearch || window.__eventbriteFestivalEventSearch;
-          if (typeof injected === 'function') {
-            const results = await injected(query, options);
-            return Array.isArray(results) ? results.map((item) => normalizeFestivalEventResult(item, 'Eventbrite')) : [];
-          }
-          return [];
+          if (!config.providers.eventbrite && typeof source.__eventbriteFestivalEventSearch !== 'function') return [];
+          return searchEventbriteEvents(query, options, source);
+        }
+      },
+      official_calendars: {
+        label: 'Official Calendars',
+        async search(query, options = {}) {
+          if (!config.providers.officialCalendars) return [];
+          return searchOfficialCalendarFeeds(query, options, source);
+        }
+      },
+      chamber_feeds: {
+        label: 'FestivalNet / Chamber Feeds',
+        async search(query, options = {}) {
+          if (!config.providers.chamberFeeds) return [];
+          return searchChamberFeeds(query, options, source);
         }
       }
     };

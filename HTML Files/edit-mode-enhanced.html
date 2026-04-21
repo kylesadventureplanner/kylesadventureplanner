@@ -764,6 +764,60 @@
       </div>
 
       <div class="card">
+        <div class="card-title">🎪 Festival Sources</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Configure event providers for Festivals target candidate search and import. Ticketmaster/Eventbrite use real API calls when credentials are provided.
+        </p>
+
+        <div class="input-group">
+          <label style="text-transform:none; letter-spacing:0;">Enabled Providers</label>
+          <label style="display:flex; align-items:center; gap:8px; margin:6px 0;"><input id="festivalProviderTicketmasterEnabled" type="checkbox" checked> Ticketmaster (API)</label>
+          <label style="display:flex; align-items:center; gap:8px; margin:6px 0;"><input id="festivalProviderEventbriteEnabled" type="checkbox"> Eventbrite (API)</label>
+          <label style="display:flex; align-items:center; gap:8px; margin:6px 0;"><input id="festivalProviderOfficialEnabled" type="checkbox" checked> State/County Tourism Calendars (RSS/iCal/JSON/HTML)</label>
+          <label style="display:flex; align-items:center; gap:8px; margin:6px 0;"><input id="festivalProviderChamberEnabled" type="checkbox" checked> FestivalNet/Chamber Feeds (RSS/iCal/JSON/HTML)</label>
+        </div>
+
+        <div class="input-group">
+          <label for="festivalTicketmasterApiKey">Ticketmaster API Key</label>
+          <input id="festivalTicketmasterApiKey" type="password" placeholder="Enter Ticketmaster Discovery API key">
+        </div>
+
+        <div class="input-group">
+          <label for="festivalEventbriteApiToken">Eventbrite API Token</label>
+          <input id="festivalEventbriteApiToken" type="password" placeholder="Enter Eventbrite private token">
+        </div>
+
+        <div class="input-group">
+          <label for="festivalOfficialCalendarsFeeds">Official Tourism/Event Calendar Feeds</label>
+          <textarea id="festivalOfficialCalendarsFeeds" placeholder="One source per line. Format: optional label|https://feed.url\nExample: Visit NC|https://example.com/events.rss"></textarea>
+          <div class="help-text">Supports RSS, Atom, iCal (.ics), JSON, and basic HTML JSON-LD Event pages.</div>
+        </div>
+
+        <div class="input-group">
+          <label for="festivalChamberFeeds">FestivalNet / Chamber Feeds</label>
+          <textarea id="festivalChamberFeeds" placeholder="One source per line. Format: optional label|https://feed.url"></textarea>
+        </div>
+
+        <div class="input-group">
+          <label for="festivalSourceMaxResults">Max Results Per Source</label>
+          <select id="festivalSourceMaxResults">
+            <option value="5">5</option>
+            <option value="8" selected>8</option>
+            <option value="12">12</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-secondary" type="button" onclick="saveFestivalSourcesConfig()">💾 Save Festival Sources</button>
+          <button class="button button-secondary" type="button" onclick="resetFestivalSourcesConfig()">↺ Reset to Defaults</button>
+          <button class="button button-secondary" type="button" onclick="testFestivalSourcesConfig()">🧪 Test Festival Source Search</button>
+        </div>
+
+        <div id="festival-sources-status"></div>
+      </div>
+
+      <div class="card">
         <div class="card-title">🔄 Refresh Place IDs</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
           Refresh cached Place IDs from Google Places API.
@@ -992,12 +1046,179 @@
     const CANDIDATE_ANCHOR_ADDRESS = '100 Long John Dr, Hendersonville, NC 28791';
     const CANDIDATE_ANCHOR_FALLBACK = { lat: 35.3476, lng: -82.4590 };
     const CANDIDATE_FILTER_STORAGE_KEY = 'editModeCandidateFiltersV1';
+    const FESTIVAL_SOURCES_CONFIG_STORAGE_KEY = 'editModeFestivalSourcesConfigV1';
     const GOOGLE_TAB_OPEN_CONFIRM_THRESHOLD = 10;
     const candidateGeoState = {
       anchorCoords: null,
       anchorResolved: false,
       anchorAttempted: false
     };
+
+    function getDefaultFestivalSourcesConfig() {
+      return {
+        providers: {
+          ticketmaster: true,
+          eventbrite: false,
+          officialCalendars: true,
+          chamberFeeds: true
+        },
+        ticketmasterApiKey: '',
+        eventbriteApiToken: '',
+        officialCalendarsFeeds: '',
+        chamberFeeds: '',
+        maxResultsPerSource: 8
+      };
+    }
+
+    function readFestivalSourcesConfig() {
+      try {
+        const raw = window.localStorage.getItem(FESTIVAL_SOURCES_CONFIG_STORAGE_KEY);
+        if (!raw) return getDefaultFestivalSourcesConfig();
+        const parsed = JSON.parse(raw);
+        const defaults = getDefaultFestivalSourcesConfig();
+        return {
+          providers: {
+            ticketmaster: parsed?.providers?.ticketmaster !== false,
+            eventbrite: Boolean(parsed?.providers?.eventbrite),
+            officialCalendars: parsed?.providers?.officialCalendars !== false,
+            chamberFeeds: parsed?.providers?.chamberFeeds !== false
+          },
+          ticketmasterApiKey: String(parsed?.ticketmasterApiKey || defaults.ticketmasterApiKey),
+          eventbriteApiToken: String(parsed?.eventbriteApiToken || defaults.eventbriteApiToken),
+          officialCalendarsFeeds: String(parsed?.officialCalendarsFeeds || defaults.officialCalendarsFeeds),
+          chamberFeeds: String(parsed?.chamberFeeds || defaults.chamberFeeds),
+          maxResultsPerSource: [5, 8, 12, 20].includes(Number(parsed?.maxResultsPerSource))
+            ? Number(parsed.maxResultsPerSource)
+            : defaults.maxResultsPerSource
+        };
+      } catch (_error) {
+        return getDefaultFestivalSourcesConfig();
+      }
+    }
+
+    function buildFestivalSourcesConfigFromDom() {
+      return {
+        providers: {
+          ticketmaster: Boolean(document.getElementById('festivalProviderTicketmasterEnabled')?.checked),
+          eventbrite: Boolean(document.getElementById('festivalProviderEventbriteEnabled')?.checked),
+          officialCalendars: Boolean(document.getElementById('festivalProviderOfficialEnabled')?.checked),
+          chamberFeeds: Boolean(document.getElementById('festivalProviderChamberEnabled')?.checked)
+        },
+        ticketmasterApiKey: String(document.getElementById('festivalTicketmasterApiKey')?.value || '').trim(),
+        eventbriteApiToken: String(document.getElementById('festivalEventbriteApiToken')?.value || '').trim(),
+        officialCalendarsFeeds: String(document.getElementById('festivalOfficialCalendarsFeeds')?.value || ''),
+        chamberFeeds: String(document.getElementById('festivalChamberFeeds')?.value || ''),
+        maxResultsPerSource: Number(document.getElementById('festivalSourceMaxResults')?.value || 8)
+      };
+    }
+
+    function applyFestivalSourcesConfigToDom(config) {
+      const cfg = config && typeof config === 'object' ? config : getDefaultFestivalSourcesConfig();
+      const setChecked = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = Boolean(value);
+      };
+      const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = String(value == null ? '' : value);
+      };
+      setChecked('festivalProviderTicketmasterEnabled', cfg.providers?.ticketmaster !== false);
+      setChecked('festivalProviderEventbriteEnabled', Boolean(cfg.providers?.eventbrite));
+      setChecked('festivalProviderOfficialEnabled', cfg.providers?.officialCalendars !== false);
+      setChecked('festivalProviderChamberEnabled', cfg.providers?.chamberFeeds !== false);
+      setValue('festivalTicketmasterApiKey', cfg.ticketmasterApiKey || '');
+      setValue('festivalEventbriteApiToken', cfg.eventbriteApiToken || '');
+      setValue('festivalOfficialCalendarsFeeds', cfg.officialCalendarsFeeds || '');
+      setValue('festivalChamberFeeds', cfg.chamberFeeds || '');
+      setValue('festivalSourceMaxResults', [5, 8, 12, 20].includes(Number(cfg.maxResultsPerSource)) ? cfg.maxResultsPerSource : 8);
+    }
+
+    function setFestivalSourcesStatus(message, kind = 'info') {
+      const status = document.getElementById('festival-sources-status');
+      if (!status) return;
+      if (!message) {
+        status.innerHTML = '';
+        return;
+      }
+      const cls = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : '');
+      status.innerHTML = `<div class="status-message ${cls}">${message}</div>`;
+    }
+
+    function publishFestivalSourcesConfig(config) {
+      const safeConfig = config && typeof config === 'object' ? config : getDefaultFestivalSourcesConfig();
+      const mainWindow = getMainWindowSafe();
+      mainWindow.__festivalSourceConfig = { ...safeConfig };
+      window.__festivalSourceConfig = { ...safeConfig };
+    }
+
+    function saveFestivalSourcesConfig() {
+      const config = buildFestivalSourcesConfigFromDom();
+      try {
+        window.localStorage.setItem(FESTIVAL_SOURCES_CONFIG_STORAGE_KEY, JSON.stringify(config));
+      } catch (_error) {
+        // Ignore storage failures; config still applies for current session.
+      }
+      publishFestivalSourcesConfig(config);
+      setFestivalSourcesStatus('✅ Festival source settings saved and applied.', 'success');
+    }
+
+    function resetFestivalSourcesConfig() {
+      const defaults = getDefaultFestivalSourcesConfig();
+      applyFestivalSourcesConfigToDom(defaults);
+      saveFestivalSourcesConfig();
+    }
+
+    async function testFestivalSourcesConfig() {
+      const mainWindow = getMainWindowSafe();
+      const searchFn = typeof mainWindow.searchFestivalEvents === 'function'
+        ? mainWindow.searchFestivalEvents.bind(mainWindow)
+        : (typeof window.searchFestivalEvents === 'function' ? window.searchFestivalEvents.bind(window) : null);
+      if (typeof searchFn !== 'function') {
+        setFestivalSourcesStatus('❌ Festival search function is unavailable.', 'error');
+        return;
+      }
+      saveFestivalSourcesConfig();
+      setFestivalSourcesStatus('<span class="spinner"></span> Testing festival sources with query "apple festival"...', 'info');
+      try {
+        const results = await searchFn('apple festival', {
+          target: getSelectedTarget('actionTargetSelect'),
+          mode: 'config-test',
+          state: getCandidateStateFilter(),
+          radiusMiles: getCandidateDistanceLimitMiles(),
+          anchorAddress: CANDIDATE_ANCHOR_ADDRESS,
+          anchorCoords: await ensureCandidateAnchorCoords(mainWindow)
+        });
+        const count = Array.isArray(results) ? results.length : 0;
+        setFestivalSourcesStatus(`✅ Festival source test complete. ${count} result${count === 1 ? '' : 's'} returned.`, 'success');
+      } catch (error) {
+        setFestivalSourcesStatus(`❌ Festival source test failed: ${error?.message || 'Unknown error'}`, 'error');
+      }
+    }
+
+    function initFestivalSourcesConfig() {
+      const saved = readFestivalSourcesConfig();
+      applyFestivalSourcesConfigToDom(saved);
+      publishFestivalSourcesConfig(saved);
+      const ids = [
+        'festivalProviderTicketmasterEnabled',
+        'festivalProviderEventbriteEnabled',
+        'festivalProviderOfficialEnabled',
+        'festivalProviderChamberEnabled',
+        'festivalTicketmasterApiKey',
+        'festivalEventbriteApiToken',
+        'festivalOfficialCalendarsFeeds',
+        'festivalChamberFeeds',
+        'festivalSourceMaxResults'
+      ];
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const eventName = el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio') ? 'change' : 'input';
+        el.addEventListener(eventName, () => {
+          publishFestivalSourcesConfig(buildFestivalSourcesConfigFromDom());
+        });
+      });
+    }
 
     function isEmbeddedEditMode() {
       try {
@@ -3151,6 +3372,7 @@
       initBulkCandidateSearch();
       initChainCandidateSearch();
       initCandidateGeoFilters();
+      initFestivalSourcesConfig();
     });
 
     // Also try immediately in case DOM is already ready
@@ -3167,6 +3389,7 @@
       initBulkCandidateSearch();
       initChainCandidateSearch();
       initCandidateGeoFilters();
+      initFestivalSourcesConfig();
     }
 
     console.log('📋 Available functions:', {

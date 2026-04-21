@@ -93,5 +93,33 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#automation-tab')).toHaveClass(/active/);
     await expect(page.locator('#places-tab')).not.toHaveClass(/active/);
   });
+
+  test('automation tab includes Festival Sources config panel and persists settings', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+
+    await expect(page.locator('.card-title', { hasText: 'Festival Sources' })).toBeVisible();
+    await expect(page.locator('#festivalProviderTicketmasterEnabled')).toBeChecked();
+    await expect(page.locator('#festivalProviderOfficialEnabled')).toBeChecked();
+    await expect(page.locator('#festivalProviderChamberEnabled')).toBeChecked();
+
+    await page.fill('#festivalOfficialCalendarsFeeds', 'Visit NC|https://example.com/nc-events.rss');
+    await page.fill('#festivalChamberFeeds', 'Hendo Chamber|https://example.com/chamber.ics');
+    await page.uncheck('#festivalProviderTicketmasterEnabled');
+    await page.check('#festivalProviderEventbriteEnabled');
+    await page.click('button:has-text("Save Festival Sources")');
+    await expect(page.locator('#festival-sources-status')).toContainText('saved and applied');
+
+    await page.reload();
+    await page.waitForFunction(() => {
+      const sel = document.getElementById('actionTargetSelect');
+      return sel && sel.options.length >= 7;
+    }, { timeout: 10000 });
+    await page.click('.tab-btn[data-tab="automation"]');
+
+    await expect(page.locator('#festivalProviderTicketmasterEnabled')).not.toBeChecked();
+    await expect(page.locator('#festivalProviderEventbriteEnabled')).toBeChecked();
+    await expect(page.locator('#festivalOfficialCalendarsFeeds')).toHaveValue(/nc-events\.rss/);
+    await expect(page.locator('#festivalChamberFeeds')).toHaveValue(/chamber\.ics/);
+  });
 });
 
