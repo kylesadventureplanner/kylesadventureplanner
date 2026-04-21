@@ -158,5 +158,121 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(row[9]).toBe(resolved.placeId);
     expect(String(row[10] || '')).toContain(resolved.placeId);
   });
+
+  test('bulk candidate review lets user choose matches, then add selected candidates', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async (query) => {
+        const q = String(query || '').trim().toLowerCase();
+        if (q === 'apple festival') {
+          return [
+            {
+              placeId: 'pid-apple-festival-main',
+              name: 'Apple Festival Main Grounds',
+              address: '101 Orchard Ave, Denver, CO',
+              rating: 4.8,
+              reviewCount: 420,
+              businessStatus: 'OPERATIONAL'
+            },
+            {
+              placeId: 'pid-apple-festival-river',
+              name: 'Apple Festival Riverfront',
+              address: '9 River St, Denver, CO',
+              rating: 4.6,
+              reviewCount: 131,
+              businessStatus: 'OPERATIONAL'
+            }
+          ];
+        }
+        if (q === 'pear fair') {
+          return [
+            {
+              placeId: 'pid-pear-fair-center',
+              name: 'Pear Fair Center',
+              address: '400 Market St, Denver, CO',
+              rating: 4.7,
+              reviewCount: 200,
+              businessStatus: 'OPERATIONAL'
+            },
+            {
+              placeId: 'pid-pear-fair-lakeside',
+              name: 'Pear Fair Lakeside',
+              address: '88 Lake Ave, Denver, CO',
+              rating: 4.5,
+              reviewCount: 95,
+              businessStatus: 'OPERATIONAL'
+            }
+          ];
+        }
+        return [];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        const slug = placeId.replace(/^pid-/, '') || 'item';
+        const titleCase = slug.replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+        return {
+          placeId,
+          name: `Name ${titleCase}`,
+          address: `${titleCase} Address, Denver, CO`,
+          website: `https://${slug}.example.com`,
+          businessType: `tag-${slug}`,
+          hours: `9-5 ${titleCase}`,
+          phone: '555-1000',
+          rating: '4.8',
+          userRatingsTotal: 88,
+          directions: `https://maps.example.com/${slug}`
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await popup.selectOption('#bulkInputType', 'placeName');
+    await popup.fill('#bulkInput', 'apple festival\npear fair');
+    await popup.click('button:has-text("Search Bulk Candidates")');
+
+    await expect(popup.locator('#bulk-candidates .candidate-group')).toHaveCount(2);
+    await expect(popup.locator('#bulk-candidates .candidate-item')).toHaveCount(4);
+    await expect(popup.locator('#bulk-search-status')).toContainText('Ready: 2 selection');
+
+    await popup.locator('[data-bulk-group-index="1"][data-bulk-candidate-index="1"]').click();
+    await popup.click('#bulkAddSelectedCandidatesBtn');
+
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(2);
+
+    const firstRow = graphCalls[0].body.values[0];
+    const secondRow = graphCalls[1].body.values[0];
+    const firstResolved = buildResolvedByPlaceId('pid-apple-festival-main');
+    const secondResolved = buildResolvedByPlaceId('pid-pear-fair-lakeside');
+
+    expect(firstRow[1]).toBe(firstResolved.name);
+    expect(firstRow[9]).toBe(firstResolved.placeId);
+    expect(String(firstRow[10] || '')).toContain(firstResolved.placeId);
+
+    expect(secondRow[1]).toBe(secondResolved.name);
+    expect(secondRow[9]).toBe(secondResolved.placeId);
+    expect(String(secondRow[10] || '')).toContain(secondResolved.placeId);
+  });
 });
 

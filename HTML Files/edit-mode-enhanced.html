@@ -401,6 +401,20 @@
       color: #4b5563;
       line-height: 1.35;
     }
+
+    .candidate-group {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      background: #f9fafb;
+    }
+
+    .candidate-group-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -522,9 +536,13 @@
 
         <div class="button-group">
           <button class="button button-secondary" onclick="clearBulkForm()">Clear</button>
+          <button class="button button-secondary" type="button" onclick="searchBulkPlaceCandidates()">🔎 Search Bulk Candidates</button>
+          <button id="bulkAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedBulkCandidates()" disabled>✅ Add Selected Candidates</button>
           <button class="button button-primary" onclick="submitBulkAddPlaces()">📦 Add All</button>
         </div>
 
+        <div id="bulk-search-status"></div>
+        <div id="bulk-candidates" class="candidate-results" aria-live="polite"></div>
         <div id="bulk-status"></div>
       </div>
 
@@ -791,6 +809,11 @@
       inputType: 'placeName',
       selectedIndex: -1,
       results: []
+    };
+    const bulkCandidateState = {
+      rawInput: '',
+      inputType: 'placeName',
+      groups: []
     };
 
     function isEmbeddedEditMode() {
@@ -1195,6 +1218,24 @@
       statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
     }
 
+    function setBulkCandidateStatus(message, kind) {
+      const statusDiv = document.getElementById('bulk-search-status');
+      if (!statusDiv) return;
+      if (!message) {
+        statusDiv.innerHTML = '';
+        return;
+      }
+      const safeKind = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : '');
+      statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
+    }
+
+    function parseBulkInputValues(rawInput) {
+      return String(rawInput || '')
+        .split(/[\n,]/)
+        .map((item) => String(item || '').trim())
+        .filter(Boolean);
+    }
+
     function normalizeSingleSearchCandidate(item) {
       const raw = item && typeof item === 'object' ? item : {};
       return {
@@ -1341,6 +1382,178 @@
       renderSingleCandidateResults();
     }
 
+    function getSelectedBulkCandidateCount() {
+      return bulkCandidateState.groups.reduce((count, group) => {
+        if (!group || !Array.isArray(group.candidates) || !group.candidates.length) return count;
+        return Number.isInteger(group.selectedIndex) && group.selectedIndex >= 0 && group.selectedIndex < group.candidates.length
+          ? count + 1
+          : count;
+      }, 0);
+    }
+
+    function renderBulkCandidateResults() {
+      const container = document.getElementById('bulk-candidates');
+      const addBtn = document.getElementById('bulkAddSelectedCandidatesBtn');
+      if (!container) return;
+
+      const selectedCount = getSelectedBulkCandidateCount();
+      if (addBtn) addBtn.disabled = selectedCount === 0;
+
+      if (!bulkCandidateState.groups.length) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = bulkCandidateState.groups.map((group, groupIndex) => {
+        const candidates = Array.isArray(group.candidates) ? group.candidates : [];
+        const title = `${groupIndex + 1}. ${group.source}`;
+        if (!candidates.length) {
+          return `
+            <div class="candidate-group" data-bulk-group-index="${groupIndex}">
+              <div class="candidate-group-title">${title}</div>
+              <div class="candidate-meta">No results found for this query.</div>
+            </div>
+          `;
+        }
+        const cards = candidates.map((candidate, candidateIndex) => {
+          const selectedClass = candidateIndex === group.selectedIndex ? 'selected' : '';
+          const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
+          const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
+          const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
+          return `
+            <div class="candidate-item ${selectedClass}" data-bulk-group-index="${groupIndex}" data-bulk-candidate-index="${candidateIndex}" role="button" tabindex="0" onclick="selectBulkCandidate(${groupIndex}, ${candidateIndex})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectBulkCandidate(${groupIndex}, ${candidateIndex});}">
+              <div class="candidate-title">${candidate.name}</div>
+              <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
+              <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+            </div>
+          `;
+        }).join('');
+        return `
+          <div class="candidate-group" data-bulk-group-index="${groupIndex}">
+            <div class="candidate-group-title">${title}</div>
+            ${cards}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function resetBulkCandidateResults() {
+      bulkCandidateState.rawInput = '';
+      bulkCandidateState.inputType = String(document.getElementById('bulkInputType')?.value || 'placeName');
+      bulkCandidateState.groups = [];
+      renderBulkCandidateResults();
+      setBulkCandidateStatus('', 'info');
+    }
+
+    function selectBulkCandidate(groupIndex, candidateIndex) {
+      const gIdx = Number(groupIndex);
+      const cIdx = Number(candidateIndex);
+      if (!Number.isInteger(gIdx) || !Number.isInteger(cIdx)) return;
+      const group = bulkCandidateState.groups[gIdx];
+      if (!group || !Array.isArray(group.candidates)) return;
+      if (cIdx < 0 || cIdx >= group.candidates.length) return;
+      group.selectedIndex = cIdx;
+      renderBulkCandidateResults();
+    }
+
+    async function searchBulkPlaceCandidates() {
+      const inputEl = document.getElementById('bulkInput');
+      const inputTypeEl = document.getElementById('bulkInputType');
+      const rawInput = String(inputEl && inputEl.value ? inputEl.value : '');
+      const inputType = String(inputTypeEl && inputTypeEl.value ? inputTypeEl.value : 'placeName');
+      const queries = parseBulkInputValues(rawInput);
+
+      if (!queries.length) {
+        setBulkCandidateStatus('❌ Enter at least one search query in Bulk Add first.', 'error');
+        return;
+      }
+      if (inputType === 'placeId' || inputType === 'placeUrl') {
+        setBulkCandidateStatus('⚠️ Candidate search works best with Place Name, Place Name + City, or Address.', 'error');
+        return;
+      }
+
+      const mainWindow = getMainWindowSafe();
+      if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
+        setBulkCandidateStatus('❌ Search is not available. Ensure Google Places is loaded in the main window.', 'error');
+        return;
+      }
+
+      bulkCandidateState.rawInput = rawInput;
+      bulkCandidateState.inputType = inputType;
+      bulkCandidateState.groups = queries.map((query) => ({ source: query, candidates: [], selectedIndex: -1 }));
+      renderBulkCandidateResults();
+      setBulkCandidateStatus(`<span class="spinner"></span> Searching ${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
+
+      let foundTotal = 0;
+      for (let i = 0; i < bulkCandidateState.groups.length; i += 1) {
+        const group = bulkCandidateState.groups[i];
+        try {
+          const rawResults = await mainWindow.searchPlaces(group.source);
+          const normalized = Array.isArray(rawResults)
+            ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId).slice(0, 5)
+            : [];
+          group.candidates = normalized;
+          group.selectedIndex = normalized.length ? 0 : -1;
+          foundTotal += normalized.length ? 1 : 0;
+        } catch (error) {
+          console.error('❌ Bulk candidate search failed for query:', group.source, error);
+          group.candidates = [];
+          group.selectedIndex = -1;
+        }
+      }
+
+      renderBulkCandidateResults();
+      const selectedCount = getSelectedBulkCandidateCount();
+      if (!selectedCount) {
+        setBulkCandidateStatus('⚠️ No selectable matches were found. Try adding city/state context.', 'error');
+        return;
+      }
+      setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Review and click "Add Selected Candidates".`, 'success');
+    }
+
+    async function addSelectedBulkCandidates() {
+      const selectedPlaceIds = bulkCandidateState.groups
+        .map((group) => {
+          if (!group || !Array.isArray(group.candidates)) return '';
+          const idx = Number(group.selectedIndex);
+          if (!Number.isInteger(idx) || idx < 0 || idx >= group.candidates.length) return '';
+          const pick = group.candidates[idx];
+          return String(pick && pick.placeId ? pick.placeId : '').trim();
+        })
+        .filter(Boolean);
+
+      if (!selectedPlaceIds.length) {
+        setBulkCandidateStatus('❌ Select at least one candidate before adding.', 'error');
+        return;
+      }
+
+      const uniquePlaceIds = Array.from(new Set(selectedPlaceIds));
+      const inputEl = document.getElementById('bulkInput');
+      const inputTypeEl = document.getElementById('bulkInputType');
+      if (inputTypeEl) inputTypeEl.value = 'placeId';
+      if (inputEl) inputEl.value = uniquePlaceIds.join('\n');
+      setBulkCandidateStatus(`✅ Adding ${uniquePlaceIds.length} selected candidate(s)...`, 'success');
+      await submitBulkAddPlaces();
+    }
+
+    function initBulkCandidateSearch() {
+      const inputEl = document.getElementById('bulkInput');
+      const inputTypeEl = document.getElementById('bulkInputType');
+      if (inputEl) {
+        inputEl.addEventListener('input', () => {
+          if (!bulkCandidateState.rawInput) return;
+          const current = String(inputEl.value || '');
+          if (current !== bulkCandidateState.rawInput) resetBulkCandidateResults();
+        });
+      }
+      if (inputTypeEl) {
+        inputTypeEl.addEventListener('change', () => {
+          if (bulkCandidateState.groups.length) resetBulkCandidateResults();
+        });
+      }
+      renderBulkCandidateResults();
+    }
+
 
     /**
      * Update feature dry run state
@@ -1409,7 +1622,7 @@
         return;
       }
 
-      const locations = input.split('\n').filter(l => l.trim());
+      const locations = parseBulkInputValues(input);
 
       if (locations.length === 0) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
@@ -1642,6 +1855,7 @@
     function clearBulkForm() {
       document.getElementById('bulkInput').value = '';
       document.getElementById('bulk-status').innerHTML = '';
+      resetBulkCandidateResults();
     }
 
     function clearChainForm() {
@@ -1660,6 +1874,7 @@
       initializeTabs();
       initTargetSelectors();
       initSingleCandidateSearch();
+      initBulkCandidateSearch();
     });
 
     // Also try immediately in case DOM is already ready
@@ -1673,6 +1888,7 @@
       initializeTabs();
       initTargetSelectors();
       initSingleCandidateSearch();
+      initBulkCandidateSearch();
     }
 
     console.log('📋 Available functions:', {
