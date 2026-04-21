@@ -617,17 +617,19 @@
         <div class="input-group">
           <label for="singleInput">Value</label>
           <input id="singleInput" type="text" placeholder="Enter value based on input type">
-          <div class="help-text">
+          <div id="singleInputHelp" class="help-text">
             💡 Examples: "Starbucks", "123 Main St, Denver", "Starbucks, NYC", "ChIJ...", "https://starbucks.com"
           </div>
         </div>
 
+        <div id="singleFestivalModeHint" class="help-text" style="display:none; margin-top: -6px; margin-bottom: 8px;"></div>
+
         <div class="button-group">
           <button class="button button-secondary" onclick="clearSingleForm()">Clear</button>
           <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
-          <button class="button button-secondary" type="button" onclick="searchSinglePlaceCandidates()">🔎 Search Candidates</button>
+          <button id="singleSearchCandidatesBtn" class="button button-secondary" type="button" onclick="searchSinglePlaceCandidates()">🔎 Search Candidates</button>
           <button id="singleAddSelectedCandidateBtn" class="button button-secondary" type="button" onclick="addSelectedSingleCandidate()" disabled>✅ Add Selected Candidate</button>
-          <button class="button button-primary" onclick="submitAddSinglePlace()">➕ Add Place</button>
+          <button id="singleSubmitBtn" class="button button-primary" onclick="submitAddSinglePlace()">➕ Add Place</button>
         </div>
 
         <div id="single-search-status"></div>
@@ -661,18 +663,20 @@
         <div class="input-group">
           <label for="bulkInput">Values (one per line or comma-separated)</label>
           <textarea id="bulkInput" placeholder="Starbucks&#10;Coffee Bean & Tea Leaf&#10;Local Café"></textarea>
-          <div class="help-text">
+          <div id="bulkInputHelp" class="help-text">
             💡 Enter multiple places separated by new lines or commas
           </div>
         </div>
 
+        <div id="bulkFestivalModeHint" class="help-text" style="display:none; margin-top: -6px; margin-bottom: 8px;"></div>
+
         <div class="button-group">
           <button class="button button-secondary" onclick="clearBulkForm()">Clear</button>
           <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
-          <button class="button button-secondary" type="button" onclick="searchBulkPlaceCandidates()">🔎 Search Bulk Candidates</button>
+          <button id="bulkSearchCandidatesBtn" class="button button-secondary" type="button" onclick="searchBulkPlaceCandidates()">🔎 Search Bulk Candidates</button>
           <button id="bulkOpenSelectedInGoogleBtn" class="button button-secondary" type="button" onclick="openSelectedBulkCandidatesInGoogle()" disabled>🌐 Open Selected in Google</button>
           <button id="bulkAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedBulkCandidates()" disabled>✅ Add Selected Candidates</button>
-          <button class="button button-primary" onclick="submitBulkAddPlaces()">📦 Add All</button>
+          <button id="bulkSubmitBtn" class="button button-primary" onclick="submitBulkAddPlaces()">📦 Add All</button>
         </div>
 
         <div id="bulk-search-status"></div>
@@ -704,7 +708,7 @@
         <div class="input-group">
           <label for="chainInput">Location IDs or Details (one per line)</label>
           <textarea id="chainInput" placeholder="ChIJ...&#10;Starbucks, Boston&#10;123 Main St, NYC"></textarea>
-          <div class="help-text">
+          <div id="chainInputHelp" class="help-text">
             💡 Enter multiple chain locations. Each will inherit details from the chain's primary location.
           </div>
         </div>
@@ -712,10 +716,10 @@
         <div class="button-group">
           <button class="button button-secondary" onclick="clearChainForm()">Clear</button>
           <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
-          <button class="button button-secondary" type="button" onclick="searchChainPlaceCandidates()">🔎 Search Chain Candidates</button>
+          <button id="chainSearchCandidatesBtn" class="button button-secondary" type="button" onclick="searchChainPlaceCandidates()">🔎 Search Chain Candidates</button>
           <button id="chainOpenSelectedInGoogleBtn" class="button button-secondary" type="button" onclick="openSelectedChainCandidatesInGoogle()" disabled>🌐 Open Selected in Google</button>
           <button id="chainAddSelectedCandidatesBtn" class="button button-secondary" type="button" onclick="addSelectedChainCandidates()" disabled>✅ Add Selected Chain Candidates</button>
-          <button class="button button-primary" onclick="submitBulkChain()">⛓️ Add Locations</button>
+          <button id="chainSubmitBtn" class="button button-primary" onclick="submitBulkChain()">⛓️ Add Locations</button>
         </div>
 
         <div class="input-group" style="margin-top: 10px;">
@@ -1053,16 +1057,90 @@
         opt.selected = idx === 0;
       });
 
-      [actionSel, autoSel, multiSel].forEach((el) => {
+      actionSel.addEventListener('change', () => {
+        renderTargetSelectionStatus();
+        resetSingleCandidateResults();
+        resetBulkCandidateResults();
+        resetChainCandidateResults();
+        updateFestivalSearchUi();
+      });
+      [autoSel, multiSel].forEach((el) => {
         el.addEventListener('change', renderTargetSelectionStatus);
       });
       renderTargetSelectionStatus();
+      updateFestivalSearchUi();
     }
 
     function getSelectedTarget(selectId) {
       const select = document.getElementById(selectId);
       const targetId = select ? String(select.value || '').trim() : '';
       return EDIT_MODE_TARGETS.find((item) => item.id === targetId) || null;
+    }
+
+    function isFestivalEditTarget(target) {
+      const safeTarget = target && typeof target === 'object' ? target : {};
+      const targetId = String(safeTarget.id || '').trim().toLowerCase();
+      const filePath = String(safeTarget.filePath || '').trim().toLowerCase();
+      const tableName = String(safeTarget.tableName || '').trim().toLowerCase();
+      return targetId === 'ent_festivals'
+        || (filePath === 'entertainment_locations.xlsx' && tableName === 'festivals')
+        || tableName === 'festivals';
+    }
+
+    function isFestivalActionTarget() {
+      return isFestivalEditTarget(getSelectedTarget('actionTargetSelect'));
+    }
+
+    function updateFestivalSearchUi() {
+      const festivalMode = isFestivalActionTarget();
+      const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      };
+      const setHtml = (id, html, visible = true) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = html;
+        el.style.display = visible ? '' : 'none';
+      };
+
+      setText('singleSearchCandidatesBtn', festivalMode ? '🎟️ Search Festival Events' : '🔎 Search Candidates');
+      setText('bulkSearchCandidatesBtn', festivalMode ? '🎟️ Search Festival Events' : '🔎 Search Bulk Candidates');
+      setText('chainSearchCandidatesBtn', festivalMode ? '🎟️ Search Festival Events' : '🔎 Search Chain Candidates');
+      setText('singleSubmitBtn', festivalMode ? '➕ Add Festival' : '➕ Add Place');
+      setText('bulkSubmitBtn', festivalMode ? '📦 Add Festivals' : '📦 Add All');
+      setText('chainSubmitBtn', festivalMode ? '📦 Add Festival Matches' : '⛓️ Add Locations');
+      setText('bulkOpenSelectedInGoogleBtn', festivalMode ? '🌐 Open Selected Sources' : '🌐 Open Selected in Google');
+      setText('chainOpenSelectedInGoogleBtn', festivalMode ? '🌐 Open Selected Sources' : '🌐 Open Selected in Google');
+
+      setHtml(
+        'singleInputHelp',
+        festivalMode
+          ? '💡 Festival mode accepts event names, city/state context, official event URLs, or short notes. Google Place IDs are optional.'
+          : '💡 Examples: "Starbucks", "123 Main St, Denver", "Starbucks, NYC", "ChIJ...", "https://starbucks.com"'
+      );
+      setHtml(
+        'bulkInputHelp',
+        festivalMode
+          ? '💡 Enter one festival query per line. Event providers can supply website/address details even when no Google Place ID exists.'
+          : '💡 Enter multiple places separated by new lines or commas'
+      );
+      setHtml(
+        'chainInputHelp',
+        festivalMode
+          ? '💡 Festival mode can search multiple event queries here too, but results are added as standalone festival rows rather than chain locations.'
+          : '💡 Enter multiple chain locations. Each will inherit details from the chain\'s primary location.'
+      );
+      setHtml(
+        'singleFestivalModeHint',
+        '🎪 Festivals use event-source adapters first (Ticketmaster/Eventbrite hooks) and do not require a Google Place ID.',
+        festivalMode
+      );
+      setHtml(
+        'bulkFestivalModeHint',
+        '🎪 Bulk festival adds can import provider-backed event results with blank Google Place ID / Google URL fields when needed.',
+        festivalMode
+      );
     }
 
     function getSelectedAutomationTargets() {
@@ -1638,6 +1716,29 @@
       return `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(safe)}`;
     }
 
+    function buildCandidateOpenLinkUrl(candidate) {
+      const row = candidate && typeof candidate === 'object' ? candidate : {};
+      return String(row.openLinkUrl || row.googlePlaceUrl || row.website || buildCandidateGoogleUrl(row.placeId)).trim();
+    }
+
+    function buildCandidateOpenLinkLabel(candidate) {
+      const row = candidate && typeof candidate === 'object' ? candidate : {};
+      return String(row.openLinkLabel || (row.sourceType === 'festival-event' ? 'Open Event Source' : 'Open Google Place')).trim();
+    }
+
+    function buildCandidateIdentityMeta(candidate) {
+      const row = candidate && typeof candidate === 'object' ? candidate : {};
+      const ratingPart = row.rating ? ` | ⭐ ${row.rating}` : '';
+      const reviewPart = row.reviewCount > 0 ? ` (${row.reviewCount} reviews)` : '';
+      const statusPart = row.businessStatus ? ` | ${row.businessStatus}` : '';
+      if (row.sourceType === 'festival-event') {
+        const providerPart = row.sourceProvider ? `Source: ${row.sourceProvider}` : 'Source: Festival adapter';
+        const datePart = row.eventDate ? ` | ${row.eventDate}` : '';
+        return `${providerPart}${datePart}${ratingPart}${reviewPart}${statusPart}`;
+      }
+      return `Place ID: ${row.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}`;
+    }
+
     function formatCandidateDistance(candidate) {
       const value = candidate && Number.isFinite(Number(candidate.distanceMiles)) ? Number(candidate.distanceMiles) : null;
       if (value == null) return 'Distance: unavailable';
@@ -1753,6 +1854,69 @@
       };
     }
 
+    function normalizeFestivalSearchCandidate(item) {
+      const raw = item && typeof item === 'object' ? item : {};
+      const website = String(raw.website || raw.officialWebsite || raw.url || raw.eventUrl || raw.sourceUrl || '').trim();
+      return {
+        placeId: String(raw.placeId || '').trim(),
+        name: String(raw.name || raw.title || raw.eventName || 'Untitled Festival').trim(),
+        address: String(raw.address || raw.venueAddress || raw.location || '').trim(),
+        rating: raw.rating == null ? '' : String(raw.rating),
+        reviewCount: Number.isFinite(Number(raw.reviewCount ?? raw.userRatingsTotal)) ? Number(raw.reviewCount ?? raw.userRatingsTotal) : 0,
+        businessStatus: String(raw.businessStatus || 'EVENT').trim(),
+        businessType: String(raw.businessType || 'Festival Event').trim(),
+        coordinates: normalizeCoordinates(raw.coordinates || raw.locationCoordinates),
+        state: String(raw.state || deriveStateFromAddress(raw.address || raw.venueAddress || raw.location)).trim().toUpperCase(),
+        city: String(raw.city || '').trim(),
+        distanceMiles: null,
+        website,
+        description: String(raw.description || raw.summary || '').trim(),
+        sourceProvider: String(raw.sourceProvider || raw.provider || 'Festival Provider').trim(),
+        sourceType: 'festival-event',
+        eventDate: String(raw.eventDate || raw.startDate || raw.date || '').trim(),
+        googlePlaceUrl: String(raw.googlePlaceUrl || raw.googleUrl || '').trim(),
+        openLinkUrl: String(raw.openLinkUrl || raw.googlePlaceUrl || raw.googleUrl || website).trim(),
+        openLinkLabel: String(raw.openLinkLabel || (website || raw.openLinkUrl ? 'Open Event Source' : '')).trim(),
+        phone: String(raw.phone || raw.contactPhone || '').trim(),
+        directions: String(raw.directions || '').trim()
+      };
+    }
+
+    async function searchCandidateSource(query, inputType, mode) {
+      const mainWindow = getMainWindowSafe();
+      const festivalMode = isFestivalActionTarget();
+      if (festivalMode) {
+        const festivalSearchFn = typeof mainWindow.searchFestivalEvents === 'function'
+          ? mainWindow.searchFestivalEvents.bind(mainWindow)
+          : (typeof window.searchFestivalEvents === 'function' ? window.searchFestivalEvents.bind(window) : null);
+        if (typeof festivalSearchFn !== 'function') {
+          throw new Error('Festival search is not available. Add a provider hook such as Ticketmaster/Eventbrite first.');
+        }
+        const rows = await festivalSearchFn(query, {
+          target: getSelectedTarget('actionTargetSelect'),
+          inputType,
+          mode,
+          state: getCandidateStateFilter(),
+          radiusMiles: getCandidateDistanceLimitMiles(),
+          anchorAddress: CANDIDATE_ANCHOR_ADDRESS,
+          anchorCoords: await ensureCandidateAnchorCoords(mainWindow)
+        });
+        return {
+          festivalMode: true,
+          rows: Array.isArray(rows) ? rows.map(normalizeFestivalSearchCandidate).filter((row) => row.name) : []
+        };
+      }
+
+      if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
+        throw new Error('Search is not available. Ensure Google Places is loaded in the main window.');
+      }
+      const rows = await mainWindow.searchPlaces(query);
+      return {
+        festivalMode: false,
+        rows: Array.isArray(rows) ? rows.map(normalizeSingleSearchCandidate).filter((row) => row.placeId) : []
+      };
+    }
+
     function getSelectedSingleCandidate() {
       const idx = Number(singleCandidateState.selectedIndex);
       if (!Number.isInteger(idx) || idx < 0 || idx >= singleCandidateState.results.length) return null;
@@ -1778,21 +1942,21 @@
 
       const rows = singleCandidateState.results.map((candidate, index) => {
         const selectedClass = index === singleCandidateState.selectedIndex ? 'selected' : '';
-        const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
-        const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
-        const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
         const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
         const distancePart = renderCandidateDistanceMarkup(candidate);
-        const openLink = candidate.googlePlaceUrl
-          ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
+        const openLinkUrl = buildCandidateOpenLinkUrl(candidate);
+        const openLink = openLinkUrl
+          ? `<a class="candidate-open-link" href="${openLinkUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">${buildCandidateOpenLinkLabel(candidate)}</a>`
           : '';
+        const descriptionPart = candidate.description ? `<div class="candidate-meta">${candidate.description}</div>` : '';
         return `
           <div class="candidate-item ${selectedClass}" role="button" tabindex="0" onclick="selectSingleCandidate(${index})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectSingleCandidate(${index});}">
             <div class="candidate-title">${candidate.name}</div>
             <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
-            <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+            <div class="candidate-meta">${buildCandidateIdentityMeta(candidate)}</div>
             <div class="candidate-meta">${statePart}</div>
             <div class="candidate-meta">${distancePart}</div>
+            ${descriptionPart}
             <div class="candidate-actions">${openLink}</div>
           </div>
         `;
@@ -1833,21 +1997,16 @@
         return;
       }
 
-      const mainWindow = getMainWindowSafe();
-      if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
-        setSingleCandidateStatus('❌ Search is not available. Ensure Google Places is loaded in the main window.', 'error');
-        return;
-      }
+      const festivalMode = isFestivalActionTarget();
 
-      setSingleCandidateStatus('<span class="spinner"></span> Searching for nearby matches...', 'info');
+      setSingleCandidateStatus(`<span class="spinner"></span> Searching for ${festivalMode ? 'festival events' : 'nearby matches'}...`, 'info');
       singleCandidateState.selectedIndex = -1;
       renderSingleCandidateResults();
 
       try {
-        const rawResults = await mainWindow.searchPlaces(query);
-        const normalized = Array.isArray(rawResults)
-          ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId)
-          : [];
+        const sourceResults = await searchCandidateSource(query, inputType, 'single');
+        const normalized = Array.isArray(sourceResults.rows) ? sourceResults.rows : [];
+        const mainWindow = getMainWindowSafe();
         const filtered = await applyCandidateGeoFilters(normalized, mainWindow);
         singleCandidateState.query = query;
         singleCandidateState.inputType = inputType;
@@ -1864,12 +2023,12 @@
         renderSingleCandidateResults();
 
         if (!singleCandidateState.results.length) {
-          setSingleCandidateStatus(`⚠️ No results match your filters (${describeCandidateFilters()}).`, 'error');
+          setSingleCandidateStatus(`⚠️ No ${festivalMode ? 'festival events' : 'results'} match your filters (${describeCandidateFilters()}).`, 'error');
           return;
         }
 
         setSingleCandidateStatus(
-          `✅ Found ${singleCandidateState.results.length} match(es) after filters (${describeCandidateFilters()}). `
+          `✅ Found ${singleCandidateState.results.length} ${festivalMode ? 'festival event' : 'match'}(es) after filters (${describeCandidateFilters()}). `
           + `Filtered out: ${filtered.droppedByState} by state, ${filtered.droppedByDistance} by distance. `
           + `Select one, then click "Add Selected Candidate".`,
           'success'
@@ -1882,8 +2041,24 @@
 
     async function addSelectedSingleCandidate() {
       const selected = getSelectedSingleCandidate();
-      if (!selected || !selected.placeId) {
+      if (!selected) {
         setSingleCandidateStatus('❌ Select a candidate first.', 'error');
+        return;
+      }
+
+      const target = getSelectedTarget('actionTargetSelect');
+      const dryRun = Boolean(document.getElementById('singleDryRun')?.checked);
+      const statusDiv = document.getElementById('single-status');
+      if (!applyTargetToMainWindow(target, statusDiv)) return;
+      await probeTargetSchema(target);
+      await loadTargetRows(target);
+
+      const useDirectDetails = isFestivalEditTarget(target) || !selected.placeId;
+      if (useDirectDetails && window.enhancedAutomation) {
+        setSingleCandidateStatus(`✅ Selected ${selected.name}. Adding now...`, 'success');
+        const result = await window.enhancedAutomation.addSinglePlace(selected.name || selected.address || 'Festival Event', 'placeName', dryRun, { resolvedDetails: selected });
+        window.enhancedAutomation.displayResults(result, statusDiv);
+        if (result.success) document.getElementById('singleInput').value = '';
         return;
       }
 
@@ -1905,10 +2080,10 @@
 
       const shouldConfirmOpen = uniqueUrls.length > GOOGLE_TAB_OPEN_CONFIRM_THRESHOLD;
       if (shouldConfirmOpen && typeof window.confirm === 'function') {
-        const proceed = window.confirm(`Open ${uniqueUrls.length} selected Google tabs?`);
+        const proceed = window.confirm(`Open ${uniqueUrls.length} selected result tabs?`);
         if (!proceed) {
           if (typeof statusSetter === 'function') {
-            statusSetter(`⚠️ Cancelled opening ${uniqueUrls.length} Google result${uniqueUrls.length === 1 ? '' : 's'}.`, 'info');
+            statusSetter(`⚠️ Cancelled opening ${uniqueUrls.length} selected result${uniqueUrls.length === 1 ? '' : 's'}.`, 'info');
           }
           return;
         }
@@ -1919,7 +2094,7 @@
       });
 
       if (typeof statusSetter === 'function') {
-        statusSetter(`${successPrefix} ${uniqueUrls.length} Google result${uniqueUrls.length === 1 ? '' : 's'} in new tab${uniqueUrls.length === 1 ? '' : 's'}.`, 'success');
+        statusSetter(`${successPrefix} ${uniqueUrls.length} result${uniqueUrls.length === 1 ? '' : 's'} in new tab${uniqueUrls.length === 1 ? '' : 's'}.`, 'success');
       }
     }
 
@@ -1957,7 +2132,18 @@
           const idx = Number(group.selectedIndex);
           if (!Number.isInteger(idx) || idx < 0 || idx >= group.candidates.length) return '';
           const pick = group.candidates[idx];
-          return String((pick && pick.googlePlaceUrl) || buildCandidateGoogleUrl(pick && pick.placeId) || '').trim();
+          return buildCandidateOpenLinkUrl(pick);
+        })
+        .filter(Boolean);
+    }
+
+    function getSelectedBulkCandidates() {
+      return bulkCandidateState.groups
+        .map((group) => {
+          if (!group || !Array.isArray(group.candidates)) return null;
+          const idx = Number(group.selectedIndex);
+          if (!Number.isInteger(idx) || idx < 0 || idx >= group.candidates.length) return null;
+          return group.candidates[idx] || null;
         })
         .filter(Boolean);
     }
@@ -1966,7 +2152,7 @@
       openCandidateUrlsInGoogle(
         getSelectedBulkCandidateGoogleUrls(),
         setBulkCandidateStatus,
-        '❌ Select at least one bulk candidate before opening Google pages.',
+        '❌ Select at least one bulk candidate before opening result pages.',
         '✅ Opened'
       );
     }
@@ -2003,21 +2189,21 @@
         }
         const cards = candidates.map((candidate, candidateIndex) => {
           const selectedClass = candidateIndex === group.selectedIndex ? 'selected' : '';
-          const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
-          const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
-          const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
           const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
           const distancePart = renderCandidateDistanceMarkup(candidate);
-          const openLink = candidate.googlePlaceUrl
-            ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
+          const openLinkUrl = buildCandidateOpenLinkUrl(candidate);
+          const openLink = openLinkUrl
+            ? `<a class="candidate-open-link" href="${openLinkUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">${buildCandidateOpenLinkLabel(candidate)}</a>`
             : '';
+          const descriptionPart = candidate.description ? `<div class="candidate-meta">${candidate.description}</div>` : '';
           return `
             <div class="candidate-item ${selectedClass}" data-bulk-group-index="${groupIndex}" data-bulk-candidate-index="${candidateIndex}" role="button" tabindex="0" onclick="selectBulkCandidate(${groupIndex}, ${candidateIndex})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectBulkCandidate(${groupIndex}, ${candidateIndex});}">
               <div class="candidate-title">${candidate.name}</div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
-              <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+              <div class="candidate-meta">${buildCandidateIdentityMeta(candidate)}</div>
               <div class="candidate-meta">${statePart}</div>
               <div class="candidate-meta">${distancePart}</div>
+              ${descriptionPart}
               <div class="candidate-actions">${openLink}</div>
             </div>
           `;
@@ -2068,17 +2254,13 @@
         return;
       }
 
-      const mainWindow = getMainWindowSafe();
-      if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
-        setBulkCandidateStatus('❌ Search is not available. Ensure Google Places is loaded in the main window.', 'error');
-        return;
-      }
+      const festivalMode = isFestivalActionTarget();
 
       bulkCandidateState.rawInput = rawInput;
       bulkCandidateState.inputType = inputType;
       bulkCandidateState.groups = queries.map((query) => ({ source: query, candidates: [], selectedIndex: -1 }));
       renderBulkCandidateResults();
-      setBulkCandidateStatus(`<span class="spinner"></span> Searching ${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
+      setBulkCandidateStatus(`<span class="spinner"></span> Searching ${festivalMode ? 'festival events for ' : ''}${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
 
       let foundTotal = 0;
       let droppedByStateTotal = 0;
@@ -2087,10 +2269,11 @@
       for (let i = 0; i < bulkCandidateState.groups.length; i += 1) {
         const group = bulkCandidateState.groups[i];
         try {
-          const rawResults = await mainWindow.searchPlaces(group.source);
-          const normalized = Array.isArray(rawResults)
-            ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId).slice(0, 5)
+          const sourceResults = await searchCandidateSource(group.source, inputType, 'bulk');
+          const normalized = Array.isArray(sourceResults.rows)
+            ? sourceResults.rows.slice(0, 5)
             : [];
+          const mainWindow = getMainWindowSafe();
           const filtered = await applyCandidateGeoFilters(normalized, mainWindow);
           group.candidates = sortCandidatesForDisplay(filtered.rows);
           group.selectedIndex = group.candidates.length ? 0 : -1;
@@ -2116,25 +2299,33 @@
       renderBulkCandidateResults();
       const selectedCount = getSelectedBulkCandidateCount();
       if (!selectedCount) {
-        setBulkCandidateStatus('⚠️ No selectable matches were found. Try adding city/state context.', 'error');
+        setBulkCandidateStatus(`⚠️ No selectable ${festivalMode ? 'festival events' : 'matches'} were found. Try adding city/state context.`, 'error');
         return;
       }
       setBulkCandidateStatus(`✅ Ready: ${selectedCount} selection(s) across ${bulkCandidateState.groups.length} input(s). Filters: ${describeCandidateFilters()}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. Review and click "Add Selected Candidates".`, 'success');
     }
 
     async function addSelectedBulkCandidates() {
-      const selectedPlaceIds = bulkCandidateState.groups
-        .map((group) => {
-          if (!group || !Array.isArray(group.candidates)) return '';
-          const idx = Number(group.selectedIndex);
-          if (!Number.isInteger(idx) || idx < 0 || idx >= group.candidates.length) return '';
-          const pick = group.candidates[idx];
-          return String(pick && pick.placeId ? pick.placeId : '').trim();
-        })
-        .filter(Boolean);
+      const selectedCandidates = getSelectedBulkCandidates();
+      const selectedPlaceIds = selectedCandidates.map((pick) => String(pick && pick.placeId ? pick.placeId : '').trim()).filter(Boolean);
 
-      if (!selectedPlaceIds.length) {
+      if (!selectedCandidates.length) {
         setBulkCandidateStatus('❌ Select at least one candidate before adding.', 'error');
+        return;
+      }
+
+      const target = getSelectedTarget('actionTargetSelect');
+      const dryRun = Boolean(document.getElementById('bulkDryRun')?.checked);
+      const statusDiv = document.getElementById('bulk-status');
+      if (!applyTargetToMainWindow(target, statusDiv)) return;
+      await probeTargetSchema(target);
+      await loadTargetRows(target);
+
+      if ((isFestivalEditTarget(target) || selectedCandidates.some((item) => !item.placeId)) && window.enhancedAutomation) {
+        setBulkCandidateStatus(`✅ Adding ${selectedCandidates.length} selected candidate(s)...`, 'success');
+        const result = await window.enhancedAutomation.bulkAddPlaces('', 'placeName', dryRun, { resolvedDetailsList: selectedCandidates });
+        window.enhancedAutomation.displayResults(result, statusDiv);
+        if (result.success && !dryRun) document.getElementById('bulkInput').value = '';
         return;
       }
 
@@ -2194,6 +2385,20 @@
       return selectedPlaceIds;
     }
 
+    function getSelectedChainCandidates() {
+      const selectedCandidates = [];
+      chainCandidateState.groups.forEach((group) => {
+        const candidates = Array.isArray(group && group.candidates) ? group.candidates : [];
+        const indexes = Array.isArray(group && group.selectedIndexes) ? group.selectedIndexes : [];
+        indexes.forEach((idx) => {
+          if (!Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return;
+          const pick = candidates[idx];
+          if (pick) selectedCandidates.push(pick);
+        });
+      });
+      return selectedCandidates;
+    }
+
     function getSelectedChainCandidateGoogleUrls() {
       const urls = [];
       chainCandidateState.groups.forEach((group) => {
@@ -2202,7 +2407,7 @@
         indexes.forEach((idx) => {
           if (!Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return;
           const pick = candidates[idx];
-          const url = String((pick && pick.googlePlaceUrl) || buildCandidateGoogleUrl(pick && pick.placeId) || '').trim();
+          const url = buildCandidateOpenLinkUrl(pick);
           if (url) urls.push(url);
         });
       });
@@ -2213,7 +2418,7 @@
       openCandidateUrlsInGoogle(
         getSelectedChainCandidateGoogleUrls(),
         setChainCandidateStatus,
-        '❌ Select at least one chain candidate before opening Google pages.',
+        '❌ Select at least one chain candidate before opening result pages.',
         '✅ Opened'
       );
     }
@@ -2318,21 +2523,21 @@
         }
         const cards = candidates.map((candidate, candidateIndex) => {
           const selectedClass = selectedIndexes.has(candidateIndex) ? 'selected' : '';
-          const ratingPart = candidate.rating ? ` | ⭐ ${candidate.rating}` : '';
-          const reviewPart = candidate.reviewCount > 0 ? ` (${candidate.reviewCount} reviews)` : '';
-          const statusPart = candidate.businessStatus ? ` | ${candidate.businessStatus}` : '';
           const statePart = candidate.state ? `State: ${candidate.state}` : 'State: unavailable';
           const distancePart = renderCandidateDistanceMarkup(candidate);
-          const openLink = candidate.googlePlaceUrl
-            ? `<a class="candidate-open-link" href="${candidate.googlePlaceUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">Open Google Place</a>`
+          const openLinkUrl = buildCandidateOpenLinkUrl(candidate);
+          const openLink = openLinkUrl
+            ? `<a class="candidate-open-link" href="${openLinkUrl}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">${buildCandidateOpenLinkLabel(candidate)}</a>`
             : '';
+          const descriptionPart = candidate.description ? `<div class="candidate-meta">${candidate.description}</div>` : '';
           return `
             <div class="candidate-item ${selectedClass}" data-chain-group-index="${groupIndex}" data-chain-candidate-index="${candidateIndex}" role="button" tabindex="0" onclick="toggleChainCandidateSelection(${groupIndex}, ${candidateIndex})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleChainCandidateSelection(${groupIndex}, ${candidateIndex});}">
               <div class="candidate-title">${candidate.name}</div>
               <div class="candidate-meta">${candidate.address || 'Address unavailable'}</div>
-              <div class="candidate-meta">Place ID: ${candidate.placeId || 'Unavailable'}${ratingPart}${reviewPart}${statusPart}</div>
+              <div class="candidate-meta">${buildCandidateIdentityMeta(candidate)}</div>
               <div class="candidate-meta">${statePart}</div>
               <div class="candidate-meta">${distancePart}</div>
+              ${descriptionPart}
               <div class="candidate-actions">${openLink}</div>
             </div>
           `;
@@ -2410,28 +2615,25 @@
         return;
       }
 
-      const mainWindow = getMainWindowSafe();
-      if (!mainWindow || typeof mainWindow.searchPlaces !== 'function') {
-        setChainCandidateStatus('❌ Search is not available. Ensure Google Places is loaded in the main window.', 'error');
-        return;
-      }
+      const festivalMode = isFestivalActionTarget();
 
       chainCandidateState.rawInput = rawInput;
       chainCandidateState.inputType = inputType;
       chainCandidateState.brandTokens = deriveChainBrandTokens(queries);
       chainCandidateState.groups = queries.map((query) => ({ source: query, candidates: [], selectedIndexes: [] }));
       renderChainCandidateResults();
-      setChainCandidateStatus(`<span class="spinner"></span> Searching chain candidates for ${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
+      setChainCandidateStatus(`<span class="spinner"></span> Searching ${festivalMode ? 'festival events' : 'chain candidates'} for ${queries.length} quer${queries.length === 1 ? 'y' : 'ies'}...`, 'info');
 
       let droppedByStateTotal = 0;
       let droppedByDistanceTotal = 0;
       for (let i = 0; i < chainCandidateState.groups.length; i += 1) {
         const group = chainCandidateState.groups[i];
         try {
-          const rawResults = await mainWindow.searchPlaces(group.source);
-          const normalized = Array.isArray(rawResults)
-            ? rawResults.map(normalizeSingleSearchCandidate).filter((row) => row.placeId).slice(0, chainCandidateState.maxPerQuery)
+          const sourceResults = await searchCandidateSource(group.source, inputType, 'chain');
+          const normalized = Array.isArray(sourceResults.rows)
+            ? sourceResults.rows.slice(0, chainCandidateState.maxPerQuery)
             : [];
+          const mainWindow = getMainWindowSafe();
           const filtered = await applyCandidateGeoFilters(normalized, mainWindow);
           group.candidates = rankChainCandidates(filtered.rows, group.source, chainCandidateState.brandTokens);
           group.selectedIndexes = group.candidates.length ? [0] : [];
@@ -2456,7 +2658,7 @@
       const selectedCount = getSelectedChainCandidateCount();
       const foundCount = getFoundChainCandidateCount();
       if (!selectedCount) {
-        setChainCandidateStatus('⚠️ No selectable chain candidates were found. Try adding city/state context.', 'error');
+        setChainCandidateStatus(`⚠️ No selectable ${festivalMode ? 'festival events' : 'chain candidates'} were found. Try adding city/state context.`, 'error');
         return;
       }
       setChainCandidateStatus(`✅ Ready: ${selectedCount} selected out of ${foundCount} found. Filters: ${describeCandidateFilters({ includeSort: false })}. Filtered out: ${droppedByStateTotal} by state, ${droppedByDistanceTotal} by distance. Use the cap selector to add 3/5/10/15/25, all selected, or all found.`, 'success');
@@ -2465,10 +2667,38 @@
     async function addSelectedChainCandidates() {
       const capSelectEl = document.getElementById('chainSelectionCapSelect');
       const capRaw = String(capSelectEl && capSelectEl.value ? capSelectEl.value : 'all-selected');
+      const selectedCandidates = capRaw === 'all-found'
+        ? chainCandidateState.groups.flatMap((group) => Array.isArray(group && group.candidates) ? group.candidates : [])
+        : getSelectedChainCandidates();
       const selectedPlaceIds = capRaw === 'all-found' ? getAllFoundChainPlaceIds() : getSelectedChainPlaceIds();
 
-      if (!selectedPlaceIds.length) {
+      if (!selectedPlaceIds.length && !selectedCandidates.length) {
         setChainCandidateStatus('❌ Select at least one chain candidate before adding.', 'error');
+        return;
+      }
+
+      const target = getSelectedTarget('actionTargetSelect');
+      const dryRun = Boolean(document.getElementById('chainDryRun')?.checked);
+      const statusDiv = document.getElementById('chain-status');
+      if (!applyTargetToMainWindow(target, statusDiv)) return;
+      await probeTargetSchema(target);
+      await loadTargetRows(target);
+
+      if ((isFestivalEditTarget(target) || selectedCandidates.some((item) => !item.placeId)) && window.enhancedAutomation) {
+        const capNum = Number(capRaw);
+        const applyCap = Number.isInteger(capNum) && capNum > 0;
+        const uniqueCandidates = Array.from(new Map(selectedCandidates.map((candidate) => {
+          const key = `${String(candidate.name || '').trim().toLowerCase()}|${String(candidate.address || '').trim().toLowerCase()}|${String(candidate.eventDate || '').trim().toLowerCase()}`;
+          return [key, candidate];
+        })).values());
+        const finalCandidates = applyCap ? uniqueCandidates.slice(0, capNum) : uniqueCandidates;
+        if (!finalCandidates.length) {
+          setChainCandidateStatus('❌ No festival candidates remain after applying your selected cap.', 'error');
+          return;
+        }
+        const result = await window.enhancedAutomation.bulkAddPlaces('', 'placeName', dryRun, { resolvedDetailsList: finalCandidates });
+        window.enhancedAutomation.displayResults(result, statusDiv);
+        if (result.success && !dryRun) document.getElementById('chainInput').value = '';
         return;
       }
 

@@ -342,6 +342,186 @@ test.describe('Edit Mode single-add candidate search', () => {
     await expect(popup.locator('#candidateSortMode')).toHaveValue('nearest');
   });
 
+  test('festival target routes candidate search through festival adapters and shows event-source links without using Google place search', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.__googlePlaceSearchCalls = 0;
+      window.searchPlaces = async () => {
+        window.__googlePlaceSearchCalls += 1;
+        return [];
+      };
+      window.searchFestivalEvents = async (query) => {
+        const q = String(query || '').trim().toLowerCase();
+        if (!q.includes('apple')) return [];
+        return [
+          {
+            name: 'Apple Blossom Festival',
+            address: '101 Orchard Ave, Hendersonville, NC 28791',
+            city: 'Hendersonville',
+            state: 'NC',
+            website: 'https://applefest.example.com',
+            openLinkUrl: 'https://tickets.example.com/applefest',
+            openLinkLabel: 'Open Event Source',
+            sourceProvider: 'Ticketmaster',
+            eventDate: '2026-09-20',
+            description: 'Source: Ticketmaster • Date: 2026-09-20 • Regional apple harvest celebration',
+            businessStatus: 'SCHEDULED',
+            coordinates: { lat: 35.348, lng: -82.46 }
+          },
+          {
+            name: 'Apple Cider Weekend',
+            address: '55 Farm Lane, Flat Rock, NC 28731',
+            city: 'Flat Rock',
+            state: 'NC',
+            website: 'https://ciderfest.example.com',
+            openLinkUrl: 'https://events.example.com/ciderfest',
+            openLinkLabel: 'Open Event Source',
+            sourceProvider: 'Eventbrite',
+            eventDate: '2026-10-03',
+            description: 'Source: Eventbrite • Date: 2026-10-03 • Cider tastings and live music',
+            businessStatus: 'SCHEDULED',
+            coordinates: { lat: 35.2801, lng: -82.4412 }
+          }
+        ];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+    await expect(popup.locator('#singleSearchCandidatesBtn')).toHaveText(/Search Festival Events/i);
+    await expect(popup.locator('#singleFestivalModeHint')).toContainText('do not require a Google Place ID');
+
+    await popup.selectOption('#singleInputType', 'placeName');
+    await popup.fill('#singleInput', 'apple festival');
+    await popup.click('#singleSearchCandidatesBtn');
+
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
+    await expect(popup.locator('#single-candidates .candidate-item').first()).toContainText('Source: Ticketmaster');
+    await expect(popup.locator('#single-candidates .candidate-item').first()).toContainText('2026-09-20');
+    const eventLink = popup.locator('#single-candidates .candidate-open-link').first();
+    await expect(eventLink).toHaveText('Open Event Source');
+    await expect(eventLink).toHaveAttribute('href', 'https://tickets.example.com/applefest');
+    await expect.poll(() => page.evaluate(() => window.__googlePlaceSearchCalls)).toBe(0);
+  });
+
+  test('festival single and bulk imports succeed without Google Place IDs', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async () => [];
+      window.searchFestivalEvents = async (query) => {
+        const q = String(query || '').trim().toLowerCase();
+        if (q.includes('apple blossom')) {
+          return [{
+            name: 'Apple Blossom Festival',
+            address: '101 Orchard Ave, Hendersonville, NC 28791',
+            city: 'Hendersonville',
+            state: 'NC',
+            website: 'https://applefest.example.com',
+            sourceProvider: 'Ticketmaster',
+            eventDate: '2026-09-20',
+            description: 'Source: Ticketmaster • Date: 2026-09-20 • Regional apple harvest celebration',
+            businessStatus: 'SCHEDULED',
+            coordinates: { lat: 35.348, lng: -82.46 }
+          }];
+        }
+        if (q.includes('pear harvest')) {
+          return [{
+            name: 'Pear Harvest Festival',
+            address: '220 Market St, Asheville, NC 28801',
+            city: 'Asheville',
+            state: 'NC',
+            website: 'https://pearfest.example.com',
+            sourceProvider: 'Eventbrite',
+            eventDate: '2026-10-01',
+            description: 'Source: Eventbrite • Date: 2026-10-01 • Downtown pear harvest celebration',
+            businessStatus: 'SCHEDULED',
+            coordinates: { lat: 35.5951, lng: -82.5515 }
+          }];
+        }
+        if (q.includes('peach jam')) {
+          return [{
+            name: 'Peach Jam Festival',
+            address: '18 Depot St, Brevard, NC 28712',
+            city: 'Brevard',
+            state: 'NC',
+            website: 'https://peachjam.example.com',
+            sourceProvider: 'Ticketmaster',
+            eventDate: '2026-10-15',
+            description: 'Source: Ticketmaster • Date: 2026-10-15 • Live music and peach tastings',
+            businessStatus: 'SCHEDULED',
+            coordinates: { lat: 35.2334, lng: -82.7343 }
+          }];
+        }
+        return [];
+      };
+    });
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+
+    await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+
+    await popup.selectOption('#singleInputType', 'placeName');
+    await popup.fill('#singleInput', 'Apple Blossom Festival');
+    await popup.click('#singleSubmitBtn');
+
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(1);
+    const singleRow = graphCalls[0].body.values[0];
+    expect(String(singleRow[0] || '')).toMatch(/Festival Event|Source: Ticketmaster/);
+    expect(singleRow[1]).toBe('Apple Blossom Festival');
+    expect(singleRow[2]).toBe('101 Orchard Ave, Hendersonville, NC 28791');
+    expect(singleRow[5]).toBe('https://applefest.example.com');
+    expect(singleRow[8]).toContain('destination=101%20Orchard%20Ave%2C%20Hendersonville%2C%20NC%2028791');
+    expect(singleRow[9]).toBe('');
+    expect(singleRow[10]).toBe('');
+
+    await popup.selectOption('#bulkInputType', 'placeName');
+    await popup.fill('#bulkInput', 'Pear Harvest Festival\nPeach Jam Festival');
+    await popup.click('#bulkSubmitBtn');
+
+    await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(3);
+    const bulkRows = graphCalls.slice(1).map((call) => call.body.values[0]);
+    expect(bulkRows[0][1]).toBe('Pear Harvest Festival');
+    expect(bulkRows[0][9]).toBe('');
+    expect(bulkRows[0][10]).toBe('');
+    expect(bulkRows[1][1]).toBe('Peach Jam Festival');
+    expect(bulkRows[1][5]).toBe('https://peachjam.example.com');
+    expect(bulkRows[1][9]).toBe('');
+    expect(bulkRows[1][10]).toBe('');
+  });
+
   test('bulk candidate review lets user choose matches, then add selected candidates', async ({ page }) => {
     const graphCalls = [];
     await installMocks(page.context(), graphCalls);

@@ -10266,11 +10266,63 @@
       }
 
       // Return formatted place details
+      // displayName can be a PlaceName object {text, languageCode} in newer SDK versions
+      const resolvedDisplayName = (place.displayName && typeof place.displayName === 'object' && place.displayName.text)
+        ? place.displayName.text
+        : (typeof place.displayName === 'string' ? place.displayName : (place.name || ''));
+      const resolvedAddress = place.formattedAddress || '';
+
+      // If the new Places API returned incomplete data, try legacy PlacesService as fallback
+      if (!resolvedDisplayName || !resolvedAddress) {
+        console.warn(`⚠️ New Places API returned incomplete data for "${placeId}" (name: "${resolvedDisplayName}", address: "${resolvedAddress}"). Trying legacy PlacesService fallback...`);
+        try {
+          const legacyResult = await new Promise((resolve, reject) => {
+            const mapDiv = document.createElement('div');
+            const tempMap = new google.maps.Map(mapDiv, { center: { lat: 0, lng: 0 }, zoom: 1 });
+            const service = new google.maps.places.PlacesService(tempMap);
+            service.getDetails(
+              { placeId, fields: ['name', 'formatted_address', 'international_phone_number', 'website', 'opening_hours', 'rating', 'user_ratings_total', 'geometry', 'business_status', 'types'] },
+              (result, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && result) resolve(result);
+                else reject(new Error(`Legacy PlacesService status: ${status}`));
+              }
+            );
+          });
+          let legacyBusinessType = '';
+          if (Array.isArray(legacyResult.types)) {
+            for (const type of legacyResult.types) {
+              if (typeMap[type]) { legacyBusinessType = typeMap[type]; break; }
+            }
+          }
+          return {
+            name: legacyResult.name || resolvedDisplayName || '',
+            rating: legacyResult.rating || null,
+            userRatingsTotal: legacyResult.user_ratings_total || 0,
+            address: legacyResult.formatted_address || resolvedAddress || '',
+            phone: legacyResult.international_phone_number || '',
+            website: legacyResult.website || '',
+            hours: legacyResult.opening_hours || null,
+            coordinates: legacyResult.geometry?.location ? {
+              lat: legacyResult.geometry.location.lat(),
+              lng: legacyResult.geometry.location.lng()
+            } : null,
+            reviews: [],
+            photos: [],
+            businessStatus: legacyResult.business_status || 'UNKNOWN',
+            businessType: legacyBusinessType,
+            types: Array.isArray(legacyResult.types) ? legacyResult.types : [],
+            timezone: ''
+          };
+        } catch (legacyErr) {
+          console.warn(`⚠️ Legacy PlacesService fallback also failed for "${placeId}": ${legacyErr.message}`);
+        }
+      }
+
       return {
-        name: place.displayName || place.name || '',
+        name: resolvedDisplayName || '',
         rating: place.rating || null,
         userRatingsTotal: place.userRatingCount || 0,
-        address: place.formattedAddress || '',
+        address: resolvedAddress,
         phone: place.internationalPhoneNumber || '',
         website: place.websiteURI || '',
         hours: place.regularOpeningHours || null,
@@ -19154,9 +19206,14 @@ COMMON ISSUES:
       return true;
     };
 
+    const safePlaceId = strVal(placeId);
+    const googlePlaceUrl = safePlaceId
+      ? "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(safePlaceId)
+      : "";
+
     // Schema-driven mapping first (works across Nature/Retail/Entertainment table layouts).
     setByName(['Name'], name);
-    setByName(['Google Place ID', 'GooglePlaceId'], strVal(placeId));
+    setByName(['Google Place ID', 'GooglePlaceId'], safePlaceId);
     setByName(['Website', 'Official Website'], strVal(details && details.website));
     setByName(['Tags'], details && details.businessType ? details.businessType.replace(/^[\p{So}]\s/u, '') : '');
     setByName(['Hours of Operation', 'Hours'], normalizeOperationHours(details && details.hours));
@@ -19165,14 +19222,14 @@ COMMON ISSUES:
     setByName(['Address'], address);
     setByName(['Phone Number', 'Phone'], strVal(details && details.phone));
     setByName(['Google Rating', 'Rating'], details && details.rating != null ? String(details.rating) : '');
-    setByName(['Directions', 'Directions '], buildDirectionsUrl(placeId, address, name));
+    setByName(['Directions', 'Directions '], buildDirectionsUrl(safePlaceId, address, name));
     setByName(['Description'], description);
-    setByName(['Google URL'], "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId)));
+    setByName(['Google URL'], googlePlaceUrl);
 
     // Backward-compatible positional fallback for legacy schemas without named columns.
     if (!schemaColumns.length) {
       if (actualColumnCount > 0) row[0] = name;
-      if (actualColumnCount > 1) row[1] = strVal(placeId);
+      if (actualColumnCount > 1) row[1] = safePlaceId;
       if (actualColumnCount > 2) row[2] = strVal(details && details.website);
       if (actualColumnCount > 3) row[3] = details && details.businessType ? details.businessType.replace(/^[\p{So}]\s/u, '') : "";
       if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
@@ -19181,15 +19238,15 @@ COMMON ISSUES:
       if (actualColumnCount > 11) row[11] = address;
       if (actualColumnCount > 12) row[12] = strVal(details && details.phone);
       if (actualColumnCount > 13) row[13] = details && details.rating != null ? String(details.rating) : "";
-      if (actualColumnCount > 15) row[15] = buildDirectionsUrl(placeId, address, name);
+      if (actualColumnCount > 15) row[15] = buildDirectionsUrl(safePlaceId, address, name);
       if (actualColumnCount > 16) row[16] = description;
-      if (actualColumnCount > 18) row[18] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
-      if (actualColumnCount > 23) row[23] = "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(strVal(placeId));
+      if (actualColumnCount > 18) row[18] = googlePlaceUrl;
+      if (actualColumnCount > 23) row[23] = googlePlaceUrl;
     }
 
     // Store metadata for retry logic
     row._columnCount = actualColumnCount;
-    row._placeId = placeId;
+    row._placeId = safePlaceId;
     row._coordinates = details && details.coordinates ? details.coordinates : null;
 
     return row;

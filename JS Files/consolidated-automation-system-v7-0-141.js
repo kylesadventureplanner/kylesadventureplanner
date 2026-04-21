@@ -25,6 +25,226 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return /^ChI[A-Za-z0-9_-]{6,}$/.test(safeString(value));
   }
 
+  function getActiveEditTarget(mainWindow) {
+    const source = mainWindow || getMainWindow();
+    const inlineTarget = source && source.__editModeTarget && typeof source.__editModeTarget === 'object'
+      ? source.__editModeTarget
+      : null;
+    const popupTarget = window.__editModeTarget && typeof window.__editModeTarget === 'object'
+      ? window.__editModeTarget
+      : null;
+    const target = inlineTarget || popupTarget;
+    if (target) return target;
+    return {
+      id: '',
+      filePath: safeString((source && source.filePath) || window.filePath),
+      tableName: safeString((source && source.tableName) || window.tableName)
+    };
+  }
+
+  function isFestivalTarget(target) {
+    const safeTarget = target && typeof target === 'object' ? target : {};
+    const targetId = safeString(safeTarget.id).toLowerCase();
+    const filePath = safeString(safeTarget.filePath).toLowerCase();
+    const tableName = safeString(safeTarget.tableName).toLowerCase();
+    return targetId === 'ent_festivals'
+      || (filePath === 'entertainment_locations.xlsx' && tableName === 'festivals')
+      || tableName === 'festivals';
+  }
+
+  function sanitizeFestivalName(value) {
+    const text = safeString(value)
+      .replace(/https?:\/\/\S+/gi, ' ')
+      .replace(/\bChI[A-Za-z0-9_-]{6,}\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return text;
+  }
+
+  function normalizeCoordinates(raw) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const lat = Number(source.lat);
+    const lng = Number(source.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  }
+
+  function stripTags(value) {
+    return safeString(value).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function formatFestivalEventDate(value) {
+    const text = safeString(value);
+    if (!text) return '';
+    const parsed = new Date(text);
+    if (Number.isNaN(parsed.getTime())) return text;
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  function buildFestivalAddress(raw) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const directAddress = safeString(source.address || source.venueAddress || source.location || source.formattedAddress);
+    if (directAddress) return directAddress;
+    const venueName = safeString(source.venueName || source.venue || source.placeName);
+    const city = safeString(source.city);
+    const state = safeString(source.state);
+    const postalCode = safeString(source.postalCode || source.zip);
+    const parts = [venueName, city, state, postalCode].filter(Boolean);
+    return parts.join(', ');
+  }
+
+  function buildFestivalDescription(raw, providerName) {
+    const source = raw && typeof raw === 'object' ? raw : {};
+    const explicit = stripTags(source.description || source.summary || source.shortDescription);
+    const eventDate = formatFestivalEventDate(source.eventDate || source.startDate || source.date);
+    const provider = safeString(source.sourceProvider || source.provider || providerName);
+    const detailBits = [];
+    if (provider) detailBits.push(`Source: ${provider}`);
+    if (eventDate) detailBits.push(`Date: ${eventDate}`);
+    if (explicit) detailBits.push(explicit);
+    return detailBits.join(' • ');
+  }
+
+  function normalizeFestivalEventResult(item, providerName = 'Festival Provider') {
+    const raw = item && typeof item === 'object' ? item : {};
+    const placeId = safeString(raw.placeId);
+    const name = sanitizeFestivalName(raw.name || raw.title || raw.eventName || raw.displayName || raw.query || 'Untitled Festival');
+    const address = buildFestivalAddress(raw);
+    const city = safeString(raw.city);
+    const state = safeString(raw.state).toUpperCase();
+    const website = safeString(raw.website || raw.officialWebsite || raw.url || raw.eventUrl || raw.sourceUrl || raw.openLinkUrl);
+    const provider = safeString(raw.sourceProvider || raw.provider || providerName || 'Festival Provider');
+    const description = buildFestivalDescription(raw, provider);
+    const openLinkUrl = safeString(raw.openLinkUrl || raw.googlePlaceUrl || raw.googleUrl || website);
+    const openLinkLabel = safeString(raw.openLinkLabel || (openLinkUrl ? 'Open Event Source' : ''));
+    return {
+      placeId,
+      name,
+      address,
+      city,
+      state,
+      phone: safeString(raw.phone || raw.contactPhone),
+      website,
+      rating: raw.rating ?? '',
+      userRatingsTotal: raw.userRatingsTotal ?? raw.reviewCount ?? 0,
+      reviewCount: raw.reviewCount ?? raw.userRatingsTotal ?? 0,
+      hours: raw.hours || '',
+      businessStatus: safeString(raw.businessStatus || 'EVENT'),
+      businessType: safeString(raw.businessType || 'Festival Event'),
+      description,
+      eventDate: formatFestivalEventDate(raw.eventDate || raw.startDate || raw.date),
+      sourceProvider: provider,
+      sourceType: 'festival-event',
+      coordinates: normalizeCoordinates(raw.coordinates || raw.locationCoordinates),
+      googlePlaceUrl: safeString(raw.googlePlaceUrl || raw.googleUrl),
+      openLinkUrl,
+      openLinkLabel,
+      directions: safeString(raw.directions),
+      types: Array.isArray(raw.types) ? raw.types : []
+    };
+  }
+
+  function getFestivalProviderHost(sourceWindow = getMainWindow()) {
+    return sourceWindow && typeof sourceWindow === 'object' ? sourceWindow : window;
+  }
+
+  function getFestivalProviderRegistry(sourceWindow = getFestivalProviderHost()) {
+    const host = getFestivalProviderHost(sourceWindow);
+    if (!host.__festivalEventProviders || typeof host.__festivalEventProviders !== 'object') {
+      host.__festivalEventProviders = {};
+    }
+    return host.__festivalEventProviders;
+  }
+
+  function registerFestivalEventProvider(name, provider, sourceWindow = getFestivalProviderHost()) {
+    const safeName = safeString(name).toLowerCase();
+    if (!safeName) throw new Error('Festival provider name is required.');
+    const registry = getFestivalProviderRegistry(sourceWindow);
+    registry[safeName] = provider;
+    return registry[safeName];
+  }
+
+  function getBuiltinFestivalProviderDefinitions(host) {
+    const source = getFestivalProviderHost(host);
+    return {
+      ticketmaster: {
+        label: 'Ticketmaster',
+        async search(query, options = {}) {
+          const injected = source.__ticketmasterFestivalEventSearch || window.__ticketmasterFestivalEventSearch;
+          if (typeof injected === 'function') {
+            const results = await injected(query, options);
+            return Array.isArray(results) ? results.map((item) => normalizeFestivalEventResult(item, 'Ticketmaster')) : [];
+          }
+          return [];
+        }
+      },
+      eventbrite: {
+        label: 'Eventbrite',
+        async search(query, options = {}) {
+          const injected = source.__eventbriteFestivalEventSearch || window.__eventbriteFestivalEventSearch;
+          if (typeof injected === 'function') {
+            const results = await injected(query, options);
+            return Array.isArray(results) ? results.map((item) => normalizeFestivalEventResult(item, 'Eventbrite')) : [];
+          }
+          return [];
+        }
+      }
+    };
+  }
+
+  async function runFestivalProviderSearches(query, options = {}, sourceWindow = getFestivalProviderHost()) {
+    const host = getFestivalProviderHost(sourceWindow);
+    const registry = getFestivalProviderRegistry(host);
+    const builtins = getBuiltinFestivalProviderDefinitions(host);
+    const providerEntries = [];
+
+    Object.keys(builtins).forEach((key) => providerEntries.push([key, builtins[key]]));
+    Object.keys(registry).forEach((key) => {
+      if (builtins[key]) return;
+      providerEntries.push([key, registry[key]]);
+    });
+
+    const unique = new Map();
+    for (const [providerKey, provider] of providerEntries) {
+      const runner = typeof provider === 'function'
+        ? provider
+        : (provider && typeof provider.search === 'function' ? provider.search.bind(provider) : null);
+      if (typeof runner !== 'function') continue;
+      try {
+        const rawResults = await runner(query, options);
+        const rows = Array.isArray(rawResults) ? rawResults : [];
+        rows.forEach((item) => {
+          const normalized = normalizeFestivalEventResult(item, provider && provider.label ? provider.label : providerKey);
+          const dedupeKey = [normalized.name.toLowerCase(), normalized.address.toLowerCase(), normalized.eventDate.toLowerCase(), normalized.website.toLowerCase()].join('|');
+          if (!normalized.name || unique.has(dedupeKey)) return;
+          unique.set(dedupeKey, normalized);
+        });
+      } catch (error) {
+        console.warn(`⚠️ Festival provider "${providerKey}" search failed:`, error.message);
+      }
+    }
+    return Array.from(unique.values());
+  }
+
+  window.registerFestivalEventProvider = window.registerFestivalEventProvider || function(name, provider) {
+    return registerFestivalEventProvider(name, provider, getFestivalProviderHost());
+  };
+
+  window.unregisterFestivalEventProvider = window.unregisterFestivalEventProvider || function(name) {
+    const safeName = safeString(name).toLowerCase();
+    if (!safeName) return false;
+    const registry = getFestivalProviderRegistry(getFestivalProviderHost());
+    if (!registry[safeName]) return false;
+    delete registry[safeName];
+    return true;
+  };
+
+  window.searchFestivalEvents = window.searchFestivalEvents || async function(query, options = {}) {
+    const searchQuery = sanitizeFestivalName(query);
+    if (!searchQuery) return [];
+    return runFestivalProviderSearches(searchQuery, options, getFestivalProviderHost());
+  };
+
   function createTaggedShortLinkError(message, diagnostics, extra = {}) {
     const baseMessage = safeString(message) || 'Short-link resolution failed.';
     const requestId = diagnostics && diagnostics.enabled ? diagnostics.id : '';
@@ -391,15 +611,23 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       userRatingsTotal: safeDetails.userRatingsTotal ?? safeSearch.reviewCount ?? 0,
       hours: safeDetails.hours || safeSearch.hours || '',
       businessStatus: safeString(safeDetails.businessStatus || safeSearch.businessStatus || 'UNKNOWN'),
-      businessType: safeString(safeDetails.businessType || inferBusinessType(safeDetails.types || safeSearch.types)),
+      businessType: safeString(safeDetails.businessType || safeSearch.businessType || inferBusinessType(safeDetails.types || safeSearch.types)),
+      description: safeString(safeDetails.description || safeSearch.description),
+      eventDate: safeString(safeDetails.eventDate || safeSearch.eventDate),
+      sourceProvider: safeString(safeDetails.sourceProvider || safeSearch.sourceProvider),
+      sourceType: safeString(safeDetails.sourceType || safeSearch.sourceType),
+      openLinkUrl: safeString(safeDetails.openLinkUrl || safeSearch.openLinkUrl || safeDetails.googlePlaceUrl || safeSearch.googlePlaceUrl),
+      openLinkLabel: safeString(safeDetails.openLinkLabel || safeSearch.openLinkLabel),
       types: Array.isArray(safeDetails.types) ? safeDetails.types : (Array.isArray(safeSearch.types) ? safeSearch.types : []),
       coordinates: safeDetails.coordinates || safeSearch.coordinates || null,
-      directions: resolvedPlaceId ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(resolvedPlaceId)}` : ''
+      directions: safeString(safeDetails.directions || safeSearch.directions) || (resolvedPlaceId ? `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(resolvedPlaceId)}` : '')
     };
   }
 
   window.resolvePlaceInputWithGoogleData = window.resolvePlaceInputWithGoogleData || async function(inputType, inputValue) {
     const mainWindow = getMainWindow();
+    const activeTarget = getActiveEditTarget(mainWindow);
+    const festivalMode = isFestivalTarget(activeTarget);
     const rawValue = safeString(inputValue);
     if (!rawValue) {
       throw new Error('Please enter a value.');
@@ -438,7 +666,34 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         diagnostics.log('Place ID extraction', 'Using locally extracted Place ID fallback', { placeId });
       }
 
-      if ((!placeId || !looksLikePlaceId(placeId)) && typeof mainWindow.searchPlaces === 'function' && queryText) {
+      if (festivalMode) {
+        const festivalSearchFn = typeof mainWindow.searchFestivalEvents === 'function'
+          ? mainWindow.searchFestivalEvents
+          : (typeof window.searchFestivalEvents === 'function' ? window.searchFestivalEvents : null);
+        if (typeof festivalSearchFn === 'function' && queryText) {
+          diagnostics.log('festival search', 'Trying festival event adapters', { queryText, target: activeTarget });
+          try {
+            const festivalResults = await festivalSearchFn(queryText, {
+              target: activeTarget,
+              inputType,
+              radiusMiles: null,
+              state: '',
+              mode: 'resolve-single'
+            });
+            if (Array.isArray(festivalResults) && festivalResults.length > 0) {
+              searchResult = normalizeFestivalEventResult(festivalResults[0], safeString(festivalResults[0] && (festivalResults[0].sourceProvider || festivalResults[0].provider)) || 'Festival Provider');
+              if (!placeId) placeId = safeString(searchResult.placeId);
+              diagnostics.log('festival search', 'Festival adapter returned a candidate', { name: searchResult.name, placeId: searchResult.placeId || '' });
+            } else {
+              diagnostics.warn('festival search', 'Festival adapters returned no candidates', { queryText });
+            }
+          } catch (festivalError) {
+            diagnostics.warn('festival search', 'Festival adapter search failed', { error: festivalError.message, queryText });
+          }
+        }
+      }
+
+      if ((!placeId || !looksLikePlaceId(placeId)) && (!festivalMode || !searchResult) && typeof mainWindow.searchPlaces === 'function' && queryText) {
         diagnostics.log('query recovery', 'Trying searchPlaces fallback with recovered query', { queryText });
         const searchResults = await mainWindow.searchPlaces(queryText);
         if (Array.isArray(searchResults) && searchResults.length > 0) {
@@ -450,12 +705,21 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         }
       }
 
-      if (!looksLikePlaceId(placeId)) {
+      if (!looksLikePlaceId(placeId) && !festivalMode) {
         diagnostics.warn('Place ID extraction', 'Resolution failed before Google details lookup', { rawValue, expandedValue, queryText });
         throw createTaggedShortLinkError(`Could not resolve a valid Google Place ID for "${rawValue}".`, diagnostics, { stage: 'Place ID extraction' });
       }
 
-      if (typeof mainWindow.getPlaceDetails === 'function') {
+      if (!looksLikePlaceId(placeId) && festivalMode) {
+        diagnostics.warn('Place ID extraction', 'Festival mode fallback: proceeding without a Google Place ID', {
+          rawValue,
+          expandedValue,
+          queryText,
+          target: activeTarget
+        });
+      }
+
+      if (looksLikePlaceId(placeId) && typeof mainWindow.getPlaceDetails === 'function') {
         diagnostics.log('Google detail lookup', 'Fetching Google place details', { placeId });
         details = await mainWindow.getPlaceDetails(placeId);
         if (details && safeString(details.name) && safeString(details.address)) {
@@ -465,7 +729,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         }
       }
 
-      if ((!details || !safeString(details.name) || !safeString(details.address)) && !searchResult && typeof mainWindow.searchPlaces === 'function' && queryText) {
+      if ((!details || !safeString(details.name) || (!festivalMode && !safeString(details.address))) && !searchResult && typeof mainWindow.searchPlaces === 'function' && queryText) {
         diagnostics.log('Google detail lookup', 'Retrying with searchPlaces for incomplete details', { queryText, placeId });
         const searchResults = await mainWindow.searchPlaces(queryText);
         if (Array.isArray(searchResults) && searchResults.length > 0) {
@@ -477,10 +741,20 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       }
 
       const normalized = normalizeResolvedDetails(placeId, details, searchResult, expandedValue);
-      if (!normalized.placeId || !normalized.name || !normalized.address) {
+      if (festivalMode && !safeString(normalized.name)) {
+        normalized.name = sanitizeFestivalName(queryText || rawValue);
+      }
+      if (festivalMode && (!normalized.name || looksLikeUrl(normalized.name) || looksLikePlaceId(normalized.name))) {
+        normalized.name = sanitizeFestivalName(queryText || normalized.address || rawValue);
+      }
+      // Require at minimum a valid placeId and name; address is optional (some places lack formattedAddress)
+      const resolvedName = normalized.name && normalized.name !== normalized.placeId ? normalized.name : '';
+      if ((!festivalMode && !normalized.placeId) || !resolvedName) {
         diagnostics.warn('Google detail lookup', 'Normalized result is still incomplete after all fallbacks', normalized);
         throw createTaggedShortLinkError(`Google returned incomplete details for "${expandedValue}". No row was added.`, diagnostics, { stage: 'Google detail lookup' });
       }
+      // Patch name back onto normalized in case it had been overridden by a raw placeId value
+      normalized.name = resolvedName;
 
       diagnostics.log('complete', 'Short-link resolution completed successfully', {
         placeId: normalized.placeId,
@@ -582,15 +856,27 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       }
     }
 
-    async addSinglePlace(input, inputType, dryRun = false) {
+    async addSinglePlace(input, inputType, dryRun = false, options = {}) {
       const validation = this.validatePlaceInput(input, inputType);
       if (!validation.isValid) return { success: false, error: validation.error };
-      if (dryRun) return { success: true, isDryRun: true, message: `🧪 [DRY RUN] Would add: ${safeString(input)}` };
+      const preResolved = options && options.resolvedDetails && typeof options.resolvedDetails === 'object'
+        ? normalizeResolvedDetails(options.resolvedDetails.placeId, options.resolvedDetails, options.resolvedDetails, safeString(input))
+        : null;
+      if (dryRun) {
+        return {
+          success: true,
+          isDryRun: true,
+          message: `🧪 [DRY RUN] Would add: ${safeString((preResolved && preResolved.name) || input)}`,
+          placeName: safeString((preResolved && preResolved.name) || input),
+          placeId: safeString(preResolved && preResolved.placeId),
+          details: preResolved || null
+        };
+      }
 
       try {
         const mainWindow = getMainWindow();
-        const details = await window.resolvePlaceInputWithGoogleData(inputType, input);
-        const placeId = details.placeId;
+        const details = preResolved || await window.resolvePlaceInputWithGoogleData(inputType, input);
+        const placeId = safeString(details && details.placeId);
 
         if (typeof mainWindow.buildExcelRow !== 'function') {
           throw new Error('Main window buildExcelRow helper is unavailable.');
@@ -643,13 +929,20 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       }
     }
 
-    async bulkAddPlaces(placesText, inputType, dryRun = false) {
-      const lines = (placesText || '').split('\n').map((line) => line.trim()).filter(Boolean);
+    async bulkAddPlaces(placesText, inputType, dryRun = false, options = {}) {
+      const resolvedDetailsList = Array.isArray(options && options.resolvedDetailsList)
+        ? options.resolvedDetailsList.filter((item) => item && typeof item === 'object')
+        : [];
+      const lines = resolvedDetailsList.length
+        ? resolvedDetailsList.map((item) => safeString(item.name || item.address || item.website || 'Festival Event')).filter(Boolean)
+        : (placesText || '').split('\n').map((line) => line.trim()).filter(Boolean);
       if (lines.length === 0) return { success: false, error: 'No places provided' };
 
       const results = { success: true, total: lines.length, added: 0, failed: 0, skipped: 0, details: [] };
-      for (const line of lines) {
-        const result = await this.addSinglePlace(line, inputType, dryRun);
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        const resolvedDetails = resolvedDetailsList[index] || null;
+        const result = await this.addSinglePlace(line, inputType, dryRun, resolvedDetails ? { resolvedDetails } : undefined);
         if (result && result.success) {
           results.added++;
           results.details.push(`✅ ${result.placeName || line}${result.isDryRun ? ' (dry run)' : ''}`);
