@@ -2954,7 +2954,8 @@
     const updateMap = updates && typeof updates === 'object' ? updates : {};
     const hasTagUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'tagsCsv');
     const hasNotesUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'notes');
-    if (!hasTagUpdate && !hasNotesUpdate) return { synced: false, reason: 'no-fields' };
+    const hasPhotoUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'photoUrls');
+    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate) return { synced: false, reason: 'no-fields' };
 
     const tagColIdx = hasTagUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'tags', ['tags', 'tag', 'keywords', 'category', 'categories'])
@@ -2962,10 +2963,15 @@
     const notesColIdx = hasNotesUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'notes', ['notes', 'note', 'personal notes', 'my notes'])
       : -1;
+    const photoColIdx = hasPhotoUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'photo_urls', ['photo_urls', 'photos', 'photo urls', 'photo url', 'images'])
+      : -1;
 
     if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0)) {
       throw new Error('Target column could not be resolved in source table.');
     }
+    // Photo column is optional — if not found, skip without throwing
+    const shouldSyncPhotos = hasPhotoUpdate && photoColIdx >= 0;
 
     const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
     if (hasTagUpdate) {
@@ -2975,6 +2981,10 @@
     if (hasNotesUpdate) {
       while (rowValues.length <= notesColIdx) rowValues.push('');
       rowValues[notesColIdx] = String(updateMap.notes || '').trim();
+    }
+    if (shouldSyncPhotos) {
+      while (rowValues.length <= photoColIdx) rowValues.push('');
+      rowValues[photoColIdx] = String(updateMap.photoUrls || '').trim();
     }
 
     const patchResponse = await fetch(rowPath, {

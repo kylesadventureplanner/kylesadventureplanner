@@ -10,6 +10,39 @@
   <link rel="stylesheet" href="../CSS/components.css">
   <link rel="stylesheet" href="../CSS/utilities.css">
   <link rel="stylesheet" href="../CSS/adventure-details-window.css">
+  <style>
+    /* ── Photos Tab ─────────────────────────────────── */
+    .ph-empty { color: #9ca3af; font-size: .88em; padding: 10px 0; margin: 0; }
+    .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin: 10px 0; }
+    .ph-item { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f9fafb; position: relative; }
+    .ph-search-grid .ph-search-item { border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; cursor: pointer; transition: border-color .15s; }
+    .ph-search-item.ph-selected { border-color: #2563eb; box-shadow: 0 0 0 2px #93c5fd; }
+    .ph-img-wrap { width: 100%; aspect-ratio: 4/3; overflow: hidden; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
+    .ph-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .ph-broken { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2em; color: #9ca3af; }
+    .ph-caption { font-size: .74em; color: #6b7280; padding: 3px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ph-caption-sm { padding: 3px 4px; }
+    .ph-actions { display: flex; gap: 4px; padding: 4px 6px; background: #fff; border-top: 1px solid #e5e7eb; }
+    .ph-view-btn { font-size: .74em; color: #2563eb; text-decoration: none; flex: 1; }
+    .ph-remove-btn { font-size: .74em; color: #b91c1c; background: none; border: none; cursor: pointer; padding: 0; }
+    .ph-add-tabs { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+    .ph-add-tab { padding: 5px 14px; border-radius: 20px; border: 1px solid #d1d5db; background: #f9fafb; font-size: .85em; cursor: pointer; }
+    .ph-add-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .ph-add-pane { margin-top: 10px; }
+    .ph-hidden { display: none !important; }
+    .ph-search-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ph-search-row .tm-input { flex: 1; min-width: 0; }
+    .ph-api-notice { font-size: .8em; color: #6b7280; margin: 6px 0; }
+    .ph-link-btn { background: none; border: none; color: #2563eb; cursor: pointer; text-decoration: underline; font-size: inherit; padding: 0; }
+    .ph-api-settings { padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; margin-top: 8px; }
+    .ph-file-input { display: none; }
+    .ph-upload-label { display: inline-block; padding: 8px 16px; background: #f3f4f6; border: 2px dashed #d1d5db; border-radius: 8px; cursor: pointer; font-size: .88em; color: #374151; }
+    .ph-upload-label:hover { background: #e5e7eb; border-color: #9ca3af; }
+    .ph-upload-list { margin: 8px 0; font-size: .82em; color: #374151; }
+    .ph-upload-item { padding: 3px 0; }
+    .ph-upload-queue { margin: 8px 0; }
+    .ph-results-hint { font-size: .82em; color: #6b7280; margin: 4px 0 8px; }
+  </style>
 </head>
 <body>
 <div class="wrap">
@@ -23,6 +56,7 @@
     <button class="tab-btn" data-tab="contact" type="button">📞 Contact</button>
     <button class="tab-btn" data-tab="additional" type="button">📌 Additional</button>
     <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
+    <button class="tab-btn" data-tab="photos" type="button">📷 Photos</button>
   </div>
 
   <div id="pane-overview" class="tab-pane active"></div>
@@ -31,6 +65,7 @@
   <div id="pane-contact" class="tab-pane"></div>
   <div id="pane-additional" class="tab-pane"></div>
   <div id="pane-tag-management" class="tab-pane"></div>
+  <div id="pane-photos" class="tab-pane"></div>
 
   <!-- Sticky action bar — always visible regardless of active tab -->
   <div class="action-bar u-hidden mobile-sticky-actions" id="actionBar">
@@ -70,6 +105,12 @@
   var DETAIL_TAGS_COLUMN_INDEX = 3;
   var DETAIL_NOTES_COLUMN_INDEX = 20;
   var DETAIL_NOTES_PREFIX = 'NOTES_JSON_V1::';
+
+  // ── Photos constants ────────────────────────────────────────────
+  var PHOTO_STORAGE_KEY = 'adventureFinderPhotos_v1';
+  var PHOTO_CSE_SETTINGS_KEY = 'adventureFinderGoogleCseSettings';
+  var PHOTO_ONEDRIVE_ROOT = 'Copilot_Apps/Kyles_Adventure_Finder/location-Photos';
+  var PHOTO_URLS_JSON_PREFIX = 'PHOTOS_JSON_V1::';
 
   function toIsoNow() {
     try { return new Date().toISOString(); } catch (_err) { return String(Date.now()); }
@@ -1312,6 +1353,266 @@
 
   // ── End Notes Management ──────────────────────────────────────
 
+  // ── Photos Management ─────────────────────────────────────────
+
+  function getPhotoStorageMap() {
+    try { return JSON.parse(localStorage.getItem(PHOTO_STORAGE_KEY) || '{}'); } catch (_) { return {}; }
+  }
+
+  function getStoredPhotosForPlace(placeKey) {
+    if (!placeKey) return [];
+    var map = getPhotoStorageMap();
+    return Array.isArray(map[placeKey]) ? map[placeKey] : [];
+  }
+
+  function setStoredPhotosForPlace(placeKey, photos) {
+    if (!placeKey) return false;
+    var map = getPhotoStorageMap();
+    map[placeKey] = Array.isArray(photos) ? photos : [];
+    try { localStorage.setItem(PHOTO_STORAGE_KEY, JSON.stringify(map)); return true; } catch (_) { return false; }
+  }
+
+  function getGoogleCseSettings() {
+    try { return JSON.parse(localStorage.getItem(PHOTO_CSE_SETTINGS_KEY) || '{}'); } catch (_) { return {}; }
+  }
+
+  function saveGoogleCseSettings(s) {
+    try { localStorage.setItem(PHOTO_CSE_SETTINGS_KEY, JSON.stringify(s || {})); } catch (_) {}
+  }
+
+  function makePhotoId() {
+    return 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  }
+
+  function slugifyLocationName(name) {
+    return String(name || 'location').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'location';
+  }
+
+  function setPhotoStatus(msg, isError) {
+    var el = document.getElementById('phStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = isError ? '#b91c1c' : '#6b7280';
+  }
+
+  function renderPhotoGallery() {
+    var state = window.__detailPhotosState;
+    var wrap = document.getElementById('phGallery');
+    if (!wrap || !state) return;
+    var photos = Array.isArray(state.photos) ? state.photos : [];
+    if (!photos.length) {
+      wrap.innerHTML = '<p class="ph-empty">No photos saved yet. Search, paste a URL, or upload below.</p>';
+      return;
+    }
+    wrap.innerHTML = '<div class="ph-grid">' + photos.map(function (ph, idx) {
+      var thumb = ph.thumbnail || ph.url || '';
+      return '<div class="ph-item" data-ph-idx="' + idx + '">' +
+        '<div class="ph-img-wrap"><img class="ph-thumb" src="' + escapeHtml(thumb) + '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" />' +
+        '<div class="ph-broken" style="display:none">🖼️</div></div>' +
+        (ph.caption ? '<div class="ph-caption">' + escapeHtml(ph.caption) + '</div>' : '') +
+        '<div class="ph-actions">' +
+        '<a class="ph-view-btn" href="' + escapeHtml(ph.url) + '" target="_blank" rel="noopener" title="Open full size">⤢ View</a>' +
+        '<button type="button" class="ph-remove-btn" data-ph-idx="' + idx + '" title="Remove photo">✕ Remove</button>' +
+        '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  async function searchGoogleImages(query) {
+    var settings = getGoogleCseSettings();
+    var apiKey = String(settings.apiKey || '').trim();
+    var cx = String(settings.cx || '').trim();
+    if (!apiKey || !cx) return null; // null = not configured
+    var url = 'https://www.googleapis.com/customsearch/v1?key=' + encodeURIComponent(apiKey) +
+      '&cx=' + encodeURIComponent(cx) + '&searchType=image&num=10&q=' + encodeURIComponent(query);
+    var resp = await fetch(url);
+    if (!resp.ok) {
+      var errJson = await resp.json().catch(function () { return {}; });
+      var msg = (errJson.error && errJson.error.message) ? errJson.error.message : 'HTTP ' + resp.status;
+      throw new Error(msg);
+    }
+    var json = await resp.json();
+    return Array.isArray(json.items) ? json.items.map(function (item) {
+      return {
+        id: makePhotoId(),
+        url: item.link || '',
+        thumbnail: (item.image && item.image.thumbnailLink) ? item.image.thumbnailLink : item.link || '',
+        caption: item.title || '',
+        source: 'google'
+      };
+    }) : [];
+  }
+
+  async function uploadPhotoToOneDrive(file, locationName) {
+    var accessToken = window.accessToken || (window.parent && window.parent.accessToken) || '';
+    if (!accessToken) throw new Error('Sign in to upload photos to OneDrive.');
+    var slug = slugifyLocationName(locationName);
+    var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    var fileName = Date.now() + '_' + safeName;
+    var oneDrivePath = PHOTO_ONEDRIVE_ROOT + '/' + slug + '/' + fileName;
+    var encodedPath = encodeURIComponent(oneDrivePath).replace(/%2F/g, '/');
+    var uploadUrl = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/content';
+    var resp = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': file.type || 'application/octet-stream' },
+      body: file
+    });
+    if (!resp.ok) throw new Error('Upload failed (HTTP ' + resp.status + ')');
+    var json = await resp.json();
+    var webUrl = (json['@microsoft.graph.downloadUrl'] || json.webUrl || oneDrivePath);
+    return {
+      id: makePhotoId(),
+      url: webUrl,
+      thumbnail: webUrl,
+      caption: file.name,
+      source: 'onedrive',
+      oneDrivePath: oneDrivePath
+    };
+  }
+
+  function serializePhotosForExcel(photos) {
+    var arr = (photos || []).map(function (ph) { return String(ph && ph.url ? ph.url : '').trim(); }).filter(Boolean);
+    return arr.length ? (PHOTO_URLS_JSON_PREFIX + JSON.stringify(arr)) : '';
+  }
+
+  async function saveLocationPhotos() {
+    var state = window.__detailPhotosState;
+    if (!state) return;
+    setPhotoStatus('Saving…', false);
+    var ok = setStoredPhotosForPlace(state.placeKey, state.photos);
+    if (!ok) { setPhotoStatus('Failed to save photos (storage unavailable).', true); return; }
+
+    // Try sync via host
+    try {
+      var serialized = serializePhotosForExcel(state.photos);
+      var hostSync = await syncViaExplorerHost(state, { photoUrls: serialized });
+      if (hostSync.attempted && hostSync.synced) {
+        setPhotoStatus('Photos saved and synced to Excel (' + state.photos.length + ' photo' + (state.photos.length !== 1 ? 's' : '') + ').', false);
+        showDetailToast('✅ Photos saved and synced to Excel.', 'success', 3500);
+        return;
+      }
+    } catch (_) {}
+
+    setPhotoStatus('Photos saved locally (' + state.photos.length + ' photo' + (state.photos.length !== 1 ? 's' : '') + '). Sign in to sync to Excel.', false);
+    showDetailToast('📷 Photos saved locally.', 'info', 3200);
+  }
+
+  function renderSearchResults(results) {
+    var wrap = document.getElementById('phSearchResults');
+    if (!wrap) return;
+    if (!results || !results.length) {
+      wrap.innerHTML = '<p class="ph-empty">No results found.</p>';
+      return;
+    }
+    wrap.innerHTML = '<p class="ph-results-hint">Click photos to select, then click <strong>Add Selected</strong>.</p>' +
+      '<div class="ph-grid ph-search-grid">' + results.map(function (ph, idx) {
+        return '<div class="ph-search-item" data-search-idx="' + idx + '">' +
+          '<img class="ph-thumb" src="' + escapeHtml(ph.thumbnail || ph.url) + '" alt="" loading="lazy" onerror="this.style.opacity=\'0.3\'" />' +
+          '<div class="ph-caption ph-caption-sm">' + escapeHtml((ph.caption || '').slice(0, 60)) + '</div>' +
+          '</div>';
+      }).join('') + '</div>' +
+      '<button type="button" class="tm-btn primary" id="phAddSelectedBtn" style="margin-top:10px">Add Selected to Gallery</button>';
+    window.__photoSearchResults = results;
+    wrap.querySelectorAll('.ph-search-item').forEach(function (item) {
+      item.addEventListener('click', function () { item.classList.toggle('ph-selected'); });
+    });
+  }
+
+  function renderPhotosPane(data, payload) {
+    var pane = document.getElementById('pane-photos');
+    if (!pane) return;
+    var placeKey = getTagPlaceKey(data);
+    var photos = getStoredPhotosForPlace(placeKey);
+    window.__detailPhotosState = {
+      placeKey: placeKey,
+      photos: photos.slice(),
+      data: data,
+      payload: payload,
+      explorerSource: payload && payload.explorerSource ? payload.explorerSource : null
+    };
+    var locationName = (data && data.name) || 'this location';
+    var settings = getGoogleCseSettings();
+    var hasApiKey = !!(settings.apiKey && settings.cx);
+    pane.innerHTML =
+      '<div class="tm-wrap">' +
+      '<div class="tm-head">' +
+      '<h3 class="tm-title">📷 Photos</h3>' +
+      '<div id="phStatus" class="tm-status">Manage photos for this location</div>' +
+      '</div>' +
+
+      // Saved gallery
+      '<div class="tm-section-label">Saved Photos</div>' +
+      '<div id="phGallery"></div>' +
+      '<div class="tm-actions" style="margin-bottom:18px">' +
+      '<button type="button" class="tm-btn primary" id="phSaveBtn">Save Photos</button>' +
+      '</div>' +
+
+      // Add photos section – three sub-tabs
+      '<div class="tm-section-label">Add Photos</div>' +
+      '<div class="ph-add-tabs">' +
+      '<button type="button" class="ph-add-tab active" data-add-tab="search">🔍 Search</button>' +
+      '<button type="button" class="ph-add-tab" data-add-tab="url">🔗 URL</button>' +
+      '<button type="button" class="ph-add-tab" data-add-tab="upload">⬆️ Upload</button>' +
+      '</div>' +
+
+      // Search pane
+      '<div id="phAddPane-search" class="ph-add-pane">' +
+      '<div class="ph-search-row">' +
+      '<input id="phSearchInput" class="tm-input" type="text" placeholder="Search query…" value="' + escapeHtml(locationName) + '" />' +
+      '<button type="button" class="tm-btn primary" id="phSearchBtn">Search</button>' +
+      '</div>' +
+      (hasApiKey ? '' :
+        '<div class="ph-api-notice">Google Custom Search requires an API key. ' +
+        '<button type="button" class="ph-link-btn" id="phShowSettingsBtn">Configure API key</button>' +
+        ' or <a href="' + escapeHtml('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(locationName)) + '" target="_blank" rel="noopener" class="ph-link-btn">Open Google Images ↗</a></div>') +
+      '<div id="phApiSettings" class="ph-api-settings' + (hasApiKey ? '' : ' ph-hidden') + '">' +
+      '<div style="font-size:0.8em;color:#6b7280;margin-bottom:6px">Google Custom Search API credentials (stored locally only)</div>' +
+      '<input id="phApiKey" class="tm-input" type="text" placeholder="API Key" value="' + escapeHtml(settings.apiKey || '') + '" style="margin-bottom:5px" />' +
+      '<input id="phCx" class="tm-input" type="text" placeholder="Search Engine ID (cx)" value="' + escapeHtml(settings.cx || '') + '" style="margin-bottom:5px" />' +
+      '<button type="button" class="tm-btn" id="phSaveSettingsBtn">Save Settings</button>' +
+      '</div>' +
+      '<div id="phSearchResults"></div>' +
+      '</div>' +
+
+      // URL pane
+      '<div id="phAddPane-url" class="ph-add-pane ph-hidden">' +
+      '<div class="ph-search-row">' +
+      '<input id="phUrlInput" class="tm-input" type="url" placeholder="https://example.com/photo.jpg" />' +
+      '<button type="button" class="tm-btn primary" id="phAddUrlBtn">Add Photo</button>' +
+      '</div>' +
+      '<div style="font-size:0.8em;color:#6b7280;margin-top:6px">Paste any direct image URL (jpg, png, webp, etc.)</div>' +
+      '</div>' +
+
+      // Upload pane
+      '<div id="phAddPane-upload" class="ph-add-pane ph-hidden">' +
+      '<div style="font-size:0.85em;color:#6b7280;margin-bottom:8px">Photos will be uploaded to <code>OneDrive/Kyles_Adventure_Finder/location-Photos/' + escapeHtml(slugifyLocationName(locationName)) + '/</code></div>' +
+      '<input id="phUploadInput" type="file" accept="image/*" multiple class="ph-file-input" />' +
+      '<label for="phUploadInput" class="ph-upload-label">📁 Choose Photos (or drag &amp; drop)</label>' +
+      '<div id="phUploadQueue" class="ph-upload-queue"></div>' +
+      '<button type="button" class="tm-btn primary" id="phUploadBtn" disabled>Upload to OneDrive</button>' +
+      '</div>' +
+
+      '</div>'; // end tm-wrap
+
+    renderPhotoGallery();
+    bindPhotosAddTabSwitcher();
+  }
+
+  function bindPhotosAddTabSwitcher() {
+    var pane = document.getElementById('pane-photos');
+    if (!pane) return;
+    pane.querySelectorAll('.ph-add-tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        pane.querySelectorAll('.ph-add-tab').forEach(function (b) { b.classList.remove('active'); });
+        pane.querySelectorAll('.ph-add-pane').forEach(function (p) { p.classList.add('ph-hidden'); });
+        btn.classList.add('active');
+        var target = document.getElementById('phAddPane-' + btn.getAttribute('data-add-tab'));
+        if (target) target.classList.remove('ph-hidden');
+      });
+    });
+  }
+
+  // ── End Photos Management ─────────────────────────────────────
+
   function render(payload) {
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
@@ -1385,6 +1686,7 @@
     renderDetailNotesPane();
 
     renderTagManagementPane(data, sourceTagList, storedTagList, payload);
+    renderPhotosPane(data, payload);
 
     document.getElementById('pane-contact').innerHTML =
       '<div class="grid">' +
@@ -1783,6 +2085,128 @@
       if (closestFromEvent(e, '#dnmSaveBtn')) {
         saveDetailNotes();
       }
+
+      // ── Photos event dispatch ───────────────────────────────
+      if (closestFromEvent(e, '#phSaveBtn')) {
+        saveLocationPhotos();
+        return;
+      }
+
+      if (closestFromEvent(e, '#phSearchBtn')) {
+        var searchInput = document.getElementById('phSearchInput');
+        var query = searchInput ? searchInput.value.trim() : '';
+        if (!query) return;
+        var resultsWrap = document.getElementById('phSearchResults');
+        if (resultsWrap) resultsWrap.innerHTML = '<p class="ph-empty">Searching…</p>';
+        searchGoogleImages(query).then(function (results) {
+          if (results === null) {
+            // Not configured — show settings
+            var apiSettings = document.getElementById('phApiSettings');
+            if (apiSettings) apiSettings.classList.remove('ph-hidden');
+            if (resultsWrap) resultsWrap.innerHTML = '<p class="ph-empty">Configure your Google Custom Search API key above, then search again.</p>';
+          } else {
+            renderSearchResults(results);
+          }
+        }).catch(function (err) {
+          if (resultsWrap) resultsWrap.innerHTML = '<p class="ph-empty" style="color:#b91c1c">Search failed: ' + escapeHtml(err.message || String(err)) + '</p>';
+        });
+        return;
+      }
+
+      if (closestFromEvent(e, '#phShowSettingsBtn')) {
+        var apiSettingsPanel = document.getElementById('phApiSettings');
+        if (apiSettingsPanel) apiSettingsPanel.classList.toggle('ph-hidden');
+        return;
+      }
+
+      if (closestFromEvent(e, '#phSaveSettingsBtn')) {
+        var keyInput = document.getElementById('phApiKey');
+        var cxInput = document.getElementById('phCx');
+        saveGoogleCseSettings({ apiKey: keyInput ? keyInput.value.trim() : '', cx: cxInput ? cxInput.value.trim() : '' });
+        showDetailToast('✅ Google CSE settings saved.', 'success', 2400);
+        return;
+      }
+
+      if (closestFromEvent(e, '#phAddSelectedBtn')) {
+        var photoState = window.__detailPhotosState;
+        var searchResults = window.__photoSearchResults;
+        if (!photoState || !Array.isArray(searchResults)) return;
+        var selected = document.querySelectorAll('.ph-search-item.ph-selected');
+        var added = 0;
+        selected.forEach(function (item) {
+          var idx = Number(item.getAttribute('data-search-idx'));
+          var ph = searchResults[idx];
+          if (ph) { photoState.photos.push(ph); added++; }
+        });
+        if (added) {
+          renderPhotoGallery();
+          showDetailToast('✅ ' + added + ' photo' + (added !== 1 ? 's' : '') + ' added. Click Save Photos.', 'info', 3000);
+          setPhotoStatus(added + ' photo' + (added !== 1 ? 's' : '') + ' added — click Save Photos to persist.', false);
+          // Clear selections
+          document.querySelectorAll('.ph-search-item.ph-selected').forEach(function (i) { i.classList.remove('ph-selected'); });
+        }
+        return;
+      }
+
+      if (closestFromEvent(e, '#phAddUrlBtn')) {
+        var urlInput = document.getElementById('phUrlInput');
+        var photoUrl = urlInput ? urlInput.value.trim() : '';
+        if (!photoUrl || !/^https?:\/\//i.test(photoUrl)) {
+          showDetailToast('Please enter a valid https:// URL.', 'error', 2800);
+          return;
+        }
+        var urlState = window.__detailPhotosState;
+        if (urlState) {
+          urlState.photos.push({ id: makePhotoId(), url: photoUrl, thumbnail: photoUrl, caption: '', source: 'url', addedAt: toIsoNow() });
+          renderPhotoGallery();
+          setPhotoStatus('Photo added — click Save Photos to persist.', false);
+          showDetailToast('✅ Photo added. Click Save Photos.', 'info', 2800);
+          if (urlInput) urlInput.value = '';
+        }
+        return;
+      }
+
+      var phRemoveBtn = closestFromEvent(e, '.ph-remove-btn');
+      if (phRemoveBtn) {
+        var removeIdx = Number(phRemoveBtn.getAttribute('data-ph-idx'));
+        var removeState = window.__detailPhotosState;
+        if (removeState && Number.isInteger(removeIdx) && removeIdx >= 0 && removeIdx < removeState.photos.length) {
+          removeState.photos.splice(removeIdx, 1);
+          renderPhotoGallery();
+          setPhotoStatus('Photo removed — click Save Photos to persist.', false);
+        }
+        return;
+      }
+
+      if (closestFromEvent(e, '#phUploadBtn')) {
+        var uploadInput = document.getElementById('phUploadInput');
+        var files = uploadInput && uploadInput.files ? Array.from(uploadInput.files) : [];
+        if (!files.length) return;
+        var uploadState = window.__detailPhotosState;
+        if (!uploadState) return;
+        var locationNameForUpload = (uploadState.data && uploadState.data.name) || 'location';
+        var uploadBtn = document.getElementById('phUploadBtn');
+        if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.textContent = 'Uploading…'; }
+        setPhotoStatus('Uploading ' + files.length + ' file' + (files.length !== 1 ? 's' : '') + '…', false);
+        Promise.all(files.map(function (file) { return uploadPhotoToOneDrive(file, locationNameForUpload); }))
+          .then(function (uploaded) {
+            uploaded.forEach(function (ph) { uploadState.photos.push(ph); });
+            renderPhotoGallery();
+            if (uploadInput) uploadInput.value = '';
+            var queueDiv = document.getElementById('phUploadQueue');
+            if (queueDiv) queueDiv.innerHTML = '';
+            setPhotoStatus(uploaded.length + ' photo' + (uploaded.length !== 1 ? 's' : '') + ' uploaded — click Save Photos.', false);
+            showDetailToast('✅ ' + uploaded.length + ' photo' + (uploaded.length !== 1 ? 's' : '') + ' uploaded. Click Save Photos.', 'success', 3500);
+          })
+          .catch(function (err) {
+            setPhotoStatus('Upload failed: ' + (err && err.message ? err.message : String(err)), true);
+            showDetailToast('⚠️ Upload failed: ' + (err && err.message ? err.message : String(err)), 'error', 4500);
+          })
+          .finally(function () {
+            if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.textContent = 'Upload to OneDrive'; }
+          });
+        return;
+      }
     });
 
     document.addEventListener('keydown', function (e) {
@@ -1799,6 +2223,22 @@
       e.preventDefault();
       addTagToDetailState(active.value);
       active.value = '';
+    });
+
+    document.addEventListener('change', function (e) {
+      var fileInput = closestFromEvent(e, '#phUploadInput');
+      if (!fileInput) return;
+      var files = fileInput.files ? Array.from(fileInput.files) : [];
+      var queueDiv = document.getElementById('phUploadQueue');
+      var uploadBtn = document.getElementById('phUploadBtn');
+      if (queueDiv) {
+        queueDiv.innerHTML = files.length
+          ? '<div class="ph-upload-list">' + files.map(function (f) {
+              return '<div class="ph-upload-item">📄 ' + escapeHtml(f.name) + ' (' + (f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.round(f.size / 1024) + ' KB') + ')</div>';
+            }).join('') + '</div>'
+          : '';
+      }
+      if (uploadBtn) uploadBtn.disabled = files.length === 0;
     });
 
     var payload = fromStoredPayload();
