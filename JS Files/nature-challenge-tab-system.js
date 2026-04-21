@@ -9805,12 +9805,29 @@
   function installNatureCtaActionBus() {
     if (window.__natCtaActionBusInstalled) return;
     window.__natCtaActionBusInstalled = true;
-    document.addEventListener('click', (event) => {
+
+    const handleActionBusEvent = (event) => {
       if (event && event.__natureCtaHandled === true) return;
       const btn = event.target && event.target.closest
         ? event.target.closest('[data-birds-cta-action], #birdsExploreBtn, #birdsOpenLogBtn, #birdsOpenMapBtn, #natureChallengeRefreshBtn')
         : null;
       if (!btn) return;
+
+      if (event.type === 'pointerup') {
+        const pointerType = String(event.pointerType || '').toLowerCase();
+        if (pointerType && pointerType !== 'touch' && pointerType !== 'pen' && pointerType !== 'mouse') return;
+        if (event.isPrimary === false || Number(event.button) > 0) return;
+        btn.dataset.naturePointerHandledAt = String(Date.now());
+      } else if (event.type === 'click') {
+        const lastPointerHandledAt = Number(btn.dataset.naturePointerHandledAt || 0);
+        const dedupeAgeMs = lastPointerHandledAt ? (Date.now() - lastPointerHandledAt) : 0;
+        if (lastPointerHandledAt && dedupeAgeMs < 700) {
+          btn.removeAttribute('data-nature-pointer-handled-at');
+          emitBirdClickTrace('cta-action-bus-click-deduped', event, btn, { dedupeAgeMs });
+          return;
+        }
+      }
+
       const action = resolveNatureCtaActionFromButton(btn);
       if (!action) return;
       emitNatureCtaScrollRuntimeDiagnostic(document.getElementById('natureChallengeRoot'), action, 'action-bus');
@@ -9837,7 +9854,12 @@
           message: error && error.message ? String(error.message) : 'unknown-error'
         });
       }
-    }, true);
+    };
+
+    document.addEventListener('click', handleActionBusEvent, true);
+    if (typeof window.PointerEvent === 'function') {
+      document.addEventListener('pointerup', handleActionBusEvent, true);
+    }
   }
 
   function bindNatureCtaDirectFallback(root) {

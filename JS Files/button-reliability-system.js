@@ -125,6 +125,15 @@
   }
 
   function inspectInteractionPath(event) {
+    // Synthetic .click() / keyboard activations can report (0,0) and topElement=body/html.
+    // Those are not real pointer interceptions and should not increment overlay telemetry.
+    if (event && event.type === 'click') {
+      const syntheticLike = event.isTrusted === false;
+      const keyboardLike = Number(event.detail || 0) === 0 && !Number.isFinite(event.clientX) && !Number.isFinite(event.clientY);
+      const zeroPointLike = Number(event.clientX || 0) === 0 && Number(event.clientY || 0) === 0 && Number(event.detail || 0) === 0;
+      if (syntheticLike || keyboardLike || zeroPointLike) return;
+    }
+
     if (!event || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY) || typeof document.elementsFromPoint !== 'function') return;
 
     const interactiveSelector = getInteractiveSelector();
