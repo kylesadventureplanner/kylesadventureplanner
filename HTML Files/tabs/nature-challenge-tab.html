@@ -1332,14 +1332,26 @@
       min-height: 50px;
     }
 
+  /* .nature-explore-cta-card is made sticky below; the action-rail inside
+     inherits that context and needs no independent sticky/static override. */
   #natureChallengeRoot .nature-explore-cta-actions.nature-sticky-action-rail {
-    position: static;
-    top: auto;
-    background: transparent;
-    backdrop-filter: none;
-    border: none;
-    border-radius: 0;
-    padding: 0;
+    /* intentionally left without a position override —
+       the parent card handles stickiness */
+  }
+
+  /* Keep the whole CTA card pinned to the top of the viewport while the
+     user scrolls through the birds overview so the primary action buttons
+     (Explore, Log, Map, Refresh) remain reachable at all times. */
+  #natureChallengeRoot .nature-explore-cta-card {
+    position: sticky;
+    top: var(--ui-section-header-top, 82px);
+    z-index: 26;
+    /* Suppress the lift-on-hover transform that looks odd on a sticky element */
+    transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  #natureChallengeRoot .nature-explore-cta-card:hover {
+    transform: none;
   }
 
    #natureChallengeRoot .nature-explore-birds-btn {
@@ -3483,6 +3495,15 @@
     background: transparent;
   }
 
+  /* On mobile the sticky CTA card would consume too much vertical space;
+     revert to normal flow so it scrolls with the content. */
+  body.mobile-view #natureChallengeRoot .nature-explore-cta-card,
+  body.iphone-view #natureChallengeRoot .nature-explore-cta-card {
+    position: static;
+    top: auto;
+    z-index: auto;
+  }
+
   body.mobile-view #natureChallengeRoot .nature-explore-cta-row,
   body.iphone-view #natureChallengeRoot .nature-explore-cta-row,
   body.mobile-view #natureChallengeRoot .nature-view-header-row,
@@ -3646,6 +3667,12 @@
       background: transparent;
     }
 
+    /* Revert the CTA card to normal flow on narrow viewports */
+    #natureChallengeRoot .nature-explore-cta-card {
+      position: static;
+      top: auto;
+      z-index: auto;
+    }
 
     #natureChallengeRoot .nature-explore-cta-row {
       flex-direction: column;

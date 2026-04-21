@@ -463,6 +463,25 @@
 
       const rect = target.getBoundingClientRect();
       if (!rect || rect.width < 2 || rect.height < 2) {
+        // Check if the zero-size rect is because the button is inside an inactive
+        // (hidden) tab pane — that is expected and not a real blockage.
+        const inactivePane = target.closest
+          ? (target.closest('.app-tab-pane:not(.active)') ||
+             target.closest('[hidden]') ||
+             target.closest('[style*="display: none"]') ||
+             target.closest('[style*="display:none"]'))
+          : null;
+        if (inactivePane) {
+          const inactiveResult = {
+            ok: true,
+            reason: 'inactive-tab',
+            note: 'Button is in a hidden/inactive tab pane — not a reliability concern.',
+            buttonId: target.id || '',
+            paneId: inactivePane.id || inactivePane.dataset.tab || '',
+            rect: { width: rect ? rect.width : 0, height: rect ? rect.height : 0 }
+          };
+          return inactiveResult;
+        }
         const invalid = {
           ok: false,
           reason: 'invalid-rect',
