@@ -1766,7 +1766,8 @@
         query: '',
         sort: 'name-asc',
         stateFilter: 'all',
-        cityFilter: 'all'
+        cityFilter: 'all',
+        detailsNavigation: null
       };
     }
     return state.subtabExplorer[subtabKey];
@@ -2472,7 +2473,7 @@
     ].join('');
   }
 
-  function cacheExplorerDetailsPayload(subtabKey, item) {
+  function cacheExplorerDetailsPayload(subtabKey, item, navigationContext) {
     if (!item) return null;
     const detailKey = `adventure_details_visited_${subtabKey}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const payload = {
@@ -2485,6 +2486,19 @@
         table: item.sourceTable || '',
         rowIndex: Number.isInteger(item.sourceRowIndex) ? item.sourceRowIndex : -1
       },
+      navigation: navigationContext
+        ? {
+            sessionId: String(navigationContext.sessionId || '').trim(),
+            subtabKey: String(navigationContext.subtabKey || subtabKey || '').trim(),
+            currentItemId: String(navigationContext.currentItemId || item.id || '').trim(),
+            currentIndex: Number(navigationContext.currentIndex),
+            totalCount: Number(navigationContext.totalCount),
+            hasPrevious: Boolean(navigationContext.hasPrevious),
+            previousItemId: String(navigationContext.previousItemId || '').trim(),
+            hasNext: Boolean(navigationContext.hasNext),
+            nextItemId: String(navigationContext.nextItemId || '').trim()
+          }
+        : null,
       data: {
         name: item.title || '',
         googlePlaceId: item.placeId || '',
@@ -2522,13 +2536,110 @@
     }
   }
 
-  function buildExplorerDetailsUrl(subtabKey, item, initialTab) {
+  function createExplorerDetailsNavigationSnapshot(subtabKey, anchorItemId) {
+    const explorerState = getExplorerState(subtabKey);
+    const filtered = filterAndSortExplorerItems(explorerState.items || [], explorerState);
+    const orderedItemIds = filtered
+      .map((entry) => String(entry && entry.id ? entry.id : '').trim())
+      .filter(Boolean);
+    const anchorId = String(anchorItemId || '').trim();
+    if (anchorId && !orderedItemIds.includes(anchorId)) {
+      orderedItemIds.unshift(anchorId);
+    }
+    const snapshot = {
+      sessionId: `visited_details_nav_${subtabKey}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      subtabKey,
+      orderedItemIds,
+      createdAt: new Date().toISOString()
+    };
+    explorerState.detailsNavigation = snapshot;
+    return snapshot;
+  }
+
+  function getExplorerDetailsNavigationContext(subtabKey, currentItemId, options = {}) {
+    const explorerState = getExplorerState(subtabKey);
+    const currentId = String(currentItemId || '').trim();
+    const requestedSessionId = String(options.navigationSessionId || '').trim();
+    const shouldReuse = Boolean(options.reuseNavigation);
+    let navigation = explorerState.detailsNavigation;
+
+    const hasNavigation = navigation
+      && Array.isArray(navigation.orderedItemIds)
+      && navigation.orderedItemIds.length > 0;
+    const sessionMatches = requestedSessionId
+      ? (hasNavigation && String(navigation.sessionId || '').trim() === requestedSessionId)
+      : hasNavigation;
+
+    if (!hasNavigation || (!shouldReuse && !requestedSessionId) || !sessionMatches) {
+      navigation = createExplorerDetailsNavigationSnapshot(subtabKey, currentId);
+    }
+
+    const ordered = Array.isArray(navigation.orderedItemIds) ? navigation.orderedItemIds : [];
+    let currentIndex = ordered.indexOf(currentId);
+    if (currentIndex < 0) {
+      navigation = createExplorerDetailsNavigationSnapshot(subtabKey, currentId);
+      currentIndex = navigation.orderedItemIds.indexOf(currentId);
+    }
+
+    const previousItemId = currentIndex > 0
+      ? navigation.orderedItemIds[currentIndex - 1]
+      : '';
+    const nextItemId = currentIndex >= 0 && currentIndex < navigation.orderedItemIds.length - 1
+      ? navigation.orderedItemIds[currentIndex + 1]
+      : '';
+
+    return {
+      sessionId: String(navigation.sessionId || '').trim(),
+      subtabKey,
+      currentItemId: currentId,
+      currentIndex,
+      totalCount: navigation.orderedItemIds.length,
+      hasPrevious: Boolean(previousItemId),
+      previousItemId,
+      hasNext: Boolean(nextItemId),
+      nextItemId
+    };
+  }
+
+  function resolveExplorerDetailsNeighborItemId(subtabKey, sessionId, currentItemId, direction) {
+    const explorerState = getExplorerState(subtabKey);
+    const navigation = explorerState.detailsNavigation;
+    if (!navigation || !Array.isArray(navigation.orderedItemIds) || !navigation.orderedItemIds.length) return '';
+
+    const sessionMatch = String(sessionId || '').trim();
+    if (sessionMatch && String(navigation.sessionId || '').trim() !== sessionMatch) return '';
+
+    const currentId = String(currentItemId || '').trim();
+    const currentIndex = navigation.orderedItemIds.indexOf(currentId);
+    if (currentIndex < 0) return '';
+
+    const normalizedDirection = String(direction || 'next').trim().toLowerCase();
+    const step = normalizedDirection === 'previous' ? -1 : 1;
+    const targetIndex = currentIndex + step;
+    if (targetIndex < 0 || targetIndex >= navigation.orderedItemIds.length) return '';
+    return String(navigation.orderedItemIds[targetIndex] || '').trim();
+  }
+
+  function resolveNextExplorerDetailsItemId(subtabKey, sessionId, currentItemId) {
+    return resolveExplorerDetailsNeighborItemId(subtabKey, sessionId, currentItemId, 'next');
+  }
+
+  function buildExplorerDetailsUrl(subtabKey, item, initialTab, navigationContext) {
     const baseUrl = resolveInlinePageUrl('HTML Files/adventure-details-window.html');
     const url = new URL(baseUrl, window.location.href);
-    const detailKey = cacheExplorerDetailsPayload(subtabKey, item);
+    const detailKey = cacheExplorerDetailsPayload(subtabKey, item, navigationContext);
     if (detailKey) url.searchParams.set('detailKey', detailKey);
     url.searchParams.set('embedded', '1');
     url.searchParams.set('sourceIndex', '-1');
+    if (navigationContext) {
+      if (navigationContext.sessionId) url.searchParams.set('navSessionId', String(navigationContext.sessionId));
+      if (navigationContext.subtabKey) url.searchParams.set('navSubtabKey', String(navigationContext.subtabKey));
+      if (navigationContext.currentItemId) url.searchParams.set('navCurrentItemId', String(navigationContext.currentItemId));
+      url.searchParams.set('navHasPrevious', navigationContext.hasPrevious ? '1' : '0');
+      if (navigationContext.previousItemId) url.searchParams.set('navPreviousItemId', String(navigationContext.previousItemId));
+      url.searchParams.set('navHasNext', navigationContext.hasNext ? '1' : '0');
+      if (navigationContext.nextItemId) url.searchParams.set('navNextItemId', String(navigationContext.nextItemId));
+    }
     if (initialTab) url.searchParams.set('initialTab', String(initialTab));
     url.searchParams.set('ts', String(Date.now()));
     return url.toString();
@@ -2561,14 +2672,15 @@
     return view;
   }
 
-  function openExplorerDetailsPage(root, subtabKey, itemId) {
+  function openExplorerDetailsPage(root, subtabKey, itemId, options = {}) {
     const item = getExplorerItemById(subtabKey, itemId);
     const view = ensureExplorerDetailsView(root, subtabKey);
     if (!view || !item) return;
+    const navigationContext = getExplorerDetailsNavigationContext(subtabKey, itemId, options);
     const title = document.getElementById(`visitedExplorerDetailsPageTitle-${subtabKey}`) || view.querySelector('.card-title');
     const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`) || view.querySelector('iframe');
     if (title) title.textContent = item && item.title ? item.title : 'Location Details';
-    if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item));
+    if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, options.initialTab, navigationContext));
     setExplorerView(root, subtabKey, 'explorer-details');
   }
 
@@ -4488,6 +4600,38 @@
         window.addEventListener('message', (event) => {
           if (!event || event.origin !== window.location.origin) return;
           const data = event.data || {};
+          if (data.type === 'planner-explorer-details-next' || data.type === 'planner-explorer-details-navigate') {
+            const subtabKey = String(data.sourceSubtab || state.activeProgressSubTab || 'outdoors').trim();
+            const currentItemId = String(data.currentItemId || '').trim();
+            const sessionId = String(data.sessionId || '').trim();
+            const initialTab = String(data.initialTab || '').trim();
+            const targetItemIdHint = String(data.targetItemIdHint || '').trim();
+            const direction = data.type === 'planner-explorer-details-next'
+              ? 'next'
+              : String(data.direction || 'next').trim().toLowerCase();
+            let targetItemId = resolveExplorerDetailsNeighborItemId(subtabKey, sessionId, currentItemId, direction);
+            if (!targetItemId && targetItemIdHint && getExplorerItemById(subtabKey, targetItemIdHint)) {
+              targetItemId = targetItemIdHint;
+            }
+            if (!targetItemId) {
+              if (typeof window.showToast === 'function') {
+                window.showToast(
+                  direction === 'previous'
+                    ? 'No previous location in this filtered list.'
+                    : 'No next location in this filtered list.',
+                  'info',
+                  2200
+                );
+              }
+              return;
+            }
+            openExplorerDetailsPage(root, subtabKey, targetItemId, {
+              reuseNavigation: true,
+              navigationSessionId: sessionId,
+              initialTab: initialTab || undefined
+            });
+            return;
+          }
           if (data.type !== 'planner-inline-tool-close') return;
           const subtabKey = String(data.sourceSubtab || state.activeProgressSubTab || 'outdoors').trim();
           if (data.tool === 'city-viewer') closeCityExplorerForSubtab(root, subtabKey);
@@ -4772,9 +4916,7 @@
             const itemId = String(explorerTagsBtn.getAttribute('data-visited-explorer-tags') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);
             if (item && acquireExplorerActionLock(`tags:${subtabKey}:${itemId}`, 260)) {
-              openExplorerDetailsPage(root, subtabKey, itemId);
-              const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`);
-              if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, 'tag-management'));
+              openExplorerDetailsPage(root, subtabKey, itemId, { initialTab: 'tag-management' });
             }
             return;
           }
@@ -4786,9 +4928,7 @@
             const itemId = String(explorerNotesBtn.getAttribute('data-visited-explorer-notes') || '').trim();
             const item = getExplorerItemById(subtabKey, itemId);
             if (item && acquireExplorerActionLock(`notes:${subtabKey}:${itemId}`, 260)) {
-              openExplorerDetailsPage(root, subtabKey, itemId);
-              const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`);
-              if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, 'notes'));
+              openExplorerDetailsPage(root, subtabKey, itemId, { initialTab: 'notes' });
             }
             return;
           }

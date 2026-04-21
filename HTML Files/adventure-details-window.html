@@ -140,6 +140,64 @@
     return '<button type="button" class="auth-btn" id="closeTabBtn">✕ Close Tab</button>';
   }
 
+  function getActiveDetailTabId() {
+    var active = document.querySelector('#tabs .tab-btn[aria-selected="true"]') || document.querySelector('#tabs .tab-btn.active');
+    return active ? String(active.getAttribute('data-tab') || 'overview').trim() || 'overview' : 'overview';
+  }
+
+  function getDetailNavigationContext(payload) {
+    var params = getParams();
+    var payloadNav = payload && payload.navigation && typeof payload.navigation === 'object' ? payload.navigation : null;
+    var sessionId = String((payloadNav && payloadNav.sessionId) || params.get('navSessionId') || '').trim();
+    var subtabKey = String((payloadNav && payloadNav.subtabKey) || params.get('navSubtabKey') || '').trim();
+    var currentItemId = String((payloadNav && payloadNav.currentItemId) || params.get('navCurrentItemId') || '').trim();
+    var previousItemId = String((payloadNav && payloadNav.previousItemId) || params.get('navPreviousItemId') || '').trim();
+    var nextItemId = String((payloadNav && payloadNav.nextItemId) || params.get('navNextItemId') || '').trim();
+    var hasPreviousRaw = payloadNav && Object.prototype.hasOwnProperty.call(payloadNav, 'hasPrevious')
+      ? payloadNav.hasPrevious
+      : params.get('navHasPrevious');
+    var hasPrevious = hasPreviousRaw === true || String(hasPreviousRaw || '').trim() === '1' || String(hasPreviousRaw || '').trim().toLowerCase() === 'true';
+    var hasNextRaw = payloadNav && Object.prototype.hasOwnProperty.call(payloadNav, 'hasNext')
+      ? payloadNav.hasNext
+      : params.get('navHasNext');
+    var hasNext = hasNextRaw === true || String(hasNextRaw || '').trim() === '1' || String(hasNextRaw || '').trim().toLowerCase() === 'true';
+
+    return {
+      sessionId: sessionId,
+      subtabKey: subtabKey,
+      currentItemId: currentItemId,
+      previousItemId: previousItemId,
+      hasPrevious: hasPrevious,
+      nextItemId: nextItemId,
+      hasNext: hasNext,
+      isValid: !!(subtabKey && (currentItemId || previousItemId || nextItemId || hasPrevious || hasNext))
+    };
+  }
+
+  function getHeaderActionButtonsHtml(payload) {
+    var buttons = [];
+    var nav = getDetailNavigationContext(payload);
+    if (nav.isValid) {
+      var hasPrevious = !!nav.hasPrevious;
+      var previousTitle = hasPrevious ? 'Open the previous location in this filtered list' : 'No previous location in this filtered list';
+      var hasNext = !!nav.hasNext;
+      var nextTitle = hasNext ? 'Open the next location in this filtered list' : 'No next location in this filtered list';
+      buttons.push(
+        '<button type="button" class="auth-btn detail-nav-btn" id="previousLocationBtn" title="' + escapeHtml(previousTitle) + '"'
+        + (hasPrevious ? '' : ' disabled') + '>Previous Location</button>'
+      );
+      buttons.push(
+        '<button type="button" class="auth-btn detail-nav-btn" id="nextLocationBtn" title="' + escapeHtml(nextTitle) + '"'
+        + (hasNext ? '' : ' disabled') + '>Next Location</button>'
+      );
+    }
+
+    var closeButton = getCloseButtonHtml();
+    if (closeButton) buttons.push(closeButton);
+    if (!buttons.length) return '';
+    return '<div class="head-actions-right">' + buttons.join('') + '</div>';
+  }
+
   function bindCloseButton() {
     var closeBtn = document.getElementById('closeTabBtn');
     if (!closeBtn || closeBtn.dataset.bound === '1') return;
@@ -152,6 +210,78 @@
     });
 
     closeBtn.dataset.bound = '1';
+  }
+
+  function bindDetailNavigationButton(buttonId, direction, payload) {
+    var button = document.getElementById(buttonId);
+    if (!button || button.dataset.bound === '1') return;
+
+    button.addEventListener('click', function () {
+      if (button.disabled) return;
+      var hostWin = getOpenerWindow();
+      if (!hostWin || typeof hostWin.postMessage !== 'function') {
+        showDetailToast('⚠️ Location navigation is only available when opened from Adventure Explorer.', 'info', 3200);
+        return;
+      }
+
+      var nav = getDetailNavigationContext(payload);
+      var normalizedDirection = String(direction || 'next').trim().toLowerCase() === 'previous' ? 'previous' : 'next';
+      var targetItemIdHint = normalizedDirection === 'previous'
+        ? String(nav.previousItemId || '').trim()
+        : String(nav.nextItemId || '').trim();
+      hostWin.postMessage({
+        type: 'planner-explorer-details-navigate',
+        direction: normalizedDirection,
+        sourceSubtab: String(nav.subtabKey || '').trim(),
+        sessionId: String(nav.sessionId || '').trim(),
+        currentItemId: String(nav.currentItemId || '').trim(),
+        targetItemIdHint: targetItemIdHint,
+        initialTab: getActiveDetailTabId()
+      }, window.location.origin);
+
+      button.disabled = true;
+      button.textContent = normalizedDirection === 'previous' ? 'Loading previous...' : 'Loading next...';
+    });
+
+    button.dataset.bound = '1';
+  }
+
+  function bindNavigationButtons(payload) {
+    bindDetailNavigationButton('previousLocationBtn', 'previous', payload);
+    bindDetailNavigationButton('nextLocationBtn', 'next', payload);
+  }
+
+  function isEditableNavigationShortcutTarget(target) {
+    if (!target) return false;
+    var element = target.nodeType === 1 ? target : target.parentElement;
+    if (!element || typeof element.closest !== 'function') return false;
+    return !!element.closest('input, textarea, select, [contenteditable], [role="textbox"]');
+  }
+
+  function bindNavigationKeyboardShortcuts() {
+    if (document.body && document.body.dataset.detailNavShortcutsBound === '1') return;
+    if (document.body) document.body.dataset.detailNavShortcutsBound = '1';
+
+    document.addEventListener('keydown', function (event) {
+      if (!event || event.defaultPrevented) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isEditableNavigationShortcutTarget(event.target)) return;
+
+      var key = String(event.key || '');
+      var code = String(event.code || '');
+      var direction = '';
+      if (key === '[' || code === 'BracketLeft') direction = 'previous';
+      if (key === ']' || code === 'BracketRight') direction = 'next';
+      if (!direction) return;
+
+      var buttonId = direction === 'previous' ? 'previousLocationBtn' : 'nextLocationBtn';
+      var button = document.getElementById(buttonId);
+      if (!button || button.disabled) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      button.click();
+    }, true);
   }
 
   function fromStoredPayload() {
@@ -1187,8 +1317,10 @@
     if (!data) {
       document.getElementById('header').innerHTML =
         '<div class="head-main"><h1>Adventure Details</h1><div class="meta">No detail payload was available. Open this page from an Adventure card.</div></div>' +
-        getCloseButtonHtml();
+        getHeaderActionButtonsHtml(payload);
       bindCloseButton();
+      bindNavigationButtons(payload);
+      bindNavigationKeyboardShortcuts();
       return;
     }
 
@@ -1213,9 +1345,11 @@
       '<span id="detailVisitedBadge" class="detail-visited-badge' + (isVisited ? ' is-visited' : '') + '">' + (isVisited ? '✅ Visited' : '🕒 Not Visited') + '</span>' +
       '</div>' +
       (headerActions ? '<div class="actions">' + headerActions + '</div>' : '') +
-      '</div>' + getCloseButtonHtml();
+      '</div>' + getHeaderActionButtonsHtml(payload);
 
     bindCloseButton();
+    bindNavigationButtons(payload);
+    bindNavigationKeyboardShortcuts();
     renderDebugMarker(payload);
     initActionBar(data, directionsUrl, payload);
 

@@ -18,19 +18,49 @@ const MOCK_EXPLORER_TABLE = {
       'Google URL'
     ],
     [
-      'Mock Adventure Spot',
+      'Mock Adventure Spot Alpha',
       'Austin',
       'TX',
       'hiking;scenic',
-      'Playwright-seeded location for details flow validation.',
+      'Playwright-seeded alpha location for details flow validation.',
       '123 Trailhead Way',
       '9:00 AM - 6:00 PM',
       '22 min',
-      'https://example.com/mock-adventure-spot',
+      'https://example.com/mock-adventure-spot-alpha',
       '555-0100',
       '4.8',
       '$$',
-      'https://maps.google.com/?q=Mock+Adventure+Spot'
+      'https://maps.google.com/?q=Mock+Adventure+Spot+Alpha'
+    ],
+    [
+      'Mock Adventure Spot Beta',
+      'Boone',
+      'NC',
+      'coffee;outdoors',
+      'Playwright-seeded beta location for details flow validation.',
+      '456 Summit Road',
+      '8:00 AM - 4:00 PM',
+      '34 min',
+      'https://example.com/mock-adventure-spot-beta',
+      '555-0101',
+      '4.5',
+      '$',
+      'https://maps.google.com/?q=Mock+Adventure+Spot+Beta'
+    ],
+    [
+      'Mock Adventure Spot Gamma',
+      'Austin',
+      'TX',
+      'scenic;park',
+      'Playwright-seeded gamma location for details flow validation.',
+      '789 Creekside Drive',
+      '10:00 AM - 7:00 PM',
+      '41 min',
+      'https://example.com/mock-adventure-spot-gamma',
+      '555-0102',
+      '4.9',
+      '$$$',
+      'https://maps.google.com/?q=Mock+Adventure+Spot+Gamma'
     ]
   ]
 };
@@ -294,6 +324,56 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await notesMenuBtn.click();
     await expect(detailsView).toBeVisible();
     await expect(page.locator(`#visitedExplorerDetailsFrame-${key}`)).toHaveAttribute('src', /initialTab=notes/i);
+  });
+
+  test('next and previous location follow frozen filtered order from the originating explorer list', async ({ page }) => {
+    await mockExplorerWorkbookRequests(page);
+    await gotoAdventureChallenge(page);
+
+    const { key } = await openExplorerAndFindDetails(page);
+    const paneRoot = page.locator(`#visitedProgressPane-${key}`);
+    const list = page.locator(`#visitedExplorerList-${key}`);
+    await expect(list).toBeVisible();
+
+    const cityFilter = paneRoot.locator(`#visitedExplorerCity-${key}`);
+    await expect(cityFilter).toBeVisible();
+    await cityFilter.selectOption('austin');
+
+    const firstCard = list.locator('.visited-explorer-card').first();
+    await expect(firstCard).toContainText('Mock Adventure Spot Alpha');
+    await firstCard.locator('[data-visited-explorer-details]').first().click();
+
+    await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Alpha');
+
+    const detailsFrame = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
+    const previousBtn = detailsFrame.locator('#previousLocationBtn');
+    const nextBtn = detailsFrame.locator('#nextLocationBtn');
+    await expect(previousBtn).toBeVisible();
+    await expect(previousBtn).toBeDisabled();
+    await expect(nextBtn).toBeVisible();
+    await expect(nextBtn).toBeEnabled();
+    await detailsFrame.locator('body').click();
+    await page.keyboard.press(']');
+
+    await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Gamma');
+    await expect(detailsFrame.locator('h1')).toHaveText('Mock Adventure Spot Gamma');
+    await expect(previousBtn).toBeEnabled();
+    await expect(detailsFrame.locator('#nextLocationBtn')).toBeDisabled();
+
+    await detailsFrame.locator('body').click();
+    await page.keyboard.press('[');
+    await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Alpha');
+    await expect(detailsFrame.locator('h1')).toHaveText('Mock Adventure Spot Alpha');
+    await expect(previousBtn).toBeDisabled();
+    await expect(nextBtn).toBeEnabled();
+
+    await detailsFrame.locator('#tabs .tab-btn[data-tab="notes"]').click();
+    const notesInput = detailsFrame.locator('#dnmInput');
+    await expect(notesInput).toBeVisible();
+    await notesInput.click();
+    await page.keyboard.press(']');
+    await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Alpha');
+    await expect(detailsFrame.locator('h1')).toHaveText('Mock Adventure Spot Alpha');
   });
 });
 
