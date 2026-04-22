@@ -68,7 +68,12 @@ test.describe('Visited enrich modal smoke', () => {
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').first()).toContainText('Before:');
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').nth(1)).toContainText('After:');
 
-      await selectToggles.uncheck({ force: true });
+      for (let i = 0, total = await selectToggles.count(); i < total; i += 1) {
+        const toggle = selectToggles.nth(i);
+        if (await toggle.isChecked()) {
+          await toggle.uncheck({ force: true });
+        }
+      }
       await expect(saveBtn).toBeDisabled();
 
       const descriptionCheckbox = page.locator('#visitedLocationParserSelect-description');
