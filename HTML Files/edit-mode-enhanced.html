@@ -2585,6 +2585,16 @@
       return true;
     }
 
+    function cloneTargetContext(target) {
+      if (!target || typeof target !== 'object') return null;
+      return {
+        id: String(target.id || '').trim(),
+        label: String(target.label || '').trim(),
+        filePath: String(target.filePath || '').trim(),
+        tableName: String(target.tableName || '').trim()
+      };
+    }
+
     async function probeTargetSchema(target) {
       if (!target) return null;
       if (targetSchemaCache[target.id]) return targetSchemaCache[target.id];
@@ -3791,6 +3801,7 @@
       }
 
       const target = getSelectedTarget('actionTargetSelect');
+      const targetContext = cloneTargetContext(target);
       const dryRun = Boolean(document.getElementById('singleDryRun')?.checked);
       const statusDiv = document.getElementById('single-status');
       if (!applyTargetToMainWindow(target, statusDiv)) return;
@@ -3800,7 +3811,12 @@
       const useDirectDetails = isFestivalEditTarget(target) || !selected.placeId;
       if (useDirectDetails && window.enhancedAutomation) {
         setSingleCandidateStatus(`✅ Selected ${selected.name}. Adding now...`, 'success');
-        const result = await window.enhancedAutomation.addSinglePlace(selected.name || selected.address || 'Festival Event', 'placeName', dryRun, { resolvedDetails: selected });
+        const result = await window.enhancedAutomation.addSinglePlace(
+          selected.name || selected.address || 'Festival Event',
+          'placeName',
+          dryRun,
+          { resolvedDetails: selected, target: targetContext }
+        );
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success) document.getElementById('singleInput').value = '';
         return;
@@ -4064,6 +4080,7 @@
       }
 
       const target = getSelectedTarget('actionTargetSelect');
+      const targetContext = cloneTargetContext(target);
       const dryRun = Boolean(document.getElementById('bulkDryRun')?.checked);
       const statusDiv = document.getElementById('bulk-status');
       if (!applyTargetToMainWindow(target, statusDiv)) return;
@@ -4072,7 +4089,10 @@
 
       if ((isFestivalEditTarget(target) || selectedCandidates.some((item) => !item.placeId)) && window.enhancedAutomation) {
         setBulkCandidateStatus(`✅ Adding ${selectedCandidates.length} selected candidate(s)...`, 'success');
-        const result = await window.enhancedAutomation.bulkAddPlaces('', 'placeName', dryRun, { resolvedDetailsList: selectedCandidates });
+        const result = await window.enhancedAutomation.bulkAddPlaces('', 'placeName', dryRun, {
+          resolvedDetailsList: selectedCandidates,
+          target: targetContext
+        });
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success && !dryRun) document.getElementById('bulkInput').value = '';
         return;
@@ -4599,6 +4619,7 @@
       const dryRun = document.getElementById('singleDryRun').checked;
       const statusDiv = document.getElementById('single-status');
       const target = getSelectedTarget('actionTargetSelect');
+      const targetContext = cloneTargetContext(target);
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
       await loadTargetRows(target);
@@ -4610,7 +4631,7 @@
 
       // Try new progress tracking system first
       if (typeof window.handleAddSinglePlaceWithProgress === 'function') {
-        const result = await window.handleAddSinglePlaceWithProgress(input, inputType, statusDiv, dryRun);
+        const result = await window.handleAddSinglePlaceWithProgress(input, inputType, statusDiv, dryRun, { target: targetContext });
         if (result.success) {
           document.getElementById('singleInput').value = '';
         }
@@ -4620,7 +4641,7 @@
       // Fallback to enhanced automation
       statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
       if (window.enhancedAutomation) {
-        const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun);
+        const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun, { target: targetContext });
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success) {
           document.getElementById('singleInput').value = '';
@@ -4639,6 +4660,7 @@
       const dryRun = document.getElementById('bulkDryRun').checked;
       const statusDiv = document.getElementById('bulk-status');
       const target = getSelectedTarget('actionTargetSelect');
+      const targetContext = cloneTargetContext(target);
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
       await loadTargetRows(target);
@@ -4657,7 +4679,7 @@
 
       // Try new progress tracking system first
       if (typeof window.handleBulkAddPlacesWithProgress === 'function') {
-        const result = await window.handleBulkAddPlacesWithProgress(locations, inputType, statusDiv, dryRun);
+        const result = await window.handleBulkAddPlacesWithProgress(locations, inputType, statusDiv, dryRun, { target: targetContext });
         if (result.success && !dryRun) {
           document.getElementById('bulkInput').value = '';
         }
@@ -4667,7 +4689,7 @@
       // Fallback to enhanced automation
       statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
       if (window.enhancedAutomation) {
-        const result = await window.enhancedAutomation.bulkAddPlaces(input, inputType, dryRun);
+        const result = await window.enhancedAutomation.bulkAddPlaces(input, inputType, dryRun, { target: targetContext });
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success && !dryRun) {
           document.getElementById('bulkInput').value = '';

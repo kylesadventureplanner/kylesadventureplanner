@@ -279,7 +279,7 @@
   // ============================================================
   // ENHANCED: Add Single Place with Progress
   // ============================================================
-  window.handleAddSinglePlaceWithProgress = async function(input, inputType, displayElement, dryRun = false) {
+  window.handleAddSinglePlaceWithProgress = async function(input, inputType, displayElement, dryRun = false, options = {}) {
     console.log('📍 Adding single place with progress tracking...');
 
     const tracker = new UniversalProgressTracker(displayElement, 'Add Single Place', 1, { dryRun });
@@ -301,7 +301,7 @@
         throw new Error('Enhanced automation add system is not available.');
       }
 
-      const result = await automation.addSinglePlace(input, inputType, false);
+      const result = await automation.addSinglePlace(input, inputType, false, options || {});
       if (!result.success) {
         throw new Error(result.error || 'Failed to add location');
       }
@@ -319,7 +319,7 @@
   // ============================================================
   // ENHANCED: Bulk Add Places with Progress
   // ============================================================
-  window.handleBulkAddPlacesWithProgress = async function(locations, inputType, displayElement, dryRun = false) {
+  window.handleBulkAddPlacesWithProgress = async function(locations, inputType, displayElement, dryRun = false, options = {}) {
     console.log(`📍 Bulk adding ${locations.length} places with progress...`);
 
     const tracker = new UniversalProgressTracker(displayElement, 'Bulk Add Places', locations.length, { dryRun });
@@ -340,7 +340,7 @@
 
         try {
           tracker.updateProgress(`Resolving: ${location.substring(0, 40)}...`);
-          const result = await automation.addSinglePlace(location, inputType, dryRun);
+          const result = await automation.addSinglePlace(location, inputType, dryRun, options || {});
 
           if (result.success) {
             tracker.recordSuccess(location, dryRun ? `[DRY RUN] Would add ${result.placeName || location}` : `Added ${result.placeName || location}`);

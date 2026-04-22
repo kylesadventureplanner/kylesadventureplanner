@@ -51,6 +51,32 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     };
   }
 
+  function applyExplicitTargetContext(mainWindow, options) {
+    const target = options && options.target && typeof options.target === 'object'
+      ? options.target
+      : null;
+    if (!target) return null;
+
+    const filePath = safeString(target.filePath);
+    const tableName = safeString(target.tableName);
+    if (!filePath || !tableName) return null;
+
+    const mainRef = mainWindow || getMainWindow();
+    mainRef.filePath = filePath;
+    mainRef.tableName = tableName;
+    mainRef.__editModeTarget = {
+      id: safeString(target.id),
+      label: safeString(target.label),
+      filePath,
+      tableName
+    };
+
+    window.filePath = filePath;
+    window.tableName = tableName;
+    window.__editModeTarget = { ...mainRef.__editModeTarget };
+    return mainRef.__editModeTarget;
+  }
+
   function isFestivalTarget(target) {
     const safeTarget = target && typeof target === 'object' ? target : {};
     const targetId = safeString(safeTarget.id).toLowerCase();
@@ -1748,6 +1774,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
 
       try {
         const mainWindow = getMainWindow();
+        applyExplicitTargetContext(mainWindow, options);
         const details = preResolved || await window.resolvePlaceInputWithGoogleData(inputType, input);
         const placeId = safeString(details && details.placeId);
 
@@ -1807,6 +1834,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     }
 
     async bulkAddPlaces(placesText, inputType, dryRun = false, options = {}) {
+      const bulkOptions = options && typeof options === 'object' ? options : {};
+      const explicitTarget = bulkOptions.target && typeof bulkOptions.target === 'object' ? bulkOptions.target : null;
       const resolvedDetailsList = Array.isArray(options && options.resolvedDetailsList)
         ? options.resolvedDetailsList.filter((item) => item && typeof item === 'object')
         : [];
@@ -1819,7 +1848,11 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
         const resolvedDetails = resolvedDetailsList[index] || null;
-        const result = await this.addSinglePlace(line, inputType, dryRun, resolvedDetails ? { resolvedDetails } : undefined);
+        const nextOptions = {
+          ...(resolvedDetails ? { resolvedDetails } : {}),
+          ...(explicitTarget ? { target: explicitTarget } : {})
+        };
+        const result = await this.addSinglePlace(line, inputType, dryRun, nextOptions);
         if (result && result.success) {
           results.added++;
           results.details.push(`✅ ${result.placeName || line}${result.isDryRun ? ' (dry run)' : ''}`);
