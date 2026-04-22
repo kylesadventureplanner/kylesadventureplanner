@@ -364,6 +364,37 @@
 
   <div id="visitedExplorerDetailsBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedVisitLogBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedPhotoGalleryBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedUrlSearchBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <!-- Photo Gallery Modal -->
+  <div id="visitedPhotoGalleryModal" class="visited-explorer-details-modal visited-photo-gallery-modal" role="dialog" aria-modal="true" aria-labelledby="visitedPhotoGalleryTitle" hidden tabindex="-1" data-location-id="" data-subtab-key="">
+    <div class="visited-explorer-details-head">
+      <div id="visitedPhotoGalleryTitle" class="card-title">📷 Photos</div>
+      <button type="button" id="visitedPhotoGalleryCloseBtn" class="pill-button" aria-label="Close photo gallery">Close</button>
+    </div>
+    <div id="visitedPhotoGalleryBody" class="visited-explorer-details-body visited-photo-gallery-body"></div>
+  </div>
+  <!-- URL Search / Manager Modal -->
+  <div id="visitedUrlSearchModal" class="visited-explorer-details-modal visited-url-search-modal" role="dialog" aria-modal="true" aria-labelledby="visitedUrlSearchTitle" hidden tabindex="-1" data-subtab-key="" data-item-id="">
+    <div class="visited-explorer-details-head">
+      <div id="visitedUrlSearchTitle" class="card-title">🔗 Find / Add URLs</div>
+      <button type="button" id="visitedUrlSearchCloseBtn" class="pill-button" aria-label="Close URL search">Close</button>
+    </div>
+    <div class="visited-explorer-details-body">
+      <label class="visited-visit-log-label" for="visitedUrlSearchQuery">Search query</label>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <input id="visitedUrlSearchQuery" class="filter-input" type="text" placeholder="Location name + city..." style="flex:1;" />
+        <button type="button" id="visitedUrlSearchRunBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" style="white-space:nowrap;">Search 🔍</button>
+      </div>
+      <div id="visitedUrlSearchResults" class="visited-url-search-results"></div>
+      <label class="visited-visit-log-label" for="visitedUrlManualInput" style="margin-top:14px;">Links to save (comma or newline separated)</label>
+      <textarea id="visitedUrlManualInput" class="filter-input" rows="5" placeholder="https://example.com, https://facebook.com/page..."></textarea>
+      <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top:10px;">
+        <button type="button" id="visitedUrlSearchSaveBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Save Links</button>
+        <button type="button" id="visitedUrlSearchCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
+      </div>
+    </div>
+  </div>
   <div id="visitedExplorerDetailsModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedExplorerDetailsTitle" hidden>
     <div class="visited-explorer-details-head">
       <div id="visitedExplorerDetailsTitle" class="card-title">Location Details</div>
@@ -2408,6 +2439,160 @@
 
   #visitedLocationsRoot .adventure-achv-info-level-row.is-done {
     color: #4ade80;
+  }
+  /* ---- Photo count badge ---- */
+  #visitedLocationsRoot .visited-photo-count-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 8px;
+    margin-left: 6px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  /* ---- Cover photo hero ---- */
+  #visitedLocationsRoot .visited-explorer-cover-photo {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: 8px 8px 0 0;
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  /* ---- Photo gallery modal ---- */
+  .visited-photo-gallery-modal {
+    max-width: 860px !important;
+  }
+  .visited-photo-gallery-body {
+    min-height: 200px;
+  }
+  .visited-photo-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    padding: 4px 0;
+  }
+  .visited-photo-gallery-empty {
+    color: #64748b;
+    font-size: 14px;
+    text-align: center;
+    padding: 24px 0;
+  }
+  .visited-photo-tile {
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f8fafc;
+    cursor: grab;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .visited-photo-tile.is-cover {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px #fef3c7;
+  }
+  .visited-photo-tile.is-drag-over {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px #bfdbfe;
+  }
+  .visited-photo-tile.is-dragging {
+    opacity: 0.5;
+  }
+  .visited-photo-tile-img-wrap {
+    position: relative;
+    width: 100%;
+    height: 110px;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+  .visited-photo-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .visited-photo-cover-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: #f59e0b;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 2px 6px;
+    pointer-events: none;
+  }
+  .visited-photo-tile-meta {
+    font-size: 11px;
+    color: #64748b;
+    text-align: center;
+    padding: 3px 4px 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .visited-photo-tile-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 4px 6px;
+  }
+  .visited-photo-action-btn {
+    flex: 1;
+    font-size: 14px;
+    background: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 3px 0;
+    transition: background 0.12s;
+  }
+  .visited-photo-action-btn:hover {
+    background: #f1f5f9;
+  }
+  .visited-photo-action-btn--danger:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+
+  /* ---- URL search modal ---- */
+  .visited-url-search-modal {
+    max-width: 640px !important;
+  }
+  .visited-url-search-results {
+    min-height: 60px;
+    margin-bottom: 6px;
+  }
+  .visited-url-search-hint {
+    font-size: 13px;
+    color: #475569;
+    margin-bottom: 8px;
+  }
+  .visited-url-search-google-links {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .visited-url-search-google-link {
+    display: block;
+    font-size: 13px;
+    color: #1d4ed8;
+    text-decoration: underline;
+    padding: 4px 8px;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    background: #eff6ff;
+  }
+  .visited-url-search-google-link:hover {
+    background: #dbeafe;
   }
 </style>
 

@@ -163,7 +163,9 @@
     phone: ['phone', 'phone number', 'telephone'],
     rating: ['google rating', 'rating'],
     cost: ['cost', 'price'],
-    googleUrl: ['google url', 'maps url', 'google maps', 'google maps url']
+    googleUrl: ['google url', 'maps url', 'google maps', 'google maps url'],
+    links: ['links', 'social urls', 'social links', 'related urls', 'url links', 'social media'],
+    links2: ['links2', 'social urls 2', 'related urls 2', 'links 2']
   };
   const ADVENTURE_SUBTAB_EXPLORER_CONFIG = {
     outdoors: {
@@ -1637,7 +1639,309 @@
     };
   }
 
-  function escapeHtml(value) {
+  async function deleteVisitPhotoFromOneDrive(fileId) {
+    if (!fileId) return;
+    if (!window.accessToken) throw new Error('Sign in required to delete photo.');
+    const url = `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(fileId)}`;
+    const run = async () => {
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${window.accessToken}` }
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error(`Photo delete failed (${response.status})`);
+      }
+    };
+    if (window.ReliabilityAsync && typeof window.ReliabilityAsync.retryIdempotentWrite === 'function') {
+      await window.ReliabilityAsync.retryIdempotentWrite('Adventure visit photo delete', run, { retries: 1, backoffMs: 450 });
+    } else {
+      await run();
+    }
+  }
+
+  async function refreshPhotoDownloadUrl(fileId) {
+    if (!fileId || !window.accessToken) return '';
+    const url = `https://graph.microsoft.com/v1.0/me/drive/items/${encodeURIComponent(fileId)}?$select=id,name,@microsoft.graph.downloadUrl`;
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${window.accessToken}` } });
+    if (!response.ok) return '';
+    const json = await response.json().catch(() => ({}));
+    return String(json['@microsoft.graph.downloadUrl'] || '');
+  }
+
+  async function deletePhotoFromVisitRecord(visitRecordId, photoId) {
+    const records = state.visitRecords || [];
+    const record = records.find((r) => r && r.id === visitRecordId);
+    if (!record) return;
+    const photos = Array.isArray(record.photos) ? record.photos : [];
+    const photo = photos.find((p) => p && p.id === photoId);
+    if (photo && photo.id) {
+      try {
+        await deleteVisitPhotoFromOneDrive(photo.id);
+      } catch (err) {
+        if (typeof window.showToast === 'function') window.showToast('OneDrive delete failed — photo removed locally only.', 'warning', 2800);
+      }
+    }
+    record.photos = photos.filter((p) => p && p.id !== photoId);
+    // If deleted photo was cover, clear it
+    if (record.coverPhotoId === photoId) record.coverPhotoId = '';
+    saveVisitRecords();
+  }
+
+  function setCoverPhotoForVisitRecord(locationId, visitRecordId, photoId) {
+    const records = state.visitRecords || [];
+    records.forEach((r) => {
+      if (r && r.locationId === locationId) {
+        r.coverPhotoId = (r.id === visitRecordId && photoId) ? photoId : '';
+      }
+    });
+    saveVisitRecords();
+  }
+
+  function getLocationCoverPhoto(locationId) {
+    const records = state.visitRecords || [];
+    for (const r of records) {
+      if (r && r.locationId === locationId && r.coverPhotoId) {
+        const photos = Array.isArray(r.photos) ? r.photos : [];
+        const cover = photos.find((p) => p && p.id === r.coverPhotoId);
+        if (cover) return cover;
+      }
+    }
+    // Fallback: first photo of any visit
+    for (const r of records) {
+      if (r && r.locationId === locationId && Array.isArray(r.photos) && r.photos.length > 0) {
+        return r.photos[0];
+      }
+    }
+    return null;
+  }
+
+  function getLocationPhotoCount(locationId) {
+    return (state.visitRecords || []).reduce((sum, r) => {
+      if (r && r.locationId === locationId && Array.isArray(r.photos)) return sum + r.photos.length;
+      return sum;
+    }, 0);
+  }
+
+  function getAllPhotosForLocation(locationId) {
+    const result = [];
+    (state.visitRecords || []).forEach((r) => {
+      if (r && r.locationId === locationId && Array.isArray(r.photos)) {
+        r.photos.forEach((p, idx) => {
+          if (p) result.push({ ...p, visitRecordId: r.id, visitedAt: r.visitedAt, photoIndex: idx });
+        });
+      }
+    });
+    result.sort((a, b) => new Date(a.visitedAt || 0) - new Date(b.visitedAt || 0));
+    return result;
+  }
+
+  function reorderPhotosInVisitRecord(visitRecordId, fromIdx, toIdx) {
+    const record = (state.visitRecords || []).find((r) => r && r.id === visitRecordId);
+    if (!record || !Array.isArray(record.photos)) return;
+    const photos = record.photos.slice();
+    if (fromIdx < 0 || toIdx < 0 || fromIdx >= photos.length || toIdx >= photos.length) return;
+    const [moved] = photos.splice(fromIdx, 1);
+    photos.splice(toIdx, 0, moved);
+    record.photos = photos;
+    saveVisitRecords();
+  }
+
+  // ---- Photo Gallery Modal ----
+
+  function openLocationPhotoGallery(subtabKey, locationId, itemTitle) {
+    const modal = document.getElementById('visitedPhotoGalleryModal');
+    const backdrop = document.getElementById('visitedPhotoGalleryBackdrop');
+    if (!modal || !backdrop) return;
+    modal.dataset.locationId = locationId;
+    modal.dataset.subtabKey = subtabKey;
+    document.getElementById('visitedPhotoGalleryTitle').textContent = `📷 Photos — ${itemTitle || locationId}`;
+    renderPhotoGalleryContent(locationId);
+    backdrop.hidden = false;
+    modal.hidden = false;
+    modal.focus();
+  }
+
+  function closeLocationPhotoGallery() {
+    const modal = document.getElementById('visitedPhotoGalleryModal');
+    const backdrop = document.getElementById('visitedPhotoGalleryBackdrop');
+    if (modal) { modal.hidden = true; modal.dataset.locationId = ''; modal.dataset.subtabKey = ''; }
+    if (backdrop) backdrop.hidden = true;
+  }
+
+  function renderPhotoGalleryContent(locationId) {
+    const body = document.getElementById('visitedPhotoGalleryBody');
+    if (!body) return;
+    const photos = getAllPhotosForLocation(locationId);
+    if (!photos.length) {
+      body.innerHTML = '<div class="visited-photo-gallery-empty">No photos have been added to visits for this location yet.</div>';
+      return;
+    }
+    body.innerHTML = `<div class="visited-photo-gallery-grid" id="visitedPhotoGalleryGrid" data-location-id="${escapeHtml(locationId)}">${photos.map((photo, idx) => {
+      const isCover = (state.visitRecords || []).some((r) => r && r.locationId === locationId && r.coverPhotoId === photo.id && r.id === photo.visitRecordId);
+      const dateLabel = photo.visitedAt ? new Date(photo.visitedAt).toLocaleDateString() : '';
+      return `<div class="visited-photo-tile${isCover ? ' is-cover' : ''}" draggable="true"
+          data-photo-id="${escapeHtml(photo.id)}"
+          data-visit-record-id="${escapeHtml(photo.visitRecordId)}"
+          data-photo-index="${idx}">
+        <div class="visited-photo-tile-img-wrap">
+          <img class="visited-photo-thumb"
+            src=""
+            data-download-url="${escapeHtml(photo.downloadUrl || '')}"
+            data-photo-id="${escapeHtml(photo.id)}"
+            loading="lazy"
+            alt="${escapeHtml(photo.name || 'Photo')}"
+            title="${escapeHtml(photo.name || 'Photo')}" />
+          ${isCover ? '<span class="visited-photo-cover-badge">⭐ Cover</span>' : ''}
+        </div>
+        <div class="visited-photo-tile-meta">${escapeHtml(dateLabel)}</div>
+        <div class="visited-photo-tile-actions">
+          <button type="button" class="visited-photo-action-btn" data-photo-set-cover="${escapeHtml(photo.id)}" data-photo-visit-record-id="${escapeHtml(photo.visitRecordId)}" data-photo-location-id="${escapeHtml(locationId)}" title="Set as cover photo">⭐</button>
+          <button type="button" class="visited-photo-action-btn visited-photo-action-btn--danger" data-photo-delete="${escapeHtml(photo.id)}" data-photo-visit-record-id="${escapeHtml(photo.visitRecordId)}" data-photo-location-id="${escapeHtml(locationId)}" title="Delete photo">🗑</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+    // Lazy load via IntersectionObserver
+    const imgs = body.querySelectorAll('img.visited-photo-thumb');
+    const observer = new IntersectionObserver(async (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          observer.unobserve(img);
+          let src = img.dataset.downloadUrl || '';
+          if (!src && img.dataset.photoId && window.accessToken) {
+            src = await refreshPhotoDownloadUrl(img.dataset.photoId).catch(() => '');
+          }
+          if (src) img.src = src;
+        }
+      }
+    }, { rootMargin: '100px' });
+    imgs.forEach((img) => observer.observe(img));
+    // Drag-to-reorder
+    bindPhotoGalleryDragHandlers(body.querySelector('#visitedPhotoGalleryGrid'), locationId);
+  }
+
+  function bindPhotoGalleryDragHandlers(gridEl, locationId) {
+    if (!gridEl) return;
+    let dragSrcTile = null;
+    gridEl.addEventListener('dragstart', (e) => {
+      dragSrcTile = e.target.closest('.visited-photo-tile');
+      if (dragSrcTile) {
+        e.dataTransfer.effectAllowed = 'move';
+        dragSrcTile.classList.add('is-dragging');
+      }
+    });
+    gridEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const over = e.target.closest('.visited-photo-tile');
+      gridEl.querySelectorAll('.visited-photo-tile').forEach((t) => t.classList.remove('is-drag-over'));
+      if (over && over !== dragSrcTile) over.classList.add('is-drag-over');
+    });
+    gridEl.addEventListener('dragleave', () => {
+      gridEl.querySelectorAll('.visited-photo-tile').forEach((t) => t.classList.remove('is-drag-over'));
+    });
+    gridEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const over = e.target.closest('.visited-photo-tile');
+      gridEl.querySelectorAll('.visited-photo-tile').forEach((t) => { t.classList.remove('is-drag-over'); t.classList.remove('is-dragging'); });
+      if (!dragSrcTile || !over || dragSrcTile === over) return;
+      const srcVisitId = dragSrcTile.dataset.visitRecordId;
+      const overVisitId = over.dataset.visitRecordId;
+      if (srcVisitId !== overVisitId) {
+        if (typeof window.showToast === 'function') window.showToast('Can only reorder photos within the same visit.', 'info', 2000);
+        return;
+      }
+      const fromIdx = Number(dragSrcTile.dataset.photoIndex);
+      const toIdx = Number(over.dataset.photoIndex);
+      reorderPhotosInVisitRecord(srcVisitId, fromIdx, toIdx);
+      renderPhotoGalleryContent(locationId);
+    });
+    gridEl.addEventListener('dragend', () => {
+      gridEl.querySelectorAll('.visited-photo-tile').forEach((t) => { t.classList.remove('is-dragging'); t.classList.remove('is-drag-over'); });
+    });
+  }
+
+  // ---- URL Search Modal ----
+
+  function openUrlSearchModal(subtabKey, itemId) {
+    const item = getExplorerItemById(subtabKey, itemId);
+    if (!item) return;
+    const modal = document.getElementById('visitedUrlSearchModal');
+    const backdrop = document.getElementById('visitedUrlSearchBackdrop');
+    if (!modal || !backdrop) return;
+    modal.dataset.subtabKey = subtabKey;
+    modal.dataset.itemId = itemId;
+    document.getElementById('visitedUrlSearchTitle').textContent = `🔗 Find URLs — ${item.title || itemId}`;
+    const queryInput = document.getElementById('visitedUrlSearchQuery');
+    if (queryInput) queryInput.value = [item.title, item.city, item.state].filter(Boolean).join(' ');
+    const results = document.getElementById('visitedUrlSearchResults');
+    if (results) results.innerHTML = '<div class="visited-url-search-hint">Click Search to find related websites, social pages, and more.</div>';
+    const manualInput = document.getElementById('visitedUrlManualInput');
+    if (manualInput) manualInput.value = item.links || '';
+    backdrop.hidden = false;
+    modal.hidden = false;
+    modal.focus();
+  }
+
+  function closeUrlSearchModal() {
+    const modal = document.getElementById('visitedUrlSearchModal');
+    const backdrop = document.getElementById('visitedUrlSearchBackdrop');
+    if (modal) { modal.hidden = true; modal.dataset.subtabKey = ''; modal.dataset.itemId = ''; }
+    if (backdrop) backdrop.hidden = true;
+  }
+
+  async function runUrlSearch() {
+    const query = (document.getElementById('visitedUrlSearchQuery') || {}).value || '';
+    const results = document.getElementById('visitedUrlSearchResults');
+    if (!query.trim() || !results) return;
+    results.innerHTML = '<div class="visited-url-search-hint">Searching…</div>';
+    // Fall back to Google search link — Bing key not required
+    const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(query + ' site:facebook.com OR site:instagram.com OR official website')}`;
+    const suggestedQueries = [
+      `${query} official website`,
+      `${query} Facebook`,
+      `${query} Instagram`,
+      `${query} site information`,
+    ];
+    results.innerHTML = `
+      <div class="visited-url-search-hint">Paste URLs found from external searches, or open Google to find related links:</div>
+      <div class="visited-url-search-google-links">
+        ${suggestedQueries.map((q) => `<a href="https://www.google.com/search?q=${encodeURIComponent(q)}" target="_blank" rel="noopener" class="visited-url-search-google-link">🔍 ${escapeHtml(q)}</a>`).join('')}
+      </div>
+      <div class="visited-url-search-hint" style="margin-top:10px">Paste any URLs to add them (one per line or comma-separated):</div>
+    `;
+  }
+
+  async function saveUrlsFromModal() {
+    const modal = document.getElementById('visitedUrlSearchModal');
+    if (!modal) return;
+    const subtabKey = modal.dataset.subtabKey;
+    const itemId = modal.dataset.itemId;
+    const item = getExplorerItemById(subtabKey, itemId);
+    const manualInput = document.getElementById('visitedUrlManualInput');
+    const linksValue = (manualInput ? manualInput.value : '').trim();
+    if (!item) { closeUrlSearchModal(); return; }
+    // Update local item
+    updateExplorerCardDraft(itemId, (draft) => ({ ...draft, links: linksValue }));
+    const explorerState = getExplorerState(subtabKey);
+    const liveItem = (explorerState.items || []).find((i) => i && i.id === itemId);
+    if (liveItem) liveItem.links = linksValue;
+    // Sync to OneDrive if signed in
+    if (window.accessToken && item.sourceWorkbookPath && item.sourceTable && Number.isInteger(item.sourceRowIndex)) {
+      try {
+        await syncVisitedExplorerDetailFields(
+          { workbookPath: item.sourceWorkbookPath, table: item.sourceTable, rowIndex: item.sourceRowIndex },
+          { links: linksValue }
+        );
+        if (typeof window.showToast === 'function') window.showToast('Links saved to OneDrive.', 'success', 2000);
+      } catch (err) {
+        if (typeof window.showToast === 'function') window.showToast(`Links saved locally (OneDrive sync failed: ${err && err.message ? err.message : 'error'})`, 'warning', 3000);
+      }
+    } else {
+      if (typeof window.showToast === 'function') window.showToast('Links saved locally.', 'success', 2000);
+    }
+    closeUrlSearchModal();
+  }
     return String(value || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -1876,6 +2180,8 @@
       const rating = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.rating);
       const cost = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.cost);
       const googleUrl = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.googleUrl);
+      const links = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links);
+      const links2 = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links2);
       const tags = String(tagsRaw || '')
         .split(/[;,]/)
         .map((tag) => tag.trim())
@@ -1898,6 +2204,8 @@
         rating,
         cost,
         googleUrl,
+        links: String(links || '').trim(),
+        links2: String(links2 || '').trim(),
         sourceLabel: `${source.workbook} / ${source.table}`,
         sourceWorkbook: String(source.workbook || '').trim(),
         sourceWorkbookPath: String(source.resolvedWorkbookPath || source.workbook || '').trim(),
@@ -2469,6 +2777,8 @@
       `<div class="visited-explorer-details-row"><strong>Phone:</strong> ${escapeHtml(item.phone || 'Unknown')}</div>`,
       `<div class="visited-explorer-details-row"><strong>Website:</strong> ${item.website ? `<a href="${escapeHtml(item.website)}" target="_blank" rel="noopener">${escapeHtml(item.website)}</a>` : 'Unknown'}</div>`,
       `<div class="visited-explorer-details-row"><strong>Google URL:</strong> ${item.googleUrl ? `<a href="${escapeHtml(item.googleUrl)}" target="_blank" rel="noopener">Open in Google Maps</a>` : 'Unknown'}</div>`,
+      item.links ? `<div class="visited-explorer-details-row"><strong>Related Links:</strong> ${item.links.split(/[,;\n]+/).map((u) => u.trim()).filter(Boolean).map((u) => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a>`).join('<br>')}</div>` : '',
+      item.links2 ? `<div class="visited-explorer-details-row"><strong>More Links:</strong> ${item.links2.split(/[,;\n]+/).map((u) => u.trim()).filter(Boolean).map((u) => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a>`).join('<br>')}</div>` : '',
       `<div class="visited-explorer-details-row"><strong>Source:</strong> ${escapeHtml(item.sourceLabel || 'Unknown')}</div>`
     ].join('');
   }
@@ -2729,6 +3039,8 @@
       const isVisited = Boolean(visitMap[item.id]);
       const chips = (item.tags || []).slice(0, 6).map((tag) => `<span class="visited-explorer-tag">${escapeHtml(tag)}</span>`).join('');
       const notesPreview = String(item.notes || '').trim();
+      const photoCount = getLocationPhotoCount(item.id);
+      const coverPhoto = getLocationCoverPhoto(item.id);
       const starButtons = [1, 2, 3, 4, 5].map((value) => `
         <button
           type="button"
@@ -2742,10 +3054,12 @@
       `).join('');
       return `
         <div class="visited-explorer-card">
+          ${coverPhoto && coverPhoto.downloadUrl ? `<img class="visited-explorer-cover-photo" src="${escapeHtml(coverPhoto.downloadUrl)}" alt="Cover photo" loading="lazy" onerror="this.style.display='none'">` : ''}
           <div class="visited-explorer-card-head">
             <div class="visited-explorer-card-title">
               <span class="visited-explorer-visit-indicator${isVisited ? ' is-visited' : ' is-unvisited'}" data-visited-explorer-visit-state="${isVisited ? 'visited' : 'unvisited'}" aria-label="${isVisited ? 'Visited location' : 'Not visited yet'}" title="${isVisited ? 'Visited location' : 'Not visited yet'}">${isVisited ? '✅' : '⭕'}</span>
               ${escapeHtml(item.title || 'Unknown')}
+              ${photoCount > 0 ? `<span class="visited-photo-count-badge" title="${photoCount} photo${photoCount === 1 ? '' : 's'}">📷 ${photoCount}</span>` : ''}
             </div>
             <div class="visited-explorer-card-head-actions">
               <button type="button" class="visited-explorer-detail-btn visited-explorer-detail-btn--primary" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
@@ -2758,6 +3072,8 @@
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-log="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Log Visit</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-tags="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Tag Manager</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-gallery="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">📷 Photos${photoCount > 0 ? ` (${photoCount})` : ''}</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-find-urls="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🔗 Find / Add URLs</button>
           </div>
           <div class="visited-explorer-card-controls">
             <button type="button" class="visited-explorer-favorite-btn${item.favorite ? ' is-active' : ''}" data-visited-explorer-favorite="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${item.favorite ? '★ Favorited' : '☆ Add to Favorites'}</button>
@@ -2955,7 +3271,9 @@
     const hasTagUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'tagsCsv');
     const hasNotesUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'notes');
     const hasPhotoUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'photoUrls');
-    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate) return { synced: false, reason: 'no-fields' };
+    const hasLinksUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'links');
+    const hasLinks2Update = Object.prototype.hasOwnProperty.call(updateMap, 'links2');
+    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update) return { synced: false, reason: 'no-fields' };
 
     const tagColIdx = hasTagUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'tags', ['tags', 'tag', 'keywords', 'category', 'categories'])
@@ -2966,12 +3284,20 @@
     const photoColIdx = hasPhotoUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'photo_urls', ['photo_urls', 'photos', 'photo urls', 'photo url', 'images'])
       : -1;
+    const linksColIdx = hasLinksUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'links', EXPLORER_COLUMN_CANDIDATES.links)
+      : -1;
+    const links2ColIdx = hasLinks2Update
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'links2', EXPLORER_COLUMN_CANDIDATES.links2)
+      : -1;
 
     if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0)) {
       throw new Error('Target column could not be resolved in source table.');
     }
-    // Photo column is optional — if not found, skip without throwing
+    // Photo/links columns are optional — if not found, skip without throwing
     const shouldSyncPhotos = hasPhotoUpdate && photoColIdx >= 0;
+    const shouldSyncLinks = hasLinksUpdate && linksColIdx >= 0;
+    const shouldSyncLinks2 = hasLinks2Update && links2ColIdx >= 0;
 
     const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
     if (hasTagUpdate) {
@@ -2985,6 +3311,14 @@
     if (shouldSyncPhotos) {
       while (rowValues.length <= photoColIdx) rowValues.push('');
       rowValues[photoColIdx] = String(updateMap.photoUrls || '').trim();
+    }
+    if (shouldSyncLinks) {
+      while (rowValues.length <= linksColIdx) rowValues.push('');
+      rowValues[linksColIdx] = String(updateMap.links || '').trim();
+    }
+    if (shouldSyncLinks2) {
+      while (rowValues.length <= links2ColIdx) rowValues.push('');
+      rowValues[links2ColIdx] = String(updateMap.links2 || '').trim();
     }
 
     const patchResponse = await fetch(rowPath, {
@@ -4951,6 +5285,88 @@
             if (subtabKey) {
               openVisitLogModal({ subtabKey, itemId });
             }
+            return;
+          }
+
+          const explorerGalleryBtn = closest('[data-visited-explorer-gallery]');
+          if (explorerGalleryBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerGalleryBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerGalleryBtn.getAttribute('data-visited-explorer-gallery') || '').trim();
+            const item = getExplorerItemById(subtabKey, itemId);
+            if (item) openLocationPhotoGallery(subtabKey, itemId, item.title);
+            return;
+          }
+
+          const explorerFindUrlsBtn = closest('[data-visited-explorer-find-urls]');
+          if (explorerFindUrlsBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerFindUrlsBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerFindUrlsBtn.getAttribute('data-visited-explorer-find-urls') || '').trim();
+            if (itemId) openUrlSearchModal(subtabKey, itemId);
+            return;
+          }
+
+          // Photo gallery action buttons
+          const photoDeleteBtn = closest('[data-photo-delete]');
+          if (photoDeleteBtn) {
+            event.preventDefault();
+            const photoId = photoDeleteBtn.getAttribute('data-photo-delete');
+            const visitRecordId = photoDeleteBtn.getAttribute('data-photo-visit-record-id');
+            const locationId = photoDeleteBtn.getAttribute('data-photo-location-id');
+            if (photoId && visitRecordId && confirm('Delete this photo? This will also remove it from OneDrive.')) {
+              photoDeleteBtn.disabled = true;
+              photoDeleteBtn.textContent = '…';
+              await deletePhotoFromVisitRecord(visitRecordId, photoId).catch(() => {});
+              renderPhotoGalleryContent(locationId);
+            }
+            return;
+          }
+
+          const photoSetCoverBtn = closest('[data-photo-set-cover]');
+          if (photoSetCoverBtn) {
+            event.preventDefault();
+            const photoId = photoSetCoverBtn.getAttribute('data-photo-set-cover');
+            const visitRecordId = photoSetCoverBtn.getAttribute('data-photo-visit-record-id');
+            const locationId = photoSetCoverBtn.getAttribute('data-photo-location-id');
+            if (photoId && visitRecordId && locationId) {
+              setCoverPhotoForVisitRecord(locationId, visitRecordId, photoId);
+              renderPhotoGalleryContent(locationId);
+              if (typeof window.showToast === 'function') window.showToast('Cover photo updated.', 'success', 1800);
+            }
+            return;
+          }
+
+          const closePhotoGalleryBtn = closest('#visitedPhotoGalleryCloseBtn, #visitedPhotoGalleryBackdrop');
+          if (closePhotoGalleryBtn) {
+            event.preventDefault();
+            closeLocationPhotoGallery();
+            return;
+          }
+
+          const closeUrlSearchBtn = closest('#visitedUrlSearchCloseBtn, #visitedUrlSearchBackdrop, #visitedUrlSearchCancelBtn');
+          if (closeUrlSearchBtn) {
+            event.preventDefault();
+            closeUrlSearchModal();
+            return;
+          }
+
+          const urlSearchRunBtn = closest('#visitedUrlSearchRunBtn');
+          if (urlSearchRunBtn) {
+            event.preventDefault();
+            runUrlSearch();
+            return;
+          }
+
+          const urlSearchSaveBtn = closest('#visitedUrlSearchSaveBtn');
+          if (urlSearchSaveBtn) {
+            event.preventDefault();
+            urlSearchSaveBtn.disabled = true;
+            urlSearchSaveBtn.textContent = 'Saving…';
+            await saveUrlsFromModal().catch(() => {}).finally(() => {
+              urlSearchSaveBtn.disabled = false;
+              urlSearchSaveBtn.textContent = 'Save Links';
+            });
             return;
           }
 
