@@ -165,7 +165,8 @@
     cost: ['cost', 'price'],
     googleUrl: ['google url', 'maps url', 'google maps', 'google maps url'],
     links: ['links', 'social urls', 'social links', 'related urls', 'url links', 'social media'],
-    links2: ['links2', 'social urls 2', 'related urls 2', 'links 2']
+    links2: ['links2', 'social urls 2', 'related urls 2', 'links 2'],
+    photoUrls: ['photo_urls', 'photo urls', 'photo url', 'photos', 'images']
   };
   const ADVENTURE_SUBTAB_EXPLORER_CONFIG = {
     outdoors: {
@@ -1610,6 +1611,20 @@
           : '#1e3a8a';
   }
 
+  function resetVisitLogStagedUrlPhotos() {
+    state.visitLogStagedUrlPhotos = [];
+  }
+
+  function getVisitLogStagedUrlPhotos() {
+    return Array.isArray(state.visitLogStagedUrlPhotos) ? state.visitLogStagedUrlPhotos : [];
+  }
+
+  function stageVisitLogUrlPhoto(photoMeta) {
+    if (!photoMeta) return;
+    if (!Array.isArray(state.visitLogStagedUrlPhotos)) state.visitLogStagedUrlPhotos = [];
+    state.visitLogStagedUrlPhotos.push(photoMeta);
+  }
+
   async function uploadVisitPhotoToOneDrive(file, options = {}) {
     if (!file) return null;
     if (!window.accessToken) {
@@ -2161,9 +2176,12 @@
     uploadBtn.textContent = 'Uploading...';
 
     try {
-      await fetchAndUploadPhotoFromUrl(url, { subtabKey: state.activeProgressSubTab });
+      const uploaded = await fetchAndUploadPhotoFromUrl(url, { subtabKey: state.activeProgressSubTab });
+      stageVisitLogUrlPhoto(uploaded);
+      const stagedCount = getVisitLogStagedUrlPhotos().length;
+      setVisitLogPhotoStatus(`URL photo uploaded to OneDrive (${stagedCount} staged). Save Visit to attach it.`, 'success');
       if (typeof window.showToast === 'function') {
-        window.showToast('✅ Photo uploaded from URL', 'success', 2000);
+        window.showToast('✅ Photo uploaded to OneDrive and staged for this visit.', 'success', 2200);
       }
       closePhotoUrlUploadModal();
     } catch (error) {
@@ -3098,6 +3116,7 @@
       const googleUrl = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.googleUrl);
       const links = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links);
       const links2 = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links2);
+      const photoUrls = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.photoUrls);
       const tags = String(tagsRaw || '')
         .split(/[;,]/)
         .map((tag) => tag.trim())
@@ -3122,6 +3141,7 @@
         googleUrl,
         links: String(links || '').trim(),
         links2: String(links2 || '').trim(),
+        photoUrls: String(photoUrls || '').trim(),
         sourceLabel: `${source.workbook} / ${source.table}`,
         sourceWorkbook: String(source.workbook || '').trim(),
         sourceWorkbookPath: String(source.resolvedWorkbookPath || source.workbook || '').trim(),
@@ -3481,6 +3501,7 @@
     const backdrop = document.getElementById('visitedVisitLogBackdrop');
     if (modal) modal.hidden = true;
     if (backdrop) backdrop.hidden = true;
+    resetVisitLogStagedUrlPhotos();
   }
 
   async function openVisitLogModal(options) {
@@ -3525,6 +3546,7 @@
     if (photoInput) {
       photoInput.value = '';
     }
+    resetVisitLogStagedUrlPhotos();
     setVisitLogPhotoStatus('Attach one or more photos to upload them to OneDrive when you save.');
     subtabKeyInput.value = subtabKey;
     const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
@@ -3585,16 +3607,15 @@
         }
       } else {
         const photoFiles = getVisitLogPhotoFiles();
-        let uploadedPhotos = [];
+        let uploadedPhotos = getVisitLogStagedUrlPhotos().slice();
         if (photoFiles.length) {
-          setVisitLogPhotoStatus(`Uploading ${photoFiles.length} photo${photoFiles.length === 1 ? '' : 's'} to OneDrive...`, 'warn');
-          uploadedPhotos = [];
+          setVisitLogPhotoStatus(`Uploading ${photoFiles.length} selected photo${photoFiles.length === 1 ? '' : 's'} to OneDrive...`, 'warn');
           for (let i = 0; i < photoFiles.length; i += 1) {
             const uploaded = await uploadVisitPhotoToOneDrive(photoFiles[i], { subtabKey });
             if (uploaded) uploadedPhotos.push(uploaded);
-            setVisitLogPhotoStatus(`Uploaded ${i + 1}/${photoFiles.length} photo${photoFiles.length === 1 ? '' : 's'} to OneDrive.`, 'success');
+            setVisitLogPhotoStatus(`Uploaded ${i + 1}/${photoFiles.length} selected photo${photoFiles.length === 1 ? '' : 's'} to OneDrive.`, 'success');
           }
-        } else {
+        } else if (!uploadedPhotos.length) {
           setVisitLogPhotoStatus('No photos selected. Visit details will be saved without attachments.');
         }
 
@@ -3773,6 +3794,7 @@
         nearby: '',
         links: item.sourceLabel || '',
         links2: '',
+        photoUrls: item.photoUrls || '',
         notes: item.notes || '',
         myRating: item.myRating ? String(item.myRating) : '',
         favoriteStatus: item.favorite ? 'Yes' : '',

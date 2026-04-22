@@ -25,6 +25,14 @@
     .ph-actions { display: flex; gap: 4px; padding: 4px 6px; background: #fff; border-top: 1px solid #e5e7eb; }
     .ph-view-btn { font-size: .74em; color: #2563eb; text-decoration: none; flex: 1; }
     .ph-remove-btn { font-size: .74em; color: #b91c1c; background: none; border: none; cursor: pointer; padding: 0; }
+    .ph-caption-input { width: calc(100% - 12px); margin: 4px 6px 0; border: 1px solid #d1d5db; border-radius: 6px; padding: 4px 6px; font-size: .75em; }
+    .ph-viewer-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 2600; display: none; }
+    .ph-viewer-modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(900px, calc(100vw - 20px)); max-height: calc(100vh - 20px); background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; box-shadow: 0 20px 42px rgba(15, 23, 42, 0.35); z-index: 2610; display: none; overflow: hidden; }
+    .ph-viewer-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+    .ph-viewer-body { padding: 10px; display: grid; gap: 8px; }
+    .ph-viewer-img-wrap { width: 100%; max-height: 68vh; overflow: auto; background: #111827; border-radius: 8px; display: flex; justify-content: center; align-items: center; }
+    .ph-viewer-img { max-width: 100%; max-height: 68vh; object-fit: contain; }
+    .ph-viewer-caption { font-size: .84em; color: #4b5563; }
     .ph-add-tabs { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
     .ph-add-tab { padding: 5px 14px; border-radius: 20px; border: 1px solid #d1d5db; background: #f9fafb; font-size: .85em; cursor: pointer; }
     .ph-add-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
@@ -42,6 +50,18 @@
     .ph-upload-item { padding: 3px 0; }
     .ph-upload-queue { margin: 8px 0; }
     .ph-results-hint { font-size: .82em; color: #6b7280; margin: 4px 0 8px; }
+    /* URL upload status bar */
+    .ph-url-status { display: flex; align-items: center; gap: 8px; font-size: .82em; border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+    .ph-url-status--hidden { display: none !important; }
+    .ph-url-status--uploading { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .ph-url-status--success  { background: #ecfdf5; color: #166534; border: 1px solid #86efac; }
+    .ph-url-status--error    { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+    .ph-url-status__spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: phSpin .7s linear infinite; flex-shrink: 0; }
+    .ph-url-status--success .ph-url-status__spinner,
+    .ph-url-status--error   .ph-url-status__spinner { display: none; }
+    @keyframes phSpin { to { transform: rotate(360deg); } }
+    .ph-url-retry-btn { margin-left: auto; background: none; border: 1px solid currentColor; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: .85em; color: inherit; }
+    .ph-url-retry-btn:hover { opacity: .75; }
 
     /* ── Enrich Modal ───────────────────────────────── */
     .enrich-backdrop {
@@ -193,6 +213,18 @@
     <div class="enrich-foot">
       <button id="enrichCancelBtn" type="button" class="auth-btn">Cancel</button>
       <button id="enrichSaveBtn" type="button" class="ab-btn ab-fav">Save to Source</button>
+    </div>
+  </div>
+
+  <div id="phViewerBackdrop" class="ph-viewer-backdrop" aria-hidden="true"></div>
+  <div id="phViewerModal" class="ph-viewer-modal" role="dialog" aria-modal="true" aria-labelledby="phViewerTitle">
+    <div class="ph-viewer-head">
+      <div id="phViewerTitle" class="enrich-title">📷 Photo Viewer</div>
+      <button id="phViewerCloseBtn" type="button" class="auth-btn">Close</button>
+    </div>
+    <div class="ph-viewer-body">
+      <div class="ph-viewer-img-wrap"><img id="phViewerImg" class="ph-viewer-img" src="" alt="Photo preview" /></div>
+      <div id="phViewerCaption" class="ph-viewer-caption"></div>
     </div>
   </div>
 </div>
@@ -1483,8 +1515,84 @@
     return 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   }
 
+  function normalizePhotoRecord(raw, idxHint) {
+    if (!raw) return null;
+    var index = Number(idxHint) || 0;
+    if (typeof raw === 'string') {
+      var urlText = String(raw || '').trim();
+      if (!urlText) return null;
+      return {
+        id: makePhotoId(),
+        url: urlText,
+        thumbnail: urlText,
+        caption: '',
+        source: 'legacy-url',
+        addedAt: toIsoNow(),
+        order: index
+      };
+    }
+
+    var url = String(raw.url || raw.webUrl || raw.downloadUrl || '').trim();
+    if (!url) return null;
+    return {
+      id: String(raw.id || makePhotoId()).trim() || makePhotoId(),
+      url: url,
+      thumbnail: String(raw.thumbnail || raw.downloadUrl || raw.url || url).trim(),
+      caption: String(raw.caption || raw.name || '').trim(),
+      source: String(raw.source || 'unknown').trim() || 'unknown',
+      oneDrivePath: String(raw.oneDrivePath || raw.path || '').trim(),
+      addedAt: String(raw.addedAt || toIsoNow()).trim(),
+      order: index
+    };
+  }
+
+  function parsePhotosFromSource(raw) {
+    var text = String(raw == null ? '' : raw).trim();
+    if (!text) return [];
+    var payloadText = text.indexOf(PHOTO_URLS_JSON_PREFIX) === 0 ? text.slice(PHOTO_URLS_JSON_PREFIX.length).trim() : text;
+    var parsed = null;
+    try { parsed = JSON.parse(payloadText); } catch (_err) { parsed = null; }
+    if (Array.isArray(parsed)) {
+      return parsed.map(function (entry, idx) { return normalizePhotoRecord(entry, idx); }).filter(Boolean);
+    }
+    return payloadText.split(/[\n,]+/).map(function (entry, idx) {
+      return normalizePhotoRecord(String(entry || '').trim(), idx);
+    }).filter(Boolean);
+  }
+
+  function mergePhotoCollections(primary, secondary) {
+    var seen = {};
+    var out = [];
+    (primary || []).concat(secondary || []).forEach(function (entry, idx) {
+      var ph = normalizePhotoRecord(entry, idx);
+      if (!ph) return;
+      var key = String(ph.url || '').trim().toLowerCase();
+      if (!key || seen[key]) return;
+      seen[key] = true;
+      out.push(ph);
+    });
+    return out;
+  }
+
   function slugifyLocationName(name) {
     return String(name || 'location').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'location';
+  }
+
+  async function buildFileFromPhotoUrl(photoUrl) {
+    var response = await fetch(photoUrl, { method: 'GET', mode: 'cors' });
+    if (!response.ok) throw new Error('Could not fetch image URL (HTTP ' + response.status + ').');
+    var blob = await response.blob();
+    var extension = (String(blob.type || '').split('/')[1] || 'jpg').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+    var base = 'photo-url-' + Date.now() + '.' + extension;
+    return new File([blob], base, { type: blob.type || 'image/jpeg' });
+  }
+
+  async function uploadPhotoFromExternalUrl(photoUrl, locationName) {
+    var file = await buildFileFromPhotoUrl(photoUrl);
+    var uploaded = await uploadPhotoToOneDrive(file, locationName);
+    uploaded.caption = uploaded.caption || file.name;
+    uploaded.source = 'url->onedrive';
+    return uploaded;
   }
 
   function setPhotoStatus(msg, isError) {
@@ -1509,11 +1617,36 @@
         '<div class="ph-img-wrap"><img class="ph-thumb" src="' + escapeHtml(thumb) + '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" />' +
         '<div class="ph-broken" style="display:none">🖼️</div></div>' +
         (ph.caption ? '<div class="ph-caption">' + escapeHtml(ph.caption) + '</div>' : '') +
+        '<input type="text" class="ph-caption-input" data-ph-caption-idx="' + idx + '" value="' + escapeHtml(ph.caption || '') + '" placeholder="Add caption..." />' +
         '<div class="ph-actions">' +
-        '<a class="ph-view-btn" href="' + escapeHtml(ph.url) + '" target="_blank" rel="noopener" title="Open full size">⤢ View</a>' +
+        '<button type="button" class="ph-view-btn" data-ph-view-idx="' + idx + '" title="Open viewer">⤢ View</button>' +
         '<button type="button" class="ph-remove-btn" data-ph-idx="' + idx + '" title="Remove photo">✕ Remove</button>' +
         '</div></div>';
     }).join('') + '</div>';
+  }
+
+  function openPhotoViewer(index) {
+    var state = window.__detailPhotosState;
+    if (!state || !Array.isArray(state.photos)) return;
+    var idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= state.photos.length) return;
+    var photo = state.photos[idx] || {};
+    var backdrop = document.getElementById('phViewerBackdrop');
+    var modal = document.getElementById('phViewerModal');
+    var img = document.getElementById('phViewerImg');
+    var caption = document.getElementById('phViewerCaption');
+    if (!backdrop || !modal || !img || !caption) return;
+    img.src = String(photo.url || photo.thumbnail || '').trim();
+    caption.textContent = String(photo.caption || '').trim() || 'No caption';
+    backdrop.style.display = 'block';
+    modal.style.display = 'block';
+  }
+
+  function closePhotoViewer() {
+    var backdrop = document.getElementById('phViewerBackdrop');
+    var modal = document.getElementById('phViewerModal');
+    if (backdrop) backdrop.style.display = 'none';
+    if (modal) modal.style.display = 'none';
   }
 
   async function searchGoogleImages(query) {
@@ -1569,7 +1702,19 @@
   }
 
   function serializePhotosForExcel(photos) {
-    var arr = (photos || []).map(function (ph) { return String(ph && ph.url ? ph.url : '').trim(); }).filter(Boolean);
+    var arr = (photos || []).map(function (ph, idx) {
+      var normalized = normalizePhotoRecord(ph, idx);
+      if (!normalized) return null;
+      return {
+        id: normalized.id,
+        url: normalized.url,
+        thumbnail: normalized.thumbnail || normalized.url,
+        caption: normalized.caption || '',
+        source: normalized.source || '',
+        oneDrivePath: normalized.oneDrivePath || '',
+        addedAt: normalized.addedAt || toIsoNow()
+      };
+    }).filter(Boolean);
     return arr.length ? (PHOTO_URLS_JSON_PREFIX + JSON.stringify(arr)) : '';
   }
 
@@ -1583,6 +1728,7 @@
     // Try sync via host
     try {
       var serialized = serializePhotosForExcel(state.photos);
+      if (state && state.data) state.data.photoUrls = serialized;
       var hostSync = await syncViaExplorerHost(state, { photoUrls: serialized });
       if (hostSync.attempted && hostSync.synced) {
         setPhotoStatus('Photos saved and synced to Excel (' + state.photos.length + ' photo' + (state.photos.length !== 1 ? 's' : '') + ').', false);
@@ -1620,7 +1766,9 @@
     var pane = document.getElementById('pane-photos');
     if (!pane) return;
     var placeKey = getTagPlaceKey(data);
-    var photos = getStoredPhotosForPlace(placeKey);
+    var storedPhotos = getStoredPhotosForPlace(placeKey);
+    var sourcePhotos = parsePhotosFromSource((data && (data.photoUrls || data.photos)) || '');
+    var photos = mergePhotoCollections(storedPhotos, sourcePhotos);
     window.__detailPhotosState = {
       placeKey: placeKey,
       photos: photos.slice(),
@@ -1678,7 +1826,8 @@
       '<input id="phUrlInput" class="tm-input" type="url" placeholder="https://example.com/photo.jpg" />' +
       '<button type="button" class="tm-btn primary" id="phAddUrlBtn">Add Photo</button>' +
       '</div>' +
-      '<div style="font-size:0.8em;color:#6b7280;margin-top:6px">Paste any direct image URL (jpg, png, webp, etc.)</div>' +
+      '<div id="phUrlStatus" class="ph-url-status ph-url-status--hidden"></div>' +
+      '<div style="font-size:0.8em;color:#6b7280;margin-top:4px">Paste any direct image URL — it will be uploaded to your OneDrive automatically.</div>' +
       '</div>' +
 
       // Upload pane
@@ -1706,6 +1855,11 @@
         btn.classList.add('active');
         var target = document.getElementById('phAddPane-' + btn.getAttribute('data-add-tab'));
         if (target) target.classList.remove('ph-hidden');
+        // Reset URL status when switching back to URL tab
+        if (btn.getAttribute('data-add-tab') === 'url') {
+          var urlStatusEl2 = document.getElementById('phUrlStatus');
+          if (urlStatusEl2) urlStatusEl2.className = 'ph-url-status ph-url-status--hidden';
+        }
       });
     });
   }
@@ -2456,7 +2610,7 @@
         return;
       }
 
-      if (closestFromEvent(e, '#phAddUrlBtn')) {
+      if (closestFromEvent(e, '#phAddUrlBtn') || closestFromEvent(e, '.ph-url-retry-btn')) {
         var urlInput = document.getElementById('phUrlInput');
         var photoUrl = urlInput ? urlInput.value.trim() : '';
         if (!photoUrl || !/^https?:\/\//i.test(photoUrl)) {
@@ -2465,12 +2619,56 @@
         }
         var urlState = window.__detailPhotosState;
         if (urlState) {
-          urlState.photos.push({ id: makePhotoId(), url: photoUrl, thumbnail: photoUrl, caption: '', source: 'url', addedAt: toIsoNow() });
-          renderPhotoGallery();
-          setPhotoStatus('Photo added — click Save Photos to persist.', false);
-          showDetailToast('✅ Photo added. Click Save Photos.', 'info', 2800);
-          if (urlInput) urlInput.value = '';
+          var locationNameForUrlUpload = (urlState.data && urlState.data.name) || 'location';
+          var addUrlBtn = document.getElementById('phAddUrlBtn');
+          var urlStatusEl = document.getElementById('phUrlStatus');
+
+          function setUrlStatus(mode, text) {
+            if (!urlStatusEl) return;
+            urlStatusEl.className = 'ph-url-status ph-url-status--' + mode;
+            if (mode === 'uploading') {
+              urlStatusEl.innerHTML = '<span class="ph-url-status__spinner"></span><span>' + escapeHtml(text) + '</span>';
+            } else if (mode === 'success') {
+              urlStatusEl.innerHTML = '✅ ' + escapeHtml(text);
+            } else {
+              urlStatusEl.innerHTML = '⚠️ <span style="flex:1">' + escapeHtml(text) + '</span>' +
+                '<button type="button" class="ph-url-retry-btn">Retry</button>';
+            }
+          }
+
+          if (addUrlBtn) { addUrlBtn.disabled = true; addUrlBtn.textContent = 'Uploading…'; }
+          setUrlStatus('uploading', 'Uploading to OneDrive…');
+          setPhotoStatus('Uploading URL image to OneDrive…', false);
+          uploadPhotoFromExternalUrl(photoUrl, locationNameForUrlUpload)
+            .then(function (uploadedPhoto) {
+              urlState.photos.push(uploadedPhoto);
+              renderPhotoGallery();
+              setPhotoStatus('Photo uploaded to OneDrive — click Save Photos to persist.', false);
+              showDetailToast('✅ Photo uploaded to OneDrive. Click Save Photos.', 'success', 3000);
+              setUrlStatus('success', 'Uploaded to OneDrive — click Save Photos to keep.');
+              if (urlInput) urlInput.value = '';
+            })
+            .catch(function (err) {
+              var msg = (err && err.message ? err.message : String(err));
+              setPhotoStatus('URL upload failed: ' + msg, true);
+              showDetailToast('⚠️ URL upload failed: ' + msg, 'error', 4200);
+              setUrlStatus('error', 'Upload failed: ' + msg + '. Tap Retry to try again.');
+            })
+            .finally(function () {
+              if (addUrlBtn) { addUrlBtn.disabled = false; addUrlBtn.textContent = 'Add Photo'; }
+            });
         }
+        return;
+      }
+
+      if (closestFromEvent(e, '#phViewerCloseBtn, #phViewerBackdrop')) {
+        closePhotoViewer();
+        return;
+      }
+
+      var phViewBtn = closestFromEvent(e, '[data-ph-view-idx]');
+      if (phViewBtn) {
+        openPhotoViewer(phViewBtn.getAttribute('data-ph-view-idx'));
         return;
       }
 
@@ -2534,6 +2732,17 @@
     });
 
     document.addEventListener('change', function (e) {
+      var captionInput = closestFromEvent(e, '[data-ph-caption-idx]');
+      if (captionInput) {
+        var captionState = window.__detailPhotosState;
+        var capIdx = Number(captionInput.getAttribute('data-ph-caption-idx'));
+        if (captionState && Number.isInteger(capIdx) && capIdx >= 0 && capIdx < captionState.photos.length) {
+          captionState.photos[capIdx].caption = String(captionInput.value || '').trim();
+          setPhotoStatus('Caption updated — click Save Photos to persist.', false);
+        }
+        return;
+      }
+
       var fileInput = closestFromEvent(e, '#phUploadInput');
       if (!fileInput) return;
       var files = fileInput.files ? Array.from(fileInput.files) : [];
