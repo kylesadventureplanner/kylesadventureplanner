@@ -21,7 +21,8 @@ function buildResolvedByPlaceId(placeId) {
   };
 }
 
-async function installMocks(context, graphCalls) {
+async function installMocks(context, graphCalls, options = {}) {
+  const postDelayMs = Math.max(0, Number(options.postDelayMs) || 0);
   await context.route('https://graph.microsoft.com/**', async (route) => {
     const request = route.request();
     const method = request.method();
@@ -52,6 +53,9 @@ async function installMocks(context, graphCalls) {
         url,
         body: JSON.parse(request.postData() || '{}')
       });
+      if (postDelayMs) {
+        await new Promise((resolve) => setTimeout(resolve, postDelayMs));
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -775,6 +779,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       return select && select.options.length >= 7;
     }, null, { timeout: 10000 });
 
+
     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
 
     await popup.selectOption('#singleInputType', 'placeName');
@@ -805,6 +810,7 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(bulkRows[1][9]).toBe('');
     expect(bulkRows[1][10]).toBe('');
   });
+
 
   test('bulk candidate review lets user choose matches, then add selected candidates', async ({ page }) => {
     const graphCalls = [];

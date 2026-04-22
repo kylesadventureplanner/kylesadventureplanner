@@ -88,6 +88,12 @@
       border-bottom-color: #667eea;
     }
 
+    .tab-btn:focus-visible {
+      outline: 2px solid #667eea;
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+
     .tab-content {
       display: none;
       animation: fadeIn 0.3s ease;
@@ -95,6 +101,18 @@
 
     .tab-content.active {
       display: block;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     @keyframes fadeIn {
@@ -666,13 +684,13 @@
     </div>
 
     <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="places">
+    <div class="tabs" id="editModeTabList" role="tablist" aria-label="Edit mode sections">
+      <button id="tab-btn-places" class="tab-btn active" data-tab="places" role="tab" aria-selected="true" aria-controls="places-tab" tabindex="0" type="button">
         <span class="tab-label-wrap">➕ Add Places <span id="festivalSourcesTabBadge" class="festival-tab-badge">3 providers enabled • max 8</span></span>
       </button>
-      <button class="tab-btn" data-tab="automation">🔄 Automation</button>
-      <button class="tab-btn" data-tab="backup">💾 Backup</button>
-      <button class="tab-btn" data-tab="history">📅 History</button>
+      <button id="tab-btn-automation" class="tab-btn" data-tab="automation" role="tab" aria-selected="false" aria-controls="automation-tab" tabindex="-1" type="button">🔄 Automation</button>
+      <button id="tab-btn-backup" class="tab-btn" data-tab="backup" role="tab" aria-selected="false" aria-controls="backup-tab" tabindex="-1" type="button">💾 Backup</button>
+      <button id="tab-btn-history" class="tab-btn" data-tab="history" role="tab" aria-selected="false" aria-controls="history-tab" tabindex="-1" type="button">📅 History</button>
     </div>
 
     <div class="card" id="editModeTargetCard">
@@ -700,7 +718,7 @@
     </div>
 
     <!-- Add Places Tab -->
-    <div id="places-tab" class="tab-content active">
+    <div id="places-tab" class="tab-content active" role="tabpanel" aria-labelledby="tab-btn-places" tabindex="0">
       <div class="card">
         <div class="card-title">🎪 Festival Sources</div>
         <p style="color: #6b7280; margin-bottom: 12px; line-height: 1.6;">Manage festival provider sources from Add Places without switching tabs.</p>
@@ -824,6 +842,7 @@
         </div>
 
         <div id="single-search-status"></div>
+        <div id="single-search-status-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
         <div id="singlePreflightStatus" class="preflight-review">Preflight review will check the selected target for exact duplicates before saving.</div>
         <div id="singleFestivalManualAssist" class="festival-manual-assist" style="display:none;">
           <div style="font-size:12px; font-weight:700; color:#9a3412;">No provider details found. Add a quick manual festival candidate:</div>
@@ -897,6 +916,7 @@
         </div>
 
         <div id="bulk-search-status"></div>
+        <div id="bulk-search-status-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
         <div id="bulkPreflightStatus" class="preflight-review">Bulk preflight review will summarize duplicates and the active save destination before saving.</div>
         <div id="bulk-candidates" class="candidate-results" aria-live="polite"></div>
         <div id="bulk-status"></div>
@@ -960,6 +980,7 @@
         </div>
 
         <div id="chain-search-status"></div>
+        <div id="chain-search-status-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
         <div id="chain-candidates" class="candidate-results" aria-live="polite"></div>
         <div id="chain-status"></div>
       </div>
@@ -978,7 +999,7 @@
     </div>
 
     <!-- Automation Tab -->
-    <div id="automation-tab" class="tab-content">
+    <div id="automation-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-automation" tabindex="0" hidden>
       <!-- Test Google API Button -->
       <div class="card">
         <div class="card-title">🧪 Test Google Places API</div>
@@ -1202,7 +1223,7 @@
     </div>
 
     <!-- Backup Tab -->
-    <div id="backup-tab" class="tab-content">
+    <div id="backup-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-backup" tabindex="0" hidden>
       <div class="card">
         <div class="card-title">💾 Create Backup</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
@@ -1218,7 +1239,7 @@
     </div>
 
     <!-- History Tab -->
-    <div id="history-tab" class="tab-content">
+    <div id="history-tab" class="tab-content" role="tabpanel" aria-labelledby="tab-btn-history" tabindex="0" hidden>
       <div class="card">
         <div class="card-title">📅 Location History</div>
         <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
@@ -1641,21 +1662,26 @@
       btn.textContent = festivalSourcesViewState.summaryOpen ? '🙈 Hide Applied Config' : '👁️ View Applied Config';
     }
 
-    function switchTab(tabName) {
+    function switchTab(tabName, options = {}) {
       console.log(`🔄 SWITCHING TAB TO: ${tabName}`);
 
       if (tabName !== 'places' && festivalSourcesViewState.configOpen) {
         closeFestivalSourcesConfigView({ restoreFocus: false, skipUnsavedCheck: true });
       }
 
+      const shouldFocusTab = Boolean(options && options.focusTab);
+
       // Hide all tabs
       document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
+        tab.hidden = true;
       });
 
       // Remove active from all buttons
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+        btn.setAttribute('tabindex', '-1');
       });
 
       // Show selected tab
@@ -1666,12 +1692,18 @@
       }
 
       tabElement.classList.add('active');
+      tabElement.hidden = false;
       console.log(`✅ Showed tab: ${tabName}-tab`);
 
       // Highlight the button
       const button = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
       if (button) {
         button.classList.add('active');
+        button.setAttribute('aria-selected', 'true');
+        button.setAttribute('tabindex', '0');
+        if (shouldFocusTab && typeof button.focus === 'function') {
+          button.focus();
+        }
         console.log(`✅ Highlighted button for: ${tabName}`);
       }
 
@@ -1684,6 +1716,23 @@
       }
     }
 
+    function moveTabSelectionFromKey(currentButton, key) {
+      const tabButtons = Array.from(document.querySelectorAll('.tab-btn[data-tab]'));
+      if (!tabButtons.length) return;
+      const currentIndex = tabButtons.indexOf(currentButton);
+      if (currentIndex < 0) return;
+      let nextIndex = currentIndex;
+      if (key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabButtons.length;
+      if (key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabButtons.length) % tabButtons.length;
+      if (key === 'Home') nextIndex = 0;
+      if (key === 'End') nextIndex = tabButtons.length - 1;
+      const nextButton = tabButtons[nextIndex];
+      if (!nextButton) return;
+      const tabName = nextButton.getAttribute('data-tab');
+      if (!tabName) return;
+      switchTab(tabName, { focusTab: true });
+    }
+
     // Setup tab click listeners when page loads
     function initializeTabs() {
       console.log('🔧 Initializing tab listeners...');
@@ -1692,6 +1741,7 @@
       console.log(`Found ${tabButtons.length} tab buttons`);
 
       tabButtons.forEach(button => {
+        if (button.dataset.tabInitialized === 'true') return;
         button.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
@@ -1701,7 +1751,25 @@
 
           switchTab(tabName);
         });
+
+        button.addEventListener('keydown', function(e) {
+          if (!['ArrowRight', 'ArrowLeft', 'Home', 'End', 'Enter', ' '].includes(e.key)) return;
+          e.preventDefault();
+          const tabName = this.getAttribute('data-tab');
+          if (!tabName) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            switchTab(tabName, { focusTab: true });
+            return;
+          }
+          moveTabSelectionFromKey(this, e.key);
+        });
+
+        button.dataset.tabInitialized = 'true';
       });
+
+      const activeButton = document.querySelector('.tab-btn.active[data-tab]');
+      const activeTabName = activeButton ? activeButton.getAttribute('data-tab') : 'places';
+      if (activeTabName) switchTab(activeTabName);
 
       syncTargetCardForTab('places');
 
@@ -3064,16 +3132,34 @@
       }
     }
 
-    function setSingleCandidateStatus(message, kind) {
-      const statusDiv = document.getElementById('single-search-status');
+    function toStatusAnnouncementText(message) {
+      if (!message) return '';
+      const text = String(message);
+      if (!/[<>]/.test(text)) return text.replace(/\s+/g, ' ').trim();
+      const temp = document.createElement('div');
+      temp.innerHTML = text;
+      return String(temp.textContent || temp.innerText || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function setCandidateStatus(statusElementId, liveRegionId, message, kind) {
+      const statusDiv = document.getElementById(statusElementId);
+      const liveRegion = document.getElementById(liveRegionId);
       if (!statusDiv) return;
       if (!message) {
         statusDiv.innerHTML = '';
+        if (liveRegion) liveRegion.textContent = '';
         return;
       }
-      // single-search-status (line ~3074)
       const safeKind = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : (kind === 'info' ? 'status-warning' : ''));
       statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
+      if (liveRegion) {
+        const prefix = kind === 'error' ? 'Error: ' : (kind === 'success' ? 'Success: ' : 'Update: ');
+        liveRegion.textContent = `${prefix}${toStatusAnnouncementText(message)}`;
+      }
+    }
+
+    function setSingleCandidateStatus(message, kind) {
+      setCandidateStatus('single-search-status', 'single-search-status-live', message, kind);
     }
 
     function setSingleFestivalManualAssistVisible(visible, draft = null) {
@@ -3471,14 +3557,7 @@
     }
 
     function setBulkCandidateStatus(message, kind) {
-      const statusDiv = document.getElementById('bulk-search-status');
-      if (!statusDiv) return;
-      if (!message) {
-        statusDiv.innerHTML = '';
-        return;
-      }
-      const safeKind = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : (kind === 'info' ? 'status-warning' : ''));
-      statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
+      setCandidateStatus('bulk-search-status', 'bulk-search-status-live', message, kind);
     }
 
     function parseBulkInputValues(rawInput) {
@@ -3489,15 +3568,7 @@
     }
 
     function setChainCandidateStatus(message, kind) {
-      const statusDiv = document.getElementById('chain-search-status');
-      if (!statusDiv) return;
-      if (!message) {
-        statusDiv.innerHTML = '';
-        return;
-      }
-      // setBulkCandidateStatus (keep existing but update safeKind)
-      const safeKind = kind === 'error' ? 'status-error' : (kind === 'success' ? 'status-success' : (kind === 'info' ? 'status-warning' : ''));
-      statusDiv.innerHTML = `<div class="status-message ${safeKind}">${message}</div>`;
+      setCandidateStatus('chain-search-status', 'chain-search-status-live', message, kind);
     }
 
     function parseChainInputValues(rawInput) {
@@ -4824,6 +4895,42 @@
       }
     }
 
+    const submitInProgressState = {
+      addSingle: false,
+      addBulk: false,
+      addChain: false
+    };
+
+    function beginSubmitGuard(actionKey, buttonId, statusDiv) {
+      if (submitInProgressState[actionKey]) {
+        if (statusDiv) {
+          statusDiv.innerHTML = '<div class="status-message status-warning">⏳ This action is already running. Please wait for it to finish.</div>';
+        }
+        return null;
+      }
+      submitInProgressState[actionKey] = true;
+      const button = document.getElementById(buttonId);
+      if (button) {
+        if (!button.dataset.idleLabel) {
+          button.dataset.idleLabel = String(button.textContent || '').trim();
+        }
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        button.textContent = '⏳ Working...';
+      }
+      return { actionKey, buttonId };
+    }
+
+    function endSubmitGuard(guardToken) {
+      if (!guardToken || !guardToken.actionKey) return;
+      submitInProgressState[guardToken.actionKey] = false;
+      const button = document.getElementById(guardToken.buttonId);
+      if (!button) return;
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      button.textContent = String(button.dataset.idleLabel || button.textContent || '').trim();
+    }
+
     /**
      * Submit Add Single Place - WITH PROGRESS TRACKING
      */
@@ -4832,46 +4939,52 @@
       const inputType = document.getElementById('singleInputType').value;
       const dryRun = document.getElementById('singleDryRun').checked;
       const statusDiv = document.getElementById('single-status');
-      const target = getSelectedTarget('actionTargetSelect');
-      const targetContext = cloneTargetContext(target);
-      if (!applyTargetToMainWindow(target, statusDiv)) return;
-      await probeTargetSchema(target);
-      const loadedRows = await loadTargetRows(target);
-      if (!loadedRows) {
-        statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.</div>`;
-      }
-      renderActionTargetDiagnostics();
-
-      if (!input.trim()) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a location</div>';
-        return;
-      }
-
-      const duplicateMatches = renderPreflightStatus('singlePreflightStatus', target, input, inputType);
-      if (duplicateMatches.length) {
-        statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Duplicate preflight stopped this save for ${formatTargetDestination(target)}. Review the existing row first.</div>`;
-        return;
-      }
-
-      // Try new progress tracking system first
-      if (typeof window.handleAddSinglePlaceWithProgress === 'function') {
-        const result = await window.handleAddSinglePlaceWithProgress(input, inputType, statusDiv, dryRun, { target: targetContext });
-        if (result.success) {
-          document.getElementById('singleInput').value = '';
+      const guard = beginSubmitGuard('addSingle', 'singleSubmitBtn', statusDiv);
+      if (!guard) return;
+      try {
+        const target = getSelectedTarget('actionTargetSelect');
+        const targetContext = cloneTargetContext(target);
+        if (!applyTargetToMainWindow(target, statusDiv)) return;
+        await probeTargetSchema(target);
+        const loadedRows = await loadTargetRows(target);
+        if (!loadedRows) {
+          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the add will proceed.</div>`;
         }
-        return;
-      }
+        renderActionTargetDiagnostics();
 
-      // Fallback to enhanced automation
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-      if (window.enhancedAutomation) {
-        const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun, { target: targetContext });
-        window.enhancedAutomation.displayResults(result, statusDiv);
-        if (result.success) {
-          document.getElementById('singleInput').value = '';
+        if (!input.trim()) {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a location</div>';
+          return;
         }
-      } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+
+        const duplicateMatches = renderPreflightStatus('singlePreflightStatus', target, input, inputType);
+        if (duplicateMatches.length) {
+          statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Duplicate preflight stopped this save for ${formatTargetDestination(target)}. Review the existing row first.</div>`;
+          return;
+        }
+
+        // Try new progress tracking system first
+        if (typeof window.handleAddSinglePlaceWithProgress === 'function') {
+          const result = await window.handleAddSinglePlaceWithProgress(input, inputType, statusDiv, dryRun, { target: targetContext });
+          if (result.success) {
+            document.getElementById('singleInput').value = '';
+          }
+          return;
+        }
+
+        // Fallback to enhanced automation
+        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+        if (window.enhancedAutomation) {
+          const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun, { target: targetContext });
+          window.enhancedAutomation.displayResults(result, statusDiv);
+          if (result.success) {
+            document.getElementById('singleInput').value = '';
+          }
+        } else {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        }
+      } finally {
+        endSubmitGuard(guard);
       }
     }
 
@@ -4883,58 +4996,64 @@
       const inputType = document.getElementById('bulkInputType').value;
       const dryRun = document.getElementById('bulkDryRun').checked;
       const statusDiv = document.getElementById('bulk-status');
-      const target = getSelectedTarget('actionTargetSelect');
-      const targetContext = cloneTargetContext(target);
-      if (!applyTargetToMainWindow(target, statusDiv)) return;
-      await probeTargetSchema(target);
-      const loadedRows = await loadTargetRows(target);
-      if (!loadedRows) {
-        statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the bulk add will proceed.</div>`;
-      }
-      renderActionTargetDiagnostics();
-
-      if (!input.trim()) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
-        return;
-      }
-
-      const locations = parseBulkInputValues(input);
-
-      if (locations.length === 0) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
-        return;
-      }
-
-      const duplicateMatches = renderPreflightStatus('bulkPreflightStatus', target, locations, inputType);
-      const duplicateInputs = new Set(duplicateMatches.map((match) => String(match.matchedInput || '').trim().toLowerCase()).filter(Boolean));
-      const filteredLocations = locations.filter((location) => !duplicateInputs.has(String(location || '').trim().toLowerCase()));
-      if (!filteredLocations.length && duplicateMatches.length) {
-        statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Bulk preflight found only duplicates for ${formatTargetDestination(target)}. Nothing new will be added.</div>`;
-        return;
-      }
-      if (filteredLocations.length !== locations.length) {
-        statusDiv.innerHTML = `<div class="status-message">ℹ️ Bulk preflight skipped ${locations.length - filteredLocations.length} duplicate input(s) for ${formatTargetDestination(target)}. Continuing with ${filteredLocations.length} new item(s)...</div>`;
-      }
-
-      // Try new progress tracking system first
-      if (typeof window.handleBulkAddPlacesWithProgress === 'function') {
-        const result = await window.handleBulkAddPlacesWithProgress(filteredLocations, inputType, statusDiv, dryRun, { target: targetContext });
-        if (result.success && !dryRun) {
-          document.getElementById('bulkInput').value = '';
+      const guard = beginSubmitGuard('addBulk', 'bulkSubmitBtn', statusDiv);
+      if (!guard) return;
+      try {
+        const target = getSelectedTarget('actionTargetSelect');
+        const targetContext = cloneTargetContext(target);
+        if (!applyTargetToMainWindow(target, statusDiv)) return;
+        await probeTargetSchema(target);
+        const loadedRows = await loadTargetRows(target);
+        if (!loadedRows) {
+          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the bulk add will proceed.</div>`;
         }
-        return;
-      }
+        renderActionTargetDiagnostics();
 
-      // Fallback to enhanced automation
-      statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-      if (window.enhancedAutomation) {
-        const result = await window.enhancedAutomation.bulkAddPlaces(filteredLocations.join('\n'), inputType, dryRun, { target: targetContext });
-        window.enhancedAutomation.displayResults(result, statusDiv);
-        if (result.success && !dryRun) {
-          document.getElementById('bulkInput').value = '';
+        if (!input.trim()) {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
+          return;
         }
-      } else {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+
+        const locations = parseBulkInputValues(input);
+
+        if (locations.length === 0) {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
+          return;
+        }
+
+        const duplicateMatches = renderPreflightStatus('bulkPreflightStatus', target, locations, inputType);
+        const duplicateInputs = new Set(duplicateMatches.map((match) => String(match.matchedInput || '').trim().toLowerCase()).filter(Boolean));
+        const filteredLocations = locations.filter((location) => !duplicateInputs.has(String(location || '').trim().toLowerCase()));
+        if (!filteredLocations.length && duplicateMatches.length) {
+          statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Bulk preflight found only duplicates for ${formatTargetDestination(target)}. Nothing new will be added.</div>`;
+          return;
+        }
+        if (filteredLocations.length !== locations.length) {
+          statusDiv.innerHTML = `<div class="status-message">ℹ️ Bulk preflight skipped ${locations.length - filteredLocations.length} duplicate input(s) for ${formatTargetDestination(target)}. Continuing with ${filteredLocations.length} new item(s)...</div>`;
+        }
+
+        // Try new progress tracking system first
+        if (typeof window.handleBulkAddPlacesWithProgress === 'function') {
+          const result = await window.handleBulkAddPlacesWithProgress(filteredLocations, inputType, statusDiv, dryRun, { target: targetContext });
+          if (result.success && !dryRun) {
+            document.getElementById('bulkInput').value = '';
+          }
+          return;
+        }
+
+        // Fallback to enhanced automation
+        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+        if (window.enhancedAutomation) {
+          const result = await window.enhancedAutomation.bulkAddPlaces(filteredLocations.join('\n'), inputType, dryRun, { target: targetContext });
+          window.enhancedAutomation.displayResults(result, statusDiv);
+          if (result.success && !dryRun) {
+            document.getElementById('bulkInput').value = '';
+          }
+        } else {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        }
+      } finally {
+        endSubmitGuard(guard);
       }
     }
 
@@ -4946,62 +5065,68 @@
       const inputType = document.getElementById('chainInputType').value;
       const dryRun = document.getElementById('chainDryRun').checked;
       const statusDiv = document.getElementById('chain-status');
-      const target = getSelectedTarget('actionTargetSelect');
-      if (!applyTargetToMainWindow(target, statusDiv)) return;
-      await probeTargetSchema(target);
-      const loadedRows = await loadTargetRows(target);
-      if (!loadedRows) {
-        statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the bulk chain add will proceed.</div>`;
-      }
-
-      if (!input.trim()) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
-        return;
-      }
-
-      const locations = input.split('\n').filter(l => l.trim());
-
-      if (locations.length === 0) {
-        statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
-        return;
-      }
-
-      // Try new fixed function first (with real progress)
-      if (typeof window.handleBulkAddChainLocationsFixed === 'function') {
-        console.log('🔄 Using FIXED bulk add with real progress updates');
-        const result = await window.handleBulkAddChainLocationsFixed(locations, inputType, statusDiv, dryRun);
-
-        if (result.success && !dryRun) {
-          document.getElementById('chainInput').value = '';
+      const guard = beginSubmitGuard('addChain', 'chainSubmitBtn', statusDiv);
+      if (!guard) return;
+      try {
+        const target = getSelectedTarget('actionTargetSelect');
+        if (!applyTargetToMainWindow(target, statusDiv)) return;
+        await probeTargetSchema(target);
+        const loadedRows = await loadTargetRows(target);
+        if (!loadedRows) {
+          statusDiv.innerHTML = `<div class="status-message status-warning">⚠️ Could not load existing rows for ${formatTargetDestination(target)}. Duplicate checking is skipped, but the bulk chain add will proceed.</div>`;
         }
-        return;
-      }
 
-      // Fallback: Try enhanced function
-      if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
-        console.log('🔄 Using enhanced bulk add');
-        const result = await window.handleBulkAddChainLocationsEnhanced(locations, inputType, statusDiv, dryRun);
-
-        if (result.success && !dryRun) {
-          document.getElementById('chainInput').value = '';
+        if (!input.trim()) {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
+          return;
         }
-        return;
-      }
 
-      // Final fallback: Old system
-      if (window.enhancedAutomation) {
-        console.log('🔄 Using fallback automation system');
-        statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
-        const result = await window.enhancedAutomation.bulkAddChainLocations(input, inputType, dryRun);
-        window.enhancedAutomation.displayResults(result, statusDiv);
+        const locations = input.split('\n').filter(l => l.trim());
 
-        if (result.success && !dryRun) {
-          document.getElementById('chainInput').value = '';
+        if (locations.length === 0) {
+          statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
+          return;
         }
-        return;
-      }
 
-      statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        // Try new fixed function first (with real progress)
+        if (typeof window.handleBulkAddChainLocationsFixed === 'function') {
+          console.log('🔄 Using FIXED bulk add with real progress updates');
+          const result = await window.handleBulkAddChainLocationsFixed(locations, inputType, statusDiv, dryRun);
+
+          if (result.success && !dryRun) {
+            document.getElementById('chainInput').value = '';
+          }
+          return;
+        }
+
+        // Fallback: Try enhanced function
+        if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
+          console.log('🔄 Using enhanced bulk add');
+          const result = await window.handleBulkAddChainLocationsEnhanced(locations, inputType, statusDiv, dryRun);
+
+          if (result.success && !dryRun) {
+            document.getElementById('chainInput').value = '';
+          }
+          return;
+        }
+
+        // Final fallback: Old system
+        if (window.enhancedAutomation) {
+          console.log('🔄 Using fallback automation system');
+          statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
+          const result = await window.enhancedAutomation.bulkAddChainLocations(input, inputType, dryRun);
+          window.enhancedAutomation.displayResults(result, statusDiv);
+
+          if (result.success && !dryRun) {
+            document.getElementById('chainInput').value = '';
+          }
+          return;
+        }
+
+        statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+      } finally {
+        endSubmitGuard(guard);
+      }
     }
 
     /**
