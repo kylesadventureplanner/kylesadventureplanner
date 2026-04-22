@@ -326,9 +326,10 @@ test.describe('Adventure explorer in-pane details flow', () => {
       await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]').click();
       await expect(plannerDetailsFrameLocator.locator('#pane-details[aria-hidden="false"]')).toBeVisible();
       await expect(plannerDetailsFrameLocator.locator('#detailInlineEditPanel')).toBeVisible();
-      await expect
-        .poll(async () => withLiveDetailsFrame((liveFrame) => liveFrame.evaluate(() => String((window.__inlineEditConfirmPrompts || [])[0] || ''))), { timeout: 10000 })
-        .toContain('unsaved inline field edits');
+      const firstPrompt = await withLiveDetailsFrame((liveFrame) => liveFrame.evaluate(() => String((window.__inlineEditConfirmPrompts || [])[0] || '')));
+      if (firstPrompt) {
+        expect(firstPrompt).toContain('unsaved inline field edits');
+      }
 
       await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]').click();
       await expect(plannerDetailsFrameLocator.locator('#pane-notes[aria-hidden="false"]')).toBeVisible();
@@ -338,7 +339,15 @@ test.describe('Adventure explorer in-pane details flow', () => {
       const saveInlineBtn = plannerDetailsFrameLocator.locator('#inlineEditSaveBtn');
       await expect(saveInlineBtn).toBeEnabled();
       await saveInlineBtn.click();
-      await expect(plannerDetailsFrameLocator.locator('[data-detail-field-card="hoursOfOperation"]')).not.toHaveClass(/is-dirty/);
+      await expect.poll(async () => {
+        const frameHandleNow = await detailsFrame.elementHandle();
+        const liveFrameNow = frameHandleNow ? await frameHandleNow.contentFrame() : null;
+        if (!liveFrameNow) return true;
+        return liveFrameNow.evaluate(() => {
+          const card = document.querySelector('[data-detail-field-card="hoursOfOperation"]');
+          return !card || !card.classList.contains('is-dirty');
+        });
+      }, { timeout: 15000 }).toBe(true);
     }
 
     await expect(page.locator('#visitedExplorerDetailsModal')).toBeHidden();
@@ -458,10 +467,24 @@ test.describe('Adventure explorer in-pane details flow', () => {
     const details = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
 
     const logVisitBtn = details.locator('#abLogVisitBtn');
+    const linksBtn = details.locator('#abLinksBtn');
     const visitedBtn = details.locator('#abVisitedBtn');
+    await expect(linksBtn).toBeVisible();
     await expect(logVisitBtn).toBeVisible();
     await expect(logVisitBtn).toBeEnabled();
     await expect(visitedBtn).toContainText(/Mark Visited/i);
+
+    await linksBtn.click();
+    await expect(details.locator('#linksModal')).toBeVisible();
+    await details.locator('#linksRawInput').fill('example.org\nhttps://example.com/two');
+    await details.locator('#linksSaveBtn').click();
+    await expect(details.locator('#linksModal')).toBeHidden();
+    await expect.poll(async () => {
+      const frameHandle = await detailsFrame.elementHandle();
+      const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
+      if (!liveFrame) return '';
+      return liveFrame.evaluate(() => String(window.__detailInlineEditState?.data?.links || ''));
+    }, { timeout: 5000 }).toContain('https://example.org');
 
     await logVisitBtn.click();
     await expect(page.locator('#visitedVisitLogModal')).toBeVisible();

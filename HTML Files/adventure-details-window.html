@@ -72,6 +72,31 @@
       display: none;
     }
     .enrich-backdrop.open { display: block; }
+    .links-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.48);
+      z-index: 2230;
+      display: none;
+    }
+    .links-backdrop.open { display: block; }
+    .links-modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(760px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
+      overflow: auto;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
+      z-index: 2240;
+      display: none;
+    }
+    .links-modal.open { display: block; }
+    .links-modal textarea { min-height: 160px; }
     .enrich-modal {
       position: fixed;
       left: 50%;
@@ -256,6 +281,24 @@
   </div>
 
   <div id="enrichBackdrop" class="enrich-backdrop" aria-hidden="true"></div>
+  <div id="linksBackdrop" class="links-backdrop" aria-hidden="true"></div>
+  <div id="linksModal" class="links-modal" role="dialog" aria-modal="true" aria-labelledby="linksModalTitle">
+    <div class="enrich-head">
+      <div id="linksModalTitle" class="enrich-title">🔗 Add Related Links</div>
+      <button id="linksCloseBtn" type="button" class="auth-btn">Close</button>
+    </div>
+    <div class="enrich-body">
+      <div class="enrich-field full">
+        <label for="linksRawInput">Paste one or more links (one per line or comma-separated)</label>
+        <textarea id="linksRawInput" class="tm-input" rows="7" placeholder="https://example.com\nhttps://example.org"></textarea>
+      </div>
+      <div id="linksHint" class="ph-api-notice" style="margin-top:10px;">Up to 16 unique links are saved. Links without http/https are auto-prefixed with https:// when valid.</div>
+    </div>
+    <div class="enrich-foot">
+      <button id="linksCancelBtn" type="button" class="auth-btn">Cancel</button>
+      <button id="linksSaveBtn" type="button" class="ab-btn ab-fav">Save Links</button>
+    </div>
+  </div>
   <div id="enrichModal" class="enrich-modal" role="dialog" aria-modal="true" aria-labelledby="enrichModalTitle">
     <div class="enrich-head">
       <div id="enrichModalTitle" class="enrich-title">📝 Enrich Location Details</div>
@@ -2546,6 +2589,114 @@
     return urls;
   }
 
+  function openLinksModal(state) {
+    var sourceState = state && typeof state === 'object' ? state : {};
+    var openerEl = sourceState.openerEl && typeof sourceState.openerEl.focus === 'function'
+      ? sourceState.openerEl
+      : (document.activeElement && typeof document.activeElement.focus === 'function' ? document.activeElement : null);
+    window.__detailLinksModalState = Object.assign({}, sourceState, { openerEl: openerEl });
+    var backdrop = document.getElementById('linksBackdrop');
+    var modal = document.getElementById('linksModal');
+    var input = document.getElementById('linksRawInput');
+    if (!backdrop || !modal || !input) return;
+    var data = state && state.data ? state.data : {};
+    input.value = [data.links || '', data.links2 || ''].filter(Boolean).join('\n');
+    backdrop.classList.add('open');
+    modal.classList.add('open');
+    input.focus();
+  }
+
+  function closeLinksModal() {
+    var state = window.__detailLinksModalState && typeof window.__detailLinksModalState === 'object'
+      ? window.__detailLinksModalState
+      : null;
+    var backdrop = document.getElementById('linksBackdrop');
+    var modal = document.getElementById('linksModal');
+    var saveBtn = document.getElementById('linksSaveBtn');
+    var fallbackBtn = document.getElementById('abLinksBtn');
+    if (backdrop) backdrop.classList.remove('open');
+    if (modal) modal.classList.remove('open');
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Links';
+    }
+    window.__detailLinksModalState = null;
+    var focusTarget = state && state.openerEl && typeof state.openerEl.focus === 'function'
+      ? state.openerEl
+      : (fallbackBtn && typeof fallbackBtn.focus === 'function' ? fallbackBtn : null);
+    if (focusTarget) {
+      try { focusTarget.focus(); } catch (_focusError) {}
+    }
+  }
+
+  function bindLinksModalControls() {
+    if (window.__linksModalBound) return;
+    window.__linksModalBound = true;
+
+    var closeBtn = document.getElementById('linksCloseBtn');
+    var cancelBtn = document.getElementById('linksCancelBtn');
+    var backdrop = document.getElementById('linksBackdrop');
+    var saveBtn = document.getElementById('linksSaveBtn');
+    var input = document.getElementById('linksRawInput');
+
+    if (closeBtn) closeBtn.addEventListener('click', closeLinksModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeLinksModal);
+    if (backdrop) backdrop.addEventListener('click', closeLinksModal);
+    document.addEventListener('keydown', function (event) {
+      if (!event || event.key !== 'Escape') return;
+      var modal = document.getElementById('linksModal');
+      if (!modal || !modal.classList.contains('open')) return;
+      event.preventDefault();
+      closeLinksModal();
+    }, true);
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async function () {
+        var state = window.__detailLinksModalState;
+        if (!state || !state.syncState || !state.data) {
+          closeLinksModal();
+          return;
+        }
+
+        var raw = input ? String(input.value || '') : '';
+        var previousLinks = {
+          links: String(state.data.links || ''),
+          links2: String(state.data.links2 || '')
+        };
+        var urls = normalizeLinkList(raw);
+        if (!urls.length) {
+          showDetailToast('⚠️ No valid URLs detected.', 'error', 2600);
+          return;
+        }
+
+        var linksPrimary = urls.slice(0, 8).join(', ');
+        var linksOverflow = urls.slice(8, 16).join(', ');
+        if (linksPrimary === previousLinks.links && linksOverflow === previousLinks.links2) {
+          showDetailToast('ℹ️ Links are already up to date.', 'info', 2600);
+          return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        var hostResult = await syncOrQueueExplorerUpdate(state.syncState, { links: linksPrimary, links2: linksOverflow }, 'detail-links-save');
+        if (hostResult && (hostResult.synced || hostResult.queued)) {
+          state.data.links = linksPrimary;
+          state.data.links2 = linksOverflow;
+          closeLinksModal();
+          showDetailUndoToast(hostResult.synced ? '✅ Links saved to source row.' : '🕒 Links queued for sync.', function () {
+            state.data.links = previousLinks.links;
+            state.data.links2 = previousLinks.links2;
+            syncOrQueueExplorerUpdate(state.syncState, { links: previousLinks.links, links2: previousLinks.links2 }, 'detail-links-undo');
+          }, 5000);
+        } else {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Links';
+          showDetailToast('⚠️ Could not sync links to source row.', 'error', 3200);
+        }
+      });
+    }
+  }
+
   function parseFreeTextEnrichment(raw) {
     var text = String(raw || '').trim();
     if (!text) return {};
@@ -2988,37 +3139,9 @@
 
     var linksBtn = document.getElementById('abLinksBtn');
     if (linksBtn) {
-      linksBtn.onclick = async function () {
-        var previousLinks = {
-          links: String(data.links || ''),
-          links2: String(data.links2 || '')
-        };
-        var seed = [data.links || '', data.links2 || ''].filter(Boolean).join('\n');
-        var raw = window.prompt('Paste one or more links (one per line or comma-separated):', seed);
-        if (raw == null) return;
-        var urls = normalizeLinkList(raw);
-        if (!urls.length) {
-          showDetailToast('⚠️ No valid URLs detected.', 'error', 2600);
-          return;
-        }
-        var linksPrimary = urls.slice(0, 8).join(', ');
-        var linksOverflow = urls.slice(8, 16).join(', ');
-        if (linksPrimary === previousLinks.links && linksOverflow === previousLinks.links2) {
-          showDetailToast('ℹ️ Links are already up to date.', 'info', 2600);
-          return;
-        }
-        var hostResult = await syncOrQueueExplorerUpdate(syncState, { links: linksPrimary, links2: linksOverflow }, 'detail-links-save');
-        if (hostResult && (hostResult.synced || hostResult.queued)) {
-          data.links = linksPrimary;
-          data.links2 = linksOverflow;
-          showDetailUndoToast(hostResult.synced ? '✅ Links saved to source row.' : '🕒 Links queued for sync.', function () {
-            data.links = previousLinks.links;
-            data.links2 = previousLinks.links2;
-            syncOrQueueExplorerUpdate(syncState, { links: previousLinks.links, links2: previousLinks.links2 }, 'detail-links-undo');
-          }, 5000);
-        } else {
-          showDetailToast('⚠️ Could not sync links to source row.', 'error', 3200);
-        }
+      linksBtn.onclick = function () {
+        bindLinksModalControls();
+        openLinksModal({ data: data, syncState: syncState, openerEl: linksBtn });
       };
     }
 

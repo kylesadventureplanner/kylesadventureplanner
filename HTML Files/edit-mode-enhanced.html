@@ -2266,6 +2266,26 @@
       return `Probe: attempted ${summary.attempted}, succeeded ${summary.succeeded}, blocked ${summary.blocked}`;
     }
 
+    function normalizeCandidateUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      try {
+        const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+        return new URL(normalized).toString();
+      } catch (_error) {
+        return '';
+      }
+    }
+
+    function normalizeManualFestivalState(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      const upper = raw.toUpperCase();
+      const alpha = upper.replace(/[^A-Z]/g, '');
+      if (alpha.length === 2) return alpha;
+      return '';
+    }
+
     function buildSingleFestivalManualDraft(query, inputType) {
       const raw = String(query || '').trim();
       const type = String(inputType || '').trim();
