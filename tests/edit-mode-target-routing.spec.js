@@ -212,7 +212,7 @@ test.describe('Edit Mode target-table routing', () => {
     expect(singleRow[10]).toBe('9-5 Cafe Alpha');
     const diagnostics = popup.locator('#editModeTargetDiagnostics');
     if (await diagnostics.count()) {
-      await expect(diagnostics).toContainText('Retail_Food_and_Drink.xlsx / Coffee');
+      await expect(diagnostics).toContainText('Coffee (Retail_Food_and_Drink.xlsx)');
     }
     await expect.poll(() => page.evaluate(() => ({
       filePath: window.filePath,
