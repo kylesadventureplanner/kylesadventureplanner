@@ -366,6 +366,7 @@
   <div id="visitedVisitLogBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedPhotoGalleryBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <div id="visitedUrlSearchBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedLocationTextParserBackdrop" class="visited-explorer-details-backdrop" hidden></div>
   <!-- Photo Gallery Modal -->
   <div id="visitedPhotoGalleryModal" class="visited-explorer-details-modal visited-photo-gallery-modal" role="dialog" aria-modal="true" aria-labelledby="visitedPhotoGalleryTitle" hidden tabindex="-1" data-location-id="" data-subtab-key="">
     <div class="visited-explorer-details-head">
@@ -392,6 +393,27 @@
       <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top:10px;">
         <button type="button" id="visitedUrlSearchSaveBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Save Links</button>
         <button type="button" id="visitedUrlSearchCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <!-- Text Parser Modal -->
+  <div id="visitedLocationTextParserModal" class="visited-explorer-details-modal visited-location-text-parser-modal" role="dialog" aria-modal="true" aria-labelledby="visitedLocationParserTitle" hidden tabindex="-1" data-subtab-key="" data-item-id="">
+    <div class="visited-explorer-details-head">
+      <div id="visitedLocationParserTitle" class="card-title">📝 Enrich Location Data</div>
+      <button type="button" id="visitedLocationParserCloseBtn" class="pill-button" aria-label="Close text parser">Close</button>
+    </div>
+    <div class="visited-explorer-details-body">
+      <label class="visited-visit-log-label" for="visitedLocationParserTextInput">Paste location information</label>
+      <textarea id="visitedLocationParserTextInput" class="filter-input" rows="6" placeholder="Paste a block of text with location details (address, hours, phone, etc.)..."></textarea>
+      <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top:10px;margin-bottom:10px;">
+        <button type="button" id="visitedLocationParserParseBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Parse 🔍</button>
+        <button type="button" id="visitedLocationParserUndoBtn" class="visited-subtab-action-btn" title="Undo" disabled style="flex:0.5;">↶</button>
+        <button type="button" id="visitedLocationParserRedoBtn" class="visited-subtab-action-btn" title="Redo" disabled style="flex:0.5;">↷</button>
+      </div>
+      <div id="visitedLocationParserPreview" class="visited-parser-preview"></div>
+      <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top:10px;display:none;" id="visitedLocationParserActions">
+        <button type="button" id="visitedLocationParserSaveBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" style="display:none;">Save to Data</button>
+        <button type="button" id="visitedLocationParserCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>
       </div>
     </div>
   </div>
@@ -2467,6 +2489,62 @@
     margin-bottom: 8px;
   }
 
+  /* ---- Photo gallery toolbar ---- */
+  .visited-photo-gallery-toolbar {
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 8px 0;
+    margin-bottom: 12px;
+    border-radius: 4px 4px 0 0;
+  }
+  .visited-photo-select-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 0 8px;
+    flex-wrap: wrap;
+  }
+  .visited-photo-toolbar-btn {
+    font-size: 12px;
+    padding: 5px 10px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .visited-photo-toolbar-btn:hover {
+    background: #f8fafc;
+  }
+  .visited-photo-toolbar-btn--danger {
+    color: #991b1b;
+    border-color: #fca5a5;
+    background: #fee2e2;
+  }
+  .visited-photo-toolbar-btn--danger:hover {
+    background: #fecaca;
+  }
+  .visited-photo-selection-count {
+    font-size: 12px;
+    color: #64748b;
+    margin-left: auto;
+    font-weight: 600;
+  }
+  .visited-photo-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+  }
+  .visited-photo-tile {
+    position: relative;
+  }
+  .visited-photo-tile .visited-photo-checkbox {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 10;
+  }
+
   /* ---- Photo gallery modal ---- */
   .visited-photo-gallery-modal {
     max-width: 860px !important;
@@ -2593,6 +2671,96 @@
   }
   .visited-url-search-google-link:hover {
     background: #dbeafe;
+  }
+
+  /* ---- Data Completeness Indicator ---- */
+  .visited-data-completeness {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .visited-completeness-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 6px;
+  }
+  .visited-completeness-bar {
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .visited-completeness-fill {
+    height: 100%;
+    background: #ef4444;
+    transition: background 0.3s, width 0.3s;
+  }
+  .visited-data-completeness.is-partial .visited-completeness-fill {
+    background: #f59e0b;
+  }
+  .visited-data-completeness.is-complete .visited-completeness-fill {
+    background: #10b981;
+  }
+  .visited-completeness-percent {
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+    margin-top: 4px;
+    text-align: right;
+  }
+  .visited-data-gaps {
+    background: #fef2f2;
+    border-left: 3px solid #ef4444;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #7f1d1d;
+    margin-bottom: 10px;
+  }
+  .visited-data-gaps strong {
+    font-weight: 600;
+  }
+</style>
+  .visited-location-text-parser-modal {
+    max-width: 720px !important;
+  }
+  .visited-parser-preview {
+    min-height: 80px;
+  }
+  .visited-parser-hint {
+    font-size: 13px;
+    color: #64748b;
+    text-align: center;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px dashed #cbd5e1;
+  }
+  .visited-parser-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .visited-parser-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .visited-parser-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+  }
+  .visited-parser-field input,
+  .visited-parser-field textarea {
+    font-size: 13px;
+  }
+  .visited-parser-field textarea {
+    resize: vertical;
   }
 </style>
 
