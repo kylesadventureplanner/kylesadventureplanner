@@ -11949,7 +11949,41 @@
 
        <!-- ============================================================ -->
   <script>
-  async function addRowToExcel(rowValues, retryCount = 0) {
+  function encodeGraphDrivePath(path) {
+    return encodeURIComponent(String(path || '')).replace(/%2F/g, '/');
+  }
+
+  function buildWorkbookPathCandidates(filePath) {
+    const clean = String(filePath || '').trim();
+    const fallback = 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+    const seed = clean || fallback;
+    if (seed.includes('/')) return [seed];
+    const unique = new Set([
+      `Copilot_Apps/Kyles_Adventure_Finder/${seed}`,
+      `Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/${seed}`,
+      seed
+    ]);
+    return Array.from(unique);
+  }
+
+  function getActiveExcelWritePathCandidates() {
+    const explicitResolved = window.__editModeTarget && typeof window.__editModeTarget === 'object'
+      ? String(window.__editModeTarget.resolvedFilePath || '').trim()
+      : '';
+    const preferred = explicitResolved || String(window.__resolvedExcelFilePath || window.filePath || '').trim();
+    return buildWorkbookPathCandidates(preferred);
+  }
+
+  function rememberResolvedExcelWritePath(filePath) {
+    const resolved = String(filePath || '').trim();
+    if (!resolved) return;
+    window.__resolvedExcelFilePath = resolved;
+    if (window.__editModeTarget && typeof window.__editModeTarget === 'object') {
+      window.__editModeTarget = { ...window.__editModeTarget, resolvedFilePath: resolved };
+    }
+  }
+
+  async function addRowToExcel(rowValues, retryCount = 0, pathAttemptIndex = 0) {
     let token = window.accessToken;
     if (!token) throw new Error("Please sign in first.");
 
@@ -11961,8 +11995,13 @@
       console.log(`   Filled cells: ${rowValues.filter(v => v !== "" && v !== null && v !== undefined).length}`);
     }
 
+    const pathCandidates = getActiveExcelWritePathCandidates();
+    const filePath = pathCandidates[Math.min(pathAttemptIndex, Math.max(pathCandidates.length - 1, 0))] || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+    const encodedPath = encodeGraphDrivePath(filePath);
+    const tableName = window.tableName || 'MyList';
+
     // Use the session-less rows endpoint that's more reliable across windows
-    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${filePath}:/workbook/tables/${tableName}/rows`;
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
 
     const makeRequest = async (authToken) => {
       const res = await fetch(url, {
@@ -11991,13 +12030,20 @@
     // Try initial request
     try {
       const result = await makeRequest(token);
+      rememberResolvedExcelWritePath(filePath);
       console.log(`✅ [EXCEL ADD] Success! Row added (attempt ${retryCount + 1})`);
       return result;
     } catch (err) {
       const isInvalidArgument = err.error?.message?.includes("InvalidArgument") || err.error?.message?.includes("invalidArgument");
+      const isItemNotFound = err.error?.status === 404 && /itemnotfound|resource could not be found/i.test(String(err.error?.message || ''));
 
       console.error(`❌ [EXCEL ADD] Failed (${err.error?.status}). InvalidArgument: ${isInvalidArgument}, RetryCount: ${retryCount}`);
       console.error(`   Response: ${(err.error?.message || "").substring(0, 200)}`);
+
+      if (isItemNotFound && pathAttemptIndex < pathCandidates.length - 1) {
+        console.warn(`🔁 [EXCEL ADD] Workbook path not found at ${filePath}; trying ${pathCandidates[pathAttemptIndex + 1]}...`);
+        return await addRowToExcel(rowValues, retryCount, pathAttemptIndex + 1);
+      }
 
       // If InvalidArgument error (column mismatch), try trimming trailing empty columns
       if (err.error?.status === 400 && isInvalidArgument && retryCount < 3) {
@@ -19335,11 +19381,14 @@ COMMON ISSUES:
     });
   }
 
-  async function addRowToExcel(rowValues, retryCount = 0) {
+  async function addRowToExcel(rowValues, retryCount = 0, pathAttemptIndex = 0) {
     if (!window.accessToken) throw new Error("Please sign in first.");
 
+    const pathCandidates = getActiveExcelWritePathCandidates();
+    const filePath = pathCandidates[Math.min(pathAttemptIndex, Math.max(pathCandidates.length - 1, 0))] || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+
     // Use the session-less rows endpoint that's more reliable across windows
-    const encodedPath = encodeURIComponent(window.filePath || "Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx");
+    const encodedPath = encodeGraphDrivePath(filePath);
     const tableName = window.tableName || "MyList";
     const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
 
@@ -19395,12 +19444,20 @@ COMMON ISSUES:
     });
 
     if (!res.ok) {
+      const text = await res.text().catch(function () { return ""; });
+      const isItemNotFound = res.status === 404 && /itemnotfound|resource could not be found/i.test(text);
+
+      if (isItemNotFound && pathAttemptIndex < pathCandidates.length - 1) {
+        console.warn(`🔁 [EXCEL ADD] Workbook path not found at ${filePath}; trying ${pathCandidates[pathAttemptIndex + 1]}...`);
+        return await addRowToExcel(rowValues, retryCount, pathAttemptIndex + 1);
+      }
+
       // If 401 (token expired) and we haven't retried yet, try to refresh token
       if (res.status === 401 && retryCount === 0 && typeof window.refreshAccessToken === "function") {
         console.log("🔄 Token expired (401), attempting refresh...");
         try {
           await window.refreshAccessToken();
-          return await addRowToExcel(rowValues, 1); // Retry once with original values
+          return await addRowToExcel(rowValues, 1, pathAttemptIndex); // Retry once with original values
         } catch (refreshErr) {
           console.error("❌ Token refresh failed:", refreshErr.message);
           throw new Error("Authentication token expired. Please sign in again.");
@@ -19408,7 +19465,6 @@ COMMON ISSUES:
       }
 
       // If InvalidArgument error (column mismatch), try trimming trailing empty columns more aggressively
-      const text = await res.text().catch(function () { return ""; });
       const isInvalidArgument = text.includes("InvalidArgument") || text.includes("invalidArgument");
 
       console.error(`❌ [EXCEL ADD] Failed (${res.status}). InvalidArgument: ${isInvalidArgument}, RetryCount: ${retryCount}`);
@@ -19425,7 +19481,7 @@ COMMON ISSUES:
           if (originalLen > colCount) {
             const trimmedRow = rowToSend.slice(0, colCount);
             console.log(`🔧 [RETRY ${retryCount + 1}] Trimming to ${colCount} columns (was ${originalLen})`);
-            return await addRowToExcel(trimmedRow, retryCount + 1);
+            return await addRowToExcel(trimmedRow, retryCount + 1, pathAttemptIndex);
           }
         }
       }
@@ -19433,6 +19489,7 @@ COMMON ISSUES:
       throw new Error("Excel add row failed (" + res.status + ")" + (text ? (": " + text) : ""));
     }
 
+    rememberResolvedExcelWritePath(filePath);
     console.log(`✅ [EXCEL ADD] Success! Row added (attempt ${retryCount + 1})`);
     return await res.json();
   }

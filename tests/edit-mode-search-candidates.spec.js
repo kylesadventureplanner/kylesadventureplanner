@@ -953,6 +953,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
       window.normalizeOperationHours = (value) => String(value || '');
       window.searchPlaces = async () => [];
+      window.searchFestivalEvents = async () => [];
     });
 
     const popupPromise = page.waitForEvent('popup');

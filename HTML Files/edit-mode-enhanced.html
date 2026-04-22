@@ -1871,6 +1871,11 @@
       { id: 'ent_general', label: 'General_Entertainment (Entertainment_Locations.xlsx)', filePath: 'Entertainment_Locations.xlsx', tableName: 'General_Entertainment' }
     ];
     const targetSchemaCache = {};
+    const EDIT_MODE_WORKBOOK_PREFIXES = [
+      'Copilot_Apps/Kyles_Adventure_Finder/',
+      'Copilot_Apps/Kyles_Adventure_Finder/Adventure Challenge/',
+      ''
+    ];
     const singleCandidateState = {
       query: '',
       inputType: 'placeName',
@@ -2259,6 +2264,42 @@
       const summary = normalizeProbeSummary(raw);
       if (!summary) return '';
       return `Probe: attempted ${summary.attempted}, succeeded ${summary.succeeded}, blocked ${summary.blocked}`;
+    }
+
+    function buildSingleFestivalManualDraft(query, inputType) {
+      const raw = String(query || '').trim();
+      const type = String(inputType || '').trim();
+      const isUrl = type === 'website' || type === 'placeUrl';
+      let website = '';
+      let name = raw;
+
+      if (isUrl) {
+        const normalized = normalizeCandidateUrl(raw);
+        website = normalized;
+        if (normalized) {
+          try {
+            const parsed = new URL(normalized);
+            const host = String(parsed.hostname || '').replace(/^www\./i, '').trim();
+            const hostLabel = host ? host.split('.')[0].replace(/[-_]+/g, ' ').trim() : '';
+            const title = hostLabel
+              ? hostLabel.split(/\s+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
+              : '';
+            name = title ? `${title} Festival` : 'Festival Event';
+          } catch (_error) {
+            name = 'Festival Event';
+          }
+        } else {
+          name = 'Festival Event';
+        }
+      }
+
+      if (!name || !name.trim()) name = 'Festival Event';
+      return {
+        name: String(name || '').trim(),
+        website: String(website || '').trim(),
+        city: '',
+        state: ''
+      };
     }
 
     function saveFestivalSourcesConfig() {
@@ -2880,12 +2921,18 @@
         return false;
       }
       const mainWindow = getMainWindowSafe();
+      const cachedSchema = targetSchemaCache[target.id];
+      const resolvedFilePath = cachedSchema && cachedSchema.resolvedFilePath
+        ? String(cachedSchema.resolvedFilePath).trim()
+        : '';
       mainWindow.filePath = target.filePath;
       mainWindow.tableName = target.tableName;
-      mainWindow.__editModeTarget = { ...target };
+      mainWindow.__editModeTarget = resolvedFilePath ? { ...target, resolvedFilePath } : { ...target };
+      mainWindow.__resolvedExcelFilePath = resolvedFilePath || '';
       window.filePath = target.filePath;
       window.tableName = target.tableName;
-      const cachedSchema = targetSchemaCache[target.id];
+      window.__editModeTarget = resolvedFilePath ? { ...target, resolvedFilePath } : { ...target };
+      window.__resolvedExcelFilePath = resolvedFilePath || '';
       if (cachedSchema && Number.isInteger(cachedSchema.columnCount) && cachedSchema.columnCount > 0) {
         mainWindow.__excelColumnCount = cachedSchema.columnCount;
         window.__excelColumnCount = cachedSchema.columnCount;
@@ -2897,45 +2944,90 @@
 
     function cloneTargetContext(target) {
       if (!target || typeof target !== 'object') return null;
+      const cachedSchema = target.id ? targetSchemaCache[target.id] : null;
       return {
         id: String(target.id || '').trim(),
         label: String(target.label || '').trim(),
         filePath: String(target.filePath || '').trim(),
-        tableName: String(target.tableName || '').trim()
+        tableName: String(target.tableName || '').trim(),
+        resolvedFilePath: String((target.resolvedFilePath || (cachedSchema && cachedSchema.resolvedFilePath) || '')).trim()
       };
+    }
+
+    function encodeGraphDrivePath(path) {
+      return String(path || '')
+        .split('/')
+        .filter(Boolean)
+        .map((part) => encodeURIComponent(part))
+        .join('/');
+    }
+
+    function buildWorkbookPathCandidates(filePath) {
+      const clean = String(filePath || '').trim();
+      if (!clean) return [];
+      if (clean.includes('/')) return [clean];
+      const unique = new Set();
+      EDIT_MODE_WORKBOOK_PREFIXES.forEach((prefix) => {
+        unique.add(`${prefix}${clean}`);
+      });
+      return Array.from(unique);
+    }
+
+    function rememberResolvedTargetPath(target, resolvedFilePath, schema) {
+      if (!target || !target.id || !resolvedFilePath) return;
+      const existing = targetSchemaCache[target.id] || {};
+      targetSchemaCache[target.id] = {
+        ...existing,
+        ...(schema && typeof schema === 'object' ? schema : {}),
+        resolvedFilePath: String(resolvedFilePath).trim()
+      };
+      const mainWindow = getMainWindowSafe();
+      const mergedTarget = { ...target, resolvedFilePath: String(resolvedFilePath).trim() };
+      mainWindow.__editModeTarget = mergedTarget;
+      window.__editModeTarget = mergedTarget;
+      mainWindow.__resolvedExcelFilePath = mergedTarget.resolvedFilePath;
+      window.__resolvedExcelFilePath = mergedTarget.resolvedFilePath;
     }
 
     async function probeTargetSchema(target) {
       if (!target) return null;
-      if (targetSchemaCache[target.id]) return targetSchemaCache[target.id];
+      const cachedSchema = targetSchemaCache[target.id];
+      const requestedResolvedFilePath = String(target.resolvedFilePath || '').trim();
+      if (cachedSchema && Number.isInteger(cachedSchema.columnCount) && cachedSchema.columnCount > 0) {
+        if (!requestedResolvedFilePath || !cachedSchema.resolvedFilePath || cachedSchema.resolvedFilePath === requestedResolvedFilePath) {
+          return cachedSchema;
+        }
+      }
       const mainWindow = getMainWindowSafe();
       if (!mainWindow.accessToken) return null;
+      const candidates = buildWorkbookPathCandidates(requestedResolvedFilePath || target.filePath);
       try {
-        const encodedPath = String(target.filePath)
-          .split('/')
-          .filter(Boolean)
-          .map((part) => encodeURIComponent(part))
-          .join('/');
-        const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/columns?$select=name,index`;
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${mainWindow.accessToken}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (!response.ok) return null;
-        const payload = await response.json().catch(() => ({}));
-        const columns = Array.isArray(payload.value) ? payload.value : [];
-        const schema = {
-          columnCount: columns.length,
-          columns: columns.map((item) => String(item && item.name ? item.name : '').trim()).filter(Boolean)
-        };
-        targetSchemaCache[target.id] = schema;
-        mainWindow.__excelColumnCount = schema.columnCount;
-        window.__excelColumnCount = schema.columnCount;
-        mainWindow.__excelSchemaColumns = Array.isArray(schema.columns) ? schema.columns.slice() : [];
-        window.__excelSchemaColumns = Array.isArray(schema.columns) ? schema.columns.slice() : [];
-        return schema;
+        for (const candidatePath of candidates) {
+          const encodedPath = encodeGraphDrivePath(candidatePath);
+          const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/columns?$select=name,index`;
+          const response = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${mainWindow.accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (!response.ok) continue;
+          const payload = await response.json().catch(() => ({}));
+          const columns = Array.isArray(payload.value) ? payload.value : [];
+          const schema = {
+            columnCount: columns.length,
+            columns: columns.map((item) => String(item && item.name ? item.name : '').trim()).filter(Boolean),
+            resolvedFilePath: String(candidatePath).trim()
+          };
+          targetSchemaCache[target.id] = schema;
+          rememberResolvedTargetPath(target, candidatePath, schema);
+          mainWindow.__excelColumnCount = schema.columnCount;
+          window.__excelColumnCount = schema.columnCount;
+          mainWindow.__excelSchemaColumns = Array.isArray(schema.columns) ? schema.columns.slice() : [];
+          window.__excelSchemaColumns = Array.isArray(schema.columns) ? schema.columns.slice() : [];
+          return schema;
+        }
+        return null;
       } catch (_error) {
         return null;
       }
@@ -2953,56 +3045,62 @@
         return false;
       }
       const targetKey = `${String(target.filePath || '').trim()}|${String(target.tableName || '').trim()}`;
+      const requestedResolvedFilePath = String(target.resolvedFilePath || '').trim();
+      const candidates = buildWorkbookPathCandidates(requestedResolvedFilePath || target.filePath);
       try {
-        const encodedPath = String(target.filePath)
-          .split('/')
-          .filter(Boolean)
-          .map((part) => encodeURIComponent(part))
-          .join('/');
-        const rowsUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/rows?$top=5000`;
-        const rowsResponse = await fetch(rowsUrl, {
-          headers: {
-            Authorization: `Bearer ${mainWindow.accessToken}`,
-            'Content-Type': 'application/json'
+        let lastStatus = 0;
+        for (const candidatePath of candidates) {
+          const encodedPath = encodeGraphDrivePath(candidatePath);
+          const rowsUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/rows?$top=5000`;
+          const rowsResponse = await fetch(rowsUrl, {
+            headers: {
+              Authorization: `Bearer ${mainWindow.accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (!rowsResponse.ok) {
+            lastStatus = rowsResponse.status;
+            continue;
           }
-        });
-        if (!rowsResponse.ok) {
-          mainWindow.adventuresData = [];
-          window.adventuresData = [];
-          mainWindow.__excelLoadedRowCount = 0;
-          window.__excelLoadedRowCount = 0;
-          mainWindow.__editModeRowsLoadOk = false;
-          window.__editModeRowsLoadOk = false;
+
+          rememberResolvedTargetPath(target, candidatePath);
+          const rowsPayload = await rowsResponse.json().catch(() => ({}));
+          const rows = Array.isArray(rowsPayload.value) ? rowsPayload.value : [];
+          const schema = await probeTargetSchema({ ...target, resolvedFilePath: candidatePath });
+          const width = schema && Number.isInteger(schema.columnCount) && schema.columnCount > 0 ? schema.columnCount : 0;
+          const normalizedRows = rows.map((row) => {
+            const values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0].slice() : [];
+            if (width > 0) {
+              if (values.length > width) values.length = width;
+              while (values.length < width) values.push('');
+            }
+            return { ...row, values: [values] };
+          });
+
+          mainWindow.adventuresData = normalizedRows;
+          window.adventuresData = normalizedRows;
+          mainWindow.__excelLoadedRowCount = normalizedRows.length;
+          window.__excelLoadedRowCount = normalizedRows.length;
+          mainWindow.__editModeRowsLoadOk = true;
+          window.__editModeRowsLoadOk = true;
           mainWindow.__editModeLoadedTargetKey = targetKey;
           window.__editModeLoadedTargetKey = targetKey;
-          mainWindow.__editModeRowsLoadError = `rows-http-${rowsResponse.status}`;
-          window.__editModeRowsLoadError = `rows-http-${rowsResponse.status}`;
-          return false;
+          mainWindow.__editModeRowsLoadError = '';
+          window.__editModeRowsLoadError = '';
+          return true;
         }
-        const rowsPayload = await rowsResponse.json().catch(() => ({}));
-        const rows = Array.isArray(rowsPayload.value) ? rowsPayload.value : [];
-        const schema = await probeTargetSchema(target);
-        const width = schema && Number.isInteger(schema.columnCount) && schema.columnCount > 0 ? schema.columnCount : 0;
-        const normalizedRows = rows.map((row) => {
-          const values = Array.isArray(row.values) && Array.isArray(row.values[0]) ? row.values[0].slice() : [];
-          if (width > 0) {
-            if (values.length > width) values.length = width;
-            while (values.length < width) values.push('');
-          }
-          return { values: [values] };
-        });
 
-        mainWindow.adventuresData = normalizedRows;
-        window.adventuresData = normalizedRows;
-        mainWindow.__excelLoadedRowCount = normalizedRows.length;
-        window.__excelLoadedRowCount = normalizedRows.length;
-        mainWindow.__editModeRowsLoadOk = true;
-        window.__editModeRowsLoadOk = true;
+        mainWindow.adventuresData = [];
+        window.adventuresData = [];
+        mainWindow.__excelLoadedRowCount = 0;
+        window.__excelLoadedRowCount = 0;
+        mainWindow.__editModeRowsLoadOk = false;
+        window.__editModeRowsLoadOk = false;
         mainWindow.__editModeLoadedTargetKey = targetKey;
         window.__editModeLoadedTargetKey = targetKey;
-        mainWindow.__editModeRowsLoadError = '';
-        window.__editModeRowsLoadError = '';
-        return true;
+        mainWindow.__editModeRowsLoadError = `rows-http-${lastStatus || 404}`;
+        window.__editModeRowsLoadError = `rows-http-${lastStatus || 404}`;
+        return false;
       } catch (_error) {
         mainWindow.adventuresData = [];
         window.adventuresData = [];
@@ -3252,54 +3350,30 @@
       if (!wrap) return;
       wrap.style.display = visible ? '' : 'none';
       if (!visible) return;
+
       const safeDraft = draft && typeof draft === 'object' ? draft : {};
-      const setVal = (id, value) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.value = String(value || '').trim();
-      };
-      setVal('singleManualFestivalName', safeDraft.name || '');
-      setVal('singleManualFestivalDate', safeDraft.eventDate || '');
-      setVal('singleManualFestivalCity', safeDraft.city || '');
-      setVal('singleManualFestivalState', safeDraft.state || '');
       const hint = document.getElementById('singleFestivalManualAssistHint');
+      const nameInput = document.getElementById('singleManualFestivalName');
+      const dateInput = document.getElementById('singleManualFestivalDate');
+      const cityInput = document.getElementById('singleManualFestivalCity');
+      const stateInput = document.getElementById('singleManualFestivalState');
+      const derivedState = normalizeManualFestivalState(safeDraft.state || deriveStateFromAddress(safeDraft.address || ''));
+
+      if (nameInput) nameInput.value = String(safeDraft.name || '').trim();
+      if (dateInput) dateInput.value = String(safeDraft.eventDate || '').trim();
+      if (cityInput) cityInput.value = String(safeDraft.city || '').trim();
+      if (stateInput) stateInput.value = derivedState;
       if (hint) {
-        const providerHint = safeDraft.website
-          ? `Website: ${safeDraft.website}`
+        hint.textContent = safeDraft.website
+          ? `Prefilled from your query and source website (${safeDraft.website}). You can edit before adding.`
           : 'Prefilled from your URL/query. You can edit before adding.';
-        hint.textContent = providerHint;
       }
     }
 
-    function buildSingleFestivalManualDraft(query, inputType) {
-      const raw = String(query || '').trim();
-      const normalizedInputType = String(inputType || '').trim();
-      const isUrl = normalizedInputType === 'website' || /^https?:\/\//i.test(raw);
-      const website = isUrl
-        ? raw
-        : '';
-      const derivedName = deriveSearchQueryFromWebsiteInput(raw)
-        .replace(/\b(events?|calendar|tickets?)\b/ig, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      const title = derivedName
-        ? derivedName.replace(/\b\w/g, (char) => char.toUpperCase())
-        : 'Festival Event';
-      return {
-        name: title,
-        city: '',
-        state: '',
-        eventDate: '',
-        website
-      };
-    }
-
-    function normalizeManualFestivalState(value) {
-      return String(value || '').trim().toUpperCase().slice(0, 2);
-    }
-
     function useSingleManualFestivalCandidate() {
-      const draft = singleCandidateState && singleCandidateState.manualDraft ? singleCandidateState.manualDraft : {};
+      const draft = singleCandidateState.manualDraft && typeof singleCandidateState.manualDraft === 'object'
+        ? singleCandidateState.manualDraft
+        : {};
       const name = String(document.getElementById('singleManualFestivalName')?.value || draft.name || '').trim();
       if (!name) {
         setSingleCandidateStatus('❌ Enter a festival name for manual candidate.', 'error');
@@ -3954,9 +4028,28 @@
           anchorCoords: await ensureCandidateAnchorCoords(mainWindow)
         });
         const diagnostics = mainWindow.__festivalSourceLastDiagnostics || window.__festivalSourceLastDiagnostics || null;
+        const normalizedRows = Array.isArray(rows) ? rows.map(normalizeFestivalSearchCandidate).filter((row) => row.name) : [];
+        if (!normalizedRows.length && (inputType === 'website' || inputType === 'placeUrl')) {
+          const draft = buildSingleFestivalManualDraft(query, inputType);
+          if (draft && draft.website) {
+            normalizedRows.push(normalizeFestivalSearchCandidate({
+              placeId: '',
+              name: draft.name,
+              city: draft.city,
+              state: draft.state,
+              address: [draft.city, draft.state].filter(Boolean).join(', '),
+              website: draft.website,
+              openLinkUrl: draft.website,
+              openLinkLabel: 'Open Festival Website',
+              sourceProvider: 'Official Festival Website',
+              sourceConfidence: 'Manual',
+              sourceConfidenceReason: 'Direct website URL fallback'
+            }));
+          }
+        }
         return {
           festivalMode: true,
-          rows: Array.isArray(rows) ? rows.map(normalizeFestivalSearchCandidate).filter((row) => row.name) : [],
+          rows: normalizedRows,
           probeSummary: normalizeProbeSummary(diagnostics && diagnostics.officialUrlProbe)
         };
       }

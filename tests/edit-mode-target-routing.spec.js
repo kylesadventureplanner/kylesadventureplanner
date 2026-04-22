@@ -34,12 +34,24 @@ function buildResolvedPlace(label) {
 
 async function installWorkbookMocks(context, graphCalls, options = {}) {
   const failingRowTables = new Set(Array.isArray(options.failingRowTables) ? options.failingRowTables : []);
+  const prefixedOnlyPaths = Boolean(options.prefixedOnlyPaths);
   await context.route('https://graph.microsoft.com/**', async (route) => {
     const request = route.request();
     const url = request.url();
     const method = request.method();
     const tableMatch = url.match(/\/tables\/([^/]+)/);
+    const workbookMatch = url.match(/\/root:\/(.+):\/workbook\//);
     const table = tableMatch ? decodeURIComponent(tableMatch[1]) : 'Nature_Locations';
+    const workbookPath = workbookMatch ? decodeURIComponent(workbookMatch[1]) : '';
+
+    if (prefixedOnlyPaths && !workbookPath.includes('Copilot_Apps/Kyles_Adventure_Finder/')) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'itemNotFound', message: 'The resource could not be found.' } })
+      });
+      return;
+    }
 
     if (url.includes('/columns')) {
       const cols = SCHEMAS[table] || SCHEMAS.Nature_Locations;
@@ -297,6 +309,39 @@ test.describe('Edit Mode target-table routing', () => {
     });
 
     expect(popupErrors).toEqual([]);
+  });
+
+  test('Add Single resolves prefixed workbook paths when bare workbook names return itemNotFound', async ({ page }) => {
+    const graphCalls = [];
+    await installWorkbookMocks(page.context(), graphCalls, { prefixedOnlyPaths: true });
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => (
+      typeof window.buildExcelRow === 'function'
+      && typeof window.addRowToExcel === 'function'
+      && typeof window.getColumnIndexByName === 'function'
+    ), null, { timeout: 15000 });
+    await seedMainWindow(page);
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => {
+      const select = document.getElementById('actionTargetSelect');
+      return select && select.options.length >= 7;
+    }, null, { timeout: 10000 });
+    await seedEditModeWindow(popup);
+
+    await popup.selectOption('#actionTargetSelect', 'retail_retail');
+    await popup.fill('#singleInput', 'Prefix Path Test');
+    await popup.evaluate(() => submitAddSinglePlace());
+
+    await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(1);
+    expect(graphCalls[0].table).toBe('Retail');
+    expect(graphCalls[0].url).toContain('Copilot_Apps/Kyles_Adventure_Finder/');
+    await expect.poll(() => page.evaluate(() => String(window.__resolvedExcelFilePath || '')), { timeout: 10000 })
+      .toContain('Copilot_Apps/Kyles_Adventure_Finder/');
   });
 
 

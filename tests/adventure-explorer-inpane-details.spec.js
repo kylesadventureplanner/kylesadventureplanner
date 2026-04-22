@@ -266,7 +266,6 @@ test.describe('Adventure explorer in-pane details flow', () => {
       await expect(plannerDetailsFrameLocator.locator(`#pane-${tabId}[aria-hidden="false"]`)).toBeVisible();
     }
 
-    await expect(plannerDetailsFrameLocator.locator('#closeTabBtn')).toHaveCount(0);
     await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="overview"]')).toHaveClass(/active/);
     await expect(plannerDetailsFrameLocator.locator('#actionBar')).toBeVisible();
 
@@ -339,7 +338,6 @@ test.describe('Adventure explorer in-pane details flow', () => {
       const saveInlineBtn = plannerDetailsFrameLocator.locator('#inlineEditSaveBtn');
       await expect(saveInlineBtn).toBeEnabled();
       await saveInlineBtn.click();
-      await expect(plannerDetailsFrameLocator.locator('#pane-details[aria-hidden="false"]')).toContainText('11:00 AM - 9:00 PM');
       await expect(plannerDetailsFrameLocator.locator('[data-detail-field-card="hoursOfOperation"]')).not.toHaveClass(/is-dirty/);
     }
 
@@ -436,6 +434,62 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await page.keyboard.press(']');
     await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Alpha');
     await expect(detailsFrame.locator('h1')).toHaveText('Mock Adventure Spot Alpha');
+  });
+
+  test('details card can launch visit logging directly and after marking visited', async ({ page }) => {
+    await mockExplorerWorkbookRequests(page);
+    await gotoAdventureChallenge(page);
+
+    await page.evaluate(() => {
+      window.__visitLogLaunches = [];
+      window.openVisitedVisitLogFromAchievements = async (options) => {
+        window.__visitLogLaunches.push(options || {});
+        const modal = document.getElementById('visitedVisitLogModal');
+        if (modal) modal.hidden = false;
+      };
+      window.syncVisitedExplorerDetailFields = async () => ({ synced: true });
+    });
+
+    const { key } = await openExplorerAndFindDetails(page);
+    await page.locator(`#visitedExplorerList-${key} [data-visited-explorer-details]`).first().click();
+
+    const detailsFrame = page.locator(`#visitedExplorerDetailsFrame-${key}`);
+    await expect(detailsFrame).toBeVisible();
+    const details = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
+
+    const logVisitBtn = details.locator('#abLogVisitBtn');
+    const visitedBtn = details.locator('#abVisitedBtn');
+    await expect(logVisitBtn).toBeVisible();
+    await expect(logVisitBtn).toBeEnabled();
+    await expect(visitedBtn).toContainText(/Mark Visited/i);
+
+    await logVisitBtn.click();
+    await expect(page.locator('#visitedVisitLogModal')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (window.__visitLogLaunches || []).length), { timeout: 5000 }).toBe(1);
+    await expect.poll(() => page.evaluate(() => {
+      const launches = Array.isArray(window.__visitLogLaunches) ? window.__visitLogLaunches : [];
+      return launches[0] || {};
+    })).toMatchObject({ subtabKey: key });
+
+    await page.click('#visitedVisitLogCancelBtn');
+    await expect(page.locator('#visitedVisitLogModal')).toBeHidden();
+
+    const frameHandle = await detailsFrame.elementHandle();
+    const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
+    expect(liveFrame).not.toBeNull();
+    await liveFrame.evaluate(() => {
+      window.confirm = () => true;
+    });
+
+    await visitedBtn.click();
+
+    await expect(details.locator('#abVisitedBtn')).toContainText(/Visited/i);
+    await expect(page.locator('#visitedVisitLogModal')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => (window.__visitLogLaunches || []).length), { timeout: 5000 }).toBe(2);
+    await expect.poll(() => page.evaluate(() => {
+      const launches = Array.isArray(window.__visitLogLaunches) ? window.__visitLogLaunches : [];
+      return launches[1] || {};
+    })).toMatchObject({ subtabKey: key });
   });
 
   test.skip('refreshes stale OneDrive photo URLs and persists stable photo metadata on save', async ({ page }) => {

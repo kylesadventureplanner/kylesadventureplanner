@@ -47,7 +47,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return {
       id: '',
       filePath: safeString((source && source.filePath) || window.filePath),
-      tableName: safeString((source && source.tableName) || window.tableName)
+      tableName: safeString((source && source.tableName) || window.tableName),
+      resolvedFilePath: safeString((source && source.__resolvedExcelFilePath) || window.__resolvedExcelFilePath)
     };
   }
 
@@ -59,6 +60,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
 
     const filePath = safeString(target.filePath);
     const tableName = safeString(target.tableName);
+    const resolvedFilePath = safeString(target.resolvedFilePath);
     if (!filePath || !tableName) return null;
 
     const mainRef = mainWindow || getMainWindow();
@@ -68,12 +70,15 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       id: safeString(target.id),
       label: safeString(target.label),
       filePath,
-      tableName
+      tableName,
+      resolvedFilePath
     };
+    mainRef.__resolvedExcelFilePath = resolvedFilePath;
 
     window.filePath = filePath;
     window.tableName = tableName;
     window.__editModeTarget = { ...mainRef.__editModeTarget };
+    window.__resolvedExcelFilePath = resolvedFilePath;
     return mainRef.__editModeTarget;
   }
 
@@ -123,7 +128,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
 
   async function postRowToTarget(target, rowValues, mainWindow) {
     var safeTarget = target && typeof target === 'object' ? target : {};
-    var filePath = safeString(safeTarget.filePath);
+    var filePath = safeString(safeTarget.resolvedFilePath || safeTarget.filePath);
     var tableName = safeString(safeTarget.tableName);
     if (!filePath || !tableName) {
       throw new Error('Missing target destination for queued row sync.');
@@ -1924,7 +1929,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
                 id: safeString(activeTarget.id),
                 label: safeString(activeTarget.label),
                 filePath: safeString(activeTarget.filePath),
-                tableName: safeString(activeTarget.tableName)
+                tableName: safeString(activeTarget.tableName),
+                resolvedFilePath: safeString(activeTarget.resolvedFilePath)
               },
               rowValues: Array.isArray(rowValues) ? rowValues.slice() : [],
               placeName: safeString(details && details.name),

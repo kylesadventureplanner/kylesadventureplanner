@@ -249,6 +249,10 @@
     <button type="button" class="ab-btn ab-visited" id="abVisitedBtn" title="Mark this location as visited">
       <span id="abVisitedIcon">✅</span> <span id="abVisitedText">Mark Visited</span>
     </button>
+
+    <button type="button" class="ab-btn" id="abLogVisitBtn" title="Open the Log a Visit workflow for this location">
+      📝 Log a Visit
+    </button>
   </div>
 
   <div id="enrichBackdrop" class="enrich-backdrop" aria-hidden="true"></div>
@@ -2853,9 +2857,11 @@
     var visitedIcon = document.getElementById('abVisitedIcon');
     var visitedText = document.getElementById('abVisitedText');
     var visitedBadge = document.getElementById('detailVisitedBadge');
+    var logVisitBtn = document.getElementById('abLogVisitBtn');
 
     var openerWin = getOpenerWindow();
     var syncState = buildDetailSyncState(payload, data);
+    var detailNav = getDetailNavigationContext(payload);
     var rowMatch = findOpenerRowForTagSync(openerWin, {
       sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
       data: data
@@ -2875,7 +2881,52 @@
       }
     }
 
+    function canLaunchVisitLogWorkflow() {
+      return !!(
+        openerWin
+        && typeof openerWin.openVisitedVisitLogFromAchievements === 'function'
+        && detailNav
+        && String(detailNav.subtabKey || '').trim()
+        && String(detailNav.currentItemId || '').trim()
+      );
+    }
+
+    function syncVisitLogUi() {
+      if (!logVisitBtn) return;
+      var canLaunch = canLaunchVisitLogWorkflow();
+      logVisitBtn.disabled = !canLaunch;
+      logVisitBtn.title = canLaunch
+        ? 'Open the Log a Visit workflow for this location'
+        : 'Visit logging is available when this details card is opened from Adventure Explorer.';
+    }
+
+    async function openVisitLogWorkflow(triggerSource) {
+      if (!canLaunchVisitLogWorkflow()) {
+        showDetailToast('⚠️ Visit logging is only available when this details card is opened from Adventure Explorer.', 'info', 3600);
+        return false;
+      }
+      try {
+        await openerWin.openVisitedVisitLogFromAchievements({
+          subtabKey: String(detailNav.subtabKey || '').trim(),
+          itemId: String(detailNav.currentItemId || '').trim(),
+          hint: triggerSource === 'visited-toggle'
+            ? 'Marked as visited from Location Details.'
+            : 'Opened from Location Details.'
+        });
+        return true;
+      } catch (_error) {
+        showDetailToast('⚠️ Could not open the visit log workflow.', 'error', 3200);
+        return false;
+      }
+    }
+
     syncVisitedUi(isVisited);
+    syncVisitLogUi();
+    if (logVisitBtn) {
+      logVisitBtn.onclick = async function () {
+        await openVisitLogWorkflow('manual-log-button');
+      };
+    }
     if (visitedBtn) {
       var canUseRowMatch = !!(rowMatch && Array.isArray(rowValues));
       var canUseHostFallback = !!(syncState && syncState.explorerSource && openerWin && typeof openerWin.syncVisitedExplorerDetailFields === 'function');
@@ -2915,6 +2966,18 @@
             syncVisitedUi(isVisited);
             syncOrQueueExplorerUpdate(syncState, { visitedStatus: undoValue }, 'detail-visited-undo');
           }, 4200);
+          if (next) {
+            var shouldOpenVisitLog = false;
+            try {
+              shouldOpenVisitLog = canLaunchVisitLogWorkflow()
+                && window.confirm('Marked as visited. Would you like to log a visit now?');
+            } catch (_confirmError) {
+              shouldOpenVisitLog = false;
+            }
+            if (shouldOpenVisitLog) {
+              await openVisitLogWorkflow('visited-toggle');
+            }
+          }
         } catch (err) {
           if (rowValues) rowValues[visitedColIndex] = previousValue;
           syncVisitedUi(isVisited);
