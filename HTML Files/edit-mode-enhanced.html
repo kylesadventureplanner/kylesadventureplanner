@@ -834,7 +834,7 @@
         <div id="singleFestivalModeHint" class="help-text" style="display:none; margin-top: -6px; margin-bottom: 8px;"></div>
 
         <div class="button-group">
-          <button class="button button-secondary" onclick="clearSingleForm()">Clear</button>
+          <button id="singleClearBtn" class="button button-secondary" onclick="clearSingleForm()">Clear</button>
           <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button id="singleSearchCandidatesBtn" class="button button-secondary" type="button" onclick="searchSinglePlaceCandidates()">🔎 Search Candidates</button>
           <button id="singleAddSelectedCandidateBtn" class="button button-secondary" type="button" onclick="addSelectedSingleCandidate()" disabled>✅ Add Selected Candidate</button>
@@ -907,7 +907,7 @@
         <div id="bulkFestivalModeHint" class="help-text" style="display:none; margin-top: -6px; margin-bottom: 8px;"></div>
 
         <div class="button-group">
-          <button class="button button-secondary" onclick="clearBulkForm()">Clear</button>
+          <button id="bulkClearBtn" class="button button-secondary" onclick="clearBulkForm()">Clear</button>
           <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button id="bulkSearchCandidatesBtn" class="button button-secondary" type="button" onclick="searchBulkPlaceCandidates()">🔎 Search Bulk Candidates</button>
           <button id="bulkOpenSelectedInGoogleBtn" class="button button-secondary" type="button" onclick="openSelectedBulkCandidatesInGoogle()" disabled>🌐 Open Selected in Google</button>
@@ -952,7 +952,7 @@
         </div>
 
         <div class="button-group">
-          <button class="button button-secondary" onclick="clearChainForm()">Clear</button>
+          <button id="chainClearBtn" class="button button-secondary" onclick="clearChainForm()">Clear</button>
           <button class="button button-secondary" type="button" onclick="openCandidateSearchFilters()">⚙️ Search Filters</button>
           <button id="chainSearchCandidatesBtn" class="button button-secondary" type="button" onclick="searchChainPlaceCandidates()">🔎 Search Chain Candidates</button>
           <button id="chainOpenSelectedInGoogleBtn" class="button button-secondary" type="button" onclick="openSelectedChainCandidatesInGoogle()" disabled>🌐 Open Selected in Google</button>
@@ -1662,11 +1662,96 @@
       btn.textContent = festivalSourcesViewState.summaryOpen ? '🙈 Hide Applied Config' : '👁️ View Applied Config';
     }
 
+    // ─── Draft & Dirty-State Guards ───────────────────────────────────────────
+
+    const DRAFT_STORAGE_KEYS = {
+      single: 'editMode_draft_singleInput',
+      bulk:   'editMode_draft_bulkInput',
+      chain:  'editMode_draft_chainInput'
+    };
+
+    const DRAFT_DIRTY_STATE = { single: false, bulk: false, chain: false };
+
+    function saveDraft(name) {
+      try {
+        const id = name === 'single' ? 'singleInput' : name === 'bulk' ? 'bulkInput' : 'chainInput';
+        const el = document.getElementById(id);
+        const value = el ? String(el.value || '') : '';
+        if (value.trim()) {
+          localStorage.setItem(DRAFT_STORAGE_KEYS[name], value);
+          DRAFT_DIRTY_STATE[name] = true;
+        } else {
+          localStorage.removeItem(DRAFT_STORAGE_KEYS[name]);
+          DRAFT_DIRTY_STATE[name] = false;
+        }
+      } catch (_) {}
+    }
+
+    function clearDraft(name) {
+      try { localStorage.removeItem(DRAFT_STORAGE_KEYS[name]); } catch (_) {}
+      DRAFT_DIRTY_STATE[name] = false;
+    }
+
+    function clearAllDrafts() {
+      ['single', 'bulk', 'chain'].forEach(clearDraft);
+    }
+
+    function restoreDraft(name) {
+      try {
+        const saved = localStorage.getItem(DRAFT_STORAGE_KEYS[name]);
+        if (!saved) return;
+        const id = name === 'single' ? 'singleInput' : name === 'bulk' ? 'bulkInput' : 'chainInput';
+        const el = document.getElementById(id);
+        if (el && !el.value.trim()) {
+          el.value = saved;
+          DRAFT_DIRTY_STATE[name] = true;
+          showToast(`📝 Restored unsaved ${name} draft.`, 'info', 3000);
+        }
+      } catch (_) {}
+    }
+
+    function restoreAllDrafts() {
+      ['single', 'bulk', 'chain'].forEach(restoreDraft);
+    }
+
+    function hasAnyPlacesDraft() {
+      return DRAFT_DIRTY_STATE.single || DRAFT_DIRTY_STATE.bulk || DRAFT_DIRTY_STATE.chain;
+    }
+
+    function initDraftTracking() {
+      if (window.__editModeDraftTrackingInit) return;
+      window.__editModeDraftTrackingInit = true;
+      [
+        { id: 'singleInput', name: 'single' },
+        { id: 'bulkInput',   name: 'bulk' },
+        { id: 'chainInput',  name: 'chain' }
+      ].forEach(({ id, name }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (el.value.trim()) DRAFT_DIRTY_STATE[name] = true;
+        el.addEventListener('input', () => saveDraft(name));
+        el.addEventListener('change', () => saveDraft(name));
+      });
+
+      window.addEventListener('beforeunload', (e) => {
+        if (hasAnyPlacesDraft()) {
+          e.preventDefault();
+          e.returnValue = 'You have unsaved draft content in the Add Places forms. Are you sure you want to leave?';
+        }
+      });
+    }
+
     function switchTab(tabName, options = {}) {
       console.log(`🔄 SWITCHING TAB TO: ${tabName}`);
 
       if (tabName !== 'places' && festivalSourcesViewState.configOpen) {
         closeFestivalSourcesConfigView({ restoreFocus: false, skipUnsavedCheck: true });
+      }
+
+      if (tabName !== 'places' && hasAnyPlacesDraft()) {
+        if (!window.confirm('You have unsaved draft content in the Add Places forms. Leave anyway?')) {
+          return;
+        }
       }
 
       const shouldFocusTab = Boolean(options && options.focusTab);
@@ -4968,6 +5053,7 @@
           const result = await window.handleAddSinglePlaceWithProgress(input, inputType, statusDiv, dryRun, { target: targetContext });
           if (result.success) {
             document.getElementById('singleInput').value = '';
+            clearDraft('single');
           }
           return;
         }
@@ -4979,6 +5065,7 @@
           window.enhancedAutomation.displayResults(result, statusDiv);
           if (result.success) {
             document.getElementById('singleInput').value = '';
+            clearDraft('single');
           }
         } else {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
@@ -5037,6 +5124,7 @@
           const result = await window.handleBulkAddPlacesWithProgress(filteredLocations, inputType, statusDiv, dryRun, { target: targetContext });
           if (result.success && !dryRun) {
             document.getElementById('bulkInput').value = '';
+            clearDraft('bulk');
           }
           return;
         }
@@ -5048,6 +5136,7 @@
           window.enhancedAutomation.displayResults(result, statusDiv);
           if (result.success && !dryRun) {
             document.getElementById('bulkInput').value = '';
+            clearDraft('bulk');
           }
         } else {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
@@ -5095,6 +5184,7 @@
 
           if (result.success && !dryRun) {
             document.getElementById('chainInput').value = '';
+            clearDraft('chain');
           }
           return;
         }
@@ -5106,6 +5196,7 @@
 
           if (result.success && !dryRun) {
             document.getElementById('chainInput').value = '';
+            clearDraft('chain');
           }
           return;
         }
@@ -5119,6 +5210,7 @@
 
           if (result.success && !dryRun) {
             document.getElementById('chainInput').value = '';
+            clearDraft('chain');
           }
           return;
         }
@@ -5264,18 +5356,21 @@
     function clearSingleForm() {
       document.getElementById('singleInput').value = '';
       document.getElementById('single-status').innerHTML = '';
+      clearDraft('single');
       resetSingleCandidateResults();
     }
 
     function clearBulkForm() {
       document.getElementById('bulkInput').value = '';
       document.getElementById('bulk-status').innerHTML = '';
+      clearDraft('bulk');
       resetBulkCandidateResults();
     }
 
     function clearChainForm() {
       document.getElementById('chainInput').value = '';
       document.getElementById('chain-status').innerHTML = '';
+      clearDraft('chain');
       const multiToggleEl = document.getElementById('chainCandidateMultiSelect');
       if (multiToggleEl) multiToggleEl.checked = false;
       chainCandidateState.allowMultiSelect = false;
@@ -5299,6 +5394,8 @@
       mountFestivalSourcesConfigCardInPlaces();
       closeFestivalSourcesConfigView({ restoreFocus: false });
       initFestivalSourcesConfig();
+      restoreAllDrafts();
+      initDraftTracking();
     });
 
     // Also try immediately in case DOM is already ready
@@ -5318,6 +5415,8 @@
       mountFestivalSourcesConfigCardInPlaces();
       closeFestivalSourcesConfigView({ restoreFocus: false });
       initFestivalSourcesConfig();
+      restoreAllDrafts();
+      initDraftTracking();
     }
 
     console.log('📋 Available functions:', {
