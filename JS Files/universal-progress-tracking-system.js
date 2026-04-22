@@ -306,8 +306,13 @@
         throw new Error(result.error || 'Failed to add location');
       }
 
-      tracker.recordSuccess(input, `Added ${result.placeName || input}`);
-      tracker.displayFinalResults('Single location processed successfully');
+      tracker.recordSuccess(
+        input,
+        result && result.queued
+          ? `[PENDING SYNC] ${result.message || ('Queued ' + (result.placeName || input))}`
+          : `Added ${result.placeName || input}`
+      );
+      tracker.displayFinalResults(result && result.queued ? 'Single location saved locally and queued for sync.' : 'Single location processed successfully');
       return tracker.getSummary();
     } catch (err) {
       console.error('❌ Error:', err);
@@ -343,7 +348,14 @@
           const result = await automation.addSinglePlace(location, inputType, dryRun, options || {});
 
           if (result.success) {
-            tracker.recordSuccess(location, dryRun ? `[DRY RUN] Would add ${result.placeName || location}` : `Added ${result.placeName || location}`);
+            tracker.recordSuccess(
+              location,
+              dryRun
+                ? `[DRY RUN] Would add ${result.placeName || location}`
+                : result && result.queued
+                  ? `[PENDING SYNC] ${result.message || ('Queued ' + (result.placeName || location))}`
+                  : `Added ${result.placeName || location}`
+            );
           } else {
             tracker.recordFailure(location, result.error || 'Failed to add location');
           }

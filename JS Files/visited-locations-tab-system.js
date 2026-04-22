@@ -238,6 +238,7 @@
 
    const state = {
      initialized: false,
+     visitedSyncProcessorRegistered: false,
      activeProgressSubTab: 'outdoors',
      activeOverviewView: 'main',
      weatherMode: 'auto',
@@ -1615,14 +1616,28 @@
     state.visitLogStagedUrlPhotos = [];
   }
 
+  function dedupeVisitPhotoEntries(list) {
+    const seen = new Set();
+    return (Array.isArray(list) ? list : []).filter((photo) => {
+      if (!photo || typeof photo !== 'object') return false;
+      const key = [photo.id, photo.path, photo.webUrl, photo.downloadUrl, photo.url, photo.name]
+        .map((value) => String(value || '').trim().toLowerCase())
+        .find(Boolean);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function getVisitLogStagedUrlPhotos() {
-    return Array.isArray(state.visitLogStagedUrlPhotos) ? state.visitLogStagedUrlPhotos : [];
+    return dedupeVisitPhotoEntries(Array.isArray(state.visitLogStagedUrlPhotos) ? state.visitLogStagedUrlPhotos : []);
   }
 
   function stageVisitLogUrlPhoto(photoMeta) {
     if (!photoMeta) return;
     if (!Array.isArray(state.visitLogStagedUrlPhotos)) state.visitLogStagedUrlPhotos = [];
     state.visitLogStagedUrlPhotos.push(photoMeta);
+    state.visitLogStagedUrlPhotos = dedupeVisitPhotoEntries(state.visitLogStagedUrlPhotos);
   }
 
   async function uploadVisitPhotoToOneDrive(file, options = {}) {
@@ -1715,6 +1730,20 @@
     // If deleted photo was cover, clear it
     if (record.coverPhotoId === photoId) record.coverPhotoId = '';
     saveVisitRecords();
+  }
+
+  function restorePhotoToVisitRecord(visitRecordId, photoSnapshot) {
+    if (!visitRecordId || !photoSnapshot) return false;
+    const records = state.visitRecords || [];
+    const record = records.find((r) => r && r.id === visitRecordId);
+    if (!record) return false;
+    const photos = Array.isArray(record.photos) ? record.photos.slice() : [];
+    const exists = photos.some((p) => p && String(p.id || '').trim() === String(photoSnapshot.id || '').trim());
+    if (exists) return false;
+    photos.unshift({ ...photoSnapshot });
+    record.photos = photos;
+    saveVisitRecords();
+    return true;
   }
 
   function setCoverPhotoForVisitRecord(locationId, visitRecordId, photoId) {
@@ -2050,7 +2079,7 @@
     if (liveItem) liveItem.links = finalLinks;
 
     // Sync to OneDrive if signed in
-    if (window.accessToken && item.sourceWorkbookPath && item.sourceTable && Number.isInteger(item.sourceRowIndex)) {
+    if (item.sourceWorkbookPath && item.sourceTable && Number.isInteger(item.sourceRowIndex)) {
       try {
         await syncVisitedExplorerDetailFields(
           { workbookPath: item.sourceWorkbookPath, table: item.sourceTable, rowIndex: item.sourceRowIndex },
@@ -2460,6 +2489,55 @@
     return String(value || '').trim();
   }
 
+  function normalizeParserFieldByKey(fieldKey, value) {
+    const raw = normalizeParserFieldValue(value);
+    if (!raw) return '';
+    if (fieldKey === 'state') {
+      const compact = raw.replace(/[^a-z]/gi, '').toUpperCase();
+      return compact.length === 2 ? compact : raw;
+    }
+    if (fieldKey === 'phone') {
+      const digits = raw.replace(/\D/g, '');
+      if (digits.length === 10) {
+        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+      }
+      return raw;
+    }
+    if (fieldKey === 'hours') {
+      const structured = parseHoursStructured(raw);
+      return normalizeParserFieldValue(structured && structured.raw ? structured.raw : raw);
+    }
+    if (fieldKey === 'address') {
+      return raw.replace(/\s+/g, ' ').replace(/,\s*,/g, ', ').trim();
+    }
+    return raw;
+  }
+
+  function buildParserAssistantSummary(session) {
+    const baseline = session && session.baseline ? session.baseline : {};
+    const current = session && session.current ? session.current : {};
+    const confidenceByField = session && session.confidenceByField ? session.confidenceByField : {};
+    const changedFields = [];
+    const recommendedFields = [];
+    PARSER_FIELDS.forEach((fieldKey) => {
+      const beforeValue = normalizeParserFieldByKey(fieldKey, baseline[fieldKey]);
+      const afterValue = normalizeParserFieldByKey(fieldKey, current[fieldKey]);
+      if (beforeValue !== afterValue && afterValue) {
+        changedFields.push(fieldKey);
+        if (Number(confidenceByField[fieldKey] || 0) >= 0.72) {
+          recommendedFields.push(fieldKey);
+        }
+      }
+    });
+    return {
+      changedFields,
+      recommendedFields,
+      message: changedFields.length
+        ? `I found ${changedFields.length} changed field${changedFields.length === 1 ? '' : 's'} and recommend saving ${recommendedFields.length} high-confidence field${recommendedFields.length === 1 ? '' : 's'}.`
+        : 'No new field changes were detected yet — paste more details or adjust the parsed values manually.'
+    };
+  }
+
   function getParserInputId(fieldKey) {
     return `visitedLocationParser${fieldKey.charAt(0).toUpperCase()}${fieldKey.slice(1)}`;
   }
@@ -2467,7 +2545,7 @@
   function getParserBaselineValues(item) {
     const baseline = {};
     PARSER_FIELDS.forEach((fieldKey) => {
-      baseline[fieldKey] = normalizeParserFieldValue(item && item[fieldKey]);
+      baseline[fieldKey] = normalizeParserFieldByKey(fieldKey, item && item[fieldKey]);
     });
     return baseline;
   }
@@ -2500,7 +2578,7 @@
     const afterValue = document.getElementById(`visitedLocationParserAfter-${fieldKey}`);
     if (!wrapper || !input) return;
     const baseline = normalizeParserFieldValue(state.parserSession.baseline[fieldKey]);
-    const current = normalizeParserFieldValue(input.value);
+    const current = normalizeParserFieldByKey(fieldKey, input.value);
     const changed = baseline !== current;
     wrapper.classList.toggle('is-changed', changed);
     wrapper.classList.toggle('is-unchanged', !changed);
@@ -2513,7 +2591,7 @@
   function syncParserSessionFromInputs() {
     PARSER_FIELDS.forEach((fieldKey) => {
       const input = document.getElementById(getParserInputId(fieldKey));
-      if (input) state.parserSession.current[fieldKey] = normalizeParserFieldValue(input.value);
+      if (input) state.parserSession.current[fieldKey] = normalizeParserFieldByKey(fieldKey, input.value);
     });
   }
 
@@ -2703,7 +2781,7 @@
     const parsed = parseLocationDataFromText(text);
     const current = {};
     PARSER_FIELDS.forEach((fieldKey) => {
-      current[fieldKey] = normalizeParserFieldValue(parsed[fieldKey]);
+      current[fieldKey] = normalizeParserFieldByKey(fieldKey, parsed[fieldKey]);
     });
     state.parserSession.current = current;
     state.parserSession.confidenceByField = { ...(parsed._confidenceByField || {}) };
@@ -2720,14 +2798,22 @@
     const baseline = session && session.baseline ? session.baseline : {};
     const current = session && session.current ? session.current : {};
     const confidenceByField = session && session.confidenceByField ? session.confidenceByField : {};
+    const assistantSummary = buildParserAssistantSummary(session);
 
     const fieldsHtml = `
+      <div class="visited-parser-hint" style="text-align:left;">
+        <strong>Assistant summary:</strong> ${escapeHtml(assistantSummary.message)}
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" data-parser-select-recommended ${assistantSummary.recommendedFields.length ? '' : 'disabled'}>✨ Select Recommended (${assistantSummary.recommendedFields.length})</button>
+          <span style="font-size:12px;color:#64748b;">High-confidence fields are selected when possible; review and adjust before saving.</span>
+        </div>
+      </div>
       <div class="visited-parser-fields">
         ${PARSER_FIELD_CONFIG.map((field) => {
-          const beforeValue = normalizeParserFieldValue(baseline[field.key]);
-          const afterValue = normalizeParserFieldValue(current[field.key]);
+          const beforeValue = normalizeParserFieldByKey(field.key, baseline[field.key]);
+          const afterValue = normalizeParserFieldByKey(field.key, current[field.key]);
           const changed = beforeValue !== afterValue;
-          const shouldSelect = Boolean(afterValue && changed);
+          const shouldSelect = Boolean(afterValue && changed && assistantSummary.recommendedFields.includes(field.key));
           const confidence = getParserConfidenceTier(confidenceByField[field.key]);
           const inputId = getParserInputId(field.key);
           const inputHtml = field.inputType === 'textarea'
@@ -2756,7 +2842,7 @@
           `;
         }).join('')}
       </div>
-      <div class="visited-parser-hint" style="margin-top:10px;font-size:13px;color:#64748b;">Changed fields are highlighted. Select only what you want to save.</div>
+      <div class="visited-parser-hint" style="margin-top:10px;font-size:13px;color:#64748b;">Changed fields are highlighted. You can save locally now and let sync catch up if OneDrive is unavailable.</div>
     `;
 
     previewArea.innerHTML = fieldsHtml;
@@ -2772,7 +2858,7 @@
     if (!entry || typeof entry !== 'object') return;
     const nextCurrent = {};
     PARSER_FIELDS.forEach((fieldKey) => {
-      nextCurrent[fieldKey] = normalizeParserFieldValue(entry.current && entry.current[fieldKey]);
+      nextCurrent[fieldKey] = normalizeParserFieldByKey(fieldKey, entry.current && entry.current[fieldKey]);
     });
     state.parserSession.current = nextCurrent;
     state.parserSession.confidenceByField = { ...(entry.confidenceByField || {}) };
@@ -2814,7 +2900,7 @@
     const valuesToSave = {};
     PARSER_FIELDS.forEach((fieldKey) => {
       const input = document.getElementById(getParserInputId(fieldKey));
-      valuesToSave[fieldKey] = normalizeParserFieldValue(input ? input.value : '');
+      valuesToSave[fieldKey] = normalizeParserFieldByKey(fieldKey, input ? input.value : '');
     });
 
     updateExplorerCardDraft(itemId, (draft) => ({
@@ -2836,16 +2922,20 @@
         selectedKeys.forEach((fieldKey) => {
           updates[fieldKey] = valuesToSave[fieldKey];
         });
-        await syncVisitedExplorerDetailFields(
+        const syncResult = await syncVisitedExplorerDetailFields(
           { workbookPath: item.sourceWorkbookPath, table: item.sourceTable, rowIndex: item.sourceRowIndex },
           updates
         );
         if (typeof window.showToast === 'function') {
-          window.showToast(`Saved ${selectedKeys.length} field${selectedKeys.length === 1 ? '' : 's'} to OneDrive.`, 'success', 2500);
+          if (syncResult && syncResult.queued) {
+            window.showToast(`Saved ${selectedKeys.length} field${selectedKeys.length === 1 ? '' : 's'} locally and queued for sync.`, 'info', 2800);
+          } else {
+            window.showToast(`Saved ${selectedKeys.length} field${selectedKeys.length === 1 ? '' : 's'} to OneDrive.`, 'success', 2500);
+          }
         }
       } catch (err) {
         if (typeof window.showToast === 'function') {
-          window.showToast(`Data saved locally (OneDrive sync: ${err && err.message ? err.message : 'error'})`, 'warning', 3000);
+          window.showToast(`Data saved locally (sync pending: ${err && err.message ? err.message : 'error'})`, 'warning', 3000);
         }
       } finally {
         const saveBtn = document.getElementById('visitedLocationParserSaveBtn');
@@ -2855,7 +2945,7 @@
         }
       }
     } else if (typeof window.showToast === 'function') {
-      window.showToast(`Saved ${selectedKeys.length} field${selectedKeys.length === 1 ? '' : 's'} locally.`, 'success', 2200);
+      window.showToast(`Saved ${selectedKeys.length} field${selectedKeys.length === 1 ? '' : 's'} locally (sync destination unavailable).`, 'info', 2400);
     }
 
     closeLocationTextParserModal();
@@ -3608,16 +3698,23 @@
       } else {
         const photoFiles = getVisitLogPhotoFiles();
         let uploadedPhotos = getVisitLogStagedUrlPhotos().slice();
+        let uploadFailures = 0;
         if (photoFiles.length) {
           setVisitLogPhotoStatus(`Uploading ${photoFiles.length} selected photo${photoFiles.length === 1 ? '' : 's'} to OneDrive...`, 'warn');
           for (let i = 0; i < photoFiles.length; i += 1) {
-            const uploaded = await uploadVisitPhotoToOneDrive(photoFiles[i], { subtabKey });
-            if (uploaded) uploadedPhotos.push(uploaded);
-            setVisitLogPhotoStatus(`Uploaded ${i + 1}/${photoFiles.length} selected photo${photoFiles.length === 1 ? '' : 's'} to OneDrive.`, 'success');
+            try {
+              const uploaded = await uploadVisitPhotoToOneDrive(photoFiles[i], { subtabKey });
+              if (uploaded) uploadedPhotos.push(uploaded);
+              setVisitLogPhotoStatus(`Uploaded ${i + 1}/${photoFiles.length} selected photo${photoFiles.length === 1 ? '' : 's'} to OneDrive.`, 'success');
+            } catch (_uploadError) {
+              uploadFailures += 1;
+              setVisitLogPhotoStatus(`Upload issue on ${i + 1}/${photoFiles.length}. Remaining files will continue.`, 'warn');
+            }
           }
         } else if (!uploadedPhotos.length) {
           setVisitLogPhotoStatus('No photos selected. Visit details will be saved without attachments.');
         }
+        uploadedPhotos = dedupeVisitPhotoEntries(uploadedPhotos);
 
         const record = {
           id: `visit:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
@@ -3637,7 +3734,8 @@
 
         if (typeof window.showToast === 'function') {
           const withPhotos = uploadedPhotos.length ? ` (+${uploadedPhotos.length} photo${uploadedPhotos.length === 1 ? '' : 's'})` : '';
-          window.showToast(`Visit logged: ${record.locationTitle}${withPhotos}`, 'success', 2400);
+          const withFailures = uploadFailures ? ` • ${uploadFailures} photo upload${uploadFailures === 1 ? '' : 's'} pending retry` : '';
+          window.showToast(`Visit logged: ${record.locationTitle}${withPhotos}${withFailures}`, uploadFailures ? 'warning' : 'success', 2600);
         }
       }
 
@@ -4223,12 +4321,73 @@
     return { rowPath, rowValues };
   }
 
-  async function syncVisitedExplorerDetailFields(sourceMeta, updates) {
+  function shouldQueueVisitedWriteError(error) {
+    const message = String(error && error.message ? error.message : error || '').toLowerCase();
+    if (!message) return !navigator.onLine;
+    return !navigator.onLine
+      || message.includes('network')
+      || message.includes('failed to fetch')
+      || message.includes('http 401')
+      || message.includes('http 403')
+      || message.includes('http 500')
+      || message.includes('http 502')
+      || message.includes('http 503')
+      || message.includes('timeout');
+  }
+
+  function describeVisitedSyncDestination(sourceMeta) {
+    const source = sourceMeta && typeof sourceMeta === 'object' ? sourceMeta : {};
+    const filePath = String(source.workbookPath || source.workbook || '').trim() || 'unknown-file';
+    const tableName = String(source.table || '').trim() || 'unknown-table';
+    const rowIndex = Number(source.rowIndex);
+    return `${filePath} / ${tableName}${Number.isInteger(rowIndex) && rowIndex >= 0 ? ` (row ${rowIndex + 1})` : ''}`;
+  }
+
+  async function enqueueVisitedExplorerSyncWrite(sourceMeta, updates, reason) {
+    if (!window.OfflinePwa || typeof window.OfflinePwa.enqueueWrite !== 'function') return null;
+    const payload = {
+      sourceMeta: {
+        workbookPath: String(sourceMeta && sourceMeta.workbookPath || sourceMeta && sourceMeta.workbook || '').trim(),
+        table: String(sourceMeta && sourceMeta.table || '').trim(),
+        rowIndex: Number(sourceMeta && sourceMeta.rowIndex)
+      },
+      updates: updates && typeof updates === 'object' ? { ...updates } : {}
+    };
+    const queueItem = await window.OfflinePwa.enqueueWrite('visited-explorer-sync', payload, {
+      source: 'visited-explorer',
+      destination: describeVisitedSyncDestination(sourceMeta),
+      failureReason: String(reason || '').trim()
+    });
+    return queueItem;
+  }
+
+  function registerVisitedExplorerSyncProcessor() {
+    if (!window.OfflinePwa || typeof window.OfflinePwa.registerProcessor !== 'function') return;
+    if (state.visitedSyncProcessorRegistered) return;
+    state.visitedSyncProcessorRegistered = true;
+    window.OfflinePwa.registerProcessor('visited-explorer-sync', function (payload) {
+      const sourceMeta = payload && payload.sourceMeta ? payload.sourceMeta : {};
+      const updates = payload && payload.updates ? payload.updates : {};
+      return syncVisitedExplorerDetailFields(sourceMeta, updates, { bypassQueue: true })
+        .then(function (result) {
+          return !!(result && result.synced);
+        });
+    });
+  }
+
+  async function syncVisitedExplorerDetailFields(sourceMeta, updates, options = {}) {
+    registerVisitedExplorerSyncProcessor();
     const source = sourceMeta && typeof sourceMeta === 'object' ? sourceMeta : {};
     const filePath = String(source.workbookPath || source.workbook || '').trim();
     const tableName = String(source.table || '').trim();
     const rowIndex = Number(source.rowIndex);
-    if (!window.accessToken) throw new Error('Sign in required to sync explorer details.');
+    if (!window.accessToken) {
+      if (!options.bypassQueue && window.OfflinePwa && typeof window.OfflinePwa.enqueueWrite === 'function') {
+        const queueItem = await enqueueVisitedExplorerSyncWrite(sourceMeta, updates, 'SIGN_IN_REQUIRED');
+        return { synced: false, queued: true, queueId: queueItem && queueItem.id ? String(queueItem.id) : '', reason: 'queued-sign-in-required' };
+      }
+      throw new Error('Sign in required to sync explorer details.');
+    }
     if (!filePath || !tableName || !Number.isInteger(rowIndex) || rowIndex < 0) {
       throw new Error('Explorer source metadata is incomplete.');
     }
@@ -4302,7 +4461,8 @@
     const shouldSyncHours = hasHoursUpdate && hoursColIdx >= 0;
     const shouldSyncDescription = hasDescriptionUpdate && descriptionColIdx >= 0;
 
-    const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
+    try {
+      const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
     if (hasTagUpdate) {
       while (rowValues.length <= tagColIdx) rowValues.push('');
       rowValues[tagColIdx] = String(updateMap.tagsCsv || '').trim();
@@ -4352,17 +4512,30 @@
       rowValues[descriptionColIdx] = String(updateMap.description || '').trim();
     }
 
-    const patchResponse = await fetch(rowPath, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${window.accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ values: [rowValues] })
-    });
-    if (!patchResponse.ok) throw new Error(`Unable to sync row changes (HTTP ${patchResponse.status})`);
+      const patchResponse = await fetch(rowPath, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${window.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: [rowValues] })
+      });
+      if (!patchResponse.ok) throw new Error(`Unable to sync row changes (HTTP ${patchResponse.status})`);
 
-    return { synced: true, excelSaved: true };
+      return { synced: true, excelSaved: true };
+    } catch (error) {
+      if (!options.bypassQueue && shouldQueueVisitedWriteError(error) && window.OfflinePwa && typeof window.OfflinePwa.enqueueWrite === 'function') {
+        const queueItem = await enqueueVisitedExplorerSyncWrite(sourceMeta, updates, error && error.message ? error.message : String(error));
+        return {
+          synced: false,
+          excelSaved: false,
+          queued: true,
+          queueId: queueItem && queueItem.id ? String(queueItem.id) : '',
+          reason: 'queued-for-retry'
+        };
+      }
+      throw error;
+    }
   }
 
   async function resolveAdventureVisitedColumnIndex() {
@@ -6346,10 +6519,21 @@
             const visitRecordId = photoDeleteBtn.getAttribute('data-photo-visit-record-id');
             const locationId = photoDeleteBtn.getAttribute('data-photo-location-id');
             if (photoId && visitRecordId && confirm('Delete this photo? This will also remove it from OneDrive.')) {
+              const targetRecord = (state.visitRecords || []).find((record) => record && record.id === visitRecordId);
+              const removedPhotoSnapshot = targetRecord && Array.isArray(targetRecord.photos)
+                ? targetRecord.photos.find((photo) => photo && photo.id === photoId)
+                : null;
               photoDeleteBtn.disabled = true;
               photoDeleteBtn.textContent = '…';
               await deletePhotoFromVisitRecord(visitRecordId, photoId).catch(() => {});
               renderPhotoGalleryContent(locationId);
+              if (removedPhotoSnapshot && typeof window.showUndoToast === 'function') {
+                window.showUndoToast('Photo removed.', function () {
+                  if (restorePhotoToVisitRecord(visitRecordId, removedPhotoSnapshot)) {
+                    renderPhotoGalleryContent(locationId);
+                  }
+                }, 6500);
+              }
             }
             return;
           }
@@ -6422,6 +6606,19 @@
           if (parseBtn) {
             event.preventDefault();
             parseLocationText();
+            return;
+          }
+
+          const selectRecommendedBtn = closest('[data-parser-select-recommended]');
+          if (selectRecommendedBtn) {
+            event.preventDefault();
+            const summary = buildParserAssistantSummary(state.parserSession);
+            PARSER_FIELDS.forEach((fieldKey) => {
+              const checkbox = document.getElementById(`visitedLocationParserSelect-${fieldKey}`);
+              if (!checkbox) return;
+              checkbox.checked = summary.recommendedFields.includes(fieldKey);
+            });
+            updateParserSaveButtonState();
             return;
           }
 
@@ -6850,6 +7047,7 @@
   }
 
   function initializeVisitedLocationsTab() {
+    registerVisitedExplorerSyncProcessor();
     loadChallengeState();
     loadMetaState();
     loadVisitRecords();

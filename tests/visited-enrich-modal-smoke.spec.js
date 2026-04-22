@@ -63,6 +63,11 @@ test.describe('Visited enrich modal smoke', () => {
     console.log(`[visited-enrich-diag] parserTemplate=${parserTemplate} chips=${initialChipCount} toggles=${initialToggleCount}`);
 
     if (parserTemplate === 'polished') {
+      const recommendedSelector = page.locator('[data-parser-select-recommended]');
+      if (await recommendedSelector.count()) {
+        await expect(page.locator('#visitedLocationParserPreview')).toContainText('Assistant summary:');
+        await expect(recommendedSelector).toBeVisible();
+      }
       await expect(confidenceChips).toHaveCount(6);
       await expect(page.locator('#visitedLocationParserField-description')).toHaveClass(/is-changed/);
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').first()).toContainText('Before:');
@@ -80,6 +85,11 @@ test.describe('Visited enrich modal smoke', () => {
       await descriptionCheckbox.check({ force: true });
       await expect(saveBtn).toBeEnabled();
       await expect(saveBtn).toContainText('Save Selected (1)');
+
+      if (await recommendedSelector.count()) {
+        await recommendedSelector.click();
+        await expect(saveBtn).toBeEnabled();
+      }
     } else {
       await expect(modal.getByLabel('Address')).toBeEditable();
       await expect(modal.getByLabel('City')).toBeEditable();

@@ -77,6 +77,97 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return mainRef.__editModeTarget;
   }
 
+  function formatTargetDestination(target) {
+    var safeTarget = target && typeof target === 'object' ? target : {};
+    var filePath = safeString(safeTarget.filePath) || 'unknown-file';
+    var tableName = safeString(safeTarget.tableName) || 'unknown-table';
+    return filePath + ' / ' + tableName;
+  }
+
+  function shouldQueueWriteFailure(error) {
+    var message = safeString(error && error.message ? error.message : error).toLowerCase();
+    if (!message) return !navigator.onLine;
+    return !navigator.onLine
+      || message.includes('network')
+      || message.includes('failed to fetch')
+      || message.includes('excel add row failed')
+      || message.includes('failed to save to excel')
+      || message.includes('timeout')
+      || message.includes('401')
+      || message.includes('403')
+      || message.includes('500')
+      || message.includes('502')
+      || message.includes('503');
+  }
+
+  function appendRowLocally(mainWindow, rowValues, queueId) {
+    if (!mainWindow || !Array.isArray(mainWindow.adventuresData)) return;
+    mainWindow.adventuresData.push({
+      values: [Array.isArray(rowValues) ? rowValues.slice() : []],
+      __queued: Boolean(queueId),
+      __offlineQueueId: safeString(queueId)
+    });
+  }
+
+  async function postRowToTarget(target, rowValues, mainWindow) {
+    var safeTarget = target && typeof target === 'object' ? target : {};
+    var filePath = safeString(safeTarget.filePath);
+    var tableName = safeString(safeTarget.tableName);
+    if (!filePath || !tableName) {
+      throw new Error('Missing target destination for queued row sync.');
+    }
+
+    var host = mainWindow || getMainWindow();
+    var token = safeString((host && host.accessToken) || window.accessToken);
+    if (!token) {
+      if (host && typeof host.rehydrateAuthState === 'function') {
+        var refreshed = await host.rehydrateAuthState();
+        token = refreshed ? safeString((host && host.accessToken) || window.accessToken) : token;
+      }
+    }
+    if (!token) throw new Error('Sign in required before syncing queued row adds.');
+
+    var encodedPath = encodeURIComponent(filePath).replace(/%2F/g, '/');
+    var url = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + ':/workbook/tables/' + encodeURIComponent(tableName) + '/rows';
+    var response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ values: [Array.isArray(rowValues) ? rowValues : []] })
+    });
+    if (!response.ok) {
+      var detail = await response.text().catch(function () { return ''; });
+      throw new Error('Queued row sync failed (' + response.status + ')' + (detail ? ': ' + detail.slice(0, 220) : ''));
+    }
+    return response.json().catch(function () { return {}; });
+  }
+
+  function registerEditModeAddQueueProcessor() {
+    if (!window.OfflinePwa || typeof window.OfflinePwa.registerProcessor !== 'function') return;
+    if (window.__editModeAddQueueProcessorRegistered) return;
+    window.__editModeAddQueueProcessorRegistered = true;
+    window.OfflinePwa.registerProcessor('edit-mode-add-row', function (payload, item) {
+      var rowValues = payload && Array.isArray(payload.rowValues) ? payload.rowValues : [];
+      var target = payload && payload.target ? payload.target : null;
+      return postRowToTarget(target, rowValues, getMainWindow())
+        .then(function () {
+          return true;
+        });
+    });
+  }
+
+  function buildDuplicateError(details, target) {
+    var name = safeString(details && details.name) || 'This location';
+    var address = safeString(details && details.address);
+    var suffix = address ? (' (' + address + ')') : '';
+    var destination = formatTargetDestination(target);
+    var error = new Error('Duplicate detected for ' + name + suffix + ' in ' + destination + '. Review the existing row before adding again.');
+    error.code = 'DUPLICATE_LOCATION';
+    return error;
+  }
+
   function isFestivalTarget(target) {
     const safeTarget = target && typeof target === 'object' ? target : {};
     const targetId = safeString(safeTarget.id).toLowerCase();
@@ -1774,7 +1865,9 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
 
       try {
         const mainWindow = getMainWindow();
-        applyExplicitTargetContext(mainWindow, options);
+        const explicitTarget = applyExplicitTargetContext(mainWindow, options);
+        const activeTarget = explicitTarget || getActiveEditTarget(mainWindow);
+        registerEditModeAddQueueProcessor();
         const details = preResolved || await window.resolvePlaceInputWithGoogleData(inputType, input);
         const placeId = safeString(details && details.placeId);
 
@@ -1789,16 +1882,58 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         const rowValues = window.normalizeExcelRowForSchema(rawRowValues, mainWindow);
 
         if (typeof mainWindow.placeExistsInData === 'function' && mainWindow.placeExistsInData(rowValues)) {
-          throw new Error('This location already exists in Excel.');
+          throw buildDuplicateError(details, activeTarget);
         }
 
-        if (typeof mainWindow.addRowToExcel === 'function') {
-          await mainWindow.addRowToExcel(rowValues);
-        } else if (Array.isArray(mainWindow.adventuresData) && typeof mainWindow.saveToExcel === 'function') {
-          mainWindow.adventuresData.push({ values: [rowValues] });
-          await mainWindow.saveToExcel();
-        } else {
-          throw new Error('Main window Excel save helpers are unavailable.');
+        try {
+          if (typeof mainWindow.addRowToExcel === 'function') {
+            await mainWindow.addRowToExcel(rowValues);
+          } else if (Array.isArray(mainWindow.adventuresData) && typeof mainWindow.saveToExcel === 'function') {
+            mainWindow.adventuresData.push({ values: [rowValues] });
+            await mainWindow.saveToExcel();
+          } else {
+            throw new Error('Main window Excel save helpers are unavailable.');
+          }
+        } catch (writeError) {
+          var canQueue = window.OfflinePwa
+            && typeof window.OfflinePwa.enqueueWrite === 'function'
+            && activeTarget
+            && safeString(activeTarget.filePath)
+            && safeString(activeTarget.tableName)
+            && shouldQueueWriteFailure(writeError);
+          if (!canQueue) throw writeError;
+
+          var queueItem = await window.OfflinePwa.enqueueWrite(
+            'edit-mode-add-row',
+            {
+              target: {
+                id: safeString(activeTarget.id),
+                label: safeString(activeTarget.label),
+                filePath: safeString(activeTarget.filePath),
+                tableName: safeString(activeTarget.tableName)
+              },
+              rowValues: Array.isArray(rowValues) ? rowValues.slice() : [],
+              placeName: safeString(details && details.name),
+              placeId: placeId
+            },
+            {
+              source: 'edit-mode-add',
+              destination: formatTargetDestination(activeTarget),
+              entityName: safeString(details && details.name),
+              sourceQueueId: ''
+            }
+          );
+          appendRowLocally(mainWindow, rowValues, queueItem && queueItem.id);
+          return {
+            success: true,
+            queued: true,
+            offline: !navigator.onLine,
+            message: 'Saved locally and queued for sync to ' + formatTargetDestination(activeTarget) + '.',
+            placeName: details.name,
+            placeId,
+            details,
+            queueId: queueItem && queueItem.id ? String(queueItem.id) : ''
+          };
         }
 
         if (Array.isArray(mainWindow.adventuresData)) {
@@ -1821,7 +1956,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
 
         return {
           success: true,
-          message: `Added ${details.name}`,
+          message: `Added ${details.name} to ${formatTargetDestination(activeTarget)}`,
           placeName: details.name,
           placeId,
           details

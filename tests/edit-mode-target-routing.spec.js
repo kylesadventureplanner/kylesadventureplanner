@@ -201,6 +201,10 @@ test.describe('Edit Mode target-table routing', () => {
     expect(singleRow[5]).toBe('https://cafe-alpha.example.com');
     expect(singleRow[6]).toBe('pid-cafe-alpha');
     expect(singleRow[10]).toBe('9-5 Cafe Alpha');
+    const diagnostics = popup.locator('#editModeTargetDiagnostics');
+    if (await diagnostics.count()) {
+      await expect(diagnostics).toContainText('Retail_Food_and_Drink.xlsx / Coffee');
+    }
     await expect.poll(() => page.evaluate(() => ({
       filePath: window.filePath,
       tableName: window.tableName,
@@ -212,6 +216,16 @@ test.describe('Edit Mode target-table routing', () => {
       schemaColumns: SCHEMAS.Coffee,
       columnCount: SCHEMAS.Coffee.length
     });
+
+    const preflightStatus = popup.locator('#singlePreflightStatus');
+    if (await preflightStatus.count()) {
+      const beforeDuplicateAttempt = graphCalls.length;
+      await popup.selectOption('#actionTargetSelect', 'retail_coffee');
+      await popup.fill('#singleInput', 'Cafe Alpha');
+      await popup.evaluate(() => submitAddSinglePlace());
+      await expect(popup.locator('#single-status')).toContainText('Duplicate preflight');
+      await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt);
+    }
 
     const bulkCalls = await runBulk('ent_festivals', ['Fest One', 'Fest Two']);
     expect(bulkCalls).toHaveLength(2);

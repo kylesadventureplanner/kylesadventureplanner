@@ -364,6 +364,44 @@
       color: #1e3a8a;
     }
 
+    .target-diagnostics-card {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid #dbeafe;
+      border-radius: 10px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .target-diagnostics-card strong {
+      color: #1d4ed8;
+    }
+
+    .preflight-review {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      font-size: 12px;
+      color: #334155;
+      line-height: 1.5;
+    }
+
+    .preflight-review.is-warning {
+      border-color: #fcd34d;
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .preflight-review.is-success {
+      border-color: #86efac;
+      background: #ecfdf5;
+      color: #166534;
+    }
+
     .candidate-results {
       margin-top: 12px;
       display: grid;
@@ -647,6 +685,7 @@
         <button class="button button-secondary" type="button" onclick="clearAutomationTargets()">Clear Multi-Selection</button>
       </div>
       <div id="targetSelectionStatus" class="target-chip-grid" data-target-visible-tab="places"></div>
+      <div id="editModeTargetDiagnostics" class="target-diagnostics-card" data-target-visible-tab="places">Destination diagnostics will appear here once the target loads.</div>
     </div>
 
     <!-- Add Places Tab -->
@@ -774,6 +813,7 @@
         </div>
 
         <div id="single-search-status"></div>
+        <div id="singlePreflightStatus" class="preflight-review">Preflight review will check the selected target for exact duplicates before saving.</div>
         <div id="singleFestivalManualAssist" class="festival-manual-assist" style="display:none;">
           <div style="font-size:12px; font-weight:700; color:#9a3412;">No provider details found. Add a quick manual festival candidate:</div>
           <div id="singleFestivalManualAssistHint" class="help-text" style="color:#9a3412;">Prefilled from your URL/query. You can edit before adding.</div>
@@ -846,6 +886,7 @@
         </div>
 
         <div id="bulk-search-status"></div>
+        <div id="bulkPreflightStatus" class="preflight-review">Bulk preflight review will summarize duplicates and the active save destination before saving.</div>
         <div id="bulk-candidates" class="candidate-results" aria-live="polite"></div>
         <div id="bulk-status"></div>
       </div>
@@ -2453,6 +2494,7 @@
 
       actionSel.addEventListener('change', () => {
         renderTargetSelectionStatus();
+        renderActionTargetDiagnostics();
         resetSingleCandidateResults();
         resetBulkCandidateResults();
         resetChainCandidateResults();
@@ -2463,6 +2505,7 @@
         el.addEventListener('change', renderTargetSelectionStatus);
       });
       renderTargetSelectionStatus();
+      renderActionTargetDiagnostics();
       updateFestivalSearchUi();
       renderTargetStarterRecommendations();
     }
@@ -2471,6 +2514,83 @@
       const select = document.getElementById(selectId);
       const targetId = select ? String(select.value || '').trim() : '';
       return EDIT_MODE_TARGETS.find((item) => item.id === targetId) || null;
+    }
+
+    function formatTargetDestination(target) {
+      const safeTarget = target && typeof target === 'object' ? target : {};
+      return `${String(safeTarget.filePath || '').trim() || 'unknown-file'} / ${String(safeTarget.tableName || '').trim() || 'unknown-table'}`;
+    }
+
+    function getSchemaColumnIndex(candidateNames) {
+      const schema = Array.isArray(getMainWindowSafe().__excelSchemaColumns) ? getMainWindowSafe().__excelSchemaColumns : [];
+      const candidates = Array.isArray(candidateNames) ? candidateNames.map((name) => String(name || '').trim().toLowerCase()) : [];
+      return schema.findIndex((name) => candidates.includes(String(name || '').trim().toLowerCase()));
+    }
+
+    function getTargetRowDuplicateMatches(inputs, inputType) {
+      const rows = Array.isArray(getMainWindowSafe().adventuresData) ? getMainWindowSafe().adventuresData : [];
+      const normalizedInputs = (Array.isArray(inputs) ? inputs : [inputs])
+        .map((value) => String(value || '').trim())
+        .filter(Boolean);
+      if (!normalizedInputs.length || !rows.length) return [];
+
+      const nameIdx = getSchemaColumnIndex(['name']);
+      const addressIdx = getSchemaColumnIndex(['address']);
+      const placeIdIdx = getSchemaColumnIndex(['google place id', 'googleplaceid', 'place id', 'placeid']);
+      const websiteIdx = getSchemaColumnIndex(['website', 'official website', 'url']);
+      const needles = normalizedInputs.map((value) => String(value || '').trim().toLowerCase());
+
+      return rows.reduce((matches, row, rowIndex) => {
+        const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
+        const candidate = {
+          name: nameIdx >= 0 ? String(values[nameIdx] || '').trim() : '',
+          address: addressIdx >= 0 ? String(values[addressIdx] || '').trim() : '',
+          placeId: placeIdIdx >= 0 ? String(values[placeIdIdx] || '').trim() : '',
+          website: websiteIdx >= 0 ? String(values[websiteIdx] || '').trim() : ''
+        };
+        const haystacks = [candidate.name, candidate.address, candidate.placeId, candidate.website]
+          .map((value) => String(value || '').trim().toLowerCase())
+          .filter(Boolean);
+        const matched = needles.find((needle) => {
+          if (!needle) return false;
+          if (inputType === 'placeId') return candidate.placeId.toLowerCase() === needle;
+          if (inputType === 'website' || inputType === 'placeUrl') return candidate.website.toLowerCase() === needle;
+          return haystacks.includes(needle);
+        });
+        if (!matched) return matches;
+        matches.push({ rowIndex, matchedInput: matched, ...candidate });
+        return matches;
+      }, []);
+    }
+
+    function renderPreflightStatus(containerId, target, inputs, inputType) {
+      const el = document.getElementById(containerId);
+      if (!el) return [];
+      const values = (Array.isArray(inputs) ? inputs : [inputs]).map((value) => String(value || '').trim()).filter(Boolean);
+      if (!values.length) {
+        el.className = 'preflight-review';
+        el.textContent = 'Preflight review will appear once you enter one or more values.';
+        return [];
+      }
+      const matches = getTargetRowDuplicateMatches(values, inputType);
+      if (!matches.length) {
+        el.className = 'preflight-review is-success';
+        el.innerHTML = `✅ Preflight review: no exact duplicates found in <strong>${formatTargetDestination(target)}</strong> across ${Math.max(0, Number(getMainWindowSafe().__excelLoadedRowCount) || 0)} loaded row(s).`;
+        return [];
+      }
+      el.className = 'preflight-review is-warning';
+      el.innerHTML = `⚠️ Preflight review found <strong>${matches.length}</strong> exact duplicate${matches.length === 1 ? '' : 's'} in <strong>${formatTargetDestination(target)}</strong>.<br>` + matches.slice(0, 4).map((match) => `• Row ${match.rowIndex + 1}: ${match.name || '(unnamed)'}${match.address ? ` — ${match.address}` : ''}`).join('<br>');
+      return matches;
+    }
+
+    function renderActionTargetDiagnostics() {
+      const el = document.getElementById('editModeTargetDiagnostics');
+      if (!el) return;
+      const target = getSelectedTarget('actionTargetSelect');
+      const host = getMainWindowSafe();
+      const queueApi = (host && host.OfflinePwa) || window.OfflinePwa;
+      const pendingCount = queueApi && typeof queueApi.getPendingCount === 'function' ? Number(queueApi.getPendingCount() || 0) : 0;
+      el.innerHTML = `<strong>Current Add destination:</strong> ${target ? formatTargetDestination(target) : 'Not selected'}<br><strong>Loaded rows:</strong> ${Math.max(0, Number(host.__excelLoadedRowCount) || 0)} &nbsp;•&nbsp; <strong>Schema columns:</strong> ${Math.max(0, Number(host.__excelColumnCount) || 0)} &nbsp;•&nbsp; <strong>Pending queued writes:</strong> ${pendingCount}`;
     }
 
     function isFestivalEditTarget(target) {
@@ -4623,9 +4743,16 @@
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
       await loadTargetRows(target);
+      renderActionTargetDiagnostics();
 
       if (!input.trim()) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a location</div>';
+        return;
+      }
+
+      const duplicateMatches = renderPreflightStatus('singlePreflightStatus', target, input, inputType);
+      if (duplicateMatches.length) {
+        statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Duplicate preflight stopped this save for ${formatTargetDestination(target)}. Review the existing row first.</div>`;
         return;
       }
 
@@ -4664,6 +4791,7 @@
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
       await loadTargetRows(target);
+      renderActionTargetDiagnostics();
 
       if (!input.trim()) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
@@ -4677,9 +4805,20 @@
         return;
       }
 
+      const duplicateMatches = renderPreflightStatus('bulkPreflightStatus', target, locations, inputType);
+      const duplicateInputs = new Set(duplicateMatches.map((match) => String(match.matchedInput || '').trim().toLowerCase()).filter(Boolean));
+      const filteredLocations = locations.filter((location) => !duplicateInputs.has(String(location || '').trim().toLowerCase()));
+      if (!filteredLocations.length && duplicateMatches.length) {
+        statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Bulk preflight found only duplicates for ${formatTargetDestination(target)}. Nothing new will be added.</div>`;
+        return;
+      }
+      if (filteredLocations.length !== locations.length) {
+        statusDiv.innerHTML = `<div class="status-message">ℹ️ Bulk preflight skipped ${locations.length - filteredLocations.length} duplicate input(s) for ${formatTargetDestination(target)}. Continuing with ${filteredLocations.length} new item(s)...</div>`;
+      }
+
       // Try new progress tracking system first
       if (typeof window.handleBulkAddPlacesWithProgress === 'function') {
-        const result = await window.handleBulkAddPlacesWithProgress(locations, inputType, statusDiv, dryRun, { target: targetContext });
+        const result = await window.handleBulkAddPlacesWithProgress(filteredLocations, inputType, statusDiv, dryRun, { target: targetContext });
         if (result.success && !dryRun) {
           document.getElementById('bulkInput').value = '';
         }
@@ -4689,7 +4828,7 @@
       // Fallback to enhanced automation
       statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
       if (window.enhancedAutomation) {
-        const result = await window.enhancedAutomation.bulkAddPlaces(input, inputType, dryRun, { target: targetContext });
+        const result = await window.enhancedAutomation.bulkAddPlaces(filteredLocations.join('\n'), inputType, dryRun, { target: targetContext });
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success && !dryRun) {
           document.getElementById('bulkInput').value = '';

@@ -1077,6 +1077,32 @@
     }
   }
 
+  async function queueExplorerHostSync(state, updates, reason) {
+    var openerWin = getOpenerWindow();
+    var queueApi = openerWin && openerWin.OfflinePwa;
+    if (!queueApi || typeof queueApi.enqueueWrite !== 'function') {
+      return { queued: false, reason: 'queue-unavailable' };
+    }
+    if (!state || !state.explorerSource) {
+      return { queued: false, reason: 'missing-explorer-source' };
+    }
+    var source = state.explorerSource;
+    var destination = String(source.workbookPath || source.workbook || '').trim() + ' / ' + String(source.table || '').trim();
+    var queued = await queueApi.enqueueWrite('visited-explorer-sync', {
+      sourceMeta: {
+        workbookPath: String(source.workbookPath || source.workbook || '').trim(),
+        table: String(source.table || '').trim(),
+        rowIndex: Number(source.rowIndex)
+      },
+      updates: updates || {}
+    }, {
+      source: 'adventure-details-photo-save',
+      destination: destination,
+      failureReason: String(reason || '').trim()
+    }).catch(function () { return null; });
+    return { queued: Boolean(queued), queueId: queued && queued.id ? String(queued.id) : '' };
+  }
+
   function findOpenerRowForTagSync(openerWin, state) {
     if (!openerWin || !Array.isArray(openerWin.adventuresData)) return null;
 
@@ -1602,10 +1628,43 @@
     el.style.color = isError ? '#b91c1c' : '#6b7280';
   }
 
+  function setPhotoStatusAction(msg, actionLabel, actionHandler) {
+    var el = document.getElementById('phStatus');
+    if (!el) return;
+    el.innerHTML = '';
+    var text = document.createElement('span');
+    text.textContent = String(msg || '').trim();
+    el.appendChild(text);
+    if (!actionLabel || typeof actionHandler !== 'function') return;
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'ph-url-retry-btn';
+    button.style.marginLeft = '8px';
+    button.textContent = String(actionLabel);
+    button.addEventListener('click', function () {
+      actionHandler();
+    });
+    el.appendChild(button);
+  }
+
+  function dedupeDetailPhotos(photos) {
+    var seen = Object.create(null);
+    return (Array.isArray(photos) ? photos : []).filter(function (photo) {
+      if (!photo || typeof photo !== 'object') return false;
+      var key = [photo.id, photo.oneDrivePath, photo.url, photo.thumbnail, photo.caption]
+        .map(function (value) { return String(value || '').trim().toLowerCase(); })
+        .find(function (value) { return Boolean(value); });
+      if (!key || seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+  }
+
   function renderPhotoGallery() {
     var state = window.__detailPhotosState;
     var wrap = document.getElementById('phGallery');
     if (!wrap || !state) return;
+    state.photos = dedupeDetailPhotos(state.photos);
     var photos = Array.isArray(state.photos) ? state.photos : [];
     if (!photos.length) {
       wrap.innerHTML = '<p class="ph-empty">No photos saved yet. Search, paste a URL, or upload below.</p>';
@@ -1727,6 +1786,7 @@
 
     // Try sync via host
     try {
+      state.photos = dedupeDetailPhotos(state.photos);
       var serialized = serializePhotosForExcel(state.photos);
       if (state && state.data) state.data.photoUrls = serialized;
       var hostSync = await syncViaExplorerHost(state, { photoUrls: serialized });
@@ -1737,8 +1797,13 @@
       }
     } catch (_) {}
 
-    setPhotoStatus('Photos saved locally (' + state.photos.length + ' photo' + (state.photos.length !== 1 ? 's' : '') + '). Sign in to sync to Excel.', false);
-    showDetailToast('📷 Photos saved locally.', 'info', 3200);
+    var queuedSync = await queueExplorerHostSync(state, { photoUrls: serializePhotosForExcel(state.photos) }, 'host-sync-unavailable').catch(function () {
+      return { queued: false };
+    });
+    setPhotoStatus('Photos saved locally and marked pending sync (' + state.photos.length + ' photo' + (state.photos.length !== 1 ? 's' : '') + ').', false);
+    showDetailToast(queuedSync && queuedSync.queued
+      ? '📷 Photos saved locally and queued for sync.'
+      : '📷 Photos saved locally. Open from Adventure Explorer while signed in to sync.', 'info', 3200);
   }
 
   function renderSearchResults(results) {
@@ -1772,6 +1837,7 @@
     window.__detailPhotosState = {
       placeKey: placeKey,
       photos: photos.slice(),
+      lastRemovedPhoto: null,
       data: data,
       payload: payload,
       explorerSource: payload && payload.explorerSource ? payload.explorerSource : null
@@ -2642,10 +2708,11 @@
           uploadPhotoFromExternalUrl(photoUrl, locationNameForUrlUpload)
             .then(function (uploadedPhoto) {
               urlState.photos.push(uploadedPhoto);
+              urlState.photos = dedupeDetailPhotos(urlState.photos);
               renderPhotoGallery();
-              setPhotoStatus('Photo uploaded to OneDrive — click Save Photos to persist.', false);
-              showDetailToast('✅ Photo uploaded to OneDrive. Click Save Photos.', 'success', 3000);
-              setUrlStatus('success', 'Uploaded to OneDrive — click Save Photos to keep.');
+              setPhotoStatus('Photo uploaded to OneDrive and staged. Click Save Photos to persist and sync metadata.', false);
+              showDetailToast('✅ Photo uploaded to OneDrive. Click Save Photos to persist metadata.', 'success', 3200);
+              setUrlStatus('success', 'Uploaded to OneDrive — click Save Photos to persist metadata.');
               if (urlInput) urlInput.value = '';
             })
             .catch(function (err) {
@@ -2677,9 +2744,23 @@
         var removeIdx = Number(phRemoveBtn.getAttribute('data-ph-idx'));
         var removeState = window.__detailPhotosState;
         if (removeState && Number.isInteger(removeIdx) && removeIdx >= 0 && removeIdx < removeState.photos.length) {
-          removeState.photos.splice(removeIdx, 1);
+          var removed = removeState.photos.splice(removeIdx, 1)[0] || null;
+          removeState.lastRemovedPhoto = {
+            photo: removed,
+            index: removeIdx,
+            at: Date.now()
+          };
           renderPhotoGallery();
-          setPhotoStatus('Photo removed — click Save Photos to persist.', false);
+          setPhotoStatusAction('Photo removed — click Save Photos to persist.', 'Undo', function () {
+            var snapshot = removeState.lastRemovedPhoto;
+            if (!snapshot || !snapshot.photo) return;
+            var nextIndex = Math.max(0, Math.min(Number(snapshot.index) || 0, removeState.photos.length));
+            removeState.photos.splice(nextIndex, 0, snapshot.photo);
+            removeState.photos = dedupeDetailPhotos(removeState.photos);
+            removeState.lastRemovedPhoto = null;
+            renderPhotoGallery();
+            setPhotoStatus('Photo restore applied. Click Save Photos to persist.', false);
+          });
         }
         return;
       }
@@ -2697,12 +2778,13 @@
         Promise.all(files.map(function (file) { return uploadPhotoToOneDrive(file, locationNameForUpload); }))
           .then(function (uploaded) {
             uploaded.forEach(function (ph) { uploadState.photos.push(ph); });
+            uploadState.photos = dedupeDetailPhotos(uploadState.photos);
             renderPhotoGallery();
             if (uploadInput) uploadInput.value = '';
             var queueDiv = document.getElementById('phUploadQueue');
             if (queueDiv) queueDiv.innerHTML = '';
-            setPhotoStatus(uploaded.length + ' photo' + (uploaded.length !== 1 ? 's' : '') + ' uploaded — click Save Photos.', false);
-            showDetailToast('✅ ' + uploaded.length + ' photo' + (uploaded.length !== 1 ? 's' : '') + ' uploaded. Click Save Photos.', 'success', 3500);
+            setPhotoStatus(uploaded.length + ' photo' + (uploaded.length !== 1 ? 's' : '') + ' uploaded to OneDrive and staged — click Save Photos to persist metadata.', false);
+            showDetailToast('✅ ' + uploaded.length + ' photo' + (uploaded.length !== 1 ? 's' : '') + ' uploaded. Click Save Photos to persist metadata.', 'success', 3600);
           })
           .catch(function (err) {
             setPhotoStatus('Upload failed: ' + (err && err.message ? err.message : String(err)), true);
