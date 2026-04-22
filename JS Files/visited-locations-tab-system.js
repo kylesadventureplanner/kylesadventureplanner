@@ -2038,9 +2038,329 @@
 
   // ---- Text Parser for Location Data Enrichment ----
 
-  // ---- QUICK WIN IMPROVEMENTS ----
+  // ---- PHASE 3: ADVANCED FEATURES ----
 
-  function standardizeAddress(address) {
+  // ---- Photo Auto-Upload from URL ----
+
+  async function fetchAndUploadPhotoFromUrl(photoUrl, options = {}) {
+    if (!photoUrl || typeof photoUrl !== 'string') {
+      throw new Error('Invalid photo URL');
+    }
+    if (!window.accessToken) {
+      throw new Error('Sign in required before uploading photos.');
+    }
+
+    try {
+      // Fetch the image from URL
+      const response = await fetch(photoUrl, { mode: 'cors' });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: HTTP ${response.status}`);
+      }
+
+      // Get blob and determine file type
+      const blob = await response.blob();
+      let fileName = 'photo-from-url.jpg';
+
+      // Try to extract filename from URL
+      const urlParts = photoUrl.split('/');
+      const lastPart = urlParts[urlParts.length - 1];
+      if (lastPart && /\.(jpg|jpeg|png|gif|webp)$/i.test(lastPart)) {
+        fileName = lastPart;
+      }
+
+      // Create File object
+      const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
+
+      // Upload using existing function
+      const uploaded = await uploadVisitPhotoToOneDrive(file, options);
+      return uploaded;
+    } catch (error) {
+      if (error && error.message && error.message.includes('CORS')) {
+        throw new Error('Image URL is blocked by CORS policy. Try a different source or download and upload directly.');
+      }
+      throw error;
+    }
+  }
+
+  function openPhotoUrlUploadModal() {
+    const modal = document.getElementById('visitedPhotoUrlModal');
+    const backdrop = document.getElementById('visitedPhotoUrlBackdrop');
+    if (!modal || !backdrop) return;
+
+    const urlInput = document.getElementById('visitedPhotoUrlInput');
+    const preview = document.getElementById('visitedPhotoUrlPreview');
+    if (urlInput) urlInput.value = '';
+    if (preview) preview.innerHTML = '';
+
+    backdrop.hidden = false;
+    modal.hidden = false;
+    if (urlInput) urlInput.focus();
+  }
+
+  function closePhotoUrlUploadModal() {
+    const modal = document.getElementById('visitedPhotoUrlModal');
+    const backdrop = document.getElementById('visitedPhotoUrlBackdrop');
+    if (modal) modal.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+  }
+
+  function previewPhotoUrl() {
+    const urlInput = document.getElementById('visitedPhotoUrlInput');
+    const preview = document.getElementById('visitedPhotoUrlPreview');
+    if (!urlInput || !preview) return;
+
+    const url = urlInput.value.trim();
+    if (!url) {
+      preview.innerHTML = '';
+      return;
+    }
+
+    if (!/^https?:\/\/.+\..+/.test(url)) {
+      preview.innerHTML = '<div style="color:#991b1b;font-size:12px;">⚠️ Invalid URL (must start with http:// or https://)</div>';
+      return;
+    }
+
+    preview.innerHTML = `
+      <div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#f8fafc;">
+        <div style="font-size:12px;color:#64748b;margin-bottom:6px;">Preview:</div>
+        <img src="${escapeHtml(url)}" alt="Preview" style="max-width:100%;max-height:150px;border-radius:4px;" 
+          onerror="this.parentElement.innerHTML='<div style=\"color:#991b1b;font-size:12px;\">❌ Failed to load image (CORS or invalid URL)</div>'" />
+      </div>
+    `;
+  }
+
+  async function uploadPhotoFromUrl() {
+    const urlInput = document.getElementById('visitedPhotoUrlInput');
+    const uploadBtn = document.getElementById('visitedPhotoUrlUploadBtn');
+    if (!urlInput || !uploadBtn) return;
+
+    const url = urlInput.value.trim();
+    if (!url) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('Please enter a photo URL', 'warning', 2000);
+      }
+      return;
+    }
+
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Uploading...';
+
+    try {
+      await fetchAndUploadPhotoFromUrl(url, { subtabKey: state.activeProgressSubTab });
+      if (typeof window.showToast === 'function') {
+        window.showToast('✅ Photo uploaded from URL', 'success', 2000);
+      }
+      closePhotoUrlUploadModal();
+    } catch (error) {
+      if (typeof window.showToast === 'function') {
+        window.showToast(`❌ Upload failed: ${error && error.message ? error.message : 'error'}`, 'error', 3000);
+      }
+    } finally {
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = 'Upload Photo';
+    }
+  }
+
+  // ---- Better Hours Parser ----
+
+  function parseHoursStructured(hoursText) {
+    if (!hoursText) return { raw: hoursText, schedule: {}, openNow: null };
+
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const schedule = {};
+    const text = String(hoursText || '').toUpperCase();
+
+    // Try to parse individual day entries
+    dayNames.forEach((day) => {
+      const patterns = [
+        new RegExp(`${day}(?:DAY)?[:\\s]+([0-9]{1,2}(?::[0-9]{2})?\\s*(?:AM|PM))\\s*[\\-–]\\s*([0-9]{1,2}(?::[0-9]{2})?\\s*(?:AM|PM))`, 'i'),
+        new RegExp(`${day}\\s*[:\\-–]\\s*([^,;]+?)(?=[,;]|${dayNames.join('|')}|$)`, 'i')
+      ];
+
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+          const time = match[1] ? `${match[1].trim()}${match[2] ? ' - ' + match[2].trim() : ''}` : '';
+          if (time && time.length > 3) {
+            schedule[day] = time.trim();
+            break;
+          }
+        }
+      }
+    });
+
+    // Check for special cases
+    if (text.includes('CLOSED')) {
+      dayNames.forEach((day) => { if (!schedule[day]) schedule[day] = 'Closed'; });
+    }
+    if (text.includes('24/7') || text.includes('OPEN 24')) {
+      dayNames.forEach((day) => { schedule[day] = 'Open 24 hours'; });
+    }
+
+    // Determine if open now
+    let openNow = null;
+    try {
+      const now = new Date();
+      const dayIndex = now.getDay();
+      const dayName = dayNames[(dayIndex === 0 ? 6 : dayIndex - 1)]; // Convert to Mon-Sun
+      const dayHours = schedule[dayName];
+
+      if (dayHours && dayHours.length > 0) {
+        if (dayHours === 'Closed') {
+          openNow = false;
+        } else if (dayHours === 'Open 24 hours') {
+          openNow = true;
+        } else if (/\d/.test(dayHours)) {
+          // Try to extract times
+          const timeMatch = dayHours.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?\s*-\s*(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i);
+          if (timeMatch) {
+            let openTime = parseInt(timeMatch[1]);
+            let closeTime = parseInt(timeMatch[4]);
+            if (timeMatch[3] && timeMatch[3].toUpperCase() === 'PM' && openTime < 12) openTime += 12;
+            if (timeMatch[6] && timeMatch[6].toUpperCase() === 'PM' && closeTime < 12) closeTime += 12;
+
+            const currentHour = now.getHours();
+            openNow = currentHour >= openTime && currentHour < closeTime;
+          }
+        }
+      }
+    } catch (_err) {
+      openNow = null;
+    }
+
+    return {
+      raw: hoursText,
+      schedule,
+      openNow,
+      formatted: Object.keys(schedule).length > 0 ? schedule : null
+    };
+  }
+
+  function formatHoursDisplay(parsedHours) {
+    if (!parsedHours || !parsedHours.schedule) return String(parsedHours.raw || '');
+
+    const parts = [];
+    if (parsedHours.openNow !== null) {
+      parts.push(`${parsedHours.openNow ? '🟢 Open Now' : '🔴 Closed Now'}`);
+    }
+
+    const schedule = parsedHours.schedule;
+    if (Object.keys(schedule).length > 0) {
+      parts.push(Object.entries(schedule).map(([day, hours]) => `${day}: ${hours}`).join(' | '));
+    }
+
+    return parts.join(' | ') || String(parsedHours.raw || '');
+  }
+
+  // ---- Duplicate Location Detection ----
+
+  function stringSimilarity(str1, str2) {
+    const s1 = String(str1 || '').toLowerCase().trim();
+    const s2 = String(str2 || '').toLowerCase().trim();
+
+    if (s1 === s2) return 1;
+    if (!s1 || !s2) return 0;
+
+    const longer = s1.length > s2.length ? s1 : s2;
+    const shorter = s1.length > s2.length ? s2 : s1;
+
+    if (longer.length === 0) return 1;
+
+    const editDistance = getLevenshteinDistance(shorter, longer);
+    return (longer.length - editDistance) / longer.length;
+  }
+
+  function getLevenshteinDistance(s1, s2) {
+    const costs = [];
+    for (let i = 0; i <= s1.length; i++) {
+      let lastValue = i;
+      for (let j = 0; j <= s2.length; j++) {
+        if (i === 0) {
+          costs[j] = j;
+        } else if (j > 0) {
+          let newValue = costs[j - 1];
+          if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+          }
+          costs[j - 1] = lastValue;
+          lastValue = newValue;
+        }
+      }
+      if (i > 0) costs[s2.length] = lastValue;
+    }
+    return costs[s2.length];
+  }
+
+  function findDuplicateLocations(locationTitle) {
+    if (!locationTitle) return [];
+
+    const explorerState = getExplorerState(state.activeProgressSubTab);
+    if (!explorerState || !explorerState.items) return [];
+
+    const candidates = explorerState.items
+      .filter((item) => item && item.title)
+      .map((item) => ({
+        ...item,
+        similarity: stringSimilarity(locationTitle, item.title)
+      }))
+      .filter((item) => item.similarity >= 0.65 && item.similarity < 1)
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 5);
+
+    return candidates;
+  }
+
+  function openDuplicateLocationModal(duplicates, locationTitle, callback) {
+    if (!duplicates || duplicates.length === 0) {
+      callback(null);
+      return;
+    }
+
+    const modal = document.getElementById('visitedDuplicateLocationModal');
+    const backdrop = document.getElementById('visitedDuplicateLocationBackdrop');
+    if (!modal || !backdrop) {
+      callback(null);
+      return;
+    }
+
+    const listEl = document.getElementById('visitedDuplicateLocationList');
+    if (listEl) {
+      listEl.innerHTML = `
+        <div style="margin-bottom:12px;padding:8px;background:#fef3c7;border-left:3px solid #f59e0b;border-radius:4px;">
+          <strong style="font-size:14px;">Found ${duplicates.length} similar location(s)</strong>
+          <div style="font-size:12px;color:#664400;margin-top:4px;">Did you mean one of these?</div>
+        </div>
+        ${duplicates.map((dup, idx) => `
+          <div style="padding:10px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;"
+            class="visited-dup-option" data-index="${idx}" data-title="${escapeHtml(dup.title)}">
+            <div style="font-weight:600;color:#1e293b;">${escapeHtml(dup.title)}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;">
+              Match: ${Math.round(dup.similarity * 100)}% | City: ${escapeHtml(dup.city || 'Unknown')}
+            </div>
+          </div>
+        `).join('')}
+        <div style="margin-top:12px;padding:10px;background:#f1f5f9;border-radius:6px;border:1px solid #cbd5e1;">
+          <div style="font-weight:600;margin-bottom:8px;font-size:13px;">Or create new:</div>
+          <button type="button" id="visitedCreateNewLocationBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh" style="width:100%;">
+            Create "${escapeHtml(locationTitle)}" as New Location
+          </button>
+        </div>
+      `;
+    }
+
+    modal.dataset.callback = 'visitedDuplicateLocationCallback';
+    window.visitedDuplicateLocationCallback = callback;
+
+    backdrop.hidden = false;
+    modal.hidden = false;
+  }
+
+  function closeDuplicateLocationModal() {
+    const modal = document.getElementById('visitedDuplicateLocationModal');
+    const backdrop = document.getElementById('visitedDuplicateLocationBackdrop');
+    if (modal) modal.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+  }
     if (!address) return '';
     return String(address || '')
       .replace(/\b(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|ct|court|pkwy|parkway)\b/gi, (match) => {
@@ -2381,6 +2701,8 @@
     }
     closeLocationTextParserModal();
   }
+
+  function escapeHtml(value) {
     return String(value || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -5862,6 +6184,66 @@
           if (redoBtn && !redoBtn.disabled) {
             event.preventDefault();
             redoParserChanges();
+            return;
+          }
+
+          // Photo URL upload handlers
+          const photoUrlBtn = closest('[data-visit-log-photo-url]');
+          if (photoUrlBtn) {
+            event.preventDefault();
+            openPhotoUrlUploadModal();
+            return;
+          }
+
+          const closePhotoUrlModal = closest('#visitedPhotoUrlCloseBtn, #visitedPhotoUrlBackdrop');
+          if (closePhotoUrlModal) {
+            event.preventDefault();
+            closePhotoUrlUploadModal();
+            return;
+          }
+
+          const previewPhotoBtn = closest('#visitedPhotoUrlPreviewBtn');
+          if (previewPhotoBtn) {
+            event.preventDefault();
+            previewPhotoUrl();
+            return;
+          }
+
+          const uploadPhotoUrlBtn = closest('#visitedPhotoUrlUploadBtn');
+          if (uploadPhotoUrlBtn) {
+            event.preventDefault();
+            uploadPhotoUrlBtn.disabled = true;
+            uploadPhotoUrlBtn.textContent = 'Uploading...';
+            await uploadPhotoFromUrl().finally(() => {
+              uploadPhotoUrlBtn.disabled = false;
+              uploadPhotoUrlBtn.textContent = 'Upload Photo';
+            });
+            return;
+          }
+
+          // Duplicate location handlers
+          const dupOption = closest('.visited-dup-option');
+          if (dupOption) {
+            event.preventDefault();
+            const callback = window.visitedDuplicateLocationCallback;
+            if (callback) callback(dupOption.dataset.title);
+            closeDuplicateLocationModal();
+            return;
+          }
+
+          const createNewBtn = closest('#visitedCreateNewLocationBtn');
+          if (createNewBtn) {
+            event.preventDefault();
+            const callback = window.visitedDuplicateLocationCallback;
+            if (callback) callback(null);
+            closeDuplicateLocationModal();
+            return;
+          }
+
+          const closeDupModal = closest('#visitedDuplicateLocationCloseBtn, #visitedDuplicateLocationBackdrop');
+          if (closeDupModal) {
+            event.preventDefault();
+            closeDuplicateLocationModal();
             return;
           }
 

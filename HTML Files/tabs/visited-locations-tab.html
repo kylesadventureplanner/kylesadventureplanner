@@ -417,6 +417,37 @@
       </div>
     </div>
   </div>
+  <!-- Photo URL Upload Modal -->
+  <div id="visitedPhotoUrlBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedPhotoUrlModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedPhotoUrlTitle" hidden>
+    <div class="visited-explorer-details-head">
+      <div id="visitedPhotoUrlTitle" class="card-title">🔗 Upload Photo from URL</div>
+      <button type="button" id="visitedPhotoUrlCloseBtn" class="pill-button" aria-label="Close">Close</button>
+    </div>
+    <div class="visited-explorer-details-body">
+      <label class="visited-visit-log-label" for="visitedPhotoUrlInput">Photo URL</label>
+      <input id="visitedPhotoUrlInput" class="filter-input" type="text" placeholder="https://example.com/photo.jpg" />
+      <div class="visited-subtab-action-row ui-action-rail" style="margin-top:8px;margin-bottom:8px;">
+        <button type="button" id="visitedPhotoUrlPreviewBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Preview</button>
+      </div>
+      <div id="visitedPhotoUrlPreview" class="visited-photo-url-preview"></div>
+      <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top:12px;">
+        <button type="button" id="visitedPhotoUrlUploadBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Upload Photo</button>
+        <button type="button" class="visited-subtab-action-btn visited-subtab-action-btn--undo" onclick="document.getElementById('visitedPhotoUrlCloseBtn').click();">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <!-- Duplicate Location Detection Modal -->
+  <div id="visitedDuplicateLocationBackdrop" class="visited-explorer-details-backdrop" hidden></div>
+  <div id="visitedDuplicateLocationModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedDuplicateLocationTitle" hidden>
+    <div class="visited-explorer-details-head">
+      <div id="visitedDuplicateLocationTitle" class="card-title">🔍 Similar Locations Found</div>
+      <button type="button" id="visitedDuplicateLocationCloseBtn" class="pill-button" aria-label="Close">Close</button>
+    </div>
+    <div class="visited-explorer-details-body">
+      <div id="visitedDuplicateLocationList" class="visited-duplicate-location-list"></div>
+    </div>
+  </div>
   <div id="visitedExplorerDetailsModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedExplorerDetailsTitle" hidden>
     <div class="visited-explorer-details-head">
       <div id="visitedExplorerDetailsTitle" class="card-title">Location Details</div>
@@ -447,6 +478,9 @@
       <textarea id="visitedVisitLogNotes" class="filter-input" rows="4" placeholder="Add notes about this visit..."></textarea>
       <label class="visited-visit-log-label" for="visitedVisitLogPhotoInput">Photos (optional)</label>
       <input id="visitedVisitLogPhotoInput" class="filter-input visited-visit-log-file-input" type="file" accept="image/*" multiple />
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button type="button" class="visited-subtab-action-btn" data-visit-log-photo-url style="flex:1;">🔗 Add from URL</button>
+      </div>
       <div id="visitedVisitLogPhotoStatus" class="card-subtitle visited-visit-log-photo-status" aria-live="polite">Attach one or more photos to upload them to OneDrive when you save.</div>
       <div id="visitedVisitLogHelp" class="card-subtitle" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top: 4px;">
@@ -2723,6 +2757,30 @@
   }
   .visited-data-gaps strong {
     font-weight: 600;
+  }
+
+  /* ---- Photo URL Upload Modal ---- */
+  .visited-photo-url-preview {
+    min-height: 100px;
+    margin-bottom: 8px;
+  }
+
+  /* ---- Duplicate Location Detection ---- */
+  .visited-duplicate-location-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .visited-dup-option {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .visited-dup-option:hover {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    box-shadow: 0 0 0 2px #dbeafe;
   }
 </style>
   .visited-location-text-parser-modal {
