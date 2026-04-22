@@ -2361,6 +2361,8 @@
     if (modal) modal.hidden = true;
     if (backdrop) backdrop.hidden = true;
   }
+
+  function standardizeAddress(address) {
     if (!address) return '';
     return String(address || '')
       .replace(/\b(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|ct|court|pkwy|parkway)\b/gi, (match) => {
@@ -5817,7 +5819,7 @@
 
       // CREATE THE MAIN CLICK HANDLER FUNCTION (stored to prevent duplicate attachment)
       if (!root.__visitedClickHandler) {
-        root.__visitedClickHandler = function handleVisitedClick(event) {
+        root.__visitedClickHandler = async function handleVisitedClick(event) {
           const eventTarget = getEventTargetElement(event);
           if (!eventTarget || !root.contains(eventTarget)) return;
 
