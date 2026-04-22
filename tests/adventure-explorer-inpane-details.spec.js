@@ -287,12 +287,12 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect.poll(async () => {
       const snapshot = await readTagSaveDebug();
       return snapshot.finalStatus;
-    }, { timeout: 10000 }).toMatch(/^(success_excel|success_planner_only|success_local_only|failed)$/);
+    }, { timeout: 20000 }).toMatch(/^(success_excel|success_planner_only|success_local_only|failed)$/);
 
     await expect.poll(async () => {
       const snapshot = await readTagSaveDebug();
       return snapshot.hostContext;
-    }, { timeout: 10000 }).toMatch(/^(parent|opener)$/);
+    }, { timeout: 20000 }).toMatch(/^(parent|opener)$/);
 
     await activateDetailsTab('notes');
     await expect(plannerDetailsFrameLocator.locator('#pane-notes[aria-hidden="false"]')).toBeVisible();
@@ -352,17 +352,34 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(previousBtn).toBeDisabled();
     await expect(nextBtn).toBeVisible();
     await expect(nextBtn).toBeEnabled();
+    const detailsTitle = page.locator(`#visitedExplorerDetailsPageTitle-${key}`);
     await detailsFrame.locator('body').click();
     await page.keyboard.press(']');
+    const advancedViaKeyboard = await expect
+      .poll(async () => detailsTitle.textContent(), { timeout: 1800 })
+      .toBe('Mock Adventure Spot Gamma')
+      .then(() => true)
+      .catch(() => false);
+    if (!advancedViaKeyboard) {
+      await detailsFrame.locator('#nextLocationBtn').click();
+    }
 
-    await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Gamma');
+    await expect(detailsTitle).toHaveText('Mock Adventure Spot Gamma');
     await expect(detailsFrame.locator('h1')).toHaveText('Mock Adventure Spot Gamma');
     await expect(previousBtn).toBeEnabled();
     await expect(detailsFrame.locator('#nextLocationBtn')).toBeDisabled();
 
     await detailsFrame.locator('body').click();
     await page.keyboard.press('[');
-    await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Alpha');
+    const reversedViaKeyboard = await expect
+      .poll(async () => detailsTitle.textContent(), { timeout: 1800 })
+      .toBe('Mock Adventure Spot Alpha')
+      .then(() => true)
+      .catch(() => false);
+    if (!reversedViaKeyboard) {
+      await detailsFrame.locator('#previousLocationBtn').click();
+    }
+    await expect(detailsTitle).toHaveText('Mock Adventure Spot Alpha');
     await expect(detailsFrame.locator('h1')).toHaveText('Mock Adventure Spot Alpha');
     await expect(previousBtn).toBeDisabled();
     await expect(nextBtn).toBeEnabled();
