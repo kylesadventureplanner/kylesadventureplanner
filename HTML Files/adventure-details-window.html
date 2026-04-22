@@ -1027,6 +1027,40 @@
     }, displayMs);
   }
 
+  function showDetailUndoToast(message, undoFn, duration) {
+    var existing = document.getElementById('detailSaveToast');
+    if (existing) existing.remove();
+
+    var toast = document.createElement('div');
+    toast.id = 'detailSaveToast';
+    toast.className = 'detail-toast info visible';
+    var messageNode = document.createElement('span');
+    messageNode.textContent = String(message || 'Done');
+    var undoBtn = document.createElement('button');
+    undoBtn.type = 'button';
+    undoBtn.className = 'ph-url-retry-btn';
+    undoBtn.style.marginLeft = '10px';
+    undoBtn.textContent = 'Undo';
+    undoBtn.addEventListener('click', function () {
+      if (typeof undoFn === 'function') undoFn();
+      toast.classList.remove('visible');
+      window.setTimeout(function () {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 220);
+    });
+
+    toast.appendChild(messageNode);
+    toast.appendChild(undoBtn);
+    document.body.appendChild(toast);
+
+    window.setTimeout(function () {
+      toast.classList.remove('visible');
+      window.setTimeout(function () {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 220);
+    }, Number(duration || 5200));
+  }
+
   function getOpenerWindow() {
     window.__detailHostContext = 'none';
     try {
@@ -1101,6 +1135,23 @@
       failureReason: String(reason || '').trim()
     }).catch(function () { return null; });
     return { queued: Boolean(queued), queueId: queued && queued.id ? String(queued.id) : '' };
+  }
+
+  async function syncOrQueueExplorerUpdate(state, updates, reason) {
+    var hostSync = await syncViaExplorerHost(state, updates || {});
+    if (hostSync && hostSync.synced) {
+      return { synced: true, queued: false, hostSync: hostSync, queueId: '' };
+    }
+    var queuedResult = await queueExplorerHostSync(state, updates || {}, reason || (hostSync && hostSync.reason) || 'host-sync-failed').catch(function () {
+      return { queued: false, reason: 'queue-failed' };
+    });
+    return {
+      synced: false,
+      queued: !!(queuedResult && queuedResult.queued),
+      hostSync: hostSync || null,
+      queueId: queuedResult && queuedResult.queueId ? String(queuedResult.queueId) : '',
+      reason: queuedResult && queuedResult.reason ? String(queuedResult.reason) : ''
+    };
   }
 
   function findOpenerRowForTagSync(openerWin, state) {
@@ -1388,6 +1439,24 @@
     status.style.color = isError ? '#b91c1c' : '#6b7280';
   }
 
+  function setDetailNotesStatusAction(message, actionLabel, actionHandler) {
+    var status = document.getElementById('dnmStatus');
+    if (!status) return;
+    status.style.color = '#6b7280';
+    status.innerHTML = '';
+    var textNode = document.createElement('span');
+    textNode.textContent = String(message || '').trim();
+    status.appendChild(textNode);
+    if (!actionLabel || typeof actionHandler !== 'function') return;
+    var actionBtn = document.createElement('button');
+    actionBtn.type = 'button';
+    actionBtn.className = 'ph-url-retry-btn';
+    actionBtn.style.marginLeft = '8px';
+    actionBtn.textContent = String(actionLabel);
+    actionBtn.addEventListener('click', actionHandler);
+    status.appendChild(actionBtn);
+  }
+
   function renderDetailNotesPane() {
     var wrap = document.getElementById('detailNotesWrap');
     if (!wrap) return;
@@ -1431,9 +1500,23 @@
   function removeNoteFromDetailState(index) {
     if (!window.__detailNotesState || !Array.isArray(window.__detailNotesState.notes)) return;
     if (!Number.isInteger(index) || index < 0 || index >= window.__detailNotesState.notes.length) return;
-    window.__detailNotesState.notes.splice(index, 1);
+    var removed = window.__detailNotesState.notes.splice(index, 1)[0] || '';
+    window.__detailNotesState.lastRemovedNote = {
+      note: removed,
+      index: index,
+      at: Date.now()
+    };
     renderDetailNotesPane();
-    setDetailNotesStatus('Note removed. Click Save Notes to persist.', false);
+    setDetailNotesStatusAction('Note removed. Click Save Notes to persist.', 'Undo', function () {
+      var state = window.__detailNotesState;
+      var snapshot = state && state.lastRemovedNote;
+      if (!state || !snapshot || !String(snapshot.note || '').trim()) return;
+      var restoreIndex = Math.max(0, Math.min(Number(snapshot.index) || 0, state.notes.length));
+      state.notes.splice(restoreIndex, 0, snapshot.note);
+      state.lastRemovedNote = null;
+      renderDetailNotesPane();
+      setDetailNotesStatus('Note restore applied. Click Save Notes to persist.', false);
+    });
   }
 
   async function saveDetailNotes() {
@@ -1444,11 +1527,24 @@
 
     var state = window.__detailNotesState;
     var serialized = serializeDetailNotesBlob(state.notes || []);
+    var currentSerialized = String(state && state.data && state.data.notes || '').trim();
+    if (serialized === currentSerialized) {
+      setDetailNotesStatus('No notes changes to save.', false);
+      showDetailToast('ℹ️ Notes are already up to date.', 'info', 2600);
+      return;
+    }
 
-    var hostSync = await syncViaExplorerHost(state, { notes: serialized });
-    if (hostSync.attempted && hostSync.synced) {
+    var hostOutcome = await syncOrQueueExplorerUpdate(state, { notes: serialized }, 'detail-notes-save');
+    if (hostOutcome.synced) {
+      if (state.data) state.data.notes = serialized;
       setDetailNotesStatus('Notes saved to source Excel table.', false);
       showDetailToast('✅ Notes saved and synced to Excel.', 'success', 4000);
+      return;
+    }
+    if (hostOutcome.queued) {
+      if (state.data) state.data.notes = serialized;
+      setDetailNotesStatus('Notes queued for sync when back online.', false);
+      showDetailToast('🕒 Notes queued for sync' + (hostOutcome.queueId ? ' (#' + hostOutcome.queueId + ')' : '') + '.', 'info', 4600);
       return;
     }
 
@@ -1784,25 +1880,28 @@
     var ok = setStoredPhotosForPlace(state.placeKey, state.photos);
     if (!ok) { setPhotoStatus('Failed to save photos (storage unavailable).', true); return; }
 
-    // Try sync via host
-    try {
-      state.photos = dedupeDetailPhotos(state.photos);
-      var serialized = serializePhotosForExcel(state.photos);
-      if (state && state.data) state.data.photoUrls = serialized;
-      var hostSync = await syncViaExplorerHost(state, { photoUrls: serialized });
-      if (hostSync.attempted && hostSync.synced) {
-        setPhotoStatus('Photos saved and synced to Excel (' + state.photos.length + ' photo' + (state.photos.length !== 1 ? 's' : '') + ').', false);
-        showDetailToast('✅ Photos saved and synced to Excel.', 'success', 3500);
-        return;
-      }
-    } catch (_) {}
+    state.photos = dedupeDetailPhotos(state.photos);
+    var serialized = serializePhotosForExcel(state.photos);
+    var currentSerialized = String(state && state.data && state.data.photoUrls || '').trim();
+    if (serialized === currentSerialized) {
+      setPhotoStatus('No photo metadata changes to save.', false);
+      showDetailToast('ℹ️ Photos are already up to date.', 'info', 2500);
+      return;
+    }
+    if (state && state.data) state.data.photoUrls = serialized;
 
-    var queuedSync = await queueExplorerHostSync(state, { photoUrls: serializePhotosForExcel(state.photos) }, 'host-sync-unavailable').catch(function () {
-      return { queued: false };
+    var hostOutcome = await syncOrQueueExplorerUpdate(state, { photoUrls: serialized }, 'detail-photo-save').catch(function () {
+      return { synced: false, queued: false };
     });
+    if (hostOutcome && hostOutcome.synced) {
+      setPhotoStatus('Photos saved and synced to Excel (' + state.photos.length + ' photo' + (state.photos.length !== 1 ? 's' : '') + ').', false);
+      showDetailToast('✅ Photos saved and synced to Excel.', 'success', 3500);
+      return;
+    }
+
     setPhotoStatus('Photos saved locally and marked pending sync (' + state.photos.length + ' photo' + (state.photos.length !== 1 ? 's' : '') + ').', false);
-    showDetailToast(queuedSync && queuedSync.queued
-      ? '📷 Photos saved locally and queued for sync.'
+    showDetailToast(hostOutcome && hostOutcome.queued
+      ? '📷 Photos saved locally and queued for sync' + (hostOutcome.queueId ? ' (#' + hostOutcome.queueId + ')' : '') + '.'
       : '📷 Photos saved locally. Open from Adventure Explorer while signed in to sync.', 'info', 3200);
   }
 
@@ -1998,6 +2097,7 @@
     window.__detailNotesState = {
       placeKey: getTagPlaceKey(data),
       notes: parseDetailNotesBlob(data.notes),
+      lastRemovedNote: null,
       data: data,
       sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
       explorerSource: payload && payload.explorerSource ? payload.explorerSource : null
@@ -2390,6 +2490,7 @@
       visitedBtn.disabled = !(canUseRowMatch || canUseHostFallback);
       visitedBtn.onclick = async function () {
         var next = !isVisited;
+        var prevVisited = isVisited;
         var previousValue = rowValues && rowValues[visitedColIndex];
         if (rowValues) {
           while (rowValues.length <= visitedColIndex) rowValues.push('');
@@ -2402,15 +2503,26 @@
             saved = await persistAdventureVisitedCell(openerWin, rowMatch, rowValues, visitedColIndex);
           }
           if (!saved && canUseHostFallback) {
-            var hostSync = await syncViaExplorerHost(syncState, { visitedStatus: next ? 'Yes' : '' });
-            saved = !!(hostSync && hostSync.synced);
+            var hostOutcome = await syncOrQueueExplorerUpdate(syncState, { visitedStatus: next ? 'Yes' : '' }, 'detail-visited-toggle');
+            saved = !!(hostOutcome && (hostOutcome.synced || hostOutcome.queued));
+            if (hostOutcome && hostOutcome.queued) {
+              showDetailToast('🕒 Visited update queued for sync' + (hostOutcome.queueId ? ' (#' + hostOutcome.queueId + ')' : '') + '.', 'info', 4200);
+            }
           }
           if (!saved) throw new Error('Visited cell could not be persisted to Excel.');
           isVisited = next;
           data.visitedStatus = next ? 'Yes' : '';
           data.visited = next ? 'Yes' : '';
           syncVisitedUi(isVisited);
-          showDetailToast(next ? '✅ Marked as visited and saved to Excel.' : '✅ Marked as not visited and saved to Excel.', 'success', 3200);
+          showDetailUndoToast(next ? '✅ Marked as visited.' : '✅ Marked as not visited.', function () {
+            var undoValue = prevVisited ? 'Yes' : '';
+            isVisited = prevVisited;
+            data.visitedStatus = undoValue;
+            data.visited = undoValue;
+            if (rowValues) rowValues[visitedColIndex] = undoValue;
+            syncVisitedUi(isVisited);
+            syncOrQueueExplorerUpdate(syncState, { visitedStatus: undoValue }, 'detail-visited-undo');
+          }, 4200);
         } catch (err) {
           if (rowValues) rowValues[visitedColIndex] = previousValue;
           syncVisitedUi(isVisited);
@@ -2422,6 +2534,10 @@
     var linksBtn = document.getElementById('abLinksBtn');
     if (linksBtn) {
       linksBtn.onclick = async function () {
+        var previousLinks = {
+          links: String(data.links || ''),
+          links2: String(data.links2 || '')
+        };
         var seed = [data.links || '', data.links2 || ''].filter(Boolean).join('\n');
         var raw = window.prompt('Paste one or more links (one per line or comma-separated):', seed);
         if (raw == null) return;
@@ -2432,11 +2548,19 @@
         }
         var linksPrimary = urls.slice(0, 8).join(', ');
         var linksOverflow = urls.slice(8, 16).join(', ');
-        var hostResult = await syncViaExplorerHost(syncState, { links: linksPrimary, links2: linksOverflow });
-        if (hostResult && hostResult.synced) {
+        if (linksPrimary === previousLinks.links && linksOverflow === previousLinks.links2) {
+          showDetailToast('ℹ️ Links are already up to date.', 'info', 2600);
+          return;
+        }
+        var hostResult = await syncOrQueueExplorerUpdate(syncState, { links: linksPrimary, links2: linksOverflow }, 'detail-links-save');
+        if (hostResult && (hostResult.synced || hostResult.queued)) {
           data.links = linksPrimary;
           data.links2 = linksOverflow;
-          showDetailToast('✅ Links saved to source row.', 'success', 2600);
+          showDetailUndoToast(hostResult.synced ? '✅ Links saved to source row.' : '🕒 Links queued for sync.', function () {
+            data.links = previousLinks.links;
+            data.links2 = previousLinks.links2;
+            syncOrQueueExplorerUpdate(syncState, { links: previousLinks.links, links2: previousLinks.links2 }, 'detail-links-undo');
+          }, 5000);
         } else {
           showDetailToast('⚠️ Could not sync links to source row.', 'error', 3200);
         }
@@ -2819,8 +2943,16 @@
         var captionState = window.__detailPhotosState;
         var capIdx = Number(captionInput.getAttribute('data-ph-caption-idx'));
         if (captionState && Number.isInteger(capIdx) && capIdx >= 0 && capIdx < captionState.photos.length) {
-          captionState.photos[capIdx].caption = String(captionInput.value || '').trim();
-          setPhotoStatus('Caption updated — click Save Photos to persist.', false);
+          var photo = captionState.photos[capIdx];
+          var previousCaption = String(photo.caption || '');
+          var nextCaption = String(captionInput.value || '').trim();
+          if (previousCaption === nextCaption) return;
+          photo.caption = nextCaption;
+          setPhotoStatusAction('Caption updated — click Save Photos to persist.', 'Undo', function () {
+            photo.caption = previousCaption;
+            renderPhotoGallery();
+            setPhotoStatus('Caption restore applied. Click Save Photos to persist.', false);
+          });
         }
         return;
       }
