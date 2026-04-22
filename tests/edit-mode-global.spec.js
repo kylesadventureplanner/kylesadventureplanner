@@ -78,9 +78,9 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(chipGrid).toBeVisible();
     // Select "Retail" table in the action selector
     await page.selectOption('#actionTargetSelect', 'retail_retail');
-    // The chip should now mention Retail
-    const chipText = await chipGrid.innerText();
-    expect(chipText).toContain('Retail_Food_and_Drink.xlsx / Retail');
+    // Scope assertion to Add/Bulk chip only to avoid unrelated chip text churn.
+    const addBulkChip = chipGrid.locator('.target-chip', { hasText: 'Add/Bulk:' });
+    await expect(addBulkChip).toContainText(/Add\/Bulk:\s*Retail\s*\(Retail_Food_and_Drink\.xlsx\)/i);
   });
 
   test('tabs switch between Places and Automation panels', async ({ page }) => {
