@@ -131,5 +131,80 @@ async function openNatureLogViewOrSkip(testInfo, page, options) {
   return logView;
 }
 
-module.exports = { collapseErrorNotificationBar, activateFooterAction, openNatureLogView, openNatureLogViewOrSkip };
+/**
+ * Seeds Adventure explorer table fetches with deterministic fixture rows so
+ * explorer cards are always available in smoke environments.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function installVisitedExplorerSeedFixture(page) {
+  await page.addInitScript(() => {
+    // Explorer table reads require a token; a stub value is enough for mocked responses.
+    window.accessToken = 'playwright-visited-seed-token';
+  });
+
+  const fixtureMatrix = {
+    values: [
+      ['name', 'city', 'state', 'description', 'address', 'hours', 'phone', 'google url', 'tags'],
+      [
+        'Playwright Seed Location',
+        'Austin',
+        'TX',
+        'Seed baseline description',
+        '123 Seed Street',
+        'Mon-Fri 9am-5pm',
+        '(512) 555-0001',
+        'https://maps.google.com/?q=123+Seed+Street+Austin+TX',
+        'seed;smoke'
+      ]
+    ]
+  };
+
+  await page.route(/https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.*\/workbook\/tables\/[^/]+\/range\?.*/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(fixtureMatrix)
+    });
+  });
+
+  await page.route(/https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.*\/workbook\/tables\/[^/]+\/columns(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        value: [
+          { name: 'Name', index: 0 },
+          { name: 'City', index: 1 },
+          { name: 'State', index: 2 },
+          { name: 'Visited', index: 3 }
+        ]
+      })
+    });
+  });
+
+  await page.route(/https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.*\/workbook\/tables\/[^/]+\/columns\/add(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ id: 'seed-column', name: 'Visited', index: 3 })
+    });
+  });
+
+  await page.route(/https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.*\/workbook\/tables\/[^/]+\/rows(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ value: [] })
+    });
+  });
+}
+
+module.exports = {
+  collapseErrorNotificationBar,
+  activateFooterAction,
+  openNatureLogView,
+  openNatureLogViewOrSkip,
+  installVisitedExplorerSeedFixture
+};
 

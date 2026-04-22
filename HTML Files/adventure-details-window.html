@@ -42,6 +42,67 @@
     .ph-upload-item { padding: 3px 0; }
     .ph-upload-queue { margin: 8px 0; }
     .ph-results-hint { font-size: .82em; color: #6b7280; margin: 4px 0 8px; }
+
+    /* ── Enrich Modal ───────────────────────────────── */
+    .enrich-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.48);
+      z-index: 2200;
+      display: none;
+    }
+    .enrich-backdrop.open { display: block; }
+    .enrich-modal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(860px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
+      overflow: auto;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
+      z-index: 2210;
+      display: none;
+    }
+    .enrich-modal.open { display: block; }
+    .enrich-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 3;
+    }
+    .enrich-title { font-weight: 700; font-size: 15px; color: #1f2937; }
+    .enrich-body { padding: 12px 14px; }
+    .enrich-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .enrich-field { display: flex; flex-direction: column; gap: 4px; }
+    .enrich-field.full { grid-column: 1 / -1; }
+    .enrich-field label { font-size: 12px; font-weight: 600; color: #334155; }
+    .enrich-foot {
+      padding: 12px 14px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+      z-index: 2;
+    }
+    @media (max-width: 760px) {
+      .enrich-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -92,9 +153,47 @@
       🅿️ Parking Map
     </a>
 
+    <button type="button" class="ab-btn" id="abLinksBtn" title="Add or update related links">
+      🔗 Add Links
+    </button>
+
+    <button type="button" class="ab-btn" id="abEnrichBtn" title="Paste free text to enrich fields">
+      📝 Enrich
+    </button>
+
     <button type="button" class="ab-btn ab-visited" id="abVisitedBtn" title="Mark this location as visited">
       <span id="abVisitedIcon">✅</span> <span id="abVisitedText">Mark Visited</span>
     </button>
+  </div>
+
+  <div id="enrichBackdrop" class="enrich-backdrop" aria-hidden="true"></div>
+  <div id="enrichModal" class="enrich-modal" role="dialog" aria-modal="true" aria-labelledby="enrichModalTitle">
+    <div class="enrich-head">
+      <div id="enrichModalTitle" class="enrich-title">📝 Enrich Location Details</div>
+      <button id="enrichCloseBtn" type="button" class="auth-btn">Close</button>
+    </div>
+    <div class="enrich-body">
+      <div class="enrich-field full">
+        <label for="enrichRawInput">Paste free-text location details</label>
+        <textarea id="enrichRawInput" class="tm-input" rows="7" placeholder="Paste text with address, city/state, phone, hours, and notes..."></textarea>
+      </div>
+      <div style="margin-top:8px; margin-bottom:10px;">
+        <button id="enrichParseBtn" type="button" class="ab-btn ab-google">Parse Text</button>
+      </div>
+      <div id="enrichParsedFields" class="enrich-grid" style="display:none;">
+        <div class="enrich-field"><label for="enrichAddress">Address</label><input id="enrichAddress" class="tm-input" type="text" /></div>
+        <div class="enrich-field"><label for="enrichCity">City</label><input id="enrichCity" class="tm-input" type="text" /></div>
+        <div class="enrich-field"><label for="enrichState">State</label><input id="enrichState" class="tm-input" type="text" /></div>
+        <div class="enrich-field"><label for="enrichPhone">Phone</label><input id="enrichPhone" class="tm-input" type="text" /></div>
+        <div class="enrich-field full"><label for="enrichHours">Hours</label><input id="enrichHours" class="tm-input" type="text" /></div>
+        <div class="enrich-field full"><label for="enrichDescription">Description</label><textarea id="enrichDescription" class="tm-input" rows="4"></textarea></div>
+      </div>
+      <div id="enrichHint" class="ph-api-notice" style="margin-top:10px;">Paste text and click Parse Text. Review fields before saving.</div>
+    </div>
+    <div class="enrich-foot">
+      <button id="enrichCancelBtn" type="button" class="auth-btn">Cancel</button>
+      <button id="enrichSaveBtn" type="button" class="ab-btn ab-fav">Save to Source</button>
+    </div>
   </div>
 </div>
 
@@ -1707,6 +1806,172 @@
     return 'name_' + String(data.name || '').toLowerCase().replace(/\W+/g, '_');
   }
 
+  function buildDetailSyncState(payload, data) {
+    return {
+      sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
+      explorerSource: payload && payload.explorerSource ? payload.explorerSource : null,
+      data: data || {}
+    };
+  }
+
+  function normalizeLinkList(rawText) {
+    var lines = String(rawText || '').split(/[\n,]+/).map(function (line) { return line.trim(); }).filter(Boolean);
+    var seen = {};
+    var urls = [];
+    lines.forEach(function (line) {
+      var val = line;
+      if (!/^https?:\/\//i.test(val) && /^[-a-z0-9_.]+\.[a-z]{2,}/i.test(val)) val = 'https://' + val;
+      if (!/^https?:\/\//i.test(val)) return;
+      var key = String(val).toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      urls.push(val);
+    });
+    return urls;
+  }
+
+  function parseFreeTextEnrichment(raw) {
+    var text = String(raw || '').trim();
+    if (!text) return {};
+    var out = {};
+    var lines = text.split(/\n+/).map(function (l) { return l.trim(); }).filter(Boolean);
+    var addressLine = lines.find(function (l) { return /^\d+\s+.+/.test(l); });
+    if (addressLine) out.address = addressLine;
+
+    var cityStateZip = lines.find(function (l) { return /^[A-Za-z .'-]+,\s*[A-Za-z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/.test(l); });
+    if (cityStateZip) {
+      var m = cityStateZip.match(/^([A-Za-z .'-]+),\s*([A-Za-z]{2})/);
+      if (m) {
+        out.city = m[1].trim();
+        out.state = m[2].trim().toUpperCase();
+      }
+    }
+
+    var phone = text.match(/(?:\+?1\s*)?(?:\(?\d{3}\)?[\s.-]*)\d{3}[\s.-]*\d{4}/);
+    if (phone) out.phone = phone[0].trim();
+
+    var hoursLine = lines.find(function (l) {
+      return /(hours|open|closed|mon|tue|wed|thu|fri|sat|sun|am|pm)/i.test(l);
+    });
+    if (hoursLine) out.hours = hoursLine.replace(/^hours\s*:\s*/i, '').trim();
+
+    if (text.length > 20) out.description = text;
+    return out;
+  }
+
+  function openEnrichModal(state) {
+    window.__detailEnrichModalState = state || null;
+    var backdrop = document.getElementById('enrichBackdrop');
+    var modal = document.getElementById('enrichModal');
+    var input = document.getElementById('enrichRawInput');
+    var parsedFields = document.getElementById('enrichParsedFields');
+    var hint = document.getElementById('enrichHint');
+    if (!backdrop || !modal || !input) return;
+    input.value = [
+      (state && state.data && state.data.address) || '',
+      [state && state.data && state.data.city, state && state.data && state.data.state].filter(Boolean).join(', '),
+      (state && state.data && state.data.phoneNumber) || '',
+      (state && state.data && state.data.hoursOfOperation) || '',
+      (state && state.data && state.data.description) || ''
+    ].filter(Boolean).join('\n');
+    if (parsedFields) parsedFields.style.display = 'none';
+    if (hint) hint.textContent = 'Paste text and click Parse Text. Review fields before saving.';
+    backdrop.classList.add('open');
+    modal.classList.add('open');
+    input.focus();
+  }
+
+  function closeEnrichModal() {
+    var backdrop = document.getElementById('enrichBackdrop');
+    var modal = document.getElementById('enrichModal');
+    if (backdrop) backdrop.classList.remove('open');
+    if (modal) modal.classList.remove('open');
+    window.__detailEnrichModalState = null;
+  }
+
+  function parseEnrichModalInput() {
+    var input = document.getElementById('enrichRawInput');
+    var parsedFields = document.getElementById('enrichParsedFields');
+    var hint = document.getElementById('enrichHint');
+    if (!input || !parsedFields) return;
+    var parsed = parseFreeTextEnrichment(input.value || '');
+    document.getElementById('enrichAddress').value = parsed.address || '';
+    document.getElementById('enrichCity').value = parsed.city || '';
+    document.getElementById('enrichState').value = parsed.state || '';
+    document.getElementById('enrichPhone').value = parsed.phone || '';
+    document.getElementById('enrichHours').value = parsed.hours || '';
+    document.getElementById('enrichDescription').value = parsed.description || '';
+    parsedFields.style.display = 'grid';
+    if (hint) {
+      var count = Object.keys(parsed).filter(function (k) { return !!parsed[k]; }).length;
+      hint.textContent = count > 0 ? ('Detected ' + count + ' field' + (count !== 1 ? 's' : '') + '. Edit as needed, then save.') : 'No structured fields detected. Edit manually if needed.';
+    }
+  }
+
+  function collectEnrichModalUpdates() {
+    return {
+      address: String((document.getElementById('enrichAddress') || {}).value || '').trim(),
+      city: String((document.getElementById('enrichCity') || {}).value || '').trim(),
+      state: String((document.getElementById('enrichState') || {}).value || '').trim(),
+      phone: String((document.getElementById('enrichPhone') || {}).value || '').trim(),
+      hours: String((document.getElementById('enrichHours') || {}).value || '').trim(),
+      description: String((document.getElementById('enrichDescription') || {}).value || '').trim()
+    };
+  }
+
+  function bindEnrichModalControls() {
+    if (window.__enrichModalBound) return;
+    window.__enrichModalBound = true;
+    var closeBtn = document.getElementById('enrichCloseBtn');
+    var cancelBtn = document.getElementById('enrichCancelBtn');
+    var backdrop = document.getElementById('enrichBackdrop');
+    var parseBtn = document.getElementById('enrichParseBtn');
+    var saveBtn = document.getElementById('enrichSaveBtn');
+
+    if (closeBtn) closeBtn.addEventListener('click', closeEnrichModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeEnrichModal);
+    if (backdrop) backdrop.addEventListener('click', closeEnrichModal);
+    if (parseBtn) parseBtn.addEventListener('click', parseEnrichModalInput);
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async function () {
+        var state = window.__detailEnrichModalState;
+        if (!state || !state.syncState || !state.data) return;
+        var updates = collectEnrichModalUpdates();
+        var hasAny = Object.keys(updates).some(function (k) { return !!updates[k]; });
+        if (!hasAny) {
+          showDetailToast('⚠️ No fields to save.', 'error', 2400);
+          return;
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+        try {
+          var hostResult = await syncViaExplorerHost(state.syncState, updates);
+          if (!(hostResult && hostResult.synced)) throw new Error('sync-failed');
+
+          if (updates.address) state.data.address = updates.address;
+          if (updates.city) state.data.city = updates.city;
+          if (updates.state) state.data.state = updates.state;
+          if (updates.phone) state.data.phoneNumber = updates.phone;
+          if (updates.hours) state.data.hoursOfOperation = updates.hours;
+          if (updates.description) state.data.description = updates.description;
+
+          var activeTab = getActiveDetailTabId();
+          render(state.payload || { data: state.data });
+          activateTab(activeTab || 'overview');
+          closeEnrichModal();
+          showDetailToast('✅ Enriched fields saved and view refreshed.', 'success', 2800);
+        } catch (_err) {
+          showDetailToast('⚠️ Could not sync enriched fields.', 'error', 3200);
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save to Source';
+        }
+      });
+    }
+  }
+
   function loadActionBarState(key) {
     try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX_ADV + key) || '{}'); } catch (_) { return {}; }
   }
@@ -1878,6 +2143,7 @@
     var visitedBadge = document.getElementById('detailVisitedBadge');
 
     var openerWin = getOpenerWindow();
+    var syncState = buildDetailSyncState(payload, data);
     var rowMatch = findOpenerRowForTagSync(openerWin, {
       sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
       data: data
@@ -1899,16 +2165,26 @@
 
     syncVisitedUi(isVisited);
     if (visitedBtn) {
-      visitedBtn.disabled = !(rowMatch && Array.isArray(rowValues));
+      var canUseRowMatch = !!(rowMatch && Array.isArray(rowValues));
+      var canUseHostFallback = !!(syncState && syncState.explorerSource && openerWin && typeof openerWin.syncVisitedExplorerDetailFields === 'function');
+      visitedBtn.disabled = !(canUseRowMatch || canUseHostFallback);
       visitedBtn.onclick = async function () {
-        if (!rowMatch || !rowValues) return;
         var next = !isVisited;
-        var previousValue = rowValues[visitedColIndex];
-        while (rowValues.length <= visitedColIndex) rowValues.push('');
-        rowValues[visitedColIndex] = next ? 'Yes' : '';
+        var previousValue = rowValues && rowValues[visitedColIndex];
+        if (rowValues) {
+          while (rowValues.length <= visitedColIndex) rowValues.push('');
+          rowValues[visitedColIndex] = next ? 'Yes' : '';
+        }
 
         try {
-          var saved = await persistAdventureVisitedCell(openerWin, rowMatch, rowValues, visitedColIndex);
+          var saved = false;
+          if (rowMatch && rowValues) {
+            saved = await persistAdventureVisitedCell(openerWin, rowMatch, rowValues, visitedColIndex);
+          }
+          if (!saved && canUseHostFallback) {
+            var hostSync = await syncViaExplorerHost(syncState, { visitedStatus: next ? 'Yes' : '' });
+            saved = !!(hostSync && hostSync.synced);
+          }
           if (!saved) throw new Error('Visited cell could not be persisted to Excel.');
           isVisited = next;
           data.visitedStatus = next ? 'Yes' : '';
@@ -1916,10 +2192,42 @@
           syncVisitedUi(isVisited);
           showDetailToast(next ? '✅ Marked as visited and saved to Excel.' : '✅ Marked as not visited and saved to Excel.', 'success', 3200);
         } catch (err) {
-          rowValues[visitedColIndex] = previousValue;
+          if (rowValues) rowValues[visitedColIndex] = previousValue;
           syncVisitedUi(isVisited);
           showDetailToast('⚠️ Could not sync visited status to Excel.', 'error', 3600);
         }
+      };
+    }
+
+    var linksBtn = document.getElementById('abLinksBtn');
+    if (linksBtn) {
+      linksBtn.onclick = async function () {
+        var seed = [data.links || '', data.links2 || ''].filter(Boolean).join('\n');
+        var raw = window.prompt('Paste one or more links (one per line or comma-separated):', seed);
+        if (raw == null) return;
+        var urls = normalizeLinkList(raw);
+        if (!urls.length) {
+          showDetailToast('⚠️ No valid URLs detected.', 'error', 2600);
+          return;
+        }
+        var linksPrimary = urls.slice(0, 8).join(', ');
+        var linksOverflow = urls.slice(8, 16).join(', ');
+        var hostResult = await syncViaExplorerHost(syncState, { links: linksPrimary, links2: linksOverflow });
+        if (hostResult && hostResult.synced) {
+          data.links = linksPrimary;
+          data.links2 = linksOverflow;
+          showDetailToast('✅ Links saved to source row.', 'success', 2600);
+        } else {
+          showDetailToast('⚠️ Could not sync links to source row.', 'error', 3200);
+        }
+      };
+    }
+
+    var enrichBtn = document.getElementById('abEnrichBtn');
+    if (enrichBtn) {
+      enrichBtn.onclick = function () {
+        bindEnrichModalControls();
+        openEnrichModal({ data: data, syncState: syncState, payload: payload });
       };
     }
   }

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node -e \"console.log('Static site detected: no build step required.')\"",
     "build:azure": "npm run build",
-    "reliability:smoke": "playwright test tests/reliability-smoke.spec.js tests/bulk-tag-undo-edge-cases.spec.js tests/adventure-achievements-smoke.spec.js tests/adventure-subtabs-smoke.spec.js tests/adventure-explorer-inpane-details.spec.js tests/adventure-inline-tools-roundtrip.spec.js tests/edit-mode-global.spec.js tests/edit-mode-target-routing.spec.js tests/edit-mode-search-candidates.spec.js tests/app-backup-flow.spec.js tests/nature-log-ux.spec.js tests/nature-map-context.spec.js tests/nature-subtabs-smoke.spec.js tests/nature-inat-import.spec.js tests/nature-inat-mapping-modal.spec.js",
+    "reliability:smoke": "playwright test tests/reliability-smoke.spec.js tests/bulk-tag-undo-edge-cases.spec.js tests/adventure-achievements-smoke.spec.js tests/adventure-subtabs-smoke.spec.js tests/adventure-explorer-inpane-details.spec.js tests/adventure-inline-tools-roundtrip.spec.js tests/visited-enrich-modal-smoke.spec.js tests/edit-mode-global.spec.js tests/edit-mode-target-routing.spec.js tests/edit-mode-search-candidates.spec.js tests/app-backup-flow.spec.js tests/nature-log-ux.spec.js tests/nature-map-context.spec.js tests/nature-subtabs-smoke.spec.js tests/nature-inat-import.spec.js tests/nature-inat-mapping-modal.spec.js",
+    "reliability:visited-enrich": "playwright test tests/visited-enrich-modal-smoke.spec.js",
     "reliability:explorer-details": "playwright test tests/adventure-explorer-inpane-details.spec.js",
     "reliability:bulk-undo": "playwright test tests/bulk-tag-undo-edge-cases.spec.js",
     "mobile:qa": "playwright test tests/mobile-ux-snapshots.spec.js",

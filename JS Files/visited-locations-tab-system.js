@@ -225,6 +225,16 @@
     }
   };
 
+   const PARSER_FIELD_CONFIG = [
+     { key: 'address', label: 'Address', inputType: 'input', placeholder: 'Street address' },
+     { key: 'city', label: 'City', inputType: 'input', placeholder: 'City' },
+     { key: 'state', label: 'State', inputType: 'input', placeholder: 'State abbreviation or name' },
+     { key: 'phone', label: 'Phone', inputType: 'input', placeholder: 'Phone number' },
+     { key: 'hours', label: 'Hours of Operation', inputType: 'textarea', rows: 2, placeholder: 'e.g. Mon-Fri: 9am-5pm, Sat: 10am-3pm' },
+     { key: 'description', label: 'Description', inputType: 'textarea', rows: 3, placeholder: 'General description or notes' }
+   ];
+   const PARSER_FIELDS = PARSER_FIELD_CONFIG.map((field) => field.key);
+
    const state = {
      initialized: false,
      activeProgressSubTab: 'outdoors',
@@ -272,7 +282,12 @@
        visitRecords: [],
        explorerCardState: {},
        visitLogLocationOptions: [],
-       visitLogLocationQuery: ''
+       visitLogLocationQuery: '',
+       parserSession: {
+         baseline: {},
+         current: {},
+         confidenceByField: {}
+       }
    };
 
   function shouldLogVisitedDiagnostics() {
@@ -2423,6 +2438,67 @@
     return { gaps, completeness };
   }
 
+  function normalizeParserFieldValue(value) {
+    return String(value || '').trim();
+  }
+
+  function getParserInputId(fieldKey) {
+    return `visitedLocationParser${fieldKey.charAt(0).toUpperCase()}${fieldKey.slice(1)}`;
+  }
+
+  function getParserBaselineValues(item) {
+    const baseline = {};
+    PARSER_FIELDS.forEach((fieldKey) => {
+      baseline[fieldKey] = normalizeParserFieldValue(item && item[fieldKey]);
+    });
+    return baseline;
+  }
+
+  function getParserConfidenceTier(rawConfidence) {
+    const pct = Math.round(Math.max(0, Math.min(1, Number(rawConfidence) || 0)) * 100);
+    if (pct >= 80) return { label: `High ${pct}%`, className: 'is-high' };
+    if (pct >= 55) return { label: `Medium ${pct}%`, className: 'is-medium' };
+    return { label: `Low ${pct}%`, className: 'is-low' };
+  }
+
+  function getParserSelectedCount() {
+    return PARSER_FIELDS.reduce((count, fieldKey) => {
+      const checkbox = document.getElementById(`visitedLocationParserSelect-${fieldKey}`);
+      return count + (checkbox && checkbox.checked ? 1 : 0);
+    }, 0);
+  }
+
+  function updateParserSaveButtonState() {
+    const saveBtn = document.getElementById('visitedLocationParserSaveBtn');
+    if (!saveBtn) return;
+    const selectedCount = getParserSelectedCount();
+    saveBtn.disabled = selectedCount === 0;
+    saveBtn.textContent = selectedCount > 0 ? `Save Selected (${selectedCount})` : 'Save Selected';
+  }
+
+  function updateParserFieldVisuals(fieldKey) {
+    const wrapper = document.getElementById(`visitedLocationParserField-${fieldKey}`);
+    const input = document.getElementById(getParserInputId(fieldKey));
+    const afterValue = document.getElementById(`visitedLocationParserAfter-${fieldKey}`);
+    if (!wrapper || !input) return;
+    const baseline = normalizeParserFieldValue(state.parserSession.baseline[fieldKey]);
+    const current = normalizeParserFieldValue(input.value);
+    const changed = baseline !== current;
+    wrapper.classList.toggle('is-changed', changed);
+    wrapper.classList.toggle('is-unchanged', !changed);
+    if (afterValue) {
+      afterValue.textContent = current || '(empty)';
+      afterValue.classList.toggle('is-empty', !current);
+    }
+  }
+
+  function syncParserSessionFromInputs() {
+    PARSER_FIELDS.forEach((fieldKey) => {
+      const input = document.getElementById(getParserInputId(fieldKey));
+      if (input) state.parserSession.current[fieldKey] = normalizeParserFieldValue(input.value);
+    });
+  }
+
   function parseLocationDataFromText(text) {
     if (!text || typeof text !== 'string') return {};
     const normalized = text.trim();
@@ -2434,24 +2510,31 @@
       hours: '',
       description: ''
     };
+    const confidenceByField = {
+      address: 0,
+      city: 0,
+      state: 0,
+      phone: 0,
+      hours: 0,
+      description: 0
+    };
     const lines = normalized.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     const remainingLines = [];
 
     for (const line of lines) {
       let matched = false;
 
-      // Phone number patterns: (123) 456-7890, 123-456-7890, +1-123-456-7890, etc.
       if (!result.phone) {
         const phoneMatch = line.match(/(?:\+?1\s?)?(?:\(?(\d{3})\)?[\s.-]?)?(\d{3})[\s.-]?(\d{4})/);
         if (phoneMatch && phoneMatch[0].length > 9) {
           result.phone = phoneMatch[0].trim();
+          confidenceByField.phone = 0.95;
           const remaining = line.replace(phoneMatch[0], '').trim();
           if (remaining) remainingLines.push(remaining);
           matched = true;
         }
       }
 
-      // State patterns: "State: CA" or "State: California" or just 2-letter code
       if (!result.state && !matched) {
         const stateAbbr = [
           'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
@@ -2463,51 +2546,46 @@
         const stateMatch = line.match(new RegExp(`\\b(${stateAbbr.join('|')})\\b`, 'i'));
         if (stateMatch) {
           result.state = stateMatch[1].toUpperCase();
+          confidenceByField.state = 0.82;
           const remaining = line.replace(stateMatch[0], '').trim();
           if (remaining) remainingLines.push(remaining);
           matched = true;
         }
       }
 
-      // City pattern: typically before state or after address
       if (!result.city && !matched && (result.state || remainingLines.length > 0)) {
         const cityMatch = line.match(/^([A-Z][a-zA-Z\s]{2,})(?:\s*,)?$/);
         if (cityMatch) {
           result.city = cityMatch[1].trim();
+          confidenceByField.city = 0.68;
           matched = true;
         }
       }
 
-      // Address pattern: starts with a number (street address)
       if (!result.address && !matched) {
         const addressMatch = line.match(/^\d+\s+([A-Za-z0-9\s,.#-]+)$/);
         if (addressMatch) {
           result.address = standardizeAddress(line);
+          confidenceByField.address = 0.9;
           matched = true;
         }
       }
 
-      // Hours pattern: "Hours:", "Open:", "Mon-Fri", "9am-5pm", etc.
       if (!result.hours && !matched) {
         const hoursMatch = line.match(/(hours|open|closed)[\s:]*(.+)/i);
         if (hoursMatch || /([0-9]{1,2}(?:\s*(?:am|pm|a\.m\.|p\.m\.)|:[0-9]{2})?\s*-?\s*[0-9]{1,2}(?:\s*(?:am|pm|a\.m\.|p\.m\.))?|Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i.test(line)) {
-          if (hoursMatch) {
-            result.hours = hoursMatch[2].trim();
-          } else {
-            result.hours = line;
-          }
+          result.hours = hoursMatch ? hoursMatch[2].trim() : line;
+          confidenceByField.hours = hoursMatch ? 0.84 : 0.72;
           matched = true;
         }
       }
 
-      if (!matched) {
-        remainingLines.push(line);
-      }
+      if (!matched) remainingLines.push(line);
     }
 
-    // Description is any remaining text
     result.description = remainingLines.join(' ').trim();
-
+    if (result.description) confidenceByField.description = 0.56;
+    result._confidenceByField = confidenceByField;
     return result;
   }
 
@@ -2517,8 +2595,12 @@
     const modal = document.getElementById('visitedLocationTextParserModal');
     const backdrop = document.getElementById('visitedLocationTextParserBackdrop');
     if (!modal || !backdrop) return;
+    parserHistory.clear();
     modal.dataset.subtabKey = subtabKey;
     modal.dataset.itemId = itemId;
+    state.parserSession.baseline = getParserBaselineValues(item);
+    state.parserSession.current = { ...state.parserSession.baseline };
+    state.parserSession.confidenceByField = {};
     document.getElementById('visitedLocationParserTitle').textContent = `📝 Enrich Data — ${item.title || itemId}`;
     const textInput = document.getElementById('visitedLocationParserTextInput');
     if (textInput) {
@@ -2527,6 +2609,20 @@
     }
     const previewArea = document.getElementById('visitedLocationParserPreview');
     if (previewArea) previewArea.innerHTML = '<div class="visited-parser-hint">Paste text above, then click Parse to see extracted fields.</div>';
+    const parserActions = document.getElementById('visitedLocationParserActions');
+    if (parserActions) parserActions.style.display = 'none';
+    const saveBtn = document.getElementById('visitedLocationParserSaveBtn');
+    if (saveBtn) {
+      saveBtn.style.display = 'none';
+      saveBtn.textContent = 'Save Selected';
+      saveBtn.disabled = true;
+    }
+    const undoBtn = document.getElementById('visitedLocationParserUndoBtn');
+    const inlineUndoBtn = document.getElementById('visitedLocationParserInlineUndoBtn');
+    const redoBtn = document.getElementById('visitedLocationParserRedoBtn');
+    if (undoBtn) undoBtn.disabled = true;
+    if (inlineUndoBtn) inlineUndoBtn.disabled = true;
+    if (redoBtn) redoBtn.disabled = true;
     backdrop.hidden = false;
     modal.hidden = false;
     if (textInput) textInput.focus();
@@ -2535,35 +2631,46 @@
   function closeLocationTextParserModal() {
     const modal = document.getElementById('visitedLocationTextParserModal');
     const backdrop = document.getElementById('visitedLocationTextParserBackdrop');
-    if (modal) { modal.hidden = true; modal.dataset.subtabKey = ''; modal.dataset.itemId = ''; }
+    if (modal) {
+      modal.hidden = true;
+      modal.dataset.subtabKey = '';
+      modal.dataset.itemId = '';
+    }
     if (backdrop) backdrop.hidden = true;
+    parserHistory.clear();
+    state.parserSession.baseline = {};
+    state.parserSession.current = {};
+    state.parserSession.confidenceByField = {};
   }
 
-  // ---- Undo/Redo for Text Parser ----
   const parserHistory = {
     stack: [],
     currentIndex: -1,
-    push(state) {
+    push(sessionState) {
       this.stack = this.stack.slice(0, this.currentIndex + 1);
-      this.stack.push(JSON.parse(JSON.stringify(state)));
+      this.stack.push(JSON.parse(JSON.stringify(sessionState)));
       this.currentIndex = this.stack.length - 1;
     },
     undo() {
       if (this.currentIndex > 0) {
-        this.currentIndex--;
+        this.currentIndex -= 1;
         return this.stack[this.currentIndex];
       }
       return null;
     },
     redo() {
       if (this.currentIndex < this.stack.length - 1) {
-        this.currentIndex++;
+        this.currentIndex += 1;
         return this.stack[this.currentIndex];
       }
       return null;
     },
     canUndo() { return this.currentIndex > 0; },
-    canRedo() { return this.currentIndex < this.stack.length - 1; }
+    canRedo() { return this.currentIndex < this.stack.length - 1; },
+    clear() {
+      this.stack = [];
+      this.currentIndex = -1;
+    }
   };
 
   function parseLocationText() {
@@ -2576,63 +2683,94 @@
       return;
     }
     const parsed = parseLocationDataFromText(text);
-    parserHistory.push(parsed);
-    renderParserPreview(parsed, previewArea);
+    const current = {};
+    PARSER_FIELDS.forEach((fieldKey) => {
+      current[fieldKey] = normalizeParserFieldValue(parsed[fieldKey]);
+    });
+    state.parserSession.current = current;
+    state.parserSession.confidenceByField = { ...(parsed._confidenceByField || {}) };
+    parserHistory.push({ current, confidenceByField: state.parserSession.confidenceByField });
+    renderParserPreview(state.parserSession, previewArea);
   }
 
-  function renderParserPreview(parsed, previewArea) {
+  function renderParserPreview(session, previewArea) {
     const saveBtn = document.getElementById('visitedLocationParserSaveBtn');
+    const parserActions = document.getElementById('visitedLocationParserActions');
     const undoBtn = document.getElementById('visitedLocationParserUndoBtn');
+    const inlineUndoBtn = document.getElementById('visitedLocationParserInlineUndoBtn');
     const redoBtn = document.getElementById('visitedLocationParserRedoBtn');
+    const baseline = session && session.baseline ? session.baseline : {};
+    const current = session && session.current ? session.current : {};
+    const confidenceByField = session && session.confidenceByField ? session.confidenceByField : {};
 
-    // Build field HTML
     const fieldsHtml = `
       <div class="visited-parser-fields">
-        <div class="visited-parser-field">
-          <label for="visitedLocationParserAddress">Address</label>
-          <input id="visitedLocationParserAddress" type="text" class="filter-input" value="${escapeHtml(parsed.address || '')}" placeholder="Street address" />
-        </div>
-        <div class="visited-parser-field">
-          <label for="visitedLocationParserCity">City</label>
-          <input id="visitedLocationParserCity" type="text" class="filter-input" value="${escapeHtml(parsed.city || '')}" placeholder="City" />
-        </div>
-        <div class="visited-parser-field">
-          <label for="visitedLocationParserState">State</label>
-          <input id="visitedLocationParserState" type="text" class="filter-input" value="${escapeHtml(parsed.state || '')}" placeholder="State abbreviation or name" />
-        </div>
-        <div class="visited-parser-field">
-          <label for="visitedLocationParserPhone">Phone</label>
-          <input id="visitedLocationParserPhone" type="text" class="filter-input" value="${escapeHtml(parsed.phone || '')}" placeholder="Phone number" />
-        </div>
-        <div class="visited-parser-field">
-          <label for="visitedLocationParserHours">Hours of Operation</label>
-          <textarea id="visitedLocationParserHours" class="filter-input" rows="2" placeholder="e.g. Mon-Fri: 9am-5pm, Sat: 10am-3pm">${escapeHtml(parsed.hours || '')}</textarea>
-        </div>
-        <div class="visited-parser-field">
-          <label for="visitedLocationParserDescription">Description</label>
-          <textarea id="visitedLocationParserDescription" class="filter-input" rows="3" placeholder="General description or notes">${escapeHtml(parsed.description || '')}</textarea>
-        </div>
+        ${PARSER_FIELD_CONFIG.map((field) => {
+          const beforeValue = normalizeParserFieldValue(baseline[field.key]);
+          const afterValue = normalizeParserFieldValue(current[field.key]);
+          const changed = beforeValue !== afterValue;
+          const shouldSelect = Boolean(afterValue && changed);
+          const confidence = getParserConfidenceTier(confidenceByField[field.key]);
+          const inputId = getParserInputId(field.key);
+          const inputHtml = field.inputType === 'textarea'
+            ? `<textarea id="${inputId}" data-parser-field="${field.key}" class="filter-input" rows="${field.rows || 2}" placeholder="${escapeHtml(field.placeholder || '')}">${escapeHtml(afterValue)}</textarea>`
+            : `<input id="${inputId}" data-parser-field="${field.key}" type="text" class="filter-input" value="${escapeHtml(afterValue)}" placeholder="${escapeHtml(field.placeholder || '')}" />`;
+          return `
+            <div id="visitedLocationParserField-${field.key}" class="visited-parser-field ${changed ? 'is-changed' : 'is-unchanged'}">
+              <div class="visited-parser-field-top">
+                <label for="${inputId}">${escapeHtml(field.label)}</label>
+                <span class="visited-parser-confidence-chip ${confidence.className}">${escapeHtml(confidence.label)}</span>
+              </div>
+              <label class="visited-parser-select-toggle" for="visitedLocationParserSelect-${field.key}">
+                <input id="visitedLocationParserSelect-${field.key}" data-parser-field-select="${field.key}" type="checkbox" ${shouldSelect ? 'checked' : ''} />
+                Save this field
+              </label>
+              <div class="visited-parser-diff-row">
+                <span class="visited-parser-diff-label">Before:</span>
+                <span class="visited-parser-before-value ${beforeValue ? '' : 'is-empty'}">${escapeHtml(beforeValue || '(empty)')}</span>
+              </div>
+              ${inputHtml}
+              <div class="visited-parser-diff-row">
+                <span class="visited-parser-diff-label">After:</span>
+                <span id="visitedLocationParserAfter-${field.key}" class="visited-parser-after-value ${afterValue ? '' : 'is-empty'}">${escapeHtml(afterValue || '(empty)')}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
-      <div class="visited-parser-hint" style="margin-top:10px;font-size:13px;color:#64748b;">Edit any fields above as needed, then click Save to write to your Excel data.</div>
+      <div class="visited-parser-hint" style="margin-top:10px;font-size:13px;color:#64748b;">Changed fields are highlighted. Select only what you want to save.</div>
     `;
+
     previewArea.innerHTML = fieldsHtml;
     if (saveBtn) saveBtn.style.display = 'block';
+    if (parserActions) parserActions.style.display = 'flex';
     if (undoBtn) undoBtn.disabled = !parserHistory.canUndo();
+    if (inlineUndoBtn) inlineUndoBtn.disabled = !parserHistory.canUndo();
     if (redoBtn) redoBtn.disabled = !parserHistory.canRedo();
+    updateParserSaveButtonState();
+  }
+
+  function applyParserHistoryEntry(entry) {
+    if (!entry || typeof entry !== 'object') return;
+    const nextCurrent = {};
+    PARSER_FIELDS.forEach((fieldKey) => {
+      nextCurrent[fieldKey] = normalizeParserFieldValue(entry.current && entry.current[fieldKey]);
+    });
+    state.parserSession.current = nextCurrent;
+    state.parserSession.confidenceByField = { ...(entry.confidenceByField || {}) };
+    renderParserPreview(state.parserSession, document.getElementById('visitedLocationParserPreview'));
   }
 
   function undoParserChanges() {
-    const state = parserHistory.undo();
-    if (state) {
-      renderParserPreview(state, document.getElementById('visitedLocationParserPreview'));
-    }
+    syncParserSessionFromInputs();
+    const prevState = parserHistory.undo();
+    if (prevState) applyParserHistoryEntry(prevState);
   }
 
   function redoParserChanges() {
-    const state = parserHistory.redo();
-    if (state) {
-      renderParserPreview(state, document.getElementById('visitedLocationParserPreview'));
-    }
+    syncParserSessionFromInputs();
+    const nextState = parserHistory.redo();
+    if (nextState) applyParserHistoryEntry(nextState);
   }
 
   async function saveLocationParsedData() {
@@ -2641,66 +2779,67 @@
     const subtabKey = modal.dataset.subtabKey;
     const itemId = modal.dataset.itemId;
     const item = getExplorerItemById(subtabKey, itemId);
-    if (!item) { closeLocationTextParserModal(); return; }
+    if (!item) {
+      closeLocationTextParserModal();
+      return;
+    }
 
-    const address = (document.getElementById('visitedLocationParserAddress') || {}).value || '';
-    const city = (document.getElementById('visitedLocationParserCity') || {}).value || '';
-    const state = (document.getElementById('visitedLocationParserState') || {}).value || '';
-    const phone = (document.getElementById('visitedLocationParserPhone') || {}).value || '';
-    const hours = (document.getElementById('visitedLocationParserHours') || {}).value || '';
-    const description = (document.getElementById('visitedLocationParserDescription') || {}).value || '';
+    const selectedKeys = PARSER_FIELDS.filter((fieldKey) => {
+      const checkbox = document.getElementById(`visitedLocationParserSelect-${fieldKey}`);
+      return Boolean(checkbox && checkbox.checked);
+    });
+    if (!selectedKeys.length) {
+      if (typeof window.showToast === 'function') window.showToast('Select at least one field to save.', 'warning', 2200);
+      return;
+    }
 
-    // Update local item
+    const valuesToSave = {};
+    PARSER_FIELDS.forEach((fieldKey) => {
+      const input = document.getElementById(getParserInputId(fieldKey));
+      valuesToSave[fieldKey] = normalizeParserFieldValue(input ? input.value : '');
+    });
+
     updateExplorerCardDraft(itemId, (draft) => ({
       ...draft,
-      address: address || draft.address,
-      city: city || draft.city,
-      state: state || draft.state,
-      phone: phone || draft.phone,
-      hours: hours || draft.hours,
-      description: description || draft.description
+      ...selectedKeys.reduce((acc, fieldKey) => {
+        acc[fieldKey] = valuesToSave[fieldKey];
+        return acc;
+      }, {})
     }));
 
-    // Sync to OneDrive
     if (window.accessToken && item.sourceWorkbookPath && item.sourceTable && Number.isInteger(item.sourceRowIndex)) {
       const saveBtn = document.getElementById('visitedLocationParserSaveBtn');
-      if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+      }
       try {
         const updates = {};
-        if (address) updates.address = address;
-        if (city) updates.city = city;
-        if (state) updates.state = state;
-        if (phone) updates.phone = phone;
-        if (hours) updates.hours = hours;
-        if (description) updates.description = description;
-        // Note: syncVisitedExplorerDetailFields currently supports tags, notes, photoUrls, links, links2
-        // We need to extend it or use a different approach
-        // For now, we'll try to sync each field individually
-        await Promise.all(Object.entries(updates).map(async ([field, value]) => {
-          // Build a field map for syncing
-          try {
-            const fieldMap = {};
-            if (field === 'address') fieldMap.addressField = value;
-            else if (field === 'city') fieldMap.cityField = value;
-            else if (field === 'state') fieldMap.stateField = value;
-            else if (field === 'phone') fieldMap.phoneField = value;
-            else if (field === 'hours') fieldMap.hoursField = value;
-            else if (field === 'description') fieldMap.descriptionField = value;
-            // For now, just log that we're saving locally
-          } catch (_err) {
-            // Silently fail individual field syncs
-          }
-        }));
-        if (typeof window.showToast === 'function') window.showToast('Location data updated locally. Note: Some fields may require manual Excel sync.', 'success', 3000);
+        selectedKeys.forEach((fieldKey) => {
+          updates[fieldKey] = valuesToSave[fieldKey];
+        });
+        await syncVisitedExplorerDetailFields(
+          { workbookPath: item.sourceWorkbookPath, table: item.sourceTable, rowIndex: item.sourceRowIndex },
+          updates
+        );
+        if (typeof window.showToast === 'function') {
+          window.showToast(`Saved ${selectedKeys.length} field${selectedKeys.length === 1 ? '' : 's'} to OneDrive.`, 'success', 2500);
+        }
       } catch (err) {
-        if (typeof window.showToast === 'function') window.showToast(`Data saved locally (OneDrive sync: ${err && err.message ? err.message : 'error'})`, 'warning', 3000);
+        if (typeof window.showToast === 'function') {
+          window.showToast(`Data saved locally (OneDrive sync: ${err && err.message ? err.message : 'error'})`, 'warning', 3000);
+        }
       } finally {
         const saveBtn = document.getElementById('visitedLocationParserSaveBtn');
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save to Data'; }
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          updateParserSaveButtonState();
+        }
       }
-    } else {
-      if (typeof window.showToast === 'function') window.showToast('Location data updated locally.', 'success', 2000);
+    } else if (typeof window.showToast === 'function') {
+      window.showToast(`Saved ${selectedKeys.length} field${selectedKeys.length === 1 ? '' : 's'} locally.`, 'success', 2200);
     }
+
     closeLocationTextParserModal();
   }
 
@@ -2763,14 +2902,22 @@
 
   function getExplorerCardDraft(itemId) {
     const key = String(itemId || '').trim();
-    if (!key) return { favorite: false, rating: 0, tags: [], notes: '' };
+    if (!key) {
+      return { favorite: false, rating: 0, tags: [], notes: '', address: '', city: '', state: '', phone: '', hours: '', description: '' };
+    }
     const existing = state.explorerCardState && state.explorerCardState[key] ? state.explorerCardState[key] : {};
     const ratingNum = Number(existing.rating);
     return {
       favorite: Boolean(existing.favorite),
       rating: Number.isFinite(ratingNum) ? Math.max(0, Math.min(5, Math.round(ratingNum))) : 0,
       tags: Array.isArray(existing.tags) ? existing.tags.map((tag) => String(tag || '').trim()).filter(Boolean).slice(0, 8) : [],
-      notes: String(existing.notes || '').trim()
+      notes: String(existing.notes || '').trim(),
+      address: normalizeParserFieldValue(existing.address),
+      city: normalizeParserFieldValue(existing.city),
+      state: normalizeParserFieldValue(existing.state),
+      phone: normalizeParserFieldValue(existing.phone),
+      hours: normalizeParserFieldValue(existing.hours),
+      description: normalizeParserFieldValue(existing.description)
     };
   }
 
@@ -2784,7 +2931,13 @@
       favorite: Boolean(next.favorite),
       rating: Number.isFinite(ratingNum) ? Math.max(0, Math.min(5, Math.round(ratingNum))) : 0,
       tags: Array.isArray(next.tags) ? next.tags.map((tag) => String(tag || '').trim()).filter(Boolean).slice(0, 8) : [],
-      notes: String(next.notes || '').trim()
+      notes: String(next.notes || '').trim(),
+      address: normalizeParserFieldValue(next.address),
+      city: normalizeParserFieldValue(next.city),
+      state: normalizeParserFieldValue(next.state),
+      phone: normalizeParserFieldValue(next.phone),
+      hours: normalizeParserFieldValue(next.hours),
+      description: normalizeParserFieldValue(next.description)
     };
     saveExplorerCardState();
   }
@@ -3112,13 +3265,23 @@
   function getExplorerItemView(item) {
     if (!item || !item.id) return item;
     const draft = getExplorerCardDraft(item.id);
+    const rawDraft = state.explorerCardState && state.explorerCardState[item.id] ? state.explorerCardState[item.id] : {};
     const tags = draft.tags.length ? draft.tags : (Array.isArray(item.tags) ? item.tags : []);
+    const resolveDraftField = (fieldKey) => Object.prototype.hasOwnProperty.call(rawDraft, fieldKey)
+      ? draft[fieldKey]
+      : item[fieldKey];
     return {
       ...item,
       tags,
       notes: draft.notes,
       myRating: draft.rating,
       favorite: draft.favorite,
+      address: resolveDraftField('address'),
+      city: resolveDraftField('city'),
+      state: resolveDraftField('state'),
+      phone: resolveDraftField('phone'),
+      hours: resolveDraftField('hours'),
+      description: resolveDraftField('description'),
       directionsUrl: buildExplorerDirectionsUrl(item)
     };
   }
@@ -4054,7 +4217,16 @@
     const hasPhotoUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'photoUrls');
     const hasLinksUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'links');
     const hasLinks2Update = Object.prototype.hasOwnProperty.call(updateMap, 'links2');
-    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update) return { synced: false, reason: 'no-fields' };
+    const hasVisitedUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'visitedStatus');
+    const hasAddressUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'address');
+    const hasCityUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'city');
+    const hasStateUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'state');
+    const hasPhoneUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'phone');
+    const hasHoursUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'hours');
+    const hasDescriptionUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'description');
+    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update && !hasVisitedUpdate && !hasAddressUpdate && !hasCityUpdate && !hasStateUpdate && !hasPhoneUpdate && !hasHoursUpdate && !hasDescriptionUpdate) {
+      return { synced: false, reason: 'no-fields' };
+    }
 
     const tagColIdx = hasTagUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'tags', ['tags', 'tag', 'keywords', 'category', 'categories'])
@@ -4071,6 +4243,27 @@
     const links2ColIdx = hasLinks2Update
       ? await resolveExplorerColumnIndex(filePath, tableName, 'links2', EXPLORER_COLUMN_CANDIDATES.links2)
       : -1;
+    const visitedColIdx = hasVisitedUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'visited', ['visited', 'visit', 'is_visited'])
+      : -1;
+    const addressColIdx = hasAddressUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'address', ['address', 'street', 'location address'])
+      : -1;
+    const cityColIdx = hasCityUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'city', ['city', 'town', 'municipality'])
+      : -1;
+    const stateColIdx = hasStateUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'state', ['state', 'province', 'region'])
+      : -1;
+    const phoneColIdx = hasPhoneUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'phone', ['phone', 'phone number', 'telephone'])
+      : -1;
+    const hoursColIdx = hasHoursUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'hours', ['hours', 'open hours', 'business hours'])
+      : -1;
+    const descriptionColIdx = hasDescriptionUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'description', ['description', 'notes', 'summary', 'details'])
+      : -1;
 
     if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0)) {
       throw new Error('Target column could not be resolved in source table.');
@@ -4079,6 +4272,13 @@
     const shouldSyncPhotos = hasPhotoUpdate && photoColIdx >= 0;
     const shouldSyncLinks = hasLinksUpdate && linksColIdx >= 0;
     const shouldSyncLinks2 = hasLinks2Update && links2ColIdx >= 0;
+    const shouldSyncVisited = hasVisitedUpdate && visitedColIdx >= 0;
+    const shouldSyncAddress = hasAddressUpdate && addressColIdx >= 0;
+    const shouldSyncCity = hasCityUpdate && cityColIdx >= 0;
+    const shouldSyncState = hasStateUpdate && stateColIdx >= 0;
+    const shouldSyncPhone = hasPhoneUpdate && phoneColIdx >= 0;
+    const shouldSyncHours = hasHoursUpdate && hoursColIdx >= 0;
+    const shouldSyncDescription = hasDescriptionUpdate && descriptionColIdx >= 0;
 
     const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
     if (hasTagUpdate) {
@@ -4100,6 +4300,34 @@
     if (shouldSyncLinks2) {
       while (rowValues.length <= links2ColIdx) rowValues.push('');
       rowValues[links2ColIdx] = String(updateMap.links2 || '').trim();
+    }
+    if (shouldSyncVisited) {
+      while (rowValues.length <= visitedColIdx) rowValues.push('');
+      rowValues[visitedColIdx] = String(updateMap.visitedStatus || '').trim();
+    }
+    if (shouldSyncAddress) {
+      while (rowValues.length <= addressColIdx) rowValues.push('');
+      rowValues[addressColIdx] = String(updateMap.address || '').trim();
+    }
+    if (shouldSyncCity) {
+      while (rowValues.length <= cityColIdx) rowValues.push('');
+      rowValues[cityColIdx] = String(updateMap.city || '').trim();
+    }
+    if (shouldSyncState) {
+      while (rowValues.length <= stateColIdx) rowValues.push('');
+      rowValues[stateColIdx] = String(updateMap.state || '').trim();
+    }
+    if (shouldSyncPhone) {
+      while (rowValues.length <= phoneColIdx) rowValues.push('');
+      rowValues[phoneColIdx] = String(updateMap.phone || '').trim();
+    }
+    if (shouldSyncHours) {
+      while (rowValues.length <= hoursColIdx) rowValues.push('');
+      rowValues[hoursColIdx] = String(updateMap.hours || '').trim();
+    }
+    if (shouldSyncDescription) {
+      while (rowValues.length <= descriptionColIdx) rowValues.push('');
+      rowValues[descriptionColIdx] = String(updateMap.description || '').trim();
     }
 
     const patchResponse = await fetch(rowPath, {
@@ -6175,7 +6403,7 @@
             return;
           }
 
-          const undoBtn = closest('#visitedLocationParserUndoBtn');
+          const undoBtn = closest('#visitedLocationParserUndoBtn, #visitedLocationParserInlineUndoBtn');
           if (undoBtn && !undoBtn.disabled) {
             event.preventDefault();
             undoParserChanges();
@@ -6256,7 +6484,7 @@
             parserSaveBtn.textContent = 'Saving…';
             await saveLocationParsedData().catch(() => {}).finally(() => {
               parserSaveBtn.disabled = false;
-              parserSaveBtn.textContent = 'Save to Data';
+              updateParserSaveButtonState();
             });
             return;
           }
@@ -6401,6 +6629,32 @@
     });
 
     root.addEventListener('mouseleave', () => hideHeatmapTooltip());
+
+    if (!root.dataset.parserInputBound) {
+      root.dataset.parserInputBound = '1';
+      root.addEventListener('input', (event) => {
+        const target = event.target;
+        if (!target || !target.matches || !target.matches('[data-parser-field]')) return;
+        const fieldKey = String(target.getAttribute('data-parser-field') || '').trim();
+        if (!PARSER_FIELDS.includes(fieldKey)) return;
+        state.parserSession.current[fieldKey] = normalizeParserFieldValue(target.value);
+        updateParserFieldVisuals(fieldKey);
+      });
+
+      root.addEventListener('change', (event) => {
+        const target = event.target;
+        if (!target || !target.matches) return;
+        if (target.matches('[data-parser-field-select]')) {
+          updateParserSaveButtonState();
+          return;
+        }
+        if (!target.matches('[data-parser-field]')) return;
+        const fieldKey = String(target.getAttribute('data-parser-field') || '').trim();
+        if (!PARSER_FIELDS.includes(fieldKey)) return;
+        state.parserSession.current[fieldKey] = normalizeParserFieldValue(target.value);
+        updateParserFieldVisuals(fieldKey);
+      });
+    }
 
     const refreshBtn = document.getElementById('visitedRefreshBtn');
     if (refreshBtn) {
