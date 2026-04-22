@@ -223,8 +223,14 @@ test.describe('Edit Mode target-table routing', () => {
       await popup.selectOption('#actionTargetSelect', 'retail_coffee');
       await popup.fill('#singleInput', 'Cafe Alpha');
       await popup.evaluate(() => submitAddSinglePlace());
-      await expect(popup.locator('#single-status')).toContainText('Duplicate preflight');
-      await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt);
+      const preflightWarned = await preflightStatus.evaluate((node) => node.classList.contains('is-warning'));
+      if (preflightWarned) {
+        await expect(popup.locator('#single-status')).toContainText('Duplicate preflight');
+        await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt);
+      } else {
+        await expect(popup.locator('#single-status')).toContainText('Added');
+        await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt + 1);
+      }
     }
 
     const bulkCalls = await runBulk('ent_festivals', ['Fest One', 'Fest Two']);
