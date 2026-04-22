@@ -801,6 +801,56 @@
       background: #eff6ff;
       color: #1e40af;
     }
+    .loc-detail-edit-panel {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed #d1d5db;
+    }
+    .loc-detail-edit-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    .loc-detail-edit-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .loc-detail-edit-field label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .loc-detail-edit-field input,
+    .loc-detail-edit-field textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      font-family: inherit;
+      color: #1f2937;
+      background: #fff;
+    }
+    .loc-detail-edit-field textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+    .loc-detail-edit-field input[type="checkbox"] {
+      width: auto;
+      min-height: 18px;
+      min-width: 18px;
+      padding: 0;
+      margin-top: 2px;
+    }
+    .loc-detail-edit-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
 
     #locationDetailPage {
       display: none;
@@ -2172,6 +2222,7 @@
     let activeOptimizedVariantId = '';
     let optimizerWeights = { rating: 4, cost: 3, travel: 4 };
     let activeLocationDetailId = null;
+    let locationDetailEditorOpen = false;
     let locationResultsScrollY = 0;
     let locGoogleMap = null;
     let locGoogleMarkers = [];
@@ -2231,7 +2282,8 @@
         removedTags: Array.isArray(raw.removedTags) ? raw.removedTags.map(normalizeTagToken).filter(Boolean) : [],
         note: String(raw.note || '').trim(),
         visited: Boolean(raw.visited),
-        visitCount: Math.max(0, parseInt(raw.visitCount, 10) || 0)
+        visitCount: Math.max(0, parseInt(raw.visitCount, 10) || 0),
+        fieldOverrides: raw.fieldOverrides && typeof raw.fieldOverrides === 'object' ? { ...raw.fieldOverrides } : {}
       };
     }
 
@@ -2247,7 +2299,17 @@
       draft.note = String(draft.note || '').trim();
       draft.visited = Boolean(draft.visited);
       draft.visitCount = Math.max(0, parseInt(draft.visitCount, 10) || 0);
-      const isEmpty = !draft.addedTags.length && !draft.removedTags.length && !draft.note && !draft.visited && !draft.visitCount;
+      draft.fieldOverrides = draft.fieldOverrides && typeof draft.fieldOverrides === 'object' ? { ...draft.fieldOverrides } : {};
+      Object.keys(draft.fieldOverrides).forEach((key) => {
+        draft.fieldOverrides[key] = String(draft.fieldOverrides[key] == null ? '' : draft.fieldOverrides[key]).trim();
+        if (!draft.fieldOverrides[key]) delete draft.fieldOverrides[key];
+      });
+      const isEmpty = !draft.addedTags.length
+        && !draft.removedTags.length
+        && !draft.note
+        && !draft.visited
+        && !draft.visitCount
+        && !Object.keys(draft.fieldOverrides).length;
       if (isEmpty) delete edits[key];
       else edits[key] = draft;
       setCityLocationEdits(edits);
@@ -2314,10 +2376,64 @@
       name: ['name', 'location', 'place', 'venue'],
       address: ['address', 'street', 'location address'],
       tags: ['tags', 'keywords', 'category', 'categories', 'type'],
+      website: ['website', 'official website', 'url'],
+      driveTime: ['drive time', 'drivetime', 'distance'],
+      hours: ['hours', 'hours of operation', 'operating hours'],
+      duration: ['duration', 'time needed', 'estimated duration'],
+      difficulty: ['difficulty', 'difficulty level'],
+      trailLength: ['trail length', 'length', 'distance miles'],
+      phone: ['phone', 'phone number', 'contact number'],
+      rating: ['rating', 'google rating', 'score'],
+      cost: ['cost', 'price', 'price level'],
+      description: ['description', 'details', 'notes description'],
+      googleUrl: ['google url', 'google maps url', 'maps url'],
       notes: ['notes', 'note'],
       visited: ['visited', 'is visited'],
       visitCount: ['visit count', 'visits', 'times visited']
     };
+
+    const CITY_DETAIL_EDITABLE_FIELDS = [
+      { key: 'name', label: 'Name', type: 'text', colIndex: 0, fallbackKey: 'name' },
+      { key: 'website', label: 'Website URL', type: 'url', colIndex: 2, fallbackKey: 'website' },
+      { key: 'tags', label: 'Tags (comma-separated)', type: 'text', colIndex: 3, fallbackKey: 'tags' },
+      { key: 'driveTime', label: 'Drive Time', type: 'text', colIndex: 4, fallbackKey: 'driveTime' },
+      { key: 'hours', label: 'Hours', type: 'text', colIndex: 5, fallbackKey: 'hours' },
+      { key: 'duration', label: 'Duration', type: 'text', colIndex: 6, fallbackKey: 'duration' },
+      { key: 'difficulty', label: 'Difficulty', type: 'text', colIndex: 7, fallbackKey: 'difficulty' },
+      { key: 'trailLength', label: 'Trail Length', type: 'text', colIndex: 8, fallbackKey: 'trailLength' },
+      { key: 'address', label: 'Address', type: 'text', colIndex: 11, fallbackKey: 'address' },
+      { key: 'phone', label: 'Phone', type: 'text', colIndex: 12, fallbackKey: 'phone' },
+      { key: 'rating', label: 'Rating', type: 'text', colIndex: 13, fallbackKey: 'rating' },
+      { key: 'cost', label: 'Cost', type: 'text', colIndex: 14, fallbackKey: 'cost' },
+      { key: 'description', label: 'Description', type: 'textarea', colIndex: 16, fallbackKey: 'description' },
+      { key: 'googleUrl', label: 'Google Maps URL', type: 'url', colIndex: 23, fallbackKey: 'googleUrl' },
+      { key: 'note', label: 'Personal Note', type: 'textarea', colIndex: null, fallbackKey: null },
+      { key: 'visited', label: 'Visited', type: 'checkbox', colIndex: null, fallbackKey: null },
+      { key: 'visitCount', label: 'Visit Count', type: 'number', colIndex: null, fallbackKey: null }
+    ];
+
+    function setLocationRawValue(loc, colIndex, fallbackKey, value) {
+      const normalized = String(value == null ? '' : value).trim();
+      if (loc && loc.values && Array.isArray(loc.values[0]) && Number.isInteger(colIndex) && colIndex >= 0) {
+        while (loc.values[0].length <= colIndex) loc.values[0].push('');
+        loc.values[0][colIndex] = normalized;
+      }
+      if (loc && fallbackKey) loc[fallbackKey] = normalized;
+      return normalized;
+    }
+
+    function getLocationFieldValueForEdit(loc, fieldKey) {
+      const key = String(fieldKey || '').trim();
+      const locId = getLocId(loc);
+      const edit = getLocationEditState(locId);
+      if (key === 'tags') return getLocationDerivedTags(loc).map((entry) => entry.text).join(', ');
+      if (key === 'note') return edit.note || '';
+      if (key === 'visited') return edit.visited ? 'true' : '';
+      if (key === 'visitCount') return String(Math.max(0, edit.visitCount || 0));
+      const field = CITY_DETAIL_EDITABLE_FIELDS.find((entry) => entry.key === key);
+      if (!field) return '';
+      return String(locVal(loc, field.colIndex, field.fallbackKey) || '').trim();
+    }
 
     function encodeGraphPath(path) {
       return String(path || '')
@@ -2426,6 +2542,14 @@
         if (rowByNameAddress) return rows.indexOf(rowByNameAddress);
       }
 
+      if (address && addressIdx >= 0) {
+        const rowByAddress = rows.find((row) => {
+          const values = Array.isArray(row && row.values && row.values[0]) ? row.values[0] : [];
+          return String(values[addressIdx] || '').trim().toLowerCase() === address;
+        });
+        if (rowByAddress) return rows.indexOf(rowByAddress);
+      }
+
       return -1;
     }
 
@@ -2465,11 +2589,37 @@
           const values = Array.isArray(rows[rowIndex]?.values?.[0]) ? rows[rowIndex].values[0].slice() : [];
           while (values.length < headers.length) values.push('');
 
+          const nameIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.name);
+          const websiteIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.website);
+          const driveTimeIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.driveTime);
+          const hoursIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.hours);
+          const durationIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.duration);
+          const difficultyIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.difficulty);
+          const trailLengthIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.trailLength);
+          const addressIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.address);
+          const phoneIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.phone);
+          const ratingIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.rating);
+          const costIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.cost);
+          const descriptionIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.description);
+          const googleUrlIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.googleUrl);
           const tagsIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.tags);
           const notesIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.notes);
           const visitedIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.visited);
           const visitCountIdx = resolveColumnIndexByAliases(headers, CITY_SYNC_COLUMNS.visitCount);
 
+          if (nameIdx >= 0) values[nameIdx] = String(locVal(loc, 0, 'name') || '').trim();
+          if (websiteIdx >= 0) values[websiteIdx] = String(locVal(loc, 2, 'website') || '').trim();
+          if (driveTimeIdx >= 0) values[driveTimeIdx] = String(locVal(loc, 4, 'driveTime') || '').trim();
+          if (hoursIdx >= 0) values[hoursIdx] = String(locVal(loc, 5, 'hours') || '').trim();
+          if (durationIdx >= 0) values[durationIdx] = String(locVal(loc, 6, 'duration') || '').trim();
+          if (difficultyIdx >= 0) values[difficultyIdx] = String(locVal(loc, 7, 'difficulty') || '').trim();
+          if (trailLengthIdx >= 0) values[trailLengthIdx] = String(locVal(loc, 8, 'trailLength') || '').trim();
+          if (addressIdx >= 0) values[addressIdx] = String(locVal(loc, 11, 'address') || '').trim();
+          if (phoneIdx >= 0) values[phoneIdx] = String(locVal(loc, 12, 'phone') || '').trim();
+          if (ratingIdx >= 0) values[ratingIdx] = String(locVal(loc, 13, 'rating') || '').trim();
+          if (costIdx >= 0) values[costIdx] = String(locVal(loc, 14, 'cost') || '').trim();
+          if (descriptionIdx >= 0) values[descriptionIdx] = String(locVal(loc, 16, 'description') || '').trim();
+          if (googleUrlIdx >= 0) values[googleUrlIdx] = String(locVal(loc, 23, 'googleUrl') || '').trim();
           if (tagsIdx >= 0) values[tagsIdx] = getLocationDerivedTags(loc).map((entry) => entry.text).join(', ');
           if (notesIdx >= 0) values[notesIdx] = edit.note || '';
           if (visitedIdx >= 0) values[visitedIdx] = edit.visited ? 'TRUE' : 'FALSE';
@@ -3641,6 +3791,97 @@
       applyBulkActionToIds(actionKey, [locId], payload);
     }
 
+    function buildLocationDetailEditorPanel(loc) {
+      if (!locationDetailEditorOpen) return '';
+      const fieldsMarkup = CITY_DETAIL_EDITABLE_FIELDS.map((field) => {
+        const fieldId = `locDetailEdit_${field.key}`;
+        const label = escHtml(field.label);
+        if (field.type === 'checkbox') {
+          const checked = getLocationFieldValueForEdit(loc, field.key) ? 'checked' : '';
+          return `<div class="loc-detail-edit-field"><label for="${escAttr(fieldId)}">${label}</label><input id="${escAttr(fieldId)}" type="checkbox" ${checked}></div>`;
+        }
+        if (field.type === 'textarea') {
+          return `<div class="loc-detail-edit-field"><label for="${escAttr(fieldId)}">${label}</label><textarea id="${escAttr(fieldId)}">${escHtml(getLocationFieldValueForEdit(loc, field.key))}</textarea></div>`;
+        }
+        const type = field.type === 'number' ? 'number' : (field.type === 'url' ? 'url' : 'text');
+        const minAttr = field.type === 'number' ? ' min="0"' : '';
+        return `<div class="loc-detail-edit-field"><label for="${escAttr(fieldId)}">${label}</label><input id="${escAttr(fieldId)}" type="${type}" value="${escAttr(getLocationFieldValueForEdit(loc, field.key))}"${minAttr}></div>`;
+      }).join('');
+      return `<div class="loc-detail-edit-panel" data-location-detail-editor><div class="loc-detail-edit-grid">${fieldsMarkup}</div><div class="loc-detail-edit-actions"><button class="loc-action-btn" type="button" onclick="saveLocationDetailEdits()">💾 Save Changes</button><button class="loc-action-btn" type="button" onclick="cancelLocationDetailEdits()">Cancel</button></div></div>`;
+    }
+
+    function collectLocationDetailEditorValues() {
+      const values = {};
+      CITY_DETAIL_EDITABLE_FIELDS.forEach((field) => {
+        const fieldId = `locDetailEdit_${field.key}`;
+        const input = document.getElementById(fieldId);
+        if (!input) return;
+        if (field.type === 'checkbox') {
+          values[field.key] = Boolean(input.checked);
+          return;
+        }
+        if (field.type === 'number') {
+          values[field.key] = Math.max(0, parseInt(input.value, 10) || 0);
+          return;
+        }
+        values[field.key] = String(input.value || '').trim();
+      });
+      return values;
+    }
+
+    function applyLocationDetailEdits(loc, values) {
+      if (!loc || !values || typeof values !== 'object') return;
+      setLocationRawValue(loc, 0, 'name', values.name);
+      setLocationRawValue(loc, 2, 'website', values.website);
+      setLocationRawValue(loc, 3, 'tags', parseTagTokens(values.tags).join(', '));
+      setLocationRawValue(loc, 4, 'driveTime', values.driveTime);
+      setLocationRawValue(loc, 5, 'hours', values.hours);
+      setLocationRawValue(loc, 6, 'duration', values.duration);
+      setLocationRawValue(loc, 7, 'difficulty', values.difficulty);
+      setLocationRawValue(loc, 8, 'trailLength', values.trailLength);
+      setLocationRawValue(loc, 11, 'address', values.address);
+      setLocationRawValue(loc, 12, 'phone', values.phone);
+      setLocationRawValue(loc, 13, 'rating', values.rating);
+      setLocationRawValue(loc, 14, 'cost', values.cost);
+      setLocationRawValue(loc, 16, 'description', values.description);
+      setLocationRawValue(loc, 23, 'googleUrl', values.googleUrl);
+
+      const locId = getLocId(loc);
+      updateLocationEditState(locId, (draft) => {
+        draft.addedTags = [];
+        draft.removedTags = [];
+        draft.note = String(values.note || '').trim();
+        draft.visited = Boolean(values.visited);
+        draft.visitCount = Math.max(0, parseInt(values.visitCount, 10) || 0);
+      });
+    }
+
+    function toggleLocationDetailEditor(open) {
+      if (!activeLocationDetailId) return;
+      if (typeof open === 'boolean') locationDetailEditorOpen = open;
+      else locationDetailEditorOpen = !locationDetailEditorOpen;
+      const loc = findLocationById(activeLocationDetailId);
+      if (loc) renderLocationDetail(loc);
+    }
+
+    function cancelLocationDetailEdits() {
+      toggleLocationDetailEditor(false);
+    }
+
+    async function saveLocationDetailEdits() {
+      if (!activeLocationDetailId) return;
+      const loc = findLocationById(activeLocationDetailId);
+      if (!loc) return;
+      const values = collectLocationDetailEditorValues();
+      applyLocationDetailEdits(loc, values);
+      locationDetailEditorOpen = false;
+      renderLocationDetail(loc);
+      applyLocFilters();
+      const synced = await syncLocationEditsToGraph(activeLocationDetailId);
+      if (synced) showRouteToast('Location changes synced to Excel.', false);
+      else showRouteToast('Location updated locally. Excel sync unavailable right now.', false);
+    }
+
     function updateRouteButtonsState() {
       const enabled = Array.isArray(lastBuiltDayPlanRoute) && lastBuiltDayPlanRoute.length >= 2;
       const googleBtn = document.getElementById('openGoogleRouteBtn');
@@ -3758,8 +3999,10 @@
             ${website ? `<a class="loc-action-btn" href="${escAttr(website)}" target="_blank" rel="noopener">🌐 Website</a>` : ''}
             ${googleUrl ? `<a class="loc-action-btn" href="${escAttr(googleUrl)}" target="_blank" rel="noopener">🗺️ Google Maps</a>` : ''}
             <button class="loc-action-btn loc-select-btn ${shortlist.has(locId) ? 'active' : ''}" data-loc-id="${escAttr(locId)}" onclick="toggleShortlistByEncodedId('${encodedLocId}')">${shortlist.has(locId) ? 'Selected' : 'Add to Plan'}</button>
+            <button class="loc-action-btn" type="button" onclick="toggleLocationDetailEditor()">✏️ Edit Fields</button>
             ${renderQuickActionsMenu(locId, encodedLocId)}
           </div>
+          ${buildLocationDetailEditorPanel(loc)}
         </div>`;
     }
 
@@ -3769,6 +4012,7 @@
       const loc = findLocationById(targetId);
       if (!loc) return;
       activeLocationDetailId = targetId;
+      locationDetailEditorOpen = false;
       locationResultsScrollY = Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0);
       setActiveLocation(targetId, false);
       renderLocationDetail(loc);
@@ -3790,6 +4034,7 @@
     function goBackToLocationResults() {
       if (!activeLocationDetailId) return;
       activeLocationDetailId = null;
+      locationDetailEditorOpen = false;
       setLocationResultsMode();
       window.scrollTo(0, Math.max(0, locationResultsScrollY));
     }

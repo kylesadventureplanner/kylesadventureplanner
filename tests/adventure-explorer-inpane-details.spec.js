@@ -298,6 +298,46 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(plannerDetailsFrameLocator.locator('#pane-notes[aria-hidden="false"]')).toBeVisible();
     await expect(plannerDetailsFrameLocator.locator('#detailNotesWrap')).toBeVisible();
 
+    await activateDetailsTab('details');
+    const inlineEditBtn = plannerDetailsFrameLocator.locator('#abInlineEditBtn');
+    if (await inlineEditBtn.count()) {
+      await expect(inlineEditBtn).toBeVisible();
+      await inlineEditBtn.click();
+      await expect(plannerDetailsFrameLocator.locator('#detailInlineEditPanel')).toBeVisible();
+      await plannerDetailsFrameLocator.locator('#inlineEdit_hoursOfOperation').fill('11:00 AM - 9:00 PM');
+      await expect(plannerDetailsFrameLocator.locator('#detailInlineEditDirtyCount')).toContainText('1 field changed');
+      await expect(plannerDetailsFrameLocator.locator('[data-detail-field-card="hoursOfOperation"]')).toHaveClass(/is-dirty/);
+
+      await withLiveDetailsFrame((liveFrame) => liveFrame.evaluate(() => {
+        window.__inlineEditConfirmPrompts = [];
+        window.__inlineEditConfirmResponses = [false, true];
+        window.confirm = (message) => {
+          const text = String(message || '');
+          window.__inlineEditConfirmPrompts.push(text);
+          const next = window.__inlineEditConfirmResponses.shift();
+          return Boolean(next);
+        };
+      }));
+
+      await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]').click();
+      await expect(plannerDetailsFrameLocator.locator('#pane-details[aria-hidden="false"]')).toBeVisible();
+      await expect(plannerDetailsFrameLocator.locator('#detailInlineEditPanel')).toBeVisible();
+      await expect
+        .poll(async () => withLiveDetailsFrame((liveFrame) => liveFrame.evaluate(() => String((window.__inlineEditConfirmPrompts || [])[0] || ''))), { timeout: 10000 })
+        .toContain('unsaved inline field edits');
+
+      await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]').click();
+      await expect(plannerDetailsFrameLocator.locator('#pane-notes[aria-hidden="false"]')).toBeVisible();
+
+      await activateDetailsTab('details');
+      await expect(plannerDetailsFrameLocator.locator('#detailInlineEditPanel')).toBeVisible();
+      const saveInlineBtn = plannerDetailsFrameLocator.locator('#inlineEditSaveBtn');
+      await expect(saveInlineBtn).toBeEnabled();
+      await saveInlineBtn.click();
+      await expect(plannerDetailsFrameLocator.locator('#pane-details[aria-hidden="false"]')).toContainText('11:00 AM - 9:00 PM');
+      await expect(plannerDetailsFrameLocator.locator('[data-detail-field-card="hoursOfOperation"]')).not.toHaveClass(/is-dirty/);
+    }
+
     await expect(page.locator('#visitedExplorerDetailsModal')).toBeHidden();
 
     const backBtn = paneRoot

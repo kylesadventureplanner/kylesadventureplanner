@@ -335,5 +335,121 @@ test.describe('City Explorer Phase 1 and 2 enhancements', () => {
       return copied;
     }, { timeout: 10000 }).toContain('Testville');
   });
+
+  test('detail card supports inline field edits and syncs updates to Excel backend', async ({ page }) => {
+    const graphPatchCalls = [];
+    const headers = [
+      'Name',
+      'Google Place ID',
+      'Website',
+      'Tags',
+      'Drive Time',
+      'Hours of Operation',
+      'Duration',
+      'Difficulty',
+      'Trail Length',
+      'Address',
+      'Phone Number',
+      'Google Rating',
+      'Cost',
+      'Notes',
+      'Description',
+      'Google URL',
+      'Visited',
+      'Visit Count'
+    ];
+    const rowValues = [
+      'River Falls',
+      'pid-river-falls',
+      'https://example.com/river-falls',
+      'waterfall, scenic, family',
+      '15m',
+      'Open daily',
+      '90 minutes',
+      'moderate',
+      '2.0 miles',
+      '1 Falls Rd, Testville, NC',
+      '555-0001',
+      '4.9',
+      'free',
+      '',
+      'Large waterfall with multiple overlooks and strong scenic value.',
+      'https://maps.google.com/?q=River+Falls',
+      'FALSE',
+      ''
+    ];
+
+    await page.route('https://graph.microsoft.com/**', async (route) => {
+      const request = route.request();
+      const url = request.url();
+      const method = request.method();
+      if (url.includes('/headerRowRange')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ values: [headers] })
+        });
+        return;
+      }
+      if (method === 'GET' && url.includes('/rows')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ value: [{ values: [rowValues] }] })
+        });
+        return;
+      }
+      if (method === 'PATCH' && url.includes('/rows/itemAt(index=')) {
+        graphPatchCalls.push(JSON.parse(request.postData() || '{}'));
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: true })
+        });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ value: [] }) });
+    });
+
+    await openTestCity(page);
+    await page.evaluate(() => {
+      const city = typeof citiesData === 'object' && citiesData ? citiesData['Testville, NC'] : null;
+      const loc = city && Array.isArray(city.locations)
+        ? city.locations.find((entry) => String(entry && entry.name || '').trim() === 'River Falls')
+        : null;
+      if (loc) loc.googlePlaceId = 'pid-river-falls';
+      window.accessToken = 'playwright-graph-token';
+    });
+
+    const detailReady = await page.evaluate(() => {
+      const city = typeof citiesData === 'object' && citiesData ? citiesData['Testville, NC'] : null;
+      const loc = city && Array.isArray(city.locations)
+        ? city.locations.find((entry) => String(entry && entry.name || '').trim() === 'River Falls')
+        : null;
+      if (!loc) return false;
+      activeLocationDetailId = getLocId(loc);
+      locationDetailEditorOpen = false;
+      renderLocationDetail(loc);
+      setLocationDetailMode();
+      return true;
+    });
+    expect(detailReady).toBe(true);
+    await expect(page.locator('#locationDetailPage')).toBeVisible();
+    const editButton = page.locator('#locationDetailContent .loc-action-btn', { hasText: 'Edit Fields' });
+    const hasEditUi = await editButton.count();
+    test.skip(!hasEditUi, 'Edit fields UI is not present in this template build.');
+
+    await page.evaluate(() => toggleLocationDetailEditor(true));
+    await page.locator('#locDetailEdit_name').fill('River Falls Updated');
+    await page.locator('#locDetailEdit_note').fill('Bring camera for the overlook.');
+    await page.locator('#locDetailEdit_visited').check();
+    await page.locator('#locDetailEdit_visitCount').fill('2');
+    await page.locator('[data-location-detail-editor] .loc-action-btn', { hasText: 'Save Changes' }).click();
+
+    await expect(page.locator('#locationDetailTitle')).toContainText('River Falls Updated');
+    await expect(page.locator('#locationDetailContent .loc-note-block')).toContainText('Bring camera for the overlook.');
+    await expect(page.locator('#locationDetailContent .loc-visited-chip')).toContainText('Visits: 2');
+    await expect.poll(() => graphPatchCalls.length, { timeout: 10000 }).toBeGreaterThan(0);
+  });
 });
 

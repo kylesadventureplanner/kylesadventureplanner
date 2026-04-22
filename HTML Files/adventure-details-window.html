@@ -123,6 +123,67 @@
     @media (max-width: 760px) {
       .enrich-grid { grid-template-columns: 1fr; }
     }
+    .detail-inline-edit-card {
+      margin-top: 12px;
+      border: 1px solid #dbeafe;
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fbff;
+    }
+    .detail-inline-edit-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .detail-inline-edit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .detail-inline-edit-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .detail-inline-edit-field.full { grid-column: 1 / -1; }
+    .detail-inline-edit-field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+    }
+    .detail-inline-edit-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .detail-inline-edit-dirty-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e40af;
+    }
+    .card.is-dirty {
+      border-color: #93c5fd;
+      box-shadow: inset 0 0 0 1px #bfdbfe;
+      background: #eff6ff;
+    }
+    .detail-dirty-indicator {
+      margin-left: 6px;
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 700;
+      display: none;
+    }
+    .card.is-dirty .detail-dirty-indicator {
+      display: inline;
+    }
+    @media (max-width: 760px) {
+      .detail-inline-edit-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -179,6 +240,10 @@
 
     <button type="button" class="ab-btn" id="abEnrichBtn" title="Paste free text to enrich fields">
       📝 Enrich
+    </button>
+
+    <button type="button" class="ab-btn" id="abInlineEditBtn" title="Edit details inline and save only changed fields">
+      ✏️ Edit Fields
     </button>
 
     <button type="button" class="ab-btn ab-visited" id="abVisitedBtn" title="Mark this location as visited">
@@ -501,9 +566,214 @@
     }
   }
 
-  function card(label, value) {
-    return '<div class="card"><div class="label">' + label + '</div><div class="value">' +
+  function card(label, value, fieldKey) {
+    var safeFieldKey = String(fieldKey || '').trim();
+    var attrs = safeFieldKey ? ' data-detail-field-card="' + escapeHtml(safeFieldKey) + '"' : '';
+    var dirtyBadge = safeFieldKey ? '<span class="detail-dirty-indicator" aria-hidden="true">● changed</span>' : '';
+    return '<div class="card"' + attrs + '><div class="label">' + label + dirtyBadge + '</div><div class="value">' +
       (value || '<span class="empty">Not available</span>') + '</div></div>';
+  }
+
+  var DETAIL_INLINE_EDIT_FIELDS = [
+    { key: 'name', label: 'Name', input: 'text', syncKey: 'name', full: true },
+    { key: 'address', label: 'Address', input: 'text', syncKey: 'address', full: true },
+    { key: 'city', label: 'City', input: 'text', syncKey: 'city' },
+    { key: 'state', label: 'State', input: 'text', syncKey: 'state' },
+    { key: 'driveTime', label: 'Drive Time', input: 'text', syncKey: 'driveTime' },
+    { key: 'hoursOfOperation', label: 'Hours', input: 'text', syncKey: 'hours' },
+    { key: 'activityDuration', label: 'Duration', input: 'text', syncKey: 'activityDuration' },
+    { key: 'difficulty', label: 'Difficulty', input: 'text', syncKey: 'difficulty' },
+    { key: 'trailLength', label: 'Trail Length', input: 'text', syncKey: 'trailLength' },
+    { key: 'cost', label: 'Cost', input: 'text', syncKey: 'cost' },
+    { key: 'googleRating', label: 'Google Rating', input: 'text', syncKey: 'googleRating' },
+    { key: 'phoneNumber', label: 'Phone Number', input: 'text', syncKey: 'phone' },
+    { key: 'website', label: 'Website URL', input: 'url', syncKey: 'website', full: true },
+    { key: 'googleUrl', label: 'Google URL', input: 'url', syncKey: 'googleUrl', full: true },
+    { key: 'googlePlaceId', label: 'Google Place ID', input: 'text', syncKey: 'googlePlaceId', full: true },
+    { key: 'links', label: 'Links', input: 'textarea', syncKey: 'links', full: true },
+    { key: 'links2', label: 'More Links', input: 'textarea', syncKey: 'links2', full: true },
+    { key: 'description', label: 'Description', input: 'textarea', syncKey: 'description', full: true },
+    { key: 'nearby', label: 'Nearby Attractions', input: 'textarea', syncKey: 'nearby', full: true },
+    { key: 'myRating', label: 'My Rating', input: 'text', syncKey: 'myRating' }
+  ];
+
+  function getInlineEditFieldConfig(fieldKey) {
+    return DETAIL_INLINE_EDIT_FIELDS.find(function (field) {
+      return String(field && field.key || '') === String(fieldKey || '');
+    }) || null;
+  }
+
+  function normalizeInlineEditValue(field, value) {
+    var inputType = String(field && field.input || 'text').trim().toLowerCase();
+    var text = String(value == null ? '' : value);
+    if (inputType === 'textarea') {
+      return text.replace(/\r\n/g, '\n').trim();
+    }
+    return text.trim();
+  }
+
+  function buildInlineEditBaseline(data) {
+    var out = {};
+    DETAIL_INLINE_EDIT_FIELDS.forEach(function (field) {
+      out[field.key] = normalizeInlineEditValue(field, data && data[field.key]);
+    });
+    return out;
+  }
+
+  function getInlineEditCurrentValuesFromDom() {
+    var current = {};
+    DETAIL_INLINE_EDIT_FIELDS.forEach(function (field) {
+      var input = document.getElementById('inlineEdit_' + field.key);
+      if (!input) return;
+      current[field.key] = normalizeInlineEditValue(field, input.value);
+    });
+    return current;
+  }
+
+  function buildInlineEditDirtyMap(baseline, currentValues) {
+    var dirty = {};
+    DETAIL_INLINE_EDIT_FIELDS.forEach(function (field) {
+      var key = field.key;
+      var base = normalizeInlineEditValue(field, baseline && baseline[key]);
+      var now = normalizeInlineEditValue(field, currentValues && currentValues[key]);
+      dirty[key] = base !== now;
+    });
+    return dirty;
+  }
+
+  function syncDetailFieldDirtyIndicators(dirtyMap) {
+    document.querySelectorAll('[data-detail-field-card]').forEach(function (node) {
+      var key = String(node.getAttribute('data-detail-field-card') || '').trim();
+      var isDirty = !!(dirtyMap && dirtyMap[key]);
+      node.classList.toggle('is-dirty', isDirty);
+    });
+  }
+
+  function renderDetailInlineEditPanel() {
+    var mount = document.getElementById('detailInlineEditMount');
+    var state = window.__detailInlineEditState;
+    if (!mount || !state || !state.open) {
+      if (mount) mount.innerHTML = '';
+      syncDetailFieldDirtyIndicators((state && state.dirtyMap) || {});
+      return;
+    }
+    var dirtyMap = state.dirtyMap || {};
+    var dirtyCount = Object.keys(dirtyMap).filter(function (key) { return !!dirtyMap[key]; }).length;
+    mount.innerHTML =
+      '<div class="detail-inline-edit-card" id="detailInlineEditPanel">' +
+      '<div class="detail-inline-edit-head">' +
+      '<strong>Inline Field Editor</strong>' +
+      '<span id="detailInlineEditDirtyCount" class="detail-inline-edit-dirty-count">' + dirtyCount + ' field' + (dirtyCount === 1 ? '' : 's') + ' changed</span>' +
+      '</div>' +
+      '<div class="detail-inline-edit-grid">' +
+      DETAIL_INLINE_EDIT_FIELDS.map(function (field) {
+        var value = normalizeInlineEditValue(field, state.baseline && state.baseline[field.key]);
+        var isDirty = !!dirtyMap[field.key];
+        var rowClass = 'detail-inline-edit-field' + (field.full ? ' full' : '') + (isDirty ? ' is-dirty' : '');
+        var inputId = 'inlineEdit_' + field.key;
+        if (field.input === 'textarea') {
+          return '<div class="' + rowClass + '" data-inline-edit-field="' + escapeHtml(field.key) + '">' +
+            '<label for="' + inputId + '">' + escapeHtml(field.label) + '</label>' +
+            '<textarea class="tm-input" id="' + inputId + '" rows="3">' + escapeHtml(value) + '</textarea>' +
+            '</div>';
+        }
+        return '<div class="' + rowClass + '" data-inline-edit-field="' + escapeHtml(field.key) + '">' +
+          '<label for="' + inputId + '">' + escapeHtml(field.label) + '</label>' +
+          '<input class="tm-input" id="' + inputId + '" type="' + escapeHtml(field.input || 'text') + '" value="' + escapeHtml(value) + '" />' +
+          '</div>';
+      }).join('') +
+      '</div>' +
+      '<div class="detail-inline-edit-actions">' +
+      '<button id="inlineEditCancelBtn" type="button" class="auth-btn">Cancel</button>' +
+      '<button id="inlineEditSaveBtn" type="button" class="ab-btn ab-fav"' + (dirtyCount ? '' : ' disabled') + '>Save Changed Fields</button>' +
+      '</div>' +
+      '</div>';
+    syncDetailFieldDirtyIndicators(dirtyMap);
+  }
+
+  function updateInlineEditDirtyState() {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.open) return;
+    var currentValues = getInlineEditCurrentValuesFromDom();
+    state.dirtyMap = buildInlineEditDirtyMap(state.baseline, currentValues);
+    var dirtyCount = Object.keys(state.dirtyMap).filter(function (key) { return !!state.dirtyMap[key]; }).length;
+    var dirtyLabel = document.getElementById('detailInlineEditDirtyCount');
+    if (dirtyLabel) dirtyLabel.textContent = dirtyCount + ' field' + (dirtyCount === 1 ? '' : 's') + ' changed';
+    var saveBtn = document.getElementById('inlineEditSaveBtn');
+    if (saveBtn) saveBtn.disabled = !dirtyCount;
+    document.querySelectorAll('[data-inline-edit-field]').forEach(function (row) {
+      var key = String(row.getAttribute('data-inline-edit-field') || '').trim();
+      row.classList.toggle('is-dirty', !!state.dirtyMap[key]);
+    });
+    syncDetailFieldDirtyIndicators(state.dirtyMap);
+  }
+
+  function toggleInlineEditPanel(forceOpen) {
+    var state = window.__detailInlineEditState;
+    if (!state) return;
+    if (typeof forceOpen === 'boolean') state.open = forceOpen;
+    else state.open = !state.open;
+    state.dirtyMap = {};
+    renderDetailInlineEditPanel();
+  }
+
+  function collectInlineEditSavePayload() {
+    var state = window.__detailInlineEditState;
+    if (!state) return { dirtyKeys: [], updates: {}, patch: {} };
+    var currentValues = getInlineEditCurrentValuesFromDom();
+    var dirtyMap = buildInlineEditDirtyMap(state.baseline, currentValues);
+    var dirtyKeys = Object.keys(dirtyMap).filter(function (key) { return !!dirtyMap[key]; });
+    var updates = {};
+    var patch = {};
+    dirtyKeys.forEach(function (key) {
+      var field = getInlineEditFieldConfig(key);
+      if (!field) return;
+      var value = normalizeInlineEditValue(field, currentValues[key]);
+      patch[key] = value;
+      if (field.syncKey) updates[field.syncKey] = value;
+    });
+    return { dirtyKeys: dirtyKeys, updates: updates, patch: patch, dirtyMap: dirtyMap };
+  }
+
+  async function saveInlineEditFields() {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data || !state.syncState) return;
+    var payload = collectInlineEditSavePayload();
+    if (!payload.dirtyKeys.length) {
+      showDetailToast('ℹ️ No field changes to save.', 'info', 2200);
+      return;
+    }
+    var saveBtn = document.getElementById('inlineEditSaveBtn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+    }
+    try {
+      var hostResult = await syncOrQueueExplorerUpdate(state.syncState, payload.updates, 'detail-inline-edit-save');
+      payload.dirtyKeys.forEach(function (key) {
+        state.data[key] = payload.patch[key];
+      });
+      state.baseline = buildInlineEditBaseline(state.data);
+      state.dirtyMap = {};
+      state.open = false;
+      var activeTab = getActiveDetailTabId();
+      render(state.payload || { data: state.data });
+      activateTab(activeTab || 'details');
+      if (hostResult && hostResult.synced) {
+        showDetailToast('✅ Saved ' + payload.dirtyKeys.length + ' changed field' + (payload.dirtyKeys.length === 1 ? '' : 's') + ' to Excel.', 'success', 3000);
+      } else if (hostResult && hostResult.queued) {
+        showDetailToast('🕒 Saved changes and queued sync' + (hostResult.queueId ? ' (#' + hostResult.queueId + ')' : '') + '.', 'info', 4200);
+      } else {
+        showDetailToast('⚠️ Saved changes locally. Open from Adventure Explorer while signed in to sync.', 'info', 3800);
+      }
+    } catch (_err) {
+      showDetailToast('⚠️ Could not sync changed fields right now.', 'error', 3200);
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changed Fields';
+      }
+    }
   }
 
   function normalizeForCompare(value) {
@@ -2050,6 +2320,15 @@
     var directionsUrl = buildDetailDirectionsUrl(data);
     var googleViewUrl = buildDetailMapsSearchUrl(data) || String(data.googleUrl || '').trim() || directionsUrl || '';
     var isVisited = String(data.visitedStatus || data.visited || '').trim().toLowerCase() === 'yes';
+    var inlineEditState = {
+      open: false,
+      data: data,
+      payload: payload,
+      syncState: buildDetailSyncState(payload, data),
+      baseline: buildInlineEditBaseline(data),
+      dirtyMap: {}
+    };
+    window.__detailInlineEditState = inlineEditState;
 
     var headerActions = [
       directionsUrl ? '<a class="ab-btn ab-maps" href="' + directionsUrl + '" target="_blank" rel="noopener">🧭 Directions</a>' : '',
@@ -2074,24 +2353,25 @@
 
     document.getElementById('pane-overview').innerHTML =
       '<div class="grid">' +
-      card('Address', data.address ? data.address + ' <button type="button" class="addr-copy-btn" data-copy="' + data.address.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '') +
-      card('City', data.city) +
-      card('State', data.state) +
-      card('Drive Time', data.driveTime) +
+      card('Address', data.address ? data.address + ' <button type="button" class="addr-copy-btn" data-copy="' + data.address.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '', 'address') +
+      card('City', data.city, 'city') +
+      card('State', data.state, 'state') +
+      card('Drive Time', data.driveTime, 'driveTime') +
       '</div>' +
-      card('Description', data.description) +
+      card('Description', data.description, 'description') +
       card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div>');
 
     document.getElementById('pane-details').innerHTML =
       '<div class="grid">' +
-      card('Hours', data.hoursOfOperation) +
-      card('Duration', data.activityDuration) +
-      card('Difficulty', data.difficulty) +
-      card('Trail Length', data.trailLength) +
-      card('Cost', data.cost) +
-      card('Google Rating', data.googleRating) +
-      card('My Rating', data.myRating) +
-      '</div>';
+      card('Hours', data.hoursOfOperation, 'hoursOfOperation') +
+      card('Duration', data.activityDuration, 'activityDuration') +
+      card('Difficulty', data.difficulty, 'difficulty') +
+      card('Trail Length', data.trailLength, 'trailLength') +
+      card('Cost', data.cost, 'cost') +
+      card('Google Rating', data.googleRating, 'googleRating') +
+      card('My Rating', data.myRating, 'myRating') +
+      '</div>' +
+      '<div id="detailInlineEditMount"></div>';
 
     document.getElementById('pane-notes').innerHTML = '<div id="detailNotesWrap"></div>';
     window.__detailNotesState = {
@@ -2109,16 +2389,17 @@
 
     document.getElementById('pane-contact').innerHTML =
       '<div class="grid">' +
-      card('Phone Number', data.phoneNumber ? '<a href="tel:' + String(data.phoneNumber).replace(/\s+/g, '') + '">' + data.phoneNumber + '</a>' : '') +
-      card('Website', data.website ? '<a href="' + data.website + '" target="_blank" rel="noopener">Visit Website</a>' : '') +
+      card('Phone Number', data.phoneNumber ? '<a href="tel:' + String(data.phoneNumber).replace(/\s+/g, '') + '">' + data.phoneNumber + '</a>' : '', 'phoneNumber') +
+      card('Website', data.website ? '<a href="' + data.website + '" target="_blank" rel="noopener">Visit Website</a>' : '', 'website') +
       card('Directions', directionsUrl ? '<a href="' + directionsUrl + '" target="_blank" rel="noopener">Get Directions</a>' : '') +
-      card('Google URL', googleViewUrl ? '<a href="' + googleViewUrl + '" target="_blank" rel="noopener">Open in Google</a>' : '') +
-      card('Place ID', data.googlePlaceId) +
-      card('Links', data.links ? '<a href="' + data.links + '" target="_blank" rel="noopener">Open Link</a>' : '') +
-      card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '') +
+      card('Google URL', googleViewUrl ? '<a href="' + googleViewUrl + '" target="_blank" rel="noopener">Open in Google</a>' : '', 'googleUrl') +
+      card('Place ID', data.googlePlaceId, 'googlePlaceId') +
+      card('Links', data.links ? '<a href="' + data.links + '" target="_blank" rel="noopener">Open Link</a>' : '', 'links') +
+      card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '', 'links2') +
       '</div>';
 
-    document.getElementById('pane-additional').innerHTML = card('Nearby Attractions', data.nearby);
+    document.getElementById('pane-additional').innerHTML = card('Nearby Attractions', data.nearby, 'nearby');
+    renderDetailInlineEditPanel();
   }
 
   function getLocationKey(data) {
@@ -2574,12 +2855,37 @@
         openEnrichModal({ data: data, syncState: syncState, payload: payload });
       };
     }
+
+    var inlineEditBtn = document.getElementById('abInlineEditBtn');
+    if (inlineEditBtn) {
+      inlineEditBtn.onclick = function () {
+        activateTab('details');
+        toggleInlineEditPanel();
+      };
+    }
   }
 
   function activateTab(target) {
     var tabs = document.querySelectorAll('.tab-btn');
     var normalized = String(target || '').trim();
     if (!normalized) normalized = 'overview';
+    var currentTab = getActiveDetailTabId();
+    var inlineEditState = window.__detailInlineEditState;
+    var hasDirtyInlineEdits = !!(
+      currentTab === 'details' &&
+      inlineEditState &&
+      inlineEditState.open &&
+      inlineEditState.dirtyMap &&
+      Object.keys(inlineEditState.dirtyMap).some(function (key) { return !!inlineEditState.dirtyMap[key]; }) &&
+      normalized !== 'details'
+    );
+    if (hasDirtyInlineEdits) {
+      var shouldLeave = window.confirm('You have unsaved inline field edits. Leave the Details tab without saving?');
+      if (!shouldLeave) {
+        showDetailToast('ℹ️ Stayed on Details so you can save or cancel your inline edits.', 'info', 2600);
+        return false;
+      }
+    }
     var selectedTab = null;
     tabs.forEach(function (tab) {
       if (tab.getAttribute('data-tab') === normalized) selectedTab = tab;
@@ -2596,7 +2902,7 @@
       pane.hidden = true;
       pane.setAttribute('aria-hidden', 'true');
     });
-    if (!selectedTab) return;
+    if (!selectedTab) return false;
     selectedTab.classList.add('active');
     selectedTab.setAttribute('aria-selected', 'true');
     selectedTab.setAttribute('tabindex', '0');
@@ -2606,6 +2912,7 @@
       pane.hidden = false;
       pane.setAttribute('aria-hidden', 'false');
     }
+    return true;
   }
 
   function bindTabs() {
@@ -2736,6 +3043,17 @@
 
       if (closestFromEvent(e, '#dnmSaveBtn')) {
         saveDetailNotes();
+        return;
+      }
+
+      if (closestFromEvent(e, '#inlineEditCancelBtn')) {
+        toggleInlineEditPanel(false);
+        return;
+      }
+
+      if (closestFromEvent(e, '#inlineEditSaveBtn')) {
+        saveInlineEditFields();
+        return;
       }
 
       // ── Photos event dispatch ───────────────────────────────
@@ -2938,6 +3256,9 @@
     });
 
     document.addEventListener('change', function (e) {
+      if (closestFromEvent(e, '[data-inline-edit-field]')) {
+        updateInlineEditDirtyState();
+      }
       var captionInput = closestFromEvent(e, '[data-ph-caption-idx]');
       if (captionInput) {
         var captionState = window.__detailPhotosState;
@@ -2970,6 +3291,11 @@
           : '';
       }
       if (uploadBtn) uploadBtn.disabled = files.length === 0;
+    });
+
+    document.addEventListener('input', function (e) {
+      if (!closestFromEvent(e, '[data-inline-edit-field]')) return;
+      updateInlineEditDirtyState();
     });
 
     var payload = fromStoredPayload();

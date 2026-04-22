@@ -4405,7 +4405,19 @@
     const hasPhoneUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'phone');
     const hasHoursUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'hours');
     const hasDescriptionUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'description');
-    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update && !hasVisitedUpdate && !hasAddressUpdate && !hasCityUpdate && !hasStateUpdate && !hasPhoneUpdate && !hasHoursUpdate && !hasDescriptionUpdate) {
+    const hasNameUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'name');
+    const hasWebsiteUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'website');
+    const hasGoogleUrlUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'googleUrl');
+    const hasDriveTimeUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'driveTime');
+    const hasDurationUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'activityDuration');
+    const hasDifficultyUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'difficulty');
+    const hasTrailLengthUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'trailLength');
+    const hasCostUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'cost');
+    const hasGoogleRatingUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'googleRating');
+    const hasPlaceIdUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'googlePlaceId');
+    const hasNearbyUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'nearby');
+    const hasMyRatingUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'myRating');
+    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update && !hasVisitedUpdate && !hasAddressUpdate && !hasCityUpdate && !hasStateUpdate && !hasPhoneUpdate && !hasHoursUpdate && !hasDescriptionUpdate && !hasNameUpdate && !hasWebsiteUpdate && !hasGoogleUrlUpdate && !hasDriveTimeUpdate && !hasDurationUpdate && !hasDifficultyUpdate && !hasTrailLengthUpdate && !hasCostUpdate && !hasGoogleRatingUpdate && !hasPlaceIdUpdate && !hasNearbyUpdate && !hasMyRatingUpdate) {
       return { synced: false, reason: 'no-fields' };
     }
 
@@ -4445,6 +4457,42 @@
     const descriptionColIdx = hasDescriptionUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'description', ['description', 'notes', 'summary', 'details'])
       : -1;
+    const nameColIdx = hasNameUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'name', EXPLORER_COLUMN_CANDIDATES.title)
+      : -1;
+    const websiteColIdx = hasWebsiteUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'website', EXPLORER_COLUMN_CANDIDATES.website)
+      : -1;
+    const googleUrlColIdx = hasGoogleUrlUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'google_url', EXPLORER_COLUMN_CANDIDATES.googleUrl)
+      : -1;
+    const driveTimeColIdx = hasDriveTimeUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'drive_time', EXPLORER_COLUMN_CANDIDATES.drive)
+      : -1;
+    const durationColIdx = hasDurationUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'activity_duration', ['activity duration', 'duration', 'time needed', 'estimated duration'])
+      : -1;
+    const difficultyColIdx = hasDifficultyUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'difficulty', ['difficulty', 'difficulty level'])
+      : -1;
+    const trailLengthColIdx = hasTrailLengthUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'trail_length', ['trail length', 'length'])
+      : -1;
+    const costColIdx = hasCostUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'cost', EXPLORER_COLUMN_CANDIDATES.cost)
+      : -1;
+    const googleRatingColIdx = hasGoogleRatingUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'google_rating', EXPLORER_COLUMN_CANDIDATES.rating)
+      : -1;
+    const placeIdColIdx = hasPlaceIdUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'google_place_id', EXPLORER_COLUMN_CANDIDATES.placeId)
+      : -1;
+    const nearbyColIdx = hasNearbyUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'nearby', ['nearby', 'nearby attractions', 'nearby places'])
+      : -1;
+    const myRatingColIdx = hasMyRatingUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'my_rating', ['my rating', 'user rating', 'personal rating'])
+      : -1;
 
     if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0)) {
       throw new Error('Target column could not be resolved in source table.');
@@ -4460,6 +4508,18 @@
     const shouldSyncPhone = hasPhoneUpdate && phoneColIdx >= 0;
     const shouldSyncHours = hasHoursUpdate && hoursColIdx >= 0;
     const shouldSyncDescription = hasDescriptionUpdate && descriptionColIdx >= 0;
+    const shouldSyncName = hasNameUpdate && nameColIdx >= 0;
+    const shouldSyncWebsite = hasWebsiteUpdate && websiteColIdx >= 0;
+    const shouldSyncGoogleUrl = hasGoogleUrlUpdate && googleUrlColIdx >= 0;
+    const shouldSyncDriveTime = hasDriveTimeUpdate && driveTimeColIdx >= 0;
+    const shouldSyncDuration = hasDurationUpdate && durationColIdx >= 0;
+    const shouldSyncDifficulty = hasDifficultyUpdate && difficultyColIdx >= 0;
+    const shouldSyncTrailLength = hasTrailLengthUpdate && trailLengthColIdx >= 0;
+    const shouldSyncCost = hasCostUpdate && costColIdx >= 0;
+    const shouldSyncGoogleRating = hasGoogleRatingUpdate && googleRatingColIdx >= 0;
+    const shouldSyncPlaceId = hasPlaceIdUpdate && placeIdColIdx >= 0;
+    const shouldSyncNearby = hasNearbyUpdate && nearbyColIdx >= 0;
+    const shouldSyncMyRating = hasMyRatingUpdate && myRatingColIdx >= 0;
 
     try {
       const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
@@ -4510,6 +4570,54 @@
     if (shouldSyncDescription) {
       while (rowValues.length <= descriptionColIdx) rowValues.push('');
       rowValues[descriptionColIdx] = String(updateMap.description || '').trim();
+    }
+    if (shouldSyncName) {
+      while (rowValues.length <= nameColIdx) rowValues.push('');
+      rowValues[nameColIdx] = String(updateMap.name || '').trim();
+    }
+    if (shouldSyncWebsite) {
+      while (rowValues.length <= websiteColIdx) rowValues.push('');
+      rowValues[websiteColIdx] = String(updateMap.website || '').trim();
+    }
+    if (shouldSyncGoogleUrl) {
+      while (rowValues.length <= googleUrlColIdx) rowValues.push('');
+      rowValues[googleUrlColIdx] = String(updateMap.googleUrl || '').trim();
+    }
+    if (shouldSyncDriveTime) {
+      while (rowValues.length <= driveTimeColIdx) rowValues.push('');
+      rowValues[driveTimeColIdx] = String(updateMap.driveTime || '').trim();
+    }
+    if (shouldSyncDuration) {
+      while (rowValues.length <= durationColIdx) rowValues.push('');
+      rowValues[durationColIdx] = String(updateMap.activityDuration || '').trim();
+    }
+    if (shouldSyncDifficulty) {
+      while (rowValues.length <= difficultyColIdx) rowValues.push('');
+      rowValues[difficultyColIdx] = String(updateMap.difficulty || '').trim();
+    }
+    if (shouldSyncTrailLength) {
+      while (rowValues.length <= trailLengthColIdx) rowValues.push('');
+      rowValues[trailLengthColIdx] = String(updateMap.trailLength || '').trim();
+    }
+    if (shouldSyncCost) {
+      while (rowValues.length <= costColIdx) rowValues.push('');
+      rowValues[costColIdx] = String(updateMap.cost || '').trim();
+    }
+    if (shouldSyncGoogleRating) {
+      while (rowValues.length <= googleRatingColIdx) rowValues.push('');
+      rowValues[googleRatingColIdx] = String(updateMap.googleRating || '').trim();
+    }
+    if (shouldSyncPlaceId) {
+      while (rowValues.length <= placeIdColIdx) rowValues.push('');
+      rowValues[placeIdColIdx] = String(updateMap.googlePlaceId || '').trim();
+    }
+    if (shouldSyncNearby) {
+      while (rowValues.length <= nearbyColIdx) rowValues.push('');
+      rowValues[nearbyColIdx] = String(updateMap.nearby || '').trim();
+    }
+    if (shouldSyncMyRating) {
+      while (rowValues.length <= myRatingColIdx) rowValues.push('');
+      rowValues[myRatingColIdx] = String(updateMap.myRating || '').trim();
     }
 
       const patchResponse = await fetch(rowPath, {
