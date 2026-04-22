@@ -575,6 +575,10 @@
       display: none;
     }
 
+    .session-recovery-banner[hidden] {
+      display: none;
+    }
+
     .offline-install-actions {
       display: flex;
       gap: 6px;
@@ -10916,9 +10920,32 @@
     };
   }
 
-  function saveAutosaveDraft() {
+  function hasMeaningfulDraftChanges(payload) {
+    const fields = payload && payload.fields && typeof payload.fields === 'object'
+      ? payload.fields
+      : {};
+    return AUTOSAVE_TRACKED_IDS.some((id) => String(fields[id] || '').trim() !== '');
+  }
+
+  function readStoredDraftSafely() {
     try {
-      localStorage.setItem(AUTOSAVE_DRAFT_KEY, JSON.stringify(getDraftPayload()));
+      const raw = localStorage.getItem(AUTOSAVE_DRAFT_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function saveAutosaveDraft() {
+    const payload = getDraftPayload();
+    if (!hasMeaningfulDraftChanges(payload)) {
+      clearAutosaveDraft();
+      return;
+    }
+    try {
+      localStorage.setItem(AUTOSAVE_DRAFT_KEY, JSON.stringify(payload));
       localStorage.setItem(AUTOSAVE_DIRTY_KEY, '1');
     } catch (_error) {
       // Keep autosave best-effort.
@@ -10968,8 +10995,13 @@
     const dismissBtn = document.getElementById('sessionRecoveryDismissBtn');
     if (!banner || !restoreBtn || !dismissBtn) return;
     const hasDirty = localStorage.getItem(AUTOSAVE_DIRTY_KEY) === '1';
-    const hasDraft = Boolean(localStorage.getItem(AUTOSAVE_DRAFT_KEY));
-    banner.hidden = !(hasDirty && hasDraft);
+    const draft = readStoredDraftSafely();
+    const hasDraft = Boolean(draft);
+    const hasMeaningfulDraft = hasDraft && hasMeaningfulDraftChanges(draft);
+    if (hasDirty && hasDraft && !hasMeaningfulDraft) {
+      clearAutosaveDraft();
+    }
+    banner.hidden = !(hasDirty && hasMeaningfulDraft);
 
     if (restoreBtn.dataset.bound !== '1') {
       restoreBtn.dataset.bound = '1';
