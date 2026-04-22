@@ -98,6 +98,16 @@ function normalizeRowForSchema(rowValues, schemaCount) {
   return normalized;
 }
 
+function canUseTargetScopedDuplicateCache(mainWindow) {
+  const host = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
+  const target = host && host.__editModeTarget && typeof host.__editModeTarget === 'object' ? host.__editModeTarget : null;
+  const loadedKey = String((host && host.__editModeLoadedTargetKey) || window.__editModeLoadedTargetKey || '').trim();
+  const targetKey = target
+    ? `${String(target.filePath || '').trim()}|${String(target.tableName || '').trim()}`
+    : '';
+  return Boolean(loadedKey && targetKey && loadedKey === targetKey && Array.isArray(host && host.adventuresData));
+}
+
 function buildFallbackSchemaRow(location, placeId, details, schemaCount) {
   const activeCols = getActiveCols(window.opener && !window.opener.closed ? window.opener : window);
   const row = new Array(schemaCount).fill('');
@@ -302,7 +312,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             <div style="font-size: 24px; font-weight: 700; color: #10b981;">✅ ${successCount}</div>
             <div style="font-size: 11px; color: #047857; margin-top: 2px;">Success</div>
           </div>
-          <div style="padding: 10px, background: #fee2e2; border-radius: 6px; text-align: center;">
+          <div style="padding: 10px; background: #fee2e2; border-radius: 6px; text-align: center;">
             <div style="font-size: 24px; font-weight: 700; color: #ef4444;">❌ ${failCount}</div>
             <div style="font-size: 11px; color: #7f1d1d; margin-top: 2px;">Failed</div>
           </div>
@@ -375,7 +385,9 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             ? window.normalizeExcelRowForSchema(rawRowValues, mainWindow)
             : normalizeRowForSchema(rawRowValues, schemaCount);
 
-          if (typeof mainWindow.placeExistsInData === 'function' && mainWindow.placeExistsInData(rowValues)) {
+          if (canUseTargetScopedDuplicateCache(mainWindow)
+            && typeof mainWindow.placeExistsInData === 'function'
+            && mainWindow.placeExistsInData(rowValues)) {
             throw new Error('This location already exists in Excel');
           }
 

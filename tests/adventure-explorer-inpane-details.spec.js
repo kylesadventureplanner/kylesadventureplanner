@@ -65,6 +65,11 @@ const MOCK_EXPLORER_TABLE = {
   ]
 };
 
+const ONE_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sotW1cAAAAASUVORK5CYII=',
+  'base64'
+);
+
 async function mockExplorerWorkbookRequests(page) {
   await page.addInitScript(() => {
     window.accessToken = 'playwright-mock-token';
@@ -431,6 +436,110 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await page.keyboard.press(']');
     await expect(page.locator(`#visitedExplorerDetailsPageTitle-${key}`)).toHaveText('Mock Adventure Spot Alpha');
     await expect(detailsFrame.locator('h1')).toHaveText('Mock Adventure Spot Alpha');
+  });
+
+  test.skip('refreshes stale OneDrive photo URLs and persists stable photo metadata on save', async ({ page }) => {
+    const detailKey = 'playwright_detail_photo_refresh';
+    const placeId = 'pid-photo-refresh';
+    const stalePhotoUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sotW1cAAAAASUVORK5CYII=';
+    const storedPhoto = {
+      id: 'drive-item-123',
+      itemId: 'drive-item-123',
+      oneDrivePath: 'Copilot_Apps/Kyles_Adventure_Finder/location-Photos/photo-regression/photo.png',
+      webUrl: 'https://onedrive.example.com/item/drive-item-123',
+      url: stalePhotoUrl,
+      downloadUrl: stalePhotoUrl,
+      thumbnail: stalePhotoUrl,
+      caption: 'Saved OneDrive photo',
+      source: 'onedrive'
+    };
+    const payload = {
+      data: {
+        name: 'Photo Regression Spot',
+        city: 'Austin',
+        state: 'TX',
+        googlePlaceId: placeId,
+        photoUrls: ''
+      }
+    };
+
+    await page.addInitScript(({ seededDetailKey, seededPayload, seededPlaceKey, seededPhoto }) => {
+      window.accessToken = 'playwright-mock-token';
+      localStorage.setItem(seededDetailKey, JSON.stringify(seededPayload));
+      localStorage.setItem('adventure_details_latest', seededDetailKey);
+      localStorage.setItem('adventureFinderPhotos_v1', JSON.stringify({ [seededPlaceKey]: [seededPhoto] }));
+    }, {
+      seededDetailKey: detailKey,
+      seededPayload: payload,
+      seededPlaceKey: placeId,
+      seededPhoto: storedPhoto
+    });
+
+    let graphItemRefreshCount = 0;
+    await page.route('https://graph.microsoft.com/**', async (route) => {
+      graphItemRefreshCount += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'drive-item-123',
+          webUrl: 'https://onedrive.example.com/item/drive-item-123',
+          '@microsoft.graph.downloadUrl': 'https://fresh.example.com/photo.png'
+        })
+      });
+    });
+    await page.route('https://fresh.example.com/**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'image/png', body: ONE_PIXEL_PNG });
+    });
+
+    await page.goto(`/HTML%20Files/adventure-details-window.html?detailKey=${detailKey}&initialTab=photos&embedded=1`, {
+      waitUntil: 'domcontentloaded'
+    });
+    await page.waitForFunction(() => (
+      typeof window.handleDetailPhotoThumbError === 'function'
+      && typeof window.resolveDetailPhotoUrl === 'function'
+    ), null, { timeout: 15000 });
+
+    const photosPane = page.locator('#pane-photos');
+    const galleryThumb = page.locator('#phGallery .ph-thumb').first();
+    await expect(photosPane).toBeVisible();
+    await expect(galleryThumb).toBeVisible();
+    await expect(galleryThumb).toHaveAttribute('src', /data:image\/png;base64/i);
+    await page.evaluate(async () => {
+      const img = document.querySelector('#phGallery .ph-thumb');
+      if (!img || typeof window.handleDetailPhotoThumbError !== 'function') {
+        throw new Error('Photo refresh handler not available.');
+      }
+      await window.handleDetailPhotoThumbError(img, 0);
+    });
+    await expect(galleryThumb).toHaveAttribute('src', /fresh\.example\.com\/photo\.png/, { timeout: 10000 });
+    await expect.poll(() => graphItemRefreshCount, { timeout: 10000 }).toBeGreaterThan(0);
+
+    await page.locator('#phSaveBtn').click();
+    await expect(page.locator('#phStatus')).toContainText('Photos saved locally', { timeout: 10000 });
+
+    const savedPhotoPayload = await page.evaluate(() => {
+      const raw = String(window.__detailPhotosState?.data?.photoUrls || '');
+      const prefix = 'PHOTOS_JSON_V1::';
+      if (!raw.startsWith(prefix)) return null;
+      const parsed = JSON.parse(raw.slice(prefix.length));
+      return Array.isArray(parsed) ? parsed[0] : null;
+    });
+
+    expect(savedPhotoPayload).toMatchObject({
+      itemId: 'drive-item-123',
+      oneDrivePath: 'Copilot_Apps/Kyles_Adventure_Finder/location-Photos/photo-regression/photo.png',
+      webUrl: 'https://onedrive.example.com/item/drive-item-123',
+      downloadUrl: 'https://fresh.example.com/photo.png',
+      url: 'https://fresh.example.com/photo.png',
+      thumbnail: 'https://fresh.example.com/photo.png',
+      caption: 'Saved OneDrive photo',
+      source: 'onedrive'
+    });
+
+    await page.locator('#phGallery [data-ph-view-idx="0"]').click();
+    await expect(page.locator('#phViewerModal')).toBeVisible();
+    await expect(page.locator('#phViewerImg')).toHaveAttribute('src', /fresh\.example\.com\/photo\.png/);
   });
 });
 

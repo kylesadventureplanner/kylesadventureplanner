@@ -1924,12 +1924,18 @@
       };
     }
 
-    var url = String(raw.url || raw.webUrl || raw.downloadUrl || '').trim();
+    var itemId = String(raw.itemId || raw.driveItemId || '').trim();
+    var downloadUrl = String(raw.downloadUrl || '').trim();
+    var webUrl = String(raw.webUrl || raw.url || '').trim();
+    var url = String(downloadUrl || webUrl || raw.url || raw.thumbnail || '').trim();
     if (!url) return null;
     return {
-      id: String(raw.id || makePhotoId()).trim() || makePhotoId(),
+      id: String(raw.id || itemId || makePhotoId()).trim() || makePhotoId(),
+      itemId: itemId,
+      webUrl: webUrl,
+      downloadUrl: downloadUrl,
       url: url,
-      thumbnail: String(raw.thumbnail || raw.downloadUrl || raw.url || url).trim(),
+      thumbnail: String(raw.thumbnail || downloadUrl || raw.url || webUrl || url).trim(),
       caption: String(raw.caption || raw.name || '').trim(),
       source: String(raw.source || 'unknown').trim() || 'unknown',
       oneDrivePath: String(raw.oneDrivePath || raw.path || '').trim(),
@@ -2039,7 +2045,7 @@
     wrap.innerHTML = '<div class="ph-grid">' + photos.map(function (ph, idx) {
       var thumb = ph.thumbnail || ph.url || '';
       return '<div class="ph-item" data-ph-idx="' + idx + '">' +
-        '<div class="ph-img-wrap"><img class="ph-thumb" src="' + escapeHtml(thumb) + '" alt="" loading="lazy" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" />' +
+        '<div class="ph-img-wrap"><img class="ph-thumb" src="' + escapeHtml(thumb) + '" alt="" loading="lazy" onerror="handleDetailPhotoThumbError(this,' + idx + ')" />' +
         '<div class="ph-broken" style="display:none">🖼️</div></div>' +
         (ph.caption ? '<div class="ph-caption">' + escapeHtml(ph.caption) + '</div>' : '') +
         '<input type="text" class="ph-caption-input" data-ph-caption-idx="' + idx + '" value="' + escapeHtml(ph.caption || '') + '" placeholder="Add caption..." />' +
@@ -2050,7 +2056,97 @@
     }).join('') + '</div>';
   }
 
-  function openPhotoViewer(index) {
+  function getDetailPhotoGraphAccessToken() {
+    return String(window.accessToken || (window.parent && window.parent.accessToken) || '').trim();
+  }
+
+  async function refreshDetailPhotoDownloadUrl(photo) {
+    var photoRecord = photo && typeof photo === 'object' ? photo : {};
+    var token = getDetailPhotoGraphAccessToken();
+    if (!token) return '';
+
+    var itemId = String(photoRecord.itemId || photoRecord.id || '').trim();
+    if (itemId) {
+      var byIdUrl = 'https://graph.microsoft.com/v1.0/me/drive/items/' + encodeURIComponent(itemId) + '?$select=id,webUrl,@microsoft.graph.downloadUrl';
+      var byIdResp = await fetch(byIdUrl, { headers: { Authorization: 'Bearer ' + token } });
+      if (byIdResp.ok) {
+        var byIdJson = await byIdResp.json().catch(function () { return {}; });
+        photoRecord.itemId = String(byIdJson.id || itemId).trim();
+        photoRecord.webUrl = String(byIdJson.webUrl || photoRecord.webUrl || '').trim();
+        photoRecord.downloadUrl = String(byIdJson['@microsoft.graph.downloadUrl'] || '').trim();
+        return photoRecord.downloadUrl || photoRecord.webUrl || '';
+      }
+    }
+
+    var oneDrivePath = String(photoRecord.oneDrivePath || '').trim();
+    if (!oneDrivePath) return '';
+    var encodedPath = encodeURIComponent(oneDrivePath).replace(/%2F/g, '/');
+    var byPathUrl = 'https://graph.microsoft.com/v1.0/me/drive/root:/' + encodedPath + '?$select=id,webUrl,@microsoft.graph.downloadUrl';
+    var byPathResp = await fetch(byPathUrl, { headers: { Authorization: 'Bearer ' + token } });
+    if (!byPathResp.ok) return '';
+    var byPathJson = await byPathResp.json().catch(function () { return {}; });
+    photoRecord.itemId = String(byPathJson.id || photoRecord.itemId || '').trim();
+    photoRecord.webUrl = String(byPathJson.webUrl || photoRecord.webUrl || '').trim();
+    photoRecord.downloadUrl = String(byPathJson['@microsoft.graph.downloadUrl'] || '').trim();
+    return photoRecord.downloadUrl || photoRecord.webUrl || '';
+  }
+
+  function applyResolvedDetailPhotoUrl(photo, resolvedUrl) {
+    var photoRecord = photo && typeof photo === 'object' ? photo : {};
+    var nextUrl = String(resolvedUrl || '').trim();
+    if (!nextUrl) return '';
+    var previousUrl = String(photoRecord.url || '').trim();
+    var previousDownloadUrl = String(photoRecord.downloadUrl || '').trim();
+    var previousThumbnail = String(photoRecord.thumbnail || '').trim();
+    photoRecord.downloadUrl = nextUrl;
+    photoRecord.url = nextUrl;
+    if (!previousThumbnail || previousThumbnail === previousUrl || previousThumbnail === previousDownloadUrl) {
+      photoRecord.thumbnail = nextUrl;
+    }
+    return nextUrl;
+  }
+
+  async function resolveDetailPhotoUrl(photo) {
+    var photoRecord = photo && typeof photo === 'object' ? photo : {};
+    if (String(photoRecord.itemId || photoRecord.oneDrivePath || '').trim()) {
+      var refreshed = await refreshDetailPhotoDownloadUrl(photoRecord).catch(function () { return ''; });
+      if (refreshed) return applyResolvedDetailPhotoUrl(photoRecord, refreshed);
+    }
+    return applyResolvedDetailPhotoUrl(photoRecord, String(photoRecord.downloadUrl || photoRecord.url || photoRecord.thumbnail || photoRecord.webUrl || '').trim());
+  }
+
+  async function handleDetailPhotoThumbError(imgEl, index) {
+    var state = window.__detailPhotosState;
+    var fallback = imgEl && imgEl.nextSibling;
+    if (!state || !Array.isArray(state.photos)) {
+      if (imgEl) imgEl.style.display = 'none';
+      if (fallback) fallback.style.display = 'flex';
+      return;
+    }
+    var idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= state.photos.length) {
+      if (imgEl) imgEl.style.display = 'none';
+      if (fallback) fallback.style.display = 'flex';
+      return;
+    }
+    var photo = state.photos[idx];
+    var refreshedUrl = await refreshDetailPhotoDownloadUrl(photo).catch(function () { return ''; });
+    if (!refreshedUrl) {
+      if (imgEl) imgEl.style.display = 'none';
+      if (fallback) fallback.style.display = 'flex';
+      return;
+    }
+    applyResolvedDetailPhotoUrl(photo, refreshedUrl);
+    if (imgEl) {
+      imgEl.style.display = '';
+      imgEl.src = refreshedUrl;
+    }
+    if (fallback) fallback.style.display = 'none';
+  }
+
+  window.handleDetailPhotoThumbError = handleDetailPhotoThumbError;
+
+  async function openPhotoViewer(index) {
     var state = window.__detailPhotosState;
     if (!state || !Array.isArray(state.photos)) return;
     var idx = Number(index);
@@ -2061,7 +2157,13 @@
     var img = document.getElementById('phViewerImg');
     var caption = document.getElementById('phViewerCaption');
     if (!backdrop || !modal || !img || !caption) return;
-    img.src = String(photo.url || photo.thumbnail || '').trim();
+    var resolvedUrl = await resolveDetailPhotoUrl(photo);
+    if (resolvedUrl) {
+      applyResolvedDetailPhotoUrl(photo, resolvedUrl);
+      img.src = resolvedUrl;
+    } else {
+      img.removeAttribute('src');
+    }
     caption.textContent = String(photo.caption || '').trim() || 'No caption';
     backdrop.style.display = 'block';
     modal.style.display = 'block';
@@ -2115,11 +2217,17 @@
     });
     if (!resp.ok) throw new Error('Upload failed (HTTP ' + resp.status + ')');
     var json = await resp.json();
-    var webUrl = (json['@microsoft.graph.downloadUrl'] || json.webUrl || oneDrivePath);
+    var itemId = String(json.id || '').trim();
+    var webUrl = String(json.webUrl || '').trim();
+    var downloadUrl = String(json['@microsoft.graph.downloadUrl'] || '').trim();
+    var resolvedUrl = downloadUrl || webUrl || oneDrivePath;
     return {
-      id: makePhotoId(),
-      url: webUrl,
-      thumbnail: webUrl,
+      id: itemId || makePhotoId(),
+      itemId: itemId,
+      webUrl: webUrl,
+      downloadUrl: downloadUrl,
+      url: resolvedUrl,
+      thumbnail: resolvedUrl,
       caption: file.name,
       source: 'onedrive',
       oneDrivePath: oneDrivePath
@@ -2132,7 +2240,10 @@
       if (!normalized) return null;
       return {
         id: normalized.id,
+        itemId: normalized.itemId || '',
         url: normalized.url,
+        webUrl: normalized.webUrl || normalized.url || '',
+        downloadUrl: normalized.downloadUrl || '',
         thumbnail: normalized.thumbnail || normalized.url,
         caption: normalized.caption || '',
         source: normalized.source || '',

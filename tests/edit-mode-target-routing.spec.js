@@ -32,7 +32,8 @@ function buildResolvedPlace(label) {
   };
 }
 
-async function installWorkbookMocks(context, graphCalls) {
+async function installWorkbookMocks(context, graphCalls, options = {}) {
+  const failingRowTables = new Set(Array.isArray(options.failingRowTables) ? options.failingRowTables : []);
   await context.route('https://graph.microsoft.com/**', async (route) => {
     const request = route.request();
     const url = request.url();
@@ -51,6 +52,14 @@ async function installWorkbookMocks(context, graphCalls) {
     }
 
     if (method === 'GET' && url.includes('/rows')) {
+      if (failingRowTables.has(table)) {
+        await route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { message: `Rows unavailable for ${table}` } })
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -289,5 +298,6 @@ test.describe('Edit Mode target-table routing', () => {
 
     expect(popupErrors).toEqual([]);
   });
+
 
 });

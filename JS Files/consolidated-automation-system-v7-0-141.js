@@ -84,6 +84,18 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return filePath + ' / ' + tableName;
   }
 
+  function buildTargetCacheKey(target) {
+    var safeTarget = target && typeof target === 'object' ? target : {};
+    return safeString(safeTarget.filePath) + '|' + safeString(safeTarget.tableName);
+  }
+
+  function canUseTargetScopedDuplicateCache(mainWindow, target) {
+    var host = mainWindow || getMainWindow();
+    var loadedKey = safeString((host && host.__editModeLoadedTargetKey) || window.__editModeLoadedTargetKey);
+    var targetKey = buildTargetCacheKey(target);
+    return Boolean(loadedKey && targetKey && loadedKey === targetKey && Array.isArray(host && host.adventuresData));
+  }
+
   function shouldQueueWriteFailure(error) {
     var message = safeString(error && error.message ? error.message : error).toLowerCase();
     if (!message) return !navigator.onLine;
@@ -1881,7 +1893,9 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           : buildExcelRowFallback(placeId, details);
         const rowValues = window.normalizeExcelRowForSchema(rawRowValues, mainWindow);
 
-        if (typeof mainWindow.placeExistsInData === 'function' && mainWindow.placeExistsInData(rowValues)) {
+        if (canUseTargetScopedDuplicateCache(mainWindow, activeTarget)
+          && typeof mainWindow.placeExistsInData === 'function'
+          && mainWindow.placeExistsInData(rowValues)) {
           throw buildDuplicateError(details, activeTarget);
         }
 

@@ -2753,7 +2753,16 @@
 
     async function loadTargetRows(target) {
       const mainWindow = getMainWindowSafe();
-      if (!target || !mainWindow.accessToken) return false;
+      if (!target || !mainWindow.accessToken) {
+        mainWindow.adventuresData = [];
+        window.adventuresData = [];
+        mainWindow.__excelLoadedRowCount = 0;
+        window.__excelLoadedRowCount = 0;
+        mainWindow.__editModeRowsLoadOk = false;
+        window.__editModeRowsLoadOk = false;
+        return false;
+      }
+      const targetKey = `${String(target.filePath || '').trim()}|${String(target.tableName || '').trim()}`;
       try {
         const encodedPath = String(target.filePath)
           .split('/')
@@ -2767,7 +2776,19 @@
             'Content-Type': 'application/json'
           }
         });
-        if (!rowsResponse.ok) return false;
+        if (!rowsResponse.ok) {
+          mainWindow.adventuresData = [];
+          window.adventuresData = [];
+          mainWindow.__excelLoadedRowCount = 0;
+          window.__excelLoadedRowCount = 0;
+          mainWindow.__editModeRowsLoadOk = false;
+          window.__editModeRowsLoadOk = false;
+          mainWindow.__editModeLoadedTargetKey = targetKey;
+          window.__editModeLoadedTargetKey = targetKey;
+          mainWindow.__editModeRowsLoadError = `rows-http-${rowsResponse.status}`;
+          window.__editModeRowsLoadError = `rows-http-${rowsResponse.status}`;
+          return false;
+        }
         const rowsPayload = await rowsResponse.json().catch(() => ({}));
         const rows = Array.isArray(rowsPayload.value) ? rowsPayload.value : [];
         const schema = await probeTargetSchema(target);
@@ -2785,8 +2806,24 @@
         window.adventuresData = normalizedRows;
         mainWindow.__excelLoadedRowCount = normalizedRows.length;
         window.__excelLoadedRowCount = normalizedRows.length;
+        mainWindow.__editModeRowsLoadOk = true;
+        window.__editModeRowsLoadOk = true;
+        mainWindow.__editModeLoadedTargetKey = targetKey;
+        window.__editModeLoadedTargetKey = targetKey;
+        mainWindow.__editModeRowsLoadError = '';
+        window.__editModeRowsLoadError = '';
         return true;
       } catch (_error) {
+        mainWindow.adventuresData = [];
+        window.adventuresData = [];
+        mainWindow.__excelLoadedRowCount = 0;
+        window.__excelLoadedRowCount = 0;
+        mainWindow.__editModeRowsLoadOk = false;
+        window.__editModeRowsLoadOk = false;
+        mainWindow.__editModeLoadedTargetKey = targetKey;
+        window.__editModeLoadedTargetKey = targetKey;
+        mainWindow.__editModeRowsLoadError = 'rows-fetch-failed';
+        window.__editModeRowsLoadError = 'rows-fetch-failed';
         return false;
       }
     }
@@ -3926,7 +3963,14 @@
       const statusDiv = document.getElementById('single-status');
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
-      await loadTargetRows(target);
+      const loadedRows = await loadTargetRows(target);
+      if (!loadedRows) {
+        setSingleCandidateStatus(`❌ Could not load rows for ${formatTargetDestination(target)}. Check target table name and sign-in state.`, 'error');
+        if (statusDiv) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Could not load rows for ${formatTargetDestination(target)}. Duplicate checks and save are blocked until the target loads.</div>`;
+        }
+        return;
+      }
 
       const useDirectDetails = isFestivalEditTarget(target) || !selected.placeId;
       if (useDirectDetails && window.enhancedAutomation) {
@@ -4205,7 +4249,14 @@
       const statusDiv = document.getElementById('bulk-status');
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
-      await loadTargetRows(target);
+      const loadedRows = await loadTargetRows(target);
+      if (!loadedRows) {
+        setBulkCandidateStatus(`❌ Could not load rows for ${formatTargetDestination(target)}. Check table name and sign-in state, then retry.`, 'error');
+        if (statusDiv) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Could not load rows for ${formatTargetDestination(target)}. Add flow blocked to avoid false duplicate errors.</div>`;
+        }
+        return;
+      }
 
       if ((isFestivalEditTarget(target) || selectedCandidates.some((item) => !item.placeId)) && window.enhancedAutomation) {
         setBulkCandidateStatus(`✅ Adding ${selectedCandidates.length} selected candidate(s)...`, 'success');
@@ -4576,7 +4627,14 @@
       const statusDiv = document.getElementById('chain-status');
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
-      await loadTargetRows(target);
+      const loadedRows = await loadTargetRows(target);
+      if (!loadedRows) {
+        setChainCandidateStatus(`❌ Could not load rows for ${formatTargetDestination(target)}. Check table name and sign-in state, then retry.`, 'error');
+        if (statusDiv) {
+          statusDiv.innerHTML = `<div class="status-message status-error">❌ Could not load rows for ${formatTargetDestination(target)}. Add flow blocked to avoid false duplicate errors.</div>`;
+        }
+        return;
+      }
 
       if ((isFestivalEditTarget(target) || selectedCandidates.some((item) => !item.placeId)) && window.enhancedAutomation) {
         const capNum = Number(capRaw);
@@ -4742,7 +4800,11 @@
       const targetContext = cloneTargetContext(target);
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
-      await loadTargetRows(target);
+      const loadedRows = await loadTargetRows(target);
+      if (!loadedRows) {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Could not load rows for ${formatTargetDestination(target)}. Duplicate checks are blocked to prevent false errors. Confirm the table exists and retry.</div>`;
+        return;
+      }
       renderActionTargetDiagnostics();
 
       if (!input.trim()) {
@@ -4790,7 +4852,11 @@
       const targetContext = cloneTargetContext(target);
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
-      await loadTargetRows(target);
+      const loadedRows = await loadTargetRows(target);
+      if (!loadedRows) {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Could not load rows for ${formatTargetDestination(target)}. Bulk duplicate checks are blocked until the target loads.</div>`;
+        return;
+      }
       renderActionTargetDiagnostics();
 
       if (!input.trim()) {
@@ -4849,7 +4915,11 @@
       const target = getSelectedTarget('actionTargetSelect');
       if (!applyTargetToMainWindow(target, statusDiv)) return;
       await probeTargetSchema(target);
-      await loadTargetRows(target);
+      const loadedRows = await loadTargetRows(target);
+      if (!loadedRows) {
+        statusDiv.innerHTML = `<div class="status-message status-error">❌ Could not load rows for ${formatTargetDestination(target)}. Bulk chain add is blocked to avoid false duplicate errors.</div>`;
+        return;
+      }
 
       if (!input.trim()) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
