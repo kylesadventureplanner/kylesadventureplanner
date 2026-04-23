@@ -86,6 +86,43 @@ function getSchemaColumnCount(mainWindow) {
   return 24;
 }
 
+function getWindowCandidates(preferredWindow) {
+  const candidates = [];
+  const pushSafe = (value) => {
+    try {
+      if (!value || candidates.includes(value)) return;
+      candidates.push(value);
+    } catch (_error) {}
+  };
+
+  pushSafe(preferredWindow);
+  pushSafe(window);
+  try {
+    if (window.parent && window.parent !== window) pushSafe(window.parent);
+  } catch (_error) {}
+  try {
+    if (window.opener && !window.opener.closed) pushSafe(window.opener);
+  } catch (_error) {}
+  try {
+    if (window.top && window.top !== window) pushSafe(window.top);
+  } catch (_error) {}
+  try {
+    if (window.opener && !window.opener.closed && window.opener.parent && window.opener.parent !== window.opener) {
+      pushSafe(window.opener.parent);
+    }
+  } catch (_error) {}
+
+  return candidates;
+}
+
+function resolveAutomationHost(mainWindow, requiredMethod) {
+  const methodName = String(requiredMethod || '').trim();
+  const candidates = getWindowCandidates(mainWindow || (window.opener && !window.opener.closed ? window.opener : window));
+  if (!methodName) return candidates[0] || window;
+  const matched = candidates.find((candidate) => candidate && typeof candidate[methodName] === 'function');
+  return matched || candidates[0] || window;
+}
+
 function toContractCount(value, fallback = 0) {
   const next = Number(value);
   if (!Number.isFinite(next) || next < 0) return Math.max(0, Number(fallback) || 0);
@@ -129,7 +166,7 @@ function normalizeWriteResultContract(rawResult, defaults = {}) {
 window.normalizeWriteResultContract = window.normalizeWriteResultContract || normalizeWriteResultContract;
 
 async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
-  const host = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
+  const host = resolveAutomationHost(mainWindow, 'saveToExcel');
   const operation = String(options.operation || 'automation').trim();
   const dryRun = !!options.dryRun;
   const updatedCount = Number(options.updatedCount || 0);

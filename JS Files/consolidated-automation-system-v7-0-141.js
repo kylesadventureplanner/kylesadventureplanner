@@ -1723,6 +1723,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       placeName: safeString((details && details.name) || getColumnValueByNames(rowValues, host, ['Name'], 0) || 'Unnamed'),
       placeId: safeString((details && details.placeId) || getColumnValueByNames(rowValues, host, ['Google Place ID', 'GooglePlaceId'], 1)),
       queued: !!meta.queued,
+      verificationStatus: safeString(meta.verificationStatus || (meta.queued ? 'queued' : (meta.verified ? 'verified' : 'unverified'))),
+      verificationReason: safeString(meta.verificationReason),
       fields: {
         description: { populated: !!description, preview: preview(description) },
         driveTime: { populated: !!driveTime, preview: preview(driveTime, 24) },
@@ -2058,7 +2060,11 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
             }
           );
           appendRowLocally(mainWindow, rowValues, queueItem && queueItem.id);
-          recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, { queued: true });
+          recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, {
+            queued: true,
+            verificationStatus: 'queued',
+            verificationReason: 'queued-for-sync'
+          });
           return normalizeWriteResultContractLocal({
             success: true,
             queued: true,
@@ -2097,8 +2103,13 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           }
         }
 
-        recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, { queued: false });
         const rowPresent = hasLoadedRowForPlace(mainWindow, details, placeId);
+        recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, {
+          queued: false,
+          verified: rowPresent,
+          verificationStatus: rowPresent ? 'verified' : 'unverified',
+          verificationReason: rowPresent ? '' : 'added-row-not-found-in-loaded-data'
+        });
 
         return normalizeWriteResultContractLocal({
           success: true,

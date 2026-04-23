@@ -1006,11 +1006,34 @@ window.tagManager = window.tagManager || new TagManager();
 /**
  * Get data from window or opener
  */
+function resolveContextWindow(requiredProp) {
+  const prop = String(requiredProp || '').trim();
+  const candidates = [];
+  const pushSafe = (value) => {
+    try {
+      if (!value || candidates.includes(value)) return;
+      candidates.push(value);
+    } catch (_error) {}
+  };
+
+  pushSafe(window);
+  try {
+    if (window.parent && window.parent !== window) pushSafe(window.parent);
+  } catch (_error) {}
+  try {
+    if (window.opener && !window.opener.closed) pushSafe(window.opener);
+  } catch (_error) {}
+  try {
+    if (window.top && window.top !== window) pushSafe(window.top);
+  } catch (_error) {}
+
+  if (!prop) return candidates[0] || window;
+  return candidates.find((candidate) => candidate && candidate[prop]) || candidates[0] || window;
+}
+
 function getFromContext(prop) {
-  if (window[prop]) return window[prop];
-  if (window.opener && !window.opener.closed && window.opener[prop]) {
-    return window.opener[prop];
-  }
+  const host = resolveContextWindow(prop);
+  if (host && host[prop]) return host[prop];
   return null;
 }
 
@@ -1018,10 +1041,9 @@ function getFromContext(prop) {
  * Show toast across contexts
  */
 function showToastCrossContext(message, type = 'info', duration = 3000) {
-  if (typeof window.showToast === 'function') {
-    window.showToast(message, type, duration);
-  } else if (window.opener && typeof window.opener.showToast === 'function') {
-    window.opener.showToast(message, type, duration);
+  const host = resolveContextWindow('showToast');
+  if (host && typeof host.showToast === 'function') {
+    host.showToast(message, type, duration);
   }
 }
 
@@ -1041,7 +1063,7 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
   console.log('🏷️ Starting auto-tag for all locations...');
 
   const adventuresData = getFromContext('adventuresData');
-  const mainWindow = (window.opener && !window.opener.closed) ? window.opener : window;
+  const mainWindow = resolveContextWindow('saveToExcel');
   const getColumnIndex = (primary, aliases = [], fallback = -1) => {
     try {
       if (mainWindow && typeof mainWindow.getColumnIndexByName === 'function') {
