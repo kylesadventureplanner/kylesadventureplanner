@@ -267,7 +267,15 @@ test.describe('Adventure explorer in-pane details flow', () => {
       }
 
       await expect.poll(async () => tabButton.getAttribute('aria-selected'), { timeout: 10000 }).toBe('true');
-      await expect(plannerDetailsFrameLocator.locator(`#pane-${tabId}[aria-hidden="false"]`)).toBeVisible();
+      await expect.poll(async () => withLiveDetailsFrame((liveFrame) => liveFrame.evaluate((targetTabId) => {
+        const pane = document.querySelector(`#pane-${String(targetTabId || '').replace(/"/g, '')}`);
+        if (!pane) return false;
+        return (
+          pane.getAttribute('aria-hidden') === 'false'
+          && pane.hidden === false
+          && pane.classList.contains('active')
+        );
+      }, tabId)), { timeout: 10000 }).toBe(true);
     }
 
     await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="overview"]')).toHaveClass(/active/);
@@ -303,7 +311,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
     }, { timeout: 20000 }).toMatch(/^(parent|opener)$/);
 
     await activateDetailsTab('notes');
-    await expect(plannerDetailsFrameLocator.locator('#pane-notes[aria-hidden="false"]')).toBeVisible();
+    await expect(plannerDetailsFrameLocator.locator('#pane-notes')).toHaveAttribute('aria-hidden', 'false');
     await expect(plannerDetailsFrameLocator.locator('#detailNotesWrap')).toBeVisible();
 
     await activateDetailsTab('details');

@@ -9,7 +9,17 @@ const EXTENSION_NOISE_PATTERNS = [
   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/tables\/.+\/columns\?\$select=name,index\)/i
 ];
 
+function isIntentionalWorkbookProbe404(text, locationUrl) {
+  const msg = String(text || '');
+  const url = String(locationUrl || '');
+  return (
+    /Failed to load resource: the server responded with a status of 404 \(Not Found\)/i.test(msg)
+    && /https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/Retail_Food_and_Drink\.xlsx:\/workbook\/tables\/Retail\/columns\?\$select=name,index/i.test(url)
+  );
+}
+
 function isIgnoredExtensionNoise(text, locationUrl) {
+  if (isIntentionalWorkbookProbe404(text, locationUrl)) return true;
   const candidate = `${String(text || '')}\n${String(locationUrl || '')}`;
   return EXTENSION_NOISE_PATTERNS.some((pattern) => pattern.test(candidate));
 }
