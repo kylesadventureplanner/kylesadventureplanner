@@ -23,7 +23,11 @@
     "known-good:compare": "node scripts/known-good-compare.js",
     "known-good:verify-and-mark": "node scripts/known-good-verify-and-mark.js",
     "test:production": "playwright test --config=playwright.config.production.js",
-    "test:production:smoke": "playwright test tests/adventure-achievements-smoke.spec.js tests/adventure-subtabs-smoke.spec.js tests/reliability-smoke.spec.js --config=playwright.config.production.js"
+    "test:production:smoke": "playwright test tests/adventure-achievements-smoke.spec.js tests/adventure-subtabs-smoke.spec.js tests/reliability-smoke.spec.js --config=playwright.config.production.js",
+    "test:production:assertions": "PROD_ASSERT_ENABLE=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js",
+    "test:production:assertions:writes": "PROD_ASSERT_ENABLE=1 PROD_ASSERT_ALLOW_WRITES=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js",
+    "test:production:assertions:triage": "mkdir -p artifacts && PROD_ASSERT_ENABLE=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js --reporter=json > artifacts/production-live-assertions-report.json && node scripts/summarize-production-assertions.js artifacts/production-live-assertions-report.json artifacts/production-live-assertions-summary.txt",
+    "test:production:assertions:writes:triage": "mkdir -p artifacts && PROD_ASSERT_ENABLE=1 PROD_ASSERT_ALLOW_WRITES=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js --reporter=json > artifacts/production-live-assertions-report.json && node scripts/summarize-production-assertions.js artifacts/production-live-assertions-report.json artifacts/production-live-assertions-summary.txt"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

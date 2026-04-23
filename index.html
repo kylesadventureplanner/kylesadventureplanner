@@ -22870,8 +22870,8 @@ COMMON ISSUES:
   };
 
     function openEditMode() {
-    // Open simplified edit mode with proven tab switching
-    const editModeUrl = new URL('HTML%20Files/edit-mode-simple.html', window.location.href).toString();
+    // Canonical entrypoint: always use enhanced edit mode.
+    const editModeUrl = new URL('HTML%20Files/edit-mode-enhanced.html', window.location.href).toString();
     window.open(editModeUrl, '_blank');
     }
 
@@ -24673,7 +24673,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
     };
 
     window.openEditMode = function() {
-      const editModeUrl = window.resolvePlannerPageUrl('HTML Files/edit-mode-simple.html');
+      const editModeUrl = window.resolvePlannerPageUrl('HTML Files/edit-mode-enhanced.html');
       window.open(editModeUrl, '_blank');
     };
 

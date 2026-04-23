@@ -167,7 +167,8 @@ window.normalizeWriteResultContract = window.normalizeWriteResultContract || nor
 
 function resolveWorkbookRowReference(row, fallbackIndex) {
   const source = row && typeof row === 'object' ? row : {};
-  const candidates = [source.rowId, source.id, source.rowIndex, source.index, fallbackIndex];
+  // Prefer stable numeric index references for Graph workbook row PATCH calls.
+  const candidates = [source.rowIndex, source.index, fallbackIndex, source.rowId, source.id];
   for (const candidate of candidates) {
     if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0) {
       return Math.trunc(candidate);

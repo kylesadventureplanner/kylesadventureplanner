@@ -3365,7 +3365,16 @@
 
     try {
       await ensureExplorerDataLoaded(root, key, false);
-      return Boolean(getExplorerState(key).loaded);
+      const loaded = Boolean(getExplorerState(key).loaded);
+      if (!loaded) {
+        // Allow a later retry (auto or manual) if this attempt failed.
+        explorerState.autoSyncAttempted = false;
+      }
+      return loaded;
+    } catch (_error) {
+      // Keep retries possible after transient Graph/token failures.
+      explorerState.autoSyncAttempted = false;
+      return false;
     } finally {
       rerenderAdventureAchievementsForSubtab(key);
     }

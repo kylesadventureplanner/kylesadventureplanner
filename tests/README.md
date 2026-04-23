@@ -39,4 +39,43 @@ Optional readiness tuning for mobile snapshot capture:
 - `MOBILE_QA_STABLE_SAMPLES` (default `3`)
 - `MOBILE_QA_STABLE_INTERVAL_MS` (default `250`)
 
+## Production live assertions (opt-in)
+
+`tests/production-live-assertions.spec.js` is disabled by default and only runs when you explicitly enable it.
+
+- Read-only assertions (`Wildlife ready without manual sync`, `Add Single target indicator text`):
+
+```bash
+cd "/Users/kylechavez/WebstormProjects/kylesadventureplanner"
+APP_URL="https://your-app.azurestaticapps.net" npm run test:production:assertions
+```
+
+- Write assertion (`Update Descriptions` persists at least one row and no Graph row PATCH 404):
+
+```bash
+cd "/Users/kylechavez/WebstormProjects/kylesadventureplanner"
+APP_URL="https://your-app.azurestaticapps.net" npm run test:production:assertions:writes
+```
+
+The write assertion is intentionally gated by `PROD_ASSERT_ALLOW_WRITES=1` so it cannot run accidentally.
+
+- Compact triage artifact run (captures first failing assertion + diagnostics text):
+
+```bash
+cd "/Users/kylechavez/WebstormProjects/kylesadventureplanner"
+APP_URL="https://your-app.azurestaticapps.net" npm run test:production:assertions:triage
+```
+
+- Write-enabled compact triage artifact run:
+
+```bash
+cd "/Users/kylechavez/WebstormProjects/kylesadventureplanner"
+APP_URL="https://your-app.azurestaticapps.net" npm run test:production:assertions:writes:triage
+```
+
+Artifacts written:
+
+- `artifacts/production-live-assertions-report.json` (raw Playwright JSON report)
+- `artifacts/production-live-assertions-summary.txt` (compact triage summary)
+
 

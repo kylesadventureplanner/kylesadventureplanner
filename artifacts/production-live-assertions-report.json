@@ -1,0 +1,248 @@
+{
+  "config": {
+    "configFile": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/playwright.config.js",
+    "rootDir": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.59.1",
+    "workers": 5,
+    "webServer": {
+      "command": "npx --yes serve . -p 4321 --no-clipboard",
+      "url": "http://127.0.0.1:4321",
+      "reuseExistingServer": true,
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "production-live-assertions.spec.js",
+      "file": "production-live-assertions.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Production live assertions (opt-in)",
+          "file": "production-live-assertions.spec.js",
+          "line": 28,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Wildlife auto-sync flips from waiting to ready without manual sync click",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Set PROD_ASSERT_ENABLE=1 to run live production assertions.",
+                      "location": {
+                        "file": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/production-live-assertions.spec.js",
+                        "line": 31,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-23T20:21:02.828Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "Set PROD_ASSERT_ENABLE=1 to run live production assertions.",
+                          "location": {
+                            "file": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/production-live-assertions.spec.js",
+                            "line": 31,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "262392338a7bdcd7897c-98a455f74e0e029144fa",
+              "file": "production-live-assertions.spec.js",
+              "line": 33,
+              "column": 3
+            },
+            {
+              "title": "Add Single section shows Wildlife target table text in enhanced edit mode",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Set PROD_ASSERT_ENABLE=1 to run live production assertions.",
+                      "location": {
+                        "file": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/production-live-assertions.spec.js",
+                        "line": 31,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-23T20:21:02.828Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "Set PROD_ASSERT_ENABLE=1 to run live production assertions.",
+                          "location": {
+                            "file": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/production-live-assertions.spec.js",
+                            "line": 31,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "262392338a7bdcd7897c-c5f9e76bbeee8716b75b",
+              "file": "production-live-assertions.spec.js",
+              "line": 57,
+              "column": 3
+            },
+            {
+              "title": "Update Descriptions persists at least one row and emits no Graph row PATCH 404",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "Set PROD_ASSERT_ENABLE=1 to run live production assertions.",
+                      "location": {
+                        "file": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/production-live-assertions.spec.js",
+                        "line": 31,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": -1,
+                      "parallelIndex": -1,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-23T20:21:02.828Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "description": "Set PROD_ASSERT_ENABLE=1 to run live production assertions.",
+                          "location": {
+                            "file": "/Users/kylechavez/WebstormProjects/kylesadventureplanner/tests/production-live-assertions.spec.js",
+                            "line": 31,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "262392338a7bdcd7897c-53092b635ac1fc36d80e",
+              "file": "production-live-assertions.spec.js",
+              "line": 70,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-04-23T20:21:02.808Z",
+    "duration": 20.376000000000033,
+    "expected": 0,
+    "skipped": 3,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
