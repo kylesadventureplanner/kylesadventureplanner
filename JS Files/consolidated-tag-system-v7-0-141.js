@@ -1041,6 +1041,18 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
   console.log('🏷️ Starting auto-tag for all locations...');
 
   const adventuresData = getFromContext('adventuresData');
+  const mainWindow = (window.opener && !window.opener.closed) ? window.opener : window;
+  const getColumnIndex = (primary, aliases = [], fallback = -1) => {
+    try {
+      if (mainWindow && typeof mainWindow.getColumnIndexByName === 'function') {
+        const idx = Number(mainWindow.getColumnIndexByName(primary, aliases));
+        if (Number.isInteger(idx) && idx >= 0) return idx;
+      }
+    } catch (_error) {}
+    return fallback;
+  };
+  const tagsCol = getColumnIndex('Tags', [], 3);
+  let workbookTagUpdates = 0;
   if (!adventuresData || adventuresData.length === 0) {
     console.warn('⚠️ No locations to tag');
     showToastCrossContext('⚠️ No locations found', 'warning', 2000);
@@ -1132,9 +1144,17 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
         const recommendedTags = getTagsForLocationText(dataObj);
 
         if (!dryRun && recommendedTags.length > 0) {
-          window.tagManager.addTagsToPlace(identifier, recommendedTags);
+          const added = window.tagManager.addTagsToPlace(identifier, recommendedTags);
+          if (values && tagsCol >= 0) {
+            const existing = String(values[tagsCol] || '').split(',').map((t) => String(t || '').trim()).filter(Boolean);
+            const merged = Array.from(new Set(existing.concat(recommendedTags)));
+            if (merged.join(', ') !== String(values[tagsCol] || '').trim()) {
+              values[tagsCol] = merged.join(', ');
+              workbookTagUpdates++;
+            }
+          }
           results.success++;
-          results.details.push({ name: locationName, added: recommendedTags.length, tags: recommendedTags });
+          results.details.push({ name: locationName, added: Math.max(added, recommendedTags.length), tags: recommendedTags });
           console.log(`✅ Tagged "${locationName}": ${recommendedTags.join(', ')}`);
         } else if (dryRun && recommendedTags.length > 0) {
           results.success++;
@@ -1151,9 +1171,32 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
     }
 
     const verb = dryRun ? 'would tag' : 'tagged';
+
+    if (!dryRun && workbookTagUpdates > 0) {
+      try {
+        if (mainWindow && typeof mainWindow.saveToExcel === 'function') {
+          await mainWindow.saveToExcel();
+          results.persisted = true;
+          results.persistMode = 'saveToExcel';
+        } else {
+          results.persisted = false;
+          results.persistMode = 'unavailable';
+          results.persistReason = 'saveToExcel-unavailable';
+        }
+      } catch (error) {
+        results.persisted = false;
+        results.persistMode = 'error';
+        results.persistReason = String(error && error.message ? error.message : error);
+      }
+    } else if (!dryRun) {
+      results.persisted = workbookTagUpdates === 0;
+      results.persistMode = workbookTagUpdates === 0 ? 'no-op' : 'skipped';
+      results.persistReason = workbookTagUpdates === 0 ? 'no-row-tag-changes' : '';
+    }
+
     console.log(`✅ Auto-tag complete: ${results.success} ${verb}, ${results.failed} failed, ${results.skipped} skipped`);
     showToastCrossContext(
-      `✅ ${dryRun ? '[DRY RUN] ' : ''}Auto-tag: ${results.success} location${results.success !== 1 ? 's' : ''} tagged`,
+      `✅ ${dryRun ? '[DRY RUN] ' : ''}Auto-tag: ${results.success} location${results.success !== 1 ? 's' : ''} tagged${!dryRun && workbookTagUpdates > 0 ? ` • ${workbookTagUpdates} workbook row${workbookTagUpdates === 1 ? '' : 's'} updated` : ''}`,
       'success', 3000
     );
 

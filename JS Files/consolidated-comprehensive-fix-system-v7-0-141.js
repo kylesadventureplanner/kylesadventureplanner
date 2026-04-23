@@ -734,7 +734,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
     const statusDiv = document.getElementById('refresh-status');
     if (!statusDiv) {
       console.warn('⚠️ No status div found');
-      return;
+      return { success: false, error: 'No status div found', persisted: false, persistMode: 'unavailable', persistReason: 'missing-status-div', dryRun };
     }
 
     try {
@@ -744,7 +744,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       if (!data || data.length === 0) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ Error: No location data found</div>';
         console.error('❌ No location data');
-        return;
+        return { success: false, error: 'No location data found', persisted: false, persistMode: 'unavailable', persistReason: 'no-location-data', dryRun };
       }
 
       console.log(`📊 Processing ${data.length} locations...`);
@@ -754,12 +754,50 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       let skipped = 0;
       const details = [];
       const errors = [];
-      const m365Updates = [];  // TRACK CHANGES FOR SYNC
+      const activeCols = (mainWindow && typeof mainWindow.getColumnIndexByName === 'function')
+        ? {
+            NAME: Number(mainWindow.getColumnIndexByName('Name')),
+            PLACE_ID: Number(mainWindow.getColumnIndexByName('Google Place ID', ['GooglePlaceId'])),
+            WEBSITE: Number(mainWindow.getColumnIndexByName('Website')),
+            HOURS: Number(mainWindow.getColumnIndexByName('Hours of Operation', ['Hours'])),
+            ADDRESS: Number(mainWindow.getColumnIndexByName('Address')),
+            PHONE: Number(mainWindow.getColumnIndexByName('Phone Number', ['Phone'])),
+            RATING: Number(mainWindow.getColumnIndexByName('Google Rating', ['Rating'])),
+            DIRECTIONS: Number(mainWindow.getColumnIndexByName('Directions', ['Directions '])),
+            DESCRIPTION: Number(mainWindow.getColumnIndexByName('Description'))
+          }
+        : {
+            NAME: 0,
+            PLACE_ID: 1,
+            WEBSITE: 2,
+            HOURS: 5,
+            ADDRESS: 11,
+            PHONE: 12,
+            RATING: 13,
+            DIRECTIONS: 15,
+            DESCRIPTION: 16
+          };
+      const safeCol = (idx, fallback) => (Number.isInteger(idx) && idx >= 0 ? idx : fallback);
+      const c = {
+        NAME: safeCol(activeCols.NAME, 0),
+        PLACE_ID: safeCol(activeCols.PLACE_ID, 1),
+        WEBSITE: safeCol(activeCols.WEBSITE, 2),
+        HOURS: safeCol(activeCols.HOURS, 5),
+        ADDRESS: safeCol(activeCols.ADDRESS, 11),
+        PHONE: safeCol(activeCols.PHONE, 12),
+        RATING: safeCol(activeCols.RATING, 13),
+        DIRECTIONS: safeCol(activeCols.DIRECTIONS, 15),
+        DESCRIPTION: safeCol(activeCols.DESCRIPTION, 16)
+      };
+      let persistedRowUpdates = 0;
 
       for (let i = 0; i < data.length; i++) {
         const location = data[i];
-        const placeId = location.placeId || (location.values && location.values[0][1]);
-        const placeName = location.name || (location.values && location.values[0][0]);
+          const rowValues = location && Array.isArray(location.values) && Array.isArray(location.values[0])
+            ? location.values[0]
+            : null;
+          const placeId = location.placeId || (rowValues && rowValues[c.PLACE_ID]);
+          const placeName = location.name || (rowValues && rowValues[c.NAME]);
 
         try {
           const progress = Math.round(((i + 1) / data.length) * 100);
@@ -803,12 +841,21 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                     name: placeName,
                     action: 'Refreshed from Google API'
                   });
-                  // TRACK UPDATE FOR SYNC
-                  m365Updates.push({
-                    rowIndex: i,
-                    placeId: placeId,
-                    data: freshData
-                  });
+                  if (rowValues) {
+                    if (freshData.website) rowValues[c.WEBSITE] = String(freshData.website);
+                    if (freshData.hours) {
+                      const normalizedHours = typeof mainWindow.normalizeOperationHours === 'function'
+                        ? String(mainWindow.normalizeOperationHours(freshData.hours) || '')
+                        : String(freshData.hours || '');
+                      rowValues[c.HOURS] = normalizedHours;
+                    }
+                    if (freshData.address) rowValues[c.ADDRESS] = String(freshData.address);
+                    if (freshData.phone) rowValues[c.PHONE] = String(freshData.phone);
+                    if (freshData.rating != null) rowValues[c.RATING] = String(freshData.rating);
+                    if (freshData.directions) rowValues[c.DIRECTIONS] = String(freshData.directions);
+                    if (freshData.description) rowValues[c.DESCRIPTION] = String(freshData.description);
+                    persistedRowUpdates++;
+                  }
                   console.log(`✅ Refreshed: ${placeName}`);
                 } else {
                   failed++;
@@ -845,16 +892,22 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         }
       }
 
-      // NEW: SYNC CHANGES BACK TO PARENT WINDOW
-      if (!dryRun && m365Updates.length > 0) {
-        console.log(`📝 Syncing ${m365Updates.length} updates back to parent window...`);
-        for (const update of m365Updates) {
-          if (mainWindow.adventuresData && mainWindow.adventuresData[update.rowIndex]) {
-            Object.assign(mainWindow.adventuresData[update.rowIndex], update.data);
-            console.log(`✅ Synced row ${update.rowIndex}: ${update.placeId}`);
+      let workbookPersisted = false;
+      let workbookPersistError = '';
+      if (!dryRun && persistedRowUpdates > 0) {
+        if (mainWindow && typeof mainWindow.saveToExcel === 'function') {
+          try {
+            await mainWindow.saveToExcel();
+            workbookPersisted = true;
+            console.log(`💾 Refresh Place IDs persisted ${persistedRowUpdates} row updates to workbook`);
+          } catch (persistErr) {
+            workbookPersistError = String(persistErr && persistErr.message ? persistErr.message : persistErr);
+            console.error('❌ Failed to persist refreshed Place ID data:', persistErr);
           }
+        } else {
+          workbookPersistError = 'saveToExcel-unavailable';
+          console.warn('⚠️ saveToExcel is unavailable; refresh updates are in-memory only');
         }
-        console.log(`✅ All updates synced to parent window`);
       }
 
       let resultHTML = '<div class="status-message status-success" style="background: #ecfdf5; color: #047857; border-left: 4px solid #10b981; padding: 16px; border-radius: 8px;">';
@@ -867,9 +920,12 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
       if (dryRun) {
         resultHTML += `<br>🧪 <strong>DRY RUN MODE - No changes made</strong>`;
-      } else if (m365Updates.length > 0) {
-        resultHTML += `<br>📝 <strong>✅ Data synced to parent window!</strong><br>`;
-        resultHTML += `<span style="font-size: 12px; color: #059669;">Close this window and press Ctrl+S to save to Excel</span>`;
+      } else if (persistedRowUpdates > 0) {
+        if (workbookPersisted) {
+          resultHTML += `<br>💾 <strong>✅ Workbook updated (${persistedRowUpdates} rows)</strong>`;
+        } else {
+          resultHTML += `<br>💾 <strong>⚠️ Workbook not persisted:</strong> ${workbookPersistError || 'unknown-error'}`;
+        }
       }
 
       resultHTML += '<br><br><strong>Details:</strong><br>';
@@ -911,6 +967,18 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       }
 
       console.log(`🎉 Refresh complete: ${successful} success, ${failed} failed, ${skipped} skipped`);
+      return {
+        success: failed === 0,
+        message: `Refresh Complete: ${successful} success, ${failed} failed, ${skipped} skipped`,
+        persisted: !!workbookPersisted,
+        persistMode: dryRun ? 'dry-run' : (workbookPersisted ? 'saveToExcel' : (persistedRowUpdates > 0 ? 'error' : 'no-op')),
+        persistReason: dryRun ? 'dry-run' : (workbookPersisted ? '' : (workbookPersistError || (persistedRowUpdates > 0 ? 'saveToExcel-unavailable' : 'no-row-updates'))),
+        dryRun,
+        updatedCount: successful,
+        skippedCount: skipped,
+        errorCount: failed,
+        persistedRowUpdates
+      };
 
     } catch (error) {
       console.error('❌ Fatal error during refresh:', error);
@@ -921,6 +989,14 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
       if (window.showToast) {
         window.showToast(`❌ Error: ${error.message}`, 'error', 5000);
       }
+      return {
+        success: false,
+        error: error.message,
+        persisted: false,
+        persistMode: 'error',
+        persistReason: error.message,
+        dryRun
+      };
     }
   };
 

@@ -86,6 +86,37 @@ function getSchemaColumnCount(mainWindow) {
   return 24;
 }
 
+async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
+  const host = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
+  const operation = String(options.operation || 'automation').trim();
+  const dryRun = !!options.dryRun;
+  const updatedCount = Number(options.updatedCount || 0);
+
+  if (dryRun || updatedCount <= 0) {
+    return { persisted: false, mode: 'skipped', reason: dryRun ? 'dry-run' : 'no-updates' };
+  }
+
+  try {
+    if (host && typeof host.saveToExcel === 'function') {
+      await host.saveToExcel();
+      console.log(`💾 ${operation}: persisted workbook changes via saveToExcel()`);
+      return { persisted: true, mode: 'saveToExcel', reason: '' };
+    }
+
+    if (typeof window.saveToExcel === 'function') {
+      await window.saveToExcel();
+      console.log(`💾 ${operation}: persisted workbook changes via local saveToExcel()`);
+      return { persisted: true, mode: 'saveToExcel-local', reason: '' };
+    }
+
+    console.warn(`⚠️ ${operation}: no workbook save API found (saveToExcel unavailable)`);
+    return { persisted: false, mode: 'unavailable', reason: 'saveToExcel-unavailable' };
+  } catch (error) {
+    console.error(`❌ ${operation}: workbook persistence failed`, error);
+    return { persisted: false, mode: 'error', reason: String(error && error.message ? error.message : error) };
+  }
+}
+
 function normalizeRowForSchema(rowValues, schemaCount) {
   const normalized = (Array.isArray(rowValues) ? rowValues : []).map((v) => {
     if (v === null || v === undefined) return '';
@@ -895,47 +926,11 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
       }
     }
 
-    // Auto-save data to spreadsheet if not in dry run mode
-    if (!dryRun && updatedCount > 0) {
-      try {
-        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-
-        // Prepare updated data for saving
-        const updatedData = [];
-        for (let i = 0; i < adventuresData.length; i++) {
-          const place = adventuresData[i];
-          const values = place.values ? place.values[0] : place;
-          if (values) {
-            updatedData.push({
-              rowIndex: i,
-              values: values
-            });
-          }
-        }
-
-        // Try to save using available save functions
-        if (typeof mainWindow.saveUpdatedData === 'function') {
-          console.log('💾 Saving updated data to spreadsheet...');
-          mainWindow.saveUpdatedData(updatedData);
-        } else if (typeof mainWindow.saveData === 'function') {
-          console.log('💾 Saving data to spreadsheet...');
-          mainWindow.saveData();
-        } else if (typeof mainWindow.saveAdventures === 'function') {
-          console.log('💾 Saving adventures to spreadsheet...');
-          mainWindow.saveAdventures();
-        } else if (typeof mainWindow.save === 'function') {
-          console.log('💾 Triggering save function...');
-          mainWindow.save();
-        } else {
-          console.log('💾 No save function found. Data updated in memory. Please return to main window and save manually using Ctrl+S.');
-        }
-      } catch (saveErr) {
-        console.warn('⚠️ Auto-save failed (this is okay):', saveErr.message);
-        console.log('💾 Data updated in memory. Please return to main window and save manually using Ctrl+S or use Ctrl+S in this window.');
-      }
-    } else if (!dryRun) {
-      console.log('💾 Note: Data is updated in memory. Return to main window and save manually using Ctrl+S or refresh.');
-    }
+    const persistence = await persistAutomationWorkbookChanges(mainWindow, {
+      operation: 'populate-missing-fields',
+      dryRun,
+      updatedCount
+    });
 
     // Check if Google Places API key is configured
     const apiKeyMissing = !window.GOOGLE_PLACES_API_KEY;
@@ -969,6 +964,9 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
           <div style="padding: 8px; background: #fee2e2; border-radius: 4px; color: #7f1d1d;">
             ❌ Errors: ${errorCount}
           </div>
+        </div>
+        <div style="font-size:12px; color:${persistence.persisted ? '#047857' : '#92400e'}; margin-bottom:10px;">
+          💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}
         </div>
         <div style="max-height: 300px; overflow-y: auto; background: white; padding: 12px; border-radius: 4px; border: 1px solid #e5e7eb; font-family: monospace; font-size: 12px; color: #1f2937; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all;">
           ${results.map((r, idx) => {
@@ -1020,7 +1018,10 @@ ${results.map((r, i) => {
       skippedCount,
       errorCount,
       results,
-      dryRun
+      dryRun,
+      persisted: !!persistence.persisted,
+      persistMode: persistence.mode,
+      persistReason: persistence.reason
     };
   } catch (err) {
     console.error('❌ Error:', err);
@@ -1089,6 +1090,7 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
   `);
 
   try {
+    const activeCols = getActiveCols(mainWindow);
     for (let i = 0; i < adventuresData.length; i++) {
       const place = adventuresData[i];
       const values = place.values ? place.values[0] : place;
@@ -1101,9 +1103,9 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
       try {
         if (i > 0) await delay(PLACES_API_DELAY_MS);
 
-        const name = values[COLS.NAME] || '';
-        const placeId = values[COLS.PLACE_ID] || '';
-        const currentHours = values[COLS.HOURS] || '';
+        const name = values[activeCols.NAME] || '';
+        const placeId = values[activeCols.PLACE_ID] || '';
+        const currentHours = values[activeCols.HOURS] || '';
 
         if (!placeId || !String(placeId).startsWith('ChI')) {
           results.push({
@@ -1128,7 +1130,7 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
         }
 
         if (!dryRun) {
-          values[COLS.HOURS] = details.hours;
+          values[activeCols.HOURS] = details.hours;
           updatedCount++;
         } else {
           updatedCount++;
@@ -1182,47 +1184,11 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
       }
     }
 
-    // Auto-save data to spreadsheet if not in dry run mode
-    if (!dryRun && updatedCount > 0) {
-      try {
-        const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
-
-        // Prepare updated data for saving
-        const updatedData = [];
-        for (let i = 0; i < adventuresData.length; i++) {
-          const place = adventuresData[i];
-          const values = place.values ? place.values[0] : place;
-          if (values) {
-            updatedData.push({
-              rowIndex: i,
-              values: values
-            });
-          }
-        }
-
-        // Try to save using available save functions
-        if (typeof mainWindow.saveUpdatedData === 'function') {
-          console.log('💾 Saving updated data to spreadsheet...');
-          mainWindow.saveUpdatedData(updatedData);
-        } else if (typeof mainWindow.saveData === 'function') {
-          console.log('💾 Saving data to spreadsheet...');
-          mainWindow.saveData();
-        } else if (typeof mainWindow.saveAdventures === 'function') {
-          console.log('💾 Saving adventures to spreadsheet...');
-          mainWindow.saveAdventures();
-        } else if (typeof mainWindow.save === 'function') {
-          console.log('💾 Triggering save function...');
-          mainWindow.save();
-        } else {
-          console.log('💾 No save function found. Data updated in memory. Please return to main window and save manually using Ctrl+S.');
-        }
-      } catch (saveErr) {
-        console.warn('⚠️ Auto-save failed (this is okay):', saveErr.message);
-        console.log('💾 Data updated in memory. Please return to main window and save manually using Ctrl+S or use Ctrl+S in this window.');
-      }
-    } else if (!dryRun) {
-      console.log('💾 Note: Data is updated in memory. Return to main window and save manually using Ctrl+S or refresh.');
-    }
+    const persistence = await persistAutomationWorkbookChanges(mainWindow, {
+      operation: 'update-hours-only',
+      dryRun,
+      updatedCount
+    });
 
     const resultHTML = `
       <div style="padding: 16px; background: ${errorCount === 0 ? '#ecfdf5' : '#fef3c7'}; border: 1px solid ${errorCount === 0 ? '#6ee7b7' : '#fbbf24'}; border-radius: 8px;">
@@ -1239,6 +1205,9 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
           <div style="padding: 8px; background: #fee2e2; border-radius: 4px; color: #7f1d1d;">
             ❌ Errors: ${errorCount}
           </div>
+        </div>
+        <div style="font-size:12px; color:${persistence.persisted ? '#047857' : '#92400e'}; margin-bottom:10px;">
+          💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}
         </div>
         <div style="max-height: 300px; overflow-y: auto; background: white; padding: 12px; border-radius: 4px; border: 1px solid #e5e7eb; font-family: monospace; font-size: 12px; color: #1f2937; margin-bottom: 12px; white-space: pre-wrap; word-break: break-all;">
           ${results.map((r, idx) => {
@@ -1290,7 +1259,10 @@ ${results.map((r, i) => {
       skippedCount,
       errorCount,
       results,
-      dryRun
+      dryRun,
+      persisted: !!persistence.persisted,
+      persistMode: persistence.mode,
+      persistReason: persistence.reason
     };
   } catch (err) {
     console.error('❌ Error:', err);
@@ -1628,18 +1600,20 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       }
     }
 
-    // Trigger Excel save if not dry run
-    if (!dryRun && updatedCount > 0 && typeof mainWindow.saveToExcel === 'function') {
-      try { await mainWindow.saveToExcel(); } catch (_) {}
-    }
+    const persistence = await persistAutomationWorkbookChanges(mainWindow, {
+      operation: 'update-descriptions',
+      dryRun,
+      updatedCount
+    });
 
     updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
       <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Complete'} – Update Descriptions</div>
       <div style="font-size:13px;color:#374151;">✅ Updated: ${updatedCount} &nbsp; ⏭ Skipped: ${skippedCount} &nbsp; ❌ Errors: ${errorCount}</div>
+      <div style="font-size:12px;color:${persistence.persisted ? '#047857' : '#92400e'};margin-top:8px;">💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}</div>
       ${buildPreviewHtml()}
     </div>`);
 
-    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, previewItems: previewItems.slice() };
+    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, previewItems: previewItems.slice(), persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason };
   } catch (err) {
     console.error('❌ Error updating descriptions:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);
@@ -1743,16 +1717,19 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
       }
     }
 
-    if (!dryRun && updatedCount > 0 && typeof mainWindow.saveToExcel === 'function') {
-      try { await mainWindow.saveToExcel(); } catch (_) {}
-    }
+    const persistence = await persistAutomationWorkbookChanges(mainWindow, {
+      operation: 'force-update-all-fields',
+      dryRun,
+      updatedCount
+    });
 
     updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
       <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Complete'} – Force Update All Fields</div>
       <div style="font-size:13px;color:#374151;">✅ Updated: ${updatedCount} &nbsp; ⏭ Skipped: ${skippedCount} &nbsp; ❌ Errors: ${errorCount}</div>
+      <div style="font-size:12px;color:${persistence.persisted ? '#047857' : '#92400e'};margin-top:8px;">💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}</div>
     </div>`);
 
-    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun };
+    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason };
   } catch (err) {
     console.error('❌ Error force-updating fields:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);

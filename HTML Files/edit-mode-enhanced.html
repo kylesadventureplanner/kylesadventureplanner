@@ -1157,6 +1157,8 @@
           <button class="button button-primary" onclick="submitRefreshPlaceIds()">🔄 Refresh Place IDs</button>
         </div>
 
+          <div id="refresh-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+
         <div id="refresh-status"></div>
       </div>
 
@@ -1176,6 +1178,8 @@
         <div class="button-group">
           <button class="button button-primary" onclick="submitAutoTagAll()">🏷️ Auto-Tag All</button>
         </div>
+
+          <div id="autotag-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
 
         <div id="autotag-status"></div>
       </div>
@@ -1198,6 +1202,8 @@
           <button class="button button-primary" onclick="submitPopulateMissing()">📝 Update Missing Fields</button>
         </div>
 
+          <div id="missing-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+
         <div id="missing-status"></div>
       </div>
 
@@ -1218,6 +1224,8 @@
         <div class="button-group">
           <button class="button button-primary" onclick="submitUpdateHours()">🕐 Update Hours</button>
         </div>
+
+          <div id="hours-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
 
         <div id="hours-status"></div>
       </div>
@@ -1245,6 +1253,8 @@
           <button class="button button-primary" onclick="submitUpdateDescriptions()">📝 Update Descriptions</button>
         </div>
 
+          <div id="desc-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+
         <div id="desc-status"></div>
       </div>
 
@@ -1265,6 +1275,8 @@
         <div class="button-group">
           <button class="button button-primary" onclick="submitForceUpdateAll()" style="background:#f59e0b;color:#fff;border-color:#d97706;">🔄 Force Update All Fields</button>
         </div>
+
+          <div id="force-update-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
 
         <div id="force-update-status"></div>
       </div>
@@ -3450,7 +3462,17 @@
     async function runAutomationAcrossTargets(targets, statusDiv, runner) {
       if (!targets.length) {
         statusDiv.innerHTML = '<div class="status-message status-error">❌ Select one or more automation target tables.</div>';
-        return;
+        return {
+          success: false,
+          persisted: false,
+          persistMode: 'unavailable',
+          persistReason: 'no-targets-selected',
+          processedTargets: 0,
+          persistedTargets: 0,
+          dryRun: false,
+          failedTargets: 1,
+          targetSummaries: []
+        };
       }
       const mainWindow = getMainWindowSafe();
       const originalContext = {
@@ -3463,6 +3485,17 @@
       };
 
       const messages = [];
+      const aggregate = {
+        success: true,
+        persisted: false,
+        persistMode: '',
+        persistReason: '',
+        processedTargets: 0,
+        persistedTargets: 0,
+        dryRun: false,
+        failedTargets: 0,
+        targetSummaries: []
+      };
       for (let i = 0; i < targets.length; i += 1) {
         const target = targets[i];
         applyTargetToMainWindow(target, statusDiv);
@@ -3475,13 +3508,44 @@
         statusDiv.innerHTML = `<div class="status-message"><span class="spinner"></span> Processing ${target.label} (${i + 1}/${targets.length})...</div>`;
         try {
           const result = await runner(target, i, targets.length);
-          const msg = result && (result.message || result.error) ? (result.message || result.error) : 'Completed';
-          messages.push(`✅ ${target.tableName}: ${msg}`);
+          const ok = !(result && result.success === false);
+          const msg = result && (result.message || result.error) ? (result.message || result.error) : (ok ? 'Completed' : 'Failed');
+          messages.push(`${ok ? '✅' : '❌'} ${target.tableName}: ${msg}`);
+          aggregate.processedTargets += 1;
+          aggregate.success = aggregate.success && ok;
+          if (!ok) aggregate.failedTargets += 1;
+          if (result && result.dryRun) aggregate.dryRun = true;
+          if (result && result.persisted) {
+            aggregate.persisted = true;
+            aggregate.persistedTargets += 1;
+          }
+          if (!aggregate.persistMode && result && result.persistMode) aggregate.persistMode = String(result.persistMode);
+          if (!aggregate.persistReason && result && result.persistReason) aggregate.persistReason = String(result.persistReason);
+          aggregate.targetSummaries.push({
+            tableName: String(target.tableName || ''),
+            success: ok,
+            persisted: !!(result && result.persisted),
+            persistMode: String((result && result.persistMode) || ''),
+            persistReason: String((result && result.persistReason) || ''),
+            dryRun: !!(result && result.dryRun)
+          });
         } catch (error) {
           messages.push(`❌ ${target.tableName}: ${error && error.message ? error.message : 'Failed'}`);
+          aggregate.processedTargets += 1;
+          aggregate.success = false;
+          aggregate.failedTargets += 1;
+          aggregate.targetSummaries.push({
+            tableName: String(target.tableName || ''),
+            success: false,
+            persisted: false,
+            persistMode: 'error',
+            persistReason: String(error && error.message ? error.message : 'Failed'),
+            dryRun: false
+          });
         }
       }
-      statusDiv.innerHTML = `<div class="status-message status-success">${messages.join('<br>')}</div>`;
+      const hasFailure = messages.some((line) => /^❌/.test(String(line || '').trim()));
+      statusDiv.innerHTML = `<div class="status-message ${hasFailure ? 'status-warning' : 'status-success'}">${messages.join('<br>')}</div>`;
 
       // Restore main-window context after multi-target pass.
       mainWindow.filePath = originalContext.filePath;
@@ -3490,6 +3554,42 @@
       mainWindow.__excelColumnCount = originalContext.excelColumnCount;
       mainWindow.__excelSchemaColumns = originalContext.excelSchemaColumns;
       mainWindow.__excelLoadedRowCount = originalContext.excelLoadedRowCount;
+      return aggregate;
+    }
+
+    function normalizeAutomationPersistence(result) {
+      const safe = result && typeof result === 'object' ? result : {};
+      const processedTargets = Math.max(0, Number(safe.processedTargets) || 0);
+      const persistedTargets = Math.max(0, Number(safe.persistedTargets) || 0);
+      const failedTargets = Math.max(0, Number(safe.failedTargets) || 0);
+      const dryRun = !!safe.dryRun;
+      const persisted = !!safe.persisted;
+      const persistMode = String(safe.persistMode || '').trim();
+      const persistReason = String(safe.persistReason || '').trim();
+
+      let text = '💾 Workbook write diagnostics: not run yet.';
+      let color = '#64748b';
+      if (dryRun) {
+        text = `💾 Workbook write diagnostics: dry run only${processedTargets ? ` • ${processedTargets} target${processedTargets === 1 ? '' : 's'}` : ''}`;
+        color = '#92400e';
+      } else if (persisted) {
+        text = `💾 Workbook write diagnostics: saved to Excel${persistedTargets ? ` • ${persistedTargets}/${processedTargets || persistedTargets} target${(processedTargets || persistedTargets) === 1 ? '' : 's'}` : ''}${failedTargets ? ` • ${failedTargets} failed` : ''}`;
+        color = '#047857';
+      } else if (processedTargets > 0) {
+        const suffix = persistReason || persistMode || (failedTargets ? 'one or more targets failed' : 'no workbook changes persisted');
+        text = `💾 Workbook write diagnostics: not persisted${suffix ? ` (${suffix})` : ''}`;
+        color = failedTargets ? '#b91c1c' : '#92400e';
+      }
+
+      return { text, color };
+    }
+
+    function renderAutomationWriteDiagnostics(elementId, result) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const normalized = normalizeAutomationPersistence(result);
+      el.textContent = normalized.text;
+      el.style.color = normalized.color;
     }
 
     /**
@@ -3639,7 +3739,7 @@
         window.parent.showToast(message, type, duration);
       } else if (window.opener && window.opener.showToast) {
         window.opener.showToast(message, type, duration);
-      } else if (window.showToast) {
+      } else if (window.showToast && window.showToast !== showToast) {
         window.showToast(message, type, duration);
       } else {
         console.log(`📢 ${message}`);
@@ -5684,7 +5784,7 @@
       const single = getSelectedTarget('automationTargetSelect');
       const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+      const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handlePopulateMissingFieldsEnhanced === 'function') {
           return await window.handlePopulateMissingFieldsEnhanced(document.createElement('div'), dryRun);
         }
@@ -5696,6 +5796,7 @@
         }
         throw new Error('System not ready');
       });
+      renderAutomationWriteDiagnostics('missing-write-diagnostics', result);
       return;
     }
 
@@ -5708,7 +5809,7 @@
       const single = getSelectedTarget('automationTargetSelect');
       const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+      const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateHoursWithProgress === 'function') {
           return await window.handleUpdateHoursWithProgress(document.createElement('div'), dryRun);
         }
@@ -5723,6 +5824,7 @@
         }
         throw new Error('System not ready');
       });
+      renderAutomationWriteDiagnostics('hours-write-diagnostics', result);
       return;
     }
 
@@ -5735,7 +5837,7 @@
       const single = getSelectedTarget('automationTargetSelect');
       const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+      const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.refreshPlaceIdsWithProgress === 'function') {
           return await window.refreshPlaceIdsWithProgress(dryRun);
         }
@@ -5744,6 +5846,7 @@
         }
         throw new Error('Refresh system not available');
       });
+      renderAutomationWriteDiagnostics('refresh-write-diagnostics', result);
       return;
     }
 
@@ -5756,7 +5859,7 @@
       const single = getSelectedTarget('automationTargetSelect');
       const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+      const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleAutoTagWithProgress === 'function') {
           return await window.handleAutoTagWithProgress(document.createElement('div'), dryRun);
         }
@@ -5765,6 +5868,7 @@
         }
         throw new Error('Auto-tag system not available');
       });
+      renderAutomationWriteDiagnostics('autotag-write-diagnostics', result);
       return;
     }
 
@@ -5778,12 +5882,13 @@
       const single = getSelectedTarget('automationTargetSelect');
       const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
-      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+      const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateAllDescriptions === 'function') {
           return await window.handleUpdateAllDescriptions(document.createElement('div'), dryRun, overwrite);
         }
         throw new Error('Update descriptions handler not available');
       });
+      renderAutomationWriteDiagnostics('desc-write-diagnostics', result);
     }
 
     /**
@@ -5801,16 +5906,18 @@
         );
         if (!ok) {
           statusDiv.innerHTML = '<div class="status-message">ℹ️ Force update cancelled.</div>';
+          renderAutomationWriteDiagnostics('force-update-write-diagnostics', { dryRun: false, processedTargets: 0, persisted: false, persistMode: 'cancelled', persistReason: 'cancelled-by-user' });
           return;
         }
       }
 
-      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+      const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleForceUpdateAllFields === 'function') {
           return await window.handleForceUpdateAllFields(document.createElement('div'), dryRun);
         }
         throw new Error('Force update handler not available');
       });
+      renderAutomationWriteDiagnostics('force-update-write-diagnostics', result);
     }
 
     /**

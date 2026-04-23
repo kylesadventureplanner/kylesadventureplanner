@@ -171,6 +171,91 @@ test.describe('Edit Mode – target-table selectors', () => {
       .toContain('Google editorial summary for Playwright Mock Description Place.');
   });
 
+  test('automation handlers persist workbook writes when rows are updated', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await page.evaluate(() => {
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const indexMap = Object.fromEntries(header.map((name, index) => [name, index]));
+      window.getColumnIndexByName = (primary, aliases = []) => {
+        const candidates = [primary].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase());
+        const found = Object.keys(indexMap).find((name) => candidates.includes(String(name || '').trim().toLowerCase()));
+        return found == null ? -1 : indexMap[found];
+      };
+
+      const row = new Array(header.length).fill('');
+      row[0] = 'Playwright Mountain Trail Cafe';
+      row[1] = 'ChIJPlaywrightPersist123';
+      row[9] = 'NC';
+      row[10] = 'Asheville';
+      row[11] = '123 Persist Lane, Asheville, NC 28801';
+      window.adventuresData = [{ values: [row] }];
+
+      window.__saveCalls = 0;
+      window.saveToExcel = async () => {
+        window.__saveCalls += 1;
+        return true;
+      };
+
+      window.getPlaceDetails = async () => ({
+        website: 'https://playwright-persist.example',
+        phone: '(555) 555-0100',
+        hours: { Monday: '8:00 AM - 4:00 PM' },
+        address: '123 Persist Lane, Asheville, NC 28801',
+        rating: 4.7,
+        description: 'Persisted automation description.',
+        reviews: []
+      });
+
+      if (!window.tagManager) {
+        window.tagManager = {
+          addTagsToPlace: () => 1,
+          getTagsForPlace: () => []
+        };
+      }
+    });
+
+    await page.evaluate(async () => {
+      const mount = document.createElement('div');
+      document.body.appendChild(mount);
+      window.__populatePersistResult = await window.handlePopulateMissingFields(mount, false);
+      window.__hoursPersistResult = await window.handleUpdateHoursOnly(mount, false);
+      window.__tagPersistResult = await window.autoTagAllLocationsUnified({ dryRun: false });
+    });
+
+    await expect.poll(() => page.evaluate(() => Number(window.__saveCalls || 0)), { timeout: 10000 }).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[2] || '')), { timeout: 10000 })
+      .toContain('playwright-persist.example');
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[5] || '')), { timeout: 10000 })
+      .toContain('Monday');
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[3] || '')), { timeout: 10000 })
+      .not.toBe('');
+
+    await page.evaluate(async () => {
+      const mount = document.createElement('div');
+      document.body.appendChild(mount);
+      window.__diagResult = await window.handleUpdateAllDescriptions(mount, false, false);
+      if (typeof window.renderAutomationWriteDiagnostics === 'function') {
+        window.renderAutomationWriteDiagnostics('desc-write-diagnostics', {
+          success: true,
+          persisted: true,
+          persistMode: 'saveToExcel',
+          persistReason: '',
+          processedTargets: 1,
+          persistedTargets: 1,
+          dryRun: false,
+          failedTargets: 0
+        });
+      }
+    });
+
+    await expect.poll(() => page.locator('#desc-write-diagnostics').innerText(), { timeout: 10000 })
+      .toContain('saved to Excel');
+  });
+
   test('Add Places includes Festival Sources config flow with back navigation and persistence', async ({ page }) => {
     await expect(page.locator('#openFestivalSourcesConfigBtn')).toBeVisible();
     await expect(page.locator('#festivalAppliedConfigBadge')).toBeVisible();
