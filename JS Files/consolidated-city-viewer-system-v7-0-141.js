@@ -256,6 +256,37 @@ function getRecentCityViewerCacheKey(maxAgeMs) {
   return (Date.now() - exportedAt <= ageLimit) ? latestKey : '';
 }
 
+function invalidateCityViewerCuratedCache(reason) {
+  try {
+    const removed = [];
+    const latestKey = window.sessionStorage.getItem('city_viewer_data_latest');
+    if (latestKey) {
+      window.sessionStorage.removeItem(latestKey);
+      removed.push(latestKey);
+    }
+
+    const cacheKeys = [];
+    for (let i = 0; i < window.sessionStorage.length; i += 1) {
+      const key = window.sessionStorage.key(i);
+      if (!/^city_viewer_data_/i.test(String(key || ''))) continue;
+      cacheKeys.push(String(key));
+    }
+    cacheKeys.forEach((key) => {
+      window.sessionStorage.removeItem(key);
+      removed.push(key);
+    });
+
+    window.sessionStorage.removeItem('city_viewer_data_latest');
+    console.log(`♻️ City Viewer cache invalidated (${removed.length} key${removed.length === 1 ? '' : 's'})${reason ? ` [${reason}]` : ''}`);
+    return { removedCount: removed.length, removedKeys: removed };
+  } catch (error) {
+    console.warn('⚠️ Failed to invalidate City Viewer cache:', error);
+    return { removedCount: 0, removedKeys: [] };
+  }
+}
+
+window.invalidateCityViewerCuratedCache = invalidateCityViewerCuratedCache;
+
 function refreshCityViewerCacheInBackground(correlationId) {
   cacheCityViewerDataForTab(correlationId)
     .then((cacheKey) => {

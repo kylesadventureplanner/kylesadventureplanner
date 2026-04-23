@@ -2680,6 +2680,50 @@
       return window;
     }
 
+    function getEmbeddedSourceSubtabKey() {
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        return String(params.get('sourceSubtab') || '').trim().toLowerCase();
+      } catch (_error) {
+        return '';
+      }
+    }
+
+    async function runPostAddRefreshHooks(result, dryRun) {
+      if (!result || !result.success || dryRun) return;
+      const host = getMainWindowSafe();
+
+      const cacheInvalidators = [
+        window.invalidateCityViewerCuratedCache,
+        host && host.invalidateCityViewerCuratedCache
+      ].filter((fn, idx, arr) => typeof fn === 'function' && arr.indexOf(fn) === idx);
+
+      for (const invalidate of cacheInvalidators) {
+        try {
+          invalidate('edit-mode-add-success');
+        } catch (_error) {
+          // Keep add flow successful even if cache invalidation fails.
+        }
+      }
+
+      const sourceSubtab = getEmbeddedSourceSubtabKey();
+      if (!sourceSubtab) return;
+
+      const syncFns = [
+        host && host.forceVisitedExplorerSync,
+        window.forceVisitedExplorerSync
+      ].filter((fn, idx, arr) => typeof fn === 'function' && arr.indexOf(fn) === idx);
+
+      for (const syncFn of syncFns) {
+        try {
+          await syncFn(sourceSubtab);
+          break;
+        } catch (_error) {
+          // Continue to next available sync function.
+        }
+      }
+    }
+
     function closeEditModeWindow() {
       if (isEmbeddedEditMode() && window.parent && window.parent !== window) {
         const params = new URLSearchParams(window.location.search || '');
@@ -4290,6 +4334,7 @@
         );
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success) document.getElementById('singleInput').value = '';
+        await runPostAddRefreshHooks(result, dryRun);
         return;
       }
 
@@ -5168,6 +5213,7 @@
             document.getElementById('singleInput').value = '';
             clearDraft('single');
           }
+          await runPostAddRefreshHooks(result, dryRun);
           return;
         }
 
@@ -5180,6 +5226,7 @@
             document.getElementById('singleInput').value = '';
             clearDraft('single');
           }
+          await runPostAddRefreshHooks(result, dryRun);
         } else {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
         }
@@ -5239,6 +5286,7 @@
             document.getElementById('bulkInput').value = '';
             clearDraft('bulk');
           }
+          await runPostAddRefreshHooks(result, dryRun);
           return;
         }
 
@@ -5251,6 +5299,7 @@
             document.getElementById('bulkInput').value = '';
             clearDraft('bulk');
           }
+          await runPostAddRefreshHooks(result, dryRun);
         } else {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
         }
@@ -5299,6 +5348,7 @@
             document.getElementById('chainInput').value = '';
             clearDraft('chain');
           }
+          await runPostAddRefreshHooks(result, dryRun);
           return;
         }
 
@@ -5311,6 +5361,7 @@
             document.getElementById('chainInput').value = '';
             clearDraft('chain');
           }
+          await runPostAddRefreshHooks(result, dryRun);
           return;
         }
 
@@ -5325,6 +5376,7 @@
             document.getElementById('chainInput').value = '';
             clearDraft('chain');
           }
+          await runPostAddRefreshHooks(result, dryRun);
           return;
         }
 
