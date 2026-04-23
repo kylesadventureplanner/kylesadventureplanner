@@ -280,6 +280,53 @@ test.describe('Edit Mode – target-table selectors', () => {
       .toContain('verified 1/1 row');
   });
 
+  test('automation row persistence prefers workbook row ids when available', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await page.evaluate(() => {
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const indexMap = Object.fromEntries(header.map((name, index) => [name, index]));
+      window.getColumnIndexByName = (primary, aliases = []) => {
+        const candidates = [primary].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase());
+        const found = Object.keys(indexMap).find((name) => candidates.includes(String(name || '').trim().toLowerCase()));
+        return found == null ? -1 : indexMap[found];
+      };
+
+      const row = new Array(header.length).fill('');
+      row[0] = 'Playwright Row ID Preserve';
+      row[1] = 'ChIJPlaywrightPersistRowId123';
+      row[9] = 'NC';
+      row[10] = 'Asheville';
+      row[11] = '456 Stable Row Lane, Asheville, NC 28801';
+      window.adventuresData = [{ id: 'row-guid-123', values: [row] }];
+
+      window.__saveRowsById = [];
+      window.saveToExcel = async (rowRef, values) => {
+        window.__saveRowsById.push({ rowRef, values: Array.isArray(values) ? values.slice() : [] });
+        return { persisted: true, verified: true, rowRef: String(rowRef) };
+      };
+
+      window.getPlaceDetails = async () => ({
+        description: 'Persisted via stable workbook row id.',
+        reviews: []
+      });
+    });
+
+    await page.evaluate(async () => {
+      const mount = document.createElement('div');
+      document.body.appendChild(mount);
+      window.__descriptionPersistById = await window.handleUpdateAllDescriptions(mount, false, false);
+    });
+
+    await expect.poll(() => page.evaluate(() => String(window.__saveRowsById?.[0]?.rowRef || '')), { timeout: 10000 })
+      .toBe('row-guid-123');
+    await expect.poll(() => page.evaluate(() => window.__descriptionPersistById), { timeout: 10000 })
+      .toMatchObject({ rowsChanged: 1, persistedRows: 1, verifiedRowsChanged: 1, postWriteVerified: true });
+  });
+
   test('Add Places includes Festival Sources config flow with back navigation and persistence', async ({ page }) => {
     await expect(page.locator('#openFestivalSourcesConfigBtn')).toBeVisible();
     await expect(page.locator('#festivalAppliedConfigBadge')).toBeVisible();

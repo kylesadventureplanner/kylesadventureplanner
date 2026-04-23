@@ -12,7 +12,7 @@ function slugify(value) {
 
 function rowsFor(table) {
   const cols = SCHEMAS[table] || SCHEMAS.Nature_Locations;
-  return [{ values: [new Array(cols.length).fill('')] }];
+  return [{ id: '0', index: 0, values: [new Array(cols.length).fill('')] }];
 }
 
 function buildResolvedPlace(label) {
@@ -35,14 +35,27 @@ function buildResolvedPlace(label) {
 async function installWorkbookMocks(context, graphCalls, options = {}) {
   const failingRowTables = new Set(Array.isArray(options.failingRowTables) ? options.failingRowTables : []);
   const prefixedOnlyPaths = Boolean(options.prefixedOnlyPaths);
+  const rowStore = new Map();
   await context.route('https://graph.microsoft.com/**', async (route) => {
     const request = route.request();
     const url = request.url();
     const method = request.method();
     const tableMatch = url.match(/\/tables\/([^/]+)/);
     const workbookMatch = url.match(/\/root:\/(.+):\/workbook\//);
+    const rowMatch = url.match(/\/rows\/itemAt\(index=(\d+)\)/);
     const table = tableMatch ? decodeURIComponent(tableMatch[1]) : 'Nature_Locations';
     const workbookPath = workbookMatch ? decodeURIComponent(workbookMatch[1]) : '';
+    const rowIndex = rowMatch ? Number(rowMatch[1]) : -1;
+    const storeKey = `${workbookPath}|${table}`;
+
+    if (!rowStore.has(storeKey)) {
+      rowStore.set(storeKey, rowsFor(table).map((row, index) => ({
+        id: String(row && row.id != null ? row.id : index),
+        index,
+        values: Array.isArray(row && row.values) ? row.values.map((entry) => Array.isArray(entry) ? entry.slice() : []) : [[]]
+      })));
+    }
+    const storedRows = rowStore.get(storeKey);
 
     if (prefixedOnlyPaths && !workbookPath.includes('Copilot_Apps/Kyles_Adventure_Finder/')) {
       await route.fulfill({
@@ -63,6 +76,16 @@ async function installWorkbookMocks(context, graphCalls, options = {}) {
       return;
     }
 
+    if (method === 'GET' && rowMatch) {
+      const row = Array.isArray(storedRows) && rowIndex >= 0 ? storedRows[rowIndex] : null;
+      await route.fulfill({
+        status: row ? 200 : 404,
+        contentType: 'application/json',
+        body: JSON.stringify(row || { error: { code: 'itemNotFound', message: 'The resource could not be found.' } })
+      });
+      return;
+    }
+
     if (method === 'GET' && url.includes('/rows')) {
       if (failingRowTables.has(table)) {
         await route.fulfill({
@@ -75,7 +98,34 @@ async function installWorkbookMocks(context, graphCalls, options = {}) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ value: rowsFor(table) })
+        body: JSON.stringify({ value: Array.isArray(storedRows) ? storedRows : rowsFor(table) })
+      });
+      return;
+    }
+
+    if (method === 'PATCH' && rowMatch) {
+      const body = JSON.parse(request.postData() || '{}');
+      const nextValues = Array.isArray(body.values) && Array.isArray(body.values[0]) ? body.values[0].slice() : [];
+      while (storedRows.length <= rowIndex) {
+        storedRows.push({ id: String(storedRows.length), index: storedRows.length, values: [[]] });
+      }
+      storedRows[rowIndex] = {
+        id: String(storedRows[rowIndex] && storedRows[rowIndex].id != null ? storedRows[rowIndex].id : rowIndex),
+        index: rowIndex,
+        values: [nextValues]
+      };
+      graphCalls.push({
+        url,
+        method,
+        table,
+        workbookPath,
+        rowIndex,
+        body
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(storedRows[rowIndex])
       });
       return;
     }
@@ -83,7 +133,9 @@ async function installWorkbookMocks(context, graphCalls, options = {}) {
     if (method === 'POST' && url.includes('/rows')) {
       graphCalls.push({
         url,
+        method,
         table,
+        workbookPath,
         body: JSON.parse(request.postData() || '{}')
       });
       await route.fulfill({
@@ -348,6 +400,34 @@ test.describe('Edit Mode target-table routing', () => {
     expect(graphCalls[0].url).toContain('Copilot_Apps/Kyles_Adventure_Finder/');
     await expect.poll(() => page.evaluate(() => String(window.__resolvedExcelFilePath || '')), { timeout: 10000 })
       .toContain('Copilot_Apps/Kyles_Adventure_Finder/');
+  });
+
+  test('row-level saveToExcel resolves prefixed workbook paths when bare workbook names return itemNotFound', async ({ page }) => {
+    const graphCalls = [];
+    await installWorkbookMocks(page.context(), graphCalls, { prefixedOnlyPaths: true });
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.saveToExcel === 'function', null, { timeout: 15000 });
+    await seedMainWindow(page);
+
+    const result = await page.evaluate(async () => {
+      window.filePath = 'Nature_Locations.xlsx';
+      window.tableName = 'Nature_Locations';
+      window.__resolvedExcelFilePath = '';
+      const row = ['Playwright row patch', 'pid-row-patch'];
+      return window.saveToExcel(0, row);
+    });
+
+    expect(result).toEqual(expect.objectContaining({ persisted: true, rowRef: 'itemAt(index=0)' }));
+    await expect.poll(() => graphCalls.filter((call) => call.method === 'PATCH').length, { timeout: 10000 }).toBe(1);
+    expect(graphCalls[0].workbookPath).toContain('Copilot_Apps/Kyles_Adventure_Finder/');
+    await expect.poll(() => page.evaluate(() => String(window.__resolvedExcelFilePath || '')), { timeout: 10000 })
+      .toContain('Copilot_Apps/Kyles_Adventure_Finder/');
+    await expect(page.locator('#workbookPatchDiagnosticsPanel')).toBeVisible();
+    await expect.poll(() => page.locator('#workbookPatchDiagnosticsPanel').innerText(), { timeout: 10000 })
+      .toContain('Attempting workbook row PATCH');
+    await expect.poll(() => page.locator('#workbookPatchDiagnosticsPanel').innerText(), { timeout: 10000 })
+      .toContain('saved and verified');
   });
 
   test('single add can be cancelled at the destination confirmation prompt', async ({ page }) => {

@@ -855,7 +855,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                     if (freshData.directions) rowValues[c.DIRECTIONS] = String(freshData.directions);
                     if (freshData.description) rowValues[c.DESCRIPTION] = String(freshData.description);
                     persistedRowUpdates++;
-                    changedRows.push({ rowIndex: i, values: Array.isArray(rowValues) ? rowValues.slice() : [] });
+                    changedRows.push(typeof window.buildChangedWorkbookRow === 'function'
+                      ? window.buildChangedWorkbookRow(location, i, rowValues)
+                      : { rowIndex: i, rowId: location && (location.rowId ?? location.id ?? location.index ?? i), values: Array.isArray(rowValues) ? rowValues.slice() : [] });
                   }
                   console.log(`✅ Refreshed: ${placeName}`);
                 } else {
@@ -901,7 +903,10 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
           try {
             if (mainWindow.saveToExcel.length >= 1 && changedRows.length) {
               for (const row of changedRows) {
-                const saveResult = await mainWindow.saveToExcel(row.rowIndex, row.values);
+                const rowRef = typeof window.resolveWorkbookRowReference === 'function'
+                  ? window.resolveWorkbookRowReference(row, row.rowIndex)
+                  : (row.rowId ?? row.rowIndex);
+                const saveResult = await mainWindow.saveToExcel(rowRef, row.values);
                 if (saveResult && typeof saveResult === 'object' && saveResult.verified) verifiedRowsChanged += 1;
               }
               workbookPersisted = true;

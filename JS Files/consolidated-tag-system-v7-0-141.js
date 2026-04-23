@@ -1174,7 +1174,9 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
             if (merged.join(', ') !== String(values[tagsCol] || '').trim()) {
               values[tagsCol] = merged.join(', ');
               workbookTagUpdates++;
-              changedRows.push({ rowIndex: index, values: Array.isArray(values) ? values.slice() : [] });
+              changedRows.push(typeof window.buildChangedWorkbookRow === 'function'
+                ? window.buildChangedWorkbookRow(location, index, values)
+                : { rowIndex: index, rowId: location && (location.rowId ?? location.id ?? location.index ?? index), values: Array.isArray(values) ? values.slice() : [] });
             }
           }
           results.success++;
@@ -1201,7 +1203,10 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
         if (mainWindow && typeof mainWindow.saveToExcel === 'function' && mainWindow.saveToExcel.length >= 1 && changedRows.length) {
           let verifiedRowsChanged = 0;
           for (const row of changedRows) {
-            const saveResult = await mainWindow.saveToExcel(row.rowIndex, row.values);
+            const rowRef = typeof window.resolveWorkbookRowReference === 'function'
+              ? window.resolveWorkbookRowReference(row, row.rowIndex)
+              : (row.rowId ?? row.rowIndex);
+            const saveResult = await mainWindow.saveToExcel(rowRef, row.values);
             if (saveResult && typeof saveResult === 'object' && saveResult.verified) verifiedRowsChanged += 1;
           }
           results.persisted = true;

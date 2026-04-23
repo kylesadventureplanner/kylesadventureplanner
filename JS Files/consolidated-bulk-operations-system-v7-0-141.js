@@ -165,6 +165,38 @@ function normalizeWriteResultContract(rawResult, defaults = {}) {
 
 window.normalizeWriteResultContract = window.normalizeWriteResultContract || normalizeWriteResultContract;
 
+function resolveWorkbookRowReference(row, fallbackIndex) {
+  const source = row && typeof row === 'object' ? row : {};
+  const candidates = [source.rowId, source.id, source.rowIndex, source.index, fallbackIndex];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0) {
+      return Math.trunc(candidate);
+    }
+    const text = String(candidate == null ? '' : candidate).trim();
+    if (!text) continue;
+    if (/^\d+$/.test(text)) return Number(text);
+    return text;
+  }
+  return null;
+}
+
+function buildChangedWorkbookRow(row, fallbackIndex, values) {
+  const rowIndex = Number.isInteger(fallbackIndex) && fallbackIndex >= 0
+    ? fallbackIndex
+    : (() => {
+        const resolved = resolveWorkbookRowReference(row, 0);
+        return typeof resolved === 'number' && Number.isFinite(resolved) && resolved >= 0 ? resolved : 0;
+      })();
+  return {
+    rowIndex,
+    rowId: resolveWorkbookRowReference(row, rowIndex),
+    values: Array.isArray(values) ? values.slice() : []
+  };
+}
+
+window.resolveWorkbookRowReference = window.resolveWorkbookRowReference || resolveWorkbookRowReference;
+window.buildChangedWorkbookRow = window.buildChangedWorkbookRow || buildChangedWorkbookRow;
+
 async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
   const host = resolveAutomationHost(mainWindow, 'saveToExcel');
   const operation = String(options.operation || 'automation').trim();
@@ -191,7 +223,8 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
       let persistedRows = 0;
       let verifiedRowsChanged = 0;
       for (const row of changedRows) {
-        const result = await host.saveToExcel(row.rowIndex, row.values);
+        const rowRef = resolveWorkbookRowReference(row, row.rowIndex);
+        const result = await host.saveToExcel(rowRef, row.values);
         persistedRows += 1;
         if (result && typeof result === 'object' && result.verified) verifiedRowsChanged += 1;
       }
@@ -1028,7 +1061,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
 
           if (fieldsCorrected.length > 0) {
             updatedCount++;
-            changedRows.push({ rowIndex: i, values: Array.isArray(values) ? values.slice() : [] });
+            changedRows.push(buildChangedWorkbookRow(place, i, values));
           } else {
             skippedCount++;
           }
@@ -1306,7 +1339,7 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
         if (!dryRun) {
           values[activeCols.HOURS] = details.hours;
           updatedCount++;
-          changedRows.push({ rowIndex: i, values: Array.isArray(values) ? values.slice() : [] });
+          changedRows.push(buildChangedWorkbookRow(place, i, values));
         } else {
           updatedCount++;
         }
@@ -1763,7 +1796,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         if (!dryRun && generatedDesc) {
           values[activeCols.DESCRIPTION] = generatedDesc;
           updatedCount++;
-          changedRows.push({ rowIndex: i, values: Array.isArray(values) ? values.slice() : [] });
+          changedRows.push(buildChangedWorkbookRow(place, i, values));
           results.push({ name, status: 'updated', message: `Set description (${generatedDesc.length} chars)` });
           if (previewItems.length < 3) {
             previewItems.push({ name: name || '(no name)', description: generatedDesc });
@@ -1876,7 +1909,7 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
 
           if (updated.length > 0) {
             updatedCount++;
-            changedRows.push({ rowIndex: i, values: Array.isArray(values) ? values.slice() : [] });
+            changedRows.push(buildChangedWorkbookRow(place, i, values));
             results.push({ name, status: 'updated', message: `Updated: ${updated.join(', ')}` });
           } else {
             skippedCount++;
