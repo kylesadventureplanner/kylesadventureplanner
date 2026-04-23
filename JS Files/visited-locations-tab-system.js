@@ -4,6 +4,9 @@
  */
 
 (function() {
+  window.__deploymentFileFingerprints = window.__deploymentFileFingerprints || {};
+  window.__deploymentFileFingerprints['visited-locations-tab-system.js'] = '2026.04.23.live-debug.1';
+
   const STORAGE_KEY = 'visitedLocationsTrackerV1';
   const CHALLENGE_STATE_KEY = 'visitedLocationsChallengeStateV1';
   const VISITED_META_KEY = 'visitedLocationsMetaV1';
@@ -3310,9 +3313,45 @@
   const _pendingTokenAutoSync = new Set();
   let _tokenWatcherActive = false;
 
+  function _isVisitedAutoSyncDebugEnabled() {
+    try {
+      if (window.__visitedAutoSyncDebugEnabled === true) return true;
+      return String(localStorage.getItem('visitedAutoSyncDebugEnabled') || '').trim() === '1';
+    } catch (_error) {
+      return window.__visitedAutoSyncDebugEnabled === true;
+    }
+  }
+
+  function _pushVisitedAutoSyncDebug(event, details) {
+    try {
+      const row = {
+        ts: new Date().toISOString(),
+        event: String(event || 'event'),
+        details: details && typeof details === 'object' ? details : {}
+      };
+      const list = Array.isArray(window.__visitedAutoSyncDebugLog) ? window.__visitedAutoSyncDebugLog : [];
+      list.push(row);
+      if (list.length > 300) list.splice(0, list.length - 300);
+      window.__visitedAutoSyncDebugLog = list;
+      if (_isVisitedAutoSyncDebugEnabled()) {
+        console.log('[VisitedAutoSyncDebug]', row.event, row.details);
+      }
+    } catch (_error) {}
+  }
+
+  window.getVisitedAutoSyncDebugLog = function(limit = 50) {
+    const cap = Math.max(1, Number(limit) || 50);
+    const list = Array.isArray(window.__visitedAutoSyncDebugLog) ? window.__visitedAutoSyncDebugLog : [];
+    return list.slice(-cap);
+  };
+  window.clearVisitedAutoSyncDebugLog = function() {
+    window.__visitedAutoSyncDebugLog = [];
+  };
+
   function _startTokenWatcher() {
     if (_tokenWatcherActive) return;
     _tokenWatcherActive = true;
+    _pushVisitedAutoSyncDebug('token-watcher-started', { pending: Array.from(_pendingTokenAutoSync) });
     const started = Date.now();
     const MAX_WAIT_MS = 30000;
     const POLL_MS = 500;
@@ -3322,6 +3361,7 @@
         if (Date.now() - started > MAX_WAIT_MS) {
           clearInterval(interval);
           _tokenWatcherActive = false;
+          _pushVisitedAutoSyncDebug('token-watcher-timeout', { pending: Array.from(_pendingTokenAutoSync) });
           _pendingTokenAutoSync.clear();
         }
         return;
@@ -3331,6 +3371,7 @@
       _tokenWatcherActive = false;
       const keys = Array.from(_pendingTokenAutoSync);
       _pendingTokenAutoSync.clear();
+      _pushVisitedAutoSyncDebug('token-became-available', { queuedKeys: keys });
       const root = document.getElementById('visitedLocationsRoot');
       if (!root) return;
       for (const k of keys) {
@@ -3347,11 +3388,19 @@
   async function maybeAutoSyncExplorerForSubtab(root, subtabKey) {
     const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
     if (!root || !getExplorerConfig(key)) return false;
+    _pushVisitedAutoSyncDebug('autosync-check', {
+      key,
+      hasToken: Boolean(window.accessToken)
+    });
 
     if (!window.accessToken) {
       // Token not yet available — queue this subtab for retry once the token arrives.
       if (!_pendingTokenAutoSync.has(key)) {
         _pendingTokenAutoSync.add(key);
+        _pushVisitedAutoSyncDebug('autosync-queued-waiting-token', {
+          key,
+          pending: Array.from(_pendingTokenAutoSync)
+        });
         _startTokenWatcher();
       }
       return false;
@@ -3361,6 +3410,7 @@
     if (explorerState.loaded || explorerState.loading || explorerState.autoSyncAttempted) return false;
 
     explorerState.autoSyncAttempted = true;
+    _pushVisitedAutoSyncDebug('autosync-started', { key });
     rerenderAdventureAchievementsForSubtab(key);
 
     try {
@@ -3370,10 +3420,15 @@
         // Allow a later retry (auto or manual) if this attempt failed.
         explorerState.autoSyncAttempted = false;
       }
+      _pushVisitedAutoSyncDebug('autosync-finished', { key, loaded });
       return loaded;
     } catch (_error) {
       // Keep retries possible after transient Graph/token failures.
       explorerState.autoSyncAttempted = false;
+      _pushVisitedAutoSyncDebug('autosync-error', {
+        key,
+        error: String(_error && _error.message ? _error.message : _error)
+      });
       return false;
     } finally {
       rerenderAdventureAchievementsForSubtab(key);

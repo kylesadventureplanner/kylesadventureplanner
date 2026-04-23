@@ -21,6 +21,44 @@
 
 console.log('🚀 Consolidated Bulk Operations System v7.0.141 Loading...');
 
+window.__deploymentFileFingerprints = window.__deploymentFileFingerprints || {};
+window.__deploymentFileFingerprints['consolidated-bulk-operations-system-v7-0-141.js'] = '2026.04.23.live-debug.1';
+
+function isWorkbookWriteDebugEnabled() {
+  try {
+    if (window.__workbookWriteDebugEnabled === true) return true;
+    return String(localStorage.getItem('workbookWriteDebugEnabled') || '').trim() === '1';
+  } catch (_error) {
+    return window.__workbookWriteDebugEnabled === true;
+  }
+}
+
+function pushWorkbookWriteDebug(event, details) {
+  try {
+    const row = {
+      ts: new Date().toISOString(),
+      event: String(event || 'event'),
+      details: details && typeof details === 'object' ? details : {}
+    };
+    const list = Array.isArray(window.__workbookWriteDebugLog) ? window.__workbookWriteDebugLog : [];
+    list.push(row);
+    if (list.length > 300) list.splice(0, list.length - 300);
+    window.__workbookWriteDebugLog = list;
+    if (isWorkbookWriteDebugEnabled()) {
+      console.log('[WorkbookWriteDebug]', row.event, row.details);
+    }
+  } catch (_error) {}
+}
+
+window.getWorkbookWriteDebugLog = function(limit = 50) {
+  const cap = Math.max(1, Number(limit) || 50);
+  const list = Array.isArray(window.__workbookWriteDebugLog) ? window.__workbookWriteDebugLog : [];
+  return list.slice(-cap);
+};
+window.clearWorkbookWriteDebugLog = function() {
+  window.__workbookWriteDebugLog = [];
+};
+
 // ============================================================
 // SECTION 1: CONFIGURATION & UTILITIES
 // ============================================================
@@ -168,16 +206,30 @@ window.normalizeWriteResultContract = window.normalizeWriteResultContract || nor
 function resolveWorkbookRowReference(row, fallbackIndex) {
   const source = row && typeof row === 'object' ? row : {};
   const candidates = [source.rowId, source.id, source.rowIndex, source.index, fallbackIndex];
+  let resolved = null;
   for (const candidate of candidates) {
     if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0) {
-      return Math.trunc(candidate);
+      resolved = Math.trunc(candidate);
+      break;
     }
     const text = String(candidate == null ? '' : candidate).trim();
     if (!text) continue;
-    if (/^\d+$/.test(text)) return Number(text);
-    return text;
+    if (/^\d+$/.test(text)) {
+      resolved = Number(text);
+      break;
+    }
+    resolved = text;
+    break;
   }
-  return null;
+  pushWorkbookWriteDebug('row-ref-resolved', {
+    rowId: source.rowId,
+    id: source.id,
+    rowIndex: source.rowIndex,
+    index: source.index,
+    fallbackIndex,
+    resolved
+  });
+  return resolved;
 }
 
 function buildChangedWorkbookRow(row, fallbackIndex, values) {
@@ -224,9 +276,21 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
       let verifiedRowsChanged = 0;
       for (const row of changedRows) {
         const rowRef = resolveWorkbookRowReference(row, row.rowIndex);
+        pushWorkbookWriteDebug('row-save-attempt', {
+          operation,
+          rowRef,
+          rowIndex: row && row.rowIndex,
+          valueCount: Array.isArray(row && row.values) ? row.values.length : 0
+        });
         const result = await host.saveToExcel(rowRef, row.values);
         persistedRows += 1;
         if (result && typeof result === 'object' && result.verified) verifiedRowsChanged += 1;
+        pushWorkbookWriteDebug('row-save-result', {
+          operation,
+          rowRef,
+          verified: Boolean(result && result.verified),
+          persisted: Boolean(result && (result.persisted || result === true))
+        });
       }
       console.log(`💾 ${operation}: persisted ${persistedRows} edited row(s) via row-level saveToExcel()`);
       return normalizeWriteResultContract({
