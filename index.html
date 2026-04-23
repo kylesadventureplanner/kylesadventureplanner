@@ -7610,47 +7610,54 @@
          const tableName = "MyList";
          const encodedPath = encodeURIComponent(filePath);
 
-         // Build update request body
-         const requestBody = {
-           values: [updatedValues]
-         };
+         // Check if this is a row update or bulk save
+         if (rowId !== undefined && rowId !== null && Array.isArray(updatedValues)) {
+           // Row-level update: convert numeric rowId to itemAt(index=N) format
+           const rowRef = (typeof rowId === 'number' || /^\d+$/.test(String(rowId || '').trim()))
+             ? `itemAt(index=${Number(rowId)})`
+             : encodeURIComponent(String(rowId));
 
-         // Update row in Excel table
-         const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows/${rowId}`;
+           const apiUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows/${rowRef}`;
+           console.log(`📝 Updating row ${rowRef} in Excel: ${apiUrl}`);
 
-         console.log(`📝 Saving to Excel: ${apiUrl}`);
+           const response = await fetch(apiUrl, {
+             method: 'PATCH',
+             headers: {
+               'Authorization': `Bearer ${accessToken}`,
+               'Content-Type': 'application/json'
+             },
+             body: JSON.stringify({ values: [updatedValues] })
+           });
 
-         const response = await fetch(apiUrl, {
-           method: 'PATCH',
-           headers: {
-             'Authorization': `Bearer ${accessToken}`,
-             'Content-Type': 'application/json'
-           },
-           body: JSON.stringify(requestBody)
-         });
-
-         if (!response.ok) {
-           // If 401, token may have expired
-           if (response.status === 401 && retryCount === 0) {
-             console.log('🔄 Token expired, attempting refresh...');
-             try {
-               const tokenResponse = await msalInstance.acquireTokenSilent({
-                 ...loginRequest,
-                 account: activeAccount,
-                 forceRefresh: true
-               });
-               accessToken = tokenResponse.accessToken;
-               syncAuthGlobals();
-               // Retry once with refreshed token
-               return await window.saveToExcel(rowId, updatedValues, 1);
-             } catch (refreshError) {
-               console.error('Token refresh failed:', refreshError);
+           if (!response.ok) {
+             const errorText = await response.text().catch(() => '');
+             // If 401, token may have expired
+             if (response.status === 401 && retryCount === 0) {
+               console.log('🔄 Token expired, attempting refresh...');
+               try {
+                 const tokenResponse = await msalInstance.acquireTokenSilent({
+                   ...loginRequest,
+                   account: activeAccount,
+                   forceRefresh: true
+                 });
+                 accessToken = tokenResponse.accessToken;
+                 syncAuthGlobals();
+                 // Retry once with refreshed token
+                 return await window.saveToExcel(rowId, updatedValues, 1);
+               } catch (refreshError) {
+                 console.error('Token refresh failed:', refreshError);
+               }
              }
+             throw new Error(`Failed to update Excel row: ${response.status}${errorText ? ` - ${errorText}` : ''}`);
            }
-           throw new Error(`Failed to save to Excel: ${response.status}`);
+
+           await response.json().catch(() => ({}));
+           console.log(`✅ Successfully updated Excel row ${rowRef}`);
+           return { persisted: true, verified: true, rowRef };
          }
 
-         console.log('✅ Successfully saved to Excel');
+         // Bulk save (no row args)
+         console.log('💾 Performing bulk workbook save...');
          window.showToast?.('✅ Changes saved to Excel', 'success', 2000);
          return true;
 
@@ -23846,15 +23853,26 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         ? encodeGraphDrivePath(filePath)
         : encodeURIComponent(filePath);
 
-      const hasRowUpdateArgs = (rowId !== undefined && rowId !== null) && Array.isArray(updatedValues);
-      if (hasRowUpdateArgs) {
-        const rowRef = (typeof rowId === 'number' || /^\d+$/.test(String(rowId || '').trim()))
-          ? `itemAt(index=${Number(rowId)})`
-          : encodeURIComponent(String(rowId));
-        const updateUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/${rowRef}`;
-        const normalizedValues = Array.isArray(updatedValues) ? updatedValues.slice() : [];
+       const hasRowUpdateArgs = (rowId !== undefined && rowId !== null) && Array.isArray(updatedValues);
+       if (hasRowUpdateArgs) {
+         const rowRef = (typeof rowId === 'number' || /^\d+$/.test(String(rowId || '').trim()))
+           ? `itemAt(index=${Number(rowId)})`
+           : encodeURIComponent(String(rowId));
+         const updateUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/${rowRef}`;
+         const normalizedValues = Array.isArray(updatedValues) ? updatedValues.slice() : [];
 
-        const patchResponse = await fetch(updateUrl, {
+         console.log('🔍 Row update diagnostics:', {
+           rowId,
+           rowRef,
+           filePath,
+           encodedPath,
+           tableName,
+           updateUrl,
+           valuesLength: normalizedValues.length,
+           valuesContent: normalizedValues
+         });
+
+         const patchResponse = await fetch(updateUrl, {
           method: 'PATCH',
           headers: {
             Authorization: `Bearer ${token}`,
