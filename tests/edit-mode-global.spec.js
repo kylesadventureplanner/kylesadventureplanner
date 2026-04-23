@@ -195,8 +195,13 @@ test.describe('Edit Mode – target-table selectors', () => {
       window.adventuresData = [{ values: [row] }];
 
       window.__saveCalls = 0;
-      window.saveToExcel = async () => {
+      window.__saveRows = [];
+      window.saveToExcel = async (rowIndex, values) => {
         window.__saveCalls += 1;
+        if (typeof rowIndex === 'number' && Array.isArray(values)) {
+          window.__saveRows.push({ rowIndex, values: values.slice() });
+          return { persisted: true, verified: true, rowRef: `itemAt(index=${rowIndex})` };
+        }
         return true;
       };
 
@@ -227,6 +232,10 @@ test.describe('Edit Mode – target-table selectors', () => {
     });
 
     await expect.poll(() => page.evaluate(() => Number(window.__saveCalls || 0)), { timeout: 10000 }).toBeGreaterThanOrEqual(2);
+    await expect.poll(() => page.evaluate(() => window.__saveRows || []), { timeout: 10000 })
+      .toEqual(expect.arrayContaining([
+        expect.objectContaining({ rowIndex: 0 })
+      ]));
     await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[2] || '')), { timeout: 10000 })
       .toContain('playwright-persist.example');
     await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[5] || '')), { timeout: 10000 })
@@ -242,10 +251,15 @@ test.describe('Edit Mode – target-table selectors', () => {
         window.renderAutomationWriteDiagnostics('desc-write-diagnostics', {
           success: true,
           persisted: true,
-          persistMode: 'saveToExcel',
+          persistMode: 'saveToExcel-row-patch',
           persistReason: '',
           processedTargets: 1,
           persistedTargets: 1,
+          rowsChanged: 1,
+          persistedRows: 1,
+          verifiedRowsChanged: 1,
+          verificationMode: 'row-reread',
+          verificationReason: '',
           dryRun: false,
           failedTargets: 0
         });
@@ -254,6 +268,16 @@ test.describe('Edit Mode – target-table selectors', () => {
 
     await expect.poll(() => page.locator('#desc-write-diagnostics').innerText(), { timeout: 10000 })
       .toContain('saved to Excel');
+    await expect.poll(() => page.evaluate(() => window.__populatePersistResult), { timeout: 10000 })
+      .toMatchObject({ rowsChanged: 1, persistedRows: 1, verifiedRowsChanged: 1, postWriteVerified: true, verificationMode: 'row-reread' });
+    await expect.poll(() => page.evaluate(() => window.__hoursPersistResult), { timeout: 10000 })
+      .toMatchObject({ rowsChanged: 1, persistedRows: 1, verifiedRowsChanged: 1, postWriteVerified: true, verificationMode: 'row-reread' });
+    await expect.poll(() => page.evaluate(() => window.__tagPersistResult), { timeout: 10000 })
+      .toMatchObject({ rowsChanged: 1, persistedRows: 1, verifiedRowsChanged: 1, postWriteVerified: true, verificationMode: 'row-reread' });
+    await expect.poll(() => page.locator('#desc-write-diagnostics').innerText(), { timeout: 10000 })
+      .toContain('1 row changed');
+    await expect.poll(() => page.locator('#desc-write-diagnostics').innerText(), { timeout: 10000 })
+      .toContain('verified 1/1 row');
   });
 
   test('Add Places includes Festival Sources config flow with back navigation and persistence', async ({ page }) => {

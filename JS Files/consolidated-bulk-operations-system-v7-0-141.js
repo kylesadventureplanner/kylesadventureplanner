@@ -91,29 +91,72 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
   const operation = String(options.operation || 'automation').trim();
   const dryRun = !!options.dryRun;
   const updatedCount = Number(options.updatedCount || 0);
+  const changedRows = Array.isArray(options.changedRows) ? options.changedRows.filter((item) => item && Array.isArray(item.values)) : [];
 
   if (dryRun || updatedCount <= 0) {
-    return { persisted: false, mode: 'skipped', reason: dryRun ? 'dry-run' : 'no-updates' };
+    return { persisted: false, mode: 'skipped', reason: dryRun ? 'dry-run' : 'no-updates', rowsChanged: changedRows.length, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: 'skipped', verificationReason: dryRun ? 'dry-run' : 'no-updates' };
   }
 
   try {
+    if (changedRows.length && host && typeof host.saveToExcel === 'function' && host.saveToExcel.length >= 1) {
+      let persistedRows = 0;
+      let verifiedRowsChanged = 0;
+      for (const row of changedRows) {
+        const result = await host.saveToExcel(row.rowIndex, row.values);
+        persistedRows += 1;
+        if (result && typeof result === 'object' && result.verified) verifiedRowsChanged += 1;
+      }
+      console.log(`💾 ${operation}: persisted ${persistedRows} edited row(s) via row-level saveToExcel()`);
+      return {
+        persisted: persistedRows > 0,
+        mode: 'saveToExcel-row-patch',
+        reason: '',
+        rowsChanged: changedRows.length,
+        persistedRows,
+        verifiedRowsChanged,
+        postWriteVerified: verifiedRowsChanged === persistedRows,
+        verificationMode: 'row-reread',
+        verificationReason: verifiedRowsChanged === persistedRows ? '' : 'one-or-more-row-verifications-failed'
+      };
+    }
+
     if (host && typeof host.saveToExcel === 'function') {
       await host.saveToExcel();
       console.log(`💾 ${operation}: persisted workbook changes via saveToExcel()`);
-      return { persisted: true, mode: 'saveToExcel', reason: '' };
+      return {
+        persisted: true,
+        mode: 'saveToExcel',
+        reason: '',
+        rowsChanged: changedRows.length || updatedCount,
+        persistedRows: changedRows.length || updatedCount,
+        verifiedRowsChanged: 0,
+        postWriteVerified: false,
+        verificationMode: 'not-supported',
+        verificationReason: 'bulk-save-verification-unavailable'
+      };
     }
 
     if (typeof window.saveToExcel === 'function') {
       await window.saveToExcel();
       console.log(`💾 ${operation}: persisted workbook changes via local saveToExcel()`);
-      return { persisted: true, mode: 'saveToExcel-local', reason: '' };
+      return {
+        persisted: true,
+        mode: 'saveToExcel-local',
+        reason: '',
+        rowsChanged: changedRows.length || updatedCount,
+        persistedRows: changedRows.length || updatedCount,
+        verifiedRowsChanged: 0,
+        postWriteVerified: false,
+        verificationMode: 'not-supported',
+        verificationReason: 'bulk-save-verification-unavailable'
+      };
     }
 
     console.warn(`⚠️ ${operation}: no workbook save API found (saveToExcel unavailable)`);
-    return { persisted: false, mode: 'unavailable', reason: 'saveToExcel-unavailable' };
+    return { persisted: false, mode: 'unavailable', reason: 'saveToExcel-unavailable', rowsChanged: changedRows.length || updatedCount, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: 'unavailable', verificationReason: 'saveToExcel-unavailable' };
   } catch (error) {
     console.error(`❌ ${operation}: workbook persistence failed`, error);
-    return { persisted: false, mode: 'error', reason: String(error && error.message ? error.message : error) };
+    return { persisted: false, mode: 'error', reason: String(error && error.message ? error.message : error), rowsChanged: changedRows.length || updatedCount, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: 'error', verificationReason: String(error && error.message ? error.message : error) };
   }
 }
 
@@ -467,6 +510,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
+  let verifiedRowsChanged = 0;
   const startTime = new Date();
 
   const updateDisplay = (processed, status = 'Processing') => {
@@ -592,6 +636,11 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             if (!alreadyAppended) {
               mainWindow.adventuresData.push({ values: [rowValues] });
             }
+            const presentNow = mainWindow.adventuresData.some((entry) => {
+              const values = entry && entry.values && Array.isArray(entry.values[0]) ? entry.values[0] : [];
+              return String(values[1] || '').trim() === String(placeId || '').trim();
+            });
+            if (presentNow) verifiedRowsChanged += 1;
           }
 
           successCount++;
@@ -714,7 +763,13 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
       skippedCount,
       results,
       dryRun,
-      elapsed
+      elapsed,
+      rowsChanged: dryRun ? 0 : successCount,
+      persistedRows: dryRun ? 0 : successCount,
+      verifiedRowsChanged: dryRun ? 0 : verifiedRowsChanged,
+      postWriteVerified: !dryRun && successCount > 0 && verifiedRowsChanged === successCount,
+      verificationMode: dryRun ? 'dry-run' : 'loaded-data-presence',
+      verificationReason: dryRun ? 'dry-run' : (successCount > 0 && verifiedRowsChanged !== successCount ? 'one-or-more-added-rows-not-found-in-loaded-data' : '')
     };
   } catch (err) {
     console.error('❌ Bulk add error:', err);
@@ -726,7 +781,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
         </div>
       </div>
     `;
-    return { success: false, error: err.message, elapsed: Math.round((new Date() - startTime) / 1000) };
+    return { success: false, error: err.message, elapsed: Math.round((new Date() - startTime) / 1000), rowsChanged: 0, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: 'error', verificationReason: err.message };
   }
 };
 
@@ -767,6 +822,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
   let updatedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
+  const changedRows = [];
 
   const updateDisplay = (status) => {
     displayElement.innerHTML = status;
@@ -863,6 +919,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
 
           if (fieldsCorrected.length > 0) {
             updatedCount++;
+            changedRows.push({ rowIndex: i, values: Array.isArray(values) ? values.slice() : [] });
           } else {
             skippedCount++;
           }
@@ -929,7 +986,8 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
     const persistence = await persistAutomationWorkbookChanges(mainWindow, {
       operation: 'populate-missing-fields',
       dryRun,
-      updatedCount
+      updatedCount,
+      changedRows
     });
 
     // Check if Google Places API key is configured
@@ -1021,7 +1079,13 @@ ${results.map((r, i) => {
       dryRun,
       persisted: !!persistence.persisted,
       persistMode: persistence.mode,
-      persistReason: persistence.reason
+      persistReason: persistence.reason,
+      rowsChanged: changedRows.length,
+      persistedRows: persistence.persistedRows,
+      verifiedRowsChanged: persistence.verifiedRowsChanged,
+      postWriteVerified: persistence.postWriteVerified,
+      verificationMode: persistence.verificationMode,
+      verificationReason: persistence.verificationReason
     };
   } catch (err) {
     console.error('❌ Error:', err);
@@ -1070,6 +1134,7 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
   let updatedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
+  const changedRows = [];
 
   const updateDisplay = (status) => {
     displayElement.innerHTML = status;
@@ -1132,6 +1197,7 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
         if (!dryRun) {
           values[activeCols.HOURS] = details.hours;
           updatedCount++;
+          changedRows.push({ rowIndex: i, values: Array.isArray(values) ? values.slice() : [] });
         } else {
           updatedCount++;
         }
@@ -1187,7 +1253,8 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
     const persistence = await persistAutomationWorkbookChanges(mainWindow, {
       operation: 'update-hours-only',
       dryRun,
-      updatedCount
+      updatedCount,
+      changedRows
     });
 
     const resultHTML = `
@@ -1262,7 +1329,13 @@ ${results.map((r, i) => {
       dryRun,
       persisted: !!persistence.persisted,
       persistMode: persistence.mode,
-      persistReason: persistence.reason
+      persistReason: persistence.reason,
+      rowsChanged: changedRows.length,
+      persistedRows: persistence.persistedRows,
+      verifiedRowsChanged: persistence.verifiedRowsChanged,
+      postWriteVerified: persistence.postWriteVerified,
+      verificationMode: persistence.verificationMode,
+      verificationReason: persistence.verificationReason
     };
   } catch (err) {
     console.error('❌ Error:', err);
@@ -1493,6 +1566,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
   let skippedCount = 0;
   let errorCount = 0;
   const previewItems = [];
+  const changedRows = [];
 
   const escapeHtml = (value) => String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -1580,6 +1654,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         if (!dryRun && generatedDesc) {
           values[activeCols.DESCRIPTION] = generatedDesc;
           updatedCount++;
+          changedRows.push({ rowIndex: i, values: Array.isArray(values) ? values.slice() : [] });
           results.push({ name, status: 'updated', message: `Set description (${generatedDesc.length} chars)` });
           if (previewItems.length < 3) {
             previewItems.push({ name: name || '(no name)', description: generatedDesc });
@@ -1603,7 +1678,8 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
     const persistence = await persistAutomationWorkbookChanges(mainWindow, {
       operation: 'update-descriptions',
       dryRun,
-      updatedCount
+      updatedCount,
+      changedRows
     });
 
     updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
@@ -1613,7 +1689,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       ${buildPreviewHtml()}
     </div>`);
 
-    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, previewItems: previewItems.slice(), persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason };
+    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, previewItems: previewItems.slice(), persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason, rowsChanged: changedRows.length, persistedRows: persistence.persistedRows, verifiedRowsChanged: persistence.verifiedRowsChanged, postWriteVerified: persistence.postWriteVerified, verificationMode: persistence.verificationMode, verificationReason: persistence.verificationReason };
   } catch (err) {
     console.error('❌ Error updating descriptions:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);
@@ -1650,6 +1726,7 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
   let updatedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
+  const changedRows = [];
 
   const updateDisplay = (status) => { displayElement.innerHTML = status; };
 
@@ -1690,6 +1767,7 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
 
           if (updated.length > 0) {
             updatedCount++;
+            changedRows.push({ rowIndex: i, values: Array.isArray(values) ? values.slice() : [] });
             results.push({ name, status: 'updated', message: `Updated: ${updated.join(', ')}` });
           } else {
             skippedCount++;
@@ -1720,7 +1798,8 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
     const persistence = await persistAutomationWorkbookChanges(mainWindow, {
       operation: 'force-update-all-fields',
       dryRun,
-      updatedCount
+      updatedCount,
+      changedRows
     });
 
     updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
@@ -1729,7 +1808,7 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
       <div style="font-size:12px;color:${persistence.persisted ? '#047857' : '#92400e'};margin-top:8px;">💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}</div>
     </div>`);
 
-    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason };
+    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason, rowsChanged: changedRows.length, persistedRows: persistence.persistedRows, verifiedRowsChanged: persistence.verifiedRowsChanged, postWriteVerified: persistence.postWriteVerified, verificationMode: persistence.verificationMode, verificationReason: persistence.verificationReason };
   } catch (err) {
     console.error('❌ Error force-updating fields:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);

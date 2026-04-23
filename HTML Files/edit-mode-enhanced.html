@@ -3471,6 +3471,12 @@
           persistedTargets: 0,
           dryRun: false,
           failedTargets: 1,
+          rowsChanged: 0,
+          persistedRows: 0,
+          verifiedRowsChanged: 0,
+          postWriteVerified: false,
+          verificationMode: 'unavailable',
+          verificationReason: 'no-targets-selected',
           targetSummaries: []
         };
       }
@@ -3494,6 +3500,12 @@
         persistedTargets: 0,
         dryRun: false,
         failedTargets: 0,
+        rowsChanged: 0,
+        persistedRows: 0,
+        verifiedRowsChanged: 0,
+        postWriteVerified: false,
+        verificationMode: '',
+        verificationReason: '',
         targetSummaries: []
       };
       for (let i = 0; i < targets.length; i += 1) {
@@ -3519,15 +3531,27 @@
             aggregate.persisted = true;
             aggregate.persistedTargets += 1;
           }
+          aggregate.rowsChanged += Math.max(0, Number(result && result.rowsChanged) || 0);
+          aggregate.persistedRows += Math.max(0, Number(result && result.persistedRows) || 0);
+          aggregate.verifiedRowsChanged += Math.max(0, Number(result && result.verifiedRowsChanged) || 0);
+          aggregate.postWriteVerified = aggregate.postWriteVerified || !!(result && result.postWriteVerified);
           if (!aggregate.persistMode && result && result.persistMode) aggregate.persistMode = String(result.persistMode);
           if (!aggregate.persistReason && result && result.persistReason) aggregate.persistReason = String(result.persistReason);
+          if (!aggregate.verificationMode && result && result.verificationMode) aggregate.verificationMode = String(result.verificationMode);
+          if (!aggregate.verificationReason && result && result.verificationReason) aggregate.verificationReason = String(result.verificationReason);
           aggregate.targetSummaries.push({
             tableName: String(target.tableName || ''),
             success: ok,
             persisted: !!(result && result.persisted),
             persistMode: String((result && result.persistMode) || ''),
             persistReason: String((result && result.persistReason) || ''),
-            dryRun: !!(result && result.dryRun)
+            dryRun: !!(result && result.dryRun),
+            rowsChanged: Math.max(0, Number(result && result.rowsChanged) || 0),
+            persistedRows: Math.max(0, Number(result && result.persistedRows) || 0),
+            verifiedRowsChanged: Math.max(0, Number(result && result.verifiedRowsChanged) || 0),
+            postWriteVerified: !!(result && result.postWriteVerified),
+            verificationMode: String((result && result.verificationMode) || ''),
+            verificationReason: String((result && result.verificationReason) || '')
           });
         } catch (error) {
           messages.push(`❌ ${target.tableName}: ${error && error.message ? error.message : 'Failed'}`);
@@ -3540,7 +3564,13 @@
             persisted: false,
             persistMode: 'error',
             persistReason: String(error && error.message ? error.message : 'Failed'),
-            dryRun: false
+            dryRun: false,
+            rowsChanged: 0,
+            persistedRows: 0,
+            verifiedRowsChanged: 0,
+            postWriteVerified: false,
+            verificationMode: 'error',
+            verificationReason: String(error && error.message ? error.message : 'Failed')
           });
         }
       }
@@ -3562,10 +3592,15 @@
       const processedTargets = Math.max(0, Number(safe.processedTargets) || 0);
       const persistedTargets = Math.max(0, Number(safe.persistedTargets) || 0);
       const failedTargets = Math.max(0, Number(safe.failedTargets) || 0);
+      const rowsChanged = Math.max(0, Number(safe.rowsChanged) || 0);
+      const persistedRows = Math.max(0, Number(safe.persistedRows) || 0);
+      const verifiedRowsChanged = Math.max(0, Number(safe.verifiedRowsChanged) || 0);
       const dryRun = !!safe.dryRun;
       const persisted = !!safe.persisted;
       const persistMode = String(safe.persistMode || '').trim();
       const persistReason = String(safe.persistReason || '').trim();
+      const verificationMode = String(safe.verificationMode || '').trim();
+      const verificationReason = String(safe.verificationReason || '').trim();
 
       let text = '💾 Workbook write diagnostics: not run yet.';
       let color = '#64748b';
@@ -3573,10 +3608,15 @@
         text = `💾 Workbook write diagnostics: dry run only${processedTargets ? ` • ${processedTargets} target${processedTargets === 1 ? '' : 's'}` : ''}`;
         color = '#92400e';
       } else if (persisted) {
-        text = `💾 Workbook write diagnostics: saved to Excel${persistedTargets ? ` • ${persistedTargets}/${processedTargets || persistedTargets} target${(processedTargets || persistedTargets) === 1 ? '' : 's'}` : ''}${failedTargets ? ` • ${failedTargets} failed` : ''}`;
+        const verifySuffix = verificationMode === 'row-reread'
+          ? ` • verified ${verifiedRowsChanged}/${persistedRows || rowsChanged || verifiedRowsChanged} row${(persistedRows || rowsChanged || verifiedRowsChanged) === 1 ? '' : 's'}`
+          : verificationReason
+            ? ` • verification ${verificationReason}`
+            : '';
+        text = `💾 Workbook write diagnostics: saved to Excel${persistedTargets ? ` • ${persistedTargets}/${processedTargets || persistedTargets} target${(processedTargets || persistedTargets) === 1 ? '' : 's'}` : ''}${rowsChanged ? ` • ${rowsChanged} row${rowsChanged === 1 ? '' : 's'} changed` : ''}${verifySuffix}${failedTargets ? ` • ${failedTargets} failed` : ''}`;
         color = '#047857';
       } else if (processedTargets > 0) {
-        const suffix = persistReason || persistMode || (failedTargets ? 'one or more targets failed' : 'no workbook changes persisted');
+        const suffix = persistReason || verificationReason || persistMode || (failedTargets ? 'one or more targets failed' : 'no workbook changes persisted');
         text = `💾 Workbook write diagnostics: not persisted${suffix ? ` (${suffix})` : ''}`;
         color = failedTargets ? '#b91c1c' : '#92400e';
       }

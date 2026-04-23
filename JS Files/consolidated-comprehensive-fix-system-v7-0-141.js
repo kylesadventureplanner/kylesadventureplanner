@@ -790,6 +790,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         DESCRIPTION: safeCol(activeCols.DESCRIPTION, 16)
       };
       let persistedRowUpdates = 0;
+      const changedRows = [];
 
       for (let i = 0; i < data.length; i++) {
         const location = data[i];
@@ -844,10 +845,9 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                   if (rowValues) {
                     if (freshData.website) rowValues[c.WEBSITE] = String(freshData.website);
                     if (freshData.hours) {
-                      const normalizedHours = typeof mainWindow.normalizeOperationHours === 'function'
+                      rowValues[c.HOURS] = typeof mainWindow.normalizeOperationHours === 'function'
                         ? String(mainWindow.normalizeOperationHours(freshData.hours) || '')
                         : String(freshData.hours || '');
-                      rowValues[c.HOURS] = normalizedHours;
                     }
                     if (freshData.address) rowValues[c.ADDRESS] = String(freshData.address);
                     if (freshData.phone) rowValues[c.PHONE] = String(freshData.phone);
@@ -855,6 +855,7 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
                     if (freshData.directions) rowValues[c.DIRECTIONS] = String(freshData.directions);
                     if (freshData.description) rowValues[c.DESCRIPTION] = String(freshData.description);
                     persistedRowUpdates++;
+                    changedRows.push({ rowIndex: i, values: Array.isArray(rowValues) ? rowValues.slice() : [] });
                   }
                   console.log(`✅ Refreshed: ${placeName}`);
                 } else {
@@ -894,12 +895,22 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
 
       let workbookPersisted = false;
       let workbookPersistError = '';
+      let verifiedRowsChanged = 0;
       if (!dryRun && persistedRowUpdates > 0) {
         if (mainWindow && typeof mainWindow.saveToExcel === 'function') {
           try {
-            await mainWindow.saveToExcel();
-            workbookPersisted = true;
-            console.log(`💾 Refresh Place IDs persisted ${persistedRowUpdates} row updates to workbook`);
+            if (mainWindow.saveToExcel.length >= 1 && changedRows.length) {
+              for (const row of changedRows) {
+                const saveResult = await mainWindow.saveToExcel(row.rowIndex, row.values);
+                if (saveResult && typeof saveResult === 'object' && saveResult.verified) verifiedRowsChanged += 1;
+              }
+              workbookPersisted = true;
+              console.log(`💾 Refresh Place IDs persisted ${persistedRowUpdates} row updates to workbook via row patching`);
+            } else {
+              await mainWindow.saveToExcel();
+              workbookPersisted = true;
+              console.log(`💾 Refresh Place IDs persisted ${persistedRowUpdates} row updates to workbook`);
+            }
           } catch (persistErr) {
             workbookPersistError = String(persistErr && persistErr.message ? persistErr.message : persistErr);
             console.error('❌ Failed to persist refreshed Place ID data:', persistErr);
@@ -971,13 +982,19 @@ console.log('🤖 Consolidated Comprehensive Fix System v7.0.141 Loading...');
         success: failed === 0,
         message: `Refresh Complete: ${successful} success, ${failed} failed, ${skipped} skipped`,
         persisted: !!workbookPersisted,
-        persistMode: dryRun ? 'dry-run' : (workbookPersisted ? 'saveToExcel' : (persistedRowUpdates > 0 ? 'error' : 'no-op')),
+        persistMode: dryRun ? 'dry-run' : (workbookPersisted ? (changedRows.length ? 'saveToExcel-row-patch' : 'saveToExcel') : (persistedRowUpdates > 0 ? 'error' : 'no-op')),
         persistReason: dryRun ? 'dry-run' : (workbookPersisted ? '' : (workbookPersistError || (persistedRowUpdates > 0 ? 'saveToExcel-unavailable' : 'no-row-updates'))),
         dryRun,
         updatedCount: successful,
         skippedCount: skipped,
         errorCount: failed,
-        persistedRowUpdates
+        persistedRowUpdates,
+        rowsChanged: changedRows.length,
+        persistedRows: workbookPersisted ? changedRows.length : 0,
+        verifiedRowsChanged,
+        postWriteVerified: changedRows.length > 0 ? verifiedRowsChanged === changedRows.length : false,
+        verificationMode: dryRun ? 'dry-run' : (changedRows.length ? 'row-reread' : 'no-op'),
+        verificationReason: dryRun ? 'dry-run' : (changedRows.length ? (verifiedRowsChanged === changedRows.length ? '' : 'one-or-more-row-verifications-failed') : 'no-row-updates')
       };
 
     } catch (error) {

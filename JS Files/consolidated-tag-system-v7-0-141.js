@@ -1114,6 +1114,7 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
   }
 
   const results = { success: 0, failed: 0, skipped: 0, details: [] };
+  const changedRows = [];
 
   try {
     for (let index = 0; index < adventuresData.length; index++) {
@@ -1151,6 +1152,7 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
             if (merged.join(', ') !== String(values[tagsCol] || '').trim()) {
               values[tagsCol] = merged.join(', ');
               workbookTagUpdates++;
+              changedRows.push({ rowIndex: index, values: Array.isArray(values) ? values.slice() : [] });
             }
           }
           results.success++;
@@ -1174,24 +1176,62 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
 
     if (!dryRun && workbookTagUpdates > 0) {
       try {
-        if (mainWindow && typeof mainWindow.saveToExcel === 'function') {
+        if (mainWindow && typeof mainWindow.saveToExcel === 'function' && mainWindow.saveToExcel.length >= 1 && changedRows.length) {
+          let verifiedRowsChanged = 0;
+          for (const row of changedRows) {
+            const saveResult = await mainWindow.saveToExcel(row.rowIndex, row.values);
+            if (saveResult && typeof saveResult === 'object' && saveResult.verified) verifiedRowsChanged += 1;
+          }
+          results.persisted = true;
+          results.persistMode = 'saveToExcel-row-patch';
+          results.rowsChanged = changedRows.length;
+          results.persistedRows = changedRows.length;
+          results.verifiedRowsChanged = verifiedRowsChanged;
+          results.postWriteVerified = verifiedRowsChanged === changedRows.length;
+          results.verificationMode = 'row-reread';
+          results.verificationReason = results.postWriteVerified ? '' : 'one-or-more-row-verifications-failed';
+        } else if (mainWindow && typeof mainWindow.saveToExcel === 'function') {
           await mainWindow.saveToExcel();
           results.persisted = true;
           results.persistMode = 'saveToExcel';
+          results.rowsChanged = changedRows.length;
+          results.persistedRows = changedRows.length;
+          results.verifiedRowsChanged = 0;
+          results.postWriteVerified = false;
+          results.verificationMode = 'not-supported';
+          results.verificationReason = 'bulk-save-verification-unavailable';
         } else {
           results.persisted = false;
           results.persistMode = 'unavailable';
           results.persistReason = 'saveToExcel-unavailable';
+          results.rowsChanged = changedRows.length;
+          results.persistedRows = 0;
+          results.verifiedRowsChanged = 0;
+          results.postWriteVerified = false;
+          results.verificationMode = 'unavailable';
+          results.verificationReason = 'saveToExcel-unavailable';
         }
       } catch (error) {
         results.persisted = false;
         results.persistMode = 'error';
         results.persistReason = String(error && error.message ? error.message : error);
+        results.rowsChanged = changedRows.length;
+        results.persistedRows = 0;
+        results.verifiedRowsChanged = 0;
+        results.postWriteVerified = false;
+        results.verificationMode = 'error';
+        results.verificationReason = String(error && error.message ? error.message : error);
       }
     } else if (!dryRun) {
       results.persisted = workbookTagUpdates === 0;
       results.persistMode = workbookTagUpdates === 0 ? 'no-op' : 'skipped';
       results.persistReason = workbookTagUpdates === 0 ? 'no-row-tag-changes' : '';
+      results.rowsChanged = changedRows.length;
+      results.persistedRows = workbookTagUpdates === 0 ? 0 : changedRows.length;
+      results.verifiedRowsChanged = 0;
+      results.postWriteVerified = false;
+      results.verificationMode = workbookTagUpdates === 0 ? 'no-op' : 'skipped';
+      results.verificationReason = workbookTagUpdates === 0 ? 'no-row-tag-changes' : '';
     }
 
     console.log(`✅ Auto-tag complete: ${results.success} ${verb}, ${results.failed} failed, ${results.skipped} skipped`);

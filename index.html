@@ -23836,18 +23836,71 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       window.addRowToExcel = window.addRowToExcel;
     }
 
-    window.saveToExcel = async function () {
-      console.log('💾 Final saveToExcel override: appending pending rows only...');
-
+    window.saveToExcel = async function (rowId, updatedValues, retryCount = 0) {
       const token = window.accessToken;
       if (!token) throw new Error('User not authenticated. Please sign in.');
-      if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) return true;
 
       const filePath = window.filePath || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
       const tableName = window.tableName || 'MyList';
-      const encodedPath = encodeURIComponent(filePath);
-      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
+      const encodedPath = typeof encodeGraphDrivePath === 'function'
+        ? encodeGraphDrivePath(filePath)
+        : encodeURIComponent(filePath);
 
+      const hasRowUpdateArgs = (rowId !== undefined && rowId !== null) && Array.isArray(updatedValues);
+      if (hasRowUpdateArgs) {
+        const rowRef = (typeof rowId === 'number' || /^\d+$/.test(String(rowId || '').trim()))
+          ? `itemAt(index=${Number(rowId)})`
+          : encodeURIComponent(String(rowId));
+        const updateUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/${rowRef}`;
+        const normalizedValues = Array.isArray(updatedValues) ? updatedValues.slice() : [];
+
+        const patchResponse = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ values: [normalizedValues] })
+        });
+
+        if (!patchResponse.ok) {
+          const errorText = await patchResponse.text().catch(() => '');
+          if (patchResponse.status === 401 && retryCount === 0 && typeof window.rehydrateAuthState === 'function') {
+            const refreshed = await window.rehydrateAuthState();
+            if (refreshed) return await window.saveToExcel(rowId, updatedValues, 1);
+          }
+          throw new Error(`Failed to update Excel row: ${patchResponse.status}${errorText ? ` - ${errorText}` : ''}`);
+        }
+
+        await patchResponse.json().catch(() => ({}));
+
+        let verified = false;
+        try {
+          const verifyResponse = await fetch(updateUrl, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (verifyResponse.ok) {
+            const verifyPayload = await verifyResponse.json().catch(() => ({}));
+            const saved = Array.isArray(verifyPayload.values) && Array.isArray(verifyPayload.values[0])
+              ? verifyPayload.values[0]
+              : [];
+            verified = JSON.stringify(saved) === JSON.stringify(normalizedValues);
+          }
+        } catch (_verifyError) {
+          verified = false;
+        }
+
+        console.log(`✅ Updated Excel row ${rowRef}${verified ? ' [verified]' : ''}`);
+        return { persisted: true, verified, rowRef };
+      }
+
+      console.log('💾 Final saveToExcel override: appending pending rows only...');
+      if (!Array.isArray(window.adventuresData) || window.adventuresData.length === 0) return true;
+
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows`;
       const baseline = Number.isInteger(window.__excelLoadedRowCount) ? window.__excelLoadedRowCount : 0;
       const pendingItems = window.adventuresData.slice(baseline);
       if (!pendingItems.length) {

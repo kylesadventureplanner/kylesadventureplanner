@@ -89,6 +89,26 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return filePath + ' / ' + tableName;
   }
 
+    function hasLoadedRowForPlace(mainWindow, details, placeId) {
+      const host = mainWindow || window;
+      const rows = Array.isArray(host.adventuresData) ? host.adventuresData : [];
+      const nameCol = typeof host.getColumnIndexByName === 'function'
+        ? Number(host.getColumnIndexByName('Name'))
+        : 0;
+      const placeIdCol = typeof host.getColumnIndexByName === 'function'
+        ? Number(host.getColumnIndexByName('Google Place ID', ['GooglePlaceId']))
+        : 1;
+      const safeNameCol = Number.isInteger(nameCol) && nameCol >= 0 ? nameCol : 0;
+      const safePlaceIdCol = Number.isInteger(placeIdCol) && placeIdCol >= 0 ? placeIdCol : 1;
+      const wantedName = safeString(details && details.name).trim();
+      const wantedPlaceId = safeString(placeId).trim();
+      return rows.some((row) => {
+        const values = row && row.values && Array.isArray(row.values[0]) ? row.values[0] : [];
+        return safeString(values[safePlaceIdCol]).trim() === wantedPlaceId
+          && safeString(values[safeNameCol]).trim() === wantedName;
+      });
+    }
+
   function buildTargetCacheKey(target) {
     var safeTarget = target && typeof target === 'object' ? target : {};
     return safeString(safeTarget.filePath) + '|' + safeString(safeTarget.tableName);
@@ -1933,7 +1953,13 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           message: `🧪 [DRY RUN] Would add: ${safeString((preResolved && preResolved.name) || input)}`,
           placeName: safeString((preResolved && preResolved.name) || input),
           placeId: safeString(preResolved && preResolved.placeId),
-          details: preResolved || null
+          details: preResolved || null,
+          rowsChanged: 0,
+          persistedRows: 0,
+          verifiedRowsChanged: 0,
+          postWriteVerified: false,
+          verificationMode: 'dry-run',
+          verificationReason: 'dry-run'
         };
       }
 
@@ -2010,7 +2036,13 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
             placeName: details.name,
             placeId,
             details,
-            queueId: queueItem && queueItem.id ? String(queueItem.id) : ''
+            queueId: queueItem && queueItem.id ? String(queueItem.id) : '',
+            rowsChanged: 1,
+            persistedRows: 0,
+            verifiedRowsChanged: 0,
+            postWriteVerified: false,
+            verificationMode: 'queued-offline',
+            verificationReason: 'queued-for-sync'
           };
         }
 
@@ -2033,13 +2065,20 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         }
 
         recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, { queued: false });
+        const rowPresent = hasLoadedRowForPlace(mainWindow, details, placeId);
 
         return {
           success: true,
           message: `Added ${details.name} to ${formatTargetDestination(activeTarget)}`,
           placeName: details.name,
           placeId,
-          details
+          details,
+          rowsChanged: 1,
+          persistedRows: 1,
+          verifiedRowsChanged: rowPresent ? 1 : 0,
+          postWriteVerified: rowPresent,
+          verificationMode: 'loaded-data-presence',
+          verificationReason: rowPresent ? '' : 'added-row-not-found-in-loaded-data'
         };
       } catch (error) {
         const requestIdPrefix = error?.requestId ? `[${error.requestId}] ` : '';
@@ -2059,7 +2098,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         : (placesText || '').split('\n').map((line) => line.trim()).filter(Boolean);
       if (lines.length === 0) return { success: false, error: 'No places provided' };
 
-      const results = { success: true, total: lines.length, added: 0, failed: 0, skipped: 0, details: [] };
+      const results = { success: true, total: lines.length, added: 0, failed: 0, skipped: 0, details: [], rowsChanged: 0, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: '', verificationReason: '' };
       for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
         const resolvedDetails = resolvedDetailsList[index] || null;
@@ -2070,6 +2109,11 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         const result = await this.addSinglePlace(line, inputType, dryRun, nextOptions);
         if (result && result.success) {
           results.added++;
+          results.rowsChanged += Math.max(0, Number(result.rowsChanged) || 0);
+          results.persistedRows += Math.max(0, Number(result.persistedRows) || 0);
+          results.verifiedRowsChanged += Math.max(0, Number(result.verifiedRowsChanged) || 0);
+          if (!results.verificationMode && result.verificationMode) results.verificationMode = String(result.verificationMode);
+          if (!results.verificationReason && result.verificationReason) results.verificationReason = String(result.verificationReason);
           results.details.push(`✅ ${result.placeName || line}${result.isDryRun ? ' (dry run)' : ''}`);
         } else {
           results.failed++;
@@ -2079,6 +2123,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       }
 
       results.success = results.failed === 0;
+      results.postWriteVerified = results.persistedRows > 0 && results.verifiedRowsChanged === results.persistedRows;
       results.message = `Added ${results.added}/${results.total} places (${results.failed} failed, ${results.skipped} skipped)`;
       return results;
     }
