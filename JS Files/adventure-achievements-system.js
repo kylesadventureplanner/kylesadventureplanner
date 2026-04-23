@@ -440,8 +440,16 @@ window.AdventureAchievements = (function () {
   function collectExplorerItems(subtabKey) {
     const runtime = window.__visitedState;
     const exp = runtime?.subtabExplorer?.[subtabKey];
-    if (!exp || !Array.isArray(exp.items)) return { loaded: false, items: [] };
-    return { loaded: Boolean(exp.loaded), items: exp.items };
+    if (!exp || !Array.isArray(exp.items)) {
+      return { loaded: false, loading: false, error: '', autoSyncAttempted: false, items: [] };
+    }
+    return {
+      loaded: Boolean(exp.loaded),
+      loading: Boolean(exp.loading),
+      error: String(exp.error || '').trim(),
+      autoSyncAttempted: Boolean(exp.autoSyncAttempted),
+      items: exp.items
+    };
   }
 
   function collectVisitRecordCategoryCounts(subtabKey, config) {
@@ -651,8 +659,11 @@ window.AdventureAchievements = (function () {
       modeHelp: MATCH_MODES[mode]?.help || MATCH_MODES.balanced.help,
       autoMode: explorer.loaded && explorer.items.length > 0,
       explorerLoaded: explorer.loaded,
+      explorerLoading: explorer.loading,
+      explorerError: explorer.error,
+      explorerAutoSyncAttempted: explorer.autoSyncAttempted,
       matchStats,
-      matchBreakdownText: `Matched by place ID: ${matchStats.placeId} | exact name: ${matchStats.exact} | fuzzy: ${matchStats.fuzzy} | catalog rows scanned: ${explorer.items.length} | categorized rows: ${categorizedRows}${explorer.loaded && explorer.items.length > 0 ? '' : ' (open explorer to sync counts)'}`,
+      matchBreakdownText: `Matched by place ID: ${matchStats.placeId} | exact name: ${matchStats.exact} | fuzzy: ${matchStats.fuzzy} | catalog rows scanned: ${explorer.items.length} | categorized rows: ${categorizedRows}${explorer.loaded && explorer.items.length > 0 ? '' : (explorer.loading ? ' (syncing category totals...)' : (explorer.autoSyncAttempted && explorer.error ? ' (auto-sync needs retry)' : ' (category totals auto-sync when this tab opens)'))}`,
       categoryTotals,
       categoryVisited,
       challengesById,
@@ -741,6 +752,8 @@ window.AdventureAchievements = (function () {
     const sub = getSubState(state, key);
     let button = host.querySelector(`[data-achv-sync-totals][data-achv-subtab="${key}"]`);
     const meta = host.querySelector('.visited-subtab-status-meta');
+    const isLoading = Boolean(progress && progress.explorerLoading);
+    const needsRetry = Boolean(progress && progress.explorerAutoSyncAttempted && progress.explorerError);
 
     if (progress.explorerLoaded) {
       if (button) button.remove();
@@ -760,10 +773,21 @@ window.AdventureAchievements = (function () {
       }
     }
 
-    button.textContent = 'Sync category totals';
-    button.setAttribute('title', 'Sync category totals now');
-    button.setAttribute('data-tooltip', 'Sync category totals now');
-    button.classList.toggle('is-needs-sync', !sub.syncPromptAcknowledged);
+    button.disabled = isLoading;
+    if (isLoading) {
+      button.textContent = 'Syncing category totals…';
+      button.setAttribute('title', 'Category totals are syncing automatically');
+      button.setAttribute('data-tooltip', 'Category totals are syncing automatically');
+    } else if (needsRetry) {
+      button.textContent = 'Retry category totals sync';
+      button.setAttribute('title', 'Retry category totals sync');
+      button.setAttribute('data-tooltip', 'Retry category totals sync');
+    } else {
+      button.textContent = 'Sync category totals';
+      button.setAttribute('title', 'Sync category totals now');
+      button.setAttribute('data-tooltip', 'Sync category totals now');
+    }
+    button.classList.toggle('is-needs-sync', !sub.syncPromptAcknowledged && !isLoading);
   }
 
   function renderChallengesSection(key, config, sub, progress) {

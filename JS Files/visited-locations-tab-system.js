@@ -486,6 +486,9 @@
     scheduleVisitedSubtabCtaOrderFinalization(root);
     announceProgressSubTab(root, state.activeProgressSubTab);
     scheduleVisitedSubTabInterceptionCheck(root, 0);
+    Promise.resolve()
+      .then(() => maybeAutoSyncExplorerForSubtab(root, state.activeProgressSubTab))
+      .catch(() => {});
   }
 
   function jumpToVisitedSection(targetKey) {
@@ -3089,6 +3092,7 @@
         view: 'overview',
         loading: false,
         loaded: false,
+        autoSyncAttempted: false,
         updatedAt: '',
         error: '',
         items: [],
@@ -3266,6 +3270,7 @@
     explorerState.loading = true;
     explorerState.error = '';
     renderExplorerList(root, subtabKey);
+    renderSubtabStatusBars();
     try {
       const groups = await Promise.all(config.sources.map((source) => loadExplorerSource({ ...source, key: subtabKey })));
       explorerState.items = groups.flat();
@@ -3289,6 +3294,34 @@
     await ensureExplorerDataLoaded(root, key, true);
     renderSubtabStatusBars();
     return true;
+  }
+
+  function rerenderAdventureAchievementsForSubtab(subtabKey) {
+    try {
+      if (typeof AdventureAchievements !== 'undefined' && AdventureAchievements && typeof AdventureAchievements.renderAll === 'function') {
+        AdventureAchievements.renderAll(subtabKey);
+      }
+    } catch (_error) {
+      // Achievement rerender is best-effort only.
+    }
+  }
+
+  async function maybeAutoSyncExplorerForSubtab(root, subtabKey) {
+    const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
+    if (!root || !getExplorerConfig(key) || !window.accessToken) return false;
+
+    const explorerState = getExplorerState(key);
+    if (explorerState.loaded || explorerState.loading || explorerState.autoSyncAttempted) return false;
+
+    explorerState.autoSyncAttempted = true;
+    rerenderAdventureAchievementsForSubtab(key);
+
+    try {
+      await ensureExplorerDataLoaded(root, key, false);
+      return Boolean(getExplorerState(key).loaded);
+    } finally {
+      rerenderAdventureAchievementsForSubtab(key);
+    }
   }
 
   async function openVisitedVisitLogFromAchievements(options) {
@@ -5934,6 +5967,9 @@
         renderSubtabStatusBars();
 
         const root = document.getElementById('visitedLocationsRoot');
+        Promise.resolve()
+          .then(() => maybeAutoSyncExplorerForSubtab(root, state.activeProgressSubTab))
+          .catch(() => {});
         applyTooltipInfoIcons(root);
         scheduleVisitedSubTabInterceptionCheck(root, 60);
 

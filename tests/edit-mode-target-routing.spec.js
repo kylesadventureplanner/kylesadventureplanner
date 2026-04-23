@@ -34,7 +34,10 @@ function buildResolvedPlace(label) {
 
 async function installWorkbookMocks(context, graphCalls, options = {}) {
   const failingRowTables = new Set(Array.isArray(options.failingRowTables) ? options.failingRowTables : []);
+  const failingPatchTables = new Set(Array.isArray(options.failingPatchTables) ? options.failingPatchTables : []);
   const prefixedOnlyPaths = Boolean(options.prefixedOnlyPaths);
+  const patchFailureStatus = Number(options.patchFailureStatus || 500);
+  const patchFailureBody = options.patchFailureBody || { error: { code: 'mockPatchFailed', message: 'Mock PATCH failure.' } };
   const rowStore = new Map();
   await context.route('https://graph.microsoft.com/**', async (route) => {
     const request = route.request();
@@ -104,6 +107,22 @@ async function installWorkbookMocks(context, graphCalls, options = {}) {
     }
 
     if (method === 'PATCH' && rowMatch) {
+      if (failingPatchTables.has(table)) {
+        graphCalls.push({
+          url,
+          method,
+          table,
+          workbookPath,
+          rowIndex,
+          body: JSON.parse(request.postData() || '{}')
+        });
+        await route.fulfill({
+          status: patchFailureStatus,
+          contentType: 'application/json',
+          body: JSON.stringify(patchFailureBody)
+        });
+        return;
+      }
       const body = JSON.parse(request.postData() || '{}');
       const nextValues = Array.isArray(body.values) && Array.isArray(body.values[0]) ? body.values[0].slice() : [];
       while (storedRows.length <= rowIndex) {
@@ -428,6 +447,55 @@ test.describe('Edit Mode target-table routing', () => {
       .toContain('Attempting workbook row PATCH');
     await expect.poll(() => page.locator('#workbookPatchDiagnosticsPanel').innerText(), { timeout: 10000 })
       .toContain('saved and verified');
+  });
+
+  test('full workbook PATCH diagnostics modal shows raw error payloads', async ({ page }) => {
+    const graphCalls = [];
+    await installWorkbookMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.saveToExcel === 'function', null, { timeout: 15000 });
+    await seedMainWindow(page);
+    await page.evaluate(() => {
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (input, init) => {
+        const url = String(typeof input === 'string' ? input : (input && input.url) || '');
+        const method = String((init && init.method) || (typeof input !== 'string' && input && input.method) || 'GET').toUpperCase();
+        if (method === 'PATCH' && url.includes('/tables/Nature_Locations/rows/itemAt(index=0)')) {
+          return new Response(JSON.stringify({
+            error: {
+              code: 'internalError',
+              message: 'Playwright mock row patch exploded.',
+              innerError: { trace: 'raw-payload-visible' }
+            }
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        return originalFetch(input, init);
+      };
+    });
+
+    const result = await page.evaluate(async () => {
+      window.filePath = 'Copilot_Apps/Kyles_Adventure_Finder/Nature_Locations.xlsx';
+      window.tableName = 'Nature_Locations';
+      try {
+        await window.saveToExcel(0, ['Broken row patch', 'pid-broken']);
+        return { ok: true, message: '' };
+      } catch (error) {
+        return { ok: false, message: String(error && error.message ? error.message : error) };
+      }
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('Failed to update Excel row');
+    await expect(page.locator('#workbookPatchDiagnosticsPanel')).toBeVisible();
+    await page.click('#openWorkbookPatchDiagnosticsBtn');
+    await expect(page.locator('#workbookPatchDiagnosticsModalBackdrop')).toHaveClass(/visible/);
+    await expect(page.locator('#workbookPatchDiagnosticsModalBody')).toContainText('Workbook row PATCH failed.');
+    await expect(page.locator('#workbookPatchDiagnosticsModalBody')).toContainText('Playwright mock row patch exploded.');
+    await expect(page.locator('#workbookPatchDiagnosticsModalBody')).toContainText('raw-payload-visible');
   });
 
   test('single add can be cancelled at the destination confirmation prompt', async ({ page }) => {

@@ -4674,6 +4674,127 @@
       white-space: pre-wrap;
     }
 
+    .workbook-patch-diagnostics-modal {
+      max-width: 980px;
+      width: min(96vw, 980px);
+      max-height: min(88vh, 920px);
+      padding: 18px;
+    }
+
+    .workbook-patch-diagnostics-modal-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .workbook-patch-diagnostics-modal-summary {
+      padding: 12px 14px;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .workbook-patch-diagnostics-modal-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .workbook-patch-diagnostics-history {
+      display: grid;
+      gap: 10px;
+      max-height: 56vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .workbook-patch-diagnostics-history-entry {
+      border: 1px solid #dbeafe;
+      border-radius: 12px;
+      padding: 12px;
+      background: #f8fafc;
+    }
+
+    .workbook-patch-diagnostics-history-entry[data-level="success"] {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+
+    .workbook-patch-diagnostics-history-entry[data-level="warn"] {
+      border-color: #fcd34d;
+      background: #fffbeb;
+    }
+
+    .workbook-patch-diagnostics-history-entry[data-level="error"] {
+      border-color: #fca5a5;
+      background: #fff1f2;
+    }
+
+    .workbook-patch-diagnostics-history-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+      flex-wrap: wrap;
+      font-size: 11px;
+      font-weight: 800;
+      color: #475569;
+    }
+
+    .workbook-patch-diagnostics-history-message {
+      margin-top: 6px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .workbook-patch-diagnostics-history-meta,
+    .workbook-patch-diagnostics-history-detail {
+      margin-top: 6px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #334155;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .workbook-patch-diagnostics-raw {
+      margin-top: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.8);
+      overflow: hidden;
+    }
+
+    .workbook-patch-diagnostics-raw summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #1e3a8a;
+      background: rgba(219, 234, 254, 0.65);
+    }
+
+    .workbook-patch-diagnostics-raw summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .workbook-patch-diagnostics-raw pre {
+      margin: 0;
+      padding: 12px;
+      max-height: 220px;
+      overflow: auto;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 11px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
     @media (max-width: 768px) {
       .workbook-patch-diagnostics {
         margin: 8px 12px 0;
@@ -4682,6 +4803,15 @@
 
       .workbook-patch-diagnostics-actions {
         width: 100%;
+      }
+
+      .workbook-patch-diagnostics-modal {
+        width: 96vw;
+        padding: 14px;
+      }
+
+      .workbook-patch-diagnostics-history {
+        max-height: 52vh;
       }
     }
 
@@ -8443,11 +8573,24 @@
       <div id="workbookPatchDiagnosticsMeta" class="workbook-patch-diagnostics-meta"></div>
     </div>
     <div class="workbook-patch-diagnostics-actions">
+      <button id="openWorkbookPatchDiagnosticsBtn" type="button" class="offline-action-btn" onclick="openWorkbookPatchDiagnosticsModal()">📖 Open full diagnostics</button>
       <button id="copyWorkbookPatchDiagnosticsBtn" type="button" class="offline-action-btn" onclick="copyWorkbookPatchDiagnosticsToClipboard()">📋 Copy</button>
       <button id="clearWorkbookPatchDiagnosticsBtn" type="button" class="offline-action-btn" onclick="clearWorkbookPatchDiagnostics()">🗑️ Clear</button>
     </div>
   </div>
   <div id="workbookPatchDiagnosticsList" class="workbook-patch-diagnostics-list"></div>
+</div>
+<div id="workbookPatchDiagnosticsModalBackdrop" class="modal-backdrop" style="z-index: 2100;" onclick="closeWorkbookPatchDiagnosticsModal()">
+  <div class="modal workbook-patch-diagnostics-modal" role="dialog" aria-modal="true" aria-labelledby="workbookPatchDiagnosticsModalTitle" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div id="workbookPatchDiagnosticsModalTitle" class="modal-title">Workbook row PATCH full diagnostics</div>
+        <div id="workbookPatchDiagnosticsModalSubtitle" style="font-size:12px;color:#64748b;margin-top:4px;">Complete PATCH history with raw payloads and verification details.</div>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeWorkbookPatchDiagnosticsModal()" aria-label="Close workbook diagnostics modal">&times;</button>
+    </div>
+    <div id="workbookPatchDiagnosticsModalBody" class="workbook-patch-diagnostics-modal-body"></div>
+  </div>
 </div>
 <div class="app-container">
   <!-- Tab Navigation -->
@@ -9241,7 +9384,19 @@
   }
 
   const workbookPatchDiagnostics = [];
+  const workbookPatchDiagnosticsHistory = [];
   const MAX_WORKBOOK_PATCH_DIAGNOSTICS = 8;
+  const MAX_WORKBOOK_PATCH_DIAGNOSTICS_HISTORY = 100;
+
+  function formatWorkbookPatchDiagnosticPayload(value) {
+    if (value == null) return '';
+    if (typeof value === 'string') return String(value).trim();
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch (_error) {
+      return String(value);
+    }
+  }
 
   function formatWorkbookPatchDiagnosticMeta(entry) {
     if (!entry || typeof entry !== 'object') return '';
@@ -9292,6 +9447,57 @@
     }).join('');
   }
 
+  function renderWorkbookPatchDiagnosticsModal() {
+    const bodyEl = document.getElementById('workbookPatchDiagnosticsModalBody');
+    const subtitleEl = document.getElementById('workbookPatchDiagnosticsModalSubtitle');
+    if (!bodyEl || !subtitleEl) return;
+
+    const total = workbookPatchDiagnosticsHistory.length;
+    subtitleEl.textContent = total
+      ? `Showing ${total} recorded workbook PATCH event${total === 1 ? '' : 's'} with raw payloads.`
+      : 'Complete PATCH history with raw payloads and verification details.';
+
+    if (!total) {
+      bodyEl.innerHTML = `
+        <div class="workbook-patch-diagnostics-modal-summary">No workbook row PATCH diagnostics captured yet.</div>
+        <div class="workbook-patch-diagnostics-modal-actions">
+          <button type="button" class="offline-action-btn" onclick="closeWorkbookPatchDiagnosticsModal()">Close</button>
+        </div>
+      `;
+      return;
+    }
+
+    bodyEl.innerHTML = `
+      <div class="workbook-patch-diagnostics-modal-summary">
+        Keep this open while running Edit Mode automation to watch every row PATCH attempt, fallback, failure, and verification result without opening DevTools.
+      </div>
+      <div class="workbook-patch-diagnostics-modal-actions">
+        <button type="button" class="offline-action-btn" onclick="copyWorkbookPatchDiagnosticsToClipboard()">📋 Copy full history</button>
+        <button type="button" class="offline-action-btn" onclick="clearWorkbookPatchDiagnostics()">🗑️ Clear history</button>
+        <button type="button" class="offline-action-btn" onclick="closeWorkbookPatchDiagnosticsModal()">Close</button>
+      </div>
+      <div class="workbook-patch-diagnostics-history">
+        ${workbookPatchDiagnosticsHistory.slice().reverse().map((entry, idx) => {
+          const meta = formatWorkbookPatchDiagnosticMeta(entry);
+          const detail = String(entry.detail || '').trim();
+          const rawPayload = String(entry.rawPayload || '').trim();
+          return `
+            <div class="workbook-patch-diagnostics-history-entry" data-level="${escapeErrorHtml(entry.level || 'info')}">
+              <div class="workbook-patch-diagnostics-history-header">
+                <span>#${total - idx} • ${escapeErrorHtml(entry.timestamp || '')}</span>
+                <span>${escapeErrorHtml((entry.level || 'info').toUpperCase())}${entry.statusCode ? ` • HTTP ${escapeErrorHtml(String(entry.statusCode))}` : ''}</span>
+              </div>
+              <div class="workbook-patch-diagnostics-history-message">${escapeErrorHtml(entry.message || '')}</div>
+              ${meta ? `<div class="workbook-patch-diagnostics-history-meta">${escapeErrorHtml(meta)}</div>` : ''}
+              ${detail ? `<div class="workbook-patch-diagnostics-history-detail">${escapeErrorHtml(detail)}</div>` : ''}
+              ${rawPayload ? `<details class="workbook-patch-diagnostics-raw"><summary>Raw payload</summary><pre>${escapeErrorHtml(rawPayload)}</pre></details>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   function pushWorkbookPatchDiagnostic(level, message, detail = {}) {
     const safeDetail = detail && typeof detail === 'object' ? { ...detail } : {};
     const entry = {
@@ -9303,8 +9509,15 @@
       tableName: String(safeDetail.tableName || '').trim(),
       rowRef: String(safeDetail.rowRef || '').trim(),
       updateUrl: String(safeDetail.updateUrl || '').trim(),
+      statusCode: Number.isFinite(Number(safeDetail.statusCode)) ? Number(safeDetail.statusCode) : null,
+      rawPayload: formatWorkbookPatchDiagnosticPayload(safeDetail.rawPayload),
       timestamp: new Date().toLocaleTimeString()
     };
+
+    workbookPatchDiagnosticsHistory.push(entry);
+    if (workbookPatchDiagnosticsHistory.length > MAX_WORKBOOK_PATCH_DIAGNOSTICS_HISTORY) {
+      workbookPatchDiagnosticsHistory.splice(0, workbookPatchDiagnosticsHistory.length - MAX_WORKBOOK_PATCH_DIAGNOSTICS_HISTORY);
+    }
 
     workbookPatchDiagnostics.push(entry);
     if (workbookPatchDiagnostics.length > MAX_WORKBOOK_PATCH_DIAGNOSTICS) {
@@ -9313,26 +9526,35 @@
 
     window.__lastWorkbookPatchDiagnostic = { ...entry };
     renderWorkbookPatchDiagnostics();
+    renderWorkbookPatchDiagnosticsModal();
     return entry;
   }
 
   function clearWorkbookPatchDiagnostics() {
     workbookPatchDiagnostics.length = 0;
+    workbookPatchDiagnosticsHistory.length = 0;
     window.__lastWorkbookPatchDiagnostic = null;
     renderWorkbookPatchDiagnostics();
+    renderWorkbookPatchDiagnosticsModal();
   }
 
-  function copyWorkbookPatchDiagnosticsToClipboard() {
-    const text = workbookPatchDiagnostics.length
-      ? workbookPatchDiagnostics.slice().reverse().map((entry) => {
+  function buildWorkbookPatchDiagnosticsClipboardText() {
+    return workbookPatchDiagnosticsHistory.length
+      ? workbookPatchDiagnosticsHistory.slice().reverse().map((entry) => {
           const parts = [`[${entry.timestamp}] ${String(entry.level || 'info').toUpperCase()} ${entry.message}`];
           const meta = formatWorkbookPatchDiagnosticMeta(entry);
           if (meta) parts.push(meta);
+          if (entry.statusCode) parts.push(`status=${entry.statusCode}`);
           if (entry.detail) parts.push(entry.detail);
           if (entry.updateUrl) parts.push(`url=${entry.updateUrl}`);
+          if (entry.rawPayload) parts.push(`raw=${entry.rawPayload}`);
           return parts.join('\n');
         }).join('\n\n---\n\n')
       : 'No workbook row PATCH diagnostics captured.';
+  }
+
+  function copyWorkbookPatchDiagnosticsToClipboard() {
+    const text = buildWorkbookPatchDiagnosticsClipboardText();
 
     return navigator.clipboard.writeText(text).then(() => {
       if (typeof window.showToast === 'function') {
@@ -9342,10 +9564,33 @@
     }).catch(() => text);
   }
 
+  function openWorkbookPatchDiagnosticsModal() {
+    const backdrop = document.getElementById('workbookPatchDiagnosticsModalBackdrop');
+    if (!backdrop) return;
+    renderWorkbookPatchDiagnosticsModal();
+    backdrop.classList.add('visible');
+  }
+
+  function closeWorkbookPatchDiagnosticsModal() {
+    const backdrop = document.getElementById('workbookPatchDiagnosticsModalBackdrop');
+    if (!backdrop) return;
+    backdrop.classList.remove('visible');
+  }
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key !== 'Escape') return;
+    const backdrop = document.getElementById('workbookPatchDiagnosticsModalBackdrop');
+    if (backdrop && backdrop.classList.contains('visible')) {
+      closeWorkbookPatchDiagnosticsModal();
+    }
+  });
+
   window.pushWorkbookPatchDiagnostic = pushWorkbookPatchDiagnostic;
   window.clearWorkbookPatchDiagnostics = clearWorkbookPatchDiagnostics;
   window.copyWorkbookPatchDiagnosticsToClipboard = copyWorkbookPatchDiagnosticsToClipboard;
-  window.__getWorkbookPatchDiagnostics = function () { return workbookPatchDiagnostics.slice(); };
+  window.openWorkbookPatchDiagnosticsModal = openWorkbookPatchDiagnosticsModal;
+  window.closeWorkbookPatchDiagnosticsModal = closeWorkbookPatchDiagnosticsModal;
+  window.__getWorkbookPatchDiagnostics = function () { return workbookPatchDiagnosticsHistory.slice(); };
 
   function buildIssueListHtml(entries, typeLabel) {
     if (!entries.length) {
@@ -24138,7 +24383,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
              tableName,
              rowRef,
              updateUrl,
-             detail: `candidate ${pathAttemptIndex + 1}/${pathCandidates.length} • values=${normalizedValues.length}`
+             detail: `candidate ${pathAttemptIndex + 1}/${pathCandidates.length} • values=${normalizedValues.length}`,
+             rawPayload: {
+               requestValues: normalizedValues,
+               pathCandidates,
+               pathAttemptIndex
+             }
            });
          }
 
@@ -24168,7 +24418,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
                  tableName,
                  rowRef,
                  updateUrl,
-                 detail: `nextPath=${pathCandidates[pathAttemptIndex + 1]}`
+                 detail: `nextPath=${pathCandidates[pathAttemptIndex + 1]}`,
+                 statusCode: patchResponse.status,
+                 rawPayload: errorText || { nextPath: pathCandidates[pathAttemptIndex + 1] }
                });
              }
              return await window.saveToExcel(rowId, updatedValues, retryCount, pathAttemptIndex + 1);
@@ -24184,18 +24436,21 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
                tableName,
                rowRef,
                updateUrl,
-               detail: `status=${patchResponse.status}${errorText ? ` • ${errorText}` : ''}`
+               detail: `status=${patchResponse.status}${errorText ? ` • ${errorText}` : ''}`,
+               statusCode: patchResponse.status,
+               rawPayload: errorText
              });
            }
            throw new Error(`Failed to update Excel row [table=${tableName}, path=${filePath}, row=${rowRef}]: ${patchResponse.status}${errorText ? ` - ${errorText}` : ''}`);
         }
 
-        await patchResponse.json().catch(() => ({}));
+         const patchPayload = await patchResponse.json().catch(() => ({}));
          if (typeof rememberResolvedExcelWritePath === 'function') {
            rememberResolvedExcelWritePath(filePath);
          }
 
         let verified = false;
+         let verifyPayload = null;
         try {
           const verifyResponse = await fetch(updateUrl, {
             headers: {
@@ -24204,7 +24459,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
             }
           });
           if (verifyResponse.ok) {
-            const verifyPayload = await verifyResponse.json().catch(() => ({}));
+            verifyPayload = await verifyResponse.json().catch(() => ({}));
             const saved = Array.isArray(verifyPayload.values) && Array.isArray(verifyPayload.values[0])
               ? verifyPayload.values[0]
               : [];
@@ -24223,7 +24478,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
              tableName,
              rowRef,
              updateUrl,
-             detail: `values=${normalizedValues.length}`
+             detail: `values=${normalizedValues.length}`,
+             rawPayload: {
+               patchResponse: patchPayload,
+               verifyResponse: verifyPayload,
+               expectedValues: normalizedValues
+             }
            });
          }
 

@@ -426,6 +426,39 @@
       color: #166534;
     }
 
+    .section-target-indicator {
+      margin: -4px 0 12px;
+      padding: 10px 12px;
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #eef2ff 0%, #f8fbff 100%);
+      color: #312e81;
+      font-size: 12px;
+      line-height: 1.45;
+      position: sticky;
+      top: 8px;
+      z-index: 4;
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.08);
+    }
+
+    .section-target-indicator strong {
+      color: #1e1b4b;
+    }
+
+    .section-target-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #a5b4fc;
+      background: rgba(255, 255, 255, 0.85);
+      color: #3730a3;
+      font-weight: 700;
+      font-size: 11px;
+    }
+
     .candidate-results {
       margin-top: 12px;
       display: grid;
@@ -553,6 +586,33 @@
       background: #dbeafe;
     }
 
+    .button.is-candidate-cta-ready {
+      border: 1px solid #34d399;
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      color: #065f46;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.42);
+      animation: candidateCtaPulse 1.15s ease-in-out infinite;
+    }
+
+    .button.is-candidate-cta-ready:hover {
+      background: linear-gradient(135deg, #d1fae5 0%, #bbf7d0 100%);
+    }
+
+    @keyframes candidateCtaPulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.38);
+        filter: brightness(1);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+        filter: brightness(1.05);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        filter: brightness(1);
+      }
+    }
+
     .festival-confidence-badge {
       display: inline-flex;
       align-items: center;
@@ -665,6 +725,20 @@
       min-height: 88px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
       font-size: 12px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .button,
+      .candidate-item,
+      .tab-content {
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .button.is-candidate-cta-ready {
+        animation: none !important;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+      }
     }
   </style>
 </head>
@@ -804,6 +878,7 @@
       <!-- Add Single Place -->
       <div class="card">
         <div class="card-title">➕ Add Single Place</div>
+        <div id="singleSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
         <div class="dry-run-toggle" id="singleDryRunToggle">
           <input type="checkbox" id="singleDryRun" onchange="updateDryRunToggle(this, 'addSingle')">
@@ -877,6 +952,7 @@
       <!-- Bulk Add Places -->
       <div class="card">
         <div class="card-title">📦 Bulk Add Places</div>
+        <div id="bulkSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
         <div class="dry-run-toggle" id="bulkDryRunToggle">
           <input type="checkbox" id="bulkDryRun" onchange="updateDryRunToggle(this, 'bulkAdd')">
@@ -926,6 +1002,7 @@
       <!-- Bulk Add Chain Locations -->
       <div class="card">
         <div class="card-title">⛓️ Bulk Add Chain Locations</div>
+        <div id="chainSectionTargetIndicator" class="section-target-indicator" aria-live="polite">Current save target will appear here once a table is selected.</div>
 
         <div class="dry-run-toggle" id="chainDryRunToggle">
           <input type="checkbox" id="chainDryRun" onchange="updateDryRunToggle(this, 'bulkChain')">
@@ -2880,6 +2957,25 @@
         <div class="target-chip"><strong>Automation default:</strong> ${autoSingle ? autoSingle.label : 'Not selected'}</div>
         <div class="target-chip"><strong>Automation multi:</strong> ${autoMulti.length ? autoMulti.map((t) => t.tableName).join(', ') : 'None selected'}</div>
       `;
+      renderActionSectionTargetIndicators();
+    }
+
+    function renderSectionTargetIndicator(indicatorId, target, label) {
+      const el = document.getElementById(indicatorId);
+      if (!el) return;
+      const safeLabel = String(label || 'Current save target').trim() || 'Current save target';
+      if (!target) {
+        el.innerHTML = `<strong>${safeLabel}:</strong> Not selected yet.`;
+        return;
+      }
+      el.innerHTML = `<strong>${safeLabel}:</strong> ${formatTargetDestination(target)}<div class="section-target-pill">Table: ${target.tableName || '—'} • File: ${target.filePath || '—'}</div>`;
+    }
+
+    function renderActionSectionTargetIndicators() {
+      const target = getSelectedTarget('actionTargetSelect');
+      renderSectionTargetIndicator('singleSectionTargetIndicator', target, 'Add Single saves into');
+      renderSectionTargetIndicator('bulkSectionTargetIndicator', target, 'Bulk Add saves into');
+      renderSectionTargetIndicator('chainSectionTargetIndicator', target, 'Chain Add saves into');
     }
 
     function updateActiveTargetBanner(target) {
@@ -3931,6 +4027,48 @@
       }
     }
 
+    function setCandidateReadyButtonState(buttonId, isReady) {
+      const button = document.getElementById(buttonId);
+      if (!button) return;
+      const ready = Boolean(isReady) && !button.disabled;
+      button.classList.toggle('is-candidate-cta-ready', ready);
+      button.setAttribute('data-candidate-ready', ready ? '1' : '0');
+    }
+
+    function clearCandidateReadyButtonState(buttonId) {
+      setCandidateReadyButtonState(buttonId, false);
+    }
+
+    function buildCandidateCompletionMessage(result, target, selectedCount, options = {}) {
+      const safeResult = result && typeof result === 'object' ? result : null;
+      if (!safeResult) return null;
+      const count = Math.max(1, Number(selectedCount) || 1);
+      const destination = target ? formatTargetDestination(target) : 'the selected table';
+      const noun = count === 1 ? 'candidate' : 'candidates';
+      const verb = count === 1 ? 'was' : 'were';
+      if (safeResult.cancelled) {
+        return { text: `ℹ️ Add cancelled for ${destination}.`, kind: 'info' };
+      }
+      if (!safeResult.success) {
+        const errorText = String(safeResult.error || safeResult.message || 'Candidate add failed.').trim();
+        return { text: `❌ ${errorText}`, kind: 'error' };
+      }
+      if (options.dryRun) {
+        return { text: `🧪 Preview complete. ${count} selected ${noun} ${verb} reviewed for ${destination}.`, kind: 'success' };
+      }
+      if (safeResult.queued) {
+        return { text: `✅ Add complete. ${count} selected ${noun} ${verb} saved locally and queued for sync to ${destination}.`, kind: 'success' };
+      }
+      return { text: `✅ Add complete. ${count} selected ${noun} ${verb} added to ${destination}.`, kind: 'success' };
+    }
+
+    function applyCandidateCompletionStatus(statusSetter, result, target, selectedCount, options = {}) {
+      if (typeof statusSetter !== 'function') return;
+      const payload = buildCandidateCompletionMessage(result, target, selectedCount, options);
+      if (!payload) return;
+      statusSetter(payload.text, payload.kind);
+    }
+
     function setSingleCandidateStatus(message, kind) {
       setCandidateStatus('single-search-status', 'single-search-status-live', message, kind);
     }
@@ -4706,6 +4844,7 @@
 
       const selected = getSelectedSingleCandidate();
       if (addBtn) addBtn.disabled = !selected;
+      setCandidateReadyButtonState('singleAddSelectedCandidateBtn', Boolean(selected));
 
       if (!singleCandidateState.results.length) {
         container.innerHTML = '';
@@ -4835,6 +4974,8 @@
         return;
       }
 
+      clearCandidateReadyButtonState('singleAddSelectedCandidateBtn');
+
       const target = getSelectedTarget('actionTargetSelect');
       const targetContext = cloneTargetContext(target);
       const dryRun = Boolean(document.getElementById('singleDryRun')?.checked);
@@ -4867,6 +5008,7 @@
         toastAddWriteDiagnostics(result, 'Add selected candidate', { rowsRequested: 1 });
         if (result.success) document.getElementById('singleInput').value = '';
         await runPostAddRefreshHooks(result, dryRun);
+        applyCandidateCompletionStatus(setSingleCandidateStatus, result, target, 1, { dryRun });
         return;
       }
 
@@ -4876,7 +5018,8 @@
       if (inputEl) inputEl.value = selected.placeId;
 
       setSingleCandidateStatus(`✅ Selected ${selected.name}. Adding now...`, 'success');
-      await submitAddSinglePlace();
+      const result = await submitAddSinglePlace();
+      applyCandidateCompletionStatus(setSingleCandidateStatus, result, target, 1, { dryRun });
     }
 
     function openCandidateUrlsInGoogle(urls, statusSetter, emptyMessage, successPrefix) {
@@ -4974,6 +5117,7 @@
       const selectedCount = getSelectedBulkCandidateCount();
       if (addBtn) addBtn.disabled = selectedCount === 0;
       if (openBtn) openBtn.disabled = selectedCount === 0;
+      setCandidateReadyButtonState('bulkAddSelectedCandidatesBtn', selectedCount > 0);
 
       if (!bulkCandidateState.groups.length) {
         container.innerHTML = '';
@@ -5127,6 +5271,8 @@
         return;
       }
 
+      clearCandidateReadyButtonState('bulkAddSelectedCandidatesBtn');
+
       const target = getSelectedTarget('actionTargetSelect');
       const targetContext = cloneTargetContext(target);
       const dryRun = Boolean(document.getElementById('bulkDryRun')?.checked);
@@ -5153,6 +5299,7 @@
         });
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success && !dryRun) document.getElementById('bulkInput').value = '';
+        applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, selectedCandidates.length, { dryRun });
         return;
       }
 
@@ -5162,7 +5309,8 @@
       if (inputTypeEl) inputTypeEl.value = 'placeId';
       if (inputEl) inputEl.value = uniquePlaceIds.join('\n');
       setBulkCandidateStatus(`✅ Adding ${uniquePlaceIds.length} selected candidate(s)...`, 'success');
-      await submitBulkAddPlaces();
+      const result = await submitBulkAddPlaces();
+      applyCandidateCompletionStatus(setBulkCandidateStatus, result, target, uniquePlaceIds.length, { dryRun });
     }
 
     function initBulkCandidateSearch() {
@@ -5321,6 +5469,7 @@
       if (addBtn) addBtn.disabled = selectedCount === 0;
       if (openBtn) openBtn.disabled = selectedCount === 0;
       if (topAllBtn) topAllBtn.disabled = chainCandidateState.groups.length === 0;
+      setCandidateReadyButtonState('chainAddSelectedCandidatesBtn', selectedCount > 0);
 
       if (!chainCandidateState.groups.length) {
         container.innerHTML = '';
@@ -5509,6 +5658,8 @@
         return;
       }
 
+      clearCandidateReadyButtonState('chainAddSelectedCandidatesBtn');
+
       const target = getSelectedTarget('actionTargetSelect');
       const targetContext = cloneTargetContext(target);
       const dryRun = Boolean(document.getElementById('chainDryRun')?.checked);
@@ -5542,6 +5693,7 @@
         const result = await window.enhancedAutomation.bulkAddPlaces('', 'placeName', dryRun, { resolvedDetailsList: finalCandidates, target: targetContext });
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success && !dryRun) document.getElementById('chainInput').value = '';
+        applyCandidateCompletionStatus(setChainCandidateStatus, result, target, finalCandidates.length, { dryRun });
         return;
       }
 
@@ -5562,7 +5714,8 @@
         ? ` (cap: ${capNum})`
         : (capRaw === 'all-found' ? ' (all found)' : ' (all selected)');
       setChainCandidateStatus(`✅ Adding ${finalPlaceIds.length} selected chain candidate(s)${capMessage}...`, 'success');
-      await submitBulkChain();
+      const result = await submitBulkChain();
+      applyCandidateCompletionStatus(setChainCandidateStatus, result, target, finalPlaceIds.length, { dryRun });
     }
 
     function initChainCandidateSearch() {
@@ -5728,7 +5881,7 @@
       try {
         const target = getSelectedTarget('actionTargetSelect');
         const targetContext = cloneTargetContext(target);
-        if (!applyTargetToMainWindow(target, statusDiv)) return;
+        if (!applyTargetToMainWindow(target, statusDiv)) return { success: false, error: 'Target table is not ready.' };
         await probeTargetSchema(target);
         const loadedRows = await loadTargetRows(target);
         if (!loadedRows) {
@@ -5738,16 +5891,16 @@
 
         if (!input.trim()) {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter a location</div>';
-          return;
+          return { success: false, error: 'Please enter a location.' };
         }
 
         const duplicateMatches = renderPreflightStatus('singlePreflightStatus', target, input, inputType);
         if (duplicateMatches.length) {
           statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Duplicate preflight stopped this save for ${formatTargetDestination(target)}. Review the existing row first.</div>`;
-          return;
+          return { success: false, error: 'Duplicate preflight stopped this save.' };
         }
         if (!dryRun && !confirmAddTargetSelection(target, 1, 'single add', statusDiv)) {
-          return;
+          return { success: false, cancelled: true, message: 'Add cancelled.' };
         }
 
         // Try new progress tracking system first
@@ -5760,7 +5913,7 @@
             clearDraft('single');
           }
           await runPostAddRefreshHooks(result, dryRun);
-          return;
+          return result;
         }
 
         // Fallback to enhanced automation
@@ -5775,8 +5928,10 @@
             clearDraft('single');
           }
           await runPostAddRefreshHooks(result, dryRun);
+          return result;
         } else {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+          return { success: false, error: 'System not ready' };
         }
       } finally {
         endSubmitGuard(guard);
@@ -5796,7 +5951,7 @@
       try {
         const target = getSelectedTarget('actionTargetSelect');
         const targetContext = cloneTargetContext(target);
-        if (!applyTargetToMainWindow(target, statusDiv)) return;
+        if (!applyTargetToMainWindow(target, statusDiv)) return { success: false, error: 'Target table is not ready.' };
         await probeTargetSchema(target);
         const loadedRows = await loadTargetRows(target);
         if (!loadedRows) {
@@ -5806,14 +5961,14 @@
 
         if (!input.trim()) {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
-          return;
+          return { success: false, error: 'Please enter locations.' };
         }
 
         const locations = parseBulkInputValues(input);
 
         if (locations.length === 0) {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
-          return;
+          return { success: false, error: 'No valid locations.' };
         }
 
         const duplicateMatches = renderPreflightStatus('bulkPreflightStatus', target, locations, inputType);
@@ -5821,13 +5976,13 @@
         const filteredLocations = locations.filter((location) => !duplicateInputs.has(String(location || '').trim().toLowerCase()));
         if (!filteredLocations.length && duplicateMatches.length) {
           statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Bulk preflight found only duplicates for ${formatTargetDestination(target)}. Nothing new will be added.</div>`;
-          return;
+          return { success: false, error: 'Bulk preflight found only duplicates.' };
         }
         if (filteredLocations.length !== locations.length) {
           statusDiv.innerHTML = `<div class="status-message">ℹ️ Bulk preflight skipped ${locations.length - filteredLocations.length} duplicate input(s) for ${formatTargetDestination(target)}. Continuing with ${filteredLocations.length} new item(s)...</div>`;
         }
         if (!dryRun && !confirmAddTargetSelection(target, filteredLocations.length, 'bulk add', statusDiv)) {
-          return;
+          return { success: false, cancelled: true, message: 'Bulk add cancelled.' };
         }
 
         // Try new progress tracking system first
@@ -5840,7 +5995,7 @@
             clearDraft('bulk');
           }
           await runPostAddRefreshHooks(result, dryRun);
-          return;
+          return result;
         }
 
         // Fallback to enhanced automation
@@ -5855,8 +6010,10 @@
             clearDraft('bulk');
           }
           await runPostAddRefreshHooks(result, dryRun);
+          return result;
         } else {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+          return { success: false, error: 'System not ready' };
         }
       } finally {
         endSubmitGuard(guard);
@@ -5875,7 +6032,7 @@
       if (!guard) return;
       try {
         const target = getSelectedTarget('actionTargetSelect');
-        if (!applyTargetToMainWindow(target, statusDiv)) return;
+        if (!applyTargetToMainWindow(target, statusDiv)) return { success: false, error: 'Target table is not ready.' };
         await probeTargetSchema(target);
         const loadedRows = await loadTargetRows(target);
         if (!loadedRows) {
@@ -5884,17 +6041,17 @@
 
         if (!input.trim()) {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ Please enter locations</div>';
-          return;
+          return { success: false, error: 'Please enter locations.' };
         }
 
         const locations = input.split('\n').filter(l => l.trim());
 
         if (locations.length === 0) {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
-          return;
+          return { success: false, error: 'No valid locations.' };
         }
         if (!dryRun && !confirmAddTargetSelection(target, locations.length, 'chain add', statusDiv)) {
-          return;
+          return { success: false, cancelled: true, message: 'Chain add cancelled.' };
         }
 
         // Try new fixed function first (with real progress)
@@ -5909,7 +6066,7 @@
             clearDraft('chain');
           }
           await runPostAddRefreshHooks(result, dryRun);
-          return;
+          return result;
         }
 
         // Fallback: Try enhanced function
@@ -5924,7 +6081,7 @@
             clearDraft('chain');
           }
           await runPostAddRefreshHooks(result, dryRun);
-          return;
+          return result;
         }
 
         // Final fallback: Old system
@@ -5941,10 +6098,11 @@
             clearDraft('chain');
           }
           await runPostAddRefreshHooks(result, dryRun);
-          return;
+          return result;
         }
 
         statusDiv.innerHTML = '<div class="status-message status-error">❌ System not ready</div>';
+        return { success: false, error: 'System not ready' };
       } finally {
         endSubmitGuard(guard);
       }

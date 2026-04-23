@@ -181,6 +181,151 @@ test.describe('Edit Mode single-add candidate search', () => {
     expect(String(row[10] || '')).toContain(resolved.placeId);
   });
 
+  test('shows local target indicators and pulses selected-candidate CTA buttons once choices are ready', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async (query) => {
+        const label = String(query || '').trim() || 'candidate';
+        return [
+          {
+            placeId: `pid-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'one'}-1`,
+            name: `${label} One`,
+            address: `101 ${label} Rd, Hendersonville, NC 28739`,
+            rating: 4.8,
+            reviewCount: 120,
+            businessStatus: 'OPERATIONAL',
+            coordinates: { lat: 35.3476, lng: -82.459 }
+          },
+          {
+            placeId: `pid-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'one'}-2`,
+            name: `${label} Two`,
+            address: `202 ${label} Ave, Asheville, NC 28801`,
+            rating: 4.6,
+            reviewCount: 85,
+            businessStatus: 'OPERATIONAL',
+            coordinates: { lat: 35.5951, lng: -82.5515 }
+          }
+        ];
+      };
+    });
+
+    const popup = await openEditModePopup(page);
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        return {
+          placeId,
+          name: `Resolved ${placeId}`,
+          address: '101 Target Rd, Hendersonville, NC 28739',
+          website: `https://${placeId}.example.com`,
+          businessType: 'park',
+          hours: '9-5',
+          phone: '555-0000',
+          rating: '4.8',
+          userRatingsTotal: 44,
+          directions: `https://maps.example.com/${placeId}`
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', 'nature_locations');
+    for (const indicatorId of ['#singleSectionTargetIndicator', '#bulkSectionTargetIndicator', '#chainSectionTargetIndicator']) {
+      await expect(popup.locator(indicatorId)).toContainText('Nature_Locations (Nature_Locations.xlsx)');
+    }
+
+    await popup.selectOption('#singleInputType', 'placeName');
+    await popup.fill('#singleInput', 'Blue Ridge Trail');
+    await popup.click('#singleSearchCandidatesBtn');
+    await expect(popup.locator('#single-candidates .candidate-item')).toHaveCount(2);
+    await expect(popup.locator('#singleAddSelectedCandidateBtn')).toBeEnabled();
+    await expect(popup.locator('#singleAddSelectedCandidateBtn')).toHaveClass(/is-candidate-cta-ready/);
+
+    await popup.selectOption('#bulkInputType', 'placeName');
+    await popup.fill('#bulkInput', 'Blue Ridge Trail\nPisgah Overlook');
+    await popup.click('#bulkSearchCandidatesBtn');
+    await expect(popup.locator('#bulk-candidates .candidate-group')).toHaveCount(2);
+    await expect(popup.locator('#bulkAddSelectedCandidatesBtn')).toBeEnabled();
+    await expect(popup.locator('#bulkAddSelectedCandidatesBtn')).toHaveClass(/is-candidate-cta-ready/);
+
+    await popup.selectOption('#chainInputType', 'placeNameCity');
+    await popup.fill('#chainInput', 'Blue Ridge Trail, Hendersonville\nPisgah Overlook, Asheville');
+    await popup.click('#chainSearchCandidatesBtn');
+    await expect(popup.locator('#chain-candidates .candidate-group')).toHaveCount(2);
+    await expect(popup.locator('#chainAddSelectedCandidatesBtn')).toBeEnabled();
+    await expect(popup.locator('#chainAddSelectedCandidatesBtn')).toHaveClass(/is-candidate-cta-ready/);
+  });
+
+  test('updates bulk selected-candidate banner to a completed message after the add finishes', async ({ page }) => {
+    const graphCalls = [];
+    await installMocks(page.context(), graphCalls, { postDelayMs: 120 });
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
+    await page.evaluate(() => {
+      window.accessToken = 'playwright-mock-token';
+      window.showToast = () => {};
+      window.renderAdventureCards = async () => {};
+      window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+      window.normalizeOperationHours = (value) => String(value || '');
+      window.searchPlaces = async (query) => {
+        const base = String(query || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'item';
+        return [
+          {
+            placeId: `pid-${base}-a`,
+            name: `${base} Alpha`,
+            address: `10 ${base} St, Denver, CO`,
+            rating: 4.7,
+            reviewCount: 99,
+            businessStatus: 'OPERATIONAL',
+            coordinates: { lat: 39.7392, lng: -104.9903 }
+          }
+        ];
+      };
+    });
+
+    const popup = await openEditModePopup(page);
+    await popup.evaluate(() => {
+      window.showToast = () => {};
+      window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+        const placeId = String(inputValue || '').trim();
+        return {
+          placeId,
+          name: `Resolved ${placeId}`,
+          address: `Resolved ${placeId} Address, Denver, CO`,
+          website: `https://${placeId}.example.com`,
+          businessType: 'tag',
+          hours: '9-5',
+          phone: '555-1010',
+          rating: '4.6',
+          userRatingsTotal: 77,
+          directions: `https://maps.example.com/${placeId}`
+        };
+      };
+    });
+
+    await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
+    await popup.selectOption('#bulkInputType', 'placeName');
+    await popup.fill('#bulkInput', 'apple festival\nriverfront market');
+    await popup.click('#bulkSearchCandidatesBtn');
+
+    await expect(popup.locator('#bulkAddSelectedCandidatesBtn')).toBeEnabled();
+    await popup.click('#bulkAddSelectedCandidatesBtn');
+
+    await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(2);
+    await expect(popup.locator('#bulk-search-status')).toContainText('Add complete');
+    await expect(popup.locator('#bulk-search-status')).toContainText('General_Entertainment (Entertainment_Locations.xlsx)');
+  });
+
   test('single candidate search supports distance/state filters and shows Google-place link', async ({ page }) => {
     const graphCalls = [];
     await installMocks(page.context(), graphCalls);

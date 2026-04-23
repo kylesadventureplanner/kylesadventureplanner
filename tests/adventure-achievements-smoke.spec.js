@@ -101,5 +101,42 @@ test.describe('Adventure achievements dashboard smoke', () => {
     await statusSyncBtn.evaluate((node) => node.click());
     await expect(statusSyncBtn).not.toHaveClass(/is-needs-sync/);
   });
+
+  test('auto-syncs active Adventure subtab totals without manual click when signed in', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.accessToken = 'playwright-mock-token';
+    });
+
+    await page.route('https://graph.microsoft.com/**', async (route) => {
+      const url = route.request().url();
+      if (url.includes('/workbook/tables/Nature_Locations/range')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            values: [
+              ['Name', 'Address', 'Tags', 'City', 'State'],
+              ['Blue Ridge Trail', '101 Ridge Rd, Hendersonville, NC 28739', 'hiking trail waterfall', 'Hendersonville', 'NC']
+            ]
+          })
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ value: [] })
+      });
+    });
+
+    await page.goto('/');
+    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
+    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
+
+    await expect(page.locator('#visitedSubtabStatus-outdoors .visited-subtab-status-health')).toContainText(/Outdoors data:\s*ready/i, { timeout: 12000 });
+    await expect(page.locator('#visitedSubtabStatus-outdoors [data-achv-sync-totals][data-achv-subtab="outdoors"]')).toHaveCount(0);
+    await expect(page.locator('#achv-root-outdoors .adventure-achv-cat-count .adventure-achv-cat-total').first()).not.toContainText('?');
+  });
 });
 
