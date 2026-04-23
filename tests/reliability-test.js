@@ -5,7 +5,8 @@ const EXTENSION_NOISE_PATTERNS = [
   /Unchecked runtime\.lastError: Cannot create item with duplicate id/i,
   /background-redux-new\.js/i,
   /Invalid frameId for foreground frameId/i,
-  /\bLastPass\b/i
+  /\bLastPass\b/i,
+  /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/tables\/.+\/columns\?\$select=name,index\)/i
 ];
 
 function isIgnoredExtensionNoise(text, locationUrl) {
