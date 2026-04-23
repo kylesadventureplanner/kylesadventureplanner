@@ -331,8 +331,7 @@ test.describe('Adventure explorer in-pane details flow', () => {
         expect(firstPrompt).toContain('unsaved inline field edits');
       }
 
-      await plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="notes"]').click();
-      await expect(plannerDetailsFrameLocator.locator('#pane-notes[aria-hidden="false"]')).toBeVisible();
+      await activateDetailsTab('notes');
 
       await activateDetailsTab('details');
       await expect(plannerDetailsFrameLocator.locator('#detailInlineEditPanel')).toBeVisible();
