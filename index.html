@@ -24366,6 +24366,41 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       const encodedPath = typeof encodeGraphDrivePath === 'function'
         ? encodeGraphDrivePath(filePath)
         : encodeURIComponent(filePath);
+      const workbookBaseUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook`;
+
+      const createPersistentWorkbookSession = async () => {
+        const createSessionUrl = `${workbookBaseUrl}/createSession`;
+        try {
+          const sessionResponse = await fetch(createSessionUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ persistChanges: true })
+          });
+          if (!sessionResponse.ok) return '';
+          const payload = await sessionResponse.json().catch(() => ({}));
+          return String(payload && payload.id ? payload.id : '').trim();
+        } catch (_sessionErr) {
+          return '';
+        }
+      };
+
+      const closeWorkbookSession = async (sessionId) => {
+        if (!sessionId) return;
+        try {
+          await fetch(`${workbookBaseUrl}/closeSession`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'workbook-session-id': sessionId
+            }
+          });
+        } catch (_closeErr) {
+          // Best effort only.
+        }
+      };
 
       // ── Workbook destination badge ──────────────────────────────────────
       // Show once per logical save (not on retries) so it's always clear
@@ -24383,6 +24418,9 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
 
        const hasRowUpdateArgs = (rowId !== undefined && rowId !== null) && Array.isArray(updatedValues);
        if (hasRowUpdateArgs) {
+         let workbookSessionId = '';
+         try {
+           workbookSessionId = await createPersistentWorkbookSession();
          const rowRef = (typeof rowId === 'number' || /^\d+$/.test(String(rowId || '').trim()))
            ? `itemAt(index=${Number(rowId)})`
            : encodeURIComponent(String(rowId));
@@ -24399,7 +24437,8 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
            tableName,
            updateUrl,
            valuesLength: normalizedValues.length,
-           valuesContent: normalizedValues
+            valuesContent: normalizedValues,
+            persistChangesSession: workbookSessionId ? 'enabled' : 'not-available'
          });
 
          if (typeof window.pushWorkbookPatchDiagnostic === 'function') {
@@ -24409,11 +24448,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
              tableName,
              rowRef,
              updateUrl,
-             detail: `candidate ${pathAttemptIndex + 1}/${pathCandidates.length} • values=${normalizedValues.length}`,
+              detail: `candidate ${pathAttemptIndex + 1}/${pathCandidates.length} • values=${normalizedValues.length}${workbookSessionId ? ' • persistChanges=true' : ' • persistChanges=session-unavailable'}`,
              rawPayload: {
                requestValues: normalizedValues,
                pathCandidates,
-               pathAttemptIndex
+                pathAttemptIndex,
+                workbookSessionId: workbookSessionId ? `${workbookSessionId.slice(0, 8)}...` : ''
              }
            });
          }
@@ -24422,7 +24462,8 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           method: 'PATCH',
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+             'Content-Type': 'application/json',
+             ...(workbookSessionId ? { 'workbook-session-id': workbookSessionId } : {})
           },
           body: JSON.stringify({ values: [normalizedValues] })
         });
@@ -24481,7 +24522,8 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           const verifyResponse = await fetch(updateUrl, {
             headers: {
               Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
+               'Content-Type': 'application/json',
+               ...(workbookSessionId ? { 'workbook-session-id': workbookSessionId } : {})
             }
           });
           if (verifyResponse.ok) {
@@ -24495,26 +24537,53 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           verified = false;
         }
 
+         let freshVerifyPayload = null;
+         let freshVerified = false;
+         try {
+           const freshVerifyUrl = `${updateUrl}${updateUrl.includes('?') ? '&' : '?'}_fresh=${Date.now()}`;
+           const freshVerifyResponse = await fetch(freshVerifyUrl, {
+             headers: {
+               Authorization: `Bearer ${token}`,
+               'Content-Type': 'application/json'
+             }
+           });
+           if (freshVerifyResponse.ok) {
+             freshVerifyPayload = await freshVerifyResponse.json().catch(() => ({}));
+             const freshSaved = Array.isArray(freshVerifyPayload.values) && Array.isArray(freshVerifyPayload.values[0])
+               ? freshVerifyPayload.values[0]
+               : [];
+             freshVerified = JSON.stringify(freshSaved) === JSON.stringify(normalizedValues);
+           }
+         } catch (_freshVerifyError) {
+           freshVerified = false;
+         }
+
+         const fullyVerified = verified && freshVerified;
+
          if (typeof window.pushWorkbookPatchDiagnostic === 'function') {
-           window.pushWorkbookPatchDiagnostic(verified ? 'success' : 'warn', verified
-             ? 'Workbook row PATCH saved and verified.'
-             : 'Workbook row PATCH saved, but verification was inconclusive.', {
-             phase: verified ? 'verified' : 'saved-unverified',
+            window.pushWorkbookPatchDiagnostic(fullyVerified ? 'success' : 'warn', fullyVerified
+              ? 'Workbook row PATCH saved and verified.'
+              : 'Workbook row PATCH saved, but fresh-session verification was inconclusive.', {
+              phase: fullyVerified ? 'verified' : 'saved-unverified',
              filePath,
              tableName,
              rowRef,
              updateUrl,
-             detail: `values=${normalizedValues.length}`,
+              detail: `values=${normalizedValues.length} • inSession=${verified ? 'ok' : 'no'} • freshSession=${freshVerified ? 'ok' : 'no'}`,
              rawPayload: {
                patchResponse: patchPayload,
                verifyResponse: verifyPayload,
+                freshVerifyResponse: freshVerifyPayload,
                expectedValues: normalizedValues
              }
            });
          }
 
-        console.log(`✅ Updated Excel row ${rowRef}${verified ? ' [verified]' : ''}`);
-        return { persisted: true, verified, rowRef };
+         console.log(`✅ Updated Excel row ${rowRef}${fullyVerified ? ' [verified]' : ''}`);
+         return { persisted: true, verified: fullyVerified, rowRef };
+         } finally {
+           await closeWorkbookSession(workbookSessionId);
+         }
       }
 
       console.log('💾 Final saveToExcel override: appending pending rows only...');
@@ -24548,28 +24617,60 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
         return values;
       });
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ values: rowsToAdd })
-      });
+      let bulkWorkbookSessionId = '';
+      try {
+        bulkWorkbookSessionId = await createPersistentWorkbookSession();
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...(bulkWorkbookSessionId ? { 'workbook-session-id': bulkWorkbookSessionId } : {})
+          },
+          body: JSON.stringify({ values: rowsToAdd })
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        if (response.status === 401 && typeof window.rehydrateAuthState === 'function') {
-          const refreshed = await window.rehydrateAuthState();
-          if (refreshed) return await window.saveToExcel();
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          if (response.status === 401 && typeof window.rehydrateAuthState === 'function') {
+            const refreshed = await window.rehydrateAuthState();
+            if (refreshed) return await window.saveToExcel();
+          }
+          throw new Error(`Failed to save to Excel: ${response.status}${errorText ? ` - ${errorText}` : ''}`);
         }
-        throw new Error(`Failed to save to Excel: ${response.status}${errorText ? ` - ${errorText}` : ''}`);
-      }
 
-      await response.json().catch(() => ({}));
-      window.__excelLoadedRowCount = baseline + rowsToAdd.length;
-      console.log(`✅ Appended ${rowsToAdd.length} pending row(s) to Excel`);
-      return true;
+        await response.json().catch(() => ({}));
+
+        // Confirm durable append from a fresh context (no workbook-session-id).
+        let freshAppendVerified = false;
+        if (rowsToAdd.length > 0) {
+          const appendedLastIndex = baseline + rowsToAdd.length - 1;
+          const lastRowUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/itemAt(index=${appendedLastIndex})?_fresh=${Date.now()}`;
+          try {
+            const freshLastRowResponse = await fetch(lastRowUrl, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            if (freshLastRowResponse.ok) {
+              const freshLastRowPayload = await freshLastRowResponse.json().catch(() => ({}));
+              const freshValues = Array.isArray(freshLastRowPayload.values) && Array.isArray(freshLastRowPayload.values[0])
+                ? freshLastRowPayload.values[0]
+                : [];
+              freshAppendVerified = JSON.stringify(freshValues) === JSON.stringify(rowsToAdd[rowsToAdd.length - 1]);
+            }
+          } catch (_freshAppendError) {
+            freshAppendVerified = false;
+          }
+        }
+
+        window.__excelLoadedRowCount = baseline + rowsToAdd.length;
+        console.log(`✅ Appended ${rowsToAdd.length} pending row(s) to Excel${freshAppendVerified ? ' [fresh-verified]' : ''}`);
+        return true;
+      } finally {
+        await closeWorkbookSession(bulkWorkbookSessionId);
+      }
     };
 
     if (false && window.FilterManager) {
