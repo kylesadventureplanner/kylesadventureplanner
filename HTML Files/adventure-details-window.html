@@ -2826,6 +2826,86 @@
     };
   }
 
+  function normalizeEnrichHoursValue(value, openerWin) {
+    if (value == null) return '';
+    if (typeof value === 'string') return value.trim();
+    if (openerWin && typeof openerWin.normalizeOperationHours === 'function') {
+      try {
+        return String(openerWin.normalizeOperationHours(value) || '').trim();
+      } catch (_error) {}
+    }
+    if (Array.isArray(value)) {
+      return value.map(function (entry) { return String(entry || '').trim(); }).filter(Boolean).join('; ');
+    }
+    if (typeof value === 'object') {
+      if (Array.isArray(value.weekdayDescriptions)) {
+        return value.weekdayDescriptions.map(function (entry) { return String(entry || '').trim(); }).filter(Boolean).join('; ');
+      }
+      var days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      var joined = days.map(function (day) {
+        var resolved = value[day] || value[day.toLowerCase()];
+        return resolved ? (day + ': ' + resolved) : '';
+      }).filter(Boolean).join('; ');
+      return joined || String(value.text || '').trim() || JSON.stringify(value);
+    }
+    return String(value).trim();
+  }
+
+  function extractDescriptionFromGoogleDetails(details) {
+    var safe = details && typeof details === 'object' ? details : {};
+    var direct = String(safe.description || '').trim();
+    if (direct) return direct;
+    if (Array.isArray(safe.reviews)) {
+      var reviewBits = safe.reviews.map(function (review) {
+        if (!review) return '';
+        if (review.text && typeof review.text === 'object' && review.text.text) return String(review.text.text).trim();
+        return String(review.text || review.originalText || review.snippet || '').trim();
+      }).filter(Boolean).slice(0, 2);
+      if (reviewBits.length) return reviewBits.join(' ').trim();
+    }
+    var businessType = String(safe.businessType || '').trim().replace(/^[\p{So}]\s/u, '');
+    var rating = safe.rating != null ? String(safe.rating).trim() : '';
+    var reviewCount = safe.userRatingsTotal != null ? String(safe.userRatingsTotal).trim() : '';
+    var fallback = businessType;
+    if (rating) fallback += (fallback ? ' • ' : '') + 'Rated ' + rating + '★';
+    if (reviewCount) fallback += (fallback ? ' ' : '') + '(' + reviewCount + ' reviews)';
+    return fallback.trim();
+  }
+
+  function inferCityStateFromEnrichAddress(address) {
+    var text = String(address || '').trim();
+    if (!text) return { city: '', state: '' };
+    var parts = text.split(',').map(function (part) { return String(part || '').trim(); }).filter(Boolean);
+    if (parts.length < 2) return { city: '', state: '' };
+    var city = parts.length >= 2 ? parts[parts.length - 2] : '';
+    var stateZip = parts.length >= 1 ? parts[parts.length - 1] : '';
+    var stateMatch = stateZip.match(/\b([A-Z]{2})\b/);
+    return {
+      city: city,
+      state: stateMatch ? stateMatch[1] : ''
+    };
+  }
+
+  function normalizeGoogleEnrichDetails(details, data, openerWin) {
+    var safe = details && typeof details === 'object' ? details : {};
+    var normalizedAddress = String(safe.address || safe.formattedAddress || '').trim();
+    var inferred = inferCityStateFromEnrichAddress(normalizedAddress);
+    return {
+      address: normalizedAddress,
+      city: String((safe.city || (data && data.city) || inferred.city || '')).trim(),
+      state: String((safe.state || (data && data.state) || inferred.state || '')).trim(),
+      phone: String(safe.phone || safe.internationalPhoneNumber || '').trim(),
+      hours: normalizeEnrichHoursValue(safe.hours || safe.regularOpeningHours || '', openerWin),
+      description: extractDescriptionFromGoogleDetails(safe),
+      website: String(safe.website || safe.websiteURI || '').trim()
+    };
+  }
+
+  function hasMeaningfulGoogleEnrichDetails(details) {
+    var safe = details && typeof details === 'object' ? details : {};
+    return Boolean(safe.address || safe.city || safe.state || safe.phone || safe.hours || safe.description || safe.website);
+  }
+
   function bindEnrichModalControls() {
     if (window.__enrichModalBound) return;
     window.__enrichModalBound = true;
@@ -2845,7 +2925,13 @@
       autoFetchBtn.addEventListener('click', async function () {
         var state = window.__detailEnrichModalState;
         var data = state && state.data;
-        var placeId = data && (data.googlePlaceId || data.placeId || '');
+        var openerWin = getOpenerWindow();
+        var placeId = String(data && (data.googlePlaceId || data.placeId || '') || '').trim();
+        if (!placeId && openerWin && typeof openerWin.extractPlaceIdFromUrl === 'function') {
+          try {
+            placeId = String(openerWin.extractPlaceIdFromUrl((data && (data.googleUrl || data.directions || '')) || '') || '').trim();
+          } catch (_error) {}
+        }
         if (!placeId) {
           showDetailToast('⚠️ No Google Place ID available for this location.', 'error', 3000);
           return;
@@ -2853,33 +2939,37 @@
         autoFetchBtn.disabled = true;
         autoFetchBtn.textContent = '⏳ Fetching…';
         try {
-          var openerWin = getOpenerWindow();
           var details = null;
           if (openerWin && typeof openerWin.getPlaceDetails === 'function') {
             details = await openerWin.getPlaceDetails(placeId);
+          } else if (typeof window.getPlaceDetails === 'function') {
+            details = await window.getPlaceDetails(placeId);
           }
-          if (!details || (!details.website && !details.phone && !details.hours && !details.address)) {
-            showDetailToast('⚠️ Could not fetch details from Google Places. Ensure API key is configured.', 'error', 4000);
+          var normalized = normalizeGoogleEnrichDetails(details, data, openerWin);
+          if (!hasMeaningfulGoogleEnrichDetails(normalized)) {
+            showDetailToast('⚠️ Could not fetch any enrichable fields from Google Places for this location.', 'error', 4000);
             return;
           }
           // Show the parsed fields section and populate
           var parsedFields = document.getElementById('enrichParsedFields');
           if (parsedFields) parsedFields.style.display = '';
-          if (details.address) {
-            var addrEl = document.getElementById('enrichAddress');
-            if (addrEl) addrEl.value = details.address;
-          }
-          var city = data.city || '';
-          var stateVal = data.state || '';
-          if (city) { var cityEl = document.getElementById('enrichCity'); if (cityEl) cityEl.value = city; }
-          if (stateVal) { var stateEl = document.getElementById('enrichState'); if (stateEl) stateEl.value = stateVal; }
-          if (details.phone) { var phoneEl = document.getElementById('enrichPhone'); if (phoneEl) phoneEl.value = details.phone; }
-          if (details.hours) { var hoursEl = document.getElementById('enrichHours'); if (hoursEl) hoursEl.value = details.hours; }
-          if (details.description) { var descEl = document.getElementById('enrichDescription'); if (descEl) descEl.value = details.description; }
+          var addrEl = document.getElementById('enrichAddress');
+          if (addrEl) addrEl.value = normalized.address || addrEl.value || '';
+          var cityEl = document.getElementById('enrichCity');
+          if (cityEl) cityEl.value = normalized.city || cityEl.value || '';
+          var stateEl = document.getElementById('enrichState');
+          if (stateEl) stateEl.value = normalized.state || stateEl.value || '';
+          var phoneEl = document.getElementById('enrichPhone');
+          if (phoneEl) phoneEl.value = normalized.phone || phoneEl.value || '';
+          var hoursEl = document.getElementById('enrichHours');
+          if (hoursEl) hoursEl.value = normalized.hours || hoursEl.value || '';
+          var descEl = document.getElementById('enrichDescription');
+          if (descEl) descEl.value = normalized.description || descEl.value || '';
 
           var hint = document.getElementById('enrichHint');
           if (hint) hint.textContent = '✅ Fields fetched from Google Places. Review and click "Save to Source".';
-          showDetailToast('✅ Fields auto-fetched from Google Places. Review and save.', 'success', 3200);
+          var populatedCount = [normalized.address, normalized.city, normalized.state, normalized.phone, normalized.hours, normalized.description].filter(Boolean).length;
+          showDetailToast('✅ Google enrichment loaded ' + populatedCount + ' field' + (populatedCount === 1 ? '' : 's') + '. Review and save.', 'success', 3200);
         } catch (err) {
           showDetailToast('❌ Auto-fetch failed: ' + (err && err.message ? err.message : 'unknown error'), 'error', 3500);
         } finally {

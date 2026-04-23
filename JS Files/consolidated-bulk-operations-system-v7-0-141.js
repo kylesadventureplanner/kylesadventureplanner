@@ -160,41 +160,187 @@ function updateSheetData(updateRanges) {
   });
 }
 
+function normalizeHoursForBulkOps(value, mainWindow) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value.trim();
+  const host = mainWindow && typeof mainWindow === 'object' ? mainWindow : window;
+  if (host && typeof host.normalizeOperationHours === 'function') {
+    try {
+      return String(host.normalizeOperationHours(value) || '').trim();
+    } catch (_error) {}
+  }
+  if (Array.isArray(value)) return value.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
+  if (typeof value === 'object') {
+    if (Array.isArray(value.weekdayDescriptions)) {
+      return value.weekdayDescriptions.map((entry) => String(entry || '').trim()).filter(Boolean).join('; ');
+    }
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const normalized = days
+      .map((day) => {
+        const resolved = value[day] || value[day.toLowerCase()];
+        return resolved ? `${day}: ${resolved}` : '';
+      })
+      .filter(Boolean)
+      .join('; ');
+    return normalized || String(value.text || value.periods || '').trim() || JSON.stringify(value);
+  }
+  return String(value).trim();
+}
+
+function buildDescriptionFromGoogleDetails(details) {
+  const safe = details && typeof details === 'object' ? details : {};
+  const direct = String(safe.description || '').trim();
+  if (direct) return direct;
+
+  const reviewTexts = Array.isArray(safe.reviews)
+    ? safe.reviews
+        .map((review) => {
+          if (!review) return '';
+          if (typeof review === 'string') return review.trim();
+          if (review.text && typeof review.text === 'object' && review.text.text) return String(review.text.text).trim();
+          return String(review.text || review.originalText || review.snippet || '').trim();
+        })
+        .filter(Boolean)
+    : [];
+  if (reviewTexts.length) {
+    return reviewTexts.slice(0, 2).join(' ').trim();
+  }
+
+  const businessType = String(safe.businessType || '').trim().replace(/^[\p{So}]\s/u, '');
+  const rating = safe.rating != null ? String(safe.rating).trim() : '';
+  const ratingsTotal = safe.userRatingsTotal != null ? String(safe.userRatingsTotal).trim() : '';
+  let fallback = businessType;
+  if (rating) fallback += `${fallback ? ' • ' : ''}Rated ${rating}★`;
+  if (ratingsTotal) fallback += `${fallback ? ' ' : ''}(${ratingsTotal} reviews)`;
+  return fallback.trim();
+}
+
+function normalizePlaceDetailsForBulkOps(placeId, details, mainWindow) {
+  const safe = details && typeof details === 'object' ? details : {};
+  return {
+    website: String(safe.website || safe.websiteURI || '').trim(),
+    phone: String(safe.phone || safe.internationalPhoneNumber || '').trim(),
+    hours: normalizeHoursForBulkOps(safe.hours || safe.regularOpeningHours || safe.weekdayDescriptions || '', mainWindow),
+    address: String(safe.address || safe.formattedAddress || '').trim(),
+    rating: safe.rating != null ? String(safe.rating).trim() : '',
+    description: buildDescriptionFromGoogleDetails(safe),
+    directions: String(safe.directions || '').trim() || `https://www.google.com/maps/place/?q=place_id:${placeId}`,
+    businessType: String(safe.businessType || '').trim(),
+    reviews: Array.isArray(safe.reviews) ? safe.reviews : [],
+    coordinates: safe.coordinates || null
+  };
+}
+
+window.copyDescriptionPreviewText = window.copyDescriptionPreviewText || async function() {
+  const items = Array.isArray(window.__lastDescriptionPreviewItems) ? window.__lastDescriptionPreviewItems : [];
+  const text = items.length
+    ? items.map((item, index) => `${index + 1}. ${String(item && item.name || '(no name)').trim()}\n${String(item && item.description || '').trim()}`).join('\n\n')
+    : '';
+  window.__lastDescriptionPreviewCopiedText = text;
+  if (!text) {
+    return { ok: false, reason: 'empty' };
+  }
+
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', 'readonly');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.focus();
+      area.select();
+      document.execCommand('copy');
+      document.body.removeChild(area);
+    }
+    return { ok: true, text };
+  } catch (error) {
+    return { ok: false, reason: String(error && error.message ? error.message : error), text };
+  }
+};
+
+function hasMeaningfulBulkOpsDetails(details) {
+  const safe = details && typeof details === 'object' ? details : {};
+  return Boolean(
+    String(safe.website || '').trim()
+    || String(safe.phone || '').trim()
+    || String(safe.hours || '').trim()
+    || String(safe.address || '').trim()
+    || String(safe.rating || '').trim()
+    || String(safe.description || '').trim()
+    || safe.coordinates
+    || (Array.isArray(safe.reviews) && safe.reviews.length)
+  );
+}
+
+function getCachedPlaceDetailsFromRows(placeId, mainWindow) {
+  const rows = Array.isArray(mainWindow?.adventuresData)
+    ? mainWindow.adventuresData
+    : (Array.isArray(window.adventuresData) ? window.adventuresData : []);
+  if (!rows.length) return null;
+  const cols = getActiveCols(mainWindow);
+  const match = rows.find((entry) => {
+    const values = entry && entry.values ? entry.values[0] : entry;
+    const candidate = values && values[cols.PLACE_ID] != null ? String(values[cols.PLACE_ID]).trim() : '';
+    return candidate === String(placeId || '').trim();
+  });
+  if (!match) return null;
+  const values = match && match.values ? match.values[0] : match;
+  return {
+    website: String(values?.[cols.WEBSITE] || '').trim(),
+    phone: String(values?.[cols.PHONE] || '').trim(),
+    hours: String(values?.[cols.HOURS] || '').trim(),
+    address: String(values?.[cols.ADDRESS] || '').trim(),
+    rating: String(values?.[cols.RATING] || '').trim(),
+    description: String(values?.[cols.DESCRIPTION] || '').trim(),
+    directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
+  };
+}
+
 /**
- * Helper: Get place details from Google Places API with retry logic
- * COMPREHENSIVE FIX: Try fallback first, then API, then cache lookup
+ * Helper: Get place details from Google Places API with retry logic.
+ * Prefer live Google details first, then fall back to cached row data.
  */
 async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1) {
   try {
     const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
 
-    // PRIORITY 1: Check local data cache first (most reliable, avoids API issues)
-    if (window.adventuresData && Array.isArray(window.adventuresData)) {
-      const cached = window.adventuresData.find(a => a.placeId === placeId);
-      if (cached && (cached.website || cached.phone || cached.address)) {
-        console.log(`✅ Using cached data for ${placeId}`);
-        return {
-          website: cached.website || '',
-          phone: cached.phone || '',
-          hours: cached.hours || '',
-          address: cached.address || '',
-          rating: cached.rating || '',
-          directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
-        };
-      }
-    }
-
-    // PRIORITY 2: Use fallback/existing function (proven to work)
+    // PRIORITY 1: Use the existing Google details helper when available.
     if (mainWindow && typeof mainWindow.getPlaceDetails === 'function') {
       try {
         const fallbackResult = await mainWindow.getPlaceDetails(placeId);
-        if (fallbackResult && (fallbackResult.website || fallbackResult.phone)) {
+        const normalizedFallback = normalizePlaceDetailsForBulkOps(placeId, fallbackResult, mainWindow);
+        if (hasMeaningfulBulkOpsDetails(normalizedFallback)) {
           console.log(`✅ Got data from fallback function for ${placeId}`);
-          return fallbackResult;
+          return normalizedFallback;
         }
       } catch (fallbackErr) {
         console.debug(`📍 Fallback attempt failed: ${fallbackErr.message}`);
       }
+    }
+
+    // Support direct-window execution when the helper lives in this window instead of the opener.
+    if (typeof window.getPlaceDetails === 'function' && window.getPlaceDetails !== mainWindow?.getPlaceDetails) {
+      try {
+        const directResult = await window.getPlaceDetails(placeId);
+        const normalizedDirect = normalizePlaceDetailsForBulkOps(placeId, directResult, mainWindow);
+        if (hasMeaningfulBulkOpsDetails(normalizedDirect)) {
+          console.log(`✅ Got data from local window.getPlaceDetails for ${placeId}`);
+          return normalizedDirect;
+        }
+      } catch (directErr) {
+        console.debug(`📍 Direct getPlaceDetails failed: ${directErr.message}`);
+      }
+    }
+
+    // PRIORITY 2: Check local row cache only after live enrichment attempts.
+    const cached = getCachedPlaceDetailsFromRows(placeId, mainWindow);
+    if (hasMeaningfulBulkOpsDetails(cached)) {
+      console.log(`✅ Using cached row data for ${placeId}`);
+      return cached;
     }
 
     // PRIORITY 3: Google Places API - PERMANENTLY DISABLED
@@ -208,6 +354,7 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1) {
       hours: '',
       address: '',
       rating: '',
+      description: '',
       directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
     };
   } catch (err) {
@@ -218,6 +365,7 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1) {
       hours: '',
       address: '',
       rating: '',
+      description: '',
       directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
     };
   }
@@ -1372,6 +1520,41 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
   let updatedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
+  const previewItems = [];
+
+  const escapeHtml = (value) => String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const truncateText = (value, maxLen = 180) => {
+    const text = String(value == null ? '' : value).trim();
+    if (text.length <= maxLen) return text;
+    return `${text.slice(0, Math.max(0, maxLen - 1)).trim()}…`;
+  };
+
+  const buildPreviewHtml = () => {
+    if (!previewItems.length) return '';
+    window.__lastDescriptionPreviewItems = previewItems.slice(0, 3).map((item) => ({
+      name: String(item && item.name || '').trim(),
+      description: String(item && item.description || '').trim()
+    }));
+    return `<div style="margin-top:12px;padding:12px;background:#ffffff;border:1px solid #d1fae5;border-radius:8px;">`
+      + `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">`
+      + `<div style="font-weight:600;color:#065f46;">Preview of updated descriptions</div>`
+      + `<button type="button" onclick="window.copyDescriptionPreviewText && window.copyDescriptionPreviewText()" style="padding:6px 10px;border:1px solid #a7f3d0;border-radius:6px;background:#ecfdf5;color:#065f46;font-size:12px;font-weight:600;cursor:pointer;">📋 Copy preview text</button>`
+      + `</div>`
+      + previewItems.slice(0, 3).map((item, index) => {
+        const label = dryRun ? 'Would set' : 'Set';
+        return `<div style="${index > 0 ? 'margin-top:10px;padding-top:10px;border-top:1px solid #ecfdf5;' : ''}">`
+          + `<div style="font-size:12px;font-weight:600;color:#1f2937;">${escapeHtml(item.name || '(no name)')}</div>`
+          + `<div style="font-size:12px;color:#4b5563;line-height:1.5;margin-top:4px;">${label}: ${escapeHtml(truncateText(item.description, 220))}</div>`
+          + `</div>`;
+      }).join('')
+      + `</div>`;
+  };
 
   const updateDisplay = (status) => { displayElement.innerHTML = status; };
 
@@ -1426,9 +1609,15 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
           values[activeCols.DESCRIPTION] = generatedDesc;
           updatedCount++;
           results.push({ name, status: 'updated', message: `Set description (${generatedDesc.length} chars)` });
+          if (previewItems.length < 3) {
+            previewItems.push({ name: name || '(no name)', description: generatedDesc });
+          }
         } else if (dryRun && generatedDesc) {
           updatedCount++;
           results.push({ name, status: 'would-update', message: `Would set: "${generatedDesc.slice(0, 60)}…"` });
+          if (previewItems.length < 3) {
+            previewItems.push({ name: name || '(no name)', description: generatedDesc });
+          }
         } else {
           skippedCount++;
           results.push({ name, status: 'skipped', message: 'No description available from API' });
@@ -1447,9 +1636,10 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
     updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
       <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Complete'} – Update Descriptions</div>
       <div style="font-size:13px;color:#374151;">✅ Updated: ${updatedCount} &nbsp; ⏭ Skipped: ${skippedCount} &nbsp; ❌ Errors: ${errorCount}</div>
+      ${buildPreviewHtml()}
     </div>`);
 
-    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun };
+    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, previewItems: previewItems.slice() };
   } catch (err) {
     console.error('❌ Error updating descriptions:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);

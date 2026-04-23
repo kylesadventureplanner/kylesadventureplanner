@@ -715,6 +715,7 @@
       </div>
       <div id="targetSelectionStatus" class="target-chip-grid" data-target-visible-tab="places"></div>
       <div id="editModeTargetDiagnostics" class="target-diagnostics-card" data-target-visible-tab="places">Destination diagnostics will appear here once the target loads.</div>
+      <div id="editModeRecentAddDiagnostics" class="target-diagnostics-card" data-target-visible-tab="places">Recent added-row diagnostics will appear here after your first successful add.</div>
     </div>
 
     <!-- Add Places Tab -->
@@ -3099,6 +3100,59 @@
       const queueApi = (host && host.OfflinePwa) || window.OfflinePwa;
       const pendingCount = queueApi && typeof queueApi.getPendingCount === 'function' ? Number(queueApi.getPendingCount() || 0) : 0;
       el.innerHTML = `<strong>Current Add destination:</strong> ${target ? formatTargetDestination(target) : 'Not selected'}<br><strong>Loaded rows:</strong> ${Math.max(0, Number(host.__excelLoadedRowCount) || 0)} &nbsp;•&nbsp; <strong>Schema columns:</strong> ${Math.max(0, Number(host.__excelColumnCount) || 0)} &nbsp;•&nbsp; <strong>Pending queued writes:</strong> ${pendingCount}`;
+      renderRecentAddDiagnostics();
+    }
+
+    function clearEditModeAddDiagnostics() {
+      const host = getMainWindowSafe();
+      host.__editModeAddDiagnostics = [];
+      renderRecentAddDiagnostics();
+    }
+
+    function renderRecentAddDiagnostics() {
+      const el = document.getElementById('editModeRecentAddDiagnostics');
+      if (!el) return;
+
+      const host = getMainWindowSafe();
+      const target = getSelectedTarget('actionTargetSelect');
+      const all = Array.isArray(host.__editModeAddDiagnostics) ? host.__editModeAddDiagnostics : [];
+      const rows = all
+        .filter((entry) => !target || !target.id || String(entry && entry.targetId || '') === String(target.id))
+        .slice(0, 8);
+
+      if (!rows.length) {
+        el.innerHTML = 'Recent added-row diagnostics will appear here after your first successful add.';
+        return;
+      }
+
+      const fieldChip = (field) => {
+        const ok = !!(field && field.populated);
+        const icon = ok ? '✅' : '⚪';
+        const title = field && field.preview ? ` title="${String(field.preview).replace(/"/g, '&quot;')}"` : '';
+        return `<span${title} style="display:inline-block;margin-right:8px;">${icon}</span>`;
+      };
+
+      el.innerHTML =
+        `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">` +
+        `<strong>Recent added rows (${rows.length})</strong>` +
+        `<button type="button" class="button button-secondary" style="padding:4px 8px;font-size:11px;" onclick="clearEditModeAddDiagnostics()">Clear</button>` +
+        `</div>` +
+        `<div style="font-size:12px;opacity:0.85;margin-bottom:6px;">Legend: Description ${fieldChip({populated:true})} Drive Time ${fieldChip({populated:true})} Tags ${fieldChip({populated:true})} Lat/Lng ${fieldChip({populated:true})}</div>` +
+        rows.map((entry) => {
+          const time = new Date(Number(entry && entry.ts) || Date.now()).toLocaleTimeString();
+          const fields = entry && entry.fields ? entry.fields : {};
+          const queueBadge = entry && entry.queued ? ' <span style="font-size:11px;opacity:0.75;">(queued)</span>' : '';
+          return `<div style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:6px;">` +
+            `<div><strong>${entry && entry.placeName ? entry.placeName : 'Unnamed'}</strong>${queueBadge}</div>` +
+            `<div style="font-size:11px;opacity:0.8;">${time} • ${entry && entry.destination ? entry.destination : ''}</div>` +
+            `<div style="margin-top:4px;">` +
+              `Description ${fieldChip(fields.description)}` +
+              `Drive Time ${fieldChip(fields.driveTime)}` +
+              `Tags ${fieldChip(fields.tags)}` +
+              `Lat/Lng ${fieldChip(fields.latLng)}` +
+            `</div>` +
+          `</div>`;
+        }).join('');
     }
 
     function isFestivalEditTarget(target) {

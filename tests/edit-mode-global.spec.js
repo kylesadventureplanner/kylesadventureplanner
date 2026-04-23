@@ -102,6 +102,75 @@ test.describe('Edit Mode – target-table selectors', () => {
     await expect(page.locator('#places-tab')).not.toHaveClass(/active/);
   });
 
+  test('Update Descriptions automation fills blank descriptions from Google details', async ({ page }) => {
+    await page.click('.tab-btn[data-tab="automation"]');
+    await page.evaluate(() => {
+      const header = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'Activity Duration', 'Difficulty', 'Trail Length',
+        'State', 'City', 'Address', 'Phone Number', 'Google Rating', 'Cost', 'Directions', 'Description', 'Nearby', 'Links', 'Links2',
+        'Notes', 'My Rating', 'Favorite', 'Google URL'
+      ];
+      const indexMap = Object.fromEntries(header.map((name, index) => [name, index]));
+      window.getColumnIndexByName = (primary, aliases = []) => {
+        const candidates = [primary].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase());
+        const found = Object.keys(indexMap).find((name) => candidates.includes(String(name || '').trim().toLowerCase()));
+        return found == null ? -1 : indexMap[found];
+      };
+      const row = new Array(header.length).fill('');
+      row[0] = 'Playwright Mock Description Place';
+      row[1] = 'ChIJPlaywrightDesc123';
+      row[9] = 'NC';
+      row[10] = 'Durham';
+      row[11] = '500 Test Lane, Durham, NC 27701';
+      window.adventuresData = [{ values: [row] }];
+      window.getPlaceDetails = async () => ({
+        description: 'Google editorial summary for Playwright Mock Description Place.',
+        address: '500 Test Lane, Durham, NC 27701',
+        rating: 4.8,
+        reviews: []
+      });
+      window.saveToExcel = async () => {
+        window.__updateDescriptionsSaved = true;
+        return true;
+      };
+    });
+
+    await page.evaluate(async () => {
+      const mount = document.createElement('div');
+      mount.id = 'playwright-desc-diagnostics';
+      document.body.appendChild(mount);
+      window.__updateDescriptionsResult = await window.handleUpdateAllDescriptions(mount, false, false);
+    });
+
+    await expect.poll(() => page.evaluate(() => String(window.adventuresData?.[0]?.values?.[0]?.[16] || '')), { timeout: 10000 })
+      .toContain('Google editorial summary for Playwright Mock Description Place.');
+    await expect.poll(() => page.evaluate(() => Boolean(window.__updateDescriptionsSaved)), { timeout: 10000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.__updateDescriptionsResult), { timeout: 10000 }).toMatchObject({ success: true, updatedCount: 1 });
+    await expect.poll(() => page.evaluate(() => window.__updateDescriptionsResult?.previewItems || []), { timeout: 10000 })
+      .toEqual([
+        expect.objectContaining({
+          name: 'Playwright Mock Description Place',
+          description: 'Google editorial summary for Playwright Mock Description Place.'
+        })
+      ]);
+    await expect.poll(() => page.evaluate(() => String(document.getElementById('playwright-desc-diagnostics')?.innerText || '')), { timeout: 10000 })
+      .toContain('Preview of updated descriptions');
+    await expect.poll(() => page.evaluate(() => String(document.getElementById('playwright-desc-diagnostics')?.innerText || '')), { timeout: 10000 })
+      .toContain('Google editorial summary for Playwright Mock Description Place.');
+    await expect.poll(() => page.evaluate(() => {
+      const root = document.getElementById('playwright-desc-diagnostics');
+      const btn = root ? root.querySelector('button') : null;
+      return btn ? String(btn.textContent || '') : '';
+    }), { timeout: 10000 }).toContain('Copy preview text');
+    await page.evaluate(async () => {
+      window.__copyPreviewResult = await window.copyDescriptionPreviewText();
+    });
+    await expect.poll(() => page.evaluate(() => String(window.__lastDescriptionPreviewCopiedText || '')), { timeout: 10000 })
+      .toContain('Playwright Mock Description Place');
+    await expect.poll(() => page.evaluate(() => String(window.__lastDescriptionPreviewCopiedText || '')), { timeout: 10000 })
+      .toContain('Google editorial summary for Playwright Mock Description Place.');
+  });
+
   test('Add Places includes Festival Sources config flow with back navigation and persistence', async ({ page }) => {
     await expect(page.locator('#openFestivalSourcesConfigBtn')).toBeVisible();
     await expect(page.locator('#festivalAppliedConfigBadge')).toBeVisible();

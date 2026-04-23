@@ -378,6 +378,60 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await expect(page.locator(`#visitedExplorerDetailsFrame-${key}`)).toHaveAttribute('src', /initialTab=notes/i);
   });
 
+  test('details enrich modal auto-fetches Google fields and saves them through explorer sync', async ({ page }) => {
+    await mockExplorerWorkbookRequests(page);
+    await gotoAdventureChallenge(page);
+
+    const { key } = await openExplorerAndFindDetails(page);
+    const list = page.locator(`#visitedExplorerList-${key}`);
+    const firstCard = list.locator('.visited-explorer-card').first();
+    await firstCard.locator('[data-visited-explorer-details]').first().click();
+
+    const detailsFrame = page.locator(`#visitedExplorerDetailsFrame-${key}`);
+    await expect(detailsFrame).toBeVisible();
+    const plannerDetailsFrameLocator = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
+
+    await page.evaluate(() => {
+      window.getPlaceDetails = async () => ({
+        address: '1600 Amphitheatre Parkway, Mountain View, CA 94043',
+        phone: '(650) 253-0000',
+        hours: { Monday: '8:00 AM – 5:00 PM', Tuesday: '8:00 AM – 5:00 PM' },
+        description: 'A Google-fetched enriched description for Playwright verification.',
+        reviews: []
+      });
+      window.__lastExplorerEnrichUpdates = null;
+      window.syncVisitedExplorerDetailFields = async (_sourceMeta, updates) => {
+        window.__lastExplorerEnrichUpdates = updates;
+        return { synced: true, excelSaved: true, reason: 'saved' };
+      };
+    });
+
+    await expect(plannerDetailsFrameLocator.locator('#abEnrichBtn')).toBeVisible();
+    await plannerDetailsFrameLocator.locator('#abEnrichBtn').click();
+    await expect(plannerDetailsFrameLocator.locator('#enrichModal.open')).toBeVisible();
+
+    const frameHandle = await detailsFrame.elementHandle();
+    const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
+    expect(liveFrame).not.toBeNull();
+    await liveFrame.evaluate(() => {
+      if (window.__detailEnrichModalState && window.__detailEnrichModalState.data) {
+        window.__detailEnrichModalState.data.googlePlaceId = 'ChIJPlaywrightEnrich123';
+      }
+    });
+
+    await plannerDetailsFrameLocator.locator('#enrichAutoFetchBtn').click();
+    await expect(plannerDetailsFrameLocator.locator('#enrichAddress')).toHaveValue(/Amphitheatre Parkway/i);
+    await expect(plannerDetailsFrameLocator.locator('#enrichPhone')).toHaveValue(/253-0000/);
+    await expect(plannerDetailsFrameLocator.locator('#enrichHours')).toHaveValue(/Monday:/i);
+    await expect(plannerDetailsFrameLocator.locator('#enrichDescription')).toHaveValue(/Google-fetched enriched description/i);
+
+    await plannerDetailsFrameLocator.locator('#enrichSaveBtn').click();
+    await expect.poll(() => page.evaluate(() => window.__lastExplorerEnrichUpdates), { timeout: 10000 }).toMatchObject({
+      address: '1600 Amphitheatre Parkway, Mountain View, CA 94043',
+      description: 'A Google-fetched enriched description for Playwright verification.'
+    });
+  });
+
   test('next and previous location follow frozen filtered order from the originating explorer list', async ({ page }) => {
     await mockExplorerWorkbookRequests(page);
     await gotoAdventureChallenge(page);

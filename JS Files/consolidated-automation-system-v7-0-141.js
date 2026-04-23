@@ -1630,6 +1630,61 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     };
   }
 
+  function getColumnValueByNames(rowValues, mainWindow, columnNames, fallbackIndex) {
+    if (!Array.isArray(rowValues)) return '';
+    const names = Array.isArray(columnNames) ? columnNames : [];
+    if (mainWindow && typeof mainWindow.getColumnIndexByName === 'function' && names.length) {
+      const primary = names[0];
+      const aliases = names.slice(1);
+      const idx = Number(mainWindow.getColumnIndexByName(primary, aliases));
+      if (Number.isInteger(idx) && idx >= 0 && idx < rowValues.length) {
+        return safeString(rowValues[idx]);
+      }
+    }
+    const fb = Number(fallbackIndex);
+    if (Number.isInteger(fb) && fb >= 0 && fb < rowValues.length) {
+      return safeString(rowValues[fb]);
+    }
+    return '';
+  }
+
+  function recordEditModeAddDiagnostics(mainWindow, target, details, rowValues, meta = {}) {
+    const host = mainWindow && typeof mainWindow === 'object' ? mainWindow : window;
+    if (!host || !Array.isArray(rowValues)) return;
+
+    const description = getColumnValueByNames(rowValues, host, ['Description'], 16);
+    const driveTime = getColumnValueByNames(rowValues, host, ['Drive Time', 'DriveTime'], 4);
+    const tags = getColumnValueByNames(rowValues, host, ['Tags'], 3);
+    const latitude = getColumnValueByNames(rowValues, host, ['Latitude', 'Lat', 'GPS Latitude'], -1);
+    const longitude = getColumnValueByNames(rowValues, host, ['Longitude', 'Lng', 'GPS Longitude'], -1);
+    const gps = getColumnValueByNames(rowValues, host, ['GPS Coordinates', 'Coordinates', 'GPS'], -1);
+
+    const hasLatLng = (!!latitude && !!longitude) || !!gps;
+    const preview = (value, maxLen = 64) => {
+      const text = safeString(value);
+      return text.length > maxLen ? `${text.slice(0, maxLen - 1)}…` : text;
+    };
+
+    const entry = {
+      ts: Date.now(),
+      targetId: safeString(target && target.id),
+      destination: formatTargetDestination(target),
+      placeName: safeString((details && details.name) || getColumnValueByNames(rowValues, host, ['Name'], 0) || 'Unnamed'),
+      placeId: safeString((details && details.placeId) || getColumnValueByNames(rowValues, host, ['Google Place ID', 'GooglePlaceId'], 1)),
+      queued: !!meta.queued,
+      fields: {
+        description: { populated: !!description, preview: preview(description) },
+        driveTime: { populated: !!driveTime, preview: preview(driveTime, 24) },
+        tags: { populated: !!tags, preview: preview(tags) },
+        latLng: { populated: hasLatLng, preview: hasLatLng ? preview(`${latitude}${latitude && longitude ? ', ' : ''}${longitude}` || gps, 40) : '' }
+      }
+    };
+
+    const current = Array.isArray(host.__editModeAddDiagnostics) ? host.__editModeAddDiagnostics.slice() : [];
+    current.unshift(entry);
+    host.__editModeAddDiagnostics = current.slice(0, 30);
+  }
+
   window.resolvePlaceInputWithGoogleData = window.resolvePlaceInputWithGoogleData || async function(inputType, inputValue) {
     const mainWindow = getMainWindow();
     const activeTarget = getActiveEditTarget(mainWindow);
@@ -1946,6 +2001,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
             }
           );
           appendRowLocally(mainWindow, rowValues, queueItem && queueItem.id);
+          recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, { queued: true });
           return {
             success: true,
             queued: true,
@@ -1975,6 +2031,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
             mainWindow.adventuresData.push({ values: [rowValues] });
           }
         }
+
+        recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, { queued: false });
 
         return {
           success: true,

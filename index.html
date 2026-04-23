@@ -10323,6 +10323,24 @@
         }
       }
 
+      const resolvedDescription = (() => {
+        if (place.editorialSummary && place.editorialSummary.text) {
+          return String(place.editorialSummary.text).trim();
+        }
+        if (Array.isArray(place.reviews) && place.reviews.length) {
+          const snippets = place.reviews
+            .map((review) => {
+              if (!review) return '';
+              if (review.text && typeof review.text === 'object' && review.text.text) return String(review.text.text).trim();
+              return String(review.text || review.originalText || review.snippet || '').trim();
+            })
+            .filter(Boolean)
+            .slice(0, 2);
+          if (snippets.length) return snippets.join(' ').trim();
+        }
+        return '';
+      })();
+
       return {
         name: resolvedDisplayName || '',
         rating: place.rating || null,
@@ -10331,7 +10349,7 @@
         phone: place.internationalPhoneNumber || '',
         website: place.websiteURI || '',
         hours: place.regularOpeningHours || null,
-        description: (place.editorialSummary && place.editorialSummary.text) ? place.editorialSummary.text : '',
+        description: resolvedDescription,
         coordinates: place.location ? {
           lat: place.location.lat(),
           lng: place.location.lng()
