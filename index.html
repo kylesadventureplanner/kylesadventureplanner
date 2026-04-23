@@ -19381,62 +19381,91 @@ COMMON ISSUES:
     });
   }
 
-  async function addRowToExcel(rowValues, retryCount = 0, pathAttemptIndex = 0) {
-    if (!window.accessToken) throw new Error("Please sign in first.");
+  function getExpectedExcelColumnCount(rowValues) {
+    const direct = Number(window.__excelColumnCount);
+    if (Number.isInteger(direct) && direct > 0) return direct;
 
-    const pathCandidates = getActiveExcelWritePathCandidates();
-    const filePath = pathCandidates[Math.min(pathAttemptIndex, Math.max(pathCandidates.length - 1, 0))] || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+    const schemaCols = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns.length : 0;
+    if (schemaCols > 0) return schemaCols;
 
-    // Use the session-less rows endpoint that's more reliable across windows
-    const encodedPath = encodeGraphDrivePath(filePath);
-    const tableName = window.tableName || "MyList";
-    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
+    const targetSchemaCols = window.__editModeTarget && Array.isArray(window.__editModeTarget.schemaColumns)
+      ? window.__editModeTarget.schemaColumns.length
+      : 0;
+    if (targetSchemaCols > 0) return targetSchemaCols;
 
-    // Clone and prepare the row - handle all data types
-    let rowToSend = Array.isArray(rowValues) ? rowValues.slice() : Object.values(rowValues || {});
+    const metaCount = Number(rowValues && rowValues._columnCount);
+    if (Number.isInteger(metaCount) && metaCount > 0) return metaCount;
 
-    // Convert all values to strings to ensure Excel compatibility
-    rowToSend = rowToSend.map(v => {
-      if (v === null || v === undefined) return "";
+    const dataCount = Number(window.adventuresData && window.adventuresData[0] && window.adventuresData[0].values && window.adventuresData[0].values[0] && window.adventuresData[0].values[0].length);
+    return Number.isInteger(dataCount) && dataCount > 0 ? dataCount : null;
+  }
+
+  function normalizeRowValuesForExcel(rowValues, expectedCount) {
+    let normalized = Array.isArray(rowValues) ? rowValues.slice() : Object.values(rowValues || {});
+    normalized = normalized.map((v) => {
+      if (v === null || v === undefined) return '';
       if (typeof v === 'string') return v;
       if (typeof v === 'number') return String(v);
-      if (typeof v === 'boolean') return v ? "TRUE" : "FALSE";
+      if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
       return String(v);
     });
 
-    // DIAGNOSTIC: Log what we're sending
+    const width = Number(expectedCount);
+    if (Number.isInteger(width) && width > 0) {
+      if (normalized.length > width) normalized = normalized.slice(0, width);
+      if (normalized.length < width) normalized = normalized.concat(new Array(width - normalized.length).fill(''));
+    }
+    return normalized;
+  }
+
+  async function fetchExcelTableSchemaColumns(filePath, tableName) {
+    if (!window.accessToken) return null;
+    try {
+      const encodedPath = encodeGraphDrivePath(filePath);
+      const schemaUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/columns?$select=name`;
+      const res = await fetch(schemaUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer ' + window.accessToken,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) return null;
+      const data = await res.json().catch(function () { return null; });
+      const names = Array.isArray(data && data.value)
+        ? data.value.map((entry) => String(entry && entry.name ? entry.name : '').trim()).filter(Boolean)
+        : [];
+      return names.length ? names : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  async function addRowToExcel(rowValues, retryCount = 0, pathAttemptIndex = 0) {
+    if (!window.accessToken) throw new Error('Please sign in first.');
+
+    const pathCandidates = getActiveExcelWritePathCandidates();
+    const filePath = pathCandidates[Math.min(pathAttemptIndex, Math.max(pathCandidates.length - 1, 0))] || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+    const encodedPath = encodeGraphDrivePath(filePath);
+    const tableName = window.tableName || 'MyList';
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${tableName}/rows`;
+
+    const expectedColumns = getExpectedExcelColumnCount(rowValues);
+    const rowToSend = normalizeRowValuesForExcel(rowValues, expectedColumns);
+
     if (retryCount === 0) {
       console.log(`📊 [EXCEL ADD] Attempt ${retryCount + 1}:`);
-      console.log(`   Original row length: ${rowValues.length}`);
-      console.log(`   Processed row length: ${rowToSend.length}`);
-      const filledCount = rowToSend.filter(v => v !== "").length;
-      console.log(`   Filled cells: ${filledCount}`);
-      if (filledCount <= 10) {
-        console.log(`   Row data: [${rowToSend.map((v, i) => `${i}:"${v}"`).join(', ')}]`);
-      }
-    }
-
-    // OPTIMIZATION: Trim trailing empty cells BEFORE sending to avoid InvalidArgument errors
-    let lastFilledIndex = -1;
-    for (let i = rowToSend.length - 1; i >= 0; i--) {
-      if (rowToSend[i] !== "") {
-        lastFilledIndex = i;
-        break;
-      }
-    }
-
-    // Keep at least the main columns (through address at column 11), or to lastFilledIndex + 1
-    const minColumns = Math.max(12, lastFilledIndex >= 0 ? lastFilledIndex + 1 : 12);
-    if (rowToSend.length > minColumns) {
-      console.log(`🔧 Pre-trimming row from ${rowToSend.length} to ${minColumns} columns to avoid Excel InvalidArgument error`);
-      rowToSend = rowToSend.slice(0, minColumns);
+      console.log(`   Expected columns: ${expectedColumns || 'unknown'}`);
+      console.log(`   Original row length: ${Array.isArray(rowValues) ? rowValues.length : Object.keys(rowValues || {}).length}`);
+      console.log(`   Payload row length: ${rowToSend.length}`);
+      console.log(`   Filled cells: ${rowToSend.filter((v) => v !== '').length}`);
     }
 
     const res = await fetch(url, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        Authorization: "Bearer " + window.accessToken,
-        "Content-Type": "application/json"
+        Authorization: 'Bearer ' + window.accessToken,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         values: [rowToSend]
@@ -19444,49 +19473,46 @@ COMMON ISSUES:
     });
 
     if (!res.ok) {
-      const text = await res.text().catch(function () { return ""; });
+      const text = await res.text().catch(function () { return ''; });
+      const isInvalidArgument = text.includes('InvalidArgument') || text.includes('invalidArgument');
       const isItemNotFound = res.status === 404 && /itemnotfound|resource could not be found/i.test(text);
+
+      console.error(`❌ [EXCEL ADD] Failed (${res.status}). InvalidArgument: ${isInvalidArgument}, RetryCount: ${retryCount}`);
+      console.error(`   Response: ${text.substring(0, 250)}`);
 
       if (isItemNotFound && pathAttemptIndex < pathCandidates.length - 1) {
         console.warn(`🔁 [EXCEL ADD] Workbook path not found at ${filePath}; trying ${pathCandidates[pathAttemptIndex + 1]}...`);
         return await addRowToExcel(rowValues, retryCount, pathAttemptIndex + 1);
       }
 
-      // If 401 (token expired) and we haven't retried yet, try to refresh token
-      if (res.status === 401 && retryCount === 0 && typeof window.refreshAccessToken === "function") {
-        console.log("🔄 Token expired (401), attempting refresh...");
+      if (res.status === 401 && retryCount === 0 && typeof window.refreshAccessToken === 'function') {
+        console.log('🔄 Token expired (401), attempting refresh...');
         try {
           await window.refreshAccessToken();
-          return await addRowToExcel(rowValues, 1, pathAttemptIndex); // Retry once with original values
+          return await addRowToExcel(rowValues, 1, pathAttemptIndex);
         } catch (refreshErr) {
-          console.error("❌ Token refresh failed:", refreshErr.message);
-          throw new Error("Authentication token expired. Please sign in again.");
+          console.error('❌ Token refresh failed:', refreshErr && refreshErr.message ? refreshErr.message : refreshErr);
+          throw new Error('Authentication token expired. Please sign in again.');
         }
       }
-
-      // If InvalidArgument error (column mismatch), try trimming trailing empty columns more aggressively
-      const isInvalidArgument = text.includes("InvalidArgument") || text.includes("invalidArgument");
-
-      console.error(`❌ [EXCEL ADD] Failed (${res.status}). InvalidArgument: ${isInvalidArgument}, RetryCount: ${retryCount}`);
-      console.error(`   Response: ${text.substring(0, 250)}`);
 
       if (res.status === 400 && isInvalidArgument && retryCount < 2) {
-        // Attempt to trim more aggressively
-        const originalLen = rowToSend.length;
-
-        // Try progressively smaller column counts
-        const columnsToTry = [15, 13, 12, 11];
-
-        for (const colCount of columnsToTry) {
-          if (originalLen > colCount) {
-            const trimmedRow = rowToSend.slice(0, colCount);
-            console.log(`🔧 [RETRY ${retryCount + 1}] Trimming to ${colCount} columns (was ${originalLen})`);
-            return await addRowToExcel(trimmedRow, retryCount + 1, pathAttemptIndex);
+        const schemaColumns = await fetchExcelTableSchemaColumns(filePath, tableName);
+        if (Array.isArray(schemaColumns) && schemaColumns.length > 0) {
+          window.__excelSchemaColumns = schemaColumns.slice();
+          window.__excelColumnCount = schemaColumns.length;
+          if (window.__editModeTarget && typeof window.__editModeTarget === 'object') {
+            window.__editModeTarget = {
+              ...window.__editModeTarget,
+              schemaColumns: schemaColumns.slice()
+            };
           }
+          console.warn(`🔁 [EXCEL ADD] Refreshed schema (${schemaColumns.length} columns); retrying add.`);
+          return await addRowToExcel(rowValues, retryCount + 1, pathAttemptIndex);
         }
       }
 
-      throw new Error("Excel add row failed (" + res.status + ")" + (text ? (": " + text) : ""));
+      throw new Error('Excel add row failed (' + res.status + ')' + (text ? (': ' + text) : ''));
     }
 
     rememberResolvedExcelWritePath(filePath);
