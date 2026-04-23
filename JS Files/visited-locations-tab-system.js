@@ -631,6 +631,7 @@
     const editModeUrl = new URL(resolveInlinePageUrl('HTML Files/edit-mode-enhanced.html'));
     editModeUrl.searchParams.set('embedded', '1');
     editModeUrl.searchParams.set('sourceSubtab', key);
+    editModeUrl.hash = new URLSearchParams({ embedded: '1', sourceSubtab: key }).toString();
     editModeUrl.searchParams.set('ts', String(Date.now()));
     frame.src = editModeUrl.toString();
     setExplorerView(root, key, 'edit-mode');

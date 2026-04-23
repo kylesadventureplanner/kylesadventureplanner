@@ -72,6 +72,25 @@ async function installMocks(context, graphCalls, options = {}) {
   });
 }
 
+async function openEditModePopup(page, url = '/HTML%20Files/edit-mode-enhanced.html') {
+  const popupPromise = page.waitForEvent('popup');
+  await page.evaluate((openUrl) => window.open(openUrl, '_blank'), url);
+  const popup = await popupPromise;
+  await popup.waitForLoadState('domcontentloaded');
+  await popup.waitForFunction(() => {
+    const select = document.getElementById('actionTargetSelect');
+    return select && select.options.length >= 7;
+  }, null, { timeout: 10000 });
+  await popup.evaluate(() => {
+    window.__targetConfirmMessages = [];
+    window.confirm = (message) => {
+      window.__targetConfirmMessages.push(String(message || ''));
+      return true;
+    };
+  });
+  return popup;
+}
+
 test.describe('Edit Mode single-add candidate search', () => {
   test('searches candidates and adds the selected candidate using existing single-add flow', async ({ page }) => {
     const graphCalls = [];
@@ -109,14 +128,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.evaluate(() => {
       window.showToast = () => {};
@@ -214,14 +226,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.evaluate(() => {
       window.showToast = () => {};
@@ -308,14 +313,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.evaluate(() => {
       window.showToast = () => {};
@@ -384,14 +382,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       window.getPlaceDetails = async () => null;
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.evaluate(() => {
       const originalFetch = window.fetch.bind(window);
@@ -451,14 +442,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.selectOption('#actionTargetSelect', GENERIC_GOOGLE_CANDIDATE_TARGET);
     await popup.check('#candidateUrlProbeEnabled');
@@ -513,14 +497,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.evaluate(() => {
       window.showToast = () => {};
@@ -593,14 +570,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.selectOption('#candidateDistanceLimitMiles', '50');
     await popup.selectOption('#candidateStateFilter', 'NC');
@@ -683,14 +653,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
     await expect(popup.locator('#singleSearchCandidatesBtn')).toHaveText(/Search Festival Events/i);
@@ -770,14 +733,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
 
     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
@@ -870,14 +826,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.evaluate(() => {
       window.showToast = () => {};
@@ -956,14 +905,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       window.searchFestivalEvents = async () => [];
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     const officialUrl = 'https://ncapplefestival.org/';
 
@@ -1004,14 +946,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       window.searchPlaces = async () => [];
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     const firstUrl = 'https://ncapplefestival.org/';
     const secondUrl = 'https://hendersonvilleberryfest.com/';
@@ -1072,14 +1007,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
     await popup.selectOption('#singleInputType', 'website');
@@ -1116,14 +1044,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       window.searchPlaces = async () => [];
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
     await popup.selectOption('#singleInputType', 'placeName');
@@ -1194,14 +1115,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.evaluate(() => {
       window.showToast = () => {};
@@ -1304,14 +1218,7 @@ test.describe('Edit Mode single-add candidate search', () => {
       };
     });
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-    const popup = await popupPromise;
-    await popup.waitForLoadState('domcontentloaded');
-    await popup.waitForFunction(() => {
-      const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+    const popup = await openEditModePopup(page);
 
     await popup.evaluate(() => {
       window.showToast = () => {};

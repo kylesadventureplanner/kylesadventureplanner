@@ -116,6 +116,11 @@ async function seedMainWindow(page) {
 async function seedEditModeWindow(popup) {
   await popup.evaluate(() => {
     window.showToast = () => {};
+    window.__targetConfirmMessages = [];
+    window.confirm = (message) => {
+      window.__targetConfirmMessages.push(String(message || ''));
+      return true;
+    };
     window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
       const label = String(inputValue || '').trim();
       const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
@@ -222,6 +227,7 @@ test.describe('Edit Mode target-table routing', () => {
     expect(singleRow[5]).toBe('https://cafe-alpha.example.com');
     expect(singleRow[6]).toBe('pid-cafe-alpha');
     expect(singleRow[10]).toBe('9-5 Cafe Alpha');
+    await expect.poll(() => popup.evaluate(() => String((window.__targetConfirmMessages || [])[0] || ''))).toContain('Coffee (Retail_Food_and_Drink.xlsx)');
     const diagnostics = popup.locator('#editModeTargetDiagnostics');
     if (await diagnostics.count()) {
       await expect(diagnostics).toContainText('Coffee (Retail_Food_and_Drink.xlsx)');
@@ -342,6 +348,40 @@ test.describe('Edit Mode target-table routing', () => {
     expect(graphCalls[0].url).toContain('Copilot_Apps/Kyles_Adventure_Finder/');
     await expect.poll(() => page.evaluate(() => String(window.__resolvedExcelFilePath || '')), { timeout: 10000 })
       .toContain('Copilot_Apps/Kyles_Adventure_Finder/');
+  });
+
+  test('single add can be cancelled at the destination confirmation prompt', async ({ page }) => {
+    const graphCalls = [];
+    await installWorkbookMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => (
+      typeof window.buildExcelRow === 'function'
+      && typeof window.addRowToExcel === 'function'
+    ), null, { timeout: 15000 });
+    await seedMainWindow(page);
+
+    const popupPromise = page.waitForEvent('popup');
+    await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html#embedded=1&sourceSubtab=wildlife-animals', '_blank'));
+    const popup = await popupPromise;
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForFunction(() => document.getElementById('actionTargetSelect')?.options.length >= 7, null, { timeout: 10000 });
+    await seedEditModeWindow(popup);
+    await popup.evaluate(() => {
+      window.__targetConfirmMessages = [];
+      window.confirm = (message) => {
+        window.__targetConfirmMessages.push(String(message || ''));
+        return false;
+      };
+    });
+
+    await popup.fill('#singleInput', 'Cancelled Animal Location');
+    await popup.evaluate(() => submitAddSinglePlace());
+
+    await expect.poll(() => popup.evaluate(() => String((window.__targetConfirmMessages || [])[0] || ''))).toContain('Wildlife_Animals (Entertainment_Locations.xlsx)');
+    await popup.waitForTimeout(200);
+    await expect.poll(() => graphCalls.length).toBe(0);
+    await expect(popup.locator('#single-status')).toContainText('Add cancelled');
   });
 
 

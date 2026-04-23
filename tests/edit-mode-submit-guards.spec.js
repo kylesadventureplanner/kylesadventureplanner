@@ -118,6 +118,13 @@ test.describe('Edit Mode submit guards', () => {
       const select = document.getElementById('actionTargetSelect');
       return select && select.options.length >= 7;
     }, null, { timeout: 10000 });
+    await popup.evaluate(() => {
+      window.__targetConfirmMessages = [];
+      window.confirm = (message) => {
+        window.__targetConfirmMessages.push(String(message || ''));
+        return true;
+      };
+    });
 
     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
 

@@ -19,8 +19,8 @@ const EXPECTED_TARGET_IDS = [
 ];
 
 // Navigate directly to the edit-mode page (no auth required for UI smoke).
-async function gotoEditMode(page) {
-  await page.goto('/HTML Files/edit-mode-enhanced.html');
+async function gotoEditMode(page, url = '/HTML Files/edit-mode-enhanced.html') {
+  await page.goto(url);
   // Wait for the target selectors to be populated by initTargetSelectors().
   await page.waitForFunction(() => {
     const sel = document.getElementById('actionTargetSelect');
@@ -81,6 +81,14 @@ test.describe('Edit Mode – target-table selectors', () => {
     // Scope assertion to Add/Bulk chip only to avoid unrelated chip text churn.
     const addBulkChip = chipGrid.locator('.target-chip', { hasText: 'Add/Bulk:' });
     await expect(addBulkChip).toContainText(/Add\/Bulk:\s*Retail\s*\(Retail_Food_and_Drink\.xlsx\)/i);
+  });
+
+  test('embedded launch defaults add target to the matching source subtab table', async ({ page }) => {
+    await gotoEditMode(page, '/HTML%20Files/edit-mode-enhanced.html#embedded=1&sourceSubtab=wildlife-animals');
+    await expect(page.locator('#actionTargetSelect')).toHaveValue('ent_wildlife_animals');
+    await expect(page.locator('#automationTargetSelect')).toHaveValue('ent_wildlife_animals');
+    const addBulkChip = page.locator('#targetSelectionStatus .target-chip', { hasText: 'Add/Bulk:' });
+    await expect(addBulkChip).toContainText(/Wildlife_Animals\s*\(Entertainment_Locations\.xlsx\)/i);
   });
 
   test('tabs switch between Places and Automation panels', async ({ page }) => {

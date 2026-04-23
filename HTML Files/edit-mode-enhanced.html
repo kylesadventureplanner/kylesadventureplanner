@@ -1870,6 +1870,14 @@
       { id: 'ent_wildlife_animals', label: 'Wildlife_Animals (Entertainment_Locations.xlsx)', filePath: 'Entertainment_Locations.xlsx', tableName: 'Wildlife_Animals' },
       { id: 'ent_general', label: 'General_Entertainment (Entertainment_Locations.xlsx)', filePath: 'Entertainment_Locations.xlsx', tableName: 'General_Entertainment' }
     ];
+    const EDIT_MODE_SUBTAB_DEFAULT_TARGETS = {
+      outdoors: 'nature_locations',
+      entertainment: 'ent_general',
+      'food-drink': 'retail_restaurants',
+      retail: 'retail_retail',
+      'wildlife-animals': 'ent_wildlife_animals',
+      'regional-festivals': 'ent_festivals'
+    };
     const targetSchemaCache = {};
     const EDIT_MODE_WORKBOOK_PREFIXES = [
       'Copilot_Apps/Kyles_Adventure_Finder/',
@@ -2680,13 +2688,27 @@
       return window;
     }
 
-    function getEmbeddedSourceSubtabKey() {
+    function getEditModeLaunchParam(paramName) {
+      const key = String(paramName || '').trim();
+      if (!key) return '';
       try {
-        const params = new URLSearchParams(window.location.search || '');
-        return String(params.get('sourceSubtab') || '').trim().toLowerCase();
+        const searchParams = new URLSearchParams(window.location.search || '');
+        const fromSearch = String(searchParams.get(key) || '').trim();
+        if (fromSearch) return fromSearch;
+      } catch (_error) {
+        // Ignore malformed search params.
+      }
+      try {
+        const hashText = String(window.location.hash || '').replace(/^#/, '');
+        const hashParams = new URLSearchParams(hashText);
+        return String(hashParams.get(key) || '').trim();
       } catch (_error) {
         return '';
       }
+    }
+
+    function getEmbeddedSourceSubtabKey() {
+      return String(getEditModeLaunchParam('sourceSubtab') || '').trim().toLowerCase();
     }
 
     async function runPostAddRefreshHooks(result, dryRun) {
@@ -2726,11 +2748,10 @@
 
     function closeEditModeWindow() {
       if (isEmbeddedEditMode() && window.parent && window.parent !== window) {
-        const params = new URLSearchParams(window.location.search || '');
         window.parent.postMessage({
           type: 'planner-inline-tool-close',
           tool: 'edit-mode',
-          sourceSubtab: String(params.get('sourceSubtab') || '')
+          sourceSubtab: String(getEditModeLaunchParam('sourceSubtab') || '')
         }, window.location.origin);
         return;
       }
@@ -2763,6 +2784,39 @@
       }
     }
 
+    function resolveInitialEditModeTargetId() {
+      const sourceSubtab = getEmbeddedSourceSubtabKey();
+      const preferredId = String(EDIT_MODE_SUBTAB_DEFAULT_TARGETS[sourceSubtab] || '').trim();
+      if (preferredId && EDIT_MODE_TARGETS.some((target) => target.id === preferredId)) {
+        return preferredId;
+      }
+      return EDIT_MODE_TARGETS[0] ? EDIT_MODE_TARGETS[0].id : '';
+    }
+
+    function buildAddTargetConfirmationMessage(target, itemCount, flowLabel) {
+      const safeTarget = target && typeof target === 'object' ? target : null;
+      const count = Math.max(1, Number(itemCount) || 1);
+      const destination = safeTarget ? formatTargetDestination(safeTarget) : 'Unknown target';
+      const label = String(flowLabel || 'add').trim() || 'add';
+      return `Confirm ${label} to:\n${destination}\n\n${count} location${count === 1 ? '' : 's'} will be added to this table. Continue?`;
+    }
+
+    function confirmAddTargetSelection(target, itemCount, flowLabel, statusDiv, cancelMessage) {
+      if (!target) return false;
+      let confirmed = true;
+      try {
+        confirmed = window.confirm(buildAddTargetConfirmationMessage(target, itemCount, flowLabel));
+      } catch (_error) {
+        confirmed = true;
+      }
+      if (confirmed) return true;
+      const message = String(cancelMessage || `ℹ️ Add cancelled. No changes were written to ${formatTargetDestination(target)}.`);
+      if (statusDiv) {
+        statusDiv.innerHTML = `<div class="status-message status-warning">${message}</div>`;
+      }
+      return false;
+    }
+
     function initTargetSelectors() {
       const actionSel = document.getElementById('actionTargetSelect');
       const autoSel = document.getElementById('automationTargetSelect');
@@ -2774,10 +2828,11 @@
       autoSel.innerHTML = options;
       multiSel.innerHTML = options;
 
-      actionSel.value = EDIT_MODE_TARGETS[0].id;
-      autoSel.value = EDIT_MODE_TARGETS[0].id;
+      const initialTargetId = resolveInitialEditModeTargetId();
+      actionSel.value = initialTargetId;
+      autoSel.value = initialTargetId;
       Array.from(multiSel.options).forEach((opt, idx) => {
-        opt.selected = idx === 0;
+        opt.selected = opt.value === initialTargetId || (!initialTargetId && idx === 0);
       });
 
       actionSel.addEventListener('change', () => {
@@ -4325,6 +4380,10 @@
 
       const useDirectDetails = isFestivalEditTarget(target) || !selected.placeId;
       if (useDirectDetails && window.enhancedAutomation) {
+        if (!dryRun && !confirmAddTargetSelection(target, 1, 'selected candidate add', statusDiv)) {
+          setSingleCandidateStatus(`ℹ️ Add cancelled for ${formatTargetDestination(target)}.`, 'info');
+          return;
+        }
         setSingleCandidateStatus(`✅ Selected ${selected.name}. Adding now...`, 'success');
         const result = await window.enhancedAutomation.addSinglePlace(
           selected.name || selected.address || 'Festival Event',
@@ -4610,6 +4669,10 @@
       }
 
       if ((isFestivalEditTarget(target) || selectedCandidates.some((item) => !item.placeId)) && window.enhancedAutomation) {
+        if (!dryRun && !confirmAddTargetSelection(target, selectedCandidates.length, 'selected candidate bulk add', statusDiv)) {
+          setBulkCandidateStatus(`ℹ️ Add cancelled for ${formatTargetDestination(target)}.`, 'info');
+          return;
+        }
         setBulkCandidateStatus(`✅ Adding ${selectedCandidates.length} selected candidate(s)...`, 'success');
         const result = await window.enhancedAutomation.bulkAddPlaces('', 'placeName', dryRun, {
           resolvedDetailsList: selectedCandidates,
@@ -4974,6 +5037,7 @@
       }
 
       const target = getSelectedTarget('actionTargetSelect');
+      const targetContext = cloneTargetContext(target);
       const dryRun = Boolean(document.getElementById('chainDryRun')?.checked);
       const statusDiv = document.getElementById('chain-status');
       if (!applyTargetToMainWindow(target, statusDiv)) return;
@@ -4998,7 +5062,11 @@
           setChainCandidateStatus('❌ No festival candidates remain after applying your selected cap.', 'error');
           return;
         }
-        const result = await window.enhancedAutomation.bulkAddPlaces('', 'placeName', dryRun, { resolvedDetailsList: finalCandidates });
+        if (!dryRun && !confirmAddTargetSelection(target, finalCandidates.length, 'selected chain candidate add', statusDiv)) {
+          setChainCandidateStatus(`ℹ️ Add cancelled for ${formatTargetDestination(target)}.`, 'info');
+          return;
+        }
+        const result = await window.enhancedAutomation.bulkAddPlaces('', 'placeName', dryRun, { resolvedDetailsList: finalCandidates, target: targetContext });
         window.enhancedAutomation.displayResults(result, statusDiv);
         if (result.success && !dryRun) document.getElementById('chainInput').value = '';
         return;
@@ -5205,6 +5273,9 @@
           statusDiv.innerHTML = `<div class="status-message status-error">⚠️ Duplicate preflight stopped this save for ${formatTargetDestination(target)}. Review the existing row first.</div>`;
           return;
         }
+        if (!dryRun && !confirmAddTargetSelection(target, 1, 'single add', statusDiv)) {
+          return;
+        }
 
         // Try new progress tracking system first
         if (typeof window.handleAddSinglePlaceWithProgress === 'function') {
@@ -5278,6 +5349,9 @@
         if (filteredLocations.length !== locations.length) {
           statusDiv.innerHTML = `<div class="status-message">ℹ️ Bulk preflight skipped ${locations.length - filteredLocations.length} duplicate input(s) for ${formatTargetDestination(target)}. Continuing with ${filteredLocations.length} new item(s)...</div>`;
         }
+        if (!dryRun && !confirmAddTargetSelection(target, filteredLocations.length, 'bulk add', statusDiv)) {
+          return;
+        }
 
         // Try new progress tracking system first
         if (typeof window.handleBulkAddPlacesWithProgress === 'function') {
@@ -5336,6 +5410,9 @@
 
         if (locations.length === 0) {
           statusDiv.innerHTML = '<div class="status-message status-error">❌ No valid locations</div>';
+          return;
+        }
+        if (!dryRun && !confirmAddTargetSelection(target, locations.length, 'chain add', statusDiv)) {
           return;
         }
 
