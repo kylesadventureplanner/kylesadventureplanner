@@ -104,7 +104,15 @@ test.describe('Adventure achievements dashboard smoke', () => {
 
   test('auto-syncs active Adventure subtab totals without manual click when signed in', async ({ page }) => {
     await page.addInitScript(() => {
-      window.accessToken = 'playwright-mock-token';
+      // Use defineProperty so MSAL's syncAuthGlobals() can never overwrite this
+      // mock token with null when it finds no cached account in the test environment.
+      let _mockToken = 'playwright-mock-token';
+      Object.defineProperty(window, 'accessToken', {
+        get() { return _mockToken; },
+        set(v) { if (v) _mockToken = v; /* allow real token to replace mock; ignore null clears */ },
+        configurable: true,
+        enumerable: true
+      });
     });
 
     await page.route('https://graph.microsoft.com/**', async (route) => {

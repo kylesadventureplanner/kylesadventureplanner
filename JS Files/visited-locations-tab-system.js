@@ -3306,9 +3306,56 @@
     }
   }
 
+  // Subtab keys waiting for window.accessToken to become available before auto-syncing.
+  const _pendingTokenAutoSync = new Set();
+  let _tokenWatcherActive = false;
+
+  function _startTokenWatcher() {
+    if (_tokenWatcherActive) return;
+    _tokenWatcherActive = true;
+    const started = Date.now();
+    const MAX_WAIT_MS = 30000;
+    const POLL_MS = 500;
+
+    const interval = setInterval(() => {
+      if (!window.accessToken) {
+        if (Date.now() - started > MAX_WAIT_MS) {
+          clearInterval(interval);
+          _tokenWatcherActive = false;
+          _pendingTokenAutoSync.clear();
+        }
+        return;
+      }
+      // Token is now available — fire all pending auto-syncs.
+      clearInterval(interval);
+      _tokenWatcherActive = false;
+      const keys = Array.from(_pendingTokenAutoSync);
+      _pendingTokenAutoSync.clear();
+      const root = document.getElementById('visitedLocationsRoot');
+      if (!root) return;
+      for (const k of keys) {
+        // Reset the attempted flag so the real sync can proceed.
+        const es = getExplorerState(k);
+        if (!es.loaded && !es.loading) {
+          es.autoSyncAttempted = false;
+        }
+        maybeAutoSyncExplorerForSubtab(root, k).catch(() => {});
+      }
+    }, POLL_MS);
+  }
+
   async function maybeAutoSyncExplorerForSubtab(root, subtabKey) {
     const key = String(subtabKey || state.activeProgressSubTab || 'outdoors').trim();
-    if (!root || !getExplorerConfig(key) || !window.accessToken) return false;
+    if (!root || !getExplorerConfig(key)) return false;
+
+    if (!window.accessToken) {
+      // Token not yet available — queue this subtab for retry once the token arrives.
+      if (!_pendingTokenAutoSync.has(key)) {
+        _pendingTokenAutoSync.add(key);
+        _startTokenWatcher();
+      }
+      return false;
+    }
 
     const explorerState = getExplorerState(key);
     if (explorerState.loaded || explorerState.loading || explorerState.autoSyncAttempted) return false;
