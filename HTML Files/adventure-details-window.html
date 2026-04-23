@@ -3336,7 +3336,8 @@
     if (inlineEditBtn) {
       inlineEditBtn.onclick = function () {
         activateTab('details');
-        toggleInlineEditPanel();
+        // Force-open avoids accidental close if click is replayed/twice-fired.
+        toggleInlineEditPanel(true);
       };
     }
   }

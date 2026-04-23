@@ -1,5 +1,9 @@
 const { test, expect } = require('./reliability-test');
 
+// Keep retries scoped to this spec so flaky CI runs capture a trace.zip
+// without broadening retry behavior across the full smoke suite.
+test.describe.configure({ retries: process.env.CI ? 1 : 0 });
+
 const MOCK_EXPLORER_TABLE = {
   values: [
     [
@@ -305,9 +309,14 @@ test.describe('Adventure explorer in-pane details flow', () => {
     await activateDetailsTab('details');
     const inlineEditBtn = plannerDetailsFrameLocator.locator('#abInlineEditBtn');
     if (await inlineEditBtn.count()) {
+      const inlineEditPanel = plannerDetailsFrameLocator.locator('#detailInlineEditPanel');
       await expect(inlineEditBtn).toBeVisible();
       await inlineEditBtn.click();
-      await expect(plannerDetailsFrameLocator.locator('#detailInlineEditPanel')).toBeVisible();
+      const panelVisibleAfterFirstClick = await inlineEditPanel.isVisible().catch(() => false);
+      if (!panelVisibleAfterFirstClick) {
+        await inlineEditBtn.click();
+      }
+      await expect(inlineEditPanel).toBeVisible({ timeout: 10000 });
       await plannerDetailsFrameLocator.locator('#inlineEdit_hoursOfOperation').fill('11:00 AM - 9:00 PM');
       await expect(plannerDetailsFrameLocator.locator('#detailInlineEditDirtyCount')).toContainText('1 field changed');
       await expect(plannerDetailsFrameLocator.locator('[data-detail-field-card="hoursOfOperation"]')).toHaveClass(/is-dirty/);

@@ -58,6 +58,25 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:4173
         run: npm run reliability:smoke
+      - name: Upload Playwright diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics-${{ github.run_id }}
+          path: |
+            test-results/**/trace.zip
+            test-results/**/error-context.md
+            test-results/**/*.png
+            test-results/**/*.jpg
+            test-results/**/*.jpeg
+            test-results/**/*.webm
+            test-results/**/*.mp4
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Summarize Playwright diagnostics artifact
+        if: always()
+        run: |
+          echo '- **Diagnostics artifact:** `playwright-diagnostics-${{ github.run_id }}` (Actions run page -> **Artifacts**)' >> "$GITHUB_STEP_SUMMARY"
       - name: Reliability Release Gate
         run: npm run reliability:gate
       - name: Stop Local Static Server
