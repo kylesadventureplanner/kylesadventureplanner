@@ -28,6 +28,55 @@
 (function() {
   console.log('🚀 Universal Progress Tracking System v7.0.124 Loading...');
 
+  function normalizeWriteContract(rawResult, defaults = {}) {
+    if (typeof window.normalizeWriteResultContract === 'function') {
+      return window.normalizeWriteResultContract(rawResult, defaults);
+    }
+    const raw = rawResult && typeof rawResult === 'object' ? rawResult : {};
+    const asCount = (value, fallback = 0) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed < 0) return Math.max(0, Number(fallback) || 0);
+      return Math.max(0, Math.round(parsed));
+    };
+    const rowsChanged = asCount(raw.rowsChanged, asCount(defaults.rowsChanged, 0));
+    const persistedRows = asCount(raw.persistedRows, rowsChanged);
+    const verifiedRowsChanged = asCount(raw.verifiedRowsChanged, asCount(raw.rowsVerifiedPresent, 0));
+    return {
+      ...raw,
+      rowsRequested: asCount(raw.rowsRequested, asCount(raw.total, asCount(defaults.rowsRequested, rowsChanged))),
+      rowsChanged,
+      rowsAppended: asCount(raw.rowsAppended, rowsChanged),
+      persistedRows,
+      verifiedRowsChanged,
+      rowsVerifiedPresent: asCount(raw.rowsVerifiedPresent, verifiedRowsChanged),
+      postWriteVerified: typeof raw.postWriteVerified === 'boolean' ? raw.postWriteVerified : (persistedRows > 0 && verifiedRowsChanged === persistedRows),
+      verificationMode: String(raw.verificationMode || defaults.verificationMode || '').trim(),
+      verificationReason: String(raw.verificationReason || defaults.verificationReason || '').trim()
+    };
+  }
+
+  function applyWriteContractToSummary(summary, result, defaults = {}) {
+    const base = summary && typeof summary === 'object' ? summary : {};
+    const normalized = normalizeWriteContract(result, defaults);
+    return {
+      ...base,
+      rowsRequested: normalized.rowsRequested,
+      rowsChanged: normalized.rowsChanged,
+      rowsAppended: normalized.rowsAppended,
+      persistedRows: normalized.persistedRows,
+      verifiedRowsChanged: normalized.verifiedRowsChanged,
+      rowsVerifiedPresent: normalized.rowsVerifiedPresent,
+      postWriteVerified: normalized.postWriteVerified,
+      verificationMode: normalized.verificationMode,
+      verificationReason: normalized.verificationReason,
+      persistMode: String(normalized.persistMode || normalized.mode || '').trim(),
+      persistReason: String(normalized.persistReason || normalized.reason || '').trim(),
+      persisted: typeof normalized.persisted === 'boolean' ? normalized.persisted : normalized.persistedRows > 0,
+      queued: !!normalized.queued,
+      offline: !!normalized.offline
+    };
+  }
+
   /**
    * UNIVERSAL PROGRESS TRACKER CLASS
    */
@@ -293,7 +342,17 @@
           : null;
         tracker.recordSuccess(input, `[DRY RUN] Would add ${resolved?.name || input}`);
         tracker.displayFinalResults('Single location resolved successfully');
-        return tracker.getSummary();
+        return applyWriteContractToSummary(tracker.getSummary(), {
+          rowsRequested: 1,
+          rowsChanged: 0,
+          rowsAppended: 0,
+          persistedRows: 0,
+          verifiedRowsChanged: 0,
+          rowsVerifiedPresent: 0,
+          postWriteVerified: false,
+          verificationMode: 'dry-run',
+          verificationReason: 'dry-run'
+        }, { rowsRequested: 1 });
       }
 
       const automation = window.enhancedAutomation;
@@ -313,7 +372,7 @@
           : `Added ${result.placeName || input}`
       );
       tracker.displayFinalResults(result && result.queued ? 'Single location saved locally and queued for sync.' : 'Single location processed successfully');
-      return tracker.getSummary();
+      return applyWriteContractToSummary(tracker.getSummary(), result, { rowsRequested: 1 });
     } catch (err) {
       console.error('❌ Error:', err);
       tracker.displayError(err.message, err.stack);
@@ -328,6 +387,14 @@
     console.log(`📍 Bulk adding ${locations.length} places with progress...`);
 
     const tracker = new UniversalProgressTracker(displayElement, 'Bulk Add Places', locations.length, { dryRun });
+    const writeTotals = {
+      rowsRequested: 0,
+      rowsChanged: 0,
+      rowsAppended: 0,
+      persistedRows: 0,
+      verifiedRowsChanged: 0,
+      rowsVerifiedPresent: 0
+    };
 
     try {
       const automation = window.enhancedAutomation;
@@ -346,6 +413,8 @@
         try {
           tracker.updateProgress(`Resolving: ${location.substring(0, 40)}...`);
           const result = await automation.addSinglePlace(location, inputType, dryRun, options || {});
+          const normalized = normalizeWriteContract(result, { rowsRequested: 1 });
+          writeTotals.rowsRequested += 1;
 
           if (result.success) {
             tracker.recordSuccess(
@@ -356,6 +425,11 @@
                   ? `[PENDING SYNC] ${result.message || ('Queued ' + (result.placeName || location))}`
                   : `Added ${result.placeName || location}`
             );
+            writeTotals.rowsChanged += Math.max(0, Number(normalized.rowsChanged) || 0);
+            writeTotals.rowsAppended += Math.max(0, Number(normalized.rowsAppended) || 0);
+            writeTotals.persistedRows += Math.max(0, Number(normalized.persistedRows) || 0);
+            writeTotals.verifiedRowsChanged += Math.max(0, Number(normalized.verifiedRowsChanged) || 0);
+            writeTotals.rowsVerifiedPresent += Math.max(0, Number(normalized.rowsVerifiedPresent) || 0);
           } else {
             tracker.recordFailure(location, result.error || 'Failed to add location');
           }
@@ -367,7 +441,21 @@
       }
 
       tracker.displayFinalResults(`${locations.length} locations processed`);
-      return tracker.getSummary();
+      return applyWriteContractToSummary(tracker.getSummary(), {
+        rowsRequested: writeTotals.rowsRequested,
+        rowsChanged: writeTotals.rowsChanged,
+        rowsAppended: writeTotals.rowsAppended,
+        persistedRows: writeTotals.persistedRows,
+        verifiedRowsChanged: writeTotals.verifiedRowsChanged,
+        rowsVerifiedPresent: writeTotals.rowsVerifiedPresent,
+        postWriteVerified: writeTotals.persistedRows > 0 && writeTotals.verifiedRowsChanged === writeTotals.persistedRows,
+        verificationMode: dryRun ? 'dry-run' : 'loaded-data-presence',
+        verificationReason: dryRun
+          ? 'dry-run'
+          : (writeTotals.persistedRows > 0 && writeTotals.verifiedRowsChanged !== writeTotals.persistedRows
+            ? 'one-or-more-added-rows-not-found-in-loaded-data'
+            : '')
+      }, { rowsRequested: locations.length });
     } catch (err) {
       console.error('❌ Error:', err);
       tracker.displayError(err.message, err.stack);

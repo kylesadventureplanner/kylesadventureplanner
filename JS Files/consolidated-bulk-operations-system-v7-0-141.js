@@ -86,6 +86,48 @@ function getSchemaColumnCount(mainWindow) {
   return 24;
 }
 
+function toContractCount(value, fallback = 0) {
+  const next = Number(value);
+  if (!Number.isFinite(next) || next < 0) return Math.max(0, Number(fallback) || 0);
+  return Math.max(0, Math.round(next));
+}
+
+function normalizeWriteResultContract(rawResult, defaults = {}) {
+  const raw = rawResult && typeof rawResult === 'object' ? rawResult : {};
+  const baseRequested = toContractCount(defaults.rowsRequested, 0);
+  const baseChanged = toContractCount(defaults.rowsChanged, baseRequested);
+
+  const rowsChanged = toContractCount(raw.rowsChanged, toContractCount(raw.rowsAppended, baseChanged));
+  const persistedRows = toContractCount(raw.persistedRows, toContractCount(raw.rowsPersisted, rowsChanged));
+  const verifiedRowsChanged = toContractCount(raw.verifiedRowsChanged, toContractCount(raw.rowsVerifiedPresent, 0));
+  const rowsRequested = toContractCount(raw.rowsRequested, toContractCount(raw.total, baseRequested || rowsChanged));
+  const rowsAppended = toContractCount(raw.rowsAppended, rowsChanged);
+  const rowsVerifiedPresent = toContractCount(raw.rowsVerifiedPresent, verifiedRowsChanged);
+
+  const persisted = typeof raw.persisted === 'boolean' ? raw.persisted : persistedRows > 0;
+  const postWriteVerified = typeof raw.postWriteVerified === 'boolean'
+    ? raw.postWriteVerified
+    : (persistedRows > 0 && verifiedRowsChanged === persistedRows);
+
+  return {
+    ...raw,
+    rowsRequested,
+    rowsChanged,
+    persistedRows,
+    verifiedRowsChanged,
+    rowsAppended,
+    rowsVerifiedPresent,
+    persisted,
+    postWriteVerified,
+    verificationMode: String(raw.verificationMode || defaults.verificationMode || '').trim(),
+    verificationReason: String(raw.verificationReason || defaults.verificationReason || '').trim(),
+    persistMode: String(raw.persistMode || raw.mode || defaults.persistMode || '').trim(),
+    persistReason: String(raw.persistReason || raw.reason || defaults.persistReason || '').trim()
+  };
+}
+
+window.normalizeWriteResultContract = window.normalizeWriteResultContract || normalizeWriteResultContract;
+
 async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
   const host = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
   const operation = String(options.operation || 'automation').trim();
@@ -94,7 +136,17 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
   const changedRows = Array.isArray(options.changedRows) ? options.changedRows.filter((item) => item && Array.isArray(item.values)) : [];
 
   if (dryRun || updatedCount <= 0) {
-    return { persisted: false, mode: 'skipped', reason: dryRun ? 'dry-run' : 'no-updates', rowsChanged: changedRows.length, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: 'skipped', verificationReason: dryRun ? 'dry-run' : 'no-updates' };
+    return normalizeWriteResultContract({
+      persisted: false,
+      mode: 'skipped',
+      reason: dryRun ? 'dry-run' : 'no-updates',
+      rowsChanged: changedRows.length,
+      persistedRows: 0,
+      verifiedRowsChanged: 0,
+      postWriteVerified: false,
+      verificationMode: 'skipped',
+      verificationReason: dryRun ? 'dry-run' : 'no-updates'
+    }, { rowsRequested: updatedCount });
   }
 
   try {
@@ -107,7 +159,7 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
         if (result && typeof result === 'object' && result.verified) verifiedRowsChanged += 1;
       }
       console.log(`💾 ${operation}: persisted ${persistedRows} edited row(s) via row-level saveToExcel()`);
-      return {
+      return normalizeWriteResultContract({
         persisted: persistedRows > 0,
         mode: 'saveToExcel-row-patch',
         reason: '',
@@ -117,13 +169,13 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
         postWriteVerified: verifiedRowsChanged === persistedRows,
         verificationMode: 'row-reread',
         verificationReason: verifiedRowsChanged === persistedRows ? '' : 'one-or-more-row-verifications-failed'
-      };
+      }, { rowsRequested: updatedCount });
     }
 
     if (host && typeof host.saveToExcel === 'function') {
       await host.saveToExcel();
       console.log(`💾 ${operation}: persisted workbook changes via saveToExcel()`);
-      return {
+      return normalizeWriteResultContract({
         persisted: true,
         mode: 'saveToExcel',
         reason: '',
@@ -133,13 +185,13 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
         postWriteVerified: false,
         verificationMode: 'not-supported',
         verificationReason: 'bulk-save-verification-unavailable'
-      };
+      }, { rowsRequested: updatedCount });
     }
 
     if (typeof window.saveToExcel === 'function') {
       await window.saveToExcel();
       console.log(`💾 ${operation}: persisted workbook changes via local saveToExcel()`);
-      return {
+      return normalizeWriteResultContract({
         persisted: true,
         mode: 'saveToExcel-local',
         reason: '',
@@ -149,14 +201,34 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
         postWriteVerified: false,
         verificationMode: 'not-supported',
         verificationReason: 'bulk-save-verification-unavailable'
-      };
+      }, { rowsRequested: updatedCount });
     }
 
     console.warn(`⚠️ ${operation}: no workbook save API found (saveToExcel unavailable)`);
-    return { persisted: false, mode: 'unavailable', reason: 'saveToExcel-unavailable', rowsChanged: changedRows.length || updatedCount, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: 'unavailable', verificationReason: 'saveToExcel-unavailable' };
+    return normalizeWriteResultContract({
+      persisted: false,
+      mode: 'unavailable',
+      reason: 'saveToExcel-unavailable',
+      rowsChanged: changedRows.length || updatedCount,
+      persistedRows: 0,
+      verifiedRowsChanged: 0,
+      postWriteVerified: false,
+      verificationMode: 'unavailable',
+      verificationReason: 'saveToExcel-unavailable'
+    }, { rowsRequested: updatedCount });
   } catch (error) {
     console.error(`❌ ${operation}: workbook persistence failed`, error);
-    return { persisted: false, mode: 'error', reason: String(error && error.message ? error.message : error), rowsChanged: changedRows.length || updatedCount, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: 'error', verificationReason: String(error && error.message ? error.message : error) };
+    return normalizeWriteResultContract({
+      persisted: false,
+      mode: 'error',
+      reason: String(error && error.message ? error.message : error),
+      rowsChanged: changedRows.length || updatedCount,
+      persistedRows: 0,
+      verifiedRowsChanged: 0,
+      postWriteVerified: false,
+      verificationMode: 'error',
+      verificationReason: String(error && error.message ? error.message : error)
+    }, { rowsRequested: updatedCount });
   }
 }
 

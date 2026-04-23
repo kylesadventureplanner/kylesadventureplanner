@@ -24,6 +24,37 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     return String(value == null ? '' : value).trim();
   }
 
+  function normalizeWriteResultContractLocal(rawResult, defaults) {
+    if (typeof window.normalizeWriteResultContract === 'function') {
+      return window.normalizeWriteResultContract(rawResult, defaults || {});
+    }
+    const raw = rawResult && typeof rawResult === 'object' ? rawResult : {};
+    const fallback = defaults && typeof defaults === 'object' ? defaults : {};
+    const asCount = (value, next) => {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed < 0) return Math.max(0, Number(next) || 0);
+      return Math.max(0, Math.round(parsed));
+    };
+    const rowsChanged = asCount(raw.rowsChanged, asCount(raw.rowsAppended, asCount(fallback.rowsChanged, asCount(fallback.rowsRequested, 0))));
+    const persistedRows = asCount(raw.persistedRows, rowsChanged);
+    const verifiedRowsChanged = asCount(raw.verifiedRowsChanged, asCount(raw.rowsVerifiedPresent, 0));
+    const rowsRequested = asCount(raw.rowsRequested, asCount(raw.total, asCount(fallback.rowsRequested, rowsChanged)));
+    return {
+      ...raw,
+      rowsRequested,
+      rowsChanged,
+      persistedRows,
+      verifiedRowsChanged,
+      rowsAppended: asCount(raw.rowsAppended, rowsChanged),
+      rowsVerifiedPresent: asCount(raw.rowsVerifiedPresent, verifiedRowsChanged),
+      postWriteVerified: typeof raw.postWriteVerified === 'boolean' ? raw.postWriteVerified : (persistedRows > 0 && verifiedRowsChanged === persistedRows),
+      persistMode: safeString(raw.persistMode || raw.mode || fallback.persistMode),
+      persistReason: safeString(raw.persistReason || raw.reason || fallback.persistReason),
+      verificationMode: safeString(raw.verificationMode || fallback.verificationMode),
+      verificationReason: safeString(raw.verificationReason || fallback.verificationReason)
+    };
+  }
+
   function buildStrictWrapperMessage(label, code) {
     const safeLabel = safeString(label || 'unknown-wrapper') || 'unknown-wrapper';
     const safeCode = safeString(code || 'UNKNOWN') || 'UNKNOWN';
@@ -1947,7 +1978,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         ? normalizeResolvedDetails(options.resolvedDetails.placeId, options.resolvedDetails, options.resolvedDetails, safeString(input))
         : null;
       if (dryRun) {
-        return {
+        return normalizeWriteResultContractLocal({
           success: true,
           isDryRun: true,
           message: `🧪 [DRY RUN] Would add: ${safeString((preResolved && preResolved.name) || input)}`,
@@ -1960,7 +1991,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           postWriteVerified: false,
           verificationMode: 'dry-run',
           verificationReason: 'dry-run'
-        };
+        }, { rowsRequested: 1 });
       }
 
       try {
@@ -2028,7 +2059,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           );
           appendRowLocally(mainWindow, rowValues, queueItem && queueItem.id);
           recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, { queued: true });
-          return {
+          return normalizeWriteResultContractLocal({
             success: true,
             queued: true,
             offline: !navigator.onLine,
@@ -2041,9 +2072,11 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
             persistedRows: 0,
             verifiedRowsChanged: 0,
             postWriteVerified: false,
+            persistMode: 'queued-offline',
+            persistReason: 'queued-for-sync',
             verificationMode: 'queued-offline',
             verificationReason: 'queued-for-sync'
-          };
+          }, { rowsRequested: 1 });
         }
 
         if (Array.isArray(mainWindow.adventuresData)) {
@@ -2067,7 +2100,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         recordEditModeAddDiagnostics(mainWindow, activeTarget, details, rowValues, { queued: false });
         const rowPresent = hasLoadedRowForPlace(mainWindow, details, placeId);
 
-        return {
+        return normalizeWriteResultContractLocal({
           success: true,
           message: `Added ${details.name} to ${formatTargetDestination(activeTarget)}`,
           placeName: details.name,
@@ -2077,13 +2110,19 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
           persistedRows: 1,
           verifiedRowsChanged: rowPresent ? 1 : 0,
           postWriteVerified: rowPresent,
+          rowsAppended: 1,
+          rowsVerifiedPresent: rowPresent ? 1 : 0,
+          rowsRequested: 1,
+          persisted: true,
+          persistMode: 'add-row',
+          persistReason: '',
           verificationMode: 'loaded-data-presence',
           verificationReason: rowPresent ? '' : 'added-row-not-found-in-loaded-data'
-        };
+        }, { rowsRequested: 1 });
       } catch (error) {
         const requestIdPrefix = error?.requestId ? `[${error.requestId}] ` : '';
         console.error(`❌ Error adding place: ${requestIdPrefix}${error?.message || error}`, error);
-        return { success: false, error: error.message };
+        return normalizeWriteResultContractLocal({ success: false, error: error.message }, { rowsRequested: 1, verificationMode: 'error', verificationReason: error && error.message ? error.message : 'unknown-error' });
       }
     }
 
@@ -2098,7 +2137,23 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         : (placesText || '').split('\n').map((line) => line.trim()).filter(Boolean);
       if (lines.length === 0) return { success: false, error: 'No places provided' };
 
-      const results = { success: true, total: lines.length, added: 0, failed: 0, skipped: 0, details: [], rowsChanged: 0, persistedRows: 0, verifiedRowsChanged: 0, postWriteVerified: false, verificationMode: '', verificationReason: '' };
+      const results = {
+        success: true,
+        total: lines.length,
+        added: 0,
+        failed: 0,
+        skipped: 0,
+        details: [],
+        rowsRequested: lines.length,
+        rowsChanged: 0,
+        rowsAppended: 0,
+        persistedRows: 0,
+        verifiedRowsChanged: 0,
+        rowsVerifiedPresent: 0,
+        postWriteVerified: false,
+        verificationMode: '',
+        verificationReason: ''
+      };
       for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index];
         const resolvedDetails = resolvedDetailsList[index] || null;
@@ -2109,9 +2164,12 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         const result = await this.addSinglePlace(line, inputType, dryRun, nextOptions);
         if (result && result.success) {
           results.added++;
-          results.rowsChanged += Math.max(0, Number(result.rowsChanged) || 0);
-          results.persistedRows += Math.max(0, Number(result.persistedRows) || 0);
-          results.verifiedRowsChanged += Math.max(0, Number(result.verifiedRowsChanged) || 0);
+          const normalized = normalizeWriteResultContractLocal(result, { rowsRequested: 1 });
+          results.rowsChanged += Math.max(0, Number(normalized.rowsChanged) || 0);
+          results.rowsAppended += Math.max(0, Number(normalized.rowsAppended) || 0);
+          results.persistedRows += Math.max(0, Number(normalized.persistedRows) || 0);
+          results.verifiedRowsChanged += Math.max(0, Number(normalized.verifiedRowsChanged) || 0);
+          results.rowsVerifiedPresent += Math.max(0, Number(normalized.rowsVerifiedPresent) || 0);
           if (!results.verificationMode && result.verificationMode) results.verificationMode = String(result.verificationMode);
           if (!results.verificationReason && result.verificationReason) results.verificationReason = String(result.verificationReason);
           results.details.push(`✅ ${result.placeName || line}${result.isDryRun ? ' (dry run)' : ''}`);
@@ -2125,7 +2183,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       results.success = results.failed === 0;
       results.postWriteVerified = results.persistedRows > 0 && results.verifiedRowsChanged === results.persistedRows;
       results.message = `Added ${results.added}/${results.total} places (${results.failed} failed, ${results.skipped} skipped)`;
-      return results;
+      return normalizeWriteResultContractLocal(results, { rowsRequested: lines.length });
     }
 
     async bulkAddChainLocations(placesText, inputType, dryRun = false) {
@@ -2135,13 +2193,13 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
       if (typeof window.handleBulkAddChainLocationsFixed === 'function') {
         const result = await window.handleBulkAddChainLocationsFixed(lines, inputType, document.createElement('div'), dryRun);
         return result && typeof result === 'object'
-          ? result
+          ? normalizeWriteResultContractLocal(result, { rowsRequested: lines.length })
           : { success: false, error: buildStrictWrapperMessage('bulk-add-chain', 'NON_OBJECT_RESULT') };
       }
       if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
         const result = await window.handleBulkAddChainLocationsEnhanced(lines, inputType, document.createElement('div'), dryRun);
         return result && typeof result === 'object'
-          ? result
+          ? normalizeWriteResultContractLocal(result, { rowsRequested: lines.length })
           : { success: false, error: buildStrictWrapperMessage('bulk-add-chain', 'NON_OBJECT_RESULT') };
       }
       return { success: false, error: buildStrictWrapperMessage('bulk-add-chain', 'NO_HANDLER') };

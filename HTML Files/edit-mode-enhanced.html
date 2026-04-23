@@ -3126,14 +3126,24 @@
       if (!el) return;
 
       const host = getMainWindowSafe();
+      const latestWrite = host && host.__editModeLastAddWriteSummary && typeof host.__editModeLastAddWriteSummary === 'object'
+        ? host.__editModeLastAddWriteSummary
+        : null;
       const target = getSelectedTarget('actionTargetSelect');
       const all = Array.isArray(host.__editModeAddDiagnostics) ? host.__editModeAddDiagnostics : [];
       const rows = all
         .filter((entry) => !target || !target.id || String(entry && entry.targetId || '') === String(target.id))
         .slice(0, 8);
 
+      const writeSummaryHtml = latestWrite
+        ? `<div style="margin-bottom:8px;padding:8px 10px;border:1px solid ${latestWrite.color || '#bfdbfe'};border-radius:8px;background:#f8fafc;color:${latestWrite.color || '#1d4ed8'};font-size:12px;">
+             <strong>Add write diagnostics:</strong> ${latestWrite.text || 'No write result yet.'}
+             <div style="font-size:11px;opacity:0.8;margin-top:4px;">${latestWrite.destination ? `Destination: ${latestWrite.destination}` : ''}${latestWrite.destination && latestWrite.at ? ' • ' : ''}${latestWrite.at ? new Date(Number(latestWrite.at) || Date.now()).toLocaleTimeString() : ''}</div>
+           </div>`
+        : '';
+
       if (!rows.length) {
-        el.innerHTML = 'Recent added-row diagnostics will appear here after your first successful add.';
+        el.innerHTML = writeSummaryHtml || 'Recent added-row diagnostics will appear here after your first successful add.';
         return;
       }
 
@@ -3145,6 +3155,7 @@
       };
 
       el.innerHTML =
+        writeSummaryHtml +
         `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">` +
         `<strong>Recent added rows (${rows.length})</strong>` +
         `<button type="button" class="button button-secondary" style="padding:4px 8px;font-size:11px;" onclick="clearEditModeAddDiagnostics()">Clear</button>` +
@@ -3630,6 +3641,93 @@
       const normalized = normalizeAutomationPersistence(result);
       el.textContent = normalized.text;
       el.style.color = normalized.color;
+    }
+
+    function normalizeWriteResultContractForUi(result, defaults = {}) {
+      if (typeof window.normalizeWriteResultContract === 'function') {
+        return window.normalizeWriteResultContract(result, defaults || {});
+      }
+      const safe = result && typeof result === 'object' ? result : {};
+      const asCount = (value, fallback = 0) => {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed) || parsed < 0) return Math.max(0, Number(fallback) || 0);
+        return Math.max(0, Math.round(parsed));
+      };
+      const rowsChanged = asCount(safe.rowsChanged, asCount(safe.rowsAppended, asCount(defaults.rowsChanged, 0)));
+      const persistedRows = asCount(safe.persistedRows, rowsChanged);
+      const verifiedRowsChanged = asCount(safe.verifiedRowsChanged, asCount(safe.rowsVerifiedPresent, 0));
+      return {
+        ...safe,
+        rowsRequested: asCount(safe.rowsRequested, asCount(safe.total, asCount(defaults.rowsRequested, rowsChanged))),
+        rowsChanged,
+        rowsAppended: asCount(safe.rowsAppended, rowsChanged),
+        persistedRows,
+        verifiedRowsChanged,
+        rowsVerifiedPresent: asCount(safe.rowsVerifiedPresent, verifiedRowsChanged),
+        postWriteVerified: typeof safe.postWriteVerified === 'boolean' ? safe.postWriteVerified : (persistedRows > 0 && verifiedRowsChanged === persistedRows),
+        verificationMode: String(safe.verificationMode || defaults.verificationMode || '').trim(),
+        verificationReason: String(safe.verificationReason || defaults.verificationReason || '').trim(),
+        persistMode: String(safe.persistMode || safe.mode || defaults.persistMode || '').trim(),
+        persistReason: String(safe.persistReason || safe.reason || defaults.persistReason || '').trim()
+      };
+    }
+
+    function summarizeAddWriteResult(result, defaults = {}) {
+      const normalized = normalizeWriteResultContractForUi(result, defaults);
+      const requested = Math.max(0, Number(normalized.rowsRequested) || 0);
+      const changed = Math.max(0, Number(normalized.rowsChanged) || 0);
+      const persisted = Math.max(0, Number(normalized.persistedRows) || 0);
+      const verified = Math.max(0, Number(normalized.verifiedRowsChanged) || 0);
+      const dryRun = !!normalized.dryRun || !!normalized.isDryRun;
+      const queued = !!normalized.queued;
+      const hasError = normalized && normalized.success === false;
+
+      let text = 'No write result yet.';
+      let color = '#64748b';
+      let toastType = 'info';
+
+      if (hasError) {
+        const reason = normalized.error || normalized.persistReason || normalized.verificationReason || 'write failed';
+        text = `failed (${String(reason)})`;
+        color = '#b91c1c';
+        toastType = 'error';
+      } else if (dryRun) {
+        text = `dry run • requested ${requested || changed}`;
+        color = '#92400e';
+      } else if (queued) {
+        text = `queued for sync • changed ${changed} • persisted ${persisted} • verified ${verified}`;
+        color = '#92400e';
+        toastType = 'warning';
+      } else if (persisted > 0 || changed > 0) {
+        text = `requested ${requested || changed} • changed ${changed} • persisted ${persisted} • verified ${verified}`;
+        color = persisted > 0 ? '#047857' : '#92400e';
+        toastType = persisted > 0 ? 'success' : 'warning';
+      } else {
+        const reason = normalized.persistReason || normalized.verificationReason || normalized.persistMode || 'no-op';
+        text = `no persisted changes (${reason})`;
+        color = '#92400e';
+      }
+
+      return { normalized, text, color, toastType };
+    }
+
+    function applyAddWriteDiagnostics(result, target, defaults = {}) {
+      const host = getMainWindowSafe();
+      const summary = summarizeAddWriteResult(result, defaults);
+      host.__editModeLastAddWriteSummary = {
+        ...summary,
+        at: Date.now(),
+        destination: formatTargetDestination(target)
+      };
+      renderRecentAddDiagnostics();
+      return summary;
+    }
+
+    function toastAddWriteDiagnostics(result, actionLabel, defaults = {}) {
+      const summary = summarizeAddWriteResult(result, defaults);
+      const label = String(actionLabel || 'Add').trim();
+      showToast(`${label}: ${summary.text}`, summary.toastType, 3500);
+      return summary;
     }
 
     /**
@@ -4744,6 +4842,8 @@
           { resolvedDetails: selected, target: targetContext }
         );
         window.enhancedAutomation.displayResults(result, statusDiv);
+        applyAddWriteDiagnostics(result, target, { rowsRequested: 1 });
+        toastAddWriteDiagnostics(result, 'Add selected candidate', { rowsRequested: 1 });
         if (result.success) document.getElementById('singleInput').value = '';
         await runPostAddRefreshHooks(result, dryRun);
         return;
@@ -5632,6 +5732,8 @@
         // Try new progress tracking system first
         if (typeof window.handleAddSinglePlaceWithProgress === 'function') {
           const result = await window.handleAddSinglePlaceWithProgress(input, inputType, statusDiv, dryRun, { target: targetContext });
+          applyAddWriteDiagnostics(result, target, { rowsRequested: 1 });
+          toastAddWriteDiagnostics(result, 'Single add', { rowsRequested: 1 });
           if (result.success) {
             document.getElementById('singleInput').value = '';
             clearDraft('single');
@@ -5645,6 +5747,8 @@
         if (window.enhancedAutomation) {
           const result = await window.enhancedAutomation.addSinglePlace(input, inputType, dryRun, { target: targetContext });
           window.enhancedAutomation.displayResults(result, statusDiv);
+          applyAddWriteDiagnostics(result, target, { rowsRequested: 1 });
+          toastAddWriteDiagnostics(result, 'Single add', { rowsRequested: 1 });
           if (result.success) {
             document.getElementById('singleInput').value = '';
             clearDraft('single');
@@ -5708,6 +5812,8 @@
         // Try new progress tracking system first
         if (typeof window.handleBulkAddPlacesWithProgress === 'function') {
           const result = await window.handleBulkAddPlacesWithProgress(filteredLocations, inputType, statusDiv, dryRun, { target: targetContext });
+          applyAddWriteDiagnostics(result, target, { rowsRequested: filteredLocations.length });
+          toastAddWriteDiagnostics(result, 'Bulk add', { rowsRequested: filteredLocations.length });
           if (result.success && !dryRun) {
             document.getElementById('bulkInput').value = '';
             clearDraft('bulk');
@@ -5721,6 +5827,8 @@
         if (window.enhancedAutomation) {
           const result = await window.enhancedAutomation.bulkAddPlaces(filteredLocations.join('\n'), inputType, dryRun, { target: targetContext });
           window.enhancedAutomation.displayResults(result, statusDiv);
+          applyAddWriteDiagnostics(result, target, { rowsRequested: filteredLocations.length });
+          toastAddWriteDiagnostics(result, 'Bulk add', { rowsRequested: filteredLocations.length });
           if (result.success && !dryRun) {
             document.getElementById('bulkInput').value = '';
             clearDraft('bulk');
@@ -5772,6 +5880,8 @@
         if (typeof window.handleBulkAddChainLocationsFixed === 'function') {
           console.log('🔄 Using FIXED bulk add with real progress updates');
           const result = await window.handleBulkAddChainLocationsFixed(locations, inputType, statusDiv, dryRun);
+          applyAddWriteDiagnostics(result, target, { rowsRequested: locations.length });
+          toastAddWriteDiagnostics(result, 'Chain add', { rowsRequested: locations.length });
 
           if (result.success && !dryRun) {
             document.getElementById('chainInput').value = '';
@@ -5785,6 +5895,8 @@
         if (typeof window.handleBulkAddChainLocationsEnhanced === 'function') {
           console.log('🔄 Using enhanced bulk add');
           const result = await window.handleBulkAddChainLocationsEnhanced(locations, inputType, statusDiv, dryRun);
+          applyAddWriteDiagnostics(result, target, { rowsRequested: locations.length });
+          toastAddWriteDiagnostics(result, 'Chain add', { rowsRequested: locations.length });
 
           if (result.success && !dryRun) {
             document.getElementById('chainInput').value = '';
@@ -5800,6 +5912,8 @@
           statusDiv.innerHTML = '<div class="status-message"><span class="spinner"></span> Processing...</div>';
           const result = await window.enhancedAutomation.bulkAddChainLocations(input, inputType, dryRun);
           window.enhancedAutomation.displayResults(result, statusDiv);
+          applyAddWriteDiagnostics(result, target, { rowsRequested: locations.length });
+          toastAddWriteDiagnostics(result, 'Chain add', { rowsRequested: locations.length });
 
           if (result.success && !dryRun) {
             document.getElementById('chainInput').value = '';
