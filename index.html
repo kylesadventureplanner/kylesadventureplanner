@@ -7429,6 +7429,18 @@
          window.filePath = filePath;
          window.tableName = tableName;
 
+         // ── Workbook destination badge (read path) ──────────────────────
+         {
+           const wbName = filePath.split('/').pop() || filePath;
+           window.showToast?.(
+             `📂 Reading from: ${wbName} / ${tableName}`,
+             'info',
+             3000
+           );
+           console.log(`[loadTable] 📂 Source → workbook: "${filePath}"  table: "${tableName}"`);
+         }
+         // ────────────────────────────────────────────────────────────────
+
           // Show quick-filter count placeholders while rows are being fetched.
           window.__adventureQuickCountsLoading = true;
           if (window.FilterManager && typeof window.FilterManager.renderQuickFilterCounts === 'function') {
@@ -24354,6 +24366,20 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       const encodedPath = typeof encodeGraphDrivePath === 'function'
         ? encodeGraphDrivePath(filePath)
         : encodeURIComponent(filePath);
+
+      // ── Workbook destination badge ──────────────────────────────────────
+      // Show once per logical save (not on retries) so it's always clear
+      // exactly which workbook and table are being written to.
+      if (retryCount === 0 && pathAttemptIndex === 0) {
+        const wbName = filePath.split('/').pop() || filePath;
+        window.showToast?.(
+          `✏️ Writing to: ${wbName} / ${tableName}`,
+          'info',
+          3500
+        );
+        console.log(`[saveToExcel] ✏️ Destination → workbook: "${filePath}"  table: "${tableName}"`);
+      }
+      // ───────────────────────────────────────────────────────────────────
 
        const hasRowUpdateArgs = (rowId !== undefined && rowId !== null) && Array.isArray(updatedValues);
        if (hasRowUpdateArgs) {

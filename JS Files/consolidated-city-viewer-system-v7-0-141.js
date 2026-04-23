@@ -1165,9 +1165,17 @@ class EnhancedCityVisualizer {
         return;
       }
 
-      const city = (values[10] || 'Unknown City').trim();
-      const state = (values[9] || '').trim();
-      const tags = (values[3] || '').split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+      const toCellText = (value) => {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'string') return value.trim();
+        if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim();
+        return '';
+      };
+
+      // Support both core adventure schema and alternate tab schemas.
+      const city = toCellText(values[10]) || toCellText(values[7]) || 'Unknown City';
+      const state = toCellText(values[9]) || toCellText(values[6]);
+      const tags = toCellText(values[3]).split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
 
       if (!this.cityGroups.has(city)) {
         const coords = this.getApproximateCoordinates(city, state);
