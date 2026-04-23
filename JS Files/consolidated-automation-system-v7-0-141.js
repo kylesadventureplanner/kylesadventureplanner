@@ -1815,6 +1815,8 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
         refreshPlaceIds: false,
         populateMissing: false,
         updateHours: false,
+        updateDescriptions: false,
+        forceUpdateAll: false,
         autoTag: false
       };
       console.log('✅ Enhanced Automation Features initialized');

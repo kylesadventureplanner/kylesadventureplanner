@@ -1034,8 +1034,6 @@ function showToastCrossContext(message, type = 'info', duration = 3000) {
  */
 window.autoTagAllLocationsUnified = async function(options = {}) {
   const {
-    minConfidence = 0.75,
-    autoAcceptAbove = 0.90,
     showProgress = true,
     dryRun = false
   } = options;
@@ -1049,30 +1047,102 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
     return { success: 0, failed: 0, skipped: 0 };
   }
 
+  // Text-based tag recommendation rules (mirrors buildTagRecommendations in details window)
+  const RULE_MAP = [
+    { keys: ['hike', 'trail', 'hiking', 'trekking', 'mountain', 'alpine'], tags: ['Hiking', 'Outdoor', 'Nature', 'Scenic', 'Adventure'] },
+    { keys: ['waterfall', 'cascade', 'falls'], tags: ['Waterfall', 'Nature', 'Scenic', 'Photography', 'Outdoor'] },
+    { keys: ['park', 'garden', 'botanical', 'arboretum'], tags: ['Park', 'Nature', 'Family-Friendly', 'Relaxing', 'Scenic'] },
+    { keys: ['lake', 'river', 'stream', 'pond', 'creek', 'water'], tags: ['Water Activity', 'Nature', 'Scenic', 'Family-Friendly'] },
+    { keys: ['forest', 'woods', 'woodland', 'grove'], tags: ['Nature', 'Hiking', 'Outdoor', 'Relaxing', 'Scenic'] },
+    { keys: ['beach', 'shore', 'coast', 'seaside'], tags: ['Beach', 'Outdoor', 'Family-Friendly', 'Scenic', 'Relaxing'] },
+    { keys: ['camping', 'camp site', 'campground'], tags: ['Camping', 'Outdoor', 'Adventure', 'Family-Friendly'] },
+    { keys: ['restaurant', 'bistro', 'steakhouse', 'grill', 'eatery'], tags: ['Restaurant', 'Dining', 'Local Favorite', 'Worth Visiting'] },
+    { keys: ['cafe', 'coffee', 'espresso', 'tea house'], tags: ['Cafe', 'Coffee', 'Local Favorite', 'Relaxing'] },
+    { keys: ['diner', 'fast food', 'quick bite'], tags: ['Casual Dining', 'Quick Service'] },
+    { keys: ['bakery', 'pastry'], tags: ['Bakery', 'Local Favorite', 'Worth Visiting'] },
+    { keys: ['brewery', 'winery', 'distillery', 'bar', 'pub'], tags: ['Beverage', 'Adult Experience', 'Local Favorite'] },
+    { keys: ['shop', 'store', 'retail', 'boutique'], tags: ['Shopping', 'Local Business', 'Worth Visiting'] },
+    { keys: ['market', 'farmers market', 'farmer market'], tags: ['Market', 'Local Business', 'Family-Friendly', 'Worth Visiting'] },
+    { keys: ['museum', 'gallery', 'exhibition', 'exhibit'], tags: ['Museum', 'Cultural', 'Historical', 'Educational', 'Indoor Activity'] },
+    { keys: ['historic', 'history', 'monument', 'landmark', 'heritage'], tags: ['Historical', 'Cultural', 'Worth Visiting', 'Educational'] },
+    { keys: ['art', 'artist', 'sculpture', 'craft'], tags: ['Cultural', 'Artistic', 'Local Business'] },
+    { keys: ['gym', 'fitness', 'yoga', 'pilates'], tags: ['Fitness', 'Health & Wellness'] },
+    { keys: ['sport', 'athletic', 'court', 'field', 'stadium'], tags: ['Sports', 'Active', 'Family-Friendly'] },
+    { keys: ['movie', 'cinema', 'theater', 'theatre'], tags: ['Entertainment', 'Family-Friendly', 'Indoor Activity'] },
+    { keys: ['music', 'concert', 'live performance', 'festival'], tags: ['Entertainment', 'Local Favorite', 'Worth Visiting'] },
+    { keys: ['amusement', 'theme park', 'carnival'], tags: ['Entertainment', 'Family-Friendly', 'Fun', 'Adventure'] },
+    { keys: ['hotel', 'motel', 'inn', 'resort'], tags: ['Accommodation', 'Travel-Friendly'] },
+    { keys: ['wildlife', 'animal', 'bird', 'zoo', 'aquarium', 'nature center'], tags: ['Wildlife', 'Nature', 'Family-Friendly', 'Educational', 'Outdoor'] },
+    { keys: ['viewpoint', 'overlook', 'vista', 'lookout'], tags: ['Scenic', 'Photography', 'Outdoor', 'Must-See'] }
+  ];
+
+  function getTagsForLocationText(locationData) {
+    const textParts = [
+      locationData.name || '',
+      locationData.description || '',
+      locationData.tags || '',
+      locationData.city || '',
+      locationData.address || '',
+      locationData.notes || ''
+    ];
+    const fullText = textParts.join(' ').toLowerCase();
+
+    const recommended = new Set();
+    RULE_MAP.forEach((rule) => {
+      const matched = rule.keys.some((k) => fullText.includes(k));
+      if (matched) rule.tags.forEach((t) => recommended.add(t));
+    });
+
+    // Rating-based tags from Google rating string
+    const rating = parseFloat(locationData.googleRating || locationData.rating || 0);
+    if (rating >= 4.7) { recommended.add('Top Rated'); recommended.add('Worth Visiting'); }
+    else if (rating >= 4.3) { recommended.add('Highly Recommended'); }
+
+    return Array.from(recommended);
+  }
+
   const results = { success: 0, failed: 0, skipped: 0, details: [] };
 
   try {
     for (let index = 0; index < adventuresData.length; index++) {
       const location = adventuresData[index];
-      const placeId = location?.values?.[0]?.[1];
-      const locationName = location?.values?.[0]?.[0];
+      // Support both flat objects and values[][] structure
+      const values = location?.values?.[0] || null;
+      const placeId = values ? (values[1] || '') : (location?.placeId || location?.id || '');
+      const locationName = values ? (values[0] || '') : (location?.name || '');
 
-      if (!placeId) {
+      // Build a data object for text matching
+      const dataObj = {
+        name: locationName,
+        description: values ? (values[16] || '') : (location?.description || ''),
+        googleRating: values ? (values[13] || '') : (location?.googleRating || location?.rating || ''),
+        city: values ? (values[10] || '') : (location?.city || ''),
+        address: values ? (values[11] || '') : (location?.address || ''),
+        tags: values ? (values[3] || '') : (location?.tags || ''),
+        notes: ''
+      };
+
+      const identifier = placeId || locationName;
+      if (!identifier) {
         results.skipped++;
         continue;
       }
 
       try {
-        const existingTags = window.tagManager.getTagsForPlace(placeId);
-
-        // Auto-tag based on place name and type
-        const recommendedTags = window.tagManager.getRecommendedTags([locationName]);
+        const recommendedTags = getTagsForLocationText(dataObj);
 
         if (!dryRun && recommendedTags.length > 0) {
-          window.tagManager.addTagsToPlace(placeId, recommendedTags);
+          window.tagManager.addTagsToPlace(identifier, recommendedTags);
           results.success++;
+          results.details.push({ name: locationName, added: recommendedTags.length, tags: recommendedTags });
+          console.log(`✅ Tagged "${locationName}": ${recommendedTags.join(', ')}`);
+        } else if (dryRun && recommendedTags.length > 0) {
+          results.success++;
+          results.details.push({ name: locationName, dryRun: true, tags: recommendedTags });
+          console.log(`🧪 [DRY RUN] Would tag "${locationName}": ${recommendedTags.join(', ')}`);
         } else {
-          results.success++;
+          results.skipped++;
+          console.log(`⏭ No tags matched for "${locationName}"`);
         }
       } catch (e) {
         results.failed++;
@@ -1080,8 +1150,12 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
       }
     }
 
-    console.log(`✅ Auto-tag complete: ${results.success} success, ${results.failed} failed, ${results.skipped} skipped`);
-    showToastCrossContext(`✅ Tagged: ${results.success} locations`, 'success', 3000);
+    const verb = dryRun ? 'would tag' : 'tagged';
+    console.log(`✅ Auto-tag complete: ${results.success} ${verb}, ${results.failed} failed, ${results.skipped} skipped`);
+    showToastCrossContext(
+      `✅ ${dryRun ? '[DRY RUN] ' : ''}Auto-tag: ${results.success} location${results.success !== 1 ? 's' : ''} tagged`,
+      'success', 3000
+    );
 
   } catch (error) {
     console.error('❌ Error during auto-tag:', error);

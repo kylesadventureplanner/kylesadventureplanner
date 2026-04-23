@@ -10237,7 +10237,8 @@
           'photos',
           'businessStatus',
           'types',
-          'utcOffsetMinutes'
+          'utcOffsetMinutes',
+          'editorialSummary'
         ]
       });
 
@@ -10330,6 +10331,7 @@
         phone: place.internationalPhoneNumber || '',
         website: place.websiteURI || '',
         hours: place.regularOpeningHours || null,
+        description: (place.editorialSummary && place.editorialSummary.text) ? place.editorialSummary.text : '',
         coordinates: place.location ? {
           lat: place.location.lat(),
           lng: place.location.lng()
@@ -19268,17 +19270,53 @@ COMMON ISSUES:
       console.warn("⚠️ WARNING: Missing required place data (name or address)");
     }
 
-    // Build description with rich info
+    // Build description: prefer editorial summary, fall back to businessType + rating
     let description = "";
-    if (details && details.businessType) {
-      description = details.businessType;
+    if (details && details.description) {
+      description = details.description;
+    } else {
+      if (details && details.businessType) {
+        description = details.businessType;
+      }
+      if (details && details.rating) {
+        description += (description ? ' | ' : '') + `Rating: ${details.rating}⭐`;
+      }
+      if (details && details.userRatingsTotal) {
+        description += ` (${details.userRatingsTotal} reviews)`;
+      }
     }
-    if (details && details.rating) {
-      description += ` | Rating: ${details.rating}⭐`;
-    }
-    if (details && details.userRatingsTotal) {
-      description += ` (${details.userRatingsTotal} reviews)`;
-    }
+
+    // Build tags from place types using rule matching
+    const buildTagsFromDetails = (det) => {
+      if (!det) return '';
+      const typeTagMap = {
+        restaurant: 'Restaurant', cafe: 'Cafe', bar: 'Bar', lodging: 'Accommodation',
+        park: 'Park', hiking_area: 'Hiking', museum: 'Museum', shopping_mall: 'Shopping',
+        gym: 'Fitness', store: 'Shopping', supermarket: 'Grocery', zoo: 'Wildlife',
+        aquarium: 'Wildlife', night_club: 'Entertainment', movie_theater: 'Entertainment',
+        campground: 'Camping', natural_feature: 'Nature', beach: 'Beach'
+      };
+      const tags = new Set();
+      if (det.businessType) {
+        const cleaned = det.businessType.replace(/^[\p{So}]\s/u, '').trim();
+        if (cleaned) tags.add(cleaned);
+      }
+      if (Array.isArray(det.types)) {
+        det.types.forEach((t) => { if (typeTagMap[t]) tags.add(typeTagMap[t]); });
+      }
+      // Text-based rule matching on name
+      const text = (det.name || '').toLowerCase();
+      if (/hike|trail|hiking|mountain/.test(text)) tags.add('Hiking');
+      if (/waterfall|falls/.test(text)) tags.add('Waterfall');
+      if (/park|garden/.test(text)) tags.add('Park');
+      if (/lake|river|creek|pond/.test(text)) tags.add('Water Activity');
+      if (/beach|shore/.test(text)) tags.add('Beach');
+      if (/wildlife|zoo|aquarium/.test(text)) tags.add('Wildlife');
+      if (/cafe|coffee/.test(text)) tags.add('Cafe');
+      if (/restaurant|bistro|grill/.test(text)) tags.add('Restaurant');
+      return Array.from(tags).join(', ');
+    };
+    const tags = buildTagsFromDetails(details);
 
     const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
     const setByName = (names, value) => {
@@ -19307,7 +19345,7 @@ COMMON ISSUES:
     setByName(['Name'], name);
     setByName(['Google Place ID', 'GooglePlaceId'], safePlaceId);
     setByName(['Website', 'Official Website'], strVal(details && details.website));
-    setByName(['Tags'], details && details.businessType ? details.businessType.replace(/^[\p{So}]\s/u, '') : '');
+    setByName(['Tags'], tags);
     setByName(['Hours of Operation', 'Hours'], normalizeOperationHours(details && details.hours));
     setByName(['State'], cityState.state);
     setByName(['City'], cityState.city);
@@ -19318,12 +19356,43 @@ COMMON ISSUES:
     setByName(['Description'], description);
     setByName(['Google URL'], googlePlaceUrl);
 
+    // GPS coordinates
+    const coords = details && details.coordinates;
+    if (coords) {
+      setByName(['Latitude', 'Lat', 'GPS Latitude'], String(coords.lat));
+      setByName(['Longitude', 'Lng', 'GPS Longitude'], String(coords.lng));
+      setByName(['GPS Coordinates', 'Coordinates', 'GPS'], `${coords.lat}, ${coords.lng}`);
+    }
+
+    // Drive time from user's current location (if available).
+    const estimateDriveTimeText = () => {
+      try {
+        const ul = window.userLocation;
+        if (!ul || !coords) return '';
+        const R = 3958.8; // miles
+        const dLat = (coords.lat - ul.latitude) * Math.PI / 180;
+        const dLng = (coords.lng - ul.longitude) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(ul.latitude * Math.PI / 180) * Math.cos(coords.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        const distMi = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const mins = Math.round(distMi / 0.6); // ~36 mph avg accounting for stops
+        if (mins < 60) return `~${mins} min`;
+        const hrs = Math.floor(mins / 60);
+        const rem = mins % 60;
+        return rem > 0 ? `~${hrs}h ${rem}m` : `~${hrs}h`;
+      } catch (_error) {
+        return '';
+      }
+    };
+    const driveTimeText = strVal((details && details.driveTime) || estimateDriveTimeText());
+    setByName(['Drive Time', 'DriveTime'], driveTimeText);
+
     // Backward-compatible positional fallback for legacy schemas without named columns.
     if (!schemaColumns.length) {
       if (actualColumnCount > 0) row[0] = name;
       if (actualColumnCount > 1) row[1] = safePlaceId;
       if (actualColumnCount > 2) row[2] = strVal(details && details.website);
-      if (actualColumnCount > 3) row[3] = details && details.businessType ? details.businessType.replace(/^[\p{So}]\s/u, '') : "";
+      if (actualColumnCount > 3) row[3] = tags;
+      if (actualColumnCount > 4) row[4] = driveTimeText;
       if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
       if (actualColumnCount > 9) row[9] = cityState.state;
       if (actualColumnCount > 10) row[10] = cityState.city;

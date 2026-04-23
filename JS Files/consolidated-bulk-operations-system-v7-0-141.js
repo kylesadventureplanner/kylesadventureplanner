@@ -42,7 +42,8 @@ const COLS = {
   PHONE: 12,
   RATING: 13,
   COST: 14,
-  DIRECTIONS: 15
+  DIRECTIONS: 15,
+  DESCRIPTION: 16
 };
 
 function getActiveCols(mainWindow) {
@@ -70,7 +71,8 @@ function getActiveCols(mainWindow) {
     PHONE: pick('Phone Number', ['Phone'], COLS.PHONE),
     RATING: pick('Google Rating', ['Rating'], COLS.RATING),
     COST: pick('Cost', [], COLS.COST),
-    DIRECTIONS: pick('Directions', ['Directions '], COLS.DIRECTIONS)
+    DIRECTIONS: pick('Directions', ['Directions '], COLS.DIRECTIONS),
+    DESCRIPTION: pick('Description', [], COLS.DESCRIPTION)
   };
 }
 
@@ -1343,6 +1345,234 @@ window.writeBatchPlacesToM365 = async function(placesData) {
 };
 
 console.log('✅ M365 Excel Write Integration ready');
+
+// ============================================================
+// SECTION 7: UPDATE ALL DESCRIPTIONS
+// ============================================================
+
+/**
+ * Update description fields for all locations using Google Places API.
+ * Only fills empty descriptions unless overwrite=true.
+ */
+window.handleUpdateAllDescriptions = async function(displayElement, dryRun = false, overwrite = false) {
+  console.log(`📝 Starting update descriptions, dryRun=${dryRun}, overwrite=${overwrite}`);
+
+  if (!displayElement) return { success: false, error: 'No display element' };
+
+  const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+  const adventuresData = mainWindow.adventuresData || window.adventuresData;
+
+  if (!adventuresData || adventuresData.length === 0) {
+    displayElement.innerHTML = `<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> No data available.</div>`;
+    return { success: false, error: 'No data available' };
+  }
+
+  const activeCols = getActiveCols(mainWindow);
+  const results = [];
+  let updatedCount = 0;
+  let skippedCount = 0;
+  let errorCount = 0;
+
+  const updateDisplay = (status) => { displayElement.innerHTML = status; };
+
+  updateDisplay(`<div style="padding:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+    <div style="font-weight:600;color:#1e40af;margin-bottom:12px;">${dryRun ? '🧪 DRY RUN – Preview' : '⏳ Processing'} Update Descriptions${overwrite ? ' (overwrite all)' : ' (missing only)'}</div>
+    <div style="font-size:14px;color:#1f2937;">📊 Total locations: ${adventuresData.length}</div>
+    <div style="margin-top:8px;padding:8px;background:rgba(59,130,246,0.1);border-radius:4px;font-size:12px;color:#1f2937;">⏳ Scanning descriptions…</div>
+  </div>`);
+
+  try {
+    for (let i = 0; i < adventuresData.length; i++) {
+      const place = adventuresData[i];
+      const values = place.values ? place.values[0] : place;
+      if (!values || values.length === 0) { skippedCount++; continue; }
+
+      try {
+        if (i > 0) await delay(PLACES_API_DELAY_MS);
+
+        const name = (values[activeCols.NAME] || '').toString().trim();
+        const placeId = (values[activeCols.PLACE_ID] || '').toString().trim();
+        const existingDesc = (values[activeCols.DESCRIPTION] || '').toString().trim();
+
+        if (!overwrite && existingDesc) {
+          results.push({ name: name || '(no name)', status: 'skipped', message: 'Already has description' });
+          skippedCount++;
+          continue;
+        }
+
+        if (!placeId || !placeId.startsWith('ChI')) {
+          results.push({ name: name || '(no name)', status: 'skipped', message: 'No valid Place ID' });
+          skippedCount++;
+          continue;
+        }
+
+        const details = await getPlaceDetailsFromAPI(placeId);
+        const newDesc = (details && details.description) ? details.description.trim() : '';
+
+        // Fallback: generate a basic description from name + location data
+        const generatedDesc = newDesc || (() => {
+          const city = (values[activeCols.CITY] || '').toString().trim();
+          const state = (values[activeCols.STATE] || '').toString().trim();
+          const rating = (values[activeCols.RATING] || '').toString().trim();
+          if (!name) return '';
+          let desc = name;
+          if (city && state) desc += ` is located in ${city}, ${state}.`;
+          else if (city) desc += ` is located in ${city}.`;
+          if (rating) desc += ` Google Rating: ${rating}.`;
+          return desc;
+        })();
+
+        if (!dryRun && generatedDesc) {
+          values[activeCols.DESCRIPTION] = generatedDesc;
+          updatedCount++;
+          results.push({ name, status: 'updated', message: `Set description (${generatedDesc.length} chars)` });
+        } else if (dryRun && generatedDesc) {
+          updatedCount++;
+          results.push({ name, status: 'would-update', message: `Would set: "${generatedDesc.slice(0, 60)}…"` });
+        } else {
+          skippedCount++;
+          results.push({ name, status: 'skipped', message: 'No description available from API' });
+        }
+      } catch (e) {
+        errorCount++;
+        results.push({ name: '(error)', status: 'error', message: e.message });
+      }
+    }
+
+    // Trigger Excel save if not dry run
+    if (!dryRun && updatedCount > 0 && typeof mainWindow.saveToExcel === 'function') {
+      try { await mainWindow.saveToExcel(); } catch (_) {}
+    }
+
+    updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
+      <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Complete'} – Update Descriptions</div>
+      <div style="font-size:13px;color:#374151;">✅ Updated: ${updatedCount} &nbsp; ⏭ Skipped: ${skippedCount} &nbsp; ❌ Errors: ${errorCount}</div>
+    </div>`);
+
+    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun };
+  } catch (err) {
+    console.error('❌ Error updating descriptions:', err);
+    updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);
+    return { success: false, error: err.message };
+  }
+};
+
+window.handleUpdateAllDescriptionsEnhanced = window.handleUpdateAllDescriptions;
+
+console.log('✅ Update All Descriptions ready');
+
+// ============================================================
+// SECTION 8: FORCE UPDATE ALL FIELDS
+// ============================================================
+
+/**
+ * Force-refresh all fields for every location regardless of existing data.
+ */
+window.handleForceUpdateAllFields = async function(displayElement, dryRun = false) {
+  console.log(`🔄 Starting force-update all fields, dryRun=${dryRun}`);
+
+  if (!displayElement) return { success: false, error: 'No display element' };
+
+  const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+  const adventuresData = mainWindow.adventuresData || window.adventuresData;
+
+  if (!adventuresData || adventuresData.length === 0) {
+    displayElement.innerHTML = `<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> No data available.</div>`;
+    return { success: false, error: 'No data available' };
+  }
+
+  const activeCols = getActiveCols(mainWindow);
+  const results = [];
+  let updatedCount = 0;
+  let skippedCount = 0;
+  let errorCount = 0;
+
+  const updateDisplay = (status) => { displayElement.innerHTML = status; };
+
+  updateDisplay(`<div style="padding:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;">
+    <div style="font-weight:600;color:#9a3412;margin-bottom:12px;">${dryRun ? '🧪 DRY RUN – Preview' : '⏳ Processing'} Force Update All Fields</div>
+    <div style="font-size:14px;color:#1f2937;">📊 Total locations: ${adventuresData.length}</div>
+    <div style="margin-top:8px;padding:8px;background:rgba(251,146,60,0.1);border-radius:4px;font-size:12px;color:#1f2937;">⚠️ This will overwrite existing data with fresh data from Google Places API.</div>
+  </div>`);
+
+  try {
+    for (let i = 0; i < adventuresData.length; i++) {
+      const place = adventuresData[i];
+      const values = place.values ? place.values[0] : place;
+      if (!values || values.length === 0) { skippedCount++; continue; }
+
+      try {
+        if (i > 0) await delay(PLACES_API_DELAY_MS);
+
+        const name = (values[activeCols.NAME] || '').toString().trim();
+        const placeId = (values[activeCols.PLACE_ID] || '').toString().trim();
+
+        if (!placeId || !placeId.startsWith('ChI')) {
+          results.push({ name: name || '(no name)', status: 'skipped', message: 'No valid Place ID' });
+          skippedCount++;
+          continue;
+        }
+
+        const details = await getPlaceDetailsFromAPI(placeId);
+        const updated = [];
+
+        if (!dryRun) {
+          if (details.website) { values[activeCols.WEBSITE] = details.website; updated.push('Website'); }
+          if (details.phone) { values[activeCols.PHONE] = details.phone; updated.push('Phone'); }
+          if (details.hours) { values[activeCols.HOURS] = details.hours; updated.push('Hours'); }
+          if (details.address) { values[activeCols.ADDRESS] = details.address; updated.push('Address'); }
+          if (details.rating) { values[activeCols.RATING] = details.rating; updated.push('Rating'); }
+          if (details.description) { values[activeCols.DESCRIPTION] = details.description; updated.push('Description'); }
+
+          if (updated.length > 0) {
+            updatedCount++;
+            results.push({ name, status: 'updated', message: `Updated: ${updated.join(', ')}` });
+          } else {
+            skippedCount++;
+            results.push({ name, status: 'skipped', message: 'No new data from API' });
+          }
+        } else {
+          const preview = [];
+          if (details.website) preview.push('Website');
+          if (details.phone) preview.push('Phone');
+          if (details.hours) preview.push('Hours');
+          if (details.address) preview.push('Address');
+          if (details.rating) preview.push('Rating');
+          if (details.description) preview.push('Description');
+          if (preview.length > 0) {
+            updatedCount++;
+            results.push({ name, status: 'would-update', message: `Would update: ${preview.join(', ')}` });
+          } else {
+            skippedCount++;
+            results.push({ name, status: 'skipped', message: 'No new data from API' });
+          }
+        }
+      } catch (e) {
+        errorCount++;
+        results.push({ name: '(error)', status: 'error', message: e.message });
+      }
+    }
+
+    if (!dryRun && updatedCount > 0 && typeof mainWindow.saveToExcel === 'function') {
+      try { await mainWindow.saveToExcel(); } catch (_) {}
+    }
+
+    updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
+      <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Complete'} – Force Update All Fields</div>
+      <div style="font-size:13px;color:#374151;">✅ Updated: ${updatedCount} &nbsp; ⏭ Skipped: ${skippedCount} &nbsp; ❌ Errors: ${errorCount}</div>
+    </div>`);
+
+    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun };
+  } catch (err) {
+    console.error('❌ Error force-updating fields:', err);
+    updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);
+    return { success: false, error: err.message };
+  }
+};
+
+window.handleForceUpdateAllFieldsEnhanced = window.handleForceUpdateAllFields;
+
+console.log('✅ Force Update All Fields ready');
 
 // ============================================================
 // INITIALIZATION

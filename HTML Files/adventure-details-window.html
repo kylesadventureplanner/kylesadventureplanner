@@ -309,8 +309,9 @@
         <label for="enrichRawInput">Paste free-text location details</label>
         <textarea id="enrichRawInput" class="tm-input" rows="7" placeholder="Paste text with address, city/state, phone, hours, and notes..."></textarea>
       </div>
-      <div style="margin-top:8px; margin-bottom:10px;">
+      <div style="margin-top:8px; margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;">
         <button id="enrichParseBtn" type="button" class="ab-btn ab-google">Parse Text</button>
+        <button id="enrichAutoFetchBtn" type="button" class="ab-btn" style="background:#4f46e5;color:#fff;border-color:#4338ca;" title="Auto-fetch fields from Google Places API">🔍 Auto-fetch from Google</button>
       </div>
       <div id="enrichParsedFields" class="enrich-grid" style="display:none;">
         <div class="enrich-field"><label for="enrichAddress">Address</label><input id="enrichAddress" class="tm-input" type="text" /></div>
@@ -628,9 +629,9 @@
     { key: 'state', label: 'State', input: 'text', syncKey: 'state' },
     { key: 'driveTime', label: 'Drive Time', input: 'text', syncKey: 'driveTime' },
     { key: 'hoursOfOperation', label: 'Hours', input: 'text', syncKey: 'hours' },
-    { key: 'activityDuration', label: 'Duration', input: 'text', syncKey: 'activityDuration' },
-    { key: 'difficulty', label: 'Difficulty', input: 'text', syncKey: 'difficulty' },
-    { key: 'trailLength', label: 'Trail Length', input: 'text', syncKey: 'trailLength' },
+    { key: 'activityDuration', label: 'Duration', input: 'text', syncKey: 'activityDuration', natureOnly: true },
+    { key: 'difficulty', label: 'Difficulty', input: 'text', syncKey: 'difficulty', natureOnly: true },
+    { key: 'trailLength', label: 'Trail Length', input: 'text', syncKey: 'trailLength', natureOnly: true },
     { key: 'cost', label: 'Cost', input: 'text', syncKey: 'cost' },
     { key: 'googleRating', label: 'Google Rating', input: 'text', syncKey: 'googleRating' },
     { key: 'phoneNumber', label: 'Phone Number', input: 'text', syncKey: 'phone' },
@@ -679,8 +680,13 @@
 
   function buildInlineEditDirtyMap(baseline, currentValues) {
     var dirty = {};
-    DETAIL_INLINE_EDIT_FIELDS.forEach(function (field) {
-      var key = field.key;
+    var keys = Object.keys(currentValues || {});
+    if (!keys.length) {
+      keys = DETAIL_INLINE_EDIT_FIELDS.map(function (field) { return field.key; });
+    }
+    keys.forEach(function (key) {
+      var field = getInlineEditFieldConfig(key);
+      if (!field) return;
       var base = normalizeInlineEditValue(field, baseline && baseline[key]);
       var now = normalizeInlineEditValue(field, currentValues && currentValues[key]);
       dirty[key] = base !== now;
@@ -713,7 +719,14 @@
       '<span id="detailInlineEditDirtyCount" class="detail-inline-edit-dirty-count">' + dirtyCount + ' field' + (dirtyCount === 1 ? '' : 's') + ' changed</span>' +
       '</div>' +
       '<div class="detail-inline-edit-grid">' +
-      DETAIL_INLINE_EDIT_FIELDS.map(function (field) {
+      DETAIL_INLINE_EDIT_FIELDS.filter(function (field) {
+        if (!field.natureOnly) return true;
+        var wb = (state.payload && state.payload.explorerSource && state.payload.explorerSource.workbook) || '';
+        if (wb) return /nature_locations/i.test(wb);
+        var openerWin = getOpenerWindow();
+        return /nature_locations/i.test((openerWin && openerWin.filePath) || '') ||
+               /mylist/i.test((openerWin && openerWin.tableName) || '');
+      }).map(function (field) {
         var value = normalizeInlineEditValue(field, state.baseline && state.baseline[field.key]);
         var isDirty = !!dirtyMap[field.key];
         var rowClass = 'detail-inline-edit-field' + (field.full ? ' full' : '') + (isDirty ? ' is-dirty' : '');
@@ -1306,6 +1319,23 @@
     syncTagManagementUi();
   }
 
+  function applyAllRecommendedTags() {
+    var state = window.__detailTagState;
+    if (!state) return;
+    var suggestions = buildTagRecommendations(state.data || {}, state.tags || []);
+    if (!suggestions.length) {
+      setTagStatus('No new recommendations available for this location.', false);
+      showDetailToast('ℹ️ No new tag recommendations available.', 'info', 2500);
+      return;
+    }
+    var msg = '✨ Recommended tags for this location:\n\n  ' + suggestions.join('\n  ') + '\n\nApply all recommended tags?';
+    if (!window.confirm(msg)) return;
+    suggestions.forEach(function (tag) { addTagToDetailState(tag); });
+    var count = suggestions.length;
+    setTagStatus(count + ' recommended tag' + (count !== 1 ? 's' : '') + ' added. Click Save Tags to persist.', false);
+    showDetailToast('✨ ' + count + ' tag' + (count !== 1 ? 's' : '') + ' applied. Save to keep them.', 'success', 3000);
+  }
+
   function removeTagFromDetailState(tag) {
     var state = window.__detailTagState;
     if (!state) return;
@@ -1692,6 +1722,7 @@
       '<div class="tm-section-label">Suggested Tags</div>' +
       '<div id="tmSuggestions" class="tm-suggestions"></div>' +
       '<div class="tm-actions">' +
+      '<button id="tmRecommendApplyBtn" type="button" class="tm-btn primary" title="Review AI-recommended tags and apply them">✨ Apply Recommended Tags</button>' +
       '<button id="tmSaveBtn" type="button" class="tm-btn primary">Save Tags</button>' +
       '<button id="tmResetBtn" type="button" class="tm-btn">Reset to Source Tags</button>' +
       '<button id="tmClearBtn" type="button" class="tm-btn danger">Clear All</button>' +
@@ -2519,12 +2550,21 @@
       card('Description', data.description, 'description') +
       card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div>');
 
+    var isNatureSource = (function() {
+      var wb = (payload && payload.explorerSource && payload.explorerSource.workbook) || '';
+      if (wb) return /nature_locations/i.test(wb);
+      // Fallback: check opener window
+      var openerWin = getOpenerWindow();
+      var fp = (openerWin && openerWin.filePath) || '';
+      return /nature_locations/i.test(fp) || /mylist/i.test((openerWin && openerWin.tableName) || '');
+    })();
+
     document.getElementById('pane-details').innerHTML =
       '<div class="grid">' +
       card('Hours', data.hoursOfOperation, 'hoursOfOperation') +
-      card('Duration', data.activityDuration, 'activityDuration') +
-      card('Difficulty', data.difficulty, 'difficulty') +
-      card('Trail Length', data.trailLength, 'trailLength') +
+      (isNatureSource ? card('Duration', data.activityDuration, 'activityDuration') : '') +
+      (isNatureSource ? card('Difficulty', data.difficulty, 'difficulty') : '') +
+      (isNatureSource ? card('Trail Length', data.trailLength, 'trailLength') : '') +
       card('Cost', data.cost, 'cost') +
       card('Google Rating', data.googleRating, 'googleRating') +
       card('My Rating', data.myRating, 'myRating') +
@@ -2799,6 +2839,55 @@
     if (cancelBtn) cancelBtn.addEventListener('click', closeEnrichModal);
     if (backdrop) backdrop.addEventListener('click', closeEnrichModal);
     if (parseBtn) parseBtn.addEventListener('click', parseEnrichModalInput);
+
+    var autoFetchBtn = document.getElementById('enrichAutoFetchBtn');
+    if (autoFetchBtn) {
+      autoFetchBtn.addEventListener('click', async function () {
+        var state = window.__detailEnrichModalState;
+        var data = state && state.data;
+        var placeId = data && (data.googlePlaceId || data.placeId || '');
+        if (!placeId) {
+          showDetailToast('⚠️ No Google Place ID available for this location.', 'error', 3000);
+          return;
+        }
+        autoFetchBtn.disabled = true;
+        autoFetchBtn.textContent = '⏳ Fetching…';
+        try {
+          var openerWin = getOpenerWindow();
+          var details = null;
+          if (openerWin && typeof openerWin.getPlaceDetails === 'function') {
+            details = await openerWin.getPlaceDetails(placeId);
+          }
+          if (!details || (!details.website && !details.phone && !details.hours && !details.address)) {
+            showDetailToast('⚠️ Could not fetch details from Google Places. Ensure API key is configured.', 'error', 4000);
+            return;
+          }
+          // Show the parsed fields section and populate
+          var parsedFields = document.getElementById('enrichParsedFields');
+          if (parsedFields) parsedFields.style.display = '';
+          if (details.address) {
+            var addrEl = document.getElementById('enrichAddress');
+            if (addrEl) addrEl.value = details.address;
+          }
+          var city = data.city || '';
+          var stateVal = data.state || '';
+          if (city) { var cityEl = document.getElementById('enrichCity'); if (cityEl) cityEl.value = city; }
+          if (stateVal) { var stateEl = document.getElementById('enrichState'); if (stateEl) stateEl.value = stateVal; }
+          if (details.phone) { var phoneEl = document.getElementById('enrichPhone'); if (phoneEl) phoneEl.value = details.phone; }
+          if (details.hours) { var hoursEl = document.getElementById('enrichHours'); if (hoursEl) hoursEl.value = details.hours; }
+          if (details.description) { var descEl = document.getElementById('enrichDescription'); if (descEl) descEl.value = details.description; }
+
+          var hint = document.getElementById('enrichHint');
+          if (hint) hint.textContent = '✅ Fields fetched from Google Places. Review and click "Save to Source".';
+          showDetailToast('✅ Fields auto-fetched from Google Places. Review and save.', 'success', 3200);
+        } catch (err) {
+          showDetailToast('❌ Auto-fetch failed: ' + (err && err.message ? err.message : 'unknown error'), 'error', 3500);
+        } finally {
+          autoFetchBtn.disabled = false;
+          autoFetchBtn.textContent = '🔍 Auto-fetch from Google';
+        }
+      });
+    }
 
     if (saveBtn) {
       saveBtn.addEventListener('click', async function () {
@@ -3296,6 +3385,11 @@
 
       if (closestFromEvent(e, '#tmSaveBtn')) {
         saveDetailTags();
+        return;
+      }
+
+      if (closestFromEvent(e, '#tmRecommendApplyBtn')) {
+        applyAllRecommendedTags();
         return;
       }
 

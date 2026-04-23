@@ -1220,6 +1220,53 @@
 
         <div id="hours-status"></div>
       </div>
+
+      <!-- Update All Descriptions -->
+      <div class="card">
+        <div class="card-title">📝 Update All Descriptions</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Use Google Places API to fill in description fields. By default only fills empty descriptions — enable "Overwrite" to replace existing ones too.
+        </p>
+
+        <div class="dry-run-toggle" id="descDryRunToggle">
+          <input type="checkbox" id="descDryRun" onchange="updateDryRunToggle(this, 'updateDescriptions')">
+          <div class="toggle-slider"></div>
+          <label for="descDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="descDryRunStatus">DISABLED</div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+          <input type="checkbox" id="descOverwrite">
+          <label for="descOverwrite" style="font-size:13px; color:#374151; cursor:pointer;">⚠️ Overwrite existing descriptions</label>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitUpdateDescriptions()">📝 Update Descriptions</button>
+        </div>
+
+        <div id="desc-status"></div>
+      </div>
+
+      <!-- Force Update All Fields -->
+      <div class="card">
+        <div class="card-title">🔄 Force Update All Fields</div>
+        <p style="color: #6b7280; margin-bottom: 16px; line-height: 1.6;">
+          Overwrite <strong>all fields</strong> (website, phone, hours, address, rating, description) for every location with fresh data from Google Places API — regardless of existing values.
+        </p>
+
+        <div class="dry-run-toggle" id="forceUpdateDryRunToggle">
+          <input type="checkbox" id="forceUpdateDryRun" onchange="updateDryRunToggle(this, 'forceUpdateAll')">
+          <div class="toggle-slider"></div>
+          <label for="forceUpdateDryRun">🧪 Dry Run Mode</label>
+          <div class="dry-run-status off" id="forceUpdateDryRunStatus">DISABLED</div>
+        </div>
+
+        <div class="button-group">
+          <button class="button button-primary" onclick="submitForceUpdateAll()" style="background:#f59e0b;color:#fff;border-color:#d97706;">🔄 Force Update All Fields</button>
+        </div>
+
+        <div id="force-update-status"></div>
+      </div>
     </div>
 
     <!-- Backup Tab -->
@@ -1877,6 +1924,18 @@
       retail: 'retail_retail',
       'wildlife-animals': 'ent_wildlife_animals',
       'regional-festivals': 'ent_festivals'
+    };
+    const EDIT_MODE_SUBTAB_ALIASES = {
+      wildlife: 'wildlife-animals',
+      wildlifeanimals: 'wildlife-animals',
+      'wildlife_animals': 'wildlife-animals',
+      festivals: 'regional-festivals',
+      regionalfestivals: 'regional-festivals',
+      'regional_festivals': 'regional-festivals',
+      foodanddrink: 'food-drink',
+      'food_and_drink': 'food-drink',
+      biketrails: 'bike-trails',
+      'bike_trails': 'bike-trails'
     };
     const targetSchemaCache = {};
     const EDIT_MODE_WORKBOOK_PREFIXES = [
@@ -2691,24 +2750,63 @@
     function getEditModeLaunchParam(paramName) {
       const key = String(paramName || '').trim();
       if (!key) return '';
+      const readValue = (params) => String(params && params.get && params.get(key) || '').trim();
       try {
         const searchParams = new URLSearchParams(window.location.search || '');
-        const fromSearch = String(searchParams.get(key) || '').trim();
+        const fromSearch = readValue(searchParams);
         if (fromSearch) return fromSearch;
       } catch (_error) {
         // Ignore malformed search params.
       }
       try {
         const hashText = String(window.location.hash || '').replace(/^#/, '');
-        const hashParams = new URLSearchParams(hashText);
-        return String(hashParams.get(key) || '').trim();
+        const hashCandidates = [
+          hashText,
+          hashText.replace(/^\?+/, ''),
+          hashText.includes('?') ? hashText.split('?').slice(1).join('?') : '',
+          hashText.includes('&') ? hashText.split('&').filter((part) => String(part || '').includes('=')).join('&') : ''
+        ].map((value) => String(value || '').trim()).filter(Boolean);
+
+        for (const candidate of hashCandidates) {
+          const hashParams = new URLSearchParams(candidate);
+          const value = readValue(hashParams);
+          if (value) return value;
+        }
+
+        const match = hashCandidates
+          .map((candidate) => candidate.match(new RegExp(`(?:^|[?&])${key}=([^&]+)`)))
+          .find(Boolean);
+        return match && match[1] ? decodeURIComponent(String(match[1]).replace(/\+/g, ' ')).trim() : '';
       } catch (_error) {
         return '';
       }
     }
 
+    function normalizeEditModeSubtabKey(rawValue) {
+      const decoded = (() => {
+        const text = String(rawValue || '').trim();
+        if (!text) return '';
+        try {
+          return decodeURIComponent(text);
+        } catch (_error) {
+          return text;
+        }
+      })();
+      const normalized = decoded
+        .trim()
+        .toLowerCase()
+        .replace(/^#+/, '')
+        .replace(/^\?+/, '')
+        .replace(/^sourceSubtab=/i, '')
+        .replace(/[\s_]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      if (!normalized) return '';
+      return String(EDIT_MODE_SUBTAB_ALIASES[normalized] || normalized);
+    }
+
     function getEmbeddedSourceSubtabKey() {
-      return String(getEditModeLaunchParam('sourceSubtab') || '').trim().toLowerCase();
+      return normalizeEditModeSubtabKey(getEditModeLaunchParam('sourceSubtab'));
     }
 
     async function runPostAddRefreshHooks(result, dryRun) {
@@ -2793,6 +2891,58 @@
       return EDIT_MODE_TARGETS[0] ? EDIT_MODE_TARGETS[0].id : '';
     }
 
+    function hasUserTouchedTargetSelectors() {
+      return document.body && document.body.dataset.editModeTargetTouched === '1';
+    }
+
+    function markTargetSelectorsTouched() {
+      if (!document.body) return;
+      document.body.dataset.editModeTargetTouched = '1';
+    }
+
+    function applyLaunchTargetDefaults(options = {}) {
+      const force = Boolean(options && options.force);
+      const sourceSubtab = getEmbeddedSourceSubtabKey();
+      if (!sourceSubtab) return false;
+      if (!force && hasUserTouchedTargetSelectors()) return false;
+
+      const initialTargetId = resolveInitialEditModeTargetId();
+      if (!initialTargetId) return false;
+
+      const actionSel = document.getElementById('actionTargetSelect');
+      const autoSel = document.getElementById('automationTargetSelect');
+      const multiSel = document.getElementById('automationTargetMulti');
+      if (!actionSel || !autoSel || !multiSel) return false;
+
+      if (Array.from(actionSel.options || []).every((opt) => String(opt.value || '').trim() !== initialTargetId)) {
+        return false;
+      }
+
+      actionSel.value = initialTargetId;
+      autoSel.value = initialTargetId;
+      Array.from(multiSel.options).forEach((opt) => {
+        opt.selected = String(opt.value || '').trim() === initialTargetId;
+      });
+
+      renderTargetSelectionStatus();
+      renderActionTargetDiagnostics();
+      updateFestivalSearchUi();
+      renderTargetStarterRecommendations();
+      updateActiveTargetBanner(getSelectedTarget('actionTargetSelect'));
+      return true;
+    }
+
+    function bindLaunchTargetResync() {
+      if (window.__editModeLaunchTargetResyncBound) return;
+      window.__editModeLaunchTargetResyncBound = true;
+      window.addEventListener('hashchange', () => {
+        applyLaunchTargetDefaults({ force: true });
+      });
+      window.addEventListener('load', () => {
+        applyLaunchTargetDefaults();
+      });
+    }
+
     function buildAddTargetConfirmationMessage(target, itemCount, flowLabel) {
       const safeTarget = target && typeof target === 'object' ? target : null;
       const count = Math.max(1, Number(itemCount) || 1);
@@ -2828,6 +2978,7 @@
       autoSel.innerHTML = options;
       multiSel.innerHTML = options;
 
+      bindLaunchTargetResync();
       const initialTargetId = resolveInitialEditModeTargetId();
       actionSel.value = initialTargetId;
       autoSel.value = initialTargetId;
@@ -2836,6 +2987,7 @@
       });
 
       actionSel.addEventListener('change', () => {
+        markTargetSelectorsTouched();
         renderTargetSelectionStatus();
         renderActionTargetDiagnostics();
         resetSingleCandidateResults();
@@ -2846,16 +2998,22 @@
         updateActiveTargetBanner(getSelectedTarget('actionTargetSelect'));
       });
       [autoSel, multiSel].forEach((el) => {
-        el.addEventListener('change', renderTargetSelectionStatus);
+        el.addEventListener('change', () => {
+          markTargetSelectorsTouched();
+          renderTargetSelectionStatus();
+        });
       });
       autoSel.addEventListener('change', () => {
         updateActiveTargetBanner(getSelectedTarget('automationTargetSelect'));
       });
-      renderTargetSelectionStatus();
-      renderActionTargetDiagnostics();
-      updateFestivalSearchUi();
-      renderTargetStarterRecommendations();
-      updateActiveTargetBanner(getSelectedTarget('actionTargetSelect'));
+      applyLaunchTargetDefaults({ force: true });
+      if (!getEmbeddedSourceSubtabKey()) {
+        renderTargetSelectionStatus();
+        renderActionTargetDiagnostics();
+        updateFestivalSearchUi();
+        renderTargetStarterRecommendations();
+        updateActiveTargetBanner(getSelectedTarget('actionTargetSelect'));
+      }
     }
 
     function getSelectedTarget(selectId) {
@@ -5554,6 +5712,51 @@
         throw new Error('Auto-tag system not available');
       });
       return;
+    }
+
+    /**
+     * Submit Update Descriptions
+     */
+    async function submitUpdateDescriptions() {
+      const dryRun = document.getElementById('descDryRun').checked;
+      const overwrite = document.getElementById('descOverwrite').checked;
+      const statusDiv = document.getElementById('desc-status');
+      const single = getSelectedTarget('automationTargetSelect');
+      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
+
+      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+        if (typeof window.handleUpdateAllDescriptions === 'function') {
+          return await window.handleUpdateAllDescriptions(document.createElement('div'), dryRun, overwrite);
+        }
+        throw new Error('Update descriptions handler not available');
+      });
+    }
+
+    /**
+     * Submit Force Update All Fields
+     */
+    async function submitForceUpdateAll() {
+      const dryRun = document.getElementById('forceUpdateDryRun').checked;
+      const statusDiv = document.getElementById('force-update-status');
+      const single = getSelectedTarget('automationTargetSelect');
+      const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
+
+      if (!dryRun) {
+        const ok = window.confirm(
+          '⚠️ Force Update All Fields will overwrite existing website, phone, hours, address, rating, and description data for ALL locations in the selected table(s).\n\nProceed?'
+        );
+        if (!ok) {
+          statusDiv.innerHTML = '<div class="status-message">ℹ️ Force update cancelled.</div>';
+          return;
+        }
+      }
+
+      await runAutomationAcrossTargets(targets, statusDiv, async () => {
+        if (typeof window.handleForceUpdateAllFields === 'function') {
+          return await window.handleForceUpdateAllFields(document.createElement('div'), dryRun);
+        }
+        throw new Error('Force update handler not available');
+      });
     }
 
     /**

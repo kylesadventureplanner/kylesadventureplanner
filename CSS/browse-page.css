@@ -546,6 +546,7 @@ tr.row-selected {
 .card-info-row {
   display: flex;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: var(--space-md);
   font-size: 13px;
   padding: var(--space-md) var(--space-sm);
@@ -611,6 +612,10 @@ tr.row-selected {
   color: var(--neutral-800);
   flex: 1;
   font-weight: 500;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  min-width: 0;
 }
 
 /* Search highlighting */
