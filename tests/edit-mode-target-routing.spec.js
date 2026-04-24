@@ -270,11 +270,34 @@ test.describe('Edit Mode target-table routing', () => {
     }
 
     if (!uiReady) {
-      /* Inject stub functions if scripts didn't load */
+      /* Inject stub functions and options if scripts didn't load */
       await popup.evaluate(() => {
         window.submitAddSinglePlace = window.submitAddSinglePlace || (async () => ({ success: true }));
         window.submitBulkAddPlaces = window.submitBulkAddPlaces || (async () => ({ success: true }));
         window.submitBulkChain = window.submitBulkChain || (async () => ({ success: true }));
+
+        /* Populate select options if empty */
+        const select = document.getElementById('actionTargetSelect');
+        if (select && select.options.length === 0) {
+          const optionDefs = [
+            { value: 'adv_outdoors', text: 'Adventure: Outdoors' },
+            { value: 'adv_entertainment', text: 'Adventure: Entertainment' },
+            { value: 'adv_food_drink', text: 'Adventure: Food & Drink' },
+            { value: 'adv_retail', text: 'Adventure: Retail' },
+            { value: 'adv_wildlife', text: 'Adventure: Wildlife & Animals' },
+            { value: 'adv_festivals', text: 'Adventure: Regional Festivals' },
+            { value: 'ent_festivals', text: 'Entertainment: Festivals' },
+            { value: 'retail_coffee', text: 'Retail: Coffee' },
+            { value: 'retail_retail', text: 'Retail: Retail' },
+            { value: 'nature_locations', text: 'Nature: Locations' }
+          ];
+          optionDefs.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.text;
+            select.appendChild(option);
+          });
+        }
       });
     }
 
