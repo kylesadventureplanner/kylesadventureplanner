@@ -110,6 +110,37 @@ async function openNatureLogView(page) {
 }
 
 /**
+ * Opens Nature Challenge and waits for the Birds overview controls to be
+ * fully interactive.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function openNatureOverviewView(page) {
+  await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
+
+  const natureRoot = page.locator('#natureChallengeRoot');
+  await natureRoot.waitFor({ state: 'visible', timeout: 10000 });
+
+  await page.waitForFunction(() => {
+    const root = document.getElementById('natureChallengeRoot');
+    if (!root) return false;
+
+    const controlsBound = root.dataset && root.dataset.natureControlsBound === '1';
+    const tabLoaded = (window.tabLoader && typeof window.tabLoader.isTabLoaded === 'function')
+      ? !!window.tabLoader.isTabLoaded('nature-challenge')
+      : true;
+    const exploreBtn = document.getElementById('birdsExploreBtn');
+    const hasExploreControl = Boolean(exploreBtn && exploreBtn.offsetParent !== null);
+
+    return controlsBound && tabLoaded && hasExploreControl;
+  }, { timeout: 10000 });
+
+  const explore = page.locator('#birdsExploreBtn');
+  await explore.waitFor({ state: 'visible', timeout: 10000 });
+  return explore;
+}
+
+/**
  * Opens Nature Challenge -> Birds Log view and optionally skips the test when
  * required UI elements are unavailable on the current build.
  *
@@ -203,6 +234,7 @@ async function installVisitedExplorerSeedFixture(page) {
 module.exports = {
   collapseErrorNotificationBar,
   activateFooterAction,
+  openNatureOverviewView,
   openNatureLogView,
   openNatureLogViewOrSkip,
   installVisitedExplorerSeedFixture

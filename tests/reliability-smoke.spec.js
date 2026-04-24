@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('./reliability-test');
+const { openNatureOverviewView } = require('./playwright-helpers');
 
 const summary = {
   generatedAt: new Date().toISOString(),
@@ -53,10 +54,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('first-click success: nature explore', async ({ page }) => {
-  await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-
-  const explore = page.locator('#birdsExploreBtn');
-  await expect(explore).toBeVisible();
+  const explore = await openNatureOverviewView(page);
   await explore.click();
   const explorerActive = await page.evaluate(() => {
     const node = document.querySelector('.nature-birds-view.is-active[data-birds-view="explorer"]');
@@ -100,8 +98,7 @@ test('first-click success: bike refresh', async ({ page }) => {
 });
 
 test('hidden overlay probe catches interception', async ({ page }) => {
-  await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-  await expect(page.locator('#birdsExploreBtn')).toBeVisible();
+  await openNatureOverviewView(page);
 
   await page.evaluate(() => {
     const blocker = document.createElement('div');
@@ -161,8 +158,7 @@ test('stale row-detail blocker is cleared before nature interactions', async ({ 
     backdrop.style.zIndex = '1001';
   });
 
-  await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-  await expect(page.locator('#birdsExploreBtn')).toBeVisible();
+  await openNatureOverviewView(page);
   await page.locator('#birdsExploreBtn').click();
 
   const explorerActive = await page.evaluate(() => {
@@ -187,8 +183,7 @@ test('nature explore remains responsive across repeated tab switches', async ({ 
     await page.locator('.app-tab-btn[data-tab="bike-trails"]').click();
     await expect(page.locator('#bikeRefreshBtn')).toBeVisible();
 
-    await page.locator('.app-tab-btn[data-tab="nature-challenge"]').click();
-    await expect(page.locator('#birdsExploreBtn')).toBeVisible();
+    await openNatureOverviewView(page);
     // Normalize viewport targeting before click to avoid stale off-screen CTA coordinates.
     await page.locator('#birdsExploreBtn').scrollIntoViewIfNeeded();
     await page.locator('#birdsExploreBtn').click();
