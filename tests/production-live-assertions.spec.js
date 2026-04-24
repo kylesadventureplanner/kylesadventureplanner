@@ -69,6 +69,7 @@ test.describe('Production live assertions (opt-in)', () => {
 
   test('Update Descriptions persists at least one row and emits no Graph row PATCH 404', async ({ page }) => {
     test.skip(!PROD_ASSERT_ALLOW_WRITES, 'Set PROD_ASSERT_ALLOW_WRITES=1 to enable production write assertions.');
+    const expectedDescriptionHeader = 'description';
 
     const patch404s = [];
     page.on('response', (response) => {
@@ -121,6 +122,21 @@ test.describe('Production live assertions (opt-in)', () => {
     await expect.poll(async () => {
       return (await writeDiag.innerText()).trim();
     }, { timeout: 120000 }).not.toMatch(/not persisted|\b404\b|itemNotFound/i);
+
+    await expect.poll(async () => {
+      const resolved = await page.evaluate(() => {
+        const payload = window.__lastUpdateDescriptionsActiveCols || {};
+        return {
+          descriptionIndex: Number(payload.descriptionIndex),
+          descriptionColumnName: String(payload.descriptionColumnName || '').trim()
+        };
+      });
+      return String(resolved.descriptionColumnName || '').trim().toLowerCase();
+    }, { timeout: 120000 }).toBe(expectedDescriptionHeader);
+
+    await expect.poll(async () => {
+      return (await writeDiag.innerText()).trim();
+    }, { timeout: 120000 }).toMatch(/Description column:\s*index\s*\d+\s*\(Description\)/i);
 
     expect(patch404s, `Graph row PATCH 404s:\n${patch404s.join('\n')}`).toEqual([]);
   });

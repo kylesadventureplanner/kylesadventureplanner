@@ -248,7 +248,7 @@ test.describe('Edit Mode – target-table selectors', () => {
       document.body.appendChild(mount);
       window.__diagResult = await window.handleUpdateAllDescriptions(mount, false, false);
       if (typeof window.renderAutomationWriteDiagnostics === 'function') {
-        window.renderAutomationWriteDiagnostics('desc-write-diagnostics', {
+        const writeDiagPayload = {
           success: true,
           persisted: true,
           persistMode: 'saveToExcel-row-patch',
@@ -262,7 +262,28 @@ test.describe('Edit Mode – target-table selectors', () => {
           verificationReason: '',
           dryRun: false,
           failedTargets: 0
-        });
+        };
+        window.renderAutomationWriteDiagnostics('desc-write-diagnostics', writeDiagPayload);
+        window.renderAutomationWriteDiagnostics('force-update-write-diagnostics', writeDiagPayload);
+        if (typeof window.appendDescriptionColumnDiagnosticsSuffix === 'function') {
+          window.appendDescriptionColumnDiagnosticsSuffix('hours-write-diagnostics', {
+            persisted: true,
+            processedTargets: 1,
+            persistedTargets: 1,
+            rowsChanged: 1,
+            persistedRows: 1,
+            verifiedRowsChanged: 1,
+            verificationMode: 'row-reread',
+            dryRun: false,
+            failedTargets: 0,
+            descriptionIndex: 16,
+            descriptionColumnName: 'Description'
+          });
+          window.appendDescriptionColumnDiagnosticsSuffix('force-update-write-diagnostics', {
+            descriptionIndex: 16,
+            descriptionColumnName: 'Description'
+          });
+        }
       }
     });
 
@@ -278,6 +299,12 @@ test.describe('Edit Mode – target-table selectors', () => {
       .toContain('1 row changed');
     await expect.poll(() => page.locator('#desc-write-diagnostics').innerText(), { timeout: 10000 })
       .toContain('verified 1/1 row');
+    await expect.poll(() => page.locator('#hours-write-diagnostics').innerText(), { timeout: 10000 })
+      .toMatch(/Description column:\s*index\s*16\s*\(Description\)/i);
+    await expect.poll(() => page.locator('#force-update-write-diagnostics').innerText(), { timeout: 10000 })
+      .toContain('saved to Excel');
+    await expect.poll(() => page.locator('#force-update-write-diagnostics').innerText(), { timeout: 10000 })
+      .toMatch(/Description column:\s*index\s*16\s*\(Description\)/i);
   });
 
   test('automation row persistence prefers workbook row ids when available', async ({ page }) => {

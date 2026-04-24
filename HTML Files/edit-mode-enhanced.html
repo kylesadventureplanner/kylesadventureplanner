@@ -3605,6 +3605,8 @@
           postWriteVerified: false,
           verificationMode: 'unavailable',
           verificationReason: 'no-targets-selected',
+          descriptionIndex: -1,
+          descriptionColumnName: '',
           targetSummaries: []
         };
       }
@@ -3634,12 +3636,18 @@
         postWriteVerified: false,
         verificationMode: '',
         verificationReason: '',
+        descriptionIndex: -1,
+        descriptionColumnName: '',
         targetSummaries: []
       };
       for (let i = 0; i < targets.length; i += 1) {
         const target = targets[i];
         applyTargetToMainWindow(target, statusDiv);
         await probeTargetSchema(target);
+        const schemaColumns = Array.isArray(mainWindow.__excelSchemaColumns) ? mainWindow.__excelSchemaColumns : [];
+        const schemaDescriptionCol = schemaColumns.find((col) => String(col && col.name || '').trim().toLowerCase() === 'description');
+        const schemaDescriptionIndex = schemaDescriptionCol ? Number(schemaDescriptionCol.index) : -1;
+        const schemaDescriptionName = schemaDescriptionCol && schemaDescriptionCol.name ? String(schemaDescriptionCol.name).trim() : '';
         const loaded = await loadTargetRows(target);
         if (!loaded) {
           messages.push(`❌ ${target.tableName}: unable to load rows for selected table`);
@@ -3667,6 +3675,18 @@
           if (!aggregate.persistReason && result && result.persistReason) aggregate.persistReason = String(result.persistReason);
           if (!aggregate.verificationMode && result && result.verificationMode) aggregate.verificationMode = String(result.verificationMode);
           if (!aggregate.verificationReason && result && result.verificationReason) aggregate.verificationReason = String(result.verificationReason);
+          const resultDescriptionIndex = Number(result && result.descriptionIndex);
+          const finalDescriptionIndex = (Number.isFinite(resultDescriptionIndex) && resultDescriptionIndex >= 0)
+            ? Math.round(resultDescriptionIndex)
+            : ((Number.isFinite(schemaDescriptionIndex) && schemaDescriptionIndex >= 0) ? Math.round(schemaDescriptionIndex) : -1);
+          if (aggregate.descriptionIndex < 0 && finalDescriptionIndex >= 0) {
+            aggregate.descriptionIndex = finalDescriptionIndex;
+          }
+          const resultDescriptionColumnName = String((result && result.descriptionColumnName) || '').trim();
+          const finalDescriptionColumnName = resultDescriptionColumnName || schemaDescriptionName;
+          if (!aggregate.descriptionColumnName && finalDescriptionColumnName) {
+            aggregate.descriptionColumnName = finalDescriptionColumnName;
+          }
           aggregate.targetSummaries.push({
             tableName: String(target.tableName || ''),
             success: ok,
@@ -3679,7 +3699,9 @@
             verifiedRowsChanged: Math.max(0, Number(result && result.verifiedRowsChanged) || 0),
             postWriteVerified: !!(result && result.postWriteVerified),
             verificationMode: String((result && result.verificationMode) || ''),
-            verificationReason: String((result && result.verificationReason) || '')
+            verificationReason: String((result && result.verificationReason) || ''),
+            descriptionIndex: finalDescriptionIndex,
+            descriptionColumnName: finalDescriptionColumnName
           });
         } catch (error) {
           messages.push(`❌ ${target.tableName}: ${error && error.message ? error.message : 'Failed'}`);
@@ -3698,7 +3720,9 @@
             verifiedRowsChanged: 0,
             postWriteVerified: false,
             verificationMode: 'error',
-            verificationReason: String(error && error.message ? error.message : 'Failed')
+            verificationReason: String(error && error.message ? error.message : 'Failed'),
+            descriptionIndex: (Number.isFinite(schemaDescriptionIndex) && schemaDescriptionIndex >= 0) ? Math.round(schemaDescriptionIndex) : -1,
+            descriptionColumnName: schemaDescriptionName
           });
         }
       }
@@ -3758,6 +3782,28 @@
       const normalized = normalizeAutomationPersistence(result);
       el.textContent = normalized.text;
       el.style.color = normalized.color;
+    }
+
+    function appendDescriptionColumnDiagnosticsSuffix(elementId, result) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const safe = result && typeof result === 'object' ? result : {};
+      let descIndex = Number(safe.descriptionIndex);
+      let descName = String(safe.descriptionColumnName || '').trim();
+      if ((!Number.isFinite(descIndex) || descIndex < 0 || !descName) && Array.isArray(safe.targetSummaries)) {
+        const firstSummary = safe.targetSummaries.find((summary) => {
+          const summaryIndex = Number(summary && summary.descriptionIndex);
+          const summaryName = String(summary && summary.descriptionColumnName || '').trim();
+          return (Number.isFinite(summaryIndex) && summaryIndex >= 0) || !!summaryName;
+        });
+        if (firstSummary) {
+          if (!Number.isFinite(descIndex) || descIndex < 0) descIndex = Number(firstSummary.descriptionIndex);
+          if (!descName) descName = String(firstSummary.descriptionColumnName || '').trim();
+        }
+      }
+      const hasIndex = Number.isFinite(descIndex) && descIndex >= 0;
+      if (!hasIndex && !descName) return;
+      el.textContent = `${el.textContent} • Description column: index ${hasIndex ? Math.round(descIndex) : 'n/a'}${descName ? ` (${descName})` : ''}`;
     }
 
     function normalizeWriteResultContractForUi(result, defaults = {}) {
@@ -6130,6 +6176,7 @@
         throw new Error('System not ready');
       });
       renderAutomationWriteDiagnostics('missing-write-diagnostics', result);
+      appendDescriptionColumnDiagnosticsSuffix('missing-write-diagnostics', result);
       return;
     }
 
@@ -6158,6 +6205,7 @@
         throw new Error('System not ready');
       });
       renderAutomationWriteDiagnostics('hours-write-diagnostics', result);
+      appendDescriptionColumnDiagnosticsSuffix('hours-write-diagnostics', result);
       return;
     }
 
@@ -6202,6 +6250,7 @@
         throw new Error('Auto-tag system not available');
       });
       renderAutomationWriteDiagnostics('autotag-write-diagnostics', result);
+      appendDescriptionColumnDiagnosticsSuffix('autotag-write-diagnostics', result);
       return;
     }
 
@@ -6222,6 +6271,7 @@
         throw new Error('Update descriptions handler not available');
       });
       renderAutomationWriteDiagnostics('desc-write-diagnostics', result);
+      appendDescriptionColumnDiagnosticsSuffix('desc-write-diagnostics', result);
     }
 
     /**
@@ -6251,6 +6301,7 @@
         throw new Error('Force update handler not available');
       });
       renderAutomationWriteDiagnostics('force-update-write-diagnostics', result);
+      appendDescriptionColumnDiagnosticsSuffix('force-update-write-diagnostics', result);
     }
 
     /**

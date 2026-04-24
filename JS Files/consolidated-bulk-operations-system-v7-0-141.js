@@ -66,7 +66,8 @@ window.clearWorkbookWriteDebugLog = function() {
 // Rate limiting for Google Places API
 const PLACES_API_DELAY_MS = 100; // 100ms between calls to avoid rate limiting
 
-// Column indices for Excel (must match index.html/buildExcelRow schema)
+// Fallback column indices for Excel when column-name lookup is unavailable.
+// Keep these aligned with the default app row schema (19-column layout).
 const COLS = {
   NAME: 0,
   PLACE_ID: 1,
@@ -74,14 +75,14 @@ const COLS = {
   TAGS: 3,
   DRIVE_TIME: 4,
   HOURS: 5,
-  STATE: 9,
-  CITY: 10,
-  ADDRESS: 11,
-  PHONE: 12,
-  RATING: 13,
-  COST: 14,
-  DIRECTIONS: 15,
-  DESCRIPTION: 16
+  STATE: 6,
+  CITY: 7,
+  ADDRESS: 8,
+  PHONE: 9,
+  RATING: 10,
+  DIRECTIONS: 11,
+  DESCRIPTION: 12,
+  COST: 14
 };
 
 function getActiveCols(mainWindow) {
@@ -1774,6 +1775,16 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
   }
 
   const activeCols = getActiveCols(mainWindow);
+  const schemaColumns = Array.isArray(mainWindow.__excelSchemaColumns) ? mainWindow.__excelSchemaColumns : [];
+  const descriptionSchemaCol = schemaColumns.find((col) => Number(col && col.index) === Number(activeCols.DESCRIPTION));
+  const resolvedColsDebug = {
+    target: (document.getElementById('automationTargetSelect') || {}).value || '',
+    descriptionIndex: activeCols.DESCRIPTION,
+    descriptionColumnName: descriptionSchemaCol && descriptionSchemaCol.name ? String(descriptionSchemaCol.name) : '',
+    activeCols
+  };
+  window.__lastUpdateDescriptionsActiveCols = resolvedColsDebug;
+  console.info('🧭 Update Descriptions resolved columns:', resolvedColsDebug);
   const results = [];
   let updatedCount = 0;
   let skippedCount = 0;
@@ -1912,7 +1923,26 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       ${buildPreviewHtml()}
     </div>`);
 
-    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, previewItems: previewItems.slice(), persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason, rowsChanged: changedRows.length, persistedRows: persistence.persistedRows, verifiedRowsChanged: persistence.verifiedRowsChanged, postWriteVerified: persistence.postWriteVerified, verificationMode: persistence.verificationMode, verificationReason: persistence.verificationReason };
+    return {
+      success: true,
+      updatedCount,
+      skippedCount,
+      errorCount,
+      results,
+      dryRun,
+      previewItems: previewItems.slice(),
+      persisted: !!persistence.persisted,
+      persistMode: persistence.mode,
+      persistReason: persistence.reason,
+      rowsChanged: changedRows.length,
+      persistedRows: persistence.persistedRows,
+      verifiedRowsChanged: persistence.verifiedRowsChanged,
+      postWriteVerified: persistence.postWriteVerified,
+      verificationMode: persistence.verificationMode,
+      verificationReason: persistence.verificationReason,
+      descriptionIndex: Number(activeCols.DESCRIPTION),
+      descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
+    };
   } catch (err) {
     console.error('❌ Error updating descriptions:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);
