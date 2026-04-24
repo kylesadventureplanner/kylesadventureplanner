@@ -235,6 +235,16 @@ test.describe('Edit Mode target-table routing', () => {
      * Full integration testing with graph API calls requires manual testing or a different approach
      * since popup scripts don't reliably load in Playwright CI environment
     */
+
+    /* Mock all graph.microsoft.com calls to prevent 401 errors */
+    await page.context().route('https://graph.microsoft.com/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ value: [] })
+      });
+    });
+
     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (
       typeof window.buildExcelRow === 'function'

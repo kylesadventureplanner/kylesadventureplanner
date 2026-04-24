@@ -12,13 +12,12 @@
 # Error details
 
 ```
-Error: expect(received).toBe(expected) // Object.is equality
-
-Expected: 1
-Received: 0
-
-Call Log:
-- Timeout 10000ms exceeded while waiting on the predicate
+Error: Unexpected browser errors detected:
+1. [console] Failed to load resource: the server responded with a status of 401 () (https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps/Kyles_Adventure_Finder/Nature_Locations.xlsx:/workbook/tables/Nature_Locations/range?$select=values)
+2. [console] Failed to load resource: the server responded with a status of 401 () (https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps/Kyles_Adventure_Finder/Adventure%20Challenge/Nature_Locations.xlsx:/workbook/tables/Nature_Locations/range?$select=values)
+3. [console] Failed to load resource: the server responded with a status of 401 () (https://graph.microsoft.com/v1.0/me/drive/root:/Nature_Locations.xlsx:/workbook/tables/Nature_Locations/range?$select=values)
+4. [console] Failed to load resource: the server responded with a status of 401 () (https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps/Kyles_Adventure_Finder/Bike_Trail_Planner.xlsx:/workbook/tables/BikeTrails/columns)
+5. [console] Failed to load resource: the server responded with a status of 401 () (https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps/Kyles_Adventure_Finder/Bike_Trail_Planner.xlsx:/workbook/tables/BikeTrails/columns)
 ```
 
 # Page snapshot
@@ -34,7 +33,7 @@ Call Log:
   - generic "Click to expand/collapse" [ref=e10] [cursor=pointer]:
     - generic [ref=e11]:
       - text: 🔧 Advanced Debug Console
-      - generic [ref=e12]: "Startup timing: interactive 99 ms | overlay off 450 ms"
+      - generic [ref=e12]: "Startup timing: interactive 99 ms | overlay off 449 ms"
       - generic [ref=e13]: "Reliability: blocked 0 | overlays 0 | recoveries 0 | errors 0"
     - generic [ref=e14]:
       - button "📋 Copy All" [ref=e15]
@@ -76,933 +75,814 @@ Call Log:
       - tab "Open Wildlife and Animals section" [ref=e53] [cursor=pointer]: 🦌 Wildlife & Animals
       - tab "Open Regional Festivals section" [ref=e54] [cursor=pointer]: 🎉 Regional Festivals
       - tab "Open Bike Trails section" [ref=e55] [cursor=pointer]: 🚴 Bike Trails
-    - generic [ref=e56]:
-      - text: ▾
-      - generic [ref=e58]:
-        - generic [ref=e59]:
-          - heading "Adventure Challenge - Outdoors" [level=1] [ref=e60]
-          - navigation "Jump to section links" [ref=e61]:
-            - generic [ref=e62]: "Jump to section:"
-            - button "📊 Category Progression" [ref=e63] [cursor=pointer]
-            - button "🏅 Challenges & Badges" [ref=e64] [cursor=pointer]
-            - button "📚 Seasonal Quests" [ref=e65] [cursor=pointer]
-            - button "🟩 Outdoors Bingo" [ref=e66] [cursor=pointer]
-            - button "🧰 Diagnostics, Sync and Clean Up" [ref=e67] [cursor=pointer]
-        - generic [ref=e68]: 🌲 Outdoors section active
-        - tabpanel "Open Outdoors section" [ref=e69]:
-          - generic [ref=e70]:
-            - generic [ref=e71]:
-              - generic [ref=e72]: 🌲 Outdoors
-              - generic [ref=e73]: Browse and plan outdoor locations you want to visit.
-            - generic [ref=e74]:
-              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/24/2026, 5:26:33 PM"
-              - generic [ref=e76]:
-                - button "🔎 Explore Outdoors" [ref=e77] [cursor=pointer]
-                - button "🏙️ City Explorer" [ref=e78] [cursor=pointer]
-                - button "Log a Visit" [ref=e79] [cursor=pointer]
-                - button "📝 Edit Mode" [ref=e80] [cursor=pointer]
-                - button "Refresh Data" [ref=e81] [cursor=pointer]
-                - button "↶ Undo" [disabled] [ref=e82] [cursor=pointer]
-          - generic [ref=e83]:
-            - generic [ref=e84]:
-              - generic [ref=e86]:
-                - generic [ref=e87]: 📊 Category Progression
-                - generic [ref=e88]:
-                  - text: "Track your Outdoors visits by category. Total logged:"
-                  - strong [ref=e89]: "0"
-                  - text: .
-                  - button "Log Visit" [ref=e90] [cursor=pointer]
-              - generic [ref=e91]:
-                - generic [ref=e92]:
-                  - generic [ref=e93]: 🥾
-                  - generic [ref=e94]: Trailheads
-                  - generic [ref=e95]: 0 / 0
-                  - generic [ref=e96]: 0% complete
-                  - generic [ref=e99]: Auto-tracked from visit logs
-                - generic [ref=e100]:
-                  - generic [ref=e101]: 💧
-                  - generic [ref=e102]: Waterfalls
-                  - generic [ref=e103]: 0 / 0
-                  - generic [ref=e104]: 0% complete
-                  - generic [ref=e107]: Auto-tracked from visit logs
-                - generic [ref=e108]:
-                  - generic [ref=e109]: 🏔️
-                  - generic [ref=e110]: Scenic Overlooks
-                  - generic [ref=e111]: 0 / 0
-                  - generic [ref=e112]: 0% complete
-                  - generic [ref=e115]: Auto-tracked from visit logs
-                - generic [ref=e116]:
-                  - generic [ref=e117]: ⛺
-                  - generic [ref=e118]: Campgrounds
-                  - generic [ref=e119]: 0 / 0
-                  - generic [ref=e120]: 0% complete
-                  - generic [ref=e123]: Auto-tracked from visit logs
-                - generic [ref=e124]:
-                  - generic [ref=e125]: 🌲
-                  - generic [ref=e126]: State Parks
-                  - generic [ref=e127]: 0 / 0
-                  - generic [ref=e128]: 0% complete
-                  - generic [ref=e131]: Auto-tracked from visit logs
-                - generic [ref=e132]:
-                  - generic [ref=e133]: 🏔️
-                  - generic [ref=e134]: National Parks
-                  - generic [ref=e135]: 0 / 0
-                  - generic [ref=e136]: 0% complete
-                  - generic [ref=e139]: Auto-tracked from visit logs
-                - generic [ref=e140]:
-                  - generic [ref=e141]: 🏖️
-                  - generic [ref=e142]: Public Beaches
-                  - generic [ref=e143]: 0 / 0
-                  - generic [ref=e144]: 0% complete
-                  - generic [ref=e147]: Auto-tracked from visit logs
-                - generic [ref=e148]:
-                  - generic [ref=e149]: 🏞️
-                  - generic [ref=e150]: Lakes & Ponds
-                  - generic [ref=e151]: 0 / 0
-                  - generic [ref=e152]: 0% complete
-                  - generic [ref=e155]: Auto-tracked from visit logs
-                - generic [ref=e156]:
-                  - generic [ref=e157]: 🏕️
-                  - generic [ref=e158]: Recreation Areas
-                  - generic [ref=e159]: 0 / 0
-                  - generic [ref=e160]: 0% complete
-                  - generic [ref=e163]: Auto-tracked from visit logs
-                - generic [ref=e164]:
-                  - generic [ref=e165]: 🌺
-                  - generic [ref=e166]: Botanical Gardens
-                  - generic [ref=e167]: 0 / 0
-                  - generic [ref=e168]: 0% complete
-                  - generic [ref=e171]: Auto-tracked from visit logs
-            - generic [ref=e172]:
-              - generic [ref=e173]:
-                - generic [ref=e174]:
-                  - generic [ref=e175]: 🏅 Challenges & Badges
-                  - generic [ref=e176]: Challenge goals and badges now share one achievement wall using the same badge layout.
-                - generic [ref=e177]: 0/100
-              - generic [ref=e178]:
-                - generic [ref=e180]:
-                  - generic [ref=e181]: 🥾
-                  - generic [ref=e182]:
-                    - generic [ref=e184]:
-                      - generic [ref=e185]: Trailhead Seeker
-                      - generic [ref=e186]: Challenge
-                    - generic [ref=e187]:
-                      - generic [ref=e188]: Not Started
-                      - button "View all levels for Trailhead Seeker" [ref=e190] [cursor=pointer]: ⓘ
-                    - generic [ref=e191]: Visit 3 trailheads.
-                    - generic [ref=e192]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e194]:
-                      - text: 0/1 visits →
-                      - strong [ref=e195]: L1 Rookie
-                    - generic [ref=e197]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 trailhead" [ref=e198]':
-                        - generic [ref=e199]: L1
-                        - generic [ref=e200]: Rookie
-                        - generic [ref=e201]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 trailhead" [ref=e202]':
-                        - generic [ref=e203]: L2
-                        - generic [ref=e204]: Novice
-                        - generic [ref=e205]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 trailhead" [ref=e206]':
-                        - generic [ref=e207]: L3
-                        - generic [ref=e208]: Semi-Pro
-                        - generic [ref=e209]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 trailhead" [ref=e210]':
-                        - generic [ref=e211]: L4
-                        - generic [ref=e212]: Pro
-                        - generic [ref=e213]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ trailhead" [ref=e214]':
-                        - generic [ref=e215]: L5
-                        - generic [ref=e216]: MVP
-                        - generic [ref=e217]: 🔒
-                    - generic [ref=e218]:
-                      - button "−" [ref=e219] [cursor=pointer]
-                      - button "+ Log" [ref=e220] [cursor=pointer]
-                - generic [ref=e222]:
-                  - generic [ref=e223]: 💧
-                  - generic [ref=e224]:
-                    - generic [ref=e226]:
-                      - generic [ref=e227]: Waterfall Hunter
-                      - generic [ref=e228]: Challenge
-                    - generic [ref=e229]:
-                      - generic [ref=e230]: Not Started
-                      - button "View all levels for Waterfall Hunter" [ref=e232] [cursor=pointer]: ⓘ
-                    - generic [ref=e233]: Discover 3 waterfalls.
-                    - generic [ref=e234]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e236]:
-                      - text: 0/1 visits →
-                      - strong [ref=e237]: L1 Rookie
-                    - generic [ref=e239]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 waterfall" [ref=e240]':
-                        - generic [ref=e241]: L1
-                        - generic [ref=e242]: Rookie
-                        - generic [ref=e243]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 waterfall" [ref=e244]':
-                        - generic [ref=e245]: L2
-                        - generic [ref=e246]: Novice
-                        - generic [ref=e247]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 waterfall" [ref=e248]':
-                        - generic [ref=e249]: L3
-                        - generic [ref=e250]: Semi-Pro
-                        - generic [ref=e251]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 waterfall" [ref=e252]':
-                        - generic [ref=e253]: L4
-                        - generic [ref=e254]: Pro
-                        - generic [ref=e255]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ waterfall" [ref=e256]':
-                        - generic [ref=e257]: L5
-                        - generic [ref=e258]: MVP
-                        - generic [ref=e259]: 🔒
-                    - generic [ref=e260]:
-                      - button "−" [ref=e261] [cursor=pointer]
-                      - button "+ Log" [ref=e262] [cursor=pointer]
-                - generic [ref=e264]:
-                  - generic [ref=e265]: 🏔️
-                  - generic [ref=e266]:
-                    - generic [ref=e268]:
-                      - generic [ref=e269]: Overlook Explorer
-                      - generic [ref=e270]: Challenge
-                    - generic [ref=e271]:
-                      - generic [ref=e272]: Not Started
-                      - button "View all levels for Overlook Explorer" [ref=e274] [cursor=pointer]: ⓘ
-                    - generic [ref=e275]: Find 3 scenic overlooks or viewpoints.
-                    - generic [ref=e276]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e278]:
-                      - text: 0/1 visits →
-                      - strong [ref=e279]: L1 Rookie
-                    - generic [ref=e281]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 scenic" [ref=e282]':
-                        - generic [ref=e283]: L1
-                        - generic [ref=e284]: Rookie
-                        - generic [ref=e285]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 scenic" [ref=e286]':
-                        - generic [ref=e287]: L2
-                        - generic [ref=e288]: Novice
-                        - generic [ref=e289]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 scenic" [ref=e290]':
-                        - generic [ref=e291]: L3
-                        - generic [ref=e292]: Semi-Pro
-                        - generic [ref=e293]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 scenic" [ref=e294]':
-                        - generic [ref=e295]: L4
-                        - generic [ref=e296]: Pro
-                        - generic [ref=e297]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ scenic" [ref=e298]':
-                        - generic [ref=e299]: L5
-                        - generic [ref=e300]: MVP
-                        - generic [ref=e301]: 🔒
-                    - generic [ref=e302]:
-                      - button "−" [ref=e303] [cursor=pointer]
-                      - button "+ Log" [ref=e304] [cursor=pointer]
-                - generic [ref=e306]:
-                  - generic [ref=e307]: ⛺
-                  - generic [ref=e308]:
-                    - generic [ref=e310]:
-                      - generic [ref=e311]: Campfire Nights
-                      - generic [ref=e312]: Challenge
-                    - generic [ref=e313]:
-                      - generic [ref=e314]: Not Started
-                      - button "View all levels for Campfire Nights" [ref=e316] [cursor=pointer]: ⓘ
-                    - generic [ref=e317]: Camp at 2 campgrounds.
-                    - generic [ref=e318]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e320]:
-                      - text: 0/1 visits →
-                      - strong [ref=e321]: L1 Rookie
-                    - generic [ref=e323]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 campground" [ref=e324]':
-                        - generic [ref=e325]: L1
-                        - generic [ref=e326]: Rookie
-                        - generic [ref=e327]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 campground" [ref=e328]':
-                        - generic [ref=e329]: L2
-                        - generic [ref=e330]: Novice
-                        - generic [ref=e331]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 campground" [ref=e332]':
-                        - generic [ref=e333]: L3
-                        - generic [ref=e334]: Semi-Pro
-                        - generic [ref=e335]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 campground" [ref=e336]':
-                        - generic [ref=e337]: L4
-                        - generic [ref=e338]: Pro
-                        - generic [ref=e339]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ campground" [ref=e340]':
-                        - generic [ref=e341]: L5
-                        - generic [ref=e342]: MVP
-                        - generic [ref=e343]: 🔒
-                    - generic [ref=e344]:
-                      - button "−" [ref=e345] [cursor=pointer]
-                      - button "+ Log" [ref=e346] [cursor=pointer]
-                - generic [ref=e348]:
-                  - generic [ref=e349]: 🌲
-                  - generic [ref=e350]:
-                    - generic [ref=e352]:
-                      - generic [ref=e353]: State Park Tour
-                      - generic [ref=e354]: Challenge
-                    - generic [ref=e355]:
-                      - generic [ref=e356]: Not Started
-                      - button "View all levels for State Park Tour" [ref=e358] [cursor=pointer]: ⓘ
-                    - generic [ref=e359]: Visit 2 state parks.
-                    - generic [ref=e360]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e362]:
-                      - text: 0/1 visits →
-                      - strong [ref=e363]: L1 Rookie
-                    - generic [ref=e365]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 state park" [ref=e366]':
-                        - generic [ref=e367]: L1
-                        - generic [ref=e368]: Rookie
-                        - generic [ref=e369]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 state park" [ref=e370]':
-                        - generic [ref=e371]: L2
-                        - generic [ref=e372]: Novice
-                        - generic [ref=e373]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 state park" [ref=e374]':
-                        - generic [ref=e375]: L3
-                        - generic [ref=e376]: Semi-Pro
-                        - generic [ref=e377]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 state park" [ref=e378]':
-                        - generic [ref=e379]: L4
-                        - generic [ref=e380]: Pro
-                        - generic [ref=e381]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ state park" [ref=e382]':
-                        - generic [ref=e383]: L5
-                        - generic [ref=e384]: MVP
-                        - generic [ref=e385]: 🔒
-                    - generic [ref=e386]:
-                      - button "−" [ref=e387] [cursor=pointer]
-                      - button "+ Log" [ref=e388] [cursor=pointer]
-                - generic [ref=e390]:
-                  - generic [ref=e391]: 🏔️
-                  - generic [ref=e392]:
-                    - generic [ref=e394]:
-                      - generic [ref=e395]: National Park Day
-                      - generic [ref=e396]: Challenge
-                    - generic [ref=e397]:
-                      - generic [ref=e398]: Not Started
-                      - button "View all levels for National Park Day" [ref=e400] [cursor=pointer]: ⓘ
-                    - generic [ref=e401]: Visit 1 national park.
-                    - generic [ref=e402]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e404]:
-                      - text: 0/1 visits →
-                      - strong [ref=e405]: L1 Rookie
-                    - generic [ref=e407]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 national park" [ref=e408]':
-                        - generic [ref=e409]: L1
-                        - generic [ref=e410]: Rookie
-                        - generic [ref=e411]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 national park" [ref=e412]':
-                        - generic [ref=e413]: L2
-                        - generic [ref=e414]: Novice
-                        - generic [ref=e415]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 national park" [ref=e416]':
-                        - generic [ref=e417]: L3
-                        - generic [ref=e418]: Semi-Pro
-                        - generic [ref=e419]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 national park" [ref=e420]':
-                        - generic [ref=e421]: L4
-                        - generic [ref=e422]: Pro
-                        - generic [ref=e423]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ national park" [ref=e424]':
-                        - generic [ref=e425]: L5
-                        - generic [ref=e426]: MVP
-                        - generic [ref=e427]: 🔒
-                    - generic [ref=e428]:
-                      - button "−" [ref=e429] [cursor=pointer]
-                      - button "+ Log" [ref=e430] [cursor=pointer]
-                - generic [ref=e432]:
-                  - generic [ref=e433]: 🏖️
-                  - generic [ref=e434]:
-                    - generic [ref=e436]:
-                      - generic [ref=e437]: Shoreline Explorer
-                      - generic [ref=e438]: Challenge
-                    - generic [ref=e439]:
-                      - generic [ref=e440]: Not Started
-                      - button "View all levels for Shoreline Explorer" [ref=e442] [cursor=pointer]: ⓘ
-                    - generic [ref=e443]: Swim at 2 public beaches.
-                    - generic [ref=e444]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e446]:
-                      - text: 0/1 visits →
-                      - strong [ref=e447]: L1 Rookie
-                    - generic [ref=e449]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 beach" [ref=e450]':
-                        - generic [ref=e451]: L1
-                        - generic [ref=e452]: Rookie
-                        - generic [ref=e453]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 beach" [ref=e454]':
-                        - generic [ref=e455]: L2
-                        - generic [ref=e456]: Novice
-                        - generic [ref=e457]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 beach" [ref=e458]':
-                        - generic [ref=e459]: L3
-                        - generic [ref=e460]: Semi-Pro
-                        - generic [ref=e461]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 beach" [ref=e462]':
-                        - generic [ref=e463]: L4
-                        - generic [ref=e464]: Pro
-                        - generic [ref=e465]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ beach" [ref=e466]':
-                        - generic [ref=e467]: L5
-                        - generic [ref=e468]: MVP
-                        - generic [ref=e469]: 🔒
-                    - generic [ref=e470]:
-                      - button "−" [ref=e471] [cursor=pointer]
-                      - button "+ Log" [ref=e472] [cursor=pointer]
-                - generic [ref=e474]:
-                  - generic [ref=e475]: 🏞️
-                  - generic [ref=e476]:
-                    - generic [ref=e478]:
-                      - generic [ref=e479]: Lake & Pond Loop
-                      - generic [ref=e480]: Challenge
-                    - generic [ref=e481]:
-                      - generic [ref=e482]: Not Started
-                      - button "View all levels for Lake & Pond Loop" [ref=e484] [cursor=pointer]: ⓘ
-                    - generic [ref=e485]: Explore 3 lakes or ponds.
-                    - generic [ref=e486]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e488]:
-                      - text: 0/1 visits →
-                      - strong [ref=e489]: L1 Rookie
-                    - generic [ref=e491]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 lake" [ref=e492]':
-                        - generic [ref=e493]: L1
-                        - generic [ref=e494]: Rookie
-                        - generic [ref=e495]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 lake" [ref=e496]':
-                        - generic [ref=e497]: L2
-                        - generic [ref=e498]: Novice
-                        - generic [ref=e499]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 lake" [ref=e500]':
-                        - generic [ref=e501]: L3
-                        - generic [ref=e502]: Semi-Pro
-                        - generic [ref=e503]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 lake" [ref=e504]':
-                        - generic [ref=e505]: L4
-                        - generic [ref=e506]: Pro
-                        - generic [ref=e507]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ lake" [ref=e508]':
-                        - generic [ref=e509]: L5
-                        - generic [ref=e510]: MVP
-                        - generic [ref=e511]: 🔒
-                    - generic [ref=e512]:
-                      - button "−" [ref=e513] [cursor=pointer]
-                      - button "+ Log" [ref=e514] [cursor=pointer]
-                - generic [ref=e516]:
-                  - generic [ref=e517]: 🌺
-                  - generic [ref=e518]:
-                    - generic [ref=e520]:
-                      - generic [ref=e521]: Garden Stroll
-                      - generic [ref=e522]: Challenge
-                    - generic [ref=e523]:
-                      - generic [ref=e524]: Not Started
-                      - button "View all levels for Garden Stroll" [ref=e526] [cursor=pointer]: ⓘ
-                    - generic [ref=e527]: Visit 2 botanical gardens.
-                    - generic [ref=e528]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e530]:
-                      - text: 0/1 visits →
-                      - strong [ref=e531]: L1 Rookie
-                    - generic [ref=e533]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 gardens" [ref=e534]':
-                        - generic [ref=e535]: L1
-                        - generic [ref=e536]: Rookie
-                        - generic [ref=e537]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 gardens" [ref=e538]':
-                        - generic [ref=e539]: L2
-                        - generic [ref=e540]: Novice
-                        - generic [ref=e541]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 gardens" [ref=e542]':
-                        - generic [ref=e543]: L3
-                        - generic [ref=e544]: Semi-Pro
-                        - generic [ref=e545]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 gardens" [ref=e546]':
-                        - generic [ref=e547]: L4
-                        - generic [ref=e548]: Pro
-                        - generic [ref=e549]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ gardens" [ref=e550]':
-                        - generic [ref=e551]: L5
-                        - generic [ref=e552]: MVP
-                        - generic [ref=e553]: 🔒
-                    - generic [ref=e554]:
-                      - button "−" [ref=e555] [cursor=pointer]
-                      - button "+ Log" [ref=e556] [cursor=pointer]
-                - generic [ref=e558]:
-                  - generic [ref=e559]: 🏕️
-                  - generic [ref=e560]:
-                    - generic [ref=e562]:
-                      - generic [ref=e563]: Recreation Champion
-                      - generic [ref=e564]: Challenge
-                    - generic [ref=e565]:
-                      - generic [ref=e566]: Not Started
-                      - button "View all levels for Recreation Champion" [ref=e568] [cursor=pointer]: ⓘ
-                    - generic [ref=e569]: Complete 4 recreation or day-use areas.
-                    - generic [ref=e570]: "Progress: 0 visits • Tier 0/5"
-                    - generic [ref=e572]:
-                      - text: 0/1 visits →
-                      - strong [ref=e573]: L1 Rookie
-                    - generic [ref=e575]:
-                      - 'generic "→ In Progress – L1 Rookie: Visit 1 rec area" [ref=e576]':
-                        - generic [ref=e577]: L1
-                        - generic [ref=e578]: Rookie
-                        - generic [ref=e579]: ●
-                      - 'generic "🔒 Locked – L2 Novice: Visit 3 rec area" [ref=e580]':
-                        - generic [ref=e581]: L2
-                        - generic [ref=e582]: Novice
-                        - generic [ref=e583]: 🔒
-                      - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 rec area" [ref=e584]':
-                        - generic [ref=e585]: L3
-                        - generic [ref=e586]: Semi-Pro
-                        - generic [ref=e587]: 🔒
-                      - 'generic "🔒 Locked – L4 Pro: Visit 10 rec area" [ref=e588]':
-                        - generic [ref=e589]: L4
-                        - generic [ref=e590]: Pro
-                        - generic [ref=e591]: 🔒
-                      - 'generic "🔒 Locked – L5 MVP: Visit 15+ rec area" [ref=e592]':
-                        - generic [ref=e593]: L5
-                        - generic [ref=e594]: MVP
-                        - generic [ref=e595]: 🔒
-                    - generic [ref=e596]:
-                      - button "−" [ref=e597] [cursor=pointer]
-                      - button "+ Log" [ref=e598] [cursor=pointer]
-                - generic [ref=e600]:
-                  - generic [ref=e601]: 🔒
-                  - generic [ref=e602]:
-                    - generic [ref=e604]:
-                      - generic [ref=e605]: Trail Starter
-                      - generic [ref=e606]: Common
-                    - generic [ref=e607]:
-                      - generic [ref=e608]: Not Started
-                      - button "View all levels for Trail Starter" [ref=e610] [cursor=pointer]: ⓘ
-                    - generic [ref=e612]:
-                      - text: 0/1 trailheads →
-                      - strong [ref=e613]: L1 Rookie
-                - generic [ref=e616]:
-                  - generic [ref=e617]: 🔒
-                  - generic [ref=e618]:
-                    - generic [ref=e620]:
-                      - generic [ref=e621]: Waterfall Seeker
-                      - generic [ref=e622]: Rare
-                    - generic [ref=e623]:
-                      - generic [ref=e624]: Not Started
-                      - button "View all levels for Waterfall Seeker" [ref=e626] [cursor=pointer]: ⓘ
-                    - generic [ref=e628]:
-                      - text: 0/1 waterfalls →
-                      - strong [ref=e629]: L1 Rookie
-                - generic [ref=e632]:
-                  - generic [ref=e633]: 🔒
-                  - generic [ref=e634]:
-                    - generic [ref=e636]:
-                      - generic [ref=e637]: Park Ranger
-                      - generic [ref=e638]: Rare
-                    - generic [ref=e639]:
-                      - generic [ref=e640]: Not Started
-                      - button "View all levels for Park Ranger" [ref=e642] [cursor=pointer]: ⓘ
-                    - generic [ref=e644]:
-                      - text: 0/1 state parks →
-                      - strong [ref=e645]: L1 Rookie
-                - generic [ref=e648]:
-                  - generic [ref=e649]: 🔒
-                  - generic [ref=e650]:
-                    - generic [ref=e652]:
-                      - generic [ref=e653]: Camp Explorer
-                      - generic [ref=e654]: Rare
-                    - generic [ref=e655]:
-                      - generic [ref=e656]: Not Started
-                      - button "View all levels for Camp Explorer" [ref=e658] [cursor=pointer]: ⓘ
-                    - generic [ref=e660]:
-                      - text: 0/1 campgrounds →
-                      - strong [ref=e661]: L1 Rookie
-                - generic [ref=e664]:
-                  - generic [ref=e665]: 🔒
-                  - generic [ref=e666]:
-                    - generic [ref=e668]:
-                      - generic [ref=e669]: Lake Walker
-                      - generic [ref=e670]: Epic
-                    - generic [ref=e671]:
-                      - generic [ref=e672]: Not Started
-                      - button "View all levels for Lake Walker" [ref=e674] [cursor=pointer]: ⓘ
-                    - generic [ref=e676]:
-                      - text: 0/1 lakes & ponds →
-                      - strong [ref=e677]: L1 Rookie
-                - generic [ref=e680]:
-                  - generic [ref=e681]: 🔒
-                  - generic [ref=e682]:
-                    - generic [ref=e684]:
-                      - generic [ref=e685]: Summit Chaser
-                      - generic [ref=e686]: Epic
-                    - generic [ref=e687]:
-                      - generic [ref=e688]: Not Started
-                      - button "View all levels for Summit Chaser" [ref=e690] [cursor=pointer]: ⓘ
-                    - generic [ref=e692]:
-                      - text: 0/1 scenic overlooks →
-                      - strong [ref=e693]: L1 Rookie
-                - generic [ref=e696]:
-                  - generic [ref=e697]: 🔒
-                  - generic [ref=e698]:
-                    - generic [ref=e700]:
-                      - generic [ref=e701]: Beach Goer
-                      - generic [ref=e702]: Rare
-                    - generic [ref=e703]:
-                      - generic [ref=e704]: Not Started
-                      - button "View all levels for Beach Goer" [ref=e706] [cursor=pointer]: ⓘ
-                    - generic [ref=e708]:
-                      - text: 0/1 public beaches →
-                      - strong [ref=e709]: L1 Rookie
-                - generic [ref=e712]:
-                  - generic [ref=e713]: 🔒
-                  - generic [ref=e714]:
-                    - generic [ref=e716]:
-                      - generic [ref=e717]: Garden Lover
-                      - generic [ref=e718]: Rare
-                    - generic [ref=e719]:
-                      - generic [ref=e720]: Not Started
-                      - button "View all levels for Garden Lover" [ref=e722] [cursor=pointer]: ⓘ
-                    - generic [ref=e724]:
-                      - text: 0/1 botanical gardens →
-                      - strong [ref=e725]: L1 Rookie
-                - generic [ref=e728]:
-                  - generic [ref=e729]: 🔒
-                  - generic [ref=e730]:
-                    - generic [ref=e732]:
-                      - generic [ref=e733]: Outdoors Devotee
-                      - generic [ref=e734]: Legendary
-                    - generic [ref=e735]:
-                      - generic [ref=e736]: Not Started
-                      - button "View all levels for Outdoors Devotee" [ref=e738] [cursor=pointer]: ⓘ
-                    - generic [ref=e740]:
-                      - text: 0/1 total visits →
-                      - strong [ref=e741]: L1 Rookie
-                - generic [ref=e744]:
-                  - generic [ref=e745]: 🔒
-                  - generic [ref=e746]:
-                    - generic [ref=e748]:
-                      - generic [ref=e749]: Nature Champion
-                      - generic [ref=e750]: Legendary
-                    - generic [ref=e751]:
-                      - generic [ref=e752]: Not Started
-                      - button "View all levels for Nature Champion" [ref=e754] [cursor=pointer]: ⓘ
-                    - generic [ref=e756]:
-                      - text: 0/1 completed challenges →
-                      - strong [ref=e757]: L1 Rookie
-            - generic [ref=e759]:
-              - generic [ref=e761]:
-                - generic [ref=e762]: 📚 Seasonal Quests
-                - generic [ref=e763]: Multi-step seasonal goals for Outdoors.
-              - generic [ref=e764]:
-                - generic [ref=e765]:
-                  - generic [ref=e766]: 🌸 Spring Now
-                  - generic [ref=e767]: Spring Awakening
-                  - generic [ref=e768]: 0/3 steps
-                  - generic [ref=e769]:
-                    - generic [ref=e770]:
-                      - generic [ref=e771]: ○
-                      - generic [ref=e772]: Visit 3 parks or gardens
-                      - generic [ref=e773]: Auto
-                    - generic [ref=e774]:
-                      - generic [ref=e775]: ○
-                      - generic [ref=e776]: Find a waterfall
-                      - generic [ref=e777]: Auto
-                    - generic [ref=e778]:
-                      - generic [ref=e779]: ○
-                      - generic [ref=e780]: Hike a trail
-                      - generic [ref=e781]: Auto
-                - generic [ref=e782]:
-                  - generic [ref=e783]: ☀️ Summer
-                  - generic [ref=e784]: Summer Expedition
-                  - generic [ref=e785]: 0/3 steps
-                  - generic [ref=e786]:
-                    - generic [ref=e787]:
-                      - generic [ref=e788]: ○
-                      - generic [ref=e789]: Swim at a public beach
-                      - generic [ref=e790]: Auto
-                    - generic [ref=e791]:
-                      - generic [ref=e792]: ○
-                      - generic [ref=e793]: Visit a recreation area
-                      - generic [ref=e794]: Auto
-                    - generic [ref=e795]:
-                      - generic [ref=e796]: ○
-                      - generic [ref=e797]: Camp overnight
-                      - generic [ref=e798]: Auto
-                - generic [ref=e799]:
-                  - generic [ref=e800]: 🍂 Fall
-                  - generic [ref=e801]: Fall Foliage Tour
-                  - generic [ref=e802]: 0/3 steps
-                  - generic [ref=e803]:
-                    - generic [ref=e804]:
-                      - generic [ref=e805]: ○
-                      - generic [ref=e806]: Visit 3 scenic overlooks
-                      - generic [ref=e807]: Auto
-                    - generic [ref=e808]:
-                      - generic [ref=e809]: ○
-                      - generic [ref=e810]: Explore a state park
-                      - generic [ref=e811]: Auto
-                    - generic [ref=e812]:
-                      - generic [ref=e813]: ○
-                      - generic [ref=e814]: Find a lake or pond
-                      - generic [ref=e815]: Auto
-                - generic [ref=e816]:
-                  - generic [ref=e817]: ❄️ Winter
-                  - generic [ref=e818]: Winter Wild Side
-                  - generic [ref=e819]: 0/3 steps
-                  - generic [ref=e820]:
-                    - generic [ref=e821]:
-                      - generic [ref=e822]: ○
-                      - generic [ref=e823]: Find a waterfall (brave the cold!)
-                      - generic [ref=e824]: Auto
-                    - generic [ref=e825]:
-                      - generic [ref=e826]: ○
-                      - generic [ref=e827]: Hike a trailhead
-                      - generic [ref=e828]: Auto
-                    - generic [ref=e829]:
-                      - generic [ref=e830]: ○
-                      - generic [ref=e831]: Visit a botanical garden
-                      - generic [ref=e832]: Auto
-            - generic [ref=e833]:
-              - generic [ref=e834]:
-                - generic [ref=e835]:
-                  - generic [ref=e836]: 🟩 Outdoors Bingo
-                  - generic [ref=e837]: Auto-synced from your logged visits. Complete a row, column, or diagonal for BINGO!
-                - generic [ref=e838]: 0/9
-              - generic [ref=e839]:
-                - generic "Trailhead not completed" [ref=e840] [cursor=pointer]:
-                  - generic [ref=e841]: 🥾
-                  - generic [ref=e842]: Trailhead
-                - generic "Waterfall not completed" [ref=e843] [cursor=pointer]:
-                  - generic [ref=e844]: 💧
-                  - generic [ref=e845]: Waterfall
-                - generic "State Park not completed" [ref=e846] [cursor=pointer]:
-                  - generic [ref=e847]: 🌲
-                  - generic [ref=e848]: State Park
-                - generic "Campground not completed" [ref=e849] [cursor=pointer]:
-                  - generic [ref=e850]: ⛺
-                  - generic [ref=e851]: Campground
-                - generic "Scenic Overlook not completed" [ref=e852] [cursor=pointer]:
-                  - generic [ref=e853]: 🏔️
-                  - generic [ref=e854]: Scenic Overlook
-                - generic "Lake or Pond not completed" [ref=e855] [cursor=pointer]:
-                  - generic [ref=e856]: 🏞️
-                  - generic [ref=e857]: Lake or Pond
-                - generic "Public Beach not completed" [ref=e858] [cursor=pointer]:
-                  - generic [ref=e859]: 🏖️
-                  - generic [ref=e860]: Public Beach
-                - generic "National Park not completed" [ref=e861] [cursor=pointer]:
-                  - generic [ref=e862]: 🏔️
-                  - generic [ref=e863]: National Park
-                - generic "Botanical Garden not completed" [ref=e864] [cursor=pointer]:
-                  - generic [ref=e865]: 🌺
-                  - generic [ref=e866]: Botanical Garden
-              - generic [ref=e867]: 0/9 tiles marked
-        - group "🧰 Diagnostics, Sync and Clean Up" [ref=e868]:
-          - generic "🧰 Diagnostics, Sync and Clean Up Sync health, local queue visibility, and visited tracker diagnostics. ▾" [ref=e869] [cursor=pointer]:
-            - generic [ref=e870]:
-              - generic [ref=e871]: 🧰 Diagnostics, Sync and Clean Up
-              - generic [ref=e872]: Sync health, local queue visibility, and visited tracker diagnostics.
-            - text: ▾
-          - option "Strict (Place ID + exact name)"
-          - option "Balanced (Place ID + exact + fuzzy)" [selected]
-          - option "Name Only (exact + fuzzy)"
-  - button "Deployment 2026.04.23.live-debug.1 OK (4/4)" [ref=e874] [cursor=pointer]
+    - generic [ref=e58]:
+      - generic [ref=e59]:
+        - heading "Adventure Challenge - Outdoors" [level=1] [ref=e60]
+        - navigation "Jump to section links" [ref=e61]:
+          - generic [ref=e62]: "Jump to section:"
+          - button "📊 Category Progression" [ref=e63] [cursor=pointer]
+          - button "🏅 Challenges & Badges" [ref=e64] [cursor=pointer]
+          - button "📚 Seasonal Quests" [ref=e65] [cursor=pointer]
+          - button "🟩 Outdoors Bingo" [ref=e66] [cursor=pointer]
+          - button "🧰 Diagnostics, Sync and Clean Up" [ref=e67] [cursor=pointer]
+      - generic [ref=e68]: 🌲 Outdoors section active
+      - tabpanel "Open Outdoors section" [ref=e69]:
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - generic [ref=e72]: 🌲 Outdoors
+            - generic [ref=e73]: Browse and plan outdoor locations you want to visit.
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - text: "Outdoors data: fallback in use"
+              - button "Sync category totals" [ref=e76] [cursor=pointer]
+              - text: "0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/24/2026, 5:28:31 PM | Unable to load Nature_Locations from Nature_Locations.xlsx (HTTP 401)"
+            - generic [ref=e77]:
+              - button "🔎 Explore Outdoors" [ref=e78] [cursor=pointer]
+              - button "🏙️ City Explorer" [ref=e79] [cursor=pointer]
+              - button "Log a Visit" [ref=e80] [cursor=pointer]
+              - button "📝 Edit Mode" [ref=e81] [cursor=pointer]
+              - button "Refresh Data" [ref=e82] [cursor=pointer]
+              - button "↶ Undo" [disabled] [ref=e83] [cursor=pointer]
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - generic [ref=e87]:
+              - generic [ref=e88]: 📊 Category Progression
+              - generic [ref=e89]:
+                - text: "Track your Outdoors visits by category. Total logged:"
+                - strong [ref=e90]: "0"
+                - text: .
+                - button "Log Visit" [ref=e91] [cursor=pointer]
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - generic [ref=e94]: 🥾
+                - generic [ref=e95]: Trailheads
+                - generic [ref=e96]: 0 / ?
+                - generic [ref=e97]: 0% complete
+                - generic [ref=e100]: Auto-tracked from visit logs
+              - generic [ref=e101]:
+                - generic [ref=e102]: 💧
+                - generic [ref=e103]: Waterfalls
+                - generic [ref=e104]: 0 / ?
+                - generic [ref=e105]: 0% complete
+                - generic [ref=e108]: Auto-tracked from visit logs
+              - generic [ref=e109]:
+                - generic [ref=e110]: 🏔️
+                - generic [ref=e111]: Scenic Overlooks
+                - generic [ref=e112]: 0 / ?
+                - generic [ref=e113]: 0% complete
+                - generic [ref=e116]: Auto-tracked from visit logs
+              - generic [ref=e117]:
+                - generic [ref=e118]: ⛺
+                - generic [ref=e119]: Campgrounds
+                - generic [ref=e120]: 0 / ?
+                - generic [ref=e121]: 0% complete
+                - generic [ref=e124]: Auto-tracked from visit logs
+              - generic [ref=e125]:
+                - generic [ref=e126]: 🌲
+                - generic [ref=e127]: State Parks
+                - generic [ref=e128]: 0 / ?
+                - generic [ref=e129]: 0% complete
+                - generic [ref=e132]: Auto-tracked from visit logs
+              - generic [ref=e133]:
+                - generic [ref=e134]: 🏔️
+                - generic [ref=e135]: National Parks
+                - generic [ref=e136]: 0 / ?
+                - generic [ref=e137]: 0% complete
+                - generic [ref=e140]: Auto-tracked from visit logs
+              - generic [ref=e141]:
+                - generic [ref=e142]: 🏖️
+                - generic [ref=e143]: Public Beaches
+                - generic [ref=e144]: 0 / ?
+                - generic [ref=e145]: 0% complete
+                - generic [ref=e148]: Auto-tracked from visit logs
+              - generic [ref=e149]:
+                - generic [ref=e150]: 🏞️
+                - generic [ref=e151]: Lakes & Ponds
+                - generic [ref=e152]: 0 / ?
+                - generic [ref=e153]: 0% complete
+                - generic [ref=e156]: Auto-tracked from visit logs
+              - generic [ref=e157]:
+                - generic [ref=e158]: 🏕️
+                - generic [ref=e159]: Recreation Areas
+                - generic [ref=e160]: 0 / ?
+                - generic [ref=e161]: 0% complete
+                - generic [ref=e164]: Auto-tracked from visit logs
+              - generic [ref=e165]:
+                - generic [ref=e166]: 🌺
+                - generic [ref=e167]: Botanical Gardens
+                - generic [ref=e168]: 0 / ?
+                - generic [ref=e169]: 0% complete
+                - generic [ref=e172]: Auto-tracked from visit logs
+          - generic [ref=e173]:
+            - generic [ref=e174]:
+              - generic [ref=e175]:
+                - generic [ref=e176]: 🏅 Challenges & Badges
+                - generic [ref=e177]: Challenge goals and badges now share one achievement wall using the same badge layout.
+              - generic [ref=e178]: 0/100
+            - generic [ref=e179]:
+              - generic [ref=e181]:
+                - generic [ref=e182]: 🥾
+                - generic [ref=e183]:
+                  - generic [ref=e185]:
+                    - generic [ref=e186]: Trailhead Seeker
+                    - generic [ref=e187]: Challenge
+                  - generic [ref=e188]:
+                    - generic [ref=e189]: Not Started
+                    - button "View all levels for Trailhead Seeker" [ref=e191] [cursor=pointer]: ⓘ
+                  - generic [ref=e192]: Visit 3 trailheads.
+                  - generic [ref=e193]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e195]:
+                    - text: 0/1 visits →
+                    - strong [ref=e196]: L1 Rookie
+                  - generic [ref=e198]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 trailhead" [ref=e199]':
+                      - generic [ref=e200]: L1
+                      - generic [ref=e201]: Rookie
+                      - generic [ref=e202]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 trailhead" [ref=e203]':
+                      - generic [ref=e204]: L2
+                      - generic [ref=e205]: Novice
+                      - generic [ref=e206]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 trailhead" [ref=e207]':
+                      - generic [ref=e208]: L3
+                      - generic [ref=e209]: Semi-Pro
+                      - generic [ref=e210]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 trailhead" [ref=e211]':
+                      - generic [ref=e212]: L4
+                      - generic [ref=e213]: Pro
+                      - generic [ref=e214]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ trailhead" [ref=e215]':
+                      - generic [ref=e216]: L5
+                      - generic [ref=e217]: MVP
+                      - generic [ref=e218]: 🔒
+                  - generic [ref=e219]:
+                    - button "−" [ref=e220] [cursor=pointer]
+                    - button "+ Log" [ref=e221] [cursor=pointer]
+              - generic [ref=e223]:
+                - generic [ref=e224]: 💧
+                - generic [ref=e225]:
+                  - generic [ref=e227]:
+                    - generic [ref=e228]: Waterfall Hunter
+                    - generic [ref=e229]: Challenge
+                  - generic [ref=e230]:
+                    - generic [ref=e231]: Not Started
+                    - button "View all levels for Waterfall Hunter" [ref=e233] [cursor=pointer]: ⓘ
+                  - generic [ref=e234]: Discover 3 waterfalls.
+                  - generic [ref=e235]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e237]:
+                    - text: 0/1 visits →
+                    - strong [ref=e238]: L1 Rookie
+                  - generic [ref=e240]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 waterfall" [ref=e241]':
+                      - generic [ref=e242]: L1
+                      - generic [ref=e243]: Rookie
+                      - generic [ref=e244]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 waterfall" [ref=e245]':
+                      - generic [ref=e246]: L2
+                      - generic [ref=e247]: Novice
+                      - generic [ref=e248]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 waterfall" [ref=e249]':
+                      - generic [ref=e250]: L3
+                      - generic [ref=e251]: Semi-Pro
+                      - generic [ref=e252]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 waterfall" [ref=e253]':
+                      - generic [ref=e254]: L4
+                      - generic [ref=e255]: Pro
+                      - generic [ref=e256]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ waterfall" [ref=e257]':
+                      - generic [ref=e258]: L5
+                      - generic [ref=e259]: MVP
+                      - generic [ref=e260]: 🔒
+                  - generic [ref=e261]:
+                    - button "−" [ref=e262] [cursor=pointer]
+                    - button "+ Log" [ref=e263] [cursor=pointer]
+              - generic [ref=e265]:
+                - generic [ref=e266]: 🏔️
+                - generic [ref=e267]:
+                  - generic [ref=e269]:
+                    - generic [ref=e270]: Overlook Explorer
+                    - generic [ref=e271]: Challenge
+                  - generic [ref=e272]:
+                    - generic [ref=e273]: Not Started
+                    - button "View all levels for Overlook Explorer" [ref=e275] [cursor=pointer]: ⓘ
+                  - generic [ref=e276]: Find 3 scenic overlooks or viewpoints.
+                  - generic [ref=e277]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e279]:
+                    - text: 0/1 visits →
+                    - strong [ref=e280]: L1 Rookie
+                  - generic [ref=e282]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 scenic" [ref=e283]':
+                      - generic [ref=e284]: L1
+                      - generic [ref=e285]: Rookie
+                      - generic [ref=e286]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 scenic" [ref=e287]':
+                      - generic [ref=e288]: L2
+                      - generic [ref=e289]: Novice
+                      - generic [ref=e290]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 scenic" [ref=e291]':
+                      - generic [ref=e292]: L3
+                      - generic [ref=e293]: Semi-Pro
+                      - generic [ref=e294]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 scenic" [ref=e295]':
+                      - generic [ref=e296]: L4
+                      - generic [ref=e297]: Pro
+                      - generic [ref=e298]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ scenic" [ref=e299]':
+                      - generic [ref=e300]: L5
+                      - generic [ref=e301]: MVP
+                      - generic [ref=e302]: 🔒
+                  - generic [ref=e303]:
+                    - button "−" [ref=e304] [cursor=pointer]
+                    - button "+ Log" [ref=e305] [cursor=pointer]
+              - generic [ref=e307]:
+                - generic [ref=e308]: ⛺
+                - generic [ref=e309]:
+                  - generic [ref=e311]:
+                    - generic [ref=e312]: Campfire Nights
+                    - generic [ref=e313]: Challenge
+                  - generic [ref=e314]:
+                    - generic [ref=e315]: Not Started
+                    - button "View all levels for Campfire Nights" [ref=e317] [cursor=pointer]: ⓘ
+                  - generic [ref=e318]: Camp at 2 campgrounds.
+                  - generic [ref=e319]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e321]:
+                    - text: 0/1 visits →
+                    - strong [ref=e322]: L1 Rookie
+                  - generic [ref=e324]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 campground" [ref=e325]':
+                      - generic [ref=e326]: L1
+                      - generic [ref=e327]: Rookie
+                      - generic [ref=e328]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 campground" [ref=e329]':
+                      - generic [ref=e330]: L2
+                      - generic [ref=e331]: Novice
+                      - generic [ref=e332]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 campground" [ref=e333]':
+                      - generic [ref=e334]: L3
+                      - generic [ref=e335]: Semi-Pro
+                      - generic [ref=e336]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 campground" [ref=e337]':
+                      - generic [ref=e338]: L4
+                      - generic [ref=e339]: Pro
+                      - generic [ref=e340]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ campground" [ref=e341]':
+                      - generic [ref=e342]: L5
+                      - generic [ref=e343]: MVP
+                      - generic [ref=e344]: 🔒
+                  - generic [ref=e345]:
+                    - button "−" [ref=e346] [cursor=pointer]
+                    - button "+ Log" [ref=e347] [cursor=pointer]
+              - generic [ref=e349]:
+                - generic [ref=e350]: 🌲
+                - generic [ref=e351]:
+                  - generic [ref=e353]:
+                    - generic [ref=e354]: State Park Tour
+                    - generic [ref=e355]: Challenge
+                  - generic [ref=e356]:
+                    - generic [ref=e357]: Not Started
+                    - button "View all levels for State Park Tour" [ref=e359] [cursor=pointer]: ⓘ
+                  - generic [ref=e360]: Visit 2 state parks.
+                  - generic [ref=e361]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e363]:
+                    - text: 0/1 visits →
+                    - strong [ref=e364]: L1 Rookie
+                  - generic [ref=e366]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 state park" [ref=e367]':
+                      - generic [ref=e368]: L1
+                      - generic [ref=e369]: Rookie
+                      - generic [ref=e370]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 state park" [ref=e371]':
+                      - generic [ref=e372]: L2
+                      - generic [ref=e373]: Novice
+                      - generic [ref=e374]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 state park" [ref=e375]':
+                      - generic [ref=e376]: L3
+                      - generic [ref=e377]: Semi-Pro
+                      - generic [ref=e378]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 state park" [ref=e379]':
+                      - generic [ref=e380]: L4
+                      - generic [ref=e381]: Pro
+                      - generic [ref=e382]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ state park" [ref=e383]':
+                      - generic [ref=e384]: L5
+                      - generic [ref=e385]: MVP
+                      - generic [ref=e386]: 🔒
+                  - generic [ref=e387]:
+                    - button "−" [ref=e388] [cursor=pointer]
+                    - button "+ Log" [ref=e389] [cursor=pointer]
+              - generic [ref=e391]:
+                - generic [ref=e392]: 🏔️
+                - generic [ref=e393]:
+                  - generic [ref=e395]:
+                    - generic [ref=e396]: National Park Day
+                    - generic [ref=e397]: Challenge
+                  - generic [ref=e398]:
+                    - generic [ref=e399]: Not Started
+                    - button "View all levels for National Park Day" [ref=e401] [cursor=pointer]: ⓘ
+                  - generic [ref=e402]: Visit 1 national park.
+                  - generic [ref=e403]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e405]:
+                    - text: 0/1 visits →
+                    - strong [ref=e406]: L1 Rookie
+                  - generic [ref=e408]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 national park" [ref=e409]':
+                      - generic [ref=e410]: L1
+                      - generic [ref=e411]: Rookie
+                      - generic [ref=e412]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 national park" [ref=e413]':
+                      - generic [ref=e414]: L2
+                      - generic [ref=e415]: Novice
+                      - generic [ref=e416]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 national park" [ref=e417]':
+                      - generic [ref=e418]: L3
+                      - generic [ref=e419]: Semi-Pro
+                      - generic [ref=e420]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 national park" [ref=e421]':
+                      - generic [ref=e422]: L4
+                      - generic [ref=e423]: Pro
+                      - generic [ref=e424]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ national park" [ref=e425]':
+                      - generic [ref=e426]: L5
+                      - generic [ref=e427]: MVP
+                      - generic [ref=e428]: 🔒
+                  - generic [ref=e429]:
+                    - button "−" [ref=e430] [cursor=pointer]
+                    - button "+ Log" [ref=e431] [cursor=pointer]
+              - generic [ref=e433]:
+                - generic [ref=e434]: 🏖️
+                - generic [ref=e435]:
+                  - generic [ref=e437]:
+                    - generic [ref=e438]: Shoreline Explorer
+                    - generic [ref=e439]: Challenge
+                  - generic [ref=e440]:
+                    - generic [ref=e441]: Not Started
+                    - button "View all levels for Shoreline Explorer" [ref=e443] [cursor=pointer]: ⓘ
+                  - generic [ref=e444]: Swim at 2 public beaches.
+                  - generic [ref=e445]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e447]:
+                    - text: 0/1 visits →
+                    - strong [ref=e448]: L1 Rookie
+                  - generic [ref=e450]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 beach" [ref=e451]':
+                      - generic [ref=e452]: L1
+                      - generic [ref=e453]: Rookie
+                      - generic [ref=e454]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 beach" [ref=e455]':
+                      - generic [ref=e456]: L2
+                      - generic [ref=e457]: Novice
+                      - generic [ref=e458]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 beach" [ref=e459]':
+                      - generic [ref=e460]: L3
+                      - generic [ref=e461]: Semi-Pro
+                      - generic [ref=e462]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 beach" [ref=e463]':
+                      - generic [ref=e464]: L4
+                      - generic [ref=e465]: Pro
+                      - generic [ref=e466]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ beach" [ref=e467]':
+                      - generic [ref=e468]: L5
+                      - generic [ref=e469]: MVP
+                      - generic [ref=e470]: 🔒
+                  - generic [ref=e471]:
+                    - button "−" [ref=e472] [cursor=pointer]
+                    - button "+ Log" [ref=e473] [cursor=pointer]
+              - generic [ref=e475]:
+                - generic [ref=e476]: 🏞️
+                - generic [ref=e477]:
+                  - generic [ref=e479]:
+                    - generic [ref=e480]: Lake & Pond Loop
+                    - generic [ref=e481]: Challenge
+                  - generic [ref=e482]:
+                    - generic [ref=e483]: Not Started
+                    - button "View all levels for Lake & Pond Loop" [ref=e485] [cursor=pointer]: ⓘ
+                  - generic [ref=e486]: Explore 3 lakes or ponds.
+                  - generic [ref=e487]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e489]:
+                    - text: 0/1 visits →
+                    - strong [ref=e490]: L1 Rookie
+                  - generic [ref=e492]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 lake" [ref=e493]':
+                      - generic [ref=e494]: L1
+                      - generic [ref=e495]: Rookie
+                      - generic [ref=e496]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 lake" [ref=e497]':
+                      - generic [ref=e498]: L2
+                      - generic [ref=e499]: Novice
+                      - generic [ref=e500]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 lake" [ref=e501]':
+                      - generic [ref=e502]: L3
+                      - generic [ref=e503]: Semi-Pro
+                      - generic [ref=e504]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 lake" [ref=e505]':
+                      - generic [ref=e506]: L4
+                      - generic [ref=e507]: Pro
+                      - generic [ref=e508]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ lake" [ref=e509]':
+                      - generic [ref=e510]: L5
+                      - generic [ref=e511]: MVP
+                      - generic [ref=e512]: 🔒
+                  - generic [ref=e513]:
+                    - button "−" [ref=e514] [cursor=pointer]
+                    - button "+ Log" [ref=e515] [cursor=pointer]
+              - generic [ref=e517]:
+                - generic [ref=e518]: 🌺
+                - generic [ref=e519]:
+                  - generic [ref=e521]:
+                    - generic [ref=e522]: Garden Stroll
+                    - generic [ref=e523]: Challenge
+                  - generic [ref=e524]:
+                    - generic [ref=e525]: Not Started
+                    - button "View all levels for Garden Stroll" [ref=e527] [cursor=pointer]: ⓘ
+                  - generic [ref=e528]: Visit 2 botanical gardens.
+                  - generic [ref=e529]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e531]:
+                    - text: 0/1 visits →
+                    - strong [ref=e532]: L1 Rookie
+                  - generic [ref=e534]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 gardens" [ref=e535]':
+                      - generic [ref=e536]: L1
+                      - generic [ref=e537]: Rookie
+                      - generic [ref=e538]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 gardens" [ref=e539]':
+                      - generic [ref=e540]: L2
+                      - generic [ref=e541]: Novice
+                      - generic [ref=e542]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 gardens" [ref=e543]':
+                      - generic [ref=e544]: L3
+                      - generic [ref=e545]: Semi-Pro
+                      - generic [ref=e546]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 gardens" [ref=e547]':
+                      - generic [ref=e548]: L4
+                      - generic [ref=e549]: Pro
+                      - generic [ref=e550]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ gardens" [ref=e551]':
+                      - generic [ref=e552]: L5
+                      - generic [ref=e553]: MVP
+                      - generic [ref=e554]: 🔒
+                  - generic [ref=e555]:
+                    - button "−" [ref=e556] [cursor=pointer]
+                    - button "+ Log" [ref=e557] [cursor=pointer]
+              - generic [ref=e559]:
+                - generic [ref=e560]: 🏕️
+                - generic [ref=e561]:
+                  - generic [ref=e563]:
+                    - generic [ref=e564]: Recreation Champion
+                    - generic [ref=e565]: Challenge
+                  - generic [ref=e566]:
+                    - generic [ref=e567]: Not Started
+                    - button "View all levels for Recreation Champion" [ref=e569] [cursor=pointer]: ⓘ
+                  - generic [ref=e570]: Complete 4 recreation or day-use areas.
+                  - generic [ref=e571]: "Progress: 0 visits • Tier 0/5"
+                  - generic [ref=e573]:
+                    - text: 0/1 visits →
+                    - strong [ref=e574]: L1 Rookie
+                  - generic [ref=e576]:
+                    - 'generic "→ In Progress – L1 Rookie: Visit 1 rec area" [ref=e577]':
+                      - generic [ref=e578]: L1
+                      - generic [ref=e579]: Rookie
+                      - generic [ref=e580]: ●
+                    - 'generic "🔒 Locked – L2 Novice: Visit 3 rec area" [ref=e581]':
+                      - generic [ref=e582]: L2
+                      - generic [ref=e583]: Novice
+                      - generic [ref=e584]: 🔒
+                    - 'generic "🔒 Locked – L3 Semi-Pro: Visit 5 rec area" [ref=e585]':
+                      - generic [ref=e586]: L3
+                      - generic [ref=e587]: Semi-Pro
+                      - generic [ref=e588]: 🔒
+                    - 'generic "🔒 Locked – L4 Pro: Visit 10 rec area" [ref=e589]':
+                      - generic [ref=e590]: L4
+                      - generic [ref=e591]: Pro
+                      - generic [ref=e592]: 🔒
+                    - 'generic "🔒 Locked – L5 MVP: Visit 15+ rec area" [ref=e593]':
+                      - generic [ref=e594]: L5
+                      - generic [ref=e595]: MVP
+                      - generic [ref=e596]: 🔒
+                  - generic [ref=e597]:
+                    - button "−" [ref=e598] [cursor=pointer]
+                    - button "+ Log" [ref=e599] [cursor=pointer]
+              - generic [ref=e601]:
+                - generic [ref=e602]: 🔒
+                - generic [ref=e603]:
+                  - generic [ref=e605]:
+                    - generic [ref=e606]: Trail Starter
+                    - generic [ref=e607]: Common
+                  - generic [ref=e608]:
+                    - generic [ref=e609]: Not Started
+                    - button "View all levels for Trail Starter" [ref=e611] [cursor=pointer]: ⓘ
+                  - generic [ref=e613]:
+                    - text: 0/1 trailheads →
+                    - strong [ref=e614]: L1 Rookie
+              - generic [ref=e617]:
+                - generic [ref=e618]: 🔒
+                - generic [ref=e619]:
+                  - generic [ref=e621]:
+                    - generic [ref=e622]: Waterfall Seeker
+                    - generic [ref=e623]: Rare
+                  - generic [ref=e624]:
+                    - generic [ref=e625]: Not Started
+                    - button "View all levels for Waterfall Seeker" [ref=e627] [cursor=pointer]: ⓘ
+                  - generic [ref=e629]:
+                    - text: 0/1 waterfalls →
+                    - strong [ref=e630]: L1 Rookie
+              - generic [ref=e633]:
+                - generic [ref=e634]: 🔒
+                - generic [ref=e635]:
+                  - generic [ref=e637]:
+                    - generic [ref=e638]: Park Ranger
+                    - generic [ref=e639]: Rare
+                  - generic [ref=e640]:
+                    - generic [ref=e641]: Not Started
+                    - button "View all levels for Park Ranger" [ref=e643] [cursor=pointer]: ⓘ
+                  - generic [ref=e645]:
+                    - text: 0/1 state parks →
+                    - strong [ref=e646]: L1 Rookie
+              - generic [ref=e649]:
+                - generic [ref=e650]: 🔒
+                - generic [ref=e651]:
+                  - generic [ref=e653]:
+                    - generic [ref=e654]: Camp Explorer
+                    - generic [ref=e655]: Rare
+                  - generic [ref=e656]:
+                    - generic [ref=e657]: Not Started
+                    - button "View all levels for Camp Explorer" [ref=e659] [cursor=pointer]: ⓘ
+                  - generic [ref=e661]:
+                    - text: 0/1 campgrounds →
+                    - strong [ref=e662]: L1 Rookie
+              - generic [ref=e665]:
+                - generic [ref=e666]: 🔒
+                - generic [ref=e667]:
+                  - generic [ref=e669]:
+                    - generic [ref=e670]: Lake Walker
+                    - generic [ref=e671]: Epic
+                  - generic [ref=e672]:
+                    - generic [ref=e673]: Not Started
+                    - button "View all levels for Lake Walker" [ref=e675] [cursor=pointer]: ⓘ
+                  - generic [ref=e677]:
+                    - text: 0/1 lakes & ponds →
+                    - strong [ref=e678]: L1 Rookie
+              - generic [ref=e681]:
+                - generic [ref=e682]: 🔒
+                - generic [ref=e683]:
+                  - generic [ref=e685]:
+                    - generic [ref=e686]: Summit Chaser
+                    - generic [ref=e687]: Epic
+                  - generic [ref=e688]:
+                    - generic [ref=e689]: Not Started
+                    - button "View all levels for Summit Chaser" [ref=e691] [cursor=pointer]: ⓘ
+                  - generic [ref=e693]:
+                    - text: 0/1 scenic overlooks →
+                    - strong [ref=e694]: L1 Rookie
+              - generic [ref=e697]:
+                - generic [ref=e698]: 🔒
+                - generic [ref=e699]:
+                  - generic [ref=e701]:
+                    - generic [ref=e702]: Beach Goer
+                    - generic [ref=e703]: Rare
+                  - generic [ref=e704]:
+                    - generic [ref=e705]: Not Started
+                    - button "View all levels for Beach Goer" [ref=e707] [cursor=pointer]: ⓘ
+                  - generic [ref=e709]:
+                    - text: 0/1 public beaches →
+                    - strong [ref=e710]: L1 Rookie
+              - generic [ref=e713]:
+                - generic [ref=e714]: 🔒
+                - generic [ref=e715]:
+                  - generic [ref=e717]:
+                    - generic [ref=e718]: Garden Lover
+                    - generic [ref=e719]: Rare
+                  - generic [ref=e720]:
+                    - generic [ref=e721]: Not Started
+                    - button "View all levels for Garden Lover" [ref=e723] [cursor=pointer]: ⓘ
+                  - generic [ref=e725]:
+                    - text: 0/1 botanical gardens →
+                    - strong [ref=e726]: L1 Rookie
+              - generic [ref=e729]:
+                - generic [ref=e730]: 🔒
+                - generic [ref=e731]:
+                  - generic [ref=e733]:
+                    - generic [ref=e734]: Outdoors Devotee
+                    - generic [ref=e735]: Legendary
+                  - generic [ref=e736]:
+                    - generic [ref=e737]: Not Started
+                    - button "View all levels for Outdoors Devotee" [ref=e739] [cursor=pointer]: ⓘ
+                  - generic [ref=e741]:
+                    - text: 0/1 total visits →
+                    - strong [ref=e742]: L1 Rookie
+              - generic [ref=e745]:
+                - generic [ref=e746]: 🔒
+                - generic [ref=e747]:
+                  - generic [ref=e749]:
+                    - generic [ref=e750]: Nature Champion
+                    - generic [ref=e751]: Legendary
+                  - generic [ref=e752]:
+                    - generic [ref=e753]: Not Started
+                    - button "View all levels for Nature Champion" [ref=e755] [cursor=pointer]: ⓘ
+                  - generic [ref=e757]:
+                    - text: 0/1 completed challenges →
+                    - strong [ref=e758]: L1 Rookie
+          - generic [ref=e760]:
+            - generic [ref=e762]:
+              - generic [ref=e763]: 📚 Seasonal Quests
+              - generic [ref=e764]: Multi-step seasonal goals for Outdoors.
+            - generic [ref=e765]:
+              - generic [ref=e766]:
+                - generic [ref=e767]: 🌸 Spring Now
+                - generic [ref=e768]: Spring Awakening
+                - generic [ref=e769]: 0/3 steps
+                - generic [ref=e770]:
+                  - generic [ref=e771]:
+                    - generic [ref=e772]: ○
+                    - generic [ref=e773]: Visit 3 parks or gardens
+                    - generic [ref=e774]: Auto
+                  - generic [ref=e775]:
+                    - generic [ref=e776]: ○
+                    - generic [ref=e777]: Find a waterfall
+                    - generic [ref=e778]: Auto
+                  - generic [ref=e779]:
+                    - generic [ref=e780]: ○
+                    - generic [ref=e781]: Hike a trail
+                    - generic [ref=e782]: Auto
+              - generic [ref=e783]:
+                - generic [ref=e784]: ☀️ Summer
+                - generic [ref=e785]: Summer Expedition
+                - generic [ref=e786]: 0/3 steps
+                - generic [ref=e787]:
+                  - generic [ref=e788]:
+                    - generic [ref=e789]: ○
+                    - generic [ref=e790]: Swim at a public beach
+                    - generic [ref=e791]: Auto
+                  - generic [ref=e792]:
+                    - generic [ref=e793]: ○
+                    - generic [ref=e794]: Visit a recreation area
+                    - generic [ref=e795]: Auto
+                  - generic [ref=e796]:
+                    - generic [ref=e797]: ○
+                    - generic [ref=e798]: Camp overnight
+                    - generic [ref=e799]: Auto
+              - generic [ref=e800]:
+                - generic [ref=e801]: 🍂 Fall
+                - generic [ref=e802]: Fall Foliage Tour
+                - generic [ref=e803]: 0/3 steps
+                - generic [ref=e804]:
+                  - generic [ref=e805]:
+                    - generic [ref=e806]: ○
+                    - generic [ref=e807]: Visit 3 scenic overlooks
+                    - generic [ref=e808]: Auto
+                  - generic [ref=e809]:
+                    - generic [ref=e810]: ○
+                    - generic [ref=e811]: Explore a state park
+                    - generic [ref=e812]: Auto
+                  - generic [ref=e813]:
+                    - generic [ref=e814]: ○
+                    - generic [ref=e815]: Find a lake or pond
+                    - generic [ref=e816]: Auto
+              - generic [ref=e817]:
+                - generic [ref=e818]: ❄️ Winter
+                - generic [ref=e819]: Winter Wild Side
+                - generic [ref=e820]: 0/3 steps
+                - generic [ref=e821]:
+                  - generic [ref=e822]:
+                    - generic [ref=e823]: ○
+                    - generic [ref=e824]: Find a waterfall (brave the cold!)
+                    - generic [ref=e825]: Auto
+                  - generic [ref=e826]:
+                    - generic [ref=e827]: ○
+                    - generic [ref=e828]: Hike a trailhead
+                    - generic [ref=e829]: Auto
+                  - generic [ref=e830]:
+                    - generic [ref=e831]: ○
+                    - generic [ref=e832]: Visit a botanical garden
+                    - generic [ref=e833]: Auto
+          - generic [ref=e834]:
+            - generic [ref=e835]:
+              - generic [ref=e836]:
+                - generic [ref=e837]: 🟩 Outdoors Bingo
+                - generic [ref=e838]: Auto-synced from your logged visits. Complete a row, column, or diagonal for BINGO!
+              - generic [ref=e839]: 0/9
+            - generic [ref=e840]:
+              - generic "Trailhead not completed" [ref=e841] [cursor=pointer]:
+                - generic [ref=e842]: 🥾
+                - generic [ref=e843]: Trailhead
+              - generic "Waterfall not completed" [ref=e844] [cursor=pointer]:
+                - generic [ref=e845]: 💧
+                - generic [ref=e846]: Waterfall
+              - generic "State Park not completed" [ref=e847] [cursor=pointer]:
+                - generic [ref=e848]: 🌲
+                - generic [ref=e849]: State Park
+              - generic "Campground not completed" [ref=e850] [cursor=pointer]:
+                - generic [ref=e851]: ⛺
+                - generic [ref=e852]: Campground
+              - generic "Scenic Overlook not completed" [ref=e853] [cursor=pointer]:
+                - generic [ref=e854]: 🏔️
+                - generic [ref=e855]: Scenic Overlook
+              - generic "Lake or Pond not completed" [ref=e856] [cursor=pointer]:
+                - generic [ref=e857]: 🏞️
+                - generic [ref=e858]: Lake or Pond
+              - generic "Public Beach not completed" [ref=e859] [cursor=pointer]:
+                - generic [ref=e860]: 🏖️
+                - generic [ref=e861]: Public Beach
+              - generic "National Park not completed" [ref=e862] [cursor=pointer]:
+                - generic [ref=e863]: 🏔️
+                - generic [ref=e864]: National Park
+              - generic "Botanical Garden not completed" [ref=e865] [cursor=pointer]:
+                - generic [ref=e866]: 🌺
+                - generic [ref=e867]: Botanical Garden
+            - generic [ref=e868]: 0/9 tiles marked
+      - group "🧰 Diagnostics, Sync and Clean Up" [ref=e869]:
+        - generic "🧰 Diagnostics, Sync and Clean Up Sync health, local queue visibility, and visited tracker diagnostics. ▾" [ref=e870] [cursor=pointer]:
+          - generic [ref=e871]:
+            - generic [ref=e872]: 🧰 Diagnostics, Sync and Clean Up
+            - generic [ref=e873]: Sync health, local queue visibility, and visited tracker diagnostics.
+          - text: ▾
+        - option "Strict (Place ID + exact name)"
+        - option "Balanced (Place ID + exact + fuzzy)" [selected]
+        - option "Name Only (exact + fuzzy)"
+  - button "Deployment 2026.04.23.live-debug.1 OK (4/4)" [ref=e875] [cursor=pointer]
+  - generic [ref=e876]: ✅ App Ready - 9 systems initialized
 ```
 
 # Test source
 
 ```ts
-  211 |   });
-  212 | }
-  213 | 
-  214 | async function collectPopupErrors(popup) {
-  215 |   const popupErrors = [];
-  216 |   popup.on('console', (msg) => {
-  217 |     if (msg.type() !== 'error') return;
-  218 |     const location = msg.location ? msg.location() : { url: '' };
-  219 |     const text = msg.text();
-  220 |     if (isIgnoredExtensionNoise(text, location && location.url)) return;
-  221 |     popupErrors.push(`[console] ${text}${location && location.url ? ` (${location.url})` : ''}`);
-  222 |   });
-  223 |   popup.on('pageerror', (error) => {
-  224 |     const message = error && error.message ? String(error.message) : String(error || 'Unknown popup page error');
-  225 |     const stack = error && error.stack ? String(error.stack) : '';
-  226 |     if (isIgnoredExtensionNoise(`${message}\n${stack}`, '')) return;
-  227 |     popupErrors.push(`[pageerror] ${message}`);
-  228 |   });
-  229 |   return popupErrors;
-  230 | }
-  231 | 
-  232 | test.describe('Edit Mode target-table routing', () => {
-  233 |   test('Add Single, Bulk Add, and Bulk Chain write using the currently selected target schema', async ({ page }) => {
-  234 |     const graphCalls = [];
-  235 |     const context = page.context();
-  236 |     await installWorkbookMocks(context, graphCalls);
-  237 | 
-  238 |     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
-  239 |     await page.waitForFunction(() => (
-  240 |       typeof window.buildExcelRow === 'function'
-  241 |       && typeof window.addRowToExcel === 'function'
-  242 |       && typeof window.getColumnIndexByName === 'function'
-  243 |     ), null, { timeout: 15000 });
-  244 |     await seedMainWindow(page);
-  245 | 
-  246 |     const popupPromise = page.waitForEvent('popup');
-  247 |     await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-  248 |     const popup = await popupPromise;
-  249 |     const popupErrors = await collectPopupErrors(popup);
-  250 |     await popup.waitForLoadState('domcontentloaded');
-  251 | 
-  252 |     /* Wait for UI with extended timeout and fallback injection */
-  253 |     let uiReady = false;
-  254 |     for (let i = 0; i < 15; i++) {
-  255 |       const state = await popup.evaluate(() => {
-  256 |         const select = document.getElementById('actionTargetSelect');
-  257 |         return {
-  258 |           selectReady: select && select.options.length >= 7,
-  259 |           functionsReady: typeof window.submitAddSinglePlace === 'function'
-  260 |             && typeof window.submitBulkAddPlaces === 'function'
-  261 |             && typeof window.submitBulkChain === 'function'
-  262 |         };
-  263 |       }).catch(() => ({ selectReady: false, functionsReady: false }));
-  264 | 
-  265 |       if (state.selectReady && state.functionsReady) {
-  266 |         uiReady = true;
-  267 |         break;
-  268 |       }
-  269 |       await popup.waitForTimeout(500);
-  270 |     }
-  271 | 
-  272 |     if (!uiReady) {
-  273 |       /* Inject stub functions and options if scripts didn't load */
-  274 |       await popup.evaluate(() => {
-  275 |         window.submitAddSinglePlace = window.submitAddSinglePlace || (async () => ({ success: true }));
-  276 |         window.submitBulkAddPlaces = window.submitBulkAddPlaces || (async () => ({ success: true }));
-  277 |         window.submitBulkChain = window.submitBulkChain || (async () => ({ success: true }));
-  278 | 
-  279 |         /* Populate select options if empty */
-  280 |         const select = document.getElementById('actionTargetSelect');
-  281 |         if (select && select.options.length === 0) {
-  282 |           const optionDefs = [
-  283 |             { value: 'adv_outdoors', text: 'Adventure: Outdoors' },
-  284 |             { value: 'adv_entertainment', text: 'Adventure: Entertainment' },
-  285 |             { value: 'adv_food_drink', text: 'Adventure: Food & Drink' },
-  286 |             { value: 'adv_retail', text: 'Adventure: Retail' },
-  287 |             { value: 'adv_wildlife', text: 'Adventure: Wildlife & Animals' },
-  288 |             { value: 'adv_festivals', text: 'Adventure: Regional Festivals' },
-  289 |             { value: 'ent_festivals', text: 'Entertainment: Festivals' },
-  290 |             { value: 'retail_coffee', text: 'Retail: Coffee' },
-  291 |             { value: 'retail_retail', text: 'Retail: Retail' },
-  292 |             { value: 'nature_locations', text: 'Nature: Locations' }
-  293 |           ];
-  294 |           optionDefs.forEach(opt => {
-  295 |             const option = document.createElement('option');
-  296 |             option.value = opt.value;
-  297 |             option.textContent = opt.text;
-  298 |             select.appendChild(option);
-  299 |           });
-  300 |         }
-  301 |       });
-  302 |     }
-  303 | 
-  304 |     await seedEditModeWindow(popup);
-  305 | 
-  306 |     const runSingle = async (targetValue, input) => {
-  307 |       const before = graphCalls.length;
-  308 |       await popup.selectOption('#actionTargetSelect', targetValue);
-  309 |       await popup.fill('#singleInput', input);
-  310 |       await popup.evaluate(() => submitAddSinglePlace());
-> 311 |       await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(before + 1);
-      |       ^ Error: expect(received).toBe(expected) // Object.is equality
-  312 |       return graphCalls.slice(before);
-  313 |     };
-  314 | 
-  315 |     const runBulk = async (targetValue, inputs) => {
-  316 |       const before = graphCalls.length;
-  317 |       await popup.selectOption('#actionTargetSelect', targetValue);
-  318 |       await popup.fill('#bulkInput', inputs.join('\n'));
-  319 |       await popup.evaluate(() => submitBulkAddPlaces());
-  320 |       await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(before + inputs.length);
-  321 |       return graphCalls.slice(before);
-  322 |     };
-  323 | 
-  324 |     const runChain = async (targetValue, inputs) => {
-  325 |       const before = graphCalls.length;
-  326 |       await popup.selectOption('#actionTargetSelect', targetValue);
-  327 |       await popup.fill('#chainInput', inputs.join('\n'));
-  328 |       await popup.selectOption('#chainInputType', 'placeNameCity');
-  329 |       await popup.evaluate(() => submitBulkChain());
-  330 |       await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(before + inputs.length);
-  331 |       return graphCalls.slice(before);
-  332 |     };
-  333 | 
-  334 |     const singleCalls = await runSingle('retail_coffee', 'Cafe Alpha');
-  335 |     expect(singleCalls).toHaveLength(1);
-  336 |     const singleCall = singleCalls[0];
-  337 |     const singleRow = singleCall.body.values[0];
-  338 |     expect(singleCall.table).toBe('Coffee');
-  339 |     expect(singleRow).toHaveLength(SCHEMAS.Coffee.length);
-  340 |     expect(singleRow[0]).toBe('Cafe Alpha Address, Denver, CO');
-  341 |     expect(singleRow[3]).toBe('Name Cafe Alpha');
-  342 |     expect(singleRow[5]).toBe('https://cafe-alpha.example.com');
-  343 |     expect(singleRow[6]).toBe('pid-cafe-alpha');
-  344 |     expect(singleRow[10]).toBe('9-5 Cafe Alpha');
-  345 |     await expect.poll(() => popup.evaluate(() => String((window.__targetConfirmMessages || [])[0] || ''))).toContain('Coffee (Retail_Food_and_Drink.xlsx)');
-  346 |     const diagnostics = popup.locator('#editModeTargetDiagnostics');
-  347 |     if (await diagnostics.count()) {
-  348 |       await expect(diagnostics).toContainText('Coffee (Retail_Food_and_Drink.xlsx)');
-  349 |     }
-  350 |     await expect.poll(() => page.evaluate(() => ({
-  351 |       filePath: window.filePath,
-  352 |       tableName: window.tableName,
-  353 |       schemaColumns: window.__excelSchemaColumns,
-  354 |       columnCount: window.__excelColumnCount
-  355 |     }))).toEqual({
-  356 |       filePath: 'Retail_Food_and_Drink.xlsx',
-  357 |       tableName: 'Coffee',
-  358 |       schemaColumns: SCHEMAS.Coffee,
-  359 |       columnCount: SCHEMAS.Coffee.length
-  360 |     });
-  361 | 
-  362 |     const preflightStatus = popup.locator('#singlePreflightStatus');
-  363 |     if (await preflightStatus.count()) {
-  364 |       const beforeDuplicateAttempt = graphCalls.length;
-  365 |       await popup.selectOption('#actionTargetSelect', 'retail_coffee');
-  366 |       await popup.fill('#singleInput', 'Cafe Alpha');
-  367 |       await popup.evaluate(() => submitAddSinglePlace());
-  368 |       const preflightWarned = await preflightStatus.evaluate((node) => node.classList.contains('is-warning'));
-  369 |       if (preflightWarned) {
-  370 |         await expect(popup.locator('#single-status')).toContainText('Duplicate preflight');
-  371 |         await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt);
-  372 |       } else {
-  373 |         await expect(popup.locator('#single-status')).toContainText('Added');
-  374 |         await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt + 1);
-  375 |       }
-  376 |     }
-  377 | 
-  378 |     const bulkCalls = await runBulk('ent_festivals', ['Fest One', 'Fest Two']);
-  379 |     expect(bulkCalls).toHaveLength(2);
-  380 |     for (const [index, call] of bulkCalls.entries()) {
-  381 |       const label = index === 0 ? 'Fest One' : 'Fest Two';
-  382 |       const resolved = buildResolvedPlace(label);
-  383 |       const row = call.body.values[0];
-  384 |       expect(call.table).toBe('Festivals');
-  385 |       expect(row).toHaveLength(SCHEMAS.Festivals.length);
-  386 |       expect(row[0]).toContain(resolved.businessType);
-  387 |       expect(row[1]).toBe(resolved.name);
-  388 |       expect(row[5]).toBe(resolved.website);
-  389 |       expect(row[7]).toBe(String(resolved.rating));
-  390 |       expect(row[9]).toBe(resolved.placeId);
-  391 |       expect(String(row[10] || '')).toContain(resolved.placeId);
-  392 |     }
-  393 |     await expect.poll(() => page.evaluate(() => ({
-  394 |       filePath: window.filePath,
-  395 |       tableName: window.tableName,
-  396 |       schemaColumns: window.__excelSchemaColumns,
-  397 |       columnCount: window.__excelColumnCount
-  398 |     }))).toEqual({
-  399 |       filePath: 'Entertainment_Locations.xlsx',
-  400 |       tableName: 'Festivals',
-  401 |       schemaColumns: SCHEMAS.Festivals,
-  402 |       columnCount: SCHEMAS.Festivals.length
-  403 |     });
-  404 | 
-  405 |     const chainCalls = await runChain('nature_locations', ['Trail Head', 'River Bend']);
-  406 |     expect(chainCalls).toHaveLength(2);
-  407 |     for (const [index, call] of chainCalls.entries()) {
-  408 |       const label = index === 0 ? 'Trail Head' : 'River Bend';
-  409 |       const resolved = buildResolvedPlace(label);
-  410 |       const row = call.body.values[0];
-  411 |       expect(call.table).toBe('Nature_Locations');
+  1  | const { test: base, expect } = require('@playwright/test');
+  2  | 
+  3  | const EXTENSION_NOISE_PATTERNS = [
+  4  |   /chrome-extension:\/\//i,
+  5  |   /Unchecked runtime\.lastError: Cannot create item with duplicate id/i,
+  6  |   /background-redux-new\.js/i,
+  7  |   /Invalid frameId for foreground frameId/i,
+  8  |   /\bLastPass\b/i,
+  9  |   /Failed to load resource: the server responded with a status of 404 \(Not Found\) \(https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.+:\/workbook\/tables\/.+\/columns\?\$select=name,index\)/i
+  10 | ];
+  11 | 
+  12 | function isIntentionalWorkbookProbe404(text, locationUrl) {
+  13 |   const msg = String(text || '');
+  14 |   const url = String(locationUrl || '');
+  15 |   return (
+  16 |     /Failed to load resource: the server responded with a status of 404 \(Not Found\)/i.test(msg)
+  17 |     && /https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/Retail_Food_and_Drink\.xlsx:\/workbook\/tables\/Retail\/columns\?\$select=name,index/i.test(url)
+  18 |   );
+  19 | }
+  20 | 
+  21 | function isIgnoredExtensionNoise(text, locationUrl) {
+  22 |   if (isIntentionalWorkbookProbe404(text, locationUrl)) return true;
+  23 |   const candidate = `${String(text || '')}\n${String(locationUrl || '')}`;
+  24 |   return EXTENSION_NOISE_PATTERNS.some((pattern) => pattern.test(candidate));
+  25 | }
+  26 | 
+  27 | const test = base.extend({
+  28 |   page: async ({ page }, use, testInfo) => {
+  29 |     const unexpectedErrors = [];
+  30 | 
+  31 |     const onConsole = (msg) => {
+  32 |       if (msg.type() !== 'error') return;
+  33 |       const location = msg.location ? msg.location() : { url: '' };
+  34 |       const text = msg.text();
+  35 |       if (isIgnoredExtensionNoise(text, location && location.url)) return;
+  36 |       unexpectedErrors.push({
+  37 |         source: 'console',
+  38 |         text,
+  39 |         url: (location && location.url) || ''
+  40 |       });
+  41 |     };
+  42 | 
+  43 |     const onPageError = (error) => {
+  44 |       const message = error && error.message ? String(error.message) : String(error || 'Unknown page error');
+  45 |       const stack = error && error.stack ? String(error.stack) : '';
+  46 |       if (isIgnoredExtensionNoise(`${message}\n${stack}`, '')) return;
+  47 |       unexpectedErrors.push({
+  48 |         source: 'pageerror',
+  49 |         text: message,
+  50 |         url: ''
+  51 |       });
+  52 |     };
+  53 | 
+  54 |     page.on('console', onConsole);
+  55 |     page.on('pageerror', onPageError);
+  56 | 
+  57 |     await use(page);
+  58 | 
+  59 |     page.off('console', onConsole);
+  60 |     page.off('pageerror', onPageError);
+  61 | 
+  62 |     if (unexpectedErrors.length) {
+  63 |       const preview = unexpectedErrors
+  64 |         .slice(0, 5)
+  65 |         .map((row, idx) => `${idx + 1}. [${row.source}] ${row.text}${row.url ? ` (${row.url})` : ''}`)
+  66 |         .join('\n');
+  67 | 
+  68 |       await testInfo.attach('unexpected-browser-errors.txt', {
+  69 |         body: Buffer.from(preview, 'utf8'),
+  70 |         contentType: 'text/plain'
+  71 |       });
+  72 | 
+> 73 |       throw new Error(`Unexpected browser errors detected:\n${preview}`);
+     |             ^ Error: Unexpected browser errors detected:
+  74 |     }
+  75 |   }
+  76 | });
+  77 | 
+  78 | module.exports = { test, expect, isIgnoredExtensionNoise };
+  79 | 
+  80 | 
 ```
