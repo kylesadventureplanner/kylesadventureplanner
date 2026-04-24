@@ -4621,6 +4621,14 @@
       word-break: break-word;
     }
 
+    .workbook-patch-diagnostics-column-summary {
+      font-size: 11px;
+      line-height: 1.4;
+      color: #1e3a8a;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
     .workbook-patch-diagnostics-actions {
       display: inline-flex;
       align-items: center;
@@ -4670,6 +4678,16 @@
       font-size: 11px;
       line-height: 1.45;
       opacity: 0.92;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .workbook-patch-diagnostics-item-column-line,
+    .workbook-patch-diagnostics-history-column-line {
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #1e3a8a;
       word-break: break-word;
       white-space: pre-wrap;
     }
@@ -8614,6 +8632,7 @@
     <div class="workbook-patch-diagnostics-title-wrap">
       <div class="workbook-patch-diagnostics-title">🩺 Workbook row patch diagnostics</div>
       <div id="workbookPatchDiagnosticsSummary" class="workbook-patch-diagnostics-summary">No workbook row PATCH attempts yet.</div>
+      <div id="workbookPatchDiagnosticsColumnSummary" class="workbook-patch-diagnostics-column-summary" hidden></div>
       <div id="workbookPatchDiagnosticsMeta" class="workbook-patch-diagnostics-meta"></div>
     </div>
     <div class="workbook-patch-diagnostics-actions">
@@ -9452,17 +9471,30 @@
     return bits.join(' • ');
   }
 
+  function formatWorkbookPatchColumnDiagnosticLine(columnDiagnostics) {
+    const src = columnDiagnostics && typeof columnDiagnostics === 'object' ? columnDiagnostics : null;
+    if (!src) return '';
+    const header = String(src.descriptionHeader || '').trim() || 'Description';
+    const indexValue = Number(src.descriptionIndex);
+    const index = Number.isInteger(indexValue) && indexValue >= 0 ? indexValue : 'n/a';
+    const legacyUpdated = src.legacyIndex16Updated === true ? 'yes' : (src.legacyIndex16Updated === false ? 'no' : 'unknown');
+    return `Description header resolved to: "${header}" at index ${index} • Legacy description index 16 value updated: ${legacyUpdated}`;
+  }
+
   function renderWorkbookPatchDiagnostics() {
     const panel = document.getElementById('workbookPatchDiagnosticsPanel');
     const summaryEl = document.getElementById('workbookPatchDiagnosticsSummary');
+    const columnSummaryEl = document.getElementById('workbookPatchDiagnosticsColumnSummary');
     const metaEl = document.getElementById('workbookPatchDiagnosticsMeta');
     const listEl = document.getElementById('workbookPatchDiagnosticsList');
-    if (!panel || !summaryEl || !metaEl || !listEl) return;
+    if (!panel || !summaryEl || !columnSummaryEl || !metaEl || !listEl) return;
 
     if (!workbookPatchDiagnostics.length) {
       panel.hidden = true;
       panel.dataset.state = 'info';
       summaryEl.textContent = 'No workbook row PATCH attempts yet.';
+      columnSummaryEl.hidden = true;
+      columnSummaryEl.textContent = '';
       metaEl.textContent = '';
       listEl.innerHTML = '';
       return;
@@ -9472,12 +9504,21 @@
     panel.hidden = false;
     panel.dataset.state = String(latest.level || 'info');
     summaryEl.textContent = String(latest.message || 'Workbook row PATCH update captured.');
+    const latestColumnLine = String(latest.columnDiagnosticLine || '').trim();
+    if (latestColumnLine) {
+      columnSummaryEl.hidden = false;
+      columnSummaryEl.textContent = latestColumnLine;
+    } else {
+      columnSummaryEl.hidden = true;
+      columnSummaryEl.textContent = '';
+    }
     metaEl.textContent = formatWorkbookPatchDiagnosticMeta(latest);
 
     listEl.innerHTML = workbookPatchDiagnostics.slice().reverse().map((entry) => {
       const detailLines = [];
       if (entry.detail) detailLines.push(String(entry.detail));
       if (entry.updateUrl) detailLines.push(`url=${entry.updateUrl}`);
+      const columnLine = String(entry.columnDiagnosticLine || '').trim();
       return `
         <div class="workbook-patch-diagnostics-item" data-level="${escapeErrorHtml(entry.level || 'info')}">
           <div class="workbook-patch-diagnostics-item-header">
@@ -9485,6 +9526,7 @@
             <span>${escapeErrorHtml((entry.level || 'info').toUpperCase())}</span>
           </div>
           <div class="workbook-patch-diagnostics-item-message">${escapeErrorHtml(entry.message || '')}</div>
+          ${columnLine ? `<div class="workbook-patch-diagnostics-item-column-line">${escapeErrorHtml(columnLine)}</div>` : ''}
           <div class="workbook-patch-diagnostics-item-detail">${escapeErrorHtml(formatWorkbookPatchDiagnosticMeta(entry) || detailLines.join('\n'))}${formatWorkbookPatchDiagnosticMeta(entry) && detailLines.length ? `<br>${escapeErrorHtml(detailLines.join('\n'))}` : ''}</div>
         </div>
       `;
@@ -9525,6 +9567,7 @@
           const meta = formatWorkbookPatchDiagnosticMeta(entry);
           const detail = String(entry.detail || '').trim();
           const rawPayload = String(entry.rawPayload || '').trim();
+          const columnLine = String(entry.columnDiagnosticLine || '').trim();
           return `
             <div class="workbook-patch-diagnostics-history-entry" data-level="${escapeErrorHtml(entry.level || 'info')}">
               <div class="workbook-patch-diagnostics-history-header">
@@ -9533,6 +9576,7 @@
               </div>
               <div class="workbook-patch-diagnostics-history-message">${escapeErrorHtml(entry.message || '')}</div>
               ${meta ? `<div class="workbook-patch-diagnostics-history-meta">${escapeErrorHtml(meta)}</div>` : ''}
+              ${columnLine ? `<div class="workbook-patch-diagnostics-history-column-line">${escapeErrorHtml(columnLine)}</div>` : ''}
               ${detail ? `<div class="workbook-patch-diagnostics-history-detail">${escapeErrorHtml(detail)}</div>` : ''}
               ${rawPayload ? `<details class="workbook-patch-diagnostics-raw"><summary>Raw payload</summary><pre>${escapeErrorHtml(rawPayload)}</pre></details>` : ''}
             </div>
@@ -9544,6 +9588,14 @@
 
   function pushWorkbookPatchDiagnostic(level, message, detail = {}) {
     const safeDetail = detail && typeof detail === 'object' ? { ...detail } : {};
+    const rawPayloadObject = safeDetail.rawPayload && typeof safeDetail.rawPayload === 'object'
+      ? safeDetail.rawPayload
+      : null;
+    const columnDiagnostics = safeDetail.columnDiagnostics && typeof safeDetail.columnDiagnostics === 'object'
+      ? safeDetail.columnDiagnostics
+      : (rawPayloadObject && rawPayloadObject.columnDiagnostics && typeof rawPayloadObject.columnDiagnostics === 'object'
+          ? rawPayloadObject.columnDiagnostics
+          : null);
     const entry = {
       level: String(level || 'info').trim() || 'info',
       message: String(message || '').trim() || 'Workbook row PATCH event',
@@ -9554,6 +9606,7 @@
       rowRef: String(safeDetail.rowRef || '').trim(),
       updateUrl: String(safeDetail.updateUrl || '').trim(),
       statusCode: Number.isFinite(Number(safeDetail.statusCode)) ? Number(safeDetail.statusCode) : null,
+      columnDiagnosticLine: formatWorkbookPatchColumnDiagnosticLine(columnDiagnostics),
       rawPayload: formatWorkbookPatchDiagnosticPayload(safeDetail.rawPayload),
       timestamp: new Date().toLocaleTimeString()
     };
@@ -9589,6 +9642,7 @@
           const meta = formatWorkbookPatchDiagnosticMeta(entry);
           if (meta) parts.push(meta);
           if (entry.statusCode) parts.push(`status=${entry.statusCode}`);
+          if (entry.columnDiagnosticLine) parts.push(entry.columnDiagnosticLine);
           if (entry.detail) parts.push(entry.detail);
           if (entry.updateUrl) parts.push(`url=${entry.updateUrl}`);
           if (entry.rawPayload) parts.push(`raw=${entry.rawPayload}`);
@@ -14077,18 +14131,8 @@
     const pickPreferredDescription = () => {
       const byName = getAdventureValueByName(rowValues, 'Description', [], []);
       if (String(byName || '').trim() !== '') return byName;
-
-      const legacyDesc = rowValues[16];
       const schemaDesc = rowValues[12];
-      const legacyText = String(legacyDesc == null ? '' : legacyDesc).trim();
       const schemaText = String(schemaDesc == null ? '' : schemaDesc).trim();
-
-      // Legacy mirrors often look like: "X is located in ... Google Rating: ...".
-      // Prefer schema index 12 when that legacy placeholder is present.
-      const looksLegacyPlaceholder = /\bis located in\b/i.test(legacyText) && /google rating\s*:/i.test(legacyText);
-      if (looksLegacyPlaceholder && schemaText) return schemaDesc;
-
-      if (legacyText) return legacyDesc;
       if (schemaText) return schemaDesc;
       return '';
     };
@@ -20089,23 +20133,41 @@ COMMON ISSUES:
     const driveTimeText = strVal((details && details.driveTime) || estimateDriveTimeText());
     setByName(['Drive Time', 'DriveTime'], driveTimeText);
 
-    // Backward-compatible positional fallback for legacy schemas without named columns.
+    // Backward-compatible positional fallback when schema headers are unavailable.
     if (!schemaColumns.length) {
-      if (actualColumnCount > 0) row[0] = name;
-      if (actualColumnCount > 1) row[1] = safePlaceId;
-      if (actualColumnCount > 2) row[2] = strVal(details && details.website);
-      if (actualColumnCount > 3) row[3] = tags;
-      if (actualColumnCount > 4) row[4] = driveTimeText;
-      if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
-      if (actualColumnCount > 9) row[9] = cityState.state;
-      if (actualColumnCount > 10) row[10] = cityState.city;
-      if (actualColumnCount > 11) row[11] = address;
-      if (actualColumnCount > 12) row[12] = strVal(details && details.phone);
-      if (actualColumnCount > 13) row[13] = details && details.rating != null ? String(details.rating) : "";
-      if (actualColumnCount > 15) row[15] = buildDirectionsUrl(safePlaceId, address, name);
-      if (actualColumnCount > 16) row[16] = description;
-      if (actualColumnCount > 18) row[18] = googlePlaceUrl;
-      if (actualColumnCount > 23) row[23] = googlePlaceUrl;
+      const looksLikeModern19ColumnSchema = actualColumnCount > 0 && actualColumnCount <= 20;
+      if (looksLikeModern19ColumnSchema) {
+        if (actualColumnCount > 0) row[0] = name;
+        if (actualColumnCount > 1) row[1] = safePlaceId;
+        if (actualColumnCount > 2) row[2] = strVal(details && details.website);
+        if (actualColumnCount > 3) row[3] = tags;
+        if (actualColumnCount > 4) row[4] = driveTimeText;
+        if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
+        if (actualColumnCount > 6) row[6] = cityState.state;
+        if (actualColumnCount > 7) row[7] = cityState.city;
+        if (actualColumnCount > 8) row[8] = address;
+        if (actualColumnCount > 9) row[9] = strVal(details && details.phone);
+        if (actualColumnCount > 10) row[10] = details && details.rating != null ? String(details.rating) : '';
+        if (actualColumnCount > 11) row[11] = buildDirectionsUrl(safePlaceId, address, name);
+        if (actualColumnCount > 12) row[12] = description;
+        if (actualColumnCount > 13) row[13] = googlePlaceUrl;
+      } else {
+        if (actualColumnCount > 0) row[0] = name;
+        if (actualColumnCount > 1) row[1] = safePlaceId;
+        if (actualColumnCount > 2) row[2] = strVal(details && details.website);
+        if (actualColumnCount > 3) row[3] = tags;
+        if (actualColumnCount > 4) row[4] = driveTimeText;
+        if (actualColumnCount > 5) row[5] = normalizeOperationHours(details && details.hours);
+        if (actualColumnCount > 9) row[9] = cityState.state;
+        if (actualColumnCount > 10) row[10] = cityState.city;
+        if (actualColumnCount > 11) row[11] = address;
+        if (actualColumnCount > 12) row[12] = strVal(details && details.phone);
+        if (actualColumnCount > 13) row[13] = details && details.rating != null ? String(details.rating) : '';
+        if (actualColumnCount > 15) row[15] = buildDirectionsUrl(safePlaceId, address, name);
+        if (actualColumnCount > 16) row[16] = '';
+        if (actualColumnCount > 18) row[18] = googlePlaceUrl;
+        if (actualColumnCount > 23) row[23] = googlePlaceUrl;
+      }
     }
 
     // Store metadata for retry logic
@@ -24492,6 +24554,72 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
       'Visited': 17
     };
 
+    function normalizeFavoriteStatusValue(value) {
+      const text = String(value == null ? '' : value).trim().toLowerCase();
+      if (!text) return '';
+      if (['true', 'yes', 'y', '1', 'favorite', 'favourite'].includes(text)) return 'TRUE';
+      if (['false', 'no', 'n', '0', 'not favorite', 'not favourite'].includes(text)) return 'FALSE';
+      return '';
+    }
+
+    function sanitizeRowForWorkbookSchema(values) {
+      const row = Array.isArray(values) ? values.slice() : [];
+      if (!row.length) return row;
+
+      const descriptionIdx = typeof window.getColumnIndexByName === 'function'
+        ? Number(window.getColumnIndexByName('Description'))
+        : 12;
+      const favoriteIdx = typeof window.getColumnIndexByName === 'function'
+        ? Number(window.getColumnIndexByName('Favorite Status', ['FavoriteStatus', 'Favorite']))
+        : 16;
+
+      const safeDescriptionIdx = Number.isInteger(descriptionIdx) && descriptionIdx >= 0 ? descriptionIdx : 12;
+      const safeFavoriteIdx = Number.isInteger(favoriteIdx) && favoriteIdx >= 0 ? favoriteIdx : 16;
+      if (safeFavoriteIdx >= row.length) return row;
+
+      const favoriteRaw = row[safeFavoriteIdx];
+      const favoriteText = String(favoriteRaw == null ? '' : favoriteRaw).trim();
+      const normalizedFavorite = normalizeFavoriteStatusValue(favoriteRaw);
+      const descriptionText = safeDescriptionIdx < row.length
+        ? String(row[safeDescriptionIdx] == null ? '' : row[safeDescriptionIdx]).trim()
+        : '';
+      const looksLikeMisroutedDescription = favoriteText.length > 24
+        || (/\s/.test(favoriteText) && !/^(true|false|yes|no|1|0|favorite|favourite)$/i.test(favoriteText));
+
+      if (!descriptionText && normalizedFavorite === '' && looksLikeMisroutedDescription) {
+        while (row.length <= safeDescriptionIdx) row.push('');
+        row[safeDescriptionIdx] = favoriteText;
+      }
+
+      row[safeFavoriteIdx] = normalizedFavorite;
+      return row;
+    }
+
+    function getRowWriteColumnDiagnostics(rawValues, normalizedValues) {
+      const inputRow = Array.isArray(rawValues) ? rawValues : [];
+      const outputRow = Array.isArray(normalizedValues) ? normalizedValues : [];
+      const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
+
+      const descriptionIdx = typeof window.getColumnIndexByName === 'function'
+        ? Number(window.getColumnIndexByName('Description'))
+        : 12;
+      const safeDescriptionIdx = Number.isInteger(descriptionIdx) && descriptionIdx >= 0 ? descriptionIdx : 12;
+      const resolvedDescriptionHeader = safeDescriptionIdx >= 0 && safeDescriptionIdx < schemaColumns.length
+        ? String(schemaColumns[safeDescriptionIdx] || '').trim() || 'Description'
+        : 'Description';
+
+      const inputLegacy = inputRow.length > 16 ? String(inputRow[16] == null ? '' : inputRow[16]).trim() : '';
+      const outputLegacy = outputRow.length > 16 ? String(outputRow[16] == null ? '' : outputRow[16]).trim() : '';
+
+      return {
+        descriptionHeader: resolvedDescriptionHeader,
+        descriptionIndex: safeDescriptionIdx,
+        legacyIndex16Updated: inputLegacy !== outputLegacy,
+        legacyIndex16Before: inputLegacy,
+        legacyIndex16After: outputLegacy
+      };
+    }
+
     window.getColumnIndexByName = window.getColumnIndexByName || function(name, aliases = []) {
       const wanted = [name].concat(Array.isArray(aliases) ? aliases : []).map((value) => String(value || '').trim().toLowerCase()).filter(Boolean);
       if (!wanted.length) return -1;
@@ -24615,7 +24743,12 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
            ? `itemAt(index=${Number(rowId)})`
            : encodeURIComponent(String(rowId));
          const updateUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/${rowRef}`;
-         const normalizedValues = Array.isArray(updatedValues) ? updatedValues.slice() : [];
+          const rawInputValues = Array.isArray(updatedValues) ? updatedValues.slice() : [];
+          const normalizedValues = sanitizeRowForWorkbookSchema(rawInputValues);
+          const writeColumnDiagnostics = getRowWriteColumnDiagnostics(rawInputValues, normalizedValues);
+
+          console.log(`[saveToExcel] Description header resolved to: "${writeColumnDiagnostics.descriptionHeader}" at index ${writeColumnDiagnostics.descriptionIndex}`);
+          console.log(`[saveToExcel] Legacy description index 16 value updated: ${writeColumnDiagnostics.legacyIndex16Updated ? 'yes' : 'no'}`);
 
          console.log('🔍 Row update diagnostics:', {
            rowId,
@@ -24638,12 +24771,14 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
              tableName,
              rowRef,
              updateUrl,
-              detail: `candidate ${pathAttemptIndex + 1}/${pathCandidates.length} • values=${normalizedValues.length}${workbookSessionId ? ' • persistChanges=true' : ' • persistChanges=session-unavailable'}`,
+             columnDiagnostics: writeColumnDiagnostics,
+               detail: `candidate ${pathAttemptIndex + 1}/${pathCandidates.length} • values=${normalizedValues.length}${workbookSessionId ? ' • persistChanges=true' : ' • persistChanges=session-unavailable'} • description="${writeColumnDiagnostics.descriptionHeader}"@${writeColumnDiagnostics.descriptionIndex} • legacy16Updated=${writeColumnDiagnostics.legacyIndex16Updated ? 'yes' : 'no'}`,
              rawPayload: {
                requestValues: normalizedValues,
                pathCandidates,
                 pathAttemptIndex,
-                workbookSessionId: workbookSessionId ? `${workbookSessionId.slice(0, 8)}...` : ''
+                 workbookSessionId: workbookSessionId ? `${workbookSessionId.slice(0, 8)}...` : '',
+                 columnDiagnostics: writeColumnDiagnostics
              }
            });
          }
@@ -24675,6 +24810,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
                  tableName,
                  rowRef,
                  updateUrl,
+                 columnDiagnostics: writeColumnDiagnostics,
                  detail: `nextPath=${pathCandidates[pathAttemptIndex + 1]}`,
                  statusCode: patchResponse.status,
                  rawPayload: errorText || { nextPath: pathCandidates[pathAttemptIndex + 1] }
@@ -24693,9 +24829,13 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
                tableName,
                rowRef,
                updateUrl,
-               detail: `status=${patchResponse.status}${errorText ? ` • ${errorText}` : ''}`,
+               columnDiagnostics: writeColumnDiagnostics,
+                detail: `status=${patchResponse.status}${errorText ? ` • ${errorText}` : ''} • description="${writeColumnDiagnostics.descriptionHeader}"@${writeColumnDiagnostics.descriptionIndex} • legacy16Updated=${writeColumnDiagnostics.legacyIndex16Updated ? 'yes' : 'no'}`,
                statusCode: patchResponse.status,
-               rawPayload: errorText
+                rawPayload: {
+                  errorText,
+                  columnDiagnostics: writeColumnDiagnostics
+                }
              });
            }
            throw new Error(`Failed to update Excel row [table=${tableName}, path=${filePath}, row=${rowRef}]: ${patchResponse.status}${errorText ? ` - ${errorText}` : ''}`);
@@ -24759,12 +24899,14 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
              tableName,
              rowRef,
              updateUrl,
-              detail: `values=${normalizedValues.length} • inSession=${verified ? 'ok' : 'no'} • freshSession=${freshVerified ? 'ok' : 'no'}`,
+             columnDiagnostics: writeColumnDiagnostics,
+               detail: `values=${normalizedValues.length} • inSession=${verified ? 'ok' : 'no'} • freshSession=${freshVerified ? 'ok' : 'no'} • description="${writeColumnDiagnostics.descriptionHeader}"@${writeColumnDiagnostics.descriptionIndex} • legacy16Updated=${writeColumnDiagnostics.legacyIndex16Updated ? 'yes' : 'no'}`,
              rawPayload: {
                patchResponse: patchPayload,
                verifyResponse: verifyPayload,
                 freshVerifyResponse: freshVerifyPayload,
-               expectedValues: normalizedValues
+                expectedValues: normalizedValues,
+                columnDiagnostics: writeColumnDiagnostics
              }
            });
          }
@@ -24795,7 +24937,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
           })();
 
       const rowsToAdd = pendingItems.map((item, idx) => {
-        let values = normalizePendingRow(item);
+        let values = sanitizeRowForWorkbookSchema(normalizePendingRow(item));
         if (schemaColumns && schemaColumns > 0) {
           if (values.length > schemaColumns) {
             console.log(`🔧 Trimming pending row ${idx + 1}: ${values.length} → ${schemaColumns}`);

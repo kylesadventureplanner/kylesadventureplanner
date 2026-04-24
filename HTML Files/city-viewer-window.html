@@ -2405,7 +2405,7 @@
       { key: 'phone', label: 'Phone', type: 'text', colIndex: 12, fallbackKey: 'phone' },
       { key: 'rating', label: 'Rating', type: 'text', colIndex: 13, fallbackKey: 'rating' },
       { key: 'cost', label: 'Cost', type: 'text', colIndex: 14, fallbackKey: 'cost' },
-      { key: 'description', label: 'Description', type: 'textarea', colIndex: 16, fallbackKey: 'description' },
+      { key: 'description', label: 'Description', type: 'textarea', colIndex: 12, fallbackKey: 'description' },
       { key: 'googleUrl', label: 'Google Maps URL', type: 'url', colIndex: 23, fallbackKey: 'googleUrl' },
       { key: 'note', label: 'Personal Note', type: 'textarea', colIndex: null, fallbackKey: null },
       { key: 'visited', label: 'Visited', type: 'checkbox', colIndex: null, fallbackKey: null },
@@ -2618,7 +2618,7 @@
           if (phoneIdx >= 0) values[phoneIdx] = String(locVal(loc, 12, 'phone') || '').trim();
           if (ratingIdx >= 0) values[ratingIdx] = String(locVal(loc, 13, 'rating') || '').trim();
           if (costIdx >= 0) values[costIdx] = String(locVal(loc, 14, 'cost') || '').trim();
-          if (descriptionIdx >= 0) values[descriptionIdx] = String(locVal(loc, 16, 'description') || '').trim();
+          if (descriptionIdx >= 0) values[descriptionIdx] = String(locVal(loc, 12, 'description') || '').trim();
           if (googleUrlIdx >= 0) values[googleUrlIdx] = String(locVal(loc, 23, 'googleUrl') || '').trim();
           if (tagsIdx >= 0) values[tagsIdx] = getLocationDerivedTags(loc).map((entry) => entry.text).join(', ');
           if (notesIdx >= 0) values[notesIdx] = edit.note || '';
@@ -2701,7 +2701,7 @@
       // ── 2. Fallback: fuzzy tag / name / description scan ──────────────────
       const tags = String(locVal(loc, 3, 'tags') || '').toLowerCase();
       const name = String(locVal(loc, 0, 'name') || '').toLowerCase();
-      const desc = String(locVal(loc, 16, 'description') || '').toLowerCase();
+      const desc = String(locVal(loc, 12, 'description') || '').toLowerCase();
       return tags.includes(prefilterTag) || name.includes(prefilterTag) || desc.includes(prefilterTag);
     }
 
@@ -2893,7 +2893,7 @@
         const count = tagFreq[String(tag || '').toLowerCase()] || 1;
         return sum + (12 / count);
       }, 0);
-      const descriptionLength = String(locVal(loc, 16, 'description') || '').trim().length;
+      const descriptionLength = String(locVal(loc, 12, 'description') || '').trim().length;
       const rating = parseFloat(locVal(loc, 13, 'rating')) || 0;
       return rarityScore + Math.min(18, descriptionLength / 18) + rating;
     }
@@ -3418,7 +3418,7 @@
       const rating = parseFloat(locVal(loc, 13, 'rating'));
       const hours = String(locVal(loc, 5, 'hours') || '').trim();
       const address = String(locVal(loc, 11, 'address') || '').trim();
-      const description = String(locVal(loc, 16, 'description') || '').trim();
+      const description = String(locVal(loc, 12, 'description') || '').trim();
       const driveMins = parseDriveMinutes(locVal(loc, 4, 'driveTime'));
       const website = String(locVal(loc, 2, 'website') || '').trim();
       const googleUrl = String(locVal(loc, 23, 'googleUrl') || '').trim();
@@ -3956,7 +3956,7 @@
       const phone = locVal(loc, 12, 'phone');
       const rating = locVal(loc, 13, 'rating');
       const cost = locVal(loc, 14, 'cost');
-      const description = locVal(loc, 16, 'description');
+      const description = locVal(loc, 12, 'description');
       const googleUrl = locVal(loc, 23, 'googleUrl');
       const tagEntries = getLocationDerivedTags(loc);
       const editState = getLocationEditState(locId);
@@ -4466,8 +4466,14 @@
     }
 
     function locVal(loc, colIndex, fallbackKey) {
-      if (loc && loc.values && Array.isArray(loc.values[0])) return loc.values[0][colIndex] || '';
-      return (loc && loc[fallbackKey]) || '';
+      const row = loc && loc.values && Array.isArray(loc.values[0]) ? loc.values[0] : null;
+      if (row && Number.isInteger(colIndex) && colIndex >= 0 && colIndex < row.length) {
+        const byIndex = row[colIndex];
+        if (byIndex !== undefined && byIndex !== null && String(byIndex).trim() !== '') {
+          return byIndex;
+        }
+      }
+      return (loc && fallbackKey ? loc[fallbackKey] : '') || '';
     }
 
     function parseShareStateFromUrl() {
@@ -4789,7 +4795,7 @@
         const phone = locVal(loc, 12, 'phone');
         const rating = locVal(loc, 13, 'rating');
         const cost = locVal(loc, 14, 'cost');
-        const description = locVal(loc, 16, 'description');
+        const description = locVal(loc, 12, 'description');
         const googleUrl = locVal(loc, 23, 'googleUrl');
         const tagEntries = getLocationDerivedTags(loc);
         const editState = getLocationEditState(locId);

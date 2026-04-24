@@ -449,6 +449,36 @@ test.describe('Edit Mode target-table routing', () => {
       .toContain('saved and verified');
   });
 
+  test('row-level saveToExcel sanitizes Favorite Status and redirects misrouted long text to Description', async ({ page }) => {
+    const graphCalls = [];
+    await installWorkbookMocks(page.context(), graphCalls);
+
+    await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => typeof window.saveToExcel === 'function', null, { timeout: 15000 });
+    await seedMainWindow(page);
+
+    const result = await page.evaluate(async () => {
+      window.filePath = 'Entertainment_Locations.xlsx';
+      window.tableName = 'Wildlife_Animals';
+      window.__excelSchemaColumns = [
+        'Name', 'Google Place ID', 'Website', 'Tags', 'Drive Time', 'Hours of Operation', 'State', 'City', 'Address',
+        'Phone Number', 'Google Rating', 'Directions', 'Description', 'Google URL', 'Notes', 'My Rating', 'Favorite Status', 'Visited', 'photo_urls'
+      ];
+      const row = new Array(19).fill('');
+      row[0] = 'BattleCat Coffee Bar';
+      row[1] = 'pid-battlecat';
+      row[16] = 'BattleCat Coffee Bar is located in Testville with long synthetic description text that must not remain in Favorite Status.';
+      return window.saveToExcel(0, row);
+    });
+
+    expect(result).toEqual(expect.objectContaining({ persisted: true, rowRef: 'itemAt(index=0)' }));
+    const patchCalls = graphCalls.filter((call) => call.method === 'PATCH');
+    expect(patchCalls.length).toBeGreaterThan(0);
+    const savedRow = patchCalls[0].body.values[0];
+    expect(String(savedRow[12] || '')).toContain('BattleCat Coffee Bar is located in Testville');
+    expect(String(savedRow[16] || '')).toBe('');
+  });
+
   test('full workbook PATCH diagnostics modal shows raw error payloads', async ({ page }) => {
     const graphCalls = [];
     await installWorkbookMocks(page.context(), graphCalls);

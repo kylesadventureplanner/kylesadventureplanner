@@ -1703,7 +1703,7 @@ console.log('🤖 Consolidated Automation Features System v7.0.141 Loading...');
     const host = mainWindow && typeof mainWindow === 'object' ? mainWindow : window;
     if (!host || !Array.isArray(rowValues)) return;
 
-    const description = getColumnValueByNames(rowValues, host, ['Description'], 16);
+    const description = getColumnValueByNames(rowValues, host, ['Description'], 12);
     const driveTime = getColumnValueByNames(rowValues, host, ['Drive Time', 'DriveTime'], 4);
     const tags = getColumnValueByNames(rowValues, host, ['Tags'], 3);
     const latitude = getColumnValueByNames(rowValues, host, ['Latitude', 'Lat', 'GPS Latitude'], -1);
