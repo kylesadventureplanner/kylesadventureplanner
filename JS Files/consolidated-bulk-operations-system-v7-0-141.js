@@ -368,11 +368,9 @@ function buildChangedWorkbookRow(row, fallbackIndex, values, meta = null) {
 window.resolveWorkbookRowReference = window.resolveWorkbookRowReference || resolveWorkbookRowReference;
 window.buildChangedWorkbookRow = window.buildChangedWorkbookRow || buildChangedWorkbookRow;
 
-function resolveWorkbookPatchTarget(mainWindow) {
+function resolveWorkbookPatchTargetInfo(mainWindow) {
   const src = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
-  const token = src.accessToken || (window.opener && window.opener.accessToken) || window.accessToken;
-  if (!token) throw new Error('automation-patch: no access token');
-
+  const token = src.accessToken || (window.opener && window.opener.accessToken) || window.accessToken || '';
   const resolvedFilePath = (src.__editModeTarget && src.__editModeTarget.resolvedFilePath)
     || src.__resolvedExcelFilePath
     || src.filePath
@@ -383,6 +381,16 @@ function resolveWorkbookPatchTarget(mainWindow) {
     .filter(Boolean)
     .map((part) => encodeURIComponent(part))
     .join('/');
+  return { src, token, resolvedFilePath, tableName, encodedPath };
+}
+
+function hasWorkbookPatchAccessToken(mainWindow) {
+  return !!String(resolveWorkbookPatchTargetInfo(mainWindow).token || '').trim();
+}
+
+function resolveWorkbookPatchTarget(mainWindow) {
+  const { src, token, resolvedFilePath, tableName, encodedPath } = resolveWorkbookPatchTargetInfo(mainWindow);
+  if (!token) throw new Error('automation-patch: no access token');
 
   return { src, token, resolvedFilePath, tableName, encodedPath };
 }
@@ -398,18 +406,30 @@ function normalizeGraphTableColumnsPayload(payload) {
 }
 
 async function preflightValidateDescriptionWriteTarget(mainWindow, options = {}) {
-  const target = resolveWorkbookPatchTarget(mainWindow);
+  const targetInfo = resolveWorkbookPatchTargetInfo(mainWindow);
   const operationRunId = String(options.operationRunId || '').trim();
   const expectedDescriptionColumnIndex = Number.isInteger(options.descriptionColumnIndex) ? options.descriptionColumnIndex : -1;
   const expectedDescriptionColumnName = String(options.descriptionColumnName || '').trim();
   const expectedNameNormalized = expectedDescriptionColumnName.toLowerCase();
   const canonicalDescriptionName = 'description';
-  const columnsUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${target.encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/columns`;
+  const columnsUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${targetInfo.encodedPath}:/workbook/tables/${encodeURIComponent(targetInfo.tableName)}/columns`;
+
+  if (!hasWorkbookPatchAccessToken(mainWindow)) {
+    return {
+      ok: true,
+      reason: 'preflight-skipped-no-access-token',
+      detail: 'preflight-skipped-no-access-token',
+      operationRunId,
+      writeTarget: { resolvedFilePath: targetInfo.resolvedFilePath, tableName: targetInfo.tableName },
+      columnsUrl,
+      columns: []
+    };
+  }
 
   try {
     const response = await fetch(columnsUrl, {
       method: 'GET',
-      headers: { Authorization: `Bearer ${target.token}` }
+      headers: { Authorization: `Bearer ${targetInfo.token}` }
     });
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
@@ -418,7 +438,7 @@ async function preflightValidateDescriptionWriteTarget(mainWindow, options = {})
         reason: `preflight-columns-http-${response.status}`,
         detail: `Could not load table columns [${response.status}] ${errorText || ''}`.trim(),
         operationRunId,
-        writeTarget: { resolvedFilePath: target.resolvedFilePath, tableName: target.tableName },
+        writeTarget: { resolvedFilePath: targetInfo.resolvedFilePath, tableName: targetInfo.tableName },
         columnsUrl,
         columns: []
       };
@@ -468,7 +488,7 @@ async function preflightValidateDescriptionWriteTarget(mainWindow, options = {})
         ? 'preflight-ok'
         : `Expected Description at index ${expectedDescriptionColumnIndex} but schema differs`,
       operationRunId,
-      writeTarget: { resolvedFilePath: target.resolvedFilePath, tableName: target.tableName },
+      writeTarget: { resolvedFilePath: targetInfo.resolvedFilePath, tableName: targetInfo.tableName },
       columnsUrl,
       expectedDescriptionColumnIndex,
       expectedDescriptionColumnName,
@@ -482,7 +502,7 @@ async function preflightValidateDescriptionWriteTarget(mainWindow, options = {})
       reason: 'preflight-exception',
       detail: String(error && error.message ? error.message : error),
       operationRunId,
-      writeTarget: { resolvedFilePath: target.resolvedFilePath, tableName: target.tableName },
+      writeTarget: { resolvedFilePath: targetInfo.resolvedFilePath, tableName: targetInfo.tableName },
       columnsUrl,
       columns: []
     };
@@ -2673,11 +2693,11 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       <div style="font-size:12px;color:#1f2937;margin-top:4px;">🔎 Description read-back verified: ${Number(persistence.verifiedRowsChanged || 0)}/${Number(persistence.persistedRows || 0)}</div>
       <div style="font-size:12px;color:${strictRunFailed ? '#991b1b' : '#1f2937'};margin-top:4px;">🛡️ Strict mode: ${escapeHtml(strictVerificationMode)} (${strictVerification ? 'fail-closed' : 'warn-only'}) • ${strictRunFailed ? 'FAILED' : 'passed'}${strictRunFailed ? ` (${Number(diag.unresolvedReadbackCount || 0)} unresolved issue(s))` : ''}</div>
       <div style="font-size:12px;color:#1f2937;margin-top:4px;">🧪 Reliability: retries recovered ${Number(diag.retryRecoveredCount || 0)}, readback mismatches ${Number(diag.readbackMismatchCount || 0)}, readback errors ${Number(diag.readbackErrorCount || 0)}, patch errors ${Number(diag.patchErrorCount || 0)}</div>
+      ${buildPreviewHtml()}
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
         <button type="button" ${canDownloadAuditCsv ? '' : 'disabled'} onclick="(function(){ const out = window.downloadLastUpdateDescriptionsPerRowWriteLogCsv && window.downloadLastUpdateDescriptionsPerRowWriteLogCsv(); if (!out || !out.ok) { alert('No CSV audit is available for this run.'); } })();" style="padding:6px 10px;border:1px solid #86efac;border-radius:6px;background:#f0fdf4;color:#166534;font-size:12px;font-weight:600;cursor:pointer;">📥 Download CSV Audit</button>
         <button type="button" onclick="window.copyLastUpdateDescriptionsAuditJson && window.copyLastUpdateDescriptionsAuditJson();" style="padding:6px 10px;border:1px solid #bfdbfe;border-radius:6px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:600;cursor:pointer;">📋 Copy Audit JSON</button>
       </div>
-      ${buildPreviewHtml()}
     </div>`);
 
     return {
