@@ -25,17 +25,9 @@ find_npm() {
   fi
 
   # 4. JetBrains-bundled Node (WebStorm / IntelliJ)
-  # npm lives at .../versions/X/lib/node_modules/npm/bin/npm
-  # node lives at .../versions/X/bin/node  (5 levels up, then bin/)
   _jb_npm=$(find "$HOME/Library/Application Support/JetBrains" \
     -name npm -path "*/bin/npm" 2>/dev/null | sort | tail -1)
   if [ -n "$_jb_npm" ] && [ -x "$_jb_npm" ]; then
-    # Resolve the matching Node.js bin dir and prepend it to PATH so that
-    # subprocess commands (playwright, node) can be found.
-    _jb_node_bin=$(cd "$(dirname "$_jb_npm")/../../../../../bin" 2>/dev/null && pwd)
-    if [ -d "$_jb_node_bin" ] && [ -x "$_jb_node_bin/node" ]; then
-      export PATH="$_jb_node_bin:$PATH"
-    fi
     echo "$_jb_npm"
     return 0
   fi
@@ -50,6 +42,27 @@ NPM=$(find_npm) || {
   echo "[pre-push] ERROR: npm not found – install Node.js and ensure npm is on PATH."
   exit 1
 }
+
+# If node is not already on PATH, derive its location from the npm path and
+# prepend it. This handles JetBrains-bundled node where only npm was found.
+#
+# npm lives at one of:
+#   .../versions/X/bin/npm                      → node is in the same dir
+#   .../versions/X/lib/node_modules/npm/bin/npm → node is 4 dirs up, then bin/
+if ! command -v node >/dev/null 2>&1; then
+  _npm_bin_dir=$(dirname "$NPM")
+  if [ -x "$_npm_bin_dir/node" ]; then
+    # npm is a plain symlink in the bin dir – node is right beside it
+    export PATH="$_npm_bin_dir:$PATH"
+  else
+    # npm is the real script inside lib/node_modules/npm/bin – go up 4 levels
+    # to reach the version root, then down into bin/
+    _ver_root=$(cd "$_npm_bin_dir/../../../.." 2>/dev/null && pwd) || true
+    if [ -n "$_ver_root" ] && [ -x "$_ver_root/bin/node" ]; then
+      export PATH="$_ver_root/bin:$PATH"
+    fi
+  fi
+fi
 
 echo "[pre-push] Using npm: $NPM"
 echo "[pre-push] Running reliability:prepush..."
