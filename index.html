@@ -14074,6 +14074,25 @@
 
   function buildAdventureRowData(values) {
     const rowValues = Array.isArray(values) ? values : [];
+    const pickPreferredDescription = () => {
+      const byName = getAdventureValueByName(rowValues, 'Description', [], []);
+      if (String(byName || '').trim() !== '') return byName;
+
+      const legacyDesc = rowValues[16];
+      const schemaDesc = rowValues[12];
+      const legacyText = String(legacyDesc == null ? '' : legacyDesc).trim();
+      const schemaText = String(schemaDesc == null ? '' : schemaDesc).trim();
+
+      // Legacy mirrors often look like: "X is located in ... Google Rating: ...".
+      // Prefer schema index 12 when that legacy placeholder is present.
+      const looksLegacyPlaceholder = /\bis located in\b/i.test(legacyText) && /google rating\s*:/i.test(legacyText);
+      if (looksLegacyPlaceholder && schemaText) return schemaDesc;
+
+      if (legacyText) return legacyDesc;
+      if (schemaText) return schemaDesc;
+      return '';
+    };
+
     return {
       name: getAdventureValueByName(rowValues, 'Name', [], [0]),
       googlePlaceId: getAdventureValueByName(rowValues, 'Google Place ID', ['GooglePlaceId'], [1]),
@@ -14091,7 +14110,7 @@
       googleRating: getAdventureValueByName(rowValues, 'Google Rating', ['Rating'], [13, 10]),
       cost: getAdventureValueByName(rowValues, 'Cost', [], [14]),
       directions: getAdventureValueByName(rowValues, 'Directions', ['Directions '], [15, 11]),
-      description: getAdventureValueByName(rowValues, 'Description', [], [16, 12]),
+      description: pickPreferredDescription(),
       nearby: getAdventureValueByName(rowValues, 'Nearby Attractions', ['Nearest Town / Services'], [17]),
       links: getAdventureValueByName(rowValues, 'Links', ['Official Website', 'Other Informational URLs'], [18]),
       links2: getAdventureValueByName(rowValues, 'Links2', ['Google URL'], [19, 23, 13]),

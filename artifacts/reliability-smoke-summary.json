@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-04-24T00:11:07.202Z",
+  "generatedAt": "2026-04-24T01:04:40.037Z",
   "pass": true,
   "startupSamplesMs": [
-    99
+    119
   ],
-  "startupMsP95": 99,
+  "startupMsP95": 119,
   "firstClickChecks": 1,
   "firstClickSuccesses": 1,
   "firstClickSuccessRate": 1,
@@ -15,7 +15,7 @@
       "detail": {
         "explorerActive": true
       },
-      "at": "2026-04-24T00:11:21.311Z"
+      "at": "2026-04-24T01:04:55.762Z"
     }
   ]
 }
