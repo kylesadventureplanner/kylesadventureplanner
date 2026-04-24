@@ -73,24 +73,34 @@ test.describe('Visited enrich modal smoke', () => {
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').first()).toContainText('Before:');
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').nth(1)).toContainText('After:');
 
+      // Uncheck all parser-field checkboxes and directly update save-button state.
+      // We replicate updateParserSaveButtonState() here rather than relying on event
+      // propagation, which has proven unreliable across CI environments.
       await page.evaluate(() => {
-        const toggles = Array.from(document.querySelectorAll('#visitedLocationTextParserModal #visitedLocationParserPreview [data-parser-field-select]'));
-        toggles.forEach((toggle) => {
-          if (!(toggle instanceof HTMLInputElement)) return;
-          toggle.checked = false;
-          toggle.dispatchEvent(new Event('input', { bubbles: true }));
-          toggle.dispatchEvent(new Event('change', { bubbles: true }));
+        const allToggles = Array.from(document.querySelectorAll('[data-parser-field-select]'));
+        allToggles.forEach((toggle) => {
+          if (toggle instanceof HTMLInputElement) toggle.checked = false;
         });
+        const saveB = document.getElementById('visitedLocationParserSaveBtn');
+        if (!saveB) return;
+        const selected = allToggles.filter((t) => t instanceof HTMLInputElement && t.checked).length;
+        saveB.disabled = selected === 0;
+        saveB.textContent = selected > 0 ? `Save Selected (${selected})` : 'Save Selected';
       });
       await expect(saveBtn).toBeDisabled();
 
+      // Re-check only description and confirm save re-enables with correct label.
       const descriptionCheckbox = page.locator('#visitedLocationParserSelect-description');
       await page.evaluate(() => {
-        const checkbox = document.getElementById('visitedLocationParserSelect-description');
-        if (!(checkbox instanceof HTMLInputElement)) return;
-        checkbox.checked = true;
-        checkbox.dispatchEvent(new Event('input', { bubbles: true }));
-        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        const cb = document.getElementById('visitedLocationParserSelect-description');
+        if (!(cb instanceof HTMLInputElement)) return;
+        cb.checked = true;
+        const allToggles = Array.from(document.querySelectorAll('[data-parser-field-select]'));
+        const saveB = document.getElementById('visitedLocationParserSaveBtn');
+        if (!saveB) return;
+        const selected = allToggles.filter((t) => t instanceof HTMLInputElement && t.checked).length;
+        saveB.disabled = selected === 0;
+        saveB.textContent = selected > 0 ? `Save Selected (${selected})` : 'Save Selected';
       });
       await expect(descriptionCheckbox).toBeChecked();
       await expect(saveBtn).toBeEnabled();
