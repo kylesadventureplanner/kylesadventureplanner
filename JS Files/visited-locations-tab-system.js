@@ -2796,6 +2796,18 @@
     renderParserPreview(state.parserSession, previewArea);
   }
 
+  function bindParserSelectToggleListeners(scopeRoot) {
+    const root = scopeRoot && scopeRoot.querySelectorAll ? scopeRoot : document;
+    const toggles = Array.from(root.querySelectorAll('[data-parser-field-select]'));
+    toggles.forEach((toggle) => {
+      if (!toggle || toggle.dataset.saveStateBound === '1') return;
+      toggle.dataset.saveStateBound = '1';
+      const sync = () => updateParserSaveButtonState();
+      toggle.addEventListener('change', sync);
+      toggle.addEventListener('input', sync);
+    });
+  }
+
   function renderParserPreview(session, previewArea) {
     const saveBtn = document.getElementById('visitedLocationParserSaveBtn');
     const parserActions = document.getElementById('visitedLocationParserActions');
@@ -2853,6 +2865,8 @@
     `;
 
     previewArea.innerHTML = fieldsHtml;
+    // Fallback binding for modal checkboxes in case delegated listeners miss events.
+    bindParserSelectToggleListeners(previewArea);
     if (saveBtn) saveBtn.style.display = 'block';
     if (parserActions) parserActions.style.display = 'flex';
     if (undoBtn) undoBtn.disabled = !parserHistory.canUndo();
@@ -7119,7 +7133,7 @@
       root.addEventListener('change', (event) => {
         const target = event.target;
         if (!target || !target.matches) return;
-        if (target.matches('[data-parser-field-select]')) {
+        if (target.matches('[data-parser-field-select]') || (target.closest && target.closest('[data-parser-field-select]'))) {
           updateParserSaveButtonState();
           return;
         }
