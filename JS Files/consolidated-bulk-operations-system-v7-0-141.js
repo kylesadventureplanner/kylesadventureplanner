@@ -22,7 +22,7 @@
 console.log('🚀 Consolidated Bulk Operations System v7.0.141 Loading...');
 
 window.__deploymentFileFingerprints = window.__deploymentFileFingerprints || {};
-window.__deploymentFileFingerprints['consolidated-bulk-operations-system-v7-0-141.js'] = '2026.04.23.live-debug.1';
+window.__deploymentFileFingerprints['consolidated-bulk-operations-system-v7-0-141.js'] = '2026.04.24.direct-patch-fix.1';
 
 function isWorkbookWriteDebugEnabled() {
   try {
@@ -250,6 +250,66 @@ function buildChangedWorkbookRow(row, fallbackIndex, values) {
 window.resolveWorkbookRowReference = window.resolveWorkbookRowReference || resolveWorkbookRowReference;
 window.buildChangedWorkbookRow = window.buildChangedWorkbookRow || buildChangedWorkbookRow;
 
+// ─── Direct Graph API PATCH helper (mirrors syncVisitedExplorerDetailFields) ────
+async function directPatchWorkbookRow(mainWindow, rowIndex, rowValues) {
+  const src = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
+  const token = src.accessToken || (window.opener && window.opener.accessToken) || window.accessToken;
+  if (!token) throw new Error('automation-patch: no access token');
+
+  // Resolve the correct file path for the target table, preferring the path
+  // that was confirmed to work when loadTargetRows fetched the rows.
+  const resolvedFilePath = (src.__editModeTarget && src.__editModeTarget.resolvedFilePath)
+    || src.__resolvedExcelFilePath
+    || src.filePath
+    || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
+
+  const tableName = src.tableName || 'MyList';
+
+  // Encode path the same way as edit-mode-enhanced.html encodeGraphDrivePath
+  const encodedPath = String(resolvedFilePath || '')
+    .split('/')
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+
+  const rowRef = `itemAt(index=${Number(rowIndex)})`;
+  const updateUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/${rowRef}`;
+
+  // Normalize cell values: convert null/undefined → '', numbers/booleans → string
+  const normalizedValues = (Array.isArray(rowValues) ? rowValues : []).map((v) => {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number') return String(v);
+    if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+    return String(v);
+  });
+
+  console.log(`[directPatchWorkbookRow] PATCH → ${updateUrl}`, {
+    rowIndex,
+    rowRef,
+    resolvedFilePath,
+    tableName,
+    valuesLength: normalizedValues.length
+  });
+
+  const patchResponse = await fetch(updateUrl, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ values: [normalizedValues] })
+  });
+
+  if (!patchResponse.ok) {
+    const errorText = await patchResponse.text().catch(() => '');
+    throw new Error(`automation-patch: PATCH failed [${patchResponse.status}] ${errorText || ''} (table=${tableName}, path=${resolvedFilePath}, row=${rowRef})`);
+  }
+
+  console.log(`✅ [directPatchWorkbookRow] Row ${rowRef} patched successfully`);
+  return { persisted: true, verified: false, rowRef };
+}
+
 async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
   const host = resolveAutomationHost(mainWindow, 'saveToExcel');
   const operation = String(options.operation || 'automation').trim();
@@ -272,6 +332,49 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
   }
 
   try {
+    // ── PRIMARY PATH: Direct Graph API PATCH (reliable, mirrors card enrich) ──
+    if (changedRows.length) {
+      let persistedRows = 0;
+      let errorCount = 0;
+      const errors = [];
+      for (const row of changedRows) {
+        const rowIdx = typeof row.rowIndex === 'number' ? row.rowIndex : resolveWorkbookRowReference(row, 0);
+        pushWorkbookWriteDebug('row-direct-patch-attempt', {
+          operation,
+          rowIdx,
+          valueCount: Array.isArray(row.values) ? row.values.length : 0
+        });
+        try {
+          await directPatchWorkbookRow(mainWindow, rowIdx, row.values);
+          persistedRows += 1;
+          pushWorkbookWriteDebug('row-direct-patch-success', { operation, rowIdx });
+        } catch (patchErr) {
+          errorCount += 1;
+          errors.push(String(patchErr && patchErr.message ? patchErr.message : patchErr));
+          console.error(`❌ ${operation}: direct patch failed for row ${rowIdx}`, patchErr);
+        }
+      }
+
+      if (persistedRows > 0) {
+        console.log(`💾 ${operation}: persisted ${persistedRows}/${changedRows.length} row(s) via direct Graph API PATCH`);
+        return normalizeWriteResultContract({
+          persisted: true,
+          mode: 'direct-graph-patch',
+          reason: errorCount > 0 ? `${errorCount} row(s) failed` : '',
+          rowsChanged: changedRows.length,
+          persistedRows,
+          verifiedRowsChanged: 0,
+          postWriteVerified: false,
+          verificationMode: 'not-verified',
+          verificationReason: 'direct-patch-no-verify'
+        }, { rowsRequested: updatedCount });
+      }
+
+      // All direct patches failed — fall through to saveToExcel fallback
+      console.warn(`⚠️ ${operation}: direct PATCH path failed for all rows, trying saveToExcel fallback. Errors: ${errors.join('; ')}`);
+    }
+
+    // ── FALLBACK PATH: row-level saveToExcel (legacy) ───────────────────────
     if (changedRows.length && host && typeof host.saveToExcel === 'function' && host.saveToExcel.length >= 1) {
       let persistedRows = 0;
       let verifiedRowsChanged = 0;
