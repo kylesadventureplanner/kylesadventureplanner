@@ -331,9 +331,16 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
     }, { rowsRequested: updatedCount });
   }
 
+  // Resolve access token — if unavailable the direct patch path is skipped
+  // entirely and the saveToExcel fallback is used instead (test/offline envs).
+  const _src = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
+  const _hasToken = !!(_src.accessToken || (window.opener && window.opener.accessToken) || window.accessToken);
+
   try {
     // ── PRIMARY PATH: Direct Graph API PATCH (reliable, mirrors card enrich) ──
-    if (changedRows.length) {
+    // Only attempted when an access token is present — skipped silently in
+    // test/offline environments so the saveToExcel fallback takes over cleanly.
+    if (changedRows.length && _hasToken) {
       let persistedRows = 0;
       let errorCount = 0;
       const errors = [];
@@ -370,8 +377,10 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
         }, { rowsRequested: updatedCount });
       }
 
-      // All direct patches failed — fall through to saveToExcel fallback
-      console.warn(`⚠️ ${operation}: direct PATCH path failed for all rows, trying saveToExcel fallback. Errors: ${errors.join('; ')}`);
+      if (errorCount > 0) {
+        // All direct patches failed — fall through to saveToExcel fallback
+        console.warn(`⚠️ ${operation}: direct PATCH failed for all rows, trying saveToExcel fallback. Errors: ${errors.join('; ')}`);
+      }
     }
 
     // ── FALLBACK PATH: row-level saveToExcel (legacy) ───────────────────────
