@@ -3623,6 +3623,7 @@
           verificationReason: 'no-targets-selected',
           descriptionIndex: -1,
           descriptionColumnName: '',
+          updateDescriptionsDiagnostics: null,
           targetSummaries: []
         };
       }
@@ -3654,7 +3655,50 @@
         verificationReason: '',
         descriptionIndex: -1,
         descriptionColumnName: '',
+        updateDescriptionsDiagnostics: null,
         targetSummaries: []
+      };
+      const mergeUpdateDescriptionsDiagnostics = (incoming) => {
+        if (!incoming || typeof incoming !== 'object') return;
+        if (!aggregate.updateDescriptionsDiagnostics) {
+          aggregate.updateDescriptionsDiagnostics = {
+            skipReasonCounts: {},
+            googleApi: {
+              checked: false,
+              attemptedRows: 0,
+              returnedRows: 0,
+              emptyRows: 0,
+              errorRows: 0,
+              sourceCounts: {},
+              sampleReturns: []
+            }
+          };
+        }
+        const targetDiag = aggregate.updateDescriptionsDiagnostics;
+        const incomingSkip = incoming.skipReasonCounts && typeof incoming.skipReasonCounts === 'object' ? incoming.skipReasonCounts : {};
+        Object.keys(incomingSkip).forEach((reason) => {
+          const amount = Math.max(0, Number(incomingSkip[reason]) || 0);
+          if (!amount) return;
+          targetDiag.skipReasonCounts[reason] = (Number(targetDiag.skipReasonCounts[reason]) || 0) + amount;
+        });
+        const incomingGoogle = incoming.googleApi && typeof incoming.googleApi === 'object' ? incoming.googleApi : {};
+        const targetGoogle = targetDiag.googleApi;
+        targetGoogle.checked = targetGoogle.checked || !!incomingGoogle.checked;
+        targetGoogle.attemptedRows += Math.max(0, Number(incomingGoogle.attemptedRows) || 0);
+        targetGoogle.returnedRows += Math.max(0, Number(incomingGoogle.returnedRows) || 0);
+        targetGoogle.emptyRows += Math.max(0, Number(incomingGoogle.emptyRows) || 0);
+        targetGoogle.errorRows += Math.max(0, Number(incomingGoogle.errorRows) || 0);
+        const incomingSources = incomingGoogle.sourceCounts && typeof incomingGoogle.sourceCounts === 'object' ? incomingGoogle.sourceCounts : {};
+        Object.keys(incomingSources).forEach((source) => {
+          const amount = Math.max(0, Number(incomingSources[source]) || 0);
+          if (!amount) return;
+          targetGoogle.sourceCounts[source] = (Number(targetGoogle.sourceCounts[source]) || 0) + amount;
+        });
+        if (Array.isArray(incomingGoogle.sampleReturns)) {
+          incomingGoogle.sampleReturns.forEach((sample) => {
+            if (targetGoogle.sampleReturns.length < 3) targetGoogle.sampleReturns.push(sample);
+          });
+        }
       };
       for (let i = 0; i < targets.length; i += 1) {
         const target = targets[i];
@@ -3703,6 +3747,7 @@
           if (!aggregate.descriptionColumnName && finalDescriptionColumnName) {
             aggregate.descriptionColumnName = finalDescriptionColumnName;
           }
+          mergeUpdateDescriptionsDiagnostics(result && result.updateDescriptionsDiagnostics);
           aggregate.targetSummaries.push({
             tableName: String(target.tableName || ''),
             success: ok,
@@ -3717,7 +3762,8 @@
             verificationMode: String((result && result.verificationMode) || ''),
             verificationReason: String((result && result.verificationReason) || ''),
             descriptionIndex: finalDescriptionIndex,
-            descriptionColumnName: finalDescriptionColumnName
+            descriptionColumnName: finalDescriptionColumnName,
+            updateDescriptionsDiagnostics: result && result.updateDescriptionsDiagnostics ? result.updateDescriptionsDiagnostics : null
           });
         } catch (error) {
           messages.push(`❌ ${target.tableName}: ${error && error.message ? error.message : 'Failed'}`);
@@ -3738,7 +3784,8 @@
             verificationMode: 'error',
             verificationReason: String(error && error.message ? error.message : 'Failed'),
             descriptionIndex: (Number.isFinite(schemaDescriptionIndex) && schemaDescriptionIndex >= 0) ? Math.round(schemaDescriptionIndex) : -1,
-            descriptionColumnName: schemaDescriptionName
+            descriptionColumnName: schemaDescriptionName,
+            updateDescriptionsDiagnostics: null
           });
         }
       }
@@ -3824,6 +3871,80 @@
       if (!descName && hasIndex) descName = 'Description';
       if (!hasIndex && !descName) return;
       el.textContent = `${el.textContent} • Description column: index ${hasIndex ? Math.round(descIndex) : 'n/a'}${descName ? ` (${descName})` : ''}`;
+    }
+
+    function appendUpdateDescriptionsDiagnosticsSuffix(elementId, result) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const safe = result && typeof result === 'object' ? result : {};
+      const merged = {
+        skipReasonCounts: {},
+        googleApi: {
+          checked: false,
+          attemptedRows: 0,
+          returnedRows: 0,
+          emptyRows: 0,
+          errorRows: 0,
+          sourceCounts: {},
+          sampleReturns: []
+        }
+      };
+      const mergeIncoming = (incoming) => {
+        if (!incoming || typeof incoming !== 'object') return;
+        const skipReasonCounts = incoming.skipReasonCounts && typeof incoming.skipReasonCounts === 'object' ? incoming.skipReasonCounts : {};
+        Object.keys(skipReasonCounts).forEach((reason) => {
+          const amount = Math.max(0, Number(skipReasonCounts[reason]) || 0);
+          if (!amount) return;
+          merged.skipReasonCounts[reason] = (Number(merged.skipReasonCounts[reason]) || 0) + amount;
+        });
+        const incomingGoogle = incoming.googleApi && typeof incoming.googleApi === 'object' ? incoming.googleApi : {};
+        merged.googleApi.checked = merged.googleApi.checked || !!incomingGoogle.checked;
+        merged.googleApi.attemptedRows += Math.max(0, Number(incomingGoogle.attemptedRows) || 0);
+        merged.googleApi.returnedRows += Math.max(0, Number(incomingGoogle.returnedRows) || 0);
+        merged.googleApi.emptyRows += Math.max(0, Number(incomingGoogle.emptyRows) || 0);
+        merged.googleApi.errorRows += Math.max(0, Number(incomingGoogle.errorRows) || 0);
+        const incomingSources = incomingGoogle.sourceCounts && typeof incomingGoogle.sourceCounts === 'object' ? incomingGoogle.sourceCounts : {};
+        Object.keys(incomingSources).forEach((source) => {
+          const amount = Math.max(0, Number(incomingSources[source]) || 0);
+          if (!amount) return;
+          merged.googleApi.sourceCounts[source] = (Number(merged.googleApi.sourceCounts[source]) || 0) + amount;
+        });
+        if (Array.isArray(incomingGoogle.sampleReturns)) {
+          incomingGoogle.sampleReturns.forEach((sample) => {
+            if (merged.googleApi.sampleReturns.length < 3) merged.googleApi.sampleReturns.push(sample);
+          });
+        }
+      };
+      mergeIncoming(safe.updateDescriptionsDiagnostics);
+      if (Array.isArray(safe.targetSummaries)) {
+        safe.targetSummaries.forEach((summary) => mergeIncoming(summary && summary.updateDescriptionsDiagnostics));
+      }
+      const skipEntries = Object.entries(merged.skipReasonCounts)
+        .filter(([, count]) => Number(count) > 0)
+        .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
+      const sourceEntries = Object.entries(merged.googleApi.sourceCounts)
+        .filter(([, count]) => Number(count) > 0)
+        .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])));
+      if (!skipEntries.length && !sourceEntries.length && Number(merged.googleApi.attemptedRows || 0) <= 0) {
+        return;
+      }
+      const skipText = skipEntries.length
+        ? ` • Skip reasons: ${skipEntries.map(([reason, count]) => `${reason}=${Number(count)}`).join(', ')}`
+        : ' • Skip reasons: none';
+      const googleChecked = merged.googleApi.checked || Number(merged.googleApi.attemptedRows || 0) > 0;
+      const googleText = ` • Google check: ${googleChecked ? 'yes' : 'no'} (attempted ${Number(merged.googleApi.attemptedRows || 0)}, meaningful ${Number(merged.googleApi.returnedRows || 0)}, empty ${Number(merged.googleApi.emptyRows || 0)}, errors ${Number(merged.googleApi.errorRows || 0)})`;
+      const sourceText = sourceEntries.length
+        ? ` • Google sources: ${sourceEntries.map(([source, count]) => `${source}=${Number(count)}`).join(', ')}`
+        : '';
+      const sampleText = Array.isArray(merged.googleApi.sampleReturns) && merged.googleApi.sampleReturns.length
+        ? ` • API sample: ${merged.googleApi.sampleReturns.slice(0, 2).map((sample) => {
+            const src = String((sample && sample.source) || 'unknown').trim() || 'unknown';
+            const status = String((sample && sample.status) || 'unknown').trim() || 'unknown';
+            const desc = String((sample && sample.descriptionPreview) || '').trim();
+            return `${src}/${status}${desc ? ` -> "${desc.slice(0, 60)}${desc.length > 60 ? '...' : ''}"` : ' -> (no description)'}`;
+          }).join(' | ')}`
+        : '';
+      el.textContent = `${el.textContent}${skipText}${googleText}${sourceText}${sampleText}`;
     }
 
     function normalizeWriteResultContractForUi(result, defaults = {}) {
@@ -6197,6 +6318,7 @@
       });
       renderAutomationWriteDiagnostics('missing-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('missing-write-diagnostics', result);
+      appendUpdateDescriptionsDiagnosticsSuffix('missing-write-diagnostics', result);
       return;
     }
 
@@ -6226,6 +6348,7 @@
       });
       renderAutomationWriteDiagnostics('hours-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('hours-write-diagnostics', result);
+      appendUpdateDescriptionsDiagnosticsSuffix('hours-write-diagnostics', result);
       return;
     }
 
@@ -6382,6 +6505,7 @@
       });
       renderAutomationWriteDiagnostics('desc-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('desc-write-diagnostics', result);
+      appendUpdateDescriptionsDiagnosticsSuffix('desc-write-diagnostics', result);
     }
 
     /**
@@ -6412,6 +6536,7 @@
       });
       renderAutomationWriteDiagnostics('force-update-write-diagnostics', result);
       appendDescriptionColumnDiagnosticsSuffix('force-update-write-diagnostics', result);
+      appendUpdateDescriptionsDiagnosticsSuffix('force-update-write-diagnostics', result);
     }
 
     /**

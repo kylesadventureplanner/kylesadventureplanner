@@ -1217,52 +1217,78 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, o
     const forceRefresh = !!options.forceRefresh;
     const allowCachedFallback = options.allowCachedFallback !== false;
     const helperContext = options.context || 'bulk-automation';
+    const diagBase = {
+      placeId: String(placeId || '').trim(),
+      context: helperContext,
+      liveLookupAttempted: false,
+      liveLookupProvider: 'none',
+      liveLookupStatus: 'not-attempted',
+      hasMeaningfulDetails: false,
+      source: 'empty-fallback'
+    };
+    const withDiag = (details, diagPatch = {}) => ({
+      ...(details || {}),
+      __sourceDiag: { ...diagBase, ...diagPatch }
+    });
 
-    // PRIORITY 1: Use the existing Google details helper when available.
     if (mainWindow && typeof mainWindow.getPlaceDetails === 'function') {
+      diagBase.liveLookupAttempted = true;
+      diagBase.liveLookupProvider = 'mainWindow.getPlaceDetails';
       try {
         const fallbackResult = await mainWindow.getPlaceDetails(placeId, { forceRefresh, context: helperContext });
         const normalizedFallback = normalizePlaceDetailsForBulkOps(placeId, fallbackResult, mainWindow);
         if (hasMeaningfulBulkOpsDetails(normalizedFallback)) {
           console.log(`✅ Got ${forceRefresh ? 'fresh' : 'live'} data from fallback function for ${placeId}`);
-          return normalizedFallback;
+          return withDiag(normalizedFallback, {
+            liveLookupStatus: 'ok',
+            hasMeaningfulDetails: true,
+            source: 'main-window-getPlaceDetails'
+          });
         }
+        diagBase.liveLookupStatus = 'empty-result';
       } catch (fallbackErr) {
+        diagBase.liveLookupStatus = 'error';
+        diagBase.liveLookupError = String(fallbackErr && fallbackErr.message ? fallbackErr.message : fallbackErr);
         console.debug(`📍 Fallback attempt failed: ${fallbackErr.message}`);
       }
     }
 
-    // Support direct-window execution when the helper lives in this window instead of the opener.
     if (typeof window.getPlaceDetails === 'function' && window.getPlaceDetails !== mainWindow?.getPlaceDetails) {
+      diagBase.liveLookupAttempted = true;
+      diagBase.liveLookupProvider = 'window.getPlaceDetails';
       try {
         const directResult = await window.getPlaceDetails(placeId, { forceRefresh, context: helperContext });
         const normalizedDirect = normalizePlaceDetailsForBulkOps(placeId, directResult, mainWindow);
         if (hasMeaningfulBulkOpsDetails(normalizedDirect)) {
           console.log(`✅ Got ${forceRefresh ? 'fresh' : 'live'} data from local window.getPlaceDetails for ${placeId}`);
-          return normalizedDirect;
+          return withDiag(normalizedDirect, {
+            liveLookupStatus: 'ok',
+            hasMeaningfulDetails: true,
+            source: 'local-window-getPlaceDetails'
+          });
         }
+        diagBase.liveLookupStatus = 'empty-result';
       } catch (directErr) {
+        diagBase.liveLookupStatus = 'error';
+        diagBase.liveLookupError = String(directErr && directErr.message ? directErr.message : directErr);
         console.debug(`📍 Direct getPlaceDetails failed: ${directErr.message}`);
       }
     }
 
-    // PRIORITY 2: Check local row cache only after live enrichment attempts.
     if (allowCachedFallback) {
       const cached = getCachedPlaceDetailsFromRows(placeId, mainWindow);
       if (hasMeaningfulBulkOpsDetails(cached)) {
         console.log(`✅ Using cached row data for ${placeId}`);
-        return cached;
+        return withDiag(cached, {
+          source: 'cached-row',
+          hasMeaningfulDetails: true
+        });
       }
     } else {
       console.info(`ℹ️ Cache fallback skipped for ${placeId} (${helperContext})`);
     }
 
-    // PRIORITY 3: Google Places API - PERMANENTLY DISABLED
-    // ⚠️ API key has domain/referrer restrictions, returns 400 errors systematically.
-    // Skipping entirely to avoid console pollution. Use fallback mechanisms above.
-
-    // FALLBACK: Return empty data (don't crash)
-    return {
+    return withDiag({
       website: '',
       phone: '',
       hours: '',
@@ -1270,7 +1296,7 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, o
       rating: '',
       description: '',
       directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
-    };
+    });
   } catch (err) {
     console.warn(`⚠️ Error in getPlaceDetailsFromAPI: ${err.message}`);
     return {
@@ -1280,7 +1306,17 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, o
       address: '',
       rating: '',
       description: '',
-      directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`
+      directions: `https://www.google.com/maps/place/?q=place_id:${placeId}`,
+      __sourceDiag: {
+        placeId: String(placeId || '').trim(),
+        context: options.context || 'bulk-automation',
+        liveLookupAttempted: false,
+        liveLookupProvider: 'none',
+        liveLookupStatus: 'helper-error',
+        hasMeaningfulDetails: false,
+        source: 'helper-error',
+        liveLookupError: String(err && err.message ? err.message : err)
+      }
     };
   }
 }
@@ -1378,7 +1414,7 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
             <div style="font-size: 11px; color: #047857; margin-top: 2px;">Success</div>
           </div>
           <div style="padding: 10px; background: #fee2e2; border-radius: 6px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 700; color: #ef4444;">❌ ${failCount}</div>
+            <div style="font-size: 24px; font-weight: 700, color: #ef4444;">❌ ${failCount}</div>
             <div style="font-size: 11px; color: #7f1d1d; margin-top: 2px;">Failed</div>
           </div>
           <div style="padding: 10px; background: #fef3c7; border-radius: 6px; text-align: center;">
@@ -1520,51 +1556,26 @@ window.handleBulkAddChainLocations = async function(locations, type, displayElem
 
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
           <div style="padding: 10px; background: #ecfdf5; border-radius: 6px; text-align: center;">
-            <div style="font-size: 28px; font-weight: 700; color: #10b981;">✅ ${successCount}</div>
-            <div style="font-size: 11px; color: #047857; margin-top: 2px;">Added</div>
+            <div style="font-size: 24px; font-weight: 700; color: #10b981;">✅ ${successCount}</div>
+            <div style="font-size: 11px; color: #047857; margin-top: 2px;">Success</div>
           </div>
           <div style="padding: 10px; background: #fee2e2; border-radius: 6px; text-align: center;">
-            <div style="font-size: 28px; font-weight: 700; color: #ef4444;">❌ ${failCount}</div>
+            <div style="font-size: 24px; font-weight: 700, color: #ef4444;">❌ ${failCount}</div>
             <div style="font-size: 11px; color: #7f1d1d; margin-top: 2px;">Failed</div>
           </div>
           <div style="padding: 10px; background: #fef3c7; border-radius: 6px; text-align: center;">
-            <div style="font-size: 28px; font-weight: 700; color: #f59e0b;">⏭️ ${skippedCount}</div>
+            <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">⏭️ ${skippedCount}</div>
             <div style="font-size: 11px; color: #92400e; margin-top: 2px;">Skipped</div>
           </div>
           <div style="padding: 10px; background: #f3f4f6; border-radius: 6px; text-align: center;">
-            <div style="font-size: 28px; font-weight: 700; color: #6b7280;">⏱️ ${elapsed}s</div>
-            <div style="font-size: 11px; color: #4b5563; margin-top: 2px;">Total Time</div>
+            <div style="font-size: 24px; font-weight: 700; color: #6b7280;">⏱️ ${elapsed}s</div>
+            <div style="font-size: 11px; color: #4b5563; margin-top: 2px;">Elapsed</div>
           </div>
         </div>
 
-        <div style="max-height: 400px; overflow-y: auto; background: white; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; margin-bottom: 12px; font-size: 12px;">
-          ${results.map((r, idx) => {
-            const icon = r.success ? '✅' : '❌';
-            return `
-              <div style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; display: flex; align-items: flex-start; gap: 8px;">
-                <div style="flex-shrink: 0; margin-top: 2px;">${icon}</div>
-                <div style="flex: 1; min-width: 0;">
-                  <div style="font-weight: 600; word-break: break-all;">${r.location}</div>
-                  <div style="color: #6b7280; font-size: 11px; margin-top: 2px;">${r.status || r.error || 'Completed'}</div>
-                </div>
-              </div>
-            `;
-          }).join('')}
+        <div style="padding: 8px 12px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 12px; color: #1f2937;">
+          📝 ${status}
         </div>
-
-        <button id="bulkAddCopyResultsBtn" style="
-          padding: 10px 16px;
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 12px;
-          font-weight: 600;
-          transition: background 0.2s;
-        " onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
-          📋 Copy Results to Clipboard
-        </button>
       </div>
     `;
 
@@ -1662,7 +1673,65 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
   let updatedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
-  const changedRows = [];
+ const changedRows = [];
+  const skipReasonCounts = Object.create(null);
+  const googleApiDiagnostics = {
+    attemptedRows: 0,
+    returnedRows: 0,
+    emptyRows: 0,
+    errorRows: 0,
+    sourceCounts: Object.create(null),
+    sampleReturns: []
+  };
+  const bumpCounter = (bucket, key) => {
+    const safeKey = String(key || 'unspecified').trim() || 'unspecified';
+    bucket[safeKey] = Number(bucket[safeKey] || 0) + 1;
+  };
+  const markSkipReason = (reason) => bumpCounter(skipReasonCounts, reason);
+  const recordGoogleDiag = (details, placeId) => {
+    const sourceDiag = details && typeof details.__sourceDiag === 'object' ? details.__sourceDiag : null;
+    if (!sourceDiag) return;
+    bumpCounter(googleApiDiagnostics.sourceCounts, sourceDiag.source || 'unknown');
+    if (sourceDiag.liveLookupAttempted) googleApiDiagnostics.attemptedRows += 1;
+    if (sourceDiag.hasMeaningfulDetails) googleApiDiagnostics.returnedRows += 1;
+    else googleApiDiagnostics.emptyRows += 1;
+    const sourceStatus = String(sourceDiag.liveLookupStatus || '').trim();
+    if (sourceStatus === 'error' || sourceStatus === 'helper-error') googleApiDiagnostics.errorRows += 1;
+    if (googleApiDiagnostics.sampleReturns.length < 3) {
+      googleApiDiagnostics.sampleReturns.push({
+        placeId: String(placeId || '').trim(),
+        source: String(sourceDiag.source || 'unknown').trim() || 'unknown',
+        status: sourceStatus || 'unknown',
+        descriptionPreview: String((details && details.description) || '').trim().slice(0, 120)
+      });
+    }
+  };
+  const buildOperationDiagnostics = () => {
+    const normalizedSkipReasonCounts = Object.keys(skipReasonCounts)
+      .sort((a, b) => a.localeCompare(b))
+      .reduce((acc, key) => {
+        acc[key] = Number(skipReasonCounts[key] || 0);
+        return acc;
+      }, {});
+    const normalizedSourceCounts = Object.keys(googleApiDiagnostics.sourceCounts)
+      .sort((a, b) => a.localeCompare(b))
+      .reduce((acc, key) => {
+        acc[key] = Number(googleApiDiagnostics.sourceCounts[key] || 0);
+        return acc;
+      }, {});
+    return {
+      skipReasonCounts: normalizedSkipReasonCounts,
+      googleApi: {
+        checked: Number(googleApiDiagnostics.attemptedRows || 0) > 0,
+        attemptedRows: Number(googleApiDiagnostics.attemptedRows || 0),
+        returnedRows: Number(googleApiDiagnostics.returnedRows || 0),
+        emptyRows: Number(googleApiDiagnostics.emptyRows || 0),
+        errorRows: Number(googleApiDiagnostics.errorRows || 0),
+        sourceCounts: normalizedSourceCounts,
+        sampleReturns: Array.isArray(googleApiDiagnostics.sampleReturns) ? googleApiDiagnostics.sampleReturns.slice(0, 3) : []
+      }
+    };
+  };
 
   const updateDisplay = (status) => {
     displayElement.innerHTML = status;
@@ -1690,6 +1759,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
 
       if (!values || values.length === 0) {
         skippedCount++;
+        markSkipReason('empty-row-values');
         continue;
       }
 
@@ -1719,6 +1789,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
             message: 'All fields populated'
           });
           skippedCount++;
+          markSkipReason('no-missing-fields');
           continue;
         }
 
@@ -1729,6 +1800,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
             message: `Missing fields: ${emptyFields.join(', ')} - but no valid Place ID`
           });
           skippedCount++;
+          markSkipReason('invalid-place-id');
           continue;
         }
 
@@ -1737,6 +1809,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
           allowCachedFallback: false,
           context: 'update-descriptions'
         });
+        recordGoogleDiag(details, placeId);
         let fieldsCorrected = [];
 
         if (!dryRun) {
@@ -1766,6 +1839,7 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
             changedRows.push(buildChangedWorkbookRow(place, i, values));
           } else {
             skippedCount++;
+            markSkipReason('no-fields-corrected');
           }
         } else {
           fieldsCorrected = emptyFields.filter(field => {
@@ -1929,7 +2003,8 @@ ${results.map((r, i) => {
       verifiedRowsChanged: persistence.verifiedRowsChanged,
       postWriteVerified: persistence.postWriteVerified,
       verificationMode: persistence.verificationMode,
-      verificationReason: persistence.verificationReason
+      verificationReason: persistence.verificationReason,
+      updateDescriptionsDiagnostics: buildOperationDiagnostics()
     };
   } catch (err) {
     console.error('❌ Error:', err);
@@ -1938,7 +2013,7 @@ ${results.map((r, i) => {
         <strong>❌ Error:</strong> ${err.message}
       </div>
     `);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, updateDescriptionsDiagnostics: buildOperationDiagnostics() };
   }
 };
 
@@ -1979,7 +2054,64 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
   let skippedCount = 0;
   let errorCount = 0;
   const changedRows = [];
-
+  const skipReasonCounts = Object.create(null);
+  const googleApiDiagnostics = {
+    attemptedRows: 0,
+    returnedRows: 0,
+    emptyRows: 0,
+    errorRows: 0,
+    sourceCounts: Object.create(null),
+    sampleReturns: []
+  };
+  const bumpCounter = (bucket, key) => {
+    const safeKey = String(key || 'unspecified').trim() || 'unspecified';
+    bucket[safeKey] = Number(bucket[safeKey] || 0) + 1;
+  };
+  const markSkipReason = (reason) => bumpCounter(skipReasonCounts, reason);
+  const recordGoogleDiag = (details, placeId) => {
+    const sourceDiag = details && typeof details.__sourceDiag === 'object' ? details.__sourceDiag : null;
+    if (!sourceDiag) return;
+    bumpCounter(googleApiDiagnostics.sourceCounts, sourceDiag.source || 'unknown');
+    if (sourceDiag.liveLookupAttempted) googleApiDiagnostics.attemptedRows += 1;
+    if (sourceDiag.hasMeaningfulDetails) googleApiDiagnostics.returnedRows += 1;
+    else googleApiDiagnostics.emptyRows += 1;
+    const sourceStatus = String(sourceDiag.liveLookupStatus || '').trim();
+    if (sourceStatus === 'error' || sourceStatus === 'helper-error') googleApiDiagnostics.errorRows += 1;
+    if (googleApiDiagnostics.sampleReturns.length < 3) {
+      googleApiDiagnostics.sampleReturns.push({
+        placeId: String(placeId || '').trim(),
+        source: String(sourceDiag.source || 'unknown').trim() || 'unknown',
+        status: sourceStatus || 'unknown',
+        descriptionPreview: String((details && details.description) || '').trim().slice(0, 120)
+      });
+    }
+  };
+  const buildOperationDiagnostics = () => {
+    const normalizedSkipReasonCounts = Object.keys(skipReasonCounts)
+      .sort((a, b) => a.localeCompare(b))
+      .reduce((acc, key) => {
+        acc[key] = Number(skipReasonCounts[key] || 0);
+        return acc;
+      }, {});
+    const normalizedSourceCounts = Object.keys(googleApiDiagnostics.sourceCounts)
+      .sort((a, b) => a.localeCompare(b))
+      .reduce((acc, key) => {
+        acc[key] = Number(googleApiDiagnostics.sourceCounts[key] || 0);
+        return acc;
+      }, {});
+    return {
+      skipReasonCounts: normalizedSkipReasonCounts,
+      googleApi: {
+        checked: Number(googleApiDiagnostics.attemptedRows || 0) > 0,
+        attemptedRows: Number(googleApiDiagnostics.attemptedRows || 0),
+        returnedRows: Number(googleApiDiagnostics.returnedRows || 0),
+        emptyRows: Number(googleApiDiagnostics.emptyRows || 0),
+        errorRows: Number(googleApiDiagnostics.errorRows || 0),
+        sourceCounts: normalizedSourceCounts,
+        sampleReturns: Array.isArray(googleApiDiagnostics.sampleReturns) ? googleApiDiagnostics.sampleReturns.slice(0, 3) : []
+      }
+    };
+  };
   const updateDisplay = (status) => {
     displayElement.innerHTML = status;
   };
@@ -2006,6 +2138,7 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
 
       if (!values || values.length === 0) {
         skippedCount++;
+        markSkipReason('empty-row-values');
         continue;
       }
 
@@ -2018,23 +2151,26 @@ window.handleUpdateHoursOnly = async function(displayElement, dryRun = false) {
 
         if (!placeId || !String(placeId).startsWith('ChI')) {
           results.push({
-            name,
+            name: name || '(no name)',
             status: 'skipped',
             message: 'No valid Place ID'
           });
           skippedCount++;
+          markSkipReason('invalid-place-id');
           continue;
         }
 
         const details = await getPlaceDetailsFromAPI(placeId);
+        recordGoogleDiag(details, placeId);
 
         if (!details.hours) {
           results.push({
-            name,
+            name: name || '(no name)',
             status: 'skipped',
             message: 'No hours available from Google'
           });
           skippedCount++;
+          markSkipReason('no-hours-from-google');
           continue;
         }
 
@@ -2179,7 +2315,8 @@ ${results.map((r, i) => {
       verifiedRowsChanged: persistence.verifiedRowsChanged,
       postWriteVerified: persistence.postWriteVerified,
       verificationMode: persistence.verificationMode,
-      verificationReason: persistence.verificationReason
+      verificationReason: persistence.verificationReason,
+      updateDescriptionsDiagnostics: buildOperationDiagnostics()
     };
   } catch (err) {
     console.error('❌ Error:', err);
@@ -2188,7 +2325,7 @@ ${results.map((r, i) => {
         <strong>❌ Error:</strong> ${err.message}
       </div>
     `);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, updateDescriptionsDiagnostics: buildOperationDiagnostics() };
   }
 };
 
@@ -2433,6 +2570,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
     descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
     totalRows: adventuresData.length
   });
+
   const results = [];
   let updatedCount = 0;
   let skippedCount = 0;
@@ -2441,6 +2579,33 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
   const previewItems = [];
   const changedRows = [];
   const rowAuditTrail = [];
+  const skipReasonCounts = Object.create(null);
+  const googleApiDiagnostics = {
+    attemptedRows: 0,
+    returnedRows: 0,
+    emptyRows: 0,
+    errorRows: 0,
+    sourceCounts: Object.create(null),
+    sampleReturns: []
+  };
+  const bumpCounter = (bucket, key) => {
+    const safeKey = String(key || 'unspecified').trim() || 'unspecified';
+    bucket[safeKey] = Number(bucket[safeKey] || 0) + 1;
+  };
+  const markSkipReason = (reason) => bumpCounter(skipReasonCounts, reason);
+
+  const emptyRunDiagnostics = {
+    skipReasonCounts: {},
+    googleApi: {
+      checked: false,
+      attemptedRows: 0,
+      returnedRows: 0,
+      emptyRows: 0,
+      errorRows: 0,
+      sourceCounts: {},
+      sampleReturns: []
+    }
+  };
 
   const escapeHtml = (value) => String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -2515,6 +2680,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         richDescriptionsOnly,
         richDescriptionsMode,
         preflight,
+        updateDescriptionsDiagnostics: emptyRunDiagnostics,
         rowAuditTrail: [],
         perRowWriteLog: []
       };
@@ -2532,6 +2698,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         richDescriptionsOnly,
         richDescriptionsMode,
         preflight,
+        updateDescriptionsDiagnostics: emptyRunDiagnostics,
         error: String(preflight.detail || preflight.reason || 'preflight-failed')
       };
     }
@@ -2539,7 +2706,11 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
     for (let i = 0; i < adventuresData.length; i++) {
       const place = adventuresData[i];
       const values = place.values ? place.values[0] : place;
-      if (!values || values.length === 0) { skippedCount++; continue; }
+      if (!values || values.length === 0) {
+        skippedCount++;
+        markSkipReason('empty-row-values');
+        continue;
+      }
 
       try {
         if (i > 0) await delay(PLACES_API_DELAY_MS);
@@ -2557,6 +2728,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         };
 
         if (!overwrite && existingDesc) {
+          markSkipReason('already-has-description');
           rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'already-has-description' });
           pushWorkbookWriteDebug('update-descriptions-row-skipped', {
             ...baseAudit,
@@ -2568,6 +2740,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         }
 
         if (!placeId || !placeId.startsWith('ChI')) {
+          markSkipReason('invalid-place-id');
           rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'invalid-place-id' });
           pushWorkbookWriteDebug('update-descriptions-row-skipped', {
             ...baseAudit,
@@ -2583,9 +2756,27 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
           allowCachedFallback: false,
           context: 'update-descriptions'
         });
-        const newDesc = (details && details.description) ? details.description.trim() : '';
+        const sourceDiag = details && typeof details.__sourceDiag === 'object' ? details.__sourceDiag : null;
+        if (sourceDiag) {
+          bumpCounter(googleApiDiagnostics.sourceCounts, sourceDiag.source || 'unknown');
+          if (sourceDiag.liveLookupAttempted) googleApiDiagnostics.attemptedRows += 1;
+          if (sourceDiag.hasMeaningfulDetails) googleApiDiagnostics.returnedRows += 1;
+          else googleApiDiagnostics.emptyRows += 1;
+          const sourceStatus = String(sourceDiag.liveLookupStatus || '').trim();
+          if (sourceStatus === 'error' || sourceStatus === 'helper-error') {
+            googleApiDiagnostics.errorRows += 1;
+          }
+          if (googleApiDiagnostics.sampleReturns.length < 3) {
+            googleApiDiagnostics.sampleReturns.push({
+              placeId,
+              source: String(sourceDiag.source || 'unknown').trim() || 'unknown',
+              status: sourceStatus || 'unknown',
+              descriptionPreview: String((details && details.description) || '').trim().slice(0, 120)
+            });
+          }
+        }
 
-        // Fallback: generate a basic description from name + location data
+        const newDesc = (details && details.description) ? details.description.trim() : '';
         const generatedDesc = newDesc || (() => {
           const city = (values[activeCols.CITY] || '').toString().trim();
           const state = (values[activeCols.STATE] || '').toString().trim();
@@ -2611,6 +2802,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         if (richDescriptionsOnly && generatedDesc && !isRichDescription) {
           skippedCount++;
           skippedNonRichCount++;
+          markSkipReason('non-rich-description-source');
           rowAuditTrail.push({
             ...baseAudit,
             status: 'skipped',
@@ -2629,9 +2821,6 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
 
         if (!dryRun && generatedDesc) {
           values[activeCols.DESCRIPTION] = generatedDesc;
-
-          // Compatibility: some legacy UI flows still read description from index 16.
-          // Mirror only when that slot is empty or clearly auto-generated placeholder text.
           if (COLS.DESCRIPTION !== activeCols.DESCRIPTION && COLS.DESCRIPTION < values.length) {
             const legacyValue = values[COLS.DESCRIPTION];
             if (isAutoGeneratedDescriptionPlaceholder(legacyValue)) {
@@ -2675,6 +2864,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
           }
         } else {
           skippedCount++;
+          markSkipReason('no-description-generated');
           rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'no-description-generated' });
           pushWorkbookWriteDebug('update-descriptions-row-skipped', {
             ...baseAudit,
@@ -2693,6 +2883,31 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       }
     }
 
+    const normalizedSkipReasonCounts = Object.keys(skipReasonCounts)
+      .sort((a, b) => a.localeCompare(b))
+      .reduce((acc, key) => {
+        acc[key] = Number(skipReasonCounts[key] || 0);
+        return acc;
+      }, {});
+    const normalizedGoogleSourceCounts = Object.keys(googleApiDiagnostics.sourceCounts)
+      .sort((a, b) => a.localeCompare(b))
+      .reduce((acc, key) => {
+        acc[key] = Number(googleApiDiagnostics.sourceCounts[key] || 0);
+        return acc;
+      }, {});
+    const updateDescriptionsDiagnostics = {
+      skipReasonCounts: normalizedSkipReasonCounts,
+      googleApi: {
+        checked: Number(googleApiDiagnostics.attemptedRows || 0) > 0,
+        attemptedRows: Number(googleApiDiagnostics.attemptedRows || 0),
+        returnedRows: Number(googleApiDiagnostics.returnedRows || 0),
+        emptyRows: Number(googleApiDiagnostics.emptyRows || 0),
+        errorRows: Number(googleApiDiagnostics.errorRows || 0),
+        sourceCounts: normalizedGoogleSourceCounts,
+        sampleReturns: Array.isArray(googleApiDiagnostics.sampleReturns) ? googleApiDiagnostics.sampleReturns.slice(0, 3) : []
+      }
+    };
+
     const persistence = await persistAutomationWorkbookChanges(mainWindow, {
       operation: 'update-descriptions',
       operationRunId,
@@ -2705,9 +2920,11 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       descriptionColumnIndex: Number(activeCols.DESCRIPTION),
       descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
     });
+
     const writeTargetLabel = persistence && persistence.writeTarget
       ? `${String(persistence.writeTarget.resolvedFilePath || '')} | ${String(persistence.writeTarget.tableName || '')}`
       : '(not available)';
+
     window.__lastUpdateDescriptionsAudit = {
       at: new Date().toISOString(),
       operationRunId,
@@ -2723,9 +2940,11 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       preflight: persistence.preflight || preflight,
       diagnosticSummary: persistence.diagnosticSummary || null,
       skippedNonRichCount,
+      updateDescriptionsDiagnostics,
       rowAuditTrail,
       perRowWriteLog: Array.isArray(persistence.perRowWriteLog) ? persistence.perRowWriteLog : []
     };
+
     pushWorkbookWriteDebug('update-descriptions-operation-summary', {
       operationRunId,
       overwrite: !!overwrite,
@@ -2744,8 +2963,10 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       strictVerificationMode,
       richDescriptionsOnly,
       richDescriptionsMode,
+      updateDescriptionsDiagnostics,
       diagnosticSummary: persistence.diagnosticSummary || null
     });
+
     const canDownloadAuditCsv = !dryRun && Array.isArray(persistence.perRowWriteLog) && persistence.perRowWriteLog.length > 0;
     const diag = persistence.diagnosticSummary || {};
     const strictRunFailed = !!persistence.runFailed;
@@ -2798,19 +3019,16 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       preflight: persistence.preflight || preflight,
       diagnosticSummary: persistence.diagnosticSummary || null,
       skippedNonRichCount,
+      updateDescriptionsDiagnostics,
       perRowWriteLog: Array.isArray(persistence.perRowWriteLog) ? persistence.perRowWriteLog : [],
       rowAuditTrailCount: rowAuditTrail.length
     };
   } catch (err) {
     console.error('❌ Error updating descriptions:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, updateDescriptionsDiagnostics: emptyRunDiagnostics };
   }
 };
-
-window.handleUpdateAllDescriptionsEnhanced = window.handleUpdateAllDescriptions;
-
-console.log('✅ Update All Descriptions ready');
 
 // ============================================================
 // SECTION 8: FORCE UPDATE ALL FIELDS
@@ -2838,6 +3056,64 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
   let skippedCount = 0;
   let errorCount = 0;
   const changedRows = [];
+  const skipReasonCounts = Object.create(null);
+  const googleApiDiagnostics = {
+    attemptedRows: 0,
+    returnedRows: 0,
+    emptyRows: 0,
+    errorRows: 0,
+    sourceCounts: Object.create(null),
+    sampleReturns: []
+  };
+  const bumpCounter = (bucket, key) => {
+    const safeKey = String(key || 'unspecified').trim() || 'unspecified';
+    bucket[safeKey] = Number(bucket[safeKey] || 0) + 1;
+  };
+  const markSkipReason = (reason) => bumpCounter(skipReasonCounts, reason);
+  const recordGoogleDiag = (details, placeId) => {
+    const sourceDiag = details && typeof details.__sourceDiag === 'object' ? details.__sourceDiag : null;
+    if (!sourceDiag) return;
+    bumpCounter(googleApiDiagnostics.sourceCounts, sourceDiag.source || 'unknown');
+    if (sourceDiag.liveLookupAttempted) googleApiDiagnostics.attemptedRows += 1;
+    if (sourceDiag.hasMeaningfulDetails) googleApiDiagnostics.returnedRows += 1;
+    else googleApiDiagnostics.emptyRows += 1;
+    const sourceStatus = String(sourceDiag.liveLookupStatus || '').trim();
+    if (sourceStatus === 'error' || sourceStatus === 'helper-error') googleApiDiagnostics.errorRows += 1;
+    if (googleApiDiagnostics.sampleReturns.length < 3) {
+      googleApiDiagnostics.sampleReturns.push({
+        placeId: String(placeId || '').trim(),
+        source: String(sourceDiag.source || 'unknown').trim() || 'unknown',
+        status: sourceStatus || 'unknown',
+        descriptionPreview: String((details && details.description) || '').trim().slice(0, 120)
+      });
+    }
+  };
+  const buildOperationDiagnostics = () => {
+    const normalizedSkipReasonCounts = Object.keys(skipReasonCounts)
+      .sort((a, b) => a.localeCompare(b))
+      .reduce((acc, key) => {
+        acc[key] = Number(skipReasonCounts[key] || 0);
+        return acc;
+      }, {});
+    const normalizedSourceCounts = Object.keys(googleApiDiagnostics.sourceCounts)
+      .sort((a, b) => a.localeCompare(b))
+      .reduce((acc, key) => {
+        acc[key] = Number(googleApiDiagnostics.sourceCounts[key] || 0);
+        return acc;
+      }, {});
+    return {
+      skipReasonCounts: normalizedSkipReasonCounts,
+      googleApi: {
+        checked: Number(googleApiDiagnostics.attemptedRows || 0) > 0,
+        attemptedRows: Number(googleApiDiagnostics.attemptedRows || 0),
+        returnedRows: Number(googleApiDiagnostics.returnedRows || 0),
+        emptyRows: Number(googleApiDiagnostics.emptyRows || 0),
+        errorRows: Number(googleApiDiagnostics.errorRows || 0),
+        sourceCounts: normalizedSourceCounts,
+        sampleReturns: Array.isArray(googleApiDiagnostics.sampleReturns) ? googleApiDiagnostics.sampleReturns.slice(0, 3) : []
+      }
+    };
+  };
 
   const updateDisplay = (status) => { displayElement.innerHTML = status; };
 
@@ -2851,7 +3127,7 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
     for (let i = 0; i < adventuresData.length; i++) {
       const place = adventuresData[i];
       const values = place.values ? place.values[0] : place;
-      if (!values || values.length === 0) { skippedCount++; continue; }
+      if (!values || values.length === 0) { skippedCount++; markSkipReason('empty-row-values'); continue; }
 
       try {
         if (i > 0) await delay(PLACES_API_DELAY_MS);
@@ -2862,10 +3138,12 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
         if (!placeId || !placeId.startsWith('ChI')) {
           results.push({ name: name || '(no name)', status: 'skipped', message: 'No valid Place ID' });
           skippedCount++;
+          markSkipReason('invalid-place-id');
           continue;
         }
 
         const details = await getPlaceDetailsFromAPI(placeId);
+        recordGoogleDiag(details, placeId);
         const updated = [];
 
         if (!dryRun) {
@@ -2882,6 +3160,7 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
             results.push({ name, status: 'updated', message: `Updated: ${updated.join(', ')}` });
           } else {
             skippedCount++;
+            markSkipReason('no-new-data-from-api');
             results.push({ name, status: 'skipped', message: 'No new data from API' });
           }
         } else {
@@ -2897,12 +3176,43 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
             results.push({ name, status: 'would-update', message: `Would update: ${preview.join(', ')}` });
           } else {
             skippedCount++;
+            markSkipReason('no-new-data-from-api');
             results.push({ name, status: 'skipped', message: 'No new data from API' });
           }
         }
       } catch (e) {
         errorCount++;
         results.push({ name: '(error)', status: 'error', message: e.message });
+      }
+
+      if ((i + 1) % 5 === 0 || i === adventuresData.length - 1) {
+        const percent = Math.round(((i + 1) / adventuresData.length) * 100);
+        updateDisplay(`
+          <div style="padding: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;">
+            <div style="font-weight: 600; color: #1e40af; margin-bottom: 12px;">
+              ${dryRun ? '🧪 DRY RUN' : '⏳ Processing'} Force Update All Fields
+            </div>
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 14px; color: #1f2937; margin-bottom: 4px;">
+                Progress: ${i + 1}/${adventuresData.length} (${percent}%)
+              </div>
+              <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                <div style="width: ${percent}%; height: 100%; background: #3b82f6; transition: width 0.3s;"></div>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 13px;">
+              <div style="padding: 8px; background: #ecfdf5; border-radius: 4px; color: #047857;">
+                ✅ Updated: ${updatedCount}
+              </div>
+              <div style="padding: 8px; background: #f3f4f6; border-radius: 4px; color: #4b5563;">
+                ⏭️ Skipped: ${skippedCount}
+              </div>
+              <div style="padding: 8px; background: #fee2e2; border-radius: 4px; color: #7f1d1d;">
+                ❌ Errors: ${errorCount}
+              </div>
+            </div>
+          </div>
+        `);
       }
     }
 
@@ -2919,11 +3229,11 @@ window.handleForceUpdateAllFields = async function(displayElement, dryRun = fals
       <div style="font-size:12px;color:${persistence.persisted ? '#047857' : '#92400e'};margin-top:8px;">💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}</div>
     </div>`);
 
-    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason, rowsChanged: changedRows.length, persistedRows: persistence.persistedRows, verifiedRowsChanged: persistence.verifiedRowsChanged, postWriteVerified: persistence.postWriteVerified, verificationMode: persistence.verificationMode, verificationReason: persistence.verificationReason };
+    return { success: true, updatedCount, skippedCount, errorCount, results, dryRun, persisted: !!persistence.persisted, persistMode: persistence.mode, persistReason: persistence.reason, rowsChanged: changedRows.length, persistedRows: persistence.persistedRows, verifiedRowsChanged: persistence.verifiedRowsChanged, postWriteVerified: persistence.postWriteVerified, verificationMode: persistence.verificationMode, verificationReason: persistence.verificationReason, updateDescriptionsDiagnostics: buildOperationDiagnostics() };
   } catch (err) {
     console.error('❌ Error force-updating fields:', err);
     updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;"><strong>❌ Error:</strong> ${err.message}</div>`);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message, updateDescriptionsDiagnostics: buildOperationDiagnostics() };
   }
 };
 
