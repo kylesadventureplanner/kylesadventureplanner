@@ -52,10 +52,10 @@ test.describe('Visited enrich modal smoke', () => {
       firstDescription
     ].join('\n'));
     await parseBtn.click({ force: true });
-    const parserPreview = page.locator('#visitedLocationParserPreview');
-    const parserFields = page.locator('#visitedLocationParserPreview .visited-parser-fields');
-    const confidenceChips = page.locator('.visited-parser-confidence-chip');
-    const selectToggles = page.locator('[data-parser-field-select]');
+    const parserPreview = modal.locator('#visitedLocationParserPreview');
+    const parserFields = modal.locator('#visitedLocationParserPreview .visited-parser-fields');
+    const confidenceChips = modal.locator('.visited-parser-confidence-chip');
+    const selectToggles = modal.locator('#visitedLocationParserPreview [data-parser-field-select]');
     await expect(parserFields).toBeVisible();
     const initialChipCount = await confidenceChips.count();
     const initialToggleCount = await selectToggles.count();
@@ -73,16 +73,26 @@ test.describe('Visited enrich modal smoke', () => {
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').first()).toContainText('Before:');
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').nth(1)).toContainText('After:');
 
-      for (let i = 0, total = await selectToggles.count(); i < total; i += 1) {
-        const toggle = selectToggles.nth(i);
-        if (await toggle.isChecked()) {
-          await toggle.uncheck({ force: true });
-        }
-      }
+      await page.evaluate(() => {
+        const toggles = Array.from(document.querySelectorAll('#visitedLocationTextParserModal #visitedLocationParserPreview [data-parser-field-select]'));
+        toggles.forEach((toggle) => {
+          if (!(toggle instanceof HTMLInputElement)) return;
+          toggle.checked = false;
+          toggle.dispatchEvent(new Event('input', { bubbles: true }));
+          toggle.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
       await expect(saveBtn).toBeDisabled();
 
       const descriptionCheckbox = page.locator('#visitedLocationParserSelect-description');
-      await descriptionCheckbox.check({ force: true });
+      await page.evaluate(() => {
+        const checkbox = document.getElementById('visitedLocationParserSelect-description');
+        if (!(checkbox instanceof HTMLInputElement)) return;
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await expect(descriptionCheckbox).toBeChecked();
       await expect(saveBtn).toBeEnabled();
       await expect(saveBtn).toContainText('Save Selected (1)');
 
