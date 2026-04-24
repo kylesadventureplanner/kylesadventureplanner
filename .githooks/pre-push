@@ -1,6 +1,48 @@
 #!/usr/bin/env sh
 set -eu
 
-echo "[pre-push] Running reliability:prepush..."
-npm run reliability:prepush
+# Git hooks run in a minimal environment without the user's PATH.
+# Locate npm from common install locations before running.
+find_npm() {
+  # 1. Already on PATH
+  if command -v npm >/dev/null 2>&1; then
+    command -v npm
+    return 0
+  fi
 
+  # 2. Homebrew (Apple Silicon / Intel)
+  for p in /opt/homebrew/bin/npm /usr/local/bin/npm; do
+    if [ -x "$p" ]; then echo "$p"; return 0; fi
+  done
+
+  # 3. nvm – pick the current/default version
+  NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -f "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "$NVM_DIR/nvm.sh" --no-use
+    _nvm_npm=$(command -v npm 2>/dev/null || true)
+    if [ -n "$_nvm_npm" ]; then echo "$_nvm_npm"; return 0; fi
+  fi
+
+  # 4. JetBrains-bundled Node (WebStorm / IntelliJ)
+  _jb_npm=$(find "$HOME/Library/Application Support/JetBrains" \
+    -name npm -path "*/bin/npm" 2>/dev/null | sort | tail -1)
+  if [ -n "$_jb_npm" ] && [ -x "$_jb_npm" ]; then
+    echo "$_jb_npm"
+    return 0
+  fi
+
+  # 5. Volta
+  if [ -x "$HOME/.volta/bin/npm" ]; then echo "$HOME/.volta/bin/npm"; return 0; fi
+
+  return 1
+}
+
+NPM=$(find_npm) || {
+  echo "[pre-push] ERROR: npm not found – install Node.js and ensure npm is on PATH."
+  exit 1
+}
+
+echo "[pre-push] Using npm: $NPM"
+echo "[pre-push] Running reliability:prepush..."
+"$NPM" run reliability:prepush
