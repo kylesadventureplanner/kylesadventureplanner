@@ -1333,7 +1333,7 @@
 
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
           <input type="checkbox" id="descRichOnlyMode">
-          <label for="descRichOnlyMode" id="descRichOnlyModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">📝 Rich descriptions only (skip placeholders)</label>
+          <label for="descRichOnlyMode" id="descRichOnlyModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">📝 Allow placeholders/fallbacks (default: enabled)</label>
         </div>
 
         <div class="button-group">
@@ -1344,7 +1344,7 @@
             <div id="desc-write-diagnostics" class="help-text" style="margin-top:0;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
             <div style="display:inline-flex;align-items:center;gap:6px;">
               <span id="desc-strict-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:11px;font-weight:700;line-height:1;">STRICT: FAIL-CLOSED</span>
-              <span id="desc-rich-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:11px;font-weight:700;line-height:1;">RICH: OFF</span>
+              <span id="desc-rich-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:11px;font-weight:700;line-height:1;">RICH: OFF (Google fallbacks enabled)</span>
             </div>
           </div>
 
@@ -6455,7 +6455,7 @@
       if (typeof window.getUpdateDescriptionsRichOnlyMode === 'function') {
         return String(window.getUpdateDescriptionsRichOnlyMode() || '').trim() === 'rich-only';
       }
-      return false;
+      return false; /* Default is OFF to ensure Google lookups happen */
     }
 
     function persistUpdateDescriptionsRichOnlyPreference(enabled) {
@@ -6465,11 +6465,11 @@
       const badge = document.getElementById('desc-rich-mode-badge');
       if (label) {
         label.textContent = richOnlyEnabled
-          ? '📝 Rich descriptions only (skip placeholders)'
-          : '📝 Rich descriptions only OFF (allow placeholders)';
+          ? '📝 Rich descriptions only (skip placeholder fallbacks)'
+          : '📝 Allow placeholders/fallbacks (default: enabled)';
       }
       if (badge) {
-        badge.textContent = richOnlyEnabled ? 'RICH: ON' : 'RICH: OFF';
+        badge.textContent = richOnlyEnabled ? 'RICH: ON (skip fallbacks)' : 'RICH: OFF (allow Google fallbacks)';
         badge.style.borderColor = richOnlyEnabled ? '#bbf7d0' : '#d1d5db';
         badge.style.background = richOnlyEnabled ? '#f0fdf4' : '#f9fafb';
         badge.style.color = richOnlyEnabled ? '#166534' : '#374151';
@@ -6487,6 +6487,23 @@
         persistUpdateDescriptionsRichOnlyPreference(checkbox.checked);
       });
     }
+
+    /* Console helper to reset Rich-Only mode when stuck */
+    window.__resetDescriptionsRichOnlyMode = function() {
+      try {
+        localStorage.setItem(DESC_RICH_ONLY_MODE_STORAGE_KEY, 'off');
+        const checkbox = document.getElementById('descRichOnlyMode');
+        if (checkbox) checkbox.checked = false;
+        persistUpdateDescriptionsRichOnlyPreference(false);
+        console.log('✅ Reset: Rich-Only mode is now OFF. Google fallbacks are enabled.');
+        console.log('📝 Reload the page or toggle "📝 Allow placeholders/fallbacks" to apply.');
+        return 'done';
+      } catch (err) {
+        console.error('❌ Failed to reset:', err);
+        return 'error: ' + String(err);
+      }
+    };
+    console.log('💡 Tip: If descriptions aren\\'t being fetched from Google, run: __resetDescriptionsRichOnlyMode()');
 
     async function submitUpdateDescriptions() {
       const dryRun = document.getElementById('descDryRun').checked;
