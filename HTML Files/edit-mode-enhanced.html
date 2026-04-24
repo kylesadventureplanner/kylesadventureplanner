@@ -1326,11 +1326,19 @@
           <label for="descOverwrite" style="font-size:13px; color:#374151; cursor:pointer;">⚠️ Overwrite existing descriptions</label>
         </div>
 
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+          <input type="checkbox" id="descStrictMode" checked>
+          <label for="descStrictMode" id="descStrictModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">🛡️ Strict mode (fail-closed verification)</label>
+        </div>
+
         <div class="button-group">
           <button class="button button-primary" onclick="submitUpdateDescriptions()">📝 Update Descriptions</button>
         </div>
 
-          <div id="desc-write-diagnostics" class="help-text" style="margin-top:8px;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <div id="desc-write-diagnostics" class="help-text" style="margin-top:0;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
+            <span id="desc-strict-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:11px;font-weight:700;line-height:1;">STRICT: FAIL-CLOSED</span>
+          </div>
 
         <div id="desc-status"></div>
       </div>
@@ -6261,16 +6269,62 @@
     /**
      * Submit Update Descriptions
      */
+    const DESC_STRICT_MODE_STORAGE_KEY = 'updateDescriptionsStrictMode';
+
+    function getUpdateDescriptionsStrictModePreference() {
+      try {
+        const raw = String(localStorage.getItem(DESC_STRICT_MODE_STORAGE_KEY) || '').trim().toLowerCase();
+        if (raw === 'warn-only' || raw === 'off' || raw === 'false' || raw === '0') return false;
+        if (raw === 'fail-closed' || raw === 'on' || raw === 'true' || raw === '1') return true;
+      } catch (_error) {}
+      if (typeof window.getUpdateDescriptionsStrictMode === 'function') {
+        return String(window.getUpdateDescriptionsStrictMode() || '').trim() !== 'warn-only';
+      }
+      return true;
+    }
+
+    function persistUpdateDescriptionsStrictModePreference(enabled) {
+      const strictEnabled = !!enabled;
+      const mode = strictEnabled ? 'fail-closed' : 'warn-only';
+      try { localStorage.setItem(DESC_STRICT_MODE_STORAGE_KEY, mode); } catch (_error) {}
+      const label = document.getElementById('descStrictModeLabel');
+      const badge = document.getElementById('desc-strict-mode-badge');
+      if (label) {
+        label.textContent = strictEnabled
+          ? '🛡️ Strict mode (fail-closed verification)'
+          : '🛡️ Strict mode OFF (warn-only verification)';
+      }
+      if (badge) {
+        badge.textContent = strictEnabled ? 'STRICT: FAIL-CLOSED' : 'STRICT: WARN-ONLY';
+        badge.style.borderColor = strictEnabled ? '#bbf7d0' : '#fde68a';
+        badge.style.background = strictEnabled ? '#f0fdf4' : '#fffbeb';
+        badge.style.color = strictEnabled ? '#166534' : '#92400e';
+      }
+      return strictEnabled;
+    }
+
+    function initUpdateDescriptionsStrictModeToggle() {
+      const checkbox = document.getElementById('descStrictMode');
+      if (!checkbox) return;
+      const strictEnabled = getUpdateDescriptionsStrictModePreference();
+      checkbox.checked = !!strictEnabled;
+      persistUpdateDescriptionsStrictModePreference(strictEnabled);
+      checkbox.addEventListener('change', () => {
+        persistUpdateDescriptionsStrictModePreference(checkbox.checked);
+      });
+    }
+
     async function submitUpdateDescriptions() {
       const dryRun = document.getElementById('descDryRun').checked;
       const overwrite = document.getElementById('descOverwrite').checked;
+      const strictModeEnabled = !!document.getElementById('descStrictMode')?.checked;
       const statusDiv = document.getElementById('desc-status');
       const single = getSelectedTarget('automationTargetSelect');
       const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateAllDescriptions === 'function') {
-          return await window.handleUpdateAllDescriptions(document.createElement('div'), dryRun, overwrite);
+          return await window.handleUpdateAllDescriptions(document.createElement('div'), dryRun, overwrite, strictModeEnabled);
         }
         throw new Error('Update descriptions handler not available');
       });
@@ -6384,6 +6438,7 @@
       initSingleCandidateSearch();
       initBulkCandidateSearch();
       initChainCandidateSearch();
+      initUpdateDescriptionsStrictModeToggle();
       initCandidateGeoFilters();
       mountFestivalSourcesConfigCardInPlaces();
       closeFestivalSourcesConfigView({ restoreFocus: false });
@@ -6405,6 +6460,7 @@
       initSingleCandidateSearch();
       initBulkCandidateSearch();
       initChainCandidateSearch();
+      initUpdateDescriptionsStrictModeToggle();
       initCandidateGeoFilters();
       mountFestivalSourcesConfigCardInPlaces();
       closeFestivalSourcesConfigView({ restoreFocus: false });

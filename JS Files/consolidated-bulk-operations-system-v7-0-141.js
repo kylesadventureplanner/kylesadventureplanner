@@ -24,6 +24,25 @@ console.log('🚀 Consolidated Bulk Operations System v7.0.141 Loading...');
 window.__deploymentFileFingerprints = window.__deploymentFileFingerprints || {};
 window.__deploymentFileFingerprints['consolidated-bulk-operations-system-v7-0-141.js'] = '2026.04.24.direct-patch-fix.1';
 
+const UPDATE_DESCRIPTIONS_STRICT_MODE_STORAGE_KEY = 'updateDescriptionsStrictMode';
+
+function resolveUpdateDescriptionsStrictVerification(value) {
+  if (typeof value === 'boolean') return value;
+  const text = String(value == null ? '' : value).trim().toLowerCase();
+  if (text === 'warn-only' || text === 'off' || text === 'false' || text === '0') return false;
+  if (text === 'fail-closed' || text === 'on' || text === 'true' || text === '1') return true;
+  try {
+    const stored = String(localStorage.getItem(UPDATE_DESCRIPTIONS_STRICT_MODE_STORAGE_KEY) || '').trim().toLowerCase();
+    if (stored === 'warn-only' || stored === 'off' || stored === 'false' || stored === '0') return false;
+    if (stored === 'fail-closed' || stored === 'on' || stored === 'true' || stored === '1') return true;
+  } catch (_error) {}
+  return true;
+}
+
+window.getUpdateDescriptionsStrictMode = window.getUpdateDescriptionsStrictMode || function() {
+  return resolveUpdateDescriptionsStrictVerification(undefined) ? 'fail-closed' : 'warn-only';
+};
+
 function isWorkbookWriteDebugEnabled() {
   try {
     if (window.__workbookWriteDebugEnabled === true) return true;
@@ -57,6 +76,104 @@ window.getWorkbookWriteDebugLog = function(limit = 50) {
 };
 window.clearWorkbookWriteDebugLog = function() {
   window.__workbookWriteDebugLog = [];
+};
+window.getLastUpdateDescriptionsAudit = function() {
+  return window.__lastUpdateDescriptionsAudit || null;
+};
+window.copyLastUpdateDescriptionsAuditJson = window.copyLastUpdateDescriptionsAuditJson || async function() {
+  const payload = window.__lastUpdateDescriptionsAudit || null;
+  const text = payload ? JSON.stringify(payload, null, 2) : '';
+  if (!text) return { ok: false, reason: 'empty' };
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+    }
+    return { ok: true, bytes: text.length };
+  } catch (error) {
+    return { ok: false, reason: String(error && error.message ? error.message : error) };
+  }
+};
+
+function escapeCsvCell(value) {
+  const text = value == null ? '' : String(value);
+  if (!/[",\r\n]/.test(text)) return text;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function buildPerRowWriteLogCsv(audit) {
+  const payload = audit && typeof audit === 'object' ? audit : null;
+  const rows = Array.isArray(payload && payload.perRowWriteLog) ? payload.perRowWriteLog : [];
+  if (!rows.length) return { ok: false, reason: 'empty', csv: '', rowCount: 0, headers: [] };
+
+  const fixedHeaders = [
+    'rowIndex',
+    'rowRef',
+    'placeName',
+    'placeId',
+    'descriptionColumnIndex',
+    'descriptionColumnName',
+    'descriptionBefore',
+    'descriptionWritten',
+    'readbackValue',
+    'patchOk',
+    'readbackOk',
+    'patchError',
+    'readbackError',
+    'tableName',
+    'resolvedFilePath',
+    'patchUrl',
+    'readUrl'
+  ];
+
+  const dynamicHeaders = [];
+  rows.forEach((row) => {
+    const keys = row && typeof row === 'object' ? Object.keys(row) : [];
+    keys.forEach((key) => {
+      if (!fixedHeaders.includes(key) && !dynamicHeaders.includes(key)) {
+        dynamicHeaders.push(key);
+      }
+    });
+  });
+
+  const headers = fixedHeaders.concat(dynamicHeaders);
+  const lines = [headers.map(escapeCsvCell).join(',')];
+  rows.forEach((row) => {
+    const cells = headers.map((header) => escapeCsvCell(row && Object.prototype.hasOwnProperty.call(row, header) ? row[header] : ''));
+    lines.push(cells.join(','));
+  });
+
+  return {
+    ok: true,
+    csv: lines.join('\n'),
+    rowCount: rows.length,
+    headers
+  };
+}
+
+window.getLastUpdateDescriptionsPerRowWriteLogCsv = function() {
+  return buildPerRowWriteLogCsv(window.__lastUpdateDescriptionsAudit || null);
+};
+
+window.downloadLastUpdateDescriptionsPerRowWriteLogCsv = window.downloadLastUpdateDescriptionsPerRowWriteLogCsv || function(fileName) {
+  const built = buildPerRowWriteLogCsv(window.__lastUpdateDescriptionsAudit || null);
+  if (!built.ok) return built;
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const safeFileName = String(fileName || `update-descriptions-write-log-${stamp}.csv`).trim() || `update-descriptions-write-log-${stamp}.csv`;
+  try {
+    const blob = new Blob([built.csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = safeFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    return { ok: true, fileName: safeFileName, rowCount: built.rowCount, headers: built.headers };
+  } catch (error) {
+    return { ok: false, reason: String(error && error.message ? error.message : error) };
+  }
 };
 
 // ============================================================
@@ -233,7 +350,7 @@ function resolveWorkbookRowReference(row, fallbackIndex) {
   return resolved;
 }
 
-function buildChangedWorkbookRow(row, fallbackIndex, values) {
+function buildChangedWorkbookRow(row, fallbackIndex, values, meta = null) {
   const rowIndex = Number.isInteger(fallbackIndex) && fallbackIndex >= 0
     ? fallbackIndex
     : (() => {
@@ -243,34 +360,179 @@ function buildChangedWorkbookRow(row, fallbackIndex, values) {
   return {
     rowIndex,
     rowId: resolveWorkbookRowReference(row, rowIndex),
-    values: Array.isArray(values) ? values.slice() : []
+    values: Array.isArray(values) ? values.slice() : [],
+    meta: meta && typeof meta === 'object' ? { ...meta } : undefined
   };
 }
 
 window.resolveWorkbookRowReference = window.resolveWorkbookRowReference || resolveWorkbookRowReference;
 window.buildChangedWorkbookRow = window.buildChangedWorkbookRow || buildChangedWorkbookRow;
 
-// ─── Direct Graph API PATCH helper (mirrors syncVisitedExplorerDetailFields) ────
-async function directPatchWorkbookRow(mainWindow, rowIndex, rowValues) {
+function resolveWorkbookPatchTarget(mainWindow) {
   const src = mainWindow || (window.opener && !window.opener.closed ? window.opener : window);
   const token = src.accessToken || (window.opener && window.opener.accessToken) || window.accessToken;
   if (!token) throw new Error('automation-patch: no access token');
 
-  // Resolve the correct file path for the target table, preferring the path
-  // that was confirmed to work when loadTargetRows fetched the rows.
   const resolvedFilePath = (src.__editModeTarget && src.__editModeTarget.resolvedFilePath)
     || src.__resolvedExcelFilePath
     || src.filePath
     || 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx';
-
   const tableName = src.tableName || 'MyList';
-
-  // Encode path the same way as edit-mode-enhanced.html encodeGraphDrivePath
   const encodedPath = String(resolvedFilePath || '')
     .split('/')
     .filter(Boolean)
     .map((part) => encodeURIComponent(part))
     .join('/');
+
+  return { src, token, resolvedFilePath, tableName, encodedPath };
+}
+
+function normalizeGraphTableColumnsPayload(payload) {
+  const list = Array.isArray(payload?.value) ? payload.value : [];
+  return list.map((col, idx) => {
+    const name = String(col?.name || col?.values?.[0]?.[0] || '').trim();
+    const rawIndex = Number(col?.index);
+    const index = Number.isInteger(rawIndex) && rawIndex >= 0 ? rawIndex : idx;
+    return { name, index };
+  });
+}
+
+async function preflightValidateDescriptionWriteTarget(mainWindow, options = {}) {
+  const target = resolveWorkbookPatchTarget(mainWindow);
+  const operationRunId = String(options.operationRunId || '').trim();
+  const expectedDescriptionColumnIndex = Number.isInteger(options.descriptionColumnIndex) ? options.descriptionColumnIndex : -1;
+  const expectedDescriptionColumnName = String(options.descriptionColumnName || '').trim();
+  const expectedNameNormalized = expectedDescriptionColumnName.toLowerCase();
+  const canonicalDescriptionName = 'description';
+  const columnsUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${target.encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/columns`;
+
+  try {
+    const response = await fetch(columnsUrl, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${target.token}` }
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      return {
+        ok: false,
+        reason: `preflight-columns-http-${response.status}`,
+        detail: `Could not load table columns [${response.status}] ${errorText || ''}`.trim(),
+        operationRunId,
+        writeTarget: { resolvedFilePath: target.resolvedFilePath, tableName: target.tableName },
+        columnsUrl,
+        columns: []
+      };
+    }
+
+    const payload = await response.json();
+    const columns = normalizeGraphTableColumnsPayload(payload);
+    const columnAtExpected = expectedDescriptionColumnIndex >= 0
+      ? columns.find((col) => Number(col.index) === Number(expectedDescriptionColumnIndex))
+      : null;
+    const discoveredDescription = columns.find((col) => String(col.name || '').trim().toLowerCase() === canonicalDescriptionName) || null;
+    const discoveredNameNormalized = String(columnAtExpected?.name || '').trim().toLowerCase();
+    const expectedNameMatches = expectedNameNormalized
+      ? discoveredNameNormalized === expectedNameNormalized
+      : true;
+    const canonicalNameAtExpected = discoveredNameNormalized === canonicalDescriptionName;
+    const indexMatchesCanonical = discoveredDescription
+      ? Number(discoveredDescription.index) === Number(expectedDescriptionColumnIndex)
+      : false;
+
+    let ok = true;
+    let reason = '';
+    if (!columns.length) {
+      ok = false;
+      reason = 'no-columns-returned';
+    } else if (expectedDescriptionColumnIndex < 0) {
+      ok = false;
+      reason = 'invalid-description-index';
+    } else if (!columnAtExpected) {
+      ok = false;
+      reason = 'description-index-out-of-range';
+    } else if (!canonicalNameAtExpected && expectedNameNormalized !== canonicalDescriptionName) {
+      ok = false;
+      reason = 'description-column-name-mismatch';
+    } else if (!expectedNameMatches) {
+      ok = false;
+      reason = 'description-schema-name-mismatch';
+    } else if (discoveredDescription && !indexMatchesCanonical) {
+      ok = false;
+      reason = 'description-index-mismatch';
+    }
+
+    return {
+      ok,
+      reason,
+      detail: ok
+        ? 'preflight-ok'
+        : `Expected Description at index ${expectedDescriptionColumnIndex} but schema differs`,
+      operationRunId,
+      writeTarget: { resolvedFilePath: target.resolvedFilePath, tableName: target.tableName },
+      columnsUrl,
+      expectedDescriptionColumnIndex,
+      expectedDescriptionColumnName,
+      discoveredColumnAtExpected: columnAtExpected || null,
+      discoveredDescriptionColumn: discoveredDescription || null,
+      columnsSample: columns.slice(0, 30)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: 'preflight-exception',
+      detail: String(error && error.message ? error.message : error),
+      operationRunId,
+      writeTarget: { resolvedFilePath: target.resolvedFilePath, tableName: target.tableName },
+      columnsUrl,
+      columns: []
+    };
+  }
+}
+
+async function readWorkbookRowByIndex(mainWindow, rowIndex) {
+  const target = resolveWorkbookPatchTarget(mainWindow);
+  const rowRef = `itemAt(index=${Number(rowIndex)})`;
+  const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${target.encodedPath}:/workbook/tables/${encodeURIComponent(target.tableName)}/rows/${rowRef}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${target.token}` }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`automation-readback: GET failed [${response.status}] ${errorText || ''} (table=${target.tableName}, path=${target.resolvedFilePath}, row=${rowRef})`);
+  }
+
+  const payload = await response.json();
+  return {
+    values: Array.isArray(payload?.values?.[0]) ? payload.values[0] : [],
+    rowRef,
+    url,
+    resolvedFilePath: target.resolvedFilePath,
+    tableName: target.tableName
+  };
+}
+
+async function verifyDescriptionCellAfterPatch(mainWindow, rowIndex, descriptionColumnIndex, expectedText) {
+  const row = await readWorkbookRowByIndex(mainWindow, rowIndex);
+  const actual = String(row.values?.[descriptionColumnIndex] || '').trim();
+  const expected = String(expectedText || '').trim();
+  const matches = actual === expected;
+  return {
+    matches,
+    actual,
+    expected,
+    descriptionColumnIndex,
+    rowRef: row.rowRef,
+    resolvedFilePath: row.resolvedFilePath,
+    tableName: row.tableName,
+    readUrl: row.url
+  };
+}
+
+// ─── Direct Graph API PATCH helper (mirrors syncVisitedExplorerDetailFields) ────
+async function directPatchWorkbookRow(mainWindow, rowIndex, rowValues) {
+  const { token, resolvedFilePath, tableName, encodedPath } = resolveWorkbookPatchTarget(mainWindow);
 
   const rowRef = `itemAt(index=${Number(rowIndex)})`;
   const updateUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${encodedPath}:/workbook/tables/${encodeURIComponent(tableName)}/rows/${rowRef}`;
@@ -307,15 +569,53 @@ async function directPatchWorkbookRow(mainWindow, rowIndex, rowValues) {
   }
 
   console.log(`✅ [directPatchWorkbookRow] Row ${rowRef} patched successfully`);
-  return { persisted: true, verified: false, rowRef };
+  return { persisted: true, verified: false, rowRef, tableName, resolvedFilePath, updateUrl };
 }
 
 async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
   const host = resolveAutomationHost(mainWindow, 'saveToExcel');
   const operation = String(options.operation || 'automation').trim();
+  const operationRunId = String(options.operationRunId || '').trim();
   const dryRun = !!options.dryRun;
   const updatedCount = Number(options.updatedCount || 0);
   const changedRows = Array.isArray(options.changedRows) ? options.changedRows.filter((item) => item && Array.isArray(item.values)) : [];
+  const enableDescriptionReadback = !!options.enableDescriptionReadback && operation === 'update-descriptions';
+  const strictVerification = !!options.strictVerification && operation === 'update-descriptions';
+  const requirePreflight = !!options.requirePreflight && operation === 'update-descriptions';
+  const descriptionColumnIndex = Number.isInteger(options.descriptionColumnIndex) ? options.descriptionColumnIndex : -1;
+  const descriptionColumnName = String(options.descriptionColumnName || '').trim();
+
+  if (requirePreflight && !dryRun) {
+    const preflight = await preflightValidateDescriptionWriteTarget(mainWindow, {
+      operationRunId,
+      descriptionColumnIndex,
+      descriptionColumnName
+    });
+    pushWorkbookWriteDebug('update-descriptions-preflight', {
+      operationRunId,
+      stage: 'persist',
+      ok: !!preflight.ok,
+      reason: String(preflight.reason || ''),
+      writeTarget: preflight.writeTarget || null,
+      expectedDescriptionColumnIndex: Number(descriptionColumnIndex),
+      expectedDescriptionColumnName: String(descriptionColumnName || '')
+    });
+    if (!preflight.ok) {
+      return normalizeWriteResultContract({
+        persisted: false,
+        mode: 'preflight-failed',
+        reason: String(preflight.reason || 'preflight-failed'),
+        rowsChanged: changedRows.length,
+        persistedRows: 0,
+        verifiedRowsChanged: 0,
+        postWriteVerified: false,
+        verificationMode: 'preflight',
+        verificationReason: String(preflight.detail || preflight.reason || 'preflight-failed'),
+        operationRunId,
+        preflight
+      }, { rowsRequested: updatedCount });
+    }
+  }
 
   if (dryRun || updatedCount <= 0) {
     return normalizeWriteResultContract({
@@ -342,38 +642,207 @@ async function persistAutomationWorkbookChanges(mainWindow, options = {}) {
     // test/offline environments so the saveToExcel fallback takes over cleanly.
     if (changedRows.length && _hasToken) {
       let persistedRows = 0;
+      let verifiedRowsChanged = 0;
       let errorCount = 0;
+      let patchErrorCount = 0;
+      let readbackMismatchCount = 0;
+      let readbackErrorCount = 0;
+      let retryRecoveredCount = 0;
       const errors = [];
+      const perRowWriteLog = [];
+      let writeTarget = null;
+      const maxReadbackRetries = enableDescriptionReadback ? 1 : 0;
       for (const row of changedRows) {
         const rowIdx = typeof row.rowIndex === 'number' ? row.rowIndex : resolveWorkbookRowReference(row, 0);
+        const rowMeta = row && row.meta && typeof row.meta === 'object' ? row.meta : {};
+        const nextDescription = descriptionColumnIndex >= 0 ? String(row.values?.[descriptionColumnIndex] || '').trim() : '';
         pushWorkbookWriteDebug('row-direct-patch-attempt', {
+          operationRunId,
           operation,
           rowIdx,
-          valueCount: Array.isArray(row.values) ? row.values.length : 0
+          valueCount: Array.isArray(row.values) ? row.values.length : 0,
+          placeName: String(rowMeta.name || ''),
+          placeId: String(rowMeta.placeId || ''),
+          descriptionColumnIndex,
+          descriptionColumnName,
+          descriptionBefore: String(rowMeta.descriptionBefore || ''),
+          descriptionAfter: String(rowMeta.descriptionAfter || nextDescription)
         });
         try {
-          await directPatchWorkbookRow(mainWindow, rowIdx, row.values);
+          const patchResult = await directPatchWorkbookRow(mainWindow, rowIdx, row.values);
           persistedRows += 1;
-          pushWorkbookWriteDebug('row-direct-patch-success', { operation, rowIdx });
+          if (!writeTarget) {
+            writeTarget = {
+              resolvedFilePath: patchResult.resolvedFilePath,
+              tableName: patchResult.tableName
+            };
+          }
+          const rowWriteLog = {
+            operationRunId,
+            rowIndex: rowIdx,
+            rowRef: String(patchResult.rowRef || ''),
+            placeName: String(rowMeta.name || ''),
+            placeId: String(rowMeta.placeId || ''),
+            descriptionColumnIndex,
+            descriptionColumnName,
+            descriptionBefore: String(rowMeta.descriptionBefore || ''),
+            descriptionWritten: String(rowMeta.descriptionAfter || nextDescription),
+            tableName: String(patchResult.tableName || ''),
+            resolvedFilePath: String(patchResult.resolvedFilePath || ''),
+            patchUrl: String(patchResult.updateUrl || ''),
+            patchOk: true,
+            readbackOk: null,
+            readbackValue: '',
+            retryCount: 0
+          };
+
+          if (enableDescriptionReadback && descriptionColumnIndex >= 0) {
+            let finalReadback = null;
+            let finalReadbackError = '';
+            for (let attempt = 0; attempt <= maxReadbackRetries; attempt += 1) {
+              if (attempt > 0) {
+                rowWriteLog.retryCount = attempt;
+                rowWriteLog.retryReason = finalReadbackError ? 'readback-error' : 'readback-mismatch';
+                pushWorkbookWriteDebug('row-direct-patch-retry-attempt', {
+                  operationRunId,
+                  operation,
+                  rowIdx,
+                  attempt,
+                  reason: rowWriteLog.retryReason,
+                  placeName: rowWriteLog.placeName,
+                  placeId: rowWriteLog.placeId
+                });
+                await directPatchWorkbookRow(mainWindow, rowIdx, row.values);
+              }
+
+              try {
+                const readback = await verifyDescriptionCellAfterPatch(mainWindow, rowIdx, descriptionColumnIndex, nextDescription);
+                finalReadback = readback;
+                finalReadbackError = '';
+                if (readback.matches) break;
+                if (attempt >= maxReadbackRetries) break;
+              } catch (readErr) {
+                finalReadback = null;
+                finalReadbackError = String(readErr && readErr.message ? readErr.message : readErr);
+                if (attempt >= maxReadbackRetries) break;
+              }
+            }
+
+            if (finalReadback) {
+              rowWriteLog.readbackOk = !!finalReadback.matches;
+              rowWriteLog.readbackValue = String(finalReadback.actual || '');
+              rowWriteLog.readUrl = String(finalReadback.readUrl || '');
+              if (finalReadback.matches) {
+                verifiedRowsChanged += 1;
+                if (rowWriteLog.retryCount > 0) retryRecoveredCount += 1;
+              } else {
+                readbackMismatchCount += 1;
+              }
+              pushWorkbookWriteDebug('row-direct-patch-readback', {
+                operationRunId,
+                operation,
+                rowIdx,
+                placeName: rowWriteLog.placeName,
+                placeId: rowWriteLog.placeId,
+                descriptionColumnIndex,
+                descriptionColumnName,
+                expected: String(finalReadback.expected || ''),
+                actual: String(finalReadback.actual || ''),
+                matches: !!finalReadback.matches,
+                retryCount: rowWriteLog.retryCount,
+                tableName: String(finalReadback.tableName || rowWriteLog.tableName),
+                resolvedFilePath: String(finalReadback.resolvedFilePath || rowWriteLog.resolvedFilePath)
+              });
+            } else {
+              rowWriteLog.readbackOk = false;
+              rowWriteLog.readbackError = finalReadbackError;
+              readbackErrorCount += 1;
+              pushWorkbookWriteDebug('row-direct-patch-readback-error', {
+                operationRunId,
+                operation,
+                rowIdx,
+                placeName: rowWriteLog.placeName,
+                placeId: rowWriteLog.placeId,
+                descriptionColumnIndex,
+                descriptionColumnName,
+                retryCount: rowWriteLog.retryCount,
+                error: rowWriteLog.readbackError
+              });
+            }
+          }
+
+          perRowWriteLog.push(rowWriteLog);
+          pushWorkbookWriteDebug('row-direct-patch-success', { operationRunId, operation, rowIdx });
         } catch (patchErr) {
           errorCount += 1;
+          patchErrorCount += 1;
           errors.push(String(patchErr && patchErr.message ? patchErr.message : patchErr));
           console.error(`❌ ${operation}: direct patch failed for row ${rowIdx}`, patchErr);
+          perRowWriteLog.push({
+            operationRunId,
+            rowIndex: rowIdx,
+            placeName: String(rowMeta.name || ''),
+            placeId: String(rowMeta.placeId || ''),
+            descriptionColumnIndex,
+            descriptionColumnName,
+            descriptionBefore: String(rowMeta.descriptionBefore || ''),
+            descriptionWritten: String(rowMeta.descriptionAfter || nextDescription),
+            patchOk: false,
+            patchError: String(patchErr && patchErr.message ? patchErr.message : patchErr)
+          });
         }
       }
 
       if (persistedRows > 0) {
+        const unresolvedReadbackCount = readbackMismatchCount + readbackErrorCount;
+        const strictVerificationFailed = strictVerification && enableDescriptionReadback && unresolvedReadbackCount > 0;
         console.log(`💾 ${operation}: persisted ${persistedRows}/${changedRows.length} row(s) via direct Graph API PATCH`);
+        pushWorkbookWriteDebug('operation-direct-patch-summary', {
+          operationRunId,
+          operation,
+          persistedRows,
+          requestedRows: changedRows.length,
+          verifiedRowsChanged,
+          patchErrorCount,
+          readbackMismatchCount,
+          readbackErrorCount,
+          unresolvedReadbackCount,
+          retryRecoveredCount,
+          strictVerification,
+          strictVerificationFailed,
+          descriptionReadbackEnabled: enableDescriptionReadback,
+          descriptionColumnIndex,
+          descriptionColumnName,
+          writeTarget,
+          perRowWriteLog
+        });
         return normalizeWriteResultContract({
           persisted: true,
           mode: 'direct-graph-patch',
           reason: errorCount > 0 ? `${errorCount} row(s) failed` : '',
           rowsChanged: changedRows.length,
           persistedRows,
-          verifiedRowsChanged: 0,
-          postWriteVerified: false,
-          verificationMode: 'not-verified',
-          verificationReason: 'direct-patch-no-verify'
+          verifiedRowsChanged,
+          postWriteVerified: enableDescriptionReadback ? verifiedRowsChanged === persistedRows : false,
+          verificationMode: enableDescriptionReadback ? 'description-cell-reread' : 'not-verified',
+          verificationReason: enableDescriptionReadback
+            ? (strictVerificationFailed
+              ? `strict verification failed: ${unresolvedReadbackCount} unresolved readback issue(s)`
+              : (verifiedRowsChanged === persistedRows ? '' : 'one-or-more-description-readbacks-failed'))
+            : 'direct-patch-no-verify',
+          operationRunId,
+          runFailed: strictVerificationFailed,
+          diagnosticSummary: {
+            patchErrorCount,
+            readbackMismatchCount,
+            readbackErrorCount,
+            unresolvedReadbackCount,
+            retryRecoveredCount,
+            strictVerification,
+            strictVerificationFailed
+          },
+          writeTarget,
+          perRowWriteLog
         }, { rowsRequested: updatedCount });
       }
 
@@ -1873,8 +2342,10 @@ console.log('✅ M365 Excel Write Integration ready');
  * Update description fields for all locations using Google Places API.
  * Only fills empty descriptions unless overwrite=true.
  */
-window.handleUpdateAllDescriptions = async function(displayElement, dryRun = false, overwrite = false) {
-  console.log(`📝 Starting update descriptions, dryRun=${dryRun}, overwrite=${overwrite}`);
+window.handleUpdateAllDescriptions = async function(displayElement, dryRun = false, overwrite = false, strictModeOverride) {
+  const strictVerification = resolveUpdateDescriptionsStrictVerification(strictModeOverride);
+  const strictVerificationMode = strictVerification ? 'fail-closed' : 'warn-only';
+  console.log(`📝 Starting update descriptions, dryRun=${dryRun}, overwrite=${overwrite}, strictMode=${strictVerificationMode}`);
 
   if (!displayElement) return { success: false, error: 'No display element' };
 
@@ -1895,14 +2366,27 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
     descriptionColumnName: descriptionSchemaCol && descriptionSchemaCol.name ? String(descriptionSchemaCol.name) : '',
     activeCols
   };
+  const operationRunId = `update-descriptions-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   window.__lastUpdateDescriptionsActiveCols = resolvedColsDebug;
+  window.__lastUpdateDescriptionsRunId = operationRunId;
   console.info('🧭 Update Descriptions resolved columns:', resolvedColsDebug);
+  pushWorkbookWriteDebug('update-descriptions-start', {
+    operationRunId,
+    dryRun: !!dryRun,
+    overwrite: !!overwrite,
+    strictVerification,
+    strictVerificationMode,
+    descriptionIndex: Number(activeCols.DESCRIPTION),
+    descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
+    totalRows: adventuresData.length
+  });
   const results = [];
   let updatedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
   const previewItems = [];
   const changedRows = [];
+  const rowAuditTrail = [];
 
   const escapeHtml = (value) => String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -1947,6 +2431,53 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
   </div>`);
 
   try {
+    const requirePreflight = true;
+    const preflight = dryRun
+      ? { ok: true, reason: 'dry-run-skipped', detail: 'preflight-skipped-for-dry-run', operationRunId }
+      : await preflightValidateDescriptionWriteTarget(mainWindow, {
+          operationRunId,
+          descriptionColumnIndex: Number(activeCols.DESCRIPTION),
+          descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
+        });
+    pushWorkbookWriteDebug('update-descriptions-preflight', {
+      operationRunId,
+      stage: 'handler',
+      ok: !!preflight.ok,
+      reason: String(preflight.reason || ''),
+      detail: String(preflight.detail || ''),
+      writeTarget: preflight.writeTarget || null,
+      expectedDescriptionColumnIndex: Number(activeCols.DESCRIPTION),
+      expectedDescriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
+    });
+
+    if (!preflight.ok) {
+      window.__lastUpdateDescriptionsAudit = {
+        at: new Date().toISOString(),
+        operationRunId,
+        overwrite: !!overwrite,
+        dryRun: !!dryRun,
+        strictVerification,
+        strictVerificationMode,
+        preflight,
+        rowAuditTrail: [],
+        perRowWriteLog: []
+      };
+      updateDisplay(`<div style="padding:16px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;color:#7f1d1d;">
+        <div style="font-weight:700;">❌ Update Descriptions blocked by preflight check</div>
+        <div style="margin-top:6px;font-size:12px;">Reason: ${escapeHtml(String(preflight.detail || preflight.reason || 'schema mismatch'))}</div>
+        <div style="margin-top:4px;font-size:12px;">Target: ${escapeHtml(`${String(preflight?.writeTarget?.resolvedFilePath || '')} | ${String(preflight?.writeTarget?.tableName || '')}`)}</div>
+      </div>`);
+      return {
+        success: false,
+        runFailed: true,
+        operationRunId,
+        strictVerification,
+        strictVerificationMode,
+        preflight,
+        error: String(preflight.detail || preflight.reason || 'preflight-failed')
+      };
+    }
+
     for (let i = 0; i < adventuresData.length; i++) {
       const place = adventuresData[i];
       const values = place.values ? place.values[0] : place;
@@ -1958,14 +2489,32 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         const name = (values[activeCols.NAME] || '').toString().trim();
         const placeId = (values[activeCols.PLACE_ID] || '').toString().trim();
         const existingDesc = (values[activeCols.DESCRIPTION] || '').toString().trim();
+        const baseAudit = {
+          rowIndex: i,
+          name,
+          placeId,
+          descriptionColumnIndex: Number(activeCols.DESCRIPTION),
+          descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
+          descriptionBefore: existingDesc
+        };
 
         if (!overwrite && existingDesc) {
+          rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'already-has-description' });
+          pushWorkbookWriteDebug('update-descriptions-row-skipped', {
+            ...baseAudit,
+            reason: 'already-has-description'
+          });
           results.push({ name: name || '(no name)', status: 'skipped', message: 'Already has description' });
           skippedCount++;
           continue;
         }
 
         if (!placeId || !placeId.startsWith('ChI')) {
+          rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'invalid-place-id' });
+          pushWorkbookWriteDebug('update-descriptions-row-skipped', {
+            ...baseAudit,
+            reason: 'invalid-place-id'
+          });
           results.push({ name: name || '(no name)', status: 'skipped', message: 'No valid Place ID' });
           skippedCount++;
           continue;
@@ -1987,6 +2536,15 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
           return desc;
         })();
 
+        let descriptionSource = 'none';
+        if (newDesc) {
+          descriptionSource = /\bRated\s+[0-9.]+★/i.test(newDesc) || /\([0-9,]+\s+reviews\)/i.test(newDesc)
+            ? 'google-details-fallback-summary'
+            : 'google-details-editorial-or-reviews';
+        } else if (generatedDesc) {
+          descriptionSource = 'local-fallback-name-city-rating';
+        }
+
         if (!dryRun && generatedDesc) {
           values[activeCols.DESCRIPTION] = generatedDesc;
 
@@ -2000,43 +2558,131 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
           }
 
           updatedCount++;
-          changedRows.push(buildChangedWorkbookRow(place, i, values));
+          const rowMeta = {
+            operation: 'update-descriptions',
+            name,
+            placeId,
+            descriptionBefore: existingDesc,
+            descriptionAfter: generatedDesc,
+            descriptionSource,
+            descriptionColumnIndex: Number(activeCols.DESCRIPTION),
+            descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
+          };
+          changedRows.push(buildChangedWorkbookRow(place, i, values, rowMeta));
+          rowAuditTrail.push({ ...baseAudit, status: 'updated', descriptionAfter: generatedDesc, descriptionSource });
+          pushWorkbookWriteDebug('update-descriptions-row-prepared', {
+            ...baseAudit,
+            descriptionAfter: generatedDesc,
+            descriptionSource
+          });
           results.push({ name, status: 'updated', message: `Set description (${generatedDesc.length} chars)` });
           if (previewItems.length < 3) {
             previewItems.push({ name: name || '(no name)', description: generatedDesc });
           }
         } else if (dryRun && generatedDesc) {
           updatedCount++;
+          rowAuditTrail.push({ ...baseAudit, status: 'would-update', descriptionAfter: generatedDesc, descriptionSource });
+          pushWorkbookWriteDebug('update-descriptions-row-would-update', {
+            ...baseAudit,
+            descriptionAfter: generatedDesc,
+            descriptionSource
+          });
           results.push({ name, status: 'would-update', message: `Would set: "${generatedDesc.slice(0, 60)}…"` });
           if (previewItems.length < 3) {
             previewItems.push({ name: name || '(no name)', description: generatedDesc });
           }
         } else {
           skippedCount++;
+          rowAuditTrail.push({ ...baseAudit, status: 'skipped', reason: 'no-description-generated' });
+          pushWorkbookWriteDebug('update-descriptions-row-skipped', {
+            ...baseAudit,
+            reason: 'no-description-generated'
+          });
           results.push({ name, status: 'skipped', message: 'No description available from API' });
         }
       } catch (e) {
         errorCount++;
+        rowAuditTrail.push({ rowIndex: i, status: 'error', error: String(e && e.message ? e.message : e) });
+        pushWorkbookWriteDebug('update-descriptions-row-error', {
+          rowIndex: i,
+          error: String(e && e.message ? e.message : e)
+        });
         results.push({ name: '(error)', status: 'error', message: e.message });
       }
     }
 
     const persistence = await persistAutomationWorkbookChanges(mainWindow, {
       operation: 'update-descriptions',
+      operationRunId,
       dryRun,
       updatedCount,
-      changedRows
+      changedRows,
+      enableDescriptionReadback: true,
+      strictVerification,
+      requirePreflight,
+      descriptionColumnIndex: Number(activeCols.DESCRIPTION),
+      descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
     });
+    const writeTargetLabel = persistence && persistence.writeTarget
+      ? `${String(persistence.writeTarget.resolvedFilePath || '')} | ${String(persistence.writeTarget.tableName || '')}`
+      : '(not available)';
+    window.__lastUpdateDescriptionsAudit = {
+      at: new Date().toISOString(),
+      operationRunId,
+      overwrite: !!overwrite,
+      dryRun: !!dryRun,
+      strictVerification,
+      strictVerificationMode,
+      descriptionIndex: Number(activeCols.DESCRIPTION),
+      descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
+      writeTarget: persistence.writeTarget || null,
+      preflight: persistence.preflight || preflight,
+      diagnosticSummary: persistence.diagnosticSummary || null,
+      rowAuditTrail,
+      perRowWriteLog: Array.isArray(persistence.perRowWriteLog) ? persistence.perRowWriteLog : []
+    };
+    pushWorkbookWriteDebug('update-descriptions-operation-summary', {
+      operationRunId,
+      overwrite: !!overwrite,
+      dryRun: !!dryRun,
+      updatedCount,
+      skippedCount,
+      errorCount,
+      descriptionColumnIndex: Number(activeCols.DESCRIPTION),
+      descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
+      writeTarget: persistence.writeTarget || null,
+      persistedRows: Number(persistence.persistedRows || 0),
+      verifiedRowsChanged: Number(persistence.verifiedRowsChanged || 0),
+      runFailed: !!persistence.runFailed,
+      strictVerification,
+      strictVerificationMode,
+      diagnosticSummary: persistence.diagnosticSummary || null
+    });
+    const canDownloadAuditCsv = !dryRun && Array.isArray(persistence.perRowWriteLog) && persistence.perRowWriteLog.length > 0;
+    const diag = persistence.diagnosticSummary || {};
+    const strictRunFailed = !!persistence.runFailed;
+    const completedTitle = strictRunFailed
+      ? '❌ Complete with Verification Failure – Update Descriptions'
+      : (dryRun ? '🧪 Dry Run Complete – Update Descriptions' : '✅ Complete – Update Descriptions');
 
-    updateDisplay(`<div style="padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
-      <div style="font-weight:600;color:#166534;margin-bottom:8px;">${dryRun ? '🧪 Dry Run Complete' : '✅ Complete'} – Update Descriptions</div>
+    updateDisplay(`<div style="padding:16px;background:${strictRunFailed ? '#fef2f2' : '#f0fdf4'};border:1px solid ${strictRunFailed ? '#fecaca' : '#bbf7d0'};border-radius:8px;">
+      <div style="font-weight:600;color:${strictRunFailed ? '#991b1b' : '#166534'};margin-bottom:8px;">${completedTitle}</div>
       <div style="font-size:13px;color:#374151;">✅ Updated: ${updatedCount} &nbsp; ⏭ Skipped: ${skippedCount} &nbsp; ❌ Errors: ${errorCount}</div>
       <div style="font-size:12px;color:${persistence.persisted ? '#047857' : '#92400e'};margin-top:8px;">💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}</div>
+      <div style="font-size:12px;color:#1f2937;margin-top:6px;">🗂️ Target: ${escapeHtml(writeTargetLabel)}</div>
+      <div style="font-size:12px;color:#1f2937;margin-top:4px;">🔎 Description read-back verified: ${Number(persistence.verifiedRowsChanged || 0)}/${Number(persistence.persistedRows || 0)}</div>
+      <div style="font-size:12px;color:${strictRunFailed ? '#991b1b' : '#1f2937'};margin-top:4px;">🛡️ Strict mode: ${escapeHtml(strictVerificationMode)} (${strictVerification ? 'fail-closed' : 'warn-only'}) • ${strictRunFailed ? 'FAILED' : 'passed'}${strictRunFailed ? ` (${Number(diag.unresolvedReadbackCount || 0)} unresolved issue(s))` : ''}</div>
+      <div style="font-size:12px;color:#1f2937;margin-top:4px;">🧪 Reliability: retries recovered ${Number(diag.retryRecoveredCount || 0)}, readback mismatches ${Number(diag.readbackMismatchCount || 0)}, readback errors ${Number(diag.readbackErrorCount || 0)}, patch errors ${Number(diag.patchErrorCount || 0)}</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        <button type="button" ${canDownloadAuditCsv ? '' : 'disabled'} onclick="(function(){ const out = window.downloadLastUpdateDescriptionsPerRowWriteLogCsv && window.downloadLastUpdateDescriptionsPerRowWriteLogCsv(); if (!out || !out.ok) { alert('No CSV audit is available for this run.'); } })();" style="padding:6px 10px;border:1px solid #86efac;border-radius:6px;background:#f0fdf4;color:#166534;font-size:12px;font-weight:600;cursor:pointer;">📥 Download CSV Audit</button>
+        <button type="button" onclick="window.copyLastUpdateDescriptionsAuditJson && window.copyLastUpdateDescriptionsAuditJson();" style="padding:6px 10px;border:1px solid #bfdbfe;border-radius:6px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:600;cursor:pointer;">📋 Copy Audit JSON</button>
+      </div>
       ${buildPreviewHtml()}
     </div>`);
 
     return {
-      success: true,
+      success: !strictRunFailed,
+      runFailed: strictRunFailed,
       updatedCount,
       skippedCount,
       errorCount,
@@ -2052,8 +2698,16 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       postWriteVerified: persistence.postWriteVerified,
       verificationMode: persistence.verificationMode,
       verificationReason: persistence.verificationReason,
+      operationRunId,
+      strictVerification,
+      strictVerificationMode,
       descriptionIndex: Number(activeCols.DESCRIPTION),
-      descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || '')
+      descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
+      writeTarget: persistence.writeTarget || null,
+      preflight: persistence.preflight || preflight,
+      diagnosticSummary: persistence.diagnosticSummary || null,
+      perRowWriteLog: Array.isArray(persistence.perRowWriteLog) ? persistence.perRowWriteLog : [],
+      rowAuditTrailCount: rowAuditTrail.length
     };
   } catch (err) {
     console.error('❌ Error updating descriptions:', err);
