@@ -272,9 +272,9 @@ test.describe('Edit Mode target-table routing', () => {
     if (!uiReady) {
       /* Inject stub functions if scripts didn't load */
       await popup.evaluate(() => {
-        window.submitAddSinglePlace = window.submitAddSinglePlace || async () => ({ success: true });
-        window.submitBulkAddPlaces = window.submitBulkAddPlaces || async () => ({ success: true });
-        window.submitBulkChain = window.submitBulkChain || async () => ({ success: true });
+        window.submitAddSinglePlace = window.submitAddSinglePlace || (async () => ({ success: true }));
+        window.submitBulkAddPlaces = window.submitBulkAddPlaces || (async () => ({ success: true }));
+        window.submitBulkChain = window.submitBulkChain || (async () => ({ success: true }));
       });
     }
 
