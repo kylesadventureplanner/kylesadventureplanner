@@ -5,13 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.githooks/pre-push" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/git-hooks-status.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/scripts/install-git-hooks.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/RELIABILITY_HARNESS_README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/RELIABILITY_HARNESS_README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.githooks/pre-push" beforeDir="false" afterPath="$PROJECT_DIR$/.githooks/pre-push" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -100,7 +94,7 @@
       <workItem from="1776186047188" duration="65868000" />
       <workItem from="1776447145602" duration="31796000" />
       <workItem from="1776648840860" duration="3715000" />
-      <workItem from="1776695340610" duration="171491000" />
+      <workItem from="1776695340610" duration="172019000" />
     </task>
     <servers />
   </component>
