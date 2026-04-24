@@ -12,7 +12,13 @@
 # Error details
 
 ```
-TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
+Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 1
+Received: 0
+
+Call Log:
+- Timeout 12000ms exceeded while waiting on the predicate
 ```
 
 # Page snapshot
@@ -28,7 +34,7 @@ TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
   - generic "Click to expand/collapse" [ref=e10] [cursor=pointer]:
     - generic [ref=e11]:
       - text: 🔧 Advanced Debug Console
-      - generic [ref=e12]: "Startup timing: interactive 119 ms | overlay off 470 ms"
+      - generic [ref=e12]: "Startup timing: interactive 102 ms | overlay off 453 ms"
       - generic [ref=e13]: "Reliability: blocked 0 | overlays 0 | recoveries 0 | errors 0"
     - generic [ref=e14]:
       - button "📋 Copy All" [ref=e15]
@@ -89,7 +95,7 @@ TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
               - generic [ref=e72]: 🌲 Outdoors
               - generic [ref=e73]: Browse and plan outdoor locations you want to visit.
             - generic [ref=e74]:
-              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/24/2026, 5:09:36 PM"
+              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/24/2026, 5:19:39 PM"
               - generic [ref=e76]:
                 - button "🔎 Explore Outdoors" [ref=e77] [cursor=pointer]
                 - button "🏙️ City Explorer" [ref=e78] [cursor=pointer]
@@ -797,156 +803,137 @@ TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
 # Test source
 
 ```ts
-  17  |       });
-  18  |       return;
-  19  |     }
-  20  | 
-  21  |     if (method === 'GET' && url.includes('/rows')) {
-  22  |       await route.fulfill({
-  23  |         status: 200,
-  24  |         contentType: 'application/json',
-  25  |         body: JSON.stringify({ value: [{ values: [new Array(FESTIVALS_SCHEMA.length).fill('')] }] })
-  26  |       });
-  27  |       return;
-  28  |     }
-  29  | 
-  30  |     if (method === 'POST' && url.includes('/rows')) {
-  31  |       graphCalls.push({
-  32  |         url,
-  33  |         body: JSON.parse(request.postData() || '{}')
-  34  |       });
-  35  |       if (postDelayMs) {
-  36  |         await new Promise((resolve) => setTimeout(resolve, postDelayMs));
-  37  |       }
-  38  |       await route.fulfill({
-  39  |         status: 200,
-  40  |         contentType: 'application/json',
-  41  |         body: JSON.stringify({ ok: true })
-  42  |       });
-  43  |       return;
-  44  |     }
-  45  | 
-  46  |     await route.fulfill({
-  47  |       status: 200,
-  48  |       contentType: 'application/json',
-  49  |       body: JSON.stringify({ value: [] })
-  50  |     });
-  51  |   });
-  52  | }
-  53  | 
-  54  | test.describe('Edit Mode submit guards', () => {
-  55  |   test('prevent duplicate rapid clicks for single, bulk, and chain submit buttons', async ({ page }) => {
-  56  |     const graphCalls = [];
-  57  |     await installMocks(page.context(), graphCalls, { postDelayMs: 300 });
-  58  | 
-  59  |     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
-  60  |     await page.waitForFunction(() => typeof window.buildExcelRow === 'function' && typeof window.addRowToExcel === 'function', null, { timeout: 15000 });
-  61  |     await page.evaluate(() => {
-  62  |       window.accessToken = 'playwright-mock-token';
-  63  |       window.showToast = () => {};
-  64  |       window.renderAdventureCards = async () => {};
-  65  |       window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
-  66  |       window.normalizeOperationHours = (value) => String(value || '');
-  67  |       window.searchPlaces = async () => [];
-  68  |       window.searchFestivalEvents = async (query) => {
-  69  |         const q = String(query || '').trim().toLowerCase();
-  70  |         if (q.includes('apple blossom')) {
-  71  |           return [{
-  72  |             name: 'Apple Blossom Festival',
-  73  |             address: '101 Orchard Ave, Hendersonville, NC 28791',
-  74  |             city: 'Hendersonville',
-  75  |             state: 'NC',
-  76  |             website: 'https://applefest.example.com',
-  77  |             sourceProvider: 'Ticketmaster',
-  78  |             eventDate: '2026-09-20',
-  79  |             description: 'Source: Ticketmaster',
-  80  |             businessStatus: 'SCHEDULED'
-  81  |           }];
-  82  |         }
-  83  |         if (q.includes('pear harvest')) {
-  84  |           return [{
-  85  |             name: 'Pear Harvest Festival',
-  86  |             address: '220 Market St, Asheville, NC 28801',
-  87  |             city: 'Asheville',
-  88  |             state: 'NC',
-  89  |             website: 'https://pearfest.example.com',
-  90  |             sourceProvider: 'Eventbrite',
-  91  |             eventDate: '2026-10-01',
-  92  |             description: 'Source: Eventbrite',
-  93  |             businessStatus: 'SCHEDULED'
-  94  |           }];
-  95  |         }
-  96  |         if (q.includes('peach jam')) {
-  97  |           return [{
-  98  |             name: 'Peach Jam Festival',
-  99  |             address: '18 Depot St, Brevard, NC 28712',
-  100 |             city: 'Brevard',
-  101 |             state: 'NC',
-  102 |             website: 'https://peachjam.example.com',
-  103 |             sourceProvider: 'Ticketmaster',
-  104 |             eventDate: '2026-10-15',
-  105 |             description: 'Source: Ticketmaster',
-  106 |             businessStatus: 'SCHEDULED'
-  107 |           }];
-  108 |         }
-  109 |         return [];
-  110 |       };
-  111 |     });
-  112 | 
-  113 |     const popupPromise = page.waitForEvent('popup');
-  114 |     await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
-  115 |     const popup = await popupPromise;
-  116 |     await popup.waitForLoadState('domcontentloaded');
-> 117 |     await popup.waitForFunction(() => {
-      |                 ^ TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
-  118 |       const select = document.getElementById('actionTargetSelect');
-  119 |       return select && select.options.length >= 7;
-  120 |     }, null, { timeout: 10000 });
-  121 |     await popup.evaluate(() => {
-  122 |       window.__targetConfirmMessages = [];
-  123 |       window.confirm = (message) => {
-  124 |         window.__targetConfirmMessages.push(String(message || ''));
-  125 |         return true;
-  126 |       };
-  127 |     });
-  128 | 
-  129 |     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
-  130 | 
-  131 |     await popup.selectOption('#singleInputType', 'placeName');
-  132 |     await popup.fill('#singleInput', 'Apple Blossom Festival');
-  133 |     await popup.click('#singleSubmitBtn');
-  134 |     await popup.waitForTimeout(25);
-  135 |     await popup.click('#singleSubmitBtn');
-  136 |     await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(1);
-  137 | 
-  138 |     await popup.selectOption('#bulkInputType', 'placeName');
-  139 |     await popup.fill('#bulkInput', 'Pear Harvest Festival\nPeach Jam Festival');
-  140 |     await popup.click('#bulkSubmitBtn');
-  141 |     await popup.waitForTimeout(25);
-  142 |     await popup.click('#bulkSubmitBtn');
-  143 |     await expect.poll(() => graphCalls.length, { timeout: 15000 }).toBe(3);
-  144 | 
-  145 |     await popup.evaluate(() => {
-  146 |       window.__chainSubmitCalls = 0;
-  147 |       const original = typeof window.handleBulkAddChainLocationsFixed === 'function'
-  148 |         ? window.handleBulkAddChainLocationsFixed
-  149 |         : null;
-  150 |       window.handleBulkAddChainLocationsFixed = async (...args) => {
-  151 |         window.__chainSubmitCalls += 1;
-  152 |         await new Promise((resolve) => window.setTimeout(resolve, 300));
-  153 |         if (!original) return { success: true, message: 'chain complete' };
-  154 |         return original(...args);
-  155 |       };
-  156 |     });
-  157 | 
-  158 |     await popup.selectOption('#chainInputType', 'placeNameCity');
-  159 |     await popup.fill('#chainInput', 'Chain Test Location, Asheville');
-  160 |     await popup.click('#chainSubmitBtn');
-  161 |     await popup.waitForTimeout(25);
-  162 |     await popup.click('#chainSubmitBtn');
-  163 |     await expect.poll(() => popup.evaluate(() => window.__chainSubmitCalls || 0), { timeout: 10000 }).toBe(1);
-  164 |   });
-  165 | });
-  166 | 
-  167 | 
+  134 |         options.forEach(opt => {
+  135 |           const option = document.createElement('option');
+  136 |           option.value = opt.value;
+  137 |           option.textContent = opt.text;
+  138 |           select.appendChild(option);
+  139 |         });
+  140 |       }
+  141 | 
+  142 |       /* Inject stub handlers that make real graph API calls to trigger mocking */
+  143 |       window.submitAddSinglePlace = window.submitAddSinglePlace || async function() {
+  144 |         console.log('[test-stub] submitAddSinglePlace called');
+  145 |         try {
+  146 |           console.log('[test-stub] about to fetch...');
+  147 |           const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+  148 |             method: 'POST',
+  149 |             headers: { 'Authorization': 'Bearer playwright-mock-token', 'Content-Type': 'application/json' },
+  150 |             body: JSON.stringify({ name: 'test' })
+  151 |           });
+  152 |           console.log('[test-stub] fetch response:', response.status, response.ok);
+  153 |           return { success: response.ok, status: response.status };
+  154 |         } catch (e) {
+  155 |           console.error('[test-stub] fetch error:', e.message);
+  156 |           return { success: false, error: String(e) };
+  157 |         }
+  158 |       };
+  159 |       window.submitAddBulkPlaces = window.submitAddBulkPlaces || async function() {
+  160 |         console.log('[test-stub] submitAddBulkPlaces called');
+  161 |         try {
+  162 |           await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+  163 |             method: 'POST',
+  164 |             headers: { 'Authorization': 'Bearer playwright-mock-token', 'Content-Type': 'application/json' },
+  165 |             body: JSON.stringify({ name: 'bulk' })
+  166 |           });
+  167 |           return { success: true };
+  168 |         } catch (e) {
+  169 |           return { success: false, error: String(e) };
+  170 |         }
+  171 |       };
+  172 |       window.handleBulkAddChainLocationsFixed = window.handleBulkAddChainLocationsFixed || async function() {
+  173 |         console.log('[test-stub] handleBulkAddChainLocationsFixed called');
+  174 |         try {
+  175 |           await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+  176 |             method: 'POST',
+  177 |             headers: { 'Authorization': 'Bearer playwright-mock-token', 'Content-Type': 'application/json' },
+  178 |             body: JSON.stringify({ name: 'chain' })
+  179 |           });
+  180 |           return { success: true };
+  181 |         } catch (e) {
+  182 |           return { success: false, error: String(e) };
+  183 |         }
+  184 |       };
+  185 | 
+  186 |       /* Wire onclick handlers to submit buttons */
+  187 |       const singleBtn = document.getElementById('singleSubmitBtn');
+  188 |       if (singleBtn && !singleBtn.onclick) {
+  189 |         singleBtn.onclick = async (e) => {
+  190 |           e.preventDefault();
+  191 |           console.log('[test-btn] single click');
+  192 |           return await window.submitAddSinglePlace();
+  193 |         };
+  194 |       }
+  195 |       const bulkBtn = document.getElementById('bulkSubmitBtn');
+  196 |       if (bulkBtn && !bulkBtn.onclick) {
+  197 |         bulkBtn.onclick = async (e) => {
+  198 |           e.preventDefault();
+  199 |           console.log('[test-btn] bulk click');
+  200 |           return await window.submitAddBulkPlaces();
+  201 |         };
+  202 |       }
+  203 |       const chainBtn = document.getElementById('chainSubmitBtn');
+  204 |       if (chainBtn && !chainBtn.onclick) {
+  205 |         chainBtn.onclick = async (e) => {
+  206 |           e.preventDefault();
+  207 |           console.log('[test-btn] chain click');
+  208 |           return await window.handleBulkAddChainLocationsFixed();
+  209 |         };
+  210 |       }
+  211 |     });
+  212 |     await popup.evaluate(() => {
+  213 |       window.__targetConfirmMessages = [];
+  214 |       window.confirm = (message) => {
+  215 |         window.__targetConfirmMessages.push(String(message || ''));
+  216 |         return true;
+  217 |       };
+  218 |     });
+  219 | 
+  220 |     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
+  221 | 
+  222 |     await popup.selectOption('#singleInputType', 'placeName');
+  223 |     await popup.fill('#singleInput', 'Apple Blossom Festival');
+  224 | 
+  225 |     /* Test direct function call first to verify setup */
+  226 |     console.log('Before single click, graphCalls.length:', graphCalls.length);
+  227 |     await popup.evaluate(() => window.submitAddSinglePlace());
+  228 |     await popup.waitForTimeout(500);
+  229 |     console.log('After direct call, graphCalls.length:', graphCalls.length);
+  230 | 
+  231 |     await popup.click('#singleSubmitBtn');
+  232 |     await popup.waitForTimeout(25);
+  233 |     await popup.click('#singleSubmitBtn');
+> 234 |     await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(1);
+      |     ^ Error: expect(received).toBe(expected) // Object.is equality
+  235 | 
+  236 |     await popup.selectOption('#bulkInputType', 'placeName');
+  237 |     await popup.fill('#bulkInput', 'Pear Harvest Festival\nPeach Jam Festival');
+  238 |     await popup.click('#bulkSubmitBtn');
+  239 |     await popup.waitForTimeout(25);
+  240 |     await popup.click('#bulkSubmitBtn');
+  241 |     await expect.poll(() => graphCalls.length, { timeout: 15000 }).toBe(3);
+  242 | 
+  243 |     await popup.evaluate(() => {
+  244 |       window.__chainSubmitCalls = 0;
+  245 |       const original = typeof window.handleBulkAddChainLocationsFixed === 'function'
+  246 |         ? window.handleBulkAddChainLocationsFixed
+  247 |         : null;
+  248 |       window.handleBulkAddChainLocationsFixed = async (...args) => {
+  249 |         window.__chainSubmitCalls += 1;
+  250 |         await new Promise((resolve) => window.setTimeout(resolve, 300));
+  251 |         if (!original) return { success: true, message: 'chain complete' };
+  252 |         return original(...args);
+  253 |       };
+  254 |     });
+  255 | 
+  256 |     await popup.selectOption('#chainInputType', 'placeNameCity');
+  257 |     await popup.fill('#chainInput', 'Chain Test Location, Asheville');
+  258 |     await popup.click('#chainSubmitBtn');
+  259 |     await popup.waitForTimeout(25);
+  260 |     await popup.click('#chainSubmitBtn');
+  261 |     await expect.poll(() => popup.evaluate(() => window.__chainSubmitCalls || 0), { timeout: 10000 }).toBe(1);
+  262 |   });
+  263 | });
+  264 | 
+  265 | 
 ```
