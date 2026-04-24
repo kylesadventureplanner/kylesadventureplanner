@@ -12,28 +12,13 @@
 # Error details
 
 ```
-Test timeout of 60000ms exceeded.
-```
+Error: expect(received).toBe(expected) // Object.is equality
 
-```
-Error: page.selectOption: Test timeout of 60000ms exceeded.
-Call log:
-  - waiting for locator('#actionTargetSelect')
-    - locator resolved to <select id="actionTargetSelect"></select>
-  - attempting select option action
-    2 × waiting for element to be visible and enabled
-      - did not find some options
-    - retrying select option action
-    - waiting 20ms
-    2 × waiting for element to be visible and enabled
-      - did not find some options
-    - retrying select option action
-      - waiting 100ms
-    103 × waiting for element to be visible and enabled
-        - did not find some options
-      - retrying select option action
-        - waiting 500ms
+Expected: 1
+Received: 0
 
+Call Log:
+- Timeout 10000ms exceeded while waiting on the predicate
 ```
 
 # Page snapshot
@@ -49,7 +34,7 @@ Call log:
   - generic "Click to expand/collapse" [ref=e10] [cursor=pointer]:
     - generic [ref=e11]:
       - text: 🔧 Advanced Debug Console
-      - generic [ref=e12]: "Startup timing: interactive 99 ms | overlay off 460 ms"
+      - generic [ref=e12]: "Startup timing: interactive 99 ms | overlay off 450 ms"
       - generic [ref=e13]: "Reliability: blocked 0 | overlays 0 | recoveries 0 | errors 0"
     - generic [ref=e14]:
       - button "📋 Copy All" [ref=e15]
@@ -110,7 +95,7 @@ Call log:
               - generic [ref=e72]: 🌲 Outdoors
               - generic [ref=e73]: Browse and plan outdoor locations you want to visit.
             - generic [ref=e74]:
-              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/24/2026, 5:24:17 PM"
+              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/24/2026, 5:26:33 PM"
               - generic [ref=e76]:
                 - button "🔎 Explore Outdoors" [ref=e77] [cursor=pointer]
                 - button "🏙️ City Explorer" [ref=e78] [cursor=pointer]
@@ -818,32 +803,6 @@ Call log:
 # Test source
 
 ```ts
-  185 | }
-  186 | 
-  187 | async function seedEditModeWindow(popup) {
-  188 |   await popup.evaluate(() => {
-  189 |     window.showToast = () => {};
-  190 |     window.__targetConfirmMessages = [];
-  191 |     window.confirm = (message) => {
-  192 |       window.__targetConfirmMessages.push(String(message || ''));
-  193 |       return true;
-  194 |     };
-  195 |     window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
-  196 |       const label = String(inputValue || '').trim();
-  197 |       const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
-  198 |       return {
-  199 |         placeId: `pid-${slug}`,
-  200 |         name: `Name ${label}`,
-  201 |         address: `${label} Address, Denver, CO`,
-  202 |         website: `https://${slug}.example.com`,
-  203 |         businessType: `tag-${slug}`,
-  204 |         hours: `9-5 ${label}`,
-  205 |         phone: `555-${String(slug.length).padStart(4, '0')}`,
-  206 |         rating: '4.7',
-  207 |         userRatingsTotal: 123,
-  208 |         directions: `https://maps.example.com/${slug}`
-  209 |       };
-  210 |     };
   211 |   });
   212 | }
   213 | 
@@ -906,118 +865,144 @@ Call log:
   270 |     }
   271 | 
   272 |     if (!uiReady) {
-  273 |       /* Inject stub functions if scripts didn't load */
+  273 |       /* Inject stub functions and options if scripts didn't load */
   274 |       await popup.evaluate(() => {
   275 |         window.submitAddSinglePlace = window.submitAddSinglePlace || (async () => ({ success: true }));
   276 |         window.submitBulkAddPlaces = window.submitBulkAddPlaces || (async () => ({ success: true }));
   277 |         window.submitBulkChain = window.submitBulkChain || (async () => ({ success: true }));
-  278 |       });
-  279 |     }
-  280 | 
-  281 |     await seedEditModeWindow(popup);
-  282 | 
-  283 |     const runSingle = async (targetValue, input) => {
-  284 |       const before = graphCalls.length;
-> 285 |       await popup.selectOption('#actionTargetSelect', targetValue);
-      |                   ^ Error: page.selectOption: Test timeout of 60000ms exceeded.
-  286 |       await popup.fill('#singleInput', input);
-  287 |       await popup.evaluate(() => submitAddSinglePlace());
-  288 |       await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(before + 1);
-  289 |       return graphCalls.slice(before);
-  290 |     };
-  291 | 
-  292 |     const runBulk = async (targetValue, inputs) => {
-  293 |       const before = graphCalls.length;
-  294 |       await popup.selectOption('#actionTargetSelect', targetValue);
-  295 |       await popup.fill('#bulkInput', inputs.join('\n'));
-  296 |       await popup.evaluate(() => submitBulkAddPlaces());
-  297 |       await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(before + inputs.length);
-  298 |       return graphCalls.slice(before);
-  299 |     };
-  300 | 
-  301 |     const runChain = async (targetValue, inputs) => {
-  302 |       const before = graphCalls.length;
-  303 |       await popup.selectOption('#actionTargetSelect', targetValue);
-  304 |       await popup.fill('#chainInput', inputs.join('\n'));
-  305 |       await popup.selectOption('#chainInputType', 'placeNameCity');
-  306 |       await popup.evaluate(() => submitBulkChain());
-  307 |       await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(before + inputs.length);
-  308 |       return graphCalls.slice(before);
-  309 |     };
-  310 | 
-  311 |     const singleCalls = await runSingle('retail_coffee', 'Cafe Alpha');
-  312 |     expect(singleCalls).toHaveLength(1);
-  313 |     const singleCall = singleCalls[0];
-  314 |     const singleRow = singleCall.body.values[0];
-  315 |     expect(singleCall.table).toBe('Coffee');
-  316 |     expect(singleRow).toHaveLength(SCHEMAS.Coffee.length);
-  317 |     expect(singleRow[0]).toBe('Cafe Alpha Address, Denver, CO');
-  318 |     expect(singleRow[3]).toBe('Name Cafe Alpha');
-  319 |     expect(singleRow[5]).toBe('https://cafe-alpha.example.com');
-  320 |     expect(singleRow[6]).toBe('pid-cafe-alpha');
-  321 |     expect(singleRow[10]).toBe('9-5 Cafe Alpha');
-  322 |     await expect.poll(() => popup.evaluate(() => String((window.__targetConfirmMessages || [])[0] || ''))).toContain('Coffee (Retail_Food_and_Drink.xlsx)');
-  323 |     const diagnostics = popup.locator('#editModeTargetDiagnostics');
-  324 |     if (await diagnostics.count()) {
-  325 |       await expect(diagnostics).toContainText('Coffee (Retail_Food_and_Drink.xlsx)');
-  326 |     }
-  327 |     await expect.poll(() => page.evaluate(() => ({
-  328 |       filePath: window.filePath,
-  329 |       tableName: window.tableName,
-  330 |       schemaColumns: window.__excelSchemaColumns,
-  331 |       columnCount: window.__excelColumnCount
-  332 |     }))).toEqual({
-  333 |       filePath: 'Retail_Food_and_Drink.xlsx',
-  334 |       tableName: 'Coffee',
-  335 |       schemaColumns: SCHEMAS.Coffee,
-  336 |       columnCount: SCHEMAS.Coffee.length
-  337 |     });
-  338 | 
-  339 |     const preflightStatus = popup.locator('#singlePreflightStatus');
-  340 |     if (await preflightStatus.count()) {
-  341 |       const beforeDuplicateAttempt = graphCalls.length;
-  342 |       await popup.selectOption('#actionTargetSelect', 'retail_coffee');
-  343 |       await popup.fill('#singleInput', 'Cafe Alpha');
-  344 |       await popup.evaluate(() => submitAddSinglePlace());
-  345 |       const preflightWarned = await preflightStatus.evaluate((node) => node.classList.contains('is-warning'));
-  346 |       if (preflightWarned) {
-  347 |         await expect(popup.locator('#single-status')).toContainText('Duplicate preflight');
-  348 |         await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt);
-  349 |       } else {
-  350 |         await expect(popup.locator('#single-status')).toContainText('Added');
-  351 |         await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt + 1);
-  352 |       }
-  353 |     }
-  354 | 
-  355 |     const bulkCalls = await runBulk('ent_festivals', ['Fest One', 'Fest Two']);
-  356 |     expect(bulkCalls).toHaveLength(2);
-  357 |     for (const [index, call] of bulkCalls.entries()) {
-  358 |       const label = index === 0 ? 'Fest One' : 'Fest Two';
-  359 |       const resolved = buildResolvedPlace(label);
-  360 |       const row = call.body.values[0];
-  361 |       expect(call.table).toBe('Festivals');
-  362 |       expect(row).toHaveLength(SCHEMAS.Festivals.length);
-  363 |       expect(row[0]).toContain(resolved.businessType);
-  364 |       expect(row[1]).toBe(resolved.name);
-  365 |       expect(row[5]).toBe(resolved.website);
-  366 |       expect(row[7]).toBe(String(resolved.rating));
-  367 |       expect(row[9]).toBe(resolved.placeId);
-  368 |       expect(String(row[10] || '')).toContain(resolved.placeId);
-  369 |     }
-  370 |     await expect.poll(() => page.evaluate(() => ({
-  371 |       filePath: window.filePath,
-  372 |       tableName: window.tableName,
-  373 |       schemaColumns: window.__excelSchemaColumns,
-  374 |       columnCount: window.__excelColumnCount
-  375 |     }))).toEqual({
-  376 |       filePath: 'Entertainment_Locations.xlsx',
-  377 |       tableName: 'Festivals',
-  378 |       schemaColumns: SCHEMAS.Festivals,
-  379 |       columnCount: SCHEMAS.Festivals.length
-  380 |     });
-  381 | 
-  382 |     const chainCalls = await runChain('nature_locations', ['Trail Head', 'River Bend']);
-  383 |     expect(chainCalls).toHaveLength(2);
-  384 |     for (const [index, call] of chainCalls.entries()) {
-  385 |       const label = index === 0 ? 'Trail Head' : 'River Bend';
+  278 | 
+  279 |         /* Populate select options if empty */
+  280 |         const select = document.getElementById('actionTargetSelect');
+  281 |         if (select && select.options.length === 0) {
+  282 |           const optionDefs = [
+  283 |             { value: 'adv_outdoors', text: 'Adventure: Outdoors' },
+  284 |             { value: 'adv_entertainment', text: 'Adventure: Entertainment' },
+  285 |             { value: 'adv_food_drink', text: 'Adventure: Food & Drink' },
+  286 |             { value: 'adv_retail', text: 'Adventure: Retail' },
+  287 |             { value: 'adv_wildlife', text: 'Adventure: Wildlife & Animals' },
+  288 |             { value: 'adv_festivals', text: 'Adventure: Regional Festivals' },
+  289 |             { value: 'ent_festivals', text: 'Entertainment: Festivals' },
+  290 |             { value: 'retail_coffee', text: 'Retail: Coffee' },
+  291 |             { value: 'retail_retail', text: 'Retail: Retail' },
+  292 |             { value: 'nature_locations', text: 'Nature: Locations' }
+  293 |           ];
+  294 |           optionDefs.forEach(opt => {
+  295 |             const option = document.createElement('option');
+  296 |             option.value = opt.value;
+  297 |             option.textContent = opt.text;
+  298 |             select.appendChild(option);
+  299 |           });
+  300 |         }
+  301 |       });
+  302 |     }
+  303 | 
+  304 |     await seedEditModeWindow(popup);
+  305 | 
+  306 |     const runSingle = async (targetValue, input) => {
+  307 |       const before = graphCalls.length;
+  308 |       await popup.selectOption('#actionTargetSelect', targetValue);
+  309 |       await popup.fill('#singleInput', input);
+  310 |       await popup.evaluate(() => submitAddSinglePlace());
+> 311 |       await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(before + 1);
+      |       ^ Error: expect(received).toBe(expected) // Object.is equality
+  312 |       return graphCalls.slice(before);
+  313 |     };
+  314 | 
+  315 |     const runBulk = async (targetValue, inputs) => {
+  316 |       const before = graphCalls.length;
+  317 |       await popup.selectOption('#actionTargetSelect', targetValue);
+  318 |       await popup.fill('#bulkInput', inputs.join('\n'));
+  319 |       await popup.evaluate(() => submitBulkAddPlaces());
+  320 |       await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(before + inputs.length);
+  321 |       return graphCalls.slice(before);
+  322 |     };
+  323 | 
+  324 |     const runChain = async (targetValue, inputs) => {
+  325 |       const before = graphCalls.length;
+  326 |       await popup.selectOption('#actionTargetSelect', targetValue);
+  327 |       await popup.fill('#chainInput', inputs.join('\n'));
+  328 |       await popup.selectOption('#chainInputType', 'placeNameCity');
+  329 |       await popup.evaluate(() => submitBulkChain());
+  330 |       await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(before + inputs.length);
+  331 |       return graphCalls.slice(before);
+  332 |     };
+  333 | 
+  334 |     const singleCalls = await runSingle('retail_coffee', 'Cafe Alpha');
+  335 |     expect(singleCalls).toHaveLength(1);
+  336 |     const singleCall = singleCalls[0];
+  337 |     const singleRow = singleCall.body.values[0];
+  338 |     expect(singleCall.table).toBe('Coffee');
+  339 |     expect(singleRow).toHaveLength(SCHEMAS.Coffee.length);
+  340 |     expect(singleRow[0]).toBe('Cafe Alpha Address, Denver, CO');
+  341 |     expect(singleRow[3]).toBe('Name Cafe Alpha');
+  342 |     expect(singleRow[5]).toBe('https://cafe-alpha.example.com');
+  343 |     expect(singleRow[6]).toBe('pid-cafe-alpha');
+  344 |     expect(singleRow[10]).toBe('9-5 Cafe Alpha');
+  345 |     await expect.poll(() => popup.evaluate(() => String((window.__targetConfirmMessages || [])[0] || ''))).toContain('Coffee (Retail_Food_and_Drink.xlsx)');
+  346 |     const diagnostics = popup.locator('#editModeTargetDiagnostics');
+  347 |     if (await diagnostics.count()) {
+  348 |       await expect(diagnostics).toContainText('Coffee (Retail_Food_and_Drink.xlsx)');
+  349 |     }
+  350 |     await expect.poll(() => page.evaluate(() => ({
+  351 |       filePath: window.filePath,
+  352 |       tableName: window.tableName,
+  353 |       schemaColumns: window.__excelSchemaColumns,
+  354 |       columnCount: window.__excelColumnCount
+  355 |     }))).toEqual({
+  356 |       filePath: 'Retail_Food_and_Drink.xlsx',
+  357 |       tableName: 'Coffee',
+  358 |       schemaColumns: SCHEMAS.Coffee,
+  359 |       columnCount: SCHEMAS.Coffee.length
+  360 |     });
+  361 | 
+  362 |     const preflightStatus = popup.locator('#singlePreflightStatus');
+  363 |     if (await preflightStatus.count()) {
+  364 |       const beforeDuplicateAttempt = graphCalls.length;
+  365 |       await popup.selectOption('#actionTargetSelect', 'retail_coffee');
+  366 |       await popup.fill('#singleInput', 'Cafe Alpha');
+  367 |       await popup.evaluate(() => submitAddSinglePlace());
+  368 |       const preflightWarned = await preflightStatus.evaluate((node) => node.classList.contains('is-warning'));
+  369 |       if (preflightWarned) {
+  370 |         await expect(popup.locator('#single-status')).toContainText('Duplicate preflight');
+  371 |         await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt);
+  372 |       } else {
+  373 |         await expect(popup.locator('#single-status')).toContainText('Added');
+  374 |         await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt + 1);
+  375 |       }
+  376 |     }
+  377 | 
+  378 |     const bulkCalls = await runBulk('ent_festivals', ['Fest One', 'Fest Two']);
+  379 |     expect(bulkCalls).toHaveLength(2);
+  380 |     for (const [index, call] of bulkCalls.entries()) {
+  381 |       const label = index === 0 ? 'Fest One' : 'Fest Two';
+  382 |       const resolved = buildResolvedPlace(label);
+  383 |       const row = call.body.values[0];
+  384 |       expect(call.table).toBe('Festivals');
+  385 |       expect(row).toHaveLength(SCHEMAS.Festivals.length);
+  386 |       expect(row[0]).toContain(resolved.businessType);
+  387 |       expect(row[1]).toBe(resolved.name);
+  388 |       expect(row[5]).toBe(resolved.website);
+  389 |       expect(row[7]).toBe(String(resolved.rating));
+  390 |       expect(row[9]).toBe(resolved.placeId);
+  391 |       expect(String(row[10] || '')).toContain(resolved.placeId);
+  392 |     }
+  393 |     await expect.poll(() => page.evaluate(() => ({
+  394 |       filePath: window.filePath,
+  395 |       tableName: window.tableName,
+  396 |       schemaColumns: window.__excelSchemaColumns,
+  397 |       columnCount: window.__excelColumnCount
+  398 |     }))).toEqual({
+  399 |       filePath: 'Entertainment_Locations.xlsx',
+  400 |       tableName: 'Festivals',
+  401 |       schemaColumns: SCHEMAS.Festivals,
+  402 |       columnCount: SCHEMAS.Festivals.length
+  403 |     });
+  404 | 
+  405 |     const chainCalls = await runChain('nature_locations', ['Trail Head', 'River Bend']);
+  406 |     expect(chainCalls).toHaveLength(2);
+  407 |     for (const [index, call] of chainCalls.entries()) {
+  408 |       const label = index === 0 ? 'Trail Head' : 'River Bend';
+  409 |       const resolved = buildResolvedPlace(label);
+  410 |       const row = call.body.values[0];
+  411 |       expect(call.table).toBe('Nature_Locations');
 ```
