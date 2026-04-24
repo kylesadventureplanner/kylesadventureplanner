@@ -114,10 +114,15 @@ test.describe('Edit Mode submit guards', () => {
     await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
     const popup = await popupPromise;
     await popup.waitForLoadState('domcontentloaded');
+
+    /* Wait for edit mode UI initialization and target select to be populated */
     await popup.waitForFunction(() => {
       const select = document.getElementById('actionTargetSelect');
-      return select && select.options.length >= 7;
-    }, null, { timeout: 10000 });
+      const initDone = typeof window.initializeTabs === 'function' &&
+                       typeof window.switchTab === 'function' &&
+                       typeof window.submitAddSinglePlace === 'function';
+      return initDone && select && select.options.length >= 7;
+    }, null, { timeout: 15000 });
     await popup.evaluate(() => {
       window.__targetConfirmMessages = [];
       window.confirm = (message) => {
