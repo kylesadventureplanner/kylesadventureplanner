@@ -25,6 +25,7 @@ window.__deploymentFileFingerprints = window.__deploymentFileFingerprints || {};
 window.__deploymentFileFingerprints['consolidated-bulk-operations-system-v7-0-141.js'] = '2026.04.24.direct-patch-fix.1';
 
 const UPDATE_DESCRIPTIONS_STRICT_MODE_STORAGE_KEY = 'updateDescriptionsStrictMode';
+const UPDATE_DESCRIPTIONS_RICH_ONLY_STORAGE_KEY = 'updateDescriptionsRichOnly';
 
 function resolveUpdateDescriptionsStrictVerification(value) {
   if (typeof value === 'boolean') return value;
@@ -41,6 +42,23 @@ function resolveUpdateDescriptionsStrictVerification(value) {
 
 window.getUpdateDescriptionsStrictMode = window.getUpdateDescriptionsStrictMode || function() {
   return resolveUpdateDescriptionsStrictVerification(undefined) ? 'fail-closed' : 'warn-only';
+};
+
+function resolveUpdateDescriptionsRichOnly(value) {
+  if (typeof value === 'boolean') return value;
+  const text = String(value == null ? '' : value).trim().toLowerCase();
+  if (text === 'on' || text === 'true' || text === '1' || text === 'rich-only') return true;
+  if (text === 'off' || text === 'false' || text === '0') return false;
+  try {
+    const stored = String(localStorage.getItem(UPDATE_DESCRIPTIONS_RICH_ONLY_STORAGE_KEY) || '').trim().toLowerCase();
+    if (stored === 'on' || stored === 'true' || stored === '1' || stored === 'rich-only') return true;
+    if (stored === 'off' || stored === 'false' || stored === '0') return false;
+  } catch (_error) {}
+  return false;
+}
+
+window.getUpdateDescriptionsRichOnlyMode = window.getUpdateDescriptionsRichOnlyMode || function() {
+  return resolveUpdateDescriptionsRichOnly(undefined) ? 'rich-only' : 'allow-fallbacks';
 };
 
 function isWorkbookWriteDebugEnabled() {
@@ -1193,17 +1211,20 @@ function getCachedPlaceDetailsFromRows(placeId, mainWindow) {
  * Helper: Get place details from Google Places API with retry logic.
  * Prefer live Google details first, then fall back to cached row data.
  */
-async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1) {
+async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1, options = {}) {
   try {
     const mainWindow = window.opener && !window.opener.closed ? window.opener : window;
+    const forceRefresh = !!options.forceRefresh;
+    const allowCachedFallback = options.allowCachedFallback !== false;
+    const helperContext = options.context || 'bulk-automation';
 
     // PRIORITY 1: Use the existing Google details helper when available.
     if (mainWindow && typeof mainWindow.getPlaceDetails === 'function') {
       try {
-        const fallbackResult = await mainWindow.getPlaceDetails(placeId);
+        const fallbackResult = await mainWindow.getPlaceDetails(placeId, { forceRefresh, context: helperContext });
         const normalizedFallback = normalizePlaceDetailsForBulkOps(placeId, fallbackResult, mainWindow);
         if (hasMeaningfulBulkOpsDetails(normalizedFallback)) {
-          console.log(`✅ Got data from fallback function for ${placeId}`);
+          console.log(`✅ Got ${forceRefresh ? 'fresh' : 'live'} data from fallback function for ${placeId}`);
           return normalizedFallback;
         }
       } catch (fallbackErr) {
@@ -1214,10 +1235,10 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1) {
     // Support direct-window execution when the helper lives in this window instead of the opener.
     if (typeof window.getPlaceDetails === 'function' && window.getPlaceDetails !== mainWindow?.getPlaceDetails) {
       try {
-        const directResult = await window.getPlaceDetails(placeId);
+        const directResult = await window.getPlaceDetails(placeId, { forceRefresh, context: helperContext });
         const normalizedDirect = normalizePlaceDetailsForBulkOps(placeId, directResult, mainWindow);
         if (hasMeaningfulBulkOpsDetails(normalizedDirect)) {
-          console.log(`✅ Got data from local window.getPlaceDetails for ${placeId}`);
+          console.log(`✅ Got ${forceRefresh ? 'fresh' : 'live'} data from local window.getPlaceDetails for ${placeId}`);
           return normalizedDirect;
         }
       } catch (directErr) {
@@ -1226,10 +1247,14 @@ async function getPlaceDetailsFromAPI(placeId, retryCount = 0, maxRetries = 1) {
     }
 
     // PRIORITY 2: Check local row cache only after live enrichment attempts.
-    const cached = getCachedPlaceDetailsFromRows(placeId, mainWindow);
-    if (hasMeaningfulBulkOpsDetails(cached)) {
-      console.log(`✅ Using cached row data for ${placeId}`);
-      return cached;
+    if (allowCachedFallback) {
+      const cached = getCachedPlaceDetailsFromRows(placeId, mainWindow);
+      if (hasMeaningfulBulkOpsDetails(cached)) {
+        console.log(`✅ Using cached row data for ${placeId}`);
+        return cached;
+      }
+    } else {
+      console.info(`ℹ️ Cache fallback skipped for ${placeId} (${helperContext})`);
     }
 
     // PRIORITY 3: Google Places API - PERMANENTLY DISABLED
@@ -1707,7 +1732,11 @@ window.handlePopulateMissingFields = async function(displayElement, dryRun = fal
           continue;
         }
 
-        const details = await getPlaceDetailsFromAPI(placeId);
+        const details = await getPlaceDetailsFromAPI(placeId, 0, 1, {
+          forceRefresh: true,
+          allowCachedFallback: false,
+          context: 'update-descriptions'
+        });
         let fieldsCorrected = [];
 
         if (!dryRun) {
@@ -2362,10 +2391,12 @@ console.log('✅ M365 Excel Write Integration ready');
  * Update description fields for all locations using Google Places API.
  * Only fills empty descriptions unless overwrite=true.
  */
-window.handleUpdateAllDescriptions = async function(displayElement, dryRun = false, overwrite = false, strictModeOverride) {
+window.handleUpdateAllDescriptions = async function(displayElement, dryRun = false, overwrite = false, strictModeOverride, richDescriptionsOnlyOverride) {
   const strictVerification = resolveUpdateDescriptionsStrictVerification(strictModeOverride);
   const strictVerificationMode = strictVerification ? 'fail-closed' : 'warn-only';
-  console.log(`📝 Starting update descriptions, dryRun=${dryRun}, overwrite=${overwrite}, strictMode=${strictVerificationMode}`);
+  const richDescriptionsOnly = resolveUpdateDescriptionsRichOnly(richDescriptionsOnlyOverride);
+  const richDescriptionsMode = richDescriptionsOnly ? 'rich-only' : 'allow-fallbacks';
+  console.log(`📝 Starting update descriptions, dryRun=${dryRun}, overwrite=${overwrite}, strictMode=${strictVerificationMode}, richMode=${richDescriptionsMode}`);
 
   if (!displayElement) return { success: false, error: 'No display element' };
 
@@ -2396,6 +2427,8 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
     overwrite: !!overwrite,
     strictVerification,
     strictVerificationMode,
+    richDescriptionsOnly,
+    richDescriptionsMode,
     descriptionIndex: Number(activeCols.DESCRIPTION),
     descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
     totalRows: adventuresData.length
@@ -2403,6 +2436,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
   const results = [];
   let updatedCount = 0;
   let skippedCount = 0;
+  let skippedNonRichCount = 0;
   let errorCount = 0;
   const previewItems = [];
   const changedRows = [];
@@ -2445,7 +2479,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
   const updateDisplay = (status) => { displayElement.innerHTML = status; };
 
   updateDisplay(`<div style="padding:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
-    <div style="font-weight:600;color:#1e40af;margin-bottom:12px;">${dryRun ? '🧪 DRY RUN – Preview' : '⏳ Processing'} Update Descriptions${overwrite ? ' (overwrite all)' : ' (missing only)'}</div>
+    <div style="font-weight:600;color:#1e40af;margin-bottom:12px;">${dryRun ? '🧪 DRY RUN – Preview' : '⏳ Processing'} Update Descriptions${overwrite ? ' (overwrite all)' : ' (missing only)'}${richDescriptionsOnly ? ' (rich only)' : ''}</div>
     <div style="font-size:14px;color:#1f2937;">📊 Total locations: ${adventuresData.length}</div>
     <div style="margin-top:8px;padding:8px;background:rgba(59,130,246,0.1);border-radius:4px;font-size:12px;color:#1f2937;">⏳ Scanning descriptions…</div>
   </div>`);
@@ -2478,6 +2512,8 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         dryRun: !!dryRun,
         strictVerification,
         strictVerificationMode,
+        richDescriptionsOnly,
+        richDescriptionsMode,
         preflight,
         rowAuditTrail: [],
         perRowWriteLog: []
@@ -2493,6 +2529,8 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
         operationRunId,
         strictVerification,
         strictVerificationMode,
+        richDescriptionsOnly,
+        richDescriptionsMode,
         preflight,
         error: String(preflight.detail || preflight.reason || 'preflight-failed')
       };
@@ -2540,7 +2578,11 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
           continue;
         }
 
-        const details = await getPlaceDetailsFromAPI(placeId);
+        const details = await getPlaceDetailsFromAPI(placeId, 0, 1, {
+          forceRefresh: true,
+          allowCachedFallback: false,
+          context: 'update-descriptions'
+        });
         const newDesc = (details && details.description) ? details.description.trim() : '';
 
         // Fallback: generate a basic description from name + location data
@@ -2563,6 +2605,26 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
             : 'google-details-editorial-or-reviews';
         } else if (generatedDesc) {
           descriptionSource = 'local-fallback-name-city-rating';
+        }
+        const isRichDescription = descriptionSource === 'google-details-editorial-or-reviews';
+
+        if (richDescriptionsOnly && generatedDesc && !isRichDescription) {
+          skippedCount++;
+          skippedNonRichCount++;
+          rowAuditTrail.push({
+            ...baseAudit,
+            status: 'skipped',
+            reason: 'non-rich-description-source',
+            descriptionSource,
+            generatedDescPreview: generatedDesc.slice(0, 120)
+          });
+          pushWorkbookWriteDebug('update-descriptions-row-skipped', {
+            ...baseAudit,
+            reason: 'non-rich-description-source',
+            descriptionSource
+          });
+          results.push({ name, status: 'skipped', message: `Skipped non-rich description source (${descriptionSource})` });
+          continue;
         }
 
         if (!dryRun && generatedDesc) {
@@ -2653,11 +2715,14 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       dryRun: !!dryRun,
       strictVerification,
       strictVerificationMode,
+      richDescriptionsOnly,
+      richDescriptionsMode,
       descriptionIndex: Number(activeCols.DESCRIPTION),
       descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
       writeTarget: persistence.writeTarget || null,
       preflight: persistence.preflight || preflight,
       diagnosticSummary: persistence.diagnosticSummary || null,
+      skippedNonRichCount,
       rowAuditTrail,
       perRowWriteLog: Array.isArray(persistence.perRowWriteLog) ? persistence.perRowWriteLog : []
     };
@@ -2667,6 +2732,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       dryRun: !!dryRun,
       updatedCount,
       skippedCount,
+      skippedNonRichCount,
       errorCount,
       descriptionColumnIndex: Number(activeCols.DESCRIPTION),
       descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
@@ -2676,6 +2742,8 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       runFailed: !!persistence.runFailed,
       strictVerification,
       strictVerificationMode,
+      richDescriptionsOnly,
+      richDescriptionsMode,
       diagnosticSummary: persistence.diagnosticSummary || null
     });
     const canDownloadAuditCsv = !dryRun && Array.isArray(persistence.perRowWriteLog) && persistence.perRowWriteLog.length > 0;
@@ -2688,6 +2756,7 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
     updateDisplay(`<div style="padding:16px;background:${strictRunFailed ? '#fef2f2' : '#f0fdf4'};border:1px solid ${strictRunFailed ? '#fecaca' : '#bbf7d0'};border-radius:8px;">
       <div style="font-weight:600;color:${strictRunFailed ? '#991b1b' : '#166534'};margin-bottom:8px;">${completedTitle}</div>
       <div style="font-size:13px;color:#374151;">✅ Updated: ${updatedCount} &nbsp; ⏭ Skipped: ${skippedCount} &nbsp; ❌ Errors: ${errorCount}</div>
+      <div style="font-size:12px;color:#1f2937;margin-top:4px;">🧾 Rich mode: ${escapeHtml(richDescriptionsMode)}${richDescriptionsOnly ? ` • skipped non-rich ${Number(skippedNonRichCount || 0)}` : ''}</div>
       <div style="font-size:12px;color:${persistence.persisted ? '#047857' : '#92400e'};margin-top:8px;">💾 Workbook write: ${persistence.persisted ? 'saved to Excel' : `not persisted (${persistence.reason || persistence.mode})`}</div>
       <div style="font-size:12px;color:#1f2937;margin-top:6px;">🗂️ Target: ${escapeHtml(writeTargetLabel)}</div>
       <div style="font-size:12px;color:#1f2937;margin-top:4px;">🔎 Description read-back verified: ${Number(persistence.verifiedRowsChanged || 0)}/${Number(persistence.persistedRows || 0)}</div>
@@ -2721,11 +2790,14 @@ window.handleUpdateAllDescriptions = async function(displayElement, dryRun = fal
       operationRunId,
       strictVerification,
       strictVerificationMode,
+      richDescriptionsOnly,
+      richDescriptionsMode,
       descriptionIndex: Number(activeCols.DESCRIPTION),
       descriptionColumnName: String(resolvedColsDebug.descriptionColumnName || ''),
       writeTarget: persistence.writeTarget || null,
       preflight: persistence.preflight || preflight,
       diagnosticSummary: persistence.diagnosticSummary || null,
+      skippedNonRichCount,
       perRowWriteLog: Array.isArray(persistence.perRowWriteLog) ? persistence.perRowWriteLog : [],
       rowAuditTrailCount: rowAuditTrail.length
     };

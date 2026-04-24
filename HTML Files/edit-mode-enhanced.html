@@ -1331,13 +1331,21 @@
           <label for="descStrictMode" id="descStrictModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">🛡️ Strict mode (fail-closed verification)</label>
         </div>
 
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+          <input type="checkbox" id="descRichOnlyMode">
+          <label for="descRichOnlyMode" id="descRichOnlyModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">📝 Rich descriptions only (skip placeholders)</label>
+        </div>
+
         <div class="button-group">
           <button class="button button-primary" onclick="submitUpdateDescriptions()">📝 Update Descriptions</button>
         </div>
 
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px;">
             <div id="desc-write-diagnostics" class="help-text" style="margin-top:0;color:#64748b;">💾 Workbook write diagnostics: not run yet.</div>
-            <span id="desc-strict-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:11px;font-weight:700;line-height:1;">STRICT: FAIL-CLOSED</span>
+            <div style="display:inline-flex;align-items:center;gap:6px;">
+              <span id="desc-strict-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;font-size:11px;font-weight:700;line-height:1;">STRICT: FAIL-CLOSED</span>
+              <span id="desc-rich-mode-badge" style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;border:1px solid #d1d5db;background:#f9fafb;color:#374151;font-size:11px;font-weight:700;line-height:1;">RICH: OFF</span>
+            </div>
           </div>
 
         <div id="desc-status"></div>
@@ -6270,6 +6278,7 @@
      * Submit Update Descriptions
      */
     const DESC_STRICT_MODE_STORAGE_KEY = 'updateDescriptionsStrictMode';
+    const DESC_RICH_ONLY_MODE_STORAGE_KEY = 'updateDescriptionsRichOnly';
 
     function getUpdateDescriptionsStrictModePreference() {
       try {
@@ -6314,17 +6323,60 @@
       });
     }
 
+    function getUpdateDescriptionsRichOnlyPreference() {
+      try {
+        const raw = String(localStorage.getItem(DESC_RICH_ONLY_MODE_STORAGE_KEY) || '').trim().toLowerCase();
+        if (raw === 'on' || raw === 'true' || raw === '1' || raw === 'rich-only') return true;
+        if (raw === 'off' || raw === 'false' || raw === '0') return false;
+      } catch (_error) {}
+      if (typeof window.getUpdateDescriptionsRichOnlyMode === 'function') {
+        return String(window.getUpdateDescriptionsRichOnlyMode() || '').trim() === 'rich-only';
+      }
+      return false;
+    }
+
+    function persistUpdateDescriptionsRichOnlyPreference(enabled) {
+      const richOnlyEnabled = !!enabled;
+      try { localStorage.setItem(DESC_RICH_ONLY_MODE_STORAGE_KEY, richOnlyEnabled ? 'on' : 'off'); } catch (_error) {}
+      const label = document.getElementById('descRichOnlyModeLabel');
+      const badge = document.getElementById('desc-rich-mode-badge');
+      if (label) {
+        label.textContent = richOnlyEnabled
+          ? '📝 Rich descriptions only (skip placeholders)'
+          : '📝 Rich descriptions only OFF (allow placeholders)';
+      }
+      if (badge) {
+        badge.textContent = richOnlyEnabled ? 'RICH: ON' : 'RICH: OFF';
+        badge.style.borderColor = richOnlyEnabled ? '#bbf7d0' : '#d1d5db';
+        badge.style.background = richOnlyEnabled ? '#f0fdf4' : '#f9fafb';
+        badge.style.color = richOnlyEnabled ? '#166534' : '#374151';
+      }
+      return richOnlyEnabled;
+    }
+
+    function initUpdateDescriptionsRichOnlyToggle() {
+      const checkbox = document.getElementById('descRichOnlyMode');
+      if (!checkbox) return;
+      const richOnlyEnabled = getUpdateDescriptionsRichOnlyPreference();
+      checkbox.checked = !!richOnlyEnabled;
+      persistUpdateDescriptionsRichOnlyPreference(richOnlyEnabled);
+      checkbox.addEventListener('change', () => {
+        persistUpdateDescriptionsRichOnlyPreference(checkbox.checked);
+      });
+    }
+
     async function submitUpdateDescriptions() {
       const dryRun = document.getElementById('descDryRun').checked;
       const overwrite = document.getElementById('descOverwrite').checked;
       const strictModeEnabled = !!document.getElementById('descStrictMode')?.checked;
+      const richOnlyEnabled = !!document.getElementById('descRichOnlyMode')?.checked;
       const statusDiv = document.getElementById('desc-status');
       const single = getSelectedTarget('automationTargetSelect');
       const targets = getSelectedAutomationTargets().length ? getSelectedAutomationTargets() : (single ? [single] : []);
 
       const result = await runAutomationAcrossTargets(targets, statusDiv, async () => {
         if (typeof window.handleUpdateAllDescriptions === 'function') {
-          return await window.handleUpdateAllDescriptions(document.createElement('div'), dryRun, overwrite, strictModeEnabled);
+          return await window.handleUpdateAllDescriptions(document.createElement('div'), dryRun, overwrite, strictModeEnabled, richOnlyEnabled);
         }
         throw new Error('Update descriptions handler not available');
       });
@@ -6439,6 +6491,7 @@
       initBulkCandidateSearch();
       initChainCandidateSearch();
       initUpdateDescriptionsStrictModeToggle();
+      initUpdateDescriptionsRichOnlyToggle();
       initCandidateGeoFilters();
       mountFestivalSourcesConfigCardInPlaces();
       closeFestivalSourcesConfigView({ restoreFocus: false });
@@ -6461,6 +6514,7 @@
       initBulkCandidateSearch();
       initChainCandidateSearch();
       initUpdateDescriptionsStrictModeToggle();
+      initUpdateDescriptionsRichOnlyToggle();
       initCandidateGeoFilters();
       mountFestivalSourcesConfigCardInPlaces();
       closeFestivalSourcesConfigView({ restoreFocus: false });
