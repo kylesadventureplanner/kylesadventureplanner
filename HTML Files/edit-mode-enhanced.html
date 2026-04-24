@@ -3767,6 +3767,9 @@
             : '';
         text = `💾 Workbook write diagnostics: saved to Excel${persistedTargets ? ` • ${persistedTargets}/${processedTargets || persistedTargets} target${(processedTargets || persistedTargets) === 1 ? '' : 's'}` : ''}${rowsChanged ? ` • ${rowsChanged} row${rowsChanged === 1 ? '' : 's'} changed` : ''}${verifySuffix}${failedTargets ? ` • ${failedTargets} failed` : ''}`;
         color = '#047857';
+      } else if (persistReason === 'no-updates') {
+        text = `💾 Workbook write diagnostics: no workbook write needed (no updates • all rows already had values or were skipped)`;
+        color = '#0f766e';
       } else if (processedTargets > 0) {
         const suffix = persistReason || verificationReason || persistMode || (failedTargets ? 'one or more targets failed' : 'no workbook changes persisted');
         text = `💾 Workbook write diagnostics: not persisted${suffix ? ` (${suffix})` : ''}`;
@@ -3802,6 +3805,7 @@
         }
       }
       const hasIndex = Number.isFinite(descIndex) && descIndex >= 0;
+      if (!descName && hasIndex) descName = 'Description';
       if (!hasIndex && !descName) return;
       el.textContent = `${el.textContent} • Description column: index ${hasIndex ? Math.round(descIndex) : 'n/a'}${descName ? ` (${descName})` : ''}`;
     }
