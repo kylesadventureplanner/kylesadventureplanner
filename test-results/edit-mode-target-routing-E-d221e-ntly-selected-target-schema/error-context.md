@@ -6,19 +6,13 @@
 
 # Test info
 
-- Name: edit-mode-submit-guards.spec.js >> Edit Mode submit guards >> prevent duplicate rapid clicks for single, bulk, and chain submit buttons
-- Location: tests/edit-mode-submit-guards.spec.js:55:3
+- Name: edit-mode-target-routing.spec.js >> Edit Mode target-table routing >> Add Single, Bulk Add, and Bulk Chain write using the currently selected target schema
+- Location: tests/edit-mode-target-routing.spec.js:233:3
 
 # Error details
 
 ```
-Error: expect(received).toBe(expected) // Object.is equality
-
-Expected: 1
-Received: 0
-
-Call Log:
-- Timeout 12000ms exceeded while waiting on the predicate
+TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
 ```
 
 # Page snapshot
@@ -34,7 +28,7 @@ Call Log:
   - generic "Click to expand/collapse" [ref=e10] [cursor=pointer]:
     - generic [ref=e11]:
       - text: 🔧 Advanced Debug Console
-      - generic [ref=e12]: "Startup timing: interactive 102 ms | overlay off 453 ms"
+      - generic [ref=e12]: "Startup timing: interactive 99 ms | overlay off 450 ms"
       - generic [ref=e13]: "Reliability: blocked 0 | overlays 0 | recoveries 0 | errors 0"
     - generic [ref=e14]:
       - button "📋 Copy All" [ref=e15]
@@ -95,7 +89,7 @@ Call Log:
               - generic [ref=e72]: 🌲 Outdoors
               - generic [ref=e73]: Browse and plan outdoor locations you want to visit.
             - generic [ref=e74]:
-              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/24/2026, 5:19:39 PM"
+              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/24/2026, 5:22:22 PM"
               - generic [ref=e76]:
                 - button "🔎 Explore Outdoors" [ref=e77] [cursor=pointer]
                 - button "🏙️ City Explorer" [ref=e78] [cursor=pointer]
@@ -803,137 +797,206 @@ Call Log:
 # Test source
 
 ```ts
-  134 |         options.forEach(opt => {
-  135 |           const option = document.createElement('option');
-  136 |           option.value = opt.value;
-  137 |           option.textContent = opt.text;
-  138 |           select.appendChild(option);
-  139 |         });
-  140 |       }
-  141 | 
-  142 |       /* Inject stub handlers that make real graph API calls to trigger mocking */
-  143 |       window.submitAddSinglePlace = window.submitAddSinglePlace || async function() {
-  144 |         console.log('[test-stub] submitAddSinglePlace called');
-  145 |         try {
-  146 |           console.log('[test-stub] about to fetch...');
-  147 |           const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
-  148 |             method: 'POST',
-  149 |             headers: { 'Authorization': 'Bearer playwright-mock-token', 'Content-Type': 'application/json' },
-  150 |             body: JSON.stringify({ name: 'test' })
-  151 |           });
-  152 |           console.log('[test-stub] fetch response:', response.status, response.ok);
-  153 |           return { success: response.ok, status: response.status };
-  154 |         } catch (e) {
-  155 |           console.error('[test-stub] fetch error:', e.message);
-  156 |           return { success: false, error: String(e) };
-  157 |         }
-  158 |       };
-  159 |       window.submitAddBulkPlaces = window.submitAddBulkPlaces || async function() {
-  160 |         console.log('[test-stub] submitAddBulkPlaces called');
-  161 |         try {
-  162 |           await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
-  163 |             method: 'POST',
-  164 |             headers: { 'Authorization': 'Bearer playwright-mock-token', 'Content-Type': 'application/json' },
-  165 |             body: JSON.stringify({ name: 'bulk' })
-  166 |           });
-  167 |           return { success: true };
-  168 |         } catch (e) {
-  169 |           return { success: false, error: String(e) };
-  170 |         }
-  171 |       };
-  172 |       window.handleBulkAddChainLocationsFixed = window.handleBulkAddChainLocationsFixed || async function() {
-  173 |         console.log('[test-stub] handleBulkAddChainLocationsFixed called');
-  174 |         try {
-  175 |           await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
-  176 |             method: 'POST',
-  177 |             headers: { 'Authorization': 'Bearer playwright-mock-token', 'Content-Type': 'application/json' },
-  178 |             body: JSON.stringify({ name: 'chain' })
-  179 |           });
-  180 |           return { success: true };
-  181 |         } catch (e) {
-  182 |           return { success: false, error: String(e) };
-  183 |         }
-  184 |       };
-  185 | 
-  186 |       /* Wire onclick handlers to submit buttons */
-  187 |       const singleBtn = document.getElementById('singleSubmitBtn');
-  188 |       if (singleBtn && !singleBtn.onclick) {
-  189 |         singleBtn.onclick = async (e) => {
-  190 |           e.preventDefault();
-  191 |           console.log('[test-btn] single click');
-  192 |           return await window.submitAddSinglePlace();
-  193 |         };
-  194 |       }
-  195 |       const bulkBtn = document.getElementById('bulkSubmitBtn');
-  196 |       if (bulkBtn && !bulkBtn.onclick) {
-  197 |         bulkBtn.onclick = async (e) => {
-  198 |           e.preventDefault();
-  199 |           console.log('[test-btn] bulk click');
-  200 |           return await window.submitAddBulkPlaces();
-  201 |         };
-  202 |       }
-  203 |       const chainBtn = document.getElementById('chainSubmitBtn');
-  204 |       if (chainBtn && !chainBtn.onclick) {
-  205 |         chainBtn.onclick = async (e) => {
-  206 |           e.preventDefault();
-  207 |           console.log('[test-btn] chain click');
-  208 |           return await window.handleBulkAddChainLocationsFixed();
-  209 |         };
-  210 |       }
-  211 |     });
-  212 |     await popup.evaluate(() => {
-  213 |       window.__targetConfirmMessages = [];
-  214 |       window.confirm = (message) => {
-  215 |         window.__targetConfirmMessages.push(String(message || ''));
-  216 |         return true;
-  217 |       };
-  218 |     });
-  219 | 
-  220 |     await popup.selectOption('#actionTargetSelect', 'ent_festivals');
-  221 | 
-  222 |     await popup.selectOption('#singleInputType', 'placeName');
-  223 |     await popup.fill('#singleInput', 'Apple Blossom Festival');
-  224 | 
-  225 |     /* Test direct function call first to verify setup */
-  226 |     console.log('Before single click, graphCalls.length:', graphCalls.length);
-  227 |     await popup.evaluate(() => window.submitAddSinglePlace());
-  228 |     await popup.waitForTimeout(500);
-  229 |     console.log('After direct call, graphCalls.length:', graphCalls.length);
-  230 | 
-  231 |     await popup.click('#singleSubmitBtn');
-  232 |     await popup.waitForTimeout(25);
-  233 |     await popup.click('#singleSubmitBtn');
-> 234 |     await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(1);
-      |     ^ Error: expect(received).toBe(expected) // Object.is equality
-  235 | 
-  236 |     await popup.selectOption('#bulkInputType', 'placeName');
-  237 |     await popup.fill('#bulkInput', 'Pear Harvest Festival\nPeach Jam Festival');
-  238 |     await popup.click('#bulkSubmitBtn');
-  239 |     await popup.waitForTimeout(25);
-  240 |     await popup.click('#bulkSubmitBtn');
-  241 |     await expect.poll(() => graphCalls.length, { timeout: 15000 }).toBe(3);
-  242 | 
-  243 |     await popup.evaluate(() => {
-  244 |       window.__chainSubmitCalls = 0;
-  245 |       const original = typeof window.handleBulkAddChainLocationsFixed === 'function'
-  246 |         ? window.handleBulkAddChainLocationsFixed
-  247 |         : null;
-  248 |       window.handleBulkAddChainLocationsFixed = async (...args) => {
-  249 |         window.__chainSubmitCalls += 1;
-  250 |         await new Promise((resolve) => window.setTimeout(resolve, 300));
-  251 |         if (!original) return { success: true, message: 'chain complete' };
-  252 |         return original(...args);
-  253 |       };
-  254 |     });
-  255 | 
-  256 |     await popup.selectOption('#chainInputType', 'placeNameCity');
-  257 |     await popup.fill('#chainInput', 'Chain Test Location, Asheville');
-  258 |     await popup.click('#chainSubmitBtn');
-  259 |     await popup.waitForTimeout(25);
-  260 |     await popup.click('#chainSubmitBtn');
-  261 |     await expect.poll(() => popup.evaluate(() => window.__chainSubmitCalls || 0), { timeout: 10000 }).toBe(1);
-  262 |   });
-  263 | });
-  264 | 
-  265 | 
+  151 | 
+  152 |     if (method === 'POST' && url.includes('/rows')) {
+  153 |       graphCalls.push({
+  154 |         url,
+  155 |         method,
+  156 |         table,
+  157 |         workbookPath,
+  158 |         body: JSON.parse(request.postData() || '{}')
+  159 |       });
+  160 |       await route.fulfill({
+  161 |         status: 200,
+  162 |         contentType: 'application/json',
+  163 |         body: JSON.stringify({ ok: true, table })
+  164 |       });
+  165 |       return;
+  166 |     }
+  167 | 
+  168 |     await route.fulfill({
+  169 |       status: 200,
+  170 |       contentType: 'application/json',
+  171 |       body: JSON.stringify({ value: [] })
+  172 |     });
+  173 |   });
+  174 | }
+  175 | 
+  176 | async function seedMainWindow(page) {
+  177 |   await page.evaluate(() => {
+  178 |     window.accessToken = 'playwright-mock-token';
+  179 |     window.activeAccount = { username: 'test@example.com' };
+  180 |     window.showToast = () => {};
+  181 |     window.renderAdventureCards = async () => {};
+  182 |     window.FilterManager = { applyAllFilters() {}, renderQuickFilterCounts() {} };
+  183 |     window.normalizeOperationHours = (value) => String(value || '');
+  184 |   });
+  185 | }
+  186 | 
+  187 | async function seedEditModeWindow(popup) {
+  188 |   await popup.evaluate(() => {
+  189 |     window.showToast = () => {};
+  190 |     window.__targetConfirmMessages = [];
+  191 |     window.confirm = (message) => {
+  192 |       window.__targetConfirmMessages.push(String(message || ''));
+  193 |       return true;
+  194 |     };
+  195 |     window.resolvePlaceInputWithGoogleData = async (_inputType, inputValue) => {
+  196 |       const label = String(inputValue || '').trim();
+  197 |       const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item';
+  198 |       return {
+  199 |         placeId: `pid-${slug}`,
+  200 |         name: `Name ${label}`,
+  201 |         address: `${label} Address, Denver, CO`,
+  202 |         website: `https://${slug}.example.com`,
+  203 |         businessType: `tag-${slug}`,
+  204 |         hours: `9-5 ${label}`,
+  205 |         phone: `555-${String(slug.length).padStart(4, '0')}`,
+  206 |         rating: '4.7',
+  207 |         userRatingsTotal: 123,
+  208 |         directions: `https://maps.example.com/${slug}`
+  209 |       };
+  210 |     };
+  211 |   });
+  212 | }
+  213 | 
+  214 | async function collectPopupErrors(popup) {
+  215 |   const popupErrors = [];
+  216 |   popup.on('console', (msg) => {
+  217 |     if (msg.type() !== 'error') return;
+  218 |     const location = msg.location ? msg.location() : { url: '' };
+  219 |     const text = msg.text();
+  220 |     if (isIgnoredExtensionNoise(text, location && location.url)) return;
+  221 |     popupErrors.push(`[console] ${text}${location && location.url ? ` (${location.url})` : ''}`);
+  222 |   });
+  223 |   popup.on('pageerror', (error) => {
+  224 |     const message = error && error.message ? String(error.message) : String(error || 'Unknown popup page error');
+  225 |     const stack = error && error.stack ? String(error.stack) : '';
+  226 |     if (isIgnoredExtensionNoise(`${message}\n${stack}`, '')) return;
+  227 |     popupErrors.push(`[pageerror] ${message}`);
+  228 |   });
+  229 |   return popupErrors;
+  230 | }
+  231 | 
+  232 | test.describe('Edit Mode target-table routing', () => {
+  233 |   test('Add Single, Bulk Add, and Bulk Chain write using the currently selected target schema', async ({ page }) => {
+  234 |     const graphCalls = [];
+  235 |     const context = page.context();
+  236 |     await installWorkbookMocks(context, graphCalls);
+  237 | 
+  238 |     await page.goto('/index.html', { waitUntil: 'domcontentloaded' });
+  239 |     await page.waitForFunction(() => (
+  240 |       typeof window.buildExcelRow === 'function'
+  241 |       && typeof window.addRowToExcel === 'function'
+  242 |       && typeof window.getColumnIndexByName === 'function'
+  243 |     ), null, { timeout: 15000 });
+  244 |     await seedMainWindow(page);
+  245 | 
+  246 |     const popupPromise = page.waitForEvent('popup');
+  247 |     await page.evaluate(() => window.open('/HTML%20Files/edit-mode-enhanced.html', '_blank'));
+  248 |     const popup = await popupPromise;
+  249 |     const popupErrors = await collectPopupErrors(popup);
+  250 |     await popup.waitForLoadState('domcontentloaded');
+> 251 |     await popup.waitForFunction(() => {
+      |                 ^ TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
+  252 |       const select = document.getElementById('actionTargetSelect');
+  253 |       return select && select.options.length >= 7;
+  254 |     }, null, { timeout: 10000 });
+  255 |     await popup.waitForFunction(() => (
+  256 |       typeof window.submitAddSinglePlace === 'function'
+  257 |       && typeof window.submitBulkAddPlaces === 'function'
+  258 |       && typeof window.submitBulkChain === 'function'
+  259 |     ), null, { timeout: 10000 });
+  260 |     await seedEditModeWindow(popup);
+  261 | 
+  262 |     const runSingle = async (targetValue, input) => {
+  263 |       const before = graphCalls.length;
+  264 |       await popup.selectOption('#actionTargetSelect', targetValue);
+  265 |       await popup.fill('#singleInput', input);
+  266 |       await popup.evaluate(() => submitAddSinglePlace());
+  267 |       await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(before + 1);
+  268 |       return graphCalls.slice(before);
+  269 |     };
+  270 | 
+  271 |     const runBulk = async (targetValue, inputs) => {
+  272 |       const before = graphCalls.length;
+  273 |       await popup.selectOption('#actionTargetSelect', targetValue);
+  274 |       await popup.fill('#bulkInput', inputs.join('\n'));
+  275 |       await popup.evaluate(() => submitBulkAddPlaces());
+  276 |       await expect.poll(() => graphCalls.length, { timeout: 10000 }).toBe(before + inputs.length);
+  277 |       return graphCalls.slice(before);
+  278 |     };
+  279 | 
+  280 |     const runChain = async (targetValue, inputs) => {
+  281 |       const before = graphCalls.length;
+  282 |       await popup.selectOption('#actionTargetSelect', targetValue);
+  283 |       await popup.fill('#chainInput', inputs.join('\n'));
+  284 |       await popup.selectOption('#chainInputType', 'placeNameCity');
+  285 |       await popup.evaluate(() => submitBulkChain());
+  286 |       await expect.poll(() => graphCalls.length, { timeout: 12000 }).toBe(before + inputs.length);
+  287 |       return graphCalls.slice(before);
+  288 |     };
+  289 | 
+  290 |     const singleCalls = await runSingle('retail_coffee', 'Cafe Alpha');
+  291 |     expect(singleCalls).toHaveLength(1);
+  292 |     const singleCall = singleCalls[0];
+  293 |     const singleRow = singleCall.body.values[0];
+  294 |     expect(singleCall.table).toBe('Coffee');
+  295 |     expect(singleRow).toHaveLength(SCHEMAS.Coffee.length);
+  296 |     expect(singleRow[0]).toBe('Cafe Alpha Address, Denver, CO');
+  297 |     expect(singleRow[3]).toBe('Name Cafe Alpha');
+  298 |     expect(singleRow[5]).toBe('https://cafe-alpha.example.com');
+  299 |     expect(singleRow[6]).toBe('pid-cafe-alpha');
+  300 |     expect(singleRow[10]).toBe('9-5 Cafe Alpha');
+  301 |     await expect.poll(() => popup.evaluate(() => String((window.__targetConfirmMessages || [])[0] || ''))).toContain('Coffee (Retail_Food_and_Drink.xlsx)');
+  302 |     const diagnostics = popup.locator('#editModeTargetDiagnostics');
+  303 |     if (await diagnostics.count()) {
+  304 |       await expect(diagnostics).toContainText('Coffee (Retail_Food_and_Drink.xlsx)');
+  305 |     }
+  306 |     await expect.poll(() => page.evaluate(() => ({
+  307 |       filePath: window.filePath,
+  308 |       tableName: window.tableName,
+  309 |       schemaColumns: window.__excelSchemaColumns,
+  310 |       columnCount: window.__excelColumnCount
+  311 |     }))).toEqual({
+  312 |       filePath: 'Retail_Food_and_Drink.xlsx',
+  313 |       tableName: 'Coffee',
+  314 |       schemaColumns: SCHEMAS.Coffee,
+  315 |       columnCount: SCHEMAS.Coffee.length
+  316 |     });
+  317 | 
+  318 |     const preflightStatus = popup.locator('#singlePreflightStatus');
+  319 |     if (await preflightStatus.count()) {
+  320 |       const beforeDuplicateAttempt = graphCalls.length;
+  321 |       await popup.selectOption('#actionTargetSelect', 'retail_coffee');
+  322 |       await popup.fill('#singleInput', 'Cafe Alpha');
+  323 |       await popup.evaluate(() => submitAddSinglePlace());
+  324 |       const preflightWarned = await preflightStatus.evaluate((node) => node.classList.contains('is-warning'));
+  325 |       if (preflightWarned) {
+  326 |         await expect(popup.locator('#single-status')).toContainText('Duplicate preflight');
+  327 |         await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt);
+  328 |       } else {
+  329 |         await expect(popup.locator('#single-status')).toContainText('Added');
+  330 |         await expect.poll(() => graphCalls.length).toBe(beforeDuplicateAttempt + 1);
+  331 |       }
+  332 |     }
+  333 | 
+  334 |     const bulkCalls = await runBulk('ent_festivals', ['Fest One', 'Fest Two']);
+  335 |     expect(bulkCalls).toHaveLength(2);
+  336 |     for (const [index, call] of bulkCalls.entries()) {
+  337 |       const label = index === 0 ? 'Fest One' : 'Fest Two';
+  338 |       const resolved = buildResolvedPlace(label);
+  339 |       const row = call.body.values[0];
+  340 |       expect(call.table).toBe('Festivals');
+  341 |       expect(row).toHaveLength(SCHEMAS.Festivals.length);
+  342 |       expect(row[0]).toContain(resolved.businessType);
+  343 |       expect(row[1]).toBe(resolved.name);
+  344 |       expect(row[5]).toBe(resolved.website);
+  345 |       expect(row[7]).toBe(String(resolved.rating));
+  346 |       expect(row[9]).toBe(resolved.placeId);
+  347 |       expect(String(row[10] || '')).toContain(resolved.placeId);
+  348 |     }
+  349 |     await expect.poll(() => page.evaluate(() => ({
+  350 |       filePath: window.filePath,
+  351 |       tableName: window.tableName,
 ```
