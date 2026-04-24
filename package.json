@@ -6,6 +6,8 @@
   "scripts": {
     "build": "node -e \"console.log('Static site detected: no build step required.')\"",
     "build:azure": "npm run build",
+    "hooks:install": "node scripts/install-git-hooks.js",
+    "hooks:status": "node scripts/git-hooks-status.js",
     "reliability:smoke": "playwright test tests/reliability-smoke.spec.js tests/bulk-tag-undo-edge-cases.spec.js tests/adventure-achievements-smoke.spec.js tests/adventure-subtabs-smoke.spec.js tests/adventure-explorer-inpane-details.spec.js tests/adventure-inline-tools-roundtrip.spec.js tests/visited-enrich-modal-smoke.spec.js tests/edit-mode-global.spec.js tests/edit-mode-target-routing.spec.js tests/edit-mode-search-candidates.spec.js tests/edit-mode-submit-guards.spec.js tests/app-backup-flow.spec.js tests/nature-log-ux.spec.js tests/nature-map-context.spec.js tests/nature-subtabs-smoke.spec.js tests/nature-inat-import.spec.js tests/nature-inat-mapping-modal.spec.js tests/session-recovery-banner-regression.spec.js",
     "reliability:prepush": "playwright test --workers=1 --max-failures=1 tests/edit-mode-target-routing.spec.js tests/edit-mode-submit-guards.spec.js tests/visited-enrich-modal-smoke.spec.js tests/reliability-smoke.spec.js",
     "reliability:visited-enrich": "playwright test tests/visited-enrich-modal-smoke.spec.js",
@@ -28,7 +30,8 @@
     "test:production:assertions": "PROD_ASSERT_ENABLE=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js",
     "test:production:assertions:writes": "PROD_ASSERT_ENABLE=1 PROD_ASSERT_ALLOW_WRITES=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js",
     "test:production:assertions:triage": "mkdir -p artifacts && PROD_ASSERT_ENABLE=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js --reporter=json > artifacts/production-live-assertions-report.json && node scripts/summarize-production-assertions.js artifacts/production-live-assertions-report.json artifacts/production-live-assertions-summary.txt",
-    "test:production:assertions:writes:triage": "mkdir -p artifacts && PROD_ASSERT_ENABLE=1 PROD_ASSERT_ALLOW_WRITES=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js --reporter=json > artifacts/production-live-assertions-report.json && node scripts/summarize-production-assertions.js artifacts/production-live-assertions-report.json artifacts/production-live-assertions-summary.txt"
+    "test:production:assertions:writes:triage": "mkdir -p artifacts && PROD_ASSERT_ENABLE=1 PROD_ASSERT_ALLOW_WRITES=1 playwright test tests/production-live-assertions.spec.js --config=playwright.config.production.js --reporter=json > artifacts/production-live-assertions-report.json && node scripts/summarize-production-assertions.js artifacts/production-live-assertions-report.json artifacts/production-live-assertions-summary.txt",
+    "prepare": "npm run hooks:install"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

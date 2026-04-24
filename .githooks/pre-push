@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+set -eu
+
+echo "[pre-push] Running reliability:prepush..."
+npm run reliability:prepush
+
