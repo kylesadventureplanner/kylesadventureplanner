@@ -25,8 +25,10 @@ find_npm() {
   fi
 
   # 4. JetBrains-bundled Node (WebStorm / IntelliJ)
+  # Exclude node_modules so we match only the real bin/npm (Node.js script),
+  # not the Windows/Cygwin bash wrapper at lib/node_modules/npm/bin/npm.
   _jb_npm=$(find "$HOME/Library/Application Support/JetBrains" \
-    -name npm -path "*/bin/npm" 2>/dev/null | sort | tail -1)
+    -name npm -path "*/bin/npm" ! -path "*/node_modules/*" 2>/dev/null | sort | tail -1)
   if [ -n "$_jb_npm" ] && [ -x "$_jb_npm" ]; then
     echo "$_jb_npm"
     return 0
