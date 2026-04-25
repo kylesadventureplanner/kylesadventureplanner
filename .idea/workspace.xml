@@ -5,26 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/ADVANCED_TAG_IMPLEMENTATION_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ADVANCED_TAG_SYSTEM_FEATURES.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DRIVE_TIME_COMPLETION.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DRIVE_TIME_FINAL_DELIVERY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/DRIVE_TIME_IMPLEMENTATION.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_AUTOCOMPLETE_COMPLETION_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_AUTOCOMPLETE_FINAL_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_AUTOCOMPLETE_IMPLEMENTATION.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_AUTOCOMPLETE_INDEX.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_AUTOCOMPLETE_QUICK_REFERENCE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_AUTOCOMPLETE_VISUAL_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_DELIVERY_SUMMARY.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_SYSTEM_INTEGRATION_GUIDE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/TAG_SYSTEM_QUICK_REFERENCE.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/drive-time-calculator.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/drive-time-demo.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tag-autocomplete-demo.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tag-autocomplete-input.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/JS Files/consolidated-tag-system-v7-0-141.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/consolidated-tag-system-v7-0-141.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_COMPLETE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_IMPLEMENTATION.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_QUICK_REFERENCE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nearby-attractions-demo.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/nearby-attractions-finder.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -115,7 +100,7 @@
       <workItem from="1776447145602" duration="31796000" />
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
-      <workItem from="1777064709892" duration="6502000" />
+      <workItem from="1777064709892" duration="6803000" />
     </task>
     <servers />
   </component>

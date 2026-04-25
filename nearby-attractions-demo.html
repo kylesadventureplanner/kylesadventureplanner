@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nearby Attractions Finder - Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .header h1 {
+      color: #111827;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .header p {
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: #111827;
+      font-size: 18px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 100%;
+      padding: 12px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Nearby Attractions Styles */
+    .attractions-list {
+      display: grid;
+      gap: 15px;
+    }
+
+    .attraction-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 15px;
+      transition: all 0.2s ease;
+    }
+
+    .attraction-card:hover {
+      background: white;
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    }
+
+    .attraction-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    .attraction-title {
+      color: #111827;
+      font-size: 15px;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .attraction-status {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #dbeafe;
+      color: #0369a1;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .attraction-status.not-exists {
+      background: #fed7aa;
+      color: #92400e;
+    }
+
+    .attraction-meta {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .attraction-distance {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .attraction-drive-time {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    .attraction-rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .attraction-description {
+      color: #6b7280;
+      font-size: 12px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .attraction-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .attraction-btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .attraction-btn-primary {
+      background: #667eea;
+      color: white;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .attraction-btn-primary:hover {
+      background: #5568d3;
+    }
+
+    .attraction-btn-secondary {
+      background: #f3f4f6;
+      color: #111827;
+      border: 1px solid #e5e7eb;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .attraction-btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .attraction-btn-add {
+      background: #10b981;
+      color: white;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .attraction-btn-add:hover {
+      background: #059669;
+    }
+
+    .loading-attractions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .loading-attractions:before {
+      content: '';
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #667eea;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.6s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .no-attractions {
+      padding: 40px 20px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .error-attractions {
+      padding: 20px;
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border-left: 4px solid #667eea;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 13px;
+      color: #1e40af;
+    }
+
+    .example-locations {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .location-btn {
+      padding: 10px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .location-btn:hover {
+      border-color: #667eea;
+      background: #eff6ff;
+    }
+
+    @media (max-width: 640px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .attraction-actions {
+        flex-direction: column;
+      }
+
+      .attraction-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>🎯 Nearby Attractions Finder</h1>
+      <p>
+        Automatically find nearby attractions when adding a location. Click to navigate to existing locations or add new ones from Google Maps.
+      </p>
+    </div>
+
+    <!-- Location Setup Card -->
+    <div class="card">
+      <h2>📍 Select Location</h2>
+
+      <div class="info-box">
+        ℹ️ Enter coordinates or choose a sample location to see nearby attractions sorted by distance and drive time.
+      </div>
+
+      <!-- Manual Entry -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Latitude</label>
+          <input type="number" id="latitude" class="form-input" placeholder="e.g., 40.7128" step="0.0001" value="40.7128">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Longitude</label>
+          <input type="number" id="longitude" class="form-input" placeholder="e.g., -74.0060" step="0.0001" value="-74.0060">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Location Name</label>
+        <input type="text" id="locationName" class="form-input" placeholder="e.g., Times Square" value="Times Square, NYC">
+      </div>
+
+      <!-- Sample Locations -->
+      <div class="form-group">
+        <label class="form-label">Or Try Sample Locations:</label>
+        <div class="example-locations">
+          <button class="location-btn" onclick="loadSampleLocation('Times Square', 40.7580, -73.9855)">
+            Times Square
+          </button>
+          <button class="location-btn" onclick="loadSampleLocation('Central Park', 40.7829, -73.9654)">
+            Central Park
+          </button>
+          <button class="location-btn" onclick="loadSampleLocation('Brooklyn Bridge', 40.7061, -73.9969)">
+            Brooklyn Bridge
+          </button>
+          <button class="location-btn" onclick="loadSampleLocation('SoHo District', 40.7225, -74.0041)">
+            SoHo District
+          </button>
+          <button class="location-btn" onclick="loadSampleLocation('Greenwich Village', 40.7347, -74.0029)">
+            Greenwich Village
+          </button>
+          <button class="location-btn" onclick="loadSampleLocation('Upper West Side', 40.7850, -73.9750)">
+            Upper West Side
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="loadNearbyAttractions()">🎯 Find Nearby Attractions</button>
+    </div>
+
+    <!-- Attractions Display Card -->
+    <div class="card">
+      <h2>🎯 Nearby Attractions</h2>
+      <div id="attractionsContainer" style="padding: 20px; text-align: center; color: #6b7280;">
+        Click "Find Nearby Attractions" to see results
+      </div>
+    </div>
+
+    <!-- Sample App Locations Card -->
+    <div class="card">
+      <h2>📚 Sample Locations in App</h2>
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        These are example locations stored in the app. Nearby attractions will show "✅ In App" if they match any of these locations.
+      </p>
+      <div id="appLocationsContainer"></div>
+    </div>
+
+    <!-- Documentation Card -->
+    <div class="card">
+      <h2>📖 How It Works</h2>
+
+      <h3 style="color: #111827; margin: 15px 0 10px; font-size: 14px; font-weight: 600;">
+        1️⃣ Auto-Detection
+      </h3>
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        When you add a new location, nearby attractions are automatically detected based on GPS coordinates. The system searches for nearby locations within the specified radius.
+      </p>
+
+      <h3 style="color: #111827; margin: 15px 0 10px; font-size: 14px; font-weight: 600;">
+        2️⃣ Sorting & Information
+      </h3>
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        Attractions are sorted by distance from your location (closest first). Each attraction shows:
+      </p>
+      <ul style="color: #6b7280; font-size: 13px; margin-left: 20px; margin-bottom: 15px;">
+        <li>📍 Distance in miles</li>
+        <li>🚗 Approximate drive time</li>
+        <li>⭐ Google rating (if available)</li>
+        <li>✅ Status (In App or Available on Google)</li>
+      </ul>
+
+      <h3 style="color: #111827; margin: 15px 0 10px; font-size: 14px; font-weight: 600;">
+        3️⃣ Click to Navigate
+      </h3>
+      <p style="color: #6b7280; font-size: 13px;">
+        <strong>If location exists in app:</strong> Click "View Details" to navigate to that location card and see more information.<br>
+        <strong>If not in app:</strong> Click "View on Google" to see the Google Maps listing, or "Add to App" to quickly add it.
+      </p>
+    </div>
+  </div>
+
+  <!-- Include Nearby Attractions Finder -->
+  <script src="/nearby-attractions-finder.js"></script>
+
+  <script>
+    // Sample app locations
+    const sampleAppLocations = [
+      {
+        id: 'loc-1',
+        name: 'Rockefeller Center',
+        latitude: 40.7527,
+        longitude: -73.9772,
+        type: 'landmark',
+        description: 'Iconic NYC landmark with skating rink and shops'
+      },
+      {
+        id: 'loc-2',
+        name: 'Statue of Liberty',
+        latitude: 40.6892,
+        longitude: -74.0445,
+        type: 'monument',
+        description: 'Famous statue on Liberty Island'
+      },
+      {
+        id: 'loc-3',
+        name: 'Broadway Theater District',
+        latitude: 40.7589,
+        longitude: -73.9851,
+        type: 'entertainment',
+        description: 'Theater and entertainment district'
+      },
+      {
+        id: 'loc-4',
+        name: 'The Metropolitan Museum of Art',
+        latitude: 40.7813,
+        longitude: -73.9740,
+        type: 'museum',
+        description: 'World-renowned art museum'
+      },
+      {
+        id: 'loc-5',
+        name: 'Chinatown',
+        latitude: 40.7155,
+        longitude: -73.9975,
+        type: 'neighborhood',
+        description: 'Historic neighborhood with restaurants and shops'
+      },
+      {
+        id: 'loc-6',
+        name: 'High Line',
+        latitude: 40.7480,
+        longitude: -74.0048,
+        type: 'park',
+        description: 'Elevated linear park on former railroad'
+      }
+    ];
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set app locations
+      window.nearbyAttractionsFinder.setAppLocations(sampleAppLocations);
+
+      // Display app locations
+      displayAppLocations();
+
+      // Setup event listeners
+      setupEventListeners();
+    });
+
+    /**
+     * Display sample app locations
+     */
+    function displayAppLocations() {
+      const container = document.getElementById('appLocationsContainer');
+      const html = sampleAppLocations
+        .map(loc => `
+          <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 8px;">
+            <div style="font-weight: 600; color: #111827;">${loc.name}</div>
+            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+              📍 ${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}<br>
+              ${loc.description}
+            </div>
+          </div>
+        `)
+        .join('');
+
+      container.innerHTML = html;
+    }
+
+    /**
+     * Load sample location
+     */
+    function loadSampleLocation(name, lat, lng) {
+      document.getElementById('locationName').value = name;
+      document.getElementById('latitude').value = lat;
+      document.getElementById('longitude').value = lng;
+    }
+
+    /**
+     * Load nearby attractions
+     */
+    async function loadNearbyAttractions() {
+      const lat = parseFloat(document.getElementById('latitude').value);
+      const lng = parseFloat(document.getElementById('longitude').value);
+      const name = document.getElementById('locationName').value || 'Location';
+
+      if (isNaN(lat) || isNaN(lng)) {
+        alert('Please enter valid coordinates');
+        return;
+      }
+
+      await autoLoadNearbyAttractions(lat, lng, name, 'attractionsContainer');
+    }
+
+    /**
+     * Setup event listeners for custom events
+     */
+    function setupEventListeners() {
+      window.addEventListener('navigate-location', (e) => {
+        const location = e.detail.location;
+        alert(`Would navigate to: ${location.name}\n\nIn real app, this would show the location details card.`);
+        console.log('Navigate to location:', location);
+      });
+
+      window.addEventListener('add-attraction', (e) => {
+        const attraction = e.detail.attraction;
+        alert(`Would add to app: ${attraction.name}\n\nIn real app, this would open an "Add Location" form pre-filled with this data.`);
+        console.log('Add attraction:', attraction);
+      });
+    }
+
+    // Auto-load on page load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        loadNearbyAttractions();
+      }, 500);
+    });
+  </script>
+</body>
+</html>
+
