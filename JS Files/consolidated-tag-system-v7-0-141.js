@@ -13,13 +13,18 @@
  * - Tag Automation
  * - Tag Button Injector
  * - Tag UI Manager
+ * - Tag Aliases & Synonyms
+ * - Custom Tag Support
+ * - Search & Filtering
+ * - Tag Conflict Detection
+ * - Tag Deduplication
  *
- * Version: 7.0.141
- * Date: March 15, 2026
- * Created: Consolidated from 9 separate tag files
+ * Version: 7.0.200 (Enhanced with Advanced Features)
+ * Date: April 24, 2026
+ * Created: Consolidated from 9 separate tag files + Advanced Systems
  */
 
-console.log('🏷️ Consolidated Tag Management System v7.0.141 Loading...');
+console.log('🏷️ Consolidated Tag Management System v7.0.200 Loading...');
 
 // ============================================================
 // SECTION 1: TAG CONFIGURATION & STYLING
@@ -1056,7 +1061,6 @@ function showToastCrossContext(message, type = 'info', duration = 3000) {
  */
 window.autoTagAllLocationsUnified = async function(options = {}) {
   const {
-    showProgress = true,
     dryRun = false
   } = options;
 
@@ -1081,35 +1085,362 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
     return { success: 0, failed: 0, skipped: 0 };
   }
 
-  // Text-based tag recommendation rules (mirrors buildTagRecommendations in details window)
-  const RULE_MAP = [
-    { keys: ['hike', 'trail', 'hiking', 'trekking', 'mountain', 'alpine'], tags: ['Hiking', 'Outdoor', 'Nature', 'Scenic', 'Adventure'] },
-    { keys: ['waterfall', 'cascade', 'falls'], tags: ['Waterfall', 'Nature', 'Scenic', 'Photography', 'Outdoor'] },
-    { keys: ['park', 'garden', 'botanical', 'arboretum'], tags: ['Park', 'Nature', 'Family-Friendly', 'Relaxing', 'Scenic'] },
-    { keys: ['lake', 'river', 'stream', 'pond', 'creek', 'water'], tags: ['Water Activity', 'Nature', 'Scenic', 'Family-Friendly'] },
-    { keys: ['forest', 'woods', 'woodland', 'grove'], tags: ['Nature', 'Hiking', 'Outdoor', 'Relaxing', 'Scenic'] },
-    { keys: ['beach', 'shore', 'coast', 'seaside'], tags: ['Beach', 'Outdoor', 'Family-Friendly', 'Scenic', 'Relaxing'] },
-    { keys: ['camping', 'camp site', 'campground'], tags: ['Camping', 'Outdoor', 'Adventure', 'Family-Friendly'] },
-    { keys: ['restaurant', 'bistro', 'steakhouse', 'grill', 'eatery'], tags: ['Restaurant', 'Dining', 'Local Favorite', 'Worth Visiting'] },
-    { keys: ['cafe', 'coffee', 'espresso', 'tea house'], tags: ['Cafe', 'Coffee', 'Local Favorite', 'Relaxing'] },
-    { keys: ['diner', 'fast food', 'quick bite'], tags: ['Casual Dining', 'Quick Service'] },
-    { keys: ['bakery', 'pastry'], tags: ['Bakery', 'Local Favorite', 'Worth Visiting'] },
-    { keys: ['brewery', 'winery', 'distillery', 'bar', 'pub'], tags: ['Beverage', 'Adult Experience', 'Local Favorite'] },
-    { keys: ['shop', 'store', 'retail', 'boutique'], tags: ['Shopping', 'Local Business', 'Worth Visiting'] },
-    { keys: ['market', 'farmers market', 'farmer market'], tags: ['Market', 'Local Business', 'Family-Friendly', 'Worth Visiting'] },
-    { keys: ['museum', 'gallery', 'exhibition', 'exhibit'], tags: ['Museum', 'Cultural', 'Historical', 'Educational', 'Indoor Activity'] },
-    { keys: ['historic', 'history', 'monument', 'landmark', 'heritage'], tags: ['Historical', 'Cultural', 'Worth Visiting', 'Educational'] },
-    { keys: ['art', 'artist', 'sculpture', 'craft'], tags: ['Cultural', 'Artistic', 'Local Business'] },
-    { keys: ['gym', 'fitness', 'yoga', 'pilates'], tags: ['Fitness', 'Health & Wellness'] },
-    { keys: ['sport', 'athletic', 'court', 'field', 'stadium'], tags: ['Sports', 'Active', 'Family-Friendly'] },
-    { keys: ['movie', 'cinema', 'theater', 'theatre'], tags: ['Entertainment', 'Family-Friendly', 'Indoor Activity'] },
-    { keys: ['music', 'concert', 'live performance', 'festival'], tags: ['Entertainment', 'Local Favorite', 'Worth Visiting'] },
-    { keys: ['amusement', 'theme park', 'carnival'], tags: ['Entertainment', 'Family-Friendly', 'Fun', 'Adventure'] },
-    { keys: ['hotel', 'motel', 'inn', 'resort'], tags: ['Accommodation', 'Travel-Friendly'] },
-    { keys: ['wildlife', 'animal', 'bird', 'zoo', 'aquarium', 'nature center'], tags: ['Wildlife', 'Nature', 'Family-Friendly', 'Educational', 'Outdoor'] },
-    { keys: ['viewpoint', 'overlook', 'vista', 'lookout'], tags: ['Scenic', 'Photography', 'Outdoor', 'Must-See'] }
-  ];
+  // Enhanced semantic tagging system with pattern matching + location type detection
 
+  /**
+   * Priority 1: Detect location type (outdoor, dining, shopping, cultural, etc.)
+   */
+  function detectLocationType(text) {
+    const patterns = {
+      outdoor: /\b(hike|trail|hiking|trekking|mountain|alpine|peak|summit|waterfall|cascade|falls|lake|river|stream|creek|pond|beach|shore|coast|seaside|camping|campground|forest|woods|woodland|grove|nature preserve|national park|viewpoint|overlook|vista|lookout|rock climbing|skiing|snowshoe)\b/gi,
+      dining: /\b(restaurant|bistro|steakhouse|grill|eatery|cafe|coffee|espresso|tea house|diner|fast food|bakery|pastry|pub|bar|brewery|winery|distillery|pizzeria|taqueria|ramen|sushi)\b/gi,
+      shopping: /\b(shop|store|retail|boutique|market|farmers market|outlet|mall|shopping)\b/gi,
+      cultural: /\b(museum|gallery|exhibition|exhibit|theater|theatre|concert|music|art|artist|sculpture|craft|historic|history|monument|landmark|heritage|library|cultural center)\b/gi,
+      entertainment: /\b(amusement|theme park|carnival|movie|cinema|arcade|bowling|billiards|fun center)\b/gi,
+      wellness: /\b(gym|fitness|yoga|pilates|spa|massage|sauna|wellness|health|workout)\b/gi,
+      wildlife: /\b(zoo|aquarium|wildlife|animal|bird|nature center|sanctuary|park)\b/gi,
+      accommodation: /\b(hotel|motel|inn|resort|lodge|bed.?and.?breakfast|airbnb|hostel|campground|rv park)\b/gi
+    };
+
+    const typeScores = {};
+    for (const [type, pattern] of Object.entries(patterns)) {
+      const matches = text.match(pattern) || [];
+      typeScores[type] = matches.length;
+    }
+
+    return Object.entries(typeScores).sort(([, a], [, b]) => b - a).map(([type]) => type);
+  }
+
+  /**
+   * Priority 2: Detect cuisine and specialty for dining locations
+   */
+  function detectCuisineAndSpecialty(text) {
+    const specialties = new Set();
+
+    const cuisines = {
+      'Italian': /\b(italian|pasta|risotto|pizzeria|gelato)\b/gi,
+      'Mexican': /\b(mexican|taco|burrito|enchilada|quesadilla|salsa)\b/gi,
+      'Asian': /\b(asian|sushi|ramen|dim sum|pho|thai|korean|japanese|chinese|vietn|laos)\b/gi,
+      'Indian': /\b(indian|curry|tandoori|naan|samosa)\b/gi,
+      'Mediterranean': /\b(mediterranean|greek|spanish|portuguese)\b/gi,
+      'American': /\b(american|burger|steakhouse|bbq|barbecue|diner)\b/gi,
+      'French': /\b(french|bistro|cafe)\b/gi,
+      'Vegan': /\b(vegan|plant.?based|vegetarian)\b/gi,
+      'Seafood': /\b(seafood|fish|shellfish|oyster|salmon|tuna)\b/gi,
+      'Brunch': /\b(brunch|breakfast|brunch spot)\b/gi,
+      'Fine Dining': /\b(fine dining|upscale|michelin|tasting menu|haute cuisine)\b/gi,
+      'Casual': /\b(casual|laid.?back|relaxed|cozy|comfort food)\b/gi,
+      'Fast Casual': /\b(fast casual|quick service|grab and go)\b/gi,
+      'Bakery': /\b(bakery|pastry|donut|croissant|bread)\b/gi
+    };
+
+    for (const [cuisine, pattern] of Object.entries(cuisines)) {
+      if (pattern.test(text)) specialties.add(cuisine);
+    }
+
+    // Dietary options
+    if (/\b(vegan|plant.?based)\b/gi.test(text)) specialties.add('Vegan-Friendly');
+    if (/\b(gluten.?free|gf)\b/gi.test(text)) specialties.add('Gluten-Free');
+    if (/\b(organic|locally.?sourced|farm.?to.?table)\b/gi.test(text)) specialties.add('Local/Organic');
+
+    return Array.from(specialties);
+  }
+
+  /**
+   * Priority 3: Detect activity attributes (duration, difficulty, accessibility)
+   */
+  function detectActivityAttributes(text) {
+    const attributes = new Set();
+
+    // Duration indicators
+    if (/\b(2.?hour|3.?hour|4.?hour|5.?hour|half.?day|full.?day|day.?long|long hike|all.?day)\b/gi.test(text))
+      attributes.add('Half-Day+ Experience');
+    if (/\b(30.?min|45.?min|1.?hour|quick|short|easy stroll|brief|quick walk)\b/gi.test(text))
+      attributes.add('Quick Visit');
+
+    // Difficulty indicators
+    if (/\b(steep|challenging|difficult|advanced|technical|scramble|elevation gain|strenuous|tough)\b/gi.test(text))
+      attributes.add('Challenging');
+    if (/\b(easy|beginner.?friendly|simple|gentle|beginner|novice)\b/gi.test(text))
+      attributes.add('Easy');
+    if (/\b(moderate|intermediate|some experience|general fitness)\b/gi.test(text))
+      attributes.add('Intermediate');
+
+    // Accessibility indicators
+    if (/\b(wheelchair|handicap|accessible|ada|mobility|pushchair|stroller|paved|flat|level)\b/gi.test(text))
+      attributes.add('Accessible');
+    if (/\b(pet.?friendly|dogs allowed|leashed pets|dog park)\b/gi.test(text))
+      attributes.add('Pet-Friendly');
+    if (/\b(no steps|level access|ramp|elevator|lift)\b/gi.test(text))
+      attributes.add('Wheelchair-Accessible');
+    if (/\b(family.?friendly|kids|children|toddler|playground|kid.?friendly)\b/gi.test(text))
+      attributes.add('Family-Friendly');
+
+    // Experience type
+    if (/\b(photography|photo|scenic|views|photo.?op|instagrammable)\b/gi.test(text))
+      attributes.add('Photography-Worthy');
+    if (/\b(hidden gem|secret|off.?the.?beaten|lesser.?known|undiscovered)\b/gi.test(text))
+      attributes.add('Hidden Gem');
+    if (/\b(must.?see|must.?visit|iconic|famous|popular|well.?known)\b/gi.test(text))
+      attributes.add('Must-See');
+    if (/\b(relaxing|peaceful|calm|tranquil|serene|quiet)\b/gi.test(text))
+      attributes.add('Relaxing');
+    if (/\b(adventure|thrilling|exciting|adrenaline|rush)\b/gi.test(text))
+      attributes.add('Adventure');
+
+    return Array.from(attributes);
+  }
+
+  /**
+   * Feature 4: Pricing & Budget Indicators
+   */
+  function detectPricingIndicators(text) {
+    const tags = new Set();
+
+    if (/\b(budget.?friendly|affordable|cheap|inexpensive|reasonable|bargain)\b/gi.test(text))
+      tags.add('Budget-Friendly');
+    if (/\b(expensive|pricey|costly|upscale|fine dining|high.?end|splurge|luxury)\b/gi.test(text))
+      tags.add('Upscale');
+    if (/\b(free|no charge|complimentary|no cost)\b/gi.test(text))
+      tags.add('Free');
+    if (/\b(happy hour|discount|deals?|sale|special|promotion|coupon)\b/gi.test(text))
+      tags.add('Budget Hack');
+    if (/\b(admission|entry fee|entrance fee|paid|ticket|membership)\b/gi.test(text))
+      tags.add('Paid Admission');
+    if (/\b(all.?you.?can|unlimited|all.?inclusive)\b/gi.test(text))
+      tags.add('All-You-Can Experience');
+
+    return Array.from(tags);
+  }
+
+  /**
+   * Feature 6: Seasonal & Temporal Tagging
+   */
+  function detectSeasonalAndTemporal(text) {
+    const tags = new Set();
+
+    // Summer
+    if (/\b(summer|best in summer|summer only|june|july|august|hot weather)\b/gi.test(text))
+      tags.add('Summer Destination');
+
+    // Winter
+    if (/\b(winter|snow|skiing|snowboard|december|january|february|cold|frost)\b/gi.test(text))
+      tags.add('Winter Activity');
+
+    // Fall
+    if (/\b(fall|autumn|fall colors|foliage|september|october|november)\b/gi.test(text))
+      tags.add('Seasonal Beauty');
+
+    // Spring
+    if (/\b(spring|spring break|easter|april|may|bloom|blossom|cherry|wildflower)\b/gi.test(text))
+      tags.add('Spring Destination');
+
+    // Time of day
+    if (/\b(sunset|sunrise|dusk|dawn|golden hour|best at sunset|best at sunrise)\b/gi.test(text))
+      tags.add('Best at Sunrise/Sunset');
+
+    // Duration
+    if (/\b(overnight|multi.?day|week.?long|extended|camping|backpacking)\b/gi.test(text))
+      tags.add('Multi-Day Experience');
+
+    if (/\b(weekend|weekend getaway|two.?day|three.?day)\b/gi.test(text))
+      tags.add('Weekend Destination');
+
+    // All-season
+    if (/\b(year.?round|all.?season|anytime|ganzjährig|open|always|evergreen)\b/gi.test(text))
+      tags.add('Year-Round Destination');
+
+    return Array.from(tags);
+  }
+
+  /**
+   * Feature 7: Parking & Logistics
+   */
+  function detectParkingAndLogistics(text) {
+    const tags = new Set();
+
+    // Parking
+    if (/\b(free parking|ample parking|plenty of parking|large parking lot)\b/gi.test(text))
+      tags.add('Free Parking');
+    if (/\b(limited parking|paid parking|parking fee|parking available)\b/gi.test(text))
+      tags.add('Parking Available');
+    if (/\b(no parking|street parking only|valet)\b/gi.test(text))
+      tags.add('Limited Parking');
+
+    // Transit
+    if (/\b(public transit|metro|subway|bus|train|light rail|accessible by transit|transit friendly)\b/gi.test(text))
+      tags.add('Public Transit-Friendly');
+    if (/\b(requires driving|remote|off.?road|car required|drive required|long drive|motorway)\b/gi.test(text))
+      tags.add('Car Required');
+    if (/\b(walkable|pedestrian friendly|downtown|central location)\b/gi.test(text))
+      tags.add('Walkable');
+
+    // Accessibility logistics
+    if (/\b(easy to find|well.?signed|clearly marked|directions available)\b/gi.test(text))
+      tags.add('Easy to Navigate');
+    if (/\b(hard to find|hidden location|unmarked|no signs)\b/gi.test(text))
+      tags.add('Off the Radar');
+
+    return Array.from(tags);
+  }
+
+  /**
+   * Feature 8: Crowd & Authenticity
+   */
+  function detectCrowdAndAuthenticity(text) {
+    const tags = new Set();
+
+    // Authenticity
+    if (/\b(authentic|local|traditional|genuine|real deal|not touristy)\b/gi.test(text))
+      tags.add('Authentic Experience');
+    if (/\b(local favorite|locals only|insider tip|where locals go)\b/gi.test(text))
+      tags.add('Local Favorite');
+    if (/\b(off.?the.?beaten path|hidden gem|secret|undiscovered|lesser.?known)\b/gi.test(text))
+      tags.add('Hidden Gem');
+
+    // Tourist aspect
+    if (/\b(touristy|tourist trap|tourist hotspot|commercialized)\b/gi.test(text))
+      tags.add('Touristy');
+    if (/\b(popular|crowded|busy|packed|long wait|peak season)\b/gi.test(text))
+      tags.add('Popular/Crowded');
+    if (/\b(quiet|peaceful|serene|not crowded|less touristy|peaceful escape)\b/gi.test(text))
+      tags.add('Less Touristy');
+
+    // Warning tags
+    if (/\b(overrated|overhyped|disappointing|not worth|skip|avoid)\b/gi.test(text))
+      tags.add('Overhyped');
+    if (/\b(hidden|secret|avoid crowds|quiet|escape|getaway)\b/gi.test(text))
+      tags.add('Crowd-Escape');
+
+    return Array.from(tags);
+  }
+
+  /**
+   * Feature 9: Equipment & Preparation
+   */
+  function detectEquipmentAndPreparation(text) {
+    const tags = new Set();
+
+    // Footwear
+    if (/\b(hiking boots|sturdy shoes|trail shoes|water shoes|waterproof|boots required)\b/gi.test(text))
+      tags.add('Hiking Boots Recommended');
+
+    // Water gear
+    if (/\b(swimsuit|water gear|wet suit|water shoes|bathing suit|swim)\b/gi.test(text))
+      tags.add('Bring Swimsuit');
+
+    // Photography
+    if (/\b(camera|photography|photo.?op|instagrammabl|photo gear|bring camera|drone)\b/gi.test(text))
+      tags.add('Photography Gear Recommended');
+
+    // Wildlife viewing
+    if (/\b(binoculars|bird watching|wildlife|telescope|spotting scope|binocs)\b/gi.test(text))
+      tags.add('Binoculars Recommended');
+
+    // Food/picnic
+    if (/\b(picnic|bring food|pack lunch|bring snacks|byo|byob|food allowed)\b/gi.test(text))
+      tags.add('BYO Picnic');
+
+    // Sun protection
+    if (/\b(sunscreen|sun protection|hat|sunhat\.?|exposed|no shade)\b/gi.test(text))
+      tags.add('Bring Sun Protection');
+
+    // Winter gear
+    if (/\b(warm clothes|layers|winter gear|insulated|thermals|warm jacket)\b/gi.test(text))
+      tags.add('Bring Winter Gear');
+
+    // Rain gear
+    if (/\b(raincoat|rain gear|waterproof|umbrella|moisture)\b/gi.test(text))
+      tags.add('Bring Rain Gear');
+
+    // Insect protection
+    if (/\b(mosquito|bug|insect repellent|deet|tick|midges)\b/gi.test(text))
+      tags.add('Bring Insect Repellent');
+
+    return Array.from(tags);
+  }
+
+  /**
+   * Feature 12: Smart Multi-Pattern Combinations
+   */
+  function detectMultiPatternCombos(text, detectedTags) {
+    const tags = new Set(detectedTags);
+
+    // Romantic + Dining + Italian/French → Date Night
+    if (/romantic|date|couples?|intimate/gi.test(text) &&
+        (tags.has('Dining') || tags.has('Italian') || tags.has('French') || /restaurant|cafe|bistro/gi.test(text))) {
+      tags.add('Date Night');
+      tags.add('Romantic');
+    }
+
+    // Family + Water + Park → Family Water Fun
+    if (/family|kids?|children|toddler/gi.test(text) &&
+        (/water|pool|beach|splash|swim/gi.test(text) || tags.has('Water Activity'))) {
+      tags.add('Family Water Fun');
+    }
+
+    // Easy + Short + Scenic → Perfect for Groups
+    if ((tags.has('Easy') || tags.has('Quick Visit')) &&
+        (tags.has('Scenic') || /scenic|beautiful|views|vista/gi.test(text))) {
+      tags.add('Perfect for Groups');
+    }
+
+    // Wheelchair + Accessible + Dining → Fully Accessible Dining
+    if (tags.has('Wheelchair-Accessible') &&
+        (tags.has('Dining') || /restaurant|cafe|diner/gi.test(text))) {
+      tags.add('Inclusive Dining');
+    }
+
+    // Hidden + Scenic + Local → True Local Gem
+    if (tags.has('Hidden Gem') && tags.has('Scenic') && tags.has('Local Favorite')) {
+      tags.add('Local Gem');
+    }
+
+    // Adventure + Family-Friendly + Outdoor → Family Adventure
+    if ((tags.has('Adventure') || tags.has('Challenging')) &&
+        tags.has('Family-Friendly') &&
+        (tags.has('Outdoor') || /nature|hiking|trail/gi.test(text))) {
+      tags.add('Family-Friendly Adventure');
+    }
+
+    // Photography + Scenic + Sunset → Photography Paradise
+    if ((tags.has('Photography-Worthy') || /photography/gi.test(text)) &&
+        tags.has('Scenic') &&
+        tags.has('Best at Sunrise/Sunset')) {
+      tags.add('Photography Paradise');
+    }
+
+    // Hiking + Intermediate + Water → Scenic Water Hike
+    if (/hiking|trail|trek/gi.test(text) &&
+        tags.has('Intermediate') &&
+        (tags.has('Water Activity') || /waterfall|lake|river|creek/gi.test(text))) {
+      tags.add('Scenic Water Hike');
+    }
+
+    // Budget-Friendly + Family-Friendly + Outdoor → Budget Family Day Out
+    if (tags.has('Budget-Friendly') && tags.has('Family-Friendly') && tags.has('Outdoor')) {
+      tags.add('Budget Family Day');
+    }
+
+    // Upscale + Romantic + International Cuisine → Special Occasion Dining
+    if (tags.has('Upscale') && tags.has('Romantic') &&
+        (tags.has('Italian') || tags.has('French') || tags.has('Mediterranean') || tags.has('Asian'))) {
+      tags.add('Special Occasion Dining');
+    }
+
+    // Summer + Beach + Family → Beach Day Paradise
+    if (tags.has('Summer Destination') &&
+        (tags.has('Beach') || tags.has('Water Activity')) &&
+        tags.has('Family-Friendly')) {
+      tags.add('Perfect Beach Day');
+    }
+
+    return tags;
+  }
+
+  /**
+   * Enhanced main tagging function with semantic analysis
+   */
   function getTagsForLocationText(locationData) {
     const textParts = [
       locationData.name || '',
@@ -1119,20 +1450,87 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
       locationData.address || '',
       locationData.notes || ''
     ];
-    const fullText = textParts.join(' ').toLowerCase();
+    const fullText = textParts.join(' ');
+    const lowerText = fullText.toLowerCase();
 
     const recommended = new Set();
-    RULE_MAP.forEach((rule) => {
-      const matched = rule.keys.some((k) => fullText.includes(k));
-      if (matched) rule.tags.forEach((t) => recommended.add(t));
-    });
 
-    // Rating-based tags from Google rating string
+    // Priority 1: Detect location type
+    const types = detectLocationType(lowerText);
+    const primaryType = types[0];
+
+    // Add type-specific base tags
+    if (primaryType === 'outdoor') {
+      recommended.add('Outdoor');
+      recommended.add('Nature');
+      if (/\b(scenic|beautiful|views|vista)\b/gi.test(lowerText)) recommended.add('Scenic');
+    } else if (primaryType === 'dining') {
+      recommended.add('Dining');
+      recommended.add('Local Favorite');
+      // Priority 2: Cuisine detection for dining
+      const cuisines = detectCuisineAndSpecialty(lowerText);
+      cuisines.forEach((c) => recommended.add(c));
+    } else if (primaryType === 'shopping') {
+      recommended.add('Shopping');
+      recommended.add('Local Business');
+    } else if (primaryType === 'cultural') {
+      recommended.add('Cultural');
+      recommended.add('Educational');
+      if (/\b(historic|history|heritage)\b/gi.test(lowerText)) recommended.add('Historical');
+    } else if (primaryType === 'entertainment') {
+      recommended.add('Entertainment');
+      recommended.add('Family-Friendly');
+    } else if (primaryType === 'wellness') {
+      recommended.add('Health & Wellness');
+      recommended.add('Active');
+    } else if (primaryType === 'wildlife') {
+      recommended.add('Wildlife');
+      recommended.add('Educational');
+      recommended.add('Family-Friendly');
+    }
+
+    // Priority 3: Activity attributes (duration, difficulty, accessibility)
+    const attributes = detectActivityAttributes(lowerText);
+    attributes.forEach((a) => recommended.add(a));
+
+    // Feature 4: Pricing & Budget Indicators
+    const pricing = detectPricingIndicators(lowerText);
+    pricing.forEach((p) => recommended.add(p));
+
+    // Feature 6: Seasonal & Temporal Tagging
+    const seasonal = detectSeasonalAndTemporal(lowerText);
+    seasonal.forEach((s) => recommended.add(s));
+
+    // Feature 7: Parking & Logistics
+    const logistics = detectParkingAndLogistics(lowerText);
+    logistics.forEach((l) => recommended.add(l));
+
+    // Feature 8: Crowd & Authenticity
+    const crowd = detectCrowdAndAuthenticity(lowerText);
+    crowd.forEach((c) => recommended.add(c));
+
+    // Feature 9: Equipment & Preparation
+    const equipment = detectEquipmentAndPreparation(lowerText);
+    equipment.forEach((e) => recommended.add(e));
+
+    // Universal patterns
+    if (/\b(park|garden|scenic|nature|outdoor)\b/gi.test(lowerText)) recommended.add('Scenic');
+    if (/\b(water|lake|river|beach|waterfall|aquatic)\b/gi.test(lowerText)) recommended.add('Water Activity');
+    if (/\b(historic|monument|heritage)\b/gi.test(lowerText)) recommended.add('Worth Visiting');
+
+    // Rating-based tags
     const rating = parseFloat(locationData.googleRating || locationData.rating || 0);
-    if (rating >= 4.7) { recommended.add('Top Rated'); recommended.add('Worth Visiting'); }
-    else if (rating >= 4.3) { recommended.add('Highly Recommended'); }
+    if (rating >= 4.7) {
+      recommended.add('Top Rated');
+      recommended.add('Worth Visiting');
+    } else if (rating >= 4.3) {
+      recommended.add('Highly Recommended');
+    }
 
-    return Array.from(recommended);
+    // Feature 12: Smart Multi-Pattern Combinations
+    const withCombos = detectMultiPatternCombos(fullText, recommended);
+
+    return Array.from(withCombos);
   }
 
   const results = { success: 0, failed: 0, skipped: 0, details: [] };
@@ -1276,28 +1674,949 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
 };
 
 // ============================================================
+// SECTION 6: TAG ALIASES & SYNONYMS SYSTEM
+// ============================================================
+
+/**
+ * Tag Aliases - Map similar tags together for improved discovery
+ * Example: "Hiking" = ["Trekking", "Walking", "Backpacking"]
+ */
+const TAG_ALIASES = {
+  // Hiking
+  'Hiking': ['Trekking', 'Walking', 'Backpacking', 'Trail Walking', 'Rambling'],
+  'Trekking': ['Hiking', 'Backpacking', 'Mountain Walking'],
+
+  // Dining Tags
+  'Coffee Shop': ['Coffee', 'Espresso Bar', 'Coffee Cafe', 'Coffeehouse', 'Cafe'],
+  'Coffee': ['Coffee Shop', 'Espresso Bar', 'Coffeehouse', 'Cafe'],
+
+  // Upscale Dining
+  'Upscale': ['Fine Dining', 'Premium', 'High-End', 'Luxury'],
+  'Fine Dining': ['Upscale', 'Premium Restaurant', 'Luxury Dining'],
+
+  // Budget
+  'Budget-Friendly': ['Affordable', 'Inexpensive', 'Cheap', 'Budget', 'Value'],
+  'Budget Hack': ['Deal', 'Discount', 'Happy Hour', 'Special'],
+
+  // Family-Friendly
+  'Family-Friendly': ['Kid-Friendly', 'Kids Welcome', 'Family Place', 'Good for Families'],
+
+  // Wheelchair
+  'Wheelchair-Accessible': ['Accessible', 'ADA-Compliant', 'Accessible Entry', 'Mobility Friendly'],
+  'Accessible': ['Wheelchair-Accessible', 'ADA-Compliant', 'Mobility Friendly'],
+
+  // Water
+  'Water Activity': ['Water Sports', 'Aquatic', 'Water-Based', 'Water Recreation'],
+
+  // Hidden
+  'Hidden Gem': ['Secret Spot', 'Off-Beaten Path', 'Lesser Known', 'Undiscovered', 'Secret Location'],
+
+  // Romantic
+  'Romantic': ['Romance', 'Date-Friendly', 'Couples', 'Intimate'],
+
+  // Photography
+  'Photography-Worthy': ['Instagrammable', 'Photo Op', 'Scenic Views', 'Picture Perfect', 'Photo Spot'],
+  'Instagrammable': ['Photography-Worthy', 'Photo Op', 'Picture Perfect', 'Photo Location'],
+
+  // Local
+  'Local Favorite': ['Local Hotspot', 'Local Preferred', 'Favorite Locally', 'Popular Locally'],
+  'Authentic Experience': ['Local Experience', 'Genuine', 'Real Experience', 'Authentic'],
+
+  // Beach
+  'Beach': ['Shoreline', 'Coastal', 'Seaside', 'Ocean Beach'],
+
+  // Mountain
+  'Mountain': ['Alpine', 'Peak', 'Summit', 'Highland', 'Mountainous'],
+
+  // Wildlife
+  'Wildlife': ['Animals', 'Animals Spotting', 'Wild Life', 'Nature Wildlife', 'Animal Viewing'],
+  'Birding': ['Bird Watching', 'Bird Spotting', 'Ornithology'],
+
+  // Easy/Hard
+  'Easy': ['Beginner-Friendly', 'Simple', 'Gentle', 'Accessible to All', 'Not Difficult'],
+  'Challenging': ['Difficult', 'Advanced', 'Tough', 'Strenuous', 'Not for Beginners'],
+
+  // Scenic
+  'Scenic': ['Beautiful', 'Picturesque', 'Stunning Views', 'Scenic Views', 'Breathtaking'],
+
+  // Shopping
+  'Shopping': ['Retail', 'Shopping Area', 'Boutique', 'Shopping District'],
+
+  // Relaxing
+  'Relaxing': ['Peaceful', 'Calm', 'Tranquil', 'Serene', 'Stress-Free'],
+
+  // Adventure
+  'Adventure': ['Thrilling', 'Exciting', 'Adrenaline', 'Action-Packed', 'Epic'],
+
+  // Must-See
+  'Must-See': ['Must-Visit', 'Not to Miss', 'Essential', 'Iconic', 'Famous', 'Top Attraction'],
+  'Worth Visiting': ['Must-Visit', 'Worth Your Time', 'Recommended', 'Great Visit'],
+
+  // Year-Round
+  'Year-Round Destination': ['Open Year-Round', 'All-Season', 'Always Open', 'Perennial'],
+
+  // Outdoor
+  'Outdoor': ['Outdoors', 'Exterior', 'Outside', 'Nature-Based'],
+
+  // Bookstore suggestion
+  'Bookstore': ['Books', 'Library', 'Book Shop'],
+  'Library': ['Bookstore', 'Books', 'Learning Centre']
+};
+
+/**
+ * Resolve tag alias - returns canonical tag name
+ */
+function resolveTagAlias(tagName) {
+  if (!tagName) return null;
+
+  // Check if the tag itself is in TAG_ALIASES (it's the primary)
+  if (TAG_ALIASES[tagName]) {
+    return tagName;
+  }
+
+  // Check if this tag is an alias of something else
+  for (const [primary, aliases] of Object.entries(TAG_ALIASES)) {
+    if (aliases.includes(tagName)) {
+      return primary;
+    }
+  }
+
+  return tagName; // Return as-is if no alias found
+}
+
+/**
+ * Get all aliases for a tag
+ */
+function getTagAliases(tagName) {
+  const canonical = resolveTagAlias(tagName);
+  return TAG_ALIASES[canonical] || [];
+}
+
+/**
+ * Normalize tags by resolving aliases to primary tags
+ */
+function normalizeTags(tags) {
+  if (!Array.isArray(tags)) return [];
+  return tags.map(t => resolveTagAlias(t)).filter(Boolean);
+}
+
+// ============================================================
+// SECTION 7: CUSTOM TAG REGISTRY
+// ============================================================
+
+class CustomTagRegistry {
+  constructor() {
+    this.customTags = new Map();
+    this.storageKey = 'adventureFinderCustomTags';
+    this.validationRules = {
+      minLength: 2,
+      maxLength: 50,
+      allowedChars: /^[a-zA-Z0-9\s\-&.,'()]+$/,
+      reserved: ['All', 'None', 'Custom', 'System', 'Admin']
+    };
+    this.loadCustomTags();
+  }
+
+  /**
+   * Validate tag name
+   */
+  validateTagName(name) {
+    const errors = [];
+
+    if (!name || typeof name !== 'string') {
+      errors.push('Tag name must be a string');
+    } else {
+      if (name.length < this.validationRules.minLength) {
+        errors.push(`Tag name too short (min ${this.validationRules.minLength} chars)`);
+      }
+      if (name.length > this.validationRules.maxLength) {
+        errors.push(`Tag name too long (max ${this.validationRules.maxLength} chars)`);
+      }
+      if (!this.validationRules.allowedChars.test(name)) {
+        errors.push('Tag contains invalid characters');
+      }
+      if (this.validationRules.reserved.includes(name)) {
+        errors.push(`"${name}" is a reserved tag name`);
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  /**
+   * Create custom tag
+   */
+  createCustomTag(name, config = {}) {
+    const validation = this.validateTagName(name);
+    if (!validation.valid) {
+      return { success: false, errors: validation.errors };
+    }
+
+    // Check for duplicates (case-insensitive)
+    const existing = Array.from(this.customTags.keys()).find(
+      t => t.toLowerCase() === name.toLowerCase()
+    );
+    if (existing) {
+      return { success: false, errors: [`Tag "${existing}" already exists`] };
+    }
+
+    const customTag = {
+      name,
+      icon: config.icon || '🏷️',
+      bg: config.bg || '#e0e7ff',
+      color: config.color || '#312e81',
+      border: config.border || '#c7d2fe',
+      category: config.category || 'Custom',
+      description: config.description || '',
+      createdAt: new Date().toISOString(),
+      usageCount: 0,
+      deprecated: false
+    };
+
+    this.customTags.set(name, customTag);
+    this.saveCustomTags();
+    console.log(`✅ Custom tag created: "${name}"`);
+    return { success: true, tag: customTag };
+  }
+
+  /**
+   * Get custom tag
+   */
+  getCustomTag(name) {
+    return this.customTags.get(name);
+  }
+
+  /**
+   * Update custom tag
+   */
+  updateCustomTag(name, updates = {}) {
+    const tag = this.customTags.get(name);
+    if (!tag) {
+      return { success: false, error: `Tag "${name}" not found` };
+    }
+
+    const updated = {
+      ...tag,
+      ...updates,
+      name: tag.name, // Prevent renaming
+      createdAt: tag.createdAt, // Preserve creation date
+      updatedAt: new Date().toISOString()
+    };
+
+    this.customTags.set(name, updated);
+    this.saveCustomTags();
+    return { success: true, tag: updated };
+  }
+
+  /**
+   * Delete custom tag
+   */
+  deleteCustomTag(name) {
+    if (!this.customTags.has(name)) {
+      return { success: false, error: `Tag "${name}" not found` };
+    }
+
+    const tag = this.customTags.get(name);
+    this.customTags.delete(name);
+    this.saveCustomTags();
+    console.log(`✅ Custom tag deleted: "${name}"`);
+    return { success: true, deletedTag: tag };
+  }
+
+  /**
+   * Get all custom tags
+   */
+  getAllCustomTags() {
+    return Array.from(this.customTags.values());
+  }
+
+  /**
+   * Get custom tags by category
+   */
+  getCustomTagsByCategory(category) {
+    return this.getAllCustomTags().filter(t => t.category === category);
+  }
+
+  /**
+   * Load custom tags from storage
+   */
+  loadCustomTags() {
+    try {
+      const stored = localStorage.getItem(this.storageKey);
+      if (stored) {
+        const data = JSON.parse(stored);
+        this.customTags = new Map(Object.entries(data));
+      }
+    } catch (e) {
+      console.error('Failed to load custom tags:', e);
+      this.customTags = new Map();
+    }
+  }
+
+  /**
+   * Save custom tags to storage
+   */
+  saveCustomTags() {
+    const data = Object.fromEntries(this.customTags);
+    localStorage.setItem(this.storageKey, JSON.stringify(data));
+  }
+
+  /**
+   * Get statistics
+   */
+  getStats() {
+    const tags = this.getAllCustomTags();
+    return {
+      total: tags.length,
+      active: tags.filter(t => !t.deprecated).length,
+      deprecated: tags.filter(t => t.deprecated).length,
+      categories: [...new Set(tags.map(t => t.category))],
+      mostUsed: tags.sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0)).slice(0, 5),
+      leastUsed: tags.sort((a, b) => (a.usageCount || 0) - (b.usageCount || 0)).filter(t => (t.usageCount || 0) === 0)
+    };
+  }
+}
+
+// Create global instance
+window.customTagRegistry = window.customTagRegistry || new CustomTagRegistry();
+
+// ============================================================
+// SECTION 8: TAG SEARCH & FILTERING
+// ============================================================
+
+class TagSearchEngine {
+  constructor() {
+    this.searchHistory = [];
+    this.maxHistorySize = 50;
+  }
+
+  /**
+   * Normalize string for searching
+   */
+  normalize(str) {
+    return String(str || '').toLowerCase().trim();
+  }
+
+  /**
+   * Levenshtein distance - for fuzzy matching
+   */
+  levenshteinDistance(s1, s2) {
+    const shorter = s1.length < s2.length ? s1 : s2;
+    const longer = s1.length < s2.length ? s2 : s1;
+    const costs = [];
+
+    for (let i = 0; i < longer.length + 1; i++) {
+      let lastValue = i;
+      for (let j = 0; j < shorter.length + 1; j++) {
+        if (i === 0) costs[j] = j;
+        else if (j > 0) {
+          let newValue = costs[j - 1];
+          if (longer.charAt(i - 1) !== shorter.charAt(j - 1)) {
+            newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+          }
+          costs[j - 1] = lastValue;
+          lastValue = newValue;
+        }
+      }
+      if (i > 0) costs[shorter.length] = lastValue;
+    }
+
+    return costs[shorter.length];
+  }
+
+  /**
+   * Calculate similarity score (0-1)
+   */
+  calculateSimilarity(s1, s2) {
+    const maxLen = Math.max(s1.length, s2.length);
+    if (maxLen === 0) return 1;
+    const distance = this.levenshteinDistance(s1, s2);
+    return 1 - distance / maxLen;
+  }
+
+  /**
+   * Full-text search across tags
+   */
+  fullTextSearch(query, allTags = []) {
+    if (!query || typeof query !== 'string') return [];
+
+    const normalizedQuery = this.normalize(query);
+    const results = [];
+
+    for (const tag of allTags) {
+      const tagName = String(tag.name || tag);
+      const normalized = this.normalize(tagName);
+      const description = String(tag.description || '').toLowerCase();
+
+      // Exact match (highest score)
+      if (normalized === normalizedQuery) {
+        results.push({ tag: tagName, score: 1.0, matchType: 'exact' });
+      }
+      // Starts with (high score)
+      else if (normalized.startsWith(normalizedQuery)) {
+        results.push({ tag: tagName, score: 0.9, matchType: 'prefix' });
+      }
+      // Contains (medium score)
+      else if (normalized.includes(normalizedQuery)) {
+        results.push({ tag: tagName, score: 0.7, matchType: 'substring' });
+      }
+      // Description match
+      else if (description.includes(normalizedQuery)) {
+        results.push({ tag: tagName, score: 0.5, matchType: 'description' });
+      }
+    }
+
+    return results.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Fuzzy search for typo tolerance
+   */
+  fuzzySearch(query, allTags = [], maxDistance = 2) {
+    if (!query || typeof query !== 'string') return [];
+
+    const normalizedQuery = this.normalize(query);
+    const results = [];
+
+    for (const tag of allTags) {
+      const tagName = String(tag.name || tag);
+      const normalized = this.normalize(tagName);
+      const distance = this.levenshteinDistance(normalizedQuery, normalized);
+
+      if (distance <= maxDistance) {
+        const similarity = this.calculateSimilarity(normalizedQuery, normalized);
+        results.push({
+          tag: tagName,
+          distance,
+          similarity,
+          score: (1 - distance / Math.max(normalizedQuery.length, normalized.length))
+        });
+      }
+    }
+
+    return results.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Autocomplete suggestions
+   */
+  autocomplete(query, allTags = [], limit = 10) {
+    if (!query || typeof query !== 'string') return [];
+
+    const normalizedQuery = this.normalize(query);
+    const suggestions = [];
+
+    for (const tag of allTags) {
+      const tagName = String(tag.name || tag);
+      const normalized = this.normalize(tagName);
+
+      if (normalized.startsWith(normalizedQuery)) {
+        suggestions.push({
+          tag: tagName,
+          displayName: tag.name || tagName,
+          icon: tag.icon || '🏷️'
+        });
+      }
+    }
+
+    return suggestions.slice(0, limit);
+  }
+
+  /**
+   * Filter tags by criteria
+   */
+  filterTags(allTags = {}, criteria = {}) {
+    let results = Object.entries(allTags);
+
+    // Filter by category
+    if (criteria.category) {
+      results = results.filter(([, tag]) =>
+        (tag.category || '').toLowerCase() === criteria.category.toLowerCase()
+      );
+    }
+
+    // Filter by usage frequency
+    if (criteria.minUsage !== undefined) {
+      results = results.filter(([, tag]) =>
+        (tag.usageCount || 0) >= criteria.minUsage
+      );
+    }
+
+    // Filter by creation date
+    if (criteria.since) {
+      results = results.filter(([, tag]) =>
+        new Date(tag.createdAt) >= new Date(criteria.since)
+      );
+    }
+
+    // Filter by name pattern
+    if (criteria.namePattern) {
+      const regex = new RegExp(criteria.namePattern, 'i');
+      results = results.filter(([tagName]) => regex.test(tagName));
+    }
+
+    // Exclude deprecated
+    if (criteria.excludeDeprecated !== false) {
+      results = results.filter(([, tag]) => !tag.deprecated);
+    }
+
+    // Sort by usage
+    if (criteria.sortByUsage) {
+      results.sort((a, b) => (b[1].usageCount || 0) - (a[1].usageCount || 0));
+    }
+
+    return Object.fromEntries(results);
+  }
+
+  /**
+   * Add search to history
+   */
+  addToHistory(query) {
+    if (!query) return;
+    this.searchHistory.unshift(query);
+    if (this.searchHistory.length > this.maxHistorySize) {
+      this.searchHistory.pop();
+    }
+  }
+
+  /**
+   * Get search history
+   */
+  getHistory(limit = 10) {
+    return [...new Set(this.searchHistory)].slice(0, limit);
+  }
+
+  /**
+   * Clear search history
+   */
+  clearHistory() {
+    this.searchHistory = [];
+  }
+}
+
+// Create global instance
+window.tagSearchEngine = window.tagSearchEngine || new TagSearchEngine();
+
+// ============================================================
+// SECTION 9: TAG CONFLICT DETECTION
+// ============================================================
+
+class TagConflictDetector {
+  constructor() {
+    // Define conflicting tag pairs/groups
+    this.conflicts = {
+      'Easy': ['Challenging', 'Advanced', 'Difficult', 'Strenuous', 'Technical'],
+      'Challenging': ['Easy', 'Beginner-Friendly', 'Simple', 'Gentle'],
+      'Budget-Friendly': ['Upscale', 'Fine Dining', 'Luxury', 'High-End', 'Premium'],
+      'Upscale': ['Budget-Friendly', 'Affordable', 'Cheap', 'Budget'],
+      'Popular/Crowded': ['Hidden Gem', 'Off the Radar', 'Secret Location', 'Lesser Known'],
+      'Hidden Gem': ['Touristy', 'Popular/Crowded', 'Crowded', 'Busy'],
+      'Touristy': ['Authentic', 'Local Favorite', 'Hidden Gem'],
+      'Authentic Experience': ['Touristy', 'Commercialized', 'Tourist Trap'],
+      'Free': ['Paid Admission', 'Paid', 'Entry Fee'],
+      'Paid Admission': ['Free', 'No Charge', 'Complimentary'],
+      'Quick Visit': ['Half-Day+ Experience', 'Multi-Day Experience', 'Weekend Destination'],
+      'Half-Day+ Experience': ['Quick Visit'],
+      'Relaxing': ['Adventure', 'Thrilling', 'Adrenaline', 'Challenging'],
+      'Adventure': ['Relaxing', 'Peaceful', 'Calm'],
+      'Family-Friendly': ['Adults Only', 'Mature Content', 'Risky'],
+      'Quiet': ['Busy', 'Loud', 'Popular/Crowded', 'Lively'],
+      'Lively': ['Quiet', 'Peaceful', 'Calm', 'Serene'],
+      'Summer Destination': ['Winter Activity', 'Cold Weather', 'Snow'],
+      'Winter Activity': ['Summer Destination', 'Hot Weather', 'Heat'],
+      'Wheelchair-Accessible': ['Steep Terrain', 'Difficult Terrain', 'Technical Rocks'],
+      'Beginner-Friendly': ['Expert-Only', 'Advanced Climbers', 'Technical'],
+    };
+
+    // Warnings - tags that are compatible but might need verification
+    this.warnings = {
+      'Upscale': ['Casual', 'Budget Hack', 'Deal Hunting'],
+      'Family-Friendly': ['Late Night', 'Bar Scene', 'Adult Entertainment'],
+      'Photography-Worthy': ['Hidden Gem'], // Hidden gems are hard to photograph if truly hidden
+      'Romantic': ['Family-Friendly'], // Can be both but might be confusing
+      'Wheelchair-Accessible': ['Steep Climb', 'Long Hike'],
+    };
+  }
+
+  /**
+   * Detect conflicts between tags
+   */
+  detectConflicts(tags) {
+    if (!Array.isArray(tags)) return [];
+
+    const conflicts = [];
+    const tagSet = new Set(tags.map(t => String(t).trim()));
+
+    for (const tag of tags) {
+      const conflictingTags = this.conflicts[tag] || [];
+      for (const conflicting of conflictingTags) {
+        if (tagSet.has(conflicting)) {
+          conflicts.push({
+            tag1: tag,
+            tag2: conflicting,
+            severity: 'conflict',
+            message: `"${tag}" and "${conflicting}" are contradictory`,
+            recommendation: `Consider removing one of these tags`
+          });
+        }
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Detect warnings (compatible but unusual combinations)
+   */
+  detectWarnings(tags) {
+    if (!Array.isArray(tags)) return [];
+
+    const warnings = [];
+    const tagSet = new Set(tags.map(t => String(t).trim()));
+
+    for (const tag of tags) {
+      const warningTags = this.warnings[tag] || [];
+      for (const warning of warningTags) {
+        if (tagSet.has(warning)) {
+          warnings.push({
+            tag1: tag,
+            tag2: warning,
+            severity: 'warning',
+            message: `"${tag}" and "${warning}" are usually separate`,
+            recommendation: `Verify this combination makes sense for this location`
+          });
+        }
+      }
+    }
+
+    return warnings;
+  }
+
+  /**
+   * Full validation - conflicts + warnings
+   */
+  validate(tags) {
+    const conflicts = this.detectConflicts(tags);
+    const warnings = this.detectWarnings(tags);
+    const issues = [...conflicts, ...warnings];
+
+    return {
+      valid: conflicts.length === 0,
+      conflictCount: conflicts.length,
+      warningCount: warnings.length,
+      issues,
+      conflicts,
+      warnings,
+      summary: {
+        hasConflicts: conflicts.length > 0,
+        hasWarnings: warnings.length > 0,
+        message: conflicts.length > 0 ? `${conflicts.length} conflict(s) found` : warnings.length > 0 ? `${warnings.length} warning(s)` : 'No issues detected'
+      }
+    };
+  }
+
+  /**
+   * Suggest fixes for conflicts
+   */
+  suggestFixes(tags) {
+    const conflicts = this.detectConflicts(tags);
+    const suggestions = [];
+
+    for (const conflict of conflicts) {
+      suggestions.push({
+        conflict: `${conflict.tag1} ↔ ${conflict.tag2}`,
+        options: [
+          `Remove "${conflict.tag1}" and keep "${conflict.tag2}"`,
+          `Remove "${conflict.tag2}" and keep "${conflict.tag1}"`,
+          `Review the location data - one tag may be incorrect`
+        ]
+      });
+    }
+
+    return suggestions;
+  }
+}
+
+// Create global instance
+window.tagConflictDetector = window.tagConflictDetector || new TagConflictDetector();
+
+// ============================================================
+// SECTION 10: SMART TAG DEDUPLICATION
+// ============================================================
+
+class TagDeduplicator {
+  constructor() {
+    this.deduplicationBuffer = [];
+  }
+
+  /**
+   * Find near-duplicate tags
+   */
+  findNearDuplicates(tags, similarityThreshold = 0.75) {
+    if (!Array.isArray(tags)) return [];
+
+    const searchEngine = window.tagSearchEngine || new TagSearchEngine();
+    const duplicates = [];
+    const checked = new Set();
+
+    for (let i = 0; i < tags.length; i++) {
+      const tag1 = tags[i];
+      if (checked.has(tag1)) continue;
+
+      for (let j = i + 1; j < tags.length; j++) {
+        const tag2 = tags[j];
+        if (checked.has(tag2)) continue;
+
+        const similarity = searchEngine.calculateSimilarity(
+          searchEngine.normalize(tag1),
+          searchEngine.normalize(tag2)
+        );
+
+        if (similarity >= similarityThreshold) {
+          duplicates.push({
+            primary: tag1,
+            duplicate: tag2,
+            similarity: Math.round(similarity * 100),
+            action: 'merge'
+          });
+          checked.add(tag2);
+        }
+      }
+    }
+
+    return duplicates;
+  }
+
+  /**
+   * Find tags with different casing
+   */
+  findCasingVariants(tags) {
+    if (!Array.isArray(tags)) return [];
+
+    const tagMap = new Map();
+    const variants = [];
+
+    for (const tag of tags) {
+      const normalized = String(tag).toLowerCase().trim();
+      if (!tagMap.has(normalized)) {
+        tagMap.set(normalized, []);
+      }
+      tagMap.get(normalized).push(tag);
+    }
+
+    for (const [normalized, variants_list] of tagMap.entries()) {
+      if (variants_list.length > 1) {
+        variants.push({
+          variants: variants_list,
+          normalized,
+          count: variants_list.length,
+          recommendation: `Standardize to one casing: "${variants_list[0]}"`
+        });
+      }
+    }
+
+    return variants;
+  }
+
+  /**
+   * Find tags with extra spaces
+   */
+  findSpacingVariants(tags) {
+    if (!Array.isArray(tags)) return [];
+
+    const tagMap = new Map();
+    const variants = [];
+
+    for (const tag of tags) {
+      const normalized = String(tag).replace(/\s+/g, ' ').trim();
+      if (!tagMap.has(normalized)) {
+        tagMap.set(normalized, []);
+      }
+      tagMap.get(normalized).push(tag);
+    }
+
+    for (const [normalized, variants_list] of tagMap.entries()) {
+      if (variants_list.length > 1) {
+        variants.push({
+          variants: variants_list,
+          normalized,
+          count: variants_list.length,
+          recommendation: `Consolidate spacing: "${normalized}"`
+        });
+      }
+    }
+
+    return variants;
+  }
+
+  /**
+   * Comprehensive deduplication analysis
+   */
+  analyze(tags) {
+    if (!Array.isArray(tags)) return { success: false, error: 'Tags must be an array' };
+
+    const analysis = {
+      originalCount: tags.length,
+      uniqueCount: new Set(tags).size,
+      duplicates: [],
+      cassingVariants: [],
+      spacingVariants: [],
+      aliasGroups: [],
+      suggestions: []
+    };
+
+    // Near-duplicates
+    analysis.duplicates = this.findNearDuplicates(tags, 0.8);
+
+    // Casing variants
+    analysis.cassingVariants = this.findCasingVariants(tags);
+
+    // Spacing variants
+    analysis.spacingVariants = this.findSpacingVariants(tags);
+
+    // Alias groups
+    for (const tag of new Set(tags)) {
+      const aliases = TAG_ALIASES[tag] || [];
+      const foundAliases = tags.filter(t => aliases.includes(t));
+      if (foundAliases.length > 0) {
+        analysis.aliasGroups.push({
+          primary: tag,
+          aliases: foundAliases,
+          count: foundAliases.length
+        });
+      }
+    }
+
+    // Generate suggestions
+    const possibleReductions = analysis.duplicates.length +
+                              analysis.cassingVariants.length +
+                              analysis.spacingVariants.length +
+                              analysis.aliasGroups.length;
+
+    analysis.suggestions = [
+      ...analysis.cassingVariants.map(v => v.recommendation),
+      ...analysis.spacingVariants.map(v => v.recommendation),
+      ...analysis.duplicates.map(d => `Merge "${d.duplicate}" into "${d.primary}"`),
+      ...analysis.aliasGroups.map(g => `Consider merging ${g.aliases.length} alias variant(s) of "${g.primary}"`)
+    ];
+
+    analysis.summary = {
+      hasDuplicates: analysis.duplicates.length > 0,
+      hasVariants: analysis.cassingVariants.length + analysis.spacingVariants.length > 0,
+      hasAliases: analysis.aliasGroups.length > 0,
+      possibleReductions,
+      recommendation: possibleReductions > 0 ? `${possibleReductions} deduplication action(s) available` : 'No deduplication needed'
+    };
+
+    return analysis;
+  }
+
+  /**
+   * Deduplicate tags - returns cleaned array
+   */
+  deduplicate(tags) {
+    if (!Array.isArray(tags)) return [];
+
+    let cleaned = [...tags];
+
+    // 1. Fix spacing
+    cleaned = cleaned.map(t => String(t).replace(/\s+/g, ' ').trim());
+
+    // 2. Standardize casing
+    const caseMap = new Map();
+    for (const tag of cleaned) {
+      const lower = tag.toLowerCase();
+      if (!caseMap.has(lower)) {
+        caseMap.set(lower, tag);
+      }
+    }
+    cleaned = cleaned.map(t => caseMap.get(t.toLowerCase()));
+
+    // 3. Resolve aliases
+    cleaned = normalizeTags(cleaned);
+
+    // 4. Remove duplicates
+    return Array.from(new Set(cleaned));
+  }
+
+  /**
+   * Merge near-duplicate tags
+   */
+  mergeTags(tag1, tag2) {
+    return {
+      mergedTag: tag1,
+      removedTag: tag2,
+      reason: 'Merged near-identical tags',
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Get deduplication stats
+   */
+  getStats() {
+    return {
+      buffer: this.deduplicationBuffer.length,
+      pendingActions: this.deduplicationBuffer.filter(a => a.status === 'pending').length,
+      completedActions: this.deduplicationBuffer.filter(a => a.status === 'completed').length,
+      recentActions: this.deduplicationBuffer.slice(-5)
+    };
+  }
+}
+
+// Create global instance
+window.tagDeduplicator = window.tagDeduplicator || new TagDeduplicator();
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 
-console.log('✅ Consolidated Tag Management System v7.0.141 Loaded');
+console.log('✅ Consolidated Tag Management System v7.0.200 Loaded');
 console.log('  - Configuration & Styling');
 console.log('  - Hierarchy System');
 console.log('  - Tag Manager (Core)');
 console.log('  - Tag Recommendations');
 console.log('  - Auto-Tagging System');
 console.log('  - Cross-Context Utilities');
+console.log('  - Tag Aliases & Synonyms');
+console.log('  - Custom Tag Registry');
+console.log('  - Search & Filtering Engine');
+console.log('  - Conflict Detection');
+console.log('  - Smart Deduplication');
 
 // Export for module use
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    // Configuration
     TAG_CONFIG,
     TAG_HIERARCHY,
+    TAG_ALIASES,
+
+    // Core Classes
     TagManager,
+    CustomTagRegistry,
+    TagSearchEngine,
+    TagConflictDetector,
+    TagDeduplicator,
+
+    // Utilities
     getTagStyle,
     renderTagBadge,
     getAllAvailableTags,
     getFromContext,
-    showToastCrossContext
+    showToastCrossContext,
+
+    // Alias functions
+    resolveTagAlias,
+    getTagAliases,
+    normalizeTags,
+
+    // Global instances
+    tagManager: window.tagManager,
+    customTagRegistry: window.customTagRegistry,
+    tagSearchEngine: window.tagSearchEngine,
+    tagConflictDetector: window.tagConflictDetector,
+    tagDeduplicator: window.tagDeduplicator
   };
 }
 

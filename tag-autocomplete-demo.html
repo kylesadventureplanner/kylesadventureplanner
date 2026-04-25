@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tag Autocomplete Input - Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .demo-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .demo-header {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .demo-header h1 {
+      color: #111827;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .demo-header p {
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .feature-item {
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .feature-item:before {
+      content: '✨ ';
+      color: #667eea;
+      font-weight: bold;
+    }
+
+    .form-card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 10px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .form-textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #111827;
+      border: 1px solid #e5e7eb;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .demo-section {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .demo-section h2 {
+      color: #111827;
+      font-size: 18px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .demo-section pre {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 15px;
+      overflow-x: auto;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #374151;
+      font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    }
+
+    .info-box {
+      padding: 15px;
+      background: #eff6ff;
+      border-left: 4px solid #667eea;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 13px;
+      color: #1e40af;
+    }
+
+    .success-box {
+      padding: 15px;
+      background: #f0fdf4;
+      border-left: 4px solid #10b981;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      font-size: 13px;
+      color: #065f46;
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 15px;
+    }
+
+    .results-table th {
+      background: #f3f4f6;
+      padding: 10px;
+      text-align: left;
+      font-weight: 600;
+      color: #374151;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .results-table td {
+      padding: 10px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #6b7280;
+    }
+
+    .results-table tr:hover {
+      background: #f9fafb;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    @media (max-width: 640px) {
+      .demo-header,
+      .form-card,
+      .demo-section {
+        padding: 20px;
+      }
+
+      .demo-header h1 {
+        font-size: 22px;
+      }
+
+      .feature-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <!-- Header -->
+    <div class="demo-header">
+      <h1>🏷️ Tag Autocomplete Input</h1>
+      <p>
+        Production-ready tag input component with real-time autocomplete,
+        conflict detection, and validation using the advanced tag system.
+      </p>
+      <div class="feature-list">
+        <div class="feature-item">Autocomplete</div>
+        <div class="feature-item">Conflict Detection</div>
+        <div class="feature-item">Tag Aliases</div>
+        <div class="feature-item">Full-text Search</div>
+        <div class="feature-item">Custom Styling</div>
+      </div>
+    </div>
+
+    <!-- Form Example -->
+    <div class="form-card">
+      <h2 style="color: #111827; margin-bottom: 20px; font-size: 18px;">
+        📝 Add New Location
+      </h2>
+
+      <form id="locationForm">
+        <!-- Name Field -->
+        <div class="form-group">
+          <label class="form-label">Location Name *</label>
+          <input
+            type="text"
+            id="locationName"
+            class="form-input"
+            placeholder="e.g., Mountain Peak Trail"
+            required
+          >
+        </div>
+
+        <!-- Description Field -->
+        <div class="form-group">
+          <label class="form-label">Description *</label>
+          <textarea
+            id="locationDescription"
+            class="form-textarea"
+            placeholder="Describe the location, activities, features, etc."
+            required
+          ></textarea>
+        </div>
+
+        <!-- Tags Field (Dynamic) -->
+        <div class="form-group">
+          <label class="form-label">📌 Tags</label>
+          <div id="tagAutocompleteContainer"></div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">✨ Save Location</button>
+          <button type="reset" class="btn btn-secondary">Clear Form</button>
+        </div>
+      </form>
+
+      <!-- Success Message -->
+      <div id="successMessage" style="display: none;" class="success-box">
+        ✅ Location saved successfully!
+      </div>
+    </div>
+
+    <!-- Documentation -->
+    <div class="demo-section">
+      <h2>📚 How to Use</h2>
+
+      <div class="info-box">
+        <strong>ℹ️ Getting Started:</strong> The tag input is embedded above. Start typing to see
+        autocomplete suggestions powered by full-text search with fuzzy matching.
+      </div>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        Step 1: Include Required Scripts
+      </h3>
+      <pre>// In your HTML head:
+&lt;script src="/JS Files/consolidated-tag-system-v7-0-141.js"&gt;&lt;/script&gt;
+&lt;script src="/tag-autocomplete-input.js"&gt;&lt;/script&gt;</pre>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        Step 2: Add HTML Container
+      </h3>
+      <pre>// Where you want the tag input:
+&lt;div id="tagAutocompleteContainer"&gt;&lt;/div&gt;</pre>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        Step 3: Initialize with JavaScript
+      </h3>
+      <pre>// In your script:
+document.getElementById('tagAutocompleteContainer').innerHTML = TAG_AUTOCOMPLETE_HTML;
+
+const tagInput = initTagAutocomplete({
+  maxTags: 10,
+  minSearchLength: 1,
+  showConflictWarnings: true,
+  onSelectionChange: (tags) => {
+    console.log('Selected tags:', tags);
+  }
+});</pre>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        Step 4: Get Selected Tags
+      </h3>
+      <pre>// When saving your form:
+const selectedTags = tagInput.getSelectedTags();
+console.log('Tags to save:', selectedTags);
+
+// Example usage in form submission
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const tags = tagInput.getSelectedTags();
+  // Save with your data...
+});</pre>
+    </div>
+
+    <!-- API Reference -->
+    <div class="demo-section">
+      <h2>⚙️ Configuration Options</h2>
+
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Type</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>maxTags</code></td>
+            <td>number</td>
+            <td>10</td>
+            <td>Maximum number of tags allowed</td>
+          </tr>
+          <tr>
+            <td><code>minSearchLength</code></td>
+            <td>number</td>
+            <td>1</td>
+            <td>Minimum characters before showing suggestions</td>
+          </tr>
+          <tr>
+            <td><code>suggestionLimit</code></td>
+            <td>number</td>
+            <td>10</td>
+            <td>Max suggestions to display</td>
+          </tr>
+          <tr>
+            <td><code>debounceDelay</code></td>
+            <td>number</td>
+            <td>150</td>
+            <td>Delay (ms) before searching</td>
+          </tr>
+          <tr>
+            <td><code>showConflictWarnings</code></td>
+            <td>boolean</td>
+            <td>true</td>
+            <td>Show conflict warnings</td>
+          </tr>
+          <tr>
+            <td><code>onSelectionChange</code></td>
+            <td>function</td>
+            <td>null</td>
+            <td>Callback when tags change</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Public Methods -->
+    <div class="demo-section">
+      <h2>🎯 Available Methods</h2>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        Get Selected Tags
+      </h3>
+      <pre>tagInput.getSelectedTags()
+// Returns: ['Hiking', 'Photography-Worthy', 'Family-Friendly']</pre>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        Set Selected Tags
+      </h3>
+      <pre>tagInput.setSelectedTags(['Easy', 'Scenic'])
+// Programmatically set tags</pre>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        Clear All Tags
+      </h3>
+      <pre>tagInput.clearTags()
+// Remove all selected tags</pre>
+    </div>
+
+    <!-- Features -->
+    <div class="demo-section">
+      <h2>✨ Features</h2>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        🔍 Smart Autocomplete
+      </h3>
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 10px;">
+        5 matching strategies: Exact (100%), Prefix (90%), Substring (70%), Description
+        (50%), and Fuzzy (0-100%) for typo tolerance.
+      </p>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        ⚠️ Conflict Detection
+      </h3>
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 10px;">
+        Automatically detects conflicting tags like "Easy" + "Challenging" and prevents
+        invalid combinations.
+      </p>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        🏷️ Tag Aliases
+      </h3>
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 10px;">
+        Type "Trekking" and it normalizes to "Hiking". Handles user input variations
+        automatically.
+      </p>
+
+      <h3 style="color: #111827; margin: 20px 0 10px; font-size: 14px; font-weight: 600;">
+        🎨 Beautiful UI
+      </h3>
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 10px;">
+        Smooth animations, responsive design, dark mode ready, and fully customizable
+        styling.
+      </p>
+    </div>
+
+    <!-- Example -->
+    <div class="demo-section">
+      <h2>💡 Example: Complete Integration</h2>
+      <pre>// Complete working example:
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Setup tag input
+  const container = document.getElementById('tagAutocompleteContainer');
+  container.innerHTML = TAG_AUTOCOMPLETE_HTML;
+
+  const tagInput = initTagAutocomplete({
+    maxTags: 15,
+    onSelectionChange: (tags) => {
+      // Update live preview
+      document.getElementById('tagPreview').textContent =
+        tags.join(', ') || 'No tags selected';
+    }
+  });
+
+  // Handle form submission
+  document.getElementById('locationForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const location = {
+      name: document.getElementById('locationName').value,
+      description: document.getElementById('locationDescription').value,
+      tags: tagInput.getSelectedTags()
+    };
+
+    console.log('Saving location:', location);
+
+    // TODO: Send to your backend
+    // await fetch('/api/locations', {
+    //   method: 'POST',
+    //   body: JSON.stringify(location)
+    // });
+
+    // Show success message
+    document.getElementById('successMessage').style.display = 'block';
+    setTimeout(() => {
+      document.getElementById('successMessage').style.display = 'none';
+    }, 3000);
+  });
+});</pre>
+    </div>
+
+    <!-- Tips -->
+    <div class="demo-section">
+      <h2>💡 Tips & Tricks</h2>
+
+      <div class="info-box">
+        <strong>🎯 Tip 1:</strong> Use the
+        <code>onSelectionChange</code> callback to update other parts of your UI in
+        real-time.
+      </div>
+
+      <div class="info-box">
+        <strong>🎯 Tip 2:</strong> Type partial tag names like "fam" to see all family-related
+        tags.
+      </div>
+
+      <div class="info-box">
+        <strong>🎯 Tip 3:</strong> Conflicts are shown immediately - users can't make mistakes!
+      </div>
+
+      <div class="info-box">
+        <strong>🎯 Tip 4:</strong> Tag aliases mean "Trekking" or "Walking" all become "Hiking"
+        for consistency.
+      </div>
+
+      <div class="info-box">
+        <strong>🎯 Tip 5:</strong> Use <code>tagInput.getSelectedTags()</code> in form submit
+        handlers to save tags with your data.
+      </div>
+    </div>
+  </div>
+
+  <!-- Initialize Tag System and Input -->
+  <script src="/JS Files/consolidated-tag-system-v7-0-141.js"></script>
+  <script src="/tag-autocomplete-input.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Setup tag input
+      const container = document.getElementById('tagAutocompleteContainer');
+      container.innerHTML = TAG_AUTOCOMPLETE_HTML;
+
+      const tagInput = initTagAutocomplete({
+        maxTags: 15,
+        minSearchLength: 1,
+        showConflictWarnings: true,
+        onSelectionChange: (tags) => {
+          console.log('✨ Selected tags changed:', tags);
+        }
+      });
+
+      // Handle form submission
+      document.getElementById('locationForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const name = document.getElementById('locationName').value.trim();
+        const description = document.getElementById('locationDescription').value.trim();
+        const tags = tagInput.getSelectedTags();
+
+        if (!name || !description) {
+          alert('Please fill in all fields');
+          return;
+        }
+
+        if (tags.length === 0) {
+          alert('Please select at least one tag');
+          return;
+        }
+
+        const location = {
+          name,
+          description,
+          tags: tags.join(', '),
+          createdAt: new Date().toISOString()
+        };
+
+        console.log('💾 Saving location:', location);
+
+        // Show success message
+        document.getElementById('successMessage').style.display = 'block';
+        setTimeout(() => {
+          document.getElementById('successMessage').style.display = 'none';
+        }, 3000);
+
+        // Reset form
+        setTimeout(() => {
+          document.getElementById('locationForm').reset();
+          tagInput.clearTags();
+        }, 1500);
+      });
+
+      console.log('✅ Tag autocomplete demo initialized');
+    });
+  </script>
+</body>
+</html>
+

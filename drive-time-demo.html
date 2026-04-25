@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drive Time Auto-Calculator Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .header h1 {
+      color: #111827;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .header p {
+      color: #6b7280;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: #111827;
+      font-size: 18px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .drive-time-display {
+      background: #f0f9ff;
+      border-left: 4px solid #667eea;
+      border-radius: 6px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+
+    .drive-time-label {
+      font-size: 12px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+    }
+
+    .drive-time-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .drive-time-details {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #667eea;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .reference-location {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+
+    .reference-label {
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 5px;
+    }
+
+    .reference-value {
+      color: #6b7280;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 100%;
+      padding: 12px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #111827;
+      border: 1px solid #e5e7eb;
+      padding: 8px 16px;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border-left: 4px solid #667eea;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 13px;
+      color: #1e40af;
+    }
+
+    .success-box {
+      background: #f0fdf4;
+      border-left: 4px solid #10b981;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 13px;
+      color: #065f46;
+      display: none;
+    }
+
+    .example-code {
+      background: #1f2937;
+      color: #f3f4f6;
+      border-radius: 6px;
+      padding: 15px;
+      font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      margin: 15px 0;
+      line-height: 1.5;
+    }
+
+    .flex-gap {
+      display: flex;
+      gap: 10px;
+    }
+
+    @media (max-width: 640px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .header,
+      .card {
+        padding: 20px;
+      }
+
+      .header h1 {
+        font-size: 22px;
+      }
+
+      .drive-time-value {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>🚗 Drive Time Auto-Calculator</h1>
+      <p>
+        Automatically calculate estimated drive time when adding a new location.
+        Uses your current location as reference point and estimates travel time based on distance.
+      </p>
+    </div>
+
+    <!-- Reference Location Card -->
+    <div class="card">
+      <h2>📍 Reference Location</h2>
+
+      <div class="reference-location">
+        <div class="reference-label">Your Current Location:</div>
+        <div class="reference-value" id="referenceStatus">Detecting location...</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Or Set Manually:</label>
+        <div class="form-row">
+          <div>
+            <input type="number" id="refLat" placeholder="Latitude" step="0.0001">
+          </div>
+          <div>
+            <input type="number" id="refLng" placeholder="Longitude" step="0.0001">
+          </div>
+        </div>
+        <input type="text" id="refName" placeholder="Location name (e.g., Home)" style="margin-top: 10px;">
+        <button class="btn btn-secondary" style="width: 100%; margin-top: 10px;" onclick="updateManualRefLocation()">
+          Update Reference Location
+        </button>
+      </div>
+
+      <div class="info-box">
+        ℹ️ The calculator uses your reference location to estimate drive time to new locations. You can update this
+        anytime.
+      </div>
+    </div>
+
+    <!-- Location Form Card -->
+    <div class="card">
+      <h2>📝 Add New Location</h2>
+
+      <form id="locationForm">
+        <!-- Location Name -->
+        <div class="form-group">
+          <label class="form-label">Location Name *</label>
+          <input type="text" id="locationName" class="form-input" placeholder="e.g., New Restaurant" required>
+        </div>
+
+        <!-- Coordinates -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Latitude *</label>
+            <input type="number" id="latitude" class="form-input" placeholder="e.g., 40.7128" step="0.0001" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Longitude *</label>
+            <input type="number" id="longitude" class="form-input" placeholder="e.g., -74.0060" step="0.0001" required>
+          </div>
+        </div>
+
+        <!-- Drive Time Display -->
+        <div class="drive-time-display">
+          <div class="drive-time-label">Estimated Drive Time</div>
+          <div class="drive-time-value" id="driveTimeDisplay">—</div>
+          <div class="drive-time-details" id="driveTimeDetails">Enter coordinates to calculate</div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="description" class="form-input" placeholder="Notes about this location" style="resize: vertical; min-height: 100px;"></textarea>
+        </div>
+
+        <!-- Hidden field for result -->
+        <input type="hidden" id="driveTimeData">
+
+        <!-- Submit -->
+        <button type="submit" class="btn btn-primary">✨ Save Location</button>
+      </form>
+
+      <div class="success-box" id="successMessage">
+        ✅ Location saved successfully!
+      </div>
+    </div>
+
+    <!-- Documentation Card -->
+    <div class="card">
+      <h2>📚 How It Works</h2>
+
+      <h3 style="color: #111827; margin: 15px 0 10px; font-size: 14px; font-weight: 600;">
+        🎯 Automatic Calculation
+      </h3>
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        As you enter coordinates, the drive time is automatically calculated using the haversine formula. This
+        calculates straight-line distance and converts to estimated drive time based on typical speeds for different
+        distance ranges.
+      </p>
+
+      <h3 style="color: #111827; margin: 15px 0 10px; font-size: 14px; font-weight: 600;">
+        ⚙️ Speed Assumptions
+      </h3>
+      <p style="color: #6b7280; font-size: 13px;">
+        • Urban: 25 mph (0-5 miles)<br>
+        • Suburban: 35 mph (5-15 miles)<br>
+        • Mixed: 35 mph (15-50 miles)<br>
+        • Highway: 55 mph (50+ miles)
+      </p>
+
+      <h3 style="color: #111827; margin: 15px 0 10px; font-size: 14px; font-weight: 600;">
+        💡 Tips
+      </h3>
+      <ul style="color: #6b7280; font-size: 13px; margin-left: 20px;">
+        <li>The calculation is an estimate. Actual drive time depends on traffic, route, and conditions.</li>
+        <li>Use Google Maps for more accurate calculations (requires API key).</li>
+        <li>Results are cached for 1 hour to improve performance.</li>
+        <li>Works offline using haversine formula.</li>
+      </ul>
+
+      <h3 style="color: #111827; margin: 15px 0 10px; font-size: 14px; font-weight: 600;">
+        🚀 How to Find Coordinates
+      </h3>
+      <ol style="color: #6b7280; font-size: 13px; margin-left: 20px;">
+        <li>Go to Google Maps (maps.google.com)</li>
+        <li>Search for the location</li>
+        <li>Right-click on the location pin</li>
+        <li>Click "What's here?" at the bottom</li>
+        <li>Copy the coordinates shown</li>
+      </ol>
+    </div>
+
+    <!-- Code Example Card -->
+    <div class="card">
+      <h2>💻 Code Integration</h2>
+
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        Here's how to integrate drive time calculation into your own location form:
+      </p>
+
+      <div class="example-code">
+// 1. Include script
+&lt;script src="/drive-time-calculator.js"&gt;&lt;/script&gt;
+
+// 2. Initialize on page load
+await initializeDriveTimeCalculator();
+
+// 3. Set reference location (optional)
+setDriveTimeReferenceLocation(40.7128, -74.0060, 'Home');
+
+// 4. Setup auto-calculation
+setupDriveTimeAutoCalculation({
+  latitudeFieldId: 'latitude',
+  longitudeFieldId: 'longitude',
+  driveTimeFieldId: 'driveTime',
+  locationNameFieldId: 'locationName'
+});
+
+// 5. Get result when needed
+const result = getDriveTimeResult('driveTime');
+      </div>
+    </div>
+
+    <!-- Test Cases Card -->
+    <div class="card">
+      <h2>🧪 Test Examples</h2>
+
+      <p style="color: #6b7280; font-size: 13px; margin-bottom: 15px;">
+        Try these coordinates to test different distances:
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <button class="btn btn-secondary" onclick="testLocation('Times Square', 40.7580, -73.9855)">
+          Times Square (5 mi)
+        </button>
+        <button class="btn btn-secondary" onclick="testLocation('Central Park', 40.7829, -73.9654)">
+          Central Park (3 mi)
+        </button>
+        <button class="btn btn-secondary" onclick="testLocation('Empire State', 40.7484, -73.9857)">
+          Empire State (4 mi)
+        </button>
+        <button class="btn btn-secondary" onclick="testLocation('Statue of Liberty', 40.6892, -74.0445)">
+          Statue of Liberty (8 mi)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Include Drive Time Calculator -->
+  <script src="/drive-time-calculator.js"></script>
+
+  <script>
+    let referenceSet = false;
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initDriveTimeCalculator();
+      setupAutoCalculation();
+      setupFormSubmit();
+    });
+
+    /**
+     * Initialize the drive time calculator
+     */
+    async function initDriveTimeCalculator() {
+      try {
+        await initializeDriveTimeCalculator();
+
+        if (window.driveTimeCalculator.initialized) {
+          const lat = window.driveTimeCalculator.config.referenceLocation.lat;
+          const lng = window.driveTimeCalculator.config.referenceLocation.lng;
+          updateReferenceDisplay(lat, lng, 'Detected Location');
+          referenceSet = true;
+        } else {
+          updateReferenceDisplay(null, null, 'Please enable location permission or set manually');
+        }
+      } catch (error) {
+        console.error('Error initializing:', error);
+        updateReferenceDisplay(null, null, 'Error detecting location');
+      }
+    }
+
+    /**
+     * Update reference location display
+     */
+    function updateReferenceDisplay(lat, lng, name) {
+      const statusDiv = document.getElementById('referenceStatus');
+      if (lat && lng) {
+        statusDiv.textContent = `✅ ${name}: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      } else {
+        statusDiv.textContent = `⚠️ ${name}`;
+      }
+    }
+
+    /**
+     * Update manual reference location
+     */
+    function updateManualRefLocation() {
+      const lat = parseFloat(document.getElementById('refLat').value);
+      const lng = parseFloat(document.getElementById('refLng').value);
+      const name = document.getElementById('refName').value || 'Custom Location';
+
+      if (isNaN(lat) || isNaN(lng)) {
+        alert('Please enter valid latitude and longitude');
+        return;
+      }
+
+      setDriveTimeReferenceLocation(lat, lng, name);
+      updateReferenceDisplay(lat, lng, name);
+      referenceSet = true;
+    }
+
+    /**
+     * Setup auto-calculation
+     */
+    function setupAutoCalculation() {
+      const latInput = document.getElementById('latitude');
+      const lngInput = document.getElementById('longitude');
+      const nameInput = document.getElementById('locationName');
+      let debounceTimer;
+
+      const updateDisplay = async () => {
+        if (!referenceSet) {
+          document.getElementById('driveTimeDisplay').textContent = '—';
+          document.getElementById('driveTimeDetails').textContent = 'Reference location not set';
+          return;
+        }
+
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(lngInput.value);
+        const name = nameInput.value || 'Location';
+
+        if (isNaN(lat) || isNaN(lng)) {
+          document.getElementById('driveTimeDisplay').textContent = '—';
+          document.getElementById('driveTimeDetails').textContent = 'Enter coordinates to calculate';
+          return;
+        }
+
+        document.getElementById('driveTimeDisplay').innerHTML = '<span class="loading"></span>';
+        document.getElementById('driveTimeDetails').textContent = 'Calculating...';
+
+        const result = await calculateDriveTime(lat, lng, name);
+
+        if (result) {
+          document.getElementById('driveTimeDisplay').textContent = result.durationReadable;
+          document.getElementById('driveTimeDetails').textContent = `${result.distanceMiles} miles | Speed: ${result.speed} mph`;
+          document.getElementById('driveTimeData').value = JSON.stringify(result);
+        } else {
+          document.getElementById('driveTimeDisplay').textContent = '—';
+          document.getElementById('driveTimeDetails').textContent = 'Error calculating';
+        }
+      };
+
+      latInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(updateDisplay, 500);
+      });
+
+      lngInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(updateDisplay, 500);
+      });
+
+      nameInput.addEventListener('input', updateDisplay);
+    }
+
+    /**
+     * Setup form submission
+     */
+    function setupFormSubmit() {
+      document.getElementById('locationForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const location = {
+          name: document.getElementById('locationName').value,
+          latitude: parseFloat(document.getElementById('latitude').value),
+          longitude: parseFloat(document.getElementById('longitude').value),
+          description: document.getElementById('description').value,
+          driveTime: document.getElementById('driveTimeDisplay').textContent,
+          driveTimeData: JSON.parse(document.getElementById('driveTimeData').value || '{}')
+        };
+
+        console.log('💾 Location to save:', location);
+
+        // Show success
+        document.getElementById('successMessage').style.display = 'block';
+        setTimeout(() => {
+          document.getElementById('successMessage').style.display = 'none';
+          document.getElementById('locationForm').reset();
+          document.getElementById('driveTimeDisplay').textContent = '—';
+          document.getElementById('driveTimeDetails').textContent = 'Enter coordinates to calculate';
+        }, 2000);
+      });
+    }
+
+    /**
+     * Test with predefined location
+     */
+    function testLocation(name, lat, lng) {
+      document.getElementById('locationName').value = name;
+      document.getElementById('latitude').value = lat;
+      document.getElementById('longitude').value = lng;
+
+      // Trigger update
+      document.getElementById('latitude').dispatchEvent(new Event('input'));
+    }
+  </script>
+</body>
+</html>
+
