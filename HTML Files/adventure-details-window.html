@@ -270,6 +270,10 @@
       📝 Enrich
     </button>
 
+    <button type="button" class="ab-btn" id="abRefreshDriveTimeBtn" title="Recalculate drive time from your current location">
+      🚗 Refresh Drive Time
+    </button>
+
     <button type="button" class="ab-btn" id="abInlineEditBtn" title="Edit details inline and save only changed fields">
       ✏️ Edit Fields
     </button>
@@ -1265,6 +1269,77 @@
       .map(function (entry) { return entry[0]; });
   }
 
+  function sanitizeRecommendedTags(raw, currentTags) {
+    var list = Array.isArray(raw) ? raw : [];
+    list = list.map(function (tag) { return String(tag || '').trim(); }).filter(Boolean);
+    if (typeof normalizeTags === 'function') list = normalizeTags(list);
+    list = uniqueTags(list);
+    if (window.tagDeduplicator && typeof window.tagDeduplicator.deduplicate === 'function') {
+      list = uniqueTags(window.tagDeduplicator.deduplicate(list));
+    }
+    return list.filter(function (tag) { return !hasTagCaseInsensitive(currentTags || [], tag); });
+  }
+
+  function deriveTagCharacteristicsFromData(data) {
+    var text = [
+      data && data.name,
+      data && data.description,
+      data && data.tags,
+      data && data.city,
+      data && data.address,
+      data && data.notes
+    ].join(' ').toLowerCase();
+    var out = [];
+    if (/\b(hike|trail|outdoor|nature|waterfall|park|forest|beach|camp)\b/i.test(text)) out.push('outdoor');
+    if (/\b(restaurant|cafe|coffee|diner|bar|brewery|food)\b/i.test(text)) out.push('dining');
+    if (/\b(museum|gallery|historic|landmark|heritage)\b/i.test(text)) out.push('cultural');
+    if (/\b(movie|cinema|theme park|arcade|entertainment|concert)\b/i.test(text)) out.push('entertainment');
+    if (/\b(shop|store|market|boutique|mall)\b/i.test(text)) out.push('shopping');
+    if (/\b(gym|fitness|yoga|spa|wellness)\b/i.test(text)) out.push('wellness');
+    if (/\b(zoo|aquarium|wildlife|animal|bird)\b/i.test(text)) out.push('wildlife');
+    return uniqueTags(out);
+  }
+
+  function getSmartTagRecommendations(data, currentTags, state) {
+    // Preferred source: enhanced text recommender when exposed globally.
+    if (typeof window.getTagsForLocationText === 'function') {
+      return {
+        source: 'enhanced-text-engine',
+        tags: sanitizeRecommendedTags(window.getTagsForLocationText(data || {}) || [], currentTags || [])
+      };
+    }
+
+    // Secondary source: consolidated tag manager affinity + characteristic recommendations.
+    if (window.tagManager) {
+      var pool = [];
+      try {
+        var chars = deriveTagCharacteristicsFromData(data || {});
+        if (chars.length && typeof window.tagManager.getRecommendedTags === 'function') {
+          pool = pool.concat(window.tagManager.getRecommendedTags(chars) || []);
+        }
+        var placeId = state && state.placeKey ? state.placeKey : '';
+        if (placeId && typeof window.tagManager.suggestTagsForPlace === 'function') {
+          var affinity = window.tagManager.suggestTagsForPlace(placeId, 12) || [];
+          pool = pool.concat(affinity.map(function (item) {
+            return item && typeof item === 'object' ? item.tag : item;
+          }));
+        }
+      } catch (_err) {}
+
+      // Keep legacy rule output as a fallback supplement for sparse contexts.
+      pool = pool.concat(buildTagRecommendations(data || {}, currentTags || []));
+      return {
+        source: 'tag-manager-hybrid',
+        tags: sanitizeRecommendedTags(pool, currentTags || [])
+      };
+    }
+
+    return {
+      source: 'legacy-rules',
+      tags: sanitizeRecommendedTags(buildTagRecommendations(data || {}, currentTags || []), currentTags || [])
+    };
+  }
+
   function renderTagListHtml(tags) {
     if (!tags || !tags.length) return '<span class="empty">No tags yet</span>';
     return '<div class="tags">' + tags.map(function (tag) { return '<span class="tag">' + escapeHtml(tag) + '</span>'; }).join('') + '</div>';
@@ -1306,7 +1381,10 @@
       .map(function (tag) { return '<option value="' + escapeHtml(tag) + '"></option>'; })
       .join('');
 
-    var suggestions = buildTagRecommendations(state.data || {}, state.tags || []);
+    var recState = getSmartTagRecommendations(state.data || {}, state.tags || [], state || {});
+    state.recommendedTags = recState.tags || [];
+    state.recommendationSource = recState.source || 'unknown';
+    var suggestions = state.recommendedTags;
     suggestWrap.innerHTML = suggestions.length
       ? suggestions.map(function (tag) { return '<button type="button" class="tm-suggest-btn" data-tag="' + escapeHtml(tag) + '">+' + escapeHtml(tag) + '</button>'; }).join('')
       : '<span class="tm-empty">No new suggestions right now</span>';
@@ -1325,7 +1403,9 @@
   function applyAllRecommendedTags() {
     var state = window.__detailTagState;
     if (!state) return;
-    var suggestions = buildTagRecommendations(state.data || {}, state.tags || []);
+    var suggestions = Array.isArray(state.recommendedTags)
+      ? state.recommendedTags.slice()
+      : getSmartTagRecommendations(state.data || {}, state.tags || [], state || {}).tags;
     if (!suggestions.length) {
       setTagStatus('No new recommendations available for this location.', false);
       showDetailToast('ℹ️ No new tag recommendations available.', 'info', 2500);
@@ -1704,6 +1784,8 @@
       placeKey: getTagPlaceKey(data),
       sourceTags: uniqueTags(sourceTags || []),
       tags: uniqueTags([].concat(sourceTags || [], storedTags || [])),
+      recommendedTags: [],
+      recommendationSource: 'pending',
       data: data || {},
       sourceIndex: payload && payload.sourceIndex != null ? Number(payload.sourceIndex) : null,
       explorerSource: payload && payload.explorerSource ? payload.explorerSource : null
@@ -2667,25 +2749,22 @@
     }
   }
 
-  function applyAutoTagRefresh() {
+  async function applyAutoTagRefresh() {
     var state = window.__detailTagState;
     if (!state || !state.data) return;
     var btn = document.getElementById('tmRefreshAutoBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
     try {
-      var recommended = [];
-      if (typeof getTagsForLocationText === 'function') recommended = getTagsForLocationText(state.data) || [];
-      else recommended = buildTagRecommendations(state.data || {}, state.tags || []);
-
-      var merged = uniqueTags([].concat(state.tags || [], recommended || []));
-      if (typeof normalizeTags === 'function') merged = uniqueTags(normalizeTags(merged));
-      if (window.tagDeduplicator && typeof window.tagDeduplicator.deduplicate === 'function') {
-        merged = uniqueTags(window.tagDeduplicator.deduplicate(merged));
+      if (typeof window.getTagsForLocationText !== 'function' && typeof window.autoTagAllLocationsUnified === 'function') {
+        await window.autoTagAllLocationsUnified({ dryRun: true, bootstrapOnly: true }).catch(function () { return null; });
       }
-      state.tags = merged;
+      var recState = getSmartTagRecommendations(state.data || {}, state.tags || [], state || {});
+      state.recommendedTags = recState.tags || [];
+      state.recommendationSource = recState.source || 'unknown';
       syncTagManagementUi();
-      setTagStatus('Auto-refresh complete. Click Save Tags to persist updates.', false);
-      showDetailToast('✅ Tag recommendations refreshed.', 'success', 2400);
+      var count = state.recommendedTags.length;
+      setTagStatus('Refreshed ' + count + ' recommendation' + (count !== 1 ? 's' : '') + ' via ' + state.recommendationSource + '. Review and apply if desired; Save Tags persists applied tags only.', false);
+      showDetailToast('✅ Tag suggestions refreshed. No tags were auto-applied.', 'success', 2600);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Tag Suggestions'; }
     }
@@ -2702,18 +2781,188 @@
         showDetailToast('⚠️ Cost system is not loaded.', 'error', 2800);
         return;
       }
-      var result = inferCost(data.name || '', data.description || '', data.tags || '');
+      // Pass name + description as primary signals; type and tags separately.
+      // If the record has a googlePriceLevel field, pass it for highest accuracy.
+      var gpl = (data.googlePriceLevel != null && data.googlePriceLevel !== '') ? Number(data.googlePriceLevel) : null;
+      var result = inferCost(data.name || '', data.description || '', data.type || '', data.tags || '', gpl);
       if (!result) return;
-      var display = (result.icon || '💰') + ' ' + result.tier + ' (' + (result.priceRange && result.priceRange.label ? result.priceRange.label : '') + ')';
+      var details = window.autoCostInferenceEngine ? window.autoCostInferenceEngine.getCostDetails(result) : null;
+      var display = details ? details.display : ((result.icon || '💰') + ' ' + result.tier + ' (' + (result.priceRange && result.priceRange.label ? result.priceRange.label : '') + ')');
       data.cost = display;
+      var placeKey = getLocationKey(data);
+      var costMeta = buildCostInferenceMeta(result);
+      data.costInferenceMeta = costMeta;
+      persistCostInferenceMeta(placeKey, costMeta);
       var costValue = document.getElementById('detailCostValue');
-      if (costValue) costValue.innerHTML = escapeHtml(display);
-      if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { cost: display }, 'detail-cost-refresh');
-      showDetailToast('✅ Cost estimate refreshed.', 'success', 2400);
+      if (costValue) {
+        costValue.innerHTML = escapeHtml(display) + renderCostMetaHintHtml(costMeta);
+      }
+      if (forceSync && result.tier !== 'Unknown') await syncOrQueueExplorerUpdate(state.syncState, { cost: display }, 'detail-cost-refresh');
+      var toastMsg = result.tier === 'Unknown'
+        ? '❓ Cost unknown — not enough info. Set it manually.'
+        : '✅ Cost estimate refreshed (' + Math.round(result.confidence * 100) + '% confidence).';
+      showDetailToast(toastMsg, result.tier === 'Unknown' ? 'warning' : 'success', 3000);
     } catch (_err) {
       showDetailToast('⚠️ Could not refresh cost estimate right now.', 'error', 3200);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Cost'; }
+    }
+  }
+
+  async function resolveUserLocationForDetail() {
+    // 1. Try opener/parent window's userLocation first.
+    try {
+      var openerWin = getOpenerWindow();
+      if (openerWin) {
+        var ul = openerWin.userLocation || openerWin.__userLocation;
+        if (ul && Number.isFinite(Number(ul.latitude)) && Number.isFinite(Number(ul.longitude))) {
+          return { latitude: Number(ul.latitude), longitude: Number(ul.longitude), source: 'opener' };
+        }
+      }
+    } catch (_errOpener) {}
+
+    // 2. Try this window's cached location.
+    if (window.__detailUserLocation) return window.__detailUserLocation;
+
+    // 3. Request from browser geolocation (one-shot, no prompt spam).
+    if (!navigator.geolocation) return null;
+    try {
+      var pos = await new Promise(function (resolve, reject) {
+        var tid = setTimeout(function () { reject(new Error('timeout')); }, 8000);
+        navigator.geolocation.getCurrentPosition(
+          function (p) { clearTimeout(tid); resolve(p); },
+          function (err) { clearTimeout(tid); reject(err); },
+          { enableHighAccuracy: false, timeout: 7000, maximumAge: 300000 }
+        );
+      });
+      var loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, source: 'browser' };
+      window.__detailUserLocation = loc;
+      // Share back to opener so buildExcelRow can also use it.
+      try { var ow = getOpenerWindow(); if (ow) { ow.userLocation = loc; ow.__userLocation = loc; } } catch (_err) {}
+      return loc;
+    } catch (_errGeo) {
+      return null;
+    }
+  }
+
+  function haversineDriveMinutes(lat1, lng1, lat2, lng2) {
+    var R = 3958.8;
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLng = (lng2 - lng1) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    var distMi = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var mins = Math.round(distMi / 0.6); // ~36 mph average
+    return { distanceMiles: Math.round(distMi * 10) / 10, durationMinutes: mins };
+  }
+
+  function formatDriveTimeReadable(minutes) {
+    if (minutes < 60) return '~' + minutes + ' min';
+    var h = Math.floor(minutes / 60);
+    var m = minutes % 60;
+    return m > 0 ? '~' + h + 'h ' + m + 'm' : '~' + h + 'h';
+  }
+
+  async function getDriveTimeViaDistanceMatrix(originLat, originLng, destLat, destLng) {
+    var key = getDetailGoogleApiKey();
+    if (!key) return null;
+    var origin = originLat + ',' + originLng;
+    var destination = destLat + ',' + destLng;
+    try {
+      var url = 'https://maps.googleapis.com/maps/api/distancematrix/json' +
+        '?origins=' + encodeURIComponent(origin) +
+        '&destinations=' + encodeURIComponent(destination) +
+        '&units=imperial&key=' + encodeURIComponent(key);
+      var res = await fetch(url);
+      if (!res.ok) return null;
+      var json = await res.json();
+      var el = json && json.rows && json.rows[0] && json.rows[0].elements && json.rows[0].elements[0];
+      if (!el || el.status !== 'OK') return null;
+      var mins = Math.round(el.duration.value / 60);
+      var distMi = Math.round((el.distance.value / 1609.34) * 10) / 10;
+      return { durationMinutes: mins, distanceMiles: distMi, method: 'google-distance-matrix' };
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  async function refreshDriveTimeForDetail(forceSync) {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var btn = document.getElementById('refreshDriveTimeBtn');
+    var abBtn = document.getElementById('abRefreshDriveTimeBtn');
+    var btnText = '🚗 Refresh Drive Time';
+    if (btn) { btn.disabled = true; btn.textContent = 'Calculating...'; }
+    if (abBtn) { abBtn.disabled = true; abBtn.textContent = '⏳ Calculating...'; }
+    try {
+      var data = state.data;
+
+      // 1. Resolve destination coordinates.
+      var destCoords = await resolveDetailCoordinates(data);
+      if (!destCoords) {
+        showDetailToast('⚠️ Could not resolve coordinates for this location. Try adding an address.', 'warning', 3500);
+        return;
+      }
+
+      // 2. Resolve user (origin) location.
+      var userLoc = await resolveUserLocationForDetail();
+      if (!userLoc) {
+        showDetailToast('⚠️ Location access is required to calculate drive time. Please allow location in your browser.', 'warning', 4000);
+        return;
+      }
+
+      // 3. Try Google Distance Matrix first; fall back to haversine.
+      var result = await getDriveTimeViaDistanceMatrix(
+        userLoc.latitude, userLoc.longitude,
+        destCoords.lat, destCoords.lng
+      );
+      var method = 'haversine';
+      if (!result) {
+        var hvResult = haversineDriveMinutes(userLoc.latitude, userLoc.longitude, destCoords.lat, destCoords.lng);
+        result = hvResult;
+      } else {
+        method = result.method || 'google-distance-matrix';
+      }
+
+      var readable = formatDriveTimeReadable(result.durationMinutes);
+      var display = readable + ' (' + result.distanceMiles + ' mi)';
+      var metaDetail = 'via ' + (method === 'google-distance-matrix' ? 'Google Maps' : 'haversine estimate') +
+        ' · calculated ' + new Date().toLocaleTimeString();
+
+      // Update in-memory state.
+      data.driveTime = display;
+      data.driveTimeMeta = metaDetail;
+
+      // Update the card display.
+      var valueEl = document.getElementById('detailDriveTimeValue');
+      if (valueEl) valueEl.textContent = display;
+      var metaEl = document.querySelector('[data-detail-field-card="driveTime"] .drive-time-meta');
+      if (metaEl) { metaEl.title = metaDetail; metaEl.style.display = ''; }
+      else {
+        var card = document.querySelector('[data-detail-field-card="driveTime"] .value');
+        if (card) {
+          var span = document.createElement('span');
+          span.className = 'drive-time-meta';
+          span.title = metaDetail;
+          span.textContent = ' ℹ️';
+          span.style.cssText = 'font-size:11px;color:#6b7280;margin-left:6px;cursor:default;';
+          card.appendChild(span);
+        }
+      }
+
+      // Sync back to Excel/explorer.
+      if (forceSync) {
+        await syncOrQueueExplorerUpdate(state.syncState, { driveTime: display }, 'detail-drive-time-refresh');
+      }
+
+      var methodLabel = method === 'google-distance-matrix' ? 'Google Maps' : 'haversine estimate';
+      showDetailToast('✅ Drive time refreshed: ' + display + ' (' + methodLabel + ').', 'success', 3000);
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh drive time right now.', 'error', 3200);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = btnText; }
+      if (abBtn) { abBtn.disabled = false; abBtn.textContent = '🚗 Refresh Drive Time'; }
     }
   }
 
@@ -2745,6 +2994,8 @@
     var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data), data);
     var tagList = uniqueTags([].concat(sourceTagList, storedTagList));
     var detailPlaceKey = getLocationKey(data);
+    var storedCostMeta = readPersistedCostInferenceMeta(detailPlaceKey);
+    if (storedCostMeta) data.costInferenceMeta = storedCostMeta;
     var nearbyState = window.__detailNearbyState;
     if (!nearbyState || nearbyState.placeKey !== detailPlaceKey) {
       nearbyState = null;
@@ -2790,7 +3041,7 @@
       card('Address', data.address ? data.address + ' <button type="button" class="addr-copy-btn" data-copy="' + data.address.replace(/"/g, '&quot;') + '">📋 Copy</button>' : '', 'address') +
       card('City', data.city, 'city') +
       card('State', data.state, 'state') +
-      card('Drive Time', data.driveTime, 'driveTime') +
+      card('Drive Time', '<span id="detailDriveTimeValue">' + escapeHtml(data.driveTime || '') + '</span>' + (data.driveTimeMeta ? '<span class="drive-time-meta" title="' + escapeHtml(data.driveTimeMeta) + '" style="font-size:11px;color:#6b7280;margin-left:6px;">ℹ️</span>' : '') + '<div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshDriveTimeBtn" class="tm-btn">🚗 Refresh Drive Time</button></div>', 'driveTime') +
       '</div>' +
       card('Description', data.description, 'description') +
       card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div>');
@@ -2810,7 +3061,7 @@
       (isNatureSource ? card('Duration', data.activityDuration, 'activityDuration') : '') +
       (isNatureSource ? card('Difficulty', data.difficulty, 'difficulty') : '') +
       (isNatureSource ? card('Trail Length', data.trailLength, 'trailLength') : '') +
-      card('Cost', '<span id="detailCostValue">' + escapeHtml(data.cost || '') + '</span><div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshCostBtn" class="tm-btn">🔄 Refresh Cost</button></div>', 'cost') +
+      card('Cost', '<span id="detailCostValue">' + escapeHtml(data.cost || '') + renderCostMetaHintHtml(data.costInferenceMeta) + '</span><div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshCostBtn" class="tm-btn">🔄 Refresh Cost</button></div>', 'cost') +
       card('Google Rating', data.googleRating, 'googleRating') +
       card('My Rating', data.myRating, 'myRating') +
       '</div>' +
@@ -2853,6 +3104,205 @@
     if (data.googlePlaceId) return 'place_' + data.googlePlaceId;
     return 'name_' + String(data.name || '').toLowerCase().replace(/\W+/g, '_');
   }
+
+  var COST_INFERENCE_META_STORAGE_KEY = '__adventure_detail_cost_inference_meta_v1';
+  var COST_INFERENCE_META_SCHEMA_VERSION = 1;
+  var COST_INFERENCE_META_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 days
+  var COST_INFERENCE_META_MAX_ENTRIES = 1500;
+
+  function normalizeCostInferenceMetaEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    var confidenceNum = Number(entry.confidence);
+    if (!Number.isFinite(confidenceNum)) confidenceNum = 0;
+    confidenceNum = Math.max(0, Math.min(1, confidenceNum));
+    var updatedAt = String(entry.updatedAt || '').trim();
+    if (!updatedAt || isNaN(Date.parse(updatedAt))) updatedAt = new Date().toISOString();
+    var topCandidates = Array.isArray(entry.topCandidates)
+      ? entry.topCandidates.slice(0, 3).map(function (cand) {
+          if (!cand || typeof cand !== 'object') return null;
+          var score = Number(cand.score);
+          if (!Number.isFinite(score)) score = 0;
+          return {
+            tier: String(cand.tier || '').trim(),
+            score: Math.max(0, Math.min(1, score))
+          };
+        }).filter(function (cand) { return !!(cand && cand.tier); })
+      : [];
+    return {
+      tier: String(entry.tier || 'Unknown'),
+      confidence: confidenceNum,
+      source: String(entry.source || 'unknown'),
+      reasoning: String(entry.reasoning || ''),
+      topCandidates: topCandidates,
+      updatedAt: updatedAt
+    };
+  }
+
+  function loadCostInferenceMetaMap() {
+    var map = {};
+    var changed = false;
+    try {
+      var raw = window.localStorage.getItem(COST_INFERENCE_META_STORAGE_KEY);
+      if (!raw) return { map: {}, changed: false };
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return { map: {}, changed: true };
+      Object.keys(parsed).forEach(function (key) {
+        if (!/^(place_|name_)/.test(String(key || ''))) {
+          changed = true;
+          return;
+        }
+        var normalized = normalizeCostInferenceMetaEntry(parsed[key]);
+        if (!normalized) {
+          changed = true;
+          return;
+        }
+        map[key] = normalized;
+      });
+    } catch (_err) {
+      return { map: {}, changed: true };
+    }
+
+    var nowMs = Date.now();
+    Object.keys(map).forEach(function (key) {
+      var ts = Date.parse(String(map[key].updatedAt || ''));
+      if (!Number.isFinite(ts) || (nowMs - ts) > COST_INFERENCE_META_TTL_MS) {
+        delete map[key];
+        changed = true;
+      }
+    });
+
+    var keys = Object.keys(map);
+    if (keys.length > COST_INFERENCE_META_MAX_ENTRIES) {
+      keys.sort(function (a, b) {
+        return Date.parse(String(map[b].updatedAt || '')) - Date.parse(String(map[a].updatedAt || ''));
+      });
+      var keep = {};
+      keys.slice(0, COST_INFERENCE_META_MAX_ENTRIES).forEach(function (k) { keep[k] = map[k]; });
+      map = keep;
+      changed = true;
+    }
+
+    return { map: map, changed: changed };
+  }
+
+  function saveCostInferenceMetaMap(map) {
+    try {
+      window.localStorage.setItem(COST_INFERENCE_META_STORAGE_KEY, JSON.stringify(map || {}));
+      return true;
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function readPersistedCostInferenceMeta(placeKey) {
+    if (!placeKey) return null;
+    try {
+      var loaded = loadCostInferenceMetaMap();
+      var map = loaded.map || {};
+      if (loaded.changed) saveCostInferenceMetaMap(map);
+      var entry = map[placeKey];
+      return entry && typeof entry === 'object' ? entry : null;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function persistCostInferenceMeta(placeKey, meta) {
+    if (!placeKey || !meta || typeof meta !== 'object') return;
+    try {
+      var loaded = loadCostInferenceMetaMap();
+      var map = loaded.map || {};
+      map[placeKey] = normalizeCostInferenceMetaEntry(meta) || buildCostInferenceMeta(meta);
+      saveCostInferenceMetaMap(map);
+    } catch (_err) {}
+  }
+
+  function exportPersistedCostInferenceMeta() {
+    var loaded = loadCostInferenceMetaMap();
+    var map = loaded.map || {};
+    if (loaded.changed) saveCostInferenceMetaMap(map);
+    return JSON.stringify({
+      schemaVersion: COST_INFERENCE_META_SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      ttlDays: Math.round(COST_INFERENCE_META_TTL_MS / (1000 * 60 * 60 * 24)),
+      entries: map
+    }, null, 2);
+  }
+
+  function importPersistedCostInferenceMeta(rawPayload, options) {
+    var opts = options && typeof options === 'object' ? options : {};
+    var replace = !!opts.replace;
+    var parsed = rawPayload;
+    if (typeof rawPayload === 'string') {
+      try { parsed = JSON.parse(rawPayload); } catch (_err) { return { ok: false, imported: 0, skipped: 0, reason: 'invalid-json' }; }
+    }
+    if (!parsed || typeof parsed !== 'object') return { ok: false, imported: 0, skipped: 0, reason: 'invalid-payload' };
+    var sourceEntries = parsed.entries && typeof parsed.entries === 'object' ? parsed.entries : parsed;
+    var loaded = loadCostInferenceMetaMap();
+    var map = replace ? {} : (loaded.map || {});
+    var imported = 0;
+    var skipped = 0;
+
+    Object.keys(sourceEntries).forEach(function (placeKey) {
+      if (!/^(place_|name_)/.test(String(placeKey || ''))) {
+        skipped++;
+        return;
+      }
+      var normalized = normalizeCostInferenceMetaEntry(sourceEntries[placeKey]);
+      if (!normalized) {
+        skipped++;
+        return;
+      }
+      map[placeKey] = normalized;
+      imported++;
+    });
+
+    var nowMs = Date.now();
+    Object.keys(map).forEach(function (key) {
+      var ts = Date.parse(String(map[key].updatedAt || ''));
+      if (!Number.isFinite(ts) || (nowMs - ts) > COST_INFERENCE_META_TTL_MS) {
+        delete map[key];
+      }
+    });
+    var keys = Object.keys(map);
+    if (keys.length > COST_INFERENCE_META_MAX_ENTRIES) {
+      keys.sort(function (a, b) {
+        return Date.parse(String(map[b].updatedAt || '')) - Date.parse(String(map[a].updatedAt || ''));
+      });
+      var keep = {};
+      keys.slice(0, COST_INFERENCE_META_MAX_ENTRIES).forEach(function (k) { keep[k] = map[k]; });
+      map = keep;
+    }
+    var ok = saveCostInferenceMetaMap(map);
+    return { ok: ok, imported: imported, skipped: skipped, total: Object.keys(map).length, replaced: replace };
+  }
+
+  function buildCostInferenceMeta(result) {
+    var top = Array.isArray(result.topCandidates) ? result.topCandidates.slice(0, 2) : [];
+    return normalizeCostInferenceMetaEntry({
+      tier: result.tier || 'Unknown',
+      confidence: Number(result.confidence || 0),
+      source: String(result.source || 'unknown'),
+      reasoning: String(result.reasoning || ''),
+      topCandidates: top,
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  function renderCostMetaHintHtml(meta) {
+    if (!meta || typeof meta !== 'object') return '';
+    var confidencePct = Math.max(0, Math.min(100, Math.round(Number(meta.confidence || 0) * 100)));
+    var sourceLabel = String(meta.source || '').replace(/_/g, ' ');
+    var base = (meta.tier === 'Unknown')
+      ? '<div style="font-size:0.8em;color:#f87171;margin-top:4px;">⚠️ ' + escapeHtml(meta.reasoning || 'Could not determine cost') + '</div>'
+      : '<div style="font-size:0.75em;color:#9ca3af;margin-top:3px;">' + escapeHtml(meta.reasoning || '') + '</div>';
+    var detail = '<div style="font-size:0.72em;color:#6b7280;margin-top:2px;">Source: ' + escapeHtml(sourceLabel || 'unknown') + ' • Confidence: ' + confidencePct + '%</div>';
+    return base + detail;
+  }
+
+  // Dev/ops helpers for backup + restore from browser storage.
+  window.exportPersistedCostInferenceMeta = exportPersistedCostInferenceMeta;
+  window.importPersistedCostInferenceMeta = importPersistedCostInferenceMeta;
 
   function buildDetailSyncState(payload, data) {
     return {
@@ -3767,6 +4217,11 @@
 
       if (closestFromEvent(e, '#refreshCostBtn')) {
         refreshCostInferenceForDetail(true);
+        return;
+      }
+
+      if (closestFromEvent(e, '#refreshDriveTimeBtn') || closestFromEvent(e, '#abRefreshDriveTimeBtn')) {
+        refreshDriveTimeForDetail(true);
         return;
       }
 

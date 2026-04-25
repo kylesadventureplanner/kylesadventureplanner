@@ -1061,7 +1061,8 @@ function showToastCrossContext(message, type = 'info', duration = 3000) {
  */
 window.autoTagAllLocationsUnified = async function(options = {}) {
   const {
-    dryRun = false
+    dryRun = false,
+    bootstrapOnly = false
   } = options;
 
   console.log('🏷️ Starting auto-tag for all locations...');
@@ -1531,6 +1532,17 @@ window.autoTagAllLocationsUnified = async function(options = {}) {
     const withCombos = detectMultiPatternCombos(fullText, recommended);
 
     return Array.from(withCombos);
+  }
+
+  // Expose enhanced text recommendation helper for detail windows and other tools.
+  if (typeof window.getTagsForLocationText !== 'function') {
+    window.getTagsForLocationText = function(locationData) {
+      return getTagsForLocationText(locationData || {});
+    };
+  }
+
+  if (bootstrapOnly) {
+    return { bootstrapped: true, helper: 'getTagsForLocationText' };
   }
 
   const results = { success: 0, failed: 0, skipped: 0, details: [] };

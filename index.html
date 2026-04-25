@@ -13647,6 +13647,9 @@
                   latitude: position.coords.latitude,   // GPS latitude
                   longitude: position.coords.longitude, // GPS longitude
                 };
+                // Expose on window so buildExcelRow and iframe children can access it.
+                window.userLocation = userLocation;
+                window.__userLocation = userLocation;
 
                 resolve(userLocation); // Return location to calling function
               },
@@ -20379,6 +20382,24 @@ COMMON ISSUES:
     el.textContent = String(text || '');
   }
 
+  // Silently warm up geolocation in background so drive time is ready when adding places.
+  (function initBackgroundGeolocation() {
+    if (!navigator.geolocation) return;
+    if (window.userLocation) return; // Already resolved.
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        userLocation = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        window.userLocation = userLocation;
+        window.__userLocation = userLocation;
+        console.log('🚗 Background geolocation ready for drive time calculations.');
+        // Refresh the drive time preview in the add-place modal if it's open.
+        setAddPlaceSmartPreview('addPlaceDriveTimePreview', '🚗 Drive Time: ready — will calculate when place resolves');
+      },
+      function () { /* silent — user may have denied */ },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  })();
+
   function updateAddPlaceSmartPreview() {
     const typeEl = document.getElementById('addPlaceInputType');
     const valueEl = document.getElementById('addPlaceInputValue');
@@ -20572,6 +20593,7 @@ COMMON ISSUES:
     if (input) input.value = "";
     setAddPlaceSmartPreview('addPlaceCostPreview', '💰 Cost: —');
     setAddPlaceSmartPreview('addPlaceTagPreview', '🏷️ Tags: —');
+    setAddPlaceSmartPreview('addPlaceDriveTimePreview', window.userLocation ? '🚗 Drive Time: will calculate when place resolves' : '🚗 Drive Time: allow location for auto-calculate');
     setAddPlaceSmartPreview('addPlaceNearbyPreview', '📍 Nearby: refreshes after place details resolve');
     if (modal) {
       console.log('✓ Setting modal to display flex');
@@ -20626,6 +20648,7 @@ COMMON ISSUES:
 
     setAddPlaceSmartPreview('addPlaceCostPreview', '💰 Cost: —');
     setAddPlaceSmartPreview('addPlaceTagPreview', '🏷️ Tags: —');
+    setAddPlaceSmartPreview('addPlaceDriveTimePreview', '🚗 Drive Time: —');
     setAddPlaceSmartPreview('addPlaceNearbyPreview', '📍 Nearby: refreshes after place details resolve');
 
     console.log('✅ Add Place modal closed');
@@ -20703,7 +20726,74 @@ COMMON ISSUES:
         const row = buildExcelRow(placeId, details);
         applySmartTagsAndCostToRow(row, details);
 
-        setAddPlaceStatus("🎯 Finding nearby attractions and drive times...", "info");
+        // ── Enhanced drive time calculation ──────────────────────────────────
+        // buildExcelRow already does a haversine estimate; here we upgrade it
+        // with Google Distance Matrix when available, and display it in the preview.
+        setAddPlaceStatus("🚗 Calculating drive time...", "info");
+        try {
+          const coords = details && details.coordinates;
+          const ul = window.userLocation;
+          if (coords && Number.isFinite(Number(coords.lat)) && Number.isFinite(Number(coords.lng)) && ul) {
+            let driveDisplay = '';
+            let driveMethod = '';
+            // Try Google Distance Matrix first.
+            const apiKey = window.GOOGLE_PLACES_API_KEY;
+            if (apiKey) {
+              try {
+                const dmUrl = `https://maps.googleapis.com/maps/api/distancematrix/json`
+                  + `?origins=${encodeURIComponent(ul.latitude + ',' + ul.longitude)}`
+                  + `&destinations=${encodeURIComponent(coords.lat + ',' + coords.lng)}`
+                  + `&units=imperial&key=${encodeURIComponent(apiKey)}`;
+                const dmRes = await fetch(dmUrl);
+                if (dmRes.ok) {
+                  const dmJson = await dmRes.json();
+                  const el = dmJson && dmJson.rows && dmJson.rows[0] && dmJson.rows[0].elements && dmJson.rows[0].elements[0];
+                  if (el && el.status === 'OK') {
+                    const mins = Math.round(el.duration.value / 60);
+                    const mi = Math.round((el.distance.value / 1609.34) * 10) / 10;
+                    const hrs = Math.floor(mins / 60);
+                    const rem = mins % 60;
+                    const readable = mins < 60 ? `~${mins} min` : (rem > 0 ? `~${hrs}h ${rem}m` : `~${hrs}h`);
+                    driveDisplay = `${readable} (${mi} mi)`;
+                    driveMethod = 'Google Maps';
+                  }
+                }
+              } catch (_dmErr) {}
+            }
+            // Haversine fallback.
+            if (!driveDisplay) {
+              const R = 3958.8;
+              const dLat = (Number(coords.lat) - ul.latitude) * Math.PI / 180;
+              const dLng = (Number(coords.lng) - ul.longitude) * Math.PI / 180;
+              const a = Math.sin(dLat / 2) ** 2 + Math.cos(ul.latitude * Math.PI / 180) * Math.cos(Number(coords.lat) * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+              const distMi = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+              const mins = Math.round(distMi / 0.6);
+              const hrs = Math.floor(mins / 60);
+              const rem = mins % 60;
+              const readable = mins < 60 ? `~${mins} min` : (rem > 0 ? `~${hrs}h ${rem}m` : `~${hrs}h`);
+              driveDisplay = `${readable} (${distMi} mi)`;
+              driveMethod = 'estimate';
+            }
+            if (driveDisplay) {
+              // Override row value with the more accurate result.
+              const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
+              let driveSet = false;
+              if (schemaColumns.length) {
+                const dtIdx = schemaColumns.findIndex((c) => /^drive.?time$/i.test(String(c || '').trim()));
+                if (dtIdx >= 0 && dtIdx < row.length) { row[dtIdx] = driveDisplay; driveSet = true; }
+              }
+              if (!driveSet && row.length > 4) row[4] = driveDisplay;
+              setAddPlaceSmartPreview('addPlaceDriveTimePreview', `🚗 Drive Time: ${driveDisplay} (${driveMethod})`);
+            }
+          } else if (!ul) {
+            setAddPlaceSmartPreview('addPlaceDriveTimePreview', '🚗 Drive Time: location not available — allow in browser settings');
+          }
+        } catch (_dtErr) {
+          setAddPlaceSmartPreview('addPlaceDriveTimePreview', '🚗 Drive Time: could not calculate');
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        setAddPlaceStatus("🎯 Finding nearby attractions...", "info");
         const nearbySummary = await buildNearbySummaryForNewPlace(details);
         if (nearbySummary) {
           const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
@@ -20965,6 +21055,7 @@ COMMON ISSUES:
         <div style="font-size:12px; font-weight:700; color:#1d4ed8;">Smart Enrichment Preview</div>
         <div id="addPlaceCostPreview" style="font-size:12px; color:#334155;">💰 Cost: —</div>
         <div id="addPlaceTagPreview" style="font-size:12px; color:#334155;">🏷️ Tags: —</div>
+        <div id="addPlaceDriveTimePreview" style="font-size:12px; color:#334155;">🚗 Drive Time: —</div>
         <div id="addPlaceNearbyPreview" style="font-size:12px; color:#334155;">📍 Nearby: refreshes after place details resolve</div>
       </div>
 

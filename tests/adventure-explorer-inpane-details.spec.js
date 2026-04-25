@@ -448,6 +448,95 @@ test.describe('Adventure explorer in-pane details flow', () => {
     });
   });
 
+  test('tag refresh stays non-destructive, apply mutates tags, and save syncs only applied tags', async ({ page }) => {
+    await mockExplorerWorkbookRequests(page);
+    await gotoAdventureChallenge(page);
+
+    await page.evaluate(() => {
+      window.__tagSyncCalls = [];
+      window.syncVisitedExplorerDetailFields = async (_sourceMeta, updates) => {
+        window.__tagSyncCalls.push(updates || {});
+        return { synced: true, excelSaved: true, reason: 'saved' };
+      };
+    });
+
+    const { key } = await openExplorerAndFindDetails(page);
+    await page.locator(`#visitedExplorerList-${key} [data-visited-explorer-details]`).first().click();
+
+    const detailsFrame = page.locator(`#visitedExplorerDetailsFrame-${key}`);
+    await expect(detailsFrame).toBeVisible();
+    const details = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
+
+    await expect(details.locator('#tabs')).toBeVisible();
+    await details.locator('#tabs .tab-btn[data-tab="tag-management"]').click();
+    await expect(details.locator('#pane-tag-management')).toBeVisible();
+
+    const frameHandle = await detailsFrame.elementHandle();
+    const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
+    expect(liveFrame).not.toBeNull();
+
+    await liveFrame.evaluate(() => {
+      window.getTagsForLocationText = () => [
+        'Playwright-Rec-A',
+        'Playwright-Rec-B'
+      ];
+      window.confirm = () => true;
+    });
+
+    const tagsBeforeRefresh = await liveFrame.evaluate(() => {
+      const state = window.__detailTagState || {};
+      return Array.isArray(state.tags) ? state.tags.slice() : [];
+    });
+
+    await details.locator('#tmRefreshAutoBtn').click();
+    await expect.poll(async () => liveFrame.evaluate(() => {
+      const state = window.__detailTagState || {};
+      return Array.isArray(state.recommendedTags) ? state.recommendedTags.length : 0;
+    }), { timeout: 8000 }).toBeGreaterThan(0);
+
+    const tagsAfterRefresh = await liveFrame.evaluate(() => {
+      const state = window.__detailTagState || {};
+      return Array.isArray(state.tags) ? state.tags.slice() : [];
+    });
+    expect(tagsAfterRefresh).toEqual(tagsBeforeRefresh);
+
+    // Save without applying recommendations first; suggested tags must not be persisted.
+    await details.locator('#tmSaveBtn').click();
+    await expect.poll(() => page.evaluate(() => {
+      const calls = Array.isArray(window.__tagSyncCalls) ? window.__tagSyncCalls : [];
+      return calls.length;
+    }), { timeout: 10000 }).toBeGreaterThan(0);
+
+    const firstSavedTagsCsv = await page.evaluate(() => {
+      const calls = Array.isArray(window.__tagSyncCalls) ? window.__tagSyncCalls : [];
+      const first = calls[0] || {};
+      return String(first.tagsCsv || '');
+    });
+    expect(firstSavedTagsCsv).not.toContain('Playwright-Rec-A');
+    expect(firstSavedTagsCsv).not.toContain('Playwright-Rec-B');
+
+    await details.locator('#tmRecommendApplyBtn').click();
+    await expect.poll(async () => liveFrame.evaluate(() => {
+      const state = window.__detailTagState || {};
+      const tags = Array.isArray(state.tags) ? state.tags : [];
+      return tags.includes('Playwright-Rec-A') && tags.includes('Playwright-Rec-B');
+    }), { timeout: 8000 }).toBe(true);
+
+    await details.locator('#tmSaveBtn').click();
+    await expect.poll(() => page.evaluate(() => {
+      const calls = Array.isArray(window.__tagSyncCalls) ? window.__tagSyncCalls : [];
+      return calls.length;
+    }), { timeout: 10000 }).toBeGreaterThan(1);
+
+    const secondSavedTagsCsv = await page.evaluate(() => {
+      const calls = Array.isArray(window.__tagSyncCalls) ? window.__tagSyncCalls : [];
+      const second = calls[1] || {};
+      return String(second.tagsCsv || '');
+    });
+    expect(secondSavedTagsCsv).toContain('Playwright-Rec-A');
+    expect(secondSavedTagsCsv).toContain('Playwright-Rec-B');
+  });
+
   test('next and previous location follow frozen filtered order from the originating explorer list', async ({ page }) => {
     await mockExplorerWorkbookRequests(page);
     await gotoAdventureChallenge(page);
