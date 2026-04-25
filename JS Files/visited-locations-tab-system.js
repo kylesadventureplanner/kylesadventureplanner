@@ -169,7 +169,12 @@
     googleUrl: ['google url', 'maps url', 'google maps', 'google maps url'],
     links: ['links', 'social urls', 'social links', 'related urls', 'url links', 'social media'],
     links2: ['links2', 'social urls 2', 'related urls 2', 'links 2'],
-    photoUrls: ['photo_urls', 'photo urls', 'photo url', 'photos', 'images']
+    photoUrls: ['photo_urls', 'photo urls', 'photo url', 'photos', 'images'],
+    latitude: ['latitude', 'lat', 'gps latitude'],
+    longitude: ['longitude', 'lng', 'lon', 'gps longitude'],
+    updatedAt: ['updated at', 'last refreshed', 'last refresh', 'last updated', 'modified'],
+    createdAt: ['created at', 'date added', 'added at', 'created'],
+    lastVisitedAt: ['last visited', 'visited at', 'last visit date']
   };
   const ADVENTURE_SUBTAB_EXPLORER_CONFIG = {
     outdoors: {
@@ -3117,7 +3122,9 @@
         sort: 'name-asc',
         stateFilter: 'all',
         cityFilter: 'all',
-        detailsNavigation: null
+        detailsNavigation: null,
+        routeSelectionIds: [],
+        lastRoutePlan: null
       };
     }
     return state.subtabExplorer[subtabKey];
@@ -3229,6 +3236,11 @@
       const links = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links);
       const links2 = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links2);
       const photoUrls = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.photoUrls);
+      const latitude = Number(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.latitude));
+      const longitude = Number(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.longitude));
+      const updatedAt = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.updatedAt);
+      const createdAt = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.createdAt);
+      const lastVisitedAt = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.lastVisitedAt);
       const tags = String(tagsRaw || '')
         .split(/[;,]/)
         .map((tag) => tag.trim())
@@ -3254,6 +3266,11 @@
         links: String(links || '').trim(),
         links2: String(links2 || '').trim(),
         photoUrls: String(photoUrls || '').trim(),
+        latitude: Number.isFinite(latitude) ? latitude : null,
+        longitude: Number.isFinite(longitude) ? longitude : null,
+        updatedAt: String(updatedAt || '').trim(),
+        createdAt: String(createdAt || '').trim(),
+        lastVisitedAt: String(lastVisitedAt || '').trim(),
         sourceLabel: `${source.workbook} / ${source.table}`,
         sourceWorkbook: String(source.workbook || '').trim(),
         sourceWorkbookPath: String(source.resolvedWorkbookPath || source.workbook || '').trim(),
@@ -3529,6 +3546,107 @@
       || String(item && item.title ? item.title : '').trim();
     if (!destination) return '';
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+  }
+
+  function getExplorerRouteSelectionSet(subtabKey) {
+    const explorerState = getExplorerState(subtabKey);
+    const values = Array.isArray(explorerState.routeSelectionIds) ? explorerState.routeSelectionIds : [];
+    return new Set(values.map((value) => String(value || '').trim()).filter(Boolean));
+  }
+
+  function setExplorerRouteSelectionSet(subtabKey, selectionSet) {
+    const explorerState = getExplorerState(subtabKey);
+    explorerState.routeSelectionIds = Array.from(selectionSet || []).map((value) => String(value || '').trim()).filter(Boolean);
+  }
+
+  function getExplorerRouteSelectedItems(subtabKey) {
+    const explorerState = getExplorerState(subtabKey);
+    const selected = getExplorerRouteSelectionSet(subtabKey);
+    const items = filterAndSortExplorerItems(explorerState.items || [], explorerState);
+    return items.filter((item) => selected.has(String(item && item.id ? item.id : '').trim()));
+  }
+
+  function buildExplorerItemRoutePoint(item) {
+    const lat = Number(item && item.latitude);
+    const lng = Number(item && item.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return `${lat},${lng}`;
+    const fallback = [item && item.address, item && item.city, item && item.state]
+      .map((v) => String(v || '').trim())
+      .filter(Boolean)
+      .join(', ')
+      || String(item && item.title ? item.title : '').trim();
+    return fallback;
+  }
+
+  function buildGoogleMapsOptimizedRouteUrl(points) {
+    if (!Array.isArray(points) || points.length < 2) return '';
+    const origin = String(points[0] || '').trim();
+    const destination = String(points[points.length - 1] || '').trim();
+    if (!origin || !destination) return '';
+    const waypoints = points.slice(1, -1).map((value) => String(value || '').trim()).filter(Boolean);
+    const params = new URLSearchParams({ api: '1', origin, destination, travelmode: 'driving' });
+    if (waypoints.length) params.set('waypoints', `optimize:true|${waypoints.join('|')}`);
+    return `https://www.google.com/maps/dir/?${params.toString()}`;
+  }
+
+  async function maybeFetchOptimizedWaypointOrder(points) {
+    const apiKey = String(window.GOOGLE_PLACES_API_KEY || '').trim();
+    if (!apiKey || !Array.isArray(points) || points.length < 3) return null;
+    try {
+      const origin = String(points[0] || '').trim();
+      const destination = String(points[points.length - 1] || '').trim();
+      const waypoints = points.slice(1, -1).map((value) => String(value || '').trim()).filter(Boolean);
+      if (!origin || !destination || !waypoints.length) return null;
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&waypoints=${encodeURIComponent(`optimize:true|${waypoints.join('|')}`)}&key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) return null;
+      const json = await response.json().catch(() => ({}));
+      const route = Array.isArray(json.routes) ? json.routes[0] : null;
+      if (!route || !Array.isArray(route.waypoint_order)) return null;
+      return route.waypoint_order.map((idx) => Number(idx)).filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < waypoints.length);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  async function createRoutePlanForSelectedItems(subtabKey) {
+    const selectedItems = getExplorerRouteSelectedItems(subtabKey);
+    if (selectedItems.length < 2) return null;
+    const points = selectedItems.map((item) => buildExplorerItemRoutePoint(item)).filter(Boolean);
+    if (points.length < 2) return null;
+    const waypointOrder = await maybeFetchOptimizedWaypointOrder(points);
+    let orderedItems = selectedItems.slice();
+    if (Array.isArray(waypointOrder) && waypointOrder.length === Math.max(0, selectedItems.length - 2)) {
+      const middle = selectedItems.slice(1, -1);
+      orderedItems = [selectedItems[0]].concat(waypointOrder.map((idx) => middle[idx]).filter(Boolean)).concat([selectedItems[selectedItems.length - 1]]);
+    }
+    const orderedPoints = orderedItems.map((item) => buildExplorerItemRoutePoint(item)).filter(Boolean);
+    const shareUrl = buildGoogleMapsOptimizedRouteUrl(orderedPoints);
+    const itineraryText = orderedItems.map((item, idx) => `${idx + 1}. ${item.title}${item.city ? ` - ${item.city}` : ''}${item.state ? `, ${item.state}` : ''}`).join('\n');
+    const plan = {
+      createdAt: new Date().toISOString(),
+      itemIds: orderedItems.map((item) => item.id),
+      shareUrl,
+      itineraryText,
+      optimized: Array.isArray(waypointOrder) && waypointOrder.length > 0
+    };
+    getExplorerState(subtabKey).lastRoutePlan = plan;
+    return plan;
+  }
+
+  async function copyRouteText(text) {
+    const content = String(text || '').trim();
+    if (!content) return false;
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(content);
+      return true;
+    }
+    return false;
+  }
+
+  function buildRouteShareText(plan) {
+    if (!plan) return '';
+    return ['Adventure Planner Itinerary', '', plan.itineraryText || '', '', plan.shareUrl || ''].join('\n').trim();
   }
 
   function getExplorerItemView(item) {
@@ -4055,7 +4173,12 @@
         notes: item.notes || '',
         myRating: item.myRating ? String(item.myRating) : '',
         favoriteStatus: item.favorite ? 'Yes' : '',
-        googleUrl: item.googleUrl || ''
+        googleUrl: item.googleUrl || '',
+        latitude: Number.isFinite(Number(item.latitude)) ? String(item.latitude) : '',
+        longitude: Number.isFinite(Number(item.longitude)) ? String(item.longitude) : '',
+        updatedAt: item.updatedAt || '',
+        createdAt: item.createdAt || '',
+        lastVisitedAt: item.lastVisitedAt || ''
       }
     };
 
@@ -4223,6 +4346,42 @@
     if (backdrop) backdrop.hidden = true;
   }
 
+  function renderExplorerRoutePlannerUi(root, subtabKey, filteredItems) {
+    const metaEl = document.getElementById(`visitedExplorerMeta-${subtabKey}`);
+    if (!metaEl) return;
+    const hostId = `visitedExplorerRoutePlanner-${subtabKey}`;
+    let host = document.getElementById(hostId);
+    if (!host) {
+      host = document.createElement('div');
+      host.id = hostId;
+      host.className = 'visited-explorer-route-planner';
+      host.style.marginTop = '8px';
+      host.style.display = 'grid';
+      host.style.gap = '6px';
+      host.style.padding = '8px 10px';
+      host.style.border = '1px solid #dbeafe';
+      host.style.borderRadius = '10px';
+      host.style.background = '#f8fbff';
+      metaEl.insertAdjacentElement('afterend', host);
+    }
+
+    const selected = getExplorerRouteSelectionSet(subtabKey);
+    const validIds = new Set((filteredItems || []).map((item) => String(item && item.id ? item.id : '').trim()));
+    const normalized = new Set(Array.from(selected).filter((itemId) => validIds.has(itemId)));
+    if (normalized.size !== selected.size) setExplorerRouteSelectionSet(subtabKey, normalized);
+    const selectedCount = normalized.size;
+    const lastPlan = getExplorerState(subtabKey).lastRoutePlan;
+    host.innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+        <strong style="font-size:12px;color:#1e3a8a;">Plan a Route</strong>
+        <span style="font-size:12px;color:#475569;">${selectedCount} selected</span>
+        <button type="button" class="visited-explorer-detail-btn visited-explorer-detail-btn--primary" data-visited-explorer-plan-route="${escapeHtml(subtabKey)}" ${selectedCount < 2 ? 'disabled' : ''}>Generate Route</button>
+        <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-share-route="${escapeHtml(subtabKey)}" ${(lastPlan && lastPlan.shareUrl) ? '' : 'disabled'}>Share Itinerary</button>
+      </div>
+      <div style="font-size:11px;color:#64748b;">Select at least 2 locations to build an optimized driving route.</div>
+    `;
+  }
+
   function renderExplorerList(root, subtabKey) {
     const config = getExplorerConfig(subtabKey);
     if (!config) return;
@@ -4249,6 +4408,7 @@
 
     syncExplorerFilterOptions(subtabKey, explorerState);
     const filtered = filterAndSortExplorerItems(explorerState.items || [], explorerState);
+    renderExplorerRoutePlannerUi(root, subtabKey, filtered);
     const visitMap = state.latestVisitMap || getVisitMap();
     metaEl.textContent = `${filtered.length} of ${(explorerState.items || []).length} ${config.emptyLabel} shown.`;
 
@@ -4258,6 +4418,8 @@
     }
 
     listEl.innerHTML = filtered.map((item) => {
+      const routeSelection = getExplorerRouteSelectionSet(subtabKey);
+      const isSelectedForRoute = routeSelection.has(String(item.id || '').trim());
       const isVisited = Boolean(visitMap[item.id]);
       const chips = (item.tags || []).slice(0, 6).map((tag) => `<span class="visited-explorer-tag">${escapeHtml(tag)}</span>`).join('');
       const notesPreview = String(item.notes || '').trim();
@@ -4284,6 +4446,10 @@
               ${photoCount > 0 ? `<span class="visited-photo-count-badge" title="${photoCount} photo${photoCount === 1 ? '' : 's'}">📷 ${photoCount}</span>` : ''}
             </div>
             <div class="visited-explorer-card-head-actions">
+              <label class="visited-explorer-route-select" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#334155;">
+                <input type="checkbox" data-visited-explorer-route-select="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" ${isSelectedForRoute ? 'checked' : ''} />
+                Route
+              </label>
               <button type="button" class="visited-explorer-detail-btn visited-explorer-detail-btn--primary" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
               <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-quick-actions-toggle="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" aria-expanded="false">Quick Actions ▾</button>
             </div>
@@ -4576,7 +4742,9 @@
     const hasPlaceIdUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'googlePlaceId');
     const hasNearbyUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'nearby');
     const hasMyRatingUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'myRating');
-    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update && !hasVisitedUpdate && !hasAddressUpdate && !hasCityUpdate && !hasStateUpdate && !hasPhoneUpdate && !hasHoursUpdate && !hasDescriptionUpdate && !hasNameUpdate && !hasWebsiteUpdate && !hasGoogleUrlUpdate && !hasDriveTimeUpdate && !hasDurationUpdate && !hasDifficultyUpdate && !hasTrailLengthUpdate && !hasCostUpdate && !hasGoogleRatingUpdate && !hasPlaceIdUpdate && !hasNearbyUpdate && !hasMyRatingUpdate) {
+    const hasLatitudeUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'latitude');
+    const hasLongitudeUpdate = Object.prototype.hasOwnProperty.call(updateMap, 'longitude');
+    if (!hasTagUpdate && !hasNotesUpdate && !hasPhotoUpdate && !hasLinksUpdate && !hasLinks2Update && !hasVisitedUpdate && !hasAddressUpdate && !hasCityUpdate && !hasStateUpdate && !hasPhoneUpdate && !hasHoursUpdate && !hasDescriptionUpdate && !hasNameUpdate && !hasWebsiteUpdate && !hasGoogleUrlUpdate && !hasDriveTimeUpdate && !hasDurationUpdate && !hasDifficultyUpdate && !hasTrailLengthUpdate && !hasCostUpdate && !hasGoogleRatingUpdate && !hasPlaceIdUpdate && !hasNearbyUpdate && !hasMyRatingUpdate && !hasLatitudeUpdate && !hasLongitudeUpdate) {
       return { synced: false, reason: 'no-fields' };
     }
 
@@ -4652,6 +4820,12 @@
     const myRatingColIdx = hasMyRatingUpdate
       ? await resolveExplorerColumnIndex(filePath, tableName, 'my_rating', ['my rating', 'user rating', 'personal rating'])
       : -1;
+    const latitudeColIdx = hasLatitudeUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'latitude', EXPLORER_COLUMN_CANDIDATES.latitude)
+      : -1;
+    const longitudeColIdx = hasLongitudeUpdate
+      ? await resolveExplorerColumnIndex(filePath, tableName, 'longitude', EXPLORER_COLUMN_CANDIDATES.longitude)
+      : -1;
 
     if ((hasTagUpdate && tagColIdx < 0) || (hasNotesUpdate && notesColIdx < 0)) {
       throw new Error('Target column could not be resolved in source table.');
@@ -4679,6 +4853,8 @@
     const shouldSyncPlaceId = hasPlaceIdUpdate && placeIdColIdx >= 0;
     const shouldSyncNearby = hasNearbyUpdate && nearbyColIdx >= 0;
     const shouldSyncMyRating = hasMyRatingUpdate && myRatingColIdx >= 0;
+    const shouldSyncLatitude = hasLatitudeUpdate && latitudeColIdx >= 0;
+    const shouldSyncLongitude = hasLongitudeUpdate && longitudeColIdx >= 0;
 
     try {
       const { rowPath, rowValues } = await fetchExplorerRowValues(filePath, tableName, rowIndex);
@@ -4777,6 +4953,14 @@
     if (shouldSyncMyRating) {
       while (rowValues.length <= myRatingColIdx) rowValues.push('');
       rowValues[myRatingColIdx] = String(updateMap.myRating || '').trim();
+    }
+    if (shouldSyncLatitude) {
+      while (rowValues.length <= latitudeColIdx) rowValues.push('');
+      rowValues[latitudeColIdx] = String(updateMap.latitude || '').trim();
+    }
+    if (shouldSyncLongitude) {
+      while (rowValues.length <= longitudeColIdx) rowValues.push('');
+      rowValues[longitudeColIdx] = String(updateMap.longitude || '').trim();
     }
 
       const patchResponse = await fetch(rowPath, {
@@ -6633,6 +6817,65 @@
               explainBtn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
               panel.hidden = expanded;
             }
+            return;
+          }
+
+          const explorerRouteSelect = closest('[data-visited-explorer-route-select]');
+          if (explorerRouteSelect) {
+            const subtabKey = String(explorerRouteSelect.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(explorerRouteSelect.getAttribute('data-visited-explorer-route-select') || '').trim();
+            const selected = getExplorerRouteSelectionSet(subtabKey);
+            if (explorerRouteSelect.checked) selected.add(itemId);
+            else selected.delete(itemId);
+            setExplorerRouteSelectionSet(subtabKey, selected);
+            renderExplorerList(root, subtabKey);
+            return;
+          }
+
+          const explorerPlanRouteBtn = closest('[data-visited-explorer-plan-route]');
+          if (explorerPlanRouteBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerPlanRouteBtn.getAttribute('data-visited-explorer-plan-route') || state.activeProgressSubTab || '').trim();
+            explorerPlanRouteBtn.disabled = true;
+            const originalText = explorerPlanRouteBtn.textContent;
+            explorerPlanRouteBtn.textContent = 'Generating...';
+            const plan = await createRoutePlanForSelectedItems(subtabKey).catch(() => null);
+            explorerPlanRouteBtn.disabled = false;
+            explorerPlanRouteBtn.textContent = originalText || 'Generate Route';
+            renderExplorerList(root, subtabKey);
+            if (!plan || !plan.shareUrl) {
+              if (typeof window.showToast === 'function') window.showToast('Select at least 2 routable locations to build a route.', 'info', 2600);
+              return;
+            }
+            window.open(plan.shareUrl, '_blank', 'noopener');
+            if (typeof window.showToast === 'function') {
+              window.showToast(plan.optimized ? 'Optimized route generated and opened in Google Maps.' : 'Route generated and opened in Google Maps.', 'success', 2800);
+            }
+            return;
+          }
+
+          const explorerShareRouteBtn = closest('[data-visited-explorer-share-route]');
+          if (explorerShareRouteBtn) {
+            event.preventDefault();
+            const subtabKey = String(explorerShareRouteBtn.getAttribute('data-visited-explorer-share-route') || state.activeProgressSubTab || '').trim();
+            let plan = getExplorerState(subtabKey).lastRoutePlan;
+            if (!plan || !plan.shareUrl) {
+              plan = await createRoutePlanForSelectedItems(subtabKey).catch(() => null);
+            }
+            if (!plan || !plan.shareUrl) {
+              if (typeof window.showToast === 'function') window.showToast('Generate a route first, then share it.', 'info', 2200);
+              return;
+            }
+            const shareText = buildRouteShareText(plan);
+            let shared = false;
+            if (navigator.share) {
+              shared = await navigator.share({ title: 'Adventure Planner Itinerary', text: plan.itineraryText, url: plan.shareUrl }).then(() => true).catch(() => false);
+            }
+            if (!shared) {
+              const copied = await copyRouteText(shareText).catch(() => false);
+              if (!copied) window.prompt('Copy itinerary:', shareText);
+            }
+            if (typeof window.showToast === 'function') window.showToast('Itinerary ready to share.', 'success', 2200);
             return;
           }
 

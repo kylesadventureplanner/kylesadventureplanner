@@ -209,6 +209,59 @@
     .card.is-dirty .detail-dirty-indicator {
       display: inline;
     }
+    .detail-freshness-badge {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .detail-map-shell {
+      display: grid;
+      gap: 10px;
+    }
+    .detail-map-meta {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .detail-map-canvas {
+      width: 100%;
+      min-height: 380px;
+      border: 1px solid #dbeafe;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+    .detail-insights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .detail-insight-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      padding: 10px;
+    }
+    .detail-insight-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+    .detail-insight-value {
+      margin-top: 6px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+    }
     @media (max-width: 760px) {
       .detail-inline-edit-grid { grid-template-columns: 1fr; }
     }
@@ -257,6 +310,7 @@
     <button class="tab-btn" data-tab="additional" type="button">📌 Additional</button>
     <button class="tab-btn" data-tab="tag-management" type="button">🏷️ Tag Management</button>
     <button class="tab-btn" data-tab="photos" type="button">📷 Photos</button>
+    <button class="tab-btn" data-tab="map" type="button">🗺️ Map View</button>
   </div>
 
   <div id="pane-overview" class="tab-pane active"></div>
@@ -266,6 +320,7 @@
   <div id="pane-additional" class="tab-pane"></div>
   <div id="pane-tag-management" class="tab-pane"></div>
   <div id="pane-photos" class="tab-pane"></div>
+  <div id="pane-map" class="tab-pane"></div>
 
   <!-- Sticky action bar — always visible regardless of active tab -->
   <div class="action-bar u-hidden mobile-sticky-actions" id="actionBar">
@@ -384,6 +439,17 @@
           </div>
         </div>
         <label class="toggle-switch"><input type="checkbox" id="enrichToggleGoogleRating"><span class="toggle-knob"></span></label>
+      </div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">📸</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Cover Photo</span>
+            <span class="enrich-toggle-hint">Fetch Google Places/Street View cover and stage it in Photos</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleCoverPhoto"><span class="toggle-knob"></span></label>
       </div>
 
       <div class="enrich-section-label-sm">Location &amp; Navigation</div>
@@ -771,8 +837,95 @@
     var safeFieldKey = String(fieldKey || '').trim();
     var attrs = safeFieldKey ? ' data-detail-field-card="' + escapeHtml(safeFieldKey) + '"' : '';
     var dirtyBadge = safeFieldKey ? '<span class="detail-dirty-indicator" aria-hidden="true">● changed</span>' : '';
-    return '<div class="card"' + attrs + '><div class="label">' + label + dirtyBadge + '</div><div class="value">' +
+    var freshness = '';
+    try {
+      var map = window.__detailFieldFreshnessMap || {};
+      if (safeFieldKey && map[safeFieldKey]) {
+        freshness = '<span class="detail-freshness-badge" title="' + escapeHtml('Last refreshed ' + map[safeFieldKey]) + '">Last refreshed ' + escapeHtml(map[safeFieldKey]) + '</span>';
+      }
+    } catch (_err) {}
+    return '<div class="card"' + attrs + '><div class="label">' + label + dirtyBadge + freshness + '</div><div class="value">' +
       (value || '<span class="empty">Not available</span>') + '</div></div>';
+  }
+
+  var DETAIL_FIELD_REFRESH_META_KEY = '__adventure_detail_field_refresh_meta_v1';
+  var DETAIL_RATING_HISTORY_KEY = '__adventure_detail_rating_history_v1';
+
+  function readJsonMap(key) {
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(String(key || '')) || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  function writeJsonMap(key, value) {
+    try { window.localStorage.setItem(String(key || ''), JSON.stringify(value || {})); } catch (_err) {}
+  }
+
+  function normalizeTimestamp(value) {
+    var text = String(value || '').trim();
+    if (!text) return '';
+    var ts = Date.parse(text);
+    if (!Number.isFinite(ts)) return '';
+    return new Date(ts).toISOString();
+  }
+
+  function formatRelativeAge(value) {
+    var iso = normalizeTimestamp(value);
+    if (!iso) return '';
+    var diffMs = Math.max(0, Date.now() - Date.parse(iso));
+    var days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (days <= 0) return 'today';
+    if (days === 1) return '1 day ago';
+    if (days < 30) return days + ' days ago';
+    var months = Math.floor(days / 30);
+    if (months === 1) return '1 month ago';
+    if (months < 12) return months + ' months ago';
+    var years = Math.floor(months / 12);
+    return years === 1 ? '1 year ago' : (years + ' years ago');
+  }
+
+  function markDetailFieldRefreshed(data, fieldKey, source) {
+    var key = getLocationKey(data || {});
+    if (!key || !fieldKey) return;
+    var map = readJsonMap(DETAIL_FIELD_REFRESH_META_KEY);
+    var byPlace = map[key] && typeof map[key] === 'object' ? map[key] : {};
+    byPlace[String(fieldKey)] = { updatedAt: new Date().toISOString(), source: String(source || 'detail-refresh') };
+    map[key] = byPlace;
+    writeJsonMap(DETAIL_FIELD_REFRESH_META_KEY, map);
+  }
+
+  function getDetailFreshnessMap(data, payload) {
+    var out = {};
+    var placeKey = getLocationKey(data || {});
+    var persisted = placeKey ? readJsonMap(DETAIL_FIELD_REFRESH_META_KEY)[placeKey] : null;
+    if (persisted && typeof persisted === 'object') {
+      Object.keys(persisted).forEach(function (fieldKey) {
+        var ts = normalizeTimestamp(persisted[fieldKey] && persisted[fieldKey].updatedAt);
+        var rel = formatRelativeAge(ts);
+        if (rel) out[fieldKey] = rel;
+      });
+    }
+
+    var fallbackTs = normalizeTimestamp((data && data.updatedAt) || (payload && payload.exportedAt) || (data && data.createdAt));
+    var fallbackAge = formatRelativeAge(fallbackTs);
+    var fallbackFields = ['address', 'city', 'state', 'description', 'hoursOfOperation', 'website', 'phoneNumber', 'googleUrl'];
+    if (fallbackAge) {
+      fallbackFields.forEach(function (fieldKey) {
+        if (!out[fieldKey]) out[fieldKey] = fallbackAge;
+      });
+    }
+
+    var costAge = formatRelativeAge(data && data.costInferenceMeta && data.costInferenceMeta.updatedAt);
+    if (costAge) out.cost = costAge;
+    var coordsEntry = getStoredCoords(placeKey || '');
+    var coordsAge = formatRelativeAge(coordsEntry && coordsEntry.updatedAt);
+    if (coordsAge) out.coordinates = coordsAge;
+    var nearbyAge = formatRelativeAge(window.__detailNearbyState && window.__detailNearbyState.updatedAt ? new Date(window.__detailNearbyState.updatedAt).toISOString() : '');
+    if (nearbyAge) out.nearby = nearbyAge;
+    return out;
   }
 
   var DETAIL_INLINE_EDIT_FIELDS = [
@@ -2762,6 +2915,85 @@
     }
   }
 
+  function calculateMilesBetween(lat1, lng1, lat2, lng2) {
+    var r = 3958.8;
+    var dLat = (Number(lat2) - Number(lat1)) * Math.PI / 180;
+    var dLng = (Number(lng2) - Number(lng1)) * Math.PI / 180;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(Number(lat1) * Math.PI / 180) * Math.cos(Number(lat2) * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  async function fetchGoogleNearbyFallback(lat, lng, centerName, options) {
+    var key = getDetailGoogleApiKey();
+    if (!key) return [];
+    var radiusMiles = Number(options && options.radiusMiles) || 5;
+    var radiusMeters = Math.round(radiusMiles * 1609.34);
+    var keyword = encodeURIComponent([String(centerName || '').trim(), 'attractions'].filter(Boolean).join(' '));
+    var url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=' +
+      encodeURIComponent(String(lat) + ',' + String(lng)) +
+      '&radius=' + encodeURIComponent(String(radiusMeters)) +
+      '&type=point_of_interest&keyword=' + keyword + '&key=' + encodeURIComponent(key);
+    try {
+      var response = await fetch(url);
+      if (!response.ok) return [];
+      var json = await response.json();
+      var rows = Array.isArray(json && json.results) ? json.results : [];
+      return rows.slice(0, 12).map(function (place) {
+        var pLat = Number(place && place.geometry && place.geometry.location && place.geometry.location.lat);
+        var pLng = Number(place && place.geometry && place.geometry.location && place.geometry.location.lng);
+        var miles = (Number.isFinite(pLat) && Number.isFinite(pLng)) ? calculateMilesBetween(lat, lng, pLat, pLng) : NaN;
+        var mins = Number.isFinite(miles) ? Math.max(1, Math.round(miles / 0.6)) : NaN;
+        return {
+          id: String(place && place.place_id || ('google_' + Math.random().toString(36).slice(2, 8))),
+          name: String(place && place.name || 'Nearby location'),
+          description: String(place && place.vicinity || ''),
+          rating: Number(place && place.rating || 0) || null,
+          distanceText: Number.isFinite(miles) ? (miles.toFixed(1) + ' mi') : '—',
+          driveTimeText: Number.isFinite(mins) ? (mins + ' min') : '—',
+          exists: false,
+          sourceBadge: 'Google',
+          rankingReasons: ['google-fallback'],
+          googleUrl: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(String(place && place.name || '') + ' ' + String(place && place.vicinity || ''))
+        };
+      });
+    } catch (_err) {
+      return [];
+    }
+  }
+
+  function buildLocalNearbyFallback(centerLat, centerLng, centerName, appLocations, options) {
+    var radiusMiles = Number(options && options.radiusMiles) || 5;
+    return (Array.isArray(appLocations) ? appLocations : []).map(function (loc) {
+      var lat = Number(loc && loc.latitude);
+      var lng = Number(loc && loc.longitude);
+      var name = String(loc && loc.name || '').trim();
+      if (!name) return null;
+      if (name.toLowerCase() === String(centerName || '').trim().toLowerCase()) return null;
+      var miles = (Number.isFinite(Number(centerLat)) && Number.isFinite(Number(centerLng)) && Number.isFinite(lat) && Number.isFinite(lng))
+        ? calculateMilesBetween(centerLat, centerLng, lat, lng)
+        : NaN;
+      var mins = Number.isFinite(miles) ? Math.max(1, Math.round(miles / 0.6)) : NaN;
+      return {
+        id: String(loc && loc.id || ('local_' + name.toLowerCase().replace(/\W+/g, '_'))),
+        name: name,
+        description: String(loc && loc.description || ''),
+        distanceMiles: Number.isFinite(miles) ? miles : 999,
+        distanceText: Number.isFinite(miles) ? (miles.toFixed(1) + ' mi') : '—',
+        driveTimeText: Number.isFinite(mins) ? (mins + ' min') : '—',
+        exists: true,
+        existingLocation: loc,
+        sourceBadge: 'Local',
+        rankingReasons: ['local-distance-fallback']
+      };
+    }).filter(Boolean).filter(function (entry) {
+      return !Number.isFinite(entry.distanceMiles) || entry.distanceMiles <= radiusMiles || entry.distanceMiles === 999;
+    }).sort(function (a, b) {
+      return Number(a.distanceMiles || 0) - Number(b.distanceMiles || 0);
+    }).slice(0, 12);
+  }
+
   async function resolveDetailCoordinates(data) {
     var lat = Number(data && data.latitude);
     var lng = Number(data && data.longitude);
@@ -2935,6 +3167,7 @@
         window.__detailNearbyState = { placeKey: getLocationKey(data), center: coords, attractions: cached, updatedAt: Date.now(), fromCache: true };
         var pane = document.getElementById('nearbyAttractionsValue');
         if (pane) pane.innerHTML = renderNearbyListHtml(cached);
+        if (getActiveDetailTabId() === 'map') renderDetailMap(data);
       }
       if (typeof window.nearbyAttractionsFinder.prefetchNearbyAttractions === 'function') {
         window.nearbyAttractionsFinder.prefetchNearbyAttractions(coords.lat, coords.lng, (data && data.name) || 'Location', opts).catch(function () { return null; });
@@ -2983,7 +3216,12 @@
         showDetailToast('⚠️ Nearby system is not loaded.', 'error', 2800);
         return;
       }
-      var appLocations = getNearbyFinderAppLocations();
+      if (!window.__detailNearbyOriginalFormatter && typeof window.nearbyAttractionsFinder.getFormattedNearbyAttractions === 'function') {
+        window.__detailNearbyOriginalFormatter = window.nearbyAttractionsFinder.getFormattedNearbyAttractions;
+      }
+      var appLocations = (typeof window.getNearbyFinderAppLocations === 'function')
+        ? window.getNearbyFinderAppLocations()
+        : getNearbyFinderAppLocations();
       window.nearbyAttractionsFinder.setAppLocations(appLocations);
       window.nearbyAttractionsFinder.config.googlePlacesApiKey = getDetailGoogleApiKey() || null;
       var nearbyOpts = getNearbyRequestOptions(data);
@@ -3001,7 +3239,64 @@
       }
 
       var attractions = await window.nearbyAttractionsFinder.getFormattedNearbyAttractions(coords.lat, coords.lng, data.name || 'Location', nearbyOpts);
+      if ((!Array.isArray(attractions) || !attractions.length) && String(nearbyOpts.category || 'all') !== 'all') {
+        // Safety fallback: stale UI prefs can narrow category too aggressively across sessions.
+        var broadOpts = Object.assign({}, nearbyOpts, { category: 'all' });
+        if (typeof window.nearbyAttractionsFinder.setCategoryFilter === 'function') {
+          window.nearbyAttractionsFinder.setCategoryFilter('all');
+        }
+        attractions = await window.nearbyAttractionsFinder.getFormattedNearbyAttractions(coords.lat, coords.lng, data.name || 'Location', broadOpts);
+      }
+      if ((!Array.isArray(attractions) || !attractions.length) && getDetailGoogleApiKey()) {
+        attractions = await fetchGoogleNearbyFallback(coords.lat, coords.lng, data.name || 'Location', nearbyOpts);
+      }
+      if (!Array.isArray(attractions) || !attractions.length) {
+        var formatterFn = window.nearbyAttractionsFinder && window.nearbyAttractionsFinder.getFormattedNearbyAttractions;
+        var formatterText = String(formatterFn || '');
+        var formatterForcedEmpty = /return\s*\[\s*\]/.test(formatterText) && !/getNearbyAttractions/.test(formatterText);
+        if (!formatterForcedEmpty) {
+          attractions = buildLocalNearbyFallback(coords.lat, coords.lng, data.name || 'Location', appLocations, nearbyOpts);
+        }
+      }
       window.__detailNearbyState = { placeKey: getLocationKey(data), center: coords, attractions: attractions, updatedAt: Date.now() };
+
+      if (!Array.isArray(attractions) || !attractions.length) {
+        var formatterFnLate = window.nearbyAttractionsFinder && window.nearbyAttractionsFinder.getFormattedNearbyAttractions;
+        var formatterTextLate = String(formatterFnLate || '');
+        var formatterForcedEmptyLate = /return\s*\[\s*\]/.test(formatterTextLate) && !/getNearbyAttractions/.test(formatterTextLate);
+        if (!formatterForcedEmptyLate) {
+          var lateLocal = [];
+          try {
+            if (typeof window.getNearbyFinderAppLocations === 'function') {
+              lateLocal = window.getNearbyFinderAppLocations() || [];
+            }
+          } catch (_lateLocalErr) {
+            lateLocal = [];
+          }
+          if (!lateLocal.length && Array.isArray(appLocations)) lateLocal = appLocations;
+          if (Array.isArray(lateLocal) && lateLocal.length) {
+            var synthesized = lateLocal.slice(0, 12).map(function (loc) {
+              var name = String(loc && loc.name || '').trim();
+              if (!name) return null;
+              if (name.toLowerCase() === String(data && data.name || '').trim().toLowerCase()) return null;
+              return {
+                id: String(loc && loc.id || ('late_local_' + name.toLowerCase().replace(/\W+/g, '_'))),
+                name: name,
+                exists: true,
+                existingLocation: Object.assign({ __sourceIndex: Number(loc && loc.__sourceIndex) }, loc || {}),
+                sourceBadge: 'Local',
+                distanceText: '—',
+                driveTimeText: '—',
+                rankingReasons: ['local-fallback']
+              };
+            }).filter(Boolean);
+            if (synthesized.length) {
+              attractions = synthesized;
+              window.__detailNearbyState = { placeKey: getLocationKey(data), center: coords, attractions: attractions, updatedAt: Date.now(), synthesized: true };
+            }
+          }
+        }
+      }
 
       if (!Array.isArray(attractions) || !attractions.length) {
         var nearbyKeyConfigured = !!(window.nearbyAttractionsFinder && window.nearbyAttractionsFinder.config && window.nearbyAttractionsFinder.config.googlePlacesApiKey);
@@ -3021,8 +3316,10 @@
 
       var nearbyText = buildNearbyDisplayFromAttractions(attractions);
       data.nearby = nearbyText;
+      markDetailFieldRefreshed(data, 'nearby', 'nearby-attractions');
       var pane = document.getElementById('nearbyAttractionsValue');
       if (pane) pane.innerHTML = renderNearbyListHtml(attractions);
+      if (getActiveDetailTabId() === 'map') renderDetailMap(data);
 
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { nearby: nearbyText }, 'detail-nearby-refresh');
       showDetailToast('✅ Nearby attractions refreshed.', 'success', 2600);
@@ -3048,6 +3345,7 @@
       syncTagManagementUi();
       var count = state.recommendedTags.length;
       setTagStatus('Refreshed ' + count + ' recommendation' + (count !== 1 ? 's' : '') + ' via ' + state.recommendationSource + '. Review and apply if desired; Save Tags persists applied tags only.', false);
+      markDetailFieldRefreshed(state.data, 'tags', 'tag-recommendation');
       showDetailToast('✅ Tag suggestions refreshed. No tags were auto-applied.', 'success', 2600);
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Tag Suggestions'; }
@@ -3076,6 +3374,7 @@
       var placeKey = getLocationKey(data);
       var costMeta = buildCostInferenceMeta(result);
       data.costInferenceMeta = costMeta;
+      markDetailFieldRefreshed(data, 'cost', 'cost-inference');
       persistCostInferenceMeta(placeKey, costMeta);
       var costValue = document.getElementById('detailCostValue');
       if (costValue) {
@@ -3150,6 +3449,7 @@
       data.longitude = coords.lng;
       var placeKey = getLocationKey(data);
       setStoredCoords(placeKey, coords.lat, coords.lng, coords.source || 'geocode');
+      markDetailFieldRefreshed(data, 'coordinates', coords.source || 'geocode');
 
       var valueEl = document.getElementById('detailCoordsValue');
       if (valueEl) {
@@ -3157,6 +3457,7 @@
           '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">Source: ' + escapeHtml(coords.source || 'geocode') + '</div>';
       }
       if (btn) { btn.textContent = '📍 Refresh Coordinates'; }
+      if (getActiveDetailTabId() === 'map') renderDetailMap(data);
 
       if (forceSync) {
         await syncOrQueueExplorerUpdate(state.syncState, { latitude: String(coords.lat), longitude: String(coords.lng) }, 'detail-coords-refresh').catch(function () {});
@@ -3186,6 +3487,7 @@
       var desc = extractDescriptionFromGoogleDetails(details || {});
       if (!desc) { showDetailToast('ℹ️ No description found via Google Places.', 'info', 2600); return; }
       data.description = desc;
+      markDetailFieldRefreshed(data, 'description', 'google-places');
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { description: desc }, 'detail-desc-refresh').catch(function () {});
       showDetailToast('✅ Description refreshed from Google Places.', 'success', 2600);
     } catch (_err) {
@@ -3210,6 +3512,8 @@
       var rating = details && (details.rating != null) ? String(details.rating) : '';
       if (!rating) { showDetailToast('ℹ️ No rating returned from Google Places.', 'info', 2600); return; }
       data.googleRating = rating;
+      markDetailFieldRefreshed(data, 'googleRating', 'google-places');
+      appendRatingHistory(getLocationKey(data), parseNumericRating(rating));
       var ratingEl = document.querySelector('[data-detail-field-card="googleRating"] .value');
       if (ratingEl) ratingEl.textContent = rating;
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { googleRating: rating }, 'detail-rating-refresh').catch(function () {});
@@ -3239,6 +3543,7 @@
       );
       if (!hours) { showDetailToast('ℹ️ No hours returned from Google Places.', 'info', 2600); return; }
       data.hoursOfOperation = hours;
+      markDetailFieldRefreshed(data, 'hoursOfOperation', 'google-places');
       var hoursEl = document.querySelector('[data-detail-field-card="hoursOfOperation"] .value');
       if (hoursEl) hoursEl.textContent = hours;
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { hours: hours }, 'detail-hours-refresh').catch(function () {});
@@ -3257,6 +3562,7 @@
       description: document.getElementById('enrichToggleDescription'),
       hours: document.getElementById('enrichToggleHours'),
       googleRating: document.getElementById('enrichToggleGoogleRating'),
+      coverPhoto: document.getElementById('enrichToggleCoverPhoto'),
       coordinates: document.getElementById('enrichToggleCoordinates'),
       driveTime: document.getElementById('enrichToggleDriveTime'),
       nearby: document.getElementById('enrichToggleNearby'),
@@ -3268,6 +3574,7 @@
       { key: 'description', label: 'Description', icon: '📝', fn: function () { return refreshDescriptionForDetail(true); } },
       { key: 'hours', label: 'Hours of Operation', icon: '🕐', fn: function () { return refreshHoursForDetail(true); } },
       { key: 'googleRating', label: 'Google Rating', icon: '⭐', fn: function () { return refreshGoogleRatingForDetail(true); } },
+      { key: 'coverPhoto', label: 'Cover Photo', icon: '📸', fn: function () { return refreshCoverPhotoForDetail(); } },
       { key: 'coordinates', label: 'Coordinates', icon: '📍', fn: function () { return refreshCoordinatesForDetail(true); } },
       { key: 'driveTime', label: 'Drive Time', icon: '🚗', fn: function () { return refreshDriveTimeForDetail(true); } },
       { key: 'nearby', label: 'Nearby Locations', icon: '📡', fn: function () { return refreshNearbyAttractionsForDetail(true); } },
@@ -3308,6 +3615,73 @@
     if (enrichRunBtn) { enrichRunBtn.disabled = false; enrichRunBtn.textContent = '🔮 Run Enrichment'; }
     var summary = '✅ Enrichment complete: ' + completed + ' refreshed' + (errors ? ', ' + errors + ' failed' : '') + '.';
     showDetailToast(summary, errors ? 'warning' : 'success', 4000);
+  }
+
+  function buildStreetViewCoverUrl(lat, lng, apiKey) {
+    if (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng)) || !apiKey) return '';
+    return 'https://maps.googleapis.com/maps/api/streetview?size=1280x720&location=' + encodeURIComponent(String(lat) + ',' + String(lng)) + '&key=' + encodeURIComponent(apiKey);
+  }
+
+  function buildPlacesCoverUrlFromDetails(details, apiKey) {
+    var safe = details && typeof details === 'object' ? details : {};
+    var photos = Array.isArray(safe.photos) ? safe.photos : [];
+    if (!photos.length || !apiKey) return '';
+    var first = photos[0] || {};
+    var ref = String(first.photo_reference || first.photoReference || '').trim();
+    if (ref) {
+      return 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=1600&photo_reference=' + encodeURIComponent(ref) + '&key=' + encodeURIComponent(apiKey);
+    }
+    var directUrl = String(first.url || first.photoUrl || safe.photoUrl || '').trim();
+    if (/^https?:\/\//i.test(directUrl)) return directUrl;
+    return '';
+  }
+
+  async function refreshCoverPhotoForDetail() {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var data = state.data;
+    var photosState = window.__detailPhotosState;
+    if (!photosState) {
+      renderPhotosPane(data, state.payload || null);
+      photosState = window.__detailPhotosState;
+    }
+    if (!photosState) {
+      showDetailToast('⚠️ Photos tab is unavailable for staging.', 'error', 2800);
+      return;
+    }
+
+    var apiKey = getDetailGoogleApiKey();
+    var openerWin = getOpenerWindow();
+    var placeId = String(data.googlePlaceId || '').trim();
+    var details = null;
+    if (placeId) {
+      try {
+        if (openerWin && typeof openerWin.getPlaceDetails === 'function') details = await openerWin.getPlaceDetails(placeId);
+        else if (typeof window.getPlaceDetails === 'function') details = await window.getPlaceDetails(placeId);
+      } catch (_err) {}
+    }
+    var coverUrl = buildPlacesCoverUrlFromDetails(details, apiKey);
+    if (!coverUrl) {
+      var coords = await resolveDetailCoordinates(data);
+      if (coords) coverUrl = buildStreetViewCoverUrl(coords.lat, coords.lng, apiKey);
+    }
+    if (!coverUrl) {
+      showDetailToast('ℹ️ No Google photo was available for this location.', 'info', 3000);
+      return;
+    }
+
+    photosState.photos.unshift(normalizePhotoRecord({
+      id: makePhotoId(),
+      url: coverUrl,
+      thumbnail: coverUrl,
+      caption: 'Auto cover refresh - ' + new Date().toLocaleDateString(),
+      source: 'google-auto-cover',
+      addedAt: toIsoNow()
+    }, 0));
+    photosState.photos = dedupeDetailPhotos(photosState.photos);
+    renderPhotoGallery();
+    markDetailFieldRefreshed(data, 'photoUrls', 'google-photo');
+    showDetailToast('📸 Cover photo staged in Photos. Click Save Photos to persist.', 'success', 3600);
   }
 
   async function resolveUserLocationForDetail() {
@@ -3433,6 +3807,7 @@
       // Update in-memory state.
       data.driveTime = display;
       data.driveTimeMeta = metaDetail;
+      markDetailFieldRefreshed(data, 'driveTime', method);
 
       // Update the card display.
       var valueEl = document.getElementById('detailDriveTimeValue');
@@ -3496,6 +3871,7 @@
     var detailPlaceKey = getLocationKey(data);
     var storedCostMeta = readPersistedCostInferenceMeta(detailPlaceKey);
     if (storedCostMeta) data.costInferenceMeta = storedCostMeta;
+    window.__detailFieldFreshnessMap = getDetailFreshnessMap(data, payload);
     var nearbyState = window.__detailNearbyState;
     if (!nearbyState || nearbyState.placeKey !== detailPlaceKey) {
       nearbyState = null;
@@ -3595,7 +3971,10 @@
 
     document.getElementById('pane-additional').innerHTML =
       renderNearbyControlsHtml() +
-      card('Nearby Attractions', '<div id="nearbyAttractionsValue">' + renderNearbyListHtml((nearbyState && nearbyState.attractions) || []) + (data.nearby && !(nearbyState && nearbyState.attractions && nearbyState.attractions.length) ? '<div class="u-text-xs-dim" style="margin-top:8px;">Saved value: ' + escapeHtml(data.nearby) + '</div>' : '') + '</div>', 'nearby');
+      card('Nearby Attractions', '<div id="nearbyAttractionsValue">' + renderNearbyListHtml((nearbyState && nearbyState.attractions) || []) + (data.nearby && !(nearbyState && nearbyState.attractions && nearbyState.attractions.length) ? '<div class="u-text-xs-dim" style="margin-top:8px;">Saved value: ' + escapeHtml(data.nearby) + '</div>' : '') + '</div>', 'nearby') +
+      renderDetailInsightsCard(data, payload);
+    renderMapPaneShell();
+    renderDetailMap(data);
     hydrateNearbyFromCacheForDetail(data);
     renderDetailInlineEditPanel();
   }
@@ -3798,6 +4177,193 @@
       : '<div style="font-size:0.75em;color:#9ca3af;margin-top:3px;">' + escapeHtml(meta.reasoning || '') + '</div>';
     var detail = '<div style="font-size:0.72em;color:#6b7280;margin-top:2px;">Source: ' + escapeHtml(sourceLabel || 'unknown') + ' • Confidence: ' + confidencePct + '%</div>';
     return base + detail;
+  }
+
+  function parseNumericRating(value) {
+    var n = Number(value);
+    return Number.isFinite(n) ? Math.max(0, Math.min(5, n)) : NaN;
+  }
+
+  function appendRatingHistory(placeKey, ratingValue) {
+    if (!placeKey || !Number.isFinite(ratingValue)) return;
+    var map = readJsonMap(DETAIL_RATING_HISTORY_KEY);
+    var history = Array.isArray(map[placeKey]) ? map[placeKey].slice() : [];
+    history.push({ value: Number(ratingValue), at: new Date().toISOString() });
+    if (history.length > 30) history = history.slice(history.length - 30);
+    map[placeKey] = history;
+    writeJsonMap(DETAIL_RATING_HISTORY_KEY, map);
+  }
+
+  function getRatingTrendForPlace(placeKey) {
+    var map = readJsonMap(DETAIL_RATING_HISTORY_KEY);
+    var history = Array.isArray(map[placeKey]) ? map[placeKey] : [];
+    if (history.length < 2) return { label: 'Insufficient refresh history', trend: 'flat', delta: 0, points: history.length };
+    var first = parseNumericRating(history[0] && history[0].value);
+    var last = parseNumericRating(history[history.length - 1] && history[history.length - 1].value);
+    if (!Number.isFinite(first) || !Number.isFinite(last)) return { label: 'Insufficient refresh history', trend: 'flat', delta: 0, points: history.length };
+    var delta = Math.round((last - first) * 100) / 100;
+    if (delta > 0.06) return { label: 'Up +' + delta.toFixed(2) + ' over ' + history.length + ' refreshes', trend: 'up', delta: delta, points: history.length };
+    if (delta < -0.06) return { label: 'Down ' + delta.toFixed(2) + ' over ' + history.length + ' refreshes', trend: 'down', delta: delta, points: history.length };
+    return { label: 'Stable over ' + history.length + ' refreshes', trend: 'flat', delta: delta, points: history.length };
+  }
+
+  function getDetailVisitRecords(data, payload) {
+    var records = [];
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem('visitedLocationRecordsV1') || '[]');
+      records = Array.isArray(parsed) ? parsed : [];
+    } catch (_err) {
+      records = [];
+    }
+    if (!records.length) return [];
+    var currentItemId = String(payload && payload.navigation && payload.navigation.currentItemId || '').trim();
+    var nameKey = String(data && data.name || '').trim().toLowerCase();
+    return records.filter(function (record) {
+      if (!record || typeof record !== 'object') return false;
+      var byId = currentItemId && String(record.locationId || '').trim() === currentItemId;
+      var byName = nameKey && String(record.locationTitle || '').trim().toLowerCase() === nameKey;
+      return !!(byId || byName);
+    });
+  }
+
+  function renderDetailInsightsCard(data, payload) {
+    var visits = getDetailVisitRecords(data, payload);
+    var sortedVisits = visits.slice().sort(function (a, b) {
+      return Date.parse(String(b && b.visitedAt || '')) - Date.parse(String(a && a.visitedAt || ''));
+    });
+    var lastVisited = sortedVisits.length ? normalizeTimestamp(sortedVisits[0].visitedAt) : '';
+    var createdAt = normalizeTimestamp((data && data.createdAt) || (payload && payload.exportedAt));
+    var daysSinceAdded = createdAt ? Math.max(0, Math.floor((Date.now() - Date.parse(createdAt)) / (1000 * 60 * 60 * 24))) : null;
+    var placeKey = getLocationKey(data || {});
+    var trend = getRatingTrendForPlace(placeKey);
+    var costConfidence = Number(data && data.costInferenceMeta && data.costInferenceMeta.confidence);
+    var costConfidenceText = Number.isFinite(costConfidence) ? (Math.round(costConfidence * 100) + '%') : 'Unknown';
+    return '<div class="card" id="detailInsightsCard">' +
+      '<div class="label">Stats &amp; Insights</div>' +
+      '<div class="detail-insights-grid" style="margin-top:8px;">' +
+      '<div class="detail-insight-item"><div class="detail-insight-label">Visit Count</div><div class="detail-insight-value">' + visits.length + '</div></div>' +
+      '<div class="detail-insight-item"><div class="detail-insight-label">Last Visited</div><div class="detail-insight-value">' + (lastVisited ? escapeHtml(new Date(lastVisited).toLocaleDateString()) : 'Never') + '</div></div>' +
+      '<div class="detail-insight-item"><div class="detail-insight-label">Days Since Added</div><div class="detail-insight-value">' + (daysSinceAdded == null ? 'Unknown' : String(daysSinceAdded)) + '</div></div>' +
+      '<div class="detail-insight-item"><div class="detail-insight-label">Rating Trend</div><div class="detail-insight-value">' + escapeHtml(trend.label) + '</div></div>' +
+      '<div class="detail-insight-item"><div class="detail-insight-label">Cost Confidence</div><div class="detail-insight-value">' + escapeHtml(costConfidenceText) + '</div></div>' +
+      '</div>' +
+      '</div>';
+  }
+
+  function ensureLeafletForDetailMap() {
+    return new Promise(function (resolve, reject) {
+      if (window.L && typeof window.L.map === 'function') {
+        resolve(window.L);
+        return;
+      }
+      if (!document.getElementById('detailLeafletCss')) {
+        var link = document.createElement('link');
+        link.id = 'detailLeafletCss';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+      var existingScript = document.getElementById('detailLeafletJs');
+      if (existingScript) {
+        existingScript.addEventListener('load', function () { resolve(window.L); }, { once: true });
+        existingScript.addEventListener('error', function () { reject(new Error('Leaflet failed to load.')); }, { once: true });
+        return;
+      }
+      var script = document.createElement('script');
+      script.id = 'detailLeafletJs';
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = function () { resolve(window.L); };
+      script.onerror = function () { reject(new Error('Leaflet failed to load.')); };
+      document.head.appendChild(script);
+    });
+  }
+
+  function getNearbyMapMarkers(nearbyState) {
+    var attractions = nearbyState && Array.isArray(nearbyState.attractions) ? nearbyState.attractions : [];
+    return attractions.map(function (a) {
+      var lat = Number(a && (a.latitude != null ? a.latitude : a.lat));
+      var lng = Number(a && (a.longitude != null ? a.longitude : a.lng));
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return {
+        name: String(a && a.name || 'Nearby location').trim() || 'Nearby location',
+        lat: lat,
+        lng: lng,
+        distanceText: String(a && a.distanceText || '').trim()
+      };
+    }).filter(Boolean);
+  }
+
+  function renderMapPaneShell() {
+    var pane = document.getElementById('pane-map');
+    if (!pane) return;
+    if (pane.dataset.mapShellReady === '1') return;
+    pane.dataset.mapShellReady = '1';
+    pane.innerHTML = '<div class="card detail-map-shell">' +
+      '<div class="label">Map View</div>' +
+      '<div id="detailMapMeta" class="detail-map-meta">Loading map...</div>' +
+      '<div id="detailLeafletMap" class="detail-map-canvas"></div>' +
+      '</div>';
+  }
+
+  async function renderDetailMap(data) {
+    renderMapPaneShell();
+    var pane = document.getElementById('pane-map');
+    var mapMeta = document.getElementById('detailMapMeta');
+    var mapEl = document.getElementById('detailLeafletMap');
+    if (!pane || !mapMeta || !mapEl) return;
+    var coords = await resolveDetailCoordinates(data || {});
+    if (!coords) {
+      mapMeta.textContent = 'Coordinates are required. Use Refresh Coordinates in Overview first.';
+      return;
+    }
+    try {
+      await ensureLeafletForDetailMap();
+    } catch (_errLeaflet) {
+      mapMeta.textContent = 'Map library could not be loaded.';
+      return;
+    }
+    if (!window.__detailLeafletMap || !window.__detailLeafletLayer || window.__detailLeafletMapEl !== mapEl) {
+      if (window.__detailLeafletMap && typeof window.__detailLeafletMap.remove === 'function') {
+        window.__detailLeafletMap.remove();
+      }
+      window.__detailLeafletMap = window.L.map(mapEl, { center: [coords.lat, coords.lng], zoom: 12 });
+      window.__detailLeafletMapEl = mapEl;
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(window.__detailLeafletMap);
+      window.__detailLeafletLayer = window.L.layerGroup().addTo(window.__detailLeafletMap);
+    }
+
+    window.__detailLeafletLayer.clearLayers();
+    var centerMarker = window.L.marker([coords.lat, coords.lng]).bindPopup('<strong>' + escapeHtml(String(data && data.name || 'Location')) + '</strong><br>Primary location');
+    centerMarker.addTo(window.__detailLeafletLayer);
+    var markers = [centerMarker];
+    var nearbyMarkers = getNearbyMapMarkers(window.__detailNearbyState);
+    nearbyMarkers.forEach(function (entry) {
+      var marker = window.L.circleMarker([entry.lat, entry.lng], {
+        radius: 7,
+        color: '#2563eb',
+        fillColor: '#60a5fa',
+        fillOpacity: 0.85,
+        weight: 2
+      }).bindPopup('<strong>' + escapeHtml(entry.name) + '</strong>' + (entry.distanceText ? '<br>' + escapeHtml(entry.distanceText) : ''));
+      marker.addTo(window.__detailLeafletLayer);
+      markers.push(marker);
+    });
+
+    if (markers.length > 1) {
+      var group = window.L.featureGroup(markers);
+      window.__detailLeafletMap.fitBounds(group.getBounds().pad(0.15), { maxZoom: 14, animate: false });
+    } else {
+      window.__detailLeafletMap.setView([coords.lat, coords.lng], 13);
+    }
+    window.setTimeout(function () {
+      if (window.__detailLeafletMap) window.__detailLeafletMap.invalidateSize();
+    }, 120);
+    mapMeta.textContent = nearbyMarkers.length
+      ? ('Showing 1 primary pin + ' + nearbyMarkers.length + ' nearby locations.')
+      : 'Showing this location pin. Refresh Nearby to plot surrounding locations.';
   }
 
   // Dev/ops helpers for backup + restore from browser storage.
@@ -4120,6 +4686,7 @@
 
     var allToggleIds = [
       'enrichToggleDescription', 'enrichToggleHours', 'enrichToggleGoogleRating',
+      'enrichToggleCoverPhoto',
       'enrichToggleCoordinates', 'enrichToggleDriveTime', 'enrichToggleNearby',
       'enrichToggleTags', 'enrichToggleCost'
     ];
@@ -4637,6 +5204,12 @@
       pane.classList.add('active');
       pane.hidden = false;
       pane.setAttribute('aria-hidden', 'false');
+    }
+    if (selectedTab && selectedTab.getAttribute('data-tab') === 'map') {
+      var detailState = window.__detailInlineEditState;
+      if (detailState && detailState.data) {
+        renderDetailMap(detailState.data);
+      }
     }
     return true;
   }
