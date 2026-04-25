@@ -435,6 +435,11 @@ test.describe('Adventure explorer in-pane details flow', () => {
       }
     });
 
+    const enrichPasteBody = plannerDetailsFrameLocator.locator('#enrichPasteBody');
+    if (!(await enrichPasteBody.isVisible())) {
+      await plannerDetailsFrameLocator.locator('#enrichPasteToggleHead').click();
+    }
+    await expect(plannerDetailsFrameLocator.locator('#enrichAutoFetchBtn')).toBeVisible();
     await plannerDetailsFrameLocator.locator('#enrichAutoFetchBtn').click();
     await expect(plannerDetailsFrameLocator.locator('#enrichAddress')).toHaveValue(/Amphitheatre Parkway/i);
     await expect(plannerDetailsFrameLocator.locator('#enrichPhone')).toHaveValue(/253-0000/);
