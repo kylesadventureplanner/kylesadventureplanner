@@ -8392,6 +8392,10 @@
   <!-- Tag System - Tag management, styling, automation -->
   <script src="JS Files/consolidated-tag-system-v7-0-141.js"></script>
 
+  <!-- Cost inference + nearby attractions systems -->
+  <script src="auto-cost-inference.js"></script>
+  <script src="nearby-attractions-finder.js"></script>
+
   <!-- Comprehensive Fix System - Global fixes, pagination, window management -->
   <script src="JS Files/consolidated-comprehensive-fix-system-v7-0-141.js"></script>
 
@@ -20369,6 +20373,167 @@ COMMON ISSUES:
     el.textContent = msg;
   }
 
+  function setAddPlaceSmartPreview(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = String(text || '');
+  }
+
+  function updateAddPlaceSmartPreview() {
+    const typeEl = document.getElementById('addPlaceInputType');
+    const valueEl = document.getElementById('addPlaceInputValue');
+    if (!typeEl || !valueEl) return;
+
+    const inputType = strVal(typeEl.value) || 'placeName';
+    const rawValue = strVal(valueEl.value);
+    const syntheticName = inputType === 'placeName' ? rawValue : '';
+    const syntheticType = inputType === 'website' ? 'business' : (inputType === 'placeUrl' ? 'point_of_interest' : 'location');
+
+    let costText = '💰 Cost: —';
+    if (typeof inferCost === 'function' && rawValue) {
+      try {
+        const result = inferCost(syntheticName, rawValue, syntheticType);
+        if (result) costText = `💰 Cost: ${result.icon || '💰'} ${result.tier} (${result.priceRange && result.priceRange.label ? result.priceRange.label : ''})`;
+      } catch (_err) {}
+    }
+
+    let tagText = '🏷️ Tags: —';
+    if (typeof getTagsForLocationText === 'function' && rawValue) {
+      try {
+        const tags = getTagsForLocationText({ name: syntheticName, description: rawValue, type: syntheticType }) || [];
+        if (tags.length) tagText = '🏷️ Tags: ' + tags.slice(0, 6).join(', ');
+      } catch (_err2) {}
+    }
+
+    setAddPlaceSmartPreview('addPlaceCostPreview', costText);
+    setAddPlaceSmartPreview('addPlaceTagPreview', tagText);
+    setAddPlaceSmartPreview('addPlaceNearbyPreview', '📍 Nearby: refreshes after place details resolve');
+  }
+
+  function applyAddPlacePrefill(prefill) {
+    const payload = prefill && typeof prefill === 'object' ? prefill : {};
+    const name = strVal(payload.name);
+    const googleUrl = strVal(payload.googleUrl);
+
+    const typeEl = document.getElementById('addPlaceInputType');
+    const valueEl = document.getElementById('addPlaceInputValue');
+    if (typeEl && valueEl) {
+      if (googleUrl) {
+        typeEl.value = 'placeUrl';
+        valueEl.value = googleUrl;
+      } else if (name) {
+        typeEl.value = 'placeName';
+        valueEl.value = name;
+      }
+      updateAddPlaceSmartPreview();
+      valueEl.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    }
+
+    // Fallback for alternate add-place modal variants still present in this file.
+    const nameEl = document.getElementById('addPlaceName');
+    const urlEl = document.getElementById('addPlaceGoogleUrl');
+    if (nameEl && name) nameEl.value = name;
+    if (urlEl && googleUrl) urlEl.value = googleUrl;
+    return Boolean((nameEl && name) || (urlEl && googleUrl));
+  }
+
+  window.prefillAddPlaceFromNearby = function (prefill) {
+    window.__pendingAddPlacePrefill = prefill && typeof prefill === 'object' ? prefill : null;
+    if (applyAddPlacePrefill(window.__pendingAddPlacePrefill)) {
+      window.__pendingAddPlacePrefill = null;
+      return true;
+    }
+    // Modal creation can be async in some legacy branches; retry shortly.
+    setTimeout(function () {
+      if (window.__pendingAddPlacePrefill && applyAddPlacePrefill(window.__pendingAddPlacePrefill)) {
+        window.__pendingAddPlacePrefill = null;
+      }
+    }, 120);
+    return false;
+  };
+
+  async function buildNearbySummaryForNewPlace(details) {
+    if (!window.nearbyAttractionsFinder) return '';
+    const coords = details && details.coordinates;
+    if (!coords || !Number.isFinite(Number(coords.lat)) || !Number.isFinite(Number(coords.lng))) return '';
+    try {
+      const appLocations = (Array.isArray(window.adventuresData) ? window.adventuresData : []).map((row, idx) => {
+        const values = row && row.values && row.values[0];
+        if (!Array.isArray(values)) return null;
+        return {
+          id: row.rowId || ('row_' + idx),
+          name: strVal(values[0]),
+          latitude: Number(values[window.getColumnIndexByName ? window.getColumnIndexByName('Latitude', ['Lat', 'GPS Latitude']) : -1]),
+          longitude: Number(values[window.getColumnIndexByName ? window.getColumnIndexByName('Longitude', ['Lng', 'GPS Longitude']) : -1]),
+          description: strVal(values[16])
+        };
+      }).filter(Boolean);
+
+      window.nearbyAttractionsFinder.setAppLocations(appLocations);
+      if (window.GOOGLE_PLACES_API_KEY) {
+        window.nearbyAttractionsFinder.config.googlePlacesApiKey = String(window.GOOGLE_PLACES_API_KEY);
+      }
+      const attractions = await window.nearbyAttractionsFinder.getFormattedNearbyAttractions(
+        Number(coords.lat),
+        Number(coords.lng),
+        strVal(details && details.name)
+      );
+      if (!attractions.length) return '';
+      return attractions.slice(0, 6).map((a) => `${a.name} (${a.distanceText || ''}, ${a.driveTimeText || ''})`).join('; ');
+    } catch (_err) {
+      return '';
+    }
+  }
+
+  function applySmartTagsAndCostToRow(row, details) {
+    const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
+    const setByName = (names, value) => {
+      if (!Array.isArray(names) || !names.length) return false;
+      if (!Array.isArray(row)) return false;
+      if (!schemaColumns.length) return false;
+      const normalized = names.map((n) => String(n || '').trim().toLowerCase()).filter(Boolean);
+      let idx = -1;
+      for (let i = 0; i < schemaColumns.length; i += 1) {
+        const col = String(schemaColumns[i] || '').trim().toLowerCase();
+        if (normalized.includes(col)) { idx = i; break; }
+      }
+      if (idx < 0 || idx >= row.length) return false;
+      row[idx] = value == null ? '' : String(value);
+      return true;
+    };
+
+    if (typeof getTagsForLocationText === 'function') {
+      try {
+        let tags = getTagsForLocationText({
+          name: strVal(details && details.name),
+          description: strVal(details && details.description),
+          type: strVal(details && details.businessType),
+          city: strVal(details && details.city),
+          state: strVal(details && details.state)
+        }) || [];
+        if (typeof normalizeTags === 'function') tags = normalizeTags(tags);
+        if (window.tagDeduplicator && typeof window.tagDeduplicator.deduplicate === 'function') tags = window.tagDeduplicator.deduplicate(tags);
+        const csv = Array.isArray(tags) ? tags.slice(0, 12).join(', ') : '';
+        if (csv) {
+          setByName(['Tags'], csv);
+          if (row.length > 3) row[3] = csv;
+        }
+      } catch (_errTags) {}
+    }
+
+    if (typeof inferCost === 'function') {
+      try {
+        const cost = inferCost(strVal(details && details.name), strVal(details && details.description), strVal(details && details.businessType));
+        if (cost) {
+          const display = `${cost.icon || '💰'} ${cost.tier} (${cost.priceRange && cost.priceRange.label ? cost.priceRange.label : ''})`;
+          setByName(['Cost'], display);
+          if (row.length > 14) row[14] = display;
+        }
+      } catch (_errCost) {}
+    }
+  }
+
   window.openAddPlaceModal = function () {
     console.log('🚀 openAddPlaceModal() CALLED - Starting to open Add New Place modal');
     console.log('📍 Stack trace:', new Error().stack);
@@ -20405,6 +20570,9 @@ COMMON ISSUES:
 
     if (status) status.style.display = "none";
     if (input) input.value = "";
+    setAddPlaceSmartPreview('addPlaceCostPreview', '💰 Cost: —');
+    setAddPlaceSmartPreview('addPlaceTagPreview', '🏷️ Tags: —');
+    setAddPlaceSmartPreview('addPlaceNearbyPreview', '📍 Nearby: refreshes after place details resolve');
     if (modal) {
       console.log('✓ Setting modal to display flex');
       modal.style.display = "flex";
@@ -20419,6 +20587,23 @@ COMMON ISSUES:
       console.log('✓ Setting backdrop to display block');
       backdrop.style.display = "block";
       backdrop.style.zIndex = "2150";
+    }
+
+    const typeEl = document.getElementById('addPlaceInputType');
+    const valueEl = document.getElementById('addPlaceInputValue');
+    if (typeEl && !typeEl.dataset.smartPreviewBound) {
+      typeEl.addEventListener('change', updateAddPlaceSmartPreview);
+      typeEl.dataset.smartPreviewBound = '1';
+    }
+    if (valueEl && !valueEl.dataset.smartPreviewBound) {
+      valueEl.addEventListener('input', updateAddPlaceSmartPreview);
+      valueEl.dataset.smartPreviewBound = '1';
+    }
+
+    updateAddPlaceSmartPreview();
+    if (window.__pendingAddPlacePrefill) {
+      applyAddPlacePrefill(window.__pendingAddPlacePrefill);
+      window.__pendingAddPlacePrefill = null;
     }
 
     console.log('✅ Add Place modal opened successfully - FUNCTION COMPLETE');
@@ -20438,6 +20623,10 @@ COMMON ISSUES:
     if (backdrop) {
       backdrop.style.display = "none";
     }
+
+    setAddPlaceSmartPreview('addPlaceCostPreview', '💰 Cost: —');
+    setAddPlaceSmartPreview('addPlaceTagPreview', '🏷️ Tags: —');
+    setAddPlaceSmartPreview('addPlaceNearbyPreview', '📍 Nearby: refreshes after place details resolve');
 
     console.log('✅ Add Place modal closed');
   };
@@ -20512,6 +20701,25 @@ COMMON ISSUES:
 
         setAddPlaceStatus("📝 Building row with Google data...", "info");
         const row = buildExcelRow(placeId, details);
+        applySmartTagsAndCostToRow(row, details);
+
+        setAddPlaceStatus("🎯 Finding nearby attractions and drive times...", "info");
+        const nearbySummary = await buildNearbySummaryForNewPlace(details);
+        if (nearbySummary) {
+          const schemaColumns = Array.isArray(window.__excelSchemaColumns) ? window.__excelSchemaColumns : [];
+          let nearbySet = false;
+          if (schemaColumns.length) {
+            const idx = schemaColumns.findIndex((c) => String(c || '').trim().toLowerCase() === 'nearby attractions' || String(c || '').trim().toLowerCase() === 'nearby');
+            if (idx >= 0 && idx < row.length) {
+              row[idx] = nearbySummary;
+              nearbySet = true;
+            }
+          }
+          if (!nearbySet && row.length > 17) row[17] = nearbySummary;
+          setAddPlaceSmartPreview('addPlaceNearbyPreview', `📍 Nearby: ${nearbySummary.slice(0, 140)}${nearbySummary.length > 140 ? '…' : ''}`);
+        } else {
+          setAddPlaceSmartPreview('addPlaceNearbyPreview', '📍 Nearby: no nearby matches detected');
+        }
 
         // Validate row has required data
         if (!strVal(row[0])) {
@@ -20752,6 +20960,13 @@ COMMON ISSUES:
 
       <label for="addPlaceInputValue" style="font-size: 12px; font-weight: 600; color: #374151;">Value</label>
       <input id="addPlaceInputValue" class="filter-input" type="text" placeholder="Enter one value to resolve the place" />
+
+      <div style="display:grid; gap:6px; margin-top: 2px; padding: 10px; border: 1px solid #dbeafe; border-radius: 8px; background: #f8fbff;">
+        <div style="font-size:12px; font-weight:700; color:#1d4ed8;">Smart Enrichment Preview</div>
+        <div id="addPlaceCostPreview" style="font-size:12px; color:#334155;">💰 Cost: —</div>
+        <div id="addPlaceTagPreview" style="font-size:12px; color:#334155;">🏷️ Tags: —</div>
+        <div id="addPlaceNearbyPreview" style="font-size:12px; color:#334155;">📍 Nearby: refreshes after place details resolve</div>
+      </div>
 
       <div id="addPlaceStatus" style="display: none; padding: 10px 12px; border-radius: 8px; font-size: 12px;"></div>
     </div>
@@ -21471,7 +21686,11 @@ COMMON ISSUES:
     // ============================================================
     // ADD NEW PLACE MODAL - PROPERLY FIXED
     // ============================================================
+    const __existingOpenAddPlaceModal = window.openAddPlaceModal;
     window.openAddPlaceModal = function() {
+      if (typeof __existingOpenAddPlaceModal === 'function') {
+        return __existingOpenAddPlaceModal.apply(this, arguments);
+      }
       console.log('🆕 Opening Add New Place modal');
 
       const backdrop = document.createElement('div');

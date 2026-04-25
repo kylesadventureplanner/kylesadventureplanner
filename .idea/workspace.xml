@@ -5,12 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="43354b9f-d93e-46ed-bfea-f51ba02c0fa2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_COMPLETE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_IMPLEMENTATION.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NEARBY_ATTRACTIONS_QUICK_REFERENCE.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nearby-attractions-demo.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/nearby-attractions-finder.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/AUTO_COST_INFERENCE_GUIDE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/auto-cost-demo.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/auto-cost-inference-demo.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/auto-cost-inference.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" beforeDir="false" afterPath="$PROJECT_DIR$/HTML Files/adventure-details-window.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -100,7 +102,7 @@
       <workItem from="1776447145602" duration="31796000" />
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
-      <workItem from="1777064709892" duration="6803000" />
+      <workItem from="1777064709892" duration="8932000" />
     </task>
     <servers />
   </component>

@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Adventure Details</title>
   <script src="../JS Files/mobile-view-persistence-bootstrap.js"></script>
+  <script src="../JS Files/consolidated-tag-system-v7-0-141.js"></script>
+  <script src="../auto-cost-inference.js"></script>
+  <script src="../nearby-attractions-finder.js"></script>
   <!-- Canonical stylesheet order: tokens -> components -> utilities -> page -->
   <link rel="stylesheet" href="../CSS/design-tokens.css">
   <link rel="stylesheet" href="../CSS/components.css">
@@ -1723,6 +1726,7 @@
       '<div id="tmSuggestions" class="tm-suggestions"></div>' +
       '<div class="tm-actions">' +
       '<button id="tmRecommendApplyBtn" type="button" class="tm-btn primary" title="Review AI-recommended tags and apply them">✨ Apply Recommended Tags</button>' +
+      '<button id="tmRefreshAutoBtn" type="button" class="tm-btn" title="Re-run smart tag inference for this location">🔄 Refresh Tag Suggestions</button>' +
       '<button id="tmSaveBtn" type="button" class="tm-btn primary">Save Tags</button>' +
       '<button id="tmResetBtn" type="button" class="tm-btn">Reset to Source Tags</button>' +
       '<button id="tmClearBtn" type="button" class="tm-btn danger">Clear All</button>' +
@@ -2490,6 +2494,241 @@
 
   // ── End Photos Management ─────────────────────────────────────
 
+  function getDetailGoogleApiKey() {
+    try {
+      if (window.GOOGLE_PLACES_API_KEY) return String(window.GOOGLE_PLACES_API_KEY).trim();
+    } catch (_errA) {}
+    try {
+      var openerWin = getOpenerWindow();
+      if (openerWin && openerWin.GOOGLE_PLACES_API_KEY) return String(openerWin.GOOGLE_PLACES_API_KEY).trim();
+    } catch (_errB) {}
+    return '';
+  }
+
+  function parseCoordsFromGoogleUrl(url) {
+    var raw = String(url || '').trim();
+    if (!raw) return null;
+    var atMatch = raw.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (atMatch) return { lat: Number(atMatch[1]), lng: Number(atMatch[2]), source: 'google-url-@' };
+    var qMatch = raw.match(/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i);
+    if (qMatch) return { lat: Number(qMatch[1]), lng: Number(qMatch[2]), source: 'google-url-q' };
+    return null;
+  }
+
+  async function geocodeDetailQuery(query) {
+    var key = getDetailGoogleApiKey();
+    if (!key) return null;
+    var q = String(query || '').trim();
+    if (!q) return null;
+    try {
+      var url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + encodeURIComponent(q) + '&key=' + encodeURIComponent(key);
+      var res = await fetch(url, { method: 'GET' });
+      if (!res.ok) return null;
+      var json = await res.json();
+      var top = json && Array.isArray(json.results) ? json.results[0] : null;
+      var loc = top && top.geometry && top.geometry.location;
+      if (!loc || typeof loc.lat !== 'number' || typeof loc.lng !== 'number') return null;
+      return { lat: Number(loc.lat), lng: Number(loc.lng), source: 'geocode' };
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  async function resolveDetailCoordinates(data) {
+    var lat = Number(data && data.latitude);
+    var lng = Number(data && data.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat: lat, lng: lng, source: 'data-fields' };
+
+    var fromGoogleUrl = parseCoordsFromGoogleUrl(data && data.googleUrl);
+    if (fromGoogleUrl) return fromGoogleUrl;
+
+    try {
+      var openerWin = getOpenerWindow();
+      if (openerWin && typeof openerWin.getPlaceDetails === 'function' && data && data.googlePlaceId) {
+        var details = await openerWin.getPlaceDetails(String(data.googlePlaceId).trim());
+        if (details && details.coordinates && Number.isFinite(Number(details.coordinates.lat)) && Number.isFinite(Number(details.coordinates.lng))) {
+          return { lat: Number(details.coordinates.lat), lng: Number(details.coordinates.lng), source: 'opener-place-details' };
+        }
+      }
+    } catch (_errOpener) {}
+
+    var query = [data && data.address, data && data.city, data && data.state].map(function (v) { return String(v || '').trim(); }).filter(Boolean).join(', ');
+    if (!query) query = String(data && data.name || '').trim();
+    return await geocodeDetailQuery(query);
+  }
+
+  function getNearbyFinderAppLocations() {
+    var openerWin = getOpenerWindow();
+    if (!openerWin || !Array.isArray(openerWin.adventuresData)) return [];
+    var out = [];
+    var latIdx = -1;
+    var lngIdx = -1;
+    try {
+      if (typeof openerWin.getColumnIndexByName === 'function') {
+        latIdx = Number(openerWin.getColumnIndexByName('Latitude', ['Lat', 'GPS Latitude']));
+        lngIdx = Number(openerWin.getColumnIndexByName('Longitude', ['Lng', 'GPS Longitude']));
+      }
+    } catch (_err) {}
+
+    openerWin.adventuresData.forEach(function (row, idx) {
+      var values = row && row.values && row.values[0];
+      if (!Array.isArray(values)) return;
+      var item = {
+        id: row.rowId || ('row_' + idx),
+        __sourceIndex: idx,
+        name: String(values[0] || '').trim(),
+        googlePlaceId: String(values[1] || '').trim(),
+        tags: String(values[3] || '').trim(),
+        state: String(values[9] || '').trim(),
+        city: String(values[10] || '').trim(),
+        address: String(values[11] || '').trim(),
+        description: String(values[16] || '').trim()
+      };
+      if (latIdx >= 0 && lngIdx >= 0 && latIdx < values.length && lngIdx < values.length) {
+        var lat = Number(values[latIdx]);
+        var lng = Number(values[lngIdx]);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          item.latitude = lat;
+          item.longitude = lng;
+        }
+      }
+      if (item.name) out.push(item);
+    });
+    return out;
+  }
+
+  function buildNearbyDisplayFromAttractions(attractions) {
+    if (!Array.isArray(attractions) || !attractions.length) return '';
+    return attractions.map(function (a) {
+      return a.name + ' (' + (a.distanceText || '') + ', ' + (a.driveTimeText || '') + ')';
+    }).join('; ');
+  }
+
+  function renderNearbyListHtml(attractions) {
+    if (!Array.isArray(attractions) || !attractions.length) {
+      return '<span class="empty">No nearby attractions detected yet. Click Refresh Nearby.</span>';
+    }
+    return '<div class="u-stack-gap-sm">' + attractions.slice(0, 12).map(function (a) {
+      var exists = !!(a.exists && a.existingLocation);
+      var status = exists ? '✅ In App' : '🔗 Google';
+      var actionHtml = '';
+      if (exists) {
+        var sourceIndex = Number(a.existingLocation.__sourceIndex);
+        actionHtml = '<button type="button" class="tm-btn" data-nearby-nav-source-index="' + (Number.isInteger(sourceIndex) ? sourceIndex : -1) + '">View Details</button>';
+      } else {
+        var addNameAttr = String(a.name || '').replace(/"/g, '&quot;');
+        var addGoogleUrlAttr = String(a.googleUrl || '').replace(/"/g, '&quot;');
+        actionHtml = '<a class="tm-btn" href="' + escapeHtml(a.googleUrl || '#') + '" target="_blank" rel="noopener">View on Google</a>' +
+          '<button type="button" class="tm-btn primary" data-nearby-quick-add="1" data-nearby-name="' + addNameAttr + '" data-nearby-google-url="' + addGoogleUrlAttr + '">➕ Add to App</button>';
+      }
+      return '<div class="card" style="margin:0;">' +
+        '<div class="label">' + escapeHtml(a.name || 'Nearby location') + ' <span class="u-text-xs-dim">' + status + '</span></div>' +
+        '<div class="value">📍 ' + escapeHtml(a.distanceText || '—') + ' &nbsp; 🚗 ' + escapeHtml(a.driveTimeText || '—') + (a.rating ? ' &nbsp; ⭐ ' + escapeHtml(Number(a.rating).toFixed(1)) : '') + '</div>' +
+        (a.description ? '<div class="u-text-xs-dim" style="margin-top:4px;">' + escapeHtml(a.description) + '</div>' : '') +
+        '<div class="tm-actions" style="margin-top:8px;">' + actionHtml + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  async function refreshNearbyAttractionsForDetail(forceSync) {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var data = state.data;
+    var btn = document.getElementById('refreshNearbyBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
+    try {
+      if (!window.nearbyAttractionsFinder) {
+        showDetailToast('⚠️ Nearby system is not loaded.', 'error', 2800);
+        return;
+      }
+      window.nearbyAttractionsFinder.setAppLocations(getNearbyFinderAppLocations());
+      window.nearbyAttractionsFinder.config.googlePlacesApiKey = getDetailGoogleApiKey() || null;
+
+      var coords = await resolveDetailCoordinates(data);
+      if (!coords) {
+        showDetailToast('⚠️ Could not resolve coordinates for this location.', 'info', 3200);
+        return;
+      }
+
+      var attractions = await window.nearbyAttractionsFinder.getFormattedNearbyAttractions(coords.lat, coords.lng, data.name || 'Location');
+      window.__detailNearbyState = { placeKey: getLocationKey(data), center: coords, attractions: attractions, updatedAt: Date.now() };
+
+      var nearbyText = buildNearbyDisplayFromAttractions(attractions);
+      data.nearby = nearbyText;
+      var pane = document.getElementById('nearbyAttractionsValue');
+      if (pane) pane.innerHTML = renderNearbyListHtml(attractions);
+
+      if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { nearby: nearbyText }, 'detail-nearby-refresh');
+      showDetailToast('✅ Nearby attractions refreshed.', 'success', 2600);
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh nearby attractions right now.', 'error', 3200);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Nearby'; }
+    }
+  }
+
+  function applyAutoTagRefresh() {
+    var state = window.__detailTagState;
+    if (!state || !state.data) return;
+    var btn = document.getElementById('tmRefreshAutoBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
+    try {
+      var recommended = [];
+      if (typeof getTagsForLocationText === 'function') recommended = getTagsForLocationText(state.data) || [];
+      else recommended = buildTagRecommendations(state.data || {}, state.tags || []);
+
+      var merged = uniqueTags([].concat(state.tags || [], recommended || []));
+      if (typeof normalizeTags === 'function') merged = uniqueTags(normalizeTags(merged));
+      if (window.tagDeduplicator && typeof window.tagDeduplicator.deduplicate === 'function') {
+        merged = uniqueTags(window.tagDeduplicator.deduplicate(merged));
+      }
+      state.tags = merged;
+      syncTagManagementUi();
+      setTagStatus('Auto-refresh complete. Click Save Tags to persist updates.', false);
+      showDetailToast('✅ Tag recommendations refreshed.', 'success', 2400);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Tag Suggestions'; }
+    }
+  }
+
+  async function refreshCostInferenceForDetail(forceSync) {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var btn = document.getElementById('refreshCostBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
+    try {
+      var data = state.data;
+      if (typeof inferCost !== 'function') {
+        showDetailToast('⚠️ Cost system is not loaded.', 'error', 2800);
+        return;
+      }
+      var result = inferCost(data.name || '', data.description || '', data.tags || '');
+      if (!result) return;
+      var display = (result.icon || '💰') + ' ' + result.tier + ' (' + (result.priceRange && result.priceRange.label ? result.priceRange.label : '') + ')';
+      data.cost = display;
+      var costValue = document.getElementById('detailCostValue');
+      if (costValue) costValue.innerHTML = escapeHtml(display);
+      if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { cost: display }, 'detail-cost-refresh');
+      showDetailToast('✅ Cost estimate refreshed.', 'success', 2400);
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh cost estimate right now.', 'error', 3200);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Refresh Cost'; }
+    }
+  }
+
+  function navigateToNearbySourceIndex(sourceIndex) {
+    var idx = Number(sourceIndex);
+    if (!Number.isInteger(idx) || idx < 0) return;
+    var payload = fromOpenerBySourceIndex(idx);
+    if (!payload || !payload.data) {
+      showDetailToast('⚠️ Could not open that location in this tab.', 'error', 2800);
+      return;
+    }
+    render(payload);
+    activateTab('overview');
+  }
+
   function render(payload) {
     var data = payload && payload.data ? payload.data : null;
     if (!data) {
@@ -2505,6 +2744,12 @@
     var sourceTagList = parseTagCsv(data.tags);
     var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data), data);
     var tagList = uniqueTags([].concat(sourceTagList, storedTagList));
+    var detailPlaceKey = getLocationKey(data);
+    var nearbyState = window.__detailNearbyState;
+    if (!nearbyState || nearbyState.placeKey !== detailPlaceKey) {
+      nearbyState = null;
+      window.__detailNearbyState = null;
+    }
 
     var directionsUrl = buildDetailDirectionsUrl(data);
     var googleViewUrl = buildDetailMapsSearchUrl(data) || String(data.googleUrl || '').trim() || directionsUrl || '';
@@ -2565,7 +2810,7 @@
       (isNatureSource ? card('Duration', data.activityDuration, 'activityDuration') : '') +
       (isNatureSource ? card('Difficulty', data.difficulty, 'difficulty') : '') +
       (isNatureSource ? card('Trail Length', data.trailLength, 'trailLength') : '') +
-      card('Cost', data.cost, 'cost') +
+      card('Cost', '<span id="detailCostValue">' + escapeHtml(data.cost || '') + '</span><div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshCostBtn" class="tm-btn">🔄 Refresh Cost</button></div>', 'cost') +
       card('Google Rating', data.googleRating, 'googleRating') +
       card('My Rating', data.myRating, 'myRating') +
       '</div>' +
@@ -2596,7 +2841,11 @@
       card('More Links', data.links2 ? '<a href="' + data.links2 + '" target="_blank" rel="noopener">Open Link</a>' : '', 'links2') +
       '</div>';
 
-    document.getElementById('pane-additional').innerHTML = card('Nearby Attractions', data.nearby, 'nearby');
+    document.getElementById('pane-additional').innerHTML =
+      '<div class="tm-actions" style="margin:0 0 8px 0;">' +
+      '<button type="button" id="refreshNearbyBtn" class="tm-btn">🔄 Refresh Nearby</button>' +
+      '</div>' +
+      card('Nearby Attractions', '<div id="nearbyAttractionsValue">' + renderNearbyListHtml((nearbyState && nearbyState.attractions) || []) + (data.nearby && !(nearbyState && nearbyState.attractions && nearbyState.attractions.length) ? '<div class="u-text-xs-dim" style="margin-top:8px;">Saved value: ' + escapeHtml(data.nearby) + '</div>' : '') + '</div>', 'nearby');
     renderDetailInlineEditPanel();
   }
 
@@ -3244,7 +3493,7 @@
             : 'Opened from Location Details.'
         });
         return true;
-      } catch (_error) {
+      } catch (error) {
         showDetailToast('⚠️ Could not open the visit log workflow.', 'error', 3200);
         return false;
       }
@@ -3484,6 +3733,11 @@
         return;
       }
 
+      if (closestFromEvent(e, '#tmRefreshAutoBtn')) {
+        applyAutoTagRefresh();
+        return;
+      }
+
       if (closestFromEvent(e, '#tmCopyDebugBtn')) {
         copyLastTagSaveDebug().then(function () {
           showDetailToast('📋 Tag save debug copied to clipboard.', 'info', 2200);
@@ -3508,6 +3762,40 @@
         syncTagManagementUi();
         setTagStatus('Reset to source tags. Click Save Tags to persist.', false);
         refreshTagSaveDebugUi(window.__lastTagSaveDebug);
+        return;
+      }
+
+      if (closestFromEvent(e, '#refreshCostBtn')) {
+        refreshCostInferenceForDetail(true);
+        return;
+      }
+
+      if (closestFromEvent(e, '#refreshNearbyBtn')) {
+        refreshNearbyAttractionsForDetail(true);
+        return;
+      }
+
+      var nearbyNavBtn = closestFromEvent(e, '[data-nearby-nav-source-index]');
+      if (nearbyNavBtn) {
+        navigateToNearbySourceIndex(nearbyNavBtn.getAttribute('data-nearby-nav-source-index'));
+        return;
+      }
+
+      if (closestFromEvent(e, '[data-nearby-quick-add="1"]')) {
+        var nearbyAddBtn = closestFromEvent(e, '[data-nearby-quick-add="1"]');
+        var nearbyName = nearbyAddBtn ? String(nearbyAddBtn.getAttribute('data-nearby-name') || '').trim() : '';
+        var nearbyGoogleUrl = nearbyAddBtn ? String(nearbyAddBtn.getAttribute('data-nearby-google-url') || '').trim() : '';
+        var openerWin = getOpenerWindow();
+        if (openerWin && typeof openerWin.openAddPlaceModal === 'function') {
+          openerWin.openAddPlaceModal();
+          if (typeof openerWin.prefillAddPlaceFromNearby === 'function') {
+            openerWin.prefillAddPlaceFromNearby({ name: nearbyName, googleUrl: nearbyGoogleUrl });
+          }
+          showDetailToast('➕ Opened Add Place flow in Adventure Planner.', 'success', 2600);
+        } else {
+          showDetailToast('⚠️ Add Place flow is unavailable from this context.', 'info', 3000);
+        }
+        return;
       }
 
       var removeNoteBtn = closestFromEvent(e, '.dnm-remove');

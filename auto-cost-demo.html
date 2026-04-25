@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto-Cost Inference Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+      color: #111827;
+      font-size: 18px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+    }
+    .cost-display {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102,126,234,0.3); }
+    .example-card {
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: all 0.2s;
+    }
+    .example-card:hover { border-color: #667eea; background: #f9fafb; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .info-box {
+      background: #eff6ff;
+      border-left: 4px solid #667eea;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1e40af;
+      margin: 15px 0;
+    }
+    .tier-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px 0; }
+    .tier-box {
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h2>💰 Auto-Cost Inference Engine</h2>
+      <p style="color: #6b7280; margin-bottom: 15px;">
+        Type location details to automatically infer cost tier. The system analyzes name, type, and description to suggest pricing.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>📝 Add New Location</h2>
+      <form id="locationForm">
+        <div class="form-group">
+          <label class="form-label">Location Name *</label>
+          <input type="text" id="locationName" class="form-input" placeholder="e.g., Luigi's Fine Dining" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Location Type</label>
+          <select id="type" class="form-select">
+            <option value="">Select type...</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="cafe">Cafe</option>
+            <option value="hiking trail">Hiking Trail</option>
+            <option value="museum">Museum</option>
+            <option value="park">Park</option>
+            <option value="hotel">Hotel</option>
+            <option value="spa">Spa</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="description" class="form-textarea" placeholder="Describe the location..."></textarea>
+        </div>
+
+        <label class="form-label">💰 Estimated Cost (Auto-Filled)</label>
+        <div class="cost-display" id="costDisplay">— Enter details</div>
+        <input type="hidden" id="cost">
+
+        <button type="submit" class="btn">✨ Save Location</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>🎯 Try Examples</h2>
+      <div class="grid">
+        <div class="example-card" onclick="load('Central Park', 'park', 'Free public park with hiking')">🏞️ Central Park</div>
+        <div class="example-card" onclick="load('Luigi Pizzeria', 'restaurant', 'Casual affordable Italian')">🍕 Pizzeria</div>
+        <div class="example-card" onclick="load('Met Museum', 'museum', 'Fine art upscale museum')">🎨 Museum</div>
+        <div class="example-card" onclick="load('Michelin Star', 'restaurant', 'Fine dining Michelin')">👑 Luxury</div>
+        <div class="example-card" onclick="load('Backpacker Hostel', 'hotel', 'Budget cheap hostel')">🏨 Hostel</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💡 Cost Tiers</h2>
+      <div class="tier-grid">
+        <div class="tier-box">🆓 Free</div>
+        <div class="tier-box">💵 Budget</div>
+        <div class="tier-box">💳 Mid-Range</div>
+        <div class="tier-box">🥂 Upscale</div>
+        <div class="tier-box">👑 Luxury</div>
+      </div>
+      <p style="color: #6b7280; font-size: 13px;">
+        Auto-inferred based on keywords in name, type, and description.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>📚 Integration</h2>
+      <pre style="background: #1f2937; color: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px;">// Setup auto-fill
+setupAutoCostFill({
+  locationNameFieldId: 'locationName',
+  descriptionFieldId: 'description',
+  typeFieldId: 'type',
+  costFieldId: 'cost'
+});
+
+// Manual inference
+const cost = inferCost('Luigi\'s', 'Italian restaurant', 'restaurant');
+console.log(cost.tier); // 'Budget-Friendly'</pre>
+    </div>
+  </div>
+
+  <script src="/auto-cost-inference.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      setupAutoCostFill({
+        locationNameFieldId: 'locationName',
+        descriptionFieldId: 'description',
+        typeFieldId: 'type',
+        costFieldId: 'cost'
+      });
+
+      // Update on input
+      ['locationName', 'description', 'type'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => updateDisplay());
+        document.getElementById(id).addEventListener('input', () => updateDisplay());
+      });
+
+      // Form submit
+      document.getElementById('locationForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const cost = getCostResult('cost');
+        alert('💾 Location saved!\nCost: ' + (cost?.tier || 'N/A'));
+        document.getElementById('locationForm').reset();
+        updateDisplay();
+      });
+    });
+
+    function load(name, type, desc) {
+      document.getElementById('locationName').value = name;
+      document.getElementById('type').value = type;
+      document.getElementById('description').value = desc;
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      const name = document.getElementById('locationName').value;
+      const desc = document.getElementById('description').value;
+      const type = document.getElementById('type').value;
+
+      if (!name && !desc && !type) {
+        document.getElementById('costDisplay').textContent = '— Enter details';
+        return;
+      }
+
+      const cost = inferCost(name, desc, type);
+      document.getElementById('costDisplay').textContent = `${cost.icon} ${cost.tier} (${cost.priceRange.label})`;
+    }
+  </script>
+</body>
+</html>
+
