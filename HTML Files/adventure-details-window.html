@@ -212,6 +212,36 @@
     @media (max-width: 760px) {
       .detail-inline-edit-grid { grid-template-columns: 1fr; }
     }
+
+    /* ── Smart Enrich Toggle Sliders ───────────────────────── */
+    .smart-enrich-body { padding: 0 14px 12px; }
+    .enrich-toggle-all-row { display: flex; gap: 8px; padding: 10px 0 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 6px; }
+    .enrich-section-label-sm { font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: .05em; text-transform: uppercase; padding: 8px 0 2px; }
+    .enrich-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f1f5f9; gap: 12px; }
+    .enrich-toggle-row:last-child { border-bottom: none; }
+    .enrich-toggle-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .enrich-toggle-icon { font-size: 16px; width: 24px; text-align: center; flex-shrink: 0; }
+    .enrich-toggle-text { display: flex; flex-direction: column; }
+    .enrich-toggle-name { font-size: 13px; font-weight: 600; color: #1f2937; }
+    .enrich-toggle-hint { font-size: 11px; color: #9ca3af; margin-top: 1px; }
+    /* iOS-style toggle switch */
+    .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-knob { position: absolute; cursor: pointer; inset: 0; background: #cbd5e1; border-radius: 24px; transition: background .25s; }
+    .toggle-knob:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: transform .25s; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+    .toggle-switch input:checked ~ .toggle-knob { background: #2563eb; }
+    .toggle-switch input:checked ~ .toggle-knob:before { transform: translateX(20px); }
+    .enrich-collapsible-head { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 8px 0; font-size: 13px; font-weight: 600; color: #374151; user-select: none; border-top: 1px solid #e2e8f0; margin-top: 6px; }
+    .enrich-collapsible-body { display: none; padding-top: 4px; }
+    .enrich-collapsible-body.open { display: block; }
+    .enrich-run-progress { margin: 8px 0; font-size: 12px; color: #4b5563; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; display: none; }
+    .enrich-run-progress.visible { display: block; }
+    .enrich-progress-item { padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+    .enrich-progress-item .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+    .enrich-progress-item.running .status-dot { background: #3b82f6; animation: pulse .8s ease-in-out infinite; }
+    .enrich-progress-item.done .status-dot { background: #10b981; }
+    .enrich-progress-item.error .status-dot { background: #ef4444; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
   </style>
 </head>
 <body>
@@ -266,8 +296,8 @@
       🔗 Add Links
     </button>
 
-    <button type="button" class="ab-btn" id="abEnrichBtn" title="Paste free text to enrich fields">
-      📝 Enrich
+    <button type="button" class="ab-btn" id="abEnrichBtn" title="Smart refresh: re-enrich selected fields">
+      🔮 Smart Refresh
     </button>
 
     <button type="button" class="ab-btn" id="abRefreshDriveTimeBtn" title="Recalculate drive time from your current location">
@@ -308,31 +338,147 @@
   </div>
   <div id="enrichModal" class="enrich-modal" role="dialog" aria-modal="true" aria-labelledby="enrichModalTitle">
     <div class="enrich-head">
-      <div id="enrichModalTitle" class="enrich-title">📝 Enrich Location Details</div>
+      <div id="enrichModalTitle" class="enrich-title">🔮 Smart Refresh &amp; Enrich</div>
       <button id="enrichCloseBtn" type="button" class="auth-btn">Close</button>
     </div>
-    <div class="enrich-body">
-      <div class="enrich-field full">
-        <label for="enrichRawInput">Paste free-text location details</label>
-        <textarea id="enrichRawInput" class="tm-input" rows="7" placeholder="Paste text with address, city/state, phone, hours, and notes..."></textarea>
+    <div class="smart-enrich-body">
+
+      <!-- Toggle All Row -->
+      <div class="enrich-toggle-all-row">
+        <button id="enrichToggleAllOn" type="button" class="tm-btn primary" style="font-size:12px;padding:5px 12px;">✅ All On</button>
+        <button id="enrichToggleAllOff" type="button" class="tm-btn" style="font-size:12px;padding:5px 12px;">⬜ All Off</button>
+        <span style="flex:1;font-size:12px;color:#6b7280;">Select which fields to refresh</span>
       </div>
-      <div style="margin-top:8px; margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;">
-        <button id="enrichParseBtn" type="button" class="ab-btn ab-google">Parse Text</button>
-        <button id="enrichAutoFetchBtn" type="button" class="ab-btn" style="background:#4f46e5;color:#fff;border-color:#4338ca;" title="Auto-fetch fields from Google Places API">🔍 Auto-fetch from Google</button>
+
+      <!-- Sliders -->
+      <div class="enrich-section-label-sm">Content</div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">📝</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Description</span>
+            <span class="enrich-toggle-hint">Pull fresh description from Google Places reviews</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleDescription" checked><span class="toggle-knob"></span></label>
       </div>
-      <div id="enrichParsedFields" class="enrich-grid" style="display:none;">
-        <div class="enrich-field"><label for="enrichAddress">Address</label><input id="enrichAddress" class="tm-input" type="text" /></div>
-        <div class="enrich-field"><label for="enrichCity">City</label><input id="enrichCity" class="tm-input" type="text" /></div>
-        <div class="enrich-field"><label for="enrichState">State</label><input id="enrichState" class="tm-input" type="text" /></div>
-        <div class="enrich-field"><label for="enrichPhone">Phone</label><input id="enrichPhone" class="tm-input" type="text" /></div>
-        <div class="enrich-field full"><label for="enrichHours">Hours</label><input id="enrichHours" class="tm-input" type="text" /></div>
-        <div class="enrich-field full"><label for="enrichDescription">Description</label><textarea id="enrichDescription" class="tm-input" rows="4"></textarea></div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">🕐</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Hours of Operation</span>
+            <span class="enrich-toggle-hint">Update opening hours from Google Places</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleHours" checked><span class="toggle-knob"></span></label>
       </div>
-      <div id="enrichHint" class="ph-api-notice" style="margin-top:10px;">Paste text and click Parse Text. Review fields before saving.</div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">⭐</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Google Rating</span>
+            <span class="enrich-toggle-hint">Fetch latest star rating from Google Places API</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleGoogleRating"><span class="toggle-knob"></span></label>
+      </div>
+
+      <div class="enrich-section-label-sm">Location &amp; Navigation</div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">📍</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Coordinates</span>
+            <span class="enrich-toggle-hint">Geocode address to get lat/lng for maps &amp; nearby</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleCoordinates" checked><span class="toggle-knob"></span></label>
+      </div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">🚗</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Drive Time Estimate</span>
+            <span class="enrich-toggle-hint">Recalculate drive time from your current location</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleDriveTime" checked><span class="toggle-knob"></span></label>
+      </div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">📡</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Nearby Locations</span>
+            <span class="enrich-toggle-hint">Re-scan for nearby attractions and in-app locations</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleNearby" checked><span class="toggle-knob"></span></label>
+      </div>
+
+      <div class="enrich-section-label-sm">Tags &amp; Cost</div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">🏷️</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Tag Suggestions</span>
+            <span class="enrich-toggle-hint">Re-run AI tag recommendation engine</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleTags" checked><span class="toggle-knob"></span></label>
+      </div>
+
+      <div class="enrich-toggle-row">
+        <div class="enrich-toggle-left">
+          <span class="enrich-toggle-icon">💰</span>
+          <div class="enrich-toggle-text">
+            <span class="enrich-toggle-name">Refresh Cost Estimate</span>
+            <span class="enrich-toggle-hint">Re-infer cost tier from name, type and description</span>
+          </div>
+        </div>
+        <label class="toggle-switch"><input type="checkbox" id="enrichToggleCost" checked><span class="toggle-knob"></span></label>
+      </div>
+
+      <!-- Progress log -->
+      <div id="enrichRunProgress" class="enrich-run-progress" aria-live="polite"></div>
+
+      <!-- Collapsible: Paste & Parse Text -->
+      <div class="enrich-collapsible-head" id="enrichPasteToggleHead">
+        <span id="enrichPasteArrow">▶</span> 📋 Paste &amp; Parse Text (manual field fill)
+      </div>
+      <div id="enrichPasteBody" class="enrich-collapsible-body">
+        <div class="enrich-field full" style="margin-top:8px;">
+          <label for="enrichRawInput">Paste free-text location details</label>
+          <textarea id="enrichRawInput" class="tm-input" rows="5" placeholder="Paste text with address, city/state, phone, hours, and notes..."></textarea>
+        </div>
+        <div style="margin-top:8px; margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="enrichParseBtn" type="button" class="ab-btn ab-google">Parse Text</button>
+          <button id="enrichAutoFetchBtn" type="button" class="ab-btn" style="background:#4f46e5;color:#fff;border-color:#4338ca;" title="Auto-fetch fields from Google Places API">🔍 Auto-fetch from Google</button>
+        </div>
+        <div id="enrichParsedFields" class="enrich-grid" style="display:none;">
+          <div class="enrich-field"><label for="enrichAddress">Address</label><input id="enrichAddress" class="tm-input" type="text" /></div>
+          <div class="enrich-field"><label for="enrichCity">City</label><input id="enrichCity" class="tm-input" type="text" /></div>
+          <div class="enrich-field"><label for="enrichState">State</label><input id="enrichState" class="tm-input" type="text" /></div>
+          <div class="enrich-field"><label for="enrichPhone">Phone</label><input id="enrichPhone" class="tm-input" type="text" /></div>
+          <div class="enrich-field full"><label for="enrichHours">Hours</label><input id="enrichHours" class="tm-input" type="text" /></div>
+          <div class="enrich-field full"><label for="enrichDescription">Description</label><textarea id="enrichDescription" class="tm-input" rows="4"></textarea></div>
+        </div>
+        <div id="enrichHint" class="ph-api-notice" style="margin-top:8px;">Paste text and click Parse Text. Review fields before saving.</div>
+        <div style="margin-top:8px; margin-bottom:4px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="enrichSaveBtn" type="button" class="ab-btn ab-fav">💾 Save Parsed Fields</button>
+        </div>
+      </div>
+
     </div>
     <div class="enrich-foot">
       <button id="enrichCancelBtn" type="button" class="auth-btn">Cancel</button>
-      <button id="enrichSaveBtn" type="button" class="ab-btn ab-fav">Save to Source</button>
+      <button id="enrichRunBtn" type="button" class="ab-btn ab-fav">🔮 Run Enrichment</button>
     </div>
   </div>
 
@@ -2947,8 +3093,224 @@
     }
   }
 
+  // ── Coordinates Storage ─────────────────────────────────────
+  var COORDS_STORAGE_KEY = '__adventure_detail_coords_v1';
+
+  function loadCoordsMap() {
+    try { return JSON.parse(window.localStorage.getItem(COORDS_STORAGE_KEY) || '{}'); } catch (_) { return {}; }
+  }
+
+  function saveCoordsMap(map) {
+    try { window.localStorage.setItem(COORDS_STORAGE_KEY, JSON.stringify(map || {})); } catch (_) {}
+  }
+
+  function getStoredCoords(placeKey) {
+    if (!placeKey) return null;
+    var entry = loadCoordsMap()[placeKey];
+    if (!entry || !Number.isFinite(Number(entry.lat)) || !Number.isFinite(Number(entry.lng))) return null;
+    return entry;
+  }
+
+  function setStoredCoords(placeKey, lat, lng, source) {
+    if (!placeKey) return;
+    var map = loadCoordsMap();
+    map[placeKey] = { lat: Number(lat), lng: Number(lng), source: String(source || 'unknown'), updatedAt: new Date().toISOString() };
+    saveCoordsMap(map);
+  }
+
+  function renderCoordsCard(data) {
+    var placeKey = getLocationKey(data);
+    var stored = getStoredCoords(placeKey);
+    var lat = stored ? stored.lat : Number(data && data.latitude);
+    var lng = stored ? stored.lng : Number(data && data.longitude);
+    var hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+    var coordText = hasCoords
+      ? escapeHtml(lat.toFixed(5) + ', ' + lng.toFixed(5))
+        + (stored ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">Source: ' + escapeHtml(stored.source || '') + '</div>' : '')
+      : '<span class="empty">Not set — click Refresh to geocode</span>';
+    return '<span id="detailCoordsValue">' + coordText + '</span>' +
+      '<div class="tm-actions" style="margin-top:8px;">' +
+      '<button type="button" id="refreshCoordsBtn" class="tm-btn">📍 ' + (hasCoords ? 'Refresh' : 'Get') + ' Coordinates</button>' +
+      '</div>';
+  }
+
+  async function refreshCoordinatesForDetail(forceSync) {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var data = state.data;
+    var btn = document.getElementById('refreshCoordsBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Geocoding...'; }
+    try {
+      var coords = await resolveDetailCoordinates(data);
+      if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+        showDetailToast('⚠️ Could not resolve coordinates. Try adding a full address.', 'warning', 3500);
+        return;
+      }
+      data.latitude = coords.lat;
+      data.longitude = coords.lng;
+      var placeKey = getLocationKey(data);
+      setStoredCoords(placeKey, coords.lat, coords.lng, coords.source || 'geocode');
+
+      var valueEl = document.getElementById('detailCoordsValue');
+      if (valueEl) {
+        valueEl.innerHTML = escapeHtml(coords.lat.toFixed(5) + ', ' + coords.lng.toFixed(5)) +
+          '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">Source: ' + escapeHtml(coords.source || 'geocode') + '</div>';
+      }
+      if (btn) { btn.textContent = '📍 Refresh Coordinates'; }
+
+      if (forceSync) {
+        await syncOrQueueExplorerUpdate(state.syncState, { latitude: String(coords.lat), longitude: String(coords.lng) }, 'detail-coords-refresh').catch(function () {});
+      }
+      showDetailToast('✅ Coordinates updated: ' + coords.lat.toFixed(5) + ', ' + coords.lng.toFixed(5), 'success', 3000);
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh coordinates right now.', 'error', 3200);
+    } finally {
+      if (btn) { btn.disabled = false; if (!btn.textContent.includes('Refresh')) btn.textContent = '📍 Refresh Coordinates'; }
+    }
+  }
+
+  async function refreshDescriptionForDetail(forceSync) {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var data = state.data;
+    try {
+      var openerWin = getOpenerWindow();
+      var placeId = String(data.googlePlaceId || '').trim();
+      if (!placeId) { showDetailToast('⚠️ No Google Place ID — description refresh skipped.', 'info', 2600); return; }
+      var details = null;
+      if (openerWin && typeof openerWin.getPlaceDetails === 'function') {
+        details = await openerWin.getPlaceDetails(placeId);
+      } else if (typeof window.getPlaceDetails === 'function') {
+        details = await window.getPlaceDetails(placeId);
+      }
+      var desc = extractDescriptionFromGoogleDetails(details || {});
+      if (!desc) { showDetailToast('ℹ️ No description found via Google Places.', 'info', 2600); return; }
+      data.description = desc;
+      if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { description: desc }, 'detail-desc-refresh').catch(function () {});
+      showDetailToast('✅ Description refreshed from Google Places.', 'success', 2600);
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh description.', 'error', 3000);
+    }
+  }
+
+  async function refreshGoogleRatingForDetail(forceSync) {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var data = state.data;
+    try {
+      var openerWin = getOpenerWindow();
+      var placeId = String(data.googlePlaceId || '').trim();
+      if (!placeId) { showDetailToast('⚠️ No Google Place ID — rating refresh skipped.', 'info', 2600); return; }
+      var details = null;
+      if (openerWin && typeof openerWin.getPlaceDetails === 'function') {
+        details = await openerWin.getPlaceDetails(placeId);
+      } else if (typeof window.getPlaceDetails === 'function') {
+        details = await window.getPlaceDetails(placeId);
+      }
+      var rating = details && (details.rating != null) ? String(details.rating) : '';
+      if (!rating) { showDetailToast('ℹ️ No rating returned from Google Places.', 'info', 2600); return; }
+      data.googleRating = rating;
+      var ratingEl = document.querySelector('[data-detail-field-card="googleRating"] .value');
+      if (ratingEl) ratingEl.textContent = rating;
+      if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { googleRating: rating }, 'detail-rating-refresh').catch(function () {});
+      showDetailToast('✅ Google Rating updated: ' + rating + ' ⭐', 'success', 2600);
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh Google Rating.', 'error', 3000);
+    }
+  }
+
+  async function refreshHoursForDetail(forceSync) {
+    var state = window.__detailInlineEditState;
+    if (!state || !state.data) return;
+    var data = state.data;
+    try {
+      var openerWin = getOpenerWindow();
+      var placeId = String(data.googlePlaceId || '').trim();
+      if (!placeId) { showDetailToast('⚠️ No Google Place ID — hours refresh skipped.', 'info', 2600); return; }
+      var details = null;
+      if (openerWin && typeof openerWin.getPlaceDetails === 'function') {
+        details = await openerWin.getPlaceDetails(placeId);
+      } else if (typeof window.getPlaceDetails === 'function') {
+        details = await window.getPlaceDetails(placeId);
+      }
+      var hours = normalizeEnrichHoursValue(
+        (details && (details.hours || details.regularOpeningHours)) || '',
+        openerWin
+      );
+      if (!hours) { showDetailToast('ℹ️ No hours returned from Google Places.', 'info', 2600); return; }
+      data.hoursOfOperation = hours;
+      var hoursEl = document.querySelector('[data-detail-field-card="hoursOfOperation"] .value');
+      if (hoursEl) hoursEl.textContent = hours;
+      if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { hours: hours }, 'detail-hours-refresh').catch(function () {});
+      showDetailToast('✅ Hours of Operation refreshed.', 'success', 2600);
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh hours.', 'error', 3000);
+    }
+  }
+
+  // ── Smart Enrichment Runner ─────────────────────────────────
+  async function runSmartEnrichment() {
+    var enrichRunBtn = document.getElementById('enrichRunBtn');
+    var progressEl = document.getElementById('enrichRunProgress');
+
+    var toggles = {
+      description: document.getElementById('enrichToggleDescription'),
+      hours: document.getElementById('enrichToggleHours'),
+      googleRating: document.getElementById('enrichToggleGoogleRating'),
+      coordinates: document.getElementById('enrichToggleCoordinates'),
+      driveTime: document.getElementById('enrichToggleDriveTime'),
+      nearby: document.getElementById('enrichToggleNearby'),
+      tags: document.getElementById('enrichToggleTags'),
+      cost: document.getElementById('enrichToggleCost')
+    };
+
+    var tasks = [
+      { key: 'description', label: 'Description', icon: '📝', fn: function () { return refreshDescriptionForDetail(true); } },
+      { key: 'hours', label: 'Hours of Operation', icon: '🕐', fn: function () { return refreshHoursForDetail(true); } },
+      { key: 'googleRating', label: 'Google Rating', icon: '⭐', fn: function () { return refreshGoogleRatingForDetail(true); } },
+      { key: 'coordinates', label: 'Coordinates', icon: '📍', fn: function () { return refreshCoordinatesForDetail(true); } },
+      { key: 'driveTime', label: 'Drive Time', icon: '🚗', fn: function () { return refreshDriveTimeForDetail(true); } },
+      { key: 'nearby', label: 'Nearby Locations', icon: '📡', fn: function () { return refreshNearbyAttractionsForDetail(true); } },
+      { key: 'tags', label: 'Tag Suggestions', icon: '🏷️', fn: function () { return applyAutoTagRefresh(); } },
+      { key: 'cost', label: 'Cost Estimate', icon: '💰', fn: function () { return refreshCostInferenceForDetail(true); } }
+    ].filter(function (t) { return !!(toggles[t.key] && toggles[t.key].checked); });
+
+    if (!tasks.length) {
+      showDetailToast('ℹ️ No refresh options are selected — toggle at least one.', 'info', 2800);
+      return;
+    }
+
+    if (enrichRunBtn) { enrichRunBtn.disabled = true; enrichRunBtn.textContent = '⏳ Running...'; }
+    if (progressEl) {
+      progressEl.classList.add('visible');
+      progressEl.innerHTML = tasks.map(function (t) {
+        return '<div class="enrich-progress-item" id="epi_' + t.key + '">' +
+          '<span class="status-dot"></span><span>' + t.icon + ' ' + t.label + '</span></div>';
+      }).join('');
+    }
+
+    var completed = 0;
+    var errors = 0;
+    for (var i = 0; i < tasks.length; i++) {
+      var task = tasks[i];
+      var itemEl = document.getElementById('epi_' + task.key);
+      if (itemEl) itemEl.classList.add('running');
+      try {
+        await task.fn();
+        if (itemEl) { itemEl.classList.remove('running'); itemEl.classList.add('done'); }
+        completed++;
+      } catch (_err) {
+        if (itemEl) { itemEl.classList.remove('running'); itemEl.classList.add('error'); }
+        errors++;
+      }
+    }
+
+    if (enrichRunBtn) { enrichRunBtn.disabled = false; enrichRunBtn.textContent = '🔮 Run Enrichment'; }
+    var summary = '✅ Enrichment complete: ' + completed + ' refreshed' + (errors ? ', ' + errors + ' failed' : '') + '.';
+    showDetailToast(summary, errors ? 'warning' : 'success', 4000);
+  }
+
   async function resolveUserLocationForDetail() {
-    // 1. Try opener/parent window's userLocation first.
     try {
       var openerWin = getOpenerWindow();
       if (openerWin) {
@@ -3180,6 +3542,7 @@
       card('City', data.city, 'city') +
       card('State', data.state, 'state') +
       card('Drive Time', '<span id="detailDriveTimeValue">' + escapeHtml(data.driveTime || '') + '</span>' + (data.driveTimeMeta ? '<span class="drive-time-meta" title="' + escapeHtml(data.driveTimeMeta) + '" style="font-size:11px;color:#6b7280;margin-left:6px;">ℹ️</span>' : '') + '<div class="tm-actions" style="margin-top:8px;"><button type="button" id="refreshDriveTimeBtn" class="tm-btn">🚗 Refresh Drive Time</button></div>', 'driveTime') +
+      card('Coordinates', renderCoordsCard(data), 'coordinates') +
       '</div>' +
       card('Description', data.description, 'description') +
       card('Tags', '<div id="overviewTagsValue">' + renderTagListHtml(tagList) + '</div>');
@@ -3750,11 +4113,63 @@
     var backdrop = document.getElementById('enrichBackdrop');
     var parseBtn = document.getElementById('enrichParseBtn');
     var saveBtn = document.getElementById('enrichSaveBtn');
+    var runBtn = document.getElementById('enrichRunBtn');
+    var toggleAllOnBtn = document.getElementById('enrichToggleAllOn');
+    var toggleAllOffBtn = document.getElementById('enrichToggleAllOff');
+    var pasteToggleHead = document.getElementById('enrichPasteToggleHead');
+
+    var allToggleIds = [
+      'enrichToggleDescription', 'enrichToggleHours', 'enrichToggleGoogleRating',
+      'enrichToggleCoordinates', 'enrichToggleDriveTime', 'enrichToggleNearby',
+      'enrichToggleTags', 'enrichToggleCost'
+    ];
 
     if (closeBtn) closeBtn.addEventListener('click', closeEnrichModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeEnrichModal);
     if (backdrop) backdrop.addEventListener('click', closeEnrichModal);
     if (parseBtn) parseBtn.addEventListener('click', parseEnrichModalInput);
+
+    document.addEventListener('keydown', function (event) {
+      if (!event || event.key !== 'Escape') return;
+      var modal = document.getElementById('enrichModal');
+      if (!modal || !modal.classList.contains('open')) return;
+      event.preventDefault();
+      closeEnrichModal();
+    }, true);
+
+    if (toggleAllOnBtn) {
+      toggleAllOnBtn.addEventListener('click', function () {
+        allToggleIds.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.checked = true;
+        });
+      });
+    }
+
+    if (toggleAllOffBtn) {
+      toggleAllOffBtn.addEventListener('click', function () {
+        allToggleIds.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.checked = false;
+        });
+      });
+    }
+
+    if (pasteToggleHead) {
+      pasteToggleHead.addEventListener('click', function () {
+        var body = document.getElementById('enrichPasteBody');
+        var arrow = document.getElementById('enrichPasteArrow');
+        if (!body) return;
+        var isOpen = body.classList.toggle('open');
+        if (arrow) arrow.textContent = isOpen ? '▼' : '▶';
+      });
+    }
+
+    if (runBtn) {
+      runBtn.addEventListener('click', function () {
+        runSmartEnrichment();
+      });
+    }
 
     var autoFetchBtn = document.getElementById('enrichAutoFetchBtn');
     if (autoFetchBtn) {
@@ -3786,7 +4201,6 @@
             showDetailToast('⚠️ Could not fetch any enrichable fields from Google Places for this location.', 'error', 4000);
             return;
           }
-          // Show the parsed fields section and populate
           var parsedFields = document.getElementById('enrichParsedFields');
           if (parsedFields) parsedFields.style.display = '';
           var addrEl = document.getElementById('enrichAddress');
@@ -3801,9 +4215,8 @@
           if (hoursEl) hoursEl.value = normalized.hours || hoursEl.value || '';
           var descEl = document.getElementById('enrichDescription');
           if (descEl) descEl.value = normalized.description || descEl.value || '';
-
           var hint = document.getElementById('enrichHint');
-          if (hint) hint.textContent = '✅ Fields fetched from Google Places. Review and click "Save to Source".';
+          if (hint) hint.textContent = '✅ Fields fetched from Google Places. Review and click Save Parsed Fields.';
           var populatedCount = [normalized.address, normalized.city, normalized.state, normalized.phone, normalized.hours, normalized.description].filter(Boolean).length;
           showDetailToast('✅ Google enrichment loaded ' + populatedCount + ' field' + (populatedCount === 1 ? '' : 's') + '. Review and save.', 'success', 3200);
         } catch (err) {
@@ -3848,7 +4261,7 @@
           showDetailToast('⚠️ Could not sync enriched fields.', 'error', 3200);
         } finally {
           saveBtn.disabled = false;
-          saveBtn.textContent = 'Save to Source';
+          saveBtn.textContent = '💾 Save Parsed Fields';
         }
       });
     }
@@ -4354,6 +4767,11 @@
 
       if (closestFromEvent(e, '#refreshCostBtn')) {
         refreshCostInferenceForDetail(true);
+        return;
+      }
+
+      if (closestFromEvent(e, '#refreshCoordsBtn')) {
+        refreshCoordinatesForDetail(true);
         return;
       }
 
