@@ -3208,6 +3208,15 @@
     return '';
   }
 
+  function parseExplorerCoordinate(value) {
+    if (value === undefined || value === null) return null;
+    var raw = String(value).trim();
+    if (!raw) return null;
+    var num = Number(raw);
+    if (!Number.isFinite(num)) return null;
+    return num;
+  }
+
   function toExplorerItems(matrix, source) {
     if (!Array.isArray(matrix) || matrix.length < 2) return [];
     const headers = (matrix[0] || []).map((header, idx) => {
@@ -3236,8 +3245,8 @@
       const links = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links);
       const links2 = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.links2);
       const photoUrls = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.photoUrls);
-      const latitude = Number(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.latitude));
-      const longitude = Number(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.longitude));
+      const latitude = parseExplorerCoordinate(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.latitude));
+      const longitude = parseExplorerCoordinate(pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.longitude));
       const updatedAt = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.updatedAt);
       const createdAt = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.createdAt);
       const lastVisitedAt = pickExplorerValue(row, EXPLORER_COLUMN_CANDIDATES.lastVisitedAt);

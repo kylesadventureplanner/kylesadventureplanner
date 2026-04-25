@@ -2890,10 +2890,33 @@
     var raw = String(url || '').trim();
     if (!raw) return null;
     var atMatch = raw.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if (atMatch) return { lat: Number(atMatch[1]), lng: Number(atMatch[2]), source: 'google-url-@' };
+    if (atMatch) return normalizeDetailCoords(atMatch[1], atMatch[2], 'google-url-@');
     var qMatch = raw.match(/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i);
-    if (qMatch) return { lat: Number(qMatch[1]), lng: Number(qMatch[2]), source: 'google-url-q' };
+    if (qMatch) return normalizeDetailCoords(qMatch[1], qMatch[2], 'google-url-q');
     return null;
+  }
+
+  function parseFiniteCoordinate(value) {
+    if (value === undefined || value === null) return null;
+    var raw = String(value).trim();
+    if (!raw) return null;
+    var num = Number(raw);
+    return Number.isFinite(num) ? num : null;
+  }
+
+  function areValidDetailCoordinates(lat, lng) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return false;
+    // Prevent blank/placeholder values from being shown as "0.00000, 0.00000".
+    if (Math.abs(lat) < 1e-10 && Math.abs(lng) < 1e-10) return false;
+    return true;
+  }
+
+  function normalizeDetailCoords(lat, lng, source) {
+    var latNum = parseFiniteCoordinate(lat);
+    var lngNum = parseFiniteCoordinate(lng);
+    if (!areValidDetailCoordinates(latNum, lngNum)) return null;
+    return { lat: latNum, lng: lngNum, source: String(source || 'unknown') };
   }
 
   async function geocodeDetailQuery(query) {
@@ -2909,7 +2932,7 @@
       var top = json && Array.isArray(json.results) ? json.results[0] : null;
       var loc = top && top.geometry && top.geometry.location;
       if (!loc || typeof loc.lat !== 'number' || typeof loc.lng !== 'number') return null;
-      return { lat: Number(loc.lat), lng: Number(loc.lng), source: 'geocode' };
+      return normalizeDetailCoords(loc.lat, loc.lng, 'geocode');
     } catch (_err) {
       return null;
     }
@@ -2995,9 +3018,8 @@
   }
 
   async function resolveDetailCoordinates(data) {
-    var lat = Number(data && data.latitude);
-    var lng = Number(data && data.longitude);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat: lat, lng: lng, source: 'data-fields' };
+    var fromFields = normalizeDetailCoords(data && data.latitude, data && data.longitude, 'data-fields');
+    if (fromFields) return fromFields;
 
     var fromGoogleUrl = parseCoordsFromGoogleUrl(data && data.googleUrl);
     if (fromGoogleUrl) return fromGoogleUrl;
@@ -3006,8 +3028,9 @@
       var openerWin = getOpenerWindow();
       if (openerWin && typeof openerWin.getPlaceDetails === 'function' && data && data.googlePlaceId) {
         var details = await openerWin.getPlaceDetails(String(data.googlePlaceId).trim());
-        if (details && details.coordinates && Number.isFinite(Number(details.coordinates.lat)) && Number.isFinite(Number(details.coordinates.lng))) {
-          return { lat: Number(details.coordinates.lat), lng: Number(details.coordinates.lng), source: 'opener-place-details' };
+        if (details && details.coordinates) {
+          var fromOpener = normalizeDetailCoords(details.coordinates.lat, details.coordinates.lng, 'opener-place-details');
+          if (fromOpener) return fromOpener;
         }
       }
     } catch (_errOpener) {}
@@ -3302,7 +3325,9 @@
         var nearbyKeyConfigured = !!(window.nearbyAttractionsFinder && window.nearbyAttractionsFinder.config && window.nearbyAttractionsFinder.config.googlePlacesApiKey);
         var appWithCoords = Array.isArray(appLocations)
           ? appLocations.filter(function (loc) {
-              return Number.isFinite(Number(loc && loc.latitude)) && Number.isFinite(Number(loc && loc.longitude));
+              var lat = parseFiniteCoordinate(loc && loc.latitude);
+              var lng = parseFiniteCoordinate(loc && loc.longitude);
+              return areValidDetailCoordinates(lat, lng);
             }).length
           : 0;
         var hint = !nearbyKeyConfigured && appWithCoords === 0
@@ -3406,23 +3431,30 @@
   function getStoredCoords(placeKey) {
     if (!placeKey) return null;
     var entry = loadCoordsMap()[placeKey];
-    if (!entry || !Number.isFinite(Number(entry.lat)) || !Number.isFinite(Number(entry.lng))) return null;
-    return entry;
+    if (!entry) return null;
+    var parsed = normalizeDetailCoords(entry.lat, entry.lng, entry.source || 'stored');
+    if (!parsed) return null;
+    parsed.updatedAt = entry.updatedAt;
+    return parsed;
   }
 
   function setStoredCoords(placeKey, lat, lng, source) {
     if (!placeKey) return;
+    var parsed = normalizeDetailCoords(lat, lng, source || 'unknown');
+    if (!parsed) return;
     var map = loadCoordsMap();
-    map[placeKey] = { lat: Number(lat), lng: Number(lng), source: String(source || 'unknown'), updatedAt: new Date().toISOString() };
+    map[placeKey] = { lat: parsed.lat, lng: parsed.lng, source: parsed.source, updatedAt: new Date().toISOString() };
     saveCoordsMap(map);
   }
 
   function renderCoordsCard(data) {
     var placeKey = getLocationKey(data);
     var stored = getStoredCoords(placeKey);
-    var lat = stored ? stored.lat : Number(data && data.latitude);
-    var lng = stored ? stored.lng : Number(data && data.longitude);
-    var hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+    var fallbackLat = parseFiniteCoordinate(data && data.latitude);
+    var fallbackLng = parseFiniteCoordinate(data && data.longitude);
+    var lat = stored ? stored.lat : fallbackLat;
+    var lng = stored ? stored.lng : fallbackLng;
+    var hasCoords = areValidDetailCoordinates(lat, lng);
     var coordText = hasCoords
       ? escapeHtml(lat.toFixed(5) + ', ' + lng.toFixed(5))
         + (stored ? '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">Source: ' + escapeHtml(stored.source || '') + '</div>' : '')
@@ -3441,7 +3473,7 @@
     if (btn) { btn.disabled = true; btn.textContent = 'Geocoding...'; }
     try {
       var coords = await resolveDetailCoordinates(data);
-      if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+      if (!coords || !areValidDetailCoordinates(coords.lat, coords.lng)) {
         showDetailToast('⚠️ Could not resolve coordinates. Try adding a full address.', 'warning', 3500);
         return;
       }
