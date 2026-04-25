@@ -2655,16 +2655,22 @@
     openerWin.adventuresData.forEach(function (row, idx) {
       var values = row && row.values && row.values[0];
       if (!Array.isArray(values)) return;
+      var rowData = null;
+      try {
+        if (typeof openerWin.buildAdventureRowData === 'function') {
+          rowData = openerWin.buildAdventureRowData(values);
+        }
+      } catch (_rowDataErr) {}
       var item = {
         id: row.rowId || ('row_' + idx),
         __sourceIndex: idx,
-        name: String(values[0] || '').trim(),
-        googlePlaceId: String(values[1] || '').trim(),
-        tags: String(values[3] || '').trim(),
-        state: String(values[9] || '').trim(),
-        city: String(values[10] || '').trim(),
-        address: String(values[11] || '').trim(),
-        description: String(values[16] || '').trim()
+        name: String((rowData && rowData.name) || values[0] || '').trim(),
+        googlePlaceId: String((rowData && rowData.googlePlaceId) || values[1] || '').trim(),
+        tags: String((rowData && rowData.tags) || values[3] || '').trim(),
+        state: String((rowData && rowData.state) || values[9] || '').trim(),
+        city: String((rowData && rowData.city) || values[10] || '').trim(),
+        address: String((rowData && rowData.address) || values[11] || '').trim(),
+        description: String((rowData && rowData.description) || values[16] || '').trim()
       };
       if (latIdx >= 0 && lngIdx >= 0 && latIdx < values.length && lngIdx < values.length) {
         var lat = Number(values[latIdx]);
@@ -2672,6 +2678,16 @@
         if (Number.isFinite(lat) && Number.isFinite(lng)) {
           item.latitude = lat;
           item.longitude = lng;
+        }
+      }
+      // Fallback: many rows store map coordinates in URL fields even when lat/lng columns are missing.
+      if (!Number.isFinite(Number(item.latitude)) || !Number.isFinite(Number(item.longitude))) {
+        var googleUrlCandidate = String((rowData && rowData.googleUrl) || values[23] || values[13] || values[12] || '').trim();
+        var directionsCandidate = String((rowData && rowData.directions) || values[15] || '').trim();
+        var parsed = parseCoordsFromGoogleUrl(googleUrlCandidate) || parseCoordsFromGoogleUrl(directionsCandidate);
+        if (parsed && Number.isFinite(Number(parsed.lat)) && Number.isFinite(Number(parsed.lng))) {
+          item.latitude = Number(parsed.lat);
+          item.longitude = Number(parsed.lng);
         }
       }
       if (item.name) out.push(item);
@@ -2723,7 +2739,8 @@
         showDetailToast('⚠️ Nearby system is not loaded.', 'error', 2800);
         return;
       }
-      window.nearbyAttractionsFinder.setAppLocations(getNearbyFinderAppLocations());
+      var appLocations = getNearbyFinderAppLocations();
+      window.nearbyAttractionsFinder.setAppLocations(appLocations);
       window.nearbyAttractionsFinder.config.googlePlacesApiKey = getDetailGoogleApiKey() || null;
 
       var coords = await resolveDetailCoordinates(data);
@@ -2734,6 +2751,22 @@
 
       var attractions = await window.nearbyAttractionsFinder.getFormattedNearbyAttractions(coords.lat, coords.lng, data.name || 'Location');
       window.__detailNearbyState = { placeKey: getLocationKey(data), center: coords, attractions: attractions, updatedAt: Date.now() };
+
+      if (!Array.isArray(attractions) || !attractions.length) {
+        var nearbyKeyConfigured = !!(window.nearbyAttractionsFinder && window.nearbyAttractionsFinder.config && window.nearbyAttractionsFinder.config.googlePlacesApiKey);
+        var appWithCoords = Array.isArray(appLocations)
+          ? appLocations.filter(function (loc) {
+              return Number.isFinite(Number(loc && loc.latitude)) && Number.isFinite(Number(loc && loc.longitude));
+            }).length
+          : 0;
+        var hint = !nearbyKeyConfigured && appWithCoords === 0
+          ? 'Add a Google API key or ensure locations have coordinates/Google URLs.'
+          : (appWithCoords === 0 ? 'No stored app locations have coordinates yet.' : 'No points found in the current search radius.');
+        showDetailToast('ℹ️ No nearby attractions found. ' + hint, 'info', 4200);
+        var emptyPane = document.getElementById('nearbyAttractionsValue');
+        if (emptyPane) emptyPane.innerHTML = renderNearbyListHtml([]);
+        return;
+      }
 
       var nearbyText = buildNearbyDisplayFromAttractions(attractions);
       data.nearby = nearbyText;

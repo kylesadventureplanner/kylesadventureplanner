@@ -203,20 +203,31 @@ class NearbyAttractionsFinder {
     }
 
     const radiusMeters = this.config.searchRadius * 1609.34;
-    const types = this.config.attractionTypes.join('|');
+    // Google Nearby Search accepts a single "type" but supports multi-term "keyword".
+    const keyword = this.config.attractionTypes.join(' ');
 
     try {
       const url =
         `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
         `location=${lat},${lng}` +
         `&radius=${radiusMeters}` +
-        `&type=${types}` +
+        `&type=point_of_interest` +
+        `&keyword=${encodeURIComponent(keyword)}` +
         `&key=${this.config.googlePlacesApiKey}`;
 
       const response = await fetch(url);
       const data = await response.json();
 
-      if (data.results) {
+      if (data && data.status === 'ZERO_RESULTS') {
+        return [];
+      }
+
+      if (!data || (data.status && data.status !== 'OK')) {
+        console.warn('⚠️ Google Places Nearby Search returned non-OK status:', data && data.status, data && data.error_message);
+        return [];
+      }
+
+      if (Array.isArray(data.results)) {
         return data.results
           .map(place => {
             const existingLoc = this.findExistingLocation(place);
@@ -253,6 +264,33 @@ class NearbyAttractionsFinder {
   }
 
   /**
+   * Merge Google/local attraction candidates by normalized name + rounded location.
+   */
+  mergeAttractions(primary = [], secondary = []) {
+    const combined = [];
+    const seen = new Set();
+    const list = ([]).concat(Array.isArray(primary) ? primary : [], Array.isArray(secondary) ? secondary : []);
+
+    list.forEach((item) => {
+      if (!item || !item.name) return;
+      const lat = Number(item.latitude);
+      const lng = Number(item.longitude);
+      const key = [
+        String(item.name || '').trim().toLowerCase(),
+        Number.isFinite(lat) ? lat.toFixed(3) : 'na',
+        Number.isFinite(lng) ? lng.toFixed(3) : 'na'
+      ].join('|');
+      if (seen.has(key)) return;
+      seen.add(key);
+      combined.push(item);
+    });
+
+    return combined
+      .sort((a, b) => Number(a.distance || 0) - Number(b.distance || 0))
+      .slice(0, this.config.maxAttractions);
+  }
+
+  /**
    * Get nearby attractions (tries Google first, falls back to local)
    */
   async getNearbyAttractions(lat, lng, centerName) {
@@ -274,12 +312,10 @@ class NearbyAttractionsFinder {
     }
 
     // Fall back to local database if needed
-    if (
-      (!attractions || attractions.length < 5) &&
-      this.config.useLocalDatabase
-    ) {
+    if ((!attractions || attractions.length < 5) && this.config.useLocalDatabase) {
       console.log('📍 Falling back to local database');
-      attractions = this.getNearbyAttractionsLocal(lat, lng, centerName);
+      const localAttractions = this.getNearbyAttractionsLocal(lat, lng, centerName);
+      attractions = this.mergeAttractions(attractions, localAttractions);
     }
 
     // Cache result

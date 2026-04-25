@@ -537,6 +537,133 @@ test.describe('Adventure explorer in-pane details flow', () => {
     expect(secondSavedTagsCsv).toContain('Playwright-Rec-B');
   });
 
+  test('nearby refresh returns cards from Google/local URL-derived coords and empty refresh is non-destructive', async ({ page }) => {
+    await mockExplorerWorkbookRequests(page);
+    await gotoAdventureChallenge(page);
+
+    await page.evaluate(() => {
+      window.GOOGLE_PLACES_API_KEY = 'playwright-nearby-key';
+      window.__nearbySyncCalls = [];
+      window.syncVisitedExplorerDetailFields = async (_sourceMeta, updates) => {
+        window.__nearbySyncCalls.push(updates || {});
+        return { synced: true, excelSaved: true, reason: 'saved' };
+      };
+    });
+
+    await page.route('https://maps.googleapis.com/maps/api/place/nearbysearch/json**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'OK',
+          results: [
+            {
+              place_id: 'pw-google-nearby-1',
+              name: 'Playwright Coffee Roasters',
+              types: ['cafe'],
+              geometry: { location: { lat: 35.4014, lng: -82.4482 } },
+              rating: 4.7,
+              vicinity: 'Nearby test fixture from Google'
+            }
+          ]
+        })
+      });
+    });
+
+    const { key } = await openExplorerAndFindDetails(page);
+    await page.locator(`#visitedExplorerList-${key} [data-visited-explorer-details]`).first().click();
+
+    const detailsFrame = page.locator(`#visitedExplorerDetailsFrame-${key}`);
+    await expect(detailsFrame).toBeVisible();
+    const details = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
+
+    const frameHandle = await detailsFrame.elementHandle();
+    const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
+    expect(liveFrame).not.toBeNull();
+
+    await details.locator('#tabs .tab-btn[data-tab="additional"]').click();
+    await expect(details.locator('#pane-additional')).toBeVisible();
+
+    // Ensure center point is resolvable without relying on geocoding in this test.
+    await liveFrame.evaluate(() => {
+      if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
+        window.__detailInlineEditState.data.googleUrl = 'https://maps.google.com/@35.3995,-82.4521,15z';
+      }
+    });
+
+    // Phase 1: Google-backed nearby search returns a renderable card.
+    await details.locator('#refreshNearbyBtn').click();
+    await expect(details.locator('#nearbyAttractionsValue .card').first()).toBeVisible({ timeout: 12000 });
+    await expect(details.locator('#nearbyAttractionsValue')).toContainText('Playwright Coffee Roasters');
+    await expect(details.locator('#nearbyAttractionsValue [data-nearby-quick-add="1"]').first()).toBeVisible();
+
+    // Phase 2: No Google key + local list built from URL-derived coordinates should still produce cards.
+    await page.evaluate(() => {
+      window.GOOGLE_PLACES_API_KEY = '';
+    });
+
+    await liveFrame.evaluate(() => {
+      const toLoc = (name, url, sourceIndex) => {
+        const parsed = typeof window.parseCoordsFromGoogleUrl === 'function'
+          ? window.parseCoordsFromGoogleUrl(url)
+          : null;
+        return {
+          id: 'pw-local-' + String(sourceIndex),
+          __sourceIndex: sourceIndex,
+          name: name,
+          description: 'Playwright local URL-derived fixture',
+          latitude: parsed ? Number(parsed.lat) : null,
+          longitude: parsed ? Number(parsed.lng) : null
+        };
+      };
+      window.getNearbyFinderAppLocations = function () {
+        return [
+          toLoc('Playwright Nearby Local A', 'https://maps.google.com/@35.4001,-82.4512,15z', 1001),
+          toLoc('Playwright Nearby Local B', 'https://maps.google.com/@35.4010,-82.4530,15z', 1002)
+        ];
+      };
+      if (window.nearbyAttractionsFinder && typeof window.nearbyAttractionsFinder.clearCache === 'function') {
+        window.nearbyAttractionsFinder.clearCache();
+      }
+      if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
+        window.__detailInlineEditState.data.name = 'Playwright Nearby Center';
+        window.__detailInlineEditState.data.googleUrl = 'https://maps.google.com/@35.4000,-82.4520,15z';
+      }
+    });
+
+    await details.locator('#refreshNearbyBtn').click();
+    await expect(details.locator('#nearbyAttractionsValue .card').first()).toBeVisible({ timeout: 12000 });
+    await expect(details.locator('#nearbyAttractionsValue')).toContainText('✅ In App');
+    await expect(details.locator('#nearbyAttractionsValue')).toContainText('Playwright Nearby Local');
+
+    // Phase 3: Empty refresh should not wipe saved nearby text or push destructive sync.
+    await liveFrame.evaluate(() => {
+      if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
+        window.__detailInlineEditState.data.nearby = 'Saved Nearby Snapshot - Preserve Me';
+      }
+      if (window.nearbyAttractionsFinder) {
+        window.nearbyAttractionsFinder.getFormattedNearbyAttractions = async function () { return []; };
+      }
+    });
+
+    const syncCountBeforeEmptyRefresh = await page.evaluate(() => {
+      const calls = Array.isArray(window.__nearbySyncCalls) ? window.__nearbySyncCalls : [];
+      return calls.filter((entry) => entry && Object.prototype.hasOwnProperty.call(entry, 'nearby')).length;
+    });
+
+    await details.locator('#refreshNearbyBtn').click();
+    await expect(details.locator('#nearbyAttractionsValue .empty')).toContainText('No nearby attractions detected yet', { timeout: 12000 });
+
+    const nearbyAfterEmptyRefresh = await liveFrame.evaluate(() => String(window.__detailInlineEditState?.data?.nearby || ''));
+    expect(nearbyAfterEmptyRefresh).toBe('Saved Nearby Snapshot - Preserve Me');
+
+    const syncCountAfterEmptyRefresh = await page.evaluate(() => {
+      const calls = Array.isArray(window.__nearbySyncCalls) ? window.__nearbySyncCalls : [];
+      return calls.filter((entry) => entry && Object.prototype.hasOwnProperty.call(entry, 'nearby')).length;
+    });
+    expect(syncCountAfterEmptyRefresh).toBe(syncCountBeforeEmptyRefresh);
+  });
+
   test('next and previous location follow frozen filtered order from the originating explorer list', async ({ page }) => {
     await mockExplorerWorkbookRequests(page);
     await gotoAdventureChallenge(page);

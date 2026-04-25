@@ -4,30 +4,41 @@
  * Automatically calculates estimated drive time when adding a new location
  *
  * Features:
- * - Geolocation-based calculation
+ * - Fixed home base reference point (100 Co Rd 2008, Hendersonville, NC 28791)
  * - Google Maps API support (optional)
  * - Manual speed/location override
  * - Caching & performance optimization
  * - Works without API (basic haversine formula)
  *
- * Version: 1.0.0
- * Date: April 24, 2026
+ * Version: 1.1.0
+ * Date: April 25, 2026
  */
 
 console.log('🚗 Drive Time Auto-Calculator Loading...');
+
+// ============================================================
+// HOME BASE — 100 Co Rd 2008, Hendersonville, NC 28791
+// Coordinates geocoded from address; change only if address changes.
+// ============================================================
+
+const HOME_BASE = {
+  name: 'Home (Hendersonville, NC)',
+  address: '100 Co Rd 2008, Hendersonville, NC 28791',
+  lat: 35.3938,   // Henderson County, NC — approx. Co Rd 2008 area
+  lng: -82.4557
+};
 
 // ============================================================
 // CONFIGURATION
 // ============================================================
 
 const DRIVE_TIME_CONFIG = {
-  // Reference location (user's home/starting point)
-  // Can be set manually or auto-detected
+  // Reference location — fixed to HOME_BASE above
   referenceLocation: {
-    name: 'My Location',
-    lat: null,
-    lng: null,
-    address: null
+    name: HOME_BASE.name,
+    lat: HOME_BASE.lat,
+    lng: HOME_BASE.lng,
+    address: HOME_BASE.address
   },
 
   // Average drive speeds (mph) for different situations
@@ -75,31 +86,20 @@ class DriveTimeCalculator {
   }
 
   /**
-   * Initialize calculator (detect user location)
+   * Initialize calculator.
+   * Reference location is pre-set to the fixed home base address,
+   * so no geolocation prompt is required.
    */
   async initialize() {
     if (this.initialized) return;
 
-    try {
-      if (navigator.geolocation) {
-        const position = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject);
-        });
+    // Home base coordinates are hard-coded — always ready.
+    console.log(
+      `✅ Drive time reference: ${this.config.referenceLocation.name} ` +
+      `(${this.config.referenceLocation.lat.toFixed(4)}, ${this.config.referenceLocation.lng.toFixed(4)})`
+    );
 
-        this.config.referenceLocation.lat = position.coords.latitude;
-        this.config.referenceLocation.lng = position.coords.longitude;
-
-        console.log(
-          `✅ Location detected: ${this.config.referenceLocation.lat.toFixed(4)}, ${this.config.referenceLocation.lng.toFixed(4)}`
-        );
-
-        this.initialized = true;
-      } else {
-        console.warn('⚠️ Geolocation not supported. Manual location setup required.');
-      }
-    } catch (error) {
-      console.error('❌ Geolocation error:', error);
-    }
+    this.initialized = true;
   }
 
   /**
@@ -328,8 +328,13 @@ class DriveTimeCalculator {
   }
 }
 
-// Create global instance
-window.driveTimeCalculator = window.driveTimeCalculator || new DriveTimeCalculator();
+// Create global instance — pre-initialized with fixed home base
+window.driveTimeCalculator = window.driveTimeCalculator || (() => {
+  const calc = new DriveTimeCalculator();
+  calc.initialized = true; // home base coords are hard-coded, no geolocation needed
+  console.log(`📍 Drive time home base: ${HOME_BASE.address}`);
+  return calc;
+})();
 
 // ============================================================
 // AUTO-CALCULATORS FOR FORM INTEGRATION
@@ -410,11 +415,12 @@ function getDriveTimeResult(fieldId = 'driveTime') {
 }
 
 /**
- * Initialize calculator with user location
+ * Initialize calculator (no-op when using fixed home base, kept for API compat)
  */
 async function initializeDriveTimeCalculator(config = {}) {
   window.driveTimeCalculator = new DriveTimeCalculator(config);
-  await window.driveTimeCalculator.initialize();
+  window.driveTimeCalculator.initialized = true;
+  console.log(`📍 Drive time reference: ${window.driveTimeCalculator.config.referenceLocation.name}`);
   return window.driveTimeCalculator;
 }
 
@@ -447,5 +453,5 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-console.log('✅ Drive Time Auto-Calculator v1.0.0 Loaded');
+console.log('✅ Drive Time Auto-Calculator v1.1.0 Loaded — Home Base: Hendersonville, NC');
 
