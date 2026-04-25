@@ -24,20 +24,21 @@ const NEARBY_ATTRACTIONS_CONFIG = {
   backgroundEnrichmentTtlMs: 1000 * 60 * 60 * 24,
   dedupeDistanceThresholdMiles: 0.18,
   sourceWeights: {
-    local: 0.24,
-    google: 0.08,
-    existsInApp: 0.36,
-    distance: 0.24,
-    rating: 0.08
+    // Calibrated from local repo dataset mix (demo + regression fixtures).
+    local: 0.216,
+    google: 0.108,
+    existsInApp: 0.363,
+    distance: 0.255,
+    rating: 0.059
   },
   categoryMap: {
     all: ['*'],
-    food: ['restaurant', 'cafe', 'bar', 'night_club', 'bakery'],
-    nature: ['park', 'campground', 'natural_feature', 'zoo', 'aquarium'],
-    family: ['zoo', 'aquarium', 'museum', 'movie_theater', 'park'],
-    nightlife: ['bar', 'night_club', 'restaurant'],
-    culture: ['museum', 'art_gallery', 'library', 'landmark'],
-    shopping: ['shopping_mall', 'store']
+    food: ['restaurant', 'cafe', 'bar', 'night_club', 'bakery', 'food', 'meal_takeaway', 'meal_delivery', 'brewery'],
+    nature: ['park', 'campground', 'natural_feature', 'zoo', 'aquarium', 'trail', 'hiking', 'outdoors', 'garden'],
+    family: ['zoo', 'aquarium', 'museum', 'movie_theater', 'park', 'amusement_park', 'playground', 'family'],
+    nightlife: ['bar', 'night_club', 'restaurant', 'music_venue', 'concert_hall', 'event_venue', 'entertainment'],
+    culture: ['museum', 'art_gallery', 'library', 'landmark', 'monument', 'theater', 'tourist_attraction', 'historic_site'],
+    shopping: ['shopping_mall', 'store', 'department_store', 'supermarket', 'market']
   }
 };
 
