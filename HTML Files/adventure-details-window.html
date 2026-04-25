@@ -2702,6 +2702,100 @@
     }).join('; ');
   }
 
+  var NEARBY_UI_PREFS_KEY = '__detail_nearby_ui_prefs_v2';
+  var NEARBY_DEFAULT_UI_STATE = { radiusMiles: 5, category: 'all' };
+  var NEARBY_CATEGORY_CHIPS = [
+    { id: 'all', label: 'All' },
+    { id: 'food', label: 'Food' },
+    { id: 'nature', label: 'Nature' },
+    { id: 'family', label: 'Family' },
+    { id: 'nightlife', label: 'Nightlife' },
+    { id: 'culture', label: 'Culture' },
+    { id: 'shopping', label: 'Shopping' }
+  ];
+
+  function loadNearbyUiState() {
+    var next = { radiusMiles: NEARBY_DEFAULT_UI_STATE.radiusMiles, category: NEARBY_DEFAULT_UI_STATE.category };
+    try {
+      var raw = window.localStorage.getItem(NEARBY_UI_PREFS_KEY);
+      if (!raw) return next;
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        var radius = Number(parsed.radiusMiles);
+        if (Number.isFinite(radius) && radius > 0) next.radiusMiles = radius;
+        var category = String(parsed.category || 'all').toLowerCase();
+        if (NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === category; })) next.category = category;
+      }
+    } catch (_err) {}
+    return next;
+  }
+
+  function persistNearbyUiState(state) {
+    var normalized = {
+      radiusMiles: Number(state && state.radiusMiles) || NEARBY_DEFAULT_UI_STATE.radiusMiles,
+      category: String((state && state.category) || 'all').toLowerCase()
+    };
+    try { window.localStorage.setItem(NEARBY_UI_PREFS_KEY, JSON.stringify(normalized)); } catch (_err) {}
+    window.__detailNearbyUiState = normalized;
+    return normalized;
+  }
+
+  function getNearbyUiState() {
+    if (!window.__detailNearbyUiState) {
+      window.__detailNearbyUiState = loadNearbyUiState();
+    }
+    return window.__detailNearbyUiState;
+  }
+
+  function renderNearbyControlsHtml() {
+    var uiState = getNearbyUiState();
+    var radii = [2, 5, 10, 25];
+    var radiusHtml = radii.map(function (r) {
+      var active = Number(uiState.radiusMiles) === Number(r);
+      return '<button type="button" class="tm-btn' + (active ? ' primary' : '') + '" data-nearby-radius="' + r + '">' + r + ' mi</button>';
+    }).join('');
+    var categoryHtml = NEARBY_CATEGORY_CHIPS.map(function (chip) {
+      var active = String(uiState.category || 'all') === chip.id;
+      return '<button type="button" class="tm-btn' + (active ? ' primary' : '') + '" data-nearby-category="' + chip.id + '">' + escapeHtml(chip.label) + '</button>';
+    }).join('');
+    return '<div id="nearbyControlsWrap" class="u-stack-gap-sm" style="margin:0 0 8px 0;">' +
+      '<div class="tm-actions"><button type="button" id="refreshNearbyBtn" class="tm-btn">🔄 Refresh Nearby</button><span class="u-text-xs-dim">Weighted blend favors in-app matches</span></div>' +
+      '<div class="tm-actions"><span class="u-text-xs-dim">Radius:</span>' + radiusHtml + '</div>' +
+      '<div class="tm-actions"><span class="u-text-xs-dim">Category:</span>' + categoryHtml + '</div>' +
+    '</div>';
+  }
+
+  function getNearbyRequestOptions(detailData) {
+    var ui = getNearbyUiState();
+    return {
+      radiusMiles: Number(ui.radiusMiles) || 5,
+      category: String(ui.category || 'all'),
+      placeKey: getLocationKey(detailData || {})
+    };
+  }
+
+  async function hydrateNearbyFromCacheForDetail(data) {
+    try {
+      if (!window.nearbyAttractionsFinder || typeof window.nearbyAttractionsFinder.getCachedFormattedNearbyAttractions !== 'function') return;
+      var coords = await resolveDetailCoordinates(data || {});
+      if (!coords) return;
+      var opts = getNearbyRequestOptions(data || {});
+      window.nearbyAttractionsFinder.setSearchRadius(opts.radiusMiles);
+      if (typeof window.nearbyAttractionsFinder.setCategoryFilter === 'function') {
+        window.nearbyAttractionsFinder.setCategoryFilter(opts.category);
+      }
+      var cached = window.nearbyAttractionsFinder.getCachedFormattedNearbyAttractions(coords.lat, coords.lng, (data && data.name) || 'Location', opts);
+      if (Array.isArray(cached) && cached.length) {
+        window.__detailNearbyState = { placeKey: getLocationKey(data), center: coords, attractions: cached, updatedAt: Date.now(), fromCache: true };
+        var pane = document.getElementById('nearbyAttractionsValue');
+        if (pane) pane.innerHTML = renderNearbyListHtml(cached);
+      }
+      if (typeof window.nearbyAttractionsFinder.prefetchNearbyAttractions === 'function') {
+        window.nearbyAttractionsFinder.prefetchNearbyAttractions(coords.lat, coords.lng, (data && data.name) || 'Location', opts).catch(function () { return null; });
+      }
+    } catch (_err) {}
+  }
+
   function renderNearbyListHtml(attractions) {
     if (!Array.isArray(attractions) || !attractions.length) {
       return '<span class="empty">No nearby attractions detected yet. Click Refresh Nearby.</span>';
@@ -2719,10 +2813,14 @@
         actionHtml = '<a class="tm-btn" href="' + escapeHtml(a.googleUrl || '#') + '" target="_blank" rel="noopener">View on Google</a>' +
           '<button type="button" class="tm-btn primary" data-nearby-quick-add="1" data-nearby-name="' + addNameAttr + '" data-nearby-google-url="' + addGoogleUrlAttr + '">➕ Add to App</button>';
       }
+      var sourceBadge = escapeHtml(String(a.sourceBadge || (exists ? 'Local' : 'Google')));
+      var confidencePct = Number.isFinite(Number(a.confidencePct)) ? Number(a.confidencePct) : Math.round(Math.max(0, Math.min(1, Number(a.confidence || 0))) * 100);
+      var reasons = Array.isArray(a.rankingReasons) ? a.rankingReasons.join(', ') : (a.rankingReasonText || 'distance relevance');
       return '<div class="card" style="margin:0;">' +
-        '<div class="label">' + escapeHtml(a.name || 'Nearby location') + ' <span class="u-text-xs-dim">' + status + '</span></div>' +
+        '<div class="label">' + escapeHtml(a.name || 'Nearby location') + ' <span class="u-text-xs-dim">' + status + '</span> <span class="u-text-xs-dim">[' + sourceBadge + ' · ' + confidencePct + '%]</span></div>' +
         '<div class="value">📍 ' + escapeHtml(a.distanceText || '—') + ' &nbsp; 🚗 ' + escapeHtml(a.driveTimeText || '—') + (a.rating ? ' &nbsp; ⭐ ' + escapeHtml(Number(a.rating).toFixed(1)) : '') + '</div>' +
         (a.description ? '<div class="u-text-xs-dim" style="margin-top:4px;">' + escapeHtml(a.description) + '</div>' : '') +
+        '<div class="u-text-xs-dim" style="margin-top:4px;">Why ranked: ' + escapeHtml(reasons) + '</div>' +
         '<div class="tm-actions" style="margin-top:8px;">' + actionHtml + '</div>' +
       '</div>';
     }).join('') + '</div>';
@@ -2742,6 +2840,13 @@
       var appLocations = getNearbyFinderAppLocations();
       window.nearbyAttractionsFinder.setAppLocations(appLocations);
       window.nearbyAttractionsFinder.config.googlePlacesApiKey = getDetailGoogleApiKey() || null;
+      var nearbyOpts = getNearbyRequestOptions(data);
+      if (typeof window.nearbyAttractionsFinder.setSearchRadius === 'function') {
+        window.nearbyAttractionsFinder.setSearchRadius(nearbyOpts.radiusMiles);
+      }
+      if (typeof window.nearbyAttractionsFinder.setCategoryFilter === 'function') {
+        window.nearbyAttractionsFinder.setCategoryFilter(nearbyOpts.category);
+      }
 
       var coords = await resolveDetailCoordinates(data);
       if (!coords) {
@@ -2749,7 +2854,7 @@
         return;
       }
 
-      var attractions = await window.nearbyAttractionsFinder.getFormattedNearbyAttractions(coords.lat, coords.lng, data.name || 'Location');
+      var attractions = await window.nearbyAttractionsFinder.getFormattedNearbyAttractions(coords.lat, coords.lng, data.name || 'Location', nearbyOpts);
       window.__detailNearbyState = { placeKey: getLocationKey(data), center: coords, attractions: attractions, updatedAt: Date.now() };
 
       if (!Array.isArray(attractions) || !attractions.length) {
@@ -3126,10 +3231,9 @@
       '</div>';
 
     document.getElementById('pane-additional').innerHTML =
-      '<div class="tm-actions" style="margin:0 0 8px 0;">' +
-      '<button type="button" id="refreshNearbyBtn" class="tm-btn">🔄 Refresh Nearby</button>' +
-      '</div>' +
+      renderNearbyControlsHtml() +
       card('Nearby Attractions', '<div id="nearbyAttractionsValue">' + renderNearbyListHtml((nearbyState && nearbyState.attractions) || []) + (data.nearby && !(nearbyState && nearbyState.attractions && nearbyState.attractions.length) ? '<div class="u-text-xs-dim" style="margin-top:8px;">Saved value: ' + escapeHtml(data.nearby) + '</div>' : '') + '</div>', 'nearby');
+    hydrateNearbyFromCacheForDetail(data);
     renderDetailInlineEditPanel();
   }
 
@@ -4259,6 +4363,35 @@
       }
 
       if (closestFromEvent(e, '#refreshNearbyBtn')) {
+        refreshNearbyAttractionsForDetail(true);
+        return;
+      }
+
+      var nearbyRadiusBtn = closestFromEvent(e, '[data-nearby-radius]');
+      if (nearbyRadiusBtn) {
+        var radiusVal = Number(nearbyRadiusBtn.getAttribute('data-nearby-radius'));
+        var curUi = getNearbyUiState();
+        persistNearbyUiState({ radiusMiles: Number.isFinite(radiusVal) && radiusVal > 0 ? radiusVal : curUi.radiusMiles, category: curUi.category });
+        var additionalPane = document.getElementById('pane-additional');
+        if (additionalPane) {
+          var controlsWrap = document.getElementById('nearbyControlsWrap');
+          if (controlsWrap) controlsWrap.outerHTML = renderNearbyControlsHtml();
+        }
+        refreshNearbyAttractionsForDetail(true);
+        return;
+      }
+
+      var nearbyCategoryBtn = closestFromEvent(e, '[data-nearby-category]');
+      if (nearbyCategoryBtn) {
+        var categoryVal = String(nearbyCategoryBtn.getAttribute('data-nearby-category') || 'all').toLowerCase();
+        if (!NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === categoryVal; })) categoryVal = 'all';
+        var curUi2 = getNearbyUiState();
+        persistNearbyUiState({ radiusMiles: curUi2.radiusMiles, category: categoryVal });
+        var additionalPane2 = document.getElementById('pane-additional');
+        if (additionalPane2) {
+          var controlsWrap2 = document.getElementById('nearbyControlsWrap');
+          if (controlsWrap2) controlsWrap2.outerHTML = renderNearbyControlsHtml();
+        }
         refreshNearbyAttractionsForDetail(true);
         return;
       }
