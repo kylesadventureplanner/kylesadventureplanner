@@ -34,7 +34,7 @@ Received:    0.5
   - generic "Click to expand/collapse" [ref=e12] [cursor=pointer]:
     - generic [ref=e13]:
       - text: 🔧 Advanced Debug Console
-      - generic [ref=e14]: "Startup timing: interactive 118 ms | overlay off 469 ms"
+      - generic [ref=e14]: "Startup timing: interactive 115 ms | overlay off 486 ms"
       - generic [ref=e15]: "Reliability: blocked 0 | overlays 0 | recoveries 0 | errors 0"
     - generic [ref=e16]:
       - button "📋 Copy All" [ref=e17]
@@ -127,38 +127,39 @@ Received:    0.5
                     - checkbox "Route" [ref=e94]
                     - text: Route
                   - button "Details" [ref=e95] [cursor=pointer]
-                  - button "Quick Actions ▾" [ref=e96] [cursor=pointer]
-              - generic [ref=e97]:
-                - button "☆ Add to Favorites" [ref=e98] [cursor=pointer]
-                - group "My star rating" [ref=e99]:
-                  - button "Set rating to 1 stars" [ref=e100] [cursor=pointer]: ★
-                  - button "Set rating to 2 stars" [ref=e101] [cursor=pointer]: ★
-                  - button "Set rating to 3 stars" [ref=e102] [cursor=pointer]: ★
-                  - button "Set rating to 4 stars" [ref=e103] [cursor=pointer]: ★
-                  - button "Set rating to 5 stars" [ref=e104] [cursor=pointer]: ★
-              - generic [ref=e105]:
-                - strong [ref=e106]: "Estimated Drive Time:"
+                  - button "Filters for Mock Adventure Spot" [ref=e96] [cursor=pointer]: 🔍 Filters
+                  - button "Quick Actions ▾" [ref=e97] [cursor=pointer]
+              - generic [ref=e98]:
+                - button "☆ Add to Favorites" [ref=e99] [cursor=pointer]
+                - group "My star rating" [ref=e100]:
+                  - button "Set rating to 1 stars" [ref=e101] [cursor=pointer]: ★
+                  - button "Set rating to 2 stars" [ref=e102] [cursor=pointer]: ★
+                  - button "Set rating to 3 stars" [ref=e103] [cursor=pointer]: ★
+                  - button "Set rating to 4 stars" [ref=e104] [cursor=pointer]: ★
+                  - button "Set rating to 5 stars" [ref=e105] [cursor=pointer]: ★
+              - generic [ref=e106]:
+                - strong [ref=e107]: "Estimated Drive Time:"
                 - text: 22 min
-              - strong [ref=e108]: "Tags:"
-              - generic [ref=e109]:
-                - generic [ref=e110]: hiking
-                - generic [ref=e111]: scenic
-              - generic [ref=e112]:
-                - strong [ref=e113]: "Physical Address - City - State:"
+              - strong [ref=e109]: "Tags:"
+              - generic [ref=e110]:
+                - button "hiking" [ref=e111] [cursor=pointer]
+                - button "scenic" [ref=e112] [cursor=pointer]
+              - generic [ref=e113]:
+                - strong [ref=e114]: "Physical Address - City - State:"
                 - text: Address not specified
-              - generic [ref=e114]:
-                - strong [ref=e115]: "Description:"
-                - generic [ref=e116]: No description yet.
-        - group "🧰 Diagnostics, Sync and Clean Up" [ref=e117]:
-          - generic "🧰 Diagnostics, Sync and Clean Up Sync health, local queue visibility, and visited tracker diagnostics. ▾" [ref=e118] [cursor=pointer]:
-            - generic [ref=e119]:
-              - generic [ref=e120]: 🧰 Diagnostics, Sync and Clean Up
-              - generic [ref=e121]: Sync health, local queue visibility, and visited tracker diagnostics.
+              - generic [ref=e115]:
+                - strong [ref=e116]: "Description:"
+                - generic [ref=e117]: No description yet.
+        - group "🧰 Diagnostics, Sync and Clean Up" [ref=e118]:
+          - generic "🧰 Diagnostics, Sync and Clean Up Sync health, local queue visibility, and visited tracker diagnostics. ▾" [ref=e119] [cursor=pointer]:
+            - generic [ref=e120]:
+              - generic [ref=e121]: 🧰 Diagnostics, Sync and Clean Up
+              - generic [ref=e122]: Sync health, local queue visibility, and visited tracker diagnostics.
             - text: ▾
           - option "Strict (Place ID + exact name)"
           - option "Balanced (Place ID + exact + fuzzy)" [selected]
           - option "Name Only (exact + fuzzy)"
-  - button "Deployment 2026.04.23.live-debug.1 OK (4/4)" [ref=e123] [cursor=pointer]
+  - button "Deployment 2026.04.23.live-debug.1 OK (4/4)" [ref=e124] [cursor=pointer]
   - generic: Explore the Outdoors
 ```
 

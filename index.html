@@ -11246,6 +11246,47 @@
   // Location feature state
   let userLocation = null;          // Stores user's GPS coordinates {latitude, longitude} from browser geolocation
 
+  // ── GPS persistence ─────────────────────────────────────────────────────────
+  // Coordinates are persisted to localStorage so they survive page refreshes.
+  // A 7-day TTL guards against stale data (e.g. user travels to a new city).
+  const KAP_GPS_KEY    = 'kap_user_gps';
+  const KAP_GPS_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+  /**
+   * Write coords to both the in-memory variable and localStorage, and expose
+   * them on window so all subsystems (drive time, city viewer, etc.) see them.
+   */
+  function persistUserLocation(latitude, longitude) {
+    userLocation = { latitude, longitude };
+    window.userLocation   = userLocation;
+    window.__userLocation = userLocation;
+    try {
+      localStorage.setItem(KAP_GPS_KEY, JSON.stringify({ latitude, longitude, timestamp: Date.now() }));
+    } catch (_) { /* storage full or private mode */ }
+  }
+  // Expose so external JS files (city viewer, etc.) can call it.
+  window.persistUserLocation = persistUserLocation;
+
+  // Restore any previously persisted GPS on startup so all features work
+  // immediately without waiting for the browser to ask for permission again.
+  (function restorePersistedGps() {
+    try {
+      const raw = localStorage.getItem(KAP_GPS_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved || !Number.isFinite(saved.latitude) || !Number.isFinite(saved.longitude)) return;
+      if (Date.now() - (saved.timestamp || 0) > KAP_GPS_TTL_MS) {
+        localStorage.removeItem(KAP_GPS_KEY);
+        return;
+      }
+      userLocation          = { latitude: saved.latitude, longitude: saved.longitude };
+      window.userLocation   = userLocation;
+      window.__userLocation = userLocation;
+      console.log(`📍 GPS restored from previous session: ${saved.latitude}, ${saved.longitude}`);
+    } catch (_) { /* corrupt data — ignore */ }
+  })();
+  // ────────────────────────────────────────────────────────────────────────────
+
   /* ============================================================
      STATE COLORS MAPPING
      ============================================================
@@ -13642,14 +13683,8 @@
                 // SUCCESS: Got position data
                 clearTimeout(timeoutId); // Cancel timeout since we got a result
 
-                // Store location globally so other functions can access it
-                userLocation = {
-                  latitude: position.coords.latitude,   // GPS latitude
-                  longitude: position.coords.longitude, // GPS longitude
-                };
-                // Expose on window so buildExcelRow and iframe children can access it.
-                window.userLocation = userLocation;
-                window.__userLocation = userLocation;
+                // Persist location so it survives page refreshes.
+                persistUserLocation(position.coords.latitude, position.coords.longitude);
 
                 resolve(userLocation); // Return location to calling function
               },
@@ -13861,6 +13896,22 @@
       }
 
       console.log(`✓ Received ${data.value.length} rows from Excel`);
+
+      // Pre-fetch the table schema so GPS coordinates and other fields are
+      // correctly written on the very first "Add Location" attempt.
+      // This runs in the background and doesn't block render.
+      (async function prefetchSchema() {
+        try {
+          if (!window.__excelSchemaColumns || !window.__excelSchemaColumns.length) {
+            const cols = await fetchExcelTableSchemaColumns(filePath, tableName);
+            if (Array.isArray(cols) && cols.length > 0) {
+              window.__excelSchemaColumns = cols.slice();
+              window.__excelColumnCount   = cols.length;
+              console.log(`📐 Schema pre-fetched: ${cols.length} columns (${cols.slice(0,5).join(', ')}…)`);
+            }
+          }
+        } catch (_schemaErr) { /* non-fatal — will fall back to positional */ }
+      })();
 
       // Calculate city counts for display next to city names
       calculateCityCounts(data.value);
@@ -20158,6 +20209,9 @@ COMMON ISSUES:
         if (actualColumnCount > 11) row[11] = buildDirectionsUrl(safePlaceId, address, name);
         if (actualColumnCount > 12) row[12] = description;
         if (actualColumnCount > 13) row[13] = googlePlaceUrl;
+        // GPS coordinates — columns 14 & 15 in the modern 19-column schema
+        if (coords && actualColumnCount > 14) row[14] = String(coords.lat);
+        if (coords && actualColumnCount > 15) row[15] = String(coords.lng);
       } else {
         if (actualColumnCount > 0) row[0] = name;
         if (actualColumnCount > 1) row[1] = safePlaceId;
@@ -20174,6 +20228,15 @@ COMMON ISSUES:
         if (actualColumnCount > 16) row[16] = '';
         if (actualColumnCount > 18) row[18] = googlePlaceUrl;
         if (actualColumnCount > 23) row[23] = googlePlaceUrl;
+        // GPS coordinates — use getColumnIndexByName for legacy schemas if available
+        if (coords) {
+          const latIdx = typeof window.getColumnIndexByName === 'function'
+            ? Number(window.getColumnIndexByName('Latitude', ['Lat', 'GPS Latitude'])) : -1;
+          const lngIdx = typeof window.getColumnIndexByName === 'function'
+            ? Number(window.getColumnIndexByName('Longitude', ['Lng', 'GPS Longitude'])) : -1;
+          if (latIdx >= 0 && actualColumnCount > latIdx) row[latIdx] = String(coords.lat);
+          if (lngIdx >= 0 && actualColumnCount > lngIdx) row[lngIdx] = String(coords.lng);
+        }
       }
     }
 
@@ -20388,9 +20451,7 @@ COMMON ISSUES:
     if (window.userLocation) return; // Already resolved.
     navigator.geolocation.getCurrentPosition(
       function (pos) {
-        userLocation = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        window.userLocation = userLocation;
-        window.__userLocation = userLocation;
+        persistUserLocation(pos.coords.latitude, pos.coords.longitude);
         console.log('🚗 Background geolocation ready for drive time calculations.');
         // Refresh the drive time preview in the add-place modal if it's open.
         setAddPlaceSmartPreview('addPlaceDriveTimePreview', '🚗 Drive Time: ready — will calculate when place resolves');
@@ -24199,6 +24260,17 @@ window.startFindNearMe = async function() {
 
         console.log(`📍 User location: ${userLat}, ${userLng}`);
         showToast(`📍 Found your location! Searching nearby adventures...`, 'success', 3000);
+
+        // Persist so drive time and other subsystems pick it up.
+        if (typeof persistUserLocation === 'function') {
+          persistUserLocation(userLat, userLng);
+        } else {
+          // Fallback in case this script runs before the main one defines the helper.
+          try {
+            window.userLocation = window.__userLocation = { latitude: userLat, longitude: userLng };
+            localStorage.setItem('kap_user_gps', JSON.stringify({ latitude: userLat, longitude: userLng, timestamp: Date.now() }));
+          } catch (_) {}
+        }
 
         // Find adventures near user location (within 50 miles)
         const nearbyAdventures = filterAdventuresByDistance(userLat, userLng, 50);

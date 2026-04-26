@@ -34,7 +34,7 @@ Call Log:
   - generic "Click to expand/collapse" [ref=e10] [cursor=pointer]:
     - generic [ref=e11]:
       - text: 🔧 Advanced Debug Console
-      - generic [ref=e12]: "Startup timing: interactive 108 ms | overlay off 458 ms"
+      - generic [ref=e12]: "Startup timing: interactive 107 ms | overlay off 498 ms"
       - generic [ref=e13]: "Reliability: blocked 0 | overlays 0 | recoveries 0 | errors 0"
     - generic [ref=e14]:
       - button "📋 Copy All" [ref=e15]
@@ -95,7 +95,7 @@ Call Log:
               - generic [ref=e72]: 🌲 Outdoors
               - generic [ref=e73]: Browse and plan outdoor locations you want to visit.
             - generic [ref=e74]:
-              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/26/2026, 10:39:41 AM"
+              - generic [ref=e75]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/26/2026, 11:05:27 AM"
               - generic [ref=e76]:
                 - button "🔎 Explore Outdoors" [ref=e77] [cursor=pointer]
                 - button "🏙️ City Explorer" [ref=e78] [cursor=pointer]:
@@ -810,6 +810,7 @@ Call Log:
                   - generic [ref=e895]: 🌺
                   - generic [ref=e896]: Botanical Garden
               - generic [ref=e897]: 0/9 tiles marked
+        - text: "1"
         - group "🧰 Diagnostics, Sync and Clean Up" [ref=e898]:
           - generic "🧰 Diagnostics, Sync and Clean Up Sync health, local queue visibility, and visited tracker diagnostics. ▾" [ref=e899] [cursor=pointer]:
             - generic [ref=e900]:

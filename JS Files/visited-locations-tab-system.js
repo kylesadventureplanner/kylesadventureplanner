@@ -267,7 +267,9 @@
      { key: 'state', label: 'State', inputType: 'input', placeholder: 'State abbreviation or name' },
      { key: 'phone', label: 'Phone', inputType: 'input', placeholder: 'Phone number' },
      { key: 'hours', label: 'Hours of Operation', inputType: 'textarea', rows: 2, placeholder: 'e.g. Mon-Fri: 9am-5pm, Sat: 10am-3pm' },
-     { key: 'description', label: 'Description', inputType: 'textarea', rows: 3, placeholder: 'General description or notes' }
+     { key: 'description', label: 'Description', inputType: 'textarea', rows: 3, placeholder: 'General description or notes' },
+     { key: 'latitude', label: 'Latitude', inputType: 'input', placeholder: 'e.g. 35.2271' },
+     { key: 'longitude', label: 'Longitude', inputType: 'input', placeholder: 'e.g. -80.8431' }
    ];
    const PARSER_FIELDS = PARSER_FIELD_CONFIG.map((field) => field.key);
 
@@ -2619,6 +2621,16 @@
     if (fieldKey === 'address') {
       return raw.replace(/\s+/g, ' ').replace(/,\s*,/g, ', ').trim();
     }
+    if (fieldKey === 'latitude') {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < -90 || n > 90) return '';
+      return String(n);
+    }
+    if (fieldKey === 'longitude') {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < -180 || n > 180) return '';
+      return String(n);
+    }
     return raw;
   }
 
@@ -2713,7 +2725,9 @@
       state: '',
       phone: '',
       hours: '',
-      description: ''
+      description: '',
+      latitude: '',
+      longitude: ''
     };
     const confidenceByField = {
       address: 0,
@@ -2721,7 +2735,9 @@
       state: 0,
       phone: 0,
       hours: 0,
-      description: 0
+      description: 0,
+      latitude: 0,
+      longitude: 0
     };
     const lines = normalized.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     const remainingLines = [];
@@ -2782,6 +2798,22 @@
           result.hours = hoursMatch ? hoursMatch[2].trim() : line;
           confidenceByField.hours = hoursMatch ? 0.84 : 0.72;
           matched = true;
+        }
+      }
+
+      // GPS coordinate pair: "35.2271, -80.8431" or "lat: 35.2271 lng: -80.8431" etc.
+      if (!result.latitude && !result.longitude && !matched) {
+        const coordPair = line.match(/(-?\d{1,3}\.\d{3,})\s*[,\s]\s*(-?\d{1,3}\.\d{3,})/);
+        if (coordPair) {
+          const lat = Number(coordPair[1]);
+          const lng = Number(coordPair[2]);
+          if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            result.latitude  = String(lat);
+            result.longitude = String(lng);
+            confidenceByField.latitude  = 0.95;
+            confidenceByField.longitude = 0.95;
+            matched = true;
+          }
         }
       }
 

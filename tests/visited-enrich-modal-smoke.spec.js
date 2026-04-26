@@ -67,7 +67,7 @@ test.describe('Visited enrich modal smoke', () => {
         await expect(page.locator('#visitedLocationParserPreview')).toContainText('Assistant summary:');
         await expect(recommendedSelector).toBeVisible();
       }
-      await expect(confidenceChips).toHaveCount(6);
+      await expect(confidenceChips).toHaveCount(8); // 6 original + latitude + longitude
       await expect(page.locator('#visitedLocationParserField-description')).toHaveClass(/is-changed/);
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').first()).toContainText('Before:');
       await expect(page.locator('#visitedLocationParserField-description .visited-parser-diff-row').nth(1)).toContainText('After:');

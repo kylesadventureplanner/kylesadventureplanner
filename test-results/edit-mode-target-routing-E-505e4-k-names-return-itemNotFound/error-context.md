@@ -30,7 +30,7 @@ Error: Unexpected browser errors detected:
   - generic "Click to expand/collapse" [ref=e14] [cursor=pointer]:
     - generic [ref=e15]:
       - text: 🔧 Advanced Debug Console
-      - generic [ref=e16]: "Startup timing: interactive in 113 ms (overlay pending)"
+      - generic [ref=e16]: "Startup timing: interactive in 107 ms (overlay pending)"
       - generic [ref=e17]: "Reliability: blocked 0 | overlays 0 | recoveries 0 | errors 0"
     - generic [ref=e18]:
       - button "📋 Copy All" [ref=e19]
@@ -70,7 +70,7 @@ Error: Unexpected browser errors detected:
     - generic [ref=e52]:
       - generic [ref=e53]:
         - generic [ref=e54]:
-          - generic [ref=e55]: 10:39:43 AM
+          - generic [ref=e55]: 11:05:38 AM
           - generic [ref=e56]: SUCCESS
         - generic [ref=e57]: Workbook row PATCH saved and verified.
         - generic [ref=e58]: "Description header resolved to: \"Description\" at index 12 • Legacy description index 16 value updated: no"
@@ -79,7 +79,7 @@ Error: Unexpected browser errors detected:
           - text: values=2 • inSession=ok • freshSession=ok • description="Description"@12 • legacy16Updated=no url=https://graph.microsoft.com/v1.0/me/drive/root:/Copilot_Apps/Kyles_Adventure_Finder/Nature_Locations.xlsx:/workbook/tables/Nature_Locations/rows/itemAt(index=0)
       - generic [ref=e60]:
         - generic [ref=e61]:
-          - generic [ref=e62]: 10:39:43 AM
+          - generic [ref=e62]: 11:05:38 AM
           - generic [ref=e63]: INFO
         - generic [ref=e64]: Attempting workbook row PATCH…
         - generic [ref=e65]: "Description header resolved to: \"Description\" at index 12 • Legacy description index 16 value updated: no"
@@ -119,7 +119,7 @@ Error: Unexpected browser errors detected:
             - generic [ref=e102]: 🌲 Outdoors
             - generic [ref=e103]: Browse and plan outdoor locations you want to visit.
           - generic [ref=e104]:
-            - generic [ref=e105]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/26/2026, 10:39:43 AM"
+            - generic [ref=e105]: "Outdoors data: ready 0 locations | Source: Nature_Locations.xlsx / Nature_Locations Updated 4/26/2026, 11:05:38 AM"
             - generic [ref=e106]:
               - button "🔎 Explore Outdoors" [ref=e107] [cursor=pointer]
               - button "🏙️ City Explorer" [ref=e108] [cursor=pointer]

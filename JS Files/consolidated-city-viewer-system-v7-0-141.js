@@ -428,6 +428,18 @@ window.getUserLocation = async function() {
           lng: position.coords.longitude
         };
         console.log(`📍 User location: ${location.lat}, ${location.lng}`);
+
+        // Persist so drive time, Find Near Me, and the main app all see it.
+        if (typeof window.persistUserLocation === 'function') {
+          window.persistUserLocation(location.lat, location.lng);
+        } else {
+          // Fallback: write directly with the shared key.
+          try {
+            window.userLocation = window.__userLocation = { latitude: location.lat, longitude: location.lng };
+            localStorage.setItem('kap_user_gps', JSON.stringify({ latitude: location.lat, longitude: location.lng, timestamp: Date.now() }));
+          } catch (_) {}
+        }
+
         resolve(location);
       },
       (error) => {
