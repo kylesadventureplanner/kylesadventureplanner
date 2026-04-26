@@ -345,7 +345,7 @@
     </a>
 
     <a class="ab-btn ab-parking u-hidden" id="abParkingBtn" href="#" target="_blank" rel="noopener">
-      🅿️ Parking Map
+      🅿️ Best Parking
     </a>
 
     <button type="button" class="ab-btn" id="abLinksBtn" title="Add or update related links">
@@ -3151,6 +3151,16 @@
 
   var NEARBY_UI_PREFS_KEY = '__detail_nearby_ui_prefs_v2';
   var NEARBY_DEFAULT_UI_STATE = { radiusMiles: 5, category: 'all' };
+  var PARKING_META_STORAGE_KEY = '__detail_parking_meta_v1';
+  var PARKING_CACHE_STORAGE_KEY = '__detail_parking_cache_v1';
+  var PARKING_UI_PREFS_KEY = '__detail_parking_ui_v1';
+  var PARKING_DEFAULT_UI_STATE = {
+    radiusMiles: 2,
+    transportMode: 'driving',
+    requireAda: false,
+    requireEv: false,
+    sourceToggles: { google: true, osm: true, municipal: true, official: true, unknown: true }
+  };
   var NEARBY_CATEGORY_CHIPS = [
     { id: 'all', label: 'All' },
     { id: 'food', label: 'Food' },
@@ -3160,6 +3170,90 @@
     { id: 'culture', label: 'Culture' },
     { id: 'shopping', label: 'Shopping' }
   ];
+
+  function loadParkingUiState() {
+    var next = {
+      radiusMiles: PARKING_DEFAULT_UI_STATE.radiusMiles,
+      transportMode: PARKING_DEFAULT_UI_STATE.transportMode,
+      requireAda: PARKING_DEFAULT_UI_STATE.requireAda,
+      requireEv: PARKING_DEFAULT_UI_STATE.requireEv,
+      sourceToggles: Object.assign({}, PARKING_DEFAULT_UI_STATE.sourceToggles)
+    };
+    try {
+      var raw = window.localStorage.getItem(PARKING_UI_PREFS_KEY);
+      if (!raw) return next;
+      var parsed = JSON.parse(raw);
+      var radius = Number(parsed && parsed.radiusMiles);
+      if (Number.isFinite(radius) && radius > 0) next.radiusMiles = radius;
+      var mode = String(parsed && parsed.transportMode || '').toLowerCase();
+      if (mode === 'driving' || mode === 'walking') next.transportMode = mode;
+      next.requireAda = !!(parsed && parsed.requireAda);
+      next.requireEv = !!(parsed && parsed.requireEv);
+      var parsedSourceToggles = parsed && parsed.sourceToggles && typeof parsed.sourceToggles === 'object' ? parsed.sourceToggles : null;
+      if (parsedSourceToggles) {
+        next.sourceToggles = {
+          google: parsedSourceToggles.google !== false,
+          osm: parsedSourceToggles.osm !== false,
+          municipal: parsedSourceToggles.municipal !== false,
+          official: parsedSourceToggles.official !== false,
+          unknown: parsedSourceToggles.unknown !== false
+        };
+      }
+    } catch (_err) {}
+    return next;
+  }
+
+  function persistParkingUiState(state) {
+    var normalized = {
+      radiusMiles: Number(state && state.radiusMiles) || PARKING_DEFAULT_UI_STATE.radiusMiles,
+      transportMode: String(state && state.transportMode || PARKING_DEFAULT_UI_STATE.transportMode).toLowerCase() === 'walking' ? 'walking' : 'driving',
+      requireAda: !!(state && state.requireAda),
+      requireEv: !!(state && state.requireEv),
+      sourceToggles: {
+        google: !(state && state.sourceToggles && state.sourceToggles.google === false),
+        osm: !(state && state.sourceToggles && state.sourceToggles.osm === false),
+        municipal: !(state && state.sourceToggles && state.sourceToggles.municipal === false),
+        official: !(state && state.sourceToggles && state.sourceToggles.official === false),
+        unknown: !(state && state.sourceToggles && state.sourceToggles.unknown === false)
+      }
+    };
+    try { window.localStorage.setItem(PARKING_UI_PREFS_KEY, JSON.stringify(normalized)); } catch (_err) {}
+    window.__detailParkingUiState = normalized;
+    return normalized;
+  }
+
+  function getParkingUiState() {
+    if (!window.__detailParkingUiState) {
+      window.__detailParkingUiState = loadParkingUiState();
+    }
+    return window.__detailParkingUiState;
+  }
+
+  function loadParkingMetaMap() {
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(PARKING_META_STORAGE_KEY) || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  function saveParkingMetaMap(map) {
+    try { window.localStorage.setItem(PARKING_META_STORAGE_KEY, JSON.stringify(map || {})); } catch (_err) {}
+  }
+
+  function loadParkingCacheMap() {
+    try {
+      var parsed = JSON.parse(window.localStorage.getItem(PARKING_CACHE_STORAGE_KEY) || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  function saveParkingCacheMap(map) {
+    try { window.localStorage.setItem(PARKING_CACHE_STORAGE_KEY, JSON.stringify(map || {})); } catch (_err) {}
+  }
 
   function loadNearbyUiState() {
     var next = { radiusMiles: NEARBY_DEFAULT_UI_STATE.radiusMiles, category: NEARBY_DEFAULT_UI_STATE.category };
@@ -3272,6 +3366,475 @@
         '<div class="tm-actions" style="margin-top:8px;">' + actionHtml + '</div>' +
       '</div>';
     }).join('') + '</div>';
+  }
+
+  function normalizeParkingType(rawType, name) {
+    var text = (String(rawType || '') + ' ' + String(name || '')).toLowerCase();
+    if (/garage|deck/.test(text)) return 'garage';
+    if (/street|meter|curb/.test(text)) return 'street';
+    if (/lot|surface/.test(text)) return 'lot';
+    return 'general';
+  }
+
+  function parseParkingMetadataFromText(rawText) {
+    var text = String(rawText || '').trim();
+    if (!text) return null;
+    var lower = text.toLowerCase();
+    var out = {
+      type: normalizeParkingType('', text),
+      paid: /(paid|fee|meter|garage rate|\$\d)/i.test(text),
+      free: /(free parking|no fee|complimentary)/i.test(text),
+      validation: /(validation|validated)/i.test(text),
+      ada: /(ada|accessible|wheelchair)/i.test(text),
+      ev: /(ev|electric vehicle|charging|charger)/i.test(text),
+      overnight: /(overnight|24 hour|24\/7)/i.test(text),
+      timeLimitMinutes: null,
+      confidence: 0.35,
+      notes: text
+    };
+    var limitMatch = lower.match(/(\d{1,2})\s*(hour|hr|hrs|minute|min)/i);
+    if (limitMatch) {
+      var amount = Number(limitMatch[1]);
+      var unit = String(limitMatch[2] || '').toLowerCase();
+      if (Number.isFinite(amount) && amount > 0) {
+        out.timeLimitMinutes = /hour|hr/.test(unit) ? amount * 60 : amount;
+      }
+    }
+    var signals = [out.paid, out.free, out.validation, out.ada, out.ev, out.overnight, out.timeLimitMinutes != null].filter(Boolean).length;
+    out.confidence = Math.max(0.35, Math.min(0.95, 0.35 + (signals * 0.1)));
+    return out;
+  }
+
+  function buildParkingMetadataSnapshot(data, bestOption) {
+    var sourceText = [
+      String(data && data.parkingNotes || ''),
+      String(data && data.description || ''),
+      String(data && data.notes || ''),
+      String(data && data.links || ''),
+      String(data && data.links2 || '')
+    ].join(' \n ');
+    var parsed = parseParkingMetadataFromText(sourceText) || {
+      type: 'general', paid: false, free: false, validation: false, ada: false, ev: false, overnight: false, timeLimitMinutes: null, confidence: 0.2, notes: ''
+    };
+    if (bestOption && bestOption.metadata) {
+      parsed.type = bestOption.type || parsed.type;
+      parsed.paid = bestOption.metadata.paid != null ? !!bestOption.metadata.paid : parsed.paid;
+      parsed.free = bestOption.metadata.free != null ? !!bestOption.metadata.free : parsed.free;
+      parsed.validation = bestOption.metadata.validation != null ? !!bestOption.metadata.validation : parsed.validation;
+      parsed.ada = bestOption.metadata.ada != null ? !!bestOption.metadata.ada : parsed.ada;
+      parsed.ev = bestOption.metadata.ev != null ? !!bestOption.metadata.ev : parsed.ev;
+      parsed.overnight = bestOption.metadata.overnight != null ? !!bestOption.metadata.overnight : parsed.overnight;
+      parsed.timeLimitMinutes = bestOption.metadata.timeLimitMinutes != null ? bestOption.metadata.timeLimitMinutes : parsed.timeLimitMinutes;
+      parsed.confidence = Math.max(parsed.confidence || 0, Number(bestOption.confidence || 0));
+    }
+    parsed.lastVerifiedAt = new Date().toISOString();
+    return parsed;
+  }
+
+  function getLikelyFullNow(option) {
+    var now = new Date();
+    var hour = now.getHours();
+    var weekday = now.getDay() >= 1 && now.getDay() <= 5;
+    var peak = weekday && ((hour >= 7 && hour <= 10) || (hour >= 16 && hour <= 19));
+    if (!peak) return { flag: false, label: 'Low' };
+    var base = 0.3;
+    if (option.type === 'street') base += 0.35;
+    if (option.type === 'lot') base += 0.2;
+    if (option.metadata && option.metadata.free) base += 0.15;
+    if (option.metadata && option.metadata.timeLimitMinutes && option.metadata.timeLimitMinutes <= 120) base += 0.1;
+    var score = Math.min(1, base);
+    return { flag: score >= 0.55, label: score >= 0.75 ? 'High' : 'Medium', score: score };
+  }
+
+  function buildParkingNavUrl(option, mode) {
+    var travelMode = String(mode || 'driving').toLowerCase() === 'walking' ? 'walking' : 'driving';
+    var destination = '';
+    if (Number.isFinite(Number(option && option.latitude)) && Number.isFinite(Number(option && option.longitude))) {
+      destination = String(option.latitude) + ',' + String(option.longitude);
+    } else {
+      destination = String(option && option.address || option && option.name || '').trim();
+    }
+    if (!destination) return '';
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(destination) + '&travelmode=' + encodeURIComponent(travelMode);
+  }
+
+  function normalizeParkingOption(raw, sourceLabel, center, placeKey) {
+    var lat = parseFiniteCoordinate(raw && (raw.latitude != null ? raw.latitude : raw.lat));
+    var lng = parseFiniteCoordinate(raw && (raw.longitude != null ? raw.longitude : raw.lng));
+    var distMiles = (Number.isFinite(center && center.lat) && Number.isFinite(center && center.lng) && Number.isFinite(lat) && Number.isFinite(lng))
+      ? calculateMilesBetween(center.lat, center.lng, lat, lng)
+      : NaN;
+    var metadata = {
+      paid: !!(raw && raw.paid),
+      free: !!(raw && raw.free),
+      validation: !!(raw && raw.validation),
+      ada: !!(raw && raw.ada),
+      ev: !!(raw && raw.ev),
+      overnight: !!(raw && raw.overnight),
+      timeLimitMinutes: Number.isFinite(Number(raw && raw.timeLimitMinutes)) ? Number(raw.timeLimitMinutes) : null
+    };
+    var type = normalizeParkingType(raw && raw.type, raw && raw.name);
+    var option = {
+      id: String(raw && raw.id || (sourceLabel + '_' + Math.random().toString(36).slice(2, 9))),
+      name: String(raw && raw.name || 'Parking Option').trim() || 'Parking Option',
+      address: String(raw && raw.address || raw && raw.description || '').trim(),
+      source: String(sourceLabel || 'unknown'),
+      latitude: Number.isFinite(lat) ? lat : null,
+      longitude: Number.isFinite(lng) ? lng : null,
+      distanceMiles: Number.isFinite(distMiles) ? distMiles : 999,
+      distanceText: Number.isFinite(distMiles) ? (distMiles.toFixed(1) + ' mi') : '—',
+      type: type,
+      metadata: metadata,
+      confidence: Math.max(0.2, Math.min(0.98, Number(raw && raw.confidence || 0.45))),
+      recencyScore: Math.max(0.2, Math.min(1, Number(raw && raw.recencyScore || 0.8))),
+      placeKey: placeKey,
+      lastVerifiedAt: String(raw && raw.lastVerifiedAt || '').trim() || new Date().toISOString()
+    };
+    option.fullness = getLikelyFullNow(option);
+    return option;
+  }
+
+  function rankParkingOptions(options) {
+    return (Array.isArray(options) ? options.slice() : []).sort(function (a, b) {
+      var aDistanceScore = Number.isFinite(a.distanceMiles) ? Math.max(0, 1 - (a.distanceMiles / 6)) : 0.1;
+      var bDistanceScore = Number.isFinite(b.distanceMiles) ? Math.max(0, 1 - (b.distanceMiles / 6)) : 0.1;
+      var aScore = (aDistanceScore * 0.45) + (Number(a.confidence || 0) * 0.35) + (Number(a.recencyScore || 0) * 0.2);
+      var bScore = (bDistanceScore * 0.45) + (Number(b.confidence || 0) * 0.35) + (Number(b.recencyScore || 0) * 0.2);
+      return bScore - aScore;
+    });
+  }
+
+  async function fetchGoogleParkingNearby(lat, lng, uiState) {
+    var key = getDetailGoogleApiKey();
+    if (!key) return [];
+    var radiusMeters = Math.round((Number(uiState && uiState.radiusMiles) || 2) * 1609.34);
+    var url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=' +
+      encodeURIComponent(String(lat) + ',' + String(lng)) +
+      '&radius=' + encodeURIComponent(String(radiusMeters)) +
+      '&type=parking&key=' + encodeURIComponent(key);
+    try {
+      var response = await fetch(url, { method: 'GET' });
+      if (!response.ok) return [];
+      var json = await response.json().catch(function () { return {}; });
+      var rows = Array.isArray(json && json.results) ? json.results : [];
+      return rows.slice(0, 12).map(function (row) {
+        var rowLat = row && row.geometry && row.geometry.location ? row.geometry.location.lat : null;
+        var rowLng = row && row.geometry && row.geometry.location ? row.geometry.location.lng : null;
+        return {
+          id: String(row && row.place_id || ''),
+          name: String(row && row.name || 'Parking'),
+          description: String(row && row.vicinity || ''),
+          latitude: rowLat,
+          longitude: rowLng,
+          type: 'garage',
+          paid: /garage|meter|parking/i.test(String(row && row.name || '') + ' ' + String(row && row.vicinity || '')),
+          confidence: 0.84,
+          recencyScore: 0.86,
+          lastVerifiedAt: new Date().toISOString()
+        };
+      });
+    } catch (_err) {
+      return [];
+    }
+  }
+
+  async function fetchOsmParkingNearby(lat, lng, uiState) {
+    var radiusMeters = Math.round((Number(uiState && uiState.radiusMiles) || 2) * 1609.34);
+    var query = '[out:json][timeout:10];(node["amenity"="parking"](around:' + radiusMeters + ',' + lat + ',' + lng + ');way["amenity"="parking"](around:' + radiusMeters + ',' + lat + ',' + lng + '););out center 20;';
+    try {
+      var response = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query), { method: 'GET' });
+      if (!response.ok) return [];
+      var json = await response.json().catch(function () { return {}; });
+      var rows = Array.isArray(json && json.elements) ? json.elements : [];
+      return rows.slice(0, 16).map(function (row, idx) {
+        var tags = row && row.tags ? row.tags : {};
+        var center = row && row.center ? row.center : row;
+        return {
+          id: String(row && row.id || ('osm_' + idx)),
+          name: String(tags.name || tags.operator || 'OSM Parking').trim(),
+          latitude: center && center.lat,
+          longitude: center && center.lon,
+          type: normalizeParkingType(String(tags.parking || tags['parking:lane'] || ''), String(tags.name || '')),
+          paid: String(tags.fee || '').toLowerCase() === 'yes',
+          free: String(tags.fee || '').toLowerCase() === 'no',
+          ada: String(tags['parking:condition:disabled'] || '').toLowerCase() === 'yes' || /disabled|accessible/i.test(String(tags.access || '')),
+          ev: /charging|electric/i.test(String(tags.amenity || '') + ' ' + String(tags.description || '')),
+          overnight: !/no/i.test(String(tags.access || '')),
+          confidence: 0.68,
+          recencyScore: 0.62,
+          description: String(tags.description || tags.note || '').trim(),
+          lastVerifiedAt: new Date().toISOString()
+        };
+      });
+    } catch (_err) {
+      return [];
+    }
+  }
+
+  async function fetchMunicipalParkingNearby(lat, lng, uiState) {
+    var endpoints = Array.isArray(window.PARKING_MUNICIPAL_API_ENDPOINTS) ? window.PARKING_MUNICIPAL_API_ENDPOINTS : [];
+    if (!endpoints.length) return [];
+    var radiusMeters = Math.round((Number(uiState && uiState.radiusMiles) || 2) * 1609.34);
+    var merged = [];
+    for (var i = 0; i < endpoints.length; i += 1) {
+      var rawTemplate = String(endpoints[i] || '').trim();
+      if (!rawTemplate) continue;
+      var endpoint = rawTemplate
+        .replace(/\{lat\}/g, String(lat))
+        .replace(/\{lng\}/g, String(lng))
+        .replace(/\{radiusMeters\}/g, String(radiusMeters));
+      try {
+        var response = await fetch(endpoint, { method: 'GET' });
+        if (!response.ok) continue;
+        var json = await response.json().catch(function () { return {}; });
+        var rows = Array.isArray(json) ? json : (Array.isArray(json.results) ? json.results : []);
+        rows.slice(0, 10).forEach(function (row, idx) {
+          merged.push({
+            id: String(row && (row.id || row.uuid || row.parking_id) || ('municipal_' + i + '_' + idx)),
+            name: String(row && (row.name || row.title || row.location_name) || 'Municipal Parking'),
+            latitude: row && (row.lat || row.latitude),
+            longitude: row && (row.lng || row.lon || row.longitude),
+            type: normalizeParkingType(String(row && row.type || ''), String(row && row.name || '')),
+            paid: !!(row && (row.paid === true || /paid|meter/i.test(String(row.rate || '')))),
+            free: !!(row && (row.free === true || /free/i.test(String(row.rate || '')))),
+            ada: !!(row && (row.ada === true || row.accessible === true)),
+            ev: !!(row && (row.ev === true || row.evCharging === true)),
+            overnight: !!(row && (row.overnight === true || row.twentyFourHour === true)),
+            confidence: 0.78,
+            recencyScore: 0.9,
+            description: String(row && (row.description || row.rate || '') || '').trim(),
+            lastVerifiedAt: new Date().toISOString()
+          });
+        });
+      } catch (_err) {}
+    }
+    return merged;
+  }
+
+  function fetchOfficialParkingFromLinks(data) {
+    var urls = normalizeLinkList([String(data && data.links || ''), String(data && data.links2 || ''), String(data && data.website || '')].join('\n'));
+    return urls.filter(function (url) {
+      return /park|parking|garage|lot|valet/i.test(url);
+    }).slice(0, 6).map(function (url, idx) {
+      return {
+        id: 'official_' + idx,
+        name: 'Official Parking Info',
+        type: 'general',
+        confidence: 0.58,
+        recencyScore: 0.5,
+        description: url,
+        address: String(data && data.address || '').trim(),
+        sourceUrl: url,
+        lastVerifiedAt: new Date().toISOString()
+      };
+    });
+  }
+
+  function renderParkingControlsHtml() {
+    var ui = getParkingUiState();
+    var radii = [1, 2, 5, 10];
+    return '<div id="parkingControlsWrap" class="u-stack-gap-sm" style="margin:0 0 8px 0;">' +
+      '<div class="tm-actions"><button type="button" id="refreshParkingBtn" class="tm-btn">🅿️ Refresh Parking</button><span class="u-text-xs-dim">Best option uses proximity + confidence + recency.</span></div>' +
+      '<div class="tm-actions"><span class="u-text-xs-dim">Radius:</span>' + radii.map(function (r) {
+        var active = Number(ui.radiusMiles) === Number(r);
+        return '<button type="button" class="tm-btn' + (active ? ' primary' : '') + '" data-parking-radius="' + r + '">' + r + ' mi</button>';
+      }).join('') + '</div>' +
+      '<div class="tm-actions"><span class="u-text-xs-dim">Mode:</span>' +
+        '<button type="button" class="tm-btn' + (ui.transportMode === 'driving' ? ' primary' : '') + '" data-parking-mode="driving">Drive</button>' +
+        '<button type="button" class="tm-btn' + (ui.transportMode === 'walking' ? ' primary' : '') + '" data-parking-mode="walking">Walk</button>' +
+        '<button type="button" class="tm-btn' + (ui.requireAda ? ' primary' : '') + '" data-parking-toggle="ada">ADA</button>' +
+        '<button type="button" class="tm-btn' + (ui.requireEv ? ' primary' : '') + '" data-parking-toggle="ev">EV</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function getFilteredParkingOptions(state) {
+    var options = state && Array.isArray(state.options) ? state.options : [];
+    var ui = getParkingUiState();
+    return options.filter(function (opt) {
+      if ((Number(ui.radiusMiles) || 2) > 0 && Number.isFinite(opt.distanceMiles) && opt.distanceMiles > Number(ui.radiusMiles)) return false;
+      if (ui.requireAda && !(opt.metadata && opt.metadata.ada)) return false;
+      if (ui.requireEv && !(opt.metadata && opt.metadata.ev)) return false;
+      var sourceKey = getParkingSourceToggleKey(opt && opt.source);
+      if (ui.sourceToggles && ui.sourceToggles[sourceKey] === false) return false;
+      return true;
+    });
+  }
+
+  function getParkingSourceBadgeMeta(source) {
+    var raw = String(source || '').trim();
+    var lower = raw.toLowerCase();
+    if (lower.indexOf('google') !== -1) return { label: 'Google', className: 'parking-source-badge--google' };
+    if (lower.indexOf('openstreetmap') !== -1 || lower === 'osm') return { label: 'OpenStreetMap', className: 'parking-source-badge--osm' };
+    if (lower.indexOf('municipal') !== -1 || lower.indexOf('city') !== -1) return { label: 'Municipal', className: 'parking-source-badge--municipal' };
+    if (lower.indexOf('official') !== -1) return { label: 'Official', className: 'parking-source-badge--official' };
+    return { label: raw || 'Unknown', className: 'parking-source-badge--unknown' };
+  }
+
+  function getParkingSourceToggleKey(source) {
+    var className = getParkingSourceBadgeMeta(source).className;
+    if (className === 'parking-source-badge--google') return 'google';
+    if (className === 'parking-source-badge--osm') return 'osm';
+    if (className === 'parking-source-badge--municipal') return 'municipal';
+    if (className === 'parking-source-badge--official') return 'official';
+    return 'unknown';
+  }
+
+  function renderParkingListHtml(state) {
+    var options = getFilteredParkingOptions(state);
+    if (!options.length) {
+      return '<span class="empty">No parking options yet. Click Refresh Parking to scan nearby lots and garages.</span>';
+    }
+    var mode = getParkingUiState().transportMode;
+    return '<div class="u-stack-gap-sm">' + options.slice(0, 10).map(function (opt, idx) {
+      var sourceBadge = getParkingSourceBadgeMeta(opt.source);
+      var tags = [];
+      tags.push(opt.type);
+      if (opt.metadata && opt.metadata.paid) tags.push('paid');
+      if (opt.metadata && opt.metadata.free) tags.push('free');
+      if (opt.metadata && opt.metadata.validation) tags.push('validation');
+      if (opt.metadata && opt.metadata.ada) tags.push('ADA');
+      if (opt.metadata && opt.metadata.ev) tags.push('EV');
+      if (opt.metadata && opt.metadata.overnight) tags.push('overnight');
+      if (opt.metadata && opt.metadata.timeLimitMinutes) tags.push(String(opt.metadata.timeLimitMinutes) + ' min limit');
+      var freshness = formatRelativeAge(opt.lastVerifiedAt) || 'today';
+      var confidencePct = Math.round(Math.max(0, Math.min(1, Number(opt.confidence || 0))) * 100);
+      var fullNow = opt.fullness && opt.fullness.flag ? ('⚠ Likely full now (' + opt.fullness.label + ')') : 'Availability looks better now';
+      return '<div class="card" style="margin:0;">' +
+        '<div class="label">' + escapeHtml(idx === 0 ? 'Best Parking' : 'Option ' + (idx + 1)) +
+          ' <span class="parking-source-badge ' + escapeHtml(sourceBadge.className) + '">' + escapeHtml(sourceBadge.label) + '</span></div>' +
+        '<div class="value"><strong>' + escapeHtml(opt.name) + '</strong><br>📍 ' + escapeHtml(opt.distanceText || '—') + ' · Confidence ' + confidencePct + '% · Verified ' + escapeHtml(freshness) + '</div>' +
+        (opt.address ? '<div class="u-text-xs-dim" style="margin-top:4px;">' + escapeHtml(opt.address) + '</div>' : '') +
+        '<div class="u-text-xs-dim" style="margin-top:4px;">' + escapeHtml(fullNow) + '</div>' +
+        '<div class="u-text-xs-dim" style="margin-top:4px;">' + escapeHtml(tags.join(' • ')) + '</div>' +
+        '<div class="tm-actions" style="margin-top:8px;">' +
+          '<a class="tm-btn primary" href="' + escapeHtml(buildParkingNavUrl(opt, mode) || '#') + '" target="_blank" rel="noopener">Open ' + (mode === 'walking' ? 'Walk' : 'Drive') + '</a>' +
+          '<a class="tm-btn" href="' + escapeHtml(buildParkingNavUrl(opt, 'walking') || '#') + '" target="_blank" rel="noopener">Walk</a>' +
+          '<a class="tm-btn" href="' + escapeHtml(buildParkingNavUrl(opt, 'driving') || '#') + '" target="_blank" rel="noopener">Drive</a>' +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function syncBestParkingAction(data) {
+    var parkingBtn = document.getElementById('abParkingBtn');
+    if (!parkingBtn) return;
+    var parkingState = window.__detailParkingState || null;
+    var best = parkingState && Array.isArray(parkingState.options) && parkingState.options.length ? parkingState.options[0] : null;
+    var bestUrl = best ? buildParkingNavUrl(best, getParkingUiState().transportMode) : '';
+    var fallbackUrl = data && data.address ? ('https://www.google.com/maps/search/parking+near+' + encodeURIComponent(data.address)) : '';
+    var targetUrl = bestUrl || String(data && data.parkingLink || '').trim() || fallbackUrl;
+    if (!targetUrl) {
+      parkingBtn.classList.add('u-hidden');
+      return;
+    }
+    parkingBtn.setAttribute('href', targetUrl);
+    parkingBtn.classList.remove('u-hidden');
+    var confidencePct = best ? Math.round(Math.max(0, Math.min(1, Number(best.confidence || 0))) * 100) : 0;
+    parkingBtn.textContent = best ? ('🅿️ Best Parking (' + confidencePct + '%)') : '🅿️ Best Parking';
+  }
+
+  function renderParkingPanelHtml(data) {
+    var placeKey = getLocationKey(data || {});
+    var metaMap = loadParkingMetaMap();
+    var meta = metaMap[placeKey] && typeof metaMap[placeKey] === 'object' ? metaMap[placeKey] : null;
+    var confidencePct = meta && Number.isFinite(Number(meta.confidence)) ? Math.round(Number(meta.confidence) * 100) : 0;
+    var verifiedLabel = meta && meta.lastVerifiedAt ? formatRelativeAge(meta.lastVerifiedAt) : '';
+    var featureTags = meta ? [meta.type, meta.paid ? 'paid' : '', meta.free ? 'free' : '', meta.validation ? 'validation' : '', meta.ada ? 'ADA' : '', meta.ev ? 'EV' : '', meta.overnight ? 'overnight' : ''] : [];
+    var metadataLine = meta
+      ? ('Confidence ' + confidencePct + '% • Last verified ' + (verifiedLabel || 'today') + (featureTags.filter(Boolean).length ? ' • ' + featureTags.filter(Boolean).join(' • ') : ''))
+      : 'No verified parking profile yet. Refresh Parking to discover and score nearby options.';
+    return '<div class="card" id="parkingIntelligenceCard">' +
+      '<div class="label">Parking Intelligence</div>' +
+      '<div class="u-text-xs-dim" id="parkingMetaSummary" style="margin-top:6px;">' + escapeHtml(metadataLine) + '</div>' +
+      renderParkingControlsHtml() +
+      '<div id="parkingOptionsList">' + renderParkingListHtml(window.__detailParkingState || {}) + '</div>' +
+    '</div>';
+  }
+
+  function hydrateParkingFromCacheForDetail(data) {
+    var placeKey = getLocationKey(data || {});
+    if (!placeKey) return;
+    var cache = loadParkingCacheMap();
+    var entry = cache[placeKey] && typeof cache[placeKey] === 'object' ? cache[placeKey] : null;
+    if (!entry || !Array.isArray(entry.options) || !entry.options.length) return;
+    window.__detailParkingState = {
+      placeKey: placeKey,
+      center: entry.center || null,
+      options: rankParkingOptions(entry.options),
+      updatedAt: entry.updatedAt || Date.now()
+    };
+    var list = document.getElementById('parkingOptionsList');
+    if (list) list.innerHTML = renderParkingListHtml(window.__detailParkingState);
+    var metaSummary = document.getElementById('parkingMetaSummary');
+    if (metaSummary) {
+      var metaMap = loadParkingMetaMap();
+      var meta = metaMap[placeKey] && typeof metaMap[placeKey] === 'object' ? metaMap[placeKey] : null;
+      if (meta) {
+        var conf = Math.round(Math.max(0, Math.min(1, Number(meta.confidence || 0))) * 100);
+        metaSummary.textContent = 'Confidence ' + conf + '% • Last verified ' + (formatRelativeAge(meta.lastVerifiedAt) || 'today');
+      }
+    }
+    if (getActiveDetailTabId() === 'map') renderDetailMap(data);
+    syncBestParkingAction(data || {});
+  }
+
+  async function refreshParkingIntelligenceForDetail() {
+    var detailState = window.__detailInlineEditState;
+    var data = detailState && detailState.data ? detailState.data : null;
+    if (!data) return;
+    var btn = document.getElementById('refreshParkingBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Refreshing...'; }
+    try {
+      var coords = await resolveDetailCoordinates(data);
+      if (!coords) {
+        showDetailToast('⚠️ Could not resolve coordinates for parking search.', 'info', 3200);
+        return;
+      }
+      var ui = getParkingUiState();
+      var placeKey = getLocationKey(data || {});
+      var batches = await Promise.all([
+        fetchGoogleParkingNearby(coords.lat, coords.lng, ui),
+        fetchOsmParkingNearby(coords.lat, coords.lng, ui),
+        fetchMunicipalParkingNearby(coords.lat, coords.lng, ui)
+      ]);
+      var officialRows = fetchOfficialParkingFromLinks(data);
+      var merged = batches.flat().concat(officialRows).map(function (row) {
+        var source = row && row.source ? row.source : (row && row.id && String(row.id).indexOf('official_') === 0 ? 'Official' : (row && row.id && String(row.id).indexOf('municipal_') === 0 ? 'Municipal' : (row && row.id && String(row.id).indexOf('osm_') === 0 ? 'OpenStreetMap' : 'Google')));
+        return normalizeParkingOption(row, source, coords, placeKey);
+      });
+      var deduped = [];
+      var seen = {};
+      merged.forEach(function (row) {
+        var key = String(row.name || '').toLowerCase() + '|' + String(row.address || '').toLowerCase();
+        if (!key || seen[key]) return;
+        seen[key] = true;
+        deduped.push(row);
+      });
+      var ranked = rankParkingOptions(deduped);
+      var best = ranked.length ? ranked[0] : null;
+      var metadata = buildParkingMetadataSnapshot(data, best);
+      var metaMap = loadParkingMetaMap();
+      metaMap[placeKey] = metadata;
+      saveParkingMetaMap(metaMap);
+      var cacheMap = loadParkingCacheMap();
+      cacheMap[placeKey] = { options: ranked, center: coords, updatedAt: Date.now() };
+      saveParkingCacheMap(cacheMap);
+      window.__detailParkingState = { placeKey: placeKey, center: coords, options: ranked, updatedAt: Date.now() };
+      var list = document.getElementById('parkingOptionsList');
+      if (list) list.innerHTML = renderParkingListHtml(window.__detailParkingState);
+      var metaSummary = document.getElementById('parkingMetaSummary');
+      if (metaSummary) {
+        metaSummary.textContent = 'Confidence ' + Math.round(Math.max(0, Math.min(1, Number(metadata.confidence || 0))) * 100) + '% • Last verified ' + (formatRelativeAge(metadata.lastVerifiedAt) || 'today');
+      }
+      if (getActiveDetailTabId() === 'map') renderDetailMap(data);
+      syncBestParkingAction(data);
+      showDetailToast(ranked.length ? '✅ Parking options refreshed.' : 'ℹ️ No parking options found in the current radius.', ranked.length ? 'success' : 'info', 2600);
+    } catch (_err) {
+      showDetailToast('⚠️ Could not refresh parking intelligence right now.', 'error', 3200);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '🅿️ Refresh Parking'; }
+    }
   }
 
   async function refreshNearbyAttractionsForDetail(forceSync) {
@@ -4052,12 +4615,19 @@
       '</div>';
 
     document.getElementById('pane-additional').innerHTML =
+      renderParkingPanelHtml(data) +
       renderNearbyControlsHtml() +
       card('Nearby Attractions', '<div id="nearbyAttractionsValue">' + renderNearbyListHtml((nearbyState && nearbyState.attractions) || []) + (data.nearby && !(nearbyState && nearbyState.attractions && nearbyState.attractions.length) ? '<div class="u-text-xs-dim" style="margin-top:8px;">Saved value: ' + escapeHtml(data.nearby) + '</div>' : '') + '</div>', 'nearby') +
       renderDetailInsightsCard(data, payload);
     renderMapPaneShell();
     renderDetailMap(data);
     hydrateNearbyFromCacheForDetail(data);
+    hydrateParkingFromCacheForDetail(data);
+    window.setTimeout(function () {
+      if (!window.__detailParkingState || !Array.isArray(window.__detailParkingState.options) || !window.__detailParkingState.options.length) {
+        refreshParkingIntelligenceForDetail();
+      }
+    }, 60);
     renderDetailInlineEditPanel();
   }
 
@@ -4386,6 +4956,54 @@
     }).filter(Boolean);
   }
 
+  function getParkingMapMarkers(parkingState) {
+    var options = getFilteredParkingOptions(parkingState || {});
+    return options.slice(0, 12).map(function (opt) {
+      var lat = Number(opt && opt.latitude);
+      var lng = Number(opt && opt.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      var sourceBadge = getParkingSourceBadgeMeta(opt && opt.source);
+      return {
+        name: String(opt && opt.name || 'Parking option').trim() || 'Parking option',
+        lat: lat,
+        lng: lng,
+        distanceText: String(opt && opt.distanceText || '').trim(),
+        sourceLabel: sourceBadge.label,
+        sourceClassName: sourceBadge.className,
+        confidencePct: Math.round(Math.max(0, Math.min(1, Number(opt && opt.confidence || 0))) * 100)
+      };
+    }).filter(Boolean);
+  }
+
+  function renderParkingSourceLegendHtml(parkingMarkers) {
+    var markers = Array.isArray(parkingMarkers) ? parkingMarkers : [];
+    var ui = getParkingUiState();
+    var sourceToggles = ui && ui.sourceToggles && typeof ui.sourceToggles === 'object'
+      ? ui.sourceToggles
+      : PARKING_DEFAULT_UI_STATE.sourceToggles;
+    var activeByClass = {};
+    markers.forEach(function (entry) {
+      var className = String(entry && entry.sourceClassName || '').trim();
+      if (className) activeByClass[className] = true;
+    });
+    var orderedSources = [
+      { key: 'google', label: 'Google', className: 'parking-source-badge--google' },
+      { key: 'osm', label: 'OSM', className: 'parking-source-badge--osm' },
+      { key: 'municipal', label: 'Municipal', className: 'parking-source-badge--municipal' },
+      { key: 'official', label: 'Official', className: 'parking-source-badge--official' },
+      { key: 'unknown', label: 'Unknown', className: 'parking-source-badge--unknown' }
+    ];
+    return '<span class="detail-map-source-legend">' + orderedSources.map(function (entry) {
+      var enabled = sourceToggles[entry.key] !== false;
+      var hasMarkers = !!activeByClass[entry.className];
+      var chipClass = 'detail-map-source-chip' + (enabled ? '' : ' is-inactive') + (hasMarkers ? '' : ' is-empty');
+      return '<button type="button" class="' + chipClass + '" data-parking-source-toggle="' + escapeHtml(entry.key) + '" aria-pressed="' + (enabled ? 'true' : 'false') + '" title="Toggle ' + escapeHtml(entry.label) + ' parking markers">' +
+        '<span class="detail-map-source-swatch ' + escapeHtml(entry.className) + '"></span>' +
+        escapeHtml(entry.label) +
+      '</button>';
+    }).join('') + '</span>';
+  }
+
   function renderMapPaneShell() {
     var pane = document.getElementById('pane-map');
     if (!pane) return;
@@ -4433,6 +5051,7 @@
     centerMarker.addTo(window.__detailLeafletLayer);
     var markers = [centerMarker];
     var nearbyMarkers = getNearbyMapMarkers(window.__detailNearbyState);
+    var parkingMarkers = getParkingMapMarkers(window.__detailParkingState);
     nearbyMarkers.forEach(function (entry) {
       var marker = window.L.circleMarker([entry.lat, entry.lng], {
         radius: 7,
@@ -4441,6 +5060,23 @@
         fillOpacity: 0.85,
         weight: 2
       }).bindPopup('<strong>' + escapeHtml(entry.name) + '</strong>' + (entry.distanceText ? '<br>' + escapeHtml(entry.distanceText) : ''));
+      marker.addTo(window.__detailLeafletLayer);
+      markers.push(marker);
+    });
+    parkingMarkers.forEach(function (entry) {
+      var marker = window.L.marker([entry.lat, entry.lng], {
+        icon: window.L.divIcon({
+          className: 'detail-parking-marker-wrap',
+          html: '<span class="detail-parking-marker ' + escapeHtml(entry.sourceClassName) + '"></span>',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        })
+      }).bindPopup(
+        '<strong>' + escapeHtml(entry.name) + '</strong><br>' +
+        'Parking • ' + escapeHtml(entry.sourceLabel) +
+        (entry.distanceText ? '<br>' + escapeHtml(entry.distanceText) : '') +
+        '<br>Confidence ' + entry.confidencePct + '%'
+      );
       marker.addTo(window.__detailLeafletLayer);
       markers.push(marker);
     });
@@ -4454,9 +5090,19 @@
     window.setTimeout(function () {
       if (window.__detailLeafletMap) window.__detailLeafletMap.invalidateSize();
     }, 120);
-    mapMeta.textContent = nearbyMarkers.length
-      ? ('Showing 1 primary pin + ' + nearbyMarkers.length + ' nearby locations.')
-      : 'Showing this location pin. Refresh Nearby to plot surrounding locations.';
+    var mapSummaryParts = ['Showing 1 primary pin'];
+    if (nearbyMarkers.length) mapSummaryParts.push(nearbyMarkers.length + ' nearby locations');
+    if (parkingMarkers.length) mapSummaryParts.push(parkingMarkers.length + ' parking options');
+    var needsRefreshHints = [];
+    if (!nearbyMarkers.length) needsRefreshHints.push('Nearby');
+    if (!parkingMarkers.length) needsRefreshHints.push('Parking');
+    mapMeta.innerHTML = mapSummaryParts.join(' + ') +
+      (needsRefreshHints.length ? ('. Refresh ' + needsRefreshHints.join(' or ') + ' to plot more markers.') : '.') +
+      '<span class="detail-map-legend">' +
+        '<span class="detail-map-legend-chip"><span class="detail-map-legend-dot detail-map-legend-dot--nearby"></span>Nearby</span>' +
+        '<span class="detail-map-legend-chip"><span class="detail-map-legend-dot detail-map-legend-dot--parking"></span>Parking</span>' +
+      '</span>' +
+      renderParkingSourceLegendHtml(parkingMarkers);
   }
 
   // Dev/ops helpers for backup + restore from browser storage.
@@ -5279,15 +5925,7 @@
       mapsBtn.classList.remove('u-hidden');
     }
 
-    var parkingBtn = document.getElementById('abParkingBtn');
-    var parkingUrl = data.parkingLink || '';
-    if (!parkingUrl && data.address) {
-      parkingUrl = 'https://www.google.com/maps/search/parking+near+' + encodeURIComponent(data.address);
-    }
-    if (parkingUrl) {
-      parkingBtn.setAttribute('href', parkingUrl);
-      parkingBtn.classList.remove('u-hidden');
-    }
+    syncBestParkingAction(data);
 
     var visitedBtn = document.getElementById('abVisitedBtn');
     var visitedIcon = document.getElementById('abVisitedIcon');
@@ -5633,6 +6271,95 @@
 
       if (closestFromEvent(e, '#refreshDriveTimeBtn') || closestFromEvent(e, '#abRefreshDriveTimeBtn')) {
         refreshDriveTimeForDetail(true);
+        return;
+      }
+
+      if (closestFromEvent(e, '#refreshParkingBtn')) {
+        refreshParkingIntelligenceForDetail();
+        return;
+      }
+
+      var parkingRadiusBtn = closestFromEvent(e, '[data-parking-radius]');
+      if (parkingRadiusBtn) {
+        var nextRadius = Number(parkingRadiusBtn.getAttribute('data-parking-radius'));
+        var curParkingUi = getParkingUiState();
+        persistParkingUiState({
+          radiusMiles: Number.isFinite(nextRadius) && nextRadius > 0 ? nextRadius : curParkingUi.radiusMiles,
+          transportMode: curParkingUi.transportMode,
+          requireAda: curParkingUi.requireAda,
+          requireEv: curParkingUi.requireEv,
+          sourceToggles: curParkingUi.sourceToggles
+        });
+        var parkingControls = document.getElementById('parkingControlsWrap');
+        if (parkingControls) parkingControls.outerHTML = renderParkingControlsHtml();
+        var parkingList = document.getElementById('parkingOptionsList');
+        if (parkingList) parkingList.innerHTML = renderParkingListHtml(window.__detailParkingState || {});
+        if (getActiveDetailTabId() === 'map') renderDetailMap((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
+        syncBestParkingAction((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
+        return;
+      }
+
+      var parkingModeBtn = closestFromEvent(e, '[data-parking-mode]');
+      if (parkingModeBtn) {
+        var curUi = getParkingUiState();
+        var nextMode = String(parkingModeBtn.getAttribute('data-parking-mode') || 'driving').toLowerCase();
+        persistParkingUiState({
+          radiusMiles: curUi.radiusMiles,
+          transportMode: nextMode === 'walking' ? 'walking' : 'driving',
+          requireAda: curUi.requireAda,
+          requireEv: curUi.requireEv,
+          sourceToggles: curUi.sourceToggles
+        });
+        var controlsEl = document.getElementById('parkingControlsWrap');
+        if (controlsEl) controlsEl.outerHTML = renderParkingControlsHtml();
+        var listEl = document.getElementById('parkingOptionsList');
+        if (listEl) listEl.innerHTML = renderParkingListHtml(window.__detailParkingState || {});
+        if (getActiveDetailTabId() === 'map') renderDetailMap((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
+        syncBestParkingAction((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
+        return;
+      }
+
+      var parkingToggleBtn = closestFromEvent(e, '[data-parking-toggle]');
+      if (parkingToggleBtn) {
+        var toggleKey = String(parkingToggleBtn.getAttribute('data-parking-toggle') || '').toLowerCase();
+        var uiNow = getParkingUiState();
+        var nextUi = {
+          radiusMiles: uiNow.radiusMiles,
+          transportMode: uiNow.transportMode,
+          requireAda: uiNow.requireAda,
+          requireEv: uiNow.requireEv,
+          sourceToggles: uiNow.sourceToggles
+        };
+        if (toggleKey === 'ada') nextUi.requireAda = !nextUi.requireAda;
+        if (toggleKey === 'ev') nextUi.requireEv = !nextUi.requireEv;
+        persistParkingUiState(nextUi);
+        var controlsNode = document.getElementById('parkingControlsWrap');
+        if (controlsNode) controlsNode.outerHTML = renderParkingControlsHtml();
+        var listNode = document.getElementById('parkingOptionsList');
+        if (listNode) listNode.innerHTML = renderParkingListHtml(window.__detailParkingState || {});
+        if (getActiveDetailTabId() === 'map') renderDetailMap((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
+        syncBestParkingAction((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
+        return;
+      }
+
+      var parkingSourceToggleBtn = closestFromEvent(e, '[data-parking-source-toggle]');
+      if (parkingSourceToggleBtn) {
+        var sourceKey = String(parkingSourceToggleBtn.getAttribute('data-parking-source-toggle') || '').toLowerCase();
+        if (!/^(google|osm|municipal|official|unknown)$/.test(sourceKey)) return;
+        var uiCurrent = getParkingUiState();
+        var toggles = Object.assign({}, uiCurrent.sourceToggles || PARKING_DEFAULT_UI_STATE.sourceToggles);
+        toggles[sourceKey] = toggles[sourceKey] === false;
+        persistParkingUiState({
+          radiusMiles: uiCurrent.radiusMiles,
+          transportMode: uiCurrent.transportMode,
+          requireAda: uiCurrent.requireAda,
+          requireEv: uiCurrent.requireEv,
+          sourceToggles: toggles
+        });
+        var listNode2 = document.getElementById('parkingOptionsList');
+        if (listNode2) listNode2.innerHTML = renderParkingListHtml(window.__detailParkingState || {});
+        if (getActiveDetailTabId() === 'map') renderDetailMap((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
+        syncBestParkingAction((window.__detailInlineEditState && window.__detailInlineEditState.data) || {});
         return;
       }
 

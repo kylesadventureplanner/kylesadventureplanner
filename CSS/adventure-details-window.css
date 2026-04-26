@@ -811,3 +811,198 @@ h1 {
   overflow: auto;
 }
 
+.parking-source-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: none;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.parking-source-badge--google {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.parking-source-badge--osm {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.parking-source-badge--municipal {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.parking-source-badge--official {
+  background: #fdf2f8;
+  border-color: #f9a8d4;
+  color: #9d174d;
+}
+
+.parking-source-badge--unknown {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+
+.detail-map-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+  font-size: 12px;
+}
+
+.detail-map-source-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  vertical-align: middle;
+  flex-wrap: wrap;
+}
+
+.detail-map-source-chip {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+.detail-map-source-chip.is-inactive {
+  opacity: 0.52;
+}
+
+.detail-map-source-chip.is-empty {
+  border-style: dashed;
+}
+
+.detail-map-source-chip:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.detail-map-source-chip:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+}
+
+.detail-map-source-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 2px solid #92400e;
+  background: #f59e0b;
+  box-sizing: border-box;
+}
+
+.detail-map-source-swatch.parking-source-badge--google {
+  background: #2563eb;
+  border-color: #1e3a8a;
+}
+
+.detail-map-source-swatch.parking-source-badge--osm {
+  background: #16a34a;
+  border-color: #166534;
+}
+
+.detail-map-source-swatch.parking-source-badge--municipal {
+  background: #f59e0b;
+  border-color: #b45309;
+}
+
+.detail-map-source-swatch.parking-source-badge--official {
+  background: #ec4899;
+  border-color: #9d174d;
+}
+
+.detail-map-source-swatch.parking-source-badge--unknown {
+  background: #6b7280;
+  border-color: #374151;
+}
+
+.detail-map-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #374151;
+}
+
+.detail-map-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.detail-map-legend-dot--nearby {
+  background: #60a5fa;
+  border: 2px solid #2563eb;
+}
+
+.detail-map-legend-dot--parking {
+  background: #f59e0b;
+  border: 2px solid #b45309;
+}
+
+.detail-parking-marker-wrap {
+  background: transparent;
+  border: none;
+}
+
+.detail-parking-marker {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 2px solid #92400e;
+  background: #f59e0b;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85);
+}
+
+.detail-parking-marker.parking-source-badge--google {
+  background: #2563eb;
+  border-color: #1e3a8a;
+}
+
+.detail-parking-marker.parking-source-badge--osm {
+  background: #16a34a;
+  border-color: #166534;
+}
+
+.detail-parking-marker.parking-source-badge--municipal {
+  background: #f59e0b;
+  border-color: #b45309;
+}
+
+.detail-parking-marker.parking-source-badge--official {
+  background: #ec4899;
+  border-color: #9d174d;
+}
+
+.detail-parking-marker.parking-source-badge--unknown {
+  background: #6b7280;
+  border-color: #374151;
+}
+

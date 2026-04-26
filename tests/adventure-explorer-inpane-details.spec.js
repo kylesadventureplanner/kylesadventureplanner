@@ -774,6 +774,208 @@ test.describe('Adventure explorer in-pane details flow', () => {
     expect(syncCountAfterEmptyRefresh).toBe(syncCountBeforeEmptyRefresh);
   });
 
+  test('parking intelligence refreshes ranked options and wires Best Parking quick action', async ({ page }) => {
+    await mockExplorerWorkbookRequests(page);
+    await gotoAdventureChallenge(page);
+
+    await page.route('https://maps.googleapis.com/maps/api/place/nearbysearch/json**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'OK',
+          results: [
+            {
+              place_id: 'pw-parking-google-1',
+              name: 'Playwright Garage',
+              vicinity: '101 Test Ave',
+              geometry: { location: { lat: 35.4012, lng: -82.4518 } }
+            }
+          ]
+        })
+      });
+    });
+
+    await page.route('https://overpass-api.de/api/interpreter**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          elements: [
+            {
+              id: 999,
+              lat: 35.4016,
+              lon: -82.4522,
+              tags: { amenity: 'parking', name: 'Playwright Surface Lot', fee: 'no' }
+            }
+          ]
+        })
+      });
+    });
+
+    const { key } = await openExplorerAndFindDetails(page);
+    await page.locator(`#visitedExplorerList-${key} [data-visited-explorer-details]`).first().click();
+
+    const detailsFrame = page.locator(`#visitedExplorerDetailsFrame-${key}`);
+    await expect(detailsFrame).toBeVisible();
+    const details = page.frameLocator(`#visitedExplorerDetailsFrame-${key}`);
+
+    await page.evaluate(() => {
+      window.GOOGLE_PLACES_API_KEY = 'playwright-parking-key';
+    });
+
+    await details.locator('#tabs .tab-btn[data-tab="additional"]').click();
+    await expect(details.locator('#parkingIntelligenceCard')).toBeVisible();
+
+    const frameHandle = await detailsFrame.elementHandle();
+    const liveFrame = frameHandle ? await frameHandle.contentFrame() : null;
+    expect(liveFrame).not.toBeNull();
+    await liveFrame.evaluate(() => {
+      if (window.__detailInlineEditState && window.__detailInlineEditState.data) {
+        window.__detailInlineEditState.data.googleUrl = 'https://maps.google.com/@35.4010,-82.4520,15z';
+        window.__detailInlineEditState.data.links = 'https://example.com/parking-map';
+      }
+    });
+
+    await details.locator('#refreshParkingBtn').click();
+
+    await expect(details.locator('#parkingOptionsList .card').first()).toBeVisible({ timeout: 12000 });
+    await expect(details.locator('#parkingOptionsList')).toContainText(/Best Parking/i);
+    await expect(details.locator('#parkingOptionsList .parking-source-badge').first()).toBeVisible();
+    await expect(details.locator('#parkingOptionsList .parking-source-badge--google').first()).toBeVisible();
+    await expect(details.locator('#abParkingBtn')).toContainText(/Best Parking/i);
+    await expect(details.locator('#abParkingBtn')).toHaveAttribute('href', /google\.com\/maps\/dir/i);
+
+    await liveFrame.evaluate(() => {
+      window.__detailNearbyState = {
+        placeKey: 'playwright-map-nearby',
+        center: { lat: 35.4010, lng: -82.4520 },
+        attractions: [
+          {
+            name: 'Playwright Nearby Marker',
+            latitude: 35.4015,
+            longitude: -82.4515,
+            distanceText: '0.1 mi'
+          }
+        ],
+        updatedAt: Date.now()
+      };
+
+      window.L = {
+        map: function () {
+          return {
+            setView: function () { return this; },
+            fitBounds: function () { return this; },
+            invalidateSize: function () {},
+            remove: function () {}
+          };
+        },
+        tileLayer: function () {
+          return { addTo: function () { return this; } };
+        },
+        layerGroup: function () {
+          return {
+            __markers: [],
+            addTo: function () { return this; },
+            clearLayers: function () { this.__markers = []; }
+          };
+        },
+        divIcon: function (options) {
+          return options || {};
+        },
+        marker: function (_latlng, options) {
+          return {
+            __kind: 'marker',
+            __options: options || {},
+            bindPopup: function () { return this; },
+            addTo: function (layer) {
+              if (layer && Array.isArray(layer.__markers)) layer.__markers.push(this);
+              return this;
+            }
+          };
+        },
+        circleMarker: function (_latlng, options) {
+          return {
+            __kind: 'circle',
+            __options: options || {},
+            bindPopup: function () { return this; },
+            addTo: function (layer) {
+              if (layer && Array.isArray(layer.__markers)) layer.__markers.push(this);
+              return this;
+            }
+          };
+        },
+        featureGroup: function () {
+          return {
+            getBounds: function () {
+              return {
+                pad: function () {
+                  return {};
+                }
+              };
+            }
+          };
+        }
+      };
+      window.ensureLeafletForDetailMap = async function () { return window.L; };
+      window.__detailLeafletMap = null;
+      window.__detailLeafletLayer = null;
+      window.__detailLeafletMapEl = null;
+    });
+
+    await details.locator('#tabs .tab-btn[data-tab="map"]').click();
+    await expect(details.locator('#detailMapMeta')).toContainText(/parking options/i);
+    await expect(details.locator('#detailMapMeta .detail-map-source-chip')).toHaveCount(5);
+    await expect(details.locator('#detailMapMeta')).toContainText(/Google/i);
+    await expect(details.locator('#detailMapMeta')).toContainText(/OSM/i);
+    await expect(details.locator('#detailMapMeta')).toContainText(/Municipal/i);
+    await expect(details.locator('#detailMapMeta')).toContainText(/Official/i);
+    await expect(details.locator('#detailMapMeta')).toContainText(/Unknown/i);
+    await expect.poll(async () => liveFrame.evaluate(() => {
+      var layer = window.__detailLeafletLayer;
+      var markers = layer && Array.isArray(layer.__markers) ? layer.__markers : [];
+      var nearbyCount = markers.filter(function (m) { return m && m.__kind === 'circle'; }).length;
+      var parkingCount = markers.filter(function (m) {
+        if (!m || m.__kind !== 'marker') return false;
+        var html = String(m.__options && m.__options.icon && m.__options.icon.html || '');
+        return html.indexOf('detail-parking-marker') !== -1;
+      }).length;
+      return nearbyCount >= 1 && parkingCount >= 1;
+    }), { timeout: 12000 }).toBe(true);
+
+    const googleToggle = details.locator('#detailMapMeta [data-parking-source-toggle="google"]');
+    await expect(googleToggle).toHaveAttribute('aria-pressed', 'true');
+    await googleToggle.click();
+    await expect(googleToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect.poll(async () => liveFrame.evaluate(() => {
+      var layer = window.__detailLeafletLayer;
+      var markers = layer && Array.isArray(layer.__markers) ? layer.__markers : [];
+      var parkingMarkers = markers.filter(function (m) {
+        if (!m || m.__kind !== 'marker') return false;
+        var html = String(m.__options && m.__options.icon && m.__options.icon.html || '');
+        return html.indexOf('detail-parking-marker') !== -1;
+      });
+      var googleParkingCount = parkingMarkers.filter(function (m) {
+        var html = String(m.__options && m.__options.icon && m.__options.icon.html || '');
+        return html.indexOf('parking-source-badge--google') !== -1;
+      }).length;
+      return googleParkingCount === 0;
+    }), { timeout: 12000 }).toBe(true);
+
+    await googleToggle.click();
+    await expect(googleToggle).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(async () => liveFrame.evaluate(() => {
+      var layer = window.__detailLeafletLayer;
+      var markers = layer && Array.isArray(layer.__markers) ? layer.__markers : [];
+      var googleParkingCount = markers.filter(function (m) {
+        if (!m || m.__kind !== 'marker') return false;
+        var html = String(m.__options && m.__options.icon && m.__options.icon.html || '');
+        return html.indexOf('detail-parking-marker') !== -1 && html.indexOf('parking-source-badge--google') !== -1;
+      }).length;
+      return googleParkingCount >= 1;
+    }), { timeout: 12000 }).toBe(true);
+  });
+
   test('next and previous location follow frozen filtered order from the originating explorer list', async ({ page }) => {
     await mockExplorerWorkbookRequests(page);
     await gotoAdventureChallenge(page);
