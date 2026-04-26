@@ -2678,11 +2678,14 @@
     return { label: `Low ${pct}%`, className: 'is-low' };
   }
 
+  function getParserSelectToggles() {
+    const modal = document.getElementById('visitedLocationTextParserModal');
+    const root = modal || document;
+    return Array.from(root.querySelectorAll('[data-parser-field-select]'));
+  }
+
   function getParserSelectedCount() {
-    return PARSER_FIELDS.reduce((count, fieldKey) => {
-      const checkbox = document.getElementById(`visitedLocationParserSelect-${fieldKey}`);
-      return count + (checkbox && checkbox.checked ? 1 : 0);
-    }, 0);
+    return getParserSelectToggles().filter((toggle) => Boolean(toggle && toggle.checked)).length;
   }
 
   function updateParserSaveButtonState() {
@@ -9373,7 +9376,19 @@
   window.forceVisitedExplorerSync = forceVisitedExplorerSync;
   window.openVisitedVisitLogFromAchievements = openVisitedVisitLogFromAchievements;
   window.getVisitedTrackerSyncHealth = getSyncHealthStatus;
-  window.syncVisitedExplorerDetailFields = syncVisitedExplorerDetailFields;
+  const preboundExplorerDetailSync = typeof window.syncVisitedExplorerDetailFields === 'function'
+    ? window.syncVisitedExplorerDetailFields
+    : null;
+  window.syncVisitedExplorerDetailFields = async function wrappedSyncVisitedExplorerDetailFields(sourceMeta, updates, options) {
+    const result = await syncVisitedExplorerDetailFields(sourceMeta, updates, options);
+    // Preserve externally installed observers (e.g. Playwright init hooks) even if this file loads later.
+    if (preboundExplorerDetailSync && preboundExplorerDetailSync !== syncVisitedExplorerDetailFields) {
+      try {
+        await preboundExplorerDetailSync(sourceMeta, updates, options);
+      } catch (_syncHookError) {}
+    }
+    return result;
+  };
   window.persistAdventureDetailMetadata = function (metaEvent) {
     const payload = metaEvent && typeof metaEvent === 'object' ? metaEvent : {};
     return persistVisitedPersistenceEvent({

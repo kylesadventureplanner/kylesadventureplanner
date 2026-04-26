@@ -15169,9 +15169,41 @@
     const isHttpUrl = (value) => /^https?:\/\//i.test(String(value || '').trim());
     const fullAddress = [address, city, state].filter(Boolean).join(', ');
     const mapsUrl = buildGoogleMapsSearchUrl(name, fullAddress || address, sourceGoogleUrl || links || directions);
-    const parkingUrl = isHttpUrl(links2)
-      ? links2
-      : (isHttpUrl(links) && /park/i.test(links) ? links : '');
+
+    /**
+     * Build a Google Maps URL that searches only for OFFICIAL parking near the location.
+     *
+     * Official parking includes:
+     *   - The location's own dedicated parking
+     *   - Official public parking lots / garages
+     *   - Municipal / city-operated parking
+     *   - Official metered or free street parking
+     *
+     * It deliberately avoids "parking" as a lone keyword, which Google Maps often
+     * resolves with business-establishment lots (Walmart, Target, strip-mall lots, etc.).
+     * Using "public parking garage" + "municipal parking" + "metered street parking"
+     * strongly biases Google Maps toward official dedicated parking facilities.
+     */
+    function buildOfficialParkingUrl(locationName, locationAddress) {
+      // Use stored URL if available (user explicitly curated it — highest trust).
+      const stored = isHttpUrl(links2)
+        ? links2
+        : (isHttpUrl(links) && /park/i.test(links) ? links : '');
+      if (stored) return { url: stored, isStored: true };
+
+      // No stored URL → generate smart Google Maps search.
+      // Query deliberately uses official-parking terms so Google Maps avoids surfacing
+      // random business lots.  Combining multiple official types (the "near" keyword
+      // is Google Maps-idiomatic and keeps the result set geographically focused).
+      const near = [locationName, locationAddress].filter(Boolean).join(', ');
+      const query = `public parking garage OR municipal parking lot OR metered street parking near ${near}`;
+      return {
+        url: `https://www.google.com/maps/search/${encodeURIComponent(query)}`,
+        isStored: false
+      };
+    }
+
+    const parkingResult = buildOfficialParkingUrl(name, fullAddress || address);
 
     const activeFilteredIndex = Number(modal.dataset.currentFilteredIndex);
     const filteredIndex = Number.isInteger(activeFilteredIndex) && activeFilteredIndex >= 0
@@ -15183,7 +15215,7 @@
 
     actionBar.innerHTML = `
       <button type="button" id="adventureModalMapsBtn" class="row-detail-footer-btn" style="flex:0 0 auto;">🗺️ Open Maps</button>
-      <button type="button" id="adventureModalParkingBtn" class="row-detail-footer-btn" style="flex:0 0 auto;">🅿️ Parking Map</button>
+      <button type="button" id="adventureModalParkingBtn" class="row-detail-footer-btn" style="flex:0 0 auto;" title="Find official parking — garages, public lots, municipal &amp; street parking only">🅿️ Parking</button>
       <button type="button" id="adventureModalFavoriteBtn" class="row-detail-footer-btn" style="flex:0 0 auto;"><span id="favBtnText">${isFavorite ? '💖 Favorite' : '🤍 Favorite'}</span></button>
       <div id="adventureModalRatingControls" style="display:inline-flex;align-items:center;gap:4px;">
         ${[1,2,3,4,5].map((s) => `<button type="button" class="row-detail-footer-btn adventure-modal-rating-btn" data-rating="${s}" title="Rate ${s} stars" style="padding:6px 8px;flex:0 0 auto;">${rating >= s ? '⭐' : '☆'}</button>`).join('')}
@@ -15202,9 +15234,12 @@
 
     const parkingBtn = actionBar.querySelector('#adventureModalParkingBtn');
     if (parkingBtn) {
-      if (!parkingUrl) parkingBtn.disabled = true;
+      // Button is ALWAYS enabled — stored URL or auto-generated official-parking search.
+      const { url: parkingUrl, isStored } = parkingResult;
+      parkingBtn.title = isStored
+        ? '🅿️ Open saved parking map'
+        : '🅿️ Search for official parking nearby (garages, public lots, municipal & street parking only)';
       parkingBtn.onclick = () => {
-        if (!parkingUrl) return;
         window.open(parkingUrl, '_blank', 'noopener');
       };
     }

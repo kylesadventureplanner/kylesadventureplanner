@@ -1844,8 +1844,34 @@
     return null;
   }
 
+  function resolveExplorerHostSyncTarget() {
+    var hostWin = getOpenerWindow();
+    var context = window.__detailHostContext || 'none';
+    if (hostWin && typeof hostWin.syncVisitedExplorerDetailFields === 'function') {
+      return { target: hostWin, context: context };
+    }
+
+    try {
+      if (context === 'opener' && window.parent && window.parent !== window && typeof window.parent.syncVisitedExplorerDetailFields === 'function') {
+        return { target: window.parent, context: 'parent' };
+      }
+    } catch (_errParent) {}
+
+    try {
+      if (context === 'parent' && window.opener && !window.opener.closed && typeof window.opener.syncVisitedExplorerDetailFields === 'function') {
+        return { target: window.opener, context: 'opener' };
+      }
+    } catch (_errOpener) {}
+
+    return { target: null, context: context };
+  }
+
   async function syncViaExplorerHost(state, updates) {
-    var openerWin = getOpenerWindow();
+    var resolvedHost = resolveExplorerHostSyncTarget();
+    var openerWin = resolvedHost && resolvedHost.target ? resolvedHost.target : null;
+    if (resolvedHost && resolvedHost.context) {
+      window.__detailHostContext = resolvedHost.context;
+    }
     if (!openerWin || typeof openerWin.syncVisitedExplorerDetailFields !== 'function') {
       return { attempted: false, synced: false, reason: 'host-sync-unavailable', context: window.__detailHostContext || 'none' };
     }
