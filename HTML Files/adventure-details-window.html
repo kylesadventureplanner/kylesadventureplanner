@@ -337,6 +337,7 @@
       <button type="button" class="star-btn" data-star="3" title="3 stars">★</button>
       <button type="button" class="star-btn" data-star="4" title="4 stars">★</button>
       <button type="button" class="star-btn" data-star="5" title="5 stars">★</button>
+      <button type="button" class="star-reset-btn" id="abRatingResetBtn" title="Reset my rating">Reset</button>
     </div>
 
     <a class="ab-btn ab-maps u-hidden" id="abMapsBtn" href="#" target="_blank" rel="noopener">
@@ -2157,13 +2158,13 @@
       '<button id="tmResetBtn" type="button" class="tm-btn">Reset to Source Tags</button>' +
       '<button id="tmClearBtn" type="button" class="tm-btn danger">Clear All</button>' +
       '</div>' +
-      '<div class="tm-debug">' +
+      '<details class="tm-debug" id="tmDebugPanel">' +
+      '<summary class="tm-debug-summary"><span class="tm-debug-title">Save Debug Trace</span></summary>' +
       '<div class="tm-debug-head">' +
-      '<span class="tm-debug-title">Save Debug Trace</span>' +
       '<button id="tmCopyDebugBtn" type="button" class="tm-debug-copy">Copy Debug</button>' +
       '</div>' +
       '<pre id="tmDebugPre" class="tm-debug-pre">No debug trace captured yet.</pre>' +
-      '</div>' +
+      '</details>' +
       '</div>';
 
     syncTagManagementUi();
@@ -3943,6 +3944,9 @@
       return;
     }
 
+    // Normalize imported hours payloads (including JSON strings) before rendering.
+    data.hoursOfOperation = normalizeEnrichHoursValue(data.hoursOfOperation, getOpenerWindow());
+
     var sourceTagList = parseTagCsv(data.tags);
     var storedTagList = getStoredTagsForPlace(getTagPlaceKey(data), data);
     var tagList = uniqueTags([].concat(sourceTagList, storedTagList));
@@ -4682,7 +4686,18 @@
 
   function normalizeEnrichHoursValue(value, openerWin) {
     if (value == null) return '';
-    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'string') {
+      var trimmed = value.trim();
+      if (!trimmed) return '';
+      if ((trimmed[0] === '{' || trimmed[0] === '[') && /weekdayDescriptions|periods|open|close/i.test(trimmed)) {
+        try {
+          var parsed = JSON.parse(trimmed);
+          var normalizedFromJson = normalizeEnrichHoursValue(parsed, openerWin);
+          if (normalizedFromJson) return normalizedFromJson;
+        } catch (_jsonParseError) {}
+      }
+      return trimmed;
+    }
     if (openerWin && typeof openerWin.normalizeOperationHours === 'function') {
       try {
         return String(openerWin.normalizeOperationHours(value) || '').trim();
@@ -4694,6 +4709,9 @@
     if (typeof value === 'object') {
       if (Array.isArray(value.weekdayDescriptions)) {
         return value.weekdayDescriptions.map(function (entry) { return String(entry || '').trim(); }).filter(Boolean).join('; ');
+      }
+      if (Array.isArray(value.weekday_descriptions)) {
+        return value.weekday_descriptions.map(function (entry) { return String(entry || '').trim(); }).filter(Boolean).join('; ');
       }
       var days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       var joined = days.map(function (day) {
@@ -5195,6 +5213,41 @@
     var currentRating = state.myRating || 0;
     renderStars(currentRating);
     var starButtons = Array.prototype.slice.call(document.querySelectorAll('.star-btn'));
+    var ratingResetBtn = document.getElementById('abRatingResetBtn');
+
+    async function applyRatingSelection(nextRating) {
+      var previousRating = currentRating;
+      currentRating = nextRating;
+      renderStars(currentRating);
+      state.myRating = currentRating;
+      starButtons.forEach(function (starBtn) { starBtn.disabled = true; });
+      if (ratingResetBtn) ratingResetBtn.disabled = true;
+      try {
+        var ratingResult = await persistActionBarPreferenceUpdate('rating', nextRating, {
+          openerWin: openerWin,
+          rowMatch: rowMatch,
+          rowValues: rowValues,
+          syncState: syncState
+        });
+        if (!ratingResult || (!ratingResult.synced && !ratingResult.queued && !ratingResult.excelSaved)) {
+          throw new Error(ratingResult && ratingResult.reason ? ratingResult.reason : 'save-unavailable');
+        }
+        data.myRating = nextRating ? String(nextRating) : '';
+        if (typeof showDetailToast === 'function' && ratingResult.queued) {
+          showDetailToast('Rating queued for sync.', 'info', 2200);
+        }
+      } catch (error) {
+        currentRating = previousRating;
+        state.myRating = previousRating;
+        renderStars(currentRating);
+        if (typeof showDetailToast === 'function') {
+          showDetailToast('Could not save rating to Excel: ' + (error && error.message ? error.message : 'unknown error'), 'warning', 3200);
+        }
+      } finally {
+        starButtons.forEach(function (starBtn) { starBtn.disabled = false; });
+        if (ratingResetBtn) ratingResetBtn.disabled = false;
+      }
+    }
 
     starButtons.forEach(function (btn) {
       btn.addEventListener('mouseenter', function () {
@@ -5205,38 +5258,20 @@
       });
       btn.addEventListener('click', async function () {
         var clicked = parseInt(btn.getAttribute('data-star'), 10);
-        var previousRating = currentRating;
         var nextRating = (currentRating === clicked) ? 0 : clicked;
-        currentRating = nextRating;
-        renderStars(currentRating);
-        state.myRating = currentRating;
-        starButtons.forEach(function (starBtn) { starBtn.disabled = true; });
-        try {
-          var ratingResult = await persistActionBarPreferenceUpdate('rating', nextRating, {
-            openerWin: openerWin,
-            rowMatch: rowMatch,
-            rowValues: rowValues,
-            syncState: syncState
-          });
-          if (!ratingResult || (!ratingResult.synced && !ratingResult.queued && !ratingResult.excelSaved)) {
-            throw new Error(ratingResult && ratingResult.reason ? ratingResult.reason : 'save-unavailable');
-          }
-          data.myRating = nextRating ? String(nextRating) : '';
-          if (typeof showDetailToast === 'function' && ratingResult.queued) {
-            showDetailToast('Rating queued for sync.', 'info', 2200);
-          }
-        } catch (error) {
-          currentRating = previousRating;
-          state.myRating = previousRating;
-          renderStars(currentRating);
-          if (typeof showDetailToast === 'function') {
-            showDetailToast('Could not save rating to Excel: ' + (error && error.message ? error.message : 'unknown error'), 'warning', 3200);
-          }
-        } finally {
-          starButtons.forEach(function (starBtn) { starBtn.disabled = false; });
-        }
+        await applyRatingSelection(nextRating);
       });
     });
+
+    if (ratingResetBtn) {
+      ratingResetBtn.addEventListener('click', async function () {
+        if (!currentRating) {
+          showDetailToast('ℹ️ Your rating is already reset.', 'info', 1800);
+          return;
+        }
+        await applyRatingSelection(0);
+      });
+    }
 
     var mapsBtn = document.getElementById('abMapsBtn');
     if (directionsUrl) {

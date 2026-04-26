@@ -331,6 +331,10 @@ test.describe('Adventure explorer in-pane details flow', () => {
 
     await expect(plannerDetailsFrameLocator.locator('#tabs .tab-btn[data-tab="overview"]')).toHaveClass(/active/);
     await expect(plannerDetailsFrameLocator.locator('#actionBar')).toBeVisible();
+    const ratingResetBtn = plannerDetailsFrameLocator.locator('#abRatingResetBtn');
+    await expect(ratingResetBtn).toBeVisible();
+    await ratingResetBtn.click();
+    await expect(plannerDetailsFrameLocator.locator('.star-btn.lit')).toHaveCount(0);
 
     await activateDetailsTab('tag-management');
     await expect(plannerDetailsFrameLocator.locator('#pane-tag-management')).toBeVisible();
@@ -516,6 +520,42 @@ test.describe('Adventure explorer in-pane details flow', () => {
       address: '1600 Amphitheatre Parkway, Mountain View, CA 94043',
       description: 'A Google-fetched enriched description for Playwright verification.'
     });
+  });
+
+  test('details window formats JSON hours payload into readable text', async ({ page }) => {
+    const detailKey = `playwright_detail_hours_json_${Date.now()}`;
+    const payload = {
+      data: {
+        name: 'Playwright Hours Payload Spot',
+        city: 'Austin',
+        state: 'TX',
+        hoursOfOperation: JSON.stringify({
+          periods: [
+            { open: { day: 1, hour: 9, minute: 0 }, close: { day: 1, hour: 18, minute: 0 } },
+            { open: { day: 2, hour: 9, minute: 0 }, close: { day: 2, hour: 18, minute: 0 } }
+          ],
+          weekdayDescriptions: [
+            'Monday: 9:00 AM - 6:00 PM',
+            'Tuesday: 9:00 AM - 6:00 PM'
+          ]
+        })
+      }
+    };
+
+    await page.addInitScript(({ seededDetailKey, seededPayload }) => {
+      localStorage.setItem(seededDetailKey, JSON.stringify(seededPayload));
+      localStorage.setItem('adventure_details_latest', seededDetailKey);
+    }, { seededDetailKey: detailKey, seededPayload: payload });
+
+    await page.goto(`/HTML%20Files/adventure-details-window.html?detailKey=${detailKey}&embedded=1`, {
+      waitUntil: 'domcontentloaded'
+    });
+
+    await page.locator('#tabs .tab-btn[data-tab="details"]').click();
+    const hoursValue = page.locator('[data-detail-field-card="hoursOfOperation"] .value');
+    await expect(hoursValue).toContainText('Monday: 9:00 AM - 6:00 PM');
+    await expect(hoursValue).toContainText('Tuesday: 9:00 AM - 6:00 PM');
+    await expect(hoursValue).not.toContainText(/"periods"\s*:/i);
   });
 
   test('tag refresh stays non-destructive, apply mutates tags, and save syncs only applied tags', async ({ page }) => {

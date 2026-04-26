@@ -280,6 +280,58 @@
       left: 32px;
     }
 
+    .inline-slider-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 13px;
+      color: #374151;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    .inline-slider-toggle input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .inline-toggle-slider {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+      border-radius: 999px;
+      background: #cbd5e1;
+      border: 1px solid #94a3b8;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .inline-toggle-slider::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+      transition: transform 0.2s ease;
+    }
+
+    .inline-slider-toggle input[type="checkbox"]:checked + .inline-toggle-slider {
+      background: #10b981;
+      border-color: #059669;
+    }
+
+    .inline-slider-toggle input[type="checkbox"]:checked + .inline-toggle-slider::after {
+      transform: translateX(20px);
+    }
+
     .dry-run-toggle label {
       margin: 0;
       font-weight: 700;
@@ -807,9 +859,10 @@
         <div id="festivalAppliedConfigSummary" class="help-text" hidden>Loading applied config...</div>
         <div class="input-group" style="margin-top:12px;">
           <label for="targetStarterRecommendations" style="text-transform:none; letter-spacing:0;">Regional starter sources for selected target</label>
-          <label style="display:inline-flex; align-items:center; gap:6px; text-transform:none; letter-spacing:0; font-size:12px; margin-bottom:6px;">
-            <input id="targetStarterOfficialOnlyToggle" type="checkbox" onchange="renderTargetStarterRecommendations()" style="width:auto;">
-            Show official only ([official])
+          <label class="inline-slider-toggle" style="margin-bottom:6px;">
+            <input id="targetStarterOfficialOnlyToggle" type="checkbox" onchange="renderTargetStarterRecommendations()">
+            <span class="inline-toggle-slider" aria-hidden="true"></span>
+            <span>Show official only ([official])</span>
           </label>
           <textarea id="targetStarterRecommendations" class="starter-links-box" readonly></textarea>
           <div class="button-group" style="margin-top:8px;">
@@ -863,8 +916,9 @@
           <div class="help-text">Chain results continue to use chain relevance ranking.</div>
         </div>
         <div class="input-group">
-          <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0;">
+          <label class="inline-slider-toggle" style="display:flex;">
             <input id="candidateUrlProbeEnabled" type="checkbox">
+            <span class="inline-toggle-slider" aria-hidden="true"></span>
             Probe URL endpoints for non-festival website/place URL search when direct lookup has no match (opt-in)
             <span title="Browser-only mode may hit CORS blocks on many sites. Turn this on only when URL search needs extra enrichment." style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:999px; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8; font-size:12px; font-weight:700; cursor:help;">i</span>
           </label>
@@ -1039,9 +1093,10 @@
         </div>
 
         <div class="input-group" style="margin-top: 10px;">
-          <label style="text-transform: none; letter-spacing: 0; font-size: 12px; display: inline-flex; align-items: center; gap: 8px;">
+          <label class="inline-slider-toggle" style="font-size:12px;">
             <input id="chainCandidateMultiSelect" type="checkbox" style="width: auto;">
-            Allow multi-select per query
+            <span class="inline-toggle-slider" aria-hidden="true"></span>
+            <span>Allow multi-select per query</span>
           </label>
         </div>
 
@@ -1100,16 +1155,17 @@
 
         <div class="input-group">
           <label style="text-transform:none; letter-spacing:0;">Enabled Providers</label>
-          <label style="display:flex; align-items:center; gap:8px; margin:6px 0;"><input id="festivalProviderTicketmasterEnabled" type="checkbox" checked> Ticketmaster (API)</label>
-          <label style="display:flex; align-items:center; gap:8px; margin:6px 0;"><input id="festivalProviderEventbriteEnabled" type="checkbox"> Eventbrite (API)</label>
-          <label style="display:flex; align-items:center; gap:8px; margin:6px 0;"><input id="festivalProviderOfficialEnabled" type="checkbox" checked> State/County Tourism Calendars (RSS/iCal/JSON/HTML)</label>
-          <label style="display:flex; align-items:center; gap:8px; margin:6px 0;"><input id="festivalProviderChamberEnabled" type="checkbox" checked> FestivalNet/Chamber Feeds (RSS/iCal/JSON/HTML)</label>
+          <label class="inline-slider-toggle" style="display:flex; margin:6px 0;"><input id="festivalProviderTicketmasterEnabled" type="checkbox" checked><span class="inline-toggle-slider" aria-hidden="true"></span><span>Ticketmaster (API)</span></label>
+          <label class="inline-slider-toggle" style="display:flex; margin:6px 0;"><input id="festivalProviderEventbriteEnabled" type="checkbox"><span class="inline-toggle-slider" aria-hidden="true"></span><span>Eventbrite (API)</span></label>
+          <label class="inline-slider-toggle" style="display:flex; margin:6px 0;"><input id="festivalProviderOfficialEnabled" type="checkbox" checked><span class="inline-toggle-slider" aria-hidden="true"></span><span>State/County Tourism Calendars (RSS/iCal/JSON/HTML)</span></label>
+          <label class="inline-slider-toggle" style="display:flex; margin:6px 0;"><input id="festivalProviderChamberEnabled" type="checkbox" checked><span class="inline-toggle-slider" aria-hidden="true"></span><span>FestivalNet/Chamber Feeds (RSS/iCal/JSON/HTML)</span></label>
         </div>
 
         <div class="input-group">
-          <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0;">
+          <label class="inline-slider-toggle" style="display:flex;">
             <input id="festivalKeysVisibleToggle" type="checkbox">
-            Show API credentials
+            <span class="inline-toggle-slider" aria-hidden="true"></span>
+            <span>Show API credentials</span>
           </label>
         </div>
 
@@ -1145,9 +1201,10 @@
         </div>
 
         <div class="input-group">
-          <label style="display:flex; align-items:center; gap:8px; text-transform:none; letter-spacing:0;">
+          <label class="inline-slider-toggle" style="display:flex;">
             <input id="festivalProbeOfficialUrlEndpoints" type="checkbox">
-            Try probing common endpoints on pasted official festival URLs (may trigger CORS blocks on some sites)
+            <span class="inline-toggle-slider" aria-hidden="true"></span>
+            <span>Try probing common endpoints on pasted official festival URLs (may trigger CORS blocks on some sites)</span>
           </label>
         </div>
 
@@ -1322,18 +1379,27 @@
         </div>
 
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+          <label class="inline-slider-toggle" style="display:flex;">
           <input type="checkbox" id="descOverwrite">
-          <label for="descOverwrite" style="font-size:13px; color:#374151; cursor:pointer;">⚠️ Overwrite existing descriptions</label>
+          <span class="inline-toggle-slider" aria-hidden="true"></span>
+          <span id="descOverwriteLabel" style="font-size:13px; color:#374151; cursor:pointer;">⚠️ Overwrite existing descriptions</span>
+          </label>
         </div>
 
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+          <label class="inline-slider-toggle" style="display:flex;">
           <input type="checkbox" id="descStrictMode" checked>
-          <label for="descStrictMode" id="descStrictModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">🛡️ Strict mode (fail-closed verification)</label>
+          <span class="inline-toggle-slider" aria-hidden="true"></span>
+          <span id="descStrictModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">🛡️ Strict mode (fail-closed verification)</span>
+          </label>
         </div>
 
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+          <label class="inline-slider-toggle" style="display:flex;">
           <input type="checkbox" id="descRichOnlyMode">
-          <label for="descRichOnlyMode" id="descRichOnlyModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">📝 Allow placeholders/fallbacks (default: enabled)</label>
+          <span class="inline-toggle-slider" aria-hidden="true"></span>
+          <span id="descRichOnlyModeLabel" style="font-size:13px; color:#374151; cursor:pointer;">📝 Allow placeholders/fallbacks (default: enabled)</span>
+          </label>
         </div>
 
         <div class="button-group">
