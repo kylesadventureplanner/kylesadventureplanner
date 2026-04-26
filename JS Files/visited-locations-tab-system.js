@@ -5652,7 +5652,7 @@
     return resolveExplorerDetailsNeighborItemId(subtabKey, sessionId, currentItemId, 'next');
   }
 
-  function buildExplorerDetailsUrl(subtabKey, item, initialTab, navigationContext) {
+  function buildExplorerDetailsUrl(subtabKey, item, initialTab, navigationContext, options) {
     const baseUrl = resolveInlinePageUrl('HTML Files/adventure-details-window.html');
     const url = new URL(baseUrl, window.location.href);
     const detailKey = cacheExplorerDetailsPayload(subtabKey, item, navigationContext);
@@ -5669,6 +5669,8 @@
       if (navigationContext.nextItemId) url.searchParams.set('navNextItemId', String(navigationContext.nextItemId));
     }
     if (initialTab) url.searchParams.set('initialTab', String(initialTab));
+    const initialAction = options && options.initialAction ? String(options.initialAction) : '';
+    if (initialAction) url.searchParams.set('initialAction', initialAction);
     url.searchParams.set('ts', String(Date.now()));
     return url.toString();
   }
@@ -5708,7 +5710,7 @@
     const title = document.getElementById(`visitedExplorerDetailsPageTitle-${subtabKey}`) || view.querySelector('.card-title');
     const frame = document.getElementById(`visitedExplorerDetailsFrame-${subtabKey}`) || view.querySelector('iframe');
     if (title) title.textContent = item && item.title ? item.title : 'Location Details';
-    if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, options.initialTab, navigationContext));
+    if (frame) frame.setAttribute('src', buildExplorerDetailsUrl(subtabKey, item, options.initialTab, navigationContext, options));
     setExplorerView(root, subtabKey, 'explorer-details');
   }
 
@@ -5852,7 +5854,8 @@
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-notes="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${notesPreview ? 'Edit Notes' : 'Add Notes'}</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-gallery="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">📷 Photos${photoCount > 0 ? ` (${photoCount})` : ''}</button>
             <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-find-urls="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🔗 Find / Add URLs</button>
-            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-parse-text="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">📝 Enrich Data</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-enrich="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">🔮 Enrich Data</button>
+            <button type="button" class="visited-explorer-quick-action-item" data-visited-explorer-parse-text="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">📝 Paste &amp; Parse Text</button>
           </div>
           <div class="visited-explorer-card-controls">
             <button type="button" class="visited-explorer-favorite-btn${item.favorite ? ' is-active' : ''}" data-visited-explorer-favorite="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${item.favorite ? '★ Favorited' : '☆ Add to Favorites'}</button>
@@ -8843,6 +8846,16 @@
               urlSearchSaveBtn.disabled = false;
               urlSearchSaveBtn.textContent = 'Save Links';
             });
+            return;
+          }
+
+          // Enrich (Google Places) via details window
+          const enrichDirectBtn = closest('[data-visited-explorer-enrich]');
+          if (enrichDirectBtn) {
+            event.preventDefault();
+            const subtabKey = String(enrichDirectBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const itemId = String(enrichDirectBtn.getAttribute('data-visited-explorer-enrich') || '').trim();
+            if (itemId) openExplorerDetailsPage(root, subtabKey, itemId, { initialAction: 'enrich' });
             return;
           }
 

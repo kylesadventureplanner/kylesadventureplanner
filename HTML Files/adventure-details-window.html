@@ -3188,14 +3188,205 @@
     sourceToggles: { google: true, osm: true, municipal: true, official: true, unknown: true }
   };
   var NEARBY_CATEGORY_CHIPS = [
-    { id: 'all', label: 'All' },
-    { id: 'food', label: 'Food' },
-    { id: 'nature', label: 'Nature' },
-    { id: 'family', label: 'Family' },
-    { id: 'nightlife', label: 'Nightlife' },
-    { id: 'culture', label: 'Culture' },
-    { id: 'shopping', label: 'Shopping' }
+    { id: 'all', label: '🗺️ All' },
+    { id: 'food', label: '🍽️ Food' },
+    { id: 'nature', label: '🌿 Nature' },
+    { id: 'scenic', label: '🏞️ Scenic' },
+    { id: 'coffee_dessert', label: '☕ Coffee & Treats' },
+    { id: 'family', label: '👨‍👩‍👧 Family' },
+    { id: 'nightlife', label: '🍸 Nightlife' },
+    { id: 'culture', label: '🏛️ Culture' },
+    { id: 'shopping', label: '🛍️ Shopping' }
   ];
+
+  // ─── Smart Itinerary Helpers ─────────────────────────────────────────────────
+
+  var DAY_PLAN_KEY = '__adventure_day_plan_v1';
+
+  function loadDetailDayPlan() {
+    try { return JSON.parse(window.localStorage.getItem(DAY_PLAN_KEY) || '[]'); } catch (_e) { return []; }
+  }
+
+  function saveDetailDayPlan(stops) {
+    try { window.localStorage.setItem(DAY_PLAN_KEY, JSON.stringify(stops || [])); } catch (_e) {}
+  }
+
+  function addAttractionToDayPlan(a) {
+    var plan = loadDetailDayPlan();
+    var key = String(a.id || a.name || '').trim();
+    if (!key || plan.some(function (s) { return (s.id || s.name) === key; })) return false;
+    plan.push({ id: key, name: a.name, distanceText: a.distanceText || '—', driveTimeText: a.driveTimeText || '—',
+      latitude: a.latitude, longitude: a.longitude, googleUrl: a.googleUrl || '', addedAt: Date.now() });
+    saveDetailDayPlan(plan);
+    return true;
+  }
+
+  function removeAttractionFromDayPlan(stopId) {
+    saveDetailDayPlan(loadDetailDayPlan().filter(function (s) { return (s.id || s.name) !== String(stopId); }));
+  }
+
+  function buildRouteUrl(plan) {
+    if (!plan || !plan.length) return null;
+    var wps = plan.map(function (s) {
+      return (Number.isFinite(Number(s.latitude)) && Number.isFinite(Number(s.longitude)))
+        ? s.latitude + ',' + s.longitude
+        : encodeURIComponent(s.name);
+    });
+    if (wps.length === 1) return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(plan[0].name);
+    return 'https://www.google.com/maps/dir/' + wps.join('/');
+  }
+
+  function getDetailTimeOfDay() {
+    var h = new Date().getHours();
+    if (h < 10) return 'morning';
+    if (h < 13) return 'midday';
+    if (h < 17) return 'afternoon';
+    if (h < 21) return 'evening';
+    return 'night';
+  }
+
+  /** Returns a greeting banner given time of day and location profile */
+  function getSmartBannerText(tod, profile) {
+    var descMap = {
+      outdoor_adventure: 'outdoor adventure',
+      dining: 'dining spot',
+      culture: 'cultural destination',
+      entertainment: 'entertainment venue',
+      shopping: 'shopping area',
+      family: 'family activity',
+      general: 'location'
+    };
+    var desc = descMap[profile] || 'location';
+    if (tod === 'morning')   return '🌅 Good morning! Here\'s how to make a great day of it from this ' + desc + ':';
+    if (tod === 'midday')    return '☀️ Perfect midday stop! Round out the day from this ' + desc + ':';
+    if (tod === 'afternoon') return '🌤️ Great afternoon ahead! Here\'s what to add to your ' + desc + ' day:';
+    if (tod === 'evening')   return '🌆 Evening adventure! Great add-ons for this ' + desc + ':';
+    return '🌙 Night owl mode. Here\'s what\'s nearby this ' + desc + ':';
+  }
+
+  /**
+   * Render the "Complete Your Day" smart suggestions panel.
+   * Takes the full ranked attractions list and the current location data.
+   */
+  function renderSmartItinerarySuggestionsHtml(attractions, data) {
+    var profile = (typeof window.inferLocationProfile === 'function')
+      ? window.inferLocationProfile(data)
+      : 'general';
+    var groups = (typeof window.buildSmartItineraryGroups === 'function')
+      ? window.buildSmartItineraryGroups(profile, attractions)
+      : [];
+    if (!groups.length) return '';
+
+    var tod = getDetailTimeOfDay();
+    var bannerText = getSmartBannerText(tod, profile);
+
+    var groupHtml = groups.map(function (group) {
+      var itemsHtml = group.suggestions.map(function (a) {
+        var exists = !!(a.exists && a.existingLocation);
+        var rating = a.rating ? ' ⭐ ' + Number(a.rating).toFixed(1) : '';
+        var addBtnId = 'smart-add-' + String(a.id || a.name).replace(/[^a-z0-9]/gi, '_');
+        var addBtnHtml = '<button type="button" class="tm-btn" id="' + addBtnId + '" onclick="handleSmartAddToDayPlan(' + JSON.stringify(a).replace(/"/g, '&quot;') + ', \'' + addBtnId + '\')">🗓 Add to Day</button>';
+        var actionHtml = exists
+          ? '<button type="button" class="tm-btn" data-nearby-nav-source-index="' + (Number.isInteger(Number(a.existingLocation && a.existingLocation.__sourceIndex)) ? Number(a.existingLocation.__sourceIndex) : -1) + '">View Details</button>'
+          : '<a class="tm-btn" href="' + escapeHtml(a.googleUrl || '#') + '" target="_blank" rel="noopener">Google Maps</a>';
+        return '<div style="padding:6px 0; border-bottom:1px solid #f0f4f8; display:flex; align-items:flex-start; gap:10px;">' +
+          '<div style="flex:1;">' +
+            '<div style="font-weight:600; font-size:13px;">' + escapeHtml(a.name || '—') + (exists ? ' <span style="color:#22c55e;font-size:11px;">✅ In App</span>' : '') + '</div>' +
+            '<div style="font-size:11px; color:#64748b;">📍 ' + escapeHtml(a.distanceText || '—') + ' &nbsp; 🚗 ' + escapeHtml(a.driveTimeText || '—') + rating + '</div>' +
+            (a.description ? '<div style="font-size:11px; color:#94a3b8; margin-top:2px;">' + escapeHtml(a.description) + '</div>' : '') +
+          '</div>' +
+          '<div style="display:flex; gap:4px; flex-shrink:0;">' + actionHtml + addBtnHtml + '</div>' +
+        '</div>';
+      }).join('');
+
+      return '<div style="margin-bottom:12px;">' +
+        '<div style="font-weight:700; font-size:13px; color:#1e293b; margin-bottom:4px;">' + group.icon + ' ' + escapeHtml(group.role) + '</div>' +
+        '<div style="font-size:11px; color:#64748b; margin-bottom:6px;">' + escapeHtml(group.subtitle) + '</div>' +
+        itemsHtml +
+      '</div>';
+    }).join('');
+
+    return '<div id="smartItineraryPanel" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-top:14px;">' +
+      '<div style="font-weight:700; font-size:14px; color:#1e293b; margin-bottom:4px;">🗺️ Complete Your Day</div>' +
+      '<div style="font-size:12px; color:#64748b; margin-bottom:12px;">' + bannerText + '</div>' +
+      groupHtml +
+      '<div style="margin-top:8px; padding-top:8px; border-top:1px solid #e2e8f0; display:flex; gap:8px; align-items:center;">' +
+        '<button type="button" class="tm-btn primary" onclick="openDayPlanDrawer()">📋 View Day Plan</button>' +
+        '<span class="u-text-xs-dim" id="dayPlanCount">' + loadDetailDayPlan().length + ' stop(s) saved</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  window.handleSmartAddToDayPlan = function (a, btnId) {
+    var added = addAttractionToDayPlan(a);
+    var btn = document.getElementById(btnId);
+    if (btn) {
+      btn.textContent = added ? '✅ Added' : '✅ Saved';
+      btn.disabled = true;
+    }
+    var countEl = document.getElementById('dayPlanCount');
+    if (countEl) countEl.textContent = loadDetailDayPlan().length + ' stop(s) saved';
+    if (typeof window.showDetailToast === 'function') {
+      window.showDetailToast(added ? ('Added "' + a.name + '" to your day plan!') : 'Already in your day plan.', added ? 'success' : 'info', 1800);
+    }
+  };
+
+  /** Render the full Day Plan Drawer HTML */
+  function renderDayPlanDrawerHtml() {
+    var plan = loadDetailDayPlan();
+    if (!plan.length) {
+      return '<div style="color:#64748b; padding:12px 0;">Your day plan is empty. Use the "🗓 Add to Day" buttons to build your itinerary.</div>';
+    }
+    var stopsHtml = plan.map(function (s, i) {
+      return '<div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #f0f4f8;">' +
+        '<span style="font-size:12px; font-weight:700; color:#64748b; min-width:18px;">' + (i + 1) + '</span>' +
+        '<div style="flex:1;">' +
+          '<div style="font-weight:600; font-size:13px;">' + escapeHtml(s.name) + '</div>' +
+          '<div style="font-size:11px; color:#94a3b8;">📍 ' + escapeHtml(s.distanceText) + ' &nbsp; 🚗 ' + escapeHtml(s.driveTimeText) + '</div>' +
+        '</div>' +
+        '<a class="tm-btn" href="' + escapeHtml(s.googleUrl || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.name)) + '" target="_blank" rel="noopener" style="font-size:11px;">🗺️</a>' +
+        '<button class="tm-btn" style="font-size:11px;" onclick="handleRemoveDayPlanStop(\'' + escapeHtml((s.id || s.name).replace(/'/g, "\\'")) + '\')">✕</button>' +
+      '</div>';
+    }).join('');
+
+    var routeUrl = buildRouteUrl(plan);
+    return stopsHtml +
+      '<div style="margin-top:10px; display:flex; gap:8px;">' +
+        (routeUrl ? '<a class="tm-btn primary" href="' + escapeHtml(routeUrl) + '" target="_blank" rel="noopener">📍 Plan Route in Google Maps</a>' : '') +
+        '<button class="tm-btn" onclick="handleClearDayPlan()" style="color:#ef4444;">🗑 Clear All</button>' +
+      '</div>';
+  }
+
+  window.openDayPlanDrawer = function () {
+    var existing = document.getElementById('dayPlanDrawer');
+    if (existing) { existing.remove(); return; }
+    var drawer = document.createElement('div');
+    drawer.id = 'dayPlanDrawer';
+    drawer.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:60vh;overflow-y:auto;background:#fff;border-top:2px solid #3b82f6;box-shadow:0 -4px 24px rgba(0,0,0,0.15);padding:16px;z-index:9999;font-family:inherit;';
+    drawer.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+        '<h3 style="margin:0;font-size:15px;color:#1e293b;">📋 Today\'s Adventure Itinerary</h3>' +
+        '<button class="tm-btn" onclick="document.getElementById(\'dayPlanDrawer\').remove()">✕ Close</button>' +
+      '</div>' +
+      '<div id="dayPlanDrawerBody">' + renderDayPlanDrawerHtml() + '</div>';
+    document.body.appendChild(drawer);
+  };
+
+  window.handleRemoveDayPlanStop = function (stopId) {
+    removeAttractionFromDayPlan(stopId);
+    var body = document.getElementById('dayPlanDrawerBody');
+    if (body) body.innerHTML = renderDayPlanDrawerHtml();
+    var countEl = document.getElementById('dayPlanCount');
+    if (countEl) countEl.textContent = loadDetailDayPlan().length + ' stop(s) saved';
+  };
+
+  window.handleClearDayPlan = function () {
+    saveDetailDayPlan([]);
+    var body = document.getElementById('dayPlanDrawerBody');
+    if (body) body.innerHTML = renderDayPlanDrawerHtml();
+    var countEl = document.getElementById('dayPlanCount');
+    if (countEl) countEl.textContent = '0 stop(s) saved';
+  };
 
   function loadParkingUiState() {
     var next = {
@@ -3314,7 +3505,7 @@
     return window.__detailNearbyUiState;
   }
 
-  function renderNearbyControlsHtml() {
+  function renderNearbyControlsHtml(data) {
     var uiState = getNearbyUiState();
     var radii = [2, 5, 10, 25];
     var radiusHtml = radii.map(function (r) {
@@ -3325,10 +3516,16 @@
       var active = String(uiState.category || 'all') === chip.id;
       return '<button type="button" class="tm-btn' + (active ? ' primary' : '') + '" data-nearby-category="' + chip.id + '">' + escapeHtml(chip.label) + '</button>';
     }).join('');
+    var profileLabel = '';
+    if (data) {
+      var profile = (typeof window.inferLocationProfile === 'function') ? window.inferLocationProfile(data) : 'general';
+      var profileEmoji = { outdoor_adventure: '🏔️', dining: '🍽️', culture: '🏛️', entertainment: '🎭', shopping: '🛍️', family: '👨‍👩‍👧', general: '📍' };
+      profileLabel = '<span class="u-text-xs-dim" style="margin-left:6px;">Detected: ' + (profileEmoji[profile] || '📍') + ' ' + profile.replace(/_/g, ' ') + '</span>';
+    }
     return '<div id="nearbyControlsWrap" class="u-stack-gap-sm" style="margin:0 0 8px 0;">' +
-      '<div class="tm-actions"><button type="button" id="refreshNearbyBtn" class="tm-btn">🔄 Refresh Nearby</button><span class="u-text-xs-dim">Weighted blend favors in-app matches</span></div>' +
+      '<div class="tm-actions"><button type="button" id="refreshNearbyBtn" class="tm-btn">🔄 Refresh Nearby</button><button type="button" class="tm-btn" onclick="openDayPlanDrawer()">📋 Day Plan (<span id="dayPlanCountBadge">' + loadDetailDayPlan().length + '</span>)</button><span class="u-text-xs-dim">Weighted blend · smart suggestions</span>' + profileLabel + '</div>' +
       '<div class="tm-actions"><span class="u-text-xs-dim">Radius:</span>' + radiusHtml + '</div>' +
-      '<div class="tm-actions"><span class="u-text-xs-dim">Category:</span>' + categoryHtml + '</div>' +
+      '<div class="tm-actions" style="flex-wrap:wrap;"><span class="u-text-xs-dim">Category:</span>' + categoryHtml + '</div>' +
     '</div>';
   }
 
@@ -3355,7 +3552,7 @@
       if (Array.isArray(cached) && cached.length) {
         window.__detailNearbyState = { placeKey: getLocationKey(data), center: coords, attractions: cached, updatedAt: Date.now(), fromCache: true };
         var pane = document.getElementById('nearbyAttractionsValue');
-        if (pane) pane.innerHTML = renderNearbyListHtml(cached);
+        if (pane) pane.innerHTML = renderNearbyListHtml(cached, data);
         if (getActiveDetailTabId() === 'map') renderDetailMap(data);
       }
       if (typeof window.nearbyAttractionsFinder.prefetchNearbyAttractions === 'function') {
@@ -3364,11 +3561,11 @@
     } catch (_err) {}
   }
 
-  function renderNearbyListHtml(attractions) {
+  function renderNearbyListHtml(attractions, data) {
     if (!Array.isArray(attractions) || !attractions.length) {
       return '<span class="empty">No nearby attractions detected yet. Click Refresh Nearby.</span>';
     }
-    return '<div class="u-stack-gap-sm">' + attractions.slice(0, 12).map(function (a) {
+    var listHtml = '<div class="u-stack-gap-sm">' + attractions.slice(0, 15).map(function (a) {
       var exists = !!(a.exists && a.existingLocation);
       var status = exists ? '✅ In App' : '🔗 Google';
       var actionHtml = '';
@@ -3384,14 +3581,23 @@
       var sourceBadge = escapeHtml(String(a.sourceBadge || (exists ? 'Local' : 'Google')));
       var confidencePct = Number.isFinite(Number(a.confidencePct)) ? Number(a.confidencePct) : Math.round(Math.max(0, Math.min(1, Number(a.confidence || 0))) * 100);
       var reasons = Array.isArray(a.rankingReasons) ? a.rankingReasons.join(', ') : (a.rankingReasonText || 'distance relevance');
+      var addBtnId = 'day-add-' + String(a.id || a.name).replace(/[^a-z0-9]/gi, '_');
+      var dayAddBtn = '<button type="button" class="tm-btn" id="' + addBtnId + '" onclick="handleSmartAddToDayPlan(' + JSON.stringify(a).replace(/"/g, '&quot;') + ', \'' + addBtnId + '\')">🗓 Add to Day</button>';
       return '<div class="card" style="margin:0;">' +
         '<div class="label">' + escapeHtml(a.name || 'Nearby location') + ' <span class="u-text-xs-dim">' + status + '</span> <span class="u-text-xs-dim">[' + sourceBadge + ' · ' + confidencePct + '%]</span></div>' +
         '<div class="value">📍 ' + escapeHtml(a.distanceText || '—') + ' &nbsp; 🚗 ' + escapeHtml(a.driveTimeText || '—') + (a.rating ? ' &nbsp; ⭐ ' + escapeHtml(Number(a.rating).toFixed(1)) : '') + '</div>' +
         (a.description ? '<div class="u-text-xs-dim" style="margin-top:4px;">' + escapeHtml(a.description) + '</div>' : '') +
         '<div class="u-text-xs-dim" style="margin-top:4px;">Why ranked: ' + escapeHtml(reasons) + '</div>' +
-        '<div class="tm-actions" style="margin-top:8px;">' + actionHtml + '</div>' +
+        '<div class="tm-actions" style="margin-top:8px;">' + actionHtml + dayAddBtn + '</div>' +
       '</div>';
     }).join('') + '</div>';
+
+    // Append smart itinerary suggestions panel
+    var smartHtml = (typeof renderSmartItinerarySuggestionsHtml === 'function')
+      ? renderSmartItinerarySuggestionsHtml(attractions, data || (window.__detailInlineEditState && window.__detailInlineEditState.data) || {})
+      : '';
+
+    return listHtml + smartHtml;
   }
 
   function normalizeParkingType(rawType, name) {
@@ -3970,7 +4176,7 @@
           : (appWithCoords === 0 ? 'No stored app locations have coordinates yet.' : 'No points found in the current search radius.');
         showDetailToast('ℹ️ No nearby attractions found. ' + hint, 'info', 4200);
         var emptyPane = document.getElementById('nearbyAttractionsValue');
-        if (emptyPane) emptyPane.innerHTML = renderNearbyListHtml([]);
+        if (emptyPane) emptyPane.innerHTML = renderNearbyListHtml([], data);
         return;
       }
 
@@ -3978,7 +4184,7 @@
       data.nearby = nearbyText;
       markDetailFieldRefreshed(data, 'nearby', 'nearby-attractions');
       var pane = document.getElementById('nearbyAttractionsValue');
-      if (pane) pane.innerHTML = renderNearbyListHtml(attractions);
+      if (pane) pane.innerHTML = renderNearbyListHtml(attractions, data);
       if (getActiveDetailTabId() === 'map') renderDetailMap(data);
 
       if (forceSync) await syncOrQueueExplorerUpdate(state.syncState, { nearby: nearbyText }, 'detail-nearby-refresh');
@@ -4642,8 +4848,8 @@
 
     document.getElementById('pane-additional').innerHTML =
       renderParkingPanelHtml(data) +
-      renderNearbyControlsHtml() +
-      card('Nearby Attractions', '<div id="nearbyAttractionsValue">' + renderNearbyListHtml((nearbyState && nearbyState.attractions) || []) + (data.nearby && !(nearbyState && nearbyState.attractions && nearbyState.attractions.length) ? '<div class="u-text-xs-dim" style="margin-top:8px;">Saved value: ' + escapeHtml(data.nearby) + '</div>' : '') + '</div>', 'nearby') +
+      renderNearbyControlsHtml(data) +
+      card('Nearby Attractions', '<div id="nearbyAttractionsValue">' + renderNearbyListHtml((nearbyState && nearbyState.attractions) || [], data) + (data.nearby && !(nearbyState && nearbyState.attractions && nearbyState.attractions.length) ? '<div class="u-text-xs-dim" style="margin-top:8px;">Saved value: ' + escapeHtml(data.nearby) + '</div>' : '') + '</div>', 'nearby') +
       renderDetailInsightsCard(data, payload);
     renderMapPaneShell();
     renderDetailMap(data);
@@ -6402,7 +6608,8 @@
         var additionalPane = document.getElementById('pane-additional');
         if (additionalPane) {
           var controlsWrap = document.getElementById('nearbyControlsWrap');
-          if (controlsWrap) controlsWrap.outerHTML = renderNearbyControlsHtml();
+          var _curData = window.__detailInlineEditState && window.__detailInlineEditState.data;
+          if (controlsWrap) controlsWrap.outerHTML = renderNearbyControlsHtml(_curData);
         }
         refreshNearbyAttractionsForDetail(true);
         return;
@@ -6417,7 +6624,8 @@
         var additionalPane2 = document.getElementById('pane-additional');
         if (additionalPane2) {
           var controlsWrap2 = document.getElementById('nearbyControlsWrap');
-          if (controlsWrap2) controlsWrap2.outerHTML = renderNearbyControlsHtml();
+          var _curData2 = window.__detailInlineEditState && window.__detailInlineEditState.data;
+          if (controlsWrap2) controlsWrap2.outerHTML = renderNearbyControlsHtml(_curData2);
         }
         refreshNearbyAttractionsForDetail(true);
         return;
@@ -6724,6 +6932,19 @@
 
     render(payload);
     activateTab(getParams().get('initialTab') || 'overview');
+
+    // Auto-trigger enrich modal when opened from quick-actions "Enrich Data"
+    var initialAction = getParams().get('initialAction') || '';
+    if (initialAction === 'enrich') {
+      window.setTimeout(function () {
+        var enrichBtn = document.getElementById('abEnrichBtn');
+        if (enrichBtn && typeof enrichBtn.onclick === 'function') {
+          enrichBtn.onclick();
+        } else if (enrichBtn) {
+          enrichBtn.click();
+        }
+      }, 350);
+    }
   })();
 </script>
 <script src="../JS Files/button-reliability-system.js"></script>

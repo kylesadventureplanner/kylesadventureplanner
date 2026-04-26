@@ -1,10 +1,11 @@
 /**
  * NEARBY ATTRACTIONS FINDER
  * =========================
- * Enhanced nearby discovery with blended ranking and cache enrichment.
+ * Enhanced nearby discovery with blended ranking, cache enrichment,
+ * and smart contextual itinerary recommendations v3.0.
  *
- * Version: 2.0.0
- * Date: April 25, 2026
+ * Version: 3.0.0
+ * Date: April 26, 2026
  */
 
 console.log('🎯 Nearby Attractions Finder Loading...');
@@ -12,11 +13,12 @@ console.log('🎯 Nearby Attractions Finder Loading...');
 const NEARBY_ATTRACTIONS_CONFIG = {
   searchRadius: 5,
   radiusPresets: [2, 5, 10, 25],
-  maxAttractions: 15,
+  maxAttractions: 20,
   attractionTypes: [
     'point_of_interest', 'restaurant', 'cafe', 'park', 'museum',
     'shopping_mall', 'movie_theater', 'zoo', 'aquarium', 'landmark',
-    'lodging', 'bar', 'night_club', 'library', 'art_gallery'
+    'lodging', 'bar', 'night_club', 'library', 'art_gallery',
+    'tourist_attraction', 'natural_feature', 'bakery', 'ice_cream'
   ],
   googlePlacesApiKey: null,
   useLocalDatabase: true,
@@ -24,7 +26,6 @@ const NEARBY_ATTRACTIONS_CONFIG = {
   backgroundEnrichmentTtlMs: 1000 * 60 * 60 * 24,
   dedupeDistanceThresholdMiles: 0.18,
   sourceWeights: {
-    // Calibrated from local repo dataset mix (demo + regression fixtures).
     local: 0.216,
     google: 0.108,
     existsInApp: 0.363,
@@ -38,9 +39,375 @@ const NEARBY_ATTRACTIONS_CONFIG = {
     family: ['zoo', 'aquarium', 'museum', 'movie_theater', 'park', 'amusement_park', 'playground', 'family'],
     nightlife: ['bar', 'night_club', 'restaurant', 'music_venue', 'concert_hall', 'event_venue', 'entertainment'],
     culture: ['museum', 'art_gallery', 'library', 'landmark', 'monument', 'theater', 'tourist_attraction', 'historic_site'],
-    shopping: ['shopping_mall', 'store', 'department_store', 'supermarket', 'market']
+    shopping: ['shopping_mall', 'store', 'department_store', 'supermarket', 'market'],
+    coffee_dessert: ['cafe', 'bakery', 'ice_cream', 'coffee', 'dessert', 'pastry'],
+    scenic: ['park', 'natural_feature', 'tourist_attraction', 'campground', 'scenic', 'overlook', 'viewpoint']
   }
 };
+
+// ─── Smart Location Profile System ────────────────────────────────────────────
+
+/** Keyword signals per location profile. Order matters: first match wins. */
+const LOCATION_PROFILE_SIGNALS = {
+  outdoor_adventure: [
+    'hiking', 'hike', 'trail', 'nature', 'park', 'scenic', 'overlook', 'viewpoint',
+    'waterfall', 'mountain', 'forest', 'outdoor', 'camping', 'wildlife', 'garden',
+    'botanical', 'lake', 'river', 'beach', 'kayak', 'canoe', 'rock climbing',
+    'state park', 'national park', 'greenway', 'preserve', 'refuge', 'arboretum',
+    'gorge', 'canyon', 'ridge', 'summit', 'bald', 'falls', 'creek', 'reservoir'
+  ],
+  dining: [
+    'restaurant', 'cafe', 'coffee', 'bar', 'brewery', 'winery', 'dining', 'food',
+    'eatery', 'bistro', 'grill', 'bakery', 'pizza', 'burger', 'sushi', 'steakhouse',
+    'brunch', 'tavern', 'pub', 'diner', 'bbq', 'sandwich', 'noodle', 'taco'
+  ],
+  culture: [
+    'museum', 'gallery', 'art', 'history', 'historic', 'monument', 'theater', 'theatre',
+    'heritage', 'cultural', 'landmark', 'library', 'historic site', 'mansion', 'castle',
+    'battlefield', 'courthouse', 'arch', 'sculpture', 'mural'
+  ],
+  entertainment: [
+    'movie', 'cinema', 'arcade', 'bowling', 'mini golf', 'escape room', 'concert',
+    'festival', 'entertainment', 'amphitheater', 'performance', 'comedy', 'sport',
+    'stadium', 'arena', 'karting', 'trampoline', 'laser tag'
+  ],
+  shopping: [
+    'mall', 'outlet', 'market', 'boutique', 'store', 'shop', 'retail', 'antique',
+    'vintage', 'flea', 'craft', 'farmers market', 'plaza', 'shopping center'
+  ],
+  family: [
+    'zoo', 'aquarium', 'playground', 'children', 'kids', 'family', 'science center',
+    'discovery', 'children\'s museum', 'splash pad', 'water park', 'farm'
+  ]
+};
+
+/**
+ * Smart itinerary role plan: for each location profile, define the recommended
+ * follow-up stop categories with display labels, icons, and Google Place type hints.
+ */
+const SMART_RECOMMENDATION_PLAN = {
+  outdoor_adventure: [
+    {
+      role: 'Fuel Up After Your Adventure',
+      icon: '🍔',
+      subtitle: 'Well-earned meals nearby',
+      categoryHint: 'food',
+      gTypes: ['restaurant', 'cafe', 'food', 'meal_takeaway'],
+      timeHint: 'anytime',
+      priority: 1
+    },
+    {
+      role: 'Coffee or Sweet Treat',
+      icon: '☕',
+      subtitle: 'Celebrate with a coffee, ice cream or snack',
+      categoryHint: 'coffee_dessert',
+      gTypes: ['cafe', 'bakery', 'ice_cream', 'food'],
+      timeHint: 'anytime',
+      priority: 2
+    },
+    {
+      role: 'Continue the Adventure',
+      icon: '🏞️',
+      subtitle: 'Another scenic spot, overlook or trail nearby',
+      categoryHint: 'scenic',
+      gTypes: ['park', 'natural_feature', 'tourist_attraction', 'campground'],
+      timeHint: 'anytime',
+      priority: 3
+    },
+    {
+      role: 'Local Retail & Souvenirs',
+      icon: '🛍️',
+      subtitle: 'Gear shops, local boutiques or trail goods',
+      categoryHint: 'shopping',
+      gTypes: ['store', 'shopping_mall', 'market'],
+      timeHint: 'anytime',
+      priority: 4
+    },
+    {
+      role: 'Scenic Drive or Overlook',
+      icon: '🚗',
+      subtitle: 'Extend the day with a scenic route or drive-up viewpoint',
+      categoryHint: 'scenic',
+      gTypes: ['tourist_attraction', 'natural_feature', 'park', 'point_of_interest'],
+      timeHint: 'afternoon',
+      priority: 5
+    }
+  ],
+  dining: [
+    {
+      role: 'After-Dinner Dessert',
+      icon: '🍦',
+      subtitle: 'End on a sweet note nearby',
+      categoryHint: 'coffee_dessert',
+      gTypes: ['cafe', 'bakery', 'ice_cream'],
+      timeHint: 'evening',
+      priority: 1
+    },
+    {
+      role: 'Evening Activity',
+      icon: '🎭',
+      subtitle: 'Keep the evening going nearby',
+      categoryHint: 'entertainment',
+      gTypes: ['bar', 'night_club', 'theater', 'museum', 'entertainment'],
+      timeHint: 'evening',
+      priority: 2
+    },
+    {
+      role: 'Browse Local Shops',
+      icon: '🛍️',
+      subtitle: 'Stroll nearby shops after your meal',
+      categoryHint: 'shopping',
+      gTypes: ['store', 'market', 'boutique', 'shopping_mall'],
+      timeHint: 'afternoon',
+      priority: 3
+    }
+  ],
+  culture: [
+    {
+      role: 'Coffee Break',
+      icon: '☕',
+      subtitle: 'Rest up at a café between exhibits',
+      categoryHint: 'coffee_dessert',
+      gTypes: ['cafe', 'bakery'],
+      timeHint: 'anytime',
+      priority: 1
+    },
+    {
+      role: 'Lunch or Dinner',
+      icon: '🍽️',
+      subtitle: 'Great dining spots to continue the day',
+      categoryHint: 'food',
+      gTypes: ['restaurant', 'cafe', 'food'],
+      timeHint: 'midday',
+      priority: 2
+    },
+    {
+      role: 'More Culture Nearby',
+      icon: '🏛️',
+      subtitle: 'Another museum, gallery or landmark',
+      categoryHint: 'culture',
+      gTypes: ['museum', 'art_gallery', 'landmark', 'library', 'tourist_attraction'],
+      timeHint: 'anytime',
+      priority: 3
+    },
+    {
+      role: 'Outdoor Walk',
+      icon: '🌿',
+      subtitle: 'Clear your head in a nearby park or garden',
+      categoryHint: 'nature',
+      gTypes: ['park', 'garden', 'tourist_attraction'],
+      timeHint: 'afternoon',
+      priority: 4
+    }
+  ],
+  entertainment: [
+    {
+      role: 'Pre-/Post-Show Dining',
+      icon: '🍽️',
+      subtitle: 'Top dining spots nearby',
+      categoryHint: 'food',
+      gTypes: ['restaurant', 'cafe', 'bar'],
+      timeHint: 'anytime',
+      priority: 1
+    },
+    {
+      role: 'Drinks Nearby',
+      icon: '🍸',
+      subtitle: 'Bars, breweries and lounges nearby',
+      categoryHint: 'nightlife',
+      gTypes: ['bar', 'night_club', 'brewery'],
+      timeHint: 'evening',
+      priority: 2
+    },
+    {
+      role: 'More Entertainment',
+      icon: '🎯',
+      subtitle: 'Other activities and venues nearby',
+      categoryHint: 'entertainment',
+      gTypes: ['movie_theater', 'amusement_park', 'tourist_attraction'],
+      timeHint: 'anytime',
+      priority: 3
+    }
+  ],
+  shopping: [
+    {
+      role: 'Lunch Break',
+      icon: '🍽️',
+      subtitle: 'Refuel mid-shopping',
+      categoryHint: 'food',
+      gTypes: ['restaurant', 'cafe', 'food', 'meal_takeaway'],
+      timeHint: 'midday',
+      priority: 1
+    },
+    {
+      role: 'Coffee & Snack',
+      icon: '☕',
+      subtitle: 'Quick stop between stores',
+      categoryHint: 'coffee_dessert',
+      gTypes: ['cafe', 'bakery', 'ice_cream'],
+      timeHint: 'anytime',
+      priority: 2
+    },
+    {
+      role: 'More Shopping Nearby',
+      icon: '🛒',
+      subtitle: 'Other retail stops in the area',
+      categoryHint: 'shopping',
+      gTypes: ['store', 'shopping_mall', 'market', 'boutique'],
+      timeHint: 'anytime',
+      priority: 3
+    }
+  ],
+  family: [
+    {
+      role: 'Family Dining',
+      icon: '👨‍👩‍👧',
+      subtitle: 'Family-friendly restaurants nearby',
+      categoryHint: 'food',
+      gTypes: ['restaurant', 'cafe', 'food'],
+      timeHint: 'midday',
+      priority: 1
+    },
+    {
+      role: 'Ice Cream Stop',
+      icon: '🍦',
+      subtitle: 'Reward the kids!',
+      categoryHint: 'coffee_dessert',
+      gTypes: ['cafe', 'bakery', 'ice_cream'],
+      timeHint: 'afternoon',
+      priority: 2
+    },
+    {
+      role: 'More Family Activities',
+      icon: '🎡',
+      subtitle: 'Keep the fun going nearby',
+      categoryHint: 'family',
+      gTypes: ['zoo', 'aquarium', 'amusement_park', 'playground', 'movie_theater'],
+      timeHint: 'anytime',
+      priority: 3
+    },
+    {
+      role: 'Park or Playground',
+      icon: '🌿',
+      subtitle: 'Let the kids burn off energy',
+      categoryHint: 'nature',
+      gTypes: ['park', 'playground'],
+      timeHint: 'afternoon',
+      priority: 4
+    }
+  ],
+  general: [
+    {
+      role: 'Nearby Dining',
+      icon: '🍽️',
+      subtitle: 'Top-rated restaurants in the area',
+      categoryHint: 'food',
+      gTypes: ['restaurant', 'cafe', 'food'],
+      timeHint: 'anytime',
+      priority: 1
+    },
+    {
+      role: 'Coffee or Snack',
+      icon: '☕',
+      subtitle: 'Quick recharge stop',
+      categoryHint: 'coffee_dessert',
+      gTypes: ['cafe', 'bakery'],
+      timeHint: 'anytime',
+      priority: 2
+    },
+    {
+      role: 'Things To Do Nearby',
+      icon: '🎯',
+      subtitle: 'Other activities and attractions',
+      categoryHint: 'all',
+      gTypes: ['tourist_attraction', 'park', 'museum', 'entertainment'],
+      timeHint: 'anytime',
+      priority: 3
+    },
+    {
+      role: 'Local Shopping',
+      icon: '🛍️',
+      subtitle: 'Browse nearby shops and markets',
+      categoryHint: 'shopping',
+      gTypes: ['store', 'market', 'shopping_mall'],
+      timeHint: 'anytime',
+      priority: 4
+    }
+  ]
+};
+
+/**
+ * Infer the location profile from a flat data object with name, tags, description.
+ * Returns one of: outdoor_adventure | dining | culture | entertainment | shopping | family | general
+ */
+function inferLocationProfile(data) {
+  if (!data) return 'general';
+  const text = [
+    String(data.name || ''),
+    String(data.tags || ''),
+    String(data.description || ''),
+    String(data.type || '')
+  ].join(' ').toLowerCase();
+
+  const scores = {};
+  Object.entries(LOCATION_PROFILE_SIGNALS).forEach(([profile, signals]) => {
+    scores[profile] = signals.reduce((n, kw) => n + (text.includes(kw) ? 1 : 0), 0);
+  });
+
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  return (best && best[1] > 0) ? best[0] : 'general';
+}
+
+/**
+ * Given a profile and the full ranked attractions list, return smart itinerary groups:
+ * each group has a role label and an array of best-match attractions for that role.
+ */
+function buildSmartItineraryGroups(profile, attractions) {
+  const plan = SMART_RECOMMENDATION_PLAN[profile] || SMART_RECOMMENDATION_PLAN.general;
+  const used = new Set();
+
+  return plan.map(function (slot) {
+    const candidates = (Array.isArray(attractions) ? attractions : []).filter(function (a) {
+      if (used.has(a.id || a.name)) return false;
+      const types = Array.isArray(a.types) ? a.types.map(function (t) { return String(t || '').toLowerCase(); }) : [];
+      const name = String(a.name || '').toLowerCase();
+      const desc = String(a.description || '').toLowerCase();
+      const combined = types.concat([name, desc]).join(' ');
+      const catMatch = slot.gTypes.some(function (gt) { return combined.includes(gt.replace(/_/g, ' ')); });
+      // also allow coffee_dessert categoryHint to catch cafe/bakery without explicit Google type match
+      const hintMatch = slot.categoryHint === 'coffee_dessert'
+        ? /(cafe|coffee|bakery|ice.cream|dessert|pastry|creamery|fudge|donut|frozen|yogurt)/.test(combined)
+        : catMatch;
+      return catMatch || hintMatch;
+    });
+
+    // Pick top 3, mark them used
+    const picks = candidates.slice(0, 3);
+    picks.forEach(function (p) { used.add(p.id || p.name); });
+
+    return { ...slot, suggestions: picks };
+  }).filter(function (group) { return group.suggestions.length > 0; });
+}
+
+/**
+ * Get current time-of-day bucket for smart filtering hints.
+ * Returns: 'morning' | 'midday' | 'afternoon' | 'evening' | 'night'
+ */
+function getTimeOfDayBucket() {
+  var h = new Date().getHours();
+  if (h < 10) return 'morning';
+  if (h < 13) return 'midday';
+  if (h < 17) return 'afternoon';
+  if (h < 21) return 'evening';
+  return 'night';
+}
+
+// Export for adventure-details-window.html access
+if (typeof window !== 'undefined') {
+  window.inferLocationProfile = inferLocationProfile;
+  window.buildSmartItineraryGroups = buildSmartItineraryGroups;
+  window.getTimeOfDayBucket = getTimeOfDayBucket;
+}
 
 class NearbyAttractionsFinder {
   constructor(config = {}) {
@@ -550,14 +917,104 @@ async function autoLoadNearbyAttractions(lat, lng, locationName, containerId, op
   }
 }
 
+// ─── Day Itinerary Scratchpad ────────────────────────────────────────────────
+
+const DAY_PLAN_STORAGE_KEY = '__adventure_day_plan_v1';
+
+function loadDayPlan() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return [];
+    var raw = window.localStorage.getItem(DAY_PLAN_STORAGE_KEY);
+    if (!raw) return [];
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_e) { return []; }
+}
+
+function saveDayPlan(stops) {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(DAY_PLAN_STORAGE_KEY, JSON.stringify(stops || []));
+    }
+  } catch (_e) {}
+}
+
+function addStopToDayPlan(stop) {
+  var plan = loadDayPlan();
+  var key = String(stop.id || stop.name || '').trim();
+  if (!key) return false;
+  if (plan.some(function (s) { return (s.id || s.name) === key; })) return false;
+  plan.push({
+    id: key,
+    name: stop.name,
+    distanceText: stop.distanceText || '—',
+    driveTimeText: stop.driveTimeText || '—',
+    latitude: stop.latitude,
+    longitude: stop.longitude,
+    googleUrl: stop.googleUrl || '',
+    addedAt: Date.now()
+  });
+  saveDayPlan(plan);
+  return true;
+}
+
+function removeStopFromDayPlan(stopId) {
+  var plan = loadDayPlan().filter(function (s) { return (s.id || s.name) !== String(stopId); });
+  saveDayPlan(plan);
+}
+
+function clearDayPlan() {
+  saveDayPlan([]);
+}
+
+/** Build a Google Maps multi-stop route URL from the current day plan. */
+function buildDayPlanRouteUrl() {
+  var plan = loadDayPlan();
+  if (!plan.length) return null;
+  var waypoints = plan.map(function (s) {
+    if (Number.isFinite(Number(s.latitude)) && Number.isFinite(Number(s.longitude))) {
+      return s.latitude + ',' + s.longitude;
+    }
+    return encodeURIComponent(s.name);
+  });
+  if (waypoints.length === 1) {
+    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(plan[0].name);
+  }
+  var origin = waypoints[0];
+  var destination = waypoints[waypoints.length - 1];
+  var mid = waypoints.slice(1, -1).join('|');
+  var url = 'https://www.google.com/maps/dir/' + origin + '/' + (mid ? mid + '/' : '') + destination;
+  return url;
+}
+
+if (typeof window !== 'undefined') {
+  window.dayPlanHelpers = {
+    load: loadDayPlan,
+    save: saveDayPlan,
+    addStop: addStopToDayPlan,
+    removeStop: removeStopFromDayPlan,
+    clear: clearDayPlan,
+    buildRouteUrl: buildDayPlanRouteUrl
+  };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     NearbyAttractionsFinder,
     createAttractionCard,
     renderNearbyAttractions,
-    autoLoadNearbyAttractions
+    autoLoadNearbyAttractions,
+    inferLocationProfile,
+    buildSmartItineraryGroups,
+    getTimeOfDayBucket,
+    loadDayPlan,
+    saveDayPlan,
+    addStopToDayPlan,
+    removeStopFromDayPlan,
+    clearDayPlan,
+    buildDayPlanRouteUrl
   };
 }
 
-console.log('✅ Nearby Attractions Finder v2.0.0 Loaded');
+console.log('✅ Nearby Attractions Finder v3.0.0 Loaded with Smart Recommendations');
 

@@ -9130,6 +9130,59 @@
           </button>
         </div>
 
+        <!-- ── Bulk Actions Card ───────────────────────────────────────── -->
+        <div id="adventureBulkActionsCard" class="card" style="margin-bottom:12px;padding:14px 16px;">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
+            <strong style="font-size:13px;color:#1e3a8a;">⚡ Bulk Actions</strong>
+            <span id="adventureBulkSelectionCount" style="font-size:12px;color:#64748b;margin-left:4px;">0 on page / 0 total selected</span>
+            <span id="adventureBulkSelectionScopeHint" style="font-size:11px;color:#94a3b8;margin-left:4px;">
+              <span class="bulk-scope-hint-text">Selection applies to all filtered results.</span>
+            </span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;">
+            <select id="adventureBulkSelectionScope" style="font-size:12px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;">
+              <option value="filtered">Filtered Results</option>
+              <option value="page">Current Page</option>
+            </select>
+            <button id="adventureBulkSelectVisibleBtn" class="pill-button" style="font-size:12px;">Select Filtered</button>
+            <button id="adventureBulkInvertSelectionBtn" class="pill-button" style="font-size:12px;" disabled>Invert Filtered</button>
+            <button id="adventureBulkClearSelectionBtn" class="pill-button reset" style="font-size:12px;" disabled>Clear Selection</button>
+            <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;color:#475569;cursor:pointer;">
+              <input type="checkbox" id="adventureBulkAutoClearToggle" style="cursor:pointer;"> Auto-clear after apply
+            </label>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label for="adventureBulkTagsInput" style="font-size:11px;color:#64748b;font-weight:600;">Add Tags (comma-separated)</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input id="adventureBulkTagsInput" type="text" placeholder="hiking, scenic, family-friendly..." style="font-size:12px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;min-width:220px;">
+                <button id="adventureBulkApplyTagsBtn" class="pill-button" style="font-size:12px;white-space:nowrap;" disabled>🏷️ Apply Tags</button>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <label for="adventureBulkRatingSelect" style="font-size:11px;color:#64748b;font-weight:600;">Set Rating</label>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <select id="adventureBulkRatingSelect" style="font-size:12px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:6px;">
+                  <option value="">— Pick —</option>
+                  <option value="1">1 ★</option>
+                  <option value="2">2 ★★</option>
+                  <option value="3">3 ★★★</option>
+                  <option value="4">4 ★★★★</option>
+                  <option value="5">5 ★★★★★</option>
+                </select>
+                <button id="adventureBulkApplyRatingBtn" class="pill-button" style="font-size:12px;white-space:nowrap;" disabled>Apply Rating</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button id="adventureBulkMarkFavoriteBtn" class="pill-button" style="font-size:12px;white-space:nowrap;" disabled>★ Mark Favorite</button>
+              <button id="adventureBulkUnmarkFavoriteBtn" class="pill-button reset" style="font-size:12px;white-space:nowrap;" disabled>☆ Unmark Favorite</button>
+              <button id="adventureBulkMarkVisitedBtn" class="pill-button" style="font-size:12px;white-space:nowrap;" disabled>✅ Mark Visited</button>
+              <button id="adventureBulkUnmarkVisitedBtn" class="pill-button reset" style="font-size:12px;white-space:nowrap;" disabled>⭕ Unmark Visited</button>
+            </div>
+          </div>
+        </div>
+        <!-- ──────────────────────────────────────────────────────────────── -->
+
         <!-- Adventure Cards Grid -->
         <div id="adventureCardsGrid" class="adventure-cards-grid">
           <!-- Cards will be populated from Excel/Graph -->
