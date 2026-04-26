@@ -116,11 +116,23 @@ test.describe('Adventure Challenge new subtabs smoke', () => {
 
   test('adventure achievement sections keep sticky section-header style hook', async ({ page }) => {
     const stickyRulePresent = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('style')).some((style) => {
-        const text = String(style.textContent || '');
-        return text.includes('#visitedLocationsRoot .adventure-achv-section > .card-header')
-          && text.includes('position: sticky')
-          && text.includes('top: 82px');
+      const selectorNeedle = '#visitedLocationsRoot .adventure-achv-section > .card-header';
+      const hasRequiredDeclarations = (text) => {
+        return text.includes('position: sticky') && text.includes('top: 82px');
+      };
+
+      return Array.from(document.styleSheets).some((sheet) => {
+        let cssText = '';
+        try {
+          const rules = sheet && sheet.cssRules ? Array.from(sheet.cssRules) : [];
+          cssText = rules.map((rule) => String(rule.cssText || '')).join('\n');
+        } catch (_error) {
+          // Fallback for stylesheets where cssRules access is blocked.
+          const ownerNode = sheet && sheet.ownerNode ? sheet.ownerNode : null;
+          cssText = ownerNode ? String(ownerNode.textContent || '') : '';
+        }
+
+        return cssText.includes(selectorNeedle) && hasRequiredDeclarations(cssText);
       });
     });
     expect(stickyRulePresent).toBe(true);
