@@ -4210,6 +4210,10 @@
         sort: 'name-asc',
         stateFilter: 'all',
         cityFilter: 'all',
+        tagInclude: [],
+        tagExclude: [],
+        stateExclude: [],
+        cityExclude: [],
         detailsNavigation: null,
         routeSelectionIds: [],
         lastRoutePlan: null
@@ -4614,11 +4618,24 @@
   }
 
   function buildExplorerFilters(explorerState) {
+    const normalizeToken = (value) => norm(String(value || ''));
+    const normalizeTokenList = (values) => {
+      const unique = new Set();
+      (Array.isArray(values) ? values : []).forEach((value) => {
+        const token = normalizeToken(value);
+        if (token) unique.add(token);
+      });
+      return Array.from(unique);
+    };
     const values = {
       query: norm(explorerState.query),
       stateFilter: norm(explorerState.stateFilter),
       cityFilter: norm(explorerState.cityFilter),
-      sort: explorerState.sort || 'name-asc'
+      sort: explorerState.sort || 'name-asc',
+      tagInclude: normalizeTokenList(explorerState.tagInclude),
+      tagExclude: normalizeTokenList(explorerState.tagExclude),
+      stateExclude: normalizeTokenList(explorerState.stateExclude),
+      cityExclude: normalizeTokenList(explorerState.cityExclude)
     };
     return values;
   }
@@ -4626,8 +4643,17 @@
   function filterAndSortExplorerItems(items, explorerState) {
     const filters = buildExplorerFilters(explorerState);
     const filtered = (items || []).map((item) => getExplorerItemView(item)).filter((item) => {
+      const itemState = norm(item.state);
+      const itemCity = norm(item.city);
+      const itemTags = Array.isArray(item.tags)
+        ? item.tags.map((tag) => norm(tag)).filter(Boolean)
+        : [];
       if (filters.stateFilter && filters.stateFilter !== 'all' && norm(item.state) !== filters.stateFilter) return false;
       if (filters.cityFilter && filters.cityFilter !== 'all' && norm(item.city) !== filters.cityFilter) return false;
+      if (filters.stateExclude.includes(itemState)) return false;
+      if (filters.cityExclude.includes(itemCity)) return false;
+      if (filters.tagInclude.length && !filters.tagInclude.every((tag) => itemTags.includes(tag))) return false;
+      if (filters.tagExclude.length && filters.tagExclude.some((tag) => itemTags.includes(tag))) return false;
       if (!filters.query) return true;
       const haystack = [item.title, item.city, item.state, item.description, item.address, item.notes, (item.tags || []).join(' ')].map(norm).join(' ');
       return haystack.includes(filters.query);
@@ -4641,6 +4667,16 @@
     });
 
     return filtered;
+  }
+
+  function getExplorerActiveFilterSummary(explorerState) {
+    const filters = buildExplorerFilters(explorerState || {});
+    const parts = [];
+    if (filters.tagInclude.length) parts.push(`tags include: ${filters.tagInclude.join(', ')}`);
+    if (filters.tagExclude.length) parts.push(`tags excluded: ${filters.tagExclude.join(', ')}`);
+    if (filters.cityExclude.length) parts.push(`cities excluded: ${filters.cityExclude.join(', ')}`);
+    if (filters.stateExclude.length) parts.push(`states excluded: ${filters.stateExclude.join(', ')}`);
+    return parts.join(' • ');
   }
 
   function syncExplorerFilterOptions(subtabKey, explorerState) {
@@ -5712,7 +5748,8 @@
     const filtered = filterAndSortExplorerItems(explorerState.items || [], explorerState);
     renderExplorerRoutePlannerUi(root, subtabKey, filtered);
     const visitMap = state.latestVisitMap || getVisitMap();
-    metaEl.textContent = `${filtered.length} of ${(explorerState.items || []).length} ${config.emptyLabel} shown.`;
+    const activeFilterSummary = getExplorerActiveFilterSummary(explorerState);
+    metaEl.textContent = `${filtered.length} of ${(explorerState.items || []).length} ${config.emptyLabel} shown.${activeFilterSummary ? ` Active filters: ${activeFilterSummary}.` : ''}`;
 
     if (!filtered.length) {
       listEl.innerHTML = '<div class="visited-empty ui-empty-state">No locations matched your filters.</div>';
@@ -5723,10 +5760,25 @@
       const routeSelection = getExplorerRouteSelectionSet(subtabKey);
       const isSelectedForRoute = routeSelection.has(String(item.id || '').trim());
       const isVisited = Boolean(visitMap[item.id]);
-      const chips = (item.tags || []).slice(0, 6).map((tag) => `<span class="visited-explorer-tag">${escapeHtml(tag)}</span>`).join('');
+
+      // Pre-compute active tag filter sets for chip state decorations.
+      const tagIncludeSet = new Set(normalizeExplorerFilterTokenList(explorerState.tagInclude));
+      const tagExcludeSet = new Set(normalizeExplorerFilterTokenList(explorerState.tagExclude));
+
+      const chips = (item.tags || []).slice(0, 6).map((tag) => {
+        const normTag = normalizeExplorerFilterToken(tag);
+        const isIncluded = tagIncludeSet.has(normTag);
+        const isExcluded = tagExcludeSet.has(normTag);
+        const stateClass = isIncluded ? ' visited-explorer-tag-btn--included' : isExcluded ? ' visited-explorer-tag-btn--excluded' : '';
+        const stateLabel = isIncluded ? ' (currently in include filter)' : isExcluded ? ' (currently excluded)' : '';
+        return `<button type="button" class="visited-explorer-tag visited-explorer-tag-btn${stateClass}" data-visited-explorer-tag-filter="${escapeHtml(tag)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" title="Tag filter options for ${escapeHtml(tag)}${stateLabel}" aria-pressed="${isIncluded || isExcluded ? 'true' : 'false'}">${escapeHtml(tag)}</button>`;
+      }).join('');
       const notesPreview = String(item.notes || '').trim();
       const photoCount = getLocationPhotoCount(item.id);
       const coverPhoto = getLocationCoverPhoto(item.id);
+      const cityValue = String(item.city || '').trim();
+      const stateValue = String(item.state || '').trim();
+      const addressLabel = formatExplorerAddressLine(item);
       const starButtons = [1, 2, 3, 4, 5].map((value) => `
         <button
           type="button"
@@ -5753,6 +5805,7 @@
                 Route
               </label>
               <button type="button" class="visited-explorer-detail-btn visited-explorer-detail-btn--primary" data-visited-explorer-details="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">Details</button>
+              <button type="button" class="visited-explorer-detail-btn visited-explorer-card-filter-btn" data-visited-explorer-card-filter="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" title="Filter options for this card" aria-label="Filters for ${escapeHtml(item.title || 'this location')}">🔍 Filters</button>
               <button type="button" class="visited-explorer-detail-btn" data-visited-explorer-quick-actions-toggle="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" aria-expanded="false">Quick Actions ▾</button>
             </div>
           </div>
@@ -5776,11 +5829,220 @@
             ? `<div class="visited-explorer-tag-row visited-explorer-tag-row--fixed">${chips}</div>`
             : '<div class="visited-explorer-field visited-explorer-field--tags-empty">No tags</div>'}
           ${notesPreview ? `<div class="visited-explorer-note-preview"><strong>Notes:</strong> ${escapeHtml(notesPreview)}</div>` : ''}
-          <div class="visited-explorer-field visited-explorer-field--address"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>
+          <div class="visited-explorer-field visited-explorer-field--address"><strong>Physical Address - City - State:</strong> ${cityValue || stateValue
+            ? `<button type="button" class="visited-explorer-address-filter-btn" data-visited-explorer-address-filter="1" data-visited-explorer-subtab="${escapeHtml(subtabKey)}" data-visited-explorer-city="${escapeHtml(cityValue)}" data-visited-explorer-state="${escapeHtml(stateValue)}" title="Address filter options for ${escapeHtml(addressLabel)}">${escapeHtml(addressLabel)}</button>`
+            : escapeHtml(addressLabel)}</div>
           <div class="visited-explorer-field visited-explorer-field--description"><strong>Description:</strong><div class="visited-explorer-description-box">${escapeHtml(item.description || 'No description yet.')}</div></div>
         </div>
       `;
     }).join('');
+  }
+
+  function normalizeExplorerFilterToken(value) {
+    return norm(String(value || ''));
+  }
+
+  function normalizeExplorerFilterTokenList(values) {
+    const unique = new Set();
+    (Array.isArray(values) ? values : []).forEach((value) => {
+      const token = normalizeExplorerFilterToken(value);
+      if (token) unique.add(token);
+    });
+    return Array.from(unique);
+  }
+
+  // Danger-tinted action value keywords – used to style "exclude" and "clear" options.
+  const EXPLORER_ACTION_SHEET_DANGER_VALUES = new Set(['tag-exclude', 'tag-clear', 'city-exclude', 'state-exclude', 'address-clear']);
+
+  /**
+   * Replaces the old window.prompt()-based filter chooser with a polished
+   * in-app action sheet.  Returns a Promise that resolves to the selected
+   * action `value` string, or '' when the user cancels.
+   *
+   * @param {string} promptTitle  - Sheet header text.
+   * @param {Array<{key:string, label:string, value:string}>} actions
+   * @param {string} [icon]       - Optional emoji shown in the header.
+   * @returns {Promise<string>}
+   */
+  function showExplorerFilterActionSheet(promptTitle, actions, icon) {
+    const valid = Array.isArray(actions) ? actions.filter((a) => a && a.key && a.value) : [];
+    if (!valid.length) return Promise.resolve('');
+
+    // Capture opener so focus can be restored on close (WCAG 2.1 §2.4.3).
+    const openerEl = document.activeElement;
+
+    return new Promise((resolve) => {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'vef-action-sheet-backdrop';
+      backdrop.setAttribute('role', 'dialog');
+      backdrop.setAttribute('aria-modal', 'true');
+      backdrop.setAttribute('aria-labelledby', 'vefActionSheetTitle');
+
+      const optionsHtml = valid.map((action) => {
+        // Support an explicit `danger` flag on the action object in addition to
+        // the central danger-values set (needed for encoded values like "tag-exclude::hiking").
+        const isDanger = action.danger === true || EXPLORER_ACTION_SHEET_DANGER_VALUES.has(action.value);
+        return `<button type="button"
+          class="vef-action-sheet-option${isDanger ? ' vef-action-sheet-option--danger' : ''}"
+          data-vef-action-key="${escapeHtml(action.key)}"
+          data-vef-action-value="${escapeHtml(action.value)}">
+          <span class="vef-action-sheet-option-key" aria-hidden="true">${escapeHtml(action.key)}</span>
+          <span class="vef-action-sheet-option-label">${escapeHtml(action.label)}</span>
+        </button>`;
+      }).join('');
+
+      backdrop.innerHTML = `
+        <div class="vef-action-sheet" role="document">
+          <div class="vef-action-sheet-handle" aria-hidden="true"></div>
+          <div class="vef-action-sheet-header">
+            ${icon ? `<span class="vef-action-sheet-icon" aria-hidden="true">${icon}</span>` : ''}
+            <p class="vef-action-sheet-title" id="vefActionSheetTitle">${escapeHtml(promptTitle)}</p>
+            <button type="button" class="vef-action-sheet-close-btn" data-vef-action-cancel aria-label="Close">✕</button>
+          </div>
+          <div class="vef-action-sheet-options">${optionsHtml}</div>
+          <button type="button" class="vef-action-sheet-cancel" data-vef-action-cancel>Cancel</button>
+        </div>`;
+
+      let resolved = false;
+      function cleanup(value) {
+        if (resolved) return;
+        resolved = true;
+        document.removeEventListener('keydown', keyHandler);
+        backdrop.classList.remove('vef-action-sheet-backdrop--visible');
+        backdrop.classList.add('vef-action-sheet-backdrop--exit');
+        setTimeout(() => {
+          if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+          // Return focus to the element that triggered the sheet (WCAG 2.1 §2.4.3).
+          try { if (openerEl && typeof openerEl.focus === 'function') openerEl.focus(); } catch (_) {}
+        }, 200);
+        resolve(value || '');
+      }
+
+      backdrop.addEventListener('click', (e) => {
+        const optionBtn = e.target.closest('[data-vef-action-value]');
+        if (optionBtn) { cleanup(optionBtn.getAttribute('data-vef-action-value')); return; }
+        if (e.target.closest('[data-vef-action-cancel]')) { cleanup(''); return; }
+        if (e.target === backdrop) { cleanup(''); }
+      });
+
+      // Focusable elements query used for the keyboard trap.
+      const FOCUSABLE_SEL = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+      function keyHandler(e) {
+        if (e.key === 'Escape') { cleanup(''); return; }
+
+        // Tab trap — keep focus inside the sheet (WCAG 2.1 A §2.1.2).
+        if (e.key === 'Tab') {
+          const focusables = Array.from(backdrop.querySelectorAll(FOCUSABLE_SEL))
+            .filter((el) => !el.disabled && el.offsetWidth > 0 && el.offsetHeight > 0);
+          if (!focusables.length) { e.preventDefault(); return; }
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (e.shiftKey) {
+            if (document.activeElement === first || !backdrop.contains(document.activeElement)) {
+              e.preventDefault();
+              last.focus();
+            }
+          } else {
+            if (document.activeElement === last || !backdrop.contains(document.activeElement)) {
+              e.preventDefault();
+              first.focus();
+            }
+          }
+        }
+      }
+      document.addEventListener('keydown', keyHandler);
+
+      document.body.appendChild(backdrop);
+      // Trigger enter animation on next paint.
+      requestAnimationFrame(() => {
+        backdrop.getBoundingClientRect(); // force reflow
+        backdrop.classList.add('vef-action-sheet-backdrop--visible');
+        const first = backdrop.querySelector('.vef-action-sheet-option');
+        if (first) first.focus();
+      });
+    });
+  }
+
+  // Keep legacy alias for any external callers that may reference the old name.
+  function promptExplorerFilterAction(promptTitle, actions) {
+    return showExplorerFilterActionSheet(promptTitle, actions);
+  }
+
+  function applyExplorerTagFilterAction(subtabKey, tag, actionValue) {
+    // tag-clear needs no token — handle it first.
+    if (actionValue === 'tag-clear') {
+      const explorerState = getExplorerState(subtabKey);
+      explorerState.tagInclude = [];
+      explorerState.tagExclude = [];
+      return true;
+    }
+    const token = normalizeExplorerFilterToken(tag);
+    if (!token) return false;
+    const explorerState = getExplorerState(subtabKey);
+    const include = normalizeExplorerFilterTokenList(explorerState.tagInclude);
+    const exclude = normalizeExplorerFilterTokenList(explorerState.tagExclude);
+    if (actionValue === 'tag-only') {
+      explorerState.tagInclude = [token];
+      explorerState.tagExclude = exclude.filter((value) => value !== token);
+      return true;
+    }
+    if (actionValue === 'tag-add') {
+      explorerState.tagInclude = Array.from(new Set(include.concat([token])));
+      explorerState.tagExclude = exclude.filter((value) => value !== token);
+      return true;
+    }
+    if (actionValue === 'tag-exclude') {
+      explorerState.tagInclude = include.filter((value) => value !== token);
+      explorerState.tagExclude = Array.from(new Set(exclude.concat([token])));
+      return true;
+    }
+    if (actionValue === 'tag-remove-exclude') {
+      explorerState.tagExclude = exclude.filter((value) => value !== token);
+      return true;
+    }
+    if (actionValue === 'tag-clear') {
+      explorerState.tagInclude = [];
+      explorerState.tagExclude = [];
+      return true;
+    }
+    return false;
+  }
+
+  function applyExplorerAddressFilterAction(subtabKey, city, stateName, actionValue) {
+    const explorerState = getExplorerState(subtabKey);
+    const cityToken = normalizeExplorerFilterToken(city);
+    const stateToken = normalizeExplorerFilterToken(stateName);
+    const cityExclude = normalizeExplorerFilterTokenList(explorerState.cityExclude);
+    const stateExclude = normalizeExplorerFilterTokenList(explorerState.stateExclude);
+    if (actionValue === 'city-only' && cityToken) {
+      explorerState.cityFilter = cityToken;
+      explorerState.cityExclude = cityExclude.filter((value) => value !== cityToken);
+      return true;
+    }
+    if (actionValue === 'city-exclude' && cityToken) {
+      explorerState.cityExclude = Array.from(new Set(cityExclude.concat([cityToken])));
+      if (normalizeExplorerFilterToken(explorerState.cityFilter) === cityToken) explorerState.cityFilter = 'all';
+      return true;
+    }
+    if (actionValue === 'state-only' && stateToken) {
+      explorerState.stateFilter = stateToken;
+      explorerState.stateExclude = stateExclude.filter((value) => value !== stateToken);
+      return true;
+    }
+    if (actionValue === 'state-exclude' && stateToken) {
+      explorerState.stateExclude = Array.from(new Set(stateExclude.concat([stateToken])));
+      if (normalizeExplorerFilterToken(explorerState.stateFilter) === stateToken) explorerState.stateFilter = 'all';
+      return true;
+    }
+    if (actionValue === 'address-clear') {
+      explorerState.cityFilter = 'all';
+      explorerState.stateFilter = 'all';
+      explorerState.cityExclude = [];
+      explorerState.stateExclude = [];
+      return true;
+    }
+    return false;
   }
 
   function installExplorerDetailsKeyboardClose() {
@@ -8026,6 +8288,113 @@
             root.querySelectorAll('[data-visited-explorer-quick-actions-toggle]').forEach((btn) => {
               btn.setAttribute('aria-expanded', 'false');
             });
+          }
+
+          const tagFilterBtn = closest('[data-visited-explorer-tag-filter]');
+          if (tagFilterBtn) {
+            event.preventDefault();
+            const subtabKey = String(tagFilterBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const tag = String(tagFilterBtn.getAttribute('data-visited-explorer-tag-filter') || '').trim();
+            const choice = await showExplorerFilterActionSheet(`Tag filter options for "${tag}"`, [
+              { key: '1', label: 'Filter to only this tag (replace current tag include filter)', value: 'tag-only' },
+              { key: '2', label: 'Add this tag to current include filter (AND with existing tags)', value: 'tag-add' },
+              { key: '3', label: 'Filter out this tag (exclude)', value: 'tag-exclude' },
+              { key: '4', label: 'Remove this tag from exclusions', value: 'tag-remove-exclude' },
+              { key: '5', label: 'Clear all tag include/exclude filters', value: 'tag-clear' }
+            ], '🏷️');
+            if (!choice) return;
+            if (applyExplorerTagFilterAction(subtabKey, tag, choice)) {
+              renderExplorerList(root, subtabKey);
+              if (typeof window.showToast === 'function') {
+                window.showToast(`Updated tag filters for "${tag}".`, 'success', 1800);
+              }
+            }
+            return;
+          }
+
+          const addressFilterBtn = closest('[data-visited-explorer-address-filter]');
+          if (addressFilterBtn) {
+            event.preventDefault();
+            const subtabKey = String(addressFilterBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const city = String(addressFilterBtn.getAttribute('data-visited-explorer-city') || '').trim();
+            const stateName = String(addressFilterBtn.getAttribute('data-visited-explorer-state') || '').trim();
+            const options = [];
+            let optionIndex = 1;
+            if (city) {
+              options.push({ key: String(optionIndex++), label: `Filter to city only: ${city}`, value: 'city-only' });
+              options.push({ key: String(optionIndex++), label: `Exclude city: ${city}`, value: 'city-exclude' });
+            }
+            if (stateName) {
+              options.push({ key: String(optionIndex++), label: `Filter to state only: ${stateName}`, value: 'state-only' });
+              options.push({ key: String(optionIndex++), label: `Exclude state: ${stateName}`, value: 'state-exclude' });
+            }
+            options.push({ key: String(optionIndex++), label: 'Clear city/state include and exclude filters', value: 'address-clear' });
+            const choice = await showExplorerFilterActionSheet(`Address filter options for ${city || '(unknown city)'}${stateName ? `, ${stateName}` : ''}`, options, '📍');
+            if (!choice) return;
+            if (applyExplorerAddressFilterAction(subtabKey, city, stateName, choice)) {
+              renderExplorerList(root, subtabKey);
+              if (typeof window.showToast === 'function') {
+                window.showToast('Updated address filters.', 'success', 1800);
+              }
+            }
+            return;
+          }
+
+          // ── Consolidated "Filters" button: single entry-point for tag + address ──
+          const cardFilterBtn = closest('[data-visited-explorer-card-filter]');
+          if (cardFilterBtn) {
+            event.preventDefault();
+            const subtabKey = String(cardFilterBtn.getAttribute('data-visited-explorer-subtab') || state.activeProgressSubTab || '').trim();
+            const cardEl = cardFilterBtn.closest('.visited-explorer-card');
+            // Gather up to 3 tags from this card's tag buttons.
+            const cardTagBtns = cardEl ? Array.from(cardEl.querySelectorAll('[data-visited-explorer-tag-filter]')) : [];
+            const cardTags = cardTagBtns.slice(0, 3).map((b) => String(b.getAttribute('data-visited-explorer-tag-filter') || '').trim()).filter(Boolean);
+            // Gather address values.
+            const addrBtn = cardEl ? cardEl.querySelector('[data-visited-explorer-address-filter]') : null;
+            const cardCity = addrBtn ? String(addrBtn.getAttribute('data-visited-explorer-city') || '').trim() : '';
+            const cardState = addrBtn ? String(addrBtn.getAttribute('data-visited-explorer-state') || '').trim() : '';
+
+            const options = [];
+            let ki = 1;
+            // Tag section.
+            cardTags.forEach((tag) => {
+              options.push({ key: String(ki++), label: `Show only "${tag}"`, value: `tag-only::${tag}` });
+              options.push({ key: String(ki++), label: `Exclude "${tag}"`, value: `tag-exclude::${tag}`, danger: true });
+            });
+            // Address section.
+            if (cardCity) {
+              options.push({ key: String(ki++), label: `Show only city: ${cardCity}`, value: 'city-only' });
+              options.push({ key: String(ki++), label: `Exclude city: ${cardCity}`, value: 'city-exclude', danger: true });
+            }
+            if (cardState) {
+              options.push({ key: String(ki++), label: `Show only state: ${cardState}`, value: 'state-only' });
+              options.push({ key: String(ki++), label: `Exclude state: ${cardState}`, value: 'state-exclude', danger: true });
+            }
+            // Clear actions.
+            if (cardTags.length) options.push({ key: String(ki++), label: 'Clear all tag filters', value: 'tag-clear', danger: true });
+            if (cardCity || cardState) options.push({ key: String(ki++), label: 'Clear all address filters', value: 'address-clear', danger: true });
+
+            if (!options.length) return;
+
+            const choice = await showExplorerFilterActionSheet('Filter options for this card', options, '🔍');
+            if (!choice) return;
+
+            // Decode encoded values like "tag-only::hiking".
+            const sepIdx = choice.indexOf('::');
+            const baseAction = sepIdx > -1 ? choice.slice(0, sepIdx) : choice;
+            const targetTag = sepIdx > -1 ? choice.slice(sepIdx + 2) : '';
+
+            let applied = false;
+            if (baseAction.startsWith('tag-')) {
+              applied = applyExplorerTagFilterAction(subtabKey, targetTag, baseAction);
+            } else {
+              applied = applyExplorerAddressFilterAction(subtabKey, cardCity, cardState, baseAction);
+            }
+            if (applied) {
+              renderExplorerList(root, subtabKey);
+              if (typeof window.showToast === 'function') window.showToast('Filter updated.', 'success', 1800);
+            }
+            return;
           }
 
           const openSuggestionsBtn = closest('#visitedOpenSuggestionsBtn');

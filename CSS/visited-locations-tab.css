@@ -1,5 +1,258 @@
 /* Visited Locations tab styles moved from inline HTML for cleaner diagnostics scope. */
 
+/* ============================================================
+   EXPLORER FILTER ACTION SHEET
+   ============================================================
+   In-app mini modal that replaces browser prompt() for tag /
+   address filter actions triggered from explorer cards.
+*/
+
+.vef-action-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  padding: 16px;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.vef-action-sheet-backdrop--visible {
+  opacity: 1;
+}
+
+.vef-action-sheet-backdrop--exit {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.vef-action-sheet {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22), 0 4px 16px rgba(15, 23, 42, 0.1);
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.94) translateY(6px);
+  transition: transform 0.18s ease;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vef-action-sheet-backdrop--visible .vef-action-sheet {
+  transform: scale(1) translateY(0);
+}
+
+/* Mobile: slide up from bottom */
+@media (max-width: 540px) {
+  .vef-action-sheet-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .vef-action-sheet {
+    border-radius: 20px 20px 0 0;
+    max-width: 100%;
+    max-height: 80vh;
+    transform: translateY(24px);
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .vef-action-sheet-backdrop--visible .vef-action-sheet {
+    transform: translateY(0);
+  }
+}
+
+/* Drag handle (mobile visual cue) */
+.vef-action-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 99px;
+  background: #d1d5db;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+@media (min-width: 541px) {
+  .vef-action-sheet-handle {
+    display: none;
+  }
+}
+
+/* Header */
+.vef-action-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  flex-shrink: 0;
+}
+
+.vef-action-sheet-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.vef-action-sheet-title {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.vef-action-sheet-close-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: #94a3b8;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  margin-top: -2px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.vef-action-sheet-close-btn:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* Option buttons list */
+.vef-action-sheet-options {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 4px;
+}
+
+.vef-action-sheet-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  width: 100%;
+}
+
+.vef-action-sheet-option:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.vef-action-sheet-option:active {
+  transform: scale(0.98);
+  background: #dbeafe;
+}
+
+.vef-action-sheet-option:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+.vef-action-sheet-option-key {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #475569;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  transition: background 0.12s, color 0.12s;
+}
+
+.vef-action-sheet-option:hover .vef-action-sheet-option-key {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.vef-action-sheet-option-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.4;
+}
+
+/* Danger-tinted options (exclude / clear) */
+.vef-action-sheet-option--danger {
+  background: #fff8f8;
+}
+
+.vef-action-sheet-option--danger:hover {
+  background: #fff1f1;
+  border-color: #fca5a5;
+}
+
+.vef-action-sheet-option--danger .vef-action-sheet-option-key {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.vef-action-sheet-option--danger:hover .vef-action-sheet-option-key {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.vef-action-sheet-option--danger .vef-action-sheet-option-label {
+  color: #7f1d1d;
+}
+
+/* Cancel button */
+.vef-action-sheet-cancel {
+  margin: 4px 8px 12px;
+  padding: 11px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+
+.vef-action-sheet-cancel:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.vef-action-sheet-cancel:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
   #visitedLocationsRoot .visited-summary-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -599,6 +852,82 @@
     font-size: 11px;
     font-weight: 700;
     line-height: 1;
+  }
+
+  #visitedLocationsRoot .visited-explorer-tag-btn {
+    cursor: pointer;
+  }
+
+  #visitedLocationsRoot .visited-explorer-tag-btn:hover,
+  #visitedLocationsRoot .visited-explorer-tag-btn:focus-visible {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    outline: none;
+  }
+
+  /* ── Tag active-filter state indicators ── */
+  #visitedLocationsRoot .visited-explorer-tag-btn--included {
+    border-color: #16a34a;
+    background: #f0fdf4;
+    color: #15803d;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+  }
+
+  #visitedLocationsRoot .visited-explorer-tag-btn--included::before {
+    content: '✓ ';
+    font-weight: 900;
+    font-size: 10px;
+    color: #16a34a;
+  }
+
+  #visitedLocationsRoot .visited-explorer-tag-btn--excluded {
+    border-color: #dc2626;
+    background: #fff5f5;
+    color: #b91c1c;
+    text-decoration: line-through;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.18);
+  }
+
+  #visitedLocationsRoot .visited-explorer-tag-btn--excluded::before {
+    content: '✕ ';
+    font-weight: 900;
+    font-size: 10px;
+    color: #dc2626;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  /* ── Consolidated card-level Filters button ── */
+  #visitedLocationsRoot .visited-explorer-card-filter-btn {
+    border-color: #a78bfa;
+    background: #f5f3ff;
+    color: #6d28d9;
+  }
+
+  #visitedLocationsRoot .visited-explorer-card-filter-btn:hover,
+  #visitedLocationsRoot .visited-explorer-card-filter-btn:focus-visible {
+    border-color: #7c3aed;
+    background: #ede9fe;
+    outline: none;
+  }
+
+  #visitedLocationsRoot .visited-explorer-address-filter-btn {
+    border: none;
+    background: transparent;
+    color: #1d4ed8;
+    font-size: 13px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1.35;
+    text-align: left;
+  }
+
+  #visitedLocationsRoot .visited-explorer-address-filter-btn:hover,
+  #visitedLocationsRoot .visited-explorer-address-filter-btn:focus-visible {
+    color: #1e3a8a;
+    outline: none;
   }
 
   #visitedLocationsRoot .visited-explorer-description-box {
