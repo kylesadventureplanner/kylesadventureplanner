@@ -3175,8 +3175,8 @@
     }).join('; ');
   }
 
-  var NEARBY_UI_PREFS_KEY = '__detail_nearby_ui_prefs_v2';
-  var NEARBY_DEFAULT_UI_STATE = { radiusMiles: 5, category: 'all' };
+  var NEARBY_UI_PREFS_KEY = '__detail_nearby_ui_prefs_v3';
+  var NEARBY_DEFAULT_UI_STATE = { radiusMiles: 5, category: 'all', minRating: 0, openNow: false, timeBudgetHours: 0 };
   var PARKING_META_STORAGE_KEY = '__detail_parking_meta_v1';
   var PARKING_CACHE_STORAGE_KEY = '__detail_parking_cache_v1';
   var PARKING_UI_PREFS_KEY = '__detail_parking_ui_v1';
@@ -3216,6 +3216,7 @@
     var key = String(a.id || a.name || '').trim();
     if (!key || plan.some(function (s) { return (s.id || s.name) === key; })) return false;
     plan.push({ id: key, name: a.name, distanceText: a.distanceText || '—', driveTimeText: a.driveTimeText || '—',
+      driveTimeMinutes: Number(a.driveTimeMinutes) || 0,
       latitude: a.latitude, longitude: a.longitude, googleUrl: a.googleUrl || '', addedAt: Date.now() });
     saveDetailDayPlan(plan);
     return true;
@@ -3245,6 +3246,42 @@
     return 'night';
   }
 
+  /** Fetch current weather via Open-Meteo, piggyback on nearby-attractions-finder if loaded. */
+  var _detailWeatherCache = {};
+  var DETAIL_WEATHER_CACHE_MS = 10 * 60 * 1000;
+  async function fetchDetailWeatherCondition(lat, lng) {
+    if (typeof window.fetchWeatherCondition === 'function') {
+      return window.fetchWeatherCondition(lat, lng);
+    }
+    var key = Number(lat).toFixed(2) + ',' + Number(lng).toFixed(2);
+    var now = Date.now();
+    if (_detailWeatherCache[key] && (now - _detailWeatherCache[key].ts) < DETAIL_WEATHER_CACHE_MS) {
+      return _detailWeatherCache[key].data;
+    }
+    try {
+      var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lng + '&current_weather=true';
+      var resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var json = await resp.json();
+      var cw = json && json.current_weather;
+      var code  = cw ? Number(cw.weathercode) : 0;
+      var isDay = cw ? Boolean(cw.is_day) : true;
+      var result;
+      if (code === 0)       result = { condition:'clear',       emoji: isDay?'☀️':'🌙', bias:'outdoor',       description:'Clear skies',      code:code };
+      else if (code <= 3)   result = { condition:'cloudy',      emoji:'🌤️',             bias:'outdoor',       description:'Partly cloudy',     code:code };
+      else if (code <= 48)  result = { condition:'fog',         emoji:'🌫️',             bias:'none',          description:'Foggy conditions',  code:code };
+      else if (code <= 57)  result = { condition:'drizzle',     emoji:'🌦️',             bias:'indoor',        description:'Light drizzle',     code:code };
+      else if (code <= 67)  result = { condition:'rain',        emoji:'🌧️',             bias:'indoor_strong', description:'Rainy',             code:code };
+      else if (code <= 77)  result = { condition:'snow',        emoji:'❄️',             bias:'indoor_strong', description:'Snowing',           code:code };
+      else if (code <= 82)  result = { condition:'showers',     emoji:'🌦️',             bias:'indoor',        description:'Rain showers',      code:code };
+      else                  result = { condition:'thunderstorm',emoji:'⛈️',             bias:'indoor_strong', description:'Thunderstorms',     code:code };
+      _detailWeatherCache[key] = { ts: now, data: result };
+      return result;
+    } catch (_e) {
+      return { code: -1, condition: 'unknown', emoji: '🌤️', bias: 'none', description: 'Weather unavailable' };
+    }
+  }
+
   /** Returns a greeting banner given time of day and location profile */
   function getSmartBannerText(tod, profile) {
     var descMap = {
@@ -3272,18 +3309,48 @@
     var profile = (typeof window.inferLocationProfile === 'function')
       ? window.inferLocationProfile(data)
       : 'general';
+
+    var uiState  = getNearbyUiState();
+    var weather  = window.__nearbyWeatherData || null;
+    var opts = {
+      weatherBias:     weather ? (weather.bias || 'none') : 'none',
+      minRating:       Number(uiState.minRating || 0),
+      openNow:         !!uiState.openNow,
+      timeBudgetHours: Number(uiState.timeBudgetHours || 0)
+    };
+
     var groups = (typeof window.buildSmartItineraryGroups === 'function')
-      ? window.buildSmartItineraryGroups(profile, attractions)
+      ? window.buildSmartItineraryGroups(profile, attractions, opts)
       : [];
     if (!groups.length) return '';
 
     var tod = getDetailTimeOfDay();
     var bannerText = getSmartBannerText(tod, profile);
 
+    // ── Weather banner ──────────────────────────────────────────────────────
+    var weatherBannerHtml = '';
+    if (weather && weather.bias !== 'none' && weather.condition !== 'unknown') {
+      var isIndoor = weather.bias === 'indoor' || weather.bias === 'indoor_strong';
+      var wBg   = isIndoor ? '#fef3c7'  : '#ecfdf5';
+      var wText = isIndoor ? '#92400e'  : '#065f46';
+      var wMsg  = isIndoor
+        ? '🏠 <strong>' + escapeHtml(weather.description) + '</strong> outside — indoor stops have been boosted to the top of your suggestions.'
+        : '🌿 <strong>' + escapeHtml(weather.description) + '</strong> — great weather for outdoor adventures!';
+      weatherBannerHtml = '<div style="background:' + wBg + ';border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:' + wText + ';">' + wMsg + '</div>';
+    }
+
+    // ── Time budget info ────────────────────────────────────────────────────
+    var timeBudgetHtml = '';
+    if (opts.timeBudgetHours > 0) {
+      var label = opts.timeBudgetHours === 5 ? 'Half Day (~5h)' : opts.timeBudgetHours + 'h';
+      timeBudgetHtml = '<div style="font-size:11px;color:#64748b;background:#f1f5f9;border-radius:4px;padding:5px 8px;margin-bottom:8px;">⏱️ Showing stops that fit within your <strong>' + label + '</strong> time budget (assuming ~60 min per stop + drive time).</div>';
+    }
+
     var groupHtml = groups.map(function (group) {
       var itemsHtml = group.suggestions.map(function (a) {
         var exists = !!(a.exists && a.existingLocation);
         var rating = a.rating ? ' ⭐ ' + Number(a.rating).toFixed(1) : '';
+        var openBadge = (a.openNow === true) ? ' <span style="color:#16a34a;font-size:10px;font-weight:700;">● Open</span>' : (a.openNow === false ? ' <span style="color:#dc2626;font-size:10px;">● Closed</span>' : '');
         var addBtnId = 'smart-add-' + String(a.id || a.name).replace(/[^a-z0-9]/gi, '_');
         var addBtnHtml = '<button type="button" class="tm-btn" id="' + addBtnId + '" onclick="handleSmartAddToDayPlan(' + JSON.stringify(a).replace(/"/g, '&quot;') + ', \'' + addBtnId + '\')">🗓 Add to Day</button>';
         var actionHtml = exists
@@ -3291,7 +3358,7 @@
           : '<a class="tm-btn" href="' + escapeHtml(a.googleUrl || '#') + '" target="_blank" rel="noopener">Google Maps</a>';
         return '<div style="padding:6px 0; border-bottom:1px solid #f0f4f8; display:flex; align-items:flex-start; gap:10px;">' +
           '<div style="flex:1;">' +
-            '<div style="font-weight:600; font-size:13px;">' + escapeHtml(a.name || '—') + (exists ? ' <span style="color:#22c55e;font-size:11px;">✅ In App</span>' : '') + '</div>' +
+            '<div style="font-weight:600; font-size:13px;">' + escapeHtml(a.name || '—') + (exists ? ' <span style="color:#22c55e;font-size:11px;">✅ In App</span>' : '') + openBadge + '</div>' +
             '<div style="font-size:11px; color:#64748b;">📍 ' + escapeHtml(a.distanceText || '—') + ' &nbsp; 🚗 ' + escapeHtml(a.driveTimeText || '—') + rating + '</div>' +
             (a.description ? '<div style="font-size:11px; color:#94a3b8; margin-top:2px;">' + escapeHtml(a.description) + '</div>' : '') +
           '</div>' +
@@ -3309,6 +3376,8 @@
     return '<div id="smartItineraryPanel" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-top:14px;">' +
       '<div style="font-weight:700; font-size:14px; color:#1e293b; margin-bottom:4px;">🗺️ Complete Your Day</div>' +
       '<div style="font-size:12px; color:#64748b; margin-bottom:12px;">' + bannerText + '</div>' +
+      weatherBannerHtml +
+      timeBudgetHtml +
       groupHtml +
       '<div style="margin-top:8px; padding-top:8px; border-top:1px solid #e2e8f0; display:flex; gap:8px; align-items:center;">' +
         '<button type="button" class="tm-btn primary" onclick="openDayPlanDrawer()">📋 View Day Plan</button>' +
@@ -3337,6 +3406,12 @@
     if (!plan.length) {
       return '<div style="color:#64748b; padding:12px 0;">Your day plan is empty. Use the "🗓 Add to Day" buttons to build your itinerary.</div>';
     }
+    var totalDriveMins = plan.reduce(function (sum, s) { return sum + (Number(s.driveTimeMinutes) || 0); }, 0);
+    var estTotalMins   = totalDriveMins + plan.length * 60;
+    var estHours       = Math.floor(estTotalMins / 60);
+    var estMins        = estTotalMins % 60;
+    var estLabel       = estHours > 0 ? estHours + 'h ' + (estMins > 0 ? estMins + 'm' : '') : estMins + 'm';
+    var summaryHtml    = '<div style="font-size:11px;color:#64748b;background:#f1f5f9;border-radius:4px;padding:5px 8px;margin-bottom:10px;">⏱️ Estimated total time: <strong>' + estLabel.trim() + '</strong> (drive + ~60 min per stop)</div>';
     var stopsHtml = plan.map(function (s, i) {
       return '<div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #f0f4f8;">' +
         '<span style="font-size:12px; font-weight:700; color:#64748b; min-width:18px;">' + (i + 1) + '</span>' +
@@ -3350,7 +3425,7 @@
     }).join('');
 
     var routeUrl = buildRouteUrl(plan);
-    return stopsHtml +
+    return summaryHtml + stopsHtml +
       '<div style="margin-top:10px; display:flex; gap:8px;">' +
         (routeUrl ? '<a class="tm-btn primary" href="' + escapeHtml(routeUrl) + '" target="_blank" rel="noopener">📍 Plan Route in Google Maps</a>' : '') +
         '<button class="tm-btn" onclick="handleClearDayPlan()" style="color:#ef4444;">🗑 Clear All</button>' +
@@ -3473,7 +3548,13 @@
   }
 
   function loadNearbyUiState() {
-    var next = { radiusMiles: NEARBY_DEFAULT_UI_STATE.radiusMiles, category: NEARBY_DEFAULT_UI_STATE.category };
+    var next = {
+      radiusMiles: NEARBY_DEFAULT_UI_STATE.radiusMiles,
+      category: NEARBY_DEFAULT_UI_STATE.category,
+      minRating: NEARBY_DEFAULT_UI_STATE.minRating,
+      openNow: NEARBY_DEFAULT_UI_STATE.openNow,
+      timeBudgetHours: NEARBY_DEFAULT_UI_STATE.timeBudgetHours
+    };
     try {
       var raw = window.localStorage.getItem(NEARBY_UI_PREFS_KEY);
       if (!raw) return next;
@@ -3483,6 +3564,11 @@
         if (Number.isFinite(radius) && radius > 0) next.radiusMiles = radius;
         var category = String(parsed.category || 'all').toLowerCase();
         if (NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === category; })) next.category = category;
+        var mr = Number(parsed.minRating);
+        if ([0, 3, 4, 4.5].indexOf(mr) !== -1) next.minRating = mr;
+        next.openNow = !!parsed.openNow;
+        var tb = Number(parsed.timeBudgetHours);
+        if ([0, 1, 2, 3, 5].indexOf(tb) !== -1) next.timeBudgetHours = tb;
       }
     } catch (_err) {}
     return next;
@@ -3491,7 +3577,10 @@
   function persistNearbyUiState(state) {
     var normalized = {
       radiusMiles: Number(state && state.radiusMiles) || NEARBY_DEFAULT_UI_STATE.radiusMiles,
-      category: String((state && state.category) || 'all').toLowerCase()
+      category: String((state && state.category) || 'all').toLowerCase(),
+      minRating: Number(state && state.minRating) || 0,
+      openNow: !!(state && state.openNow),
+      timeBudgetHours: Number(state && state.timeBudgetHours) || 0
     };
     try { window.localStorage.setItem(NEARBY_UI_PREFS_KEY, JSON.stringify(normalized)); } catch (_err) {}
     window.__detailNearbyUiState = normalized;
@@ -3516,16 +3605,64 @@
       var active = String(uiState.category || 'all') === chip.id;
       return '<button type="button" class="tm-btn' + (active ? ' primary' : '') + '" data-nearby-category="' + chip.id + '">' + escapeHtml(chip.label) + '</button>';
     }).join('');
+
+    // Min-rating selector
+    var ratingOpts = [
+      { val: 0,   label: 'Any ★' },
+      { val: 3,   label: '3★+' },
+      { val: 4,   label: '4★+' },
+      { val: 4.5, label: '4.5★+' }
+    ];
+    var ratingHtml = ratingOpts.map(function (r) {
+      var active = Number(uiState.minRating || 0) === r.val;
+      return '<button type="button" class="tm-btn' + (active ? ' primary' : '') + '" data-nearby-minrating="' + r.val + '">' + r.label + '</button>';
+    }).join('');
+
+    // Open-now toggle
+    var openNowActive = !!uiState.openNow;
+    var openNowHtml = '<button type="button" class="tm-btn' + (openNowActive ? ' primary' : '') + '" data-nearby-openonly="1">🟢 Open Now' + (openNowActive ? ' ✓' : '') + '</button>';
+
+    // Time-budget selector
+    var budgetOpts = [
+      { val: 0, label: 'Any time' },
+      { val: 1, label: '1h' },
+      { val: 2, label: '2h' },
+      { val: 3, label: '3h' },
+      { val: 5, label: 'Half Day' }
+    ];
+    var budgetHtml = budgetOpts.map(function (b) {
+      var active = Number(uiState.timeBudgetHours || 0) === b.val;
+      return '<button type="button" class="tm-btn' + (active ? ' primary' : '') + '" data-nearby-timebudget="' + b.val + '">' + b.label + '</button>';
+    }).join('');
+
+    // Profile label
     var profileLabel = '';
     if (data) {
       var profile = (typeof window.inferLocationProfile === 'function') ? window.inferLocationProfile(data) : 'general';
       var profileEmoji = { outdoor_adventure: '🏔️', dining: '🍽️', culture: '🏛️', entertainment: '🎭', shopping: '🛍️', family: '👨‍👩‍👧', general: '📍' };
       profileLabel = '<span class="u-text-xs-dim" style="margin-left:6px;">Detected: ' + (profileEmoji[profile] || '📍') + ' ' + profile.replace(/_/g, ' ') + '</span>';
     }
+
+    // Weather badge (if already fetched for this session)
+    var weatherBadge = '';
+    var weather = window.__nearbyWeatherData;
+    if (weather && weather.condition !== 'unknown') {
+      var badgeBg = (weather.bias === 'indoor' || weather.bias === 'indoor_strong') ? '#fef3c7' : '#ecfdf5';
+      weatherBadge = '&nbsp;<span style="background:' + badgeBg + ';border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600;">' +
+        escapeHtml(weather.emoji + ' ' + weather.description) + '</span>';
+    }
+
     return '<div id="nearbyControlsWrap" class="u-stack-gap-sm" style="margin:0 0 8px 0;">' +
-      '<div class="tm-actions"><button type="button" id="refreshNearbyBtn" class="tm-btn">🔄 Refresh Nearby</button><button type="button" class="tm-btn" onclick="openDayPlanDrawer()">📋 Day Plan (<span id="dayPlanCountBadge">' + loadDetailDayPlan().length + '</span>)</button><span class="u-text-xs-dim">Weighted blend · smart suggestions</span>' + profileLabel + '</div>' +
+      '<div class="tm-actions">' +
+        '<button type="button" id="refreshNearbyBtn" class="tm-btn">🔄 Refresh Nearby</button>' +
+        '<button type="button" class="tm-btn" onclick="openDayPlanDrawer()">📋 Day Plan (<span id="dayPlanCountBadge">' + loadDetailDayPlan().length + '</span>)</button>' +
+        '<span class="u-text-xs-dim">Weighted blend · smart suggestions</span>' +
+        profileLabel + weatherBadge +
+      '</div>' +
       '<div class="tm-actions"><span class="u-text-xs-dim">Radius:</span>' + radiusHtml + '</div>' +
       '<div class="tm-actions" style="flex-wrap:wrap;"><span class="u-text-xs-dim">Category:</span>' + categoryHtml + '</div>' +
+      '<div class="tm-actions" style="flex-wrap:wrap;"><span class="u-text-xs-dim">Min Rating:</span>' + ratingHtml + '&nbsp;&nbsp;' + openNowHtml + '</div>' +
+      '<div class="tm-actions" style="flex-wrap:wrap;"><span class="u-text-xs-dim">⏱️ Time Budget:</span>' + budgetHtml + '</div>' +
     '</div>';
   }
 
@@ -3534,6 +3671,9 @@
     return {
       radiusMiles: Number(ui.radiusMiles) || 5,
       category: String(ui.category || 'all'),
+      minRating: Number(ui.minRating) || 0,
+      openNow: !!ui.openNow,
+      timeBudgetHours: Number(ui.timeBudgetHours) || 0,
       placeKey: getLocationKey(detailData || {})
     };
   }
@@ -3562,10 +3702,25 @@
   }
 
   function renderNearbyListHtml(attractions, data) {
-    if (!Array.isArray(attractions) || !attractions.length) {
-      return '<span class="empty">No nearby attractions detected yet. Click Refresh Nearby.</span>';
+    var uiState = getNearbyUiState();
+    var minRating  = Number(uiState.minRating || 0);
+    var openOnly   = !!uiState.openNow;
+    var hasFilters = minRating > 0 || openOnly;
+
+    var filtered = Array.isArray(attractions) ? attractions.filter(function (a) {
+      if (minRating > 0 && (!(a.rating) || Number(a.rating) < minRating)) return false;
+      if (openOnly && !a.openNow) return false;
+      return true;
+    }) : [];
+
+    if (!filtered.length) {
+      var emptyMsg = hasFilters
+        ? 'No results match the current filters (min rating / open now). Try relaxing the filters.'
+        : 'No nearby attractions detected yet. Click Refresh Nearby.';
+      return '<span class="empty">' + emptyMsg + '</span>';
     }
-    var listHtml = '<div class="u-stack-gap-sm">' + attractions.slice(0, 15).map(function (a) {
+
+    var listHtml = '<div class="u-stack-gap-sm">' + filtered.slice(0, 15).map(function (a) {
       var exists = !!(a.exists && a.existingLocation);
       var status = exists ? '✅ In App' : '🔗 Google';
       var actionHtml = '';
@@ -4101,6 +4256,15 @@
         showDetailToast('⚠️ Could not resolve coordinates for this location.', 'info', 3200);
         return;
       }
+
+      // Fetch weather in background; result used by renderSmartItinerarySuggestionsHtml
+      fetchDetailWeatherCondition(coords.lat, coords.lng).then(function (weather) {
+        window.__nearbyWeatherData = weather;
+        // Refresh weather badge in controls if already rendered
+        var controlsWrap = document.getElementById('nearbyControlsWrap');
+        var _cd = window.__detailInlineEditState && window.__detailInlineEditState.data;
+        if (controlsWrap && _cd) controlsWrap.outerHTML = renderNearbyControlsHtml(_cd);
+      }).catch(function () {});
 
       var attractions = await window.nearbyAttractionsFinder.getFormattedNearbyAttractions(coords.lat, coords.lng, data.name || 'Location', nearbyOpts);
       if ((!Array.isArray(attractions) || !attractions.length) && String(nearbyOpts.category || 'all') !== 'all') {
@@ -6604,7 +6768,7 @@
       if (nearbyRadiusBtn) {
         var radiusVal = Number(nearbyRadiusBtn.getAttribute('data-nearby-radius'));
         var curUi = getNearbyUiState();
-        persistNearbyUiState({ radiusMiles: Number.isFinite(radiusVal) && radiusVal > 0 ? radiusVal : curUi.radiusMiles, category: curUi.category });
+        persistNearbyUiState(Object.assign({}, curUi, { radiusMiles: Number.isFinite(radiusVal) && radiusVal > 0 ? radiusVal : curUi.radiusMiles }));
         var additionalPane = document.getElementById('pane-additional');
         if (additionalPane) {
           var controlsWrap = document.getElementById('nearbyControlsWrap');
@@ -6620,7 +6784,7 @@
         var categoryVal = String(nearbyCategoryBtn.getAttribute('data-nearby-category') || 'all').toLowerCase();
         if (!NEARBY_CATEGORY_CHIPS.some(function (c) { return c.id === categoryVal; })) categoryVal = 'all';
         var curUi2 = getNearbyUiState();
-        persistNearbyUiState({ radiusMiles: curUi2.radiusMiles, category: categoryVal });
+        persistNearbyUiState(Object.assign({}, curUi2, { category: categoryVal }));
         var additionalPane2 = document.getElementById('pane-additional');
         if (additionalPane2) {
           var controlsWrap2 = document.getElementById('nearbyControlsWrap');
@@ -6628,6 +6792,50 @@
           if (controlsWrap2) controlsWrap2.outerHTML = renderNearbyControlsHtml(_curData2);
         }
         refreshNearbyAttractionsForDetail(true);
+        return;
+      }
+
+      // ── Min rating filter (client-side re-render, no new fetch needed) ────
+      var nearbyRatingBtn = closestFromEvent(e, '[data-nearby-minrating]');
+      if (nearbyRatingBtn) {
+        var ratingVal = Number(nearbyRatingBtn.getAttribute('data-nearby-minrating'));
+        var curUiR = getNearbyUiState();
+        persistNearbyUiState(Object.assign({}, curUiR, { minRating: ratingVal }));
+        var _cdR = window.__detailInlineEditState && window.__detailInlineEditState.data;
+        var cwR = document.getElementById('nearbyControlsWrap');
+        if (cwR) cwR.outerHTML = renderNearbyControlsHtml(_cdR);
+        var paneR = document.getElementById('nearbyAttractionsValue');
+        var nsR = window.__detailNearbyState;
+        if (paneR && nsR && nsR.attractions) paneR.innerHTML = renderNearbyListHtml(nsR.attractions, _cdR);
+        return;
+      }
+
+      // ── Open-now toggle (client-side re-render) ───────────────────────────
+      var nearbyOpenOnly = closestFromEvent(e, '[data-nearby-openonly]');
+      if (nearbyOpenOnly) {
+        var curUiO = getNearbyUiState();
+        persistNearbyUiState(Object.assign({}, curUiO, { openNow: !curUiO.openNow }));
+        var _cdO = window.__detailInlineEditState && window.__detailInlineEditState.data;
+        var cwO = document.getElementById('nearbyControlsWrap');
+        if (cwO) cwO.outerHTML = renderNearbyControlsHtml(_cdO);
+        var paneO = document.getElementById('nearbyAttractionsValue');
+        var nsO = window.__detailNearbyState;
+        if (paneO && nsO && nsO.attractions) paneO.innerHTML = renderNearbyListHtml(nsO.attractions, _cdO);
+        return;
+      }
+
+      // ── Time budget selector (client-side re-render) ──────────────────────
+      var nearbyBudgetBtn = closestFromEvent(e, '[data-nearby-timebudget]');
+      if (nearbyBudgetBtn) {
+        var budgetVal = Number(nearbyBudgetBtn.getAttribute('data-nearby-timebudget'));
+        var curUiB = getNearbyUiState();
+        persistNearbyUiState(Object.assign({}, curUiB, { timeBudgetHours: budgetVal }));
+        var _cdB = window.__detailInlineEditState && window.__detailInlineEditState.data;
+        var cwB = document.getElementById('nearbyControlsWrap');
+        if (cwB) cwB.outerHTML = renderNearbyControlsHtml(_cdB);
+        var paneB = document.getElementById('nearbyAttractionsValue');
+        var nsB = window.__detailNearbyState;
+        if (paneB && nsB && nsB.attractions) paneB.innerHTML = renderNearbyListHtml(nsB.attractions, _cdB);
         return;
       }
 

@@ -358,34 +358,93 @@ function inferLocationProfile(data) {
   return (best && best[1] > 0) ? best[0] : 'general';
 }
 
+/** Elevation-related keywords that indicate a viewpoint / overlook attraction. */
+var ELEVATION_KEYWORDS = ['overlook', 'summit', 'ridge', 'viewpoint', 'bald', 'falls', 'vista', 'peak', 'overlook', 'scenic drive', 'scenic overlook', 'parkway'];
+
 /**
- * Given a profile and the full ranked attractions list, return smart itinerary groups:
- * each group has a role label and an array of best-match attractions for that role.
+ * Given a profile and the full ranked attractions list, return smart itinerary groups.
+ * Options:
+ *   weatherBias     {string}  'none' | 'outdoor' | 'indoor' | 'indoor_strong'
+ *   minRating       {number}  0 | 3 | 4 | 4.5  — filter out lower-rated suggestions
+ *   openNow         {boolean} only include places currently open
+ *   timeBudgetHours {number}  0 = unlimited; else trim stops so total fits
  */
-function buildSmartItineraryGroups(profile, attractions) {
-  const plan = SMART_RECOMMENDATION_PLAN[profile] || SMART_RECOMMENDATION_PLAN.general;
-  const used = new Set();
+function buildSmartItineraryGroups(profile, attractions, options) {
+  var opts = options || {};
+  var weatherBias      = String(opts.weatherBias || 'none');
+  var minRating        = Number(opts.minRating)  || 0;
+  var openOnly         = !!opts.openNow;
+  var timeBudgetMins   = Number(opts.timeBudgetHours || 0) * 60;
+
+  // Clone and optionally reorder plan by weather bias
+  var plan = (SMART_RECOMMENDATION_PLAN[profile] || SMART_RECOMMENDATION_PLAN.general).slice();
+  if (weatherBias === 'indoor' || weatherBias === 'indoor_strong') {
+    plan = applyWeatherBiasToPlan(plan, weatherBias);
+  }
+
+  // Build filtered pool (with graceful fallback if filters are too restrictive)
+  var fullPool = Array.isArray(attractions) ? attractions : [];
+  var filteredPool = fullPool.filter(function (a) {
+    if (minRating > 0 && (!(a.rating) || Number(a.rating) < minRating)) return false;
+    if (openOnly && !a.openNow) return false;
+    return true;
+  });
+  // Fall back to unfiltered pool so we always show something
+  var pool = filteredPool.length >= 2 ? filteredPool : fullPool;
+
+  var used            = new Set();
+  var remainingMins   = timeBudgetMins > 0 ? timeBudgetMins : Infinity;
 
   return plan.map(function (slot) {
-    const candidates = (Array.isArray(attractions) ? attractions : []).filter(function (a) {
+    var isElevationSlot = slot.categoryHint === 'scenic' || slot.categoryHint === 'nature';
+
+    var candidates = pool.filter(function (a) {
       if (used.has(a.id || a.name)) return false;
-      const types = Array.isArray(a.types) ? a.types.map(function (t) { return String(t || '').toLowerCase(); }) : [];
-      const name = String(a.name || '').toLowerCase();
-      const desc = String(a.description || '').toLowerCase();
-      const combined = types.concat([name, desc]).join(' ');
-      const catMatch = slot.gTypes.some(function (gt) { return combined.includes(gt.replace(/_/g, ' ')); });
-      // also allow coffee_dessert categoryHint to catch cafe/bakery without explicit Google type match
-      const hintMatch = slot.categoryHint === 'coffee_dessert'
+      var types    = Array.isArray(a.types) ? a.types.map(function (t) { return String(t || '').toLowerCase(); }) : [];
+      var name     = String(a.name || '').toLowerCase();
+      var desc     = String(a.description || '').toLowerCase();
+      var combined = types.concat([name, desc]).join(' ');
+
+      var catMatch  = slot.gTypes.some(function (gt) { return combined.includes(gt.replace(/_/g, ' ')); });
+      var hintMatch = slot.categoryHint === 'coffee_dessert'
         ? /(cafe|coffee|bakery|ice.cream|dessert|pastry|creamery|fudge|donut|frozen|yogurt)/.test(combined)
         : catMatch;
+
+      // Elevation context: for scenic/nature slots also match viewpoint/overlook keywords
+      if (isElevationSlot) {
+        var elevMatch = ELEVATION_KEYWORDS.some(function (kw) { return combined.includes(kw); });
+        if (elevMatch) return true;
+      }
+
       return catMatch || hintMatch;
     });
 
-    // Pick top 3, mark them used
-    const picks = candidates.slice(0, 3);
-    picks.forEach(function (p) { used.add(p.id || p.name); });
+    // Sort elevation slots so viewpoint/overlook keywords appear first
+    if (isElevationSlot) {
+      candidates = candidates.slice().sort(function (a, b) {
+        var aName = String(a.name || '').toLowerCase();
+        var bName = String(b.name || '').toLowerCase();
+        var aScore = ELEVATION_KEYWORDS.some(function (kw) { return aName.includes(kw); }) ? 1 : 0;
+        var bScore = ELEVATION_KEYWORDS.some(function (kw) { return bName.includes(kw); }) ? 1 : 0;
+        return bScore - aScore;
+      });
+    }
 
-    return { ...slot, suggestions: picks };
+    // Time-budget trimming: pick up to 3 stops that fit within remaining minutes
+    var picks = [];
+    for (var i = 0; i < candidates.length && picks.length < 3; i++) {
+      var p = candidates[i];
+      if (timeBudgetMins > 0) {
+        var driveMins = Number(p.driveTimeMinutes || 0) || 15;
+        var stopMins  = driveMins + 60; // assume ~60 min visit per stop
+        if (stopMins > remainingMins) continue;
+        remainingMins -= stopMins;
+      }
+      picks.push(p);
+    }
+
+    picks.forEach(function (p) { used.add(p.id || p.name); });
+    return Object.assign({}, slot, { suggestions: picks });
   }).filter(function (group) { return group.suggestions.length > 0; });
 }
 
@@ -402,11 +461,72 @@ function getTimeOfDayBucket() {
   return 'night';
 }
 
+// ─── Weather Condition System ─────────────────────────────────────────────────
+
+var _weatherFetchCache = {};
+var WEATHER_CACHE_MS = 10 * 60 * 1000; // 10 minutes
+
+/** Classify an Open-Meteo WMO weather code into a usable condition object. */
+function classifyWeatherCode(code, isDay) {
+  if (code === 0)  return { condition: 'clear',        emoji: isDay ? '☀️' : '🌙', bias: 'outdoor',       description: 'Clear skies' };
+  if (code <= 3)   return { condition: 'cloudy',        emoji: '🌤️',              bias: 'outdoor',       description: 'Partly cloudy' };
+  if (code <= 48)  return { condition: 'fog',           emoji: '🌫️',              bias: 'none',          description: 'Foggy conditions' };
+  if (code <= 57)  return { condition: 'drizzle',       emoji: '🌦️',              bias: 'indoor',        description: 'Light drizzle' };
+  if (code <= 67)  return { condition: 'rain',          emoji: '🌧️',              bias: 'indoor_strong', description: 'Rainy' };
+  if (code <= 77)  return { condition: 'snow',          emoji: '❄️',              bias: 'indoor_strong', description: 'Snowing' };
+  if (code <= 82)  return { condition: 'showers',       emoji: '🌦️',              bias: 'indoor',        description: 'Rain showers' };
+  if (code <= 86)  return { condition: 'snow_showers',  emoji: '🌨️',              bias: 'indoor_strong', description: 'Snow showers' };
+  return             { condition: 'thunderstorm',        emoji: '⛈️',              bias: 'indoor_strong', description: 'Thunderstorms' };
+}
+
+/**
+ * Fetch current weather from Open-Meteo (free, no API key required).
+ * Returns a condition object: { code, condition, emoji, bias, description, tempC }
+ * Results are cached for 10 minutes per coordinate.
+ */
+async function fetchWeatherCondition(lat, lng) {
+  var key = Number(lat).toFixed(2) + ',' + Number(lng).toFixed(2);
+  var now = Date.now();
+  if (_weatherFetchCache[key] && (now - _weatherFetchCache[key].ts) < WEATHER_CACHE_MS) {
+    return _weatherFetchCache[key].data;
+  }
+  try {
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
+              '&longitude=' + lng + '&current_weather=true';
+    var resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    var json = await resp.json();
+    var cw = json && json.current_weather;
+    var code   = cw ? Number(cw.weathercode)  : 0;
+    var isDay  = cw ? Boolean(cw.is_day)       : true;
+    var tempC  = cw ? Number(cw.temperature)   : null;
+    var result = Object.assign({ code: code, tempC: tempC }, classifyWeatherCode(code, isDay));
+    _weatherFetchCache[key] = { ts: now, data: result };
+    return result;
+  } catch (_e) {
+    return { code: -1, condition: 'unknown', emoji: '🌤️', bias: 'none', description: 'Weather unavailable', tempC: null };
+  }
+}
+
+/** Reorder a plan array so indoor categories rise when it is rainy/snowy/stormy. */
+function applyWeatherBiasToPlan(plan, bias) {
+  var INDOOR_HINTS  = ['food', 'coffee_dessert', 'culture', 'entertainment', 'shopping', 'nightlife'];
+  var OUTDOOR_HINTS = ['scenic', 'nature'];
+  return plan.map(function (slot) {
+    var p = slot.priority;
+    if (INDOOR_HINTS.indexOf(slot.categoryHint) !== -1)  p = Math.max(1, p - 2);
+    if (OUTDOOR_HINTS.indexOf(slot.categoryHint) !== -1)  p += (bias === 'indoor_strong' ? 4 : 2);
+    return Object.assign({}, slot, { priority: p });
+  }).sort(function (a, b) { return a.priority - b.priority; });
+}
+
 // Export for adventure-details-window.html access
 if (typeof window !== 'undefined') {
-  window.inferLocationProfile = inferLocationProfile;
+  window.inferLocationProfile    = inferLocationProfile;
   window.buildSmartItineraryGroups = buildSmartItineraryGroups;
-  window.getTimeOfDayBucket = getTimeOfDayBucket;
+  window.getTimeOfDayBucket      = getTimeOfDayBucket;
+  window.fetchWeatherCondition   = fetchWeatherCondition;
+  window.classifyWeatherCode     = classifyWeatherCode;
 }
 
 class NearbyAttractionsFinder {
@@ -839,6 +959,7 @@ class NearbyAttractionsFinder {
       ...attraction,
       distanceText: `${distance} mi`,
       driveTimeText,
+      driveTimeMinutes: driveTime,
       status: attraction.exists ? '✅ In App' : '🔗 Google',
       sourceBadge: source,
       category: this.inferCategory(attraction),
@@ -1007,6 +1128,9 @@ if (typeof module !== 'undefined' && module.exports) {
     inferLocationProfile,
     buildSmartItineraryGroups,
     getTimeOfDayBucket,
+    fetchWeatherCondition,
+    classifyWeatherCode,
+    applyWeatherBiasToPlan,
     loadDayPlan,
     saveDayPlan,
     addStopToDayPlan,
