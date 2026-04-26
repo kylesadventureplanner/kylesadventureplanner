@@ -172,6 +172,11 @@ async function installVisitedExplorerSeedFixture(page) {
   await page.addInitScript(() => {
     // Explorer table reads require a token; a stub value is enough for mocked responses.
     window.accessToken = 'playwright-visited-seed-token';
+    window.visitedSyncConfig = {
+      persistenceWorkbookPath: 'Copilot_Apps/Kyles_Adventure_Finder/Adventure_Finder_Excel_DB.xlsx',
+      persistenceTableName: 'VisitedFeaturePersistence',
+      persistenceWorksheetName: 'VisitedPersistence'
+    };
   });
 
   const fixtureMatrix = {
@@ -209,6 +214,30 @@ async function installVisitedExplorerSeedFixture(page) {
           { name: 'City', index: 1 },
           { name: 'State', index: 2 },
           { name: 'Visited', index: 3 }
+        ]
+      })
+    });
+  });
+
+  await page.route(/https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.*\/workbook\/tables$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        value: [
+          { name: 'VisitedFeaturePersistence' }
+        ]
+      })
+    });
+  });
+
+  await page.route(/https:\/\/graph\.microsoft\.com\/v1\.0\/me\/drive\/root:\/.*\/workbook\/worksheets\?\$select=id,name,position$/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        value: [
+          { id: 'sheet-visited', name: 'VisitedPersistence', position: 0 }
         ]
       })
     });
