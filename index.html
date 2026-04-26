@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <title>Adventure Planner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="CSS/tv-mode.css" />
 
   <!-- ============================================================
        GOOGLE PLACES API KEY CONFIGURATION
@@ -8595,6 +8596,7 @@
       <button id="globalEditModeBtn" class="auth-btn" title="Open Edit Mode" data-tooltip="Open Edit Mode" onclick="openEditModeWindow()" style="background:#667eea;color:#fff;">📝 Edit Mode</button>
       <button id="offlineModeBtn" class="auth-btn" title="Open Offline Mode" data-tooltip="Open Offline Mode">📴 Offline Mode</button>
       <button id="appBackupBtn" class="auth-btn" title="Open App Backup" data-tooltip="Open App Backup">💾 App Backup</button>
+      <button id="tvModeHeaderBtn" class="auth-btn" title="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tooltip="Toggle TV / 10-foot UI mode (Ctrl+Alt+T)" data-tv-focusable="true" onclick="if(typeof toggleTvMode==='function')toggleTvMode()">📺 TV Mode</button>
       <button id="iphoneToggleBtn" class="auth-btn iphone-toggle-btn" title="Switch to iPhone mobile view" data-tooltip="Switch to iPhone mobile view">📱 iPhone View</button>
       <button id="signInBtn" class="auth-btn" title="Sign in with your Microsoft account">Sign In</button>
       <button id="signOutBtn" class="auth-btn" style="display:none;" title="Sign out of your account">Sign Out</button>
@@ -25605,6 +25607,7 @@ console.log('🛡️ App is now production-ready with enterprise-grade reliabili
   })();
 </script>
 <script src="JS Files/runtime-hotfixes.js"></script>
+<script src="JS Files/tv-mode-controller.js"></script>
 <script>
   // Sync app-level labels into legacy global for backwards compatibility.
   (function initKhFeedbackNotesToggleLabels() {

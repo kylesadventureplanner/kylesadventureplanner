@@ -1,0 +1,183 @@
+/* TV Mode 10-foot UI styles */
+
+:root {
+  --tv-focus-ring: #f59e0b;
+  --tv-focus-shadow: rgba(245, 158, 11, 0.55);
+  --tv-surface: #0f172a;
+  --tv-surface-soft: #1e293b;
+  --tv-text: #f8fafc;
+}
+
+.tv-mode-enabled body {
+  background: #020617;
+  color: var(--tv-text);
+}
+
+body.tv-mode-enabled {
+  font-size: 20px;
+  line-height: 1.45;
+}
+
+body.tv-mode-enabled .app-container {
+  max-width: 1700px;
+  padding: 28px;
+}
+
+body.tv-mode-enabled .app-header,
+body.tv-mode-enabled .card,
+body.tv-mode-enabled .modal,
+body.tv-mode-enabled .automation-progress-modal,
+body.tv-mode-enabled .row-detail-modal,
+body.tv-mode-enabled #rowDetailModal {
+  border-radius: 16px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.38);
+}
+
+body.tv-mode-enabled .app-tab-btn,
+body.tv-mode-enabled .planner-top-btn,
+body.tv-mode-enabled .automation-btn,
+body.tv-mode-enabled .quick-filter-btn,
+body.tv-mode-enabled .card-btn,
+body.tv-mode-enabled .adventure-card .card-btn,
+body.tv-mode-enabled .enhanced-city-sort-btn,
+body.tv-mode-enabled .enhanced-city-btn,
+body.tv-mode-enabled .enhanced-city-close,
+body.tv-mode-enabled .row-detail-tab-btn,
+body.tv-mode-enabled .row-detail-footer-btn,
+body.tv-mode-enabled #tvModeGlobalToggle,
+body.tv-mode-enabled .tv-quick-filter-btn {
+  min-height: 54px;
+  font-size: 20px;
+  padding: 12px 18px;
+}
+
+body.tv-mode-enabled .filter-input,
+body.tv-mode-enabled .filter-select,
+body.tv-mode-enabled input,
+body.tv-mode-enabled select,
+body.tv-mode-enabled textarea {
+  min-height: 52px;
+  font-size: 20px;
+}
+
+body.tv-mode-enabled .adventure-cards-grid {
+  grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+  gap: 26px;
+}
+
+body.tv-mode-enabled .adventure-card-title {
+  font-size: 28px;
+}
+
+body.tv-mode-enabled .adventure-card {
+  border-width: 2px;
+}
+
+body.tv-mode-enabled .adventure-card:focus-visible,
+body.tv-mode-enabled .enhanced-city-card:focus-visible,
+body.tv-mode-enabled .tv-focus,
+body.tv-mode-enabled [data-tv-focusable="true"]:focus-visible,
+body.tv-mode-enabled button:focus-visible,
+body.tv-mode-enabled a:focus-visible,
+body.tv-mode-enabled input:focus-visible,
+body.tv-mode-enabled select:focus-visible {
+  outline: 4px solid var(--tv-focus-ring);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--tv-focus-shadow);
+}
+
+#tvModeGlobalToggle {
+  position: fixed;
+  right: 18px;
+  top: 18px;
+  z-index: 100100;
+  border: 1px solid #94a3b8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  padding: 8px 14px;
+}
+
+#tvModeGlobalToggle[data-enabled="true"] {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+#tvModeShortcutHud {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 100090;
+  max-width: 460px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.44);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  display: none;
+}
+
+#tvModeShortcutHud.visible {
+  display: block;
+}
+
+#tvModeShortcutHud .tv-hud-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+}
+
+#tvModeShortcutHud kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: #334155;
+  border: 1px solid #64748b;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+#tvQuickFilterRail {
+  display: none;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 16px;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+body.tv-mode-enabled #tvQuickFilterRail {
+  display: flex;
+}
+
+.tv-quick-filter-btn {
+  border: 1px solid #94a3b8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.tv-quick-filter-btn[data-active="true"] {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #059669;
+  color: #ffffff;
+}
+
+body.tv-mode-enabled #enhancedCityVisualizerModal {
+  width: 96%;
+  max-width: 1500px;
+}
+
+body.tv-mode-enabled .enhanced-city-card {
+  border-width: 2px;
+  min-height: 190px;
+}
+

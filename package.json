@@ -19,6 +19,7 @@
     "mobile:qa:diff-heatmap": "node scripts/mobile-row-diff-heatmap.js",
     "offline:qa": "playwright test tests/offline-airplane-mode.spec.js",
     "offline:qa:gate": "playwright test tests/offline-airplane-mode.spec.js",
+    "tv:smoke": "playwright test tests/tv-mode-smoke.spec.js",
     "reliability:ownership": "node scripts/check-control-ownership.js",
     "nearby:tuning-report": "node scripts/nearby-tuning-report.js",
     "reliability:source-routing": "node scripts/validate-adventure-source-routing.js",
@@ -39,4 +40,3 @@
     "pngjs": "^7.0.0"
   }
 }
-

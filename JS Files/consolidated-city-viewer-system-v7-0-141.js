@@ -1441,11 +1441,11 @@ class EnhancedCityVisualizer {
       </div>
 
       <div class="enhanced-city-controls">
-        <input type="text" class="enhanced-city-search" id="citysearch" placeholder="Search cities...">
+        <input type="text" class="enhanced-city-search" id="citysearch" data-tv-focusable="true" placeholder="Search cities...">
         <div class="enhanced-city-sort">
-          <button class="enhanced-city-sort-btn active" data-sort="distance">📍 Distance</button>
-          <button class="enhanced-city-sort-btn" data-sort="name">A-Z</button>
-          <button class="enhanced-city-sort-btn" data-sort="count">📊 Count</button>
+          <button class="enhanced-city-sort-btn active" data-sort="distance" data-tv-focusable="true">📍 Distance</button>
+          <button class="enhanced-city-sort-btn" data-sort="name" data-tv-focusable="true">A-Z</button>
+          <button class="enhanced-city-sort-btn" data-sort="count" data-tv-focusable="true">📊 Count</button>
         </div>
       </div>
 
@@ -1454,7 +1454,7 @@ class EnhancedCityVisualizer {
       </div>
 
       <div class="enhanced-city-footer">
-        <button class="enhanced-city-btn" onclick="window.closeEnhancedCityVisualizer()">Close</button>
+        <button class="enhanced-city-btn" data-tv-focusable="true" onclick="window.closeEnhancedCityVisualizer()">Close</button>
       </div>
     `;
     document.body.appendChild(modal);
@@ -1515,7 +1515,7 @@ class EnhancedCityVisualizer {
     }
 
     listView.innerHTML = cities.map(city => `
-      <div class="enhanced-city-card" onclick="window.viewCityDetailsEnhanced('${city.name.replace(/'/g, "\\'")}')">
+      <div class="enhanced-city-card" tabindex="0" data-tv-focusable="true" onclick="window.viewCityDetailsEnhanced('${city.name.replace(/'/g, "\\'")}')">
         <h3 class="enhanced-city-card-name">${city.name}</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
           <div style="background: #f9fafb; padding: 8px; border-radius: 6px;">
