@@ -1,18 +1,10 @@
 /* TV Mode Controller
  * Enables large-screen, remote-friendly navigation for Samsung TV browser use.
  *
- * v3 additions:
- *  - Typing-context guard: shortcuts (H, T, [, ], 1-5, Backspace) do NOT fire
- *    when focus is inside an input / textarea / select / contenteditable
- *  - Adventure card focusability: MutationObserver marks .adventure-card divs
- *    with tabindex="0" + data-tv-focusable so the D-pad can land on cards
- *  - Improved spatial-nav cone filter: heavy cross-axis penalty stops ArrowRight
- *    from jumping to elements far above/below the intended row
- *  - Focus beacon: a 2.5 s label pops bottom-right showing which element is focused,
- *    readable at 10 ft without squinting at the ring
- *  - aria-live focus announcer: silent region reads the focused element name
- *    through Samsung TV TTS / accessibility APIs
- *  - PageDown / PageUp scrolling for long card grids
+ * v5.1 additions:
+ *  - Improved HUD: Unicode arrows (⬅️ ⬆️) + emoji indicators for better readability at 10 ft
+ *  - Audio feedback: Optional navigation beeps. Toggle via checkbox. localStorage persists.
+ *  - Better kbd styling: larger font, better contrast
  */
 (function initTvModeController() {
   'use strict';
@@ -29,9 +21,15 @@
     hudVisible:        false,
     lastFocused:       null,
     lastPreset:        '',
-    openerStack:       [],   // elements that opened modals — restored on close
+    openerStack:       [],
     _preClickElement:  null,
-    _beaconTimer:      null  // timeout handle for focus beacon auto-hide
+    _beaconTimer:      null,
+    _keyRepeatTimer:   null,
+    _keyRepeatHeld:    false,
+    _keyRepeatDir:     null,
+    _keyRepeatStart:   0,
+    _directionsCache:  {},
+    audioFeedback:     true  // toggle for navigation beeps
   };
 
   // ─── Visibility helpers ────────────────────────────────────────────────
@@ -133,6 +131,41 @@
     } catch (_) { el.scrollIntoView(false); }
   }
 
+  /**
+   * Ensures focus is never orphaned on <body> (which happens when a filtered card
+   * disappears or a modal closes before focus-restore completes). If focus is on
+   * <body>, jump to the first focusable element.
+   */
+  function ensureFocusNotOrphaned() {
+    if (document.activeElement !== document.body) return;
+    const focusables = getFocusableElements();
+    if (focusables.length) {
+      focusables[0].focus();
+      scrollIntoFocus(focusables[0]);
+      state.lastFocused = focusables[0];
+      announceFocus(focusables[0]);
+      updateFocusBeacon(focusables[0]);
+    }
+  }
+
+  /**
+   * Schedules a repeated D-pad move with acceleration. Repeat rate interpolates
+   * from 100 ms (slow, no acceleration) to 50 ms (fast, after 3 s of hold).
+   * This makes held-arrow navigation snappy instead of sluggish.
+   */
+  function scheduleKeyRepeat(direction) {
+    clearTimeout(state._keyRepeatTimer);
+    const elapsed = Date.now() - state._keyRepeatStart;
+    // Interpolate: at 0 ms → 100 ms delay, at 3000 ms → 50 ms delay
+    const delayMs = Math.max(50, 100 - (elapsed / 3000) * 50);
+    state._keyRepeatTimer = setTimeout(() => {
+      if (state._keyRepeatHeld && state._keyRepeatDir === direction) {
+        moveFocus(direction);
+        scheduleKeyRepeat(direction);
+      }
+    }, delayMs);
+  }
+
   function moveFocus(direction) {
     const focusables = getFocusableElements();
     if (!focusables.length) return;
@@ -159,6 +192,10 @@
       state.lastFocused = best;
       announceFocus(best);
       updateFocusBeacon(best);
+      updateDirectionPreview(best);
+      updateModalBadge();
+      playNavigationBeep();
+      ensureFocusNotOrphaned();
     }
   }
 
@@ -270,6 +307,8 @@
     const next      = buttons[nextIdx];
     if (next && typeof next.click === 'function') {
       next.click(); next.focus(); scrollIntoFocus(next); state.lastFocused = next;
+      announceFocus(next); updateFocusBeacon(next);
+      ensureFocusNotOrphaned();
     }
   }
 
@@ -314,6 +353,9 @@
         const focusables = getFocusableElements();
         if (focusables.length) {
           focusables[0].focus(); scrollIntoFocus(focusables[0]); state.lastFocused = focusables[0];
+          announceFocus(focusables[0]); updateFocusBeacon(focusables[0]);
+          updateDirectionPreview(focusables[0]); updateModalBadge();
+          ensureFocusNotOrphaned();
         }
       });
     } else {
@@ -357,17 +399,30 @@
       '  <button id="tvModeShortcutHudClose" class="tv-hud-close" aria-label="Close shortcuts HUD">✕</button>',
       '</div>',
       '<div class="tv-hud-grid">',
-      '  <div><kbd>↑↓←→</kbd> Move focus</div>',
-      '  <div><kbd>Enter</kbd> Select</div>',
-      '  <div><kbd>Esc</kbd> Back / Close</div>',
-      '  <div><kbd>H</kbd> Toggle this help</div>',
-      '  <div><kbd>[</kbd><kbd>]</kbd> Prev / Next tab</div>',
-      '  <div><kbd>T</kbd> Cycle tabs forward</div>',
-      '  <div><kbd>1</kbd>–<kbd>5</kbd> Quick presets</div>',
-      '  <div><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> Toggle TV mode</div>',
+      '  <div><kbd class="tv-kbd-arrows">⬅️ ⬆️ ➡️ ⬇️</kbd> Move</div>',
+      '  <div><kbd class="tv-kbd">↵ Enter</kbd> Select</div>',
+      '  <div><kbd class="tv-kbd">Esc</kbd> Back</div>',
+      '  <div><kbd class="tv-kbd">H</kbd> Help</div>',
+      '  <div><kbd class="tv-kbd">[</kbd><kbd class="tv-kbd">]</kbd> Tabs</div>',
+      '  <div><kbd class="tv-kbd">T</kbd> Cycle</div>',
+      '  <div><kbd class="tv-kbd">1–5</kbd> Presets</div>',
+      '  <div><label style="display:flex;align-items:center;gap:6px;margin-top:8px;"><input type="checkbox" id="tvAudioFeedback" style="cursor:pointer;"> 🔊 Feedback</label></div>',
       '</div>'
     ].join('\n');
     hud.querySelector('#tvModeShortcutHudClose').addEventListener('click', () => toggleHud(false));
+
+    // Audio toggle
+    setTimeout(() => {
+      const audioToggle = document.getElementById('tvAudioFeedback');
+      if (audioToggle) {
+        audioToggle.checked = state.audioFeedback;
+        audioToggle.addEventListener('change', (e) => {
+          state.audioFeedback = e.target.checked;
+          try { localStorage.setItem('kap_tv_audio_feedback', state.audioFeedback ? '1' : '0'); } catch (_) {}
+        });
+      }
+    }, 10);
+
     document.body.appendChild(hud);
   }
 
@@ -503,10 +558,11 @@
         card.setAttribute('tabindex', '0');
         card.setAttribute('data-tv-focusable', 'true');
         card.setAttribute('role', 'button');
-        // Build a readable label from card title + location.
+        // Build a readable label from card title + location + keyboard hint.
         const title    = card.querySelector('.adventure-card-title')?.textContent?.trim() || '';
         const location = card.querySelector('.adventure-card-location')?.textContent?.trim() || '';
-        card.setAttribute('aria-label', [title, location].filter(Boolean).join(' — '));
+        const hint     = '[Enter to open]';
+        card.setAttribute('aria-label', [title, location, hint].filter(Boolean).join(' — '));
         // Make Enter / Space activate the card (mirrors mouse click).
         if (!card.dataset.tvKeyBound) {
           card.dataset.tvKeyBound = '1';
@@ -579,6 +635,116 @@
     requestAnimationFrame(() => requestAnimationFrame(() => { announcer.textContent = label; }));
   }
 
+  // ─── Direction preview HUD ─────────────────────────────────────────────
+  // Calculate which focusable neighbors exist in each cardinal direction.
+  // Returns e.g. { up: 2, down: 5, left: null, right: 3 } (null = no neighbor)
+
+  function getDirectionPreview(el) {
+    if (!el) return { up: null, down: null, left: null, right: null };
+    const focusables = getFocusableElements();
+    const current = centerOf(el);
+    const directions = { up: null, down: null, left: null, right: null };
+
+    const found = { up: [], down: [], left: [], right: [] };
+    for (const candidate of focusables) {
+      if (candidate === el) continue;
+      const cand = centerOf(candidate);
+      if (cand.y < current.y - 10) found.up.push(cand);
+      else if (cand.y > current.y + 10) found.down.push(cand);
+      else if (cand.x < current.x - 10) found.left.push(cand);
+      else if (cand.x > current.x + 10) found.right.push(cand);
+    }
+
+    // Count nearest in each direction (closest element).
+    if (found.up.length) directions.up = found.up.length;
+    if (found.down.length) directions.down = found.down.length;
+    if (found.left.length) directions.left = found.left.length;
+    if (found.right.length) directions.right = found.right.length;
+
+    return directions;
+  }
+
+  /**
+   * Update the HUD to show direction previews when a card is focused.
+   * E.g. "↑ 2 up · ↓ 5 down · → 3 right"
+   */
+  function updateDirectionPreview(el) {
+    if (!state.enabled) return;
+    const hud = document.getElementById(HUD_ID);
+    if (!hud) return;
+
+    // Only show if focused element is a card-like thing.
+    if (!el.classList.contains('adventure-card') && !el.classList.contains('enhanced-city-card')) {
+      // Clear preview from other elements.
+      const preview = hud.querySelector('.tv-hud-directions');
+      if (preview) preview.remove();
+      return;
+    }
+
+    // Remove old preview if exists.
+    const oldPreview = hud.querySelector('.tv-hud-directions');
+    if (oldPreview) oldPreview.remove();
+
+    const dirs = getDirectionPreview(el);
+    const parts = [];
+    if (dirs.up)    parts.push(`<span>↑ ${dirs.up}</span>`);
+    if (dirs.down)  parts.push(`<span>↓ ${dirs.down}</span>`);
+    if (dirs.left)  parts.push(`<span>← ${dirs.left}</span>`);
+    if (dirs.right) parts.push(`<span>→ ${dirs.right}</span>`);
+
+    if (!parts.length) return;
+
+    const preview = document.createElement('div');
+    preview.className = 'tv-hud-directions';
+    preview.innerHTML = parts.join('<span class="tv-hud-separator">·</span>');
+    hud.appendChild(preview);
+  }
+
+  // ─── Modal active badge ────────────────────────────────────────────────
+  // Show a small "🔒 Modal Active" badge at the top when the user is
+  // trapped inside a modal (focus trap is active).
+
+  function ensureModalBadge() {
+    if (document.getElementById('tvModalBadge')) return;
+    const badge = document.createElement('div');
+    badge.id = 'tvModalBadge';
+    badge.className = 'tv-modal-badge';
+    badge.innerHTML = '🔒 <strong>Modal</strong> — <kbd>Esc</kbd> to close';
+    badge.setAttribute('aria-live', 'polite');
+    document.body.appendChild(badge);
+  }
+
+  function updateModalBadge() {
+    const badge = document.getElementById('tvModalBadge');
+    if (!badge) return;
+    const inModal = getModalScope() !== null;
+    badge.classList.toggle('visible', inModal);
+  }
+
+  // ─── Audio feedback for navigation ─────────────────────────────────────
+  // Play subtle beeps for D-pad movement, card open, etc. Helps low-vision users.
+
+  function playTone(freqHz = 150, durationMs = 40, volumeDb = -12) {
+    if (!state.audioFeedback || !state.enabled) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freqHz;
+      gain.gain.value = Math.pow(10, volumeDb / 20); // convert dB to linear
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + durationMs / 1000);
+    } catch (_) {
+      // AudioContext not available or blocked
+    }
+  }
+
+  function playNavigationBeep() { playTone(150, 40, -14); }
+  function playSelectBeep() { playTone(200, 60, -12); }
+  function playModalBeep() { playTone(120, 80, -12); }
+
   // ─── Keyboard handler ──────────────────────────────────────────────────
 
   function onKeyDown(event) {
@@ -589,13 +755,29 @@
     if (!state.enabled) return;
 
     // ── typing-context guard ─────────────────────────────────────────────
-    // When the user is focused in a text field, do NOT intercept any
-    // character keys, arrows, or Backspace — let the browser handle them.
     const typing = isTypingContext();
 
+    // ── Direction keys with key repeat acceleration ──────────────────────
     if (DIRECTION_KEYS.has(event.key)) {
-      if (typing) return;              // arrows inside inputs are default browser
-      event.preventDefault(); moveFocus(event.key); return;
+      if (typing) return;
+      event.preventDefault();
+      // First press: move immediately and set up repeat acceleration.
+      if (!state._keyRepeatHeld) {
+        moveFocus(event.key);
+        state._keyRepeatHeld = true;
+        state._keyRepeatDir  = event.key;
+        state._keyRepeatStart = Date.now();
+        // Schedule the first repeat after ~300 ms (standard OS repeat delay).
+        scheduleKeyRepeat(event.key);
+      } else if (event.key !== state._keyRepeatDir) {
+        // Direction changed mid-hold — restart the acceleration timer.
+        moveFocus(event.key);
+        state._keyRepeatDir  = event.key;
+        state._keyRepeatStart = Date.now();
+        scheduleKeyRepeat(event.key);
+      }
+      // If same direction held, don't re-move; repeat timer will handle it.
+      return;
     }
 
     // PageDown / PageUp → big scroll for long card grids.
@@ -606,20 +788,73 @@
       return;
     }
 
-    if (event.key === 'Enter' || event.key === ' ') {
-      if (typing) return;              // let Enter submit forms, Space type
-      event.preventDefault(); clickFocusedElement(); return;
+    // Home / End shortcuts (standard TV app pattern).
+    if (event.key === 'Home') {
+      if (typing) return;
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Focus the first filter input (search box) if it exists.
+      const searchInput = document.getElementById('searchName');
+      if (searchInput && isVisibleElement(searchInput)) {
+        searchInput.focus(); scrollIntoFocus(searchInput); state.lastFocused = searchInput;
+        announceFocus(searchInput); updateFocusBeacon(searchInput);
+        updateDirectionPreview(searchInput); updateModalBadge();
+      } else {
+        // Fallback: focus first focusable element.
+        const focusables = getFocusableElements();
+        if (focusables.length) {
+          focusables[0].focus(); scrollIntoFocus(focusables[0]); state.lastFocused = focusables[0];
+          announceFocus(focusables[0]); updateFocusBeacon(focusables[0]);
+          updateDirectionPreview(focusables[0]); updateModalBadge();
+        }
+      }
+      return;
+    }
+    if (event.key === 'End') {
+      if (typing) return;
+      event.preventDefault();
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      // Focus the first adventure card if it exists, otherwise first focusable.
+      const card = document.querySelector('.adventure-card[data-tv-focusable]');
+      if (card && isVisibleElement(card)) {
+        card.focus(); scrollIntoFocus(card); state.lastFocused = card;
+        announceFocus(card); updateFocusBeacon(card);
+        updateDirectionPreview(card); updateModalBadge();
+      } else {
+        // Fallback: focus last focusable element.
+        const focusables = getFocusableElements();
+        if (focusables.length) {
+          const last = focusables[focusables.length - 1];
+          last.focus(); scrollIntoFocus(last); state.lastFocused = last;
+          announceFocus(last); updateFocusBeacon(last);
+          updateDirectionPreview(last); updateModalBadge();
+        }
+      }
+      return;
     }
 
-    // Esc always closes modals; Backspace only when NOT typing (avoid deleting text).
+    if (event.key === 'Enter' || event.key === ' ') {
+      if (typing) return;
+      event.preventDefault();
+      playSelectBeep();
+      clickFocusedElement();
+      return;
+    }
+
+    // Esc always closes modals; Backspace only when NOT typing.
     if (event.key === 'Escape') {
-      event.preventDefault(); closeTopModal(); return;
+      event.preventDefault();
+      playModalBeep();
+      closeTopModal();
+      return;
     }
     if (event.key === 'Backspace' && !typing) {
-      event.preventDefault(); closeTopModal(); return;
+      event.preventDefault();
+      playModalBeep();
+      closeTopModal();
+      return;
     }
 
-    // All remaining shortcuts are character keys — skip when typing.
     if (typing) return;
 
     if (event.key.toLowerCase() === 'h') {
@@ -628,15 +863,27 @@
     if (event.key === '[' || event.key === ']') {
       event.preventDefault(); cycleMainTab(event.key === '[' ? -1 : 1); return;
     }
-    // T → cycle tabs forward (single-key Samsung TV convenience).
     if (event.key.toLowerCase() === 't' && !event.ctrlKey && !event.altKey) {
       event.preventDefault(); cycleMainTab(1); return;
     }
-    // 1–5 → quick presets.
     if (event.key >= '1' && event.key <= '5') {
       const map = { '1': 'outdoor', '2': 'food', '3': 'family', '4': 'budget', '5': 'favorites' };
       const preset = map[event.key];
       if (preset) { event.preventDefault(); applyPreset(preset); }
+    }
+  }
+
+  /**
+   * keyup handler: stop key repeat acceleration when the user releases a D-pad key.
+   */
+  function onKeyUp(event) {
+    if (!state.enabled) return;
+    if (DIRECTION_KEYS.has(event.key)) {
+      if (event.key === state._keyRepeatDir) {
+        clearTimeout(state._keyRepeatTimer);
+        state._keyRepeatHeld = false;
+        state._keyRepeatDir  = null;
+      }
     }
   }
 
@@ -649,15 +896,24 @@
     ensureHud();
     ensureFocusBeacon();
     ensureFocusAnnouncer();
+    ensureModalBadge();
     ensureQuickFilterRail();
     installCityViewerTvHooks();
     installAdventureCardTvHooks();
     installModalOpenerTracker();
 
     document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('keyup', onKeyUp, true);
 
     let shouldEnable = false;
     try { shouldEnable = localStorage.getItem(STORAGE_KEY) === '1'; } catch (_) {}
+
+    // Restore audio feedback preference
+    try {
+      const audioEnabled = localStorage.getItem('kap_tv_audio_feedback');
+      if (audioEnabled !== null) state.audioFeedback = audioEnabled === '1';
+    } catch (_) {}
+
     setEnabled(shouldEnable);
 
     window.toggleTvMode       = toggleTvMode;
@@ -668,7 +924,7 @@
     setTimeout(ensureQuickFilterRail, 600);
     setTimeout(ensureQuickFilterRail, 1800);
 
-    console.log('✅ TV Mode controller v3 ready');
+    console.log('✅ TV Mode controller v5.1 ready');
   }
 
   boot();
