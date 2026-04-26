@@ -194,7 +194,8 @@
     links: ['links', 'social urls', 'social links', 'related urls', 'url links', 'social media'],
     links2: ['links2', 'social urls 2', 'related urls 2', 'links 2'],
     photoUrls: ['photo_urls', 'photo urls', 'photo url', 'photos', 'images'],
-    myRating: ['my rating', 'my_rating', 'user rating', 'personal rating', 'rating'],
+    // Keep personal stars independent from public Google ratings.
+    myRating: ['my rating', 'my_rating', 'user rating', 'personal rating'],
     favoriteStatus: ['favorite status', 'favorite_status', 'favorite', 'is favorite', 'is_favorite'],
     latitude: ['latitude', 'lat', 'gps latitude'],
     longitude: ['longitude', 'lng', 'lon', 'gps longitude'],
@@ -4827,18 +4828,100 @@
     const explorerState = getExplorerState(subtabKey);
     const items = Array.isArray(explorerState.items) ? explorerState.items : [];
     const categoryFilterKey = normalizeVisitLogCategoryKey(filterContext && filterContext.categoryKey);
-    return items
+
+    // If no category filter specified, return all items
+    if (!categoryFilterKey) {
+      return items
+        .map((item) => {
+          const categoryKeys = inferVisitCategoryKeys(subtabKey, item);
+          return {
+            id: String(item && item.id ? item.id : '').trim(),
+            title: String(item && item.title ? item.title : '').trim(),
+            sourceLabel: String(item && item.sourceLabel ? item.sourceLabel : '').trim(),
+            categoryKeys: categoryKeys
+          };
+        })
+        .filter((item) => item.id && item.title)
+        .map((item) => ({
+          ...item,
+          titleNorm: norm(item.title),
+          sourceLabelNorm: norm(item.sourceLabel)
+        }))
+        .sort((a, b) => {
+          const byTitle = a.titleNorm.localeCompare(b.titleNorm);
+          if (byTitle !== 0) return byTitle;
+          const bySource = a.sourceLabelNorm.localeCompare(b.sourceLabelNorm);
+          if (bySource !== 0) return bySource;
+          return a.id.localeCompare(b.id);
+        });
+    }
+
+    // With category filter: try inference first, then fallback to table-based filtering
+    const mapped = items
       .map((item) => {
         const categoryKeys = inferVisitCategoryKeys(subtabKey, item);
         return {
-        id: String(item && item.id ? item.id : '').trim(),
-        title: String(item && item.title ? item.title : '').trim(),
-        sourceLabel: String(item && item.sourceLabel ? item.sourceLabel : '').trim(),
-        categoryKeys: categoryKeys
-      };
+          id: String(item && item.id ? item.id : '').trim(),
+          title: String(item && item.title ? item.title : '').trim(),
+          sourceLabel: String(item && item.sourceLabel ? item.sourceLabel : '').trim(),
+          sourceTable: String(item && item.sourceTable ? item.sourceTable : '').trim(),
+          categoryKeys: categoryKeys
+        };
       })
-      .filter((item) => item.id && item.title)
-      .filter((item) => !categoryFilterKey || item.categoryKeys.includes(categoryFilterKey))
+      .filter((item) => item.id && item.title);
+
+    // First pass: items with matching category keys
+    const withMatchingCategories = mapped.filter((item) => item.categoryKeys.includes(categoryFilterKey));
+
+    // If we have matching items, use those
+    if (withMatchingCategories.length > 0) {
+      return withMatchingCategories
+        .map((item) => ({
+          ...item,
+          titleNorm: norm(item.title),
+          sourceLabelNorm: norm(item.sourceLabel)
+        }))
+        .sort((a, b) => {
+          const byTitle = a.titleNorm.localeCompare(b.titleNorm);
+          if (byTitle !== 0) return byTitle;
+          const bySource = a.sourceLabelNorm.localeCompare(b.sourceLabelNorm);
+          if (bySource !== 0) return bySource;
+          return a.id.localeCompare(b.id);
+        });
+    }
+
+    // Fallback: if no items match category inference, check against subtab-based table patterns
+    // This handles cases where Excel data doesn't have rich tags
+    const subtabTablePatterns = {
+      'wildlife-animals': ['wildlife', 'animals', 'zoo', 'farm', 'petting', 'rescue', 'safari', 'aquarium', 'sanctuary', 'rehab'],
+      'outdoors': ['nature', 'outdoor', 'trail', 'hiking', 'waterfall', 'scenic', 'park', 'campground', 'lake', 'beach'],
+      'food-drink': ['restaurant', 'coffee', 'cafe', 'food', 'drink', 'bakery', 'pizza', 'bbq', 'seafood'],
+      'entertainment': ['entertainment', 'theater', 'museum', 'movie', 'arcade', 'bowling', 'escape', 'climbing']
+    };
+
+    const tablePatternKeys = subtabTablePatterns[subtabKey] || [];
+    const categoryNorm = norm(categoryFilterKey);
+
+    // If the category key matches one of the subtab's patterns, return all items from this subtab
+    // (since the subtab itself is filtered to the right topic)
+    if (tablePatternKeys.some((pattern) => pattern.includes(categoryNorm) || norm(pattern) === categoryNorm)) {
+      return mapped
+        .map((item) => ({
+          ...item,
+          titleNorm: norm(item.title),
+          sourceLabelNorm: norm(item.sourceLabel)
+        }))
+        .sort((a, b) => {
+          const byTitle = a.titleNorm.localeCompare(b.titleNorm);
+          if (byTitle !== 0) return byTitle;
+          const bySource = a.sourceLabelNorm.localeCompare(b.sourceLabelNorm);
+          if (bySource !== 0) return bySource;
+          return a.id.localeCompare(b.id);
+        });
+    }
+
+    // Final fallback: return all items from subtab as safety net
+    return mapped
       .map((item) => ({
         ...item,
         titleNorm: norm(item.title),
@@ -5687,12 +5770,14 @@
             <button type="button" class="visited-explorer-favorite-btn${item.favorite ? ' is-active' : ''}" data-visited-explorer-favorite="${escapeHtml(item.id)}" data-visited-explorer-subtab="${escapeHtml(subtabKey)}">${item.favorite ? '★ Favorited' : '☆ Add to Favorites'}</button>
             <div class="visited-explorer-stars" role="group" aria-label="My star rating">${starButtons}</div>
           </div>
-          <div class="visited-explorer-field"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>
-          <div class="visited-explorer-field"><strong>Tags:</strong></div>
-          ${chips ? `<div class="visited-explorer-tag-row">${chips}</div>` : '<div class="visited-explorer-field">No tags</div>'}
+          <div class="visited-explorer-field visited-explorer-field--drive"><strong>Estimated Drive Time:</strong> ${escapeHtml(item.driveTime || 'Unknown')}</div>
+          <div class="visited-explorer-field visited-explorer-field--tags-label"><strong>Tags:</strong></div>
+          ${chips
+            ? `<div class="visited-explorer-tag-row visited-explorer-tag-row--fixed">${chips}</div>`
+            : '<div class="visited-explorer-field visited-explorer-field--tags-empty">No tags</div>'}
           ${notesPreview ? `<div class="visited-explorer-note-preview"><strong>Notes:</strong> ${escapeHtml(notesPreview)}</div>` : ''}
-          <div class="visited-explorer-field"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>
-          <div class="visited-explorer-field"><strong>Description:</strong> ${escapeHtml(item.description || 'No description yet.')}</div>
+          <div class="visited-explorer-field visited-explorer-field--address"><strong>Physical Address - City - State:</strong> ${escapeHtml(formatExplorerAddressLine(item))}</div>
+          <div class="visited-explorer-field visited-explorer-field--description"><strong>Description:</strong><div class="visited-explorer-description-box">${escapeHtml(item.description || 'No description yet.')}</div></div>
         </div>
       `;
     }).join('');

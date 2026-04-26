@@ -357,7 +357,8 @@
   }
 
   #visitedLocationsRoot .visited-explorer-card {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 10px;
     border: 1px solid #dbeafe;
     border-radius: 12px;
@@ -366,13 +367,15 @@
     box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
     position: relative;
     isolation: isolate;
+    height: 100%;
   }
 
   #visitedLocationsRoot .visited-explorer-card-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
+    min-height: 52px;
   }
 
   #visitedLocationsRoot .visited-explorer-card-head-actions {
@@ -392,8 +395,10 @@
     color: #0f172a;
     margin: 0;
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
+    line-height: 1.2;
+    min-height: 38px;
   }
 
   #visitedLocationsRoot .visited-explorer-visit-indicator {
@@ -482,6 +487,7 @@
     position: relative;
     z-index: 2;
     pointer-events: auto;
+    min-height: 34px;
   }
 
   #visitedLocationsRoot .visited-explorer-favorite-btn {
@@ -541,6 +547,30 @@
     color: #334155;
   }
 
+  #visitedLocationsRoot .visited-explorer-field--drive {
+    min-height: 24px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-field--tags-label {
+    min-height: 20px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-field--tags-empty {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+  }
+
+  #visitedLocationsRoot .visited-explorer-field--address {
+    min-height: 48px;
+  }
+
+  #visitedLocationsRoot .visited-explorer-field--description {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   #visitedLocationsRoot .visited-explorer-field strong {
     color: #0f172a;
     font-weight: 800;
@@ -552,14 +582,36 @@
     gap: 6px;
   }
 
+  #visitedLocationsRoot .visited-explorer-tag-row--fixed {
+    min-height: 34px;
+    align-items: flex-start;
+  }
+
   #visitedLocationsRoot .visited-explorer-tag {
+    display: inline-flex;
+    align-items: center;
     border: 1px solid #dbeafe;
     background: #f8fbff;
     color: #1e3a8a;
     border-radius: 999px;
-    padding: 4px 8px;
+    min-height: 24px;
+    padding: 0 8px;
     font-size: 11px;
     font-weight: 700;
+    line-height: 1;
+  }
+
+  #visitedLocationsRoot .visited-explorer-description-box {
+    min-height: 88px;
+    max-height: 88px;
+    overflow-y: auto;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    line-height: 1.45;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   #visitedLocationsRoot .visited-explorer-details-backdrop {
