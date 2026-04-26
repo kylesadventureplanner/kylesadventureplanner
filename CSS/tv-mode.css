@@ -1,4 +1,11 @@
-/* TV Mode 10-foot UI styles */
+/* TV Mode 10-foot UI styles — v2 */
+
+/* ─── Pulse animation for the focus ring ─────────────────────────────── */
+@keyframes tv-focus-pulse {
+  0%   { box-shadow: 0 0 0 4px var(--tv-focus-shadow); }
+  50%  { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0.18); }
+  100% { box-shadow: 0 0 0 4px var(--tv-focus-shadow); }
+}
 
 :root {
   --tv-focus-ring: #f59e0b;
@@ -73,6 +80,7 @@ body.tv-mode-enabled .adventure-card {
   border-width: 2px;
 }
 
+/* ─── Pulsing focus ring (animated) ─────────────────────────────────── */
 body.tv-mode-enabled .adventure-card:focus-visible,
 body.tv-mode-enabled .enhanced-city-card:focus-visible,
 body.tv-mode-enabled .tv-focus,
@@ -83,9 +91,27 @@ body.tv-mode-enabled input:focus-visible,
 body.tv-mode-enabled select:focus-visible {
   outline: 4px solid var(--tv-focus-ring);
   outline-offset: 3px;
-  box-shadow: 0 0 0 6px var(--tv-focus-shadow);
+  animation: tv-focus-pulse 1.6s ease-in-out infinite;
 }
 
+/* ─── Scroll margin so sticky header doesn't obscure focused element ── */
+body.tv-mode-enabled button,
+body.tv-mode-enabled a,
+body.tv-mode-enabled input,
+body.tv-mode-enabled select,
+body.tv-mode-enabled [data-tv-focusable="true"] {
+  scroll-margin-top: 80px;
+  scroll-margin-bottom: 40px;
+}
+
+/* ─── Active tab gets a larger, bolder treatment in TV mode ─────────── */
+body.tv-mode-enabled .app-tab-btn.active {
+  font-size: 22px;
+  font-weight: 900;
+  border-bottom-width: 4px;
+}
+
+/* ─── Floating toggle button ─────────────────────────────────────────── */
 #tvModeGlobalToggle {
   position: fixed;
   right: 18px;
@@ -107,30 +133,60 @@ body.tv-mode-enabled select:focus-visible {
   color: #ffffff;
 }
 
+/* ─── Shortcut HUD ───────────────────────────────────────────────────── */
 #tvModeShortcutHud {
   position: fixed;
   left: 18px;
   bottom: 18px;
   z-index: 100090;
-  max-width: 460px;
-  background: rgba(15, 23, 42, 0.92);
+  max-width: 480px;
+  background: rgba(15, 23, 42, 0.95);
   color: #f1f5f9;
   border: 1px solid rgba(148, 163, 184, 0.44);
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: 14px;
+  padding: 14px 16px;
   font-size: 14px;
   display: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 #tvModeShortcutHud.visible {
   display: block;
 }
 
+/* HUD header row */
+.tv-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 #tvModeShortcutHud .tv-hud-title {
   font-size: 15px;
   font-weight: 700;
-  margin-bottom: 8px;
   color: #cbd5e1;
+}
+
+/* HUD close button */
+.tv-hud-close {
+  background: #334155;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #f1f5f9;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 3px 7px;
+}
+.tv-hud-close:hover { background: #475569; }
+
+/* HUD shortcut grid — two columns */
+.tv-hud-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 14px;
 }
 
 #tvModeShortcutHud kbd {
@@ -141,12 +197,13 @@ body.tv-mode-enabled select:focus-visible {
   padding: 1px 5px;
 }
 
+/* ─── Quick filter rail ──────────────────────────────────────────────── */
 #tvQuickFilterRail {
   display: none;
   flex-wrap: wrap;
   gap: 10px;
   margin: 10px 0 16px;
-  padding: 10px;
+  padding: 10px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 12px;
   background: #f8fafc;
@@ -154,6 +211,8 @@ body.tv-mode-enabled select:focus-visible {
 
 body.tv-mode-enabled #tvQuickFilterRail {
   display: flex;
+  background: var(--tv-surface-soft);
+  border-color: #334155;
 }
 
 .tv-quick-filter-btn {
@@ -171,6 +230,19 @@ body.tv-mode-enabled #tvQuickFilterRail {
   color: #ffffff;
 }
 
+body.tv-mode-enabled .tv-quick-filter-btn {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+body.tv-mode-enabled .tv-quick-filter-btn[data-active="true"] {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #059669;
+  color: #ffffff;
+}
+
+/* ─── City visualizer in TV mode ─────────────────────────────────────── */
 body.tv-mode-enabled #enhancedCityVisualizerModal {
   width: 96%;
   max-width: 1500px;
@@ -180,4 +252,3 @@ body.tv-mode-enabled .enhanced-city-card {
   border-width: 2px;
   min-height: 190px;
 }
-
