@@ -109,6 +109,7 @@ function main() {
     { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Retail' },
     { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations' },
     { workbook: 'Entertainment_Locations.xlsx', table: 'Festivals' },
+    { workbook: 'Entertainment_Locations.xlsx', table: 'Wildlife_Animals' },
     { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment' }
   ];
 

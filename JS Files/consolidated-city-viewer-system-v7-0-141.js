@@ -53,6 +53,7 @@ const CITY_VIEWER_TABLE_SOURCES = [
   { workbook: 'Retail_Food_and_Drink.xlsx', table: 'Retail', sourceType: 'retail' },
   { workbook: 'Nature_Locations.xlsx', table: 'Nature_Locations', sourceType: 'nature' },
   { workbook: 'Entertainment_Locations.xlsx', table: 'Festivals', sourceType: 'festivals' },
+  { workbook: 'Entertainment_Locations.xlsx', table: 'Wildlife_Animals', sourceType: 'wildlife' },
   { workbook: 'Entertainment_Locations.xlsx', table: 'General_Entertainment', sourceType: 'entertainment' }
 ];
 const CITY_VIEWER_MISSING_TOKEN_NOTICE_KEY = '__cityViewerMissingTokenNoticeShown';
