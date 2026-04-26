@@ -8,6 +8,7 @@
       <change beforePath="$PROJECT_DIR$/CSS/tv-mode.css" beforeDir="false" afterPath="$PROJECT_DIR$/CSS/tv-mode.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/JS Files/tv-mode-controller.js" beforeDir="false" afterPath="$PROJECT_DIR$/JS Files/tv-mode-controller.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" beforeDir="false" afterPath="$PROJECT_DIR$/artifacts/reliability-smoke-summary.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/TV_MODE_README.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/TV_MODE_README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/tv-mode-smoke.spec.js" beforeDir="false" afterPath="$PROJECT_DIR$/tests/tv-mode-smoke.spec.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -99,7 +100,7 @@
       <workItem from="1776447145602" duration="31796000" />
       <workItem from="1776648840860" duration="3715000" />
       <workItem from="1776695340610" duration="177459000" />
-      <workItem from="1777064709892" duration="49858000" />
+      <workItem from="1777064709892" duration="50503000" />
     </task>
     <servers />
   </component>

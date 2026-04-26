@@ -1,16 +1,18 @@
 /* TV Mode Controller
  * Enables large-screen, remote-friendly navigation for Samsung TV browser use.
  *
- * Improvements v2:
- *  - Focus trap: D-pad navigation is scoped to the innermost open modal
- *  - Focus return: MutationObserver saves the opener before a modal opens and
- *    restores focus when the modal closes
- *  - Auto-scroll: focused elements scroll into view after every D-pad move
- *  - Tab cycling: [ / ] keys cycle main tabs; T also cycles forward
- *  - HUD auto-shows 4 s on first activation, now has a close × button
- *  - Quick-filter buttons carry emoji labels for at-a-glance recognition
- *  - Toast fired per preset to confirm the filter change
- *  - scroll-margin-top respected via JS scrollIntoView
+ * v3 additions:
+ *  - Typing-context guard: shortcuts (H, T, [, ], 1-5, Backspace) do NOT fire
+ *    when focus is inside an input / textarea / select / contenteditable
+ *  - Adventure card focusability: MutationObserver marks .adventure-card divs
+ *    with tabindex="0" + data-tv-focusable so the D-pad can land on cards
+ *  - Improved spatial-nav cone filter: heavy cross-axis penalty stops ArrowRight
+ *    from jumping to elements far above/below the intended row
+ *  - Focus beacon: a 2.5 s label pops bottom-right showing which element is focused,
+ *    readable at 10 ft without squinting at the ring
+ *  - aria-live focus announcer: silent region reads the focused element name
+ *    through Samsung TV TTS / accessibility APIs
+ *  - PageDown / PageUp scrolling for long card grids
  */
 (function initTvModeController() {
   'use strict';
@@ -28,7 +30,8 @@
     lastFocused:       null,
     lastPreset:        '',
     openerStack:       [],   // elements that opened modals — restored on close
-    _preClickElement:  null
+    _preClickElement:  null,
+    _beaconTimer:      null  // timeout handle for focus beacon auto-hide
   };
 
   // ─── Visibility helpers ────────────────────────────────────────────────
@@ -40,6 +43,19 @@
     if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none') return false;
     const rect = el.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
+  }
+
+  /**
+   * Returns true when the user is actively typing in a form field.
+   * Used to prevent D-pad shortcuts from interfering with text input.
+   */
+  function isTypingContext() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    if (el.isContentEditable) return true;
+    return false;
   }
 
   // ─── Modal scope (focus trap) ──────────────────────────────────────────
@@ -90,13 +106,24 @@
   function distanceScore(from, to, dir) {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
+    // Must be strictly in the correct half-plane (3 px dead zone stays).
     if (dir === 'ArrowRight' && dx <= 3)  return Number.POSITIVE_INFINITY;
     if (dir === 'ArrowLeft'  && dx >= -3) return Number.POSITIVE_INFINITY;
     if (dir === 'ArrowDown'  && dy <= 3)  return Number.POSITIVE_INFINITY;
     if (dir === 'ArrowUp'    && dy >= -3) return Number.POSITIVE_INFINITY;
+
     const primary   = (dir === 'ArrowLeft' || dir === 'ArrowRight') ? Math.abs(dx) : Math.abs(dy);
     const secondary = (dir === 'ArrowLeft' || dir === 'ArrowRight') ? Math.abs(dy) : Math.abs(dx);
-    return primary * 1.1 + secondary * 0.55;
+
+    // Cone filter: if cross-axis displacement exceeds 2× the primary distance
+    // the element is outside a ~63° directional cone and is skipped.
+    // This prevents ArrowRight jumping to a card far below that happens to be
+    // slightly to the right of a wide grid.
+    if (secondary > primary * 2.0) return Number.POSITIVE_INFINITY;
+
+    // Heavy cross-axis penalty (2×) ensures elements inline with the direction
+    // of travel beat tangential ones decisively.
+    return primary + secondary * 2.0;
   }
 
   function scrollIntoFocus(el) {
@@ -115,6 +142,8 @@
       focusables[0].focus();
       scrollIntoFocus(focusables[0]);
       state.lastFocused = focusables[0];
+      announceFocus(focusables[0]);
+      updateFocusBeacon(focusables[0]);
       return;
     }
     const currentCenter = centerOf(active);
@@ -128,6 +157,8 @@
       best.focus();
       scrollIntoFocus(best);
       state.lastFocused = best;
+      announceFocus(best);
+      updateFocusBeacon(best);
     }
   }
 
@@ -462,27 +493,138 @@
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
+  // ─── Adventure card TV hooks ───────────────────────────────────────────
+  // Adventure cards are rendered as plain <div>s. Mark them focusable so
+  // the D-pad can land on them directly and Enter can open their detail modal.
+
+  function installAdventureCardTvHooks() {
+    const markCards = () => {
+      document.querySelectorAll('.adventure-card:not([data-tv-focusable])').forEach((card) => {
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('data-tv-focusable', 'true');
+        card.setAttribute('role', 'button');
+        // Build a readable label from card title + location.
+        const title    = card.querySelector('.adventure-card-title')?.textContent?.trim() || '';
+        const location = card.querySelector('.adventure-card-location')?.textContent?.trim() || '';
+        card.setAttribute('aria-label', [title, location].filter(Boolean).join(' — '));
+        // Make Enter / Space activate the card (mirrors mouse click).
+        if (!card.dataset.tvKeyBound) {
+          card.dataset.tvKeyBound = '1';
+          card.addEventListener('keydown', (e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && !e.defaultPrevented) {
+              e.preventDefault(); e.stopPropagation(); card.click();
+            }
+          });
+        }
+      });
+    };
+    markCards();
+    const observer = new MutationObserver(markCards);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // ─── Focus beacon ─────────────────────────────────────────────────────
+  // A 2.5 s label that pops at bottom-right when D-pad lands on an element.
+  // Readable at 10 ft without having to squint at the pulsing outline ring.
+
+  function ensureFocusBeacon() {
+    if (document.getElementById('tvFocusBeacon')) return;
+    const beacon = document.createElement('div');
+    beacon.id = 'tvFocusBeacon';
+    beacon.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(beacon);
+  }
+
+  function updateFocusBeacon(el) {
+    if (!state.enabled) return;
+    const beacon = document.getElementById('tvFocusBeacon');
+    if (!beacon) return;
+    const label = (
+      el.getAttribute('aria-label') ||
+      el.getAttribute('title') ||
+      el.textContent?.trim().replace(/\s+/g, ' ').slice(0, 60)
+    )?.trim();
+    if (!label) { beacon.classList.remove('visible'); return; }
+    beacon.textContent = label;
+    beacon.classList.add('visible');
+    clearTimeout(state._beaconTimer);
+    state._beaconTimer = setTimeout(() => beacon.classList.remove('visible'), 2500);
+  }
+
+  // ─── aria-live focus announcer ─────────────────────────────────────────
+  // A visually-hidden live region that announces the focused element's name
+  // through the TV's TTS / accessibility API.
+
+  function ensureFocusAnnouncer() {
+    if (document.getElementById('tvFocusAnnouncer')) return;
+    const el = document.createElement('div');
+    el.id = 'tvFocusAnnouncer';
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-atomic', 'true');
+    el.className = 'tv-sr-only';
+    document.body.appendChild(el);
+  }
+
+  function announceFocus(el) {
+    if (!state.enabled) return;
+    const announcer = document.getElementById('tvFocusAnnouncer');
+    if (!announcer) return;
+    const label = (
+      el.getAttribute('aria-label') ||
+      el.getAttribute('title') ||
+      el.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80)
+    )?.trim() || '';
+    // Double rAF trick forces a new DOM change so aria-live fires reliably.
+    announcer.textContent = '';
+    requestAnimationFrame(() => requestAnimationFrame(() => { announcer.textContent = label; }));
+  }
+
   // ─── Keyboard handler ──────────────────────────────────────────────────
 
   function onKeyDown(event) {
+    // Global toggle — always available regardless of TV mode state or focus context.
     if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 't') {
       event.preventDefault(); toggleTvMode(); return;
     }
     if (!state.enabled) return;
 
+    // ── typing-context guard ─────────────────────────────────────────────
+    // When the user is focused in a text field, do NOT intercept any
+    // character keys, arrows, or Backspace — let the browser handle them.
+    const typing = isTypingContext();
+
     if (DIRECTION_KEYS.has(event.key)) {
+      if (typing) return;              // arrows inside inputs are default browser
       event.preventDefault(); moveFocus(event.key); return;
     }
+
+    // PageDown / PageUp → big scroll for long card grids.
+    if (event.key === 'PageDown' || event.key === 'PageUp') {
+      if (typing) return;
+      event.preventDefault();
+      window.scrollBy({ top: (event.key === 'PageDown' ? 1 : -1) * Math.round(window.innerHeight * 0.72), behavior: 'smooth' });
+      return;
+    }
+
     if (event.key === 'Enter' || event.key === ' ') {
+      if (typing) return;              // let Enter submit forms, Space type
       event.preventDefault(); clickFocusedElement(); return;
     }
-    if (event.key === 'Escape' || event.key === 'Backspace') {
+
+    // Esc always closes modals; Backspace only when NOT typing (avoid deleting text).
+    if (event.key === 'Escape') {
       event.preventDefault(); closeTopModal(); return;
     }
+    if (event.key === 'Backspace' && !typing) {
+      event.preventDefault(); closeTopModal(); return;
+    }
+
+    // All remaining shortcuts are character keys — skip when typing.
+    if (typing) return;
+
     if (event.key.toLowerCase() === 'h') {
       event.preventDefault(); toggleHud(); return;
     }
-    // [ / ] → prev / next tab.
     if (event.key === '[' || event.key === ']') {
       event.preventDefault(); cycleMainTab(event.key === '[' ? -1 : 1); return;
     }
@@ -505,8 +647,11 @@
 
     ensureToggleButton();
     ensureHud();
+    ensureFocusBeacon();
+    ensureFocusAnnouncer();
     ensureQuickFilterRail();
     installCityViewerTvHooks();
+    installAdventureCardTvHooks();
     installModalOpenerTracker();
 
     document.addEventListener('keydown', onKeyDown, true);
@@ -523,7 +668,7 @@
     setTimeout(ensureQuickFilterRail, 600);
     setTimeout(ensureQuickFilterRail, 1800);
 
-    console.log('✅ TV Mode controller v2 ready');
+    console.log('✅ TV Mode controller v3 ready');
   }
 
   boot();

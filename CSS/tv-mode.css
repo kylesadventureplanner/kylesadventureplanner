@@ -252,3 +252,49 @@ body.tv-mode-enabled .enhanced-city-card {
   border-width: 2px;
   min-height: 190px;
 }
+
+/* ─── Adventure cards — TV focus treatment ──────────────────────────── */
+/* Cards become keyboard-focusable in TV mode via JS; give them a cursor */
+body.tv-mode-enabled .adventure-card[data-tv-focusable="true"] {
+  cursor: pointer;
+}
+
+/* ─── Focus beacon — bottom-right label when D-pad lands on element ─── */
+#tvFocusBeacon {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 100080;
+  max-width: 340px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #f1f5f9;
+  border: 1px solid #475569;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  display: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: opacity 0.25s ease;
+  /* Don't overlap the HUD which is on the left */
+}
+
+#tvFocusBeacon.visible {
+  display: block;
+}
+
+/* ─── Visually-hidden aria-live announcer ────────────────────────────── */
+.tv-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
