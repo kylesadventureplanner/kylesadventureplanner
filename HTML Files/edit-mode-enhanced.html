@@ -290,13 +290,19 @@
       color: #374151;
       cursor: pointer;
       line-height: 1.4;
+      position: relative;
     }
 
     .inline-slider-toggle input[type="checkbox"] {
       position: absolute;
-      opacity: 0;
-      width: 0;
-      height: 0;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.001;
+      width: 44px;
+      height: 24px;
+      margin: 0;
+      cursor: pointer;
     }
 
     .inline-toggle-slider {
@@ -308,6 +314,7 @@
       background: #cbd5e1;
       border: 1px solid #94a3b8;
       transition: background 0.2s ease, border-color 0.2s ease;
+      pointer-events: none;
     }
 
     .inline-toggle-slider::after {
@@ -491,6 +498,7 @@
       top: 8px;
       z-index: 4;
       box-shadow: 0 6px 16px rgba(79, 70, 229, 0.08);
+      pointer-events: none;
     }
 
     .section-target-indicator strong {

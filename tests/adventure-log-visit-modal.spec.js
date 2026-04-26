@@ -36,5 +36,35 @@ test.describe('Adventure log visit modal', () => {
 
     await expect(modal).toBeVisible();
   });
+
+  test('challenge cards open qualifying-locations modal and support Add Missing Qualifying Location', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.app-tab-btn[data-tab="visited-locations"]').click();
+    await expect(page.locator('#visitedLocationsRoot')).toBeVisible();
+
+    await page.locator('#appSubTabsSlot [data-progress-subtab="outdoors"]').first().click();
+    await expect(page.locator('#achv-root-outdoors')).toBeVisible({ timeout: 12000 });
+
+    const qualifyingBtn = page.locator('#achv-root-outdoors [data-achv-view-qualifying][data-achv-scope="challenge"]').first();
+    await expect(qualifyingBtn).toBeVisible();
+    await qualifyingBtn.click();
+
+    const modal = page.locator('#visitedVisitLogModal');
+    await expect(modal).toBeVisible();
+    await expect(page.locator('#visitedVisitLogTitle')).toContainText(/Qualifying Locations/i);
+    await expect(page.locator('#visitedVisitLogQualifierSummary')).toContainText(/filtering by category/i);
+
+    const refreshBtn = page.locator('#visitedVisitLogRefreshBtn');
+    await expect(refreshBtn).toBeVisible();
+    await refreshBtn.click();
+    await expect(page.locator('#visitedVisitLogHelp')).toContainText(/Refreshed qualifying locations/i);
+
+    const addMissingBtn = page.locator('#visitedVisitLogAddMissingBtn');
+    await expect(addMissingBtn).toBeVisible();
+    await addMissingBtn.click();
+
+    await expect(modal).toBeHidden();
+    await expect(page.locator('#visitedEditModeFrame-outdoors')).toBeVisible({ timeout: 12000 });
+  });
 });
 

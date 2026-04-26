@@ -630,6 +630,38 @@
     color: #334155;
   }
 
+  #visitedLocationsRoot #visitedVisitLogQualifierSummary {
+    margin-top: 4px;
+    color: #1e40af;
+  }
+
+  #visitedLocationsRoot .visited-visit-log-inline-actions {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+  }
+
+  #visitedLocationsRoot .visited-visit-log-refresh-btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 12px;
+    border-color: #6366f1;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    box-shadow: 0 8px 16px rgba(79, 70, 229, 0.24);
+  }
+
+  #visitedLocationsRoot .visited-visit-log-missing-btn {
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 12px;
+    border-color: #22c55e;
+    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    box-shadow: 0 8px 16px rgba(22, 163, 74, 0.26);
+  }
+
   #visitedLocationsRoot .visited-inline-tool-frame {
     display: block;
     width: 100%;

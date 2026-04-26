@@ -866,6 +866,7 @@ window.AdventureAchievements = (function () {
             <div class="adventure-achv-cat-fill" style="width:${pctToNext}%"></div>
           </div>`
         : `<div class="adventure-achv-badge-maxed">🏆 Max Level – ${progressValue} visits</div>`;
+      const challengeQualifyingBtnHtml = `<button class="adventure-achv-adj-btn" data-achv-view-qualifying data-achv-scope="challenge" data-achv-id="${ch.id}" data-achv-title="${esc(ch.title)}" data-achv-filter-cat="${esc(ch.cat || '')}" title="View qualifying locations">📍 Qualifying Locations</button>`;
 
       return `
         <div class="adventure-achv-badge-card adventure-achv-badge-card--challenge${highestTier >= CHALLENGE_TIER_TARGETS.length ? ' is-unlocked' : ''}" style="--rarity-color:#2563eb">
@@ -895,7 +896,7 @@ window.AdventureAchievements = (function () {
               <div class="adventure-achv-challenge-meta">Progress: ${progressValue} visits • Tier ${Math.max(0, highestTier)}/${CHALLENGE_TIER_TARGETS.length}</div>
               ${progressHtml}
               <div class="adventure-achv-tier-chips">${tiersHtml}</div>
-              ${progress.autoMode ? '<div class="adventure-achv-challenge-actions"><span class="adventure-achv-cat-total">Auto-synced from visited data</span></div>' : `<div class="adventure-achv-challenge-actions"><button class="adventure-achv-adj-btn" data-achv-btn data-achv-type="challenges" data-achv-id="${ch.id}" data-achv-delta="-1" data-achv-goal="${ch.goal}" title="Remove one">−</button><button class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-btn data-achv-type="challenges" data-achv-id="${ch.id}" data-achv-delta="1" data-achv-goal="${ch.goal}" title="Log a visit toward this challenge">+ Log</button></div>`}
+              ${progress.autoMode ? `<div class="adventure-achv-challenge-actions"><span class="adventure-achv-cat-total">Auto-synced from visited data</span>${challengeQualifyingBtnHtml}</div>` : `<div class="adventure-achv-challenge-actions"><button class="adventure-achv-adj-btn" data-achv-btn data-achv-type="challenges" data-achv-id="${ch.id}" data-achv-delta="-1" data-achv-goal="${ch.goal}" title="Remove one">−</button><button class="adventure-achv-adj-btn adventure-achv-adj-btn--add" data-achv-btn data-achv-type="challenges" data-achv-id="${ch.id}" data-achv-delta="1" data-achv-goal="${ch.goal}" title="Log a visit toward this challenge">+ Log</button>${challengeQualifyingBtnHtml}</div>`}
             </div>
           </div>
         </div>`;
@@ -906,6 +907,8 @@ window.AdventureAchievements = (function () {
       const badgeProgress = getBadgeProgress(badge);
       const color = RARITY_COLORS[badge.rarity] || '#6b7280';
       const focusLabel = metricLabelForBadge(badge);
+      const badgeCategoryKey = config.categories.some((cat) => cat.key === badge.metric) ? badge.metric : '';
+      const badgeQualifyingBtnHtml = `<div class="adventure-achv-challenge-actions"><button class="adventure-achv-adj-btn" data-achv-view-qualifying data-achv-scope="badge" data-achv-id="${badge.id}" data-achv-title="${esc(badge.title)}" data-achv-filter-cat="${esc(badgeCategoryKey)}" title="View qualifying locations">📍 Qualifying Locations</button></div>`;
       let currentLevelIdx = -1;
       BADGE_LEVEL_TARGETS.forEach((target, idx) => {
         if (badgeProgress >= target) currentLevelIdx = idx;
@@ -963,6 +966,7 @@ window.AdventureAchievements = (function () {
                 </div>
               </div>
               ${progressHtml}
+              ${badgeQualifyingBtnHtml}
             </div>
           </div>
         </div>`;
@@ -1248,6 +1252,33 @@ window.AdventureAchievements = (function () {
         }
       });
     }
+
+    container.querySelectorAll('[data-achv-view-qualifying]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (typeof window.openVisitedVisitLogFromAchievements !== 'function') return;
+        const scope = String(btn.getAttribute('data-achv-scope') || '').trim() || 'challenge';
+        const achievementId = String(btn.getAttribute('data-achv-id') || '').trim();
+        const achievementTitle = String(btn.getAttribute('data-achv-title') || '').trim() || 'Achievement';
+        const filterCat = String(btn.getAttribute('data-achv-filter-cat') || '').trim();
+        const scopeLabel = scope === 'badge' ? 'badge' : 'challenge';
+        const hint = filterCat
+          ? `Showing locations that match this ${scopeLabel}'s qualifying category.`
+          : `Showing all locations for this subtab. This ${scopeLabel} uses overall progress rules.`;
+        await window.openVisitedVisitLogFromAchievements({
+          subtabKey: key,
+          mode: 'add',
+          hint: hint,
+          dialogTitle: `Qualifying Locations - ${achievementTitle}`,
+          qualifyingFilter: {
+            scope: scope,
+            achievementId: achievementId,
+            achievementTitle: achievementTitle,
+            categoryKey: filterCat
+          }
+        });
+      });
+    });
 
     container.querySelectorAll('[data-achv-btn]').forEach(btn => {
       btn.addEventListener('click', async (e) => {

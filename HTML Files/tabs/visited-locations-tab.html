@@ -459,7 +459,10 @@
   </div>
   <div id="visitedVisitLogModal" class="visited-explorer-details-modal" role="dialog" aria-modal="true" aria-labelledby="visitedVisitLogTitle" hidden>
     <div class="visited-explorer-details-head">
-      <div id="visitedVisitLogTitle" class="card-title">Log Visit</div>
+      <div>
+        <div id="visitedVisitLogTitle" class="card-title">Log Visit</div>
+        <div id="visitedVisitLogQualifierSummary" class="card-subtitle" hidden></div>
+      </div>
       <button type="button" id="visitedVisitLogCloseBtn" class="pill-button" aria-label="Close visit log form">Close</button>
     </div>
     <form id="visitedVisitLogForm" class="visited-visit-log-form">
@@ -485,6 +488,10 @@
       </div>
       <div id="visitedVisitLogPhotoStatus" class="card-subtitle visited-visit-log-photo-status" aria-live="polite">Attach one or more photos to upload them to OneDrive when you save.</div>
       <div id="visitedVisitLogHelp" class="card-subtitle" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div class="visited-visit-log-inline-actions">
+        <button type="button" id="visitedVisitLogRefreshBtn" class="visited-subtab-action-btn visited-visit-log-refresh-btn">↻ Refresh Qualifying List</button>
+        <button type="button" id="visitedVisitLogAddMissingBtn" class="visited-subtab-action-btn visited-visit-log-missing-btn">+ Add Missing Qualifying Location</button>
+      </div>
       <div class="visited-subtab-action-row ui-action-rail ui-mobile-primary-stack" style="margin-top: 4px;">
         <button type="submit" id="visitedVisitLogSubmitBtn" class="visited-subtab-action-btn visited-subtab-action-btn--refresh">Save Visit</button>
         <button type="button" id="visitedVisitLogCancelBtn" class="visited-subtab-action-btn visited-subtab-action-btn--undo">Cancel</button>

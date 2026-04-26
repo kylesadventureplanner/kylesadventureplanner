@@ -52,7 +52,6 @@ test.describe('Visited enrich modal smoke', () => {
       firstDescription
     ].join('\n'));
     await parseBtn.click({ force: true });
-    const parserPreview = modal.locator('#visitedLocationParserPreview');
     const parserFields = modal.locator('#visitedLocationParserPreview .visited-parser-fields');
     const confidenceChips = modal.locator('.visited-parser-confidence-chip');
     const selectToggles = modal.locator('#visitedLocationParserPreview [data-parser-field-select]');
@@ -77,7 +76,8 @@ test.describe('Visited enrich modal smoke', () => {
       // We replicate updateParserSaveButtonState() here rather than relying on event
       // propagation, which has proven unreliable across CI environments.
       await page.evaluate(() => {
-        const allToggles = Array.from(document.querySelectorAll('[data-parser-field-select]'));
+        const modalRoot = document.getElementById('visitedLocationTextParserModal');
+        const allToggles = modalRoot ? Array.from(modalRoot.querySelectorAll('[data-parser-field-select]')) : [];
         allToggles.forEach((toggle) => {
           if (toggle instanceof HTMLInputElement) toggle.checked = false;
         });
@@ -95,7 +95,8 @@ test.describe('Visited enrich modal smoke', () => {
         const cb = document.getElementById('visitedLocationParserSelect-description');
         if (!(cb instanceof HTMLInputElement)) return;
         cb.checked = true;
-        const allToggles = Array.from(document.querySelectorAll('[data-parser-field-select]'));
+        const modalRoot = document.getElementById('visitedLocationTextParserModal');
+        const allToggles = modalRoot ? Array.from(modalRoot.querySelectorAll('[data-parser-field-select]')) : [];
         const saveB = document.getElementById('visitedLocationParserSaveBtn');
         if (!saveB) return;
         const selected = allToggles.filter((t) => t instanceof HTMLInputElement && t.checked).length;

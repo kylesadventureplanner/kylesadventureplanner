@@ -340,6 +340,7 @@
        explorerCardState: {},
        visitLogLocationOptions: [],
        visitLogLocationQuery: '',
+       visitLogQualifyingFilter: null,
         routePersistenceTimers: {},
         parserSession: {
          baseline: {},
@@ -4587,8 +4588,28 @@
       subtabKey: key,
       itemId: raw.itemId,
       mode: raw.mode,
-      hint: raw.hint
+      hint: raw.hint,
+      dialogTitle: raw.dialogTitle,
+      qualifyingFilter: raw.qualifyingFilter
     });
+  }
+
+  function normalizeVisitLogCategoryKey(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function buildVisitLogQualifyingFilter(rawFilter, subtabKey) {
+    if (!rawFilter || typeof rawFilter !== 'object') return null;
+    const categoryKey = normalizeVisitLogCategoryKey(rawFilter.categoryKey);
+    const title = String(rawFilter.achievementTitle || '').trim();
+    const scope = String(rawFilter.scope || '').trim().toLowerCase() === 'badge' ? 'badge' : 'challenge';
+    return {
+      subtabKey: String(subtabKey || '').trim(),
+      categoryKey,
+      achievementId: String(rawFilter.achievementId || '').trim(),
+      achievementTitle: title,
+      scope
+    };
   }
 
   function buildExplorerFilters(explorerState) {
@@ -4802,16 +4823,22 @@
     return item ? getExplorerItemView(item) : null;
   }
 
-  function getVisitLogQualifyingOptions(subtabKey) {
+  function getVisitLogQualifyingOptions(subtabKey, filterContext) {
     const explorerState = getExplorerState(subtabKey);
     const items = Array.isArray(explorerState.items) ? explorerState.items : [];
+    const categoryFilterKey = normalizeVisitLogCategoryKey(filterContext && filterContext.categoryKey);
     return items
-      .map((item) => ({
+      .map((item) => {
+        const categoryKeys = inferVisitCategoryKeys(subtabKey, item);
+        return {
         id: String(item && item.id ? item.id : '').trim(),
         title: String(item && item.title ? item.title : '').trim(),
-        sourceLabel: String(item && item.sourceLabel ? item.sourceLabel : '').trim()
-      }))
+        sourceLabel: String(item && item.sourceLabel ? item.sourceLabel : '').trim(),
+        categoryKeys: categoryKeys
+      };
+      })
       .filter((item) => item.id && item.title)
+      .filter((item) => !categoryFilterKey || item.categoryKeys.includes(categoryFilterKey))
       .map((item) => ({
         ...item,
         titleNorm: norm(item.title),
@@ -4901,6 +4928,45 @@
     ).trim();
     renderVisitLogActivityGrid(subtabKey, nextItemId);
     return nextItemId;
+  }
+
+  async function refreshVisitLogQualifyingList(options) {
+    const opts = options && typeof options === 'object' ? options : {};
+    const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || state.activeProgressSubTab || 'outdoors').trim();
+    const itemIdInput = document.getElementById('visitedVisitLogItemId');
+    const locationSearchInput = document.getElementById('visitedVisitLogLocationSearch');
+    const help = document.getElementById('visitedVisitLogHelp');
+    const preferredItemId = String(itemIdInput && itemIdInput.value ? itemIdInput.value : '').trim();
+
+    if (typeof forceVisitedExplorerSync === 'function' && getExplorerConfig(subtabKey)) {
+      await forceVisitedExplorerSync(subtabKey);
+    }
+
+    const filterContext = state.visitLogQualifyingFilter && typeof state.visitLogQualifyingFilter === 'object'
+      ? state.visitLogQualifyingFilter
+      : null;
+    const items = getVisitLogQualifyingOptions(subtabKey, filterContext);
+    state.visitLogLocationOptions = items;
+
+    if (opts.resetQuery) {
+      state.visitLogLocationQuery = '';
+      if (locationSearchInput) locationSearchInput.value = '';
+    }
+
+    const selectedFromRender = renderVisitLogLocationOptions();
+    const nextSelectedId = preferredItemId && items.some((item) => item.id === preferredItemId)
+      ? preferredItemId
+      : (selectedFromRender || '');
+    syncVisitLogLocationSelection(nextSelectedId, subtabKey);
+
+    if (help) {
+      const baseText = String(help.dataset.baseText || '').trim();
+      if (baseText) {
+        help.textContent = baseText + ' Refreshed qualifying locations.';
+      }
+    }
+
+    return items.length;
   }
 
   function getVisitLogActivityOptions(subtabKey) {
@@ -5006,6 +5072,9 @@
     const photoInput = document.getElementById('visitedVisitLogPhotoInput');
     const help = document.getElementById('visitedVisitLogHelp');
     const submitBtn = document.getElementById('visitedVisitLogSubmitBtn');
+    const titleEl = document.getElementById('visitedVisitLogTitle');
+    const qualifierSummaryEl = document.getElementById('visitedVisitLogQualifierSummary');
+    const addMissingBtn = document.getElementById('visitedVisitLogAddMissingBtn');
     if (!modal || !backdrop || !subtabKeyInput || !itemIdInput || !modeInput || !locationSelect || !dateInput || !notesInput || !activityGrid) return;
 
     const subtabKey = String(options && options.subtabKey ? options.subtabKey : state.activeProgressSubTab || 'outdoors').trim();
@@ -5013,17 +5082,13 @@
       await forceVisitedExplorerSync(subtabKey);
     }
 
-    const items = getVisitLogQualifyingOptions(subtabKey);
-    state.visitLogLocationOptions = items;
+    const filterContext = buildVisitLogQualifyingFilter(options && options.qualifyingFilter, subtabKey);
+    state.visitLogQualifyingFilter = filterContext;
     state.visitLogLocationQuery = '';
     if (locationSearchInput) locationSearchInput.value = '';
 
     const preselectedItemId = String(options && options.itemId ? options.itemId : '').trim();
-    if (preselectedItemId && items.some((item) => item.id === preselectedItemId)) {
-      itemIdInput.value = preselectedItemId;
-    } else {
-      itemIdInput.value = '';
-    }
+    itemIdInput.value = preselectedItemId || '';
 
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -5039,16 +5104,45 @@
     subtabKeyInput.value = subtabKey;
     const mode = String(options && options.mode ? options.mode : 'add').trim() === 'remove' ? 'remove' : 'add';
     modeInput.value = mode;
+    const defaultTitle = mode === 'remove' ? 'Remove Visit' : 'Log Visit';
+    if (titleEl) titleEl.textContent = String(options && options.dialogTitle ? options.dialogTitle : defaultTitle).trim() || defaultTitle;
     if (submitBtn) submitBtn.textContent = mode === 'remove' ? 'Remove Visit' : 'Save Visit';
+    if (qualifierSummaryEl) {
+      if (filterContext && filterContext.achievementTitle) {
+        const scopeLabel = filterContext.scope === 'badge' ? 'badge' : 'challenge';
+        if (filterContext.categoryKey) {
+          qualifierSummaryEl.textContent = `${filterContext.achievementTitle} (${scopeLabel}) filtering by category: ${filterContext.categoryKey}.`;
+        } else {
+          qualifierSummaryEl.textContent = `${filterContext.achievementTitle} (${scopeLabel}) uses overall progress, so all subtab locations are listed.`;
+        }
+        qualifierSummaryEl.hidden = false;
+      } else {
+        qualifierSummaryEl.hidden = true;
+        qualifierSummaryEl.textContent = '';
+      }
+    }
+    if (addMissingBtn) {
+      const baseText = 'Add Missing Qualifying Location';
+      addMissingBtn.textContent = filterContext && filterContext.achievementTitle
+        ? `+ ${baseText} (${filterContext.achievementTitle})`
+        : `+ ${baseText}`;
+    }
     if (help) {
       const hint = String(options && options.hint ? options.hint : '').trim();
-      const base = `${items.length} qualifying locations loaded for ${subtabKey.replace('-', ' ')}.`;
+      const base = `0 qualifying locations loaded for ${subtabKey.replace('-', ' ')}.`;
       help.dataset.baseText = hint ? `${base} ${hint}` : base;
       help.textContent = help.dataset.baseText;
     }
 
-    const selectedId = renderVisitLogLocationOptions();
-    syncVisitLogLocationSelection(selectedId || '', subtabKey);
+    await refreshVisitLogQualifyingList({ resetQuery: false });
+    if (help) {
+      const hint = String(options && options.hint ? options.hint : '').trim();
+      const currentItems = Array.isArray(state.visitLogLocationOptions) ? state.visitLogLocationOptions : [];
+      const base = `${currentItems.length} qualifying locations loaded for ${subtabKey.replace('-', ' ')}.`;
+      help.dataset.baseText = hint ? `${base} ${hint}` : base;
+      help.textContent = help.dataset.baseText;
+    }
+
 
     modal.hidden = false;
     backdrop.hidden = false;
@@ -8397,6 +8491,43 @@
           if (closeVisitLogBtn) {
             event.preventDefault();
             closeVisitLogModal();
+            return;
+          }
+
+          const addMissingVisitLogBtn = closest('#visitedVisitLogAddMissingBtn');
+          if (addMissingVisitLogBtn) {
+            event.preventDefault();
+            const subtabKey = String(document.getElementById('visitedVisitLogSubtabKey')?.value || state.activeProgressSubTab || 'outdoors').trim();
+            const filterContext = state.visitLogQualifyingFilter && typeof state.visitLogQualifyingFilter === 'object'
+              ? state.visitLogQualifyingFilter
+              : null;
+            closeVisitLogModal();
+            openEditModeForSubtab(subtabKey);
+            if (typeof window.showToast === 'function') {
+              const scopedLabel = filterContext && filterContext.achievementTitle
+                ? ` for ${filterContext.achievementTitle}`
+                : '';
+              window.showToast(`Add the missing location in Edit Mode${scopedLabel}, then reopen this modal to refresh.`, 'info', 3400);
+            }
+            return;
+          }
+
+          const refreshVisitLogBtn = closest('#visitedVisitLogRefreshBtn');
+          if (refreshVisitLogBtn) {
+            event.preventDefault();
+            if (refreshVisitLogBtn instanceof HTMLButtonElement) {
+              const prevLabel = refreshVisitLogBtn.textContent;
+              refreshVisitLogBtn.disabled = true;
+              refreshVisitLogBtn.textContent = 'Refreshing...';
+              try {
+                await refreshVisitLogQualifyingList({ resetQuery: false });
+              } finally {
+                refreshVisitLogBtn.disabled = false;
+                refreshVisitLogBtn.textContent = prevLabel || '↻ Refresh Qualifying List';
+              }
+            } else {
+              await refreshVisitLogQualifyingList({ resetQuery: false });
+            }
             return;
           }
 
